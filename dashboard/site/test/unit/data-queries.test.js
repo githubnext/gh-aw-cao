@@ -1162,7 +1162,7 @@ describe('declarative dashboard queries', () => {
         {
           organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md',
           campaign: 'aw-doctor', 'campaign-name': 'AW Doctor', 'workflow-role': 'orchestrator',
-          'rollout-mode': 'review', 'workflow-active': 'true'
+          'rollout-mode': 'review', 'workflow-active': 'false'
         },
         {
           organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'b.md',
@@ -1247,6 +1247,8 @@ describe('declarative dashboard queries', () => {
         'dashboard-href': '#page-campaign-insights?campaign=aw-doctor',
         'dashboard-label': 'View AW Doctor campaign dashboard'
       },
+      'workflow-active': 'false',
+      'campaign-status': 'Disabled',
       workflows: 3,
       roles: 'orchestrator, worker',
       modes: 'review',

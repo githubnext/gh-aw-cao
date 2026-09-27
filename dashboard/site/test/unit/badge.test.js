@@ -59,6 +59,7 @@ describe('badge', () => {
   });
 
   it.each([
+    ['Disabled', 'status-attention'],
     ['Upgrade recommended', 'status-attention'],
     ['update-available', 'status-attention'],
     ['Current', 'status-success'],

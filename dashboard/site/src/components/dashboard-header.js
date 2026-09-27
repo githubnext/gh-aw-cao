@@ -36,7 +36,8 @@ export function renderDashboardHeader(options) {
             octicon('beaker')
           ),
           h('a', { className: 'title-link', 'data-page-title-link': '', hidden: true }),
-          h('span', { className: 'mode-indicator', 'data-page-mode': '', hidden: true })
+          h('span', { className: 'mode-indicator', 'data-page-mode': '', hidden: true }),
+          h('span', { 'data-page-status': '', hidden: true })
         ),
         h('p', { className: 'lede', 'data-page-description': '', hidden: !options.description }, options.description ?? '')
       ),

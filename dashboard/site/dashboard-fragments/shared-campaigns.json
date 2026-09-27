@@ -1182,6 +1182,66 @@
       }
     },
     {
+      "name": "campaign-orchestrator-registration",
+      "intent": "Preserve each campaign orchestrator's current GitHub Actions active state for campaign presentation.",
+      "description": "Campaign orchestrator active state grouped by campaign.",
+      "from": "workflow-inventory",
+      "filter": {
+        "predicates": [
+          {
+            "field": "workflow-role",
+            "equals": "orchestrator"
+          }
+        ]
+      },
+      "compute": [
+        {
+          "as": "orchestrator-disabled",
+          "function": "equals-any",
+          "args": [
+            {
+              "field": "workflow-active"
+            },
+            {
+              "value": "false"
+            }
+          ]
+        },
+        {
+          "as": "campaign-status",
+          "function": "if",
+          "args": [
+            {
+              "field": "orchestrator-disabled"
+            },
+            {
+              "value": "Disabled"
+            },
+            {
+              "value": ""
+            }
+          ]
+        }
+      ],
+      "aggregate": {
+        "by": [
+          "campaign"
+        ],
+        "values": [
+          {
+            "field": "workflow-active",
+            "as": "workflow-active",
+            "reducer": "distinct-list"
+          },
+          {
+            "field": "campaign-status",
+            "as": "campaign-status",
+            "reducer": "distinct-list"
+          }
+        ]
+      }
+    },
+    {
       "name": "campaign-workflow-totals",
       "intent": "Summarize observed workflow and execution totals for each centrally managed campaign.",
       "description": "Observed workflow, rollout, run, and AI Credit totals grouped by campaign.",
@@ -1354,6 +1414,26 @@
             {
               "field": "aic",
               "as": "observed-aic"
+            }
+          ]
+        },
+        {
+          "source": "campaign-orchestrator-registration",
+          "type": "left",
+          "on": [
+            {
+              "left": "campaign",
+              "right": "campaign"
+            }
+          ],
+          "fields": [
+            {
+              "field": "workflow-active",
+              "as": "workflow-active"
+            },
+            {
+              "field": "campaign-status",
+              "as": "campaign-status"
             }
           ]
         },
@@ -1551,6 +1631,12 @@
         },
         {
           "field": "campaign-dashboard-link"
+        },
+        {
+          "field": "workflow-active"
+        },
+        {
+          "field": "campaign-status"
         },
         {
           "field": "workflows"

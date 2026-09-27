@@ -25,6 +25,7 @@ import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHo
 import { sourceContinuation } from './data/continuation.js';
 import { renderDashboardNavigation, enableDashboardNavigation, syncDashboardNavigationIndicators, syncMobileViewModeToggle } from './components/dashboard-navigation.js';
 import { renderDashboardHeader } from './components/dashboard-header.js';
+import { renderStatusBadge } from './components/badge.js';
 import { renderAccountMenu } from './components/account-menu.js';
 import { renderDashboardFooter } from './components/dashboard-footer.js';
 import { renderDashboardFrame } from './components/dashboard-frame.js';
@@ -1132,6 +1133,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   };
   const pageDescription = root.querySelector('.overview-header [data-page-description]');
   const pageMode = root.querySelector('[data-page-mode]');
+  const pageStatus = root.querySelector('[data-page-status]');
   const pageScroller = root.querySelector('main.dashboard-prototype');
   const scrollTop = () => pageScroller instanceof HTMLElement
     ? pageScroller.scrollTop
@@ -1204,6 +1206,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       pageDescription.toggleAttribute('hidden', description.length === 0);
     }
     renderPageMode(pageMode, '');
+    renderPageStatus(pageStatus, '');
   };
 
   root.addEventListener('dashboard-route-allocation', (event) => {
@@ -1239,6 +1242,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       ? event.detail.mode
       : '';
     renderPageMode(pageMode, mode);
+    renderPageStatus(pageStatus, event.detail?.status === 'Disabled' ? 'Disabled' : '');
     const navigationPage = typeof event.detail?.navigationPage === 'string'
       ? event.detail.navigationPage
       : page.dataset.routeNavigationPage ?? '';
@@ -1503,6 +1507,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       ? new URLSearchParams(root.ownerDocument.defaultView?.location.search ?? '').get('mode')
       : '';
     renderPageMode(pageMode, requestedMode === 'review' || requestedMode === 'live' ? requestedMode : '');
+    renderPageStatus(pageStatus, '');
     if (page && !populationDeferred) dispatchPageRoute(page, routeParameter ?? '', routeValue);
     if (page && !populationDeferred && !pagePopulated) {
       emitDashboardDebugEvent(root.ownerDocument, DASHBOARD_RENDER_EVENT, {
@@ -1830,6 +1835,17 @@ function renderPageMode(pageMode, mode) {
   pageMode.className = `mode-indicator${mode ? ` mode-${mode}` : ''}`;
   pageMode.hidden = !mode;
   if (mode) pageMode.append(octicon(mode === 'review' ? 'beaker' : 'rocket'), titleCase(mode));
+}
+
+/**
+ * @param {Element | null} pageStatus
+ * @param {string} status
+ */
+function renderPageStatus(pageStatus, status) {
+  if (!(pageStatus instanceof HTMLElement)) return;
+  pageStatus.replaceChildren();
+  pageStatus.hidden = !status;
+  if (status) pageStatus.append(renderStatusBadge(status));
 }
 
 /**

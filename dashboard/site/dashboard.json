@@ -613,6 +613,11 @@
             "field": "modes",
             "title": "Modes",
             "display": "label"
+          },
+          {
+            "field": "campaign-status",
+            "title": "Status",
+            "display": "status"
           }
         ],
         "details": [

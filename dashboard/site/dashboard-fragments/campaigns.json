@@ -614,6 +614,12 @@
                   "display": "mode"
                 },
                 {
+                  "field": "campaign-status",
+                  "type": "nominal",
+                  "title": "Status",
+                  "display": "status"
+                },
+                {
                   "field": "runs",
                   "type": "quantitative",
                   "title": "Runs"

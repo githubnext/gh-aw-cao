@@ -4,6 +4,7 @@ import { bindFactorySources, createFactoryScope } from './factory-elements.js';
 import { text } from './count-formatters.js';
 import { findLink, renderSafeLink } from './link-content.js';
 import { renderIconSpan } from './ui-primitives.js';
+import { renderStatusBadge } from './badge.js';
 
 /**
  * Renders one declared source as a compact list of navigation buttons.
@@ -20,6 +21,7 @@ export function renderLinkButtonList(context) {
   const iconField = text(context.elementConfig?.['icon-field']);
   const indicatorField = text(context.elementConfig?.['indicator-field']);
   const indicatorLabelField = text(context.elementConfig?.['indicator-label-field']);
+  const statusField = text(context.elementConfig?.['status-field']);
   const fallbackIcon = text(context.elementConfig?.['fallback-icon']) || 'link';
   const items = keyed(
     source.rows(),
@@ -27,10 +29,12 @@ export function renderLinkButtonList(context) {
       const label = text(row[labelField]) || 'Link';
       const indicator = text(row[indicatorField]);
       const indicatorLabel = text(row[indicatorLabelField]);
+      const status = text(row[statusField]);
       const link = renderSafeLink(
         h('span', { className: 'link-button-list-content' },
           renderIconSpan('link-button-list-icon', text(row[iconField]) || fallbackIcon, { ariaHidden: true }),
           h('span', null, label),
+          status ? renderStatusBadge(status) : null,
           indicator
             ? h(
                 'span',

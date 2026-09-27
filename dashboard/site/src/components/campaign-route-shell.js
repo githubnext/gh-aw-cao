@@ -130,12 +130,14 @@ export function renderCampaignRouteShell(context, config) {
       }
       const campaignName = campaignNameForRoute(campaignId, workflows);
       const titleLink = campaignTitleLink(campaignName, workflows);
+      const orchestrator = workflows.find((workflow) => workflow['workflow-role'] === 'orchestrator');
       debugCampaignRouteShell({ event: 'route-render', tab: config.currentTab, status: 'matched', workflowCount: workflows.length });
       return {
         allocation: {
           title: campaignName,
           description: config.description.replace('{campaignName}', campaignName),
           ...(titleLink ? { titleLink } : {}),
+          ...(text(orchestrator?.['workflow-active']) === 'false' ? { status: 'Disabled' } : {}),
           navigationPage: 'campaigns'
         },
         content: config.bodyRenderer?.({ context, campaignId, campaignName, workflows }) ?? null

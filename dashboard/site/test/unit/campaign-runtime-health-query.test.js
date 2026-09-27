@@ -51,12 +51,21 @@ it('opens campaigns with runtime problems on Problems and healthy campaigns on I
       source: 'campaign-runtime-problem-counts',
       metadata,
       rows: [{ campaign: 'aw-doctor', 'problem-partitions': 2 }]
+    },
+    'campaign-inventory': {
+      source: 'campaign-inventory',
+      metadata,
+      rows: [
+        { campaign: 'aw-doctor', 'campaign-status': 'Disabled' },
+        { campaign: 'dependabot', 'campaign-status': '' }
+      ]
     }
   });
 
   expect(result.rows).toEqual([
     expect.objectContaining({
       campaign: 'aw-doctor',
+      'campaign-status': 'Disabled',
       'problem-indicator': 'alert',
       'campaign-dashboard-link': expect.objectContaining({
         'dashboard-href': '#page-campaign-insights?campaign=aw-doctor'
@@ -64,6 +73,7 @@ it('opens campaigns with runtime problems on Problems and healthy campaigns on I
     }),
     expect.objectContaining({
       campaign: 'dependabot',
+      'campaign-status': '',
       'problem-indicator': '',
       'campaign-dashboard-link': expect.objectContaining({
         'dashboard-href': '#page-campaign-insights?campaign=dependabot'

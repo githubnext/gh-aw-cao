@@ -23,6 +23,7 @@ const workflows = [
     'workflow-name': 'Ambient Context',
     'workflow-role': 'orchestrator',
     'rollout-mode': 'review',
+    'workflow-active': 'true',
     'campaign-description': 'Keeps repository guidance current.',
     'campaign-readme-path': 'ambient-context/README.md',
     'campaign-readme': '# Ambient Context\n\nKeeps shared guidance current. See the [guide](docs/guide.md).\n\n## Capabilities\n\n- Reviews context\n- Proposes updates',
@@ -146,6 +147,7 @@ describe('campaign detail route', () => {
       sourceNames: ['workflows'],
       elementConfig: { body: 'insights' }
     });
+
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
       detail: { parameter: 'campaign', value: 'ambient-context' }
     }));
@@ -153,6 +155,47 @@ describe('campaign detail route', () => {
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.textContent).toBe('Operational Value');
     expect(rendered.querySelector('.measure-history')).not.toBeNull();
     expect(rendered.querySelector('.temporal-plot-heading h3')?.textContent).toBe('Guidance freshness');
+  });
+
+  it('shows Disabled only when the orchestrator is inactive', () => {
+    const base = context();
+    const disabledWorkflows = base.sources.workflows.rows.map((workflow) => (
+      workflow['workflow-role'] === 'orchestrator'
+        ? { ...workflow, 'workflow-active': 'false' }
+        : workflow
+    ));
+    const rendered = renderCampaignRouteVariant({
+      ...base,
+      sources: {
+        ...base.sources,
+        workflows: { ...base.sources.workflows, rows: disabledWorkflows }
+      }
+    }, 'overview');
+    const host = document.createElement('div');
+    host.append(rendered);
+    let allocation;
+    host.addEventListener('dashboard-route-allocation', (event) => {
+      if (event instanceof CustomEvent) allocation = event.detail;
+    });
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'campaign', value: 'ambient-context' }
+    }));
+
+    expect(allocation).toEqual(expect.objectContaining({ status: 'Disabled' }));
+    expect(allocation).not.toHaveProperty('mode');
+
+    const active = renderCampaignRouteVariant(base, 'overview');
+    const activeHost = document.createElement('div');
+    activeHost.append(active);
+    let activeAllocation;
+    activeHost.addEventListener('dashboard-route-allocation', (event) => {
+      if (event instanceof CustomEvent) activeAllocation = event.detail;
+    });
+    active.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'campaign', value: 'ambient-context' }
+    }));
+    expect(activeAllocation).not.toHaveProperty('status');
+    expect(activeAllocation).not.toHaveProperty('mode');
   });
 
   it('keeps the compatibility Info route outside the reusable campaign tabs', () => {

@@ -84,7 +84,8 @@ describe('entity card templates', () => {
       icon: 'goal',
       title: { field: 'campaign-name' },
       labels: [
-        { field: 'modes', display: 'label' }
+        { field: 'modes', display: 'label' },
+        { field: 'campaign-status', display: 'status' }
       ],
       details: [
         { field: 'dispatches', title: '# dispatches' },

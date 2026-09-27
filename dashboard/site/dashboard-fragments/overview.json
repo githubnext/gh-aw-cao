@@ -1167,6 +1167,22 @@
               "as": "observed-problem-partitions"
             }
           ]
+        },
+        {
+          "source": "campaign-inventory",
+          "type": "left",
+          "on": [
+            {
+              "left": "campaign",
+              "right": "campaign"
+            }
+          ],
+          "fields": [
+            {
+              "field": "campaign-status",
+              "as": "campaign-status"
+            }
+          ]
         }
       ],
       "compute": [
@@ -1300,6 +1316,9 @@
         },
         {
           "field": "problem-indicator-label"
+        },
+        {
+          "field": "campaign-status"
         },
         {
           "field": "campaign-dashboard-link"
@@ -1610,6 +1629,7 @@
             "fallback-icon": "goal",
             "indicator-field": "problem-indicator",
             "indicator-label-field": "problem-indicator-label",
+            "status-field": "campaign-status",
             "empty-message": "No campaigns are registered."
           },
           "layout": "full"
