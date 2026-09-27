@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
@@ -15,6 +16,8 @@ const (
 	areaRuntime = "runtime"
 	areaRedis   = "redis"
 )
+
+var checksRedisLog = logger.New("cao:doctor:redis")
 
 // checkBuild reports what is actually running. A check-up that does not
 // identify the build it inspected cannot be correlated with a deployment.
@@ -120,29 +123,47 @@ func (d Doctor) checkRedisMemory(ctx context.Context) Check {
 	if maximum > 0 {
 		details = append(details, detail("utilization", fmt.Sprintf("%.1f%%", 100*float64(used)/float64(maximum))))
 	}
+	verdict := memoryVerdict(used, maximum, policy)
+	checksRedisLog.Printf("redis memory check status=%s policy=%q utilization_known=%t",
+		verdict.Status, policy, maximum > 0)
+	return Check{
+		ID: id, Area: areaRedis, Title: title, Status: verdict.Status,
+		Summary: verdict.Summary, Details: details, Remedy: verdict.Remedy,
+	}
+}
+
+// memoryOutcome is the redis.memory check's decided status, summary, and
+// remedy, before the check's own identifying fields and details are attached.
+type memoryOutcome struct {
+	Status  Status
+	Summary string
+	Remedy  string
+}
+
+// memoryVerdict decides the redis.memory check's outcome from already-parsed
+// INFO fields. It is a pure function so every branch of the eviction-policy
+// and utilization decision is testable without a fake Redis client.
+func memoryVerdict(used, maximum int64, policy string) memoryOutcome {
 	if policy != "" && policy != "noeviction" {
-		return Check{
-			ID: id, Area: areaRedis, Title: title, Status: StatusFail,
+		return memoryOutcome{
+			Status:  StatusFail,
 			Summary: fmt.Sprintf("eviction policy is %q; canonical rows can be discarded without an error", policy),
-			Details: details,
 			Remedy:  "set maxmemory-policy to noeviction so a full instance fails writes instead of silently dropping rows",
 		}
 	}
 	if maximum > 0 {
 		utilization := float64(used) / float64(maximum)
 		if utilization >= 0.95 {
-			return Check{
-				ID: id, Area: areaRedis, Title: title, Status: StatusFail,
+			return memoryOutcome{
+				Status:  StatusFail,
 				Summary: fmt.Sprintf("memory is %.1f%% used; the next projection will probably fail", 100*utilization),
-				Details: details,
 				Remedy:  "scale the instance or lower CAO_COLLECT_RETAIN_GENERATIONS so fewer superseded generations are kept",
 			}
 		}
 		if utilization >= 0.80 {
-			return Check{
-				ID: id, Area: areaRedis, Title: title, Status: StatusWarn,
+			return memoryOutcome{
+				Status:  StatusWarn,
 				Summary: fmt.Sprintf("memory is %.1f%% used; a projection writes a full additional generation", 100*utilization),
-				Details: details,
 				Remedy:  "headroom below one generation risks a failed projection; scale up or reduce retention",
 			}
 		}
@@ -151,14 +172,13 @@ func (d Doctor) checkRedisMemory(ctx context.Context) Check {
 	if maximum <= 0 {
 		// Without a limit Redis grows until the host runs out, which fails far
 		// less gracefully than a configured limit.
-		return Check{
-			ID: id, Area: areaRedis, Title: title, Status: StatusWarn,
+		return memoryOutcome{
+			Status:  StatusWarn,
 			Summary: summary + ", with no maxmemory configured",
-			Details: details,
 			Remedy:  "configure maxmemory so growth fails predictably instead of exhausting the host",
 		}
 	}
-	return Check{ID: id, Area: areaRedis, Title: title, Status: StatusPass, Summary: summary, Details: details}
+	return memoryOutcome{Status: StatusPass, Summary: summary}
 }
 
 func memoryLimitLabel(maximum int64) string {
