@@ -42,6 +42,26 @@ test("legacy authentication profile route redirects to the consolidated guide", 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Authentication");
 });
 
+test("setup wizard presents hosting choices as an immersive card experience", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  expect((await page.goto("setup/"))?.ok()).toBe(true);
+
+  await expect(page.getByRole("heading", { level: 2 })).toHaveText("Stand up a control plane in four steps");
+  await expect(page.locator("select")).toHaveCount(0);
+  await expect(page.getByRole("radiogroup", { name: "App server target" })).toBeVisible();
+  await expect(page.getByRole("radiogroup", { name: "Redis provider" })).toBeVisible();
+
+  const redisOptions = page.locator('input[name="redis-provider"]');
+  await expect(redisOptions).toHaveCount(9);
+  await expect(redisOptions.first()).toBeDisabled();
+
+  await page.locator('input[name="host-target"][value="container"]').check();
+  await expect(redisOptions.first()).toBeEnabled();
+
+  const wizardHeight = await page.locator(".ops-wizard").evaluate((element) => element.getBoundingClientRect().height);
+  expect(wizardHeight).toBeGreaterThanOrEqual(800);
+});
+
 for (const colorScheme of ["light", "dark"]) {
   test.describe(`${colorScheme} scheme`, () => {
     test.use({ colorScheme, viewport: { width: 320, height: 900 } });
