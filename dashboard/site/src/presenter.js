@@ -1567,6 +1567,16 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     historyBack.setAttribute('aria-label', label);
     historyBack.title = label;
   };
+  root.addEventListener('dashboard-route-parent-change', (event) => {
+    if (!(event instanceof CustomEvent) || !(event.target instanceof Element)) return;
+    const page = event.target.closest('.dashboard-page');
+    if (!(page instanceof HTMLElement) || page.hidden) return;
+    const navigationPage = typeof event.detail?.navigationPage === 'string'
+      ? event.detail.navigationPage
+      : '';
+    page.dataset.routeNavigationPage = navigationPage;
+    syncHistoryBack();
+  }, { signal: navigationOwner.signal });
   if (defaultView && initialNavigationIndex !== navigationIndex) {
     const state = defaultView.history.state && typeof defaultView.history.state === 'object'
       ? defaultView.history.state

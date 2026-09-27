@@ -1233,14 +1233,17 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .cao-memory-tree h2 { margin: 4px 8px 12px; color: var(--muted); font-size: .75rem; text-transform: uppercase; }
 .cao-memory-tree ul { margin: 0; padding: 0; list-style: none; }
 .cao-memory-tree ul ul { padding-left: 16px; }
-.cao-memory-campaign-branch > summary, .campaign-memory-directory > summary { min-height: 36px; display: flex; align-items: center; padding: 7px 8px; border-radius: 6px; cursor: pointer; }
+.cao-memory-campaign-branch > summary, .campaign-memory-directory > summary { min-height: 32px; display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 4px; cursor: pointer; }
+.cao-memory-campaign-branch > summary::marker, .campaign-memory-directory > summary::marker { color: var(--muted); }
+.cao-memory-campaign-branch > summary .octicon { color: var(--accent); }
+.campaign-memory-directory > summary .octicon { color: var(--muted); }
 .cao-memory-campaign-branch > summary { font-weight: 600; }
 .cao-memory-campaign-branch > summary:hover, .campaign-memory-directory > summary:hover { background: var(--neutral-muted); }
+.campaign-memory-directory > ul { margin-left: 9px; padding-left: 10px; border-left: 1px solid var(--border-muted); }
 .cao-memory-tree-status > .empty-message { margin: 4px 8px 8px 16px; }
 .cao-memory-file-content { min-width: 0; padding: 20px; overflow: auto; }
 .memory-file-header { margin: 0 0 16px; }
 .memory-file-header h2 { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
-.memory-mobile-back { display: none; }
 .cao-memory-file-content pre { min-height: 20rem; margin: 0; padding: 16px; overflow: auto; border-radius: 6px; background: var(--canvas-inset); color: var(--fg); font: .75rem/1.5 var(--font-mono, ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace); white-space: pre-wrap; overflow-wrap: anywhere; }
 .campaign-memory-browser { min-width: 0; }
 .campaign-memory-warning { margin: 0 0 12px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--attention) 45%, var(--border)); border-radius: 6px; background: var(--attention-muted); color: var(--fg); }
@@ -1248,11 +1251,12 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .campaign-memory-files { min-width: 0; padding: 12px; overflow: auto; border-right: 1px solid var(--border); background: var(--canvas-subtle); }
 .campaign-memory-branch { margin: 0 4px 12px; color: var(--muted); font-size: .75rem; overflow-wrap: anywhere; }
 .campaign-memory-files ul { margin: 0; padding: 0; list-style: none; }
-.campaign-memory-file { width: 100%; min-height: 36px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.campaign-memory-file { width: 100%; min-height: 32px; display: flex; align-items: center; gap: 6px; padding: 5px 8px; border: 0; border-radius: 4px; background: transparent; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
 .campaign-memory-file:hover { background: var(--neutral-muted); }
 .campaign-memory-file[aria-current="true"] { background: var(--accent-muted); color: var(--accent); font-weight: 600; }
-.campaign-memory-file span { min-width: 0; overflow-wrap: anywhere; }
-.campaign-memory-file small { flex: 0 0 auto; color: var(--muted); font-weight: 400; }
+.campaign-memory-file > .octicon { flex: 0 0 16px; color: var(--muted); }
+.campaign-memory-file .memory-file-name { min-width: 0; overflow-wrap: anywhere; }
+.campaign-memory-file small { flex: 0 0 auto; margin-left: auto; color: var(--muted); font-weight: 400; }
 .campaign-memory-content { min-width: 0; padding: 20px; overflow: auto; }
 .campaign-memory-content pre { min-height: 20rem; margin: 0; padding: 16px; overflow: auto; border-radius: 6px; background: var(--canvas-inset); color: var(--fg); font: .75rem/1.5 var(--font-mono, ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace); white-space: pre-wrap; overflow-wrap: anywhere; }
 .campaign-detail-page .custom-view-grid, .campaign-detail-page .custom-view-grid > * { min-width: 0; }
@@ -2053,12 +2057,9 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .cao-memory-tree, .campaign-memory-files { padding: 8px; }
   .cao-memory-tree h2 { margin: 8px 8px 12px; }
   .cao-memory-campaign-branch > summary, .campaign-memory-directory > summary, .campaign-memory-file { min-height: 44px; }
-  .memory-file-header { min-height: 52px; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; position: sticky; z-index: 1; top: 0; margin: 0; padding: 6px 12px; border-bottom: 1px solid var(--border); background: var(--canvas); }
+  .memory-file-header { min-height: 52px; display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; position: sticky; z-index: 1; top: 0; margin: 0; padding: 6px 12px; border-bottom: 1px solid var(--border); background: var(--canvas); }
   .memory-file-header h2 { overflow: hidden; font-size: .875rem; text-overflow: ellipsis; white-space: nowrap; }
-  .memory-mobile-back { min-width: 44px; min-height: 40px; display: inline-flex; align-items: center; gap: 4px; margin-left: -8px; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; }
-  .memory-mobile-back:hover { background: var(--neutral-muted); }
-  .memory-mobile-back:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
-  .cao-memory-file-content pre, .campaign-memory-content pre { min-height: calc(100% - 52px); padding: 16px; border-radius: 0; white-space: pre; overflow-wrap: normal; tab-size: 2; }
+  .cao-memory-file-content pre, .campaign-memory-content pre { min-height: calc(100% - 52px); padding: 16px; border-radius: 0; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 2; }
   :root[data-navigation-direction="forward"]::view-transition-old(root) { z-index: 1; animation-name: dashboard-view-slide-out-left; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
   :root[data-navigation-direction="forward"]::view-transition-new(root) { z-index: 2; animation-name: dashboard-view-slide-in-right; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
   :root[data-navigation-direction="backward"]::view-transition-old(root) { z-index: 2; animation-name: dashboard-view-slide-out-right; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }

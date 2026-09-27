@@ -7,6 +7,7 @@ import { bindFactorySources, createFactoryScope } from './factory-elements.js';
 import { renderEmptyMessage } from './ui-primitives.js';
 
 const debugCampaignMemory = createDebug('campaign-memory');
+const MOBILE_MEMORY_HISTORY_KEY = 'caoMemoryViewer';
 
 /** @typedef {{ campaign: string, campaignName: string }} Campaign */
 /** @typedef {{ path: string, oid: string, sha256?: string, size: number }} MemoryFile */
@@ -31,6 +32,19 @@ export function renderCampaignMemory({ campaignId, campaignName }) {
   const selectedPath = state('');
   const fileState = state(/** @type {MemoryFileState} */ ({ status: 'idle', content: '', error: '' }));
   const mobileView = state('browser');
+  const mobileNavigation = createMobileMemoryNavigation(
+    root,
+    `campaign:${campaignId}`,
+    'campaigns',
+    () => mobileView.set('file'),
+    () => {
+      mobileView.set('browser');
+      afterRender(() => /** @type {HTMLElement | null} */ (
+        root.querySelector('.campaign-memory-file[aria-current="true"]')
+      )?.focus());
+    },
+    scope.signal
+  );
   const afterRender = (/** @type {() => void} */ callback) => {
     const frame = root.ownerDocument.defaultView?.requestAnimationFrame;
     if (frame) frame.call(root.ownerDocument.defaultView, callback);
@@ -50,13 +64,8 @@ export function renderCampaignMemory({ campaignId, campaignName }) {
     select: (filePath) => {
       selectedPath.set(filePath);
       mobileView.set('file');
+      mobileNavigation.open();
       focusFilePane();
-    },
-    showFiles: () => {
-      mobileView.set('browser');
-      afterRender(() => /** @type {HTMLElement | null} */ (
-        root.querySelector('.campaign-memory-file[aria-current="true"]')
-      )?.focus());
     },
   }), { signal: scope.signal });
 
@@ -197,7 +206,10 @@ function renderCampaignTree(campaigns, signal) {
     const details = /** @type {HTMLDetailsElement} */ (h(
       'details',
       { className: 'cao-memory-campaign-branch', open: index === 0 },
-      h('summary', { className: 'cao-memory-campaign' }, campaign.campaignName),
+      h('summary', { className: 'cao-memory-campaign' },
+        octicon('file-directory-fill'),
+        h('span', null, campaign.campaignName)
+      ),
       files
     ));
     let loaded = false;
@@ -226,6 +238,7 @@ function renderCampaignTree(campaigns, signal) {
           selectedButton = button;
           if (!preloading) {
             layout.dataset.memoryView = 'file';
+            mobileNavigation.open();
             content.focus();
           }
           fileController?.abort();
@@ -242,7 +255,7 @@ function renderCampaignTree(campaigns, signal) {
             renderEmptyMessage('Loading file...', { role: 'status', 'aria-busy': 'true' })
           );
           content.replaceChildren(
-            renderMemoryFileHeader(entry.path, showFiles),
+            renderMemoryFileHeader(entry.path),
             fileBody
           );
           const activeController = fileController;
@@ -298,6 +311,17 @@ function renderCampaignTree(campaigns, signal) {
     ),
     content
   ));
+  const mobileNavigation = createMobileMemoryNavigation(
+    layout,
+    'all-campaigns',
+    '',
+    () => {
+      layout.dataset.memoryView = 'file';
+      content.focus();
+    },
+    showFiles,
+    signal
+  );
   return layout;
 }
 
@@ -331,7 +355,7 @@ function renderFileTree(entries, select) {
       h(
         'details',
         { className: 'campaign-memory-directory', open: true },
-        h('summary', null, name),
+        h('summary', null, octicon('file-directory'), h('span', null, name)),
         renderNode(child)
       )
     )),
@@ -344,7 +368,8 @@ function renderFileTree(entries, select) {
           title: entry.path,
           onclick: () => select(entry, button),
         },
-        h('span', null, name),
+        octicon('file'),
+        h('span', { className: 'memory-file-name' }, name),
         h('small', null, formatFileSize(entry.size))
       ));
       return h('li', null, button);
@@ -361,10 +386,9 @@ function renderFileTree(entries, select) {
  *   file: MemoryFileState,
  *   mobileView: string,
  *   select: (filePath: string) => void,
- *   showFiles: () => void
  * }} options
  */
-function memoryView({ campaignName, manifest, selectedPath, file, mobileView, select, showFiles }) {
+function memoryView({ campaignName, manifest, selectedPath, file, mobileView, select }) {
   if (manifest.status === 'loading') {
     return renderEmptyMessage('Loading repository memory...', { role: 'status', 'aria-busy': 'true' });
   }
@@ -404,13 +428,16 @@ function memoryView({ campaignName, manifest, selectedPath, file, mobileView, se
             className: 'campaign-memory-file',
             'aria-current': entry.path === selectedPath ? 'true' : null,
             onclick: () => select(entry.path),
-          }, h('span', null, entry.path), h('small', null, formatFileSize(entry.size)))
+          },
+          octicon('file'),
+          h('span', { className: 'memory-file-name' }, entry.path),
+          h('small', null, formatFileSize(entry.size)))
         )))
       ),
       h(
         'article',
         { className: 'campaign-memory-content', 'aria-live': 'polite', tabindex: '-1' },
-        selected ? renderMemoryFileHeader(selected.path, showFiles) : null,
+        selected ? renderMemoryFileHeader(selected.path) : null,
         file.status === 'loading'
           ? renderEmptyMessage('Loading file...', { role: 'status', 'aria-busy': 'true' })
           : file.status === 'error'
@@ -425,25 +452,63 @@ function memoryView({ campaignName, manifest, selectedPath, file, mobileView, se
 
 /**
  * @param {string} path
- * @param {() => void} showFiles
  */
-function renderMemoryFileHeader(path, showFiles) {
+function renderMemoryFileHeader(path) {
   return h(
     'header',
     { className: 'memory-file-header' },
-    h(
-      'button',
-      {
-        type: 'button',
-        className: 'memory-mobile-back',
-        'aria-label': 'Back to files',
-        onclick: showFiles,
-      },
-      octicon('chevron-left'),
-      h('span', null, 'Files')
-    ),
     h('h2', null, path)
   );
+}
+
+/**
+ * Uses one browser-history entry for the mobile file pane so the app chrome is
+ * the only back control.
+ * @param {HTMLElement} root
+ * @param {string} scopeKey
+ * @param {string} parentPage
+ * @param {() => void} showFile
+ * @param {() => void} showFiles
+ * @param {AbortSignal} signal
+ */
+function createMobileMemoryNavigation(root, scopeKey, parentPage, showFile, showFiles, signal) {
+  const view = root.ownerDocument.defaultView;
+  let active = view?.history.state?.[MOBILE_MEMORY_HISTORY_KEY] === scopeKey;
+  const setParent = (navigationPage) => queueMicrotask(() => {
+    if (!root.isConnected) return;
+    root.dispatchEvent(new CustomEvent('dashboard-route-parent-change', {
+      bubbles: true,
+      detail: { navigationPage }
+    }));
+  });
+  const onPopState = (event) => {
+    active = event.state?.[MOBILE_MEMORY_HISTORY_KEY] === scopeKey;
+    if (active) showFile();
+    else showFiles();
+    setParent(active ? '' : parentPage);
+  };
+  view?.addEventListener('popstate', onPopState, { signal });
+  if (active) {
+    showFile();
+    setParent('');
+  }
+  return {
+    open() {
+      if (!view?.matchMedia?.('(max-width: 700px)').matches) return;
+      if (!active) {
+        const currentState = view.history.state && typeof view.history.state === 'object'
+          ? view.history.state
+          : {};
+        view.history.pushState(
+          { ...currentState, [MOBILE_MEMORY_HISTORY_KEY]: scopeKey },
+          '',
+          view.location.href
+        );
+      }
+      active = true;
+      setParent('');
+    }
+  };
 }
 
 function emptyOmissions() {
