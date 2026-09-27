@@ -6,6 +6,7 @@ declare module "virtual:starlight-agent/config" {
     scopePath: string;
     generator: string;
     generatorVersion: string;
+    generatedAt: string;
     excludedIds: string[];
   };
 }

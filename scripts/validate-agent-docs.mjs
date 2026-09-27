@@ -166,6 +166,7 @@ export async function validateAgentDocs({
   }
 
   const resourceTypes = new Set();
+  const generationTimes = new Set();
   let resourceFiles = [];
   try {
     resourceFiles = await findResourceFiles(distDirectory);
@@ -206,6 +207,8 @@ export async function validateAgentDocs({
     }
     if (!Number.isFinite(Date.parse(resource.freshness?.generatedAt))) {
       errors.push(`${relative} is missing a valid generatedAt timestamp`);
+    } else {
+      generationTimes.add(resource.freshness.generatedAt);
     }
     for (const link of resource.links ?? []) {
       let url;
@@ -236,6 +239,9 @@ export async function validateAgentDocs({
         errors.push(`${path.relative(distDirectory, htmlPath)} does not advertise ${expectedAlternate}`);
       }
     }
+  }
+  if (generationTimes.size > 1) {
+    errors.push("structured resources must share one build-wide generatedAt timestamp");
   }
   for (const type of requiredResourceTypes) {
     if (!resourceTypes.has(type)) errors.push(`structured resources must include type ${type}`);

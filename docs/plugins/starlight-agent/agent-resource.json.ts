@@ -34,7 +34,7 @@ export const GET: APIRoute = async ({ props, site }) => {
     base: normalizedBase(import.meta.env.BASE_URL),
     ...starlightAgentConfig,
     ...provenance,
-    generatedAt: new Date().toISOString(),
+    generatedAt: starlightAgentConfig.generatedAt,
     knownIds: new Set(entries.map((candidate) => candidate.id)),
   });
   return new Response(`${JSON.stringify(resource, null, 2)}\n`, {

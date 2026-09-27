@@ -36,6 +36,7 @@ export default function starlightAgent(options = {}) {
                 scopePath,
                 generator: "starlight-agent",
                 generatorVersion: "1",
+                generatedAt: new Date().toISOString(),
                 excludedIds: Object.keys(astroConfig.redirects ?? {})
                   .map((route) => route.replace(/^\/+|\/+$/g, ""))
                   .filter(Boolean),
