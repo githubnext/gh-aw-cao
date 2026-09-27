@@ -1,6 +1,9 @@
 ---
 title: Monitor, Recover, and Maintain
 description: Monitor control-plane runs, stop unsafe activity, recover from incidents, and maintain installed campaigns.
+agent:
+  type: operations
+  prominent: true
 ---
 
 Use this page after installation to answer the urgent operator questions: Is the control plane healthy? How do I stop it? What evidence should I collect? How do I recover safely?

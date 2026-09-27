@@ -1,6 +1,9 @@
 ---
 title: Data model
 description: Understand the canonical entities, relationships, identities, and lifecycle of Central Agentic Ops dashboard data.
+agent:
+  type: data-model
+  prominent: true
 ---
 
 The data model gives every retained campaign, repository, workflow, run, and

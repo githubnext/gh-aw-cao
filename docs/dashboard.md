@@ -1,6 +1,9 @@
 ---
 title: At a glance
 description: See what is moving, what needs attention, and whether the evidence is ready for follow-up.
+agent:
+  type: dashboard
+  prominent: true
 ---
 
 The dashboard is the operational view of your Central Agentic Ops control

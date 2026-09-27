@@ -5,6 +5,7 @@ import mermaid from "astro-mermaid";
 import starlightBlog from "starlight-blog";
 import starlightGitHubAlerts from "starlight-github-alerts";
 import starlightLlmsTxt from "starlight-llms-txt";
+import starlightAgent from "./docs/plugins/starlight-agent/index.mjs";
 import rewriteDocsLinks from "./docs/rewrite-docs-links.mjs";
 
 /**
@@ -64,6 +65,11 @@ export default defineConfig({
           }),
         }),
         starlightGitHubAlerts(),
+        starlightAgent({
+          projectName: "Central Agentic Ops",
+          description: "Machine-readable navigation for the authoritative CAO documentation and dashboard architecture.",
+          repository: "githubnext/gh-aw-cao",
+        }),
         starlightLlmsTxt({
           projectName: "Central Agentic Ops",
           description: "Run, observe, and evolve governed GitHub Agentic Workflow campaigns from a central control plane.",
@@ -106,6 +112,11 @@ export default defineConfig({
             "operational-observability-visualization-specification",
           ],
           optionalLinks: [
+            {
+              label: "Scoped agent resource index",
+              url: "https://githubnext.github.io/gh-aw-cao/agent/llms.txt",
+              description: "Compact navigation to HTML pages, JSON resource metadata, provenance, and freshness.",
+            },
             {
               label: "Architecture",
               url: "https://githubnext.github.io/gh-aw-cao/architecture/",
@@ -305,6 +316,7 @@ export default defineConfig({
             { label: "View catalog", link: "/dashboard-view-catalog/" },
             { label: "WebMCP", link: "/dashboard-webmcp/" },
             { label: "Agent analysis", link: "/agent-analysis/" },
+            { label: "Agent-readable documentation", link: "/agent-resources/" },
             {
               label: "Views",
               items: [

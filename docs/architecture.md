@@ -1,6 +1,9 @@
 ---
 title: How the Control Plane Works
 description: Understand the control plane's purpose, execution boundary, and core safety properties.
+agent:
+  type: architecture
+  prominent: true
 ---
 
 Read this overview when evaluating the control plane or changing how campaigns

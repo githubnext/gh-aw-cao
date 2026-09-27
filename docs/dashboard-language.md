@@ -1,6 +1,9 @@
 ---
 title: Dashboard Language
 description: Build dashboard views from trusted data with readable, declarative queries.
+agent:
+  type: query-language
+  prominent: true
 ---
 
 Dashboard Language lets you describe the question a view should answer and how

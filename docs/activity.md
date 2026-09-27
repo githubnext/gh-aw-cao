@@ -1,6 +1,9 @@
 ---
 title: CAO Activity
 description: Learn how CAO Activity collects gh-aw logs for Central Agentic Ops.
+agent:
+  type: data-collection
+  prominent: true
 ---
 
 # CAO Activity

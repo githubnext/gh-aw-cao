@@ -23,6 +23,17 @@ const skillNames = [
   "analyze-cao",
   "cao-cli",
 ];
+const routeTypes = {
+  architecture: "architecture",
+  "cao-cli": "cli-reference",
+  "author-your-first-operation": "campaign-guide",
+  "control-policy-specification": "documentation",
+  activity: "data-collection",
+  dashboard: "dashboard",
+  "dashboard-data-model": "data-model",
+  "dashboard-language": "query-language",
+  operations: "operations",
+};
 
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
@@ -33,11 +44,38 @@ async function createFixture() {
   roots.push(root);
   const dist = path.join(root, "dist");
   await mkdir(dist, { recursive: true });
-  for (const route of routeNames) {
+  for (const route of Object.keys(routeTypes)) {
     const directory = path.join(dist, route);
     await mkdir(directory, { recursive: true });
-    await writeFile(path.join(directory, "index.html"), `<h1>${route}</h1>`);
+    await writeFile(
+      path.join(directory, "index.html"),
+      `<head><link rel="describedby" href="/gh-aw-cao/agent/llms.txt"><link rel="alternate" type="application/json" href="/gh-aw-cao/${route}/index.json"></head>`,
+    );
+    await writeFile(path.join(directory, "index.json"), JSON.stringify({
+      schemaVersion: "1",
+      id: route,
+      type: routeTypes[route],
+      title: route,
+      url: `${pagesBase}/${route}/`,
+      links: [{ rel: "canonical", href: `${pagesBase}/${route}/` }],
+      provenance: { repository: "githubnext/gh-aw-cao", generator: "test", generatorVersion: "1" },
+      freshness: { generatedAt: "2026-09-27T23:00:00.000Z" },
+    }));
   }
+  await writeFile(
+    path.join(dist, "index.html"),
+    '<head><link rel="describedby" href="/gh-aw-cao/agent/llms.txt"><link rel="alternate" type="application/json" href="/gh-aw-cao/index.json"></head>',
+  );
+  await writeFile(path.join(dist, "index.json"), JSON.stringify({
+    schemaVersion: "1",
+    id: "index",
+    type: "overview",
+    title: "Central Agentic Ops",
+    url: `${pagesBase}/`,
+    links: [{ rel: "canonical", href: `${pagesBase}/` }],
+    provenance: { repository: "githubnext/gh-aw-cao", generator: "test", generatorVersion: "1" },
+    freshness: { generatedAt: "2026-09-27T23:00:00.000Z" },
+  }));
   const routeLinks = routeNames.map((route) => `- [${route}](${pagesBase}/${route}/)`);
   const skillLinks = skillNames.map(
     (skill) => `- [${skill}](https://github.com/githubnext/gh-aw-cao/blob/main/skills/${skill}/SKILL.md)`,
@@ -46,6 +84,7 @@ async function createFixture() {
     "# Central Agentic Ops",
     `- [Abridged](${pagesBase}/llms-small.txt)`,
     `- [Full](${pagesBase}/llms-full.txt)`,
+    `- [Scoped resources](${pagesBase}/agent/llms.txt)`,
     ...routeLinks,
     ...skillLinks,
   ].join("\n"));
@@ -57,6 +96,14 @@ async function createFixture() {
     "# Campaign rhythm",
     "# Dashboard view catalog",
   ].join("\n\n"));
+  await mkdir(path.join(dist, "agent"), { recursive: true });
+  await writeFile(path.join(dist, "agent", "llms.txt"), [
+    "# Agent resources",
+    ...Object.keys(routeTypes).flatMap((route) => [
+      `- [${route}](${pagesBase}/${route}/)`,
+      `- [${route} metadata](${pagesBase}/${route}/index.json)`,
+    ]),
+  ].join("\n"));
   return root;
 }
 
@@ -103,4 +150,16 @@ test("rejects committed generated indexes", async () => {
     trackedFiles: ["llms.txt", "docs/agent-index.json"],
   });
   assert.equal(errors.filter((error) => error.includes("must not be committed")).length, 2);
+});
+
+test("rejects invalid freshness and missing provenance", async () => {
+  const root = await createFixture();
+  const resourcePath = path.join(root, "dist", "architecture", "index.json");
+  const resource = JSON.parse(await import("node:fs/promises").then(({ readFile }) => readFile(resourcePath, "utf8")));
+  resource.provenance = {};
+  resource.freshness.generatedAt = "not-a-date";
+  await writeFile(resourcePath, JSON.stringify(resource));
+  const errors = await validateAgentDocs({ root });
+  assert.ok(errors.some((error) => error.includes("repository provenance")));
+  assert.ok(errors.some((error) => error.includes("invalid generatedAt")));
 });

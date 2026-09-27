@@ -1,6 +1,9 @@
 ---
 title: Build Your First Campaign
 description: Define one repository outcome, generate the workflows, and prove the campaign in review mode.
+agent:
+  type: campaign-guide
+  prominent: true
 ---
 
 Use this guide when the [catalog](catalog.md) does not already produce the

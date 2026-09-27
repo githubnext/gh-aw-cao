@@ -1,6 +1,9 @@
 ---
 title: CAO Commands
 description: Configure, control, inspect, and evolve a CAO control plane from its repository-local CLI.
+agent:
+  type: cli-reference
+  prominent: true
 ---
 
 Use this reference when operating CAO or adding a CLI command. The installer

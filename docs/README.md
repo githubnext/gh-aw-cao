@@ -5,6 +5,9 @@ template: splash
 editUrl: false
 prev: false
 next: false
+agent:
+  type: overview
+  prominent: true
 hero:
   title: Hyperscale Agentic Campaigns.<br />Centralized Control Planes.
   tagline: CAO coordinates Agentic Campaigns, each across its explicitly enrolled repositories—shared policy, staged rollout, bounded execution, cross-campaign evidence, and human decisions about what scales next.
@@ -27,6 +30,11 @@ hero:
 Use [`llms.txt`](/gh-aw-cao/llms.txt) to find high-value documentation,
 [`llms-small.txt`](/gh-aw-cao/llms-small.txt) for compact context, and
 [`llms-full.txt`](/gh-aw-cao/llms-full.txt) for the broad documentation corpus.
+The [scoped agent resource index](/gh-aw-cao/agent/llms.txt) links important
+HTML pages to their compact JSON metadata, provenance, and related resources.
+Maintainers can read the
+[agent-readable documentation convention](/gh-aw-cao/agent-resources/) when
+adding or enriching a route.
 Agents setting up, debugging, installing, creating, analyzing, or operating CAO
 should use the corresponding
 [`setup-cao`](https://github.com/githubnext/gh-aw-cao/blob/main/skills/setup-cao/SKILL.md),

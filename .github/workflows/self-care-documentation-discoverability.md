@@ -227,7 +227,7 @@ and whose label is `self-care:documentation-discoverability`.
   aggregate metrics. If no issue exists, call `noop` once.
 - If any task fails or the public entry point was unavailable, create the stable
   issue when absent or update its body when present. Use the unprefixed title
-  `Agent documentation routing defects` for creation.
+  `Agent documentation routing defects` for creation. The configured `title-prefix` is added automatically; do not repeat it or add a semantically equivalent category prefix.
 - Never publish cosmetic rewrite suggestions. Recommend only bounded changes to
   authoritative Markdown, Starlight routing configuration, or broken links.
 
