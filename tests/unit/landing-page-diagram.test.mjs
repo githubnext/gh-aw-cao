@@ -42,7 +42,7 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(hero, /\.hero-callout \.callout-line \{[\s\S]*?display: none/);
   assert.match(hero, /From one control repo to many campaigns/);
   assert.match(hero, /\.terminal-story \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(hero, /Coordinate campaign fleets from one control plane/);
+  assert.match(hero, /Coordinate campaigns from one control plane/);
   assert.match(terminal, /raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/install\.sh/);
   assert.match(terminal, /\.\/cao\.sh setup-auth workflow-token/);
   assert.match(terminal, /\.\/cao\.sh add githubnext\/gh-aw-cao\/dependabot/);
@@ -54,6 +54,7 @@ test("landing page presents the product through real operational surfaces", () =
   assert.doesNotMatch(hero, /OpsWizard|Stand up a control plane in three steps/);
   assert.doesNotMatch(hero, /trust-section|Coordination without concentrated risk|section-actions/);
   assert.doesNotMatch(`${landingPage}\n${hero}`, /\bfactor(?:y|ies)\b/i);
+  assert.doesNotMatch(`${landingPage}\n${hero}`, /\bfleets?\b/i);
 });
 
 test("setup wizard lives on a dedicated page linked from the header", () => {
