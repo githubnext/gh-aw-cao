@@ -81,7 +81,7 @@ Workflow execution remains with gh-aw: use `gh aw run` to start a campaign and `
 
 ## Where to Go Next
 
-- [Run your first campaign](getting-started.md) against one public repository without changing it.
+- [Set up the control plane](setup-quickstarts.md) for the exact repositories it may need to reach.
 - [Learn the CAO commands](cao-cli.md) for configuration, campaign control, and operational queries.
 - [Browse ready campaigns](catalog.md) for an outcome you can install.
 - [Build a campaign](author-your-first-operation.md) when your outcome is not in the catalog.

@@ -48,9 +48,9 @@ const hostTargets = [
     <header class="wizard-header">
       <span class="wizard-eyebrow">Launch CAO</span>
       <span class="wizard-toggle-copy">
-        <h2 class="wizard-toggle-title" id="ops-wizard-title">Stand up a control plane in four steps</h2>
+        <h2 class="wizard-toggle-title" id="ops-wizard-title">Plan a control plane and first campaign in four steps</h2>
         <span class="wizard-toggle-lede">
-          Generate a copy-ready prompt that establishes control-plane policy and proves the first campaign boundary.
+          Generate a copy-ready prompt that sets up the bare control plane before adding and proving a campaign.
         </span>
       </span>
     </header>
@@ -241,6 +241,8 @@ const hostTargets = [
   const CATALOG = "githubnext/gh-aw-cao";
   const SETUP_SKILL_URL =
     "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/skills/setup-cao/SKILL.md";
+  const ADD_CAMPAIGN_SKILL_URL =
+    "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/skills/add-cao-campaign/SKILL.md";
   function selected(form: HTMLFormElement, name: string): HTMLInputElement | null {
     return form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
   }
@@ -259,7 +261,8 @@ const hostTargets = [
     return [
       `# Set up Central Agentic Ops: ${operationName}`,
       "",
-      `Follow the Central Agentic Ops setup skill at ${SETUP_SKILL_URL}. Read it before taking any setup action, then use it to complete this request.`,
+      `First follow the Central Agentic Ops setup skill at ${SETUP_SKILL_URL} to create and validate the bare control plane.`,
+      `After that setup is complete, follow the campaign skill at ${ADD_CAMPAIGN_SKILL_URL} to install and prove the selected campaign as a separate change.`,
       "",
       "## Choices already made",
       "",

@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestParseConfigReadsMarketplaceSectionWithOrderPreserved(t *testing.T) {
@@ -152,6 +153,72 @@ func TestResolveKeepsEarliestDuplicatePackageByPrecedence(t *testing.T) {
 	if len(result.Packages) != 1 || result.Packages[0].RegistryID != "first" {
 		t.Fatalf("expected the earliest registry's package to win, got: %#v", result.Packages)
 	}
+}
+
+func TestResolveOneRegistryReportsInvalidRegistryAsUnavailableWithoutNetworkAccess(t *testing.T) {
+	outcome := resolveOneRegistry(t.Context(), Registry{ID: "not valid!", Repository: "example/packages", Ref: "main"}, 0,
+		"generation-1", DefaultCacheTTL, nil, Options{})
+
+	if outcome.cacheHit {
+		t.Fatal("an invalid registry must never be reported as a cache hit")
+	}
+	if len(outcome.packages) != 0 {
+		t.Fatalf("expected no packages for an invalid registry, got: %#v", outcome.packages)
+	}
+	if outcome.diagnostic.Status != "unavailable" || outcome.diagnostic.RegistryID != "not valid!" {
+		t.Fatalf("unexpected diagnostic for an invalid registry: %#v", outcome.diagnostic)
+	}
+}
+
+func TestResolveOneRegistryReusesACachedResultWithoutResolving(t *testing.T) {
+	cache := newMemoryCache()
+	registry := Registry{ID: "official", Repository: "example/packages", Ref: "main"}
+	cache.entries[[2]string{"official", "generation-1"}] = mustMarshalCachedPayload(t, []Package{{ID: "cached-package"}})
+
+	// No HTTPClient is configured, so a real GitHub API call here would panic
+	// or fail; a cache hit must never attempt one.
+	outcome := resolveOneRegistry(t.Context(), registry, 0, "generation-1", DefaultCacheTTL, cache, Options{})
+
+	if !outcome.cacheHit {
+		t.Fatal("expected the cached result to be reused")
+	}
+	if len(outcome.packages) != 1 || outcome.packages[0].ID != "cached-package" {
+		t.Fatalf("expected the cached package to be returned, got: %#v", outcome.packages)
+	}
+	if outcome.diagnostic.Status != "available" || outcome.diagnostic.Packages != 1 {
+		t.Fatalf("unexpected diagnostic for a cache hit: %#v", outcome.diagnostic)
+	}
+}
+
+func TestResolveOneRegistryResolvesAndCachesOnAMiss(t *testing.T) {
+	server := newFakeGitHubServer(t, fakeGitHubConfig{})
+	cache := newMemoryCache()
+	registry := Registry{ID: "official", Repository: "example/packages", Ref: "main", APIURL: server.baseURL()}
+
+	outcome := resolveOneRegistry(t.Context(), registry, 0, "generation-1", 45*time.Second, cache,
+		Options{HTTPClient: insecureTestClient()})
+
+	if outcome.cacheHit {
+		t.Fatal("a fresh resolution must not be reported as a cache hit")
+	}
+	if len(outcome.packages) != 1 {
+		t.Fatalf("expected one resolved package, got: %#v", outcome.packages)
+	}
+	if outcome.diagnostic.Status != "available" || outcome.diagnostic.Packages != 1 {
+		t.Fatalf("unexpected diagnostic for a fresh resolution: %#v", outcome.diagnostic)
+	}
+	if ttl := cache.ttls[[2]string{"official", "generation-1"}]; ttl != 45*time.Second {
+		t.Fatalf("expected the resolved registry to be cached with the given TTL, got: %v", ttl)
+	}
+}
+
+func mustMarshalCachedPayload(t *testing.T, packages []Package) []byte {
+	t.Helper()
+	data, err := json.Marshal(cachedRegistryPayload{Packages: packages})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
 }
 
 func TestResolveWithNilConfigReturnsEmptyResultNotNil(t *testing.T) {

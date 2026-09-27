@@ -13,7 +13,7 @@ hero:
       link: /gh-aw-cao/architecture-at-a-glance/
       icon: right-arrow
     - text: Get started
-      link: /gh-aw-cao/getting-started/
+      link: /gh-aw-cao/setup-quickstarts/
       variant: secondary
       icon: right-arrow
     - text: Dashboard

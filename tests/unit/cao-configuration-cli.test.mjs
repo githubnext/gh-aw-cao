@@ -11,6 +11,7 @@ import {
   initializeCaoPolicy,
   setCaoCampaignMode,
   setCaoCampaignWorkflowsEnabled,
+  setupCaoControlPlane,
   setupCaoAuthentication,
   updateCaoCampaigns,
   upgradeGhAw,
@@ -32,6 +33,52 @@ function initExecutor(repositoryResult = { status: 0, stdout: "acme/control\n", 
     if (arguments_.join(" ") === "aw version") return versionResult;
     assert.deepEqual(arguments_, repositoryLookup);
     return repositoryResult;
+  };
+}
+
+function scriptedSetupPrompt({ repositories, profile, confirm = true, clientIds = [] }) {
+  const notes = [];
+  const selections = [];
+  const textAnswers = [repositories, ...clientIds];
+  return {
+    notes,
+    selections,
+    async text() {
+      return textAnswers.shift() ?? "";
+    },
+    note(message) {
+      notes.push(message);
+    },
+    async select(message, choices) {
+      selections.push({ message, choices });
+      return profile;
+    },
+    async confirm() {
+      return confirm;
+    },
+  };
+}
+
+function setupExecutor(repositories) {
+  return (command, arguments_) => {
+    assert.equal(command, "gh");
+    if (arguments_.join(" ") === "auth status") {
+      return { status: 0, stdout: "", stderr: "" };
+    }
+    if (arguments_.join(" ") === repositoryLookup.join(" ")) {
+      return { status: 0, stdout: "acme/control\n", stderr: "" };
+    }
+    if (arguments_[0] === "repo" && arguments_[1] === "view") {
+      const repository = arguments_[2];
+      const details = repositories[repository];
+      assert.ok(details, `unexpected repository lookup: ${repository}`);
+      return {
+        status: 0,
+        stdout: JSON.stringify(details),
+        stderr: "",
+      };
+    }
+    assert.fail(`unexpected command: gh ${arguments_.join(" ")}`);
   };
 }
 
@@ -105,6 +152,151 @@ test("cao init supports a repository without installed package records", async (
   }
 });
 
+test("cao setup offers owner-scoped PATs for a multi-owner repository scope", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-setup-public-"));
+  const policyPath = path.join(root, "cao.json");
+  await writeFile(policyPath, JSON.stringify({
+    version: 1,
+    "control-plane": {
+      scope: {
+        "allowed-owners": ["acme"],
+        "allowed-repositories": ["acme/control"],
+      },
+      campaigns: {},
+    },
+  }));
+  const prompt = scriptedSetupPrompt({
+    repositories: "acme/service, octo/library",
+    profile: "token",
+  });
+  const authenticationCalls = [];
+  try {
+    const result = await setupCaoControlPlane({
+      policyPath,
+      prompt,
+      execute: setupExecutor({
+        "acme/control": { nameWithOwner: "acme/control", visibility: "PRIVATE" },
+        "acme/service": { nameWithOwner: "acme/service", visibility: "PUBLIC" },
+        "octo/library": { nameWithOwner: "octo/library", visibility: "PUBLIC" },
+      }),
+      setupAuthentication(profile, arguments_) {
+        authenticationCalls.push([profile, arguments_]);
+        return { command: "setup-auth", profile };
+      },
+    });
+    const policy = JSON.parse(await readFile(policyPath, "utf8"));
+
+    assert.equal(authenticationCalls[0][0], "token");
+    assert.deepEqual(authenticationCalls[0][1].slice(0, 2), ["--repo", "acme/control"]);
+    assert.equal(authenticationCalls[0][1][2], "--policy");
+    assert.deepEqual(authenticationCalls[0][1].slice(-3), [
+      "--expires-in", "30", "--acknowledge-token-risks",
+    ]);
+    assert.deepEqual(policy["control-plane"].scope, {
+      "allowed-owners": ["acme", "octo"],
+      "allowed-repositories": ["acme/control", "acme/service", "octo/library"],
+    });
+    assert.deepEqual(result, {
+      command: "setup",
+      controlRepository: "acme/control",
+      visibility: "private",
+      repositories: ["acme/control", "acme/service", "octo/library"],
+      profile: "token",
+      authentication: { command: "setup-auth", profile: "token" },
+      campaigns: [],
+    });
+    assert.deepEqual(prompt.selections[0].choices.map(({ value }) => value), [
+      "enterprise-app",
+      "token",
+    ]);
+    assert.equal(prompt.notes.some((line) => line.includes("Campaigns: none")), true);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("cao setup offers organization Apps for one-owner private scope", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-setup-app-"));
+  const policyPath = path.join(root, "cao.json");
+  await writeFile(policyPath, JSON.stringify({
+    version: 1,
+    "control-plane": {
+      scope: {
+        "allowed-owners": ["acme"],
+        "allowed-repositories": ["acme/control"],
+      },
+      campaigns: {},
+    },
+  }));
+  const prompt = scriptedSetupPrompt({
+    repositories: "acme/private-service",
+    profile: "github-app",
+  });
+  const authenticationCalls = [];
+  try {
+    await setupCaoControlPlane({
+      policyPath,
+      prompt,
+      execute: setupExecutor({
+        "acme/control": { nameWithOwner: "acme/control", visibility: "PRIVATE" },
+        "acme/private-service": { nameWithOwner: "acme/private-service", visibility: "PRIVATE" },
+      }),
+      setupAuthentication(profile, arguments_) {
+        authenticationCalls.push([profile, arguments_]);
+        return { command: "setup-auth", profile };
+      },
+    });
+
+    assert.equal(prompt.selections[0].choices.some(({ value }) => value === "workflow-token"), false);
+    assert.equal(prompt.selections[0].choices[0].value, "github-app");
+    assert.equal(prompt.selections[0].choices[1].value, "token");
+    assert.equal(authenticationCalls[0][0], "github-app");
+    assert.deepEqual(authenticationCalls[0][1].slice(0, 2), ["--repo", "acme/control"]);
+    assert.equal(authenticationCalls[0][1][2], "--policy");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("cao setup cancellation leaves policy and credentials unchanged", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-setup-cancel-"));
+  const policyPath = path.join(root, "cao.json");
+  const original = JSON.stringify({
+    version: 1,
+    "control-plane": {
+      scope: {
+        "allowed-owners": ["acme"],
+        "allowed-repositories": ["acme/control"],
+      },
+      campaigns: {},
+    },
+  });
+  await writeFile(policyPath, original);
+  const prompt = scriptedSetupPrompt({
+    repositories: "acme/service",
+    profile: "github-app",
+    confirm: false,
+  });
+  try {
+    const result = await setupCaoControlPlane({
+      policyPath,
+      prompt,
+      execute: setupExecutor({
+        "acme/control": { nameWithOwner: "acme/control", visibility: "PRIVATE" },
+        "acme/service": { nameWithOwner: "acme/service", visibility: "PRIVATE" },
+      }),
+      setupAuthentication() {
+        assert.fail("cancelled setup must not configure credentials");
+      },
+    });
+
+    assert.deepEqual(result, { command: "setup", cancelled: true });
+    assert.equal(await readFile(policyPath, "utf8"), original);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 for (const [description, repositoryResult] of [
   ["gh repo view fails", { status: 1, stdout: "", stderr: "not a git repository\n" }],
   ["gh cannot start", { status: null, stdout: "", stderr: "", error: new Error("spawn gh ENOENT") }],
@@ -170,6 +362,7 @@ test("cao setup-auth configures separate read and write fine-grained tokens thro
       "--repo", "acme/control",
       "--policy", policyPath,
       "--write-repository", "acme/output",
+      "--acknowledge-token-risks",
     ], {
       execute(command, arguments_, options) {
         calls.push([command, arguments_, options]);
@@ -186,20 +379,28 @@ test("cao setup-auth configures separate read and write fine-grained tokens thro
 
     assert.deepEqual(calls, [
       ["gh", ["auth", "status"], { encoding: "utf8" }],
-      ["gh", ["secret", "set", "GH_AW_GITHUB_READ_PAT", "--repo", "acme/control"], { stdio: "inherit" }],
-      ["gh", ["secret", "set", "GH_AW_GITHUB_WRITE_PAT", "--repo", "acme/control"], { stdio: "inherit" }],
+      ["gh", ["secret", "set", "GH_AW_GITHUB_READ_PAT_ACME", "--repo", "acme/control"], { stdio: "inherit" }],
+      ["gh", ["secret", "set", "GH_AW_GITHUB_WRITE_PAT_ACME", "--repo", "acme/control"], { stdio: "inherit" }],
+      ["gh", ["variable", "set", "GH_AW_GITHUB_READ_PAT_REPOSITORIES", "--repo", "acme/control", "--body", "{\"acme/control\":\"GH_AW_GITHUB_READ_PAT_ACME\",\"acme/target\":\"GH_AW_GITHUB_READ_PAT_ACME\"}"], { encoding: "utf8" }],
+      ["gh", ["variable", "set", "GH_AW_GITHUB_WRITE_PAT_REPOSITORIES", "--repo", "acme/control", "--body", "{\"acme/output\":\"GH_AW_GITHUB_WRITE_PAT_ACME\"}"], { encoding: "utf8" }],
+      ["gh", ["variable", "set", "GH_AW_GITHUB_AUTH_MODE", "--repo", "acme/control", "--body", "pat"], { encoding: "utf8" }],
     ]);
     assert.deepEqual(result, {
       command: "setup-auth",
       profile: "fine-grained-token",
       secrets: [
-        { role: "read", secret: "GH_AW_GITHUB_READ_PAT" },
-        { role: "write", secret: "GH_AW_GITHUB_WRITE_PAT" },
+        { owner: "acme", role: "read", secret: "GH_AW_GITHUB_READ_PAT_ACME" },
+        { owner: "acme", role: "write", secret: "GH_AW_GITHUB_WRITE_PAT_ACME" },
       ],
       repo: "acme/control",
       repositories: {
-        read: ["acme/control", "acme/target"],
-        write: ["acme/output"],
+        read: {
+          "acme/control": "GH_AW_GITHUB_READ_PAT_ACME",
+          "acme/target": "GH_AW_GITHUB_READ_PAT_ACME",
+        },
+        write: {
+          "acme/output": "GH_AW_GITHUB_WRITE_PAT_ACME",
+        },
       },
     });
     assert.equal(opened.length, 2);
@@ -214,6 +415,64 @@ test("cao setup-auth configures separate read and write fine-grained tokens thro
     assert.equal(writeUrl.searchParams.get("name"), "CAO-ACME-CONTROL-PAT-WRITE");
     assert.match(instructions.join("\n"), /read fine-grained PAT[\s\S]*acme\/control[\s\S]*acme\/target/);
     assert.match(instructions.join("\n"), /write fine-grained PAT[\s\S]*acme\/output/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("fine-grained token setup creates separate owner-scoped profiles", () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "cao-token-owners-"));
+  const policyPath = path.join(root, "cao.json");
+  writeFileSync(policyPath, JSON.stringify({
+    version: 1,
+    "control-plane": {
+      scope: {
+        "allowed-repositories": ["acme/target", "octo/service"],
+      },
+    },
+  }));
+  try {
+    const result = setupCaoAuthentication("token", [
+      "--repo", "acme/control",
+      "--policy", policyPath,
+      "--write-repository", "acme/control",
+      "--write-repository", "octo/service",
+      "--dry-run",
+    ], {
+      execute() {
+        assert.fail("dry-run must not execute GitHub commands");
+      },
+    });
+
+    assert.deepEqual(result.secrets, [
+      { owner: "acme", role: "read", secret: "GH_AW_GITHUB_READ_PAT_ACME" },
+      { owner: "octo", role: "read", secret: "GH_AW_GITHUB_READ_PAT_OCTO" },
+      { owner: "acme", role: "write", secret: "GH_AW_GITHUB_WRITE_PAT_ACME" },
+      { owner: "octo", role: "write", secret: "GH_AW_GITHUB_WRITE_PAT_OCTO" },
+    ]);
+    assert.equal(result.repositories.read["octo/service"], "GH_AW_GITHUB_READ_PAT_OCTO");
+    assert.equal(result.repositories.write["octo/service"], "GH_AW_GITHUB_WRITE_PAT_OCTO");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("fine-grained token setup requires explicit risk acknowledgement before GitHub calls", () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "cao-token-consent-"));
+  const policyPath = path.join(root, "cao.json");
+  writeFileSync(policyPath, JSON.stringify({
+    version: 1,
+    "control-plane": { scope: { "allowed-repositories": ["acme/target"] } },
+  }));
+  try {
+    assert.throws(() => setupCaoAuthentication("token", [
+      "--repo", "acme/control",
+      "--policy", policyPath,
+    ], {
+      execute() {
+        assert.fail("setup must fail before GitHub calls");
+      },
+    }), /--acknowledge-token-risks/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -287,6 +546,7 @@ test("cao setup-auth configures existing enterprise Apps without key arguments",
     ["gh", ["secret", "set", "GH_AW_GITHUB_READ_APP_PRIVATE_KEY", "--repo", "acme/control"], { stdio: "inherit" }],
     ["gh", ["variable", "set", "GH_AW_GITHUB_WRITE_APP_ID", "--repo", "acme/control", "--body", "Iv1.write"], { encoding: "utf8" }],
     ["gh", ["secret", "set", "GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY", "--repo", "acme/control"], { stdio: "inherit" }],
+    ["gh", ["variable", "set", "GH_AW_GITHUB_AUTH_MODE", "--repo", "acme/control", "--body", "app"], { encoding: "utf8" }],
   ]);
   assert.deepEqual(result, {
     command: "setup-auth",
@@ -329,13 +589,11 @@ test("cao setup-auth previews enterprise App credential configuration without Gi
   });
 });
 
-test("cao setup-auth accepts the bounded workflow-token profile without secrets", () => {
-  assert.deepEqual(setupCaoAuthentication("workflow-token"), {
-    command: "setup-auth",
-    profile: "workflow-token",
-    configured: true,
-    limitation: "Use only for control-repository work or bounded public-target review.",
-  });
+test("cao setup-auth rejects the workflow token as a setup profile", () => {
+  assert.throws(
+    () => setupCaoAuthentication("workflow-token"),
+    /requires github-app, enterprise-app, or token/,
+  );
 });
 
 test("cao mode changes configured campaigns between live and preview atomically", async () => {
