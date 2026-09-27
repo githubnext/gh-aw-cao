@@ -112,7 +112,7 @@ func resolveRedisProviderModule(policy redisPolicy) (redisProviderModule, error)
 		}
 	} else if policy.Session != "" || policy.IsolateProcessNamespace != nil ||
 		policy.SingleReplica != nil || policy.SupportsCollection != nil {
-		return redisProviderModule{}, fmt.Errorf("Redis provider module %q has fixed capabilities", moduleName)
+		return redisProviderModule{}, fmt.Errorf("redis provider module %q has fixed capabilities", moduleName)
 	}
 	return module, nil
 }

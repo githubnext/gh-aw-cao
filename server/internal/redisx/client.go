@@ -122,7 +122,7 @@ func NewWithOptions(rawURL string, options Options) (*Client, error) {
 				return nil, errors.New("load system Redis TLS certificate pool")
 			}
 			if !roots.AppendCertsFromPEM([]byte(certificate)) {
-				return nil, errors.New("Redis TLS CA certificate is invalid")
+				return nil, errors.New("redis TLS CA certificate is invalid")
 			}
 			tlsConfig.RootCAs = roots
 		}

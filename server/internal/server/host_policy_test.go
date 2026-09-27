@@ -244,9 +244,10 @@ func TestModulesRejectUnknownOrOverriddenCapabilities(t *testing.T) {
 		{Target: targetPolicy{Module: "unknown"}, Redis: redisPolicy{Module: "generic"}},
 		{Target: targetPolicy{Module: "container", Listener: HostListenerPlatform}, Redis: redisPolicy{Module: "generic"}},
 		{Target: targetPolicy{Module: "container"}, Redis: redisPolicy{Module: "unknown"}},
-		{Target: targetPolicy{Module: "container"}, Redis: redisPolicy{Module: "upstash", Session: HostRedisPooled}},
-		{Target: targetPolicy{Module: "container"}, Redis: redisPolicy{Module: "upstash", TLS: redisTLSPolicy{Mode: redisTLSDisabled}}},
+		{Target: targetPolicy{Module: "container", Replicas: 1}, Redis: redisPolicy{Module: "upstash", Session: HostRedisPooled}},
+		{Target: targetPolicy{Module: "container", Replicas: 1}, Redis: redisPolicy{Module: "upstash", TLS: redisTLSPolicy{Mode: redisTLSDisabled}}},
 		{Target: targetPolicy{Module: "azure-functions"}, Redis: redisPolicy{Module: "upstash"}},
+		{Target: targetPolicy{Module: "container"}, Redis: redisPolicy{Module: "upstash"}},
 	}
 	for _, policy := range tests {
 		if _, err := policy.resolve(mapLookup(map[string]string{
@@ -255,7 +256,7 @@ func TestModulesRejectUnknownOrOverriddenCapabilities(t *testing.T) {
 			t.Fatalf("accepted invalid module policy: %+v", policy)
 		}
 		if _, err := (hostPolicy{
-			Target: targetPolicy{Module: "container"},
+			Target: targetPolicy{Module: "container", Replicas: 1},
 			Redis:  redisPolicy{Module: "upstash"},
 		}).resolve(mapLookup(map[string]string{
 			"REDIS_URL": "rediss://cache.example.com:6379",

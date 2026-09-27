@@ -93,6 +93,7 @@ func configuredHostPolicyPath() string {
 
 func loadHostPolicyFromEnv() (*resolvedHostPolicy, error) {
 	path := configuredHostPolicyPath()
+	// #nosec G304 -- the operator explicitly configures the reviewed cao.json path.
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, errors.New("read CAO host policy")
@@ -158,7 +159,7 @@ func (policy hostPolicy) resolve(lookup func(string) (string, bool)) (*resolvedH
 			tlsMode = redisTLSAuto
 		}
 	} else if provider.tlsMode == redisTLSRequired && tlsMode != redisTLSRequired {
-		return nil, fmt.Errorf("Redis provider module %q requires TLS", policy.Redis.Module)
+		return nil, fmt.Errorf("redis provider module %q requires TLS", policy.Redis.Module)
 	}
 	if tlsMode != redisTLSAuto && tlsMode != redisTLSRequired && tlsMode != redisTLSDisabled {
 		return nil, fmt.Errorf("unsupported Redis TLS mode %q", tlsMode)

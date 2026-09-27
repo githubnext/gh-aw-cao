@@ -67,16 +67,6 @@ func hostedHostProfile() HostProfile {
 	}
 }
 
-func upstashHostProfile() HostProfile {
-	profile := hostedHostProfile()
-	profile.Name = "upstash"
-	profile.RedisSession = HostRedisSerialized
-	profile.IsolateProcessNamespace = true
-	profile.SingleReplica = true
-	profile.SupportsCollection = false
-	return profile
-}
-
 func azureFunctionsHostProfile(localSimulation bool) HostProfile {
 	profile := hostedHostProfile()
 	profile.Name = "azure-functions"

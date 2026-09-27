@@ -92,6 +92,11 @@ In the following steps, replace `FUNCTION-APP-NAME` with a globally unique name 
 1. Add private networking so that the Function App can reach Redis while public access to Redis stays off.
 1. From a trusted checkout of this repository, build the site and the handler.
 
+   Before building, verify that `.github/workflows/cao.json` contains
+   `control-plane.web.host` with `target.module: "azure-functions"` and the
+   selected Redis provider module. Hosted startup rejects a policy without this
+   declaration. The landing-page wizard can generate the composed policy.
+
    ```bash
    npm --prefix dashboard/site ci
    npm --prefix dashboard/site run build -- dist ../../.github/workflows/cao.json "$(git rev-parse HEAD)"

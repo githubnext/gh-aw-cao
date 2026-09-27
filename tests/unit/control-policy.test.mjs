@@ -192,6 +192,15 @@ test("control policy validates every deployment module and rejects incompatible 
     },
   };
   assert.match(validate(JSON.stringify(incompatible)).stderr, /single-replica requirement/);
+
+  const missingReplicaCount = JSON.parse(minimalPolicy);
+  missingReplicaCount["control-plane"].web = {
+    host: {
+      target: { module: "container" },
+      redis: { module: "upstash" },
+    },
+  };
+  assert.match(validate(JSON.stringify(missingReplicaCount)).stderr, /target\.replicas must be 1/);
 });
 
 test("control policy rejects the previous flat host shape", () => {

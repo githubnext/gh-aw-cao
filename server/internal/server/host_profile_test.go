@@ -7,6 +7,16 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
+func upstashHostProfile() HostProfile {
+	profile := hostedHostProfile()
+	profile.Name = "upstash"
+	profile.RedisSession = HostRedisSerialized
+	profile.IsolateProcessNamespace = true
+	profile.SingleReplica = true
+	profile.SupportsCollection = false
+	return profile
+}
+
 func TestBuiltInHostProfilesDeclareExpectedCapabilities(t *testing.T) {
 	tests := []struct {
 		profile    HostProfile

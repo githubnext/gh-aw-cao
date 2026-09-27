@@ -197,11 +197,10 @@ treating Redis as rollback authority.
 ## Upstash profile
 
 Upstash provides causal consistency within one TCP session rather than across
-independent connections. A Redis module with `connection: single-session`
-therefore uses one serialized connection for projection data and hosted security
-state. It does not recycle or retry that connection. Any transport loss
-permanently fails that client, so health and readiness fail until the process
-restarts.
+independent connections. Its Redis module therefore uses a serialized session
+for projection data and hosted security state. It does not recycle or retry that
+connection. Any transport loss permanently fails that client, so health and
+readiness fail until the process restarts.
 
 Restart recovery uses a fresh random internal namespace and rebuilds from the
 verified artifact. This isolates the process from stale state written through an

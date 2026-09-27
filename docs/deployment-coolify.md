@@ -50,7 +50,27 @@ In the following steps, replace `PUBLIC-HOST` with the public host name of your 
    - **For hosted use,** choose an image that `coolify-deploy.yml` published. Always refer to it as `NAME@sha256:DIGEST`.
 
 1. Register a GitHub OAuth app. Set its **Authorization callback URL** to `https://PUBLIC-HOST/auth/callback`. For more information, see [Creating an OAuth app](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app) in the GitHub documentation.
-1. Create a Redis service in Coolify on the same private network as the dashboard, or use an external `rediss://` endpoint. To use Upstash, follow [Deploying the dashboard with Upstash Redis](deployment-upstash.md), configure Upstash mode, and keep the Coolify resource at exactly one replica.
+1. Create a Redis service in Coolify on the same private network as the dashboard, or use an external `rediss://` endpoint. To use Upstash, follow [Deploying the dashboard with Upstash Redis](deployment-upstash.md), select the `upstash` Redis module with `target.replicas: 1`, and keep the Coolify resource at exactly one replica.
+1. Add a modular `control-plane.web.host` declaration to
+   `.github/workflows/cao.json`. The Compose file mounts this reviewed policy and
+   startup fails when it is absent. For Coolify-managed Redis, use:
+
+   ```json
+   {
+     "target": { "module": "container", "name": "coolify" },
+     "redis": {
+       "module": "local",
+       "url-env": "REDIS_URL",
+       "namespace-env": "REDIS_NAMESPACE",
+       "allow-private-plaintext": true,
+       "tls": { "mode": "disabled" }
+     }
+   }
+   ```
+
+   Place this object at `control-plane.web.host`; don't replace the rest of the
+   control policy. For an external service, use the matching provider module
+   from [Managed Redis in one minute](deployment-managed-redis.md).
 1. Prepare the artifact volume.
 
    1. Create a new volume that isn't attached to any service.
