@@ -8,6 +8,7 @@ on:
       - scripts/azure-local/**
       - server/**
       - tests/integration/azure-local-functions.test.mjs
+      - .github/workflows/cao.json
   push:
     branches: [main]
     paths:
@@ -16,6 +17,7 @@ on:
       - scripts/azure-local/**
       - server/**
       - tests/integration/azure-local-functions.test.mjs
+      - .github/workflows/cao.json
   workflow_dispatch:
 
 permissions:

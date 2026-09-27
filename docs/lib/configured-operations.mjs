@@ -44,7 +44,7 @@ export function buildWizardHost(targetModule, redisModule) {
     redis["allow-private-plaintext"] = true;
     redis.tls = { mode: "disabled" };
   } else if (["railway", "render"].includes(redisModule)) {
-    redis.tls = { mode: "disabled" };
+    redis.tls = { mode: "auto" };
     redis["allow-private-plaintext"] = true;
   } else {
     redis.tls = { mode: "required" };

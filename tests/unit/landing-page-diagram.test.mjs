@@ -179,4 +179,10 @@ test("wizard composes app target and Redis provider modules", () => {
     "url-env": "CAO_REDIS_URL",
     tls: { mode: "required" },
   });
+  assert.deepEqual(buildWizardHost("container", "render").redis, {
+    module: "render",
+    "namespace-env": "REDIS_NAMESPACE",
+    tls: { mode: "auto" },
+    "allow-private-plaintext": true,
+  });
 });
