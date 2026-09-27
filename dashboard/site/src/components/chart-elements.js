@@ -153,14 +153,18 @@ export function listChartSeries(points) {
 }
 
 /**
- * Retains a varied fallback palette while adding a stable semantic color when
- * the series name describes a commonly understood status.
+ * Assigns named categories to a stable fallback palette while adding a
+ * semantic color when the series name describes a commonly understood status.
  * @param {string} name
  * @param {number} index
  * @returns {string}
  */
 export function chartSeriesClassName(name, index) {
-  const paletteClass = `chart-series-${(index % CHART_SERIES_COLOR_COUNT) + 1}`;
+  const identity = name.normalize('NFKC').trim().toLowerCase();
+  const paletteIndex = identity && identity !== 'value'
+    ? stablePaletteIndex(identity)
+    : index % CHART_SERIES_COLOR_COUNT;
+  const paletteClass = `chart-series-${paletteIndex + 1}`;
   const normalized = name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
   const terms = new Set(normalized.split(/\s+/).filter(Boolean));
   let meaning = null;
@@ -182,6 +186,16 @@ export function chartSeriesClassName(name, index) {
   }
 
   return meaning ? `${paletteClass} chart-series-semantic-${meaning}` : paletteClass;
+}
+
+/** @param {string} identity */
+function stablePaletteIndex(identity) {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < identity.length; index += 1) {
+    hash ^= identity.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0) % CHART_SERIES_COLOR_COUNT;
 }
 
 /** @param {Set<string>} terms @param {Set<string>} candidates */
