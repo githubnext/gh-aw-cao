@@ -80,6 +80,19 @@ These commands accept multiple campaign slugs:
 
 `disable` prevents new starts for the campaign's installed workflows. It does not cancel an active run or replace the [control-plane emergency stop](operations.md#emergency-stop).
 
+## Validate the Control Plane
+
+Run the same read-only validator locally and in CI:
+
+```bash
+./cao.sh validate
+./cao.sh validate --json
+```
+
+Validation checks the policy with the production resolver, the installed gh-aw compiler version, strict compilation and generated workflow drift, campaign workflow identity and enablement, `gh aw doctor`, and bounded trust-boundary security rules. GitHub workflow state is reported as unknown when API access is unavailable. Warnings do not fail by default; use `--strict-warnings` to make them fail.
+
+Exit code `0` means no validation errors, `1` means validation findings failed the requested threshold, and `2` means the validator itself could not complete. Validation never rewrites workflow artifacts; run `npm run compile:locks` to regenerate stale locks.
+
 ## Run and Watch a Campaign
 
 There is intentionally no `cao run` command. gh-aw owns workflow execution:

@@ -29,6 +29,7 @@ import { runSetupAuth } from "./setup-auth.mjs";
 import { runUpdate } from "./update.mjs";
 import { runUpgradeGhAw } from "./upgrade-gh-aw.mjs";
 import { runValidateActivityData } from "./validate-activity-data.mjs";
+import { runValidate } from "./validate.mjs";
 
 export const commandHandlers = new Map([
   ["activity-stats", runActivityStats],
@@ -61,5 +62,6 @@ export const commandHandlers = new Map([
   ["setup-auth", runSetupAuth],
   ["update", runUpdate],
   ["upgrade-gh-aw", runUpgradeGhAw],
+  ["validate", runValidate],
   ["validate-activity-data", runValidateActivityData],
 ]);
