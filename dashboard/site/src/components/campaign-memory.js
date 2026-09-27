@@ -6,11 +6,12 @@ import { effect, onCleanup, render, state } from '../reactive.js';
 import { bindFactorySources, createFactoryScope } from './factory-elements.js';
 import { errorMessage } from './count-formatters.js';
 import { renderEmptyMessage } from './ui-primitives.js';
+import { renderStatusBadge } from './badge.js';
 
 const debugCampaignMemory = createDebug('campaign-memory');
 const MOBILE_MEMORY_HISTORY_KEY = 'caoMemoryViewer';
 
-/** @typedef {{ campaign: string, campaignName: string }} Campaign */
+/** @typedef {{ campaign: string, campaignName: string, status: string }} Campaign */
 /** @typedef {{ path: string, oid: string, sha256?: string, size: number }} MemoryFile */
 /** @typedef {{ directories: Map<string, MemoryTreeNode>, files: { name: string, entry: MemoryFile }[] }} MemoryTreeNode */
 /** @typedef {{ fileLimit: number, fileSize: number, totalSize: number, extension: number, nesting: number, unsafePath: number, invalidContent: number, unsupportedType: number }} OmittedFiles */
@@ -164,6 +165,7 @@ export function renderAllCampaignMemory(context) {
       .map((row) => ({
         campaign: typeof row.campaign === 'string' ? row.campaign : '',
         campaignName: typeof row['campaign-name'] === 'string' ? row['campaign-name'] : '',
+        status: typeof row['campaign-status'] === 'string' ? row['campaign-status'] : '',
       }))
       .filter((campaign) => campaign.campaign && campaign.campaignName);
     const campaignSignature = JSON.stringify(campaigns);
@@ -211,7 +213,8 @@ function renderCampaignTree(campaigns, signal) {
       { className: 'cao-memory-campaign-branch', open: index === 0 },
       h('summary', { className: 'cao-memory-campaign' },
         octicon('file-directory-fill'),
-        h('span', null, campaign.campaignName)
+        h('span', null, campaign.campaignName),
+        campaign.status ? renderStatusBadge(campaign.status) : null
       ),
       files
     ));

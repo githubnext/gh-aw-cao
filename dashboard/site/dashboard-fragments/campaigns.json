@@ -469,12 +469,33 @@
       "intent": "Provide the registered campaigns whose repository memory can be browsed together.",
       "description": "Registered campaigns ordered for the all-campaign repository-memory browser.",
       "from": "campaigns",
+      "joins": [
+        {
+          "source": "campaign-orchestrator-registration",
+          "type": "left",
+          "on": [
+            {
+              "left": "campaign",
+              "right": "campaign"
+            }
+          ],
+          "fields": [
+            {
+              "field": "campaign-status",
+              "as": "campaign-status"
+            }
+          ]
+        }
+      ],
       "select": [
         {
           "field": "campaign"
         },
         {
           "field": "campaign-name"
+        },
+        {
+          "field": "campaign-status"
         }
       ],
       "order-by": [

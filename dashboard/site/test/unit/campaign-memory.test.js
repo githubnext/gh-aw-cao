@@ -137,7 +137,7 @@ describe('campaign repository memory', () => {
       sources: {
         'campaign-memory-campaigns': {
           source: 'campaign-memory-campaigns',
-          rows: [{ campaign: 'ambient-context', 'campaign-name': 'Ambient Context' }],
+          rows: [{ campaign: 'ambient-context', 'campaign-name': 'Ambient Context', 'campaign-status': 'Disabled' }],
           metadata: {
             'source-id': 'campaign-memory-test',
             'source-kind': 'fixture',
@@ -153,6 +153,7 @@ describe('campaign repository memory', () => {
       headingTag: 'h3',
     });
     document.body.append(rendered);
+    expect(rendered.querySelector('.cao-memory-campaign .status')?.textContent).toBe('Disabled');
     await vi.waitFor(() => expect(memoryApi.read).toHaveBeenCalledTimes(1));
 
     /** @type {HTMLButtonElement} */ (rendered.querySelector('.campaign-memory-file')).click();
