@@ -4,10 +4,10 @@ import { catalogEntries } from "../lib/catalog";
 
 const documentationOrder = [
   "getting-started",
+  "cao-cli",
   "architecture",
   "configuration",
   "authentication",
-  "control-plane-authentication",
   "rollout-and-routing",
   "execution-and-safety",
   "orchestrators-and-workers",
@@ -41,9 +41,9 @@ export const GET: APIRoute = async ({ url }) => {
   const body = [
     "# Central Agentic Ops",
     "",
-    "> Enterprise control planes for GitHub Agentic Workflows.",
+    "> Run, observe, and evolve governed agentic campaigns across an enterprise.",
     "",
-    "Central Agentic Ops provides an open-source operation catalog and a governed model for running trusted workflows across many repositories from one private control plane.",
+    "Central Agentic Ops is an enterprise control plane for agentic campaigns. It is designed for hyperscale maintenance, compliance, and operational toil across one repository or thousands, with bounded authority and measurable outcomes.",
     "",
     "## Documentation",
     "",

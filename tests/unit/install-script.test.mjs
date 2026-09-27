@@ -9,6 +9,30 @@ import test from "node:test";
 const executeFile = promisify(execFile);
 const installScript = path.resolve("install.sh");
 
+function runInstallerInTerminal(answer, options) {
+  const command = `cat "${installScript}" | bash`;
+  if (process.platform === "darwin") {
+    const expectProgram = `
+      set timeout 10
+      spawn bash -c {${command}}
+      expect {
+        -re {Upgrade it now.*\\[y/N\\]} {
+          send -- "${answer}\\r"
+          exp_continue
+        }
+        eof
+      }
+    `;
+    return executeFile("expect", ["-c", expectProgram], options);
+  }
+
+  return executeFile(
+    "bash",
+    ["-c", `printf '${answer}\\n' | script -q -e -c '${command}' /dev/null`],
+    options,
+  );
+}
+
 test("install.sh installs gh-aw, adds the core campaign, and is idempotent", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-install-"));
   const bin = path.join(root, "bin");
@@ -153,15 +177,11 @@ printf '%s\\n' '#!/usr/bin/env bash' 'printf "%s\\n" "$1" > "$FAKE_GH_AW_INSTALL
     assert.equal(await readFile(installed, "utf8"), "v0.89.21\n");
 
     // script supplies a controlling terminal even when the installer is piped into bash.
-    const no = await executeFile("bash", ["-c",
-      `printf 'n\\n' | script -q -e -c 'cat "${installScript}" | bash' /dev/null`,
-    ], { cwd: root, env, timeout: 10_000 });
+    const no = await runInstallerInTerminal("n", { cwd: root, env, timeout: 10_000 });
     assert.match(no.stdout, /install-gh-aw\.sh.*v0\.89\.22.*rerun the CAO installer/);
     assert.equal(await readFile(log, "utf8"), "add\n");
 
-    const { stdout } = await executeFile("bash", ["-c",
-      `printf 'y\\n' | script -q -e -c 'cat "${installScript}" | bash' /dev/null`,
-    ], { cwd: root, env, timeout: 10_000 });
+    const { stdout } = await runInstallerInTerminal("y", { cwd: root, env, timeout: 10_000 });
     assert.match(stdout, /Upgrade it now with curl .*install-gh-aw\.sh.*v0\.89\.22/);
     assert.equal(await readFile(log, "utf8"), "add\ncurl\nadd\n");
     assert.equal(await readFile(installed, "utf8"), "v0.89.22\n");

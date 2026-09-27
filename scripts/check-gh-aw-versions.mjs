@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -16,7 +16,8 @@ function repositoryFiles(root) {
     })
       .split("\0")
       .filter(Boolean)
-      .map((file) => file.replaceAll(path.sep, "/"));
+      .map((file) => file.replaceAll(path.sep, "/"))
+      .filter((file) => existsSync(path.join(root, file)));
   } catch {
     throw new Error("Unable to list repository files. Ensure Git is installed and this command runs inside the repository.");
   }

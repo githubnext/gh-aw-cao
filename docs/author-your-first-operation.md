@@ -1,138 +1,124 @@
 ---
-title: Author Your First Campaign
-description: Turn one recurring repository outcome into a validated campaign and prove it safely on one repository.
+title: Build Your First Campaign
+description: Define one repository outcome, generate the workflows, and prove the campaign in review mode.
 ---
 
-A campaign captures one repeatable engineering outcome as code. It
-contains one orchestrator that selects repositories and at least one worker that
-handles one selected repository.
+Build a campaign only when the [catalog](catalog.md) does not already produce the outcome you need.
 
-This guide is for the first authoring session. The goal is not a production
-rollout. The goal is a complete campaign that compiles and completes one bounded
-run in `review` mode.
+A campaign has:
 
-## Before the Session
+- one **orchestrator** that selects eligible repositories;
+- one or more **workers** that each handle one selected repository;
+- one measurable **outcome** that defines success.
 
-Bring:
+This guide creates a review-ready campaign. Production rollout comes later.
 
-- a short description of the repository outcome you want;
-- one low-risk repository that can be used for the first review run;
-- a GitHub organization with Actions, and inference credentials for the engine you choose (organization-billed Copilot is needed only for Copilot-backed runs; see [Configure Authentication](authentication.md));
-- GitHub CLI authenticated with `repo` and `workflow` scopes;
-- GitHub Agentic Workflows `v0.89.21` or newer.
+## Before You Start
 
-Verify the local tools:
+Complete the [quickstart](getting-started.md) so you have a proven control repository and one low-risk test repository. Use a private control repository when the target or required evidence is non-public.
+
+You also need GitHub Agentic Workflows `v0.89.21` or newer:
 
 ```bash
-gh auth status
 gh aw version
 ```
 
-Complete the [Quickstart](getting-started.md) first when you do not yet have a
-control repository.
+## 1. Write the Campaign Contract
 
-## Start With the Authoring Skill
+Answer four questions before writing a workflow:
 
-Open your CAO source or control repository in a coding agent. Then use this
-prompt, replacing the bracketed values:
+| Question | Example |
+| --- | --- |
+| What should improve? | Repositories should stop using an unsupported Node.js version. |
+| Which repositories qualify? | A checked-in engine range includes the unsupported version. |
+| What output is needed? | A pull request that updates the range and CI matrix. |
+| When should nothing happen? | The repository is already supported, a matching PR exists, or evidence is incomplete. |
+
+Keep the outcome to one sentence. If it needs unrelated outputs or success measures, split it.
+
+## 2. Generate the Campaign
+
+Open the CAO source or control repository in a coding agent and use:
 
 ```text
 Read and follow skills/create-cao-campaign/SKILL.md.
 
-Create a campaign for this outcome:
-[What should become measurably better in a repository?]
+Outcome:
+[What should measurably improve?]
 
-Target repositories:
-[Which repositories are eligible, and what evidence identifies them?]
+Eligibility:
+[What evidence makes a repository a candidate?]
 
-The first proof must use [OWNER/REPOSITORY], stay in review mode, and create no
-changes in the target repository. Ask me only about decisions that cannot be
-inferred safely. Compile the workflows and report the files, policy registration,
-validation results, and first-run command.
+Safe output:
+[What is the smallest useful output?]
+
+No-op cases:
+[When should the campaign create nothing?]
+
+Use [OWNER/REPOSITORY] for the first proof. Keep it in review mode, limit it to
+one repository, and do not change the target. Compile the workflows and report
+the changed files, validation results, and first-run command.
 ```
 
-The bundled skill derives the orchestrator, worker boundaries, permissions,
-safe outputs, no-op behavior, and validation from the desired outcome. Do not
-begin by copying an existing generated `.lock.yml` file.
+Do not copy or edit a generated `.lock.yml` file. The skill creates editable workflow Markdown and compiles it.
 
-## Review the Campaign Contract
+## 3. Review What Was Generated
 
-Before running anything, confirm that the change contains:
+Expect:
 
-- one `<campaign-slug>/aw.yml` manifest and campaign README;
-- one `.github/workflows/<campaign-slug>.md` orchestrator;
-- at least one `.github/workflows/<campaign-slug>-<worker-slug>.md` worker;
-- the campaign and every worker registered in `.github/workflows/cao.json`;
-- read-only agent permissions and only the safe outputs required by the outcome;
-- stable duplicate detection and explicit `noop` behavior;
-- `review` mode with a one-repository limit.
+| File | Purpose |
+| --- | --- |
+| `<campaign>/aw.yml` | Installable campaign manifest |
+| `<campaign>/README.md` | Campaign purpose, setup, and behavior |
+| `.github/workflows/<campaign>.md` | Orchestrator |
+| `.github/workflows/<campaign>-<worker>.md` | One focused worker per task |
+| `.github/workflows/cao.json` | Campaign and worker registration |
 
-The orchestrator may select and dispatch work. Each worker must remain scoped to
-one authorized repository and cannot discover more repositories or dispatch more
-work.
+Before running, confirm:
 
-## Validate Before the First Run
+- agent tools are read-only;
+- safe outputs are minimal and explicit;
+- every worker receives exactly one repository;
+- duplicate, healthy, and insufficient-evidence cases return `noop`;
+- mode is `review` and the repository limit is one.
 
-In this catalog repository, run:
+## 4. Compile and Test
+
+In this catalog repository:
 
 ```bash
 npm run compile:locks
 npm run compile
-npm run docs:build
+npm test
 git diff --check
 ```
 
-Review the generated lock files, but never edit them directly. Confirm that the
-compiled workflows contain no unexpected permissions, network hosts, secrets,
-write destinations, or worker dispatches.
-
-For a campaign authored in another repository, run strict compilation with a
-stable schedule seed:
+In another repository:
 
 ```bash
 gh aw compile --strict --schedule-seed OWNER/REPOSITORY
 ```
 
-## Prove One Review Run
+Review generated lock-file changes for unexpected permissions, secrets, network hosts, write destinations, or worker dispatches.
 
-Commit the workflow sources, generated locks, campaign manifest, and policy
-together. Trigger only the orchestrator:
+## 5. Prove One Review Run
+
+Commit the source, generated locks, manifest, runtime resources, and policy together. Then run only the orchestrator:
 
 ```bash
-gh aw run <campaign-slug> --ref <default-branch> \
+gh aw run <campaign> --ref <default-branch> \
   --raw-field target_repo="OWNER/REPOSITORY" \
   --raw-field max_repos="1" \
   --raw-field rollout_percent="100" \
   --raw-field safe_output_mode="review"
 ```
 
-A successful first run proves that:
+The proof passes when exactly one authorized repository was selected, only expected workers ran, output stayed in the private review destination, and the target did not change. A useful review item or an explainable `noop` are both valid.
 
-- exactly one authorized repository was selected;
-- only the expected workers were dispatched;
-- proposed outputs stayed in the review repository;
-- the target repository was not changed;
-- the run produced either one useful review item or an explainable `noop`.
+Do not promote the campaign to `live` during this first authoring session.
 
-Do not promote the campaign to `live` during the authoring session.
+## Keep It Private or Propose It
 
-## Share the Result
+A campaign can remain in its control repository. To propose it for the official catalog, open a pull request with its manifest, README, workflow sources, generated locks, policy registration, and focused contract tests.
 
-A private campaign can remain in its control repository. To propose a
-campaign for the official catalog, open a pull request containing the campaign,
-workflow sources, generated locks, documentation, policy registration, and
-focused contract tests.
-
-The current Campaign Catalog is curated; it is not yet a self-service
-marketplace. Publication is a reviewed source change, and installation or catalog
-acceptance never grants rollout authority in another control repository.
-
-## Done Checklist
-
-- [ ] The desired repository outcome is stated in one sentence.
-- [ ] The campaign has one orchestrator and at least one focused worker.
-- [ ] Permissions, network access, and safe outputs are minimal and explicit.
-- [ ] Duplicate, healthy, and insufficient-evidence cases return `noop`.
-- [ ] Strict compilation and documentation build pass.
-- [ ] One low-risk repository completes a `review` run without target writes.
-- [ ] The author can explain the run result and the next evidence needed.
+The catalog is curated. Publication does not grant rollout authority in another control repository.

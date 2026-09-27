@@ -19,6 +19,9 @@ function createAuthors(authors) {
 export default defineConfig({
   site: "https://githubnext.github.io",
   base: "/gh-aw-cao",
+  redirects: {
+    "/control-plane-authentication": "/gh-aw-cao/authentication/",
+  },
   srcDir: "./docs",
   markdown: {
     processor: unified({
@@ -28,10 +31,11 @@ export default defineConfig({
   integrations: [
     mermaid(),
     starlight({
-      title: "Central Agentic Ops",
+      title: "CAO",
       description: "Enterprise control planes for GitHub Agentic Workflows.",
       logo: {
-        src: "./docs/assets/logo.svg",
+        light: "./docs/assets/logo-day.svg",
+        dark: "./docs/assets/logo-night.svg",
         alt: "",
       },
       favicon: "/favicon.svg",
@@ -40,6 +44,7 @@ export default defineConfig({
         starlightBlog({
           title: "Central Agentic Ops Blog",
           recentPostCount: 12,
+          navigation: "none",
           authors: createAuthors({
             mnkiefer: {
               name: "Mara Kiefer",
@@ -62,9 +67,10 @@ export default defineConfig({
         processedDirs: ["."],
       },
       components: {
-        Banner: "./docs/components/ExperimentalBanner.astro",
         Footer: "./docs/components/SiteFooter.astro",
         Hero: "./docs/components/HierarchyHero.astro",
+        SocialIcons: "./docs/components/HeaderLinks.astro",
+        ThemeSelect: "./docs/components/ThemeToggle.astro",
       },
       editLink: {
         baseUrl: "https://github.com/githubnext/gh-aw-cao/edit/main/",
@@ -132,15 +138,22 @@ export default defineConfig({
         },
       ],
       sidebar: [
-        { label: "Overview", link: "/" },
+        {
+          label: "Overview",
+          items: [
+            { label: "What is Central Agentic Ops?", link: "/architecture-at-a-glance/" },
+            { label: "How the control plane works", link: "/architecture/" },
+          ],
+        },
         {
           label: "Get started",
           items: [
             { label: "Quickstart", link: "/getting-started/" },
-            { label: "Author your first campaign", link: "/author-your-first-operation/" },
-            { label: "Campaign Catalog", link: "/catalog/" },
-            { label: "Configure authentication", link: "/authentication/" },
-            { label: "Authentication profiles", link: "/control-plane-authentication/" },
+            { label: "Setup wizard", link: "/setup/" },
+            { label: "CAO commands", link: "/cao-cli/" },
+            { label: "Browse campaigns", link: "/catalog/" },
+            { label: "Build a campaign", link: "/author-your-first-operation/" },
+            { label: "Authentication", link: "/authentication/" },
           ],
         },
         {
@@ -175,8 +188,6 @@ export default defineConfig({
           label: "Reference",
           items: [
             { label: "Configuration", link: "/configuration/" },
-            { label: "Control plane overview", link: "/architecture/" },
-            { label: "What is CAO?", link: "/architecture-at-a-glance/" },
             { label: "CAO Activity", link: "/activity/" },
             { label: "Operational value", link: "/operational-value/" },
             { label: "Deployment and governance", link: "/deployment-and-governance/" },

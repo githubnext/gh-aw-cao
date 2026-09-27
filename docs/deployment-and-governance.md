@@ -7,7 +7,7 @@ Use this page when deciding where control repositories run, who owns each layer,
 
 ## Deployment Topologies
 
-Central Agentic Ops does not require a GitHub enterprise account. An organization or OSS maintainer can run one private organization-owned control repository for repositories in that organization. Enterprise deployment adds an enterprise-operated control repository for cross-organization AWs and may also use independent organization control repositories for organization-shared AWs. Because a GitHub enterprise account does not directly own repositories, its control repository is still hosted in a designated organization.
+Central Agentic Ops does not require a GitHub enterprise account. An organization or OSS maintainer can run one organization-owned control repository for repositories in that organization. Make it private when targets or required evidence are non-public; use public visibility only when policy, runs, metadata, dashboard data, and review outputs may all be public. Enterprise deployment adds an enterprise-operated control repository for cross-organization AWs and may also use independent organization control repositories for organization-shared AWs. Because a GitHub enterprise account does not directly own repositories, its control repository is still hosted in a designated organization.
 
 The execution topology is the same in every profile. A pinned campaign is installed into a scoped control repository, which dispatches directly to enrolled targets. The profile changes who governs each runtime and which repositories its credentials and inventory can reach.
 
@@ -15,7 +15,7 @@ The execution topology is the same in every profile. A pinned campaign is instal
 
 | Deployment profile | Runtime ownership | Default reach | GitHub Enterprise required |
 | --- | --- | --- | --- |
-| **Organization or OSS** | One private control repository owned by the organization | Automatically discovered repositories in that organization | No |
+| **Organization or OSS** | One control repository owned by the organization | Automatically discovered repositories in that organization | No |
 | **Several organizations, one operator** | One independent control repository per organization, all installing the same pinned campaign | Each runtime discovers and operates within its own organization | No |
 | **Enterprise** | One enterprise-operated control repository in a designated host organization, with optional organization runtimes | Explicit credential-scoped reach across organizations; organization runtimes retain local reach | Yes |
 
