@@ -17,6 +17,14 @@ func upstashHostProfile() HostProfile {
 	return profile
 }
 
+func azureFunctionsHostProfile() HostProfile {
+	profile := hostedHostProfile()
+	profile.Name = "azure-functions"
+	profile.Listener = HostListenerPlatform
+	profile.TrustsPlatformProxy = true
+	return profile
+}
+
 func TestBuiltInHostProfilesDeclareExpectedCapabilities(t *testing.T) {
 	tests := []struct {
 		profile    HostProfile
@@ -27,7 +35,7 @@ func TestBuiltInHostProfilesDeclareExpectedCapabilities(t *testing.T) {
 	}{
 		{localHostProfile(), HostAuthenticationBearer, HostListenerProcess, HostRedisPooled, true},
 		{hostedHostProfile(), HostAuthenticationOAuth, HostListenerProcess, HostRedisPooled, true},
-		{azureFunctionsHostProfile(false), HostAuthenticationOAuth, HostListenerPlatform, HostRedisPooled, true},
+		{azureFunctionsHostProfile(), HostAuthenticationOAuth, HostListenerPlatform, HostRedisPooled, true},
 		{upstashHostProfile(), HostAuthenticationOAuth, HostListenerProcess, HostRedisSerialized, false},
 	}
 	for _, test := range tests {
@@ -205,7 +213,7 @@ func TestPlatformHostProfileRejectsProcessListenerAndEnforcesTrustedProxy(t *tes
 
 	store := redisx.NewStore(client, "test")
 	config := Config{
-		HostProfile: azureFunctionsHostProfile(false),
+		HostProfile: azureFunctionsHostProfile(),
 		Listen:      "127.0.0.1:8080",
 		Proxy:       ProxyPolicy{TrustForwarded: true},
 	}
@@ -224,7 +232,7 @@ func TestPlatformHostProfileRejectsProcessListenerAndEnforcesTrustedProxy(t *tes
 }
 
 func TestPlatformHostProfileCannotServeProcessListener(t *testing.T) {
-	app := &App{config: Config{HostProfile: azureFunctionsHostProfile(false)}}
+	app := &App{config: Config{HostProfile: azureFunctionsHostProfile()}}
 	if err := app.Serve(t.Context()); err == nil ||
 		!strings.Contains(err.Error(), "delegates listener ownership") {
 		t.Fatalf("platform profile opened a process listener: %v", err)

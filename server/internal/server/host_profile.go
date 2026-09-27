@@ -67,14 +67,6 @@ func hostedHostProfile() HostProfile {
 	}
 }
 
-func azureFunctionsHostProfile(localSimulation bool) HostProfile {
-	profile := hostedHostProfile()
-	profile.Name = "azure-functions"
-	profile.Listener = HostListenerPlatform
-	profile.TrustsPlatformProxy = true
-	return azureLocalSimulationProfile(profile, localSimulation)
-}
-
 func azureLocalSimulationProfile(profile HostProfile, localSimulation bool) HostProfile {
 	if localSimulation {
 		profile.RequiresHTTPS = false

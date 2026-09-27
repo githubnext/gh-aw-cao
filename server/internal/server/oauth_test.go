@@ -30,7 +30,7 @@ func TestAzureModeRequiresCompleteGitHubOAuthPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = New(redisx.NewStore(client, "test"), Config{
-		HostProfile:   azureFunctionsHostProfile(false),
+		HostProfile:   azureFunctionsHostProfile(),
 		SiteDirectory: site,
 		AccessToken:   testAccessToken,
 		Proxy:         ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
@@ -41,7 +41,7 @@ func TestAzureModeRequiresCompleteGitHubOAuthPolicy(t *testing.T) {
 	}
 
 	_, err = New(redisx.NewStore(client, "test"), Config{
-		HostProfile:   azureFunctionsHostProfile(false),
+		HostProfile:   azureFunctionsHostProfile(),
 		SiteDirectory: site,
 		Proxy:         ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
 		GitHubOAuth: &GitHubOAuthConfig{
@@ -630,7 +630,7 @@ func newAzureTestApp(t *testing.T, githubURL string) *App {
 		t.Fatal(err)
 	}
 	config := Config{
-		HostProfile:   azureFunctionsHostProfile(false),
+		HostProfile:   azureFunctionsHostProfile(),
 		SiteDirectory: site,
 		Proxy:         ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
 		GitHubOAuth:   validOAuthConfig(githubURL),

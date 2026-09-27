@@ -208,7 +208,7 @@ func TestHostedModesCannotDisableHTTPS(t *testing.T) {
 		t.Fatal("hosted mode accepted disabled HTTPS enforcement")
 	}
 
-	config.HostProfile = azureFunctionsHostProfile(false)
+	config.HostProfile = azureFunctionsHostProfile()
 	config.Listen = ""
 	config.Proxy = ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}}
 	if err := validateHostedMode(&redisx.Store{}, &config); err == nil {

@@ -171,7 +171,7 @@ func (policy hostPolicy) resolve(lookup func(string) (string, bool)) (*resolvedH
 		return nil, err
 	}
 	if policy.Redis.Module == "upstash" && !isUpstashRedisURL(redisURL) {
-		return nil, errors.New("Upstash Redis provider module requires an upstash.io endpoint")
+		return nil, errors.New("upstash Redis provider module requires an upstash.io endpoint")
 	}
 	namespaceEnv := firstNonempty(policy.Redis.NamespaceEnv, "REDIS_NAMESPACE")
 	namespace := envValue(lookup, namespaceEnv)
@@ -204,7 +204,7 @@ func redisURLFromEnvironment(
 	}
 	host := envValue(lookup, hostEnv)
 	if host == "" {
-		return "", fmt.Errorf("Redis connection requires environment variable %s", firstNonempty(urlEnv, hostEnv))
+		return "", fmt.Errorf("redis connection requires environment variable %s", firstNonempty(urlEnv, hostEnv))
 	}
 	port := envValue(lookup, portEnv)
 	if port == "" {
@@ -212,7 +212,7 @@ func redisURLFromEnvironment(
 	}
 	portNumber, err := strconv.Atoi(port)
 	if err != nil || portNumber < 1 || portNumber > 65535 {
-		return "", errors.New("Redis port environment variable must contain a port number")
+		return "", errors.New("redis port environment variable must contain a port number")
 	}
 	scheme := "redis"
 	if tlsMode == redisTLSRequired {
