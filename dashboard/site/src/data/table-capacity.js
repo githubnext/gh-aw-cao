@@ -1,4 +1,7 @@
 import { DASHBOARD_QUERY_LIMITS } from './queries/declarative.js';
+import { createDebug } from '../debug.js';
+
+const debugTableCapacity = createDebug('table-capacity');
 
 const TABLE_ROW_LIMITS = {
   constrained: 10000,
@@ -35,6 +38,7 @@ export function tableRowLimitForEnvironment(environment) {
           : TABLE_ROW_LIMITS.maximum);
   }
   if (limits.length > 0) return Math.min(...limits);
+  debugTableCapacity({ event: 'memory-signal-unavailable', hardwareConcurrency: environment.hardwareConcurrency ?? null });
   return Number(environment.hardwareConcurrency) <= 4
     ? TABLE_ROW_LIMITS.modest
     : TABLE_ROW_LIMITS.standard;
@@ -76,6 +80,12 @@ export function browserTableCapacityDecision(browserWindow) {
  */
 export function logTableCapacityDecision(decision, logger = console) {
   logger.info('[dashboard-table-capacity]', decision);
+  debugTableCapacity({
+    event: 'row-limit-selected',
+    rowLimit: decision.rowLimit,
+    mobile: decision.mobile,
+    hardwareConcurrency: decision.hardwareConcurrency
+  });
 }
 
 /**
@@ -111,11 +121,16 @@ export function applyTableQuerySafetyLimits(queries, tableSourceNames) {
         || !tableSources.has(definition.name)
         || dependencies.has(definition.name)) return query;
     const declaredLimit = Number(definition.limit);
+    const ceiling = DASHBOARD_QUERY_LIMITS['max-output-rows'];
+    const appliedLimit = Number.isSafeInteger(declaredLimit) && declaredLimit > 0
+      ? Math.min(declaredLimit, ceiling)
+      : ceiling;
+    if (appliedLimit !== declaredLimit) {
+      debugTableCapacity({ event: 'query-limit-clamped', query: definition.name, appliedLimit });
+    }
     return {
       ...definition,
-      limit: Number.isSafeInteger(declaredLimit) && declaredLimit > 0
-        ? Math.min(declaredLimit, DASHBOARD_QUERY_LIMITS['max-output-rows'])
-        : DASHBOARD_QUERY_LIMITS['max-output-rows']
+      limit: appliedLimit
     };
   });
 }
