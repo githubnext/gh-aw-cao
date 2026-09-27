@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { cp, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { parsePolicy, controlSettings, effectivePolicy } from "../.github/workflows/shared/policy.mjs";
@@ -76,9 +76,22 @@ export async function compileAndCompare(root, execute, expectedVersion) {
   const temporaryWorkflows = path.join(temporaryRoot, WORKFLOW_DIRECTORY);
   try {
     await cp(workflowRoot, temporaryWorkflows, { recursive: true });
+    try {
+      await mkdir(path.join(temporaryRoot, ".github", "aw"), { recursive: true });
+      await cp(
+        path.join(root, ".github", "aw", "actions-lock.json"),
+        path.join(temporaryRoot, ".github", "aw", "actions-lock.json"),
+      );
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+    const initialize = run(execute, "git", ["init", "--quiet"], temporaryRoot);
+    if (initialize.error || initialize.status !== 0) {
+      throw new Error(`Unable to initialize isolated compiler checkout: ${commandOutput(initialize) || initialize.error?.message}`);
+    }
     const result = run(execute, "gh", [
       "aw", "compile", "--strict", "--validate", "--show-all", "--no-check-update",
-      "--schedule-seed", "githubnext/gh-aw-cao", "--dir", temporaryWorkflows,
+      "--schedule-seed", "githubnext/gh-aw-cao", "--dir", WORKFLOW_DIRECTORY,
     ], temporaryRoot);
     if (result.error || result.status !== 0) {
       findings.push(compilerFinding(commandOutput(result) || result.error?.message));
@@ -315,7 +328,7 @@ export async function validateSecurity(root, policySource) {
         remediation: "Replace pull_request_target with a least-privilege pull_request design",
       }));
     }
-    for (const match of source.matchAll(/^\s*uses:\s*([^/\s]+\/[^@\s]+)@([^\s#]+)/gm)) {
+    for (const match of source.matchAll(/^\s*(?:-\s*)?uses:\s*([^/\s]+\/[^@\s]+)@([^\s#]+)/gm)) {
       if (!/^[0-9a-f]{40}$/i.test(match[2])) {
         findings.push(finding("unpinned-third-party-action", "error", "security", "Workflow uses an unpinned third-party Action", {
           files: [relativePath],
@@ -338,7 +351,11 @@ export async function validateSecurity(root, policySource) {
 }
 
 export function doctorFindings(root, execute) {
-  const result = run(execute, "gh", ["aw", "doctor", "--dir", root, "--json"], root);
+  const repository = repositoryName(root, execute);
+  const args = repository.includes("/")
+    ? ["aw", "doctor", "--repo", repository, "--dir", ".", "--json"]
+    : ["aw", "doctor", "--json"];
+  const result = run(execute, "gh", args, root);
   if (result.error || result.status !== 0) {
     return [finding("doctor-check-failed", "warning", "installation", "gh-aw doctor could not verify repository setup", {
       expected: "gh-aw doctor verifies installation and repository setup",
