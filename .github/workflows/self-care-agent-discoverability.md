@@ -182,6 +182,6 @@ Flag:
 
 If every task succeeds through the expected route, call `noop` once with a concise pass summary and create no issue or pull request.
 
-For a clear discoverability defect, create one deduplicated issue containing the task table, failed route, exact URL, expected route, observed behavior, and smallest remediation. For a small, obvious link or routing-text defect confined to the allowed files, you may instead make the minimal change, run the focused unit test plus dashboard lint and typecheck, and create one draft pull request. Never change product behavior, query semantics, data collection, schema, policy, or access authority. Never create both an issue and a pull request.
+For a clear discoverability defect, create one deduplicated issue containing the task table, failed route, exact URL, expected route, observed behavior, and smallest remediation. For a small, obvious link or routing-text defect confined to the allowed files, you may instead make the minimal change, run the focused unit test plus dashboard lint and typecheck, and create one draft pull request. Provide an unprefixed issue or pull request title without a semantically equivalent category prefix because the configured `title-prefix` is added automatically. Never change product behavior, query semantics, data collection, schema, policy, or access authority. Never create both an issue and a pull request.
 
 {{#runtime-import? .github/cao/self-care.md}}

@@ -5,6 +5,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
 import { buildDashboardSite, embedDashboardVersion, filterExperimentalDashboardViews } from "../../dashboard/site/scripts/build.mjs";
+import { validateDashboardAgentArtifacts } from "../../dashboard/site/scripts/llms.mjs";
 
 async function builtSiteSha(destination) {
   const index = await readFile(new URL("index.html", destination), "utf8");
@@ -171,6 +172,38 @@ test("dashboard cache hashes are stable and change with assembled site content",
     assert.equal(secondSha, firstSha, "identical content produces the same cache hash");
     assert.notEqual(changedSha, firstSha, "changed content produces a different cache hash");
     assert.match(await readFile(new URL("src/main.js", changedDestination), "utf8"), /sourceMappingURL=main\.js\.map/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("dashboard agent guide describes and validates the assembled public artifacts", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "dashboard-agent-guide-"));
+  const activityDataPath = path.join(root, "activity");
+  const destination = path.join(root, "cao");
+  const artifacts = {
+    "agent-summary.json": '{"schemaVersion":1,"generatedAt":"2026-09-27T00:00:00Z"}\n',
+    "inventory-sources.json": "{}\n",
+    "payload-hashes.json": "{}\n",
+    "gh-aw-logs.sqlite": "sqlite fixture",
+  };
+
+  try {
+    await mkdir(activityDataPath);
+    for (const [name, content] of Object.entries(artifacts)) {
+      await writeFile(path.join(activityDataPath, name), content);
+    }
+    await buildDashboardSite({ destination, activityDataPath, controlSettings: { campaigns: {} } });
+    for (const [name, content] of Object.entries(artifacts)) {
+      await writeFile(path.join(destination, name), content);
+    }
+    await validateDashboardAgentArtifacts({
+      sitePath: destination,
+      repositoryPath: path.resolve("."),
+    });
+    const llms = await readFile(path.join(destination, "llms.txt"), "utf8");
+    assert.match(llms, /Agent summary.*57 bytes/);
+    assert.doesNotMatch(llms, /(?:token|secret|password|private[-_ ]key)\s*[:=]\s*\S+/i);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
