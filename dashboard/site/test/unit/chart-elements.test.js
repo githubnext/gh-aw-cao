@@ -122,12 +122,13 @@ describe('chart element helpers', () => {
   });
 
   it('uses the same identity color for pie marks and value-ranked legend swatches', () => {
+    /** @type {Array<[string, number]>} */
     const entries = [['SelfCare', 2], ['Dependabot', 5]];
     const chart = renderChartWidget('pie', [], [], { entries, total: 7 });
     const legend = renderPieLegend(entries, 7);
 
     for (const [label] of entries) {
-      const markClass = chart.querySelector(`[data-chart-category="${label}"]`)?.className.baseVal;
+      const markClass = chart.querySelector(`[data-chart-category="${label}"]`)?.getAttribute('class');
       const swatchClass = [...legend.querySelectorAll('li')]
         .find((item) => item.querySelector('span')?.textContent === label)
         ?.querySelector('i')?.className;
