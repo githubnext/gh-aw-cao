@@ -61,9 +61,14 @@ test("landing page presents the product through real operational surfaces", () =
 });
 
 test("landing page explains and illustrates campaign dispatch", () => {
+  assert.match(hero, /One goal, many repositories/);
   assert.match(
     hero,
     /An Agentic Campaign is a scalable work dispatcher that operates on your repositories to acheive a goal\./,
+  );
+  assert.match(
+    hero,
+    /Each campaign turns a defined operation into bounded work across an explicitly enrolled set of repositories\./,
   );
   assert.match(hero, /<DispatchIllustration \/>/);
   assert.match(hero, /aria-describedby="dispatch-description"/);
