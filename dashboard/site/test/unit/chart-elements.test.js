@@ -121,7 +121,7 @@ describe('chart element helpers', () => {
     expect(semantic.querySelector('li:nth-child(3) i')?.classList.contains('chart-series-semantic-failure')).toBe(true);
   });
 
-  it('uses the same identity color for pie marks and value-ranked legend swatches', () => {
+  it('uses the same identity color for pie marks, ranked legends, bars, and lines', () => {
     /** @type {Array<[string, number]>} */
     const entries = [['SelfCare', 2], ['Dependabot', 5]];
     const chart = renderChartWidget('pie', [], [], { entries, total: 7 });
@@ -134,6 +134,17 @@ describe('chart element helpers', () => {
         ?.querySelector('i')?.className;
       expect(swatchClass).toBe(markClass?.replace('pie-chart-segment ', ''));
     }
+
+    const points = [
+      { x: '2026-09-26', y: 2, color: 'SelfCare' },
+      { x: '2026-09-27', y: 3, color: 'SelfCare' }
+    ];
+    const expectedClass = chartSeriesClassName('SelfCare', 0);
+    const series = listChartSeries(points);
+    const bar = renderChartWidget('bar', points, series);
+    const line = renderChartWidget('line', points, series);
+    expect(bar.querySelector('.bar-chart-bar')?.getAttribute('class')).toContain(expectedClass);
+    expect(line.querySelector('.line-chart-series')?.getAttribute('class')).toContain(expectedClass);
   });
 
   it('formats unitless pie counters for quick scanning', () => {

@@ -561,6 +561,11 @@
                 "type": "nominal",
                 "title": "Campaign"
               },
+              "color": {
+                "field": "campaign-name",
+                "type": "nominal",
+                "title": "Campaign"
+              },
               "y": {
                 "field": "covered-repositories",
                 "type": "quantitative",
