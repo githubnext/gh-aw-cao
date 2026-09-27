@@ -81,6 +81,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
+            ${{ runner.temp }}/cao-activity/agent-summary.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
             ${{ runner.temp }}/cao-activity/memory
           key: cao-activity-v5-lookup-${{ github.run_id }}-${{ github.run_attempt }}
@@ -158,6 +159,11 @@ jobs:
               '--inventory', process.env.REPORT_INVENTORY_SOURCES,
               '--output', process.env.REPORT_PAYLOAD_HASHES,
             ])
+            await exec.exec(process.execPath, [
+              'activity/agent-summary.mjs',
+              process.env.REPORT_INVENTORY_SOURCES,
+              path.join(process.env.RUNNER_TEMP, 'cao-activity', 'agent-summary.json'),
+            ])
       - name: Validate restored activity data
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
@@ -225,10 +231,12 @@ jobs:
               process.env.REPORT_OUTPUT,
               controlSettings,
               process.env.DASHBOARD_COMMIT_SHA,
+              path.join(process.env.RUNNER_TEMP, 'cao-activity'),
             ])
             core.info('Dashboard site build completed')
             core.info('Copying collected activity data')
             const collectedFiles = [
+              'agent-summary.json',
               'inventory-sources.json',
               'gh-aw-logs.sqlite',
             ]
@@ -251,6 +259,10 @@ jobs:
             payloadHashes['gh-aw-logs.sqlite'] = crypto
               .createHash('sha256')
               .update(fs.readFileSync(path.join(process.env.REPORT_OUTPUT, 'gh-aw-logs.sqlite')))
+              .digest('hex')
+            payloadHashes['agent-summary.json'] = crypto
+              .createHash('sha256')
+              .update(fs.readFileSync(path.join(process.env.REPORT_OUTPUT, 'agent-summary.json')))
               .digest('hex')
             if (!Object.keys(payloadHashes).some((name) => name.startsWith('gh-aw-logs-runs/'))) {
               throw new Error('Dashboard payload contains no compacted run-information shards')
@@ -279,6 +291,12 @@ jobs:
               publishedShardBytes += fs.statSync(destination).size
               publishedShardCount += 1
             }
+            await exec.exec(process.execPath, [
+              'dashboard/site/scripts/llms.mjs',
+              'validate',
+              process.env.REPORT_OUTPUT,
+              process.env.GITHUB_WORKSPACE,
+            ])
             core.info(`Copied ${publishedShardCount} activity shards `
               + `(${formatFileSize(publishedShardBytes)})`)
             core.info(`Dashboard artifact assembly completed (${collectedFiles.length + 1} collected data files)`)

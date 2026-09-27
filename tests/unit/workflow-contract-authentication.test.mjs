@@ -64,6 +64,7 @@ test("repository-local SelfCare uses organization-billed Copilot authentication"
   const selfCareManifest = readFileSync(join(root, "self-care", "aw.yml"), "utf8");
   const workflowIds = [
     "self-care-accessibility-checker",
+    "self-care-agent-discoverability",
     "self-care-code-improvement",
     "self-care-dashboard-data-schema",
     "self-care-dashboard-debug-logging",

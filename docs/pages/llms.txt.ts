@@ -48,6 +48,11 @@ export const GET: APIRoute = async ({ url }) => {
     "",
     "## Documentation",
     "",
+    link(
+      "Dashboard agent access guide",
+      new URL("cao/llms.txt", baseUrl),
+      "Choose skills, bounded Activity artifacts, targeted MCP queries, or bulk SQLite analysis without scraping the dashboard UI.",
+    ),
     ...documentation,
     "",
     "## Campaigns",

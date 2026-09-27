@@ -207,6 +207,9 @@
           "accessibility-checker": {
             "workflow": "self-care-accessibility-checker"
           },
+          "agent-discoverability": {
+            "workflow": "self-care-agent-discoverability"
+          },
           "code-improvement": {
             "workflow": "self-care-code-improvement"
           },

@@ -148,6 +148,7 @@ test("every worker uses the standard dispatch envelope and safe mode vocabulary"
     ["software-development-practices-github-well-architected.md", "software-development-practices", "github-well-architected"],
     ["software-development-practices-nist-ssdf.md", "software-development-practices", "nist-ssdf"],
     ["self-care-accessibility-checker.md", "self-care", "accessibility-checker"],
+    ["self-care-agent-discoverability.md", "self-care", "agent-discoverability"],
     ["self-care-code-improvement.md", "self-care", "code-improvement"],
     ["self-care-dashboard-data-schema.md", "self-care", "dashboard-data-schema"],
     ["self-care-dashboard-debug-logging.md", "self-care", "dashboard-debug-logging"],

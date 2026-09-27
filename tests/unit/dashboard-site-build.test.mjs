@@ -82,6 +82,21 @@ test("docs dashboard installs renderer assets without experimental campaign page
       /<link rel="icon" href="https:\/\/example\.com\/dashboard\.svg">/,
     );
     const builtIndex = await readFile(new URL("index.html", destination), "utf8");
+    assert.match(builtIndex, /<link rel="alternate" type="text\/plain" href="\.\/llms\.txt"/);
+    assert.match(builtIndex, /<a href="\.\/llms\.txt">Agent access guide<\/a>/);
+    const llms = await readFile(new URL("llms.txt", destination), "utf8");
+    for (const section of [
+      "## Choose the cheapest access path",
+      "## Skills",
+      "## Published Activity artifacts",
+      "## Targeted queries with MCP",
+      "## Bulk analysis with CAO CLI and SQLite",
+      "## Schema and freshness",
+    ]) {
+      assert.match(llms, new RegExp(section));
+    }
+    assert.match(llms, /raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/skills\/debug-cao\/SKILL\.md/);
+    assert.match(llms, /\[Agent summary\]\(\.\/agent-summary\.json\)/);
     const mainHash = builtIndex.match(/<script type="module" src="\.\/src\/main\.js\?sha=([a-f0-9]{64})"><\/script>/)?.[1];
     assert.ok(mainHash, "entry module includes the site content SHA");
     assert.match(
