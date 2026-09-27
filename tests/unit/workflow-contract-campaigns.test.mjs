@@ -437,6 +437,7 @@ test("root campaign composes its operational campaigns through manifests", () =>
   assert.deepEqual(rootManifest.includes, [
     "activity/aw.yml",
     "dashboard/aw.yml",
+    ".github/workflows/cao-validate.yml",
   ]);
   const project = JSON.parse(readFileSync(join(root, ".github", "workflows", "aw.json"), "utf8"));
   assert.deepEqual(project.auto_upgrade.options, ["--pre-releases"]);

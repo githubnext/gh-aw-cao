@@ -83,7 +83,11 @@ jobs:
 
   report:
     needs: validate
-    if: always() && needs.validate.result != 'cancelled'
+    if: >-
+      always() &&
+      needs.validate.result != 'cancelled' &&
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -116,8 +120,13 @@ jobs:
             if (process.env.DOWNLOAD_OUTCOME === 'success' && fs.existsSync(reportPath)) {
               const stats = fs.statSync(reportPath)
               if (stats.size > 1024 * 1024) throw new Error('Validation artifact exceeds 1 MiB')
-              report = JSON.parse(fs.readFileSync(reportPath, 'utf8'))
-            } else {
+              try {
+                report = JSON.parse(fs.readFileSync(reportPath, 'utf8'))
+              } catch (error) {
+                core.warning(`Validation artifact is not valid JSON: ${error.message}`)
+              }
+            }
+            if (!report) {
               report = {
                 validatorVersion: 'unknown',
                 summary: { errors: 1, warnings: 0 },

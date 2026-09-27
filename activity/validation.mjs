@@ -429,9 +429,13 @@ function summary(findings) {
 
 function repositoryName(root, execute) {
   if (process.env.GITHUB_REPOSITORY) return process.env.GITHUB_REPOSITORY;
-  const result = run(execute, "git", ["config", "--get", "remote.origin.url"], root);
-  const match = String(result.stdout ?? "").trim().match(/(?:github\.com[:/])([^/]+\/[^/.]+)(?:\.git)?$/);
-  return match?.[1] ?? path.basename(root);
+  try {
+    const result = run(execute, "git", ["config", "--get", "remote.origin.url"], root);
+    const match = String(result.stdout ?? "").trim().match(/(?:github\.com[:/])([^/]+\/[^/.]+)(?:\.git)?$/);
+    return match?.[1] ?? path.basename(root);
+  } catch {
+    return path.basename(root);
+  }
 }
 
 export async function validateRepository({
@@ -444,7 +448,28 @@ export async function validateRepository({
   let expectedVersion = null;
   let currentVersion = null;
   try {
-    const policySource = await readFile(path.join(root, POLICY_PATH), "utf8");
+    let policySource;
+    try {
+      policySource = await readFile(path.join(root, POLICY_PATH), "utf8");
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+      const missingPolicy = finding("missing-cao-policy", "error", "policy", "CAO policy is missing", {
+        files: [POLICY_PATH],
+        expected: "A checked-in CAO policy",
+        observed: `${POLICY_PATH} does not exist`,
+        remediation: "./cao.sh init",
+      });
+      return {
+        validatorVersion: VALIDATOR_VERSION,
+        repository: repositoryName(root, execute),
+        ghAwVersion: null,
+        expectedGhAwVersion: null,
+        timestamp: now().toISOString(),
+        findings: [missingPolicy],
+        summary: summary([missingPolicy]),
+        exitCode: 1,
+      };
+    }
     let rawPolicy;
     try {
       rawPolicy = JSON.parse(policySource);
@@ -514,6 +539,7 @@ export function formatValidationReport(report) {
     ["Generated workflows", ["generated-workflows"]],
     ["Campaign enablement", ["configuration"]],
     ["Security", ["security"]],
+    ["Validator infrastructure", ["infrastructure"]],
   ];
   const lines = ["CAO validation"];
   for (const [label, categories] of groups) {

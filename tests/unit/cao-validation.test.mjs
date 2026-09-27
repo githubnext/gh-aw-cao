@@ -284,7 +284,17 @@ test("validation errors exit 1 and internal failures exit 2", async () => {
     });
     assert.equal(wrongVersion.exitCode, 1);
     assert.equal(wrongVersion.findings.some(({ id }) => id === "wrong-gh-aw-compiler-version"), true);
-    assert.equal((await validateRepository({ root: missing, execute: cleanExecutor() })).exitCode, 2);
+    const missingPolicy = await validateRepository({ root: missing, execute: cleanExecutor() });
+    assert.equal(missingPolicy.exitCode, 1);
+    assert.equal(missingPolicy.findings[0].id, "missing-cao-policy");
+    const internalFailure = await validateRepository({
+      root,
+      execute() {
+        throw new Error("executor failed");
+      },
+    });
+    assert.equal(internalFailure.exitCode, 2);
+    assert.equal(internalFailure.findings.at(-1).id, "validator-failure");
   } finally {
     await rm(root, { recursive: true, force: true });
     await rm(missing, { recursive: true, force: true });
