@@ -207,9 +207,6 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 		if host.Profile.Listener != HostListenerPlatform {
 			return nil, fmt.Errorf("host target module %q does not delegate listener ownership", host.Profile.Name)
 		}
-		if localSimulation && host.Profile.RequiresHTTPS {
-			return nil, errors.New("configured Azure host target requires HTTPS during local simulation")
-		}
 		if err := validateHostedRedisURL(
 			host.RedisURL,
 			host.RedisOptions.AllowPrivatePlaintext,
@@ -227,7 +224,7 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 		if err != nil {
 			return nil, err
 		}
-		profile = host.Profile
+		profile = azureLocalSimulationProfile(host.Profile, localSimulation)
 		singleReplicaConfirmed = host.SingleReplicaConfirmed
 	} else {
 		redisURL := strings.TrimSpace(os.Getenv("CAO_REDIS_URL"))

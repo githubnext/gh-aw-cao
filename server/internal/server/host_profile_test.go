@@ -35,6 +35,27 @@ func TestBuiltInHostProfilesDeclareExpectedCapabilities(t *testing.T) {
 	}
 }
 
+func TestAzureLocalSimulationDisablesHTTPSForConfiguredProfile(t *testing.T) {
+	configured := HostProfile{
+		Name:                "azure-functions",
+		Authentication:      HostAuthenticationOAuth,
+		Listener:            HostListenerPlatform,
+		RequiresHTTPS:       true,
+		TrustsPlatformProxy: true,
+		RequiresRedis:       true,
+		RedisSession:        HostRedisPooled,
+		SupportsCollection:  true,
+	}
+
+	local := azureLocalSimulationProfile(configured, true)
+	if local.RequiresHTTPS {
+		t.Fatal("local Azure simulation retained production HTTPS enforcement")
+	}
+	if !configured.RequiresHTTPS {
+		t.Fatal("local Azure simulation mutated the configured production profile")
+	}
+}
+
 func TestHostProfileRejectsInconsistentCapabilities(t *testing.T) {
 	base := hostedHostProfile()
 	tests := []HostProfile{
