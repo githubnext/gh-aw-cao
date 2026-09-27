@@ -86,6 +86,10 @@ test("dashboard CI runs the campaign quality gates", () => {
   const lighthouseComment = jobs.get("lighthouse-comment");
 
   assert.match(source, /dashboard\/site\/\*\*/);
+  // The deployed favicon is a copy of the canonical logo, so canonical logo
+  // changes must run the scaffold gate that keeps the two in sync.
+  assert.equal(source.match(/^ {6}- docs\/assets\/logo\.svg$/gm)?.length, 2);
+  assert.equal(source.match(/^ {6}- public\/favicon\.svg$/gm)?.length, 2);
   assert.match(source, /working-directory: dashboard\/site/);
   assert.match(source, /cache-dependency-path: dashboard\/site\/package-lock\.json/);
   assert.deepEqual(
