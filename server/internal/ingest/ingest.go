@@ -30,7 +30,7 @@ import (
 var collections = []string{
 	"campaigns", "repositories", "workflows", "runs",
 	"jobs", "sessions", "events",
-	"domains", "tools", "audits", "issues", "operationalValues",
+	"domains", "tools", "skills", "friction", "audits", "issues", "operationalValues",
 }
 
 const projectionBatchSize = 25_000
@@ -428,7 +428,7 @@ func projectSources(canonical map[string][]model.Row, inventory map[string]model
 	}
 	runRecords, ok := index["run-records"]
 	if ok {
-		for _, name := range []string{"domains", "tools", "audits", "issues"} {
+		for _, name := range []string{"domains", "tools", "skills", "friction", "audits", "issues"} {
 			records := canonical[name]
 			projected := model.Source{Source: name, Rows: []model.Row{}, Metadata: model.Metadata{}}
 			for offset := 0; offset < max(1, len(records)); offset += projectionBatchSize {
@@ -581,6 +581,8 @@ func logicalRowKey(sourceName string, row model.Row) string {
 		"runs":              {"organization", "repository", "workflow", "run"},
 		"domains":           {"event"},
 		"tools":             {"event"},
+		"skills":            {"event"},
+		"friction":          {"event"},
 		"audits":            {"event"},
 		"issues":            {"event"},
 		"operationalValues": {"repository", "valueId", "timestamp"},
@@ -678,7 +680,7 @@ func relationshipErrors(canonical map[string][]model.Row) []string {
 			result = append(result, fmt.Sprintf("%s.workflowId references a workflow from another repository", row["id"]))
 		}
 	}
-	for _, collection := range []string{"jobs", "sessions", "domains", "tools", "audits", "issues"} {
+	for _, collection := range []string{"jobs", "sessions", "domains", "tools", "skills", "friction", "audits", "issues"} {
 		for _, row := range canonical[collection] {
 			require(row, "runId", "runs", "run")
 		}

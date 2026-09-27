@@ -24,6 +24,7 @@ import { runPruneDashboard } from "./prune-dashboard.mjs";
 import { runQueries } from "./queries.mjs";
 import { runQueryInfo } from "./query-info.mjs";
 import { runQuery } from "./query.mjs";
+import { runSetup } from "./setup.mjs";
 import { runSetupAuth } from "./setup-auth.mjs";
 import { runUpdate } from "./update.mjs";
 import { runUpgradeGhAw } from "./upgrade-gh-aw.mjs";
@@ -56,6 +57,7 @@ export const commandHandlers = new Map([
   ["queries", runQueries],
   ["query", runQuery],
   ["query-info", runQueryInfo],
+  ["setup", runSetup],
   ["setup-auth", runSetupAuth],
   ["update", runUpdate],
   ["upgrade-gh-aw", runUpgradeGhAw],

@@ -1,6 +1,6 @@
 ---
 title: Control Plane Authentication Profiles
-description: Configure private organization or enterprise GitHub Apps, a fine-grained token fallback, or the built-in workflow token.
+description: Configure private organization or enterprise GitHub Apps, or owner-scoped fine-grained PATs.
 ---
 
 CAO supports private GitHub Apps as its durable authentication model and a fine-grained personal access token (PAT) when an operator cannot obtain App installation rights. Authentication grants credential reach; `.github/workflows/cao.json` remains the reviewed authority for where a workflow may run.
@@ -11,8 +11,7 @@ CAO supports private GitHub Apps as its durable authentication model and a fine-
 | --- | --- | --- |
 | Organization-owned private Apps | The control repository and targets belong to one organization | Apps can be installed only on their owning organization |
 | Enterprise-owned private Apps | Targets span organizations in one GitHub Enterprise Cloud enterprise | Apps are installed separately on each enrolled organization |
-| Fine-grained PAT | The operator cannot install an App and the required repositories and APIs are PAT-compatible | User-bound, one resource owner, repository-selected, and subject to organization approval |
-| Built-in `GITHUB_TOKEN` | Control-repository work or bounded review of public targets | Scoped to the control repository; cross-repository evidence may be unavailable |
+| Fine-grained PATs | The operator cannot install an App and the required repositories and APIs are PAT-compatible | One user-bound token pair per resource owner, repository-selected, and subject to organization approval |
 
 CAO does not publish Apps. A private App cannot support organizations outside its owning organization or enterprise. Use independent control planes for unrelated organizations or enterprises.
 
@@ -92,7 +91,7 @@ The setup commands store App client IDs in `GH_AW_GITHUB_READ_APP_ID` and `GH_AW
 Use a PAT only after confirming:
 
 1. the user already has access to every selected repository;
-2. all repositories have one resource owner;
+2. the operator can create a separate token pair for every resource owner represented by the selected repositories;
 3. enterprise and organization policy permits the token and any required approval can be obtained;
 4. every required API supports fine-grained PATs;
 5. the token has exact repository selection, minimum permissions, an expiration, and a rotation owner.
@@ -102,33 +101,59 @@ Run:
 ```bash
 ./cao.sh setup-auth token \
   --repo acme/central-agentic-ops \
-  --write-repository acme/approved-output-repository
+  --write-repository acme/approved-output-repository \
+  --acknowledge-token-risks
 ```
 
-The command creates separate `GH_AW_GITHUB_READ_PAT` and `GH_AW_GITHUB_WRITE_PAT` secrets. It reads `.github/workflows/cao.json`, opens host-aware fine-grained-token forms with the resource owner, a 30-day expiration, and role-specific permissions prefilled, and prints the exact repositories to select for each token. GitHub does not support preselecting repository names through token-template URLs, so choose **Only select repositories** and select every repository printed for that role. After generating each token, return to the terminal and enter it only at the corresponding interactive `gh secret set` prompt. CAO never accepts tokens as command arguments. Use `--write-repository OWNER/REPO` one or more times to replace the default write scope of the control repository, `--no-open` to print URLs without opening a browser, `--expires-in DAYS` to choose a shorter approved lifetime, or `--policy PATH` for a non-default policy path.
+The command groups the exact repositories by resource owner and creates one
+owner-scoped read secret and, where needed, one owner-scoped write secret. For
+example, owner `acme` uses `GH_AW_GITHUB_READ_PAT_ACME` and
+`GH_AW_GITHUB_WRITE_PAT_ACME`. It stores non-secret repository-to-secret-name
+maps in `GH_AW_GITHUB_READ_PAT_REPOSITORIES` and
+`GH_AW_GITHUB_WRITE_PAT_REPOSITORIES`, then sets
+`GH_AW_GITHUB_AUTH_MODE=pat` only after every secret and map has been stored.
+Existing App credentials may remain during validation; they are inactive while
+the mode is `pat`.
+
+The command reads `.github/workflows/cao.json`, opens one host-aware
+fine-grained-token form for each owner and role with a 30-day expiration and
+role-specific permissions prefilled, and prints the exact repositories to
+select. GitHub does not support preselecting repository names through
+token-template URLs, so choose **Only select repositories** and select every
+repository printed for that token. Return to the terminal and enter each token
+only at its interactive `gh secret set` prompt. CAO never accepts tokens as
+command arguments.
+
+Use `--write-repository OWNER/REPO` one or more times to replace the default
+write scope of the control repository. Use `--dry-run` to review every owner,
+secret name, and repository selection before prompting; `--no-open` to print
+URLs without opening a browser; `--expires-in DAYS` for a shorter approved
+lifetime; or `--policy PATH` for a non-default policy path.
 
 The two tokens intentionally have different repository selections:
 
 | Token | Select these repositories |
 | --- | --- |
-| Read PAT | The control repository and every exact repository allowed by `.github/workflows/cao.json` |
-| Write PAT | Only repositories explicitly passed with `--write-repository`; otherwise only the control repository |
+| Read PAT for each owner | The control repository or exact allowed repositories owned by that resource owner |
+| Write PAT for each owner | Only explicitly approved output repositories owned by that resource owner; otherwise only the control repository's owner receives a write PAT |
 
 Do not add a target to the write PAT merely because the read PAT covers it. The write PAT is used only by trusted safe-output processing and should remain narrower than the read PAT whenever review outputs stay in the control repository or writes are approved for only a subset of targets.
 
 The credential is user-bound, longer-lived than an App installation token, normally limited to one resource owner, manually rotated, and potentially incompatible with required APIs. It does not bypass organization approval or repository permissions. Never substitute a classic PAT.
 
-Read operations receive only `GH_AW_GITHUB_READ_PAT`; safe-output processing receives `GH_AW_GITHUB_WRITE_PAT`. The legacy `GH_AW_GITHUB_TOKEN` remains a compatibility fallback but should not be configured for new installations.
+Read operations select the owner-scoped secret mapped to the exact target
+repository. Safe-output processing independently selects the owner-scoped
+secret mapped to the exact output repository. The legacy
+`GH_AW_GITHUB_READ_PAT`, `GH_AW_GITHUB_WRITE_PAT`, and
+`GH_AW_GITHUB_TOKEN` names remain compatibility fallbacks only when the
+explicit authentication mode is not `pat`.
 
-## Use the workflow token
-
-For control-repository self-review or a bounded public target:
-
-```bash
-./cao.sh setup-auth workflow-token
-```
-
-This creates no secret. Keep outputs in the control repository and treat unavailable target Actions, security, issue, pull-request, or write APIs as incomplete evidence.
+For scheduled multi-owner orchestration, the agent receives only the
+control-repository owner's token. Public repositories owned elsewhere remain
+discoverable, and dispatched workers receive their target owner's token.
+Campaigns that require privileged discovery against private repositories in
+several owners still require enterprise Apps or separately scheduled
+owner-scoped control planes; CAO never exposes every owner token to one agent.
 
 ## Validate before activation
 

@@ -28,7 +28,7 @@ You can host the dashboard in three ways. The GitHub Actions only option has two
 
 ## Choosing an option
 
-1. **Start with GitHub Actions only.** It needs no infrastructure beyond your control repository, and it is what `gh aw add githubnext/gh-aw-cao` installs by default. If you don't have a control repository yet, follow the [Quickstart](getting-started.md) first.
+1. **Start with GitHub Actions only.** It needs no infrastructure beyond your control repository, and it is what `gh aw add githubnext/gh-aw-cao` installs by default. If you don't have a control repository yet, follow [Set Up CAO](setup-quickstarts.md) first.
 1. **Choose a credential profile.** To try CAO with the least setup, use a fine-grained PAT. For production, use GitHub Apps. For more information, see [Choosing a credential profile](deployment-actions.md#choosing-a-credential-profile).
 1. **Move to a server-backed option only when you need to.** Choose Azure or Coolify when your data is too large to query in a browser, when you need per-user sign-in instead of Pages visibility, or when you need webhook-driven refresh.
 

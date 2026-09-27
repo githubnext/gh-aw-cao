@@ -40,7 +40,9 @@ the exact identities and parent relationships.
 | **Workflow** | `github:workflow:<github-id>` | Repository | Represents one workflow across path or filename changes. |
 | **Run** | `github:run:<owner>/<repository>:<run-id>` | Repository and Workflow | Converges observations for one repository-scoped GitHub Actions run while retaining the latest observed attempt. |
 | **Domain** | Namespaced deterministic source ID | Run | Records allowed and blocked firewall observations. |
-| **Tool** | Namespaced deterministic source ID | Run | Records MCP, Bash, and skill calls. |
+| **Tool** | Namespaced deterministic source ID | Run | Records MCP and Bash calls. |
+| **Skill** | Namespaced deterministic source ID | Run | Records extracted skill invocation counts and failures. |
+| **Friction** | Namespaced deterministic source ID | Run | Records gh-aw's precomputed friction-cost summary. |
 | **Audit** | Namespaced deterministic source ID | Run | Records lifecycle, policy, grader, agent, and other execution observations. |
 | **Issue** | `github:issue:<owner>/<repository>:<number>` | Run | Records issue and pull-request safe outputs. |
 | **Operational Value** | Deterministic repository, value ID, and timestamp identity | Repository | Records a campaign-defined numeric repository metric. |
@@ -60,20 +62,20 @@ The top-level Maintenance page combines two distinct inventory concerns:
   `gh-aw-version` with `gh-aw-current-version` for each repository.
 
 These records do not constitute an inventory of vendored agents or project
-skills. Runtime skill calls are retained as Tool records with
-`toolType="skill"` and `isSkill=true`, but a call observation does not prove
+skills. Runtime skill calls are retained as Skill records, but a call
+observation does not prove
 that a skill is installed, pinned, or updateable. A future agent-assets view
 must publish explicit scope and provenance (for example, a `gh skill` source,
 revision, or lock record) before it can report maintenance state.
 
 ## Run-owned records
 
-A Run owns ordered Domain, Tool, Audit, and Issue records combining observations
+A Run owns ordered Domain, Tool, Skill, Friction, Audit, and Issue records combining observations
 from agents, tools, MCP servers, gateways, firewalls, policy engines,
 safe-output processing, GitHub APIs, and the workflow runtime. These records
 remain independently addressable rather than being stored in one growing
-array. Skills are Tools with `toolType="skill"`; issues and pull requests share
-the Issue type and use `isPullRequest` to distinguish them.
+array. Issues and pull requests share the Issue type and use `isPullRequest` to
+distinguish them.
 
 Run-owned records use a source sequence when one exists. Otherwise, source timestamp plus a deterministic ID tie-breaker defines order. Related calls, policy checks, responses, and results share a `correlationId` where available.
 
@@ -89,10 +91,11 @@ The activity shard manifest is the dashboard's published operational input. Norm
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical model is version 19. The browser database is
-`gh-aw-cao-dashboard-data`, IndexedDB version 27. Its canonical stores are
-`campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `audits`,
-`issues`, and `operationalValues`; all use `id` as the key. The `transactions` store records
+The canonical model is version 20. The browser database is
+`gh-aw-cao-dashboard-data`, IndexedDB version 28. Its canonical stores are
+`campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `skills`,
+`friction`, `audits`, `issues`, and `operationalValues`; all use `id` as the key.
+The `transactions` store records
 ingestion outcomes and is indexed by `createdAt`. Two additional disposable
 stores, `dailyOverviewAggregates` and `overviewAggregateMetadata`, implement the
 versioned Overview fast path. Schema upgrades rebuild all stores from

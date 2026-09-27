@@ -23,18 +23,18 @@ import-schema:
 max-daily-ai-credits: -1
 
 github-app:
-  client-id: ${{ vars.GH_AW_GITHUB_READ_APP_ID }}
-  private-key: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
+  client-id: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_READ_APP_ID || '' }}
+  private-key: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY || '' }}
   ignore-if-missing: true
 
-github-token: ${{ secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+github-token: ${{ vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[inputs.target_repo || github.repository]] || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_READ_PAT || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
 
 safe-outputs:
   github-app:
-    client-id: ${{ vars.GH_AW_GITHUB_WRITE_APP_ID }}
-    private-key: ${{ secrets.GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY }}
+    client-id: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_WRITE_APP_ID || '' }}
+    private-key: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY || '' }}
     ignore-if-missing: true
-  github-token: ${{ secrets.GH_AW_GITHUB_WRITE_PAT || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+  github-token: ${{ vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_WRITE_PAT_REPOSITORIES || '{}')[(inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo || github.repository]] || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_WRITE_PAT || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
   noop:
     report-as-issue: false
   messages:
@@ -56,13 +56,13 @@ jobs:
       - name: Generate CAO pre-activation GitHub App token
         id: cao_pre_activation_app_token
         env:
-          CAO_GITHUB_APP_ID: ${{ vars.GH_AW_GITHUB_READ_APP_ID }}
-          CAO_GITHUB_APP_PRIVATE_KEY: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
+          CAO_GITHUB_APP_ID: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_READ_APP_ID || '' }}
+          CAO_GITHUB_APP_PRIVATE_KEY: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY || '' }}
         if: ${{ env.CAO_GITHUB_APP_ID != '' && env.CAO_GITHUB_APP_PRIVATE_KEY != '' }}
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
-          client-id: ${{ vars.GH_AW_GITHUB_READ_APP_ID }}
-          private-key: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
+          client-id: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_READ_APP_ID || '' }}
+          private-key: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY || '' }}
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }}
           github-api-url: ${{ github.api_url }}
@@ -79,7 +79,7 @@ jobs:
           sparse-checkout-cone-mode: true
           fetch-depth: 1
           persist-credentials: false
-          token: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || github.token }}
+          token: ${{ github.token }}
 
       - name: Resolve CAO control runtime
         id: cao_control_source
@@ -98,7 +98,7 @@ jobs:
         id: cao_admission
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          CAO_API_TOKEN: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || github.token }}
+          CAO_API_TOKEN: ${{ github.token }}
           GH_TOKEN: ${{ github.token }}
           GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
           CAO_CAMPAIGN: ${{ github.aw.import-inputs.campaign }}
@@ -110,7 +110,7 @@ jobs:
           CAO_REQUESTED_ROLLOUT_PERCENT: ${{ inputs.rollout_percent || '' }}
           CAO_CONTROL_RUNTIME: ${{ steps.cao_control_source.outputs.runtime }}
         with:
-          github-token: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || github.token }}
+          github-token: ${{ github.token }}
           script: |
             const fs = require('fs');
             const reason = 'cannot read or execute the CAO control modules at github.workflow_sha';
@@ -171,7 +171,7 @@ jobs:
         if: ${{ steps.cao_admission.outputs.authorized == 'true' }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          GH_TOKEN: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ steps.cao_pre_activation_app_token.outputs.token || vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[inputs.target_repo || github.repository]] || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_READ_PAT || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_TOKEN || github.token }}
           GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
           CAO_CAMPAIGN: ${{ github.aw.import-inputs.campaign }}
           CAO_ROLE: ${{ github.aw.import-inputs.role }}
@@ -186,7 +186,7 @@ jobs:
           CAO_WORKER_CREDITS_PER_TARGET: "${{ github.aw.import-inputs.worker_credits_per_target }}"
           CAO_CONTROL_RUNTIME: ${{ steps.cao_control_source.outputs.runtime }}
         with:
-          github-token: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || github.token }}
+          github-token: ${{ steps.cao_pre_activation_app_token.outputs.token || vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[inputs.target_repo || github.repository]] || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_READ_PAT || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_TOKEN || github.token }}
           script: |
             core.info('[cao] Loading the control runtime for precompute.');
             const control = await import(process.env.CAO_CONTROL_RUNTIME);

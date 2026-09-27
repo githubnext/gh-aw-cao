@@ -3,7 +3,7 @@ title: How the Control Plane Works
 description: Understand the control plane's purpose, execution boundary, and core safety properties.
 ---
 
-Read this overview when evaluating whether the control plane fits your organization. Follow its links when you need deployment policy or implementation details. For installation steps, begin with the [quickstart](getting-started.md).
+Read this overview when evaluating whether the control plane fits your organization. Follow its links when you need deployment policy or implementation details. For installation steps, begin with [Set Up CAO](setup-quickstarts.md).
 
 ## Objectives
 

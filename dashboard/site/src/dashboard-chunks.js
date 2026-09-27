@@ -1,6 +1,9 @@
 import { resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { elementLoadsSourcesAsync } from './components/ui-elements.js';
 import { navigationIndicatorSourceNames } from './navigation-indicator.js';
+import { createDebug } from './debug.js';
+
+const debugDashboardChunks = createDebug('dashboard-chunks');
 
 /**
  * @typedef {{ id?: string, kind?: string, title?: string, description?: string, icon?: string, ['navigation-label']?: string, ['class-name']?: string, route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string }, views?: unknown[], sections?: unknown[], definition?: { views?: unknown[], sections?: unknown[] }, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], ['independent-source-bindings']?: boolean } & Record<string, unknown>} DashboardPage
@@ -48,7 +51,9 @@ export function dashboardPageIsLoaded(page) {
  * @param {DashboardPage} page
  */
 export function dashboardPageChunkPath(page) {
-  return typeof page.chunk === 'string' && page.chunk.length > 0 ? page.chunk : null;
+  const chunkPath = typeof page.chunk === 'string' && page.chunk.length > 0 ? page.chunk : null;
+  if (!chunkPath) debugDashboardChunks({ event: 'chunk-path-missing', pageId: page.id ?? 'unknown' });
+  return chunkPath;
 }
 
 /**
@@ -372,6 +377,11 @@ export function splitDashboardDocument(source, options = {}) {
   });
   const dashboard = { ...document.dashboard, pages: corePages };
   delete dashboard.queries;
+  debugDashboardChunks({
+    event: 'split-complete',
+    pageCount: corePages.length,
+    chunkCount: pageChunks.size
+  });
   return {
     core: {
       'language-version': document.languageVersion,
@@ -420,5 +430,10 @@ export function resolveDashboardDocument(core, chunks) {
       }
     }
   }
+  debugDashboardChunks({
+    event: 'resolve-complete',
+    pageCount: document.dashboard.pages.length,
+    queryCount: queries.length
+  });
   return document;
 }

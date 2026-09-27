@@ -239,28 +239,62 @@ func (d Doctor) checkQueue(ctx context.Context) Check {
 		detail("deadLetters", fmt.Sprint(deadLetters)),
 		detail("maxLength", fmt.Sprint(maximum)),
 	}
+	classification := classifyQueueBacklog(depth, pending, deadLetters, maximum)
+	doctorLog.Printf("collection queue classified status=%s reason=%s", classification.status, classification.reason)
+	return Check{
+		ID: id, Area: areaCollect, Title: title, Status: classification.status,
+		Summary: classification.summary, Details: details, Remedy: classification.remedy,
+	}
+}
+
+// queueBacklogReason names why checkQueue reached its status, stable across
+// summary wording changes so it is useful to log without exposing the
+// summary's interpolated depth and count values.
+type queueBacklogReason string
+
+const (
+	queueBacklogReasonDeadLetters   queueBacklogReason = "dead-letters"
+	queueBacklogReasonNearMaxLength queueBacklogReason = "near-max-length"
+	queueBacklogReasonHealthy       queueBacklogReason = "healthy"
+)
+
+// queueBacklogClassification is the status, summary, and remedy
+// classifyQueueBacklog derives from the collection queue's reported depth,
+// pending, dead-letter, and configured maximum-length counts.
+type queueBacklogClassification struct {
+	status  Status
+	summary string
+	remedy  string
+	reason  queueBacklogReason
+}
+
+// classifyQueueBacklog decides the collect.queue check's outcome from the
+// queue's reported counts alone. It is a pure function so every threshold —
+// a non-zero dead-letter count and a backlog approaching the configured
+// maximum length — is testable without a fake Redis-backed queue.
+func classifyQueueBacklog(depth, pending, deadLetters int64, maximum int) queueBacklogClassification {
 	if deadLetters > 0 {
-		return Check{
-			ID: id, Area: areaCollect, Title: title, Status: StatusWarn,
-			Summary: fmt.Sprintf("%d tasks exhausted their retries and were dead-lettered", deadLetters),
-			Details: details,
-			Remedy:  "these repositories are not being collected; inspect the dead-letter stream for the failing reason",
+		return queueBacklogClassification{
+			status:  StatusWarn,
+			summary: fmt.Sprintf("%d tasks exhausted their retries and were dead-lettered", deadLetters),
+			remedy:  "these repositories are not being collected; inspect the dead-letter stream for the failing reason",
+			reason:  queueBacklogReasonDeadLetters,
 		}
 	}
 	// The stream is trimmed at MaxLength, so a backlog approaching it means
 	// work is about to be discarded rather than merely delayed.
 	if maximum > 0 && depth >= int64(maximum*8/10) {
-		return Check{
-			ID: id, Area: areaCollect, Title: title, Status: StatusWarn,
-			Summary: fmt.Sprintf("the backlog of %d is within twenty percent of the %d bound", depth, maximum),
-			Details: details,
-			Remedy:  "workers are not keeping up and trimming will start discarding tasks; scale collection workers",
+		return queueBacklogClassification{
+			status:  StatusWarn,
+			summary: fmt.Sprintf("the backlog of %d is within twenty percent of the %d bound", depth, maximum),
+			remedy:  "workers are not keeping up and trimming will start discarding tasks; scale collection workers",
+			reason:  queueBacklogReasonNearMaxLength,
 		}
 	}
-	return Check{
-		ID: id, Area: areaCollect, Title: title, Status: StatusPass,
-		Summary: fmt.Sprintf("backlog %d, pending %d, no dead letters", depth, pending),
-		Details: details,
+	return queueBacklogClassification{
+		status:  StatusPass,
+		summary: fmt.Sprintf("backlog %d, pending %d, no dead letters", depth, pending),
+		reason:  queueBacklogReasonHealthy,
 	}
 }
 

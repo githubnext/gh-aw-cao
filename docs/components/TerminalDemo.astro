@@ -8,7 +8,7 @@
   <div class="terminal-body">
     <div class="terminal-line command" style="--line-delay: 0ms">
       <span class="prompt">$</span>
-      <code>curl -fsSL https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh | bash</code>
+      <code><span class="syntax-command">curl</span> <span class="syntax-option">-fsSL</span> <span class="syntax-url">https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh</span> <span class="syntax-operator">|</span> <span class="syntax-command">bash</span></code>
     </div>
     <div class="terminal-line result" style="--line-delay: 550ms">
       <span class="result-mark">✓</span>
@@ -16,15 +16,15 @@
     </div>
     <div class="terminal-line command" style="--line-delay: 1100ms">
       <span class="prompt">$</span>
-      <code>./cao.sh setup-auth workflow-token</code>
+      <code><span class="syntax-command">./cao.sh</span> setup</code>
     </div>
     <div class="terminal-line result" style="--line-delay: 1650ms">
       <span class="result-mark">✓</span>
-      <span>Bounded public review needs no new secret</span>
+      <span>Repository scope and authentication configured</span>
     </div>
     <div class="terminal-line command" style="--line-delay: 2200ms">
       <span class="prompt">$</span>
-      <code>./cao.sh add githubnext/gh-aw-cao/dependabot</code>
+      <code><span class="syntax-command">./cao.sh</span> add githubnext/gh-aw-cao/<span class="syntax-placeholder">CAMPAIGN</span></code>
     </div>
     <div class="terminal-line result" style="--line-delay: 2750ms">
       <span class="result-mark">✓</span>
@@ -33,11 +33,11 @@
     <div class="terminal-line command current" style="--line-delay: 3300ms">
       <span class="prompt">$</span>
       <code class="multiline-command">
-        <span>gh aw run dependabot --ref main <span class="continuation">\</span></span>
-        <span class="command-continuation">--raw-field target_repo="acme/example-service" <span class="continuation">\</span></span>
-        <span class="command-continuation">--raw-field max_repos="1" <span class="continuation">\</span></span>
-        <span class="command-continuation">--raw-field rollout_percent="100" <span class="continuation">\</span></span>
-        <span class="command-continuation">--raw-field safe_output_mode="review"<span class="cursor" aria-hidden="true"></span></span>
+        <span><span class="syntax-command">gh</span> aw run <span class="syntax-placeholder">CAMPAIGN</span> <span class="syntax-option">--ref</span> <span class="syntax-placeholder">BRANCH</span> <span class="continuation">\</span></span>
+        <span class="command-continuation"><span class="syntax-option">--raw-field</span> target_repo="<span class="syntax-placeholder">OWNER/TARGET_REPOSITORY</span>" <span class="continuation">\</span></span>
+        <span class="command-continuation"><span class="syntax-option">--raw-field</span> max_repos=<span class="syntax-string">"1"</span> <span class="continuation">\</span></span>
+        <span class="command-continuation"><span class="syntax-option">--raw-field</span> rollout_percent=<span class="syntax-string">"100"</span> <span class="continuation">\</span></span>
+        <span class="command-continuation"><span class="syntax-option">--raw-field</span> safe_output_mode=<span class="syntax-string">"review"</span><span class="cursor" aria-hidden="true"></span></span>
       </code>
     </div>
   </div>
@@ -56,6 +56,11 @@
     --terminal-red: #cf222e;
     --terminal-yellow: #9a6700;
     --terminal-green: #1a7f37;
+    --terminal-syntax-command: #0550ae;
+    --terminal-syntax-option: #8250df;
+    --terminal-syntax-string: #116329;
+    --terminal-syntax-placeholder: #953800;
+    --terminal-syntax-operator: #57606a;
     --terminal-shadow: rgba(31, 35, 40, 0.12);
     overflow: hidden;
     border: 1px solid var(--terminal-border);
@@ -80,6 +85,11 @@
     --terminal-red: #ff7b72;
     --terminal-yellow: #d29922;
     --terminal-green: #3fb950;
+    --terminal-syntax-command: #79c0ff;
+    --terminal-syntax-option: #d2a8ff;
+    --terminal-syntax-string: #7ee787;
+    --terminal-syntax-placeholder: #ffa657;
+    --terminal-syntax-operator: #8c959f;
     --terminal-shadow: rgba(0, 0, 0, 0.24);
   }
 
@@ -166,6 +176,31 @@
 
   .result-mark {
     color: var(--terminal-success);
+  }
+
+  .terminal-line code .syntax-command {
+    color: var(--terminal-syntax-command);
+  }
+
+  .terminal-line code .syntax-option {
+    color: var(--terminal-syntax-option);
+  }
+
+  .terminal-line code .syntax-string {
+    color: var(--terminal-syntax-string);
+  }
+
+  .terminal-line code .syntax-placeholder {
+    color: var(--terminal-syntax-placeholder);
+    font-weight: 700;
+  }
+
+  .terminal-line code .syntax-url {
+    color: var(--terminal-syntax-string);
+  }
+
+  .terminal-line code .syntax-operator {
+    color: var(--terminal-syntax-operator);
   }
 
   .continuation {

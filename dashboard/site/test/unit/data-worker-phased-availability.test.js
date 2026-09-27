@@ -82,7 +82,7 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
       return init?.method === 'HEAD'
         ? new Response(null, { headers: { 'content-length': '1' } })
         : new Response(normalized('runs', {
-            ...batch, domains: [], tools: [], audits: [], issues: [], operationalValues: [],
+            ...batch, domains: [], tools: [], skills: [], friction: [], audits: [], issues: [], operationalValues: [],
             marketplacePackages: []
           }));
     }
@@ -93,7 +93,8 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
       ? new Response(null, { headers: { 'content-length': '1' } })
       : new Response(normalized('records', {
           campaigns: [], repositories: [], workflows: [], runs: [],
-          domains: batch.domains, tools: batch.tools, audits: batch.audits, issues: batch.issues,
+          domains: batch.domains, tools: batch.tools, skills: batch.skills, friction: batch.friction,
+          audits: batch.audits, issues: batch.issues,
           operationalValues: batch.operationalValues,
           marketplacePackages: batch.marketplacePackages
         }));

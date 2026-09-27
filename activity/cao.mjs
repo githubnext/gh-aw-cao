@@ -38,7 +38,11 @@ import { runProblemClustering } from './problem-clustering.mjs';
 import { discoverInventory } from './inventory.mjs';
 import { discoverInventoryDashboardSources } from './inventory-sources.mjs';
 import { hasComputation, queryComputation } from './computations/index.mjs';
-import { FINE_GRAINED_PAT_PROFILES } from './authentication.mjs';
+import {
+  FINE_GRAINED_PAT_PROFILES,
+  GITHUB_AUTH_MODE_VARIABLE,
+  ownerScopedPatSecret,
+} from './authentication.mjs';
 import {
   analyzeDashboardComplexity,
   formatDashboardComplexityMarkdown,
@@ -61,6 +65,10 @@ import {
 } from './cli-usage.mjs';
 import { NamedQueryError } from './agent-catalog.mjs';
 import { commandHandlers } from './commands/index.mjs';
+import { setupCaoControlPlane } from './setup.mjs';
+import { upgradeGhAwVersion } from './upgrade-gh-aw.mjs';
+
+export { setupCaoControlPlane } from './setup.mjs';
 
 const debug = createDebug('ingest');
 const debugHash = createDebug('hash-payloads');
@@ -91,7 +99,7 @@ const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location ht
 const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
-const COMMANDS = new Set(['init', 'setup-auth', 'add', 'update', 'upgrade-gh-aw', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'issue-status', 'query', 'computation', 'operational-value', 'cluster-problems', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'validate-activity-data', 'gh', 'pages', 'queries', 'query-info', 'mcp']);
+const COMMANDS = new Set(['init', 'setup', 'setup-auth', 'add', 'update', 'upgrade-gh-aw', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'issue-status', 'query', 'computation', 'operational-value', 'cluster-problems', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'validate-activity-data', 'gh', 'pages', 'queries', 'query-info', 'mcp']);
 
 // Intentional CLI misuse that should print usage without an internal stack trace.
 class UsageError extends Error {}
@@ -273,30 +281,45 @@ export function fineGrainedTokenSetups({
   }
   const readRepositories = [...new Set([repo, ...configuredRepositories])];
   const selectedWriteRepositories = [...new Set(writeRepositories.length > 0 ? writeRepositories : [repo])];
-  const repositories = [...new Set([...readRepositories, ...selectedWriteRepositories])];
-  const owners = new Set(repositories.map((repository) => repository.split('/')[0].toLowerCase()));
-  if (owners.size !== 1) {
-    throw new Error('fine-grained token setup requires the control repository and all allowed repositories to have one owner');
-  }
-  const [owner, controlRepository] = repo.split('/');
-  const patNameBase = `CAO-${owner}-${controlRepository.replace(/-token$/i, '')}-PAT`.toUpperCase();
-  return FINE_GRAINED_PAT_PROFILES.map((profile) => {
-    const profileRepositories = profile.role === 'read' ? readRepositories : selectedWriteRepositories;
+  const [controlOwner, controlRepository] = repo.split('/');
+  const byOwner = (repositories) => {
+    const groups = new Map();
+    for (const repository of repositories) {
+      const [owner] = repository.split('/');
+      const key = owner.toLowerCase();
+      if (!groups.has(key)) groups.set(key, { owner, repositories: [] });
+      groups.get(key).repositories.push(repository);
+    }
+    return [...groups.values()]
+      .map((group) => ({ ...group, repositories: group.repositories.sort() }))
+      .sort((left, right) => (
+        Number(right.owner.toLowerCase() === controlOwner.toLowerCase())
+        - Number(left.owner.toLowerCase() === controlOwner.toLowerCase())
+        || left.owner.localeCompare(right.owner)
+      ));
+  };
+  const repositoriesByRole = {
+    read: readRepositories,
+    write: selectedWriteRepositories,
+  };
+  return FINE_GRAINED_PAT_PROFILES.flatMap((profile) => byOwner(repositoriesByRole[profile.role]).map((group) => {
+    const patNameBase = `CAO-${group.owner}-${controlRepository.replace(/-token$/i, '')}-PAT`.toUpperCase();
     const parameters = new URLSearchParams({
       name: `${patNameBase}-${profile.role.toUpperCase()}`.slice(0, 40),
       description: `Central Agentic Ops ${profile.role} access for ${repo}`,
-      target_name: owner,
+      target_name: group.owner,
       expires_in: expiresIn,
       ...profile.permissions,
     });
     return {
       ...profile,
+      secret: ownerScopedPatSecret(profile, group.owner),
       url: `${githubServerUrl(environment)}/settings/personal-access-tokens/new?${parameters}`,
-      owner,
-      repositories: profileRepositories,
+      owner: group.owner,
+      repositories: group.repositories,
       expiresIn: Number(expiresIn),
     };
-  });
+  }));
 }
 
 export function setupCaoAuthentication(method, arguments_ = [], {
@@ -358,11 +381,25 @@ export function setupCaoAuthentication(method, arguments_ = [], {
         throw new Error(`Enterprise App private-key setup failed: ${commandFailureMessage(secretResult, `exit ${secretResult.status}`)}`);
       }
     }
+    const modeResult = execute('gh', [
+      'variable', 'set', GITHUB_AUTH_MODE_VARIABLE, '--repo', repo, '--body', 'app',
+    ], { encoding: 'utf8' });
+    if (modeResult.error || modeResult.status !== 0) {
+      throw new Error(`authentication mode setup failed: ${commandFailureMessage(modeResult, `exit ${modeResult.status}`)}`);
+    }
     return { command: 'setup-auth', profile: 'enterprise-app', repo };
   }
   if (method === 'token') {
     const options = parseOptions(arguments_);
-    rejectUnknownOptions(options, ['repo', 'write-repository', 'policy', 'expires-in', 'no-open']);
+    rejectUnknownOptions(options, [
+      'repo',
+      'write-repository',
+      'policy',
+      'expires-in',
+      'no-open',
+      'dry-run',
+      'acknowledge-token-risks',
+    ]);
     const repo = option(options, 'repo');
     const writeRepositories = options['write-repository'] === undefined
       ? []
@@ -375,6 +412,24 @@ export function setupCaoAuthentication(method, arguments_ = [], {
       expiresIn: option(options, 'expires-in', false) || '30',
       writeRepositories,
     });
+    const repositoryMaps = Object.fromEntries(FINE_GRAINED_PAT_PROFILES.map((profile) => [
+      profile.role,
+      Object.fromEntries(setups
+        .filter((setup) => setup.role === profile.role)
+        .flatMap((setup) => setup.repositories.map((repository) => [repository, setup.secret]))),
+    ]));
+    if (options['dry-run']) {
+      return {
+        command: 'setup-auth',
+        profile: 'fine-grained-token',
+        secrets: setups.map(({ owner, role, secret }) => ({ owner, role, secret })),
+        repo,
+        repositories: repositoryMaps,
+      };
+    }
+    if (!options['acknowledge-token-risks']) {
+      throw new UsageError('token setup requires --acknowledge-token-risks');
+    }
     const auth = execute('gh', ['auth', 'status'], { encoding: 'utf8' });
     if (auth.error || auth.status !== 0) {
       throw new Error(`GitHub CLI authentication check failed: ${commandFailureMessage(auth, 'gh auth status failed')}`);
@@ -399,24 +454,35 @@ export function setupCaoAuthentication(method, arguments_ = [], {
         throw new Error(`${setup.role} fine-grained token setup failed: ${commandFailureMessage(result, `exit ${result.status}`)}`);
       }
     }
+    for (const profile of FINE_GRAINED_PAT_PROFILES) {
+      const result = execute('gh', [
+        'variable',
+        'set',
+        profile.repositoryMapVariable,
+        '--repo',
+        repo,
+        '--body',
+        JSON.stringify(repositoryMaps[profile.role]),
+      ], { encoding: 'utf8' });
+      if (result.error || result.status !== 0) {
+        throw new Error(`${profile.role} token map setup failed: ${commandFailureMessage(result, `exit ${result.status}`)}`);
+      }
+    }
+    const modeResult = execute('gh', [
+      'variable', 'set', GITHUB_AUTH_MODE_VARIABLE, '--repo', repo, '--body', 'pat',
+    ], { encoding: 'utf8' });
+    if (modeResult.error || modeResult.status !== 0) {
+      throw new Error(`authentication mode setup failed: ${commandFailureMessage(modeResult, `exit ${modeResult.status}`)}`);
+    }
     return {
       command: 'setup-auth',
       profile: 'fine-grained-token',
-      secrets: setups.map(({ role, secret }) => ({ role, secret })),
+      secrets: setups.map(({ owner, role, secret }) => ({ owner, role, secret })),
       repo,
-      repositories: Object.fromEntries(setups.map(({ role, repositories }) => [role, repositories])),
+      repositories: repositoryMaps,
     };
   }
-  if (method === 'workflow-token') {
-    if (arguments_.length > 0) throw new UsageError(`Unexpected argument: ${arguments_[0]}`);
-    return {
-      command: 'setup-auth',
-      profile: 'workflow-token',
-      configured: true,
-      limitation: 'Use only for control-repository work or bounded public-target review.',
-    };
-  }
-  throw new UsageError('cao setup-auth requires github-app, enterprise-app, token, or workflow-token');
+  throw new UsageError('cao setup-auth requires github-app, enterprise-app, or token');
 }
 
 function validateGlobalPolicy(document, source) {
@@ -752,49 +818,12 @@ export async function upgradeGhAw(version, {
   policyPath = DEFAULT_POLICY_PATH,
   execute = spawnSync
 } = {}) {
-  ghAwVersionParts(version);
-  const policy = await readCaoPolicy(policyPath);
-  const previousRequired = ghAwMinimumVersion(policy, policyPath);
-  if (compareGhAwVersions(version, previousRequired) < 0) {
-    throw new UsageError(`cao upgrade-gh-aw cannot downgrade gh-aw from ${previousRequired} to ${version}`);
-  }
-
-  let previousInstalled = null;
-  try {
-    previousInstalled = parseGhAwVersion(execute('gh', ['aw', 'version'], { encoding: 'utf8' }));
-  } catch {
-    previousInstalled = null;
-  }
-  if (previousInstalled !== version) {
-    const install = execute('bash', ['-c', GH_AW_INSTALLER_COMMAND, 'cao-gh-aw-install', version], {
-      encoding: 'utf8',
-      maxBuffer: 16 * 1024 * 1024
-    });
-    if (install.error || install.status !== 0) {
-      throw new Error(`Unable to install gh-aw ${version}: ${commandFailureMessage(install, 'installer failed')}`);
-    }
-  }
-
-  const installed = parseGhAwVersion(execute('gh', ['aw', 'version'], { encoding: 'utf8' }));
-  if (installed !== version) {
-    throw new Error(`Installed gh-aw version is ${installed}, expected ${version}`);
-  }
-  const upgrade = execute('gh', ['aw', 'upgrade'], {
-    encoding: 'utf8',
-    maxBuffer: 16 * 1024 * 1024
+  return upgradeGhAwVersion(version, {
+    policyPath, execute, UsageError, ghAwVersionParts, readCaoPolicy,
+    ghAwMinimumVersion, compareGhAwVersions, parseGhAwVersion,
+    commandFailureMessage, installerCommand: GH_AW_INSTALLER_COMMAND,
+    writeJsonAtomically, resolvePath: path.resolve,
   });
-  if (upgrade.error || upgrade.status !== 0) {
-    throw new Error(`gh aw upgrade failed: ${commandFailureMessage(upgrade, 'unknown error')}`);
-  }
-
-  policy['gh-aw-version'] = version;
-  await writeJsonAtomically(path.resolve(policyPath), policy);
-  return {
-    command: 'upgrade-gh-aw',
-    policy: policyPath,
-    previous: previousRequired,
-    current: version
-  };
 }
 
 export async function addCaoCampaign(campaignSpec, ghAwOptions = [], {
@@ -1007,7 +1036,7 @@ function parseOptions(arguments_) {
     if (!argument.startsWith('--') && !aliases[argument]) throw new UsageError(`Unexpected argument: ${argument}`);
     const name = aliases[argument] ?? argument.slice(2);
     if (name === 'help' || name === 'stdin' || name === 'json' || name === 'keep' || name === 'diagnose'
-      || name === 'dry-run' || name === 'no-open') {
+      || name === 'dry-run' || name === 'no-open' || name === 'acknowledge-token-risks') {
       options[name] = 'true';
       continue;
     }
@@ -1316,7 +1345,7 @@ function* normalizedJsonlLines(payload) {
     records
   })}\n`;
   for (const collection of NORMALIZED_COLLECTIONS) {
-    for (const record of payload.batch[collection]) {
+    for (const record of payload.batch[collection] ?? []) {
       yield `${JSON.stringify({ kind: 'record', collection, record })}\n`;
     }
   }
@@ -2037,6 +2066,8 @@ async function hashActivityPayloads({
               runs: batch.runs,
               domains: [],
               tools: [],
+              skills: [],
+              friction: [],
               audits: [],
               issues: [],
               operationalValues: []
@@ -2052,6 +2083,8 @@ async function hashActivityPayloads({
               runs: [],
               domains: batch.domains,
               tools: batch.tools,
+              skills: batch.skills,
+              friction: batch.friction,
               audits: batch.audits.filter((audit) =>
                 String(audit.status ?? '').trim().toLowerCase() !== 'info'
               ),
@@ -2730,7 +2763,7 @@ async function runLegacyIngestion(contextPath, logDirectory) {
     const queries = createCanonicalQueries(indexedDB);
     const runs = await queries.runs.list();
     const records = (await Promise.all(
-      ['domains', 'tools', 'audits', 'issues'].map((collection) =>
+      ['domains', 'tools', 'skills', 'friction', 'audits', 'issues'].map((collection) =>
         Promise.all(runs.map((run) => queries[collection].forRun(String(run.id)))))
     )).flat(2);
     return { result, runs, records };
@@ -2835,11 +2868,13 @@ export async function runCli(arguments_, input = process.stdin, { signal } = {})
   }
   const handler = commandHandlers.get(command);
   if (!handler) throw new UsageError(`Unknown command: ${command}`);
-  if (['init', 'setup-auth', 'add', 'update', 'upgrade-gh-aw', 'mode', 'enable', 'disable'].includes(command)) {
+  if (['init', 'setup', 'setup-auth', 'add', 'update', 'upgrade-gh-aw', 'mode', 'enable', 'disable'].includes(command)) {
     return handler({
       arguments_: rawOptionArguments,
+      input,
       UsageError,
       initializeCaoPolicy,
+      setupCaoControlPlane,
       setupCaoAuthentication,
       addCaoCampaign,
       updateCaoCampaigns,
