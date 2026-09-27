@@ -5,6 +5,7 @@ import {
   detectionObservationRows,
   transactionLogRows,
 } from "../../dashboard/report/dashboard-language-sources.mjs";
+import { auditSummaryTimeline } from "../../dashboard/report/aic-usage.mjs";
 import { buildInventoryDashboardSources } from "../../activity/inventory-sources.mjs";
 
 function detectionRun(runId, verdict, overrides = {}) {
@@ -381,6 +382,65 @@ test("transaction log events preserve correlation ids and request counts", () =>
   assert.equal(rows.domains[0]["correlation-id"], "call-305");
   assert.equal(rows.domains[0]["event-type"], "firewall.request.blocked");
   assert.equal(rows.domains[0]["request-count"], 7);
+});
+
+test("transaction logs publish extracted skill and friction records", () => {
+  const rows = transactionLogRows({
+    generatedAt: "2026-09-09T05:00:00Z",
+    securityRuns: [{
+      repository: "githubnext/gh-aw-cao",
+      workflowPath: ".github/workflows/dashboard.lock.yml",
+      runId: 307,
+      runAttempt: 1,
+      createdAt: "2026-09-09T04:02:00Z",
+      timeline: auditSummaryTimeline({
+        skill_activations: [{
+          name: "dashboard-authoring",
+          status: "loaded",
+          source: "repository",
+          invocation_count: 3,
+          failed_count: 1,
+        }],
+        friction: {
+          measurement_state: "measured",
+          canonical_unit: "aic",
+          cost: {
+            aic: 1.25,
+            tokens: { input: 10, output: 20, cache_read: 4, cache_write: 2, reasoning: 6, total: 42 },
+            turns: 2,
+            tool_calls: 1,
+            latency_ms: 500,
+          },
+          friction_ratio: 0.25,
+        },
+      }, "run:githubnext/gh-aw-cao:307", "2026-09-09T04:02:00Z"),
+    }],
+  });
+
+  assert.deepEqual(rows.skills.map((row) => ({
+    name: row.name,
+    source: row["activation-source"],
+    invocations: row["invocation-count"],
+    failures: row["failed-count"],
+  })), [{
+    name: "dashboard-authoring",
+    source: "repository",
+    invocations: 3,
+    failures: 1,
+  }]);
+  assert.deepEqual(rows.friction.map((row) => ({
+    state: row["measurement-state"],
+    aic: row.aic,
+    inputTokens: row["input-tokens"],
+    totalTokens: row["total-tokens"],
+    ratio: row["friction-ratio"],
+  })), [{
+    state: "measured",
+    aic: 1.25,
+    inputTokens: 10,
+    totalTokens: 42,
+    ratio: 0.25,
+  }]);
 });
 
 test("transaction log events preserve token-efficiency lifecycle fields", () => {
@@ -1552,6 +1612,7 @@ test("dashboard source bridge detects rollout mode from run titles with punctuat
                   serverName: "github",
                   toolName: "issue_read",
                   status: "success",
+                  inputSize: 1_000,
                   outputSize: 4_000,
                 },
                 {
@@ -1559,6 +1620,7 @@ test("dashboard source bridge detects rollout mode from run titles with punctuat
                   serverName: "github",
                   toolName: "search_code",
                   status: "failure",
+                  inputSize: 2_000,
                   outputSize: 8_000,
                 },
               ],
@@ -1616,10 +1678,11 @@ test("dashboard source bridge detects rollout mode from run titles with punctuat
       server: row["mcp-server"],
       tool: row["mcp-tool"],
       status: row["mcp-status"],
+      requestBytes: row["request-bytes"],
       bytes: row["response-bytes"],
     })), [
-      { server: "github", tool: "issue_read", status: "success", bytes: 4_000 },
-      { server: "github", tool: "search_code", status: "failure", bytes: 8_000 },
+      { server: "github", tool: "issue_read", status: "success", requestBytes: 1_000, bytes: 4_000 },
+      { server: "github", tool: "search_code", status: "failure", requestBytes: 2_000, bytes: 8_000 },
     ]);
     assert.deepEqual(sources["mcp-servers"].rows[0], {
       organization: "githubnext",

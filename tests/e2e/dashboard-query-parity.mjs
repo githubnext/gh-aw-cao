@@ -371,7 +371,8 @@ async function writeDeployedArtifact(directory, factory, sources) {
     "",
   ].join("\n");
   const runs = encode([...runCollections], "runs");
-  const records = encode(["domains", "tools", "audits", "issues"], "records");
+  const recordCollections = ["domains", "tools", "skills", "friction", "audits", "issues", "operationalValues"];
+  const records = encode(recordCollections, "records");
   const runsName = "gh-aw-logs-runs/synthetic.jsonl";
   const recordsName = "gh-aw-logs-records/synthetic.jsonl";
   await mkdir(join(directory, dirname(runsName)), { recursive: true });
@@ -382,7 +383,7 @@ async function writeDeployedArtifact(directory, factory, sources) {
     writeFile(
       join(directory, "inventory-sources.json"),
       `${JSON.stringify(Object.fromEntries(Object.entries(sources).filter(
-        ([name]) => !runCollections.has(name) && !["domains", "tools", "audits", "issues"].includes(name),
+        ([name]) => !runCollections.has(name) && !recordCollections.includes(name),
       )), null, 2)}\n`,
     ),
     writeFile(

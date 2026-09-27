@@ -11,8 +11,11 @@
 
 import { webMCPManifestForDashboard } from './manifest.js';
 import { isSafeHttpsUrl } from '../components/ui-primitives.js';
+import { createDebug } from '../debug.js';
 
 const DEFAULT_ROW_LIMIT = 20;
+
+const debugRuntime = createDebug('runtime');
 
 /**
  * Framing applied to every tool result. Dashboard rows carry text ingested from
@@ -227,9 +230,11 @@ export function startDashboardWebMCP(browserDocument, options) {
         'row-limit': rowLimit,
         sources: summaries
       });
+      debugRuntime({ event: 'tool-executed', tool: tool.name, page: tool.pageId, sourceCount: summaries.length });
       return toolResult(`${UNTRUSTED_CONTENT_NOTICE}\n\n${payload}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      debugRuntime({ event: 'tool-failed', tool: tool.name, page: tool.pageId, errorName: error instanceof Error ? error.name : 'Error' });
       return toolResult(`Unable to read the ${tool.title} page: ${message}`, true);
     } finally {
       agentSignal?.removeEventListener('abort', abortFromAgent);
@@ -273,6 +278,7 @@ export function startDashboardWebMCP(browserDocument, options) {
         if (registered.get(tool.name) === entry) registered.delete(tool.name);
       });
     }
+    debugRuntime({ event: 'refreshed', toolCount: registered.size });
     return [...registered.keys()];
   };
 

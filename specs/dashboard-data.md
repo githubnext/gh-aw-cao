@@ -308,8 +308,8 @@ The implementation profile defined by this specification is:
 
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
-| Canonical model | 19 | Campaign, Repository, Workflow, Run, Domain, Tool, Audit, Issue, Operational Value, and Marketplace Package records |
-| Browser IndexedDB | 27 | Ten canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
+| Canonical model | 20 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, and Marketplace Package records |
+| Browser IndexedDB | 28 | Twelve canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
 | Local SQLite projection | IndexedDB 27 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records`, containing the same logical stores and JSON records as IndexedDB |
 | Local Redis server projection | Canonical model 14 | Immutable active generation of logical-source row sets, queried only through the loopback Go HTTP(S) server |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
@@ -346,7 +346,7 @@ store uses `id` as its key path. The implemented secondary indexes are:
 | `repositories` | none |
 | `workflows` | `byRepository -> repositoryId` |
 | `runs` | `byRepository -> repositoryId`, `byWorkflow -> workflowId`, `byConclusion -> conclusion`, `byEvent -> event`, `byEventConclusion -> [event, conclusion]` |
-| `domains`, `tools`, `audits`, `issues` | `byRun -> runId` |
+| `domains`, `tools`, `skills`, `friction`, `audits`, `issues` | `byRun -> runId` |
 | `operationalValues` | `byRepository -> repositoryId`, `byValue -> valueId` |
 | `marketplacePackages` | `byRegistry -> registryId`, `byRepository -> repository` |
 | `transactions` | `byCreatedAt -> createdAt` |
@@ -1119,8 +1119,8 @@ default to the execution Repository. Orchestrator Runs MUST leave
 Jobs and agent interaction contexts MAY remain upstream observations or
 published logical sources, but they are not canonical entities and MUST NOT be
 persisted in canonical SQLite or IndexedDB tables. Job-shaped performance data
-MAY be projected directly from authoritative inputs. Run detail MUST be
-projected from Run and its Domain, Tool, Audit, and Issue records.
+MAY be projected directly from authoritative inputs. Run detail MUST be projected from Run and its Domain, Tool, Skill, Friction,
+Audit, and Issue records.
 
 ---
 
@@ -1130,15 +1130,16 @@ A Run's observations SHALL be classified into:
 
 ```text
 Domain — firewall-allowed and firewall-blocked network activity
-Tool — MCP, Bash, and skill calls
+Tool — MCP and Bash calls
+Skill — extracted skill invocation usage
+Friction — precomputed avoidable execution-cost attribution
 Audit — lifecycle, agent, policy, grader, and other audit observations
 Issue — issue and pull-request safe outputs
 ```
 
 Records MUST remain independently addressable and MUST NOT be stored as one
-ever-growing array inside the Run record. A skill is a Tool with
-`toolType="skill"`. Issues and pull requests share the Issue table; pull
-requests set `isPullRequest=true`.
+ever-growing array inside the Run record. Issues and pull requests share the
+Issue table; pull requests set `isPullRequest=true`.
 
 ---
 
@@ -1146,7 +1147,8 @@ requests set `isPullRequest=true`.
 
 ## 12.1 Shared Record Fields
 
-Every Domain, Tool, Audit, and Issue MUST directly reference its owning Run.
+Every Domain, Tool, Skill, Friction, Audit, and Issue MUST directly reference
+its owning Run.
 Records MAY retain common source evidence such as `sequence`, `timestamp`,
 `source`, `type`, `status`, `correlationId`, and `payloadRef`.
 
@@ -1746,7 +1748,7 @@ The canonical browser database SHALL use:
 
 ```js
 const DATABASE_NAME = "gh-aw-cao-dashboard-data";
-const DATABASE_VERSION = 27;
+const DATABASE_VERSION = 28;
 ```
 
 The name MAY be scoped by deployment path to prevent unrelated dashboard
@@ -1758,7 +1760,7 @@ rows.
 
 # 27. Object Stores
 
-IndexedDB version 27 SHALL define:
+IndexedDB version 28 SHALL define:
 
 ```text
 campaigns
@@ -1767,6 +1769,8 @@ workflows
 runs
 domains
 tools
+skills
+friction
 audits
 issues
 operationalValues
@@ -1814,7 +1818,7 @@ conclusion
 
 The generation-ordered runtime-computation indexes described by Section 73 are
 reserved for the physical version that implements the computation projection.
-They are not part of IndexedDB version 27. That implementation MUST increment
+They are not part of IndexedDB version 28. That implementation MUST increment
 the physical version and update Section 5.1 before relying on those indexes.
 
 ### run-linked tables
@@ -1822,6 +1826,8 @@ the physical version and update Section 5.1 before relying on those indexes.
 ```text
 domains: runId
 tools: runId
+skills: runId
+friction: runId
 audits: runId
 issues: runId
 ```

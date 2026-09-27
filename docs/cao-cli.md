@@ -45,15 +45,16 @@ gh aw run dependabot --ref main \
 
 | Command | Use it to |
 | --- | --- |
+| `./cao.sh setup` | Interactively choose repository scope, inspect visibility and ownership, and configure a compatible authentication profile. |
 | `./cao.sh init` | Create a minimal review-safe policy when one does not exist. It refuses to overwrite an existing policy. |
-| `./cao.sh setup-auth workflow-token` | Use the built-in token for control-repository work or bounded public-target review. |
 | `./cao.sh setup-auth github-app ...` | Configure organization-owned read and write Apps. |
 | `./cao.sh setup-auth enterprise-app ...` | Configure existing enterprise-owned Apps for cross-organization reach. |
-| `./cao.sh setup-auth token ...` | Configure an explicitly consented fine-grained PAT when an App is unavailable. |
+| `./cao.sh setup-auth token ...` | Configure explicitly consented owner-scoped fine-grained PAT pairs when an App is unavailable. |
 | `./cao.sh add OWNER/REPO/CAMPAIGN` | Install one campaign and merge its declared workers into policy without broadening rollout or enabling live mode. |
 | `./cao.sh update` | Upgrade gh-aw when required, update installed campaigns, and refresh worker declarations while preserving operator-owned settings. |
+| `./cao.sh upgrade-gh-aw VERSION` | Install an exact gh-aw release, upgrade local Agentic Workflow files, and update the pinned policy version after the upgrade succeeds. |
 
-See [Authentication](authentication.md) before choosing a credential profile. Authentication controls what CAO can reach; checked-in policy still controls what it may operate on.
+Use `./cao.sh setup` for initial configuration. The individual `setup-auth` commands remain available for manual and non-interactive administration.
 
 ## Control Campaigns
 
@@ -147,7 +148,7 @@ Data-pipeline and dashboard-maintainer commands are listed by `./cao.sh --help`.
 
 ## Review What Each Command Changed
 
-`init`, `add`, `update`, and `mode` can change checked-in control-plane files. Review those changes and commit workflow sources, generated locks, and `.github/workflows/cao.json` together:
+`init`, `add`, `update`, `upgrade-gh-aw`, and `mode` can change checked-in control-plane files. Review those changes and commit workflow sources, generated locks, and `.github/workflows/cao.json` together:
 
 ```bash
 git status --short

@@ -9,12 +9,21 @@ const COLLECTIONS = {
   run: 'runs',
   domain: 'domains',
   tool: 'tools',
+  skill: 'skills',
+  friction: 'friction',
   audit: 'audits',
   issue: 'issues',
   'operational-value': 'operationalValues',
   'marketplace-package': 'marketplacePackages'
 };
-const RUN_LINKED_COLLECTIONS = /** @type {const} */ (['domains', 'tools', 'audits', 'issues']);
+const RUN_LINKED_COLLECTIONS = /** @type {const} */ ([
+  'domains',
+  'tools',
+  'skills',
+  'friction',
+  'audits',
+  'issues'
+]);
 
 /**
  * @param {unknown} value
@@ -70,6 +79,8 @@ function identityFor(observation) {
       });
     case 'domain':
     case 'tool':
+    case 'skill':
+    case 'friction':
     case 'audit':
       return sourceId(observation.kind, observation.source, observation.sourceId);
   }
@@ -141,6 +152,8 @@ export function normalize(observations, options = {}) {
     runs: new Map(),
     domains: new Map(),
     tools: new Map(),
+    skills: new Map(),
+    friction: new Map(),
     audits: new Map(),
     issues: new Map(),
     operationalValues: new Map(),

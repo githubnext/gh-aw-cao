@@ -3,7 +3,7 @@ import { expect, registerSmokeRoutes, test } from './helpers/smoke-fixtures.js';
 registerSmokeRoutes();
 
 test('Memory uses mobile master-detail file navigation', async ({ context, page }) => {
-  const content = '# Mobile memory\n\nA readable file on a small screen.\n';
+  const content = `# Mobile memory\n\n${'A-readable-file-on-a-small-screen-'.repeat(20)}\n`;
   await context.route('http://dashboard.test/memory/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === '/memory/manifest.json') {
@@ -30,7 +30,8 @@ test('Memory uses mobile master-detail file navigation', async ({ context, page 
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.setContent(`
-    <div id="root"></div>
+    <button id="chrome-back" aria-label="Go back" hidden>Back</button>
+    <section class="dashboard-page" data-route-navigation-page="campaigns"><div id="root"></div></section>
     <script type="module">
       import { renderCampaignMemory } from '/src/components/campaign-memory.js';
       import { primerStylesheet } from '/src/styles.js';
@@ -41,6 +42,12 @@ test('Memory uses mobile master-detail file navigation', async ({ context, page 
         campaignId: 'ambient-context',
         campaignName: 'Ambient Context'
       }));
+      const chromeBack = document.querySelector('#chrome-back');
+      document.querySelector('.dashboard-page').addEventListener('dashboard-route-parent-change', (event) => {
+        event.currentTarget.dataset.routeNavigationPage = event.detail.navigationPage;
+        chromeBack.hidden = event.detail.navigationPage !== '';
+      });
+      chromeBack.addEventListener('click', () => history.back());
     </script>
   `);
 
@@ -57,10 +64,14 @@ test('Memory uses mobile master-detail file navigation', async ({ context, page 
   await expect(files).toBeHidden();
   await expect(fileContent).toBeVisible();
   await expect(fileContent.getByRole('heading', { name: 'notes/mobile.md' })).toBeVisible();
-  await expect(fileContent.locator('pre')).toContainText('A readable file on a small screen.');
+  await expect(fileContent.locator('pre')).toContainText('A-readable-file-on-a-small-screen');
   await expect(fileContent).toBeFocused();
+  await expect(fileContent.getByRole('button', { name: 'Back to files' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Go back' })).toBeVisible();
+  await expect(fileContent.locator('pre')).toHaveCSS('white-space', 'pre-wrap');
+  await expect.poll(() => fileContent.locator('pre').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 
-  await fileContent.getByRole('button', { name: 'Back to files' }).click();
+  await page.getByRole('button', { name: 'Go back' }).click();
   await expect(layout).toHaveAttribute('data-memory-view', 'browser');
   await expect(files).toBeVisible();
   await expect(fileContent).toBeHidden();

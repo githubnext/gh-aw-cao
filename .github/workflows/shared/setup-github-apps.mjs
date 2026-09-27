@@ -13,6 +13,7 @@ import { parsePolicy } from "./policy.mjs";
 const MANIFEST_TIMEOUT_MS = 10 * 60 * 1000;
 const INSTALL_POLL_MS = 5 * 1000;
 const APP_NAME_MAX_LENGTH = 34;
+const AUTH_MODE_VARIABLE = "GH_AW_GITHUB_AUTH_MODE";
 
 export const APP_PROFILES = Object.freeze([
   Object.freeze({
@@ -695,6 +696,7 @@ async function main() {
       throw new Error(`credential verification failed for the ${profile.label} App`);
     }
   }
+  runGh(["variable", "set", AUTH_MODE_VARIABLE, "--repo", repo, "--body", "app"]);
   console.error(`Both GitHub App credential pairs are configured for ${repo}.`);
 }
 

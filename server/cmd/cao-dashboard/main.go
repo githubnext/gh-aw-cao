@@ -232,10 +232,32 @@ func setupTelemetry(ctx context.Context, version string, setup telemetrySetupFun
 	}, nil
 }
 
-func main() {
-	if override := strings.TrimSpace(os.Getenv("CAO_BUILD_VERSION")); override != "" {
-		version = override
+// versionSource identifies which input determined the reported
+// service.version resource attribute. It is useful for diagnosing a
+// mismatched build without logging the version string itself.
+type versionSource string
+
+const (
+	versionSourceEnvOverride versionSource = "env-override"
+	versionSourceBuildLdflag versionSource = "build-ldflag"
+)
+
+// resolveVersion applies the standard priority for the reported
+// service.version: an explicit CAO_BUILD_VERSION environment override, then
+// buildVersion, which is normally set by -ldflags "-X main.version=...". It
+// returns the resolved version and which input supplied it, so callers can
+// log the source without exposing the version value.
+func resolveVersion(buildVersion, envOverride string) (string, versionSource) {
+	if override := strings.TrimSpace(envOverride); override != "" {
+		return override, versionSourceEnvOverride
 	}
+	return buildVersion, versionSourceBuildLdflag
+}
+
+func main() {
+	resolved, source := resolveVersion(version, os.Getenv("CAO_BUILD_VERSION"))
+	version = resolved
+	commandLog.Printf("resolved build version source=%s", source)
 	if err := run(os.Args[1:]); err != nil {
 		if errors.Is(err, errDoctorFoundProblems) {
 			os.Exit(1)

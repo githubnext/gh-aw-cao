@@ -8,6 +8,8 @@ on:
       - activity/commands/**
       - activity/dashboard-complexity.mjs
       - dashboard/site/**
+      - docs/assets/logo.svg
+      - public/favicon.svg
       - tests/unit/cao-dashboard-complexity.test.mjs
       - tests/playwright/configs/dashboard-ingestion.config.mjs
       - tests/e2e/dashboard-ingestion-scale.spec.mjs
@@ -20,6 +22,8 @@ on:
       - activity/commands/**
       - activity/dashboard-complexity.mjs
       - dashboard/site/**
+      - docs/assets/logo.svg
+      - public/favicon.svg
       - tests/unit/cao-dashboard-complexity.test.mjs
       - tests/playwright/configs/dashboard-ingestion.config.mjs
       - tests/e2e/dashboard-ingestion-scale.spec.mjs

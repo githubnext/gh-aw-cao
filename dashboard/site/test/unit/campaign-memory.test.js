@@ -76,6 +76,8 @@ describe('campaign repository memory', () => {
     expect(rendered.querySelector('.cao-memory-file-content')).not.toBeNull();
     expect(rendered.querySelector('.campaign-memory-directory > summary')?.textContent).toBe('notes');
     expect(rendered.querySelector('.campaign-memory-file')?.textContent).toContain('ambient.md');
+    expect(rendered.querySelector('.campaign-memory-directory .octicon-file-directory')).not.toBeNull();
+    expect(rendered.querySelector('.campaign-memory-file .octicon-file')).not.toBeNull();
 
     const secondCampaign = /** @type {HTMLDetailsElement} */ (
       rendered.querySelectorAll('.cao-memory-campaign-branch')[1]
@@ -87,13 +89,7 @@ describe('campaign repository memory', () => {
     await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Security'));
     expect(rendered.querySelector('.cao-memory-layout')?.getAttribute('data-memory-view')).toBe('file');
     expect(document.activeElement).toBe(rendered.querySelector('.cao-memory-file-content'));
-    const backButton = /** @type {HTMLButtonElement} */ (
-      rendered.querySelector('.cao-memory-file-content .memory-mobile-back')
-    );
-    expect(backButton.getAttribute('aria-label')).toBe('Back to files');
-    backButton.click();
-    expect(rendered.querySelector('.cao-memory-layout')?.getAttribute('data-memory-view')).toBe('browser');
-    expect(document.activeElement).toBe(secondCampaign.querySelector('.campaign-memory-file'));
+    expect(rendered.querySelector('.memory-mobile-back')).toBeNull();
     publishSource('campaign-memory-campaigns', {
       source: 'campaign-memory-campaigns',
       rows: [
@@ -120,7 +116,7 @@ describe('campaign repository memory', () => {
     ]);
   });
 
-  it('preserves Back focus when an all-campaign file finishes loading', async () => {
+  it('preserves file-pane focus when an all-campaign file finishes loading', async () => {
     memoryApi.list.mockResolvedValue({
       branch: 'memory/ambient-context',
       commit: 'a'.repeat(40),
@@ -161,12 +157,12 @@ describe('campaign repository memory', () => {
 
     /** @type {HTMLButtonElement} */ (rendered.querySelector('.campaign-memory-file')).click();
     await vi.waitFor(() => expect(memoryApi.read).toHaveBeenCalledTimes(2));
-    const back = /** @type {HTMLButtonElement} */ (rendered.querySelector('.memory-mobile-back'));
-    back.focus();
+    const content = /** @type {HTMLElement} */ (rendered.querySelector('.cao-memory-file-content'));
+    content.focus();
     finishRead({ content: '# Ambient' });
 
     await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Ambient'));
-    expect(document.activeElement).toBe(back);
+    expect(document.activeElement).toBe(content);
   });
 
   it('renders an honest empty state when no campaigns are registered', () => {
@@ -215,15 +211,52 @@ describe('campaign repository memory', () => {
     await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Summary'));
     expect(rendered.querySelector('.campaign-memory-layout')?.getAttribute('data-memory-view')).toBe('file');
     await vi.waitFor(() => expect(document.activeElement).toBe(rendered.querySelector('.campaign-memory-content')));
-    /** @type {HTMLButtonElement} */ (rendered.querySelector('.memory-mobile-back')).click();
-    expect(rendered.querySelector('.campaign-memory-layout')?.getAttribute('data-memory-view')).toBe('browser');
-    await vi.waitFor(() => expect(document.activeElement).toBe(
-      rendered.querySelector('.campaign-memory-file[aria-current="true"]')
-    ));
+    expect(rendered.querySelector('.memory-mobile-back')).toBeNull();
     expect(memoryApi.read.mock.calls.map(([campaign, path]) => [campaign, path])).toEqual([
       ['ambient-context', 'notes/first.json'],
       ['ambient-context', 'summary.md'],
     ]);
+  });
+
+  it('uses browser history and the app chrome parent on mobile', async () => {
+    memoryApi.list.mockResolvedValue({
+      branch: 'memory/ambient-context',
+      commit: 'a'.repeat(40),
+      files: [{ path: 'notes/mobile.md', oid: 'b'.repeat(40), size: 9 }],
+      omitted: {},
+    });
+    memoryApi.read.mockResolvedValue({ content: '# Mobile' });
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: vi.fn(() => ({ matches: true }))
+    });
+    window.history.replaceState({ baseline: true }, '', window.location.href);
+    const page = document.createElement('section');
+    page.className = 'dashboard-page';
+    page.dataset.routeNavigationPage = 'campaigns';
+    page.addEventListener('dashboard-route-parent-change', (event) => {
+      if (event instanceof CustomEvent) page.dataset.routeNavigationPage = event.detail.navigationPage;
+    });
+    const rendered = renderCampaignMemory({
+      campaignId: 'ambient-context',
+      campaignName: 'Ambient Context',
+    });
+    page.append(rendered);
+    document.body.append(page);
+    await vi.waitFor(() => expect(rendered.querySelector('.campaign-memory-file')).not.toBeNull());
+
+    /** @type {HTMLButtonElement} */ (rendered.querySelector('.campaign-memory-file')).click();
+    await vi.waitFor(() => expect(page.dataset.routeNavigationPage).toBe(''));
+    expect(window.history.state).toMatchObject({ baseline: true, caoMemoryViewer: 'campaign:ambient-context' });
+    expect(rendered.querySelector('.memory-mobile-back')).toBeNull();
+
+    window.history.replaceState({ baseline: true }, '', window.location.href);
+    window.dispatchEvent(new CustomEvent('dashboard-history-change'));
+    await vi.waitFor(() => expect(page.dataset.routeNavigationPage).toBe('campaigns'));
+    expect(rendered.querySelector('.campaign-memory-layout')?.getAttribute('data-memory-view')).toBe('browser');
+    Object.defineProperty(window, 'matchMedia', { configurable: true, value: originalMatchMedia });
+    window.history.replaceState(null, '', window.location.href);
   });
 
   it('renders honest empty and invalid-manifest states', async () => {

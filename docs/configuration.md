@@ -17,7 +17,7 @@ This minimal policy enables the installed Dependabot campaign and its workers in
 {
   "$schema": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json",
   "version": 1,
-  "gh-aw-version": "v0.89.21",
+  "gh-aw-version": "v0.89.22",
   "control-plane": {
     "scope": {
       "allowed-owners": ["acme"]
@@ -151,7 +151,7 @@ behavior, troubleshooting, and the read-only dashboard flow.
 
 ## Credentials
 
-For private or internal targets, alternate review repositories, or live writes, configure a GitHub App or fine-grained PAT. For bounded review runs against public targets, no App or PAT secret is required when outputs stay in the current control repository.
+Configure a GitHub App or fine-grained PAT profile for every cross-repository scope, including public targets. The repository-provided token remains available only for bounded control-repository operations and compatibility.
 
 | Name | Required | Purpose |
 | --- | --- | --- |
@@ -159,6 +159,11 @@ For private or internal targets, alternate review repositories, or live writes, 
 | `GH_AW_GITHUB_READ_APP_PRIVATE_KEY` | With App authentication | Repository secret containing the read-only App private key. |
 | `GH_AW_GITHUB_WRITE_APP_ID` | With write-capable App authentication | Repository variable containing the safe-output and API-gate GitHub App client ID. |
 | `GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY` | With write-capable App authentication | Repository secret containing the safe-output and API-gate App private key. |
+| `GH_AW_GITHUB_AUTH_MODE` | Recommended | Repository variable selecting `app` or `pat`; setup writes it only after the selected profile is complete. |
+| `GH_AW_GITHUB_READ_PAT_REPOSITORIES` | With owner-scoped PAT authentication | Non-secret JSON repository variable mapping each exact readable repository to its owner-scoped secret name. |
+| `GH_AW_GITHUB_WRITE_PAT_REPOSITORIES` | With owner-scoped PAT authentication | Non-secret JSON repository variable mapping each approved output repository to its owner-scoped secret name. |
+| `GH_AW_GITHUB_READ_PAT_<OWNER>` | With owner-scoped PAT authentication | Read-only fine-grained token for one resource owner; hyphens in the owner are encoded as underscores. |
+| `GH_AW_GITHUB_WRITE_PAT_<OWNER>` | With owner-scoped PAT authentication | Write-capable fine-grained token for one resource owner, used only by safe-output processing. |
 | `GH_AW_GITHUB_READ_PAT` | PAT fallback | Read-only fine-grained token for control and target repository access. |
 | `GH_AW_GITHUB_WRITE_PAT` | PAT fallback | Write-capable fine-grained token used only by safe-output processing. |
 | `GH_AW_GITHUB_TOKEN` | Deprecated PAT fallback | Legacy combined token retained for backward compatibility. |

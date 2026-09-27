@@ -1,8 +1,10 @@
 import mappings from './ingestion.json' with { type: 'json' };
 import { DASHBOARD_QUERY_LIMITS, executeDashboardQueries } from './declarative.js';
 import { requiredString } from '../model/schema.js';
+import { createDebug } from '../../debug.js';
 
 const SOURCE = 'dashboard-sources';
+const debug = createDebug('ingestion');
 
 /**
  * @typedef {{ field?: string, fields?: string[], default?: unknown, trim?: boolean,
@@ -74,6 +76,7 @@ export function queryDashboardSourceObservations(sources) {
   const observations = mappings.observations.flatMap((mapping) => {
     const input = inputs[mapping.input];
     if (input.metadata.availability === 'unavailable') {
+      debug('mapping input unavailable', { kind: mapping.kind, input: mapping.input });
       throw new Error(typeof input.metadata.error === 'string'
         ? input.metadata.error
         : `${mapping.input} is unavailable`);
@@ -106,7 +109,10 @@ export function queryDashboardSourceObservations(sources) {
       [mapping.query]
     )[mapping.query]);
     const failed = results.find((result) => result.metadata.availability === 'unavailable');
-    if (failed) throw new Error(requiredString(failed.metadata.error, `${mapping.query} query error`));
+    if (failed) {
+      debug('mapping query failed', { kind: mapping.kind, query: mapping.query });
+      throw new Error(requiredString(failed.metadata.error, `${mapping.query} query error`));
+    }
     const rows = results.flatMap((result) => result.rows);
     if (mapping.publishAs) {
       inputs[mapping.publishAs] = {
@@ -132,5 +138,6 @@ export function queryDashboardSourceObservations(sources) {
       };
     });
   });
+  debug('derived dashboard source observations', { observationCount: observations.length });
   return { observations };
 }

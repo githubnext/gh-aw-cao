@@ -107,7 +107,7 @@ test("public read-only operation uses the built-in token without widening access
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
 
-  assert.match(control, /GH_TOKEN:.*secrets\.GH_AW_GITHUB_READ_PAT.*secrets\.GH_AW_GITHUB_TOKEN.*github\.token/);
+  assert.match(control, /GH_TOKEN:.*GH_AW_GITHUB_READ_PAT_REPOSITORIES.*secrets\.GH_AW_GITHUB_READ_PAT.*secrets\.GH_AW_GITHUB_TOKEN.*github\.token/);
   assert.match(precompute, /\{id, full_name, archived, disabled, private, pushed_at, default_branch\}/);
   assert.match(authentication, /App or PAT is not required for a bounded `review` run when every target repository is public/);
   assert.match(authentication, /use `review` mode and keep safe outputs in the current control repository/);
@@ -119,7 +119,7 @@ test("public read-only operation uses the built-in token without widening access
   assert.match(authentication, /GraphQL/);
   assert.match(controlSource, /const GITHUB_API_CACHE_DURATION = "60s";/);
   assert.match(controlSource, /const args = \["api", "--cache", GITHUB_API_CACHE_DURATION\];/);
-  assert.match(configuration, /no App or PAT secret is required/);
+  assert.match(configuration, /Configure a GitHub App or fine-grained PAT profile for every cross-repository scope/);
   assert.match(control, /cannot read target evidence required by the importing workflow, stop that analysis and report it as incomplete/);
   assert.match(control, /persist response `ETag` values and send them as `If-None-Match`/);
   assert.match(control, /prefer one bounded GraphQL query/);
@@ -131,18 +131,18 @@ test("authentication prefers an optional GitHub App and retains bounded fallback
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
 
-  assert.match(control, /github-app:\n\s+client-id: \$\{\{ vars\.GH_AW_GITHUB_READ_APP_ID \}\}/);
-  assert.match(control, /private-key: \$\{\{ secrets\.GH_AW_GITHUB_READ_APP_PRIVATE_KEY \}\}/);
-  assert.match(control, /safe-outputs:\n\s+github-app:\n\s+client-id: \$\{\{ vars\.GH_AW_GITHUB_WRITE_APP_ID \}\}/);
-  assert.match(control, /private-key: \$\{\{ secrets\.GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY \}\}/);
-  assert.match(control, /github-token: \$\{\{ secrets\.GH_AW_GITHUB_READ_PAT \|\| secrets\.GH_AW_GITHUB_TOKEN \|\| secrets\.GITHUB_TOKEN \}\}/);
-  assert.match(control, /safe-outputs:[\s\S]*?github-token: \$\{\{ secrets\.GH_AW_GITHUB_WRITE_PAT \|\| secrets\.GH_AW_GITHUB_TOKEN \|\| secrets\.GITHUB_TOKEN \}\}/);
+  assert.match(control, /github-app:\n\s+client-id: \$\{\{ vars\.GH_AW_GITHUB_AUTH_MODE != 'pat'[\s\S]*?vars\.GH_AW_GITHUB_READ_APP_ID/);
+  assert.match(control, /private-key: \$\{\{ vars\.GH_AW_GITHUB_AUTH_MODE != 'pat'[\s\S]*?secrets\.GH_AW_GITHUB_READ_APP_PRIVATE_KEY/);
+  assert.match(control, /safe-outputs:\n\s+github-app:\n\s+client-id: \$\{\{ vars\.GH_AW_GITHUB_AUTH_MODE != 'pat'[\s\S]*?vars\.GH_AW_GITHUB_WRITE_APP_ID/);
+  assert.match(control, /private-key: \$\{\{ vars\.GH_AW_GITHUB_AUTH_MODE != 'pat'[\s\S]*?secrets\.GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY/);
+  assert.match(control, /github-token: \$\{\{ vars\.GH_AW_GITHUB_AUTH_MODE == 'pat'[\s\S]*?GH_AW_GITHUB_READ_PAT_REPOSITORIES/);
+  assert.match(control, /safe-outputs:[\s\S]*?github-token: \$\{\{ vars\.GH_AW_GITHUB_AUTH_MODE == 'pat'[\s\S]*?GH_AW_GITHUB_WRITE_PAT_REPOSITORIES/);
   assert.match(control, /ignore-if-missing: true/);
   assert.doesNotMatch(control, /repositories: \["\*"\]/);
-  assert.match(control, /jobs:\n\s+pre-activation:[\s\S]*?secrets\.GH_AW_GITHUB_READ_PAT \|\| secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token/);
+  assert.match(control, /jobs:\n\s+pre-activation:[\s\S]*?GH_AW_GITHUB_READ_PAT_REPOSITORIES[\s\S]*?secrets\.GH_AW_GITHUB_READ_PAT[\s\S]*?github\.token/);
   assert.match(authentication, /runtime availability precedence, not permission to choose a PAT silently/);
   assert.match(authentication, /A PAT is not a substitute for repository or organization access/);
-  assert.match(authentication, /A fine-grained PAT cannot access multiple organizations at once/);
+  assert.match(authentication, /Each token covers repositories from exactly one resource owner/);
   assert.match(authentication, /including the Checks API/);
   assert.match(authentication, /Obtain explicit confirmation to proceed/);
   assert.match(authentication, /presence of an existing PAT secret, is not consent/);

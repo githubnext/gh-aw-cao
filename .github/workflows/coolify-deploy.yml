@@ -767,7 +767,7 @@ jobs:
 
   deploy:
     name: Deploy exact digest to Coolify
-    if: needs.classify.outputs.eligible == 'true'
+    if: needs.classify.outputs.eligible == 'true' && (github.event_name != 'push' || vars.COOLIFY_DEPLOY_ENABLED == 'true')
     needs: [classify, publish]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -779,7 +779,29 @@ jobs:
     permissions:
       contents: read
     steps:
+      - id: adapter
+        name: Verify deployment adapter configuration
+        env:
+          COOLIFY_DEPLOY_ENDPOINT: ${{ secrets.COOLIFY_DEPLOY_ENDPOINT }}
+          COOLIFY_DEPLOY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "::group::Verify deployment adapter configuration"
+          if [[ -n "${COOLIFY_DEPLOY_ENDPOINT}" && -n "${COOLIFY_DEPLOY_TOKEN}" ]]; then
+            echo "configured=true" >> "${GITHUB_OUTPUT}"
+            echo "Deployment adapter is configured"
+          else
+            echo "deployment adapter configuration is incomplete" >&2
+            exit 1
+          fi
+          echo "::endgroup::"
+          {
+            echo "### Deployment adapter configuration"
+            echo
+            echo "- Result: configured"
+          } >> "${GITHUB_STEP_SUMMARY}"
       - name: Reject stale deployment source
+        if: steps.adapter.outputs.configured == 'true'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           EXPECTED_SHA: ${{ needs.classify.outputs.expected_sha }}
@@ -877,6 +899,7 @@ jobs:
               ])
               .write();
       - name: Request digest deployment
+        if: steps.adapter.outputs.configured == 'true'
         env:
           COOLIFY_DEPLOY_ENDPOINT: ${{ secrets.COOLIFY_DEPLOY_ENDPOINT }}
           COOLIFY_DEPLOY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}

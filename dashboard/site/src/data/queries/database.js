@@ -17,7 +17,7 @@ import { TABLE_FIELDS } from '../../specification.js';
 
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 const databaseQueryIndex = dashboardQueryIndex(databaseQueries);
-const RUN_RECORD_STORES = new Set(['domains', 'tools', 'audits', 'issues']);
+const RUN_RECORD_STORES = new Set(['domains', 'tools', 'skills', 'friction', 'audits', 'issues']);
 const DATABASE_TABLE_SOURCES = new Set([
   'campaigns',
   'repositories',
@@ -407,7 +407,7 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
   ));
   const stores = [...new Set(databaseRequested.flatMap(queryStores))];
   const transactionRequested = stores.includes('transactions');
-  const collectionStores = /** @type {Array<'campaigns'|'repositories'|'workflows'|'runs'|'domains'|'tools'|'audits'|'issues'|'operationalValues'|'marketplacePackages'>} */ (
+  const collectionStores = /** @type {Array<'campaigns'|'repositories'|'workflows'|'runs'|'domains'|'tools'|'skills'|'friction'|'audits'|'issues'|'operationalValues'|'marketplacePackages'>} */ (
     stores.filter((name) => name !== 'transactions')
   );
   const databaseStartedAt = monotonicNow();

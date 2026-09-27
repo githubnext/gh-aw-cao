@@ -12,10 +12,7 @@ const sourceNames = [
   "repositories",
   "workflows",
   "runs",
-  "domains",
-  "tools",
-  "audits",
-  "issues",
+  "domains", "tools", "skills", "friction", "audits", "issues",
   "admissions",
   "admission-checks",
   "run-performance",
@@ -925,6 +922,10 @@ const TRANSACTION_EVENT_FIELDS = {
   decision: "decision",
   mcpServer: "mcp-server",
   mcpTool: "mcp-tool",
+  requestBytes: "request-bytes", responseBytes: "response-bytes", name: "name",
+  invocationCount: "invocation-count", failedCount: "failed-count", activationSource: "activation-source",
+  measurementState: "measurement-state", canonicalUnit: "canonical-unit", sources: "sources", totalEvents: "total-events", totalOccurrences: "total-occurrences", countedOccurrences: "counted-occurrences", suppressedOccurrences: "suppressed-occurrences", linkedInvocations: "linked-invocations", unattributedOccurrences: "unattributed-occurrences",
+  aic: "aic", inputTokens: "input-tokens", outputTokens: "output-tokens", cacheReadTokens: "cache-read-tokens", cacheWriteTokens: "cache-write-tokens", reasoningTokens: "reasoning-tokens", totalTokens: "total-tokens", turns: "turns", toolCalls: "tool-calls", latencyMs: "latency-ms", totalRunAic: "total-run-aic", frictionRatio: "friction-ratio", derived: "derived", dimensionStates: "dimension-states", uncertainty: "uncertainty", drivers: "drivers", groups: "groups", events: "events", eventsTruncated: "events-truncated", unmeasuredDrivers: "unmeasured-drivers",
   safeOutputType: "safe-output-type",
   githubEntityType: "github-entity-type",
   targetRepo: "target-repo",
@@ -1027,8 +1028,9 @@ export function transactionLogRows(usage) {
       ...(event.githubEntityType === "pull_request" ? { "is-pull-request": true } : {}),
       ...(event.githubEntityType === "issue" ? { "is-pull-request": false } : {}),
       ...(event.type === "audit.skill_activation"
-        ? { "tool-type": "skill", "is-skill": true, name: event.summary }
-        : {}),
+       ? { "skill-name": event.name ?? event.summary, name: event.name ?? event.summary,
+           "invocation-count": event.invocationCount ?? 1, "failed-count": event.failedCount ?? 0 }
+       : {}),
       "observed-at": run.createdAt || usage.generatedAt,
     }));
   }
@@ -1036,12 +1038,14 @@ export function transactionLogRows(usage) {
     if (event["event-source"] === "firewall") return "domains";
     if (event["event-type"] === "safe_output.created"
       && ["issue", "pull_request"].includes(event["github-entity-type"])) return "issues";
+    if (event["event-type"] === "audit.skill_activation") return "skills";
+    if (event["event-type"] === "workflow_run_friction") return "friction";
     if (event["event-source"] === "mcp"
-      || ["tool_call", "agent_tool_start", "agent_tool_done", "guard_blocked", "difc_filtered", "audit.skill_activation"]
+      || ["tool_call", "agent_tool_start", "agent_tool_done", "guard_blocked", "difc_filtered"]
         .includes(event["event-type"])) return "tools";
     return "audits";
   };
-  return Object.fromEntries(["domains", "tools", "audits", "issues"].map((name) => [
+  return Object.fromEntries(["domains", "tools", "skills", "friction", "audits", "issues"].map((name) => [
     name,
     records.filter((record) => kind(record) === name),
   ]));
@@ -1054,7 +1058,7 @@ function transactionLogRowsForCurrentRuns(transactionLogs, runs) {
     Number(row["run-attempt"]) || 1,
   ].join(":");
   const runCoordinates = new Set(runs.map(runCoordinate));
-  return Object.fromEntries(["domains", "tools", "audits", "issues"].map((name) => [
+  return Object.fromEntries(["domains", "tools", "skills", "friction", "audits", "issues"].map((name) => [
     name,
     transactionLogs[name].filter((row) => runCoordinates.has(runCoordinate(row))),
   ]));
@@ -2016,7 +2020,7 @@ function mcpCallRows(usage) {
         "mcp-protocol-version": server?.protocolVersion || "unknown",
         "mcp-tool": call.toolName || "unknown",
         "mcp-status": mcpStatus(call.status),
-        "response-bytes": finite(call.outputSize),
+        "request-bytes": finite(call.inputSize), "response-bytes": finite(call.outputSize),
         "observed-at": call.timestamp || base["observed-at"],
       };
     });
@@ -2028,7 +2032,7 @@ function mcpCallRows(usage) {
       "mcp-protocol-version": versions.get(failure.serverName)?.protocolVersion || "unknown",
       "mcp-tool": "server",
       "mcp-status": "failure",
-      "response-bytes": null,
+      "request-bytes": null, "response-bytes": null,
     }));
     return [...calls, ...failures];
   });
@@ -2682,7 +2686,7 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
   sources.repositories = source("repositories", [...repositories.values()], generatedAt, discoveryAvailable, workflowInventoryComplete);
   sources.workflows = source("workflows", workflows, generatedAt, workflowsAvailable, workflowInventoryComplete);
   sources.runs = source("runs", runs, generatedAt, runAvailable, runComplete);
-  for (const name of ["domains", "tools", "audits", "issues"]) {
+  for (const name of ["domains", "tools", "skills", "friction", "audits", "issues"]) {
     sources[name] = source(
       name,
       transactionLogs[name],
