@@ -406,6 +406,8 @@ async function retainedOperationalValueEnvelopes(outputPath, cutoff) {
       throw new Error(`${outputPath}:${index + 1} has an invalid operational value timestamp`);
     }
     const campaign = String(envelope.operational_value?.campaign ?? '').trim();
+    // Legacy retained envelopes written before campaign-scoped value identity
+    // cannot be matched safely and are pruned as obsolete retained evidence.
     return timestamp >= cutoff && campaign ? [envelope] : [];
   });
 }

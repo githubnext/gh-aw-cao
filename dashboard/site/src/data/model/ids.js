@@ -71,8 +71,17 @@ export function issueId(owner, repository, issueNumber) {
   return `github:issue:${coordinate}:${normalizedNumber}`;
 }
 
-/** @param {string} campaign @param {string} repository @param {string} valueId @param {string} observedAt */
-export function operationalValueId(campaign, repository, valueId, observedAt) {
+/**
+ * @param {{ campaign: string, repository: string, valueId: string, observedAt: string }} input
+ */
+export function operationalValueId(input) {
+  const candidate = /** @type {Partial<{ campaign: string, repository: string, valueId: string, observedAt: string }>} */ (
+    input && typeof input === 'object' ? input : {}
+  );
+  const campaign = typeof candidate.campaign === 'string' ? candidate.campaign : '';
+  const repository = typeof candidate.repository === 'string' ? candidate.repository : '';
+  const valueId = typeof candidate.valueId === 'string' ? candidate.valueId : '';
+  const observedAt = typeof candidate.observedAt === 'string' ? candidate.observedAt : '';
   const campaignId = campaign.trim().toLowerCase();
   const coordinate = repository.trim().toLowerCase();
   const metric = valueId.trim().toLowerCase();

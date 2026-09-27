@@ -62,12 +62,12 @@ function identityFor(observation) {
       );
     }
     case 'operational-value':
-      return operationalValueId(
-        requiredString(data.campaign, 'operationalValue.campaign'),
-        requiredString(data.repository, 'operationalValue.repository'),
-        requiredString(data.valueId, 'operationalValue.valueId'),
-        requiredString(data.timestamp, 'operationalValue.timestamp')
-      );
+      return operationalValueId({
+        campaign: requiredString(data.campaign, 'operationalValue.campaign'),
+        repository: requiredString(data.repository, 'operationalValue.repository'),
+        valueId: requiredString(data.valueId, 'operationalValue.valueId'),
+        observedAt: requiredString(data.timestamp, 'operationalValue.timestamp')
+      });
     case 'domain':
     case 'tool':
     case 'audit':
