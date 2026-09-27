@@ -374,6 +374,37 @@ func (d Doctor) retainGenerations() int {
 	return redisx.DefaultGenerationRetention
 }
 
+// queryDefinitionNames is the outcome of classifying a parsed query document
+// by name: which names are duplicated, which definitions carry no name at
+// all, and the full seen-name tally used to detect definitions with no
+// matching active source.
+type queryDefinitionNames struct {
+	seen       map[string]int
+	duplicates []string
+	unnamed    []string
+}
+
+// classifyQueryDefinitionNames finds duplicate and unnamed query
+// definitions. It is a pure function so every naming defect is testable
+// without a canonical query document on disk.
+func classifyQueryDefinitionNames(definitions []query.Definition) queryDefinitionNames {
+	seen := map[string]int{}
+	var duplicates, unnamed []string
+	for _, definition := range definitions {
+		name := strings.TrimSpace(definition.Name)
+		if name == "" {
+			unnamed = append(unnamed, definition.From)
+			continue
+		}
+		seen[name]++
+		if seen[name] == 2 {
+			duplicates = append(duplicates, name)
+		}
+	}
+	sort.Strings(duplicates)
+	return queryDefinitionNames{seen: seen, duplicates: duplicates, unnamed: unnamed}
+}
+
 // checkQueryDefinitions validates the document that drives projection. It is a
 // file on disk, so it is the easiest part of the system to deploy wrongly.
 func (d Doctor) checkQueryDefinitions(ctx context.Context) Check {
@@ -419,33 +450,22 @@ func (d Doctor) checkQueryDefinitions(ctx context.Context) Check {
 			Remedy:  "restore the document from the catalog",
 		}
 	}
-	seen := map[string]int{}
-	var duplicates, unnamed []string
-	for _, definition := range definitions {
-		name := strings.TrimSpace(definition.Name)
-		if name == "" {
-			unnamed = append(unnamed, definition.From)
-			continue
-		}
-		seen[name]++
-		if seen[name] == 2 {
-			duplicates = append(duplicates, name)
-		}
-	}
-	if len(duplicates) > 0 {
-		sort.Strings(duplicates)
-		details = append(details, detail("duplicates", strings.Join(duplicates, ", ")))
+	names := classifyQueryDefinitionNames(definitions)
+	doctorLog.Printf("query definitions classified total=%d duplicates=%d unnamed=%d",
+		len(definitions), len(names.duplicates), len(names.unnamed))
+	if len(names.duplicates) > 0 {
+		details = append(details, detail("duplicates", strings.Join(names.duplicates, ", ")))
 		return Check{
 			ID: id, Area: areaQuery, Title: title, Status: StatusFail,
-			Summary: fmt.Sprintf("%d query names are defined more than once", len(duplicates)),
+			Summary: fmt.Sprintf("%d query names are defined more than once", len(names.duplicates)),
 			Details: details,
 			Remedy:  "a duplicated name silently shadows the earlier definition; keep one definition per name",
 		}
 	}
-	if len(unnamed) > 0 {
+	if len(names.unnamed) > 0 {
 		return Check{
 			ID: id, Area: areaQuery, Title: title, Status: StatusFail,
-			Summary: fmt.Sprintf("%d queries have no name", len(unnamed)),
+			Summary: fmt.Sprintf("%d queries have no name", len(names.unnamed)),
 			Details: details,
 			Remedy:  "projection resolves queries by name; an unnamed query can never be selected",
 		}
@@ -455,7 +475,7 @@ func (d Doctor) checkQueryDefinitions(ctx context.Context) Check {
 	if d.Store != nil {
 		if active, err := d.Store.Active(ctx); err == nil && len(active.Counts) > 0 {
 			var missing []string
-			for name := range seen {
+			for name := range names.seen {
 				if _, ok := active.Counts[name]; !ok {
 					missing = append(missing, name)
 				}
