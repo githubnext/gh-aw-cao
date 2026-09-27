@@ -1,4 +1,4 @@
-import { bindFactorySources, createFactoryScope, resolveFactorySourceNames } from './factory-elements.js';
+import { renderFactoryElement } from './factory-elements.js';
 import { renderFactoryStation } from './factory-station.js';
 import { renderReactiveGrid } from './reactive-grid.js';
 
@@ -92,25 +92,19 @@ export const FLOOR_DEFAULT_SOURCES = {
  * @param {import('./ui-elements.js').ElementRenderContext} context
  */
 export function renderFactoryFloorElement(context) {
-  const roleNames = resolveFactorySourceNames(FLOOR_DEFAULT_SOURCES, context.elementConfig);
   const selectedStations = Array.isArray(context.elementConfig?.stations)
     ? /** @type {FactoryStationId[]} */ (context.elementConfig.stations.filter((station) => station === 'campaigns' || station === 'repositories'))
     : /** @type {FactoryStationId[]} */ (['campaigns', 'repositories']);
-  const sources = bindFactorySources(context.sources, selectedStations.map((station) => roleNames[station]), {
-    pageId: context.pageId,
-    viewId: context.viewId,
-    viewIndex: context.viewIndex,
-    sourceNames: context.sourceNames,
-    queryContext: context.queryContext
-  });
-  const scope = createFactoryScope();
-  const rendered = renderFactoryFloor(
-    sources,
-    context.elementConfig?.animate === 'number',
-    scope,
-    roleNames,
-    selectedStations
+  return renderFactoryElement(
+    context,
+    FLOOR_DEFAULT_SOURCES,
+    (roleNames) => selectedStations.map((station) => roleNames[station]),
+    (sources, scope, roleNames) => renderFactoryFloor(
+      sources,
+      context.elementConfig?.animate === 'number',
+      scope,
+      roleNames,
+      selectedStations
+    )
   );
-  scope.bind(rendered);
-  return rendered;
 }

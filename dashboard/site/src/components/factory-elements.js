@@ -90,6 +90,32 @@ export function bindFactorySources(sources, names, request, options) {
 }
 
 /**
+ * Renders one JSON-selected factory element from its declared query payloads,
+ * sharing the common role-resolution, source-binding, and abort-scope wiring
+ * that every factory element entry point (header, floor, ...) otherwise
+ * repeats.
+ * @param {import('./ui-elements.js').ElementRenderContext} context
+ * @param {Record<string, string>} defaultSources
+ * @param {(roleNames: Record<string, string>) => string[]} selectSourceNames
+ * @param {(sources: SourceBindings, scope: ReturnType<typeof createFactoryScope>, roleNames: Record<string, string>) => HTMLElement} render
+ * @returns {HTMLElement}
+ */
+export function renderFactoryElement(context, defaultSources, selectSourceNames, render) {
+  const roleNames = resolveFactorySourceNames(defaultSources, context.elementConfig);
+  const sources = bindFactorySources(context.sources, selectSourceNames(roleNames), {
+    pageId: context.pageId,
+    viewId: context.viewId,
+    viewIndex: context.viewIndex,
+    sourceNames: context.sourceNames,
+    queryContext: context.queryContext
+  });
+  const scope = createFactoryScope();
+  const rendered = render(sources, scope, roleNames);
+  scope.bind(rendered);
+  return rendered;
+}
+
+/**
  * Creates an abort-scoped lifetime for one independently loaded element.
  */
 export function createFactoryScope() {
