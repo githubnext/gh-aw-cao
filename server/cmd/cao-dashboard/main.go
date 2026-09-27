@@ -192,6 +192,20 @@ func newRedisStore(rawURL, rawNamespace string) (*redisx.Store, error) {
 	return redisx.NewStore(client, namespace), nil
 }
 
+// doctorStore builds the namespaced Redis store the doctor command inspects,
+// tolerating a client that cannot be constructed: an unreachable or
+// misconfigured endpoint is itself a finding, so the check-up still runs and
+// reports why the Redis checks could not run, rather than exiting before
+// producing a report. namespace is assumed already normalized by the caller.
+func doctorStore(endpoint, namespace string) *redisx.Store {
+	client, err := redisx.New(endpoint)
+	if err != nil {
+		commandLog.Printf("doctor could not construct a Redis client")
+		return nil
+	}
+	return redisx.NewStore(client, namespace)
+}
+
 // telemetrySetupFunc matches telemetry.Setup's signature so tests can
 // substitute a fake without opening real OTLP exporters or network sockets.
 type telemetrySetupFunc func(ctx context.Context, version string) (telemetry.Shutdown, error)
@@ -311,14 +325,7 @@ func newDoctorCommand() *cobra.Command {
 			Deep:                *deep,
 			Timeout:             *timeout,
 		}
-		// A client that cannot be constructed is itself a finding, so the
-		// report is still produced; the Redis checks report why they could
-		// not run.
-		if client, err := redisx.New(endpoint); err == nil {
-			check.Store = redisx.NewStore(client, namespace)
-		} else {
-			commandLog.Printf("doctor could not construct a Redis client")
-		}
+		check.Store = doctorStore(endpoint, namespace)
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
 		report := check.Run(ctx)
