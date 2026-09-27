@@ -618,9 +618,11 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
         dir: 'ltr'
       }, category);
       const categoryContent = renderSafeLink(categoryText, point.link ?? null);
+      let hasInteractiveLink = false;
       if (point.link && categoryContent instanceof HTMLElement) {
         categoryContent.title = fullCategory;
         categoryContent.setAttribute('aria-label', `${point.link.label}: ${fullCategory}`);
+        hasInteractiveLink = true;
       }
       return h(
         'li',
@@ -628,8 +630,8 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
         h('span', {
           className: 'horizontal-bar-chart-label',
           title: fullCategory,
-          tabIndex: point.link ? undefined : 0,
-          'aria-label': point.link ? undefined : fullCategory
+          tabIndex: hasInteractiveLink ? undefined : 0,
+          'aria-label': hasInteractiveLink ? undefined : fullCategory
         },
         categoryContent
         ),
