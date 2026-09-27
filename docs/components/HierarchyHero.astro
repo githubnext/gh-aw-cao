@@ -320,6 +320,8 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
     }
 
     .hero-visual {
+      --phone-width: clamp(15rem, 21vw, 18rem);
+      --callout-overlap: 1.25rem;
       position: relative;
       isolation: isolate;
       display: grid;
@@ -331,7 +333,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
     .phone-preview {
       position: relative;
       z-index: 1;
-      width: clamp(15rem, 21vw, 18rem);
+      width: var(--phone-width);
       margin: 0;
       filter: drop-shadow(0 1.25rem 2.25rem var(--cao-phone-shadow));
       animation: phone-float 7s ease-in-out infinite;
@@ -425,7 +427,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
 
     .callout-health {
       top: 42%;
-      left: calc(-10% + 2.5rem);
+      right: calc(50% + var(--phone-width) / 2 - var(--callout-overlap));
     }
 
     .callout-health .callout-line {
@@ -435,7 +437,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
     .callout-attention {
       --callout-color: #f85149;
       top: 84%;
-      left: calc(50% + 8rem);
+      left: calc(50% + var(--phone-width) / 2 - var(--callout-overlap));
       flex-direction: row-reverse;
     }
 
@@ -820,8 +822,8 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       }
 
 
-      .phone-preview {
-        width: 13.5rem;
+      .hero-visual {
+        --phone-width: 13.5rem;
       }
     }
 
