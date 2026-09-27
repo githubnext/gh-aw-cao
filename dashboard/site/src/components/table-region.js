@@ -3,6 +3,7 @@
  */
 
 import { h } from '../dom.js';
+import { createDebug } from '../debug.js';
 import { processRows, processTableSummaries } from '../data-processor.js';
 import { formatCount } from './count-formatters.js';
 import { renderReactiveTableSummaryRow, renderTableSummaryRow } from './table-summary.js';
@@ -11,6 +12,8 @@ import { renderEmptyTableRow, renderFilterSelect, renderFilterSelectControl, ren
 /**
  * @typedef {{ key: string, label: string, allLabel?: string, columnIndex: number, always?: boolean }} TableFilterField
  */
+
+const debugTableRegion = createDebug('table-region');
 
 const DEFAULT_PAGE_SIZE = 25;
 const FACET_LOOKUP_HORIZON = 1_000;
@@ -435,6 +438,7 @@ function enableTableFilter(region, options, rows) {
    if (continuationToken && options.continuation) {
      loadingContinuation = true;
      more.disabled = true;
+     debugTableRegion({ event: 'continuation-load', filterId: options.filterId, outcome: 'requested' });
      try {
        const next = await options.continuation.load(continuationToken);
        rows.push(...next.rows);
@@ -442,9 +446,22 @@ function enableTableFilter(region, options, rows) {
        continuationToken = next.continuationToken;
        more.textContent = 'Load more rows';
        delete more.dataset.loadError;
-     } catch {
+       debugTableRegion({
+         event: 'continuation-load',
+         filterId: options.filterId,
+         outcome: 'succeeded',
+         loadedCount: next.rows.length,
+         hasMore: Boolean(next.continuationToken)
+       });
+     } catch (error) {
        more.textContent = 'Retry loading rows';
        more.dataset.loadError = '';
+       debugTableRegion({
+         event: 'continuation-load',
+         filterId: options.filterId,
+         outcome: 'failed',
+         errorName: error instanceof Error ? error.name : 'unknown'
+       });
        return;
      } finally {
        loadingContinuation = false;
