@@ -49,6 +49,8 @@ describe('chart element helpers', () => {
       .toBe(chartSeriesClassName('githubnext/gh-aw-cao', 9));
     expect(chartSeriesClassName('New Campaign', 1))
       .toBe(chartSeriesClassName(' new campaign ', 7));
+    expect(chartSeriesClassName('Cafe\u0301', 0)).toBe('chart-series-2');
+    expect(chartSeriesClassName('Café', 11)).toBe('chart-series-2');
     expect(chartSeriesClassName('value', 3)).toBe(chartSeriesClassName('value', 9));
     expect(chartSeriesClassName('value', 3)).toBe('chart-series-1');
   });

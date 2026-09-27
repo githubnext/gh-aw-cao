@@ -193,8 +193,8 @@ export function chartSeriesClassName(name, index) {
 function stablePaletteIndex(identity) {
   if (identity === DEFAULT_CHART_SERIES_NAME) return 0;
   let hash = 0x811c9dc5;
-  for (let index = 0; index < identity.length; index += 1) {
-    hash ^= identity.charCodeAt(index);
+  for (const byte of new TextEncoder().encode(identity)) {
+    hash ^= byte;
     hash = Math.imul(hash, 0x01000193);
   }
   return (hash >>> 0) % CHART_SERIES_COLOR_COUNT;
