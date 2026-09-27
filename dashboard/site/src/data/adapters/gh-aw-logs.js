@@ -1854,8 +1854,10 @@ function createCachedGhAwJsonlAccumulator(options) {
         optionalString(record.tool_name) ?? 'unknown'
       ]);
       const status = optionalString(record.status) ?? 'unknown';
-      const requestBytes = Math.max(0, finiteNumber(record.input_size ?? record.request_size) ?? 0);
-      const responseBytes = Math.max(0, finiteNumber(record.output_size ?? record.response_size) ?? 0);
+      const requestSize = finiteNumber(record.input_size ?? record.request_size);
+      const responseSize = finiteNumber(record.output_size ?? record.response_size);
+      const requestBytes = requestSize === null ? undefined : Math.max(0, requestSize);
+      const responseBytes = responseSize === null ? undefined : Math.max(0, responseSize);
       emitEvent(
         'tool.call',
         eventTimestamp,

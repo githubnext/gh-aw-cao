@@ -12,10 +12,7 @@ const sourceNames = [
   "repositories",
   "workflows",
   "runs",
-  "domains",
-  "tools",
-  "audits",
-  "issues",
+  "domains", "tools", "skills", "friction", "audits", "issues",
   "admissions",
   "admission-checks",
   "run-performance",
@@ -925,8 +922,10 @@ const TRANSACTION_EVENT_FIELDS = {
   decision: "decision",
   mcpServer: "mcp-server",
   mcpTool: "mcp-tool",
-  requestBytes: "request-bytes",
-  responseBytes: "response-bytes",
+  requestBytes: "request-bytes", responseBytes: "response-bytes", name: "name",
+  invocationCount: "invocation-count", failedCount: "failed-count", activationSource: "activation-source",
+  measurementState: "measurement-state", canonicalUnit: "canonical-unit", sources: "sources", totalEvents: "total-events", totalOccurrences: "total-occurrences", countedOccurrences: "counted-occurrences", suppressedOccurrences: "suppressed-occurrences", linkedInvocations: "linked-invocations", unattributedOccurrences: "unattributed-occurrences",
+  aic: "aic", inputTokens: "input-tokens", outputTokens: "output-tokens", cacheReadTokens: "cache-read-tokens", cacheWriteTokens: "cache-write-tokens", reasoningTokens: "reasoning-tokens", totalTokens: "total-tokens", turns: "turns", toolCalls: "tool-calls", latencyMs: "latency-ms", totalRunAic: "total-run-aic", frictionRatio: "friction-ratio", derived: "derived", dimensionStates: "dimension-states", uncertainty: "uncertainty", drivers: "drivers", groups: "groups", events: "events", eventsTruncated: "events-truncated", unmeasuredDrivers: "unmeasured-drivers",
   safeOutputType: "safe-output-type",
   githubEntityType: "github-entity-type",
   targetRepo: "target-repo",
@@ -1029,8 +1028,9 @@ export function transactionLogRows(usage) {
       ...(event.githubEntityType === "pull_request" ? { "is-pull-request": true } : {}),
       ...(event.githubEntityType === "issue" ? { "is-pull-request": false } : {}),
       ...(event.type === "audit.skill_activation"
-       ? { "skill-name": event.summary, name: event.summary, "invocation-count": 1, "failed-count": 0 }
-        : {}),
+       ? { "skill-name": event.name ?? event.summary, name: event.name ?? event.summary,
+           "invocation-count": event.invocationCount ?? 1, "failed-count": event.failedCount ?? 0 }
+       : {}),
       "observed-at": run.createdAt || usage.generatedAt,
     }));
   }
@@ -1039,6 +1039,7 @@ export function transactionLogRows(usage) {
     if (event["event-type"] === "safe_output.created"
       && ["issue", "pull_request"].includes(event["github-entity-type"])) return "issues";
     if (event["event-type"] === "audit.skill_activation") return "skills";
+    if (event["event-type"] === "workflow_run_friction") return "friction";
     if (event["event-source"] === "mcp"
       || ["tool_call", "agent_tool_start", "agent_tool_done", "guard_blocked", "difc_filtered"]
         .includes(event["event-type"])) return "tools";
