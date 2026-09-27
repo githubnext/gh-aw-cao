@@ -40,6 +40,8 @@ export function declaredDashboardViewIds(pageDefinition, reusableViews = []) {
     ));
 }
 
+// The dashboard declares its control repository but has no canonical values for
+// other parameterized routes, so only repository routes can be assessed with data.
 export function dashboardAssessmentPageHash(pageDefinition, dashboard) {
   const pageId = typeof pageDefinition?.id === "string" ? pageDefinition.id : "";
   const routeParameter = pageDefinition?.route?.["hash-query-parameter"];

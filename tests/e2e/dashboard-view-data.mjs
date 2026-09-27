@@ -7,6 +7,8 @@ import {
   legacyPhaseJsonToJsonl,
 } from "./dashboard-deployed-refresh-helpers.mjs";
 
+const memoryDownloadConcurrency = 8;
+
 export async function downloadDeployedDashboardData(
   destination,
   sourceUrl,
@@ -71,7 +73,7 @@ export async function downloadDeployedDashboardData(
     }
   }
   let nextMemoryFile = 0;
-  await Promise.all(Array.from({ length: Math.min(8, memoryFiles.length) }, async () => {
+  await Promise.all(Array.from({ length: Math.min(memoryDownloadConcurrency, memoryFiles.length) }, async () => {
     while (nextMemoryFile < memoryFiles.length) {
       const file = memoryFiles[nextMemoryFile];
       nextMemoryFile += 1;
