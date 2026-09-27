@@ -5,7 +5,36 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var renderLog = logger.New("cao:doctor:render")
+
+// renderFormat is a resolved, validated rendering format. Keeping it as a
+// distinct type from the raw flag string means a caller cannot pass an
+// unvalidated value straight to the text/JSON dispatch below.
+type renderFormat string
+
+const (
+	renderFormatText renderFormat = "text"
+	renderFormatJSON renderFormat = "json"
+)
+
+// resolveRenderFormat normalizes and validates the requested report format.
+// An empty or "text" value resolves to the default text rendering; "json"
+// resolves to the JSON rendering; anything else is rejected so a typo in the
+// --format flag fails fast rather than silently falling back to text.
+func resolveRenderFormat(format string) (renderFormat, error) {
+	switch strings.ToLower(strings.TrimSpace(format)) {
+	case "", "text":
+		return renderFormatText, nil
+	case "json":
+		return renderFormatJSON, nil
+	default:
+		return "", fmt.Errorf("unknown report format %q; expected text or json", format)
+	}
+}
 
 // Render writes the report in the requested format.
 //
@@ -14,15 +43,19 @@ import (
 // line-oriented enough to grep; the JSON format is for a program that wants
 // the whole structure.
 func Render(writer io.Writer, report Report, format string) error {
-	switch strings.ToLower(strings.TrimSpace(format)) {
-	case "", "text":
-		return renderText(writer, report)
-	case "json":
+	resolved, err := resolveRenderFormat(format)
+	if err != nil {
+		renderLog.Printf("report render rejected unknown format")
+		return err
+	}
+	renderLog.Printf("report render format=%s status=%s checks=%d", resolved, report.Summary.Status, report.Summary.Total)
+	switch resolved {
+	case renderFormatJSON:
 		encoder := json.NewEncoder(writer)
 		encoder.SetIndent("", "  ")
 		return encoder.Encode(report)
 	default:
-		return fmt.Errorf("unknown report format %q; expected text or json", format)
+		return renderText(writer, report)
 	}
 }
 
