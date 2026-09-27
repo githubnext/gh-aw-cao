@@ -214,6 +214,9 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 		); err != nil {
 			return nil, err
 		}
+		if err := validateAzureRedisURL(host.RedisURL, localSimulation); err != nil {
+			return nil, err
+		}
 		client, err := redisx.NewWithOptions(host.RedisURL, host.RedisOptions)
 		if err != nil {
 			return nil, err

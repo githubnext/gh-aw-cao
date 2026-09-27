@@ -49,6 +49,10 @@ export function buildWizardHost(targetModule, redisModule) {
   } else {
     redis.tls = { mode: "required" };
   }
+  if (targetModule === "azure-functions") {
+    redis.tls = { mode: "required" };
+    delete redis["allow-private-plaintext"];
+  }
 
   return {
     target: { module: targetModule },

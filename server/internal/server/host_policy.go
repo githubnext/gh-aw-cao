@@ -218,7 +218,7 @@ func (policy hostPolicy) resolve(lookup func(string) (string, bool)) (*resolvedH
 	}
 	return &resolvedHostPolicy{
 		Profile:                profile,
-		SingleReplicaConfirmed: true,
+		SingleReplicaConfirmed: !profile.SingleReplica || exactTrue(envValue(lookup, "CAO_UPSTASH_SINGLE_REPLICA")),
 		RedisURL:               redisURL,
 		RedisNamespace:         namespace,
 		RedisOptions: redisx.Options{
@@ -293,7 +293,7 @@ func (policy legacyHostPolicy) resolve(lookup func(string) (string, bool)) (*res
 	}
 	return &resolvedHostPolicy{
 		Profile:                profile,
-		SingleReplicaConfirmed: true,
+		SingleReplicaConfirmed: !profile.SingleReplica || exactTrue(envValue(lookup, "CAO_UPSTASH_SINGLE_REPLICA")),
 		RedisURL:               redisURL,
 		RedisNamespace:         namespace,
 		RedisOptions: redisx.Options{

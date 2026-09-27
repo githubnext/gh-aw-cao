@@ -233,6 +233,9 @@ func TestHostAndRedisModulesComposeIndependently(t *testing.T) {
 		resolved.Profile.SupportsCollection {
 		t.Fatalf("modules did not compose expected capabilities: %+v", resolved.Profile)
 	}
+	if resolved.SingleReplicaConfirmed {
+		t.Fatal("policy resolution inferred a single-replica deployment without explicit acknowledgement")
+	}
 
 	azure, err := (hostPolicy{
 		Target: targetPolicy{Module: "azure-functions"},
