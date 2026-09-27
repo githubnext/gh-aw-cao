@@ -1,37 +1,7 @@
 {
-  "source_sha": "d5968800f71e888b3be752f240fde6fa7811b606",
-  "next_category": "artifact transfer and Pages packaging",
+  "source_sha": "82c410b33eba4d75bf4b22d5b368683f4bfb6ef3",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
-    {
-      "evaluated_at": "2026-09-27T07:05:00Z",
-      "worker_run_id": 36301845459,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        36301641685,
-        36300623710,
-        36298948123,
-        36298831843,
-        36298188984,
-        36297578167,
-        36297070576,
-        36296005275,
-        36295528600,
-        36295103699,
-        36294393584,
-        36293475441,
-        36293409473,
-        36293143557,
-        36293106183,
-        36298790637,
-        36293444925,
-        36293377816,
-        36293106193,
-        36287787048,
-        36285946650
-      ],
-      "outcome": "no-op: evidence window 2026-09-27T04:01:37Z to 2026-09-27T06:58:25Z. Analyzed 15 successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days while disclosing 5 excluded completed docs runs in the same bounded sample (4 skipped workflow_run runs and 1 cancelled schedule run). Evaluated category dependency installation and caching. Median docs.yml workflow execution was 50.0s (p90 57.2s), build median 30.0s (p90 37.6s), deploy median 9.0s (p90 12.0s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed docs-side cache hits on all 15 sampled successful docs runs: Install dependencies and Save node_modules were skipped on 15/15, Restore cached CAO Dashboard succeeded on 15/15, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were skipped on 15/15. Median docs build step timings were Set up Node.js 5.0s, Restore node_modules 5.0s, Build documentation 9.0s, Restore cached CAO Dashboard 1.0s, and Upload Pages artifact 3.0s. Bounded logs on docs run 36298831843 confirmed Cache restored from key node-cache-Linux-x64-npm-b74c607a9d0510d7dfe64eb75a1e49dfd569d3b58dc9cbcc0a132c2d6c8c83d4, Cache restored from key Linux-node-24-b74c607a9d0510d7dfe64eb75a1e49dfd569d3b58dc9cbcc0a132c2d6c8c83d4, Cache restored from key central-agentic-ops-dashboard, Astro built 58 pages in 7.19s, and Upload Pages artifact uploaded 8,113,827 bytes. Comparable successful CAO Dashboard runs 36298790637, 36293444925, 36293377816, 36293106193, 36287787048, and 36285946650 still ran Install dashboard build dependencies on every rebuild at 7.0s median (p90 8.5s) even though Assemble Dashboard Language site stayed at 1.0s median and Upload dashboard artifact stayed at 2.0s median. The current workflow source still uses an unconditional npm ci --prefix dashboard/site --ignore-scripts path with no restore/save cache around dashboard/site dependencies, but this matches the existing open recommendation fingerprint e76660e8d5e0c2a12c8f and the latest evidence does not materially change the timing or source conditions. No additional non-duplicate suggestion is actionable in this cycle.",
-      "suggestion_fingerprint": "e76660e8d5e0c2a12c8f"
-    },
     {
       "evaluated_at": "2026-09-27T07:22:00Z",
       "worker_run_id": 36303124625,
@@ -800,6 +770,38 @@
         36327379320
       ],
       "outcome": "no-op: evidence window 2026-09-27T15:21:39Z to 2026-09-27T17:46:44Z. Analyzed 12 successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days while disclosing 8 excluded completed docs runs in the same bounded sample (5 skipped workflow_run runs and 3 skipped workflow_run runs from non-default-branch dashboard completions). Evaluated category scheduling, concurrency, and avoidable rebuilds. Median docs.yml workflow execution was 47.0s (p90 52.9s), build median 29.5s (p90 34.8s), deploy median 9.0s (p90 11.9s), and queue median 0.0s (p90 0.0s). The sample still showed duplicate successful docs publishes for the same source revision: head SHA 28a759f95d37b04885f736d347b0a1e6d5b7718c produced one push plus six schedule successes, and head SHA 944240bbad484ba1ae9117e4f9e4e002a432d485 produced four schedule successes. However, each avoided duplicate would save about 47s median per run, which remains below the required 60s threshold. Trusted step metadata and bounded logs confirmed that docs-side dependency and dashboard caches already hit on sampled successful runs, while comparable successful CAO Dashboard runs 36337344768, 36327435080, and 36327379320 still spent 7.0s median in Install dashboard build dependencies with no dashboard/site dependency cache. The actionable improvement remains the existing dependency-caching recommendation fingerprint 882cfe96ddd72f82030c rather than a new scheduling-specific change."
+    },
+    {
+      "evaluated_at": "2026-09-27T18:30:39Z",
+      "worker_run_id": 36340662580,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        36340708244,
+        36339133360,
+        36338792505,
+        36338149580,
+        36337896843,
+        36337443696,
+        36337395396,
+        36337239061,
+        36336550571,
+        36335371283,
+        36334494936,
+        36333731322,
+        36333140681,
+        36338748465,
+        36337344768,
+        36327435080,
+        36327379320,
+        36323783502,
+        36323470014,
+        36322714979,
+        36320977258,
+        36317693796,
+        36316408559
+      ],
+      "outcome": "no-op: evidence window 2026-09-27T16:24:44Z to 2026-09-27T18:28:22Z. Analyzed 13 successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days while disclosing 7 excluded completed docs runs in the same bounded sample (4 action_required workflow_run runs and 3 skipped workflow_run runs). Evaluated category artifact transfer and Pages packaging. Median docs.yml workflow execution was 48.0s (p90 52.8s), build median 30.0s (p90 35.6s), deploy median 9.0s (p90 10.8s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed docs-side cache hits on all 13 sampled successful docs runs: Install dependencies and Save node_modules were skipped on 13/13, Restore cached CAO Dashboard succeeded on 13/13, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were skipped on 13/13. Bounded logs on docs run 36316011650 confirmed cache restores for npm package data, node_modules, and central-agentic-ops-dashboard; Astro built 60 pages in 7.62s; and the github-pages artifact finalized at 9,140,311 bytes. The transfer-and-packaging path itself remains small and fast: Restore cached CAO Dashboard was 1.0s median, Upload Pages artifact 3.0s median, and Deploy Pages 9.0s median. Comparable successful CAO Dashboard runs 36338748465, 36337344768, 36327435080, 36327379320, 36323783502, 36323470014, 36322714979, 36320977258, 36317693796, and 36316408559 still spent 7.5s median (p90 9.1s) in Install dashboard build dependencies while Assemble Dashboard Language site remained 1.0s median and Upload dashboard artifact 2.0s median. Bounded dashboard logs on run 36315312897 showed npm ci added 268 packages in 7s before artifact assembly copied a 53.9 MiB SQLite file and 25 activity shards totaling 31.1 MiB. The workflow source at .github/workflows/cao-dashboard.yml still uses an unconditional npm ci --prefix dashboard/site --ignore-scripts path with no restore/save cache around dashboard/site dependencies, but that matches the existing recommendation fingerprint 882cfe96ddd72f82030c and this category produced no new non-duplicate actionable improvement.",
+      "suggestion_fingerprint": "882cfe96ddd72f82030c"
     }
   ]
 }
