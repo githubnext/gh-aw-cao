@@ -9,16 +9,17 @@ test("downloads canonical deployed dashboard inputs", async () => {
   const destination = await mkdtemp(join(tmpdir(), "dashboard-view-data-"));
   const requested = [];
   const fetcher = async (url) => {
-    requested.push(String(url));
-    const content = String(url).endsWith(".jsonl")
-      ? '{"kind":"run"}\n'
-      : String(url).endsWith("payload-hashes.json")
-        ? `{"gh-aw-logs-runs/fixture.jsonl":"${"a".repeat(64)}"}`
-        : String(url).endsWith("memory/manifest.json")
-          ? '{"campaigns":[{"campaign":"ambient-context","files":[{"path":"notes.md"}]}]}'
-          : String(url).endsWith("memory/ambient-context/notes.md")
-            ? "# Memory\n"
-        : '{"repositories":[]}';
+    const requestUrl = String(url);
+    requested.push(requestUrl);
+    let content = '{"repositories":[]}';
+    if (requestUrl.endsWith(".jsonl")) content = '{"kind":"run"}\n';
+    if (requestUrl.endsWith("payload-hashes.json")) {
+      content = `{"gh-aw-logs-runs/fixture.jsonl":"${"a".repeat(64)}"}`;
+    }
+    if (requestUrl.endsWith("memory/manifest.json")) {
+      content = '{"campaigns":[{"campaign":"ambient-context","files":[{"path":"notes.md"}]}]}';
+    }
+    if (requestUrl.endsWith("memory/ambient-context/notes.md")) content = "# Memory\n";
     return {
       ok: true,
       body: new Blob([content]).stream(),

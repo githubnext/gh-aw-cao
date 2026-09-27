@@ -57,11 +57,15 @@ export async function downloadDeployedDashboardData(
       ) continue;
       const fileUrl = new URL(file.path, campaignRoot);
       if (fileUrl.origin !== campaignRoot.origin || !fileUrl.href.startsWith(campaignRoot.href)) continue;
+      const relativePath = decodeURIComponent(
+        fileUrl.pathname.slice(campaignRoot.pathname.length),
+      );
+      if (!relativePath) continue;
       const response = await fetcher(fileUrl);
       if (!response.ok || !response.body) {
         throw new Error(`Unable to download deployed repository memory file: ${file.path}.`);
       }
-      const destinationPath = join(memoryDirectory, campaign.campaign, file.path);
+      const destinationPath = join(memoryDirectory, campaign.campaign, relativePath);
       await mkdir(dirname(destinationPath), { recursive: true });
       await pipeline(response.body, createWriteStream(destinationPath));
     }

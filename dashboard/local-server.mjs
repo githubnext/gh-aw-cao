@@ -62,7 +62,7 @@ const contentTypes = new Map([
   [".webp", "image/webp"],
 ]);
 const redactedTextExtensions = new Set([
-  ".css", ".html", ".js", ".jsonl", ".md", ".mjs", ".svg", ".txt", ".yaml", ".yml",
+  ".css", ".html", ".js", ".json", ".jsonl", ".md", ".mjs", ".svg", ".txt", ".yaml", ".yml",
 ]);
 const repositoryMemoryExtensions = new Set([".json", ".jsonl", ".md", ".txt", ".yaml", ".yml"]);
 const repositoryMemoryContentTypes = new Map([
