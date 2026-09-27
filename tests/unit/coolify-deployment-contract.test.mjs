@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import { parse } from "yaml";
 
@@ -39,6 +42,37 @@ function classify(script, values) {
       .map((line) => line.split(/=(.*)/s).slice(0, 2)),
   );
   return { ...result, outputs };
+}
+
+function verifyAdapterConfiguration(script, values) {
+  const directory = mkdtempSync(join(tmpdir(), "cao-coolify-adapter-"));
+  const output = join(directory, "output");
+  const summary = join(directory, "summary");
+  try {
+    const result = spawnSync("bash", ["-c", script], {
+      encoding: "utf8",
+      env: {
+        PATH: process.env.PATH,
+        COOLIFY_DEPLOY_ENDPOINT: "",
+        COOLIFY_DEPLOY_TOKEN: "",
+        EVENT_NAME: "",
+        GITHUB_OUTPUT: output,
+        GITHUB_STEP_SUMMARY: summary,
+        ...values,
+      },
+    });
+    const outputs = result.status === 0
+      ? Object.fromEntries(
+          readFileSync(output, "utf8")
+            .trim()
+            .split("\n")
+            .map((line) => line.split(/=(.*)/s).slice(0, 2)),
+        )
+      : {};
+    return { ...result, outputs };
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 }
 
 test("Coolify image is multi-stage, non-root, versioned, and health checked", async () => {
@@ -114,6 +148,35 @@ test("deployment workflow publishes no mutable channel and gates every Coolify t
   assert.equal(workflow.jobs.publish.permissions.packages, "write");
   assert.equal(workflow.jobs.deploy.needs[1], "publish");
   assert.deepEqual(workflow.jobs.deploy.permissions, { contents: "read" });
+  const adapter = workflow.jobs.deploy.steps.find((step) => step.id === "adapter");
+  const staleSource = workflow.jobs.deploy.steps.find((step) => step.name === "Reject stale deployment source");
+  const deploy = workflow.jobs.deploy.steps.find((step) => step.name === "Request digest deployment");
+  assert.equal(staleSource.if, "steps.adapter.outputs.configured == 'true'");
+  assert.equal(deploy.if, staleSource.if);
+  assert.deepEqual(
+    verifyAdapterConfiguration(adapter.run, {
+      EVENT_NAME: "push",
+    }).outputs,
+    { configured: "false" },
+  );
+  assert.deepEqual(
+    verifyAdapterConfiguration(adapter.run, {
+      EVENT_NAME: "push",
+      COOLIFY_DEPLOY_ENDPOINT: "https://deploy.example.test",
+      COOLIFY_DEPLOY_TOKEN: "test-token",
+    }).outputs,
+    { configured: "true" },
+  );
+  for (const values of [
+    { EVENT_NAME: "release" },
+    { EVENT_NAME: "workflow_dispatch" },
+    { EVENT_NAME: "push", COOLIFY_DEPLOY_ENDPOINT: "https://deploy.example.test" },
+    { EVENT_NAME: "push", COOLIFY_DEPLOY_TOKEN: "test-token" },
+  ]) {
+    const result = verifyAdapterConfiguration(adapter.run, values);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /deployment adapter configuration is incomplete/);
+  }
   assert.match(source, /Reject fork repository payload/);
   assert.match(source, /Resolve manual channel source/);
   assert.match(source, /DISPATCH_CHANNEL: \$\{\{ inputs\.channel \}\}/);

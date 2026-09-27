@@ -106,7 +106,7 @@ The `.github/workflows/coolify-deploy.yml` workflow builds, scans, publishes, an
 | A push to `main` that changes server or dashboard sources | `sha-COMMIT` | `coolify-alpha` |
 | A manual run for `alpha`, `beta`, or `stable`, from `main` or `release` | The current `main`, or the latest eligible release for the channel | The matching environment |
 
-The workflow refuses payloads from forks. Before it calls the adapter, it checks that the source is still current for its channel. To require approvals, use environment protection rules.
+The workflow refuses payloads from forks. Before it calls the adapter, it checks that the source is still current for its channel. When both deployment adapter secrets are absent, a push still builds, scans, and publishes the alpha image but skips the optional deployment. Release and manual runs fail when the secrets are absent, and every trigger fails when only one secret is configured. To require approvals, use environment protection rules.
 
 The repository doesn't include a deployment adapter. Your adapter must do the following:
 
