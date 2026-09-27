@@ -618,7 +618,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
         dir: 'ltr'
       }, category);
       const categoryContent = renderSafeLink(categoryText, point.link ?? null);
-      if (point.link) {
+      if (point.link && categoryContent instanceof HTMLElement) {
         categoryContent.title = fullCategory;
         categoryContent.setAttribute('aria-label', `${point.link.label}: ${fullCategory}`);
       }
