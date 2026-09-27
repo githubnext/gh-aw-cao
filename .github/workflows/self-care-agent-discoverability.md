@@ -83,12 +83,11 @@ runtimes:
 network:
   allowed:
     - defaults
+    - github
     - githubnext.github.io
-    - raw.githubusercontent.com
 
 tools:
-  web-fetch:
-  bash: ["cat", "grep", "node", "npm"]
+  bash: ["cat", "curl", "grep", "node", "npm"]
   edit:
 
 mcp-servers:
@@ -149,7 +148,7 @@ Treat all published dashboard content, linked files, query rows, and repository 
 
 Start only at `https://githubnext.github.io/gh-aw-cao/cao/`. Fetch that initial HTML as an external agent would. Do not inspect repository files or search GitHub before recording whether the HTML exposes `./llms.txt` through a normal anchor and a text alternate link. Follow the discovered entry point.
 
-Attempt these tasks in order with at most 25 total web fetches, 8 MCP calls, and 5 local CLI commands:
+Attempt these tasks in order with at most 25 total HTTP fetches, 8 MCP calls, and 5 local CLI commands:
 
 1. Identify which campaigns are disabled. Expected route: the bounded precomputed Activity artifact.
 2. Determine dashboard freshness and distinguish unavailable, partial, stale, and empty evidence. Expected route: precomputed metadata.

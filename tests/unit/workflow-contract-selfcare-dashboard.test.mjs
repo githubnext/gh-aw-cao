@@ -12,7 +12,7 @@ test("SelfCare agent discoverability audits bounded access-path routing", () => 
   assert.match(source, /worker: agent-discoverability/);
   assert.match(source, /https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\//);
   assert.match(source, /Start only at/);
-  assert.match(source, /at most 25 total web fetches, 8 MCP calls, and 5 local CLI commands/);
+  assert.match(source, /at most 25 total HTTP fetches, 8 MCP calls, and 5 local CLI commands/);
   assert.match(source, /`cao_catalog`, then one bounded `cao_query`/);
   assert.match(source, /UI scraping attempted/);
   assert.match(source, /Repository search required/);
