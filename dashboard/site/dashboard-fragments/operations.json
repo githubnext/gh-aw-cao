@@ -1,6 +1,29 @@
 {
   "queries": [
     {
+      "name": "maintenance-campaigns",
+      "intent": "Present installed campaign package metadata with orchestrator availability kept separate from registration and rollout mode.",
+      "from": "campaigns",
+      "joins": [
+        {
+          "source": "campaign-orchestrator-registration",
+          "type": "left",
+          "on": [
+            {
+              "left": "campaign",
+              "right": "campaign"
+            }
+          ],
+          "fields": [
+            {
+              "field": "campaign-status",
+              "as": "campaign-status"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "marketplace-package-detail",
       "intent": "Select one normalized marketplace package by its resolver-produced source coordinate.",
       "from": "marketplace-packages"
@@ -1670,7 +1693,7 @@
           "title": "CAO packages",
           "description": "Installed campaign revisions and the latest catalog revisions observed for this control repository. Unknown update confidence does not mean the package is current.",
           "data": {
-            "source": "campaigns"
+            "source": "maintenance-campaigns"
           },
           "mark": "list",
           "empty-message": "No CAO campaign packages were observed.",
@@ -1695,6 +1718,12 @@
                 "field": "campaign-update-state",
                 "type": "nominal",
                 "title": "Update confidence",
+                "display": "status"
+              },
+              {
+                "field": "campaign-status",
+                "type": "nominal",
+                "title": "Status",
                 "display": "status"
               },
               {

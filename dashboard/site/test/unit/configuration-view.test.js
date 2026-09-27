@@ -228,7 +228,7 @@ describe('Configuration dashboard view', () => {
     expect(page.description).toContain('run CAO Activity to refresh inventory');
     expect(page['filter-bar']).toBeUndefined();
     expect(page.views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source))
-      .toEqual(['campaigns', 'maintenance-repositories']);
+      .toEqual(['maintenance-campaigns', 'maintenance-repositories']);
     expect(page.views.map((/** @type {{ mark: string }} */ view) => view.mark)).toEqual(['list', 'list']);
     expect(page.views.map((/** @type {{ list: { style: string, card: string } }} */ view) => view.list))
       .toEqual([
@@ -241,6 +241,7 @@ describe('Configuration dashboard view', () => {
         'campaign-version',
         'campaign-current-version',
         'campaign-update-state',
+        'campaign-status',
         'campaign-registration'
       ]);
     expect(page.views[1].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field))
@@ -258,6 +259,11 @@ describe('Configuration dashboard view', () => {
     expect(templates.get('maintenance-campaign').details).toContainEqual({
       field: 'campaign-update-state',
       title: 'Update confidence',
+      display: 'status'
+    });
+    expect(templates.get('maintenance-campaign').labels).toContainEqual({
+      field: 'campaign-status',
+      title: 'Status',
       display: 'status'
     });
     expect(templates.get('maintenance-repository')['detail-labels']).toBe('visible');

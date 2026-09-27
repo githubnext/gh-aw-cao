@@ -718,6 +718,11 @@
         ],
         "labels": [
           {
+            "field": "campaign-status",
+            "title": "Status",
+            "display": "status"
+          },
+          {
             "field": "campaign-registration",
             "title": "Registration",
             "display": "active-state"
