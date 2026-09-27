@@ -382,7 +382,7 @@ function historicalObservationTimes(definition, observedAt, retentionWindow) {
 }
 
 function operationalValueKey(campaign, repository, valueId, timestamp) {
-  return `${campaign}\0${String(repository).toLowerCase()}\0${valueId}\0${timestamp}`;
+  return `${String(campaign ?? '').trim().toLowerCase()}\0${String(repository).toLowerCase()}\0${valueId}\0${timestamp}`;
 }
 
 async function retainedOperationalValueEnvelopes(outputPath, cutoff) {
