@@ -14,6 +14,10 @@ human operator
 		  └─ performs one bounded task using an AI agent and engine
 ```
 
+## Agent catalog
+
+The protocol-independent listing of agent-facing dashboard pages and named Dashboard Language queries, derived once from the dashboard page definitions and shared by every agent transport (the `cao` CLI, the read-only CAO MCP server, and WebMCP) so none of them maintains a second catalog. See [Agent analysis](agent-analysis.md).
+
 ## AI agent
 
 The reasoning component that interprets an agentic workflow's instructions, uses its configured tools, and generates outputs from repository context. GitHub Actions runs the AI agent through a selected engine. An AI agent is not the campaign itself or the human supervising it. See the canonical gh-aw definition of [AI Agent](https://github.github.com/gh-aw/reference/glossary/#ai-agent).
@@ -45,6 +49,10 @@ The repository that hosts CAO workflows and policy. It coordinates work across e
 ## Dashboard Language
 
 The declarative YAML vocabulary used to define dashboard queries, pages, views, and presentation. It keeps data selection and operational calculations in the dashboard data worker rather than in UI components. See the [Dashboard Language guide](dashboard-language.md) and [specification](dashboard-language-specification.md).
+
+## Dashboard fragment
+
+An authoring-time partial `dashboard` JSON document, listed in a root document's top-level `fragments` array, whose array fields (such as `queries`, `views`, and `pages`) are appended in declaration order to keep a coherent feature slice together. Fragments cannot include other fragments and are fully composed into the single deployed `dashboard.json` and `dashboard-pages/*.json` runtime format before validation and page chunking; a fragment is an authoring convenience, not a distinct runtime artifact. See the [dashboard README](https://github.com/githubnext/gh-aw-cao/blob/main/dashboard/site/README.md).
 
 ## Declarative query
 
@@ -105,6 +113,10 @@ A declared, bounded way for a workflow to produce an external effect, such as cr
 ## Target repository
 
 A repository enrolled for a campaign. A target can provide data and receive declared safe outputs, but does not run the control plane's workflows and does not declare live authority in its own files.
+
+## WebMCP
+
+The generated, read-only browser tool interface that exposes each agent-facing dashboard page as one `cao_<page id>` tool, so a browser-based AI agent can discover and run dashboard pages the way an operator does. WebMCP tools are generated adapters over the same page definitions and query execution path as human rendering, so there is no second tool catalog to maintain; it is experimental and available only in browsers that implement the underlying API. See [WebMCP](dashboard-webmcp.md).
 
 ## Worker
 
