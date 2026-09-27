@@ -121,6 +121,8 @@ export async function readRunTimeline(outputDirectory, runId, owningRunId, evide
         summary: [serverName, toolName].filter(Boolean).join("/"),
         status: firstText(call?.status),
         correlationId: firstText(call?.tool_call_id, call?.toolCallId, call?.correlation_id, call?.correlationId),
+        requestBytes: Math.max(0, Number(call?.input_size ?? call?.request_size) || 0),
+        responseBytes: Math.max(0, Number(call?.output_size ?? call?.response_size) || 0),
         payloadRef: `run_summary.json#mcp_tool_usage.tool_calls[${index}]`,
         sourceSequence: index + 1,
       }];

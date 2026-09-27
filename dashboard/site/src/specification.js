@@ -360,6 +360,8 @@ export const TABLE_VALUES = [
   'overview-runs',
   'domains',
   'tools',
+  'skills',
+  'friction',
   'audits',
   'issues',
   'transactions',

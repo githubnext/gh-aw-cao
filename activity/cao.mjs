@@ -2730,7 +2730,7 @@ async function runLegacyIngestion(contextPath, logDirectory) {
     const queries = createCanonicalQueries(indexedDB);
     const runs = await queries.runs.list();
     const records = (await Promise.all(
-      ['domains', 'tools', 'audits', 'issues'].map((collection) =>
+      ['domains', 'tools', 'skills', 'friction', 'audits', 'issues'].map((collection) =>
         Promise.all(runs.map((run) => queries[collection].forRun(String(run.id)))))
     )).flat(2);
     return { result, runs, records };

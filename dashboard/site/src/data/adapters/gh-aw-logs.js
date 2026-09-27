@@ -2222,10 +2222,12 @@ function createCachedGhAwJsonlAccumulator(options) {
     recordsByKind: observations.reduce((counts, observation) => {
       if (observation.kind === 'domain') counts.domains += 1;
       if (observation.kind === 'tool') counts.tools += 1;
+      if (observation.kind === 'skill') counts.skills += 1;
+      if (observation.kind === 'friction') counts.friction += 1;
       if (observation.kind === 'audit') counts.audits += 1;
       if (observation.kind === 'issue') counts.issues += 1;
       return counts;
-    }, { domains: 0, tools: 0, audits: 0, issues: 0 }),
+    }, { domains: 0, tools: 0, skills: 0, friction: 0, audits: 0, issues: 0 }),
     safeOutputItems,
     mappedSafeOutputItems: [...safeOutputItemsByRun.values()]
       .reduce((total, items) => total + items.length, 0),

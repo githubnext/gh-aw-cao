@@ -62,7 +62,7 @@ const usage = {
 };
 import { authoritativeDashboard as dashboardDocument } from '../authoritative-dashboard.js';
 const dashboardQueries = dashboardDocument.dashboard.queries;
-const emptyRunRecordSources = Object.fromEntries(['domains', 'tools', 'audits', 'issues'].map((source) => [
+const emptyRunRecordSources = Object.fromEntries(['domains', 'tools', 'skills', 'friction', 'audits', 'issues'].map((source) => [
   source,
   { source, rows: [], metadata: metadata(source) }
 ]));
@@ -1083,32 +1083,24 @@ describe('declarative dashboard queries', () => {
   });
 
   it('groups skill invocations by skill and workflow with workflow drill-through links', () => {
-    const tools = {
-      source: 'tools',
+    const skills = {
+      source: 'skills',
       rows: [
         {
           event: 'skill-1', organization: 'githubnext', repository: 'gh-aw-cao',
-          workflow: '.github/workflows/a.md', name: 'reactive-ui', 'is-skill': true
-        },
-        {
-          event: 'skill-2', organization: 'githubnext', repository: 'gh-aw-cao',
-          workflow: '.github/workflows/a.md', name: 'reactive-ui', 'is-skill': true
+          workflow: '.github/workflows/a.md', name: 'reactive-ui', 'invocation-count': 2
         },
         {
           event: 'skill-3', organization: 'githubnext', repository: 'gh-aw-cao',
-          workflow: '.github/workflows/b.md', name: 'dashboard-authoring', 'is-skill': true
-        },
-        {
-          event: 'tool-1', organization: 'githubnext', repository: 'gh-aw-cao',
-          workflow: '.github/workflows/a.md', name: 'bash', 'is-skill': false
+          workflow: '.github/workflows/b.md', name: 'dashboard-authoring', 'invocation-count': 1
         }
       ],
-      metadata: metadata('tools')
+      metadata: metadata('skills')
     };
 
     const derived = executeDashboardQueries(
       dashboardQueries,
-      { tools },
+      { skills },
       ['skill-invocations-by-skill', 'skill-invocations-by-workflow', 'skill-workflow-inventory']
     );
 

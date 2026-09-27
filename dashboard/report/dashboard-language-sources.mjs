@@ -925,6 +925,8 @@ const TRANSACTION_EVENT_FIELDS = {
   decision: "decision",
   mcpServer: "mcp-server",
   mcpTool: "mcp-tool",
+  requestBytes: "request-bytes",
+  responseBytes: "response-bytes",
   safeOutputType: "safe-output-type",
   githubEntityType: "github-entity-type",
   targetRepo: "target-repo",
@@ -1027,7 +1029,7 @@ export function transactionLogRows(usage) {
       ...(event.githubEntityType === "pull_request" ? { "is-pull-request": true } : {}),
       ...(event.githubEntityType === "issue" ? { "is-pull-request": false } : {}),
       ...(event.type === "audit.skill_activation"
-        ? { "tool-type": "skill", "is-skill": true, name: event.summary }
+       ? { "skill-name": event.summary, name: event.summary, "invocation-count": 1, "failed-count": 0 }
         : {}),
       "observed-at": run.createdAt || usage.generatedAt,
     }));
@@ -1036,12 +1038,13 @@ export function transactionLogRows(usage) {
     if (event["event-source"] === "firewall") return "domains";
     if (event["event-type"] === "safe_output.created"
       && ["issue", "pull_request"].includes(event["github-entity-type"])) return "issues";
+    if (event["event-type"] === "audit.skill_activation") return "skills";
     if (event["event-source"] === "mcp"
-      || ["tool_call", "agent_tool_start", "agent_tool_done", "guard_blocked", "difc_filtered", "audit.skill_activation"]
+      || ["tool_call", "agent_tool_start", "agent_tool_done", "guard_blocked", "difc_filtered"]
         .includes(event["event-type"])) return "tools";
     return "audits";
   };
-  return Object.fromEntries(["domains", "tools", "audits", "issues"].map((name) => [
+  return Object.fromEntries(["domains", "tools", "skills", "friction", "audits", "issues"].map((name) => [
     name,
     records.filter((record) => kind(record) === name),
   ]));
@@ -1054,7 +1057,7 @@ function transactionLogRowsForCurrentRuns(transactionLogs, runs) {
     Number(row["run-attempt"]) || 1,
   ].join(":");
   const runCoordinates = new Set(runs.map(runCoordinate));
-  return Object.fromEntries(["domains", "tools", "audits", "issues"].map((name) => [
+  return Object.fromEntries(["domains", "tools", "skills", "friction", "audits", "issues"].map((name) => [
     name,
     transactionLogs[name].filter((row) => runCoordinates.has(runCoordinate(row))),
   ]));
@@ -2682,7 +2685,7 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
   sources.repositories = source("repositories", [...repositories.values()], generatedAt, discoveryAvailable, workflowInventoryComplete);
   sources.workflows = source("workflows", workflows, generatedAt, workflowsAvailable, workflowInventoryComplete);
   sources.runs = source("runs", runs, generatedAt, runAvailable, runComplete);
-  for (const name of ["domains", "tools", "audits", "issues"]) {
+  for (const name of ["domains", "tools", "skills", "friction", "audits", "issues"]) {
     sources[name] = source(
       name,
       transactionLogs[name],

@@ -626,15 +626,7 @@
     {
       "name": "skill-invocations",
       "intent": "Select observed skill invocations for skill usage analytics.",
-      "from": "tools",
-      "filter": {
-        "predicates": [
-          {
-            "field": "is-skill",
-            "equals": true
-          }
-        ]
-      },
+      "from": "skills",
       "select": [
         {
           "field": "event",
@@ -652,6 +644,12 @@
         },
         {
           "field": "workflow"
+        },
+        {
+          "field": "invocation-count"
+        },
+        {
+          "field": "failed-count"
         }
       ]
     },
@@ -665,9 +663,9 @@
         ],
         "values": [
           {
-            "field": "id",
+            "field": "invocation-count",
             "as": "invocations",
-            "reducer": "count"
+            "reducer": "sum"
           }
         ]
       },
@@ -694,9 +692,9 @@
         ],
         "values": [
           {
-            "field": "id",
+            "field": "invocation-count",
             "as": "invocations",
-            "reducer": "count"
+            "reducer": "sum"
           }
         ]
       }
@@ -817,9 +815,9 @@
         ],
         "values": [
           {
-            "field": "id",
+            "field": "invocation-count",
             "as": "invocations",
-            "reducer": "count"
+            "reducer": "sum"
           }
         ]
       }
