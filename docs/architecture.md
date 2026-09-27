@@ -3,7 +3,7 @@ title: How the Control Plane Works
 description: Understand the control plane's purpose, execution boundary, and core safety properties.
 ---
 
-Read this overview when evaluating whether the control plane fits your organization. Follow its links when you need deployment policy or implementation details. For installation steps, begin with [Install and run safely](getting-started.md).
+Read this overview when evaluating whether the control plane fits your organization. Follow its links when you need deployment policy or implementation details. For installation steps, begin with the [quickstart](getting-started.md).
 
 ## Objectives
 
@@ -21,7 +21,7 @@ The control plane is designed to:
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="/gh-aw-cao/assets/control-plane-mental-model-dark.svg">
   <source media="(prefers-color-scheme: light)" srcset="/gh-aw-cao/assets/control-plane-mental-model-light.svg">
-  <img alt="A catalog release enters a private control repository, where an orchestrator selects and dispatches work to a worker that emits declared safe outputs in review or live mode." src="/gh-aw-cao/assets/control-plane-mental-model-light.svg">
+  <img alt="A catalog release enters a governed control repository, where an orchestrator selects and dispatches work to a worker that emits declared safe outputs in review or live mode." src="/gh-aw-cao/assets/control-plane-mental-model-light.svg">
 </picture>
 
 :::note[Three records, three jobs]

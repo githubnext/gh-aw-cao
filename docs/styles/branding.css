@@ -1,11 +1,66 @@
+@font-face {
+  font-family: "Mona Sans Mono";
+  src: url("../assets/fonts/MonaSansMonoVF-wght.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+}
+
 :root {
   --sl-content-width: 60rem;
 }
 
 .site-title {
+  gap: 0.55rem;
   background: none !important;
-  color: var(--sl-color-white) !important;
-  -webkit-text-fill-color: var(--sl-color-white) !important;
+  color: #1f2328 !important;
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: 0.075em;
+  line-height: 1;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+.site-title img {
+  width: 1.7rem;
+  height: 1.7rem;
+  flex-shrink: 0;
+}
+
+:root[data-theme="dark"] .site-title {
+  color: #f0f6fc !important;
+}
+
+.right-group {
+  gap: 0.2rem;
+}
+
+.right-group .social-icons {
+  display: contents;
+}
+
+.right-group .social-icons a[href$="/blog/rss.xml"] {
+  display: none;
+}
+
+.right-group .theme-toggle {
+  order: 2;
+}
+
+.right-group .social-icons a[href="https://github.com/githubnext/gh-aw-cao"] {
+  order: 3;
+  margin-inline-start: 0.25rem;
+}
+
+.right-group .social-icons a,
+.right-group .theme-toggle {
+  color: #1f2328 !important;
+}
+
+:root[data-theme="dark"] .right-group .social-icons a,
+:root[data-theme="dark"] .right-group .theme-toggle {
+  color: #f0f6fc !important;
 }
 
 .docs-theme-diagram img {
@@ -33,12 +88,12 @@
 
 @media (max-width: 22rem) {
   .site-title {
-    gap: 0.5rem;
-    font-size: 0.875rem;
+    gap: 0.45rem;
+    font-size: 0.95rem;
   }
 
   .site-title img {
-    width: 2rem;
-    height: 2rem;
+    width: 1.45rem;
+    height: 1.45rem;
   }
 }

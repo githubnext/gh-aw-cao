@@ -308,9 +308,9 @@ The implementation profile defined by this specification is:
 
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
-| Canonical model | 18 | Campaign, Repository, Workflow, Run, Domain, Tool, Audit, Issue, Operational Value, and Marketplace Package records |
-| Browser IndexedDB | 26 | Ten canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
-| Local SQLite projection | IndexedDB 26 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records`, containing the same logical stores and JSON records as IndexedDB |
+| Canonical model | 19 | Campaign, Repository, Workflow, Run, Domain, Tool, Audit, Issue, Operational Value, and Marketplace Package records |
+| Browser IndexedDB | 27 | Ten canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
+| Local SQLite projection | IndexedDB 27 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records`, containing the same logical stores and JSON records as IndexedDB |
 | Local Redis server projection | Canonical model 14 | Immutable active generation of logical-source row sets, queried only through the loopback Go HTTP(S) server |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
@@ -1746,7 +1746,7 @@ The canonical browser database SHALL use:
 
 ```js
 const DATABASE_NAME = "gh-aw-cao-dashboard-data";
-const DATABASE_VERSION = 26;
+const DATABASE_VERSION = 27;
 ```
 
 The name MAY be scoped by deployment path to prevent unrelated dashboard
@@ -1758,7 +1758,7 @@ rows.
 
 # 27. Object Stores
 
-IndexedDB version 26 SHALL define:
+IndexedDB version 27 SHALL define:
 
 ```text
 campaigns
@@ -1814,7 +1814,7 @@ conclusion
 
 The generation-ordered runtime-computation indexes described by Section 73 are
 reserved for the physical version that implements the computation projection.
-They are not part of IndexedDB version 26. That implementation MUST increment
+They are not part of IndexedDB version 27. That implementation MUST increment
 the physical version and update Section 5.1 before relying on those indexes.
 
 ### run-linked tables

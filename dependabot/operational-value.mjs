@@ -83,11 +83,14 @@ for (const moduleFile of moduleFiles) {
 
   const { durationDays, maturationDays } = definition.evidence.window;
   const observedAt = request.timestamp;
-  const windowEnd = shiftDays(observedAt, -maturationDays);
+  const firstMatureAt = shiftDays(definition.adoption.adoptedAt, durationDays + maturationDays);
+  const interim = definition.evaluation?.mode === "attainment-only"
+    && Date.parse(observedAt) < Date.parse(firstMatureAt);
+  const windowEnd = interim ? observedAt : shiftDays(observedAt, -maturationDays);
   const windows = repositories.map((repository) => ({
     repository,
     observedAt,
-    windowStart: shiftDays(windowEnd, -durationDays),
+    windowStart: interim ? definition.adoption.adoptedAt : shiftDays(windowEnd, -durationDays),
     windowEnd,
   }));
 
@@ -108,11 +111,35 @@ for (const moduleFile of moduleFiles) {
       if (typeof value !== "number" || !Number.isFinite(value)) {
         fail(`Operational value metric returned an invalid value: ${definition.slug}.${metric.id}`);
       }
+      const rollupNumerator = metric.rollup
+        ? Number(collections[index].evidence?.[metric.rollup.numeratorField])
+        : undefined;
+      const rollupDenominator = metric.rollup
+        ? Number(collections[index].evidence?.[metric.rollup.denominatorField])
+        : undefined;
+      if (metric.rollup && (
+        !Number.isFinite(rollupNumerator)
+        || !Number.isFinite(rollupDenominator)
+        || rollupNumerator < 0
+        || rollupDenominator <= 0
+      )) {
+        fail(`Operational value metric returned invalid rollup evidence: ${definition.slug}.${metric.id}`);
+      }
       console.log(JSON.stringify({
         timestamp: request.timestamp,
         repository: windows[index].repository,
         valueId: `${definition.slug}.${metric.id}`,
         value,
+        metricRole: metric.role,
+        metricName: metric.name,
+        metricUnit: metric.unit,
+        metricDirection: metric.direction,
+        maturityStatus: collections[index].evidence?.maturityStatus ?? "matured",
+        adoptionAt: definition.adoption.adoptedAt,
+        evaluationMode: definition.evaluation?.mode ?? "baseline-comparable",
+        workflowSlug: definition.slug,
+        workflowName: definition.workflowName,
+        ...(metric.rollup ? { rollupNumerator, rollupDenominator } : {}),
       }));
     }
   }

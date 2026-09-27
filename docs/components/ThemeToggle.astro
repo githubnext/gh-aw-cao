@@ -1,0 +1,98 @@
+---
+import { Icon } from "@astrojs/starlight/components";
+---
+
+<cao-theme-toggle>
+  <button class="theme-toggle" type="button" aria-label="Switch color theme">
+    <span class="theme-icon theme-icon-light" aria-hidden="true"><Icon name="sun" /></span>
+    <span class="theme-icon theme-icon-dark" aria-hidden="true"><Icon name="moon" /></span>
+  </button>
+</cao-theme-toggle>
+
+<script>
+  const storageKey = "starlight-theme";
+  const colorScheme = window.matchMedia("(prefers-color-scheme: light)");
+
+  function currentTheme(): "light" | "dark" {
+    return document.documentElement.dataset.theme === "light" ? "light" : "dark";
+  }
+
+  function syncThemeButtons(): void {
+    const theme = currentTheme();
+    document.querySelectorAll<HTMLButtonElement>("cao-theme-toggle button").forEach((button) => {
+      const nextTheme = theme === "dark" ? "light" : "dark";
+      button.ariaLabel = `Switch to ${nextTheme} theme`;
+      button.title = `Switch to ${nextTheme} theme`;
+      button.setAttribute("aria-pressed", String(theme === "dark"));
+    });
+  }
+
+  if (!customElements.get("cao-theme-toggle")) {
+    customElements.define(
+      "cao-theme-toggle",
+      class extends HTMLElement {
+        connectedCallback(): void {
+          const button = this.querySelector("button");
+          if (!(button instanceof HTMLButtonElement) || button.dataset.themeToggleReady) return;
+
+          button.dataset.themeToggleReady = "true";
+          button.addEventListener("click", () => {
+            const nextTheme = currentTheme() === "dark" ? "light" : "dark";
+            document.documentElement.dataset.theme = nextTheme;
+            localStorage.setItem(storageKey, nextTheme);
+            syncThemeButtons();
+          });
+          syncThemeButtons();
+        }
+      },
+    );
+
+    colorScheme.addEventListener("change", () => {
+      if (localStorage.getItem(storageKey)) return;
+      document.documentElement.dataset.theme = colorScheme.matches ? "light" : "dark";
+      syncThemeButtons();
+    });
+  }
+</script>
+
+<style>
+  @layer starlight.core {
+    cao-theme-toggle {
+      display: contents;
+    }
+
+    .theme-toggle {
+      display: inline-grid;
+      width: 2rem;
+      height: 2rem;
+      margin: 0;
+      place-items: center;
+      border: 0;
+      border-radius: 0.375rem;
+      padding: 0;
+      background: transparent;
+      color: var(--sl-color-text-accent);
+      cursor: pointer;
+    }
+
+    .theme-toggle:hover {
+      background: var(--sl-color-gray-6);
+      color: var(--sl-color-white);
+    }
+
+    .theme-toggle:focus-visible {
+      outline: 2px solid var(--sl-color-accent);
+      outline-offset: 2px;
+    }
+
+    .theme-icon {
+      display: none;
+      line-height: 0;
+    }
+
+    :global(:root[data-theme="dark"]) .theme-icon-light,
+    :global(:root[data-theme="light"]) .theme-icon-dark {
+      display: inline-flex;
+    }
+  }
+</style>

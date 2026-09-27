@@ -26,6 +26,10 @@ test("skill tests whether each measured phenomenon existed before adoption", () 
     "utf8",
   );
   assert.match(skill, /Do not confuse workflow adoption with creation of the measured phenomenon/);
+  assert.match(skill, /Do not derive the primary measure from a gh-aw workflow's own output/);
+  assert.match(skill, /pre-existing repository problem/);
+  assert.match(skill, /Count outcome attainment regardless of actor/);
+  assert.match(skill, /security-alert backlog/);
   assert.match(skill, /antecedent-existence test/);
   assert.match(skill, /pre-existing-and-reconstructable/);
   assert.match(skill, /pre-existing-but-not-reconstructable/);
@@ -193,7 +197,7 @@ for (const repository of request.repositories) {
   assert.equal(output, `verified ${valueModule}\n`);
 });
 
-test("attainment evaluation includes dubious observations from adoption", () => {
+test("attainment evaluation uses a partial post-adoption window before maturity", () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), "operational-value-maturation-"));
   const source = path.join(root, "optimization/operational-value/optimization-token-optimizer.mjs");
   const valueModule = path.join(temporary, "maturation-test.mjs");
@@ -246,8 +250,13 @@ export const scoreMetric = original.scoreMetric;
   ));
   assert.equal(
     timeline.snapshots[0].observedAt,
+    "2026-09-16T23:30:36Z",
+  );
+  assert.equal(
+    timeline.snapshots[0].window.startAt,
     timeline.valueFunction.definition.adoption.adoptedAt,
   );
+  assert.equal(timeline.snapshots[0].window.endAt, "2026-09-16T23:30:36Z");
   assert.equal(timeline.snapshots[0].evidence.maturityStatus, "interim");
   assert.equal(timeline.snapshots[0].evidence.dubious, true);
   assert.equal(timeline.snapshots[0].metrics["aic-per-successful-run"], 0);

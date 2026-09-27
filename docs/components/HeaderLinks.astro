@@ -1,0 +1,54 @@
+---
+import Default from "@astrojs/starlight/components/SocialIcons.astro";
+
+const path = Astro.url.pathname;
+const links = [
+  { label: "Setup", href: "/gh-aw-cao/setup/" },
+  { label: "Campaigns", href: "/gh-aw-cao/catalog/" },
+  { label: "Dashboard", href: "https://githubnext.github.io/gh-aw-cao/cao" },
+  { label: "Blog", href: "/gh-aw-cao/blog/" },
+];
+---
+
+<nav class="cao-primary-nav" aria-label="Primary">
+  {
+    links.map(({ label, href }) => (
+      <a href={href} aria-current={href.startsWith("/") && path.startsWith(href) ? "page" : undefined}>
+        {label}
+      </a>
+    ))
+  }
+</nav>
+<Default><slot /></Default>
+
+<style>
+  .cao-primary-nav {
+    display: flex;
+    order: 1;
+    align-items: center;
+    gap: 0.1rem;
+    margin-inline-end: 0.65rem;
+  }
+
+  .cao-primary-nav a {
+    border-radius: 0.375rem;
+    padding: 0.45rem 0.6rem;
+    color: var(--sl-color-gray-2);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1;
+    text-decoration: none;
+  }
+
+  .cao-primary-nav a:hover,
+  .cao-primary-nav a[aria-current="page"] {
+    background: var(--sl-color-gray-6);
+    color: var(--sl-color-white);
+  }
+
+  @media (max-width: 72rem) {
+    .cao-primary-nav {
+      display: none;
+    }
+  }
+</style>

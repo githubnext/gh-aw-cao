@@ -564,7 +564,7 @@ jobs:
           } >> "${GITHUB_STEP_SUMMARY}"
       - id: image-scan
         name: Scan local image
-        uses: aquasecurity/trivy-action@57a97c7060a3f8bc153738150e71b7be9592aadd # v0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           image-ref: cao-dashboard:${{ steps.source.outputs.sha }}
           format: table

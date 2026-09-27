@@ -1241,7 +1241,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .memory-file-header { margin: 0 0 16px; }
 .memory-file-header h2 { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
 .memory-mobile-back { display: none; }
-.cao-memory-file-content pre { min-height: 20rem; margin: 0; padding: 16px; overflow: auto; border-radius: 6px; background: var(--canvas-inset); color: var(--fg); font: .75rem/1.5 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.cao-memory-file-content pre { min-height: 20rem; margin: 0; padding: 16px; overflow: auto; border-radius: 6px; background: var(--canvas-inset); color: var(--fg); font: .75rem/1.5 var(--font-mono, ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace); white-space: pre-wrap; overflow-wrap: anywhere; }
 .campaign-memory-browser { min-width: 0; }
 .campaign-memory-warning { margin: 0 0 12px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--attention) 45%, var(--border)); border-radius: 6px; background: var(--attention-muted); color: var(--fg); }
 .campaign-memory-layout { min-height: 28rem; display: grid; grid-template-columns: minmax(14rem, 28%) minmax(0, 1fr); overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
@@ -1254,7 +1254,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .campaign-memory-file span { min-width: 0; overflow-wrap: anywhere; }
 .campaign-memory-file small { flex: 0 0 auto; color: var(--muted); font-weight: 400; }
 .campaign-memory-content { min-width: 0; padding: 20px; overflow: auto; }
-.campaign-memory-content pre { min-height: 20rem; margin: 0; padding: 16px; overflow: auto; border-radius: 6px; background: var(--canvas-inset); color: var(--fg); font: .75rem/1.5 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.campaign-memory-content pre { min-height: 20rem; margin: 0; padding: 16px; overflow: auto; border-radius: 6px; background: var(--canvas-inset); color: var(--fg); font: .75rem/1.5 var(--font-mono, ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace); white-space: pre-wrap; overflow-wrap: anywhere; }
 .campaign-detail-page .custom-view-grid, .campaign-detail-page .custom-view-grid > * { min-width: 0; }
 .dashboard-markdown { min-width: 0; padding: 24px 28px 32px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
 .workflow-badge-orchestrator { border-color: var(--accent); color: var(--accent); }

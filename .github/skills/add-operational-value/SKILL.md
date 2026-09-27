@@ -4,7 +4,7 @@ description: "Design and optionally evaluate a deterministic operational-value m
 argument-hint: "OWNER/REPO [WORKFLOW-NAME] [--campaign CAMPAIGN-SLUG]"
 allowed-tools: bash node gh
 metadata:
-  version: "0.6.0"
+  version: "0.7.0"
 ---
 
 # Add Operational Value
@@ -23,6 +23,8 @@ Design the evidence contract only from information available by adoption. Never 
 
 Do not confuse workflow adoption with creation of the measured phenomenon. Before classifying any measure, ask: **Could this exact repository outcome and native measure exist before the workflow was adopted?** AIC per successful run, failure rate, file size, issue resolution, and other repository outcomes often predate the workflow even when the workflow-specific recommendation, trace, or output does not. Test the outcome measure itself, not the workflow mechanism.
 
+Do not derive the primary measure from a gh-aw workflow's own output, recommendation, issue, trace, run, or engagement signal. Ask first: **What pre-existing repository problem caused this workflow to exist, and which repository-native facts would prove that problem improved?** Measure that problem independently of the workflow and count improvement regardless of whether it was produced by a maintainer, Dependabot, another automation, or the workflow. Adoption-timed movement is association, never causation.
+
 ## Inputs
 
 Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-operational-value OWNER/REPO WORKFLOW-NAME` to design one. Add `--campaign CAMPAIGN-SLUG` to restrict selection to workflows directly included by one campaign and place the resulting module under that campaign.
@@ -40,15 +42,18 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
   - With `WORKFLOW-NAME`, run the same command with `WORKFLOW-NAME` before the optional campaign flag. Use its output as `WORKFLOW-PATH`. Campaign-scoped resolution must reject orchestrators and workflows not directly included by that campaign. If resolution fails, ask for a valid name.
   - Design exactly one selected workflow per invocation. A campaign scopes ownership and selection; it does not combine distinct workflow outcome contracts.
 
-2. **Protect an existing design.** Run `.github/skills/add-operational-value/scripts/value-function-path.mjs OWNER/REPO WORKFLOW-NAME [CAMPAIGN-SLUG]`. Without a campaign, the default package is `WORKFLOW-NAME`. With a campaign, the canonical module is `CAMPAIGN-SLUG/operational-value/WORKFLOW-NAME.mjs` and the shared adapter is `CAMPAIGN-SLUG/operational-value.mjs`. If the module exists, verify it with `.github/skills/add-operational-value/scripts/verify-value-function.mjs --cao-adapter <adapter> <path>`, report that it was left unchanged, and continue at step 7. Do not inspect post-adoption evidence or redesign it.
+2. **Protect an existing design.** Run `.github/skills/add-operational-value/scripts/value-function-path.mjs OWNER/REPO WORKFLOW-NAME [CAMPAIGN-SLUG]`. Without a campaign, the default package is `WORKFLOW-NAME`. With a campaign, the canonical module is `CAMPAIGN-SLUG/operational-value/WORKFLOW-NAME.mjs` and the shared adapter is `CAMPAIGN-SLUG/operational-value.mjs`. If the module exists, verify it with `.github/skills/add-operational-value/scripts/verify-value-function.mjs --cao-adapter <adapter> <path>`, report that it was left unchanged, and continue at step 7. Do not inspect post-adoption evidence or redesign it unless the user explicitly identifies a contract flaw or requests reconsideration. In that case, preserve the ex-ante boundary, ignore post-adoption outcomes, and continue at step 3.
 
 3. **Recover adoption-time intent and measurements.** Run `.github/skills/add-operational-value/scripts/extract-workflow-intent.mjs OWNER/REPO WORKFLOW-PATH`. Treat its adoption commit as adoption and its first parent as the baseline; if there is no parent, no historical baseline exists. Infer intent from adoption-time frontmatter, imports, instructions, and compiled workflow. Use triggers and skip rules to identify opportunities, and checkout, tools, permissions, and safe outputs to identify accessible or affected repositories.
+  - State the pre-existing repository problem in repository-native terms before inspecting workflow-produced outputs. Identify the adverse state, backlog, risk, cost, latency, or reliability condition that motivated intervention.
+  - Inventory direct measures of that problem first. Include outcomes that a person, native platform feature, or other automation could attain without this workflow.
   - Inventory every measure that adoption-time deterministic setup or precompute calculates, gates, ranks, or passes to the agent.
   - Inventory every measure the workflow instructions explicitly require the agent to calculate, compare, preserve, or use as an acceptance check.
   - Inventory which required facts already exist in canonical CAO collections and can be selected with a declarative query. Record the collection, fields, relationships, authoritative timestamps, and source-retention limit.
   - Inventory which required facts exist only in repository history or content, such as files, syntax, dependencies, ownership, commits, diffs, issue state, or pull-request state. Record the repository and immutable cutoff needed to reconstruct them.
   - Preserve each measure's exact target repository, population, grain, evidence window, filters, comparison rule, and missing-data behavior. A target checkout is strong evidence that the measured outcome belongs to that target, not to the repository hosting the workflow.
-  - Treat these workflow-native measures as the first operational-value candidates. They are not automatically value: classify each as a direct repository outcome, an acceptance gate, a diagnostic, or a mechanism/output proxy.
+  - Do not treat workflow-native measures as the first operational-value candidates. Classify each as an acceptance gate, diagnostic, or mechanism/output proxy. A workflow-produced artifact or engagement signal must not be the primary measure.
+  - Select primary candidates from repository-native problem state. For dependency operations, test security-alert backlog and severity, outdated-dependency backlog, dependency-update pull-request backlog, and remediation duration when adoption-time scope and evidence support them.
   - For every direct-outcome candidate, perform an **antecedent-existence test** before choosing an evaluation mode:
     1. Could the same eligible opportunity and repository outcome occur before adoption, including through human or other automation?
     2. Could the same native formula, unit, population, grain, filters, and window be applied before adoption without referring to a workflow-generated artifact?
@@ -65,10 +70,11 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
   - whether the outcome can occur without the workflow;
   - the antecedent-existence result and evidence for every proposed primary or diagnostic measure;
   - disposition of every workflow-native measure as primary, diagnostic, gate, or rejected proxy;
+  - disposition of every repository-problem measure considered and why any reconstructable native outcome was not selected;
   - proposed primary and diagnostic measures;
   - classification as baseline-comparable, attainment-only, or not measurable.
 
-  Test workflow-native measures before inventing a new metric. Prefer their established evidence grain, windows, filters, and safeguards whenever they directly measure the intended repository outcome. A proposed estimate, self-assessment, recommendation, or produced report remains a mechanism proxy until repository-observable evidence demonstrates attainment.
+  Test repository-native problem measures before workflow-native measures. Reuse workflow-established evidence grain, windows, filters, and safeguards only when they apply unchanged to the independent repository outcome. A proposed estimate, self-assessment, recommendation, produced report, plan issue, engagement event, or workflow run remains a mechanism proxy and cannot be primary operational value.
 
   Choose evidence sources in this order:
   1. Use a declarative query over canonical CAO data when it contains the authoritative facts and its retention covers the observation being collected.
@@ -117,6 +123,8 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
 - Design ex ante: use only outcome facts known by the baseline commit. Use the adoption commit only for the workflow and contemporaneous repository context.
 - Always separate **phenomenon existence** from **evidence availability**. First decide whether the exact outcome and native measure existed before adoption; then decide whether its facts can be reconstructed. A missing historical source can justify `pre-existing-but-not-reconstructable`, but it cannot turn a pre-existing measure into a post-adoption-only phenomenon.
 - Apply the same-formula counterfactual: remove the workflow from the historical picture and ask whether the metric still has a coherent numerator, denominator, unit, population, and timestamp. If yes, probe it before adoption. Workflow-specific recommendations, traces, and outputs may disappear in this test; the repository outcome must not.
+- Apply a problem-first counterfactual before considering any gh-aw signal: remove the workflow and all of its outputs, then ask which repository problem would still motivate intervention and which native facts would show that problem improving or worsening.
+- Count outcome attainment regardless of actor. If a maintainer, Dependabot, another automation, or the measured workflow improves the repository-native problem, record the same outcome. Describe pre/post movement as association and never infer causation from adoption timing.
 - Prefer baseline comparison whenever the measured phenomenon predates adoption. Attainment-only is a fallback after an explicit failed reconstruction, not the default for a newly installed workflow.
 - Evaluate evidence in the repository where the intended outcome occurs. When the workflow checks out or names a target repository, do not substitute the workflow-owning or control repository merely because execution happens there.
 - Use files, history, pull requests, issues, and other relevant data already present in canonical CAO data, persisted precomputations, or an available target-repository checkout. For mutable records, reconstruct state at the baseline cutoff; do not use current fields or later events.

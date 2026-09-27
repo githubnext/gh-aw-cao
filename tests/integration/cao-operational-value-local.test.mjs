@@ -35,13 +35,13 @@ test("operational-value runs locally and contains an injected GitHub permission 
         repository: "githubnext/gh-aw-cao",
         campaign: "dependabot",
         campaign_id: "campaign:dependabot",
-        value_id: "dependabot-update-planner.consumed-plan-share",
+        value_id: "dependabot-update-planner.open-security-alert-count",
         value: 1,
       },
     })}\n`);
     writeFileSync(fakeGh, `#!/usr/bin/env bash
 set -euo pipefail
-if [[ " $* " == *"repos/githubnext/gh-aw-cao/issues"* ]]; then
+if [[ " $* " == *"repos/github/gh-aw/dependabot/alerts"* ]]; then
   echo "gh: Resource not accessible by integration: $GH_TOKEN (HTTP 403)" >&2
   exit 1
 else
@@ -72,7 +72,7 @@ fi
     });
 
     assert.equal(execution.status, 0, execution.stderr);
-    assert.match(execution.stderr, /Warning: .*dependabot\/operational-value\.mjs failed.*HTTP 403/);
+    assert.match(execution.stderr, /Warning: .*dependabot\/operational-value\.mjs failed.*HTTP 403/s);
     assert.doesNotMatch(execution.stderr, new RegExp(token));
     const result = JSON.parse(execution.stdout);
     assert.deepEqual(result.warnings.map(({ package: campaign }) => campaign), ["dependabot"]);
@@ -87,7 +87,7 @@ fi
         value: value.value,
       })),
       [
-        { campaign: "dependabot", valueId: "dependabot-update-planner.consumed-plan-share", value: 1 },
+        { campaign: "dependabot", valueId: "dependabot-update-planner.open-security-alert-count", value: 1 },
       ],
     );
   } finally {

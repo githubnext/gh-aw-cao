@@ -7,19 +7,18 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 <StarlightPage
   frontmatter={{
-    title: "Campaign Catalog",
-    description: "Ready-to-install Central Agentic Ops campaigns discovered from their aw.yml manifests.",
+    title: "Browse Campaigns",
+    description: "Find a ready-to-install campaign for the repository outcome you want.",
     editUrl: false,
   }}
 >
   <p class="catalog-intro">
-    Choose a ready campaign for your private campaign hub. Every entry is generated from its manifest and opens to
-    GitHub installation instructions, workflow inventory, and the campaign's full README when available. Private
-    campaigns are omitted because gh-aw rejects them; experimental campaigns are labeled before installation.
+    Campaigns package a repeatable repository outcome as installable workflows. Search by the improvement you want,
+    then open a campaign to review its behavior and install it in your CAO control repository.
   </p>
-  <p class="catalog-author">
-    Need a different outcome? <a href={`${basePath}/author-your-first-operation/`}>Author your first campaign</a> and
-    prove it safely on one repository before proposing it for this curated catalog.
+  <p class="catalog-note">
+    Entries come from their <code>aw.yml</code> manifests. Private campaigns are omitted, and experimental campaigns
+    are labeled before installation.
   </p>
 
   <section class="catalog-browser not-content" aria-label="Browse campaigns">
@@ -60,6 +59,14 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
     <p class="catalog-empty" data-catalog-empty hidden>No campaigns match your search.</p>
   </section>
+
+  <section class="catalog-next" aria-labelledby="catalog-next">
+    <h2 id="catalog-next">No campaign fits?</h2>
+    <p>
+      <a href={`${basePath}/author-your-first-operation/`}>Build a campaign</a> for your outcome and prove it in review
+      mode on one repository. New to CAO? Start with the <a href={`${basePath}/getting-started/`}>quickstart</a>.
+    </p>
+  </section>
 </StarlightPage>
 
 <script>
@@ -92,8 +99,18 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
     font-size: 1.05rem;
   }
 
-  .catalog-author {
+  .catalog-note {
     max-width: 46rem;
+  }
+
+  .catalog-next {
+    max-width: 46rem;
+    margin-block-start: 2.5rem;
+  }
+
+  .catalog-note {
+    color: var(--sl-color-gray-3);
+    font-size: 0.9rem;
   }
 
   .catalog-browser {

@@ -381,8 +381,10 @@ function historicalObservationTimes(definition, observedAt, retentionWindow) {
   return times;
 }
 
-function operationalValueKey(repository, valueId, timestamp) {
-  return `${String(repository).toLowerCase()}\0${valueId}\0${timestamp}`;
+function operationalValueKey(campaign, repository, valueId, timestamp) {
+  const campaignKey = String(campaign ?? '').trim().toLowerCase();
+  if (!campaignKey) throw new Error('Operational value campaign is required for cache key');
+  return `${campaignKey}\0${String(repository).toLowerCase()}\0${valueId}\0${timestamp}`;
 }
 
 async function retainedOperationalValueEnvelopes(outputPath, cutoff) {
@@ -393,7 +395,9 @@ async function retainedOperationalValueEnvelopes(outputPath, cutoff) {
     if (error && error.code === 'ENOENT') return [];
     throw error;
   }
-  return content.split(/\r?\n/).flatMap((line, index) => {
+  const retained = [];
+  let legacyPruned = 0;
+  content.split(/\r?\n/).forEach((line, index) => {
     if (!line.trim()) return [];
     const envelope = JSON.parse(line);
     if (envelope?.schema_version !== 2 || envelope?.kind !== 'operational_value') {
@@ -403,8 +407,16 @@ async function retainedOperationalValueEnvelopes(outputPath, cutoff) {
     if (!Number.isFinite(timestamp)) {
       throw new Error(`${outputPath}:${index + 1} has an invalid operational value timestamp`);
     }
-    return timestamp >= cutoff ? [envelope] : [];
+    const campaign = String(envelope.operational_value?.campaign ?? '').trim();
+    // Legacy retained envelopes written before campaign-scoped value identity
+    // cannot be matched safely and are pruned as obsolete retained evidence.
+    if (timestamp >= cutoff && campaign) retained.push(envelope);
+    else if (timestamp >= cutoff) legacyPruned += 1;
   });
+  if (legacyPruned > 0) {
+    console.warn(`Warning: pruned ${legacyPruned} legacy operational value envelope(s) without campaign identity from ${outputPath}`);
+  }
+  return retained;
 }
 
 export async function runOperationalValue({
@@ -456,7 +468,7 @@ export async function runOperationalValue({
     : [];
   const retainedKeys = new Set(retained.map((envelope) => {
     const value = envelope.operational_value;
-    return operationalValueKey(value.repository, value.value_id, value.timestamp);
+    return operationalValueKey(value.campaign, value.repository, value.value_id, value.timestamp);
   }));
   const request = `${JSON.stringify({
     schemaVersion: 1,
@@ -504,7 +516,7 @@ export async function runOperationalValue({
             retentionWindow
           ).filter((historyTimestamp) => supportedRepositories.some((repository) => (
             definition.valueIds.some((valueId) => (
-              !retainedKeys.has(operationalValueKey(repository, valueId, historyTimestamp))
+              !retainedKeys.has(operationalValueKey(entry.package, repository, valueId, historyTimestamp))
             ))
           )));
           const historyEnvironment = {
@@ -544,6 +556,7 @@ export async function runOperationalValue({
             historyValues += records.length;
             for (const record of records) {
               retainedKeys.add(operationalValueKey(
+                entry.package,
                 record.repository,
                 record.valueId,
                 record.timestamp
@@ -600,7 +613,7 @@ export async function runOperationalValue({
     });
     const merged = new Map([...currentRetained, ...envelopes].map((envelope) => {
       const value = envelope.operational_value;
-      return [operationalValueKey(value.repository, value.value_id, value.timestamp), envelope];
+      return [operationalValueKey(value.campaign, value.repository, value.value_id, value.timestamp), envelope];
     }));
     const jsonl = [...merged.values()].map((envelope) => JSON.stringify(envelope)).join('\n');
     const temporary = `${output}.tmp-${process.pid}-${Date.now()}`;
