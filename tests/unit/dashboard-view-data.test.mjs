@@ -17,7 +17,7 @@ test("downloads canonical deployed dashboard inputs", async () => {
       content = `{"gh-aw-logs-runs/fixture.jsonl":"${"a".repeat(64)}"}`;
     }
     if (requestUrl.endsWith("memory/manifest.json")) {
-      content = '{"campaigns":[{"campaign":"ambient-context","files":[{"path":"notes.md"}]}]}';
+      content = '{"campaigns":[{"campaign":"ambient-context","files":[{"path":"notes.md"},{"path":"%2E%2E%2Fescape.md"}]}]}';
     }
     if (requestUrl.endsWith("memory/ambient-context/notes.md")) content = "# Memory\n";
     return {

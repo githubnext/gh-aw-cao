@@ -63,7 +63,12 @@ export async function downloadDeployedDashboardData(
       const relativePath = decodeURIComponent(
         fileUrl.pathname.slice(campaignRoot.pathname.length),
       );
-      if (!relativePath) continue;
+      if (
+        !relativePath
+        || relativePath.startsWith("/")
+        || relativePath.includes("\\")
+        || relativePath.split("/").some((segment) => !segment || segment === "." || segment === "..")
+      ) continue;
       memoryFiles.push({
         campaign: campaign.campaign,
         path: file.path,
