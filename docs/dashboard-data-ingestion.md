@@ -78,7 +78,7 @@ The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnex
 The canonical model is version 19. The browser database is
 `gh-aw-cao-dashboard-data`, IndexedDB version 27. Its canonical stores are
 `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `audits`,
-and `issues`, and `operationalValues`; all use `id` as the key. The `transactions` store records
+`issues`, and `operationalValues`; all use `id` as the key. The `transactions` store records
 ingestion outcomes and is indexed by `createdAt`. The disposable
 `dailyOverviewAggregates` and `overviewAggregateMetadata` stores implement the
 Overview fast path. Because the database is derived state, physical schema

@@ -493,6 +493,9 @@ process.stdin.on('end', () => console.log(JSON.stringify({timestamp:"2026-09-24T
       timestamp: '2026-08-01T10:00:00.000Z', campaign: 'example', repository: 'githubnext/gh-aw-cao', value_id: 'old', value: 1
     } }),
     JSON.stringify({ schema_version: 2, kind: 'operational_value', operational_value: {
+      timestamp: '2026-09-19T10:00:00.000Z', repository: 'githubnext/gh-aw-cao', value_id: 'legacy', value: 1
+    } }),
+    JSON.stringify({ schema_version: 2, kind: 'operational_value', operational_value: {
       timestamp: '2026-09-20T10:00:00.000Z', campaign: 'example', repository: 'githubnext/gh-aw-cao', value_id: 'retained', value: 1
     } })
   ].join('\n'));

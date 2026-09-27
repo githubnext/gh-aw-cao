@@ -405,7 +405,8 @@ async function retainedOperationalValueEnvelopes(outputPath, cutoff) {
     if (!Number.isFinite(timestamp)) {
       throw new Error(`${outputPath}:${index + 1} has an invalid operational value timestamp`);
     }
-    return timestamp >= cutoff ? [envelope] : [];
+    const campaign = String(envelope.operational_value?.campaign ?? '').trim();
+    return timestamp >= cutoff && campaign ? [envelope] : [];
   });
 }
 
