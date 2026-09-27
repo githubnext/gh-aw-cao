@@ -55,7 +55,10 @@ export function buildWizardHost(targetModule, redisModule) {
   }
 
   return {
-    target: { module: targetModule },
+    target: {
+      module: targetModule,
+      ...(redisModule === "upstash" ? { replicas: 1 } : {}),
+    },
     redis,
   };
 }

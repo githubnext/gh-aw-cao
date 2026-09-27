@@ -71,28 +71,6 @@ func TestHostedRedisRequiresTLSUnlessPrivatePlaintextIsExplicit(t *testing.T) {
 	}
 }
 
-func TestHostedUpstashModeRequiresProviderTLS(t *testing.T) {
-	upstashURL := "rediss://" + "default:test-token" + "@us1-example.upstash.io:6379"
-	otherURL := "rediss://" + "default:test-token" + "@redis.example.com:6379"
-	if profile, err := hostedProfile("upstash", upstashURL, false); err != nil || profile.RedisSession != HostRedisSerialized {
-		t.Fatalf("Upstash TLS endpoint rejected: profile=%+v err=%v", profile, err)
-	}
-	for _, endpoint := range []string{
-		"redis://us1-example.upstash.io:6379",
-		otherURL,
-	} {
-		if _, err := hostedProfile("upstash", endpoint, false); err == nil {
-			t.Errorf("Upstash mode accepted unsupported endpoint %q", endpoint)
-		}
-	}
-	if _, err := hostedProfile("upstash", upstashURL, true); err == nil {
-		t.Fatal("Upstash mode accepted the private plaintext opt-in")
-	}
-	if _, err := hostedProfile("unknown", "rediss://redis.example.com:6379", false); err == nil {
-		t.Fatal("unknown Redis mode was accepted")
-	}
-}
-
 func TestUpstashRevocationKeyPrefixIsStableAndModeSpecific(t *testing.T) {
 	first, err := durableRevocationKeyPrefix(true, "dashboard")
 	if err != nil {
@@ -114,28 +92,6 @@ func TestUpstashRevocationKeyPrefixIsStableAndModeSpecific(t *testing.T) {
 	}
 	if value, err := durableRevocationKeyPrefix(false, "invalid namespace!"); err != nil || value != "" {
 		t.Fatalf("standard mode unexpectedly received a revocation prefix: %q", value)
-	}
-}
-
-func TestUpstashSingleReplicaAcknowledgementIsExact(t *testing.T) {
-	for _, value := range []string{"true", " TRUE "} {
-		if !exactTrue(value) {
-			t.Errorf("single-replica acknowledgement %q was rejected", value)
-		}
-	}
-	for _, value := range []string{"", "false", "1", "yes"} {
-		if exactTrue(value) {
-			t.Errorf("single-replica acknowledgement %q was accepted", value)
-		}
-		if err := validateSingleReplica(upstashHostProfile(), value); err == nil {
-			t.Errorf("Upstash startup accepted acknowledgement %q", value)
-		}
-	}
-	if err := validateSingleReplica(upstashHostProfile(), "true"); err != nil {
-		t.Fatalf("Upstash startup rejected exact acknowledgement: %v", err)
-	}
-	if err := validateSingleReplica(hostedHostProfile(), ""); err != nil {
-		t.Fatalf("standard mode required an Upstash acknowledgement: %v", err)
 	}
 }
 
@@ -238,22 +194,6 @@ func TestCoolifyProxyCIDRsFailClosed(t *testing.T) {
 		if _, err := parseTrustedProxyPrefixes(value); err == nil {
 			t.Fatalf("accepted unsafe trusted proxy CIDR %q", value)
 		}
-	}
-}
-
-func TestPrivatePlaintextRedisOptInIsExplicit(t *testing.T) {
-	for _, value := range []string{"", "false", "FALSE"} {
-		allowed, err := privatePlaintextRedisOptIn(value)
-		if err != nil || allowed {
-			t.Fatalf("value %q unexpectedly enabled plaintext Redis: allowed=%t err=%v", value, allowed, err)
-		}
-	}
-	allowed, err := privatePlaintextRedisOptIn("true")
-	if err != nil || !allowed {
-		t.Fatalf("explicit opt-in was rejected: allowed=%t err=%v", allowed, err)
-	}
-	if _, err := privatePlaintextRedisOptIn("yes"); err == nil {
-		t.Fatal("ambiguous plaintext Redis opt-in was accepted")
 	}
 }
 
@@ -405,6 +345,25 @@ func TestAzureFunctionsHandlerLogsTelemetryFailureOnceAndKeepsServing(t *testing
 	t.Setenv("OTEL_SDK_DISABLED", "")
 	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:4318")
 	t.Setenv("OTEL_RESOURCE_ATTRIBUTES", "not-a-valid-key-value-list")
+	policyPath := t.TempDir() + "/cao.json"
+	if err := os.WriteFile(policyPath, []byte(`{
+		"control-plane": {
+			"web": {
+				"host": {
+					"target": {"module": "azure-functions"},
+					"redis": {
+						"module": "local",
+						"url-env": "CAO_REDIS_URL",
+						"allow-private-plaintext": true,
+						"tls": {"mode": "disabled"}
+					}
+				}
+			}
+		}
+	}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("CAO_POLICY_PATH", policyPath)
 	t.Setenv("CAO_REDIS_URL", "")
 
 	var logOutput strings.Builder

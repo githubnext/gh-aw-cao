@@ -71,9 +71,8 @@ request handling or deployment authority. Adding a module requires a reviewed
 registry entry, schema and policy validation, documentation, and composition
 tests; modules cannot be loaded from an untrusted path at runtime.
 
-The previous flat `web.host` shape and `redis.preset` remain accepted as a
-migration path. New deployments should use `target.module` and `redis.module`;
-the environment-only path remains available when `web.host` is absent.
+Hosted startup requires this modular `web.host` policy. Flat host objects,
+`redis.preset`, and environment-only host selection are rejected.
 
 | App target module | Use |
 | --- | --- |

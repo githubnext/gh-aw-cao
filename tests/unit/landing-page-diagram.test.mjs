@@ -161,7 +161,7 @@ test("wizard composes app target and Redis provider modules", () => {
   const policy = buildWizardPolicy(controlPolicy, "acme", "dependabot", host);
 
   assert.deepEqual(policy["control-plane"].web.host, {
-    target: { module: "container" },
+    target: { module: "container", replicas: 1 },
     redis: {
       module: "upstash",
       "namespace-env": "REDIS_NAMESPACE",

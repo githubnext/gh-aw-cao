@@ -192,65 +192,35 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 	if err != nil {
 		return nil, err
 	}
-	if host == nil && strings.TrimSpace(os.Getenv("CAO_REDIS_URL")) == "" {
-		return nil, errors.New("CAO_REDIS_URL is required")
-	}
 	allowedHosts := splitCSV(os.Getenv("CAO_AZURE_ALLOWED_HOSTS"))
 	redirectURL := os.Getenv("CAO_GITHUB_REDIRECT_URL")
 	if err := validateAzureLocalEndpoints(localSimulation, allowedHosts, redirectURL); err != nil {
 		return nil, err
 	}
-	var store *redisx.Store
-	profile := azureFunctionsHostProfile(localSimulation)
-	singleReplicaConfirmed := true
-	if host != nil {
-		if host.Profile.Listener != HostListenerPlatform {
-			return nil, fmt.Errorf("host target module %q does not delegate listener ownership", host.Profile.Name)
-		}
-		if err := validateHostedRedisURL(
-			host.RedisURL,
-			host.RedisOptions.AllowPrivatePlaintext,
-			host.RedisOptions.ForceTLS,
-		); err != nil {
-			return nil, err
-		}
-		if err := validateAzureRedisURL(host.RedisURL, localSimulation); err != nil {
-			return nil, err
-		}
-		client, err := redisx.NewWithOptions(host.RedisURL, host.RedisOptions)
-		if err != nil {
-			return nil, err
-		}
-		store, err = storeFromClient(
-			ctx, client, host.RedisNamespace, host.Profile.IsolateProcessNamespace,
-		)
-		if err != nil {
-			return nil, err
-		}
-		profile = azureLocalSimulationProfile(host.Profile, localSimulation)
-		singleReplicaConfirmed = host.SingleReplicaConfirmed
-	} else {
-		redisURL := strings.TrimSpace(os.Getenv("CAO_REDIS_URL"))
-		if err := validateAzureRedisURL(redisURL, localSimulation); err != nil {
-			return nil, err
-		}
-		client, err := redisx.New(redisURL)
-		if err != nil {
-			return nil, err
-		}
-		namespaceValue := strings.TrimSpace(os.Getenv("CAO_REDIS_NAMESPACE"))
-		if namespaceValue == "" {
-			namespaceValue = "azure-dashboard"
-		}
-		namespace, err := redisx.NormalizeNamespace(namespaceValue)
-		if err != nil {
-			return nil, err
-		}
-		store = redisx.NewStore(client, namespace)
-		if err := store.Ping(ctx); err != nil {
-			return nil, errors.New("redis is unavailable")
-		}
+	if host.Profile.Listener != HostListenerPlatform {
+		return nil, fmt.Errorf("host target module %q does not delegate listener ownership", host.Profile.Name)
 	}
+	if err := validateHostedRedisURL(
+		host.RedisURL,
+		host.RedisOptions.AllowPrivatePlaintext,
+		host.RedisOptions.ForceTLS,
+	); err != nil {
+		return nil, err
+	}
+	if err := validateAzureRedisURL(host.RedisURL, localSimulation); err != nil {
+		return nil, err
+	}
+	client, err := redisx.NewWithOptions(host.RedisURL, host.RedisOptions)
+	if err != nil {
+		return nil, err
+	}
+	store, err := storeFromClient(
+		ctx, client, host.RedisNamespace, host.Profile.IsolateProcessNamespace,
+	)
+	if err != nil {
+		return nil, err
+	}
+	profile := azureLocalSimulationProfile(host.Profile, localSimulation)
 	definitions, err := ParseDashboardQueries(dashboardQueriesPath)
 	if err != nil {
 		return nil, err
@@ -263,7 +233,7 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 	}
 	app, err := New(store, Config{
 		HostProfile:            profile,
-		SingleReplicaConfirmed: singleReplicaConfirmed,
+		SingleReplicaConfirmed: host.SingleReplicaConfirmed,
 		SiteDirectory:          siteDirectory,
 		DashboardQueries:       definitions,
 		Collector:              collector,

@@ -112,11 +112,8 @@ The `server/coolify/compose.yml` file reads the following variables.
 | --- | --- | --- | --- |
 | `CAO_IMAGE` | Yes | No | Image reference by digest, in the form `ghcr.io/...@sha256:DIGEST`. |
 | `CAO_ARTIFACT_VOLUME` | Yes | No | Existing Coolify volume that contains the verified payload. It is mounted read-only at `/app/source`. |
-| `REDIS_URL` | Yes | Yes | Generic Redis URL. Use `rediss://` when possible. Existing `CAO_REDIS_URL` deployments remain supported. |
-| `CAO_REDIS_MODE` | Legacy only. Defaults to `standard`. | No | Compatibility selector used only when `cao.json` has no host profile. |
-| `CAO_UPSTASH_SINGLE_REPLICA` | Upstash only. | No | Set to `true` only after configuring Coolify to run exactly one CAO replica. Required by both modular and legacy Upstash modes. |
-| `CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS` | No. Defaults to `false`. | No | Set to `true` to allow `redis://` to a private IP address or a single-label service name on the private network. |
-| `REDIS_NAMESPACE` | No. Defaults to `coolify-dashboard`. | No | Prefix for Redis keys. Existing `CAO_REDIS_NAMESPACE` values remain supported. |
+| `REDIS_URL` | Yes | Yes | Redis URL selected by `control-plane.web.host.redis.url-env`. Use `rediss://` when possible. |
+| `REDIS_NAMESPACE` | No. Defaults to `coolify-dashboard`. | No | Prefix selected by `control-plane.web.host.redis.namespace-env`. |
 | `CAO_POLICY_PATH` | Set by Compose. | No | Points at the read-only `cao.json` bind mount. |
 | `CAO_ALLOWED_HOSTS` | Yes | No | Comma-separated list of public host names. |
 | `CAO_TRUSTED_PROXY_CIDRS` | Yes | No | Exact private CIDR of the Coolify proxy network. |

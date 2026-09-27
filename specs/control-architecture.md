@@ -249,9 +249,9 @@ Target and Redis modules MUST be reviewed, compiled registry entries rather than
 code loaded from policy or another runtime path. Fixed module capabilities MUST
 NOT be overridden by policy. Module composition MUST complete and be validated
 before the server accepts traffic.
-Implementations MAY accept the earlier flat host-capability and `redis.preset`
-shape as a compatibility input, but MUST normalize it into the same generic
-connection and validated host-profile boundary.
+Hosted server implementations MUST require the modular `web.host` declaration
+and MUST reject the earlier flat host-capability shape, `redis.preset`, and
+environment-only host selection.
 
 | Campaign property | Constraint | Authority type |
 | --- | --- | --- |

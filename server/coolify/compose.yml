@@ -13,13 +13,8 @@ services:
       - /app/queries/database.json
     environment:
       REDIS_URL: ${REDIS_URL:-}
-      CAO_REDIS_URL: ${CAO_REDIS_URL:-}
       REDIS_NAMESPACE: ${REDIS_NAMESPACE:-coolify-dashboard}
-      CAO_REDIS_NAMESPACE: ${CAO_REDIS_NAMESPACE:-}
       CAO_POLICY_PATH: /app/config/cao.json
-      CAO_REDIS_MODE: ${CAO_REDIS_MODE:-standard}
-      CAO_UPSTASH_SINGLE_REPLICA: ${CAO_UPSTASH_SINGLE_REPLICA:-false}
-      CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS: ${CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS:-false}
       CAO_ALLOWED_HOSTS: ${CAO_ALLOWED_HOSTS:?Configure the public dashboard host}
       CAO_TRUSTED_PROXY_CIDRS: ${CAO_TRUSTED_PROXY_CIDRS:?Configure the exact Coolify proxy network CIDR}
       CAO_GITHUB_CLIENT_ID: ${CAO_GITHUB_CLIENT_ID:?Configure the GitHub OAuth client ID}

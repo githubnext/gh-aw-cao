@@ -62,6 +62,6 @@ test("missing local configuration fails predictably", () => {
     },
   });
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /CAO_REDIS_URL is required/);
+  assert.match(result.stderr, /cao\.json requires control-plane\.web\.host/);
   assert.doesNotMatch(result.stderr, /COOLIFY/i);
 });

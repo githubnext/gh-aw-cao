@@ -234,6 +234,22 @@ prepare_application() {
   mkdir -p "$APP_DIR/site" "$APP_DIR/.github/workflows" "$LOG_DIR"
   printf '<!doctype html><title>CAO local Azure simulation</title>\n' >"$APP_DIR/site/index.html"
   cp "$ROOT/.github/workflows/cao.json" "$APP_DIR/.github/workflows/cao.json"
+  node - "$APP_DIR/.github/workflows/cao.json" <<'NODE'
+const fs = require("node:fs");
+const path = process.argv[2];
+const policy = JSON.parse(fs.readFileSync(path, "utf8"));
+policy["control-plane"].web.host = {
+  target: { module: "azure-functions" },
+  redis: {
+    module: "local",
+    "url-env": "CAO_REDIS_URL",
+    "namespace-env": "CAO_REDIS_NAMESPACE",
+    "allow-private-plaintext": true,
+    tls: { mode: "disabled" },
+  },
+};
+fs.writeFileSync(path, `${JSON.stringify(policy, null, 2)}\n`, { mode: 0o600 });
+NODE
   go -C "$ROOT/server" build -o "$APP_DIR/cao-functions" ./cmd/cao-functions \
     >"$LOG_DIR/functions-build.log" 2>&1
   go -C "$ROOT/server" build -o "$APP_DIR/cao-dashboard" ./cmd/cao-dashboard \

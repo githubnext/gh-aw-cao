@@ -48,17 +48,6 @@ type hostPolicy struct {
 	Redis  redisPolicy  `json:"redis"`
 }
 
-type legacyHostPolicy struct {
-	Name               string             `json:"name"`
-	Authentication     HostAuthentication `json:"authentication"`
-	Listener           HostListener       `json:"listener"`
-	RequireHTTPS       *bool              `json:"require-https"`
-	TrustPlatformProxy bool               `json:"trust-platform-proxy"`
-	SingleReplica      bool               `json:"single-replica"`
-	SupportsCollection bool               `json:"supports-collection"`
-	Redis              legacyRedisPolicy  `json:"redis"`
-}
-
 type targetPolicy struct {
 	Module                string             `json:"module"`
 	Name                  string             `json:"name"`
@@ -67,6 +56,7 @@ type targetPolicy struct {
 	RequireHTTPS          *bool              `json:"require-https"`
 	TrustPlatformProxy    *bool              `json:"trust-platform-proxy"`
 	SupportsSingleReplica *bool              `json:"supports-single-replica"`
+	Replicas              int                `json:"replicas"`
 }
 
 type redisPolicy struct {
@@ -81,20 +71,6 @@ type redisPolicy struct {
 	IsolateProcessNamespace *bool            `json:"isolate-process-namespace"`
 	SingleReplica           *bool            `json:"single-replica"`
 	SupportsCollection      *bool            `json:"supports-collection"`
-	AllowPrivatePlaintext   bool             `json:"allow-private-plaintext"`
-	TLS                     redisTLSPolicy   `json:"tls"`
-}
-
-type legacyRedisPolicy struct {
-	Preset                  string           `json:"preset"`
-	URLEnv                  string           `json:"url-env"`
-	HostEnv                 string           `json:"host-env"`
-	PortEnv                 string           `json:"port-env"`
-	UsernameEnv             string           `json:"username-env"`
-	PasswordEnv             string           `json:"password-env"`
-	NamespaceEnv            string           `json:"namespace-env"`
-	Session                 HostRedisSession `json:"session"`
-	IsolateProcessNamespace bool             `json:"isolate-process-namespace"`
 	AllowPrivatePlaintext   bool             `json:"allow-private-plaintext"`
 	TLS                     redisTLSPolicy   `json:"tls"`
 }
@@ -119,11 +95,6 @@ func loadHostPolicyFromEnv() (*resolvedHostPolicy, error) {
 	path := configuredHostPolicyPath()
 	data, err := os.ReadFile(path)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) &&
-			strings.TrimSpace(os.Getenv("CAO_POLICY_PATH")) == "" &&
-			strings.TrimSpace(os.Getenv(marketplacePolicyPathEnv)) == "" {
-			return nil, nil
-		}
 		return nil, errors.New("read CAO host policy")
 	}
 	if len(data) > maxHostPolicyBytes {
@@ -139,20 +110,7 @@ func loadHostPolicyFromEnv() (*resolvedHostPolicy, error) {
 	}
 	if len(document.ControlPlane.Web.Host) == 0 ||
 		string(document.ControlPlane.Web.Host) == "null" {
-		return nil, nil
-	}
-	var discriminator map[string]json.RawMessage
-	if err := json.Unmarshal(document.ControlPlane.Web.Host, &discriminator); err != nil {
-		return nil, errors.New("parse CAO host policy")
-	}
-	if _, modular := discriminator["target"]; !modular {
-		var policy legacyHostPolicy
-		hostDecoder := json.NewDecoder(strings.NewReader(string(document.ControlPlane.Web.Host)))
-		hostDecoder.DisallowUnknownFields()
-		if err := hostDecoder.Decode(&policy); err != nil {
-			return nil, errors.New("parse CAO host policy")
-		}
-		return policy.resolve(os.LookupEnv)
+		return nil, errors.New("cao.json requires control-plane.web.host")
 	}
 	var policy hostPolicy
 	hostDecoder := json.NewDecoder(strings.NewReader(string(document.ControlPlane.Web.Host)))
@@ -181,6 +139,9 @@ func (policy hostPolicy) resolve(lookup func(string) (string, bool)) (*resolvedH
 			"host target module %q cannot guarantee the Redis provider's single-replica requirement",
 			policy.Target.Module,
 		)
+	}
+	if profile.SingleReplica && policy.Target.Replicas != 1 {
+		return nil, fmt.Errorf("host target module %q requires replicas to be 1 for the Redis provider", policy.Target.Module)
 	}
 	if err := profile.validate(); err != nil {
 		return nil, err
@@ -218,87 +179,12 @@ func (policy hostPolicy) resolve(lookup func(string) (string, bool)) (*resolvedH
 	}
 	return &resolvedHostPolicy{
 		Profile:                profile,
-		SingleReplicaConfirmed: !profile.SingleReplica || exactTrue(envValue(lookup, "CAO_UPSTASH_SINGLE_REPLICA")),
+		SingleReplicaConfirmed: !profile.SingleReplica || policy.Target.Replicas == 1,
 		RedisURL:               redisURL,
 		RedisNamespace:         namespace,
 		RedisOptions: redisx.Options{
 			AllowPrivatePlaintext: policy.Redis.AllowPrivatePlaintext,
 			SingleSession:         provider.session == HostRedisSerialized,
-			ForceTLS:              tlsMode == redisTLSRequired,
-			DisableTLS:            tlsMode == redisTLSDisabled,
-			TLSServerName:         envValue(lookup, policy.Redis.TLS.ServerNameEnv),
-			TLSCACertificatePEM:   envValue(lookup, policy.Redis.TLS.CACertificateEnv),
-		},
-	}, nil
-}
-
-func (policy legacyHostPolicy) resolve(lookup func(string) (string, bool)) (*resolvedHostPolicy, error) {
-	name := strings.TrimSpace(policy.Name)
-	if name == "" {
-		name = "configured"
-	}
-	requireHTTPS := true
-	if policy.RequireHTTPS != nil {
-		requireHTTPS = *policy.RequireHTTPS
-	}
-	session := policy.Redis.Session
-	if session == "" {
-		session = HostRedisPooled
-	}
-	profile := HostProfile{
-		Name:                    name,
-		Authentication:          policy.Authentication,
-		Listener:                policy.Listener,
-		RequiresHTTPS:           requireHTTPS,
-		TrustsPlatformProxy:     policy.TrustPlatformProxy,
-		RequiresRedis:           true,
-		RedisSession:            session,
-		IsolateProcessNamespace: policy.Redis.IsolateProcessNamespace,
-		SingleReplica:           policy.SingleReplica,
-		SupportsCollection:      policy.SupportsCollection,
-	}
-	if err := profile.validate(); err != nil {
-		return nil, err
-	}
-	presetName := firstNonempty(policy.Redis.Preset, "generic")
-	if presetName == "local" || presetName == "upstash" {
-		return nil, fmt.Errorf("unsupported Redis preset %q", presetName)
-	}
-	provider, ok := redisProviderModules[presetName]
-	if !ok {
-		return nil, fmt.Errorf("unsupported Redis preset %q", presetName)
-	}
-	tlsMode := policy.Redis.TLS.Mode
-	if tlsMode == "" {
-		tlsMode = redisTLSAuto
-	}
-	if tlsMode != redisTLSAuto && tlsMode != redisTLSRequired && tlsMode != redisTLSDisabled {
-		return nil, fmt.Errorf("unsupported Redis TLS mode %q", tlsMode)
-	}
-	redisURL, err := redisURLFromEnvironment(
-		lookup,
-		firstNonempty(policy.Redis.URLEnv, provider.urlEnv),
-		firstNonempty(policy.Redis.HostEnv, provider.hostEnv),
-		firstNonempty(policy.Redis.PortEnv, provider.portEnv),
-		firstNonempty(policy.Redis.UsernameEnv, provider.usernameEnv),
-		firstNonempty(policy.Redis.PasswordEnv, provider.passwordEnv),
-		tlsMode,
-	)
-	if err != nil {
-		return nil, err
-	}
-	namespace := envValue(lookup, firstNonempty(policy.Redis.NamespaceEnv, "REDIS_NAMESPACE"))
-	if namespace == "" {
-		namespace = "hosted-dashboard"
-	}
-	return &resolvedHostPolicy{
-		Profile:                profile,
-		SingleReplicaConfirmed: !profile.SingleReplica || exactTrue(envValue(lookup, "CAO_UPSTASH_SINGLE_REPLICA")),
-		RedisURL:               redisURL,
-		RedisNamespace:         namespace,
-		RedisOptions: redisx.Options{
-			AllowPrivatePlaintext: policy.Redis.AllowPrivatePlaintext,
-			SingleSession:         session == HostRedisSerialized,
 			ForceTLS:              tlsMode == redisTLSRequired,
 			DisableTLS:            tlsMode == redisTLSDisabled,
 			TLSServerName:         envValue(lookup, policy.Redis.TLS.ServerNameEnv),

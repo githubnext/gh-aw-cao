@@ -111,7 +111,7 @@ func TestRedisProviderModulesMapEnvironment(t *testing.T) {
 	})
 }
 
-func TestHostPolicyFileIsOptionalUnlessExplicitlyConfigured(t *testing.T) {
+func TestHostPolicyFileIsRequired(t *testing.T) {
 	t.Setenv("CAO_POLICY_PATH", "")
 	t.Setenv(marketplacePolicyPathEnv, "")
 	workingDirectory, err := os.Getwd()
@@ -119,9 +119,8 @@ func TestHostPolicyFileIsOptionalUnlessExplicitlyConfigured(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Chdir(t.TempDir())
-	resolved, err := loadHostPolicyFromEnv()
-	if err != nil || resolved != nil {
-		t.Fatalf("optional missing policy returned resolved=%+v err=%v", resolved, err)
+	if _, err := loadHostPolicyFromEnv(); err == nil {
+		t.Fatal("missing default cao.json was accepted")
 	}
 	t.Chdir(workingDirectory)
 
@@ -159,51 +158,16 @@ func TestConfiguredHostPolicyReadsCaoJSON(t *testing.T) {
 	}
 }
 
-func TestLegacyHostPolicyStillResolves(t *testing.T) {
-	resolved, err := (legacyHostPolicy{
-		Name:               "legacy-host",
-		Authentication:     HostAuthenticationOAuth,
-		Listener:           HostListenerProcess,
-		SupportsCollection: true,
-		Redis: legacyRedisPolicy{
-			Preset:  "redis-cloud",
-			Session: HostRedisPooled,
-			TLS:     redisTLSPolicy{Mode: redisTLSRequired},
-		},
-	}).resolve(mapLookup(map[string]string{
-		"REDIS_URL": "rediss://cache.example.com:6379",
-	}))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resolved.Profile.Name != "legacy-host" ||
-		resolved.Profile.RedisSession != HostRedisPooled ||
-		!resolved.Profile.SupportsCollection {
-		t.Fatalf("legacy policy resolved incorrectly: %+v", resolved.Profile)
-	}
-	invalidTLS := legacyHostPolicy{
-		Authentication: HostAuthenticationOAuth,
-		Listener:       HostListenerProcess,
-		Redis: legacyRedisPolicy{
-			TLS: redisTLSPolicy{Mode: "invalid"},
-		},
-	}
-	if _, err := invalidTLS.resolve(mapLookup(map[string]string{
-		"REDIS_URL": "rediss://cache.example.com:6379",
-	})); err == nil {
-		t.Fatal("legacy policy accepted an invalid TLS mode")
-	}
-}
-
-func TestHostPolicyRejectsMixedModuleAndLegacyFields(t *testing.T) {
+func TestHostPolicyRejectsFlatHostFields(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "cao.json")
 	document := `{
 		"control-plane": {
 			"web": {
 				"host": {
-					"target": {"module": "container"},
 					"name": "legacy",
-					"redis": {"module": "generic", "preset": "generic"}
+					"authentication": "github-oauth",
+					"listener": "process",
+					"redis": {"preset": "generic"}
 				}
 			}
 		}
@@ -213,13 +177,13 @@ func TestHostPolicyRejectsMixedModuleAndLegacyFields(t *testing.T) {
 	}
 	t.Setenv("CAO_POLICY_PATH", path)
 	if _, err := loadHostPolicyFromEnv(); err == nil {
-		t.Fatal("mixed modular and legacy host policy was accepted")
+		t.Fatal("flat host policy was accepted")
 	}
 }
 
 func TestHostAndRedisModulesComposeIndependently(t *testing.T) {
 	resolved, err := (hostPolicy{
-		Target: targetPolicy{Module: "container"},
+		Target: targetPolicy{Module: "container", Replicas: 1},
 		Redis:  redisPolicy{Module: "upstash"},
 	}).resolve(mapLookup(map[string]string{
 		"REDIS_URL": "rediss://example.upstash.io:6379",
@@ -233,8 +197,8 @@ func TestHostAndRedisModulesComposeIndependently(t *testing.T) {
 		resolved.Profile.SupportsCollection {
 		t.Fatalf("modules did not compose expected capabilities: %+v", resolved.Profile)
 	}
-	if resolved.SingleReplicaConfirmed {
-		t.Fatal("policy resolution inferred a single-replica deployment without explicit acknowledgement")
+	if !resolved.SingleReplicaConfirmed {
+		t.Fatal("policy resolution ignored the single-replica target configuration")
 	}
 
 	azure, err := (hostPolicy{

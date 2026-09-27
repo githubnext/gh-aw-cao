@@ -176,7 +176,10 @@ test("control policy validates every deployment module and rejects incompatible 
   for (const module of redisModules) {
     const policy = JSON.parse(minimalPolicy);
     policy["control-plane"].web = {
-      host: { target: { module: "container" }, redis: { module } },
+      host: {
+        target: { module: "container", ...(module === "upstash" ? { replicas: 1 } : {}) },
+        redis: { module },
+      },
     };
     assert.equal(validate(JSON.stringify(policy)).status, 0, module);
   }
@@ -191,7 +194,7 @@ test("control policy validates every deployment module and rejects incompatible 
   assert.match(validate(JSON.stringify(incompatible)).stderr, /single-replica requirement/);
 });
 
-test("control policy accepts the previous flat host shape during migration", () => {
+test("control policy rejects the previous flat host shape", () => {
   const policy = JSON.parse(minimalPolicy);
   policy["control-plane"].web = {
     host: {
@@ -208,7 +211,9 @@ test("control policy accepts the previous flat host shape during migration", () 
       },
     },
   };
-  assert.equal(validate(JSON.stringify(policy)).status, 0);
+  const result = validate(JSON.stringify(policy));
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unknown key control-plane\.web\.host\.name|target is required/);
 });
 
 test("control policy rejects malformed gh-aw compiler versions", () => {

@@ -230,7 +230,8 @@
         "listener": { "type": "string", "enum": ["process", "platform"] },
         "require-https": { "type": "boolean" },
         "trust-platform-proxy": { "type": "boolean" },
-        "supports-single-replica": { "type": "boolean" }
+        "supports-single-replica": { "type": "boolean" },
+        "replicas": { "type": "integer", "minimum": 1 }
       },
       "allOf": [{
         "if": { "properties": { "module": { "const": "generic" } } },
@@ -257,50 +258,7 @@
         "redis": { "$ref": "#/$defs/redisModule" }
       }
     },
-    "legacyRedisConnection": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "preset": {
-          "type": "string",
-          "enum": [
-            "generic", "aws-elasticache", "redis-cloud", "gcp-memorystore",
-            "railway", "render", "digitalocean"
-          ]
-        },
-        "url-env": { "$ref": "#/$defs/environmentVariable" },
-        "host-env": { "$ref": "#/$defs/environmentVariable" },
-        "port-env": { "$ref": "#/$defs/environmentVariable" },
-        "username-env": { "$ref": "#/$defs/environmentVariable" },
-        "password-env": { "$ref": "#/$defs/environmentVariable" },
-        "namespace-env": { "$ref": "#/$defs/environmentVariable" },
-        "session": { "type": "string", "enum": ["pooled", "serialized"] },
-        "isolate-process-namespace": { "type": "boolean" },
-        "allow-private-plaintext": { "type": "boolean" },
-        "tls": { "$ref": "#/$defs/redisTLS" }
-      }
-    },
-    "legacyHost": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["authentication", "listener", "redis"],
-      "properties": {
-        "name": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
-        "authentication": { "type": "string", "enum": ["bearer", "github-oauth"] },
-        "listener": { "type": "string", "enum": ["process", "platform"] },
-        "require-https": { "type": "boolean" },
-        "trust-platform-proxy": { "type": "boolean" },
-        "single-replica": { "type": "boolean" },
-        "supports-collection": { "type": "boolean" },
-        "redis": { "$ref": "#/$defs/legacyRedisConnection" }
-      }
-    },
-    "host": {
-      "oneOf": [
-        { "$ref": "#/$defs/modularHost" },
-        { "$ref": "#/$defs/legacyHost" }
-      ]
-    },
+    "host": { "$ref": "#/$defs/modularHost" },
     "defaults": {
       "type": "object",
       "additionalProperties": false,

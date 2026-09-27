@@ -129,9 +129,9 @@ identity-aware authentication in a remote service.
 Hosted mode has no developer override for public transport protections:
 
 - it requires `rediss://` by default;
-- plaintext Redis requires the exact
-  `CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS=true` opt-in and is then restricted to a
-  private IP or single-label service name;
+- plaintext Redis requires `allow-private-plaintext: true` in the `cao.json`
+  Redis module and is then restricted to a private IP or single-label service
+  name;
 - it requires HTTPS and rejects attempts to disable that policy;
 - it binds to loopback by default, allowing forwarded host/protocol headers
   only across that local process or pod boundary; and
@@ -197,10 +197,11 @@ treating Redis as rollback authority.
 ## Upstash profile
 
 Upstash provides causal consistency within one TCP session rather than across
-independent connections. `CAO_REDIS_MODE=upstash` therefore uses one serialized
-connection for projection data and hosted security state. It does not recycle or
-retry that connection. Any transport loss permanently fails that client, so
-health and readiness fail until the process restarts.
+independent connections. A Redis module with `connection: single-session`
+therefore uses one serialized connection for projection data and hosted security
+state. It does not recycle or retry that connection. Any transport loss
+permanently fails that client, so health and readiness fail until the process
+restarts.
 
 Restart recovery uses a fresh random internal namespace and rebuilds from the
 verified artifact. This isolates the process from stale state written through an
@@ -211,11 +212,11 @@ stable deployment-scoped prefix so GitHub credentials queued for revocation
 remain available to the bounded retry worker after restart.
 
 The mode fails startup unless the endpoint uses `rediss://` on an Upstash host
-and `CAO_UPSTASH_SINGLE_REPLICA=true` is set. The deployment must independently
-enforce exactly one application replica and use a dedicated Upstash database.
-Server-side collection and standalone collection roles are unsupported. The
-single-replica acknowledgement does not turn Upstash into a cross-process
-coordination service and must not be used to justify additional replicas.
+and the target declares `replicas: 1`. The deployment must independently enforce
+that replica count and use a dedicated Upstash database. Server-side collection
+and standalone collection roles are unsupported. Declaring one replica does not
+turn Upstash into a cross-process coordination service and must not be used to
+justify additional replicas.
 
 ## Azure Functions profile
 
@@ -232,7 +233,8 @@ GitHub-OAuth host capability profile. It does not start its own listener, does
 not accept `--access-token`, and does not support PATs. Requests are handled by
 the Azure Functions HTTP runtime and the same Go dashboard HTTP handler.
 
-Azure mode fails closed unless configuration includes:
+Azure mode fails closed unless `cao.json` selects the `azure-functions` target
+and configuration includes:
 
 - `rediss://` Redis transport and a Redis namespace;
 - an explicit trusted host allow-list from `CAO_AZURE_ALLOWED_HOSTS`;
@@ -427,7 +429,7 @@ minute interval begins.
 - Plaintext `redis://` connections are accepted by default only for `localhost`
   or a literal loopback IP address. `serve-hosted` additionally accepts a
   private IP or single-label service hostname only when
-  `CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS=true`.
+  `allow-private-plaintext: true` is set in the `cao.json` Redis module.
 - All other Redis connections require `rediss://` with normal certificate-chain
   and hostname verification. Azure always follows this path. There is no
   insecure TLS mode.

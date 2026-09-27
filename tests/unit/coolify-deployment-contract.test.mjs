@@ -64,10 +64,10 @@ test("Coolify Compose contains no credentials and requires immutable image input
   assert.match(dashboard.image, /\$\{CAO_IMAGE:\?.*immutable/);
   assert.equal(dashboard.environment.CAO_SOURCE_DIRECTORY, "/app/source");
   assert.equal(dashboard.environment.REDIS_URL, "${REDIS_URL:-}");
-  assert.equal(dashboard.environment.CAO_REDIS_URL, "${CAO_REDIS_URL:-}");
   assert.equal(dashboard.environment.CAO_POLICY_PATH, "/app/config/cao.json");
-  assert.equal(dashboard.environment.CAO_REDIS_MODE, "${CAO_REDIS_MODE:-standard}");
-  assert.equal(dashboard.environment.CAO_UPSTASH_SINGLE_REPLICA, "${CAO_UPSTASH_SINGLE_REPLICA:-false}");
+  assert.equal(dashboard.environment.CAO_REDIS_URL, undefined);
+  assert.equal(dashboard.environment.CAO_REDIS_MODE, undefined);
+  assert.equal(dashboard.environment.CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS, undefined);
   assert.match(dashboard.environment.CAO_TRUSTED_PROXY_CIDRS, /^\$\{CAO_TRUSTED_PROXY_CIDRS:\?/);
   assert.equal(dashboard.ports, undefined);
   assert.deepEqual(dashboard.cap_drop, ["ALL"]);
