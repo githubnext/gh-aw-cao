@@ -19,7 +19,7 @@ describe('chart element helpers', () => {
     expect(listChartSeries(points)).toEqual([
       { name: 'fail', className: 'chart-series-10 chart-series-semantic-failure' },
       { name: 'pass', className: 'chart-series-1 chart-series-semantic-success' },
-      { name: 'value', className: 'chart-series-3' }
+      { name: 'value', className: 'chart-series-1' }
     ]);
 
     const reordered = listChartSeries([points[1], points[0]]);
@@ -49,7 +49,8 @@ describe('chart element helpers', () => {
       .toBe(chartSeriesClassName('githubnext/gh-aw-cao', 9));
     expect(chartSeriesClassName('New Campaign', 1))
       .toBe(chartSeriesClassName(' new campaign ', 7));
-    expect(chartSeriesClassName('value', 3)).toBe('chart-series-4');
+    expect(chartSeriesClassName('value', 3)).toBe(chartSeriesClassName('value', 9));
+    expect(chartSeriesClassName('value', 3)).toBe('chart-series-1');
   });
 
   it('DLS-SAFE-009 renders reusable visual chart legends', () => {

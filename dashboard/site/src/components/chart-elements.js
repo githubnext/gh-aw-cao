@@ -94,6 +94,7 @@ export const SWIMLANE_LAYOUT = Object.freeze({
 });
 const SWIMLANE_FAILURES = new Set(['failure', 'startup-failure', 'stale', 'timed-out']);
 const CHART_SERIES_COLOR_COUNT = 12;
+const DEFAULT_CHART_SERIES_NAME = 'value';
 let pieChartTableId = 0;
 const SEMANTIC_SERIES_TERMS = {
   failure: new Set(['0', 'denied', 'error', 'errored', 'fail', 'failed', 'failing', 'failure', 'false', 'invalid', 'no', 'rejected', 'stale', 'timeout', 'unhealthy', 'unsuccessful']),
@@ -133,7 +134,7 @@ const SEMANTIC_SERIES_PHRASES = {
 export function groupChartSeries(points) {
   const grouped = new Map();
   for (const point of points) {
-    const name = point.color ?? 'value';
+    const name = point.color ?? DEFAULT_CHART_SERIES_NAME;
     const series = grouped.get(name) ?? [];
     series.push(point);
     grouped.set(name, series);
@@ -161,7 +162,7 @@ export function listChartSeries(points) {
  */
 export function chartSeriesClassName(name, index) {
   const identity = name.normalize('NFKC').trim().toLowerCase();
-  const paletteIndex = identity && identity !== 'value'
+  const paletteIndex = identity
     ? stablePaletteIndex(identity)
     : index % CHART_SERIES_COLOR_COUNT;
   const paletteClass = `chart-series-${paletteIndex + 1}`;
@@ -190,6 +191,7 @@ export function chartSeriesClassName(name, index) {
 
 /** @param {string} identity */
 function stablePaletteIndex(identity) {
+  if (identity === DEFAULT_CHART_SERIES_NAME) return 0;
   let hash = 0x811c9dc5;
   for (let index = 0; index < identity.length; index += 1) {
     hash ^= identity.charCodeAt(index);
