@@ -285,7 +285,7 @@ console.log(JSON.stringify({timestamp:request.timestamp,repository:request.repos
   }
 });
 
-test('cao operational-value materializes queried history and retires obsolete cached metric IDs', () => {
+test('cao operational-value materializes queried history, compacts cadence buckets, and retires obsolete metric IDs', () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-definitions-'));
   const packageDirectory = path.join(temporary, 'example');
   const output = path.join(temporary, 'values.jsonl');
@@ -365,6 +365,33 @@ console.log(JSON.stringify({timestamp:request.timestamp,repository:request.repos
   );
   const repeated = JSON.parse(execFileSync(process.execPath, arguments_, { encoding: 'utf8' }));
   assert.equal(repeated.historyValues, 0);
+
+  const laterArguments = [...arguments_];
+  laterArguments[laterArguments.indexOf('--timestamp') + 1] = '2026-09-24T10:15:00Z';
+  const later = JSON.parse(execFileSync(process.execPath, laterArguments, { encoding: 'utf8' }));
+  assert.equal(later.historyValues, 0);
+  assert.deepEqual(
+    readFileSync(output, 'utf8').trim().split('\n')
+      .map(JSON.parse)
+      .filter((entry) => entry.operational_value.campaign === 'example')
+      .map((entry) => entry.operational_value.timestamp)
+      .toSorted(),
+    [
+      '2026-09-12T23:30:36.000Z',
+      '2026-09-13T23:30:36.000Z',
+      '2026-09-14T23:30:36.000Z',
+      '2026-09-15T23:30:36.000Z',
+      '2026-09-16T23:30:36.000Z',
+      '2026-09-17T23:30:36.000Z',
+      '2026-09-18T23:30:36.000Z',
+      '2026-09-19T23:30:36.000Z',
+      '2026-09-20T23:30:36.000Z',
+      '2026-09-21T23:30:36.000Z',
+      '2026-09-22T23:30:36.000Z',
+      '2026-09-23T23:30:36.000Z',
+      '2026-09-24T10:15:00.000Z'
+    ]
+  );
 });
 
 test('cao operational-value warns on worker failure and preserves successful values', () => {

@@ -237,7 +237,6 @@ describe('dashboard view query contracts', () => {
         ...(pageId === 'campaign-insights'
           ? [
               'campaign-operational-value-primary-series',
-              'campaign-operational-value-rollup-series',
               'campaign-operational-value-run-days',
               'campaign-operational-value-repository-run-days',
               'campaign-operational-value-evidence-state'
@@ -310,7 +309,6 @@ describe('dashboard view query contracts', () => {
           'campaign-problem-tab-counts',
           'campaign-issue-tab-counts',
           'campaign-operational-value-primary-series',
-          'campaign-operational-value-rollup-series',
           'campaign-operational-value-run-days',
           'campaign-operational-value-repository-run-days',
           'campaign-operational-value-evidence-state'

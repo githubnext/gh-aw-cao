@@ -457,7 +457,7 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   assert.match(workflow, /Compute repository operational value[\s\S]*?--history-campaign optimization/);
   assert.match(workflow, /paths:[\s\S]*?- "activity\/\*\*"/);
   assert.match(workflow, /paths:[\s\S]*?- "\*\/operational-value\/\*\*"/);
-  assert.match(workflow, /Refresh GitHub App token for operational value[\s\S]*?actions\/create-github-app-token@[0-9a-f]{40}[\s\S]*?Compute repository operational value/);
+  assert.match(workflow, /Refresh GitHub App token for operational value[\s\S]*?GH_AW_READ_PAT: \$\{\{ secrets\.GH_AW_GITHUB_READ_PAT \}\}[\s\S]*?GH_AW_LEGACY_TOKEN: \$\{\{ secrets\.GH_AW_GITHUB_TOKEN \}\}[\s\S]*?if: \$\{\{ env\.GH_AW_READ_PAT == '' && env\.GH_AW_LEGACY_TOKEN == ''[\s\S]*?actions\/create-github-app-token@[0-9a-f]{40}[\s\S]*?Compute repository operational value/);
   assert.match(workflow, /Compute repository operational value[\s\S]*?CAO_OPERATIONAL_VALUE_GH_TOKEN: \$\{\{ steps\.operational-value-app-token\.outputs\.token \|\| secrets\.GH_AW_GITHUB_READ_PAT \|\| secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token \}\}/);
   assert.match(workflow, /Compute repository operational value[\s\S]*?gh api rate_limit --silent/);
   assert.match(workflow, /if ! node activity\/cao\.mjs operational-value[\s\S]*?::warning::Operational value collection failed; continuing activity indexing\./);

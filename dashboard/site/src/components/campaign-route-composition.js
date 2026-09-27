@@ -15,7 +15,6 @@ import { renderCampaignMemory } from './campaign-memory.js';
 
 const CAMPAIGN_OPERATIONAL_VALUE_SOURCES = [
   'campaign-operational-value-primary-series',
-  'campaign-operational-value-rollup-series',
   'campaign-operational-value-run-days',
   'campaign-operational-value-repository-run-days',
   'campaign-operational-value-evidence-state'

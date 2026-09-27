@@ -31,7 +31,6 @@ describe('Audit dashboard view', () => {
         'campaign-problem-tab-counts',
         'campaign-issue-tab-counts',
         'campaign-operational-value-primary-series',
-        'campaign-operational-value-rollup-series',
         'campaign-operational-value-run-days',
         'campaign-operational-value-repository-run-days',
         'campaign-operational-value-evidence-state'
@@ -101,52 +100,6 @@ describe('Audit dashboard view', () => {
       expect.objectContaining({
         'operational-value-role': 'diagnostic',
         points: [expect.objectContaining({ y: 1 })]
-      })
-    ]);
-  });
-
-  it('derives a weighted campaign operational-value rollup from additive evidence', () => {
-    const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
-      operation: 'execute-dashboard-queries',
-      queries: dashboard.queries,
-      sourceNames: ['campaign-operational-value-rollup-series'],
-      sources: {
-        'operational-values': {
-          source: 'operational-values',
-          rows: [{
-            campaign: 'optimization',
-            repository: 'gh-aw',
-            'operational-value': 0.5,
-            'operational-value-definition': 'optimization-token-optimizer.verified-efficiency-improvement-share',
-            'operational-value-role': 'primary',
-            'operational-value-name': 'Verified efficiency improvement share',
-            'operational-value-direction': 'increase',
-            'rollup-numerator': 1,
-            'rollup-denominator': 2,
-            'maturity-status': 'matured',
-            'observed-at': '2026-09-24T20:56:21Z'
-          }, {
-            campaign: 'optimization',
-            repository: 'gh-aw-cao',
-            'operational-value': 1,
-            'operational-value-definition': 'optimization-token-optimizer.verified-efficiency-improvement-share',
-            'operational-value-role': 'primary',
-            'operational-value-name': 'Verified efficiency improvement share',
-            'operational-value-direction': 'increase',
-            'rollup-numerator': 1,
-            'rollup-denominator': 1,
-            'maturity-status': 'matured',
-            'observed-at': '2026-09-24T20:56:21Z'
-          }],
-          metadata
-        }
-      }
-    }));
-
-    expect(result['campaign-operational-value-rollup-series'].rows).toEqual([
-      expect.objectContaining({
-        campaign: 'optimization',
-        points: [expect.objectContaining({ y: 2 / 3, color: 'Campaign rollup' })]
       })
     ]);
   });

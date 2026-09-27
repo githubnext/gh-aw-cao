@@ -3,11 +3,9 @@
  */
 
 import { h } from '../dom.js';
-import { effect, state } from '../reactive.js';
 import { formatNumber } from '../view-formatters.js';
 import { renderStatusBadge } from './badge.js';
 import { listChartSeries, renderChartLegend, renderChartWidget } from './chart-elements.js';
-import { createFactoryScope } from './factory-elements.js';
 import { rowsFor } from './source-rows.js';
 import { renderTemporalMetricPlot } from './temporal-metric-plot.js';
 import { formatMediumUtcDateTimeWithSuffix } from './ui-primitives.js';
@@ -18,10 +16,15 @@ const SELECT_POINT_MESSAGE = 'Select a point to inspect that observation.';
  * @typedef {{
  *   id: string,
  *   label: string,
- *   description: string,
- *   rows: Record<string, unknown>[],
- *   repository: string | null
- * }} OperationalValueScope
+ *   unit: string,
+ *   direction: 'increase'|'decrease'|'maintain'|'target',
+ *   points: Array<{ x: string, y: number, key: string }>
+ * }} OperationalValueSeries
+ * @typedef {{
+ *   id: string,
+ *   label: string,
+ *   series: Map<string, OperationalValueSeries>
+ * }} OperationalValueMetricGroup
  */
 
 /**
@@ -55,41 +58,15 @@ export function renderMeasureHistory(context) {
  * @param {Record<string, unknown>[]} rows
  */
 function renderOperationalValueHistory(context, rows) {
-  const repositories = [...new Set(rows.flatMap((row) => (
-    Array.isArray(row.points) ? row.points.map((point) => String(point.color || '')) : []
-  )).filter(Boolean))].toSorted();
-  const rollupSource = context.sourceNames[1] ?? '';
-  const rollupRows = rowsFor(context.sources, rollupSource);
-  const contributingRepositories = repositories.length;
-  const scopes = /** @type {OperationalValueScope[]} */ ([
-    ...(rollupRows.length > 0 ? [{
-      id: 'campaign-rollup',
-      label: 'Campaign rollup',
-      description: `${formatNumber(contributingRepositories)} ${contributingRepositories === 1 ? 'repository' : 'repositories'} · weighted by eligible evidence`,
-      rows: rollupRows,
-      repository: null
-    }] : []),
-    ...repositories.map((repository) => ({
-      id: `repository:${repository}`,
-      label: repository,
-      description: repository,
-      rows,
-      repository
-    }))
-  ]);
-  const first = rollupRows[0] ?? rows[0] ?? {};
+  const metricGroups = operationalValueMetricGroups(rows);
+  const first = rows[0] ?? {};
   const adoptionAt = String(first['adoption-at'] || '');
   const mode = first['evaluation-mode'] === 'attainment-only'
     ? 'attainment-only'
     : 'baseline-comparable';
-  const campaignOutcomeSource = context.sourceNames[2] ?? '';
-  const hasRepositoryOutcomeSource = context.sourceNames.length >= 5;
-  const repositoryOutcomeSource = hasRepositoryOutcomeSource ? context.sourceNames[3] ?? '' : '';
-  const evidenceStateSource = hasRepositoryOutcomeSource
-    ? context.sourceNames[4] ?? ''
-    : context.sourceNames[3] ?? '';
+  const campaignOutcomeSource = context.sourceNames[1] ?? '';
+  const evidenceStateSource = context.sourceNames[3] ?? '';
   const campaignOutcomes = outcomeContext(rowsFor(context.sources, campaignOutcomeSource));
-  const repositoryOutcomeRows = rowsFor(context.sources, repositoryOutcomeSource);
   const evidenceState = rowsFor(context.sources, evidenceStateSource)[0] ?? {};
   const fallbackObservationCount = rows.reduce(
     (total, row) => total + (Array.isArray(row.points) ? row.points.length : 0),
@@ -109,104 +86,85 @@ function renderOperationalValueHistory(context, rows) {
     : fallbackMaturedObservationCount;
   const onlyInterimEvidence = evidenceState['evidence-state'] === 'interim-evidence'
     || (!evidenceState['evidence-state'] && observationCount > 0 && maturedObservationCount === 0);
-  const selectedScope = state(scopes[0]?.id ?? '');
-  const selector = /** @type {HTMLSelectElement} */ (h('select', {
-    className: 'operational-value-scope-select',
-    'aria-label': 'Operational value repository scope'
-  }, ...scopes.map((scope) => h('option', { value: scope.id }, scope.label))));
-  const scopeStatus = h('p', {
-    className: 'operational-value-scope-status',
-    role: 'status'
-  });
-  const panels = new Map(scopes.map((scope) => {
-    const scopeMetrics = metricsForOperationalValueScope(scope);
-    const outcomes = scope.repository === null
-      ? campaignOutcomes
-      : outcomeContext(repositoryOutcomeRows.filter(
-        (row) => String(row.repository || '') === scope.repository
-      ));
-    return [scope.id, h('div', {
+  const panels = metricGroups.map((group) => h('div', {
       className: 'insights-plot-panel insights-temporal-plot-panel',
-      'data-operational-value-scope': scope.id,
+      'data-operational-value-metric': group.id,
       'data-operational-value-state': onlyInterimEvidence
         ? 'interim-evidence'
         : 'observed-value'
     },
-    h('div', { className: 'operational-value-native-plots' },
-      ...scopeMetrics.map((metric) => renderTemporalMetricPlot({
-        title: metric.label,
+    renderTemporalMetricPlot({
+        title: group.label,
         mode,
         adoptionAt,
-        metrics: [metric],
-        outcomes,
-        trend: metric.trend,
+        metrics: group.series,
+        outcomes: campaignOutcomes,
         provisional: onlyInterimEvidence
-      }))))];
-  }));
-  const elementScope = createFactoryScope();
-  selector.addEventListener('change', () => selectedScope.set(selector.value), {
-    signal: elementScope.signal
-  });
+      }),
+    group.series.length > 1
+      ? renderChartLegend(group.series.map((series, index) => ({
+        name: series.label,
+        className: `chart-series-${(index % 12) + 1}`
+      })), 'line')
+      : null));
 
-  const root = h('section', { className: 'measure-history', 'aria-label': context.title },
+  return h('section', { className: 'measure-history', 'aria-label': context.title },
     h('div', { className: 'insights-section-heading' },
       h('div', null,
         h('div', { className: 'insights-measure-heading' },
           h('h2', null, 'Operational value')),
         h('p', null, onlyInterimEvidence
           ? `${formatNumber(observationCount)} interim observations. Dashed amber lines are not mature evidence.`
-          : 'Campaign rollup by eligible evidence. Choose a repository for detail.')),
-      h('label', { className: 'operational-value-scope-control' },
-        h('span', null, 'Repository scope'),
-        selector)),
-    scopeStatus,
-    ...panels.values());
-  effect(() => {
-    const activeScope = selectedScope.get();
-    selector.value = activeScope;
-    for (const [scopeId, panel] of panels) panel.hidden = scopeId !== activeScope;
-    scopeStatus.textContent = scopes.find((scope) => scope.id === activeScope)?.description ?? '';
-  }, { signal: elementScope.signal });
-  elementScope.bind(root);
-  return root;
+          : 'Repository-level evidence only. Each metric compares repository series directly; campaign rollups are omitted so anomalies remain visible.'))),
+    ...panels);
 }
 
 /**
- * @param {OperationalValueScope} scope
+ * @param {Record<string, unknown>[]} rows
  */
-function metricsForOperationalValueScope(scope) {
-  return scope.rows.flatMap((row) => {
+function operationalValueMetricGroups(rows) {
+  /** @type {Map<string, OperationalValueMetricGroup>} */
+  const groups = new Map();
+  for (const row of rows) {
     const points = /** @type {Array<Record<string, unknown>>} */ (
       Array.isArray(row.points) ? row.points : []
-    ).filter((point) => scope.repository === null || String(point.color || '') === scope.repository);
+    );
     const name = String(row['operational-value-name'] || row['metric-name'] || row.metric || 'Metric');
-    return points.length === 0 ? [] : [{
-      id: `${String(row.metric || name)}:${scope.id}`,
+    const metricId = String(row.metric || name);
+    const group = groups.get(metricId) ?? {
+      id: metricId,
       label: name,
-      unit: String(row['operational-value-unit'] || 'value'),
-      direction: /** @type {'increase'|'decrease'|'maintain'|'target'} */ (
-        ['increase', 'decrease', 'maintain', 'target'].includes(String(row['operational-value-direction']))
-          ? row['operational-value-direction']
-          : 'increase'
-      ),
-      trend: {
-        startValue: Number(row['trend-start-value']),
-        endValue: Number(row['trend-end-value']),
-        delta: Number(row['trend-delta']),
-        relativePercent: row['trend-relative-percent'] === null
-          ? null
-          : Number(row['trend-relative-percent']),
-        observedDirection: String(row['trend-observed-direction'] || 'flat'),
-        assessment: String(row['trend-assessment'] || 'insufficient'),
-        observationCount: Number(row['trend-observation-count']) || 0
-      },
-      points: points.map((point) => ({
+      series: new Map()
+    };
+    for (const point of points) {
+      const repository = String(point.color || row.repository || '');
+      if (!repository) continue;
+      const series = group.series.get(repository) ?? {
+        id: `${metricId}:${repository}`,
+        label: repository,
+        unit: String(row['operational-value-unit'] || 'value'),
+        direction: /** @type {'increase'|'decrease'|'maintain'|'target'} */ (
+          ['increase', 'decrease', 'maintain', 'target'].includes(String(row['operational-value-direction']))
+            ? row['operational-value-direction']
+            : 'increase'
+        ),
+        points: []
+      };
+      series.points.push({
         x: String(point.x),
         y: Number(point.y),
         key: String(point.key || '')
-      }))
-    }];
-  });
+      });
+      group.series.set(repository, series);
+    }
+    groups.set(metricId, group);
+  }
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      series: [...group.series.values()].toSorted((left, right) => left.label.localeCompare(right.label))
+    }))
+    .toSorted((left, right) => left.label.localeCompare(right.label));
 }
 
 /**
