@@ -59,6 +59,7 @@ test("limits the downloaded activity shards when requested", async () => {
   const requested = [];
   const fetcher = async (url) => {
     requested.push(String(url));
+    if (String(url).endsWith("memory/manifest.json")) return { ok: false, status: 404 };
     const content = String(url).endsWith("payload-hashes.json")
       ? JSON.stringify({
           "gh-aw-logs-runs/first.jsonl": "a".repeat(64),
@@ -66,8 +67,6 @@ test("limits the downloaded activity shards when requested", async () => {
         })
       : String(url).endsWith("inventory-sources.json")
         ? '{"repositories":[]}'
-        : String(url).endsWith("memory/manifest.json")
-          ? '{"campaigns":[]}'
         : '{"kind":"record"}\n';
     return {
       ok: true,

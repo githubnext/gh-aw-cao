@@ -61,8 +61,18 @@ const contentTypes = new Map([
   [".svg", "image/svg+xml"],
   [".webp", "image/webp"],
 ]);
-const redactedTextExtensions = new Set([".css", ".html", ".js", ".md", ".mjs", ".svg"]);
+const redactedTextExtensions = new Set([
+  ".css", ".html", ".js", ".jsonl", ".md", ".mjs", ".svg", ".txt", ".yaml", ".yml",
+]);
 const repositoryMemoryExtensions = new Set([".json", ".jsonl", ".md", ".txt", ".yaml", ".yml"]);
+const repositoryMemoryContentTypes = new Map([
+  [".json", "application/json; charset=utf-8"],
+  [".jsonl", "application/x-ndjson; charset=utf-8"],
+  [".md", "text/markdown; charset=utf-8"],
+  [".txt", "text/plain; charset=utf-8"],
+  [".yaml", "text/yaml; charset=utf-8"],
+  [".yml", "text/yaml; charset=utf-8"],
+]);
 const compressibleContentTypes = new Set([
   "application/json; charset=utf-8",
   "application/x-ndjson; charset=utf-8",
@@ -1046,7 +1056,7 @@ export async function startDashboardServer({
         sendContent(
           request,
           response,
-          contentTypes.get(extension),
+          repositoryMemoryContentTypes.get(extension),
           browserSafeFileContent(canonicalFilePath, await readFile(canonicalFilePath)),
         );
         return;

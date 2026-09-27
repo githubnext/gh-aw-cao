@@ -32,10 +32,12 @@ export async function downloadDeployedDashboardData(
   await pipeline(inventoryResponse.body, createWriteStream(join(destination, "inventory-sources.json")));
   const memoryRoot = new URL("memory/", sourceUrl);
   const memoryManifestResponse = await fetcher(new URL("manifest.json", memoryRoot));
-  if (!memoryManifestResponse.ok) {
+  if (!memoryManifestResponse.ok && memoryManifestResponse.status !== 404) {
     throw new Error(`Unable to download deployed repository memory: HTTP ${memoryManifestResponse.status}.`);
   }
-  const memoryManifest = await memoryManifestResponse.json();
+  const memoryManifest = memoryManifestResponse.ok
+    ? await memoryManifestResponse.json()
+    : { version: 1, campaigns: [] };
   const memoryDirectory = join(destination, "memory");
   await mkdir(memoryDirectory, { recursive: true });
   await writeFile(join(memoryDirectory, "manifest.json"), `${JSON.stringify(memoryManifest)}\n`);
