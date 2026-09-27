@@ -7,11 +7,12 @@
  * query definition, and no write operation, and it keeps no protocol session
  * state, so any request is self-describing and independently routable.
  *
- * It is implemented on Node platform primitives only, without an MCP library.
+ * It is implemented on Node platform primitives only, without an MCP library,
+ * and serves plain HTTP: the endpoint is reached over loopback or an isolated
+ * job-local container network, so it carries no TLS material and no
+ * self-signed certificate.
  */
-import { createServer as createHttpServer } from 'node:http';
-import { createServer as createHttpsServer } from 'node:https';
-import { readFile } from 'node:fs/promises';
+import { createServer } from 'node:http';
 import {
   describeAgentPages,
   describeAgentQueries,
@@ -28,6 +29,12 @@ export const MCP_PROTOCOL_VERSION = '2026-07-28';
 
 /** Maximum accepted request body, in bytes. */
 export const MAX_MCP_REQUEST_BYTES = 64 * 1024;
+
+/** Default interface for the MCP endpoint. */
+export const DEFAULT_MCP_HOST = '127.0.0.1';
+
+/** Default port for the MCP endpoint. */
+export const DEFAULT_MCP_PORT = 8765;
 
 /** Conservative, deterministic cache hint for discovery results. */
 export const MCP_LIST_CACHE = { ttlMs: 300_000, cacheScope: 'private' };
@@ -273,11 +280,6 @@ export async function handleMcpRequest({ headers, body, indexedDB, dashboardPath
   }
 }
 
-/** @param {string} host */
-function isLoopbackHost(host) {
-  return ['127.0.0.1', '::1', 'localhost'].includes(host);
-}
-
 /**
  * Reads the request body with a hard size bound.
  * @param {import('node:http').IncomingMessage} request
@@ -297,36 +299,27 @@ async function readBody(request) {
 }
 
 /**
- * Starts the read-only MCP endpoint.
+ * Starts the read-only MCP endpoint over plain HTTP.
  *
- * HTTPS is mandatory outside loopback: TLS material is read from disk at
- * startup and never embedded in an image or in this repository.
+ * The endpoint binds loopback by default. Binding another interface is an
+ * explicit operator choice and is intended only for an isolated job-local
+ * container network shared with the agent runtime.
  *
  * @param {{
  *   indexedDB: IDBFactory,
  *   dashboardPath?: string,
  *   host?: string,
  *   port?: number,
- *   certPath?: string,
- *   keyPath?: string,
  *   signal?: AbortSignal
  * }} options
  */
 export async function startMcpServer({
   indexedDB,
   dashboardPath,
-  host = '127.0.0.1',
-  port = 8443,
-  certPath,
-  keyPath,
+  host = DEFAULT_MCP_HOST,
+  port = DEFAULT_MCP_PORT,
   signal
 }) {
-  if ((certPath && !keyPath) || (keyPath && !certPath)) {
-    throw new NamedQueryError('cao mcp requires both --cert and --key for HTTPS');
-  }
-  if (!certPath && !isLoopbackHost(host)) {
-    throw new NamedQueryError(`cao mcp requires --cert and --key to bind ${host}; plain HTTP is only allowed on loopback`);
-  }
   // Fail before binding when the dashboard definition is unusable.
   await loadAgentDashboardDocument(dashboardPath);
   /** @type {import('node:http').RequestListener} */
@@ -372,15 +365,7 @@ export async function startMcpServer({
       send(500, errorResponse(null, -32603, 'Internal error reading the request'));
     }
   };
-  const server = certPath && keyPath
-    ? createHttpsServer(
-        {
-          cert: await readFile(certPath),
-          key: await readFile(keyPath)
-        },
-        listener
-      )
-    : createHttpServer(listener);
+  const server = createServer(listener);
   await new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(port, host, () => {
@@ -392,7 +377,7 @@ export async function startMcpServer({
   const boundPort = typeof address === 'object' && address ? address.port : port;
   // A wildcard bind is not connectable, so advertise a reachable loopback URL.
   const advertisedHost = host === '0.0.0.0' || host === '::' ? '127.0.0.1' : host;
-  const url = `${certPath ? 'https' : 'http'}://${advertisedHost}:${boundPort}/mcp`;
+  const url = `http://${advertisedHost}:${boundPort}/mcp`;
   const closed = new Promise((resolve) => server.once('close', resolve));
   const stop = async () => {
     server.close();

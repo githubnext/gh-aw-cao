@@ -50,7 +50,7 @@ export const USAGE = `Usage:
   cao query-info QUERY_ID [--dashboard FILE] [--json]
   cao query QUERY_ID [--database FILE] [--dashboard FILE] [--param NAME=VALUE...] [--limit COUNT]
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
-  cao mcp [--database FILE] [--dashboard FILE] [--host HOST] [--port PORT] [--cert FILE --key FILE]
+  cao mcp [--database FILE] [--dashboard FILE] [--host HOST] [--port PORT]
   cao computation runtime-health [--database FILE] [--inventory FILE] [--campaign SLUG] [--diagnose]
   cao operational-value [--database FILE] [--root DIRECTORY] [--output FILE] [--timestamp TIME] [--repository OWNER/REPO] [--campaign SLUG] [--retention-days DAYS|all] [--history-campaign SLUG] [--max-github-api-rate-limit LIMIT]
   cao cluster-problems [--database FILE] [--root DIRECTORY] [--timestamp TIME]
@@ -89,7 +89,9 @@ Agent analysis:
   Run a named query:
     cao query QUERY_ID [--param NAME=VALUE]
   Start the read-only MCP server for agents without a shell:
-    cao mcp --cert /run/cao/tls.crt --key /run/cao/tls.key
+    cao mcp
+  The MCP endpoint speaks plain HTTP on http://127.0.0.1:8765/mcp and carries no
+  credentials; reach it over loopback or an isolated job-local network.
   Every discovery command emits JSON with --json; diagnostics stay on stderr.
   Named queries are the reviewed Dashboard Language queries of the deployed
   dashboard, so the CLI, the browser, and MCP return the same evidence.

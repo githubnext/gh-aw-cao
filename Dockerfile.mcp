@@ -16,7 +16,7 @@ LABEL org.opencontainers.image.title="Central Agentic Ops MCP server" \
 # GitHub credentials, and no outbound network access.
 RUN addgroup -S -g 65532 cao \
     && adduser -S -D -H -u 65532 -G cao cao \
-    && mkdir -p /app /data /run/cao \
+    && mkdir -p /app /data \
     && chown -R cao:cao /app
 
 WORKDIR /app
@@ -30,9 +30,9 @@ COPY --chown=cao:cao scripts/cao-mcp-entrypoint.sh /app/cao-mcp-entrypoint.sh
 RUN chmod +x /app/cao-mcp-entrypoint.sh
 
 USER 65532:65532
-EXPOSE 8443
-VOLUME ["/data", "/run/cao"]
+EXPOSE 8765
+VOLUME ["/data"]
 ENV NODE_ENV=production
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD node -e "const t=require('node:net').connect(Number(process.env.CAO_MCP_PORT||8443),'127.0.0.1');t.on('connect',()=>{t.end();process.exit(0)});t.on('error',()=>process.exit(1))"
+  CMD node -e "const t=require('node:net').connect(Number(process.env.CAO_MCP_PORT||8765),'127.0.0.1');t.on('connect',()=>{t.end();process.exit(0)});t.on('error',()=>process.exit(1))"
 ENTRYPOINT ["/app/cao-mcp-entrypoint.sh"]

@@ -2,12 +2,12 @@
 // Container end-to-end test for the read-only CAO MCP server.
 //
 // Builds the MCP image, mounts a fixture SQLite snapshot read-only, serves MCP
-// over HTTPS with an ephemeral certificate, and verifies that the snapshot and
-// the container filesystem stay unchanged.
+// over plain HTTP on a job-local published port, and verifies that the snapshot
+// and the container filesystem stay unchanged.
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
-import https from "node:https";
+import http from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -20,20 +20,17 @@ const run = promisify(execFile);
 const repositoryRoot = path.resolve(import.meta.dirname, "../..");
 const image = "cao-mcp-e2e";
 const container = "cao-mcp-e2e";
-const port = Number(process.env.CAO_MCP_E2E_PORT ?? 18443);
+const port = Number(process.env.CAO_MCP_E2E_PORT ?? 18765);
 
 /**
  * @param {string} url
- * @param {string} certificateAuthority
  * @param {Record<string, unknown>} message
  */
-function post(url, certificateAuthority, message) {
+function post(url, message) {
   const body = JSON.stringify(message);
   return new Promise((resolve, reject) => {
-    const request = https.request(url, {
+    const request = http.request(url, {
       method: "POST",
-      ca: certificateAuthority,
-      servername: "localhost",
       headers: {
         "content-type": "application/json",
         "content-length": Buffer.byteLength(body),
@@ -58,17 +55,11 @@ function post(url, certificateAuthority, message) {
   });
 }
 
-/**
- * @param {string} certificateAuthority
- */
-async function waitForHealth(certificateAuthority) {
+async function waitForHealth() {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     try {
       const healthy = await new Promise((resolve, reject) => {
-        https.get(`https://localhost:${port}/healthz`, {
-          ca: certificateAuthority,
-          servername: "localhost",
-        }, (response) => {
+        http.get(`http://127.0.0.1:${port}/healthz`, (response) => {
           response.resume();
           resolve(response.statusCode === 200);
         }).on("error", reject);
@@ -91,27 +82,14 @@ async function main() {
   }
   const directory = await mkdtemp(path.join(tmpdir(), "cao-mcp-container-"));
   const dataDirectory = path.join(directory, "data");
-  const tlsDirectory = path.join(directory, "tls");
   const snapshot = path.join(dataDirectory, "gh-aw-logs.sqlite");
   await mkdir(dataDirectory, { recursive: true });
-  await mkdir(tlsDirectory, { recursive: true });
-  await run("openssl", [
-    "req", "-x509", "-newkey", "rsa:2048", "-nodes",
-    "-keyout", path.join(tlsDirectory, "tls.key"),
-    "-out", path.join(tlsDirectory, "tls.crt"),
-    "-days", "1", "-subj", "/CN=localhost",
-    "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1",
-  ]);
   const fixture = await installSqliteIndexedDB(snapshot);
   await readCollections(fixture, ["runs"]);
   await run("chmod", ["-R", "a+rX", directory]);
   const digestBefore = createHash("sha256")
     .update(await readFile(snapshot))
     .digest("hex");
-  const certificateAuthority = await readFile(
-    path.join(tlsDirectory, "tls.crt"),
-    "utf8",
-  );
   await run("docker", [
     "build", "-f", "Dockerfile.mcp", "-t", image, ".",
   ], { cwd: repositoryRoot, maxBuffer: 64 * 1024 * 1024 });
@@ -120,14 +98,13 @@ async function main() {
     "run", "--detach", "--name", container,
     "--read-only", "--tmpfs", "/tmp",
     "--volume", `${dataDirectory}:/data:ro`,
-    "--volume", `${tlsDirectory}:/run/cao:ro`,
-    "--publish", `${port}:8443`,
+    "--publish", `127.0.0.1:${port}:8765`,
     image,
   ]);
   try {
-    await waitForHealth(certificateAuthority);
-    const url = `https://localhost:${port}/mcp`;
-    const tools = await post(url, certificateAuthority, {
+    await waitForHealth();
+    const url = `http://127.0.0.1:${port}/mcp`;
+    const tools = await post(url, {
       jsonrpc: "2.0",
       id: 1,
       method: "tools/list",
@@ -136,7 +113,7 @@ async function main() {
     if (names.join(",") !== "cao_catalog,cao_query") {
       throw new Error(`Unexpected MCP tools: ${names.join(", ")}`);
     }
-    const catalog = await post(url, certificateAuthority, {
+    const catalog = await post(url, {
       jsonrpc: "2.0",
       id: 2,
       method: "tools/call",
@@ -145,7 +122,7 @@ async function main() {
     const queries = catalog.payload.result.structuredContent.queries;
     const executable = queries.find((query) => query.execution.local);
     if (!executable) throw new Error("No locally executable query was discovered");
-    const result = await post(url, certificateAuthority, {
+    const result = await post(url, {
       jsonrpc: "2.0",
       id: 3,
       method: "tools/call",
@@ -169,7 +146,7 @@ async function main() {
       .digest("hex");
     if (digestBefore !== digestAfter) throw new Error("The mounted snapshot changed");
     process.stdout.write(
-      `CAO MCP container served ${queries.length} catalogued queries over HTTPS without modifying its snapshot.\n`,
+      `CAO MCP container served ${queries.length} catalogued queries over HTTP without modifying its snapshot.\n`,
     );
   } finally {
     await run("docker", ["rm", "-f", container]).catch(() => {});

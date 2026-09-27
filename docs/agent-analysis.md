@@ -15,7 +15,7 @@ list of pages or queries:
 | --- | --- | --- | --- |
 | Browser agent | [WebMCP](dashboard-webmcp.md) | Generated page tools | Dashboard query engine |
 | Shell agent | `cao` CLI | `cao pages`, `cao queries` | `cao query QUERY_ID` |
-| Agent without a shell | HTTPS MCP server | `cao_catalog` | `cao_query` |
+| Agent without a shell | HTTP MCP server | `cao_catalog` | `cao_query` |
 
 ## Decide which path applies
 
@@ -144,19 +144,19 @@ its sources.
 ## Run the MCP server
 
 ```bash
-cao mcp \
-  --database .cao/gh-aw-logs.sqlite \
-  --cert /run/cao/tls.crt \
-  --key /run/cao/tls.key \
-  --host 0.0.0.0 \
-  --port 8443
+cao mcp --database .cao/gh-aw-logs.sqlite --host 127.0.0.1 --port 8765
 ```
 
 The server implements the stateless MCP revision `2026-07-28`. It stores no
 protocol session state, requires the `MCP-Protocol-Version` and `Mcp-Method`
 headers to agree with the JSON-RPC body, and serves one endpoint, `POST /mcp`,
-plus `GET /healthz` for orchestration. TLS is mandatory outside loopback; plain
-HTTP is accepted only on `127.0.0.1` for local development.
+plus `GET /healthz` for orchestration.
+
+The endpoint speaks plain HTTP. It carries no TLS material and no self-signed
+certificate: the client and the server share one host or one isolated job-local
+container network, so a private certificate authority would add operational
+cost without adding a trust boundary. Reach the endpoint over loopback or an
+isolated network, and do not publish it to a routable interface.
 
 ## Bootstrap in GitHub Actions
 
@@ -172,14 +172,6 @@ steps:
     run: ./cao.sh --version
   - name: Download the CAO activity snapshot
     run: ./cao.sh download
-  - name: Create an ephemeral certificate
-    run: |
-      mkdir -p "$RUNNER_TEMP/cao-tls"
-      openssl req -x509 -newkey rsa:2048 -nodes \
-        -keyout "$RUNNER_TEMP/cao-tls/tls.key" \
-        -out "$RUNNER_TEMP/cao-tls/tls.crt" \
-        -days 1 -subj "/CN=localhost" \
-        -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
   - name: Start CAO MCP
     run: |
       docker run --detach \
@@ -187,19 +179,20 @@ steps:
         --read-only \
         --tmpfs /tmp \
         -v "$PWD/.cao:/data:ro" \
-        -v "$RUNNER_TEMP/cao-tls:/run/cao:ro" \
-        -p 8443:8443 \
+        -p 127.0.0.1:8765:8765 \
         ghcr.io/githubnext/gh-aw-cao-mcp:${CAO_VERSION}
 ```
 
-Point the workflow's MCP server configuration at `https://localhost:8443/mcp`.
+Point the workflow's MCP server configuration at `http://127.0.0.1:8765/mcp`.
 Take the remote-MCP declaration syntax from the gh-aw version the workflow pins
-rather than from a CAO-specific dialect.
+rather than from a CAO-specific dialect. Publishing the port on `127.0.0.1`
+keeps the endpoint on the runner; an equivalent job-local bridge network shared
+only with the agent runtime also works.
 
 Build the image from `Dockerfile.mcp` in this repository. It runs as a non-root
-user on a read-only filesystem, mounts the snapshot read-only at `/data` and the
-TLS material read-only at `/run/cao`, and copies the snapshot into container
-scratch space so the mounted evidence is never modified.
+user on a read-only filesystem, mounts the snapshot read-only at `/data`, and
+copies the snapshot into container scratch space so the mounted evidence is
+never modified.
 
 ## Safety
 

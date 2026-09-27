@@ -1,11 +1,9 @@
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
-import https from "node:https";
+import { mkdtemp, rm } from "node:fs/promises";
+import http from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { promisify } from "node:util";
 
 import {
   MAX_MCP_REQUEST_BYTES,
@@ -16,7 +14,6 @@ import {
 } from "../../activity/mcp-server.mjs";
 import { installSqliteIndexedDB } from "../../dashboard/site/src/data/storage/sqlite-indexeddb.js";
 
-const executeFile = promisify(execFile);
 const temporaryDirectory = await mkdtemp(path.join(tmpdir(), "cao-mcp-test-"));
 const indexedDB = await installSqliteIndexedDB(
   path.join(temporaryDirectory, "gh-aw-logs.sqlite"),
@@ -44,20 +41,17 @@ function request(method, params, headers = {}) {
 }
 
 /**
- * Issues one MCP request over the wire so the HTTPS transport is tested at the
- * real protocol boundary rather than through a client library.
+ * Issues one MCP request over the wire so the transport is tested at the real
+ * protocol boundary rather than through a client library.
  *
  * @param {string} url
- * @param {string} certificateAuthority
  * @param {Record<string, unknown>} message
  */
-function postOverHttps(url, certificateAuthority, message) {
+function postOverHttp(url, message) {
   const body = JSON.stringify(message);
   return new Promise((resolve, reject) => {
-    const request = https.request(url, {
+    const request = http.request(url, {
       method: "POST",
-      ca: certificateAuthority,
-      servername: "localhost",
       headers: {
         "content-type": "application/json",
         "content-length": Buffer.byteLength(body),
@@ -260,42 +254,12 @@ test("cancelled requests stop before returning rows", async () => {
   assert.equal(body.error.code, -32800);
 });
 
-test("the server refuses to bind a non-loopback host without TLS", async () => {
-  await assert.rejects(
-    startMcpServer({ indexedDB, host: "0.0.0.0", port: 0 }),
-    /--cert and --key/,
-  );
-});
-
-test("the server answers MCP requests over HTTPS", async (t) => {
-  const directory = path.join(temporaryDirectory, "tls");
-  const certificate = path.join(directory, "tls.crt");
-  const key = path.join(directory, "tls.key");
-  await mkdir(directory, { recursive: true });
+test("the server answers MCP requests over plain HTTP", async () => {
+  const server = await startMcpServer({ indexedDB, host: "127.0.0.1", port: 0 });
   try {
-    await executeFile("openssl", [
-      "req", "-x509", "-newkey", "rsa:2048", "-nodes",
-      "-keyout", key,
-      "-out", certificate,
-      "-days", "1", "-subj", "/CN=localhost",
-      "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1",
-    ]);
-  } catch {
-    t.skip("openssl is unavailable");
-    return;
-  }
-  const server = await startMcpServer({
-    indexedDB,
-    host: "127.0.0.1",
-    port: 0,
-    certPath: certificate,
-    keyPath: key,
-  });
-  try {
-    assert.match(server.url, /^https:\/\//);
-    const { status, payload } = await postOverHttps(
+    assert.match(server.url, /^http:\/\/127\.0\.0\.1:\d+\/mcp$/);
+    const { status, payload } = await postOverHttp(
       server.url,
-      await readFile(certificate, "utf8"),
       { jsonrpc: "2.0", id: 7, method: "tools/list" },
     );
     assert.equal(status, 200);
@@ -304,6 +268,25 @@ test("the server answers MCP requests over HTTPS", async (t) => {
       payload.result.tools.map((tool) => tool.name),
       ["cao_catalog", "cao_query"],
     );
+  } finally {
+    await server.stop();
+  }
+});
+
+test("the server reports health without a protocol handshake", async () => {
+  const server = await startMcpServer({ indexedDB, host: "127.0.0.1", port: 0 });
+  try {
+    const health = await new Promise((resolve, reject) => {
+      http.get(server.url.replace("/mcp", "/healthz"), (response) => {
+        let text = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk) => { text += chunk; });
+        response.on("end", () => resolve({ status: response.statusCode, payload: JSON.parse(text) }));
+      }).on("error", reject);
+    });
+    assert.equal(health.status, 200);
+    assert.equal(health.payload.status, "ok");
+    assert.equal(health.payload.protocolVersion, MCP_PROTOCOL_VERSION);
   } finally {
     await server.stop();
   }
