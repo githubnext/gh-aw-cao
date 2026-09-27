@@ -3,7 +3,7 @@ import { expect, registerSmokeRoutes, test } from './helpers/smoke-fixtures.js';
 registerSmokeRoutes();
 
 test('Memory uses mobile master-detail file navigation', async ({ context, page }) => {
-  const content = '# Mobile memory\n\nA readable file on a small screen.\n';
+  const content = `# Mobile memory\n\n${'A-readable-file-on-a-small-screen-'.repeat(20)}\n`;
   await context.route('http://dashboard.test/memory/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === '/memory/manifest.json') {
@@ -64,7 +64,7 @@ test('Memory uses mobile master-detail file navigation', async ({ context, page 
   await expect(files).toBeHidden();
   await expect(fileContent).toBeVisible();
   await expect(fileContent.getByRole('heading', { name: 'notes/mobile.md' })).toBeVisible();
-  await expect(fileContent.locator('pre')).toContainText('A readable file on a small screen.');
+  await expect(fileContent.locator('pre')).toContainText('A-readable-file-on-a-small-screen');
   await expect(fileContent).toBeFocused();
   await expect(fileContent.getByRole('button', { name: 'Back to files' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Go back' })).toBeVisible();

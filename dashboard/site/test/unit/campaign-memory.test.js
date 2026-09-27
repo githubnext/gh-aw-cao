@@ -236,7 +236,7 @@ describe('campaign repository memory', () => {
     page.className = 'dashboard-page';
     page.dataset.routeNavigationPage = 'campaigns';
     page.addEventListener('dashboard-route-parent-change', (event) => {
-      page.dataset.routeNavigationPage = event.detail.navigationPage;
+      if (event instanceof CustomEvent) page.dataset.routeNavigationPage = event.detail.navigationPage;
     });
     const rendered = renderCampaignMemory({
       campaignId: 'ambient-context',

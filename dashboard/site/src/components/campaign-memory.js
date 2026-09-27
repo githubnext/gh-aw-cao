@@ -474,6 +474,7 @@ function renderMemoryFileHeader(path) {
 function createMobileMemoryNavigation(root, scopeKey, parentPage, showFile, showFiles, signal) {
   const view = root.ownerDocument.defaultView;
   let active = view?.history.state?.[MOBILE_MEMORY_HISTORY_KEY] === scopeKey;
+  /** @param {string} navigationPage */
   const setParent = (navigationPage) => queueMicrotask(() => {
     if (!root.isConnected) return;
     root.dispatchEvent(new CustomEvent('dashboard-route-parent-change', {
@@ -481,6 +482,7 @@ function createMobileMemoryNavigation(root, scopeKey, parentPage, showFile, show
       detail: { navigationPage }
     }));
   });
+  /** @param {PopStateEvent} event */
   const onPopState = (event) => {
     active = event.state?.[MOBILE_MEMORY_HISTORY_KEY] === scopeKey;
     if (active) showFile();
