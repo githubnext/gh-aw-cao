@@ -6,6 +6,8 @@
     { "name": "$runs", "sources": ["runs"] },
     { "name": "$domains", "sources": ["domains"] },
     { "name": "$tools", "sources": ["tools"] },
+    { "name": "$skills", "sources": ["skills"] },
+    { "name": "$friction", "sources": ["friction"] },
     { "name": "$audits", "sources": ["audits"] },
     { "name": "$issues", "sources": ["issues"] },
     { "name": "$marketplace-packages", "sources": ["marketplace-packages"] }
@@ -133,6 +135,34 @@
     {
       "name": "tool-records",
       "from": "tool-keys",
+      "joins": [{ "source": "$published-runs", "type": "inner", "on": [{ "left": "_lookup-run-id", "right": "_lookup-run-id" }], "fields": [{ "field": "_id", "as": "_run-id" }] }]
+    },
+    {
+      "name": "skill-keys",
+      "from": "$skills",
+      "compute": [
+        { "as": "_attempt", "function": "positive-integer", "args": [{ "field": "run-attempt" }, { "value": 1 }] },
+        { "as": "_lookup-run-id", "function": "concat", "args": [{ "value": "github:run:" }, { "field": "run" }, { "value": ":attempt:" }, { "field": "_attempt" }] },
+        { "as": "_observed-at", "function": "coalesce", "args": [{ "field": "observed-at" }, { "field": "event-timestamp" }, { "field": "__source-observed-at" }] }
+      ]
+    },
+    {
+      "name": "skill-records",
+      "from": "skill-keys",
+      "joins": [{ "source": "$published-runs", "type": "inner", "on": [{ "left": "_lookup-run-id", "right": "_lookup-run-id" }], "fields": [{ "field": "_id", "as": "_run-id" }] }]
+    },
+    {
+      "name": "friction-keys",
+      "from": "$friction",
+      "compute": [
+        { "as": "_attempt", "function": "positive-integer", "args": [{ "field": "run-attempt" }, { "value": 1 }] },
+        { "as": "_lookup-run-id", "function": "concat", "args": [{ "value": "github:run:" }, { "field": "run" }, { "value": ":attempt:" }, { "field": "_attempt" }] },
+        { "as": "_observed-at", "function": "coalesce", "args": [{ "field": "observed-at" }, { "field": "event-timestamp" }, { "field": "__source-observed-at" }] }
+      ]
+    },
+    {
+      "name": "friction-records",
+      "from": "friction-keys",
       "joins": [{ "source": "$published-runs", "type": "inner", "on": [{ "left": "_lookup-run-id", "right": "_lookup-run-id" }], "fields": [{ "field": "_id", "as": "_run-id" }] }]
     },
     {
@@ -287,6 +317,14 @@
       "data": {}
     },
     {
+      "query": "skill-records", "input": "$skills", "chunkInputs": ["$published-runs"], "kind": "skill", "sourceId": "event", "observedAt": "_observed-at", "required": ["event", "event-timestamp", "event-source", "event-type"],
+      "data": {}
+    },
+    {
+      "query": "friction-records", "input": "$friction", "chunkInputs": ["$published-runs"], "kind": "friction", "sourceId": "event", "observedAt": "_observed-at", "required": ["event", "event-timestamp", "event-source", "event-type"],
+      "data": {}
+    },
+    {
       "query": "audit-records", "input": "$audits", "chunkInputs": ["$published-runs"], "kind": "audit", "sourceId": "event", "observedAt": "_observed-at", "required": ["event", "event-timestamp", "event-source", "event-type"],
       "data": {}
     },
@@ -300,12 +338,29 @@
     "source": { "field": "event-source" }, "type": { "field": "event-type" }, "summary": { "field": "event-summary" },
     "status": { "field": "event-status" }, "requestCount": { "field": "request-count" }, "correlationId": { "field": "correlation-id" },
     "payloadRef": { "field": "payload-ref" }, "mcpServer": { "field": "mcp-server" }, "mcpServerVersion": { "field": "mcp-server-version" },
-    "mcpProtocolVersion": { "field": "mcp-protocol-version" }, "mcpTool": { "field": "mcp-tool" }, "responseBytes": { "field": "response-bytes" },
+    "mcpProtocolVersion": { "field": "mcp-protocol-version" }, "mcpTool": { "field": "mcp-tool" },
+    "requestBytes": { "field": "request-bytes", "nonnegativeInteger": true }, "responseBytes": { "field": "response-bytes", "nonnegativeInteger": true },
     "safeOutputType": { "field": "safe-output-type" }, "githubEntityType": { "field": "github-entity-type" },
     "isPullRequest": { "field": "is-pull-request", "equals": true }, "toolType": { "field": "tool-type" }, "isSkill": { "field": "is-skill", "equals": true },
     "state": { "field": "issue-state" }, "closed": { "field": "issue-closed" }, "stateReason": { "field": "issue-state-reason" },
     "closedAt": { "field": "issue-closed-at" }, "statusObservedAt": { "field": "issue-status-observed-at" },
-    "name": { "field": "name" }, "domain": { "field": "domain" }, "decision": { "field": "decision" }, "targetRepo": { "field": "target-repo" },
+    "name": { "field": "name" }, "invocationCount": { "field": "invocation-count", "nonnegativeInteger": true },
+    "failedCount": { "field": "failed-count", "nonnegativeInteger": true }, "activationSource": { "field": "activation-source" },
+    "measurementState": { "field": "measurement-state" }, "canonicalUnit": { "field": "canonical-unit" },
+    "sources": { "field": "sources" }, "totalEvents": { "field": "total-events", "nonnegativeInteger": true },
+    "totalOccurrences": { "field": "total-occurrences", "nonnegativeInteger": true },
+    "countedOccurrences": { "field": "counted-occurrences", "nonnegativeInteger": true },
+    "suppressedOccurrences": { "field": "suppressed-occurrences", "nonnegativeInteger": true },
+    "linkedInvocations": { "field": "linked-invocations", "nonnegativeInteger": true },
+    "unattributedOccurrences": { "field": "unattributed-occurrences", "nonnegativeInteger": true },
+    "aic": { "field": "aic" }, "totalTokens": { "field": "total-tokens", "nonnegativeInteger": true },
+    "turns": { "field": "turns", "nonnegativeInteger": true }, "toolCalls": { "field": "tool-calls", "nonnegativeInteger": true },
+    "latencyMs": { "field": "latency-ms", "nonnegativeInteger": true }, "totalRunAic": { "field": "total-run-aic" },
+    "frictionRatio": { "field": "friction-ratio" }, "derived": { "field": "derived", "equals": true },
+    "dimensionStates": { "field": "dimension-states" }, "uncertainty": { "field": "uncertainty" },
+    "drivers": { "field": "drivers" }, "groups": { "field": "groups" }, "events": { "field": "events" },
+    "eventsTruncated": { "field": "events-truncated", "equals": true }, "unmeasuredDrivers": { "field": "unmeasured-drivers" },
+    "domain": { "field": "domain" }, "decision": { "field": "decision" }, "targetRepo": { "field": "target-repo" },
     "targetOrganization": { "field": "target-organization" }, "targetRepository": { "field": "target-repository" },
     "targetWorkflowPath": { "field": "target-workflow-path" }, "optimizerRunAttempt": { "field": "optimizer-run-attempt" },
     "optimizerWorkflowPath": { "field": "optimizer-workflow-path" }, "optimizerWorkflowName": { "field": "optimizer-workflow-name" },

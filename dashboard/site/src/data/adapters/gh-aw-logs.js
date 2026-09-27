@@ -316,7 +316,8 @@ function runAggregates(run) {
     && !Array.isArray(mcpValue);
   const mcpResponseBytes = toolCalls.reduce((total, value) => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return total;
-    return total + Math.max(0, finiteNumber(/** @type {Record<string, unknown>} */ (value).output_size) ?? 0);
+  const call = /** @type {Record<string, unknown>} */ (value);
+  return total + Math.max(0, finiteNumber(call.output_size ?? call.response_size) ?? 0);
   }, 0);
 
   const graders = run.graders && typeof run.graders === 'object' && !Array.isArray(run.graders)
@@ -416,7 +417,7 @@ function stableDigest(value) {
 /**
  * @param {string} type
  * @param {Record<string, unknown>} fields
- * @returns {'domain' | 'tool' | 'audit' | 'issue'}
+ * @returns {'domain' | 'tool' | 'skill' | 'friction' | 'audit' | 'issue'}
  */
 function recordKind(type, fields) {
   if (fields.source === 'firewall' || type === 'net_allowed' || type === 'net_blocked') return 'domain';
@@ -430,17 +431,18 @@ function recordKind(type, fields) {
       return 'audit';
     }
   }
+  if (type === 'audit.skill_activation') return 'skill';
+  if (type === 'workflow_run_friction') return 'friction';
   if (fields.source === 'mcp'
     || type === 'tool_call'
     || type === 'agent_tool_start'
     || type === 'agent_tool_done'
     || type === 'guard_blocked'
-    || type === 'difc_filtered'
-    || type === 'audit.skill_activation') return 'tool';
+    || type === 'difc_filtered') return 'tool';
   return 'audit';
 }
 
-/** @param {string} type @param {Record<string, unknown>} fields @param {'domain' | 'tool' | 'audit' | 'issue'} kind */
+/** @param {string} type @param {Record<string, unknown>} fields @param {'domain' | 'tool' | 'skill' | 'friction' | 'audit' | 'issue'} kind */
 function specializedFields(type, fields, kind) {
   if (kind === 'issue') {
     const url = requiredString(fields.correlationId, 'safe output URL');
@@ -462,12 +464,19 @@ function specializedFields(type, fields, kind) {
   }
   if (kind === 'tool') {
     const name = optionalString(fields.mcpTool ?? fields.toolName ?? fields.summary) ?? 'unknown';
-    const isSkill = type === 'audit.skill_activation';
     const isBash = /(^|[/.:_-])(bash|shell)(?:$|[/.:_-])/i.test(name);
     return {
-      toolType: isSkill ? 'skill' : isBash ? 'bash' : 'mcp',
-      isSkill,
+      toolType: isBash ? 'bash' : 'mcp',
+      isSkill: false,
       name
+    };
+  }
+  if (kind === 'skill') {
+    return {
+      name: optionalString(fields.name ?? fields.summary) ?? 'unknown',
+      invocationCount: Math.max(1, finiteNumber(fields.invocationCount) ?? 1),
+      failedCount: Math.max(0, finiteNumber(fields.failedCount) ?? 0),
+      activationSource: optionalString(fields.activationSource)
     };
   }
   return {};
@@ -1541,6 +1550,55 @@ function createCachedGhAwJsonlAccumulator(options) {
     const audit = run.audit && typeof run.audit === 'object' && !Array.isArray(run.audit)
       ? /** @type {Record<string, unknown>} */ (run.audit)
       : {};
+    const frictionValue = Object.hasOwn(run, 'friction') ? run.friction : audit.friction;
+    if (frictionValue && typeof frictionValue === 'object' && !Array.isArray(frictionValue)) {
+      const friction = /** @type {Record<string, unknown>} */ (frictionValue);
+      const cost = friction.cost && typeof friction.cost === 'object' && !Array.isArray(friction.cost)
+        ? /** @type {Record<string, unknown>} */ (friction.cost)
+        : {};
+      const tokens = cost.tokens && typeof cost.tokens === 'object' && !Array.isArray(cost.tokens)
+        ? /** @type {Record<string, unknown>} */ (cost.tokens)
+        : {};
+      emitEvent(
+        'workflow_run_friction',
+        completedAt ?? enriched.observedAt,
+        'Execution friction cost',
+        optionalString(friction.measurement_state),
+        { type: 'friction' },
+        {
+          source: 'audit',
+          measurementState: optionalString(friction.measurement_state),
+          canonicalUnit: optionalString(friction.canonical_unit),
+          sources: Array.isArray(friction.sources) ? friction.sources : undefined,
+          totalEvents: finiteNumber(friction.total_events),
+          totalOccurrences: finiteNumber(friction.total_occurrences),
+          countedOccurrences: finiteNumber(friction.counted_occurrences),
+          suppressedOccurrences: finiteNumber(friction.suppressed_occurrences),
+          linkedInvocations: finiteNumber(friction.linked_invocations),
+          unattributedOccurrences: finiteNumber(friction.unattributed_occurrences),
+          aic: finiteNumber(cost.aic),
+          inputTokens: finiteNumber(tokens.input),
+          outputTokens: finiteNumber(tokens.output),
+          cacheReadTokens: finiteNumber(tokens.cache_read),
+          cacheWriteTokens: finiteNumber(tokens.cache_write),
+          reasoningTokens: finiteNumber(tokens.reasoning),
+          totalTokens: finiteNumber(tokens.total),
+          turns: finiteNumber(cost.turns),
+          toolCalls: finiteNumber(cost.tool_calls),
+          latencyMs: finiteNumber(cost.latency_ms),
+          totalRunAic: finiteNumber(friction.total_run_aic),
+          frictionRatio: finiteNumber(friction.friction_ratio),
+          derived: friction.derived === true,
+          dimensionStates: friction.dimension_states,
+          uncertainty: friction.uncertainty,
+          drivers: friction.drivers,
+          groups: friction.groups,
+          events: friction.events,
+          eventsTruncated: friction.events_truncated === true,
+          unmeasuredDrivers: friction.unmeasured_drivers
+        }
+      );
+    }
     const explicitSafeOutputs = safeOutputItemsByRun.get(id) ?? [];
     const nestedSafeOutputs = Array.isArray(run.safe_outputs)
       ? run.safe_outputs
@@ -1796,6 +1854,8 @@ function createCachedGhAwJsonlAccumulator(options) {
         optionalString(record.tool_name) ?? 'unknown'
       ]);
       const status = optionalString(record.status) ?? 'unknown';
+      const requestBytes = Math.max(0, finiteNumber(record.input_size ?? record.request_size) ?? 0);
+      const responseBytes = Math.max(0, finiteNumber(record.output_size ?? record.response_size) ?? 0);
       emitEvent(
         'tool.call',
         eventTimestamp,
@@ -1806,7 +1866,9 @@ function createCachedGhAwJsonlAccumulator(options) {
           source: 'mcp',
           correlationId,
           mcpServer: optionalString(record.server_name),
-          mcpTool: optionalString(record.tool_name)
+          mcpTool: optionalString(record.tool_name),
+          requestBytes,
+          responseBytes
         }
       );
       emitEvent(
@@ -1819,7 +1881,9 @@ function createCachedGhAwJsonlAccumulator(options) {
           source: 'mcp',
           correlationId,
           mcpServer: optionalString(record.server_name),
-          mcpTool: optionalString(record.tool_name)
+          mcpTool: optionalString(record.tool_name),
+          requestBytes,
+          responseBytes
         }
       );
     });
@@ -1855,7 +1919,30 @@ function createCachedGhAwJsonlAccumulator(options) {
     emitAuditEvents('missing_data', 'audit.missing_data', 'data_type', 'status');
     emitAuditEvents('noops', 'audit.noop', 'message', 'status');
     emitAuditEvents('mcp_failures', 'audit.mcp_failure', 'server_name', 'status');
-    emitAuditEvents('skill_activations', 'audit.skill_activation', 'name', 'status');
+    const skillActivationsValue = Object.hasOwn(run, 'skill_activations')
+      ? run.skill_activations
+      : audit.skill_activations;
+    const skillActivations = Array.isArray(skillActivationsValue) ? skillActivationsValue : [];
+    skillActivations.forEach((entry, index) => {
+      const record = entry && typeof entry === 'object' && !Array.isArray(entry)
+        ? /** @type {Record<string, unknown>} */ (entry)
+        : {};
+      const name = optionalString(record.name) ?? `Skill ${index + 1}`;
+      emitEvent(
+        'audit.skill_activation',
+        timestamp(record.timestamp) ?? completedAt ?? enriched.observedAt,
+        name,
+        optionalString(record.status) ?? 'invoked',
+        { type: 'audit.skill_activation', index, name },
+        {
+          source: 'audit',
+          name,
+          invocationCount: finiteNumber(record.invocation_count) ?? 1,
+          failedCount: finiteNumber(record.failed_count) ?? 0,
+          activationSource: optionalString(record.source)
+        }
+      );
+    });
     const steeringEventsValue = run.gateway_steering_events ?? audit.gateway_steering_events;
     const steeringEvents = Array.isArray(steeringEventsValue) ? steeringEventsValue : [];
     steeringEvents.forEach((entry, index) => {

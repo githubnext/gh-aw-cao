@@ -220,6 +220,16 @@
             "field": "workflow-key",
             "as": "workflows",
             "reducer": "distinct-count"
+          },
+          {
+            "field": "request-bytes",
+            "as": "request-bytes",
+            "reducer": "sum"
+          },
+          {
+            "field": "response-bytes",
+            "as": "response-bytes",
+            "reducer": "sum"
           }
         ]
       },
@@ -238,6 +248,12 @@
         },
         {
           "field": "workflows"
+        },
+        {
+          "field": "request-bytes"
+        },
+        {
+          "field": "response-bytes"
         }
       ],
       "order-by": [
@@ -1126,6 +1142,16 @@
                 "field": "workflows",
                 "type": "quantitative",
                 "title": "Workflows"
+              },
+              {
+                "field": "request-bytes",
+                "type": "quantitative",
+                "title": "Request bytes"
+              },
+              {
+                "field": "response-bytes",
+                "type": "quantitative",
+                "title": "Response bytes"
               }
             ]
           }

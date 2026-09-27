@@ -19,6 +19,8 @@ const RETENTION_TIMESTAMPS = {
   runs: ['completedAt', 'startedAt', 'observedAt'],
   domains: ['timestamp', 'observedAt'],
   tools: ['timestamp', 'observedAt'],
+  skills: ['timestamp', 'observedAt'],
+  friction: ['timestamp', 'observedAt'],
   audits: ['timestamp', 'observedAt'],
   issues: ['timestamp', 'observedAt'],
   operationalValues: ['timestamp', 'observedAt']
@@ -31,12 +33,21 @@ const STORES = /** @type {const} */ ([
   'runs',
   'domains',
   'tools',
+  'skills',
+  'friction',
   'audits',
   'issues',
   'operationalValues',
   'marketplacePackages'
 ]);
-const RUN_LINKED_STORES = /** @type {const} */ (['domains', 'tools', 'audits', 'issues']);
+const RUN_LINKED_STORES = /** @type {const} */ ([
+  'domains',
+  'tools',
+  'skills',
+  'friction',
+  'audits',
+  'issues'
+]);
 const WORKFLOW_INVENTORY_FIELDS = /** @type {const} */ ([
   'campaignId',
   'campaign',

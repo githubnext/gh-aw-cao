@@ -11,6 +11,8 @@ export const ENTITY_COLLECTIONS = [
   'runs',
   'domains',
   'tools',
+  'skills',
+  'friction',
   'audits',
   'issues',
   'operationalValues'
