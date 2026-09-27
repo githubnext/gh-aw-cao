@@ -114,7 +114,7 @@ The `server/coolify/compose.yml` file reads the following variables.
 | `CAO_ARTIFACT_VOLUME` | Yes | No | Existing Coolify volume that contains the verified payload. It is mounted read-only at `/app/source`. |
 | `REDIS_URL` | Yes | Yes | Generic Redis URL. Use `rediss://` when possible. Existing `CAO_REDIS_URL` deployments remain supported. |
 | `CAO_REDIS_MODE` | Legacy only. Defaults to `standard`. | No | Compatibility selector used only when `cao.json` has no host profile. |
-| `CAO_UPSTASH_SINGLE_REPLICA` | Legacy Upstash mode only. | No | Compatibility acknowledgment used only when `cao.json` has no host profile. |
+| `CAO_UPSTASH_SINGLE_REPLICA` | Upstash only. | No | Set to `true` only after configuring Coolify to run exactly one CAO replica. Required by both modular and legacy Upstash modes. |
 | `CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS` | No. Defaults to `false`. | No | Set to `true` to allow `redis://` to a private IP address or a single-label service name on the private network. |
 | `REDIS_NAMESPACE` | No. Defaults to `coolify-dashboard`. | No | Prefix for Redis keys. Existing `CAO_REDIS_NAMESPACE` values remain supported. |
 | `CAO_POLICY_PATH` | Set by Compose. | No | Points at the read-only `cao.json` bind mount. |

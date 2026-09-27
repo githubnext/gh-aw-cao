@@ -70,8 +70,9 @@ The application host needs outbound access to the Upstash Redis endpoint and to 
    }
    ```
 
-1. Set `REDIS_NAMESPACE` to a unique value, such as `upstash-dashboard`, and
-   configure the application host to run exactly one replica.
+1. Set `REDIS_NAMESPACE` to a unique value, such as `upstash-dashboard`,
+   configure the application host to run exactly one replica, and then set
+   `CAO_UPSTASH_SINGLE_REPLICA=true` to acknowledge that deployment constraint.
 1. Configure the remaining `serve-hosted` settings, including the allowed host, trusted proxy boundary, GitHub OAuth app, authorization policy, session secret, administrators, webhook secret, and source directory. For the complete list, see the [hosted service profile](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md#hosted-service-profile).
 1. Build or select the CAO container image and provide the verified dashboard artifact to the container as read-only input.
 
@@ -94,6 +95,7 @@ The Upstash-specific settings are:
 | --- | --- | --- | --- |
 | `REDIS_URL` | Yes | Yes | The Upstash Redis TCP connection string. It must use `rediss://`. Don't use the REST URL or token. |
 | `REDIS_NAMESPACE` | No | No | Stable deployment identity used to derive a fresh internal namespace at every process start and the durable pending-revocation prefix. Defaults to `hosted-dashboard`. |
+| `CAO_UPSTASH_SINGLE_REPLICA` | Yes | No | Set to `true` only after configuring the application host to run exactly one replica. Startup fails closed without this acknowledgement. |
 | `CAO_POLICY_PATH` | No | No | Mounted `cao.json` location when it is not `.github/workflows/cao.json`. |
 
 Upstash provides causal consistency only within one TCP connection. Upstash mode therefore serializes all commands through one connection, disables connection recycling and retries, and permanently fails that client after transport loss. Restarting creates an isolated namespace and re-ingests the verified artifact. Server-side collection and standalone collection roles aren't supported in this mode.
