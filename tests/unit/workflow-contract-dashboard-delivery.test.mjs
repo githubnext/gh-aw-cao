@@ -88,8 +88,11 @@ test("dashboard CI runs the campaign quality gates", () => {
   assert.match(source, /dashboard\/site\/\*\*/);
   // The deployed favicon is a copy of the canonical logo, so canonical logo
   // changes must run the scaffold gate that keeps the two in sync.
-  assert.equal(source.match(/^ {6}- docs\/assets\/logo\.svg$/gm)?.length, 2);
-  assert.equal(source.match(/^ {6}- public\/favicon\.svg$/gm)?.length, 2);
+  const triggers = parse(source).on;
+  for (const event of ["pull_request", "push"]) {
+    assert.ok(triggers[event].paths.includes("docs/assets/logo.svg"), `${event} docs/assets/logo.svg`);
+    assert.ok(triggers[event].paths.includes("public/favicon.svg"), `${event} public/favicon.svg`);
+  }
   assert.match(source, /working-directory: dashboard\/site/);
   assert.match(source, /cache-dependency-path: dashboard\/site\/package-lock\.json/);
   assert.deepEqual(
