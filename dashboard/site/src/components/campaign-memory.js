@@ -31,6 +31,15 @@ export function renderCampaignMemory({ campaignId, campaignName }) {
   const selectedPath = state('');
   const fileState = state(/** @type {MemoryFileState} */ ({ status: 'idle', content: '', error: '' }));
   const mobileView = state('browser');
+  const afterRender = (/** @type {() => void} */ callback) => {
+    const frame = root.ownerDocument.defaultView?.requestAnimationFrame;
+    if (frame) frame.call(root.ownerDocument.defaultView, callback);
+    else queueMicrotask(callback);
+  };
+  const focusFilePane = () => afterRender(() => {
+    const pane = /** @type {HTMLElement | null} */ (root.querySelector('.campaign-memory-content'));
+    if (pane && !pane.contains(document.activeElement)) pane.focus();
+  });
 
   render(root, () => memoryView({
     campaignName,
@@ -41,8 +50,14 @@ export function renderCampaignMemory({ campaignId, campaignName }) {
     select: (filePath) => {
       selectedPath.set(filePath);
       mobileView.set('file');
+      focusFilePane();
     },
-    showFiles: () => mobileView.set('browser'),
+    showFiles: () => {
+      mobileView.set('browser');
+      afterRender(() => /** @type {HTMLElement | null} */ (
+        root.querySelector('.campaign-memory-file[aria-current="true"]')
+      )?.focus());
+    },
   }), { signal: scope.signal });
 
   listRepositoryMemory(campaignId, scope.signal).then((campaign) => {
@@ -91,6 +106,7 @@ export function renderCampaignMemory({ campaignId, campaignName }) {
       if (!controller.signal.aborted) {
         debugCampaignMemory({ operation: 'read-file', status: 'ready', contentLength: content.length });
         fileState.set({ status: 'ready', content, error: '' });
+        if (mobileView.get() === 'file') focusFilePane();
       }
     }).catch((error) => {
       if (error?.name !== 'AbortError') {
@@ -100,6 +116,7 @@ export function renderCampaignMemory({ campaignId, campaignName }) {
           content: '',
           error: error instanceof Error ? error.message : String(error),
         });
+        if (mobileView.get() === 'file') focusFilePane();
       }
     });
   }, { signal: scope.signal });
@@ -172,7 +189,7 @@ function renderCampaignTree(campaigns, signal) {
   };
   const content = h(
     'article',
-    { className: 'cao-memory-file-content', 'aria-live': 'polite' },
+    { className: 'cao-memory-file-content', 'aria-live': 'polite', tabindex: '-1' },
     renderEmptyMessage('Select a memory file to view it.')
   );
   /** @type {AbortController | null} */
@@ -209,6 +226,7 @@ function renderCampaignTree(campaigns, signal) {
         const select = (entry, button) => {
           selectedButton = button;
           layout.dataset.memoryView = 'file';
+          content.focus();
           fileController?.abort();
           fileController = new AbortController();
           const abort = () => fileController?.abort();
@@ -390,7 +408,7 @@ function memoryView({ campaignName, manifest, selectedPath, file, mobileView, se
       ),
       h(
         'article',
-        { className: 'campaign-memory-content', 'aria-live': 'polite' },
+        { className: 'campaign-memory-content', 'aria-live': 'polite', tabindex: '-1' },
         selected ? renderMemoryFileHeader(selected.path, showFiles) : null,
         file.status === 'loading'
           ? renderEmptyMessage('Loading file...', { role: 'status', 'aria-busy': 'true' })

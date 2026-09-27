@@ -85,6 +85,7 @@ describe('campaign repository memory', () => {
     /** @type {HTMLButtonElement} */ (secondCampaign.querySelector('.campaign-memory-file')).click();
     await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Security'));
     expect(rendered.querySelector('.cao-memory-layout')?.getAttribute('data-memory-view')).toBe('file');
+    expect(document.activeElement).toBe(rendered.querySelector('.cao-memory-file-content'));
     const backButton = /** @type {HTMLButtonElement} */ (
       rendered.querySelector('.cao-memory-file-content .memory-mobile-back')
     );
@@ -163,8 +164,12 @@ describe('campaign repository memory', () => {
     rendered.querySelectorAll('button')[1].click();
     await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Summary'));
     expect(rendered.querySelector('.campaign-memory-layout')?.getAttribute('data-memory-view')).toBe('file');
+    await vi.waitFor(() => expect(document.activeElement).toBe(rendered.querySelector('.campaign-memory-content')));
     /** @type {HTMLButtonElement} */ (rendered.querySelector('.memory-mobile-back')).click();
     expect(rendered.querySelector('.campaign-memory-layout')?.getAttribute('data-memory-view')).toBe('browser');
+    await vi.waitFor(() => expect(document.activeElement).toBe(
+      rendered.querySelector('.campaign-memory-file[aria-current="true"]')
+    ));
     expect(memoryApi.read.mock.calls.map(([campaign, path]) => [campaign, path])).toEqual([
       ['ambient-context', 'notes/first.json'],
       ['ambient-context', 'summary.md'],

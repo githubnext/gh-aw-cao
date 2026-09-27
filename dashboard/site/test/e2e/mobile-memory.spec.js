@@ -58,9 +58,11 @@ test('Memory uses mobile master-detail file navigation', async ({ context, page 
   await expect(fileContent).toBeVisible();
   await expect(fileContent.getByRole('heading', { name: 'notes/mobile.md' })).toBeVisible();
   await expect(fileContent.locator('pre')).toContainText('A readable file on a small screen.');
+  await expect(fileContent).toBeFocused();
 
   await fileContent.getByRole('button', { name: 'Back to files' }).click();
   await expect(layout).toHaveAttribute('data-memory-view', 'browser');
   await expect(files).toBeVisible();
   await expect(fileContent).toBeHidden();
+  await expect(browser.getByRole('button', { name: /notes\/mobile\.md/ })).toBeFocused();
 });
