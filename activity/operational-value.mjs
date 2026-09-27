@@ -395,7 +395,9 @@ async function retainedOperationalValueEnvelopes(outputPath, cutoff) {
     if (error && error.code === 'ENOENT') return [];
     throw error;
   }
-  return content.split(/\r?\n/).flatMap((line, index) => {
+  const retained = [];
+  let legacyPruned = 0;
+  content.split(/\r?\n/).forEach((line, index) => {
     if (!line.trim()) return [];
     const envelope = JSON.parse(line);
     if (envelope?.schema_version !== 2 || envelope?.kind !== 'operational_value') {
@@ -408,8 +410,13 @@ async function retainedOperationalValueEnvelopes(outputPath, cutoff) {
     const campaign = String(envelope.operational_value?.campaign ?? '').trim();
     // Legacy retained envelopes written before campaign-scoped value identity
     // cannot be matched safely and are pruned as obsolete retained evidence.
-    return timestamp >= cutoff && campaign ? [envelope] : [];
+    if (timestamp >= cutoff && campaign) retained.push(envelope);
+    else if (timestamp >= cutoff) legacyPruned += 1;
   });
+  if (legacyPruned > 0) {
+    console.warn(`Warning: pruned ${legacyPruned} legacy operational value envelope(s) without campaign identity from ${outputPath}`);
+  }
+  return retained;
 }
 
 export async function runOperationalValue({

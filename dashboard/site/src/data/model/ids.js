@@ -74,14 +74,7 @@ export function issueId(owner, repository, issueNumber) {
 /**
  * @param {{ campaign: string, repository: string, valueId: string, observedAt: string }} input
  */
-export function operationalValueId(input) {
-  const candidate = /** @type {Partial<{ campaign: string, repository: string, valueId: string, observedAt: string }>} */ (
-    input && typeof input === 'object' ? input : {}
-  );
-  const campaign = typeof candidate.campaign === 'string' ? candidate.campaign : '';
-  const repository = typeof candidate.repository === 'string' ? candidate.repository : '';
-  const valueId = typeof candidate.valueId === 'string' ? candidate.valueId : '';
-  const observedAt = typeof candidate.observedAt === 'string' ? candidate.observedAt : '';
+export function operationalValueId({ campaign, repository, valueId, observedAt }) {
   const campaignId = campaign.trim().toLowerCase();
   const coordinate = repository.trim().toLowerCase();
   const metric = valueId.trim().toLowerCase();
