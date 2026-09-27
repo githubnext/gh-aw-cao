@@ -66,6 +66,7 @@ func loadCachedRegistry(ctx context.Context, cache Cache, registryID, generation
 		return nil, false
 	case cacheMissReasonNotFound:
 		return nil, false
+	case cacheMissReasonNone:
 	}
 	var payload cachedRegistryPayload
 	if err := json.Unmarshal(data, &payload); err != nil {
