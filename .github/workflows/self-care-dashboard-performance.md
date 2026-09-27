@@ -120,7 +120,7 @@ safe-outputs:
     defaults:
       if-no-files: ignore
 steps:
-  - name: Skip unsupported dashboard performance dispatch
+  - name: Emit noop for unsupported dashboard performance dispatch
     if: ${{ inputs.target_repo != 'githubnext/gh-aw-cao' || (inputs.safe_output_mode || 'review') != 'live' }}
     run: |
       printf '%s\n' \
