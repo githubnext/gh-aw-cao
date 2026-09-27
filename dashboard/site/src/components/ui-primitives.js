@@ -371,6 +371,18 @@ export function renderEmptyMessage(message, extraAttrs) {
 }
 
 /**
+ * Renders the shared `<p class="empty-message">` placeholder used by
+ * visualization components (chart/plot-style elements) when there is no
+ * data to plot. Distinct from {@link renderEmptyMessage}'s `.empty` styling,
+ * which several panels and route views rely on for their own layout.
+ * @param {string} message
+ * @returns {HTMLElement}
+ */
+export function renderVisualizationEmptyMessage(message) {
+  return h('p', { className: 'empty-message' }, message);
+}
+
+/**
  * Renders a `<ul>` of caller-supplied `<li>` elements when `items` is
  * non-empty, or a component-specific empty-state paragraph otherwise. Shared
  * by the configuration-actions list and the campaign-status repository list,

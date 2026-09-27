@@ -3,6 +3,7 @@
  */
 
 import { h } from '../dom.js';
+import { renderVisualizationEmptyMessage } from './ui-primitives.js';
 
 const LEFT = 92;
 const RIGHT = 1180;
@@ -55,7 +56,7 @@ export function renderTemporalMetricPlot(options) {
   const observationTimes = [...new Set(metrics.flatMap((metric) => metric.points.map((point) => point.x)))]
     .toSorted((left, right) => Date.parse(left) - Date.parse(right));
   if (observationTimes.length === 0) {
-    return h('p', { className: 'empty-message' }, 'No data is available for this visualization.');
+    return renderVisualizationEmptyMessage('No data is available for this visualization.');
   }
 
   const firstObservation = observationTimes[0] ?? '';

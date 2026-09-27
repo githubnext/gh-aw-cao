@@ -8,7 +8,7 @@ import { renderStatusBadge } from './badge.js';
 import { listChartSeries, renderChartLegend, renderChartWidget } from './chart-elements.js';
 import { rowsFor } from './source-rows.js';
 import { renderTemporalMetricPlot } from './temporal-metric-plot.js';
-import { formatMediumUtcDateTimeWithSuffix } from './ui-primitives.js';
+import { formatMediumUtcDateTimeWithSuffix, renderVisualizationEmptyMessage } from './ui-primitives.js';
 
 const SELECT_POINT_MESSAGE = 'Select a point to inspect that observation.';
 
@@ -38,7 +38,7 @@ export function renderMeasureHistory(context) {
     : 'operational-grader';
   if (metrics.length === 0) {
     return h('section', { className: 'measure-history', 'aria-label': context.title },
-      h('p', { className: 'empty-message' }, context.elementConfig?.['empty-message'] ?? 'No measure history was observed in the selected horizon.'));
+      renderVisualizationEmptyMessage(context.elementConfig?.['empty-message'] ?? 'No measure history was observed in the selected horizon.'));
   }
   if (measureSource === 'operational-value') {
     return renderOperationalValueHistory(context, metrics);
