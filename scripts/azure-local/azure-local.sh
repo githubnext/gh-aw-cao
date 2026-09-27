@@ -231,8 +231,9 @@ functions_ready() {
 }
 
 prepare_application() {
-  mkdir -p "$APP_DIR/site" "$LOG_DIR"
+  mkdir -p "$APP_DIR/site" "$APP_DIR/.github/workflows" "$LOG_DIR"
   printf '<!doctype html><title>CAO local Azure simulation</title>\n' >"$APP_DIR/site/index.html"
+  cp "$ROOT/.github/workflows/cao.json" "$APP_DIR/.github/workflows/cao.json"
   go -C "$ROOT/server" build -o "$APP_DIR/cao-functions" ./cmd/cao-functions \
     >"$LOG_DIR/functions-build.log" 2>&1
   go -C "$ROOT/server" build -o "$APP_DIR/cao-dashboard" ./cmd/cao-dashboard \

@@ -82,6 +82,7 @@ test("landing wizard prompt references the raw setup skill", () => {
     wizard,
     /https:\/\/raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/skills\/setup-cao\/SKILL\.md/,
   );
+  assert.match(wizard, /Include `\.github\/workflows\/cao\.json` at the same path/);
 });
 
 test("landing wizard client imports its prompt generation dependencies", () => {
