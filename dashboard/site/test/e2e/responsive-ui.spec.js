@@ -263,7 +263,7 @@ test('full-view chart, card, and table content share the page inset', async ({ p
 });
 
 const horizontalBarFixtureLabel = 'extremely-long-dependabot-update-planner.md';
-const horizontalBarFixtureSuffix = 'planner.md';
+const horizontalBarDesktopFixtureSuffix = 'planner.md';
 
 /**
  * @param {import('@playwright/test').Page} page
@@ -411,7 +411,7 @@ test('desktop horizontal bar labels keep standard end truncation', async ({ page
   await expect(label).toHaveCSS('direction', 'ltr');
   await expect(label.locator('.horizontal-bar-chart-label-text')).toHaveCSS('display', 'block');
 
-  const labelRendering = await measureHorizontalBarLabel(firstRow, horizontalBarFixtureSuffix);
+  const labelRendering = await measureHorizontalBarLabel(firstRow, horizontalBarDesktopFixtureSuffix);
 
   expect(labelRendering.text.startsWith(expectedVisiblePrefix)).toBe(true);
   expect(labelRendering.textOverflowed).toBe(true);
