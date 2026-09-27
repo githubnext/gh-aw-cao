@@ -494,6 +494,10 @@ test("Documentation Pages deploys docs with the latest dashboard artifact", () =
   assert.match(workflow, /name: Install dependencies\n\s+if: steps\.node-modules-cache\.outputs\.cache-hit != 'true'\n\s+run: npm ci/);
   assert.match(workflow, /name: Save node_modules[\s\S]*?if: steps\.node-modules-cache\.outputs\.cache-hit != 'true'[\s\S]*?actions\/cache\/save@[0-9a-f]{40}[\s\S]*?path: node_modules[\s\S]*?key: \$\{\{ steps\.node-modules-cache\.outputs\.cache-primary-key \}\}/);
   assert.match(workflow, /run: npm run docs:build/);
+  assert.ok(
+    workflow.indexOf("run: npm run docs:build") < workflow.indexOf("uses: actions/upload-pages-artifact@"),
+    "agent documentation validation must complete before the Pages artifact is uploaded",
+  );
   assert.match(workflow, /schedule:\n\s+- cron: "\*\/15 \* \* \* \*"/);
   assert.match(workflow, /workflow_dispatch:/);
   assert.doesNotMatch(workflow, /inputs\.mode|"mode":/);

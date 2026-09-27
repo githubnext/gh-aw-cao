@@ -108,10 +108,33 @@ test("SelfCare runs every 20 minutes", () => {
     /self-care-dashboard-data-schema`, `self-care-data-acquisition-audit`, `self-care-docs-maintainer`, `self-care-glossary`, and `self-care-release-blogger`.*preceding 24 hours/
   );
   assert.match(source, /ten most recent runs of each workflow/);
+  assert.match(source, /self-care-documentation-discoverability.*preceding seven days/);
+  assert.match(source, /documentation discoverability worker was weekly-eligible and dispatched/);
   assert.match(source, /self-care-pages-health.*no run of that workflow is queued, in progress, or started during the preceding six hours/);
   assert.match(source, /at most the 20 most recent Pages Health workflow runs/);
   assert.match(compiled, /cron: "[0-5]?\d\/20 \* \* \* \*"  # Friendly format: every 20 minutes \(scattered\)/);
   assert.doesNotMatch(compiled, /GH_AW_INFO_MODEL: "copilot\/gpt-5\.4"/);
+});
+
+test("SelfCare documentation discoverability audits the public agent entry point", () => {
+  const source = workflow("self-care-documentation-discoverability.md");
+
+  assert.match(source, /^name: "SelfCare \/ Documentation Discoverability"$/m);
+  assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: documentation-discoverability/);
+  assert.match(source, /safe_output_mode` is `live`/);
+  assert.match(source, /githubnext\.github\.io\/gh-aw-cao\/llms\.txt/);
+  assert.match(source, /llms-small\.txt/);
+  assert.match(source, /sha256sum/);
+  assert.match(source, /Evaluate exactly these ten tasks/);
+  assert.match(source, /more than two document hops/);
+  assert.match(source, /exactly one targeted repository search/);
+  assert.match(source, /at\s+most two matching source files/);
+  assert.match(source, /routing-success count and percentage/);
+  assert.match(source, /create-issue:/);
+  assert.match(source, /update-issue:/);
+  assert.match(source, /close-issue:/);
+  assert.doesNotMatch(source, /create-pull-request:/);
+  assert.doesNotMatch(source, /^\s+(contents|issues|pull-requests): write$/m);
 });
 
 test("SelfCare accessibility checker audits the served docs site with axe-core evidence", () => {
