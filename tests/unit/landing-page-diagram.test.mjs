@@ -54,9 +54,12 @@ test("landing page presents the product through real operational surfaces", () =
 
 test("setup wizard lives on a dedicated page linked from the header", () => {
   assert.match(headerLinks, /\{ label: "Setup", href: "\/gh-aw-cao\/setup\/" \}/);
-  assert.match(setupPage, /<OpsWizard open \/>/);
-  assert.match(setupPage, /Stand up a control plane in three steps/);
+  assert.match(setupPage, /<OpsWizard \/>/);
+  assert.match(wizard, /Stand up a control plane in four steps/);
   assert.match(wizard, /Choose the first operation/);
+  assert.doesNotMatch(wizard, /<select/);
+  assert.match(wizard, /type="radio" name="host-target"/);
+  assert.match(wizard, /type="radio" name="redis-provider"/);
 });
 
 test("landing page uses a theme-aware blueprint background", () => {
