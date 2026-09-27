@@ -91,7 +91,7 @@ const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location ht
 const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
-const COMMANDS = new Set(['init', 'setup-auth', 'add', 'update', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'issue-status', 'query', 'computation', 'operational-value', 'cluster-problems', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'validate-activity-data', 'gh', 'pages', 'queries', 'query-info', 'mcp']);
+const COMMANDS = new Set(['init', 'setup-auth', 'add', 'update', 'upgrade-gh-aw', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'issue-status', 'query', 'computation', 'operational-value', 'cluster-problems', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'validate-activity-data', 'gh', 'pages', 'queries', 'query-info', 'mcp']);
 
 // Intentional CLI misuse that should print usage without an internal stack trace.
 class UsageError extends Error {}
@@ -746,6 +746,55 @@ export async function ensureGhAwMinimumVersion({
     return { required, previous: current, current: verified, updated: true };
   }
   return { required, previous: current, current, updated: false };
+}
+
+export async function upgradeGhAw(version, {
+  policyPath = DEFAULT_POLICY_PATH,
+  execute = spawnSync
+} = {}) {
+  ghAwVersionParts(version);
+  const policy = await readCaoPolicy(policyPath);
+  const previousRequired = ghAwMinimumVersion(policy, policyPath);
+  if (compareGhAwVersions(version, previousRequired) < 0) {
+    throw new UsageError(`cao upgrade-gh-aw cannot downgrade gh-aw from ${previousRequired} to ${version}`);
+  }
+
+  let previousInstalled = null;
+  try {
+    previousInstalled = parseGhAwVersion(execute('gh', ['aw', 'version'], { encoding: 'utf8' }));
+  } catch {
+    previousInstalled = null;
+  }
+  if (previousInstalled !== version) {
+    const install = execute('bash', ['-c', GH_AW_INSTALLER_COMMAND, 'cao-gh-aw-install', version], {
+      encoding: 'utf8',
+      maxBuffer: 16 * 1024 * 1024
+    });
+    if (install.error || install.status !== 0) {
+      throw new Error(`Unable to install gh-aw ${version}: ${commandFailureMessage(install, 'installer failed')}`);
+    }
+  }
+
+  const installed = parseGhAwVersion(execute('gh', ['aw', 'version'], { encoding: 'utf8' }));
+  if (installed !== version) {
+    throw new Error(`Installed gh-aw version is ${installed}, expected ${version}`);
+  }
+  const upgrade = execute('gh', ['aw', 'upgrade'], {
+    encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024
+  });
+  if (upgrade.error || upgrade.status !== 0) {
+    throw new Error(`gh aw upgrade failed: ${commandFailureMessage(upgrade, 'unknown error')}`);
+  }
+
+  policy['gh-aw-version'] = version;
+  await writeJsonAtomically(path.resolve(policyPath), policy);
+  return {
+    command: 'upgrade-gh-aw',
+    policy: policyPath,
+    previous: previousRequired,
+    current: version
+  };
 }
 
 export async function addCaoCampaign(campaignSpec, ghAwOptions = [], {
@@ -2786,7 +2835,7 @@ export async function runCli(arguments_, input = process.stdin, { signal } = {})
   }
   const handler = commandHandlers.get(command);
   if (!handler) throw new UsageError(`Unknown command: ${command}`);
-  if (['init', 'setup-auth', 'add', 'update', 'mode', 'enable', 'disable'].includes(command)) {
+  if (['init', 'setup-auth', 'add', 'update', 'upgrade-gh-aw', 'mode', 'enable', 'disable'].includes(command)) {
     return handler({
       arguments_: rawOptionArguments,
       UsageError,
@@ -2794,6 +2843,7 @@ export async function runCli(arguments_, input = process.stdin, { signal } = {})
       setupCaoAuthentication,
       addCaoCampaign,
       updateCaoCampaigns,
+      upgradeGhAw,
       setCaoCampaignMode,
       setCaoCampaignWorkflowsEnabled,
     });

@@ -15,6 +15,7 @@ test("CAO command guide covers the operator-facing command surface", () => {
     "setup-auth token",
     "add OWNER/REPO/CAMPAIGN",
     "update",
+    "upgrade-gh-aw",
     "mode preview",
     "mode live",
     "enable",

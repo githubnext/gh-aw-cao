@@ -13,6 +13,7 @@ import {
   setCaoCampaignWorkflowsEnabled,
   setupCaoAuthentication,
   updateCaoCampaigns,
+  upgradeGhAw,
 } from "../../activity/cao.mjs";
 
 // gh-aw writes `gh aw version` output to stderr.
@@ -934,6 +935,74 @@ test("cao update leaves current gh-aw versions that meet the minimum in place", 
         calls.push([command, arguments_]);
         return { status: 0, stdout: "gh aw version v0.90.0\n", stderr: "" };
       },
+    });
+
+    test("cao upgrade-gh-aw installs the requested compiler, upgrades workflows, and updates policy", async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "cao-upgrade-gh-aw-"));
+      const policyPath = path.join(root, "cao.json");
+      const calls = [];
+      let version = "v0.89.21";
+      try {
+        await writeFile(policyPath, '{"version":1,"gh-aw-version":"v0.89.21","control-plane":{"campaigns":{}}}\n');
+        const result = await upgradeGhAw("v0.89.22", {
+          policyPath,
+          execute(command, arguments_) {
+            calls.push([command, arguments_]);
+            if (command === "bash") {
+              version = "v0.89.22";
+              return { status: 0, stdout: "", stderr: "" };
+            }
+            if (arguments_.join(" ") === "aw version") {
+              return { status: 0, stdout: "", stderr: `gh aw version ${version}\n` };
+            }
+            assert.deepEqual([command, arguments_], ["gh", ["aw", "upgrade"]]);
+            return { status: 0, stdout: "", stderr: "" };
+          },
+        });
+
+        assert.equal(calls.length, 4);
+        assert.deepEqual(calls[0], ["gh", ["aw", "version"]]);
+        assert.equal(calls[1][0], "bash");
+        assert.equal(calls[1][1][0], "-c");
+        assert.match(calls[1][1][1], /install-gh-aw\.sh/);
+        assert.equal(calls[1][1].at(-1), "v0.89.22");
+        assert.deepEqual(calls.slice(2), [
+          ["gh", ["aw", "version"]],
+          ["gh", ["aw", "upgrade"]],
+        ]);
+        assert.equal(JSON.parse(await readFile(policyPath, "utf8"))["gh-aw-version"], "v0.89.22");
+        assert.deepEqual(result, {
+          command: "upgrade-gh-aw",
+          policy: policyPath,
+          previous: "v0.89.21",
+          current: "v0.89.22",
+        });
+      } finally {
+        await rm(root, { recursive: true, force: true });
+      }
+    });
+
+    test("cao upgrade-gh-aw preserves policy when workflow upgrade fails", async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "cao-upgrade-gh-aw-failure-"));
+      const policyPath = path.join(root, "cao.json");
+      try {
+        await writeFile(policyPath, '{"version":1,"gh-aw-version":"v0.89.21","control-plane":{"campaigns":{}}}\n');
+        await assert.rejects(
+          upgradeGhAw("v0.89.22", {
+            policyPath,
+            execute(command, arguments_) {
+              if (arguments_.join(" ") === "aw version") {
+                return { status: 0, stdout: "", stderr: "gh aw version v0.89.22\n" };
+              }
+              return { status: 1, stdout: "", stderr: "upgrade stopped" };
+            },
+          }),
+          /gh aw upgrade failed: upgrade stopped/,
+        );
+        assert.equal(JSON.parse(await readFile(policyPath, "utf8"))["gh-aw-version"], "v0.89.21");
+      } finally {
+        await rm(root, { recursive: true, force: true });
+      }
     });
     assert.deepEqual(calls, [["gh", ["aw", "version"]]]);
     assert.deepEqual(result, {

@@ -52,6 +52,7 @@ gh aw run dependabot --ref main \
 | `./cao.sh setup-auth token ...` | Configure an explicitly consented fine-grained PAT when an App is unavailable. |
 | `./cao.sh add OWNER/REPO/CAMPAIGN` | Install one campaign and merge its declared workers into policy without broadening rollout or enabling live mode. |
 | `./cao.sh update` | Upgrade gh-aw when required, update installed campaigns, and refresh worker declarations while preserving operator-owned settings. |
+| `./cao.sh upgrade-gh-aw VERSION` | Install an exact gh-aw release, upgrade local Agentic Workflow files, and update the pinned policy version after the upgrade succeeds. |
 
 See [Authentication](authentication.md) before choosing a credential profile. Authentication controls what CAO can reach; checked-in policy still controls what it may operate on.
 
@@ -147,7 +148,7 @@ Data-pipeline and dashboard-maintainer commands are listed by `./cao.sh --help`.
 
 ## Review What Each Command Changed
 
-`init`, `add`, `update`, and `mode` can change checked-in control-plane files. Review those changes and commit workflow sources, generated locks, and `.github/workflows/cao.json` together:
+`init`, `add`, `update`, `upgrade-gh-aw`, and `mode` can change checked-in control-plane files. Review those changes and commit workflow sources, generated locks, and `.github/workflows/cao.json` together:
 
 ```bash
 git status --short
