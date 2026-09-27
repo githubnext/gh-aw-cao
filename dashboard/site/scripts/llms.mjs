@@ -139,13 +139,6 @@ export async function validateDashboardAgentArtifacts({ sitePath, repositoryPath
     }
   }
 
-  if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
-    const [command, sitePath, repositoryPath = "."] = process.argv.slice(2);
-    if (command !== "validate" || !sitePath) {
-      throw new Error("usage: node dashboard/site/scripts/llms.mjs validate SITE_PATH [REPOSITORY_PATH]");
-    }
-    await validateDashboardAgentArtifacts({ sitePath, repositoryPath });
-  }
   for (const name of ["agent-summary.json", "inventory-sources.json", "payload-hashes.json", "gh-aw-logs.sqlite"]) {
     await access(join(site, name));
   }
@@ -156,4 +149,30 @@ export async function validateDashboardAgentArtifacts({ sitePath, repositoryPath
     || !llms.includes("[Central Agentic Ops documentation](../)")) {
     throw new Error("dashboard llms.txt contains a base-path-unsafe local link");
   }
+}
+
+async function runCli() {
+  const [command, firstPath, secondPath] = process.argv.slice(2);
+  if (command === "generate" && firstPath) {
+    await generateDashboardLlms({
+      outputPath: firstPath,
+      activityDataPath: secondPath,
+    });
+    return;
+  }
+  if (command === "validate" && firstPath) {
+    await validateDashboardAgentArtifacts({
+      sitePath: firstPath,
+      repositoryPath: secondPath ?? ".",
+    });
+    return;
+  }
+  throw new Error(
+    "usage: node dashboard/site/scripts/llms.mjs "
+    + "generate OUTPUT_PATH [ACTIVITY_DATA_PATH] | validate SITE_PATH [REPOSITORY_PATH]",
+  );
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  await runCli();
 }

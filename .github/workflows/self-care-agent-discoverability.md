@@ -133,7 +133,7 @@ pre-agent-steps:
       fi
       nohup node activity/cao.mjs mcp \
         --database "$database" \
-        --host 127.0.0.1 \
+        --host 0.0.0.0 \
         --port 8765 \
         >"$RUNNER_TEMP/cao-mcp.log" 2>&1 &
 ---

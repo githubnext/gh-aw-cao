@@ -293,6 +293,12 @@ jobs:
             }
             await exec.exec(process.execPath, [
               'dashboard/site/scripts/llms.mjs',
+              'generate',
+              path.join(process.env.REPORT_OUTPUT, 'llms.txt'),
+              process.env.REPORT_OUTPUT,
+            ])
+            await exec.exec(process.execPath, [
+              'dashboard/site/scripts/llms.mjs',
               'validate',
               process.env.REPORT_OUTPUT,
               process.env.GITHUB_WORKSPACE,
