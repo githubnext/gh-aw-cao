@@ -1,28 +1,7 @@
 {
   "source_sha": "944240bbad484ba1ae9117e4f9e4e002a432d485",
-  "next_category": "reusable dashboard generation",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
-    {
-      "evaluated_at": "2026-09-27T03:33:30Z",
-      "worker_run_id": 36291520600,
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        36291549906,
-        36290221298,
-        36289863221,
-        36288728806,
-        36287819916,
-        36287156637,
-        36286245996,
-        36285982080,
-        36285528966,
-        36284494577,
-        36282967130,
-        36281399246,
-        36281026948
-      ],
-      "outcome": "no-op: evidence window 2026-09-26T23:57:33Z to 2026-09-27T03:30:10Z. Analyzed 13 successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days while disclosing 7 excluded completed docs runs in the same bounded sample (4 action_required workflow_run runs and 3 skipped workflow_run runs). Evaluated category reusable dashboard generation. Median docs.yml workflow execution was 47.0s (p90 53.0s), build median 30.0s (p90 35.0s), deploy median 10.0s (p90 11.0s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed dashboard reuse on all 13 sampled successful docs runs: Restore cached CAO Dashboard succeeded on 13/13, Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped on 13/13, and Install dependencies plus Save node_modules were skipped on 13/13. Bounded logs on docs run 36287819916 showed central-agentic-ops-dashboard restored from cache, Build documentation completed before the dashboard restore, and Upload Pages artifact finalized a 7,533,779-byte Pages bundle. Comparable successful CAO Dashboard runs in the same window (36287787048, 36285946650, 36282927058, 36280995979, 36280748477) built in 27.0s median with Assemble Dashboard Language site only 1.0s median (p90 3.0s), so reusable dashboard generation is already dominated by upstream activity-data preparation rather than dashboard rendering. No additional change in this category clears the >=60s or >=15% threshold without reducing freshness or correctness."
-    },
     {
       "evaluated_at": "2026-09-27T03:57:00Z",
       "worker_run_id": 36292787751,
@@ -793,6 +772,29 @@
       ],
       "outcome": "no-op: evidence window 2026-09-27T13:59:25Z to 2026-09-27T15:22:28Z. Analyzed 13 successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days while disclosing 7 excluded completed docs runs in the same bounded sample (6 action_required workflow_run runs and 1 skipped workflow_run runs). Evaluated category Astro documentation generation. Median docs.yml workflow execution was 50.0s (p90 94.2s), build median 32.0s (p90 36.4s), deploy median 10.0s (p90 17.8s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed dashboard reuse on all 13 sampled successful docs runs: Restore cached CAO Dashboard succeeded on 13/13, Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped on 13/13, and Install dependencies plus Save node_modules were skipped on 13/13. Bounded logs on docs run 36329259181 showed the github-pages artifact uploaded 9,133,651 bytes in about 2.1s of blob transfer. Comparable successful CAO Dashboard runs 36327435080, 36327379320 still spent 6.0s median on Install dashboard build dependencies while Restore collected activity data was 1.0s median, Assemble Dashboard Language site was 1.0s median, and Upload dashboard artifact was 2.0s median. The workflow source at .github/workflows/cao-dashboard.yml still uses an unconditional npm ci --prefix dashboard/site --ignore-scripts path with no restore/save cache around dashboard/site dependencies, but an open issue already tracks this recommendation with fingerprint 882cfe96ddd72f82030c and the current evidence does not materially change the timing or source conditions. No additional non-duplicate suggestion is actionable in this cycle.",
       "suggestion_fingerprint": "882cfe96ddd72f82030c"
+    },
+    {
+      "evaluated_at": "2026-09-27T15:37:14Z",
+      "worker_run_id": 36329989040,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        36329889947,
+        36329259181,
+        36328041285,
+        36327479122,
+        36327422781,
+        36327379173,
+        36327094394,
+        36326269240,
+        36326206237,
+        36326187611,
+        36325643174,
+        36325218010,
+        36324435754,
+        36327435080,
+        36327379320
+      ],
+      "outcome": "no-op: evidence window 2026-09-27T14:01:38Z to 2026-09-27T15:32:31Z. Analyzed 13 successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days while disclosing 7 excluded completed docs runs in the same bounded sample (6 action_required workflow_run runs and 1 skipped workflow_run runs). Evaluated category reusable dashboard generation. Median docs.yml workflow execution was 50.0s (p90 94.2s), build median 32.0s (p90 36.4s), deploy median 10.0s (p90 17.8s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed dashboard reuse on all 13 sampled successful docs runs: Restore cached CAO Dashboard succeeded on 13/13, Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped on 13/13, and Install dependencies plus Save node_modules were skipped on 13/13. Comparable successful CAO Dashboard runs 36327435080, 36327379320 still spent 6.0s median installing dashboard/site dependencies while build job median was 28.0s, but that matches open issue fingerprint 882cfe96ddd72f82030c rather than a reusable-dashboard bottleneck. No additional non-duplicate suggestion in reusable dashboard generation meets the >=60s or >=15% threshold without reducing freshness or correctness."
     }
   ]
 }
