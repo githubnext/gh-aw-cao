@@ -2037,6 +2037,8 @@ async function hashActivityPayloads({
               runs: batch.runs,
               domains: [],
               tools: [],
+              skills: [],
+              friction: [],
               audits: [],
               issues: [],
               operationalValues: []
@@ -2052,6 +2054,8 @@ async function hashActivityPayloads({
               runs: [],
               domains: batch.domains,
               tools: batch.tools,
+              skills: batch.skills,
+              friction: batch.friction,
               audits: batch.audits.filter((audit) =>
                 String(audit.status ?? '').trim().toLowerCase() !== 'info'
               ),

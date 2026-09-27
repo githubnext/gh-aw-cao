@@ -2020,7 +2020,7 @@ function mcpCallRows(usage) {
         "mcp-protocol-version": server?.protocolVersion || "unknown",
         "mcp-tool": call.toolName || "unknown",
         "mcp-status": mcpStatus(call.status),
-        "response-bytes": finite(call.outputSize),
+        "request-bytes": finite(call.inputSize), "response-bytes": finite(call.outputSize),
         "observed-at": call.timestamp || base["observed-at"],
       };
     });
@@ -2032,7 +2032,7 @@ function mcpCallRows(usage) {
       "mcp-protocol-version": versions.get(failure.serverName)?.protocolVersion || "unknown",
       "mcp-tool": "server",
       "mcp-status": "failure",
-      "response-bytes": null,
+      "request-bytes": null, "response-bytes": null,
     }));
     return [...calls, ...failures];
   });

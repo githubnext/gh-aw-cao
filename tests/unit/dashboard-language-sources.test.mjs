@@ -1612,6 +1612,7 @@ test("dashboard source bridge detects rollout mode from run titles with punctuat
                   serverName: "github",
                   toolName: "issue_read",
                   status: "success",
+                  inputSize: 1_000,
                   outputSize: 4_000,
                 },
                 {
@@ -1619,6 +1620,7 @@ test("dashboard source bridge detects rollout mode from run titles with punctuat
                   serverName: "github",
                   toolName: "search_code",
                   status: "failure",
+                  inputSize: 2_000,
                   outputSize: 8_000,
                 },
               ],
@@ -1676,10 +1678,11 @@ test("dashboard source bridge detects rollout mode from run titles with punctuat
       server: row["mcp-server"],
       tool: row["mcp-tool"],
       status: row["mcp-status"],
+      requestBytes: row["request-bytes"],
       bytes: row["response-bytes"],
     })), [
-      { server: "github", tool: "issue_read", status: "success", bytes: 4_000 },
-      { server: "github", tool: "search_code", status: "failure", bytes: 8_000 },
+      { server: "github", tool: "issue_read", status: "success", requestBytes: 1_000, bytes: 4_000 },
+      { server: "github", tool: "search_code", status: "failure", requestBytes: 2_000, bytes: 8_000 },
     ]);
     assert.deepEqual(sources["mcp-servers"].rows[0], {
       organization: "githubnext",

@@ -569,8 +569,13 @@ export async function readRunSecurityTelemetry(outputDirectory, runId, evidence 
             serverName: firstText(call?.server_name),
             toolName: firstText(call?.tool_name),
             status: firstText(call?.status),
-            outputSize: call?.output_size != null && Number.isFinite(Number(call.output_size))
-              ? Math.max(0, Number(call.output_size))
+            ...((call?.input_size ?? call?.request_size) != null
+              && Number.isFinite(Number(call.input_size ?? call.request_size))
+              ? { inputSize: Math.max(0, Number(call.input_size ?? call.request_size)) }
+              : {}),
+            outputSize: (call?.output_size ?? call?.response_size) != null
+              && Number.isFinite(Number(call.output_size ?? call.response_size))
+              ? Math.max(0, Number(call.output_size ?? call.response_size))
               : null,
           })).filter((call) => call.serverName || call.toolName)
           : [];
@@ -843,17 +848,17 @@ export async function collectAicUsage() {
               evidence,
             ),
           ]);
-          timeline.push(...auditSummaryTimeline(
-           run,
-           canonicalRunId(repositoryOwner, repositoryName, runId),
-           common.createdAt,
-          ));
         } catch (error) {
           security = emptySecurityTelemetry();
           security.firewall.firewallEvidenceState = "unavailable";
           security.firewall.firewallEvidenceError = "Firewall artifact parsing failed.";
           log.warning`Firewall evidence unavailable for ${repository} run ${runId}: ${error.message}`;
         }
+        timeline.push(...auditSummaryTimeline(
+          run,
+          canonicalRunId(repositoryOwner, repositoryName, runId),
+          common.createdAt,
+        ));
         const enriched = {
           ...common,
           agentId: firstText(common.agentId, security.agentInfo.agentId),
