@@ -295,16 +295,36 @@ describe('chart element helpers', () => {
 
   it('preserves complete horizontal bar labels with shared prefixes', () => {
     const points = [
-      { x: 'dependabot-update-planner: Review error logs', y: 25, color: 'success' },
-      { x: 'dependabot-update-planner: Update advisory summary', y: 13, color: 'failure' }
+      {
+        x: 'octo/app:.github/workflows/alpha-shared-health.md',
+        y: 25,
+        color: 'success',
+        link: { href: '#page-alpha', label: 'View workflow dashboard' }
+      },
+      {
+        x: '.github/workflows/beta-shared-health.md',
+        y: 13,
+        color: 'failure',
+        section: 'octo/tools'
+      }
     ];
     const chart = renderChartWidget('horizontal-bar', points, listChartSeries(points));
     const labels = [...chart.querySelectorAll('.horizontal-bar-chart-label')];
+    const links = [...chart.querySelectorAll('.horizontal-bar-chart-label a')];
 
     expect(labels.map((label) => label.textContent)).toEqual(points.map((point) => point.x));
-    expect(labels.map((label) => label.getAttribute('title'))).toEqual(points.map((point) => point.x));
+    expect(labels.map((label) => label.getAttribute('title'))).toEqual([
+      'octo/app:.github/workflows/alpha-shared-health.md',
+      'octo/tools:.github/workflows/beta-shared-health.md'
+    ]);
+    expect(links[0]?.getAttribute('title')).toBe('octo/app:.github/workflows/alpha-shared-health.md');
+    expect(links[0]?.getAttribute('aria-label'))
+      .toBe('View workflow dashboard: octo/app:.github/workflows/alpha-shared-health.md');
+    expect(labels[0]?.hasAttribute('tabindex')).toBe(false);
+    expect(labels[1]?.getAttribute('tabindex')).toBe('0');
+    expect(labels[1]?.getAttribute('aria-label')).toBe('octo/tools:.github/workflows/beta-shared-health.md');
     expect(chart.querySelector('.horizontal-bar-chart-value')?.getAttribute('aria-label'))
-      .toBe('dependabot-update-planner: Review error logs: 25, success');
+      .toBe('octo/app:.github/workflows/alpha-shared-health.md: 25, success');
   });
 
   it('preserves negative horizontal bar values while keeping bars left aligned', () => {
