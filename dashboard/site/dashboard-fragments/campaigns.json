@@ -122,10 +122,6 @@
               "orchestrator",
               "worker"
             ]
-          },
-          {
-            "field": "workflow-active",
-            "equals": "true"
           }
         ]
       },
@@ -617,7 +613,8 @@
                   "field": "campaign-status",
                   "type": "nominal",
                   "title": "Status",
-                  "display": "status"
+                  "display": "status",
+                  "filter": false
                 },
                 {
                   "field": "runs",

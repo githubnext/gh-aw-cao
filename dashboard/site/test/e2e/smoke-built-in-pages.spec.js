@@ -252,7 +252,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
         workflows: {
           source: 'workflows',
           rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'ambient-context', 'campaign-name': 'Ambient Context', 'campaign-icon': 'workflow', workflow: '.github/workflows/ambient-context.md', 'workflow-name': 'Ambient Context', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 250, 'campaign-aic-allowance': 1050, 'campaign-inventory-warnings': 0 },
+            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'ambient-context', 'campaign-name': 'Ambient Context', 'campaign-icon': 'workflow', workflow: '.github/workflows/ambient-context.md', 'workflow-name': 'Ambient Context', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'workflow-active': false, 'max-ai-credits': 250, 'campaign-aic-allowance': 1050, 'campaign-inventory-warnings': 0 },
             { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'ambient-context', 'campaign-name': 'Ambient Context', 'campaign-icon': 'workflow', workflow: '.github/workflows/ambient-context-worker.md', 'workflow-name': 'Ambient Context Worker', 'workflow-role': 'worker', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 800, 'campaign-aic-allowance': 1050, 'campaign-inventory-warnings': 0 },
             { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'aw-doctor', 'campaign-name': 'AW Doctor', 'campaign-icon': 'gear', workflow: '.github/workflows/aw-doctor.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 250, 'campaign-aic-allowance': 1250, 'campaign-inventory-warnings': 1 }
           ],
@@ -355,6 +355,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
     'Workflows',
     'Roles',
     'Modes',
+    'Status',
     'Runs',
     'Dispatches',
     'AIC',
@@ -366,7 +367,10 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(awDoctorSummary.getByRole('button', { name: 'Update campaign' })).toHaveCount(0);
   await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor campaign dashboard' })).toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
   await expect(awDoctorSummary.locator('[data-field="modes"] .mode-badge')).toHaveText('review');
+  await expect(awDoctorSummary.locator('[data-field="campaign-status"]')).toBeEmpty();
   await expect(awDoctorSummary.locator('[data-field="registration"] .status')).toHaveText('Active');
+  const ambientSummary = campaignRows.filter({ hasText: 'Ambient Context' });
+  await expect(ambientSummary.locator('[data-field="campaign-status"] .status')).toHaveText('Disabled');
   await page.getByRole('button', { name: 'Cards' }).click();
   const awDoctorCard = page.locator('[data-page-id="campaigns"] [data-mobile-card-list] .entity-card-list-card').filter({ hasText: 'AW Doctor' });
   await expect(awDoctorCard.locator('[data-card-drill]')).toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
@@ -378,6 +382,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   });
   await expect(page.locator('[data-breadcrumb-page]')).toHaveText('Ambient Context');
   await expect(page.locator('[data-page-mode]')).toBeHidden();
+  await expect(page.locator('[data-page-status] .status')).toHaveText('Disabled');
   await expect(page.locator('[data-nav-page-id="campaigns"]')).toHaveAttribute('aria-current', 'page');
   const campaignNavigation = page.getByRole('navigation', { name: 'Ambient Context views' });
   await expect(campaignNavigation.getByRole('link')).toHaveCount(4);
