@@ -104,7 +104,7 @@ Open `.github/workflows/cao.json`. Add both the target owner and exact target re
 ```json title=".github/workflows/cao.json"
 {
   "version": 1,
-  "gh-aw-version": "v0.89.21",
+  "gh-aw-version": "v0.89.22",
   "control-plane": {
     "scope": {
       "allowed-owners": ["acme"],

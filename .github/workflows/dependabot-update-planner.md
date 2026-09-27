@@ -158,7 +158,6 @@ tools:
       ignore-if-missing: true
       owner: ${{ steps.target_github_app_scope.outputs.owner }}
       repositories: ["${{ steps.target_github_app_scope.outputs.repository }}"]
-  web-fetch:
   repo-memory:
     branch-name: "memory/dependabot"
     description: "Stable Dependabot plan issue numbers for each safe-output and target repository pair"

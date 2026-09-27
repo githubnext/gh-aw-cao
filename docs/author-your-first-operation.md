@@ -17,7 +17,7 @@ This guide creates a review-ready campaign. Production rollout comes later.
 
 Complete the [quickstart](getting-started.md) so you have a proven control repository and one low-risk test repository. Use a private control repository when the target or required evidence is non-public.
 
-You also need GitHub Agentic Workflows `v0.89.21` or newer:
+You also need GitHub Agentic Workflows `v0.89.22` or newer:
 
 ```bash
 gh aw version

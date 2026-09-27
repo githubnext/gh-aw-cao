@@ -73,7 +73,7 @@ main() {
   local control_runtime=".github/workflows/shared/control.mjs"
   local materializer=".github/workflows/shared/materialize-cao.mjs"
   local runtime_action=".github/actions/setup-cao-runtime/action.yml"
-  local required_gh_aw="v0.89.21"
+  local required_gh_aw="v0.89.22"
   local catalog_source="${1:-githubnext/gh-aw-cao}"
   local manifest_required_gh_aw
   local current_gh_aw
