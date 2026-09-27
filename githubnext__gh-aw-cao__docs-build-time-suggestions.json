@@ -1,6 +1,6 @@
 {
   "source_sha": "ee7ca83f5b6b975cfebb9a2bc5df80a3ac95d60b",
-  "next_category": "artifact transfer and Pages packaging",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
       "evaluated_at": "2026-09-27T16:05:00Z",
@@ -315,6 +315,22 @@
         36338748465
       ],
       "outcome": "no-op: evidence window 2026-09-27T22:23:40Z to 2026-09-27T23:32:15Z. Analyzed 7 successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days while disclosing 13 excluded completed docs runs in the bounded sample (7 action_required workflow_run runs, 3 skipped workflow_run runs, and 3 cancelled/skipped workflow_run runs). Evaluated category reusable dashboard generation. Median docs.yml workflow execution was 54.0s (p90 71.4s), queue median 0.0s (p90 0.0s), build median 34.0s (p90 38.0s), and deploy median 11.0s (p90 11.4s). Trusted docs step metadata showed Install dependencies and Save node_modules skipped on all 7 successful docs runs, Restore cached CAO Dashboard succeeding on all 7 successful docs runs in 1-3s, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on all 7 successful docs runs. Bounded docs logs on runs 36358974944 and 36355131880 confirmed setup-node npm cache hits, Astro building 63 pages in 8.23s and 6.52s, a central-agentic-ops-dashboard cache restore of about 6.3 MiB, and final Pages artifact finalization after the cache hit. Comparable successful CAO Dashboard runs 36355160680, 36354425295, 36345989765, 36344244580, and 36338748465 showed build median 27.0s (p90 28.6s), cache-job median 6.0s (p90 8.6s), Install dashboard build dependencies median 6.0s, Upgrade fallback activity data median 8.0s, Assemble Dashboard Language site median 1.0s, Upload dashboard artifact median 2.0s, and cache-step medians of 2.0s to download the artifact, 1.0s to delete the previous cache, and 1.0s to save the constant key. Trusted dashboard logs on runs 36355160680 and 36344244580 confirmed each dashboard build still copies 27 activity shards totaling 39.6-42.2 MiB, uploads a 7.6-7.9 MiB dashboard artifact, then runs a separate cache job that downloads the fresh artifact again, deletes cache IDs 8187927140 or 8182608134, and rewrites the same central-agentic-ops-dashboard cache key. That duplicated cache-maintenance work is real but saves docs.yml from only a 1-3s restore cost and would remove about 6s from cao-dashboard.yml itself, which is below the campaign threshold of at least 60 seconds or 15 percent of median docs.yml execution time (8.1s) without weakening freshness or deployment safety. No new non-duplicate actionable improvement meets the campaign bar in this cycle."
+    },
+    {
+      "evaluated_at": "2026-09-27T23:52:15Z",
+      "worker_run_id": 36359932727,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        36359788959,
+        36358974944,
+        36358391346,
+        36357267975,
+        36356414837,
+        36355694392,
+        36355195861,
+        36355160680
+      ],
+      "outcome": "no-op: evidence window 2026-09-27T22:24:47Z to 2026-09-27T23:46:57Z. Analyzed 7 successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days while disclosing 13 excluded completed docs runs in the bounded sample (7 action_required workflow_run runs, 3 skipped workflow_run runs, and 3 cancelled/skipped workflow_run runs). Evaluated category artifact transfer and Pages packaging. Median docs.yml workflow execution was 55.0s (p90 72.0s), queue median 4.0s (p90 21.4s), build median 34.0s (p90 38.0s), and deploy median 11.0s (p90 12.0s). Trusted docs step metadata showed Upload Pages artifact at 3.0s median (p90 4.0s), Restore cached CAO Dashboard at 2.0s median (p90 2.4s), Build documentation at 10.0s median (p90 10.0s), and Deploy Pages at 6.0s median (p90 7.4s). Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on all 7 successful docs runs. Bounded docs logs on run 36359788959 confirmed cache hits for setup-node, node_modules, and central-agentic-ops-dashboard, then a github-pages upload finalized at 10,863,726 bytes; deploy logs for the same run showed Pages deployment creation began after artifact metadata fetch and spent about 6s in the Deploy Pages step. Comparable successful CAO Dashboard run 36355160680 completed in 36.0s overall with a 25.0s build and 5.0s cache job; trusted job metadata showed Download dashboard artifact at 2.0s, Delete previous dashboard cache at 0.0-1.0s, and Save dashboard cache at 1.0s. Artifact transfer and Pages packaging remain a small share of docs.yml wall time, and the repeated dashboard cache maintenance cost in cao-dashboard.yml is only about 5-6s per dashboard rebuild\u2014below the campaign threshold of at least 60 seconds or 15 percent of median docs.yml execution time (8.25s) without weakening correctness, freshness, or deployment safety. No new non-duplicate actionable improvement meets the campaign bar in this cycle."
     }
   ]
 }
