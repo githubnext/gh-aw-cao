@@ -87,3 +87,53 @@ func TestMissingToolingReportsOnlyMissingBinariesWhenScriptIsPresent(t *testing.
 		t.Fatalf("missing = %v, want %v", missing, want)
 	}
 }
+
+func TestClassifyQueueBacklogReportsDeadLettersBeforeAnythingElse(t *testing.T) {
+	// A backlog near the max length must not mask a dead-letter warning; dead
+	// letters are checked first regardless of depth.
+	classification := classifyQueueBacklog(900, 10, 3, 1000)
+	if classification.status != StatusWarn {
+		t.Fatalf("status = %v, want %v", classification.status, StatusWarn)
+	}
+	if classification.reason != queueBacklogReasonDeadLetters {
+		t.Fatalf("reason = %v, want %v", classification.reason, queueBacklogReasonDeadLetters)
+	}
+	if classification.remedy == "" {
+		t.Fatal("expected a remedy for dead-lettered tasks")
+	}
+}
+
+func TestClassifyQueueBacklogWarnsWithinTwentyPercentOfMaxLength(t *testing.T) {
+	classification := classifyQueueBacklog(800, 5, 0, 1000)
+	if classification.status != StatusWarn {
+		t.Fatalf("status = %v, want %v", classification.status, StatusWarn)
+	}
+	if classification.reason != queueBacklogReasonNearMaxLength {
+		t.Fatalf("reason = %v, want %v", classification.reason, queueBacklogReasonNearMaxLength)
+	}
+}
+
+func TestClassifyQueueBacklogPassesBelowTheWarningThreshold(t *testing.T) {
+	classification := classifyQueueBacklog(799, 5, 0, 1000)
+	if classification.status != StatusPass {
+		t.Fatalf("status = %v, want %v", classification.status, StatusPass)
+	}
+	if classification.reason != queueBacklogReasonHealthy {
+		t.Fatalf("reason = %v, want %v", classification.reason, queueBacklogReasonHealthy)
+	}
+	if classification.remedy != "" {
+		t.Fatalf("expected no remedy for a healthy queue, got %q", classification.remedy)
+	}
+}
+
+func TestClassifyQueueBacklogPassesWhenNoMaximumIsConfigured(t *testing.T) {
+	// maximum <= 0 means unbounded, so the near-max-length threshold must
+	// never trigger regardless of depth.
+	classification := classifyQueueBacklog(1_000_000, 5, 0, 0)
+	if classification.status != StatusPass {
+		t.Fatalf("status = %v, want %v", classification.status, StatusPass)
+	}
+	if classification.reason != queueBacklogReasonHealthy {
+		t.Fatalf("reason = %v, want %v", classification.reason, queueBacklogReasonHealthy)
+	}
+}
