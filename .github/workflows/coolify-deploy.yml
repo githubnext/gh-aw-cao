@@ -767,7 +767,7 @@ jobs:
 
   deploy:
     name: Deploy exact digest to Coolify
-    if: needs.classify.outputs.eligible == 'true'
+    if: needs.classify.outputs.eligible == 'true' && (github.event_name != 'push' || vars.COOLIFY_DEPLOY_ENABLED == 'true')
     needs: [classify, publish]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -784,19 +784,12 @@ jobs:
         env:
           COOLIFY_DEPLOY_ENDPOINT: ${{ secrets.COOLIFY_DEPLOY_ENDPOINT }}
           COOLIFY_DEPLOY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
-          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
           echo "::group::Verify deployment adapter configuration"
           if [[ -n "${COOLIFY_DEPLOY_ENDPOINT}" && -n "${COOLIFY_DEPLOY_TOKEN}" ]]; then
             echo "configured=true" >> "${GITHUB_OUTPUT}"
             echo "Deployment adapter is configured"
-            result="configured"
-          elif [[ -z "${COOLIFY_DEPLOY_ENDPOINT}" && -z "${COOLIFY_DEPLOY_TOKEN}" &&
-                  "${EVENT_NAME}" == "push" ]]; then
-            echo "configured=false" >> "${GITHUB_OUTPUT}"
-            echo "Deployment adapter is not configured; skipping optional push deployment"
-            result="skipped for push"
           else
             echo "deployment adapter configuration is incomplete" >&2
             exit 1
@@ -805,7 +798,7 @@ jobs:
           {
             echo "### Deployment adapter configuration"
             echo
-            echo "- Result: ${result}"
+            echo "- Result: configured"
           } >> "${GITHUB_STEP_SUMMARY}"
       - name: Reject stale deployment source
         if: steps.adapter.outputs.configured == 'true'

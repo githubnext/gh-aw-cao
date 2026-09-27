@@ -27,7 +27,7 @@ The Coolify deployment is an alternative to the Azure deployment. It doesn't rep
 | Artifact volume | A named Docker volume, managed by Coolify, that contains a complete and verified dashboard payload. |
 | GitHub OAuth app | An OAuth app with the callback URL `https://PUBLIC-HOST/auth/callback`. |
 | Webhook secret | A secret of at least 32 characters. The server requires one even if you don't use webhooks. |
-| Deployment automation (optional) | To use `.github/workflows/coolify-deploy.yml`, you need the GitHub environments `coolify-alpha`, `coolify-beta`, and `coolify-stable`. Each needs the `COOLIFY_DEPLOY_ENDPOINT` and `COOLIFY_DEPLOY_TOKEN` secrets. You also need a deployment adapter for your Coolify resource. For more information, see [Automating delivery](#automating-delivery). |
+| Deployment automation (optional) | To use `.github/workflows/coolify-deploy.yml`, set the repository variable `COOLIFY_DEPLOY_ENABLED` to `true` for push deployments. You also need the GitHub environments `coolify-alpha`, `coolify-beta`, and `coolify-stable`, each with the `COOLIFY_DEPLOY_ENDPOINT` and `COOLIFY_DEPLOY_TOKEN` secrets, plus a deployment adapter for your Coolify resource. For more information, see [Automating delivery](#automating-delivery). |
 
 The running container needs outbound access only to Redis and to the GitHub OAuth and API endpoints.
 
@@ -106,7 +106,7 @@ The `.github/workflows/coolify-deploy.yml` workflow builds, scans, publishes, an
 | A push to `main` that changes server or dashboard sources | `sha-COMMIT` | `coolify-alpha` |
 | A manual run for `alpha`, `beta`, or `stable`, from `main` or `release` | The current `main`, or the latest eligible release for the channel | The matching environment |
 
-The workflow refuses payloads from forks. Before it calls the adapter, it checks that the source is still current for its channel. When both deployment adapter secrets are absent, a push still builds, scans, and publishes the alpha image but skips the optional deployment. Release and manual runs fail when the secrets are absent, and every trigger fails when only one secret is configured. To require approvals, use environment protection rules.
+The workflow refuses payloads from forks. Before it calls the adapter, it checks that the source is still current for its channel. Pushes build, scan, and publish the alpha image but enter the deployment environment only when the repository variable `COOLIFY_DEPLOY_ENABLED` is `true`. Release and manual runs always enter the matching deployment environment. Every deployment fails closed when either adapter secret is absent. To require approvals, use environment protection rules.
 
 The repository doesn't include a deployment adapter. Your adapter must do the following:
 

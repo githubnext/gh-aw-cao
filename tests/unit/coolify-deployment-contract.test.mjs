@@ -55,7 +55,6 @@ function verifyAdapterConfiguration(script, values) {
         PATH: process.env.PATH,
         COOLIFY_DEPLOY_ENDPOINT: "",
         COOLIFY_DEPLOY_TOKEN: "",
-        EVENT_NAME: "",
         GITHUB_OUTPUT: output,
         GITHUB_STEP_SUMMARY: summary,
         ...values,
@@ -147,6 +146,10 @@ test("deployment workflow publishes no mutable channel and gates every Coolify t
   assert.equal(workflow.jobs.image.permissions, undefined);
   assert.equal(workflow.jobs.publish.permissions.packages, "write");
   assert.equal(workflow.jobs.deploy.needs[1], "publish");
+  assert.equal(
+    workflow.jobs.deploy.if,
+    "needs.classify.outputs.eligible == 'true' && (github.event_name != 'push' || vars.COOLIFY_DEPLOY_ENABLED == 'true')",
+  );
   assert.deepEqual(workflow.jobs.deploy.permissions, { contents: "read" });
   const adapter = workflow.jobs.deploy.steps.find((step) => step.id === "adapter");
   const staleSource = workflow.jobs.deploy.steps.find((step) => step.name === "Reject stale deployment source");
@@ -155,23 +158,15 @@ test("deployment workflow publishes no mutable channel and gates every Coolify t
   assert.equal(deploy.if, staleSource.if);
   assert.deepEqual(
     verifyAdapterConfiguration(adapter.run, {
-      EVENT_NAME: "push",
-    }).outputs,
-    { configured: "false" },
-  );
-  assert.deepEqual(
-    verifyAdapterConfiguration(adapter.run, {
-      EVENT_NAME: "push",
       COOLIFY_DEPLOY_ENDPOINT: "https://deploy.example.test",
       COOLIFY_DEPLOY_TOKEN: "test-token",
     }).outputs,
     { configured: "true" },
   );
   for (const values of [
-    { EVENT_NAME: "release" },
-    { EVENT_NAME: "workflow_dispatch" },
-    { EVENT_NAME: "push", COOLIFY_DEPLOY_ENDPOINT: "https://deploy.example.test" },
-    { EVENT_NAME: "push", COOLIFY_DEPLOY_TOKEN: "test-token" },
+    {},
+    { COOLIFY_DEPLOY_ENDPOINT: "https://deploy.example.test" },
+    { COOLIFY_DEPLOY_TOKEN: "test-token" },
   ]) {
     const result = verifyAdapterConfiguration(adapter.run, values);
     assert.notEqual(result.status, 0);
