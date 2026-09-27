@@ -90,8 +90,12 @@ test("dashboard CI runs the campaign quality gates", () => {
   // changes must run the scaffold gate that keeps the two in sync.
   const triggers = parse(source).on;
   for (const event of ["pull_request", "push"]) {
-    assert.ok(triggers[event].paths.includes("docs/assets/logo.svg"), `${event} docs/assets/logo.svg`);
-    assert.ok(triggers[event].paths.includes("public/favicon.svg"), `${event} public/favicon.svg`);
+    for (const path of ["docs/assets/logo.svg", "public/favicon.svg"]) {
+      assert.ok(
+        triggers[event].paths.includes(path),
+        `${event}.paths must include ${path} so the favicon scaffold gate runs on canonical logo changes`
+      );
+    }
   }
   assert.match(source, /working-directory: dashboard\/site/);
   assert.match(source, /cache-dependency-path: dashboard\/site\/package-lock\.json/);
