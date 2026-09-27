@@ -1,4 +1,5 @@
 ---
+import DispatchIllustration from "./DispatchIllustration.astro";
 import HeroIntro from "./HeroIntro.astro";
 import TerminalDemo from "./TerminalDemo.astro";
 import ThemeImage from "./ThemeImage.astro";
@@ -41,6 +42,17 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
     </figure>
   </div>
 </div>
+
+<section class="product-story dispatch-story" aria-labelledby="dispatch-title" data-reveal>
+  <h2 id="dispatch-title">An Agentic Campaign is a scalable work dispatcher that operates on your repositories to acheive a goal.</h2>
+  <figure class="dispatch-illustration" aria-describedby="dispatch-description">
+    <figcaption id="dispatch-description" class="visually-hidden">
+      A control plane dispatches campaign work across authorized organizations and repositories, then gathers the
+      outcomes into a campaign report.
+    </figcaption>
+    <DispatchIllustration />
+  </figure>
+</section>
 
 <section class="product-story terminal-story" aria-labelledby="terminal-title" data-reveal>
   <div class="product-story-copy">
@@ -539,6 +551,21 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
 
     .terminal-story {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .dispatch-story {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .dispatch-story h2 {
+      max-width: 52rem;
+      margin-inline: auto;
+      text-align: center;
+    }
+
+    .dispatch-illustration {
+      width: min(100%, 58rem);
+      margin-inline: auto;
     }
 
     .product-story::before {
