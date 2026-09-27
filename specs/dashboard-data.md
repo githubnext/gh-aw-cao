@@ -346,7 +346,7 @@ store uses `id` as its key path. The implemented secondary indexes are:
 | `repositories` | none |
 | `workflows` | `byRepository -> repositoryId` |
 | `runs` | `byRepository -> repositoryId`, `byWorkflow -> workflowId`, `byConclusion -> conclusion`, `byEvent -> event`, `byEventConclusion -> [event, conclusion]` |
-| `domains`, `tools`, `audits`, `issues` | `byRun -> runId` |
+| `domains`, `tools`, `skills`, `friction`, `audits`, `issues` | `byRun -> runId` |
 | `operationalValues` | `byRepository -> repositoryId`, `byValue -> valueId` |
 | `marketplacePackages` | `byRegistry -> registryId`, `byRepository -> repository` |
 | `transactions` | `byCreatedAt -> createdAt` |
@@ -1826,6 +1826,8 @@ the physical version and update Section 5.1 before relying on those indexes.
 ```text
 domains: runId
 tools: runId
+skills: runId
+friction: runId
 audits: runId
 issues: runId
 ```

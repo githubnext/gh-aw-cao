@@ -87,7 +87,7 @@ function recordSize(record) {
 /** @param {import('../model/schema.js').CanonicalBatch} batch */
 export function estimateCanonicalBatchBytes(batch) {
   return STORES.reduce((total, storeName) =>
-    total + batch[storeName].reduce((storeTotal, record) => storeTotal + recordSize(record), 0), 0);
+    total + (batch[storeName] ?? []).reduce((storeTotal, record) => storeTotal + recordSize(record), 0), 0);
 }
 
 /**
@@ -116,7 +116,7 @@ export function capCanonicalBatchSize(batch, maxBytes) {
   };
   const recordsByRun = Object.fromEntries(RUN_LINKED_STORES.map((storeName) => [
     storeName,
-    groupBy(batch[storeName], 'runId')
+    groupBy(batch[storeName] ?? [], 'runId')
   ]));
   const evictedRuns = new Set();
   const oldestRuns = [...batch.runs].sort((left, right) =>
@@ -150,7 +150,7 @@ export function capCanonicalBatchSize(batch, maxBytes) {
     marketplacePackages: batch.marketplacePackages ?? [],
     ...Object.fromEntries(RUN_LINKED_STORES.map((storeName) => [
       storeName,
-      batch[storeName].filter((record) => !evictedRuns.has(String(record.runId)))
+      (batch[storeName] ?? []).filter((record) => !evictedRuns.has(String(record.runId)))
     ]))
   });
 }

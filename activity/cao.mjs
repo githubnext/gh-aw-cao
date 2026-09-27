@@ -1316,7 +1316,7 @@ function* normalizedJsonlLines(payload) {
     records
   })}\n`;
   for (const collection of NORMALIZED_COLLECTIONS) {
-    for (const record of payload.batch[collection]) {
+    for (const record of payload.batch[collection] ?? []) {
       yield `${JSON.stringify({ kind: 'record', collection, record })}\n`;
     }
   }

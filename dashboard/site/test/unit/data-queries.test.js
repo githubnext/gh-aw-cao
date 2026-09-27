@@ -1042,15 +1042,18 @@ describe('declarative dashboard queries', () => {
         rows: [
           {
             organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md',
-            'mcp-observation': 'call-1', 'mcp-server': 'github', 'mcp-tool': 'search_issues'
+            'mcp-observation': 'call-1', 'mcp-server': 'github', 'mcp-tool': 'search_issues',
+            'request-bytes': 10, 'response-bytes': 20
           },
           {
             organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'b.md',
-            'mcp-observation': 'call-2', 'mcp-server': 'github', 'mcp-tool': 'search_issues'
+            'mcp-observation': 'call-2', 'mcp-server': 'github', 'mcp-tool': 'search_issues',
+            'request-bytes': 30, 'response-bytes': 40
           },
           {
             organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md',
-            'mcp-observation': 'call-3', 'mcp-server': 'github', 'mcp-tool': 'create_issue'
+            'mcp-observation': 'call-3', 'mcp-server': 'github', 'mcp-tool': 'create_issue',
+            'request-bytes': 50, 'response-bytes': 60
           },
           {
             organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md',
@@ -1065,8 +1068,8 @@ describe('declarative dashboard queries', () => {
       expect(Object.keys(derived)).toEqual(['mcp-tool-totals', 'mcp-top-tools']);
       expect(derived['mcp-tool-totals']).toMatchObject({
         rows: [
-          { 'mcp-tool-label': 'github/search_issues', 'mcp-tool': 'search_issues', 'mcp-server': 'github', calls: 2, workflows: 2 },
-          { 'mcp-tool-label': 'github/create_issue', 'mcp-tool': 'create_issue', 'mcp-server': 'github', calls: 1, workflows: 1 }
+          { 'mcp-tool-label': 'github/search_issues', 'mcp-tool': 'search_issues', 'mcp-server': 'github', calls: 2, workflows: 2, 'request-bytes': 40, 'response-bytes': 60 },
+          { 'mcp-tool-label': 'github/create_issue', 'mcp-tool': 'create_issue', 'mcp-server': 'github', calls: 1, workflows: 1, 'request-bytes': 50, 'response-bytes': 60 }
         ],
         metadata: { 'source-kind': 'derived', 'query-name': 'mcp-tool-totals' }
       });

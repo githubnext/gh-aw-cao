@@ -135,7 +135,7 @@ export function relationshipErrors(batch) {
     }
   }
   for (const collection of RUN_LINKED_COLLECTIONS) {
-    for (const record of batch[collection]) {
+    for (const record of batch[collection] ?? []) {
       requireReference(record, 'runId', 'runs');
     }
   }
