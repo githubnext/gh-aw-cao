@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderEntityRoute } from '../../src/components/entity-route.js';
 
 const metadata = {
@@ -68,5 +69,67 @@ describe('entity route', () => {
     }));
 
     expect(rendered.textContent).toBe('Entity not found.');
+  });
+});
+
+describe('entity route debug logging', () => {
+  afterEach(() => {
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
+
+  it('stays silent by default and logs only scalar metadata under its predictable category', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=entity-route', output })
+      };
+    });
+    vi.resetModules();
+    const { renderEntityRoute: renderEntityRouteWithDebug } = await import('../../src/components/entity-route.js');
+
+    const rendered = renderEntityRouteWithDebug(context());
+    expect(output.debug).toHaveBeenCalledWith('[cao:entity-route]', { event: 'initialized', pageId: 'domain-insights', rowCount: 1 });
+
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'domain', value: 'api.github.com' }
+    }));
+    expect(output.debug).toHaveBeenCalledWith('[cao:entity-route]', { event: 'matched', pageId: 'domain-insights' });
+
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'domain', value: 'missing.example' }
+    }));
+    expect(output.debug).toHaveBeenCalledWith('[cao:entity-route]', { event: 'not-found', pageId: 'domain-insights' });
+
+    for (const call of output.debug.mock.calls) {
+      const metadata = call[1];
+      expect(Object.values(metadata).every((value) => typeof value !== 'object')).toBe(true);
+    }
+  });
+
+  it('is disabled by default (no debug output) when the debug query is absent', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '', output })
+      };
+    });
+    vi.resetModules();
+    const { renderEntityRoute: renderEntityRouteWithoutDebug } = await import('../../src/components/entity-route.js');
+
+    const rendered = renderEntityRouteWithoutDebug(context());
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'domain', value: 'api.github.com' }
+    }));
+
+    expect(output.debug).not.toHaveBeenCalled();
   });
 });

@@ -2,6 +2,7 @@
  * Registry for JSON-selected dashboard UI elements.
  */
 
+import { renderAllCampaignMemory } from './campaign-memory.js';
 import { renderCampaignRouteView } from './campaign-route-view.js';
 import { text as stringValue } from './count-formatters.js';
 import { renderConfigurationView } from './configuration-view.js';
@@ -15,6 +16,9 @@ import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outc
 import { renderProblemDetail } from './problem-detail.js';
 import { rowsFor as rowsForSource } from './source-rows.js';
 import { renderWorkflowRoutePage } from './workflow-route-page.js';
+import { createDebug } from '../debug.js';
+
+const debugUiElements = createDebug('ui-elements');
 
 /**
  * @typedef {{
@@ -49,12 +53,13 @@ const ELEMENT_RENDERERS = new Map([
   ['entity-route', renderEntityRoute],
   ['factory-header', renderFactoryHeaderElement],
   ['factory-floor', renderFactoryFloorElement],
+  ['all-campaign-memory', renderAllCampaignMemory],
   ['link-button-list', renderLinkButtonList],
   ['markdown', renderMarkdownElement]
 ]);
 
 /** Elements that load declared sources independently of the active page subscription. */
-const ASYNC_SOURCE_ELEMENTS = new Set(['factory-header', 'factory-floor', 'link-button-list']);
+const ASYNC_SOURCE_ELEMENTS = new Set(['factory-header', 'factory-floor', 'all-campaign-memory', 'link-button-list']);
 
 /**
  * Reports whether an element loads its declared sources on its own.
@@ -75,6 +80,7 @@ const EMPTY_AWARE_ELEMENTS = new Set([
   'entity-route',
   'factory-header',
   'factory-floor',
+  'all-campaign-memory',
   'link-button-list',
   'markdown'
 ]);
@@ -111,7 +117,12 @@ const LAZY_ELEMENT_RENDERERS = new Map([
  * @returns {HTMLElement | null}
  */
 export function renderUiElement(name, context) {
-  return ELEMENT_RENDERERS.get(name)?.({ ...context, element: name }) ?? null;
+  const renderer = ELEMENT_RENDERERS.get(name);
+  if (!renderer) {
+    debugUiElements({ event: 'unregistered-element', name });
+    return null;
+  }
+  return renderer({ ...context, element: name }) ?? null;
 }
 
 /**
@@ -121,7 +132,14 @@ export function renderUiElement(name, context) {
  */
 export async function renderUiElementAsync(name, context) {
   const lazyRenderer = LAZY_ELEMENT_RENDERERS.get(`${name}-lazy`);
-  if (lazyRenderer) return lazyRenderer({ ...context, element: name });
+  if (lazyRenderer) {
+    debugUiElements({ event: 'lazy-render-started', name });
+    const started = globalThis.performance?.now() ?? Date.now();
+    const element = await lazyRenderer({ ...context, element: name });
+    const durationMs = Math.round((globalThis.performance?.now() ?? Date.now()) - started);
+    debugUiElements({ event: 'lazy-render-completed', name, durationMs, rendered: element != null });
+    return element;
+  }
   return renderUiElement(name, context);
 }
 

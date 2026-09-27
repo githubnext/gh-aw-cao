@@ -9,6 +9,8 @@ CAO Activity is the shared, bounded `gh aw logs` collector for Central Agentic
 Ops. It prevents consumers from independently acquiring the same compiled
 workflow history. It also materializes the canonical log projection in SQLite
 so local tools and agents can query the snapshot without re-ingesting it.
+Every [deployment option](deployment.md) serves dashboard data derived from
+this collector.
 
 ## How Activity works
 

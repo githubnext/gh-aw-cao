@@ -89,8 +89,10 @@ test("local dashboard server composes campaign dashboards and reloads after upda
   const siteRoot = path.join(root, "site");
   const campaignRoot = path.join(root, "campaigns");
   const campaignDirectory = path.join(campaignRoot, "example");
+  const campaignFeatureDirectory = path.join(campaignDirectory, "features");
   const stalePreviewDirectory = path.join(campaignRoot, ".cao-dashboard-preview-stale");
   await mkdir(campaignDirectory, { recursive: true });
+  await mkdir(campaignFeatureDirectory, { recursive: true });
   await mkdir(stalePreviewDirectory, { recursive: true });
   await mkdir(siteRoot, { recursive: true });
   const syntheticToken = ["ghp", "abcdefghijklmnopqrstuvwxyz123456"].join("_");
@@ -102,7 +104,18 @@ test("local dashboard server composes campaign dashboards and reloads after upda
   const builtInDashboard = JSON.parse(dashboard("built-in"));
   builtInDashboard.dashboard.description = syntheticToken;
   await writeFile(path.join(siteRoot, "dashboard.json"), JSON.stringify(builtInDashboard));
-  await writeFile(path.join(campaignDirectory, "dashboard.json"), dashboard("campaign-one"));
+  await writeFile(path.join(campaignDirectory, "dashboard.json"), JSON.stringify({
+    "language-version": "0.1.0",
+    fragments: ["features/campaign.json"],
+    dashboard: { id: "campaign", title: "Campaign" },
+  }));
+  const campaignOne = JSON.parse(dashboard("campaign-one")).dashboard;
+  delete campaignOne.id;
+  delete campaignOne.title;
+  await writeFile(
+    path.join(campaignFeatureDirectory, "campaign.json"),
+    JSON.stringify(campaignOne),
+  );
   await writeFile(path.join(stalePreviewDirectory, "dashboard.json"), dashboard("built-in"));
   const downloadData = async (destination) => {
     await mkdir(destination, { recursive: true });
@@ -177,7 +190,13 @@ test("local dashboard server composes campaign dashboards and reloads after upda
 
     const socket = await openDashboardSocket(preview.url);
     const update = nextDashboard(socket);
-    await writeFile(path.join(campaignDirectory, "dashboard.json"), dashboard("campaign-two"));
+    const campaignTwo = JSON.parse(dashboard("campaign-two")).dashboard;
+    delete campaignTwo.id;
+    delete campaignTwo.title;
+    await writeFile(
+      path.join(campaignFeatureDirectory, "campaign.json"),
+      JSON.stringify(campaignTwo),
+    );
     assert.deepEqual(
       (await update).dashboard.pages.map(({ id }) => id),
       ["built-in", "campaign-two"],
@@ -283,6 +302,14 @@ test("canvas dashboard executes only declared CLI actions through the provided e
       icon: "copilot",
       command: "gh agent-task create --from-file -",
       placement: "row",
+    },
+    {
+      id: "copy-package-command",
+      label: "Copy add command",
+      icon: "copy",
+      command: "./cao.sh add octo/packages/demo@abc123",
+      placement: "row",
+      "copy-only": true,
     },
   ]));
 
@@ -403,6 +430,15 @@ test("canvas dashboard executes only declared CLI actions through the provided e
       command: "gh agent-task create --from-file -",
       input: prompt,
     });
+
+    const copyOnly = await fetch(new URL("__cli_action", previewUrl), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: origin },
+      body: JSON.stringify({ id: "copy-package-command" }),
+    });
+    assert.equal(copyOnly.status, 403);
+    assert.deepEqual(await copyOnly.json(), { error: "CLI action is copy-only." });
+    assert.equal(calls.length, 5);
 
     const rejectedInput = await fetch(new URL("__cli_action", previewUrl), {
       method: "POST",

@@ -2,6 +2,7 @@ package redisx
 
 import (
 	"bufio"
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -9,10 +10,13 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"math/big"
 	"net"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -52,6 +56,21 @@ func TestNewRejectsRemotePlaintextURLsWithoutResolvingHostnames(t *testing.T) {
 	}
 }
 
+func TestNewWithOptionsAllowsOnlyPrivatePlaintextRedis(t *testing.T) {
+	if _, err := NewWithOptions("redis://redis:6379/0", Options{AllowPrivatePlaintext: true}); err != nil {
+		t.Fatalf("private service hostname rejected: %v", err)
+	}
+	if _, err := NewWithOptions("redis://10.42.0.4:6379/0", Options{AllowPrivatePlaintext: true}); err != nil {
+		t.Fatalf("private IP rejected: %v", err)
+	}
+	if _, err := NewWithOptions("redis://redis.railway.internal:6379/0", Options{AllowPrivatePlaintext: true}); err != nil {
+		t.Fatalf("Railway private hostname rejected: %v", err)
+	}
+	if _, err := NewWithOptions("redis://redis.example.com:6379/0", Options{AllowPrivatePlaintext: true}); err == nil {
+		t.Fatal("public hostname accepted for plaintext Redis")
+	}
+}
+
 func TestNewAcceptsRemoteRedisOnlyWithTLS(t *testing.T) {
 	client, err := New("rediss://redis.example.com:6380/4")
 	if err != nil {
@@ -59,6 +78,25 @@ func TestNewAcceptsRemoteRedisOnlyWithTLS(t *testing.T) {
 	}
 	if client.tlsConfig == nil || client.tlsConfig.ServerName != "redis.example.com" {
 		t.Fatalf("remote rediss TLS configuration is invalid: %#v", client.tlsConfig)
+	}
+}
+
+func TestNewWithOptionsCanRequireVerifiedTLSForRedisURL(t *testing.T) {
+	client, err := NewWithOptions(
+		"redis://cache.internal:6379",
+		Options{ForceTLS: true, TLSServerName: "cache.example.com"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if client.tlsConfig == nil || client.tlsConfig.ServerName != "cache.example.com" {
+		t.Fatalf("forced TLS configuration is invalid: %#v", client.tlsConfig)
+	}
+	if _, err := NewWithOptions(
+		"rediss://cache.example.com:6379",
+		Options{DisableTLS: true},
+	); err == nil {
+		t.Fatal("TLS-disabled client accepted a rediss URL")
 	}
 }
 
@@ -117,6 +155,208 @@ func TestClientReusesConnectionsForConcurrentSafePooling(t *testing.T) {
 	}
 	if count := <-accepted; count != 1 {
 		t.Fatalf("accepted %d connections, want one reused connection", count)
+	}
+}
+
+func TestSingleSessionSerializesCommandsOnOneConnection(t *testing.T) {
+	var listenConfig net.ListenConfig
+	listener, err := listenConfig.Listen(t.Context(), "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = listener.Close() })
+	var accepted atomic.Int32
+	serverErr := make(chan error, 1)
+	go func() {
+		connection, acceptErr := listener.Accept()
+		if acceptErr != nil {
+			serverErr <- acceptErr
+			return
+		}
+		accepted.Add(1)
+		defer func() { _ = connection.Close() }()
+		reader := bufio.NewReader(connection)
+		for range 8 {
+			if _, readErr := readRESP(reader); readErr != nil {
+				serverErr <- readErr
+				return
+			}
+			if _, writeErr := fmt.Fprint(connection, "+PONG\r\n"); writeErr != nil {
+				serverErr <- writeErr
+				return
+			}
+		}
+		serverErr <- nil
+	}()
+	client, err := NewWithOptions("redis://"+listener.Addr().String(), Options{SingleSession: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var group sync.WaitGroup
+	for range 8 {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			if _, pingErr := client.Do(t.Context(), "PING"); pingErr != nil {
+				t.Errorf("PING failed: %v", pingErr)
+			}
+		}()
+	}
+	group.Wait()
+	if err := <-serverErr; err != nil {
+		t.Fatal(err)
+	}
+	if count := accepted.Load(); count != 1 {
+		t.Fatalf("accepted %d connections, want one session", count)
+	}
+}
+
+func TestSingleSessionFailsClosedAfterConnectionLoss(t *testing.T) {
+	var listenConfig net.ListenConfig
+	listener, err := listenConfig.Listen(t.Context(), "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = listener.Close() })
+	var accepted atomic.Int32
+	serverErr := make(chan error, 1)
+	go func() {
+		connection, acceptErr := listener.Accept()
+		if acceptErr != nil {
+			serverErr <- acceptErr
+			return
+		}
+		accepted.Add(1)
+		reader := bufio.NewReader(connection)
+		if _, readErr := readRESP(reader); readErr != nil {
+			serverErr <- readErr
+			return
+		}
+		_ = connection.Close()
+		serverErr <- nil
+	}()
+	client, err := NewWithOptions("redis://"+listener.Addr().String(), Options{SingleSession: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.Do(t.Context(), "PING"); err == nil {
+		t.Fatal("first command unexpectedly survived connection loss")
+	}
+	if _, err := client.Do(t.Context(), "PING"); err == nil {
+		t.Fatal("single session reconnected after losing causal state")
+	}
+	if err := <-serverErr; err != nil {
+		t.Fatal(err)
+	}
+	if count := accepted.Load(); count != 1 {
+		t.Fatalf("accepted %d connections, want no reconnect", count)
+	}
+}
+
+func TestSingleSessionKeepsConnectionAfterRedisCommandError(t *testing.T) {
+	var listenConfig net.ListenConfig
+	listener, err := listenConfig.Listen(t.Context(), "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() { _ = listener.Close() })
+	var accepted atomic.Int32
+	serverErr := make(chan error, 1)
+	go func() {
+		connection, acceptErr := listener.Accept()
+		if acceptErr != nil {
+			serverErr <- acceptErr
+			return
+		}
+		accepted.Add(1)
+		defer func() { _ = connection.Close() }()
+		reader := bufio.NewReader(connection)
+		for index, response := range []string{"-ERR rejected\r\n", "+PONG\r\n"} {
+			if _, readErr := readRESP(reader); readErr != nil {
+				serverErr <- fmt.Errorf("command %d: %w", index, readErr)
+				return
+			}
+			if _, writeErr := fmt.Fprint(connection, response); writeErr != nil {
+				serverErr <- writeErr
+				return
+			}
+		}
+		serverErr <- nil
+	}()
+	client, err := NewWithOptions("redis://"+listener.Addr().String(), Options{SingleSession: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.Do(t.Context(), "SET", "key", "value"); err == nil {
+		t.Fatal("Redis command error was not returned")
+	}
+	if value, err := client.Do(t.Context(), "PING"); err != nil || fmt.Sprint(value) != "PONG" {
+		t.Fatalf("connection was not reusable after Redis error: value=%v err=%v", value, err)
+	}
+	if err := <-serverErr; err != nil {
+		t.Fatal(err)
+	}
+	if count := accepted.Load(); count != 1 {
+		t.Fatalf("accepted %d connections, want one session", count)
+	}
+}
+
+func TestSingleSessionKeepsConnectionAfterPipelinedRedisCommandError(t *testing.T) {
+	var listenConfig net.ListenConfig
+	listener, err := listenConfig.Listen(t.Context(), "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = listener.Close() })
+	serverErr := make(chan error, 1)
+	go func() {
+		connection, acceptErr := listener.Accept()
+		if acceptErr != nil {
+			serverErr <- acceptErr
+			return
+		}
+		defer func() { _ = connection.Close() }()
+		reader := bufio.NewReader(connection)
+		for index, response := range []string{"-ERR rejected\r\n", "+OK\r\n", "+PONG\r\n"} {
+			if _, readErr := readRESP(reader); readErr != nil {
+				serverErr <- fmt.Errorf("command %d: %w", index, readErr)
+				return
+			}
+			if _, writeErr := fmt.Fprint(connection, response); writeErr != nil {
+				serverErr <- writeErr
+				return
+			}
+		}
+		serverErr <- nil
+	}()
+	client, err := NewWithOptions("redis://"+listener.Addr().String(), Options{SingleSession: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.DoMany(t.Context(), [][]string{{"BAD"}, {"SET", "key", "value"}}); err == nil {
+		t.Fatal("pipelined Redis command error was not returned")
+	}
+	if value, err := client.Do(t.Context(), "PING"); err != nil || fmt.Sprint(value) != "PONG" {
+		t.Fatalf("connection was not reusable after pipelined Redis error: value=%v err=%v", value, err)
+	}
+	if err := <-serverErr; err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSingleSessionRejectsCanceledContextWithoutPoisoning(t *testing.T) {
+	client, err := NewWithOptions("redis://127.0.0.1:1", Options{SingleSession: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if _, err := client.Do(ctx, "PING"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled command returned %v", err)
+	}
+	if client.sessionErr != nil {
+		t.Fatalf("canceled command poisoned the session: %v", client.sessionErr)
 	}
 }
 

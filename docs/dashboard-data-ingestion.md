@@ -7,6 +7,7 @@ Data ingestion moves operational evidence from GitHub Actions into the browser
 dashboard and local tools. Read this page to understand collection boundaries,
 retention, failure behavior, and the available `cao` commands. For entity
 identities and relationships, use the [Data model](dashboard-data-model.md).
+For where the dashboard is served, see [Deployment options](deployment.md).
 
 ## Data flow
 
@@ -74,8 +75,8 @@ The activity shard manifest is the dashboard's published operational input. The 
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical model is version 17. The browser database is
-`gh-aw-cao-dashboard-data`, IndexedDB version 25. Its canonical stores are
+The canonical model is version 18. The browser database is
+`gh-aw-cao-dashboard-data`, IndexedDB version 26. Its canonical stores are
 `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `audits`,
 and `issues`, and `operationalValues`; all use `id` as the key. The `transactions` store records
 ingestion outcomes and is indexed by `createdAt`. The disposable
@@ -177,6 +178,10 @@ cao doctor \
 ```
 
 The doctor reports SQLite integrity, foreign-key and schema health, table and transaction counts, malformed records, and relationship errors. It applies retention, removes malformed and orphaned derived records, repairs metadata, and runs SQLite maintenance. Before changing data, it creates a timestamped `.doctor-backup-*.sqlite` backup next to the database.
+
+To let an agent read the same snapshot through dashboard pages and named
+queries, instead of through collections, see
+[Agent analysis](agent-analysis.md).
 
 Run `cao help` for the collection list and full command syntax. The SQLite file remains local derived state and does not change the static dashboard's deployment boundary.
 

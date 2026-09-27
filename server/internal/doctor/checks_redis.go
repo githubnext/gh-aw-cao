@@ -120,30 +120,65 @@ func (d Doctor) checkRedisMemory(ctx context.Context) Check {
 	if maximum > 0 {
 		details = append(details, detail("utilization", fmt.Sprintf("%.1f%%", 100*float64(used)/float64(maximum))))
 	}
+	classification := classifyRedisMemory(used, maximum, policy)
+	doctorLog.Printf("redis memory classified status=%s reason=%s", classification.status, classification.reason)
+	return Check{
+		ID: id, Area: areaRedis, Title: title, Status: classification.status,
+		Summary: classification.summary, Details: details, Remedy: classification.remedy,
+	}
+}
+
+// memoryClassificationReason names why checkRedisMemory reached its status,
+// stable across summary wording changes so it is useful to log without
+// exposing the summary's interpolated byte counts.
+type memoryClassificationReason string
+
+const (
+	memoryReasonEvictingPolicy      memoryClassificationReason = "evicting-policy"
+	memoryReasonCriticalUtilization memoryClassificationReason = "critical-utilization"
+	memoryReasonHighUtilization     memoryClassificationReason = "high-utilization"
+	memoryReasonNoLimit             memoryClassificationReason = "no-limit"
+	memoryReasonHealthy             memoryClassificationReason = "healthy"
+)
+
+// memoryClassification is the status, summary, and remedy classifyRedisMemory
+// derives from Redis's reported memory usage.
+type memoryClassification struct {
+	status  Status
+	summary string
+	remedy  string
+	reason  memoryClassificationReason
+}
+
+// classifyRedisMemory decides the redis.memory check's outcome from Redis's
+// reported memory fields alone. It is a pure function so every threshold —
+// an evicting policy, each utilization band, and an unbounded instance — is
+// testable without a fake Redis INFO reply.
+func classifyRedisMemory(used, maximum int64, policy string) memoryClassification {
 	if policy != "" && policy != "noeviction" {
-		return Check{
-			ID: id, Area: areaRedis, Title: title, Status: StatusFail,
-			Summary: fmt.Sprintf("eviction policy is %q; canonical rows can be discarded without an error", policy),
-			Details: details,
-			Remedy:  "set maxmemory-policy to noeviction so a full instance fails writes instead of silently dropping rows",
+		return memoryClassification{
+			status:  StatusFail,
+			summary: fmt.Sprintf("eviction policy is %q; canonical rows can be discarded without an error", policy),
+			remedy:  "set maxmemory-policy to noeviction so a full instance fails writes instead of silently dropping rows",
+			reason:  memoryReasonEvictingPolicy,
 		}
 	}
 	if maximum > 0 {
 		utilization := float64(used) / float64(maximum)
 		if utilization >= 0.95 {
-			return Check{
-				ID: id, Area: areaRedis, Title: title, Status: StatusFail,
-				Summary: fmt.Sprintf("memory is %.1f%% used; the next projection will probably fail", 100*utilization),
-				Details: details,
-				Remedy:  "scale the instance or lower CAO_COLLECT_RETAIN_GENERATIONS so fewer superseded generations are kept",
+			return memoryClassification{
+				status:  StatusFail,
+				summary: fmt.Sprintf("memory is %.1f%% used; the next projection will probably fail", 100*utilization),
+				remedy:  "scale the instance or lower CAO_COLLECT_RETAIN_GENERATIONS so fewer superseded generations are kept",
+				reason:  memoryReasonCriticalUtilization,
 			}
 		}
 		if utilization >= 0.80 {
-			return Check{
-				ID: id, Area: areaRedis, Title: title, Status: StatusWarn,
-				Summary: fmt.Sprintf("memory is %.1f%% used; a projection writes a full additional generation", 100*utilization),
-				Details: details,
-				Remedy:  "headroom below one generation risks a failed projection; scale up or reduce retention",
+			return memoryClassification{
+				status:  StatusWarn,
+				summary: fmt.Sprintf("memory is %.1f%% used; a projection writes a full additional generation", 100*utilization),
+				remedy:  "headroom below one generation risks a failed projection; scale up or reduce retention",
+				reason:  memoryReasonHighUtilization,
 			}
 		}
 	}
@@ -151,14 +186,14 @@ func (d Doctor) checkRedisMemory(ctx context.Context) Check {
 	if maximum <= 0 {
 		// Without a limit Redis grows until the host runs out, which fails far
 		// less gracefully than a configured limit.
-		return Check{
-			ID: id, Area: areaRedis, Title: title, Status: StatusWarn,
-			Summary: summary + ", with no maxmemory configured",
-			Details: details,
-			Remedy:  "configure maxmemory so growth fails predictably instead of exhausting the host",
+		return memoryClassification{
+			status:  StatusWarn,
+			summary: summary + ", with no maxmemory configured",
+			remedy:  "configure maxmemory so growth fails predictably instead of exhausting the host",
+			reason:  memoryReasonNoLimit,
 		}
 	}
-	return Check{ID: id, Area: areaRedis, Title: title, Status: StatusPass, Summary: summary, Details: details}
+	return memoryClassification{status: StatusPass, summary: summary, reason: memoryReasonHealthy}
 }
 
 func memoryLimitLabel(maximum int64) string {

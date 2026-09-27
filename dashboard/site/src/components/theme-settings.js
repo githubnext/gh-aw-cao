@@ -1,21 +1,29 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { scopedStorageKey } from '../storage-scope.js';
+import { createDebug } from '../debug.js';
 import { enableDetailsMenuDismissal } from './ui-primitives.js';
 
 const THEME_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.theme');
+const debugTheme = createDebug('theme-settings');
 
 /** @typedef {'system'|'light'|'dark'} DashboardTheme */
 
 /** @returns {DashboardTheme} */
 function savedTheme() {
+  let theme = /** @type {DashboardTheme} */ ('system');
+  let fallback = true;
   try {
-    const theme = globalThis.window?.localStorage?.getItem(THEME_STORAGE_KEY);
-    if (theme === 'system' || theme === 'light' || theme === 'dark') return theme;
+    const stored = globalThis.window?.localStorage?.getItem(THEME_STORAGE_KEY);
+    if (stored === 'system' || stored === 'light' || stored === 'dark') {
+      theme = stored;
+      fallback = false;
+    }
   } catch {
     // The system theme remains available when storage is unavailable.
   }
-  return 'system';
+  debugTheme({ event: 'restored', theme, fallback });
+  return theme;
 }
 
 /** @param {HTMLElement} root @param {DashboardTheme} theme */
@@ -51,8 +59,10 @@ export function renderThemeControl() {
     }
     try {
       globalThis.window?.localStorage?.setItem(THEME_STORAGE_KEY, theme);
-    } catch {
+      debugTheme({ event: 'changed', theme, persisted: true });
+    } catch (error) {
       // The theme still applies for the current page when storage is unavailable.
+      debugTheme({ event: 'changed', theme, persisted: false, errorName: error instanceof Error ? error.name : 'unknown' });
     }
   };
   for (const [value, label, icon] of /** @type {const} */ ([

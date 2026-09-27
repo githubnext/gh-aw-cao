@@ -91,8 +91,10 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
           detail.dispatchEvent(new Event("toggle"));
         }
       });
-      await scrollRenderedViewsIntoView(activePage);
-      await expect(activePage.locator("[data-lazy-view]")).toHaveCount(0, { timeout: 60_000 });
+      await expect(async () => {
+        await scrollRenderedViewsIntoView(activePage);
+        expect(await activePage.locator("[data-lazy-view]").count()).toBe(0);
+      }).toPass({ timeout: 60_000 });
       await expect(activePage.locator('[aria-busy="true"]')).toHaveCount(0);
       await expect(activePage.locator('[aria-label^="Unable to load "]')).toHaveCount(0);
       const populatedRows = activePage.locator("tbody > tr").filter({ has: page.locator("td") });

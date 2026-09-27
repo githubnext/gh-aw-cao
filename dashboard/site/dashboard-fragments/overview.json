@@ -1,0 +1,1802 @@
+{
+  "queries": [
+    {
+      "name": "database-campaign-count",
+      "intent": "Count campaigns in the dashboard database.",
+      "from": "campaigns",
+      "aggregate": {
+        "values": [
+          {
+            "field": "id",
+            "as": "campaigns",
+            "reducer": "count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "overview-run-summary",
+      "intent": "Summarize successful, failed, and active runs with rollout-mode counts.",
+      "from": "overview-runs",
+      "aggregate": {
+        "values": [
+          {
+            "field": "run-conclusion",
+            "as": "successful-runs",
+            "reducer": "count",
+            "filter": {
+              "predicates": [
+                {
+                  "field": "run-conclusion",
+                  "equals": "success"
+                }
+              ]
+            }
+          },
+          {
+            "field": "run-conclusion",
+            "as": "failed-runs",
+            "reducer": "count",
+            "filter": {
+              "predicates": [
+                {
+                  "field": "run-conclusion",
+                  "in": [
+                    "failure",
+                    "startup-failure",
+                    "stale",
+                    "timed-out"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "field": "run-status",
+            "as": "active-runs",
+            "reducer": "count",
+            "filter": {
+              "predicates": [
+                {
+                  "field": "run-status",
+                  "in": [
+                    "queued",
+                    "in-progress",
+                    "in_progress"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "field": "run-status",
+            "as": "active-live",
+            "reducer": "count",
+            "filter": {
+              "predicates": [
+                {
+                  "field": "run-status",
+                  "in": [
+                    "queued",
+                    "in-progress",
+                    "in_progress"
+                  ]
+                },
+                {
+                  "field": "rollout-mode",
+                  "equals": "live"
+                }
+              ]
+            }
+          },
+          {
+            "field": "run-status",
+            "as": "active-review",
+            "reducer": "count",
+            "filter": {
+              "predicates": [
+                {
+                  "field": "run-status",
+                  "in": [
+                    "queued",
+                    "in-progress",
+                    "in_progress"
+                  ]
+                },
+                {
+                  "field": "rollout-mode",
+                  "equals": "review"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "overview-delivery-summary",
+      "intent": "Count distinct target repositories with successful worker dispatch runs in the selected horizon.",
+      "from": "overview-runs",
+      "joins": [
+        {
+          "source": "repositories",
+          "type": "inner",
+          "on": [
+            {
+              "left": "target-repository",
+              "right": "repository-coordinate"
+            }
+          ],
+          "fields": [
+            {
+              "field": "repository-coordinate",
+              "as": "registered-target-repository"
+            }
+          ]
+        }
+      ],
+      "filter": {
+        "predicates": [
+          {
+            "field": "event",
+            "equals": "workflow_dispatch"
+          },
+          {
+            "field": "run-conclusion",
+            "equals": "success"
+          },
+          {
+            "field": "workflow-role",
+            "equals": "worker"
+          }
+        ]
+      },
+      "aggregate": {
+        "values": [
+          {
+            "field": "target-repository",
+            "as": "delivered-repositories",
+            "reducer": "distinct-count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "overview-value-summary",
+      "intent": "Count all observed grader results.",
+      "from": "grader-observations",
+      "aggregate": {
+        "values": [
+          {
+            "field": "grader",
+            "as": "value-gains",
+            "reducer": "count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "overview-run-status-input",
+      "intent": "Prepare the compact run summary for declarative factory status classification.",
+      "from": "overview-run-summary",
+      "compute": [
+        {
+          "as": "status-join-key",
+          "function": "concat",
+          "args": [
+            {
+              "value": "factory"
+            },
+            {
+              "value": "-status"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "status-join-key"
+        },
+        {
+          "field": "successful-runs"
+        },
+        {
+          "field": "failed-runs"
+        },
+        {
+          "field": "active-runs"
+        }
+      ]
+    },
+    {
+      "name": "overview-value-status-input",
+      "intent": "Prepare the compact value summary for declarative factory status classification.",
+      "from": "overview-value-summary",
+      "compute": [
+        {
+          "as": "status-join-key",
+          "function": "concat",
+          "args": [
+            {
+              "value": "factory"
+            },
+            {
+              "value": "-status"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "status-join-key"
+        },
+        {
+          "field": "value-gains"
+        }
+      ]
+    },
+    {
+      "name": "overview-factory-status",
+      "intent": "Classify the factory heading from compact run and optional value evidence.",
+      "from": "overview-run-status-input",
+      "joins": [
+        {
+          "source": "overview-value-status-input",
+          "type": "left",
+          "on": [
+            {
+              "left": "status-join-key",
+              "right": "status-join-key"
+            }
+          ],
+          "fields": [
+            {
+              "field": "value-gains",
+              "as": "value-gains"
+            }
+          ]
+        }
+      ],
+      "compute": [
+        {
+          "as": "has-successful-runs",
+          "function": "greater-than",
+          "args": [
+            {
+              "field": "successful-runs"
+            },
+            {
+              "value": 0
+            }
+          ]
+        },
+        {
+          "as": "has-failed-runs",
+          "function": "greater-than",
+          "args": [
+            {
+              "field": "failed-runs"
+            },
+            {
+              "value": 0
+            }
+          ]
+        },
+        {
+          "as": "failures-exceed-successes",
+          "function": "greater-than",
+          "args": [
+            {
+              "field": "failed-runs"
+            },
+            {
+              "field": "successful-runs"
+            }
+          ]
+        },
+        {
+          "as": "has-active-runs",
+          "function": "greater-than",
+          "args": [
+            {
+              "field": "active-runs"
+            },
+            {
+              "value": 0
+            }
+          ]
+        },
+        {
+          "as": "has-value-gains",
+          "function": "greater-than",
+          "args": [
+            {
+              "field": "value-gains"
+            },
+            {
+              "value": 0
+            }
+          ]
+        },
+        {
+          "as": "successful-heading",
+          "function": "if",
+          "args": [
+            {
+              "field": "has-successful-runs"
+            },
+            {
+              "value": "Your campaigns are humming."
+            },
+            {
+              "value": "Your campaigns are idle."
+            }
+          ]
+        },
+        {
+          "as": "attention-heading",
+          "function": "if",
+          "args": [
+            {
+              "field": "has-failed-runs"
+            },
+            {
+              "value": "Your campaigns need attention."
+            },
+            {
+              "field": "successful-heading"
+            }
+          ]
+        },
+        {
+          "as": "strain-heading",
+          "function": "if",
+          "args": [
+            {
+              "field": "failures-exceed-successes"
+            },
+            {
+              "value": "Your campaigns are under strain."
+            },
+            {
+              "field": "attention-heading"
+            }
+          ]
+        },
+        {
+          "as": "active-heading",
+          "function": "if",
+          "args": [
+            {
+              "field": "has-active-runs"
+            },
+            {
+              "value": "Your campaigns are humming."
+            },
+            {
+              "field": "strain-heading"
+            }
+          ]
+        },
+        {
+          "as": "factory-heading",
+          "function": "if",
+          "args": [
+            {
+              "field": "has-value-gains"
+            },
+            {
+              "value": "Your campaigns are delivering value."
+            },
+            {
+              "field": "active-heading"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "factory-heading"
+        }
+      ]
+    },
+    {
+      "name": "overview-registered-repository-summary",
+      "intent": "Count canonical repository identities registered in the resolved control-plane scope.",
+      "from": "repositories",
+      "aggregate": {
+        "values": [
+          {
+            "field": "id",
+            "as": "registered-repositories",
+            "reducer": "count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "overview-delivery-coverage-input",
+      "intent": "Prepare successful delivery totals for the repository coverage summary.",
+      "from": "overview-delivery-summary",
+      "compute": [
+        {
+          "as": "coverage-key",
+          "function": "concat",
+          "args": [
+            {
+              "value": "repository-coverage"
+            },
+            {
+              "value": ""
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "delivered-repositories"
+        },
+        {
+          "field": "coverage-key"
+        }
+      ]
+    },
+    {
+      "name": "overview-registered-repository-coverage-input",
+      "intent": "Prepare registered repository totals for the repository coverage summary.",
+      "from": "overview-registered-repository-summary",
+      "compute": [
+        {
+          "as": "coverage-key",
+          "function": "concat",
+          "args": [
+            {
+              "value": "repository-coverage"
+            },
+            {
+              "value": ""
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "registered-repositories"
+        },
+        {
+          "field": "coverage-key"
+        }
+      ]
+    },
+    {
+      "name": "overview-rhythm",
+      "intent": "Show current-week successful runs from Monday through today and the matching previous-week count for weekdays not yet reached.",
+      "from": "overview-runs",
+      "time": {
+        "range": "15d"
+      },
+      "compute": [
+        {
+          "as": "rhythm-point",
+          "function": "calendar-week-point",
+          "args": [
+            {
+              "field": "started-at"
+            },
+            {
+              "context": "time-end"
+            },
+            {
+              "field": "run-conclusion"
+            }
+          ]
+        }
+      ],
+      "aggregate": {
+        "values": [
+          {
+            "field": "rhythm-point",
+            "as": "rhythm",
+            "reducer": "calendar-week-rhythm"
+          }
+        ]
+      }
+    },
+    {
+      "name": "campaign-runtime-problem-counts",
+      "intent": "Count current failing workflow and runtime repository partitions for each campaign.",
+      "description": "Current retained runtime problem counts by campaign.",
+      "from": "campaign-runtime-problems",
+      "aggregate": {
+        "by": [
+          "campaign"
+        ],
+        "values": [
+          {
+            "field": "failure-count",
+            "as": "problem-partitions",
+            "reducer": "count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "overview-repository-coverage-summary",
+      "intent": "Aggregate reached and total repositories across the resolved organization scope.",
+      "from": "overview-delivery-coverage-input",
+      "joins": [
+        {
+          "source": "overview-registered-repository-coverage-input",
+          "type": "left",
+          "on": [
+            {
+              "left": "coverage-key",
+              "right": "coverage-key"
+            }
+          ],
+          "fields": [
+            {
+              "field": "registered-repositories",
+              "as": "registered-repositories-total"
+            }
+          ]
+        }
+      ],
+      "aggregate": {
+        "values": [
+          {
+            "field": "delivered-repositories",
+            "as": "reached-repositories",
+            "reducer": "sum"
+          },
+          {
+            "field": "registered-repositories-total",
+            "as": "registered-repositories-total",
+            "reducer": "sum"
+          }
+        ]
+      }
+    },
+    {
+      "name": "overview-repository-coverage",
+      "intent": "Measure registered repository reach from successful worker execution.",
+      "from": "overview-repository-coverage-summary",
+      "compute": [
+        {
+          "as": "repository-coverage",
+          "function": "quotient",
+          "args": [
+            {
+              "field": "reached-repositories"
+            },
+            {
+              "field": "registered-repositories-total"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "repository-coverage"
+        },
+        {
+          "field": "reached-repositories"
+        },
+        {
+          "field": "registered-repositories-total"
+        }
+      ]
+    },
+    {
+      "name": "overview-healthy-campaign-count",
+      "intent": "Count campaigns with no retained workflow or target errors.",
+      "from": "campaigns",
+      "joins": [
+        {
+          "source": "campaign-runtime-problem-counts",
+          "type": "left",
+          "on": [
+            {
+              "left": "campaign",
+              "right": "campaign"
+            }
+          ],
+          "fields": [
+            {
+              "field": "problem-partitions",
+              "as": "observed-problem-workflows"
+            }
+          ]
+        }
+      ],
+      "compute": [
+        {
+          "as": "normalized-problem-workflows",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "observed-problem-workflows"
+            },
+            {
+              "value": 0
+            }
+          ]
+        },
+        {
+          "as": "problem-present",
+          "function": "greater-than",
+          "args": [
+            {
+              "field": "normalized-problem-workflows"
+            },
+            {
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "aggregate": {
+        "values": [
+          {
+            "field": "id",
+            "as": "healthy-campaigns",
+            "reducer": "count",
+            "filter": {
+              "predicates": [
+                {
+                  "field": "problem-present",
+                  "equals": false
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "overview-campaign-count-presentation-input",
+      "intent": "Prepare the campaign inventory count for Overview presentation queries.",
+      "from": "database-campaign-count",
+      "compute": [
+        {
+          "as": "overview-presentation-key",
+          "function": "concat",
+          "args": [
+            {
+              "value": "overview"
+            },
+            {
+              "value": "-presentation"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "overview-presentation-key"
+        },
+        {
+          "field": "campaigns"
+        }
+      ]
+    },
+    {
+      "name": "overview-healthy-campaign-presentation-input",
+      "intent": "Prepare the healthy campaign count for Overview presentation queries.",
+      "from": "overview-healthy-campaign-count",
+      "compute": [
+        {
+          "as": "overview-presentation-key",
+          "function": "concat",
+          "args": [
+            {
+              "value": "overview"
+            },
+            {
+              "value": "-presentation"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "overview-presentation-key"
+        },
+        {
+          "field": "healthy-campaigns"
+        }
+      ]
+    },
+    {
+      "name": "overview-campaign-health-presentation",
+      "intent": "Produce presentation-ready campaign health values for the Overview header and floor.",
+      "from": "overview-healthy-campaign-presentation-input",
+      "joins": [
+        {
+          "source": "overview-campaign-count-presentation-input",
+          "type": "left",
+          "on": [
+            {
+              "left": "overview-presentation-key",
+              "right": "overview-presentation-key"
+            }
+          ],
+          "fields": [
+            {
+              "field": "campaigns",
+              "as": "campaigns"
+            }
+          ]
+        }
+      ],
+      "compute": [
+        {
+          "as": "campaign-health",
+          "function": "quotient",
+          "args": [
+            {
+              "field": "healthy-campaigns"
+            },
+            {
+              "field": "campaigns"
+            }
+          ]
+        },
+        {
+          "as": "campaign-health-display",
+          "function": "format-percent",
+          "args": [
+            {
+              "field": "campaign-health"
+            }
+          ]
+        },
+        {
+          "as": "healthy-campaigns-display",
+          "function": "format-count",
+          "args": [
+            {
+              "field": "healthy-campaigns"
+            }
+          ]
+        },
+        {
+          "as": "campaigns-display",
+          "function": "format-count",
+          "args": [
+            {
+              "field": "campaigns"
+            }
+          ]
+        },
+        {
+          "as": "campaign-health-detail",
+          "function": "concat",
+          "args": [
+            {
+              "field": "healthy-campaigns-display"
+            },
+            {
+              "value": "/"
+            },
+            {
+              "field": "campaigns-display"
+            },
+            {
+              "value": " healthy campaigns"
+            }
+          ]
+        },
+        {
+          "as": "campaign-health-description",
+          "function": "concat",
+          "args": [
+            {
+              "field": "campaign-health-display"
+            },
+            {
+              "value": " campaign health"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "overview-presentation-key"
+        },
+        {
+          "field": "campaign-health"
+        },
+        {
+          "field": "campaign-health-display"
+        },
+        {
+          "field": "campaign-health-detail"
+        },
+        {
+          "field": "campaign-health-description"
+        }
+      ]
+    },
+    {
+      "name": "overview-header-status-presentation-input",
+      "intent": "Prepare the factory status heading for the declarative Overview header.",
+      "from": "overview-factory-status",
+      "compute": [
+        {
+          "as": "overview-presentation-key",
+          "function": "concat",
+          "args": [
+            {
+              "value": "overview"
+            },
+            {
+              "value": "-presentation"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "overview-presentation-key"
+        },
+        {
+          "field": "factory-heading"
+        }
+      ]
+    },
+    {
+      "name": "overview-header-presentation",
+      "intent": "Resolve the Overview heading from declarative status and campaign-health evidence.",
+      "from": "overview-header-status-presentation-input",
+      "joins": [
+        {
+          "source": "overview-campaign-health-presentation",
+          "type": "left",
+          "on": [
+            {
+              "left": "overview-presentation-key",
+              "right": "overview-presentation-key"
+            }
+          ],
+          "fields": [
+            {
+              "field": "campaign-health",
+              "as": "campaign-health"
+            }
+          ]
+        }
+      ],
+      "compute": [
+        {
+          "as": "campaign-health-positive",
+          "function": "greater-than",
+          "args": [
+            {
+              "field": "campaign-health"
+            },
+            {
+              "value": 0
+            }
+          ]
+        },
+        {
+          "as": "campaign-health-below-threshold",
+          "function": "greater-than",
+          "args": [
+            {
+              "value": 0.66
+            },
+            {
+              "field": "campaign-health"
+            }
+          ]
+        },
+        {
+          "as": "positive-campaign-health-heading",
+          "function": "if",
+          "args": [
+            {
+              "field": "campaign-health-below-threshold"
+            },
+            {
+              "value": "Your campaigns need attention."
+            },
+            {
+              "field": "factory-heading"
+            }
+          ]
+        },
+        {
+          "as": "heading",
+          "function": "if",
+          "args": [
+            {
+              "field": "campaign-health-positive"
+            },
+            {
+              "field": "positive-campaign-health-heading"
+            },
+            {
+              "field": "factory-heading"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "heading"
+        }
+      ]
+    },
+    {
+      "name": "overview-run-motion-presentation-input",
+      "intent": "Prepare active run state for Overview station presentation.",
+      "from": "overview-run-summary",
+      "compute": [
+        {
+          "as": "overview-presentation-key",
+          "function": "concat",
+          "args": [
+            {
+              "value": "overview"
+            },
+            {
+              "value": "-presentation"
+            }
+          ]
+        },
+        {
+          "as": "active",
+          "function": "greater-than",
+          "args": [
+            {
+              "field": "active-runs"
+            },
+            {
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "overview-presentation-key"
+        },
+        {
+          "field": "active"
+        }
+      ]
+    },
+    {
+      "name": "overview-campaign-station",
+      "intent": "Provide the presentation-ready campaign health station for Overview.",
+      "from": "overview-campaign-health-presentation",
+      "joins": [
+        {
+          "source": "overview-run-motion-presentation-input",
+          "type": "left",
+          "on": [
+            {
+              "left": "overview-presentation-key",
+              "right": "overview-presentation-key"
+            }
+          ],
+          "fields": [
+            {
+              "field": "active",
+              "as": "active"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "campaign-health",
+          "as": "value"
+        },
+        {
+          "field": "campaign-health-display",
+          "as": "display-value"
+        },
+        {
+          "field": "campaign-health-detail",
+          "as": "detail"
+        },
+        {
+          "field": "campaign-health-description",
+          "as": "description"
+        },
+        {
+          "field": "active"
+        }
+      ]
+    },
+    {
+      "name": "overview-repository-station-presentation-input",
+      "intent": "Prepare repository coverage for the presentation-ready Overview station.",
+      "from": "overview-repository-coverage",
+      "compute": [
+        {
+          "as": "overview-presentation-key",
+          "function": "concat",
+          "args": [
+            {
+              "value": "overview"
+            },
+            {
+              "value": "-presentation"
+            }
+          ]
+        },
+        {
+          "as": "display-value",
+          "function": "format-percent",
+          "args": [
+            {
+              "field": "repository-coverage"
+            }
+          ]
+        },
+        {
+          "as": "reached-repositories-display",
+          "function": "format-count",
+          "args": [
+            {
+              "field": "reached-repositories"
+            }
+          ]
+        },
+        {
+          "as": "registered-repositories-display",
+          "function": "format-count",
+          "args": [
+            {
+              "field": "registered-repositories-total"
+            }
+          ]
+        },
+        {
+          "as": "detail",
+          "function": "concat",
+          "args": [
+            {
+              "field": "reached-repositories-display"
+            },
+            {
+              "value": "/"
+            },
+            {
+              "field": "registered-repositories-display"
+            },
+            {
+              "value": " repositories reached"
+            }
+          ]
+        },
+        {
+          "as": "description",
+          "function": "concat",
+          "args": [
+            {
+              "field": "display-value"
+            },
+            {
+              "value": " average repository coverage"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "overview-presentation-key"
+        },
+        {
+          "field": "repository-coverage",
+          "as": "value"
+        },
+        {
+          "field": "display-value"
+        },
+        {
+          "field": "detail"
+        },
+        {
+          "field": "description"
+        }
+      ]
+    },
+    {
+      "name": "overview-repository-station",
+      "intent": "Provide the presentation-ready repository coverage station for Overview.",
+      "from": "overview-repository-station-presentation-input",
+      "joins": [
+        {
+          "source": "overview-run-motion-presentation-input",
+          "type": "left",
+          "on": [
+            {
+              "left": "overview-presentation-key",
+              "right": "overview-presentation-key"
+            }
+          ],
+          "fields": [
+            {
+              "field": "active",
+              "as": "active"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "value"
+        },
+        {
+          "field": "display-value"
+        },
+        {
+          "field": "detail"
+        },
+        {
+          "field": "description"
+        },
+        {
+          "field": "active"
+        }
+      ]
+    },
+    {
+      "name": "overview-campaign-links",
+      "intent": "Provide one navigation row per registered campaign that opens its dedicated campaign view.",
+      "description": "Registered campaigns with a resolved dashboard link to their dedicated campaign view.",
+      "from": "campaigns",
+      "joins": [
+        {
+          "source": "campaign-runtime-problem-counts",
+          "type": "left",
+          "on": [
+            {
+              "left": "campaign",
+              "right": "campaign"
+            }
+          ],
+          "fields": [
+            {
+              "field": "problem-partitions",
+              "as": "observed-problem-partitions"
+            }
+          ]
+        }
+      ],
+      "compute": [
+        {
+          "as": "problem-partitions",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "observed-problem-partitions"
+            },
+            {
+              "value": 0
+            }
+          ]
+        },
+        {
+          "as": "has-runtime-problems",
+          "function": "greater-than",
+          "args": [
+            {
+              "field": "problem-partitions"
+            },
+            {
+              "value": 0
+            }
+          ]
+        },
+        {
+          "as": "problem-indicator",
+          "function": "if",
+          "args": [
+            {
+              "field": "has-runtime-problems"
+            },
+            {
+              "value": "alert"
+            },
+            {
+              "value": ""
+            }
+          ]
+        },
+        {
+          "as": "problem-count-label",
+          "function": "format-count",
+          "args": [
+            {
+              "field": "problem-partitions"
+            }
+          ]
+        },
+        {
+          "as": "problem-indicator-label",
+          "function": "concat",
+          "args": [
+            {
+              "value": "Current failing workflow or target partitions: "
+            },
+            {
+              "field": "problem-count-label"
+            }
+          ]
+        },
+        {
+          "as": "encoded-campaign",
+          "function": "url-encode",
+          "args": [
+            {
+              "field": "campaign"
+            }
+          ]
+        },
+        {
+          "as": "campaign-dashboard-href",
+          "function": "concat",
+          "args": [
+            {
+              "value": "#page-campaign-insights?campaign="
+            },
+            {
+              "field": "encoded-campaign"
+            }
+          ]
+        },
+        {
+          "as": "campaign-dashboard-label",
+          "function": "concat",
+          "args": [
+            {
+              "value": "View "
+            },
+            {
+              "field": "campaign-name"
+            },
+            {
+              "value": " campaign dashboard"
+            }
+          ]
+        },
+        {
+          "as": "campaign-dashboard-link",
+          "function": "dashboard-link",
+          "args": [
+            {
+              "value": ""
+            },
+            {
+              "field": "campaign-dashboard-href"
+            },
+            {
+              "field": "campaign-dashboard-label"
+            },
+            {
+              "field": "campaign"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "campaign"
+        },
+        {
+          "field": "campaign-name"
+        },
+        {
+          "field": "campaign-icon"
+        },
+        {
+          "field": "problem-indicator"
+        },
+        {
+          "field": "problem-indicator-label"
+        },
+        {
+          "field": "campaign-dashboard-link"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "campaign-name",
+          "direction": "asc"
+        }
+      ]
+    },
+    {
+      "name": "cost-by-campaign",
+      "intent": "Present observed AI Credit cost grouped by centrally managed campaign.",
+      "from": "campaign-inventory",
+      "select": [
+        {
+          "field": "campaign-name"
+        },
+        {
+          "field": "campaign-dashboard-link"
+        },
+        {
+          "field": "aic"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "aic",
+          "direction": "desc"
+        }
+      ]
+    },
+    {
+      "name": "cost-by-repository",
+      "intent": "Present observed AI Credit cost grouped by repository.",
+      "from": "repository-aic-totals",
+      "compute": [
+        {
+          "as": "repository-coordinate",
+          "function": "concat",
+          "args": [
+            {
+              "field": "organization"
+            },
+            {
+              "value": "/"
+            },
+            {
+              "field": "repository"
+            }
+          ]
+        },
+        {
+          "as": "encoded-repository",
+          "function": "url-encode",
+          "args": [
+            {
+              "field": "repository-coordinate"
+            }
+          ]
+        },
+        {
+          "as": "repository-dashboard-href",
+          "function": "concat",
+          "args": [
+            {
+              "value": "#page-repository-detail?repository="
+            },
+            {
+              "field": "encoded-repository"
+            }
+          ]
+        },
+        {
+          "as": "repository-dashboard-label",
+          "function": "concat",
+          "args": [
+            {
+              "value": "View "
+            },
+            {
+              "field": "repository-coordinate"
+            },
+            {
+              "value": " repository dashboard"
+            }
+          ]
+        },
+        {
+          "as": "repository-dashboard-link",
+          "function": "dashboard-link",
+          "args": [
+            {
+              "value": ""
+            },
+            {
+              "field": "repository-dashboard-href"
+            },
+            {
+              "field": "repository-dashboard-label"
+            },
+            {
+              "field": "repository-coordinate"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "repository-coordinate"
+        },
+        {
+          "field": "repository-dashboard-link"
+        },
+        {
+          "field": "aic"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "aic",
+          "direction": "desc"
+        }
+      ]
+    },
+    {
+      "name": "cost-by-workflow",
+      "intent": "Present observed AI Credit cost grouped by repository-owned workflow.",
+      "from": "workflow-aic-totals",
+      "compute": [
+        {
+          "as": "repository-coordinate",
+          "function": "concat",
+          "args": [
+            {
+              "field": "organization"
+            },
+            {
+              "value": "/"
+            },
+            {
+              "field": "repository"
+            }
+          ]
+        },
+        {
+          "as": "workflow-coordinate",
+          "function": "concat",
+          "args": [
+            {
+              "field": "organization"
+            },
+            {
+              "value": "/"
+            },
+            {
+              "field": "repository"
+            },
+            {
+              "value": ":"
+            },
+            {
+              "field": "workflow"
+            }
+          ]
+        },
+        {
+          "as": "encoded-workflow",
+          "function": "url-encode",
+          "args": [
+            {
+              "field": "workflow-coordinate"
+            }
+          ]
+        },
+        {
+          "as": "workflow-dashboard-href",
+          "function": "concat",
+          "args": [
+            {
+              "value": "#page-workflow-runtime?workflow="
+            },
+            {
+              "field": "encoded-workflow"
+            }
+          ]
+        },
+        {
+          "as": "workflow-dashboard-label",
+          "function": "concat",
+          "args": [
+            {
+              "value": "View "
+            },
+            {
+              "field": "workflow-coordinate"
+            },
+            {
+              "value": " workflow dashboard"
+            }
+          ]
+        },
+        {
+          "as": "workflow-dashboard-link",
+          "function": "dashboard-link",
+          "args": [
+            {
+              "value": ""
+            },
+            {
+              "field": "workflow-dashboard-href"
+            },
+            {
+              "field": "workflow-dashboard-label"
+            },
+            {
+              "field": "workflow-coordinate"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "repository-coordinate"
+        },
+        {
+          "field": "workflow"
+        },
+        {
+          "field": "workflow-coordinate"
+        },
+        {
+          "field": "workflow-dashboard-link"
+        },
+        {
+          "field": "aic"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "aic",
+          "direction": "desc"
+        }
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "id": "overview",
+      "kind": "custom",
+      "title": "Overview",
+      "navigation-label": "Overview",
+      "icon": "home",
+      "class-name": "dashboard-overview-page",
+      "views": [
+        {
+          "id": "overview-header",
+          "title": "How are we doing?",
+          "description": "Campaign health measures campaigns without current runtime errors; repository coverage measures registered repositories reached by successful worker execution.",
+          "data": {
+            "sources": [
+              "overview-header-presentation",
+              "overview-rhythm"
+            ]
+          },
+          "mark": "element",
+          "element": "factory-header",
+          "layout": "full"
+        },
+        {
+          "id": "overview-floor",
+          "title": "Campaign overview",
+          "intent": "Show the registered campaign and repository inventory while preserving their investigation routes.",
+          "data": {
+            "sources": [
+              "overview-campaign-station",
+              "overview-repository-station"
+            ]
+          },
+          "mark": "element",
+          "element": "factory-floor",
+          "config": {
+            "animate": "number",
+            "stations": [
+              "campaigns",
+              "repositories"
+            ]
+          },
+          "layout": "full"
+        },
+        {
+          "id": "overview-campaigns",
+          "title": "Campaigns",
+          "intent": "Provide direct navigation to every registered campaign through the same Insights route used by the campaign inventory.",
+          "data": {
+            "sources": [
+              "overview-campaign-links"
+            ]
+          },
+          "mark": "element",
+          "element": "link-button-list",
+          "config": {
+            "label-field": "campaign-name",
+            "link-field": "campaign-dashboard-link",
+            "icon-field": "campaign-icon",
+            "fallback-icon": "goal",
+            "indicator-field": "problem-indicator",
+            "indicator-label-field": "problem-indicator-label",
+            "empty-message": "No campaigns are registered."
+          },
+          "layout": "full"
+        }
+      ]
+    },
+    {
+      "id": "cost",
+      "kind": "custom",
+      "title": "Cost",
+      "navigation-label": "Cost",
+      "icon": "credit-card",
+      "description": "Observed AI Credit cost across campaigns, repositories, and workflows.",
+      "views": [
+        {
+          "id": "cost-by-campaign",
+          "title": "Cost per campaign",
+          "description": "The share of observed AI Credit cost attributed to each centrally managed campaign.",
+          "data": {
+            "source": "cost-by-campaign"
+          },
+          "mark": "chart",
+          "chart": "pie",
+          "layout": "full",
+          "empty-message": "No campaign AI Credit cost was observed.",
+          "encoding": {
+            "x": {
+              "field": "campaign-name",
+              "type": "nominal",
+              "title": "Campaign"
+            },
+            "y": {
+              "field": "aic",
+              "type": "quantitative",
+              "title": "AIC cost",
+              "unit": "aic"
+            },
+            "href": {
+              "field": "campaign-dashboard-link"
+            }
+          }
+        },
+        {
+          "id": "cost-by-repository",
+          "title": "Cost per repository",
+          "description": "The share of observed AI Credit cost attributed to each repository.",
+          "data": {
+            "source": "cost-by-repository"
+          },
+          "mark": "chart",
+          "chart": "pie",
+          "layout": "full",
+          "empty-message": "No repository AI Credit cost was observed.",
+          "encoding": {
+            "x": {
+              "field": "repository-coordinate",
+              "type": "nominal",
+              "title": "Repository"
+            },
+            "y": {
+              "field": "aic",
+              "type": "quantitative",
+              "title": "AIC cost",
+              "unit": "aic"
+            },
+            "href": {
+              "field": "repository-dashboard-link"
+            }
+          }
+        },
+        {
+          "id": "cost-by-workflow",
+          "title": "Cost per workflow",
+          "description": "The share of observed AI Credit cost attributed to each workflow.",
+          "data": {
+            "source": "cost-by-workflow",
+            "order-by": [
+              {
+                "field": "aic",
+                "direction": "desc"
+              }
+            ],
+            "limit": 100
+          },
+          "mark": "chart",
+          "chart": "horizontal-bar",
+          "layout": "full",
+          "empty-message": "No workflow AI Credit cost was observed.",
+          "encoding": {
+            "x": {
+              "field": "workflow",
+              "type": "nominal",
+              "title": "Workflow",
+              "format": "workflow-relative-path"
+            },
+            "section": {
+              "field": "repository-coordinate",
+              "type": "nominal",
+              "title": "Repository"
+            },
+            "y": {
+              "field": "aic",
+              "type": "quantitative",
+              "title": "AIC cost",
+              "unit": "aic"
+            },
+            "href": {
+              "field": "workflow-dashboard-link"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "notifications",
+      "kind": "custom",
+      "class-name": "notifications-page",
+      "title": "Notifications",
+      "navigation-label": "Notifications",
+      "icon": "bell",
+      "description": "Grouped repeated workflow failures and unresolved outputs explicitly awaiting human review in the selected snapshot horizon.",
+      "route": {
+        "navigation-page": "overview"
+      },
+      "views": [
+        {
+          "id": "notifications-list",
+          "title": "Notifications",
+          "description": "Open the retained GitHub evidence to investigate or complete the indicated review. Opening a link does not execute an action.",
+          "data": {
+            "source": "overview-needs-attention"
+          },
+          "mark": "list",
+          "list": {
+            "style": "entity-cards",
+            "appearance": "grouped",
+            "card": "attention-signal",
+            "icon": "bell",
+            "drill": {
+              "type": "external",
+              "field": "evidence-link"
+            }
+          },
+          "empty-message": "No notifications require attention.",
+          "layout": "full-view",
+          "encoding": {
+            "columns": [
+              {
+                "field": "title",
+                "type": "nominal",
+                "title": "Signal"
+              },
+              {
+                "field": "kind",
+                "type": "nominal",
+                "title": "Kind"
+              },
+              {
+                "field": "scope",
+                "type": "nominal",
+                "title": "Scope"
+              },
+              {
+                "field": "reason",
+                "type": "nominal",
+                "title": "Reason"
+              },
+              {
+                "field": "action",
+                "type": "nominal",
+                "title": "Next step"
+              },
+              {
+                "field": "observed-at",
+                "type": "temporal",
+                "title": "Observed",
+                "format": "human-friendly-timestamp"
+              },
+              {
+                "field": "evidence-link",
+                "type": "nominal",
+                "title": "Evidence"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

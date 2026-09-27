@@ -13,7 +13,7 @@ import { externalAnchorAttrs, findFirstLink, findLink, renderExternalLink, rende
 import { createEntityAwareCellRenderer } from './linked-text.js';
 import { renderTableRegion } from './table-region.js';
 import { renderPageSection, renderViewSectionChrome } from './view-chrome.js';
-import { renderCloseButton, isPlainObject, isSafeHttpsUrl, createCopyControl, createModalDialog, observeLoadMoreBoundary } from './ui-primitives.js';
+import { renderCloseButton, isPlainObject, isSafeHttpsUrl, createCopyControl, createModalDialog, observeLoadMoreBoundary, renderIconSpan } from './ui-primitives.js';
 import { clearTimeWindowFilter, isTimeWindowFilterActive } from './filter-bar.js';
 import { processScatterPoints } from '../data-processor.js';
 import { MAX_RENDERED_SCATTER_POINTS } from '../scatter-clustering.js';
@@ -170,7 +170,7 @@ function renderMetricView(context) {
       ...(animateNumber ? { style: `--metric-number-target: ${displayedValue}` } : {})
     }, animateNumber ? h('span', { className: 'metric-number-animated-value' }, displayedValue) : displayedValue),
     h(headingTag, { className: 'metric-card-widget-label' }, title),
-    h('span', { className: 'metric-card-widget-icon', 'aria-hidden': 'true' }, octicon(icon)),
+    renderIconSpan('metric-card-widget-icon', icon, { ariaHidden: true }),
     ...renderViewSectionChrome(metadata, contextDetails));
   }
 
@@ -259,7 +259,7 @@ function renderListView(context) {
     return h(
       'li',
       { className: 'document-list-card', 'data-custom-row-key': `${pageId}-${title}-${index}` },
-      h('span', { className: 'document-list-card-icon', 'aria-hidden': 'true' }, octicon(icon)),
+      renderIconSpan('document-list-card-icon', icon, { ariaHidden: true }),
       h(
         'div',
         { className: 'document-list-card-content' },
@@ -326,6 +326,7 @@ function renderEntityCardListView(options) {
     ? view.list.drill
     : isPlainObject(definition.drill) ? definition.drill : null;
   const grouped = isPlainObject(view.list) && view.list.appearance === 'grouped';
+  const marketplace = isPlainObject(view.list) && view.list.appearance === 'marketplace';
   const cards = renderEntityCardItems(rows, {
     pageId,
     title,
@@ -333,7 +334,7 @@ function renderEntityCardListView(options) {
     toText,
     definition,
     drill,
-    chevron: grouped
+    chevron: grouped || marketplace
   });
   const emptyMessage = metadata.availability === 'unavailable'
     ? 'Data is unavailable for this view.'
@@ -348,7 +349,7 @@ function renderEntityCardListView(options) {
       h('header', { className: 'document-list-header' }, view.description ? h('p', null, view.description) : null, listAction),
       cards.length > 0
         ? h('ul', {
-          className: `document-list issue-list entity-card-list${isPlainObject(view.list) && view.list.layout === 'grid' ? ' entity-card-list-grid' : ''}${grouped ? ' entity-card-list-grouped' : ''}`,
+          className: `document-list issue-list entity-card-list${isPlainObject(view.list) && view.list.layout === 'grid' ? ' entity-card-list-grid' : ''}${grouped ? ' entity-card-list-grouped' : ''}${marketplace ? ' entity-card-list-marketplace' : ''}`,
           'data-custom-view-mark': 'list'
         }, cards)
         : h('p', { className: 'document-list-empty' }, emptyMessage),
@@ -442,7 +443,7 @@ function renderEntityCardItems(rows, options) {
       return [h(
         'li',
         { className: 'entity-card-list-timing-item' },
-        h('span', { className: 'entity-card-list-timing-icon', 'aria-hidden': 'true' }, octicon(column.icon)),
+        renderIconSpan('entity-card-list-timing-icon', column.icon, { ariaHidden: true }),
         h('span', { className: 'entity-card-list-timing-value' }, renderValue(column, value, row))
       )];
     });
@@ -536,7 +537,7 @@ function renderEntityCardItems(rows, options) {
         )
         : null,
       chevron && target
-        ? h('span', { className: 'entity-card-list-chevron', 'aria-hidden': 'true' }, octicon('chevron-right'))
+        ? renderIconSpan('entity-card-list-chevron', 'chevron-right', { ariaHidden: true })
         : null,
       actions.length > 0 ? h('div', { className: 'entity-card-list-actions' }, ...actions) : null
     );
@@ -642,7 +643,7 @@ function renderIssueListView(options) {
     return h(
       'li',
       { className: 'issue-list-card', 'data-custom-row-key': `${pageId}-${title}-${index}` },
-      h('span', { className: 'issue-list-card-icon', 'aria-hidden': 'true' }, octicon(icon)),
+      renderIconSpan('issue-list-card-icon', icon, { ariaHidden: true }),
       h(
         'div',
         { className: 'issue-list-card-content' },

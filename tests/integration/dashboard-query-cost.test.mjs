@@ -11,10 +11,7 @@ import {
   dashboardQueryCostMarkdown,
   readSnapshotDatabaseVersion,
 } from "../helpers/dashboard-query-cost.mjs";
-
-const dashboardDocument = JSON.parse(
-  await readFile("dashboard/site/dashboard.json", "utf8"),
-);
+import { authoritativeDashboard as dashboardDocument } from "../helpers/authoritative-dashboard.mjs";
 
 /** Builds a small canonical SQLite snapshot with the shipped ingestion path. */
 async function syntheticSnapshot() {
@@ -89,6 +86,36 @@ test("benchmark measures computational and space cost per query", async (t) => {
   for (const measurement of report.measurements) {
     assert.ok(markdown.includes(`\`${measurement.query}\``), `${measurement.query} is missing`);
   }
+});
+
+test("benchmark keeps indexing table-count dependencies available", async (t) => {
+  const { root, database } = await syntheticSnapshot();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const queries = dashboardDocument.dashboard.queries;
+  const indexing = queries.find((query) => query.name === "indexing-database-table-counts");
+  const document = {
+    dashboard: {
+      ...dashboardDocument.dashboard,
+      queries: [
+        ...queries.filter((query) => (
+          query.name === indexing.from || indexing.union.includes(query.name)
+        )),
+        indexing,
+      ],
+    },
+  };
+
+  const report = await benchmarkDashboardQueryCost({
+    databasePath: database,
+    document,
+    limit: document.dashboard.queries.length,
+  });
+  const measurement = report.measurements.find(
+    ({ query }) => query === "indexing-database-table-counts",
+  );
+
+  assert.equal(measurement.status, "available", measurement.failure);
+  assert.ok(measurement.rows > 0);
 });
 
 test("benchmark reports an empty snapshot instead of an all-zero measurement", async (t) => {

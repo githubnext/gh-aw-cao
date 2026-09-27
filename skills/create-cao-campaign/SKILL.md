@@ -28,6 +28,7 @@ For Copilot-backed workflows, checking the control repository owner's organizati
    - worker responsibilities and boundaries
    - triggers and rollout expectations
    - required permissions, tools, network access, and safe outputs
+   - bounded cross-run state that belongs in campaign-scoped repo-memory
    - evidence that constitutes completion or a no-op
 4. Ask only for decisions that cannot be inferred safely. If the strategy is broad, split it into workers by independently dispatchable responsibility, not by implementation step.
 5. Create the orchestrator and every worker under `.github/workflows/` in the same change. After each worker's intent and acceptance conditions are stable, use the upstream `github/gh-aw` `.github/skills/operational-value-designer/SKILL.md` through the router to design its deterministic per-run evaluator. Adopt a measurable worker and its evaluator together in one commit when the skill identifies a meaningful measurable outcome; record an explicit not-measurable conclusion when it does not.
@@ -119,6 +120,19 @@ Do not use sub-issue grouping as backlog control. Grouping can improve navigatio
 
 The orchestrator owns idempotent selection and dispatch. Workers own idempotent repository outputs because they determine whether issues, pull requests, discussions, comments, or reviews represent the same underlying target work.
 
+### Campaign Memory
+
+Give every operational campaign durable repo-memory scoped by its campaign identifier. At minimum, configure the orchestrator with:
+
+```yaml
+repo-memory:
+  branch-name: "memory/<campaign-slug>"
+```
+
+The orchestrator prompt must read and use `$GH_AW_MEMORY_DIR` before selecting dispatches, then update it after selection with only the bounded cross-run state that improves future dispatch decisions, such as stable target fingerprints, prior dispatch outcomes, rotation cursors, or retry suppression. Encourage workers to use the same campaign memory branch when shared history prevents repeated analysis or coordinates campaign-level outcomes; omit worker access when their work is intentionally stateless.
+
+Treat repo-memory as advisory campaign state, never as policy, target authority, credential storage, or a substitute for current repository evidence. Define a compact schema and retention bound, validate memory before use, recover safely when it is missing or malformed, and never persist secrets, raw repository content, prompts, logs, or unbounded API responses.
+
 ### Orchestrator
 
 Create `.github/workflows/<campaign>.md` with:
@@ -129,6 +143,7 @@ Create `.github/workflows/<campaign>.md` with:
 - singleton campaign concurrency with `group: "${{ github.workflow }}"` and `cancel-in-progress: true`, so overlapping scheduled and manual orchestrator runs cannot emit parallel dispatch sets
 - the standard dispatch inputs: `target_repo`, `safe_output_repo`, `max_repos`, `rollout_percent`, and `safe_output_mode` with `review` and `live` choices, defaulting to `review`
 - `shared/control.md` imported with a static `campaign` slug, `role: orchestrator`, and request-only narrowing inputs.
+- `repo-memory.branch-name` set to `memory/<campaign-slug>`, plus prompt instructions that read and use `$GH_AW_MEMORY_DIR` for bounded cross-run dispatch state
 - the campaign and every worker declared in `.github/workflows/cao.json`, with each worker's exact `workflow` slug recorded there; the resolver must load this catalog from policy rather than hard-code campaign identities
 - least-privilege permissions, explicit tools/network configuration, `strict: true`, and a bounded `max-ai-credits`
 - `safe-outputs.dispatch-workflow.workflows` listing every worker slug and a `max` consistent with `max_repos` and worker count; require each run to emit at most one dispatch for each unique worker, target repository, and effective mode tuple
@@ -239,7 +254,8 @@ Before finishing:
 14. Confirm every orchestrator and worker uses the same optional `.github/cao/<campaign-slug>.md` runtime import and that no campaign-owned steering file was added.
 15. Confirm every worker that creates an issue, pull request, comment, or review applies the complete report contract to its output body: the visible report is delightful, precise, terse, and compact enough for a single screen; it starts directly with a concise executive-summary paragraph and no heading before it; one clear `**Action:**` follows it; critical information stays visible; non-essential background and supporting detail use `<details><summary><b>...</b></summary>...</details>` sections; every table is inside `<details>`; headings use only `###`; and callouts use `> [!NOTE]`, `> [!WARNING]`, or `> [!CAUTION]` instead of emoji severity markers.
 16. For workflows that consume recent run history, confirm they prefer a valid activity cache, preserve a bounded API fallback for cache misses or incomplete coverage, and do not publish or mutate the shared cache themselves.
-17. Confirm orchestrator concurrency is campaign-singleton, dispatch tuples are unique per run, worker concurrency is repository-scoped, and output-specific idempotency prevents retries or later runs from creating equivalent repository items. Confirm expiration is used only for cleanup and grouping is not treated as duplicate prevention.
-18. When the campaign contributes `problem-clustering.mjs`, run it against a representative Activity SQLite fixture and verify zero-, one-, and multiple-record JSONL sequences, stable IDs, required actionable fix prompts, bounded evidence, deterministic ordering, an empty result, malformed output, failure, and timeout behavior. Confirm the campaign manifest installs the script at `<campaign-slug>/problem-clustering.mjs`.
+17. Confirm the orchestrator configures `repo-memory.branch-name` as `memory/<campaign-slug>`, reads and uses `$GH_AW_MEMORY_DIR` before dispatch selection, and writes only bounded advisory campaign state; confirm each stateful worker shares that branch and each intentionally stateless worker omits it.
+18. Confirm orchestrator concurrency is campaign-singleton, dispatch tuples are unique per run, worker concurrency is repository-scoped, and output-specific idempotency prevents retries or later runs from creating equivalent repository items. Confirm expiration is used only for cleanup and grouping is not treated as duplicate prevention.
+19. When the campaign contributes `problem-clustering.mjs`, run it against a representative Activity SQLite fixture and verify zero-, one-, and multiple-record JSONL sequences, stable IDs, required actionable fix prompts, bounded evidence, deterministic ordering, an empty result, malformed output, failure, and timeout behavior. Confirm the campaign manifest installs the script at `<campaign-slug>/problem-clustering.mjs`.
 
 Report the created campaign, worker responsibilities, shared imports, checked-in policy fields, per-worker operational-grader metric or not-measurable conclusion, and validation results.

@@ -11,7 +11,8 @@ const COLLECTIONS = {
   tool: 'tools',
   audit: 'audits',
   issue: 'issues',
-  'operational-value': 'operationalValues'
+  'operational-value': 'operationalValues',
+  'marketplace-package': 'marketplacePackages'
 };
 const RUN_LINKED_COLLECTIONS = /** @type {const} */ (['domains', 'tools', 'audits', 'issues']);
 
@@ -46,6 +47,8 @@ function identityFor(observation) {
       requiredString(data.repository, 'run.repository'),
       requiredIdentifier(data.githubRunId, 'run.githubRunId')
     );
+    case 'marketplace-package':
+      return requiredString(data.id, 'marketplacePackage.id');
     case 'issue': {
       const coordinates = data.owner !== undefined
         && data.repository !== undefined
@@ -139,7 +142,8 @@ export function normalize(observations, options = {}) {
     tools: new Map(),
     audits: new Map(),
     issues: new Map(),
-    operationalValues: new Map()
+    operationalValues: new Map(),
+    marketplacePackages: new Map()
   };
 
   const sorted = [...observations].sort((left, right) => compareObservations(left, right, sourcePrecedence));

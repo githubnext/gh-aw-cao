@@ -16,8 +16,9 @@ import { usesRemoteDataBackend } from "../remote-data-backend.js";
 /** @typedef {{ pageId?: string, viewId?: string, sourceIndex?: number, queryContext?: DashboardQueryContext }} BatchedSourceOptions */
 
 /**
- * Coalesces source requests issued by one view in the same turn so the worker
- * reads and projects their shared canonical dependencies only once.
+ * Coalesces source requests issued by one page in the same turn so the worker
+ * reads and projects shared canonical dependencies only once. Requests with
+ * distinct query contexts remain isolated.
  *
  * @param {{ githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[], queries?: unknown[], views?: unknown[] }} dashboardContext
  * @returns {(name: string, options?: BatchedSourceOptions) => Promise<import("../presenter.js").LogicalSourceInput | undefined>}
@@ -37,7 +38,6 @@ export function createBatchedSourceLoader(dashboardContext) {
       for (const request of requests) {
         const key = JSON.stringify([
           request.options?.pageId ?? null,
-          request.options?.viewId ?? null,
           request.options?.queryContext ?? null,
         ]);
         const group = groups.get(key) ?? [];
@@ -48,6 +48,7 @@ export function createBatchedSourceLoader(dashboardContext) {
       await Promise.all([...groups.values()].map(async (group) => {
         const [{ options }] = group;
         const names = [...new Set(group.map(({ name }) => name))];
+        const viewIds = new Set(group.map(({ options: requestOptions }) => requestOptions?.viewId));
         try {
           const sources = await loadCanonicalDashboardPage(
             names,
@@ -55,7 +56,7 @@ export function createBatchedSourceLoader(dashboardContext) {
             undefined,
             {
               pageId: options?.pageId,
-              viewId: options?.viewId,
+              viewId: viewIds.size === 1 ? options?.viewId : undefined,
               queryContext: options?.queryContext,
             },
           );

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   dashboardPageChunkPath,
+  dashboardPageAllSourceNames,
   dashboardPageIsLoaded,
   dashboardPageLazySourceNames,
   dashboardPageSourcesAreIndependentlyBound,
@@ -69,6 +70,14 @@ describe('dashboard-chunks source discovery', () => {
     expect(dashboardPageSourceNames(sampleDocument(), 'alpha-page')).toEqual(['alpha-source', 'callout-source']);
     expect(dashboardPageSourceNames(sampleDocument(), 'alpha-page', 'table')).toEqual(['alpha-source', 'callout-source']);
     expect(dashboardPageSourceNames(sampleDocument(), 'nonexistent-page')).toEqual([]);
+  });
+
+  it('includes independently loaded element sources for whole-page measurement', () => {
+    expect(dashboardPageSourceNames(sampleDocument(), 'factory-page')).toEqual(['callout-source']);
+    expect(dashboardPageAllSourceNames(sampleDocument(), 'factory-page')).toEqual([
+      'callout-source',
+      'factory-summary',
+    ]);
   });
 
   it('requests only sources used by the selected view mode', () => {

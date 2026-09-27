@@ -7,7 +7,7 @@ import { createDebug } from '../debug.js';
 const debugCliActions = createDebug('cli-actions');
 
 const endpoint = './__cli_action';
-/** @type {Array<{ id: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'view'|'row', arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>} */
+/** @type {Array<{ id: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'view'|'row', 'copy-only'?: boolean, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>} */
 let declaredCliActions = [];
 let declaredCliActionsCanExecute = true;
 /** @type {Record<string, string>} */
@@ -89,7 +89,7 @@ function resultText(result) {
  */
 export function createPromptCliActionControl(actionId, getPrompt) {
   const action = declaredCliActions.find((candidate) => candidate.id === actionId);
-  if (!declaredCliActionsCanExecute || !action) return null;
+  if (!declaredCliActionsCanExecute || !action || action['copy-only'] === true) return null;
   const status = /** @type {HTMLOutputElement} */ (renderLiveRegion('output', 'table-intent-copy-status'));
   const output = h('pre', { className: 'cli-action-output', hidden: true });
   const button = /** @type {HTMLButtonElement} */ (h('button', {
@@ -133,20 +133,32 @@ export function createPromptCliActionControl(actionId, getPrompt) {
  * @param {Record<string, string>} templateValues
  */
 function commandPreview(action, values, templateValues) {
-  return [
+  const command = [
     renderCliActionCommand(action.command, templateValues),
     ...(action.arguments ?? []).filter((argument) => values[argument.id]).map((argument) => argument.flag)
   ].join(' ');
+  const userAgentData = typeof navigator === 'undefined'
+    ? undefined
+    : /** @type {{ platform?: unknown }} */ (Reflect.get(navigator, 'userAgentData'));
+  const platform = typeof userAgentData?.platform === 'string'
+    ? userAgentData.platform
+    : typeof navigator === 'undefined' ? '' : navigator.platform || navigator.userAgent;
+  const userAgent = typeof navigator === 'undefined' ? '' : navigator.userAgent;
+  // Windows terminals need an explicit Bash interpreter; leave other commands untouched.
+  return (/^win/i.test(platform) || /windows/i.test(userAgent))
+    && /^(?:"[^"]+\.sh"|'[^']+\.sh'|\S+\.sh)(?:\s|$)/.test(command)
+    ? `bash ${command}`
+    : command;
 }
 
 /**
- * @param {{ id: string, label: string, description?: string, icon: string, command: string, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }} action
+ * @param {{ id: string, label: string, description?: string, icon: string, command: string, 'copy-only'?: boolean, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }} action
  * @param {{ presentation?: 'menu'|'settings'|'row', templateValues?: Record<string, string>, canExecute?: boolean, showRowLabel?: boolean }} [options]
  */
 function renderCliActionControl(action, options = {}) {
   const settingsPresentation = options.presentation === 'settings';
   const rowPresentation = options.presentation === 'row';
-  const canExecute = options.canExecute !== false;
+  const canExecute = options.canExecute !== false && action['copy-only'] !== true;
   const templateValues = options.templateValues ?? {};
   const argumentValues = Object.fromEntries(
     (action.arguments ?? []).map((argument) => [argument.id, argument.default === true])
@@ -340,7 +352,7 @@ export function renderDeclaredCliAction(actionId, templateValues = {}) {
 /**
  * Render dashboard-declared CLI actions. Every invocation requires a fresh,
  * explicit confirmation; approval is never persisted or inferred.
- * @param {Array<{ id: string, label: string, description?: string, icon: string, command: string, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }> | undefined} actions
+ * @param {Array<{ id: string, label: string, description?: string, icon: string, command: string, 'copy-only'?: boolean, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }> | undefined} actions
  * @param {{ presentation?: 'menu'|'settings', templateValues?: Record<string, string>, canExecute?: boolean }} [options]
  * @returns {HTMLElement | null}
  */

@@ -57,6 +57,7 @@ test("deployed integration pull request trigger only watches query benchmark inp
   assert.ok(Array.isArray(paths), "expected pull_request.paths trigger list");
   for (const path of [
     "dashboard/site/dashboard.json",
+    "dashboard/site/dashboard-fragments/**",
     "dashboard/site/dashboard-pages/**",
     "dashboard/site/src/data/**",
     "dashboard/site/src/data-*.js",
@@ -86,6 +87,7 @@ test("deployed integration pull request trigger only watches query benchmark inp
     assert.ok(!paths.includes(path), `unexpected broad trigger path ${path}`);
   }
   const allowedDashboardSiteWildcards = new Set([
+    "dashboard/site/dashboard-fragments/**",
     "dashboard/site/dashboard-pages/**",
     "dashboard/site/src/data/**",
   ]);

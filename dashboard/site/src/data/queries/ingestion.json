@@ -7,9 +7,17 @@
     { "name": "$domains", "sources": ["domains"] },
     { "name": "$tools", "sources": ["tools"] },
     { "name": "$audits", "sources": ["audits"] },
-    { "name": "$issues", "sources": ["issues"] }
+    { "name": "$issues", "sources": ["issues"] },
+    { "name": "$marketplace-packages", "sources": ["marketplace-packages"] }
   ],
   "queries": [
+    {
+      "name": "marketplace-package-records",
+      "from": "$marketplace-packages",
+      "compute": [
+        { "as": "_observed-at", "function": "coalesce", "args": [{ "field": "observed-at" }, { "field": "__source-observed-at" }] }
+      ]
+    },
     {
       "name": "campaign-records",
       "from": "$campaigns",
@@ -157,6 +165,33 @@
     }
   ],
   "observations": [
+    {
+      "query": "marketplace-package-records",
+      "input": "$marketplace-packages",
+      "kind": "marketplace-package",
+      "sourceId": "id",
+      "observedAt": "_observed-at",
+      "required": ["id", "registry-id", "repository", "ref", "resolved-commit", "source", "add-command"],
+      "data": {
+        "id": { "field": "id" },
+        "registryId": { "field": "registry-id" },
+        "registryName": { "field": "registry-name" },
+        "registryPrecedence": { "field": "registry-precedence" },
+        "name": { "field": "name" },
+        "description": { "field": "description", "default": "" },
+        "publisher": { "field": "publisher", "default": "" },
+        "repository": { "field": "repository" },
+        "path": { "field": "path", "default": "" },
+        "ref": { "field": "ref" },
+        "resolvedCommit": { "field": "resolved-commit" },
+        "version": { "field": "version" },
+        "icon": { "field": "icon", "default": "workflow" },
+        "artwork": { "field": "artwork", "default": "" },
+        "contents": { "field": "contents", "default": [] },
+        "sourceCoordinate": { "field": "source" },
+        "addCommand": { "field": "add-command" }
+      }
+    },
     {
       "query": "campaign-records", "input": "$campaigns", "kind": "campaign", "sourceId": "_slug", "observedAt": "_observed-at", "required": ["_slug"],
       "data": {

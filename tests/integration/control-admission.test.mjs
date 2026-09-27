@@ -92,6 +92,11 @@ test("CAO admission authorizes a declared campaign before activation", () => {
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, [
     "::group::Central Agentic Ops admission",
+    '[cao] {"decision":"admission-inputs","outcome":"accepted","campaign":"dependabot","role":"orchestrator","worker":"none","target_requested":false,"mode_narrowing_requested":false,"repository_limit_requested":false,"rollout_narrowing_requested":false}',
+    '[cao] {"decision":"policy-source","outcome":"loaded","source":"github.workflow_sha"}',
+    '[cao] {"decision":"policy-document","outcome":"validated"}',
+    '[cao] {"decision":"effective-policy","outcome":"authorized","reason":"authorized"}',
+    '[cao] {"decision":"github-api-capacity","outcome":"available","required":100,"remaining":5000,"limit":5000}',
     "[CAO] Admission authorized.",
     "::endgroup::",
     "",
@@ -123,6 +128,11 @@ test("CAO admission emits plain logs outside GitHub Actions", () => {
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, [
     "[CAO] Central Agentic Ops admission",
+    '[cao] {"decision":"admission-inputs","outcome":"accepted","campaign":"dependabot","role":"orchestrator","worker":"none","target_requested":false,"mode_narrowing_requested":false,"repository_limit_requested":false,"rollout_narrowing_requested":false}',
+    '[cao] {"decision":"policy-source","outcome":"loaded","source":"github.workflow_sha"}',
+    '[cao] {"decision":"policy-document","outcome":"validated"}',
+    '[cao] {"decision":"effective-policy","outcome":"authorized","reason":"authorized"}',
+    '[cao] {"decision":"github-api-capacity","outcome":"available","required":100,"remaining":5000,"limit":5000}',
     "[CAO] Admission authorized.",
     "",
   ].join("\n"));
@@ -160,6 +170,8 @@ test("CAO admission denies a disabled campaign without failing the workflow", ()
   assert.equal(admission.checks.find(({ check }) => check === "Workflow identity").status, "passed");
   assert.equal(admission.checks.find(({ check }) => check === "Campaign").status, "failed");
   assert.equal(admission.checks.find(({ check }) => check === "Worker").status, "not-evaluated");
+  assert.match(result.stdout, /\[cao] {"decision":"effective-policy","outcome":"denied","reason":"campaign-disabled"}/);
+  assert.match(result.stdout, /\[cao] {"decision":"github-api-capacity","outcome":"skipped","reason":"policy-denied"}/);
 });
 
 test("CAO admission denies a requested mode that exceeds checked-in policy and marks Mode input", () => {
@@ -228,4 +240,13 @@ test("CAO admission blocks exhausted GitHub API capacity with reset and remediat
   assert.match(summary, /GH_AW_GITHUB_READ_PAT/);
   assert.match(summary, /GH_AW_GITHUB_WRITE_PAT/);
   assert.match(summary, /docs\.github\.com\/en\/rest\/using-the-rest-api\/rate-limits-for-the-rest-api/);
+  assert.match(result.stdout, /\[cao] {"decision":"github-api-capacity","outcome":"limited","required":100,"remaining":0,"limit":5000}/);
+});
+
+test("CAO admission diagnostics never include the API token", () => {
+  const token = "cao-secret-sentinel-value";
+  const { result } = runAdmission({ env: { CAO_API_TOKEN: token } });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(`${result.stdout}\n${result.stderr}`, new RegExp(token));
 });

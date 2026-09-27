@@ -53,6 +53,15 @@ test("cao init writes the minimal control-plane policy scoped to the current rep
       "gh-aw-version": "v0.89.17",
       "control-plane": {
         scope: { "allowed-owners": ["Acme-Org"], "allowed-repositories": ["Acme-Org/ops.tools"] },
+        marketplace: {
+          registries: [{
+            id: "official",
+            name: "Official CAO catalog",
+            repository: "githubnext/gh-aw-cao",
+            ref: "main",
+            auth: { type: "none" },
+          }],
+        },
         campaigns: {},
       },
     });
@@ -605,6 +614,15 @@ test("cao add without a policy initializes it for the current repository before 
     ]);
     assert.deepEqual(JSON.parse(await readFile(policyPath, "utf8"))["control-plane"], {
       scope: { "allowed-owners": ["acme"], "allowed-repositories": ["acme/control"] },
+      marketplace: {
+        registries: [{
+          id: "official",
+          name: "Official CAO catalog",
+          repository: "githubnext/gh-aw-cao",
+          ref: "main",
+          auth: { type: "none" },
+        }],
+      },
       campaigns: {
         dependabot: { workers: { "release-train-updater": { workflow: "dependabot-release-train-updater" } } },
       },

@@ -6,7 +6,7 @@ import { h } from '../dom.js';
 import { renderActiveStateBadge, renderGraderStatusBadge, renderModeBadge, renderStatusBadge } from './badge.js';
 import { renderShortenedUrl, renderWorkflowRunUrl } from './link-content.js';
 import { formatHumanFriendlyTimestamp, formatNumber, formatString, stringOrFallback } from '../view-formatters.js';
-import { formatUtcDateTime, renderDigest, renderMissingValue } from './ui-primitives.js';
+import { formatUtcDateTime, formatMediumUtcDateTimeWithSuffix, renderDigest, renderMissingValue } from './ui-primitives.js';
 
 /**
  * @param {unknown} display
@@ -33,7 +33,7 @@ export function renderCellDisplay(display, value, toText, unit = null, type, for
     const text = format === 'human-friendly-timestamp'
       ? formatHumanFriendlyTimestamp(value)
       : formatUtcDateTime(value);
-    const title = format === 'human-friendly-timestamp' ? `${formatUtcDateTime(value)} UTC` : undefined;
+    const title = format === 'human-friendly-timestamp' ? formatMediumUtcDateTimeWithSuffix(Date.parse(value)) : undefined;
     const ariaLabel = title ? `${text} (${title})` : undefined;
     return h('time', { dateTime: value, title, ariaLabel }, text);
   }

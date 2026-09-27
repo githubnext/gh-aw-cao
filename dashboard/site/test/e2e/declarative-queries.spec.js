@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 const databaseName = 'gh-aw-cao-dashboard-data';
@@ -384,7 +385,7 @@ test('scenario 3: aggregates with grouped, deterministic reducers', async ({ pag
 
 
 test('the authored basic table queries return the populated canonical database rows', async ({ page }) => {
-  const dashboard = JSON.parse(readFileSync(join(siteRoot, 'dashboard.json'), 'utf8'));
+  const dashboard = authoritativeDashboard;
   const requested = ['repository-activity', 'workflow-inventory', 'runs-table', 'campaign-inventory'];
   const payload = await loadThroughWorker(page, dashboard.dashboard.queries, requested);
 

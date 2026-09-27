@@ -36,6 +36,31 @@ Mutating browser requests require the session-bound CSRF token. The webhook
 route is exempt from browser authentication only because it independently
 requires a valid `X-Hub-Signature-256` signature and delivery identity.
 
+API and OAuth abuse is bounded with atomic Redis token buckets shared by all
+server replicas. Authenticated buckets use a digest of the GitHub login, while
+OAuth login uses a digest of the client IP and valid OAuth callbacks use a digest
+of the signed state. Trusted enterprise proxy headers are used only at the
+configured boundary: the final `X-Forwarded-For` value takes precedence, RFC
+7239 `Forwarded` is supported as a fallback, and malformed final values fall
+back to the direct peer rather than an attacker-controlled earlier hop. Query
+requests receive the tightest limit because they consume the most server and
+Redis work. The limiter fails
+closed when Redis is unavailable, and `429` responses communicate the cooldown
+with `Retry-After` plus the standard `RateLimit-*` headers. Health/readiness
+probes remain exempt. GitHub webhooks are exempt from user quotas but cross the
+high-capacity edge bucket before signature validation, bounding invalid request
+bodies and HMAC work without disrupting ordinary delivery retries.
+
+A separate client-IP edge bucket runs before session loading and refresh, so
+invalid or expired sessions cannot bypass abuse controls by failing
+authentication early. At trusted proxy boundaries the server reads forwarded
+addresses from the final header value, including address-and-port forms, and
+ignores caller-supplied earlier entries. Authenticated and valid OAuth callback
+quotas do not coalesce users behind one enterprise egress address. Limiter Redis
+operations have a dedicated two-second deadline to prevent a degraded Redis
+service from holding request workers for the full server I/O timeout. The
+complete normative contract is `specs/server-rate-limiting.md`.
+
 Webhook delivery IDs and projection leases are stored in the deployment Redis
 namespace. Failed reconciliation removes its delivery marker so GitHub can
 retry. Full rebuilds and webhook reconciliation share a distributed lease;
@@ -45,8 +70,9 @@ disposable, and health distinguishes an available service from ready data.
 `CAO_REDIS_URL`, OAuth secrets, the webhook secret, and session secrets are
 process-only configuration resolved by the deployment's secret manager. They
 are never accepted as hosted command-line flags, returned by APIs, or written
-to logs. Every hosted Redis connection uses `rediss://` with certificate and
-hostname verification; the core service imports no cloud identity or
+to logs. Hosted Redis uses `rediss://` with certificate and hostname
+verification by default; only the explicit Coolify private-network exception
+permits plaintext. The core service imports no cloud identity or
 secret-management SDK.
 
 ## Dashboard access capability
@@ -100,19 +126,96 @@ identity-aware authentication in a remote service.
 
 ## Hosted transport boundary
 
-Hosted mode has no developer override for transport protections:
+Hosted mode has no developer override for public transport protections:
 
-- it requires `rediss://` even when Redis is on loopback;
+- it requires `rediss://` by default;
+- plaintext Redis requires `allow-private-plaintext: true` in the `cao.json`
+  Redis module and is then restricted to a private IP or single-label service
+  name;
 - it requires HTTPS and rejects attempts to disable that policy;
 - it binds to loopback by default, allowing forwarded host/protocol headers
   only across that local process or pod boundary; and
 - a non-loopback bind requires an operator-supplied TLS certificate and key,
-  ignores forwarded headers, and validates the direct TLS connection and
-  allow-listed `Host`.
+  or explicit private `CAO_TRUSTED_PROXY_CIDRS`. Forwarded headers are accepted
+  only from a direct peer in those CIDRs and must identify an allow-listed host
+  over HTTPS.
 
-Plaintext loopback Redis, generated bearer capabilities, and optional local TLS
-belong only to the separate `serve` developer profile. They cannot be enabled
-in `serve-hosted`.
+Generated bearer capabilities and optional local TLS belong only to the
+separate `serve` developer profile. The private plaintext Redis opt-in is for a
+deployment-managed private service network, never public or cross-network
+Redis.
+
+## Coolify profile
+
+The Coolify profile uses the same `serve-hosted` authentication and application
+security boundary. It does not add a bypass for OAuth, organization/team
+authorization, CSRF, webhook signatures, shared rate limits, or logging
+redaction.
+
+Coolify terminates public TLS. The container has no published port and accepts
+the private HTTP hop only when `CAO_TRUSTED_PROXY_CIDRS` names the exact Coolify
+proxy network. A caller outside those prefixes cannot make its forwarded
+headers authoritative. Host matching remains exact and forwarded protocol must
+be `https`. Broad, malformed, public, or missing CIDRs fail startup.
+
+The image runs as numeric user/group `65532`, drops Linux capabilities, enables
+`no-new-privileges`, uses a read-only root filesystem, and mounts only the
+trusted dashboard artifact from a pre-populated external named volume
+read-only. The volume must be staged, hash-verified against
+`payload-hashes.json`, and atomically selected before first start or update;
+never populate the live attached volume, and do not treat a placeholder as
+deployment data. The repository does not supply deployment data. Secrets are
+injected by Coolify and are not present in the Dockerfile, Compose file, image
+labels, or health check.
+
+`rediss://` remains preferred. `redis://` is acceptable only for a
+Coolify-managed Redis service isolated on the same private network, after the
+explicit plaintext opt-in. Network isolation and Redis authentication remain
+operator responsibilities. Azure Functions ignores this hosted opt-in and
+continues to require `rediss://` to Azure Managed Redis.
+
+Deployment uses a protected GitHub environment and an exact GHCR digest.
+Fork repository payloads are refused. Manual execution is limited to `main` or
+`release`; alpha requires current `main`, while beta and stable resolve the exact
+commit of the latest eligible published release in their channel. A uniquely
+tagged candidate is scanned locally before publication. Existing canonical
+source tags are accepted only when their digest exactly equals that candidate;
+registry labels are not authority.
+
+Immediately before deployment, the workflow proves the source is still current
+for its channel. The synchronous adapter must record the previous digest, poll
+Coolify's asynchronous operation, verify `/api/readiness`, and roll back and
+verify the prior digest before reporting failure. The workflow accepts success
+only when bounded JSON reports `ready` and echoes the exact requested image and
+digest. Mutable channel tags and queued/accepted responses are never deployment
+success. Operational rollback still means redeploying a previously recorded
+digest through the same protected environment, then checking readiness, OAuth
+authorization, queries, webhook verification, and rate limits. If required,
+rebuild the disposable Redis namespace from the retained artifact rather than
+treating Redis as rollback authority.
+
+## Upstash profile
+
+Upstash provides causal consistency within one TCP session rather than across
+independent connections. Its Redis module therefore uses a serialized session
+for projection data and hosted security state. It does not recycle or retry that
+connection. Any transport loss permanently fails that client, so health and
+readiness fail until the process restarts.
+
+Restart recovery uses a fresh random internal namespace and rebuilds from the
+verified artifact. This isolates the process from stale state written through an
+earlier TCP session and invalidates all existing CAO sessions. Old namespaces
+remain disposable storage until an operator removes them while the application
+is stopped. The encrypted pending-revocation queue is the exception: it uses a
+stable deployment-scoped prefix so GitHub credentials queued for revocation
+remain available to the bounded retry worker after restart.
+
+The mode fails startup unless the endpoint uses `rediss://` on an Upstash host
+and the target declares `replicas: 1`. The deployment must independently enforce
+that replica count and use a dedicated Upstash database. Server-side collection
+and standalone collection roles are unsupported. Declaring one replica does not
+turn Upstash into a cross-process coordination service and must not be used to
+justify additional replicas.
 
 ## Azure Functions profile
 
@@ -123,13 +226,14 @@ in `serve-hosted`.
 > compliance, privacy, network, monitoring, incident-response, and rollback
 > reviews.
 
-Azure Functions mode is enabled only by constructing the app with
-`HostingModeAzureFunctions` or by using `NewAzureFunctionsHandlerFromEnv`. It
-does not start its own listener, does not accept `--access-token`, and does not
-support PATs. Requests are handled by the Azure Functions HTTP runtime and the
-same Go dashboard HTTP handler.
+Azure Functions mode is enabled by using
+`NewAzureFunctionsHandlerFromEnv`, which selects the platform-listener,
+GitHub-OAuth host capability profile. It does not start its own listener, does
+not accept `--access-token`, and does not support PATs. Requests are handled by
+the Azure Functions HTTP runtime and the same Go dashboard HTTP handler.
 
-Azure mode fails closed unless configuration includes:
+Azure mode fails closed unless `cao.json` selects the `azure-functions` target
+and configuration includes:
 
 - `rediss://` Redis transport and a Redis namespace;
 - an explicit trusted host allow-list from `CAO_AZURE_ALLOWED_HOSTS`;
@@ -321,10 +425,13 @@ minute interval begins.
 
 ## Redis transport and isolation
 
-- Plaintext `redis://` connections are accepted only for `localhost` or a
-  literal loopback IP address.
-- Non-local Redis requires `rediss://` with normal certificate-chain and
-  hostname verification. There is no insecure TLS mode.
+- Plaintext `redis://` connections are accepted by default only for `localhost`
+  or a literal loopback IP address. `serve-hosted` additionally accepts a
+  private IP or single-label service hostname only when
+  `allow-private-plaintext: true` is set in the `cao.json` Redis module.
+- All other Redis connections require `rediss://` with normal certificate-chain
+  and hostname verification. Azure always follows this path. There is no
+  insecure TLS mode.
 - Redis usernames and passwords remain in the Go process and are never returned
   in HTML, browser configuration, API payloads, or query URLs.
 - Every deployment uses a validated Redis namespace. The default is derived

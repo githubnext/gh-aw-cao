@@ -18,6 +18,11 @@ const cachePaths = [
   "${{ runner.temp }}/cao-activity/drain3_weights.json",
 ];
 
+const repositoryMemoryCachePaths = [
+  ...cachePaths,
+  "${{ runner.temp }}/cao-activity/memory",
+];
+
 const legacyCachePaths = [
   "${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite",
   "${{ runner.temp }}/cao-activity/gh-aw-logs-shards",
@@ -143,7 +148,7 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
     workflow,
     /run-activity\.mjs|REPORT_GH_AW_LOGS_STATE|REPORT_DEPLOYED_WORKFLOWS|REPORT_RECORDS/,
   );
-  assertCachePathSets(workflow, 3, [cachePaths, legacyCachePaths, cachePaths]);
+  assertCachePathSets(workflow, 3, [repositoryMemoryCachePaths, legacyCachePaths, repositoryMemoryCachePaths]);
   const legacyPathBlock = workflow.match(
     /Restore legacy activity cache layout[\s\S]*?path: \|\n((?:\s+\$\{\{ runner\.temp \}\}\/[^\n]+\n)+)/,
   )?.[1];
@@ -160,7 +165,7 @@ test("activity cache consumers use the producer cache version paths", async () =
     readFile(".github/workflows/shared/activity-cache.md", "utf8"),
   ]);
 
-  assertCachePathSets(dashboardWorkflow, 1);
+  assertCachePathSets(dashboardWorkflow, 1, repositoryMemoryCachePaths);
   assertCachePathSets(sharedCache, 2);
 });
 
@@ -190,6 +195,8 @@ async function zeroRunSnapshot(t) {
   await writeFile(path.join(shards, "logs-1790371204-0000-d98491943277f167.jsonl"), rateLimitRecord);
   await writeFile(path.join(root, "control-settings.json"), '{"allowed_repositories":["junco-org/control"]}\n');
   await writeFile(inventory, '{"workflows":{"rows":[]}}\n');
+  await mkdir(path.join(root, "memory"), { recursive: true });
+  await writeFile(path.join(root, "memory", "manifest.json"), '{"version":1,"campaigns":[]}\n');
   const phases = ["--shard-dir", shards, "--runs-dir", runs, "--records-dir", records, "--inventory", inventory];
   await execute(process.execPath, ["activity/cao.mjs", "hash-payloads", ...phases]);
   await execute(process.execPath, [

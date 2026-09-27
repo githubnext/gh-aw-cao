@@ -1,5 +1,4 @@
 import 'fake-indexeddb/auto';
-import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ingestCachedGhAwJsonl } from '../../src/data/ingest/coordinator.js';
 import {
@@ -15,15 +14,14 @@ import {
 } from '../../src/data/queries/database.js';
 import { processDataRequest } from '../../src/data-worker.js';
 import { createDashboardQueryBudget, executeDashboardQueries } from '../../src/data/queries/declarative.js';
+import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
 const loadCanonicalViewSources = loadDatabaseQuerySources;
 const queryCanonicalViewSources = queryDatabaseSources;
 const queryNativeCountSources = queryIndexedDatabaseSources;
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
-const dashboardQueries = JSON.parse(
-  readFileSync(`${process.cwd()}/dashboard.json`, 'utf8')
-).dashboard.queries;
+const dashboardQueries = authoritativeDashboard.dashboard.queries;
 
 /** @param {string} storeName @param {Record<string, unknown>} record */
 async function putCanonicalRecord(storeName, record) {
@@ -150,6 +148,7 @@ const sources = {  campaigns: {
   domains: { rows: /** @type {Record<string, unknown>[]} */ ([]), metadata },
   issues: { rows: /** @type {Record<string, unknown>[]} */ ([]), metadata },
   operationalValues: { rows: /** @type {Record<string, unknown>[]} */ ([]), metadata },
+  marketplacePackages: { rows: /** @type {Record<string, unknown>[]} */ ([]), metadata },
   usage: {
     rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run: '42', aic: 17 }],
     metadata
@@ -334,6 +333,41 @@ describe('canonical view sources', () => {
       { 'registered-repositories': 1 }
     ]);
     expect(nativeCounts).toHaveBeenCalledOnce();
+    expect(collectionReads).not.toHaveBeenCalled();
+  });
+
+  it('resolves literal-labelled indexing table counts with native IndexedDB counts', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+    const collectionReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');
+    const nativeCounts = vi.spyOn(IDBObjectStore.prototype, 'count');
+    const required = [
+      'indexing-campaigns-table-count',
+      'indexing-repositories-table-count',
+      'indexing-workflows-table-count',
+      'indexing-runs-table-count',
+      'indexing-domains-table-count',
+      'indexing-tools-table-count',
+      'indexing-audits-table-count',
+      'indexing-issues-table-count',
+      'indexing-operational-values-table-count',
+      'indexing-transactions-table-count'
+    ];
+
+    const result = await queryNativeCountSources(
+      indexedDB,
+      sources,
+      dashboardQueries,
+      required
+    );
+
+    expect(result['indexing-tools-table-count'].rows).toEqual([
+      { table: 'tool events', records: 1 }
+    ]);
+    expect(result['indexing-domains-table-count'].rows).toEqual([]);
+    expect(Object.keys(result)).toEqual(required.filter((name) => (
+      name !== 'indexing-operational-values-table-count'
+    )));
+    expect(nativeCounts).toHaveBeenCalledTimes(required.length - 1);
     expect(collectionReads).not.toHaveBeenCalled();
   });
 
@@ -538,6 +572,32 @@ describe('canonical view sources', () => {
       stores: ['workflows', 'runs']
     });
     expect(metrics?.totalMs).toBeGreaterThanOrEqual(metrics?.databaseMs ?? 0);
+  });
+
+  it('projects the narrow run fields required by Overview', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+
+    const projected = await queryCanonicalViewSources(indexedDB, sources, ['overview-runs']);
+
+    expect(projected['overview-runs']).toMatchObject({
+      source: 'overview-runs',
+      rows: [{
+        id: expect.any(String),
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        workflow: '.github/workflows/dashboard.md',
+        'workflow-name': 'Published registry name',
+        'workflow-role': 'worker',
+        campaign: 'dashboard',
+        'campaign-name': 'CAO Dashboard',
+        run: '42',
+        'target-repository': 'github/gh-aw',
+        'run-status': 'completed',
+        'run-conclusion': 'failure',
+        'rollout-mode': 'review'
+      }],
+      metadata: { 'source-kind': 'database-query' }
+    });
   });
 
   it('projects campaign rows and workflow membership from canonical records', async () => {

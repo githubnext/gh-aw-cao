@@ -3,8 +3,12 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
+	"net"
 	"net/http"
+	"net/netip"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -13,32 +17,25 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
-type HostingMode string
-
-const (
-	HostingModeLocal          HostingMode = "local"
-	HostingModeHosted         HostingMode = "hosted"
-	HostingModeAzureFunctions HostingMode = "azure-functions"
-)
-
 type ProxyPolicy struct {
-	AllowedHosts   []string
-	RequireHTTPS   bool
-	TrustForwarded bool
+	AllowedHosts         []string
+	RequireHTTPS         bool
+	TrustForwarded       bool
+	TrustedProxyPrefixes []netip.Prefix
 }
 
-type AzureProxyPolicy = ProxyPolicy
-
 func validateHostedMode(store *redisx.Store, config *Config) error {
-	if config.HostingMode != HostingModeAzureFunctions && config.HostingMode != HostingModeHosted {
+	profile := config.HostProfile
+	if profile.Authentication != HostAuthenticationOAuth {
+		if profile.Listener == HostListenerProcess {
+			if err := ValidateListen(config.Listen, config.CertFile, config.KeyFile); err != nil {
+				return err
+			}
+			if profile.RequiresHTTPS && (config.CertFile == "" || config.KeyFile == "") {
+				return fmt.Errorf("host profile %q requires HTTPS", profile.Name)
+			}
+		}
 		return nil
-	}
-	if config.HostingMode == HostingModeAzureFunctions &&
-		(strings.TrimSpace(config.Listen) != "" || config.CertFile != "" || config.KeyFile != "") {
-		return errors.New("azure Functions mode must not configure a listener or TLS files")
-	}
-	if config.HostingMode == HostingModeAzureFunctions {
-		config.AzureProxy.TrustForwarded = true
 	}
 	if strings.TrimSpace(config.AccessToken) != "" {
 		return errors.New("hosted mode does not support local bearer capabilities")
@@ -46,21 +43,26 @@ func validateHostedMode(store *redisx.Store, config *Config) error {
 	if store == nil {
 		return errors.New("hosted mode requires Redis")
 	}
-	if len(config.Proxy.AllowedHosts) == 0 && len(config.AzureProxy.AllowedHosts) == 0 {
+	if len(config.Proxy.AllowedHosts) == 0 {
 		return errors.New("hosted mode requires an explicit trusted proxy host policy")
 	}
 	policy := config.Proxy
-	if config.HostingMode == HostingModeAzureFunctions {
-		policy = config.AzureProxy
-	}
-	if !policy.RequireHTTPS {
+	if profile.RequiresHTTPS && !policy.RequireHTTPS {
 		return errors.New("hosted mode requires HTTPS")
 	}
-	if config.HostingMode == HostingModeHosted {
-		if err := validateHostedListen(config.Listen, config.CertFile, config.KeyFile); err != nil {
+	if profile.Listener == HostListenerProcess {
+		if isLoopbackListen(config.Listen) && !config.Proxy.TrustForwarded {
+			config.Proxy.TrustForwarded = true
+			config.Proxy.TrustedProxyPrefixes = loopbackProxyPrefixes()
+		}
+		if config.Proxy.TrustForwarded && len(config.Proxy.TrustedProxyPrefixes) == 0 {
+			return errors.New("hosted forwarded headers require explicit trusted proxy CIDRs")
+		}
+		if err := validateHostedListen(
+			config.Listen, config.CertFile, config.KeyFile, config.Proxy.TrustForwarded,
+		); err != nil {
 			return err
 		}
-		config.Proxy.TrustForwarded = isLoopbackListen(config.Listen)
 	}
 	if config.GitHubOAuth == nil {
 		return errors.New("hosted mode requires GitHub OAuth configuration")
@@ -71,10 +73,13 @@ func validateHostedMode(store *redisx.Store, config *Config) error {
 	return nil
 }
 
-func validAzureProxyRequest(request *http.Request, policy AzureProxyPolicy) bool {
+func validProxyRequest(request *http.Request, policy ProxyPolicy) bool {
 	host := request.Host
 	secure := request.TLS != nil
 	if policy.TrustForwarded {
+		if len(policy.TrustedProxyPrefixes) > 0 && !trustedProxyPeer(request.RemoteAddr, policy.TrustedProxyPrefixes) {
+			return false
+		}
 		if forwarded := forwardedHeader(request, "X-Forwarded-Host"); forwarded != "" {
 			host = forwarded
 		}
@@ -104,8 +109,35 @@ func validAzureProxyRequest(request *http.Request, policy AzureProxyPolicy) bool
 	return secure
 }
 
+func trustedProxyPeer(remoteAddress string, prefixes []netip.Prefix) bool {
+	host, _, err := net.SplitHostPort(remoteAddress)
+	if err != nil {
+		host = remoteAddress
+	}
+	address, err := netip.ParseAddr(strings.Trim(host, "[]"))
+	if err != nil {
+		return false
+	}
+	address = address.Unmap()
+	for _, prefix := range prefixes {
+		if prefix.Contains(address) {
+			return true
+		}
+	}
+	return false
+}
+
 func forwardedHeader(request *http.Request, name string) string {
-	return strings.TrimSpace(request.Header.Get(name))
+	values := request.Header.Values(name)
+	for valueIndex := len(values) - 1; valueIndex >= 0; valueIndex-- {
+		parts := strings.Split(values[valueIndex], ",")
+		for partIndex := len(parts) - 1; partIndex >= 0; partIndex-- {
+			if value := strings.TrimSpace(parts[partIndex]); value != "" {
+				return value
+			}
+		}
+	}
+	return ""
 }
 
 // processTelemetry lazily installs the OpenTelemetry tracer provider exactly
@@ -152,29 +184,43 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 	//nolint:contextcheck // configureProcessTelemetry intentionally uses context.Background(): the exporter it
 	// configures must outlive the single request/invocation that happens to trigger processTelemetry.ensure.
 	_ = azureProcessTelemetry.ensure(logger)
-	redisURL := strings.TrimSpace(os.Getenv("CAO_REDIS_URL"))
-	if redisURL == "" {
-		return nil, errors.New("CAO_REDIS_URL is required")
-	}
-	if !strings.HasPrefix(strings.ToLower(redisURL), "rediss://") {
-		return nil, errors.New("azure Functions mode requires rediss:// Redis transport")
-	}
-	client, err := redisx.New(redisURL)
+	localSimulation, err := azureLocalSimulationFromEnv()
 	if err != nil {
 		return nil, err
 	}
-	namespaceValue := strings.TrimSpace(os.Getenv("CAO_REDIS_NAMESPACE"))
-	if namespaceValue == "" {
-		namespaceValue = "azure-dashboard"
-	}
-	namespace, err := redisx.NormalizeNamespace(namespaceValue)
+	host, err := loadHostPolicyFromEnv()
 	if err != nil {
 		return nil, err
 	}
-	store := redisx.NewStore(client, namespace)
-	if err := store.Ping(ctx); err != nil {
-		return nil, errors.New("redis is unavailable")
+	allowedHosts := splitCSV(os.Getenv("CAO_AZURE_ALLOWED_HOSTS"))
+	redirectURL := os.Getenv("CAO_GITHUB_REDIRECT_URL")
+	if err := validateAzureLocalEndpoints(localSimulation, allowedHosts, redirectURL); err != nil {
+		return nil, err
 	}
+	if host.Profile.Listener != HostListenerPlatform {
+		return nil, fmt.Errorf("host target module %q does not delegate listener ownership", host.Profile.Name)
+	}
+	if err := validateHostedRedisURL(
+		host.RedisURL,
+		host.RedisOptions.AllowPrivatePlaintext,
+		host.RedisOptions.ForceTLS,
+	); err != nil {
+		return nil, err
+	}
+	if err := validateAzureRedisURL(host.RedisURL, localSimulation); err != nil {
+		return nil, err
+	}
+	client, err := redisx.NewWithOptions(host.RedisURL, host.RedisOptions)
+	if err != nil {
+		return nil, err
+	}
+	store, err := storeFromClient(
+		ctx, client, host.RedisNamespace, host.Profile.IsolateProcessNamespace,
+	)
+	if err != nil {
+		return nil, err
+	}
+	profile := azureLocalSimulationProfile(host.Profile, localSimulation)
 	definitions, err := ParseDashboardQueries(dashboardQueriesPath)
 	if err != nil {
 		return nil, err
@@ -186,21 +232,22 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 		return nil, err
 	}
 	app, err := New(store, Config{
-		HostingMode:      HostingModeAzureFunctions,
-		SiteDirectory:    siteDirectory,
-		DashboardQueries: definitions,
-		Collector:        collector,
-		WebhookSecret:    os.Getenv("CAO_GITHUB_WEBHOOK_SECRET"),
-		AdminUsers:       splitCSV(os.Getenv("CAO_GITHUB_ADMIN_USERS")),
-		AzureProxy: AzureProxyPolicy{
-			AllowedHosts:   splitCSV(os.Getenv("CAO_AZURE_ALLOWED_HOSTS")),
-			RequireHTTPS:   true,
+		HostProfile:            profile,
+		SingleReplicaConfirmed: host.SingleReplicaConfirmed,
+		SiteDirectory:          siteDirectory,
+		DashboardQueries:       definitions,
+		Collector:              collector,
+		WebhookSecret:          os.Getenv("CAO_GITHUB_WEBHOOK_SECRET"),
+		AdminUsers:             splitCSV(os.Getenv("CAO_GITHUB_ADMIN_USERS")),
+		Proxy: ProxyPolicy{
+			AllowedHosts:   allowedHosts,
+			RequireHTTPS:   !localSimulation,
 			TrustForwarded: true,
 		},
 		GitHubOAuth: &GitHubOAuthConfig{
 			ClientID:              os.Getenv("CAO_GITHUB_CLIENT_ID"),
 			ClientSecret:          os.Getenv("CAO_GITHUB_CLIENT_SECRET"),
-			RedirectURL:           os.Getenv("CAO_GITHUB_REDIRECT_URL"),
+			RedirectURL:           redirectURL,
 			SessionSecret:         os.Getenv("CAO_SESSION_SECRET"),
 			PreviousSessionSecret: os.Getenv("CAO_SESSION_SECRET_PREVIOUS"),
 			AllowedOrganizations:  splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_ORGS")),
@@ -213,6 +260,64 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 	}
 	go app.oauth.runRevocationWorker(context.WithoutCancel(ctx))
 	return app.AzureFunctionsHandler(), nil
+}
+
+func azureLocalSimulationFromEnv() (bool, error) {
+	switch value := strings.TrimSpace(os.Getenv("CAO_AZURE_LOCAL_SIMULATION")); value {
+	case "":
+		return false, nil
+	case "1":
+		return true, nil
+	default:
+		return false, errors.New("CAO_AZURE_LOCAL_SIMULATION must be 1 when enabled")
+	}
+}
+
+func validateAzureRedisURL(redisURL string, localSimulation bool) error {
+	parsed, err := url.Parse(redisURL)
+	if err != nil {
+		return errors.New("azure Functions mode requires a valid Redis URL")
+	}
+	if strings.EqualFold(parsed.Scheme, "rediss") {
+		return nil
+	}
+	if !localSimulation || !strings.EqualFold(parsed.Scheme, "redis") {
+		return errors.New("azure Functions mode requires rediss:// Redis transport")
+	}
+	host := parsed.Hostname()
+	if host == "localhost" {
+		return nil
+	}
+	address := net.ParseIP(host)
+	if address == nil || !address.IsLoopback() {
+		return errors.New("local Azure simulation requires loopback Redis")
+	}
+	return nil
+}
+
+func validateAzureLocalEndpoints(localSimulation bool, allowedHosts []string, redirectURL string) error {
+	if !localSimulation {
+		return nil
+	}
+	for _, host := range allowedHosts {
+		if !isLoopbackHost(host) {
+			return errors.New("local Azure simulation requires loopback allowed hosts")
+		}
+	}
+	parsed, err := url.Parse(strings.TrimSpace(redirectURL))
+	if err != nil || !isLoopbackHost(parsed.Hostname()) {
+		return errors.New("local Azure simulation requires a loopback OAuth redirect URL")
+	}
+	return nil
+}
+
+func isLoopbackHost(host string) bool {
+	host = strings.TrimSpace(host)
+	if host == "localhost" {
+		return true
+	}
+	address := net.ParseIP(host)
+	return address != nil && address.IsLoopback()
 }
 
 func (a *App) AzureFunctionsHandler() http.Handler {

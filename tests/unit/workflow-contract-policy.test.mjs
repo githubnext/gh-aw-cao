@@ -357,6 +357,7 @@ test("control workflows deny before activation through one shared admission cont
   assert.match(sharedControl, /Generate CAO pre-activation GitHub App token/);
   assert.match(sharedControl, /actions\/create-github-app-token@[0-9a-f]{40} # v3\.2\.0/);
   assert.match(sharedControl, /permission-actions: read[\s\S]*?permission-contents: read/);
+  assert.match(stepBlock(sharedControl, "Generate CAO pre-activation GitHub App token"), /repositories: \$\{\{ github\.event\.repository\.name \}\}/);
   assert.match(sharedControl, /CAO_API_TOKEN: \$\{\{ steps\.cao_pre_activation_app_token\.outputs\.token \|\| secrets\.GH_AW_GITHUB_READ_PAT \|\| secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token \}\}/);
   assert.match(sharedControl, /name: Checkout CAO control modules/);
   assert.match(sharedControl, /actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7\.0\.1/);
@@ -392,8 +393,39 @@ test("control workflows deny before activation through one shared admission cont
   assert.doesNotMatch(stepBlock(sharedControl, "\"CAO precompute blocked: GitHub API limited until ${{ steps.cao_precompute.outputs.github_api_reset_at }}\""), /^\s+exit 1$/m);
   assert.match(stepBlock(sharedControl, "\"CAO precompute blocked: GitHub API capacity unavailable\""), /::warning title=CAO precompute could not verify GitHub API capacity/);
   assert.doesNotMatch(stepBlock(sharedControl, "\"CAO precompute blocked: GitHub API capacity unavailable\""), /^\s+exit 1$/m);
-  assert.match(sharedControl, /name: Validate CAO control precompute artifact\n\s+if: \$\{\{ steps\.cao_admission\.outputs\.authorized == 'true' && steps\.cao_precompute\.outputs\.authorized != 'false' \}\}/);
-  assert.match(sharedControl, /name: Upload CAO control precompute artifact\n\s+if: \$\{\{ steps\.cao_admission\.outputs\.authorized == 'true' && steps\.cao_precompute\.outputs\.authorized != 'false' \}\}/);
+  assert.match(sharedControl, /name: Validate CAO control precompute artifact\n\s+id: cao_precompute_validation\n\s+if: \$\{\{ steps\.cao_admission\.outputs\.authorized == 'true' && steps\.cao_precompute\.outputs\.authorized != 'false' \}\}/);
+  assert.match(sharedControl, /name: Upload CAO control precompute artifact\n\s+id: cao_precompute_upload\n\s+if: \$\{\{ steps\.cao_admission\.outputs\.authorized == 'true' && steps\.cao_precompute\.outputs\.authorized != 'false' \}\}/);
+  for (const id of [
+    "cao_pre_activation_app_token",
+    "cao_control_checkout",
+    "cao_control_source",
+    "cao_admission",
+    "cao_precompute",
+    "cao_admission_record",
+    "cao_admission_upload",
+    "cao_admission_capacity_limited",
+    "cao_admission_capacity_unavailable",
+    "cao_precompute_capacity_limited",
+    "cao_precompute_capacity_unavailable",
+    "cao_precompute_validation",
+    "cao_precompute_upload",
+  ]) {
+    assert.match(sharedControl, new RegExp(`id: ${id}`), `missing activation step id ${id}`);
+    assert.match(
+      stepBlock(sharedControl, "Summarize CAO pre-activation steps"),
+      new RegExp(`steps\\.${id}\\.outcome`),
+      `activation summary omits ${id}`,
+    );
+  }
+  assert.match(stepBlock(sharedControl, "Summarize CAO pre-activation steps"), /decision: "read-credential"/);
+  assert.match(stepBlock(sharedControl, "Summarize CAO pre-activation steps"), /decision: "control-handoff"/);
+  assert.match(stepBlock(sharedControl, "Summarize CAO pre-activation steps"), /CAO_PRECOMPUTE_AUTHORIZED === "true"/);
+  assert.match(stepBlock(sharedControl, "Summarize CAO pre-activation steps"), /steps\.precompute_validation === "success"/);
+  assert.match(stepBlock(sharedControl, "Summarize CAO pre-activation steps"), /steps\.precompute_artifact_upload === "success"/);
+  assert.doesNotMatch(stepBlock(sharedControl, "Summarize CAO pre-activation steps"), /secrets\.|outputs\.token/);
+  assert.match(stepBlock(sharedControl, "Log CAO activation handoff"), /uses: actions\/github-script@[0-9a-f]{40} # v9\.0\.0/);
+  assert.match(stepBlock(sharedControl, "Log CAO activation handoff"), /core\.info\(`\[cao] /);
+  assert.match(stepBlock(sharedControl, "Log CAO activation handoff"), /decision: "agent-handoff"/);
   assert.match(sharedControl, /const reason = 'cannot read or execute the CAO control modules at github\.workflow_sha'/);
   for (const { name, campaignName, role, workerName } of registrations) {
     const source = workflow(name);
@@ -484,7 +516,7 @@ test("review destinations allow control self-review and isolate other targets", 
   assert.match(precompute, /repositoryEqual\(safeOutputRepository, targetRepository\)[\s\S]*!repositoryEqual\(safeOutputRepository, controlRepository\)/);
   assert.match(precompute, /review safe_output_repo must differ from target_repo/);
   assert.match(precompute, /live worker safe_output_repo must equal target_repo/);
-  assert.match(precompute, /repositoryEqual\(safeOutputRepository, controlRepository\)\) return/);
+  assert.match(precompute, /repositoryEqual\(safeOutputRepository, controlRepository\)\) \{[\s\S]*central-review-shortcut[\s\S]*return/);
   assert.match(precompute, /ghApi\(`repos\/\$\{safeOutputRepository\}`\)/);
   assert.match(precompute, /review safe_output_repo must be accessible/);
   assert.match(precompute, /non-central review safe_output_repo must be private/);

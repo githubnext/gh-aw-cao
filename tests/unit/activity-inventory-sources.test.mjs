@@ -363,6 +363,44 @@ test("represents inaccessible repositories and workflow registries as partial ev
   assert.deepEqual(sources.workflows.rows.map((row) => `${row.organization}/${row.repository}`), ["acme/app"]);
 });
 
+test("publishes normalized marketplace packages and registry-level health", () => {
+  const packageRow = {
+    id: "official:acme/packages/demo@abc",
+    "registry-id": "official",
+    "registry-name": "Official",
+    "registry-precedence": 0,
+    name: "Demo",
+    repository: "acme/packages",
+    path: "demo",
+    ref: "main",
+    "resolved-commit": "a".repeat(40),
+    version: "main",
+    source: `acme/packages/demo@${"a".repeat(40)}`,
+    "add-command": `./cao.sh add acme/packages/demo@${"a".repeat(40)}`,
+  };
+  const sources = buildInventoryDashboardSources({
+    repository: "acme/control",
+    generatedAt: "2026-09-26T00:00:00Z",
+    inventory: { workflows: [], bundles: [] },
+    controlSettings: {},
+    marketplace: {
+      packages: [packageRow],
+      diagnostics: [
+        { "registry-id": "official", status: "available", packages: 1 },
+        { "registry-id": "private", status: "unavailable", message: "permission denied" },
+      ],
+    },
+  });
+
+  assert.deepEqual(sources["marketplace-packages"].rows, [packageRow]);
+  assert.equal(sources["marketplace-packages"].metadata.availability, "available");
+  assert.equal(sources["marketplace-packages"].metadata.completeness, "partial");
+  assert.deepEqual(
+    sources["marketplace-registries"].rows.map((row) => row["registry-id"]),
+    ["official", "private"],
+  );
+});
+
 test("merges control registry metadata without replacing campaign ownership", () => {
   const generatedAt = "2026-09-17T00:00:00Z";
   const sources = buildInventoryDashboardSources({

@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
 import { validateDashboardDocument, validateLogicalSources } from '../../src/validator.js';
 import { DASHBOARD_QUERY_LIMITS, QUERY_MAX_JOINS } from '../../src/specification.js';
 import { campaignDashboardSources } from '../campaign-dashboard-documents.js';
-
-const authoritativeDashboardSource = readFileSync(`${process.cwd()}/dashboard.json`, 'utf8');
+import { authoritativeDashboardSource } from '../authoritative-dashboard.js';
 
 const validDocument = `language-version: "0.1.0"
 dashboard:
@@ -56,18 +54,60 @@ describe('dashboard document validation', () => {
     });
   });
 
-  it('marks Steering, Indexing, and Issues as experimental', () => {
+  it('marks Steering, Indexing, Issues, and Memory pages as experimental', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentalPageIds = document.dashboard.pages
       .filter((/** @type {{ experimental?: boolean }} */ page) => page.experimental === true)
       .map((/** @type {{ id: string }} */ page) => page.id);
 
-    expect(experimentalPageIds).toEqual(expect.arrayContaining(['steering', 'indexing', 'issues']));
+    expect(experimentalPageIds).toEqual(expect.arrayContaining([
+      'steering',
+      'indexing',
+      'issues',
+      'memory',
+      'campaign-memory',
+    ]));
+  });
+
+  it('defines the all-campaign Memory page with an in-place repository-memory browser', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const page = document.dashboard.pages.find(
+      (/** @type {{ id?: string }} */ candidate) => candidate.id === 'memory'
+    );
+    const query = document.dashboard.queries.find(
+      (/** @type {{ name?: string }} */ candidate) => candidate.name === 'campaign-memory-campaigns'
+    );
+
+    expect(page).toMatchObject({
+      kind: 'custom',
+      title: 'Memory',
+      experimental: true,
+      views: [{
+        id: 'campaign-memory-browser',
+        data: { sources: ['campaign-memory-campaigns'] },
+        mark: 'element',
+        element: 'all-campaign-memory',
+        layout: 'full-view'
+      }]
+    });
+    expect(query).toMatchObject({
+      from: 'campaigns',
+      select: expect.arrayContaining([
+        { field: 'campaign' },
+        { field: 'campaign-name' }
+      ]),
+      'order-by': [{ field: 'campaign-name', direction: 'asc' }]
+    });
+    expect(document.dashboard.navigation.find(
+      (/** @type {{ label?: string }} */ section) => section.label === 'Data'
+    ).pages).toContain('memory');
+    expect(validateDashboardDocument(authoritativeDashboardSource).ok).toBe(true);
   });
 
   it('DLS-VIEW-005 limits categorical section encodings to horizontal bar charts', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const costPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'cost');
+    const costPageIndex = document.dashboard.pages.indexOf(costPage);
     const workflowCost = costPage.views.find(
       (/** @type {{ id: string }} */ view) => view.id === 'cost-by-workflow'
     );
@@ -84,7 +124,7 @@ describe('dashboard document validation', () => {
       expect(wrongChart.errors).toEqual(expect.arrayContaining([
         expect.objectContaining({
           code: 'DLS-E010',
-          path: '$.dashboard.pages[36].views[2].encoding.section'
+          path: `$.dashboard.pages[${costPageIndex}].views[2].encoding.section`
         })
       ]));
     }
@@ -97,7 +137,7 @@ describe('dashboard document validation', () => {
       expect(wrongType.errors).toEqual(expect.arrayContaining([
         expect.objectContaining({
           code: 'DLS-E010',
-          path: '$.dashboard.pages[36].views[2].encoding.section.type'
+          path: `$.dashboard.pages[${costPageIndex}].views[2].encoding.section.type`
         })
       ]));
     }
@@ -431,6 +471,7 @@ describe('dashboard document validation', () => {
       icon: 'play',
       command: 'gh aw compile --strict --no-emit',
       placement: 'settings',
+      'copy-only': true,
       arguments: [{
         id: 'pre-releases',
         label: 'Include pre-releases',
@@ -442,6 +483,11 @@ describe('dashboard document validation', () => {
     const addedAction = document.dashboard['cli-actions'][document.dashboard['cli-actions'].length - 1];
     const actionArguments = addedAction.arguments;
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    addedAction['copy-only'] = 'true';
+    expect(validateDashboardDocument(JSON.stringify(document)).errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ message: 'CLI action copy-only must be a boolean.' })
+    ]));
+    addedAction['copy-only'] = true;
 
     delete addedAction.arguments;
     addedAction.command = './cao.sh update';
@@ -644,7 +690,7 @@ describe('dashboard document validation', () => {
       (/** @type {{ label: string }} */ section) => section.label === 'Data'
     ).pages).toContain('firewall');
     expect(firewall.sections).toBeUndefined();
-    expect(firewall.views).toHaveLength(2);
+    expect(firewall.views).toHaveLength(3);
     expect(document.dashboard.queries).toContainEqual(expect.objectContaining({
       name: 'firewall-domain-totals',
       intent: 'Show each observed firewall domain with the number of runs and total accepted and blocked requests.',
@@ -679,7 +725,17 @@ describe('dashboard document validation', () => {
       ],
       limit: 10
     }));
-    const [mostBlocked, domains] = firewall.views;
+    expect(document.dashboard.queries).toContainEqual(expect.objectContaining({
+      name: 'firewall-least-used-domains',
+      intent: 'Highlight uncommon firewall domains observed in the fewest runs.',
+      from: 'firewall-domain-totals',
+      'order-by': [
+        { field: 'run', direction: 'asc' },
+        { field: 'domain', direction: 'asc' }
+      ],
+      limit: 10
+    }));
+    const [mostBlocked, leastUsed, domains] = firewall.views;
     expect(mostBlocked).toMatchObject({
       id: 'security-firewall-most-blocked-domains',
       mark: 'chart',
@@ -695,9 +751,24 @@ describe('dashboard document validation', () => {
         }
       }
     });
+    expect(leastUsed).toMatchObject({
+      id: 'security-firewall-least-used-domains',
+      title: 'Least used domains',
+      mark: 'table',
+      layout: 'full',
+      data: { source: 'firewall-least-used-domains' }
+    });
+    expect(leastUsed.encoding.columns).toEqual([
+      { field: 'domain', type: 'nominal', title: 'Domain' },
+      { field: 'run', type: 'quantitative', title: 'Runs' },
+      { field: 'accepted', type: 'quantitative', title: 'Allowed' },
+      { field: 'blocked', type: 'quantitative', title: 'Blocked' }
+    ]);
     expect(domains).toMatchObject({
       id: 'security-firewall-domains',
       mark: 'table',
+      'disclosure-label': 'All observed domains',
+      disclosure: 'supplemental',
       controls: 'interactive',
       'lazy-list': true,
       'column-summaries': true,
@@ -720,6 +791,7 @@ describe('dashboard document validation', () => {
     ]);
     expect(firewall.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
       'security-firewall-most-blocked-domains',
+      'security-firewall-least-used-domains',
       'security-firewall-domains'
     ]);
     const serialized = JSON.stringify(firewall).toLowerCase();
@@ -770,6 +842,51 @@ describe('dashboard document validation', () => {
     ]);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
+
+  it('defines experimental skill analytics with rankings and workflow drill-through', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const skills = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'skills');
+
+    expect(document.dashboard.navigation.find(
+      (/** @type {{ label: string }} */ section) => section.label === 'Data'
+    ).pages).toContain('skills');
+    expect(skills).toMatchObject({
+      kind: 'custom',
+      experimental: true,
+      views: [
+        {
+          id: 'skills-most-invoked',
+          mark: 'chart',
+          chart: 'horizontal-bar',
+          data: { source: 'skill-invocations-by-skill', limit: 10 }
+        },
+        {
+          id: 'skills-by-workflow',
+          mark: 'chart',
+          chart: 'horizontal-bar',
+          data: { source: 'skill-invocations-by-workflow' },
+          encoding: { href: { field: 'workflow-link' } }
+        },
+        {
+          id: 'skills-workflow-inventory',
+          mark: 'table',
+          controls: 'interactive',
+          'lazy-list': true,
+          layout: 'full-view',
+          data: { source: 'skill-workflow-inventory' },
+          encoding: { href: { field: 'workflow-link' } }
+        }
+      ]
+    });
+    expect(skills.views[2].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
+      'skill',
+      'workflow',
+      'repository-coordinate',
+      'invocations'
+    ]);
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+  });
+
 
 
 
@@ -2447,8 +2564,7 @@ dashboard:
           'built-in page "overview" requires declarative definitions for source "workflows".',
           'built-in page "overview" requires declarative definitions for source "runs".',
           'built-in page "overview" requires declarative definitions for source "usage".',
-          'built-in page "overview" requires declarative definitions for source "findings".',
-          'built-in page "overview" requires declarative definitions for source "operational-graders".'
+          'built-in page "overview" requires declarative definitions for source "findings".'
         ])
       );
     }
@@ -2572,7 +2688,7 @@ dashboard:
     }
   });
 
-  it('DLS-PAGE-002 DLS-PAGE-014 rejects an overview built-in page definition that omits linked findings and operational-grader timeline coverage with DLS-E003', () => {
+  it('DLS-PAGE-002 rejects an overview built-in page definition that omits linked findings coverage with DLS-E003', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
   id: incomplete-overview-page
@@ -2619,14 +2735,6 @@ dashboard:
             encoding:
               columns:
                 - field: observed-at
-          - id: operational-graders-view
-            data:
-              source: operational-graders
-            mark: table
-            encoding:
-              columns:
-                - field: operational-grader
-                - field: observed-at
 `);
 
     expect(result.ok).toBe(false);
@@ -2647,11 +2755,6 @@ dashboard:
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
             message: 'built-in page "overview" definition must expose field "run-link" for source "findings".'
-          }),
-          expect.objectContaining({
-            code: 'DLS-E003',
-            path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "overview" definition must expose field "operational-grader-definition" for source "operational-graders".'
           })
         ])
       );
@@ -2833,20 +2936,6 @@ dashboard:
                 - field: issue-link
                 - field: pull-request-link
                 - field: run-link
-          - id: operational-grader-timeline
-            data:
-              source: operational-graders
-            mark: chart
-            encoding:
-              x:
-                field: observed-at
-                type: temporal
-                time-unit: day
-              y:
-                field: operational-grader
-                aggregate: max
-              color:
-                field: operational-grader-definition
     - id: runs
       kind: built-in
       page: runs
@@ -3081,28 +3170,6 @@ dashboard:
                 - field: issue-link
                 - field: pull-request-link
                 - field: run-link
-          - id: operational-grader-timeline
-            data:
-              source: operational-graders
-              source-metadata:
-                source-id: operational-graders-fixture
-                source-kind: fixture
-                as-of: '2026-08-29T12:00:00Z'
-                retrieved-at: '2026-08-29T12:05:00Z'
-                completeness: unknown
-                freshness: fresh
-                availability: unavailable
-            mark: chart
-            encoding:
-              x:
-                field: observed-at
-                type: temporal
-                time-unit: day
-              y:
-                field: operational-grader
-                aggregate: max
-              color:
-                field: operational-grader-definition
 `);
 
     expect(result.ok).toBe(true);
@@ -5147,13 +5214,13 @@ describe('declarative query validation', () => {
   it('validates reusable temporal-series projections', () => {
     const query = {
       name: 'workflow-costs',
-      from: 'operational-graders',
+      from: 'grader-observations',
       'temporal-series': {
         time: 'observed-at',
         series: 'workflow',
         carry: ['workflow'],
-        measures: [{ field: 'operational-grader', key: 'operational-grader-definition', kind: 'primary' }],
-        maps: [{ field: 'diagnostics', definitions: 'diagnostic-definitions', group: 'operational-grader-definition', kind: 'diagnostic' }]
+        measures: [{ field: 'value', key: 'grader', kind: 'primary' }],
+        maps: [{ field: 'status', definitions: 'grader', group: 'grader', kind: 'diagnostic' }]
       }
     };
 
@@ -5519,6 +5586,24 @@ describe('declarative query validation', () => {
     if (!result.ok) {
       expect(result.errors).toEqual(expect.arrayContaining([
         expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.queries[0].order-by[0].field' })
+      ]));
+    }
+  });
+
+  it('rejects view query graphs that materialize an unavailable source', () => {
+    const result = validateDashboardDocument(queryDocument([{
+      name: 'workflow-costs',
+      from: 'missing-source',
+      select: [{ field: 'workflow' }]
+    }]));
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          code: 'DLS-E010',
+          message: expect.stringContaining('materializes as unavailable')
+        })
       ]));
     }
   });

@@ -1,4 +1,7 @@
 import { orderRunRecords } from '../normalize/index.js';
+import { createDebug } from '../../debug.js';
+
+const debugRetention = createDebug('retention');
 
 export const RETENTION_WINDOW_DAYS = 30;
 export const RETENTION_WINDOW_MS = RETENTION_WINDOW_DAYS * 24 * 60 * 60 * 1000;
@@ -30,7 +33,8 @@ const STORES = /** @type {const} */ ([
   'tools',
   'audits',
   'issues',
-  'operationalValues'
+  'operationalValues',
+  'marketplacePackages'
 ]);
 const RUN_LINKED_STORES = /** @type {const} */ (['domains', 'tools', 'audits', 'issues']);
 const WORKFLOW_INVENTORY_FIELDS = /** @type {const} */ ([
@@ -119,12 +123,20 @@ export function capCanonicalBatchSize(batch, maxBytes) {
     }
   }
 
+  debugRetention({
+    event: 'batch-capped',
+    maxBytes,
+    evictedRunCount: evictedRuns.size,
+    finalBytes: estimatedBytes
+  });
+
   return /** @type {import('../model/schema.js').CanonicalBatch} */ ({
     campaigns: batch.campaigns,
     repositories: batch.repositories,
     workflows: batch.workflows,
     runs: batch.runs.filter((record) => !evictedRuns.has(String(record.id))),
     operationalValues: batch.operationalValues ?? [],
+    marketplacePackages: batch.marketplacePackages ?? [],
     ...Object.fromEntries(RUN_LINKED_STORES.map((storeName) => [
       storeName,
       batch[storeName].filter((record) => !evictedRuns.has(String(record.runId)))
@@ -237,6 +249,7 @@ function pruneOrphans(merged) {
   const repositories = merged.repositories;
   const workflows = merged.workflows;
   const runs = merged.runs;
+  let orphanedRunCount = 0;
 
   for (const [id, workflow] of workflows) {
     if (!repositories.has(String(workflow.repositoryId))
@@ -248,7 +261,10 @@ function pruneOrphans(merged) {
     const workflow = workflows.get(String(run.workflowId));
     if (!repositories.has(String(run.repositoryId))
       || !workflow
-      || workflow.repositoryId !== run.repositoryId) runs.delete(id);
+      || workflow.repositoryId !== run.repositoryId) {
+      runs.delete(id);
+      orphanedRunCount += 1;
+    }
   }
   for (const storeName of RUN_LINKED_STORES) {
     for (const [id, record] of merged[storeName]) {
@@ -258,6 +274,7 @@ function pruneOrphans(merged) {
   for (const [id, record] of merged.operationalValues) {
     if (!repositories.has(String(record.repositoryId))) merged.operationalValues.delete(id);
   }
+  if (orphanedRunCount > 0) debugRetention({ event: 'orphans-pruned', orphanedRunCount });
 }
 
 /**
@@ -339,5 +356,12 @@ export function mergeRetainedRecords(previous, incoming, options = {}) {
   for (const storeName of RUN_LINKED_STORES) {
     batch[storeName] = orderRunRecords(batch[storeName]);
   }
+  debugRetention({
+    event: 'merged',
+    retentionWindowMs,
+    runCount: batch.runs.length,
+    repositoryCount: batch.repositories.length,
+    workflowCount: batch.workflows.length
+  });
   return batch;
 }

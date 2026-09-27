@@ -87,6 +87,7 @@ const activityExpectedFiles = [
   "activity/gh-aw-logs.mjs",
   "activity/inventory.mjs",
   "activity/inventory-sources.mjs",
+  "activity/marketplace.mjs",
   "activity/token-intervention-lifecycle.mjs",
   "activity/version.mjs",
   ".github/workflows/cao-activity.yml",
@@ -276,6 +277,15 @@ test("root campaign bootstraps an empty CAO and preserves resources during workf
       scope: {
         "allowed-owners": [controlRepository.split("/")[0]],
         "allowed-repositories": [controlRepository],
+      },
+      marketplace: {
+        registries: [{
+          id: "official",
+          name: "Official CAO catalog",
+          repository: "githubnext/gh-aw-cao",
+          ref: "main",
+          auth: { type: "none" },
+        }],
       },
       campaigns: {},
     });

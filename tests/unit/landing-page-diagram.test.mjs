@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { buildWizardPolicy, selectConfiguredOperations } from "../../docs/lib/configured-operations.mjs";
+import {
+  buildWizardHost,
+  buildWizardPolicy,
+  selectConfiguredOperations,
+} from "../../docs/lib/configured-operations.mjs";
 
 const controlPolicy = JSON.parse(readFileSync(".github/workflows/cao.json", "utf8"));
 
@@ -23,8 +27,9 @@ test("landing page presents catalog packages as campaigns", () => {
   assert.match(landingPage, /Explore campaigns/);
   assert.match(hero, /Agentic campaigns as code/);
   assert.match(hero, /Choose a ready campaign or build your own/);
-  assert.match(wizard, /Start a campaign in three steps/);
+  assert.match(wizard, /Start a campaign in four steps/);
   assert.match(wizard, /Choose the campaign to run/);
+  assert.match(wizard, /Choose optional dashboard hosting/);
   assert.doesNotMatch(`${landingPage}\n${hero}`, /\bfactor(?:y|ies)\b/i);
 });
 
@@ -77,6 +82,7 @@ test("landing wizard prompt references the raw setup skill", () => {
     wizard,
     /https:\/\/raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/skills\/setup-cao\/SKILL\.md/,
   );
+  assert.match(wizard, /Include `\.github\/workflows\/cao\.json` at the same path/);
 });
 
 test("landing wizard client imports its prompt generation dependencies", () => {
@@ -85,7 +91,9 @@ test("landing wizard client imports its prompt generation dependencies", () => {
     2,
   );
   assert.equal(
-    wizard.match(/import \{ buildWizardPolicy \} from "\.\.\/lib\/configured-operations\.mjs";/g)?.length,
+    wizard.match(
+      /import \{ buildWizardHost, buildWizardPolicy \} from "\.\.\/lib\/configured-operations\.mjs";/g,
+    )?.length,
     2,
   );
 });
@@ -146,4 +154,41 @@ test("wizard policy keeps the checked-in campaign configuration", () => {
   assert.deepEqual(policy["control-plane"].scope["allowed-owners"], ["acme"]);
   assert.deepEqual(policy["control-plane"].campaigns.dependabot, expectedCampaign);
   assert.equal(icon, "dependabot");
+});
+
+test("wizard composes app target and Redis provider modules", () => {
+  const host = buildWizardHost("container", "upstash");
+  const policy = buildWizardPolicy(controlPolicy, "acme", "dependabot", host);
+
+  assert.deepEqual(policy["control-plane"].web.host, {
+    target: { module: "container", replicas: 1 },
+    redis: {
+      module: "upstash",
+      "namespace-env": "REDIS_NAMESPACE",
+      tls: { mode: "required" },
+    },
+  });
+  assert.equal(buildWizardHost("none", "generic"), undefined);
+  assert.throws(
+    () => buildWizardHost("azure-functions", "upstash"),
+    /Upstash requires the container app target/,
+  );
+  assert.deepEqual(buildWizardHost("azure-functions", "redis-cloud").redis, {
+    module: "redis-cloud",
+    "namespace-env": "CAO_REDIS_NAMESPACE",
+    "url-env": "CAO_REDIS_URL",
+    tls: { mode: "required" },
+  });
+  assert.deepEqual(buildWizardHost("container", "render").redis, {
+    module: "render",
+    "namespace-env": "REDIS_NAMESPACE",
+    tls: { mode: "auto" },
+    "allow-private-plaintext": true,
+  });
+  assert.deepEqual(buildWizardHost("azure-functions", "render").redis, {
+    module: "render",
+    "namespace-env": "CAO_REDIS_NAMESPACE",
+    "url-env": "CAO_REDIS_URL",
+    tls: { mode: "required" },
+  });
 });

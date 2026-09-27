@@ -10,6 +10,7 @@ import { listChartSeries, renderChartLegend, renderChartWidget } from './chart-e
 import { createFactoryScope } from './factory-elements.js';
 import { rowsFor } from './source-rows.js';
 import { renderTemporalMetricPlot } from './temporal-metric-plot.js';
+import { formatMediumUtcDateTimeWithSuffix } from './ui-primitives.js';
 
 const SELECT_POINT_MESSAGE = 'Select a point to inspect that observation.';
 
@@ -363,9 +364,7 @@ function attachPointSelection(chart, points, readout) {
 /** @param {string} value */
 function formatInstant(value) {
   const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp)
-    ? `${new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(new Date(timestamp))} UTC`
-    : '';
+  return Number.isFinite(timestamp) ? formatMediumUtcDateTimeWithSuffix(timestamp) : '';
 }
 
 /** @param {string} value */

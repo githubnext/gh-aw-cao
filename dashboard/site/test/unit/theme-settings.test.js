@@ -1,0 +1,134 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+describe('dashboard theme settings debug logging', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.resetModules();
+    vi.doUnmock('../../src/debug.js');
+  });
+
+  it('is disabled by default (no debug output) when the debug query is absent', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '', output })
+      };
+    });
+    vi.resetModules();
+    const { renderThemeControl } = await import('../../src/components/theme-settings.js');
+
+    renderThemeControl();
+
+    expect(output.debug).not.toHaveBeenCalled();
+  });
+
+  it('logs restore with a predictable category and scalar metadata only', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=theme-settings', output })
+      };
+    });
+    vi.resetModules();
+    localStorage.setItem('central-agentic-ops.dashboard.theme', 'dark');
+    const { renderThemeControl } = await import('../../src/components/theme-settings.js');
+
+    renderThemeControl();
+
+    expect(output.debug).toHaveBeenCalledWith('[cao:theme-settings]', { event: 'restored', theme: 'dark', fallback: false });
+    for (const call of output.debug.mock.calls) {
+      const metadata = call[1];
+      expect(Object.values(metadata).every((value) => typeof value !== 'object')).toBe(true);
+    }
+  });
+
+  it('logs a fallback restore when no stored theme is present', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=theme-settings', output })
+      };
+    });
+    vi.resetModules();
+    const { renderThemeControl } = await import('../../src/components/theme-settings.js');
+
+    renderThemeControl();
+
+    expect(output.debug).toHaveBeenCalledWith('[cao:theme-settings]', { event: 'restored', theme: 'system', fallback: true });
+  });
+
+  it('logs a persisted theme change without leaking sensitive values', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=theme-settings', output })
+      };
+    });
+    vi.resetModules();
+    const { renderThemeControl } = await import('../../src/components/theme-settings.js');
+    document.body.replaceChildren(/** @type {Node} */ (Object.assign(document.createElement('div'), { className: 'dashboard-root' })));
+    const control = renderThemeControl();
+    document.body.firstElementChild?.appendChild(control);
+
+    /** @type {HTMLButtonElement} */ (control.querySelector('[data-theme-value="dark"]')).click();
+
+    expect(output.debug).toHaveBeenCalledWith('[cao:theme-settings]', { event: 'changed', theme: 'dark', persisted: true });
+    for (const call of output.debug.mock.calls) {
+      const metadata = call[1];
+      expect(Object.values(metadata).every((value) => typeof value !== 'object')).toBe(true);
+    }
+  });
+
+  it('logs a persistence failure with only a sanitized error name', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=theme-settings', output })
+      };
+    });
+    vi.resetModules();
+    const { renderThemeControl } = await import('../../src/components/theme-settings.js');
+    document.body.replaceChildren(/** @type {Node} */ (Object.assign(document.createElement('div'), { className: 'dashboard-root' })));
+    const control = renderThemeControl();
+    document.body.firstElementChild?.appendChild(control);
+
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('quota exceeded', 'QuotaExceededError');
+    });
+
+    /** @type {HTMLButtonElement} */ (control.querySelector('[data-theme-value="light"]')).click();
+
+    expect(output.debug).toHaveBeenCalledWith('[cao:theme-settings]', {
+      event: 'changed',
+      theme: 'light',
+      persisted: false,
+      errorName: 'QuotaExceededError'
+    });
+    for (const call of output.debug.mock.calls) {
+      const metadata = call[1];
+      expect(Object.values(metadata).every((value) => typeof value !== 'object')).toBe(true);
+    }
+
+    setItemSpy.mockRestore();
+  });
+});

@@ -1,0 +1,251 @@
+{
+  "queries": [
+    {
+      "name": "event-base",
+      "intent": "Reuse shared query stages for entity-events, event-runs",
+      "from": "audits",
+      "union": [
+        "domains",
+        "tools",
+        "issues"
+      ]
+    },
+    {
+      "name": "event-runs",
+      "intent": "Identify each workflow run that has one or more imported run-owned records.",
+      "description": "Distinct workflow runs represented by imported domain, tool, audit, or issue records.",
+      "from": "event-base",
+      "aggregate": {
+        "by": [
+          "organization",
+          "repository",
+          "workflow",
+          "run",
+          "run-attempt"
+        ],
+        "values": [
+          {
+            "field": "event",
+            "as": "events",
+            "reducer": "count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "run-import-status",
+      "intent": "Identify observed runs that have one or more imported run-owned records.",
+      "description": "Observed runs enriched with imported-record status.",
+      "from": "runs",
+      "joins": [
+        {
+          "source": "event-runs",
+          "type": "left",
+          "on": [
+            {
+              "left": "organization",
+              "right": "organization"
+            },
+            {
+              "left": "repository",
+              "right": "repository"
+            },
+            {
+              "left": "workflow",
+              "right": "workflow"
+            },
+            {
+              "left": "run",
+              "right": "run"
+            },
+            {
+              "left": "run-attempt",
+              "right": "run-attempt"
+            }
+          ],
+          "fields": [
+            {
+              "field": "events",
+              "as": "imported-events"
+            }
+          ]
+        }
+      ],
+      "compute": [
+        {
+          "as": "imported-event-count",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "imported-events"
+            },
+            {
+              "value": 0
+            }
+          ]
+        },
+        {
+          "as": "imported",
+          "function": "greater-than",
+          "args": [
+            {
+              "field": "imported-event-count"
+            },
+            {
+              "value": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "workflow-run-totals",
+      "intent": "Summarize observed run counts and imported runs by declared workflow.",
+      "description": "Observed run and imported-run totals for each declared workflow.",
+      "from": "run-import-status",
+      "compute": [
+        {
+          "as": "run-attempt-identity",
+          "function": "concat",
+          "args": [
+            {
+              "field": "run"
+            },
+            {
+              "value": ":"
+            },
+            {
+              "field": "run-attempt"
+            }
+          ]
+        }
+      ],
+      "aggregate": {
+        "by": [
+          "organization",
+          "repository",
+          "workflow"
+        ],
+        "values": [
+          {
+            "field": "run-attempt-identity",
+            "as": "runs",
+            "reducer": "distinct-count"
+          },
+          {
+            "field": "run-conclusion",
+            "as": "successful-runs",
+            "reducer": "count",
+            "filter": {
+              "predicates": [
+                {
+                  "field": "run-conclusion",
+                  "equals": "success"
+                }
+              ]
+            }
+          },
+          {
+            "field": "run-conclusion",
+            "as": "failed-runs",
+            "reducer": "count",
+            "filter": {
+              "predicates": [
+                {
+                  "field": "run-conclusion",
+                  "in": [
+                    "failure",
+                    "startup-failure",
+                    "stale",
+                    "timed-out"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "field": "imported",
+            "as": "imported-runs",
+            "reducer": "sum"
+          }
+        ]
+      }
+    },
+    {
+      "name": "workflow-aic-totals",
+      "intent": "Summarize observed AI Credit usage by declared workflow.",
+      "description": "Observed AI Credit totals for each declared workflow.",
+      "from": "runs",
+      "aggregate": {
+        "by": [
+          "organization",
+          "repository",
+          "workflow"
+        ],
+        "values": [
+          {
+            "field": "aic-total",
+            "as": "aic",
+            "reducer": "sum"
+          }
+        ]
+      }
+    },
+    {
+      "name": "mcp-tool-calls",
+      "intent": "Prepare MCP tool calls for aggregation while excluding calls to the safe outputs server.",
+      "description": "Observed MCP tool calls labeled with whether they belong to the internal safe outputs server.",
+      "from": "mcp-calls",
+      "compute": [
+        {
+          "as": "safe-output-server",
+          "function": "equals-any",
+          "args": [
+            {
+              "field": "mcp-server"
+            },
+            {
+              "value": "safe_outputs"
+            }
+          ]
+        },
+        {
+          "as": "mcp-tool-label",
+          "function": "concat",
+          "args": [
+            {
+              "field": "mcp-server"
+            },
+            {
+              "value": "/"
+            },
+            {
+              "field": "mcp-tool"
+            }
+          ]
+        },
+        {
+          "as": "workflow-key",
+          "function": "concat",
+          "args": [
+            {
+              "field": "organization"
+            },
+            {
+              "value": "/"
+            },
+            {
+              "field": "repository"
+            },
+            {
+              "value": ":"
+            },
+            {
+              "field": "workflow"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

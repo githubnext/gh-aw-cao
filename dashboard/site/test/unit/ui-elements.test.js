@@ -34,11 +34,12 @@ describe('UI element registry', () => {
     expect(elementLoadsSourcesAsync(element)).toBe(false);
   });
 
-  it.each(['factory-header', 'factory-floor', 'link-button-list'])(
+  it.each(['factory-header', 'factory-floor', 'all-campaign-memory', 'link-button-list'])(
     'keeps independently loaded sources for the live %s renderer',
     (element) => {
       expect(elementLoadsSourcesAsync(element)).toBe(true);
       expect(elementHandlesEmptyRows(element)).toBe(true);
     }
   );
+
 });

@@ -21,10 +21,13 @@ import {
 
 test("assesses only the views a reader can see", () => {
   assert.equal(visibleViewSelector, "[data-view-id]:visible");
-  assert.equal(visibleBusyViewSelector, '[aria-busy="true"]:visible');
   assert.equal(
     visibleLoadingViewSelector,
     ".dashboard-view-skeleton:visible, .dashboard-lazy-view-skeleton:visible",
+  );
+  assert.equal(
+    visibleBusyViewSelector,
+    '[aria-busy="true"]:visible, .dashboard-view-skeleton:visible, .dashboard-lazy-view-skeleton:visible',
   );
 });
 

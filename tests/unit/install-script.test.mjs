@@ -212,6 +212,15 @@ async function assertCompleteInstall(consumer, env, ghAwVersion, repository) {
   assert.equal(policy["gh-aw-version"], ghAwVersion);
   assert.deepEqual(policy["control-plane"], {
     scope: { "allowed-owners": [repository.split("/")[0]], "allowed-repositories": [repository] },
+    marketplace: {
+      registries: [{
+        id: "official",
+        name: "Official CAO catalog",
+        repository: "githubnext/gh-aw-cao",
+        ref: "main",
+        auth: { type: "none" },
+      }],
+    },
     campaigns: {},
   });
   await assertExecutable(path.join(consumer, "cao.sh"));
@@ -559,7 +568,10 @@ test("streamed install.sh initializes repository-only Activity without an App", 
     deterministicWorkflows.map((file) => [owner, name, file, "active"]),
   );
   assert.equal(sources.workflows.metadata.completeness, "complete");
-  assert.deepEqual((await githubRequests(activityEnv)).sort(), Object.keys(githubFixture(repository)).sort());
+  assert.deepEqual((await githubRequests(activityEnv)).sort(), [
+    ...Object.keys(githubFixture(repository)),
+    "https://api.github.com/repos/githubnext/gh-aw-cao/commits/main",
+  ].sort());
 });
 
 test("installed Activity still requires the App for an owner-wide policy", async (t) => {

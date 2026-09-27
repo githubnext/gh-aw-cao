@@ -8,11 +8,25 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var namespaceLog = logger.New("cao:redis:namespace")
 
 const namespacePrefix = "cao:"
 
 var namespaceName = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,63}$`)
+
+// checkoutRootSource identifies how checkoutRoot resolved its result. It is
+// useful for diagnosing an unexpected default namespace without logging the
+// checkout path itself.
+type checkoutRootSource string
+
+const (
+	checkoutRootSourceGitMarker checkoutRootSource = "git-marker"
+	checkoutRootSourceFallback  checkoutRootSource = "fallback"
+)
 
 func NormalizeNamespace(value string) (string, error) {
 	name := strings.ToLower(strings.TrimSpace(value))
@@ -31,19 +45,24 @@ func DefaultNamespace(workingDirectory string) (string, error) {
 	if resolved, resolveErr := filepath.EvalSymlinks(directory); resolveErr == nil {
 		directory = resolved
 	}
-	directory = checkoutRoot(directory)
-	sum := sha256.Sum256([]byte(directory))
+	root, source := checkoutRoot(directory)
+	namespaceLog.Printf("resolved checkout root source=%s", source)
+	sum := sha256.Sum256([]byte(root))
 	return NormalizeNamespace("checkout-" + hex.EncodeToString(sum[:12]))
 }
 
-func checkoutRoot(directory string) string {
+// checkoutRoot walks up from directory looking for a ".git" marker. It
+// returns the marker's directory and checkoutRootSourceGitMarker when found,
+// or the original directory and checkoutRootSourceFallback when no marker is
+// found before reaching the filesystem root.
+func checkoutRoot(directory string) (string, checkoutRootSource) {
 	for candidate := directory; ; candidate = filepath.Dir(candidate) {
 		if _, err := os.Stat(filepath.Join(candidate, ".git")); err == nil {
-			return candidate
+			return candidate, checkoutRootSourceGitMarker
 		}
 		parent := filepath.Dir(candidate)
 		if parent == candidate {
-			return directory
+			return directory, checkoutRootSourceFallback
 		}
 	}
 }

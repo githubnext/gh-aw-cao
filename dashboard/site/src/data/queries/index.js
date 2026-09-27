@@ -51,6 +51,11 @@ export function createCanonicalQueries(indexedDB) {
       forRepository: (/** @type {string} */ repositoryId) =>
         readIndex(indexedDB, 'operationalValues', 'byRepository', [repositoryId])
     },
+    marketplacePackages: {
+      list: () => readCollection(indexedDB, 'marketplacePackages'),
+      forRegistry: (/** @type {string} */ registryId) =>
+        readIndex(indexedDB, 'marketplacePackages', 'byRegistry', [registryId])
+    },
     transactions: {
       list: () => readTransactions(indexedDB)
     }

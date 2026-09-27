@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   disableRemoteDashboardPwa,
   queryRemoteDashboard,
+  queryRemoteRepositoryMemory,
   refreshRemoteDashboard,
   subscribeRemoteRevision,
   usesRemoteDataBackend,
@@ -112,6 +113,29 @@ describe("remote dashboard data backend", () => {
     ]);
   });
 
+  it("resolves repository memory through the authenticated server API", async () => {
+    const manifest = { version: 1, campaigns: [{ campaign: "security-review", files: [] }] };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(manifest), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ content: "# Context" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(queryRemoteRepositoryMemory("security-review", undefined)).resolves.toEqual(manifest);
+    await expect(queryRemoteRepositoryMemory("security-review", "notes/context.md"))
+      .resolves.toEqual({ content: "# Context" });
+
+    expect(fetchMock.mock.calls.map(([url]) => new URL(url).pathname + new URL(url).search)).toEqual([
+      "/api/v1/memory/security-review",
+      "/api/v1/memory/security-review/content?path=notes%2Fcontext.md",
+    ]);
+  });
+
   it("authenticates the revision stream without an ambient cookie", async () => {
     localStorage.setItem("cao-dashboard-access-token", "stream-access-token");
     const stream = new ReadableStream({
@@ -137,5 +161,79 @@ describe("remote dashboard data backend", () => {
       credentials: "omit",
       headers: expect.objectContaining({ Authorization: "Bearer stream-access-token" }),
     }));
+  });
+
+  it("stays silent by default and logs only scalar metadata under its predictable category", async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock("../../src/debug.js", async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual("../../src/debug.js")
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => "?debug=remote-data-backend", output }),
+      };
+    });
+    vi.resetModules();
+    const { refreshRemoteDashboard: refreshRemoteDashboardWithDebug } = await import("../../src/remote-data-backend.js");
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ revision: 1, evaluatedAt: "2026-09-23T00:00:00.000Z" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: "not-found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(refreshRemoteDashboardWithDebug([], { pages: [], queries: [], views: [] }))
+      .rejects.toThrow();
+
+    expect(output.debug).toHaveBeenCalledWith("[cao:remote-data-backend]", { event: "refresh-checked", changed: false });
+    expect(output.debug).toHaveBeenCalledWith("[cao:remote-data-backend]", { event: "request-failed", path: "/api/v1/query", status: 404 });
+
+    for (const call of output.debug.mock.calls) {
+      const metadata = call[1];
+      expect(Object.values(metadata).every((value) => typeof value !== "object")).toBe(true);
+    }
+    expect(JSON.stringify(output.debug.mock.calls)).not.toMatch(/authorization|token|redis/i);
+
+    vi.doUnmock("../../src/debug.js");
+    vi.resetModules();
+  });
+
+  it("is disabled by default (no debug output) when the debug query is absent", async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock("../../src/debug.js", async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual("../../src/debug.js")
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => "", output }),
+      };
+    });
+    vi.resetModules();
+    const { refreshRemoteDashboard: refreshRemoteDashboardWithoutDebug } = await import("../../src/remote-data-backend.js");
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ revision: 1, evaluatedAt: "2026-09-23T00:00:00.000Z" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ revision: 1, sources: {} }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await refreshRemoteDashboardWithoutDebug([], { pages: [], queries: [], views: [] });
+
+    expect(output.debug).not.toHaveBeenCalled();
+
+    vi.doUnmock("../../src/debug.js");
+    vi.resetModules();
   });
 });

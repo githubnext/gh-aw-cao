@@ -190,3 +190,4 @@ Having trouble? Check [Configure Authentication](authentication.md) for reposito
 - Read [How the Control Plane Works](architecture.md) before adding organizations or broader repository discovery.
 - Use the [Configuration Reference](configuration.md) to tune schedules, repository limits, and worker ceilings.
 - Review [Orchestrators and Workers](orchestrators-and-workers.md) before creating another campaign.
+- Choose where to host the dashboard in [Deployment options](deployment.md).

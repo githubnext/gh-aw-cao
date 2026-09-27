@@ -331,6 +331,15 @@ describe('ui primitives', () => {
     expect(rendered.querySelector('svg.octicon-x-circle path')).not.toBeNull();
   });
 
+  it('renders the shared icon element with a custom tag when requested', () => {
+    const rendered = renderIconSpan('post-avatar', 'mark-github', { ariaHidden: true, tag: 'div' });
+
+    expect(rendered.tagName).toBe('DIV');
+    expect(rendered.className).toBe('post-avatar');
+    expect(rendered.getAttribute('aria-hidden')).toBe('true');
+    expect(rendered.querySelector('svg.octicon-mark-github path')).not.toBeNull();
+  });
+
   it('renders the shared close/dismiss icon button with matching title and aria-label text', () => {
     const onClick = () => {};
     const rendered = renderCloseButton({

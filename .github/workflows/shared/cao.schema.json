@@ -153,6 +153,7 @@
       "additionalProperties": false,
       "properties": {
         "experimental": { "type": "boolean" },
+        "host": { "$ref": "#/$defs/host" },
         "favicon": {
           "type": "string",
           "maxLength": 2048,
@@ -163,6 +164,101 @@
         }
       }
     },
+    "environmentVariable": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+    },
+    "redisTLS": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "type": "string", "enum": ["auto", "required", "disabled"] },
+        "server-name-env": { "$ref": "#/$defs/environmentVariable" },
+        "ca-certificate-env": { "$ref": "#/$defs/environmentVariable" }
+      }
+    },
+    "redisModule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["module"],
+      "properties": {
+        "module": {
+          "type": "string",
+          "enum": [
+            "generic", "local", "upstash", "aws-elasticache", "redis-cloud", "gcp-memorystore",
+            "railway", "render", "digitalocean"
+          ]
+        },
+        "url-env": { "$ref": "#/$defs/environmentVariable" },
+        "host-env": { "$ref": "#/$defs/environmentVariable" },
+        "port-env": { "$ref": "#/$defs/environmentVariable" },
+        "username-env": { "$ref": "#/$defs/environmentVariable" },
+        "password-env": { "$ref": "#/$defs/environmentVariable" },
+        "namespace-env": { "$ref": "#/$defs/environmentVariable" },
+        "session": { "type": "string", "enum": ["pooled", "serialized"] },
+        "isolate-process-namespace": { "type": "boolean" },
+        "single-replica": { "type": "boolean" },
+        "supports-collection": { "type": "boolean" },
+        "allow-private-plaintext": { "type": "boolean" },
+        "tls": { "$ref": "#/$defs/redisTLS" }
+      },
+      "allOf": [{
+        "if": { "properties": { "module": { "const": "generic" } } },
+        "else": {
+          "not": {
+            "anyOf": [
+              { "required": ["session"] },
+              { "required": ["isolate-process-namespace"] },
+              { "required": ["single-replica"] },
+              { "required": ["supports-collection"] }
+            ]
+          }
+        }
+      }]
+    },
+    "hostTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["module"],
+      "properties": {
+        "module": {
+          "type": "string",
+          "enum": ["generic", "container", "azure-functions"]
+        },
+        "name": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "authentication": { "type": "string", "enum": ["github-oauth"] },
+        "listener": { "type": "string", "enum": ["process", "platform"] },
+        "require-https": { "type": "boolean" },
+        "trust-platform-proxy": { "type": "boolean" },
+        "supports-single-replica": { "type": "boolean" },
+        "replicas": { "type": "integer", "minimum": 1 }
+      },
+      "allOf": [{
+        "if": { "properties": { "module": { "const": "generic" } } },
+        "then": { "required": ["authentication", "listener"] },
+        "else": {
+          "not": {
+            "anyOf": [
+              { "required": ["authentication"] },
+              { "required": ["listener"] },
+              { "required": ["require-https"] },
+              { "required": ["trust-platform-proxy"] },
+              { "required": ["supports-single-replica"] }
+            ]
+          }
+        }
+      }]
+    },
+    "modularHost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "redis"],
+      "properties": {
+        "target": { "$ref": "#/$defs/hostTarget" },
+        "redis": { "$ref": "#/$defs/redisModule" }
+      }
+    },
+    "host": { "$ref": "#/$defs/modularHost" },
     "defaults": {
       "type": "object",
       "additionalProperties": false,
@@ -198,6 +294,67 @@
         "properties": { "reviewers": { "minItems": 1 } }
       }
     },
+    "marketplaceAuth": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": { "type": { "const": "none" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "secret"],
+          "properties": {
+            "type": { "const": "pat" },
+            "secret": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,127}$" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "app-id-secret", "private-key-secret", "installation-id-secret"],
+          "properties": {
+            "type": { "const": "github-app" },
+            "app-id-secret": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,127}$" },
+            "private-key-secret": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,127}$" },
+            "installation-id-secret": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,127}$" }
+          }
+        }
+      ]
+    },
+    "marketplaceRegistry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "repository", "ref"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "repository": { "$ref": "#/$defs/repository" },
+        "path": {
+          "type": "string",
+          "maxLength": 512,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]*$"
+        },
+        "ref": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "api-url": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "auth": { "$ref": "#/$defs/marketplaceAuth" }
+      }
+    },
+    "marketplace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["registries"],
+      "properties": {
+        "cache-ttl-seconds": { "type": "integer", "minimum": 30, "maximum": 86400 },
+        "registries": {
+          "type": "array",
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/marketplaceRegistry" }
+        }
+      }
+    },
     "controlPlane": {
       "type": "object",
       "additionalProperties": false,
@@ -207,7 +364,8 @@
         "web": { "$ref": "#/$defs/web" },
         "defaults": { "$ref": "#/$defs/defaults" },
         "campaigns": { "$ref": "#/$defs/controlCampaigns" },
-        "publishing": { "$ref": "#/$defs/publishing" }
+        "publishing": { "$ref": "#/$defs/publishing" },
+        "marketplace": { "$ref": "#/$defs/marketplace" }
       }
     },
     "targetCampaign": {

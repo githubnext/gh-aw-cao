@@ -195,7 +195,9 @@ export function verifyCaoRuntime(bundle, repositoryRoot = process.cwd()) {
       'activity/commands/index.mjs',
       'activity/control-settings.mjs',
       'activity/collect-logs.sh',
+      'activity/marketplace.mjs',
       'activity/problem-clustering.mjs',
+      'activity/repository-memory.mjs',
     ],
     dashboard: ['dashboard/site/package.json', 'dashboard/report/aic-usage.mjs'],
   }[bundle];

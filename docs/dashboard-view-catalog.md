@@ -41,9 +41,12 @@ Built-in pages carry renderer-defined semantic requirements and required source 
 | `usage` | Token, AIC, estimated cost, model, engine, and scope usage. |
 | `engines-models` | Model and engine utilization plus run aggregates. |
 | `operational-value` | Campaign-defined repository metrics. |
-| `operational-graders` | Ordered native gh-aw grader metrics with units, directions, and run provenance. |
 | `findings` | Linked security and quality findings with status and severity. |
 | `issues` | Reusable issue entity cards bound to safe-output queries with explicit drill behavior. |
+| `cost` | Observed AI Credit cost across campaigns, repositories, and workflows. |
+| `memory` (experimental) | Browses repository memory published by centrally managed campaigns. |
+| `skills` (experimental) | Observed skill invocations and the workflows that invoked them. |
+| `marketplace` (experimental) | Read-only CAO campaign packages from the configured registries. See [Browse campaign packages](marketplace.md). |
 
 ## Declarative marks
 
@@ -87,6 +90,7 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | `measure-history` | Presents reusable grouped temporal-measure history from declarative query results. |
 | `factory-header` | Presents campaign status, retained-output context, work in motion, and weekly rhythm. |
 | `factory-floor` | Presents linked repository, run, dispatch, and value stations. |
+| `all-campaign-memory` | Browses every campaign repository-memory branch in place without route navigation. |
 | `link-button-list` | Presents one source as an inset grouped list of Octicon navigation rows with disclosure chevrons. |
 | `markdown` | Presents retained Markdown from a declared source field with safe repository-relative links. |
 

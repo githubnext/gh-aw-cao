@@ -3,7 +3,7 @@ title: Deployment and Governance
 description: Choose a control-plane topology and define ownership, enrollment, provenance, and policy boundaries.
 ---
 
-Use this page when deciding where control repositories run, who owns each layer, and how target repositories consent to live operation. For the architectural summary, start with the [Control Plane Overview](architecture.md).
+Use this page when deciding where control repositories run, who owns each layer, and how target repositories consent to live operation. For the architectural summary, start with the [Control Plane Overview](architecture.md). To choose where the dashboard is hosted, see [Deployment options](deployment.md).
 
 ## Deployment Topologies
 

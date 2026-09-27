@@ -5,6 +5,7 @@ on:
     paths:
       - .github/workflows/dashboard-deployed-integration.yml
       - dashboard/site/dashboard.json
+      - dashboard/site/dashboard-fragments/**
       - dashboard/site/dashboard-pages/**
       - dashboard/site/src/data/**
       - dashboard/site/src/data-*.js

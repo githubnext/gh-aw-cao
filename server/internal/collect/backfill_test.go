@@ -61,3 +61,32 @@ func TestNormalizeEnumeratedRepositoriesHandlesNoRepositories(t *testing.T) {
 func equalStrings(got, want []string) bool {
 	return slices.Equal(got, want)
 }
+
+func TestSortByRecencyOrdersMostRecentFirst(t *testing.T) {
+	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	repositories := []enrolledRepository{
+		{name: "octo/old", pushedAt: base},
+		{name: "octo/newest", pushedAt: base.Add(2 * time.Hour)},
+		{name: "octo/mid", pushedAt: base.Add(time.Hour)},
+	}
+	sortByRecency(repositories)
+	want := []string{"octo/newest", "octo/mid", "octo/old"}
+	for index, repository := range repositories {
+		if repository.name != want[index] {
+			t.Fatalf("repositories[%d] = %q, want %q", index, repository.name, want[index])
+		}
+	}
+}
+
+func TestSortByRecencyHandlesEmptyAndSingleton(t *testing.T) {
+	empty := []enrolledRepository(nil)
+	sortByRecency(empty)
+	if len(empty) != 0 {
+		t.Fatalf("empty = %v, want empty", empty)
+	}
+	single := []enrolledRepository{{name: "octo/api"}}
+	sortByRecency(single)
+	if len(single) != 1 || single[0].name != "octo/api" {
+		t.Fatalf("single = %+v", single)
+	}
+}

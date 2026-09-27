@@ -40,6 +40,7 @@ const debug = createDebug('data:ingestion');
 const DASHBOARD_SOURCE_INGESTION_VERSION = 5;
 const GH_AW_JSONL_INGESTION_VERSION = 4;
 export const NORMALIZED_JSONL_INGESTION_VERSION = 3;
+const MIN_NORMALIZED_JSONL_SCHEMA_VERSION = 17;
 const MAX_QUOTA_RECOVERY_ATTEMPTS = 4;
 const MAX_USAGE_RECOVERY_ATTEMPTS = 4;
 const NORMALIZED_BATCH_COLLECTIONS = /** @type {const} */ ([
@@ -51,7 +52,8 @@ const NORMALIZED_BATCH_COLLECTIONS = /** @type {const} */ ([
   'tools',
   'audits',
   'issues',
-  'operationalValues'
+  'operationalValues',
+  'marketplacePackages'
 ]);
 const NORMALIZED_JSONL_WRITE_BATCH_SIZE = 250;
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
@@ -615,7 +617,9 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
             throw new TypeError('Normalized activity JSONL must start with metadata');
           }
           const schemaVersion = Number(envelope.schemaVersion);
-          if (schemaVersion !== CANONICAL_SCHEMA_VERSION) {
+          if (!Number.isSafeInteger(schemaVersion)
+              || schemaVersion < MIN_NORMALIZED_JSONL_SCHEMA_VERSION
+              || schemaVersion > CANONICAL_SCHEMA_VERSION) {
             throw new TypeError(`Unsupported normalized activity schema: ${String(envelope.schemaVersion)}`);
           }
           if (envelope.ingestionVersion !== NORMALIZED_JSONL_INGESTION_VERSION) {

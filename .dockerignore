@@ -1,0 +1,12 @@
+.git
+.github/aw
+.cao-dashboard-traces
+.tmp
+**/.DS_Store
+**/node_modules
+**/dist
+**/test-results
+**/.cache
+**/*.lock.yml
+docs
+research
