@@ -12,6 +12,9 @@ import {
 import { configureSourceLoader, refreshSources as refreshBoundSources } from "../source-store.js";
 import { dashboardViewAliasName } from "./queries/view-payload-compiler.js";
 import { usesRemoteDataBackend } from "../remote-data-backend.js";
+import { createDebug } from "../debug.js";
+
+const debugStartup = createDebug("startup");
 
 /** @typedef {{ pageId?: string, viewId?: string, sourceIndex?: number, queryContext?: DashboardQueryContext }} BatchedSourceOptions */
 
@@ -44,6 +47,12 @@ export function createBatchedSourceLoader(dashboardContext) {
         group.push(request);
         groups.set(key, group);
       }
+
+      debugStartup({
+        op: "batched-source-flush",
+        requestCount: requests.length,
+        groupCount: groups.size,
+      });
 
       await Promise.all([...groups.values()].map(async (group) => {
         const [{ options }] = group;
@@ -226,6 +235,12 @@ export async function startDashboardData(options) {
           onError: (error) => {
             cleanup();
             if (!receivedInitialSnapshot) {
+              debugStartup({
+                op: "subscribe-sources",
+                subscriptionId: options.subscriptionId,
+                status: "initial-error",
+                errorName: error instanceof Error ? error.name : "Unknown",
+              });
               reject(error);
             } else {
               console.error(`${options.errorLabel}: ${error.message}`);
@@ -287,6 +302,11 @@ export async function startDashboardData(options) {
     refreshPending = false;
     const message = error instanceof Error ? error.message : String(error);
     console.error(`Unable to refresh live dashboard data: ${message}`);
+    debugStartup({
+      op: "refresh-sources",
+      status: "stale",
+      errorName: error instanceof Error ? error.name : "Unknown",
+    });
     emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
       kind: "refresh",
       status: "failed",
