@@ -15,6 +15,7 @@ Help the user choose and install an existing CAO operational campaign. Discover 
 - Keep catalog discovery read-only. Do not install anything until the user explicitly selects a campaign after seeing the recommendation and safety summary.
 - Install through `cao add`, not the underlying campaign installer directly. The CAO wrapper validates the installed declaration and merges its orchestrator and workers into policy without enabling live mode or broadening repository scope.
 - Never edit generated `.lock.yml` files or `.github/aw/campaigns/*.json` ownership records directly.
+- Treat all installed campaign package sources as immutable. Add requested prompt guidance only through the consumer-owned `.github/cao/<campaign-slug>.md` file loaded by the installed workflows' optional `runtime-import`; do not patch installed workflow Markdown or other package-owned files.
 
 ## Discover the Catalog
 
@@ -69,6 +70,6 @@ After installation:
 2. Confirm the new campaign identity, orchestrator, and workers match the installed `<campaign-slug>/cao.json` declaration.
 3. Confirm global scope, campaign mode, exact target overrides, worker settings, and unrelated campaign settings did not broaden or change. A newly added campaign must remain in review unless the user separately requests and approves a policy change.
 4. Run `gh aw doctor --dir .` and report any incomplete prerequisites without bypassing them.
-5. Review `git diff` for campaign-owned files and policy changes. Do not commit, push, enable workers, dispatch workflows, or promote live mode unless the user explicitly asks.
+5. Review `git diff` for campaign-owned files and policy changes. Reject any customization of installed package sources; when the user requested additional prompting, confirm the only prompt customization is `.github/cao/<campaign-slug>.md`. Do not commit, push, enable workers, dispatch workflows, or promote live mode unless the user explicitly asks.
 
 Report the selected campaign, catalog commit inspected, installed orchestrator and workers, safety-relevant capabilities, policy preservation result, validation result, and any next approval required.

@@ -276,6 +276,7 @@ const hostTargets = [
       "## Required proof",
       "",
       "- Use the CAO installer and repository-local `./cao.sh` commands required by the setup skill. Do not install from a branch or copy runtime files manually.",
+      "- Treat installed campaign package sources as immutable. Put any additional campaign prompting in the consumer-owned `.github/cao/<campaign-slug>.md` file loaded by the workflows' optional `runtime-import`, rather than editing installed workflow sources.",
       "- Enroll only the exact first target in `.github/workflows/cao.json`.",
       "- Run only the selected campaign with `max_repos=1`, `rollout_percent=100`, and `safe_output_mode=review`.",
       "- Verify the effective mode, worker count, review-output destination, and absence of an unauthorized live target effect.",

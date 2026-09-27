@@ -121,6 +121,9 @@ test("landing wizard prompt references the raw setup skill", () => {
     wizard,
     /https:\/\/raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/skills\/setup-cao\/SKILL\.md/,
   );
+  assert.match(wizard, /Treat installed campaign package sources as immutable/);
+  assert.match(wizard, /\.github\/cao\/<campaign-slug>\.md/);
+  assert.match(wizard, /optional `runtime-import`/);
 });
 
 test("landing wizard delegates setup decisions to the setup skill", () => {

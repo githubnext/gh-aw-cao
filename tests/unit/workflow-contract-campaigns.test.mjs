@@ -524,12 +524,15 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /Do you also want to create an operation campaign of your own/);
   assert.match(setupSkill, /plan an explicit handoff to the `create-cao-campaign` skill after step 14/);
   assert.match(setupSkill, /Never silently default the campaign to Dependabot/);
+  assert.match(setupSkill, /Treat installed campaign package sources as immutable/);
+  assert.match(setupSkill, /\{\{#runtime-import\? \.github\/cao\/<campaign-slug>\.md\}\}/);
   assert.match(setupSkill, /read the control repository's `.github\/workflows\/cao\.json` and the current dashboard state/);
   assert.match(setupSkill, /If the policy and the live dashboard disagree, raise the drift to the user on the dashboard/);
   assert.match(createCampaignSkill, /When invoked from the `setup-cao` skill/);
   assert.match(createCampaignSkill, /accept the recorded desired outcome and target-repository description/);
   assert.match(createCampaignSkill, /compare the intended campaign state with the current `.github\/workflows\/cao\.json` and the dashboard's live control-plane view/);
   assert.match(createCampaignSkill, /raise the mismatch to the user on the dashboard before proceeding/);
+  assert.match(createCampaignSkill, /After installation, all package sources are immutable/);
   assert.match(createCampaignSkill, /Do not repeat the custom-campaign yes\/no question or restart control-plane setup/);
   assert.match(setupSkill, /Ask which repository the first review run should target/);
   assert.match(setupSkill, /Offer `<organization>\/<control-repository>` as the default/);

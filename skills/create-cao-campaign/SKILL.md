@@ -102,7 +102,7 @@ Every orchestrator and worker prompt must include this operation-level runtime i
 {{#runtime-import? .github/cao/<campaign-slug>.md}}
 ```
 
-Never place the runtime import at the top of the Markdown body. Use the same campaign slug and steering file for the orchestrator and all of its workers. Keep the `?` so jobs continue with bundled instructions when the consumer has not created the file. The steering file is consumer-owned configuration: do not create it as a campaign resource or overwrite it during campaign updates. Steering may refine selection, prioritization, and execution only within the workflow's existing permissions, tools, safety policy, and dispatch limits.
+Never place the runtime import at the top of the Markdown body. Use the same campaign slug and steering file for the orchestrator and all of its workers. Keep the `?` so jobs continue with bundled instructions when the consumer has not created the file. The steering file is consumer-owned configuration: do not create it as a campaign resource or overwrite it during campaign updates. After installation, all package sources are immutable; direct consumers to add or revise prompt guidance only in this steering file rather than patching installed workflow Markdown or other package-owned files. Steering may refine selection, prioritization, and execution only within the workflow's existing permissions, tools, safety policy, and dispatch limits.
 
 ### Idempotent Safe Outputs
 
