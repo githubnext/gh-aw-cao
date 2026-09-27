@@ -78,16 +78,16 @@ describe("agent catalog", () => {
 
   it("relates pages to the queries they render", () => {
     expect(queriesForPage(document, "insights")).toEqual(["usage-by-workflow"]);
-    expect(describePage(document, "insights").queries).toEqual([
+    expect(describePage(document, "insights")?.queries).toEqual([
       "usage-by-workflow",
     ]);
   });
 
   it("preserves query intent and description", () => {
     const query = describeQuery(document, "usage-by-workflow");
-    expect(query.intent).toBe("Show observed AI Credit usage by workflow.");
-    expect(query.description).toBe("Usage grouped by workflow.");
-    expect(query["used-by-pages"]).toEqual(["insights"]);
+    expect(query?.intent).toBe("Show observed AI Credit usage by workflow.");
+    expect(query?.description).toBe("Usage grouped by workflow.");
+    expect(query?.["used-by-pages"]).toEqual(["insights"]);
   });
 
   it("derives query parameters from the views that bind them", () => {
