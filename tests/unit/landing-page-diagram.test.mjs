@@ -37,6 +37,7 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(hero, /\.product-shot-value :global\(picture\[data-theme-picture\]\) \{[\s\S]*?width: min\(100%, 22rem\)/);
   assert.match(hero, /ThemeImage/);
   assert.match(hero, /From one control repo to many campaigns/);
+  assert.match(hero, /\.terminal-story \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(hero, /Coordinate campaign fleets from one control plane/);
   assert.match(terminal, /raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/install\.sh/);
   assert.match(terminal, /\.\/cao\.sh setup-auth workflow-token/);
