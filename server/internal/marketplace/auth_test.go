@@ -202,7 +202,7 @@ func TestExchangeGitHubAppTokenExchangesSecretReferencesForAnInstallationToken(t
 
 func TestExchangeGitHubAppTokenRejectsAnUnresolvableSecret(t *testing.T) {
 	registry := Registry{
-		Auth: Auth{
+		Auth: Auth{ // #nosec G101 -- these are env var names for test secret lookups, not credential values.
 			Type:                 AuthGitHubApp,
 			AppIDSecret:          "MISSING_APP_ID",
 			PrivateKeySecret:     "APP_KEY",
