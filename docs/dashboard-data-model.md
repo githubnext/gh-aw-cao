@@ -9,7 +9,11 @@ need to understand what a dashboard record represents or how records connect.
 Views query this source-neutral model instead of interpreting upstream formats
 directly.
 
-See [Data ingestion](/gh-aw-cao/dashboard-data-ingestion/) for collection, JSONL publication, retention, browser updates, and SQLite projections.
+When changing canonical entities or storage, continue to the
+[Dashboard Data Architecture Specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-data.md),
+then `dashboard/site/src/data/`. See
+[Data ingestion](/gh-aw-cao/dashboard-data-ingestion/) for collection, JSONL
+publication, retention, browser updates, and SQLite projections.
 
 ## Entity map
 

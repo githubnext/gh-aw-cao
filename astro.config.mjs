@@ -4,6 +4,7 @@ import starlight from "@astrojs/starlight";
 import mermaid from "astro-mermaid";
 import starlightBlog from "starlight-blog";
 import starlightGitHubAlerts from "starlight-github-alerts";
+import starlightLlmsTxt from "starlight-llms-txt";
 import rewriteDocsLinks from "./docs/rewrite-docs-links.mjs";
 
 /**
@@ -63,6 +64,120 @@ export default defineConfig({
           }),
         }),
         starlightGitHubAlerts(),
+        starlightLlmsTxt({
+          projectName: "Central Agentic Ops",
+          description: "Run, observe, and evolve governed GitHub Agentic Workflow campaigns from a central control plane.",
+          details: "Start with the high-value routes below. Markdown and Starlight source documents are authoritative; the llms*.txt files are generated during every documentation build.",
+          promote: [
+            "index",
+            "architecture-at-a-glance",
+            "architecture",
+            "setup-quickstarts",
+            "cao-cli",
+            "author-your-first-operation",
+            "marketplace",
+            "control-policy-specification",
+            "execution-and-safety",
+            "orchestrators-and-workers",
+            "activity",
+            "dashboard",
+            "dashboard-data-ingestion",
+            "dashboard-data-model",
+            "dashboard-language",
+            "dashboard-language-specification",
+            "operations",
+            "authentication",
+            "deployment",
+            "deployment-managed-redis",
+          ],
+          demote: [
+            "blog/**",
+            "operational-value/reports/**",
+            "activity-cache-compression-analysis",
+            "dashboard-overview-*",
+            "dashboard-view-catalog",
+            "operational-observability-visualization-specification",
+          ],
+          exclude: [
+            "blog/**",
+            "operational-value/reports/**",
+            "activity-cache-compression-analysis",
+            "dashboard-overview-*",
+            "operational-observability-visualization-specification",
+          ],
+          optionalLinks: [
+            {
+              label: "Architecture",
+              url: "https://githubnext.github.io/gh-aw-cao/architecture/",
+              description: "Control-plane roles, authority boundaries, and execution flow.",
+            },
+            {
+              label: "CAO CLI",
+              url: "https://githubnext.github.io/gh-aw-cao/cao-cli/",
+              description: "Control-plane configuration, operation, inspection, and development commands.",
+            },
+            {
+              label: "Campaigns",
+              url: "https://githubnext.github.io/gh-aw-cao/author-your-first-operation/",
+              description: "Create a campaign and prove it safely in review mode.",
+            },
+            {
+              label: "Control policy",
+              url: "https://githubnext.github.io/gh-aw-cao/control-policy-specification/",
+              description: "Persistent rollout policy and the boundary between CAO and gh-aw.",
+            },
+            {
+              label: "Activity",
+              url: "https://githubnext.github.io/gh-aw-cao/activity/",
+              description: "Bounded workflow evidence collection and publication.",
+            },
+            {
+              label: "Dashboard",
+              url: "https://githubnext.github.io/gh-aw-cao/dashboard/",
+              description: "Dashboard architecture and routes to its canonical data and query model.",
+            },
+            {
+              label: "Operations and recovery",
+              url: "https://githubnext.github.io/gh-aw-cao/operations/",
+              description: "Monitor, debug, stop, and recover the control plane.",
+            },
+            {
+              label: "Computations specification",
+              url: "https://github.com/githubnext/gh-aw-cao/blob/main/specs/computations.md",
+              description: "Normative staged computation and actionable-insight contract.",
+            },
+            {
+              label: "setup-cao skill",
+              url: "https://github.com/githubnext/gh-aw-cao/blob/main/skills/setup-cao/SKILL.md",
+              description: "Set up a bare CAO control plane.",
+            },
+            {
+              label: "debug-cao skill",
+              url: "https://github.com/githubnext/gh-aw-cao/blob/main/skills/debug-cao/SKILL.md",
+              description: "Diagnose CAO deployment and runtime failures.",
+            },
+            {
+              label: "add-cao-campaign skill",
+              url: "https://github.com/githubnext/gh-aw-cao/blob/main/skills/add-cao-campaign/SKILL.md",
+              description: "Discover and install an existing campaign.",
+            },
+            {
+              label: "create-cao-campaign skill",
+              url: "https://github.com/githubnext/gh-aw-cao/blob/main/skills/create-cao-campaign/SKILL.md",
+              description: "Author a new CAO campaign.",
+            },
+            {
+              label: "analyze-cao skill",
+              url: "https://github.com/githubnext/gh-aw-cao/blob/main/skills/analyze-cao/SKILL.md",
+              description: "Download and query CAO activity data.",
+            },
+            {
+              label: "cao-cli skill",
+              url: "https://github.com/githubnext/gh-aw-cao/blob/main/skills/cao-cli/SKILL.md",
+              description: "Use the CAO CLI in local and agentic workflow environments.",
+            },
+          ],
+        }),
       ],
       markdown: {
         processedDirs: ["."],

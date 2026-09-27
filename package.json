@@ -23,7 +23,7 @@
     "dashboard:data:download": "npm run dashboard:data -- download",
     "dev": "node dashboard/local-server.mjs --replace-existing --trace-file .cao-dashboard-traces/latest.jsonl",
     "docs:dev": "astro dev",
-    "docs:build": "astro build",
+    "docs:build": "astro build && node scripts/validate-agent-docs.mjs",
     "docs:preview": "astro preview",
     "lint": "node scripts/check-file-sizes.mjs && npm run check:gh-aw-versions && eslint .",
     "check:gh-aw-versions": "node scripts/check-gh-aw-versions.mjs",
@@ -62,6 +62,7 @@
     "mermaid": "11.17.2",
     "starlight-blog": "0.30.0",
     "starlight-github-alerts": "0.4.0",
+    "starlight-llms-txt": "0.12.0",
     "yaml": "^2.9.0"
   },
   "devDependencies": {

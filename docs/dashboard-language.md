@@ -10,6 +10,10 @@ JavaScript, or browser-side data processing to maintain.
 Use this guide to learn the language and write common queries. Use the
 [Dashboard Language Specification](dashboard-language-specification.md) when
 you need the complete vocabulary, validation rules, or conformance requirements.
+To implement or change a query, read the
+[dashboard data model](dashboard-data-model.md) next, then work through the
+query engine and worker boundary under `dashboard/site/src/data/`; do not add
+main-thread JavaScript data derivation.
 
 ## What you can ask
 

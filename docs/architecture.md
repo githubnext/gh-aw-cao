@@ -3,7 +3,12 @@ title: How the Control Plane Works
 description: Understand the control plane's purpose, execution boundary, and core safety properties.
 ---
 
-Read this overview when evaluating whether the control plane fits your organization. Follow its links when you need deployment policy or implementation details. For installation steps, begin with [Set Up CAO](setup-quickstarts.md).
+Read this overview when evaluating the control plane or changing how campaigns
+are authorized and dispatched. For authorization changes, continue to
+[Control Policy](control-policy-specification.md), then the
+[control architecture specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/control-architecture.md)
+and `.github/workflows/shared/control.md`. For installation steps, begin with
+[Set Up CAO](setup-quickstarts.md).
 
 ## Objectives
 

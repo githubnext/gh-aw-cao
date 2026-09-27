@@ -18,6 +18,10 @@ editors:
 
 This specification defines the Central Agentic Ops (CAO) control architecture and its JSON configuration model. CAO governs whether and where an installed GitHub Agentic Workflows (gh-aw) operation may run, including rollout and live authority. gh-aw governs how an authorized workflow executes, including engine limits, generated job topology, authentication, and safe-output execution. This specification defines the cumulative authority model, deterministic resolution lifecycle, conformance requirements, and compliance tests that preserve that boundary.
 
+Implementers should read this specification after the explanatory
+`docs/architecture.md` and before changing `.github/workflows/cao.json`,
+`.github/workflows/shared/control.md`, or its policy resolver.
+
 ## Status of This Document
 
 This document is a Working Draft and may be updated, replaced, or made obsolete. It is the canonical normative specification for the Central Agentic Ops control architecture; documentation under `docs/` is explanatory and MUST NOT override this specification. Implementations MUST identify the exact version against which they claim conformance. Sections 2 through 9 are normative. Section 1, examples, references, and the change log are informative unless they contain an explicit normative statement.

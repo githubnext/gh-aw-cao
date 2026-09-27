@@ -12,6 +12,12 @@ so local tools and agents can query the snapshot without re-ingesting it.
 Every [deployment option](deployment.md) serves dashboard data derived from
 this collector.
 
+Read this page when changing Activity collection, cache publication, or workflow
+registry enrichment. Continue to the
+[Activity specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/activity.md),
+then the [dashboard data specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-data.md)
+and the implementation under `activity/`.
+
 ## How Activity works
 
 ```mermaid

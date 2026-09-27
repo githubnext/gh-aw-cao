@@ -21,3 +21,24 @@ hero:
       variant: secondary
       icon: right-arrow
 ---
+
+## Documentation for coding agents
+
+Use [`llms.txt`](/gh-aw-cao/llms.txt) to find high-value documentation,
+[`llms-small.txt`](/gh-aw-cao/llms-small.txt) for compact context, and
+[`llms-full.txt`](/gh-aw-cao/llms-full.txt) for the broad documentation corpus.
+Agents setting up, debugging, installing, creating, analyzing, or operating CAO
+should use the corresponding
+[`setup-cao`](https://github.com/githubnext/gh-aw-cao/blob/main/skills/setup-cao/SKILL.md),
+[`debug-cao`](https://github.com/githubnext/gh-aw-cao/blob/main/skills/debug-cao/SKILL.md),
+[`add-cao-campaign`](https://github.com/githubnext/gh-aw-cao/blob/main/skills/add-cao-campaign/SKILL.md),
+[`create-cao-campaign`](https://github.com/githubnext/gh-aw-cao/blob/main/skills/create-cao-campaign/SKILL.md),
+[`analyze-cao`](https://github.com/githubnext/gh-aw-cao/blob/main/skills/analyze-cao/SKILL.md),
+or [`cao-cli`](https://github.com/githubnext/gh-aw-cao/blob/main/skills/cao-cli/SKILL.md)
+skill.
+
+Markdown and Starlight pages are authoritative. The `llms*.txt` resources are
+generated during every documentation build; do not edit or commit them. The
+documentation auditor evaluates routing quality but does not define product
+behavior. Update the authoritative architecture and specification sources when
+their contracts change.

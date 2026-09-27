@@ -3,7 +3,14 @@ title: CAO Commands
 description: Configure, control, inspect, and evolve a CAO control plane from its repository-local CLI.
 ---
 
-The CAO installer adds an executable `./cao.sh` wrapper to the control repository. Run it from the repository root to manage the control plane and query its operational data:
+Use this reference when operating CAO or adding a CLI command. The installer
+adds an executable `./cao.sh` wrapper to the control repository; command
+implementation lives under `activity/cao.mjs` and its focused modules. Agents
+using the CLI should follow the
+[`cao-cli` skill](https://github.com/githubnext/gh-aw-cao/blob/main/skills/cao-cli/SKILL.md);
+agents querying activity data should use
+[`analyze-cao`](https://github.com/githubnext/gh-aw-cao/blob/main/skills/analyze-cao/SKILL.md).
+Run the wrapper from the repository root:
 
 ```bash
 ./cao.sh --help

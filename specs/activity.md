@@ -22,6 +22,9 @@ outputs, immutable snapshot identity, data-quality semantics, failure behavior,
 and consumer obligations. It does not define dashboard presentation, workflow
 rollout policy, or durable operational outcomes.
 
+Implementers should read `docs/activity.md` first, then this specification,
+`specs/dashboard-data.md`, and the collection implementation under `activity/`.
+
 ## 1. Status and conformance
 
 This document is a Working Draft and may be updated, replaced, or made
