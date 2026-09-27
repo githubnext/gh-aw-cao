@@ -21,6 +21,18 @@ Use this skill when a user asks to inspect, analyze, investigate, or summarize C
 
 ## Procedure
 
+Decide how you reach the data first:
+
+```
+Do you have shell access?
+  YES           -> cao CLI, steps 1-10 below
+  NO / MCP only -> cao_catalog to discover pages and queries, then cao_query
+```
+
+Without a shell, the workflow has already installed CAO, downloaded the snapshot,
+and started the read-only MCP server; call `cao_catalog` and `cao_query` instead of
+running commands. See [Agent analysis](../../docs/agent-analysis.md).
+
 1. Confirm the repository has dependencies installed. If the `cao` binary is unavailable, use `npm run dashboard:data --` from the repository root.
 2. Download the current published activity snapshot:
 
@@ -43,13 +55,26 @@ Use this skill when a user asks to inspect, analyze, investigate, or summarize C
    ```
 
    Pass `--input FILE` only when auditing a non-default JSONL path.
-5. Query the downloaded SQLite projection with canonical collection names:
+5. Prefer the reviewed named queries the dashboard itself renders. Discover and run them with:
+
+   ```bash
+   cao pages
+   cao queries
+   cao query-info QUERY_ID
+   cao query QUERY_ID --limit 50
+   ```
+
+   Add `--json` to any of these for machine-readable output, and `--param NAME=VALUE`
+   to narrow a query by a declared parameter. Prefer a query whose `execution.local`
+   is `true`, and preserve the `availability`, `completeness`, `freshness`, and
+   `as-of` metadata each result carries.
+6. When no named query answers the question, query the downloaded SQLite projection with canonical collection names:
 
    ```bash
    cao query --collection runs --limit 20
    ```
 
-6. Add filters with repeated exact-match `--where FIELD=VALUE` options. Use dotted fields for nested values when needed:
+7. Add filters with repeated exact-match `--where FIELD=VALUE` options. Use dotted fields for nested values when needed:
 
    ```bash
    cao query \
@@ -59,7 +84,7 @@ Use this skill when a user asks to inspect, analyze, investigate, or summarize C
    ```
 
    Pass `--database FILE` only when querying a non-default SQLite path.
-7. For generated or complex queries, pass a raw Dashboard Language query object through standard input:
+8. For generated or complex queries, pass a raw Dashboard Language query object through standard input:
 
    ```bash
    jq -n \
@@ -74,13 +99,13 @@ Use this skill when a user asks to inspect, analyze, investigate, or summarize C
    ```
 
    `--database FILE` may be combined with `--stdin`; do not combine `--collection`, `--id`, `--where`, or `--limit` with it.
-8. Query by ID when the user asks about one known record:
+9. Query by ID when the user asks about one known record:
 
    ```bash
    cao query --collection sessions --id SESSION_ID
    ```
 
-9. If database health is in doubt, run:
+10. If database health is in doubt, run:
 
    ```bash
    cao doctor

@@ -181,6 +181,11 @@ When you add a page, keep the agent in mind:
   context window, and a large catalog makes tool selection less reliable. Add
   agent-facing pages because an operator needs them, not to raise the count.
 
+WebMCP is one adapter over the shared agent catalog of pages and queries. Agents
+with a shell, and agents with neither a browser nor a shell, reach the same
+catalog through the `cao` CLI and the read-only MCP server described in
+[Agent analysis](agent-analysis.md).
+
 To learn how pages, forms, and queries are declared, see
 [Dashboard Language](dashboard-language.md) and the
 [Dashboard Language Specification](dashboard-language-specification.md).

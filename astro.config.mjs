@@ -174,6 +174,7 @@ export default defineConfig({
             { label: "Language specification", link: "/dashboard-language-specification/" },
             { label: "View catalog", link: "/dashboard-view-catalog/" },
             { label: "WebMCP", link: "/dashboard-webmcp/" },
+            { label: "Agent analysis", link: "/agent-analysis/" },
             {
               label: "Views",
               items: [

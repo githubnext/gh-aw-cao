@@ -93,6 +93,7 @@ Agent analysis:
   Every discovery command emits JSON with --json; diagnostics stay on stderr.
   Named queries are the reviewed Dashboard Language queries of the deployed
   dashboard, so the CLI, the browser, and MCP return the same evidence.
+  Bootstrap guide: https://githubnext.github.io/gh-aw-cao/agent-analysis/
 
 Resources:
   runs    Workflow runs executed in --repo

@@ -129,10 +129,40 @@ itself is not guaranteed to be at a fixed path.
 
 ## Querying
 
-Query the SQLite projection with canonical collection names, or the gh-like surface
-for common run/issue/PR questions.
+Decide how you reach the data first:
 
-### Canonical collections
+```
+Do you have shell access?
+  YES           -> cao CLI
+  NO / MCP only -> cao_catalog, then cao_query
+```
+
+Without a shell, the workflow installs CAO, downloads the snapshot, and starts the
+read-only MCP server; call `cao_catalog` to discover pages and queries, then
+`cao_query` by query identifier. See
+[Agent analysis](../../docs/agent-analysis.md).
+
+With a shell, prefer the reviewed named queries that the dashboard itself renders,
+and fall back to canonical collections or the gh-like surface when no named query
+answers the question.
+
+### Named dashboard queries
+
+```bash
+cao pages
+cao queries
+cao query-info QUERY_ID
+cao query QUERY_ID --limit 50
+cao query QUERY_ID --param NAME=VALUE
+```
+
+Every discovery command accepts `--json` and then prints only JSON on standard
+output. Query discovery reports whether a query is locally executable, so prefer a
+query whose `execution.local` is `true`. Named-query results carry
+`availability`, `completeness`, `freshness`, and `as-of` metadata: zero rows are
+not the same as unavailable, partial, or stale evidence.
+
+### Canonical collections and the gh-like surface
 
 ```bash
 cao query --collection runs --limit 20
