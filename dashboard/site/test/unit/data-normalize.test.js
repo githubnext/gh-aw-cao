@@ -14,6 +14,31 @@ function observation(kind, sourceId, observedAt, data, source = 'dashboard-sourc
 }
 
 describe('canonical normalization', () => {
+  it('normalizes marketplace packages without credential-shaped fields', () => {
+    const batch = normalize([observation(
+      'marketplace-package',
+      'official:octo/packages/demo@abc',
+      '2026-09-26T00:00:00Z',
+      {
+        id: 'official:octo/packages/demo@abc',
+        registryId: 'official',
+        registryName: 'Official',
+        repository: 'octo/packages',
+        path: 'demo',
+        source: 'octo/packages/demo@abc',
+        addCommand: './cao.sh add octo/packages/demo@abc'
+      }
+    )]);
+
+    expect(batch.marketplacePackages).toHaveLength(1);
+    expect(batch.marketplacePackages[0]).toMatchObject({
+      id: 'official:octo/packages/demo@abc',
+      registryId: 'official',
+      repository: 'octo/packages'
+    });
+    expect(JSON.stringify(batch.marketplacePackages[0])).not.toMatch(/token|secret|authorization/i);
+  });
+
   it('enriches renamed entities without duplicating stable identities', () => {
     const observations = [
       observation('repository', 'repo-old', '2026-09-08T00:00:00Z', {
@@ -83,6 +108,46 @@ describe('canonical normalization', () => {
       id: 'github:issue:githubnext/gh-aw-cao:42',
       status: 'updated'
     });
+  });
+
+  it('keeps operational values from different campaigns under separate identities', () => {
+    const common = {
+      repository: 'githubnext/gh-aw-cao',
+      valueId: 'primary',
+      timestamp: '2026-09-24T10:00:00Z'
+    };
+    const batch = normalize([
+      observation('operational-value', 'dependabot-primary', '2026-09-24T10:00:00Z', {
+        ...common,
+        campaign: 'dependabot',
+        value: 3,
+        'operational-value-name': 'Dependabot alert risk'
+      }),
+      observation('operational-value', 'optimization-primary', '2026-09-24T10:00:00Z', {
+        ...common,
+        campaign: 'optimization',
+        value: 0.5,
+        'operational-value-name': 'Optimization opportunity share'
+      })
+    ]);
+
+    expect(batch.operationalValues).toHaveLength(2);
+    expect(batch.operationalValues.map((value) => ({
+      campaign: value.campaign,
+      name: value['operational-value-name'],
+      value: value.value
+    }))).toEqual([
+      {
+        campaign: 'dependabot',
+        name: 'Dependabot alert risk',
+        value: 3
+      },
+      {
+        campaign: 'optimization',
+        name: 'Optimization opportunity share',
+        value: 0.5
+      }
+    ]);
   });
 
   it('orders run-linked records independently of ingestion order', () => {

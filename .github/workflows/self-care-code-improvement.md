@@ -33,7 +33,7 @@ on:
 
 checkout:
   repository: ${{ inputs.target_repo }}
-  github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+  github-token: ${{ secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
   fetch-depth: 0
   current: true
 

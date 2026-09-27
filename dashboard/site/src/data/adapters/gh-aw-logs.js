@@ -241,6 +241,43 @@ function runMetadata(run) {
   };
 }
 
+/** @param {Record<string, unknown>} raw @param {Record<string, unknown>} enriched */
+function runFailureMetadata(raw, enriched) {
+  const jobs = Array.isArray(enriched.job_details) ? enriched.job_details : [];
+  const failedJob = jobs.find((job) => {
+    if (!job || typeof job !== 'object' || Array.isArray(job)) return false;
+    return ['failure', 'timed_out', 'startup_failure'].includes(String(job.conclusion ?? ''));
+  });
+  const job = failedJob && typeof failedJob === 'object' && !Array.isArray(failedJob)
+    ? /** @type {Record<string, unknown>} */ (failedJob)
+    : {};
+  const steps = Array.isArray(job.steps) ? job.steps : [];
+  const failedStep = steps.find((step) => {
+    if (!step || typeof step !== 'object' || Array.isArray(step)) return false;
+    return ['failure', 'timed_out', 'startup_failure'].includes(String(step.conclusion ?? ''));
+  });
+  const step = failedStep && typeof failedStep === 'object' && !Array.isArray(failedStep)
+    ? /** @type {Record<string, unknown>} */ (failedStep)
+    : {};
+  const failureLog = firstOptionalString(
+    enriched.failure_log,
+    enriched.failed_step_log,
+    raw.failureLog,
+    raw.failure_log
+  );
+  return {
+    failureJob: firstOptionalString(enriched.failure_job, raw.failureJob, raw.failure_job, job.name),
+    failureMessage: firstOptionalString(
+      enriched.failure_message,
+      enriched.failure_detail,
+      raw.failureMessage,
+      raw.failure_message
+    ),
+    failureStep: firstOptionalString(enriched.failure_step, raw.failureStep, raw.failure_step, step.name),
+    failureLog
+  };
+}
+
 /** @param {Record<string, unknown>} run */
 function runAggregates(run) {
   const audit = run.audit && typeof run.audit === 'object' && !Array.isArray(run.audit)
@@ -1223,6 +1260,7 @@ function createCachedGhAwJsonlAccumulator(options) {
       `${id}.attempt`
     );
     const metadata = runMetadata(enrichedValue);
+    const failure = runFailureMetadata(rawValue, enrichedValue);
     const aggregates = runAggregates(enrichedValue);
     const reportIncomplete = reportIncompleteRunIds.has(id);
     const title = optionalString(rawValue.displayTitle)
@@ -1280,6 +1318,11 @@ function createCachedGhAwJsonlAccumulator(options) {
         classification: optionalString(enrichedValue.classification),
         intentionalFailure: enrichedValue.intentional_failure,
         failureKind: optionalString(enrichedValue.failure_kind),
+        failureJob: failure.failureJob,
+        failureMessage: failure.failureMessage,
+        failureStep: failure.failureStep,
+        failureLog: failure.failureLog,
+        failureDetail: failure.failureMessage ?? failure.failureStep,
         terminalOutcome: reportIncomplete ? 'report_incomplete' : undefined,
         terminalOutcomeDetail: reportIncomplete
           ? 'The agent reported that required evidence or access was unavailable.'

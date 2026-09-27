@@ -11,7 +11,6 @@ describe('DLS-CONF-004 scaffold gates', () => {
   it('keeps the browser preview populated with chart and linked-run fixtures', () => {
     const preview = readFileSync(resolve('src/dashboard-app.js'), 'utf8');
 
-    expect(preview.match(/"operational-grader":/g)).toHaveLength(8);
     expect(preview.match(/"run-link":/g)?.length).toBeGreaterThanOrEqual(5);
   });
 

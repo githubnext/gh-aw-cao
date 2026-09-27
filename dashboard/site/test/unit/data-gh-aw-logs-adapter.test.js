@@ -275,6 +275,7 @@ describe('gh-aw logs adapter', () => {
     const adapted = adaptCachedGhAwJsonl(content, {
       context: JSON.parse(readFileSync(join(fixtureRoot, 'context.json'), 'utf8'))
     });
+
     const batch = normalize(adapted.observations);
 
     expect(adapted).toMatchObject({
@@ -406,6 +407,57 @@ describe('gh-aw logs adapter', () => {
         requestCount: 1
       })
     ]));
+  });
+
+  it('retains failed job diagnostics and runtime metadata for driver exits', () => {
+    const content = JSON.stringify({
+      schema_version: 2,
+      kind: 'run',
+      run: {
+        run_id: 404,
+        run_attempt: 1,
+        organization: 'githubnext',
+        repository: 'githubnext/gh-aw-cao',
+        workflow_name: 'Optimization / Token Optimizer',
+        workflow_path: '.github/workflows/optimization-token-optimizer.md',
+        status: 'completed',
+        conclusion: 'failure',
+        failure_kind: 'driver_exit',
+        failure_detail: 'Agent process exited with code 1.',
+        failure_log: '##[error]Agent process exited with code 1.',
+        created_at: '2026-09-09T04:00:00Z',
+        updated_at: '2026-09-09T04:01:00Z',
+        job_details: [{
+          name: 'agent',
+          conclusion: 'failure',
+          steps: [{ name: 'Execute agent', conclusion: 'failure' }]
+        }],
+        aw_info: {
+          engine_id: 'copilot',
+          engine_name: 'GitHub Copilot CLI',
+          model: 'gpt-5.4',
+          agent_version: '1.0.87',
+          cli_version: 'v0.89.21'
+        }
+      }
+    });
+
+    const batch = normalize(adaptCachedGhAwJsonl(content, {
+      context: JSON.parse(readFileSync(join(fixtureRoot, 'context.json'), 'utf8'))
+    }).observations);
+
+    expect(batch.runs).toEqual([expect.objectContaining({
+      failureKind: 'driver_exit',
+      failureJob: 'agent',
+      failureMessage: 'Agent process exited with code 1.',
+      failureStep: 'Execute agent',
+      failureLog: '##[error]Agent process exited with code 1.',
+      ghAwVersion: 'v0.89.21',
+      engine: 'GitHub Copilot CLI',
+      engineVersion: '1.0.87',
+      requestedModel: 'gpt-5.4',
+      resolvedModel: 'gpt-5.4'
+    })]);
   });
 
   it('resolves pathless raw runs from declared workflow name hints', () => {

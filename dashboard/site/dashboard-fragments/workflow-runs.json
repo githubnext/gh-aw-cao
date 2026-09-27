@@ -1,0 +1,890 @@
+{
+  "queries": [
+    {
+      "name": "entity-runs",
+      "intent": "Project run entities for reusable run cards and workflow drill-down.",
+      "from": "runs",
+      "select": [
+        {
+          "field": "organization"
+        },
+        {
+          "field": "repository"
+        },
+        {
+          "field": "workflow"
+        },
+        {
+          "field": "target-repository"
+        },
+        {
+          "field": "run"
+        },
+        {
+          "field": "run-attempt"
+        },
+        {
+          "field": "run-title"
+        },
+        {
+          "field": "run-status"
+        },
+        {
+          "field": "run-conclusion"
+        },
+        {
+          "field": "event"
+        },
+        {
+          "field": "branch"
+        },
+        {
+          "field": "duration"
+        },
+        {
+          "field": "started-at"
+        },
+        {
+          "field": "ended-at"
+        },
+        {
+          "field": "run-link"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "started-at",
+          "direction": "desc"
+        }
+      ]
+    },
+    {
+      "name": "workflow-runs",
+      "intent": "Project canonical runs into route-addressable workflow run evidence.",
+      "description": "Workflow runs with a stable repository and workflow route key.",
+      "from": "runs",
+      "compute": [
+        {
+          "as": "repository-coordinate",
+          "function": "concat",
+          "args": [
+            {
+              "field": "organization"
+            },
+            {
+              "value": "/"
+            },
+            {
+              "field": "repository"
+            }
+          ]
+        },
+        {
+          "as": "workflow-route",
+          "function": "concat",
+          "args": [
+            {
+              "field": "repository-coordinate"
+            },
+            {
+              "value": ":"
+            },
+            {
+              "field": "workflow"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "workflow-route"
+        },
+        {
+          "field": "organization"
+        },
+        {
+          "field": "repository"
+        },
+        {
+          "field": "workflow"
+        },
+        {
+          "field": "run"
+        },
+        {
+          "field": "run-title"
+        },
+        {
+          "field": "event"
+        },
+        {
+          "field": "started-at"
+        },
+        {
+          "field": "ended-at"
+        },
+        {
+          "field": "run-status"
+        },
+        {
+          "field": "run-conclusion"
+        },
+        {
+          "field": "failure-job"
+        },
+        {
+          "field": "failure-message"
+        },
+        {
+          "field": "failure-step"
+        },
+        {
+          "field": "failure-log"
+        },
+        {
+          "field": "rollout-mode"
+        },
+        {
+          "field": "engine"
+        },
+        {
+          "field": "engine-version"
+        },
+        {
+          "field": "gh-aw-version"
+        },
+        {
+          "field": "requested-model"
+        },
+        {
+          "field": "resolved-model"
+        },
+        {
+          "field": "run-link"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "started-at",
+          "direction": "desc"
+        },
+        {
+          "field": "run",
+          "direction": "desc"
+        }
+      ]
+    },
+    {
+      "name": "workflow-reports",
+      "intent": "Project retained outcomes into route-addressable workflow reports.",
+      "description": "Workflow outcome reports with stable route keys and disposition fields.",
+      "from": "outcomes",
+      "compute": [
+        {
+          "as": "report-repository",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "runtime-repository"
+            },
+            {
+              "field": "repository"
+            }
+          ]
+        },
+        {
+          "as": "workflow-route",
+          "function": "concat",
+          "args": [
+            {
+              "field": "report-repository"
+            },
+            {
+              "value": ":"
+            },
+            {
+              "field": "workflow"
+            }
+          ]
+        },
+        {
+          "as": "report-status",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "outcome-status"
+            },
+            {
+              "field": "outcome-state"
+            },
+            {
+              "value": "unknown"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "workflow-route"
+        },
+        {
+          "field": "safe-output"
+        },
+        {
+          "field": "outcome-title"
+        },
+        {
+          "field": "outcome-summary"
+        },
+        {
+          "field": "report-status",
+          "as": "outcome-status"
+        },
+        {
+          "field": "rollout-mode"
+        },
+        {
+          "field": "engine"
+        },
+        {
+          "field": "engine-version"
+        },
+        {
+          "field": "requested-model"
+        },
+        {
+          "field": "resolved-model"
+        },
+        {
+          "field": "outcome-category"
+        },
+        {
+          "field": "observed-at"
+        },
+        {
+          "field": "external-link"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "observed-at",
+          "direction": "desc"
+        },
+        {
+          "field": "outcome-title",
+          "direction": "asc"
+        }
+      ]
+    }
+  ],
+  "views": [
+    {
+      "id": "workflow-runs-cards",
+      "title": "Runs",
+      "description": "Observed runs for the selected workflow.",
+      "data": {
+        "source": "entity-runs",
+        "arguments": [
+          {
+            "name": "organization",
+            "field": "organization"
+          },
+          {
+            "name": "repository",
+            "field": "repository"
+          },
+          {
+            "name": "workflow",
+            "field": "workflow"
+          }
+        ]
+      },
+      "mark": "list",
+      "list": {
+        "style": "entity-cards",
+        "card": "run",
+        "icon": "play",
+        "drill": {
+          "type": "query",
+          "page": "run-events",
+          "query": "entity-events",
+          "title-field": "run",
+          "arguments": [
+            {
+              "name": "organization",
+              "field": "organization"
+            },
+            {
+              "name": "repository",
+              "field": "repository"
+            },
+            {
+              "name": "workflow",
+              "field": "workflow"
+            },
+            {
+              "name": "run",
+              "field": "run"
+            },
+            {
+              "name": "run-attempt",
+              "field": "run-attempt"
+            }
+          ]
+        }
+      },
+      "empty-message": "No runs were observed for this workflow.",
+      "layout": "full-view",
+      "encoding": {
+        "columns": [
+          {
+            "field": "run-title",
+            "type": "nominal",
+            "title": "Run"
+          },
+          {
+            "field": "run",
+            "type": "nominal",
+            "title": "Run number"
+          },
+          {
+            "field": "run-status",
+            "type": "nominal",
+            "title": "Status"
+          },
+          {
+            "field": "run-conclusion",
+            "type": "nominal",
+            "title": "Conclusion"
+          },
+          {
+            "field": "event",
+            "type": "nominal",
+            "title": "Event"
+          },
+          {
+            "field": "branch",
+            "type": "nominal",
+            "title": "Branch",
+            "display": "ref"
+          },
+          {
+            "field": "repository",
+            "type": "nominal",
+            "title": "Repository"
+          },
+          {
+            "field": "workflow",
+            "type": "nominal",
+            "title": "Workflow",
+            "format": "workflow-relative-path"
+          },
+          {
+            "field": "run-attempt",
+            "type": "quantitative",
+            "title": "Attempt"
+          },
+          {
+            "field": "started-at",
+            "type": "temporal",
+            "title": "Started",
+            "format": "human-friendly-timestamp"
+          },
+          {
+            "field": "duration",
+            "type": "nominal",
+            "title": "Duration"
+          },
+          {
+            "field": "organization",
+            "type": "nominal",
+            "title": "Organization"
+          }
+        ]
+      }
+    }
+  ],
+  "pages": [
+    {
+      "id": "workflow-detail",
+      "kind": "custom",
+      "title": "Workflow",
+      "description": "Durable reports produced by this authored GitHub Agentic Workflow.",
+      "icon": "workflow",
+      "class-name": "workflow-detail-page",
+      "route": {
+        "hash-query-parameter": "workflow"
+      },
+      "views": [
+        {
+          "id": "workflow-report-status",
+          "title": "Report status",
+          "description": "The disposition of durable outputs is the leading outcome signal for this workflow.",
+          "data": {
+            "source": "workflow-reports",
+            "route-field": "workflow-route"
+          },
+          "mark": "chart",
+          "chart": "pie",
+          "layout": "full",
+          "encoding": {
+            "x": {
+              "field": "outcome-status",
+              "type": "nominal",
+              "title": "Status"
+            },
+            "y": {
+              "field": "safe-output",
+              "type": "quantitative",
+              "aggregate": "count",
+              "title": "Reports"
+            }
+          }
+        },
+        {
+          "id": "workflow-reports-route",
+          "title": "Workflow reports",
+          "data": {
+            "sources": [
+              "workflows"
+            ]
+          },
+          "mark": "element",
+          "element": "workflow-route-page",
+          "config": {
+            "body": "reports"
+          },
+          "layout": "full"
+        },
+        {
+          "id": "workflow-report-table",
+          "data": {
+            "source": "workflow-reports",
+            "route-field": "workflow-route"
+          },
+          "mark": "table",
+          "controls": "interactive",
+          "empty-message": "No reports have been attributed to this workflow.",
+          "encoding": {
+            "columns": [
+              {
+                "field": "outcome-title",
+                "type": "nominal",
+                "title": "Report",
+                "display": "outcome-link"
+              },
+              {
+                "field": "outcome-status",
+                "type": "nominal",
+                "title": "Status",
+                "display": "status"
+              },
+              {
+                "field": "rollout-mode",
+                "type": "nominal",
+                "title": "Mode",
+                "display": "mode"
+              },
+              {
+                "field": "outcome-category",
+                "type": "nominal",
+                "title": "Type"
+              },
+              {
+                "field": "observed-at",
+                "type": "temporal",
+                "format": "human-friendly-timestamp",
+                "title": "Updated"
+              }
+            ]
+          },
+          "layout": "full"
+        }
+      ]
+    },
+    {
+      "id": "workflow-runs",
+      "kind": "custom",
+      "title": "Workflow runs",
+      "description": "Observed GitHub Actions runs for this authored workflow.",
+      "icon": "play",
+      "class-name": "workflow-runs-page",
+      "route": {
+        "hash-query-parameter": "workflow"
+      },
+      "views": [
+        {
+          "id": "workflow-run-health",
+          "title": "Run health trend",
+          "description": "Daily conclusions show this workflow's execution health at a glance.",
+          "data": {
+            "source": "workflow-runs",
+            "route-field": "workflow-route"
+          },
+          "mark": "chart",
+          "chart": "line",
+          "layout": "full",
+          "encoding": {
+            "x": {
+              "field": "started-at",
+              "type": "temporal",
+              "format": "human-friendly-timestamp",
+              "time-unit": "day"
+            },
+            "y": {
+              "field": "run",
+              "type": "quantitative",
+              "aggregate": "count"
+            },
+            "color": {
+              "field": "run-conclusion",
+              "type": "nominal"
+            }
+          }
+        },
+        {
+          "id": "workflow-runs-route",
+          "title": "Workflow runs",
+          "data": {
+            "sources": [
+              "workflows"
+            ]
+          },
+          "mark": "element",
+          "element": "workflow-route-page",
+          "config": {
+            "body": "runs"
+          },
+          "layout": "full"
+        },
+        {
+          "id": "workflow-runs-table",
+          "disclosure-label": "Runs",
+          "description": "Answers which recent workflow runs succeeded, failed, or remain in progress.",
+          "data": {
+            "source": "workflow-runs",
+            "route-field": "workflow-route"
+          },
+          "mark": "table",
+          "disclosure": "supplemental",
+          "controls": "static",
+          "empty-message": "No runs have been observed for this workflow.",
+          "encoding": {
+            "columns": [
+              {
+                "field": "run",
+                "type": "nominal",
+                "title": "Run"
+              },
+              {
+                "field": "run-status",
+                "type": "nominal",
+                "title": "Status",
+                "display": "status"
+              },
+              {
+                "field": "run-conclusion",
+                "type": "nominal",
+                "title": "Conclusion",
+                "display": "status"
+              },
+              {
+                "field": "rollout-mode",
+                "type": "nominal",
+                "title": "Mode",
+                "display": "mode"
+              }
+            ],
+            "href": {
+              "field": "run-link",
+              "type": "nominal"
+            },
+            "actions": [
+              {
+                "intent": "Open the precise GitHub Actions run page without executing an action.",
+                "presentation": "external-link",
+                "icon": "mark-github",
+                "label": "Open run on GitHub",
+                "context": [
+                  "run-link"
+                ]
+              }
+            ]
+          },
+          "layout": "full"
+        },
+        {
+          "id": "workflow-run-details",
+          "disclosure-label": "Run details",
+          "description": "Supplemental metadata for deeper evidence review after the run-status table answers the current state.",
+          "disclosure": "supplemental",
+          "data": {
+            "source": "workflow-runs",
+            "route-field": "workflow-route"
+          },
+          "mark": "table",
+          "controls": "static",
+          "empty-message": "No runs have been observed for this workflow.",
+          "encoding": {
+            "columns": [
+              {
+                "field": "run",
+                "type": "nominal",
+                "title": "Run"
+              },
+              {
+                "field": "run-title",
+                "type": "nominal",
+                "title": "Title"
+              },
+              {
+                "field": "event",
+                "type": "nominal",
+                "title": "Trigger"
+              },
+              {
+                "field": "engine",
+                "type": "nominal",
+                "title": "Engine"
+              },
+              {
+                "field": "gh-aw-version",
+                "type": "nominal",
+                "title": "gh-aw version"
+              },
+              {
+                "field": "requested-model",
+                "type": "nominal",
+                "title": "Requested model"
+              },
+              {
+                "field": "resolved-model",
+                "type": "nominal",
+                "title": "Resolved model"
+              },
+              {
+                "field": "started-at",
+                "type": "temporal",
+                "format": "human-friendly-timestamp",
+                "title": "Started"
+              },
+              {
+                "field": "ended-at",
+                "type": "temporal",
+                "format": "human-friendly-timestamp",
+                "title": "Ended"
+              }
+            ],
+            "actions": [
+              {
+                "action": "create-agent-task",
+                "intent": "Investigate this failed workflow run.",
+                "presentation": "copy-prompt",
+                "icon": "search",
+                "label": "Investigate",
+                "context": [
+                  "run",
+                  "run-title",
+                  "repository",
+                  "workflow",
+                  "run-conclusion",
+                  "failure-job",
+                  "failure-message",
+                  "failure-step",
+                  "run-link"
+                ],
+                "when": {
+                  "field": "run-conclusion",
+                  "equals": "failure"
+                }
+              }
+            ],
+            "href": {
+              "field": "run-link",
+              "type": "nominal"
+            }
+          },
+          "layout": "full"
+        }
+      ]
+    },
+    {
+      "id": "workflow-run-cards",
+      "kind": "custom",
+      "title": "Workflow runs",
+      "description": "Observed runs for the selected workflow.",
+      "icon": "play",
+      "route": {
+        "hash-query-parameter": "workflow",
+        "navigation-page": "workflows"
+      },
+      "views": [
+        "workflow-runs-cards"
+      ]
+    },
+    {
+      "id": "workflow-runtime",
+      "kind": "custom",
+      "title": "Workflow runtime",
+      "description": "Run health, AI Credit usage, and operational value for this authored workflow.",
+      "icon": "play",
+      "class-name": "workflow-runtime-page",
+      "route": {
+        "hash-query-parameter": "workflow"
+      },
+      "views": [
+        {
+          "id": "workflow-runtime-health",
+          "title": "Runtime health trend",
+          "description": "Daily conclusions provide the leading runtime signal for this workflow.",
+          "data": {
+            "source": "workflow-runs",
+            "route-field": "workflow-route",
+            "time": {
+              "range": "30d"
+            }
+          },
+          "mark": "chart",
+          "chart": "swimlane",
+          "layout": "full",
+          "encoding": {
+            "x": {
+              "field": "started-at",
+              "type": "temporal",
+              "format": "human-friendly-timestamp",
+              "title": "Started"
+            },
+            "y": {
+              "field": "run-conclusion",
+              "type": "ordinal",
+              "title": "Conclusion"
+            },
+            "color": {
+              "field": "run-conclusion",
+              "type": "nominal"
+            },
+            "href": {
+              "field": "run-link",
+              "type": "nominal"
+            }
+          }
+        },
+        {
+          "id": "workflow-runtime-route",
+          "title": "Workflow runtime",
+          "data": {
+            "sources": [
+              "workflows",
+              "runs",
+              "usage"
+            ]
+          },
+          "mark": "element",
+          "element": "workflow-route-page",
+          "config": {
+            "body": "insights"
+          },
+          "layout": "full"
+        }
+      ]
+    },
+    {
+      "id": "outcome-detail",
+      "kind": "custom",
+      "title": "Outcome",
+      "description": "Published safe-output outcome details and provenance.",
+      "icon": "issue-opened",
+      "class-name": "outcome-detail-page",
+      "route": {
+        "hash-query-parameter": "outcome"
+      },
+      "views": [
+        {
+          "id": "outcome-disposition",
+          "title": "Outcome disposition",
+          "description": "The current disposition is the leading signal for this retained outcome.",
+          "data": {
+            "source": "outcomes",
+            "route-field": "safe-output"
+          },
+          "mark": "chart",
+          "chart": "pie",
+          "layout": "full",
+          "encoding": {
+            "x": {
+              "field": "outcome-state",
+              "type": "nominal",
+              "title": "Disposition"
+            },
+            "y": {
+              "field": "safe-output",
+              "type": "quantitative",
+              "aggregate": "count",
+              "title": "Outcomes"
+            }
+          }
+        },
+        {
+          "id": "outcome-record",
+          "title": "Outcome",
+          "description": "Rendered from reusable discussion and metadata sections bound to the selected outcome.",
+          "title-link": {
+            "href-field": "external-link",
+            "identifier-field": "outcome-number"
+          },
+          "mark": "element",
+          "element": "outcome-detail",
+          "data": {
+            "sources": [
+              "outcomes"
+            ]
+          },
+          "layout": "full"
+        },
+        {
+          "id": "outcome-discussion",
+          "title": "Outcome discussion",
+          "data": {
+            "sources": [
+              "outcomes"
+            ]
+          },
+          "mark": "element",
+          "element": "outcome-detail-section",
+          "config": {
+            "body": "discussion"
+          },
+          "layout": "full"
+        },
+        {
+          "id": "outcome-metadata",
+          "title": "Outcome metadata",
+          "data": {
+            "sources": [
+              "outcomes"
+            ]
+          },
+          "mark": "element",
+          "element": "outcome-detail-section",
+          "config": {
+            "body": "metadata"
+          },
+          "layout": "full"
+        }
+      ],
+      "sections": [
+        {
+          "id": "outcome-summary",
+          "title": "Outcome",
+          "layout": "full",
+          "views": [
+            "outcome-disposition",
+            "outcome-record",
+            "outcome-discussion",
+            "outcome-metadata"
+          ]
+        }
+      ]
+    }
+  ]
+}

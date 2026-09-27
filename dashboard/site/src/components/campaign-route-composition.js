@@ -11,6 +11,7 @@ import {
   CAMPAIGN_ROUTE_VARIANT_VALUES
 } from './route-body-specification.js';
 import { renderMeasureHistory } from './measure-history.js';
+import { renderCampaignMemory } from './campaign-memory.js';
 
 const CAMPAIGN_OPERATIONAL_VALUE_SOURCES = [
   'campaign-operational-value-primary-series',
@@ -21,11 +22,11 @@ const CAMPAIGN_OPERATIONAL_VALUE_SOURCES = [
 ];
 
 /**
- * @typedef {'overview'|'workflows'|'runs'|'issues'|'repositories'|'insights'|'problems'|'reports'|'dispatches'} CampaignRouteBody
+ * @typedef {'overview'|'workflows'|'runs'|'issues'|'repositories'|'insights'|'problems'|'reports'|'memory'|'dispatches'} CampaignRouteBody
  */
 
 /**
- * @typedef {'overview'|'workflows'|'runs'|'issues'|'repositories'|'insights'|'problems'|'reports'} CampaignRouteTab
+ * @typedef {'overview'|'workflows'|'runs'|'issues'|'repositories'|'insights'|'problems'|'reports'|'memory'} CampaignRouteTab
  */
 
 /**
@@ -86,7 +87,7 @@ const CAMPAIGN_ROUTE_COMPOSITIONS = {
   },
   insights: {
     rootClassName: 'campaign-insights',
-    selectMessage: 'Select a campaign to view its audit insights.',
+    selectMessage: 'Select a campaign to view its operational value.',
     description: 'Operational activity for the {campaignName} campaign.',
     currentTab: 'insights',
     bodyRenderer: ({ context }) => renderMeasureHistory({
@@ -113,6 +114,13 @@ const CAMPAIGN_ROUTE_COMPOSITIONS = {
     description: 'Operational activity for the {campaignName} campaign.',
     currentTab: 'reports',
     bodyRenderer: undefined
+  },
+  memory: {
+    rootClassName: 'campaign-memory',
+    selectMessage: 'Select a campaign to browse its repository memory.',
+    description: 'Repository memory published for the {campaignName} campaign.',
+    currentTab: 'memory',
+    bodyRenderer: ({ campaignId, campaignName }) => renderCampaignMemory({ campaignId, campaignName })
   }
 };
 

@@ -1,9 +1,12 @@
 import { h } from '../dom.js';
+import { createDebug } from '../debug.js';
 import { navigationIndicator } from '../navigation-indicator.js';
 import { agenticWorkflowMark, octicon } from '../octicons.js';
 import { scopedStorageKey } from '../storage-scope.js';
 import { titleCase } from './count-formatters.js';
 import { enableDetailsMenuDismissal } from './ui-primitives.js';
+
+const debugNavigation = createDebug('dashboard-navigation');
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.sidebar-collapsed');
 const NAV_SECTIONS_OPEN_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.nav-sections-open');
@@ -348,8 +351,9 @@ function enableSidebarToggle(root) {
   let collapsed = false;
   try {
     collapsed = globalThis.window?.localStorage?.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true';
-  } catch {
+  } catch (error) {
     // Storage can be unavailable in embedded or privacy-restricted contexts.
+    debugNavigation({ event: 'sidebar-state.read_failed', errorName: /** @type {Error} */ (error)?.name });
   }
   setCollapsed(collapsed);
 
@@ -358,8 +362,9 @@ function enableSidebarToggle(root) {
     setCollapsed(collapsed);
     try {
       globalThis.window?.localStorage?.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(collapsed));
-    } catch {
+    } catch (error) {
       // The display mode still works for the current page when storage is unavailable.
+      debugNavigation({ event: 'sidebar-state.write_failed', errorName: /** @type {Error} */ (error)?.name });
     }
   });
 }
@@ -406,7 +411,8 @@ function readNavSectionState() {
     return Object.fromEntries(
       Object.entries(parsed).filter(([, value]) => typeof value === 'boolean')
     );
-  } catch {
+  } catch (error) {
+    debugNavigation({ event: 'nav-section-state.read_failed', errorName: /** @type {Error} */ (error)?.name });
     return {};
   }
 }

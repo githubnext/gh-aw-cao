@@ -219,6 +219,20 @@ export function formatUtcDateTime(value) {
 }
 
 /**
+ * Formats a `Date` or millisecond timestamp as {@link formatMediumUtcDateTime}
+ * with a trailing ` UTC` suffix (e.g. `Aug 30, 2026, 10:00 AM UTC`), the
+ * shape shared by tooltip titles, footer timestamps, and history readouts
+ * that all annotate their formatted instant with an explicit UTC label.
+ * Callers are responsible for validating their input; invalid input renders
+ * `Invalid Date UTC`.
+ * @param {Date | number} input
+ * @returns {string}
+ */
+export function formatMediumUtcDateTimeWithSuffix(input) {
+  return `${formatMediumUtcDateTime(input)} UTC`;
+}
+
+/**
  * Renders a digest string's first 12 characters wrapped in `<code>`, or
  * `null` when the digest is empty. Shared by the table cell display's
  * `digest` type and the workflow operational-grader stat, which
@@ -418,10 +432,10 @@ export function renderCountBadge(count, ariaLabel) {
 
 /**
  * Renders the shared "empty `aria-live="polite"` status element, populated
- * later by the caller's render loop" pattern used by the operations
- * marketplace count, notifications-inbox count, and work-project filter
- * result count. Callers differ only in element tag (`span` vs `output`) and
- * class name.
+ * later by the caller's render loop" pattern used by the table intent-action
+ * dialog, the CLI action approval dialog, the reset-dashboard confirmation,
+ * and the configuration diagnostics control. Callers differ only in element
+ * tag (`span` vs `output`) and class name.
  * @param {'span'|'output'} tag
  * @param {string} className
  * @returns {HTMLElement}
@@ -629,17 +643,19 @@ export function nameInitials(value, options = {}) {
 }
 
 /**
- * Renders a `<span>` wrapping a single octicon, used by the attention-domain
- * cards, readiness-verdict hero, and signal-list rows to present one
- * decorative or semantic icon inside a component-specific class name.
+ * Renders a `<span>` (or another element tag) wrapping a single octicon,
+ * used by the attention-domain cards, readiness-verdict hero, signal-list
+ * rows, metric/document/issue cards, factory stations, the filter search
+ * control, and discussion post avatars to present one decorative or
+ * semantic icon inside a component-specific class name.
  * @param {string} className
  * @param {string} iconName
- * @param {{ ariaHidden?: boolean }} [options]
+ * @param {{ ariaHidden?: boolean, tag?: string }} [options]
  * @returns {HTMLElement}
  */
 export function renderIconSpan(className, iconName, options = {}) {
   return h(
-    'span',
+    options.tag ?? 'span',
     options.ariaHidden ? { className, 'aria-hidden': 'true' } : { className },
     octicon(iconName)
   );

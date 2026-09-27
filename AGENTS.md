@@ -105,6 +105,7 @@ Run these commands from the `dashboard/site/` directory:
 | `workflow-contracts.yml` | `npm run check` + `test:campaign-lifecycle` | PR / push |
 | `cid.yml` | Dashboard site lint, typecheck, unit tests, sharded E2E | PR / push to `dashboard/site/**` |
 | `svg-contrast-check.yml` | Playwright SVG WCAG contrast validation | PR / push to SVG files |
+| `csh.yml` | ShellCheck (warning severity) on all tracked `.sh` files | PR / push to `.sh` files |
 | `docs.yml` | Documentation build | Schedule / push to main |
 
 ### Choosing which tests to run

@@ -23,6 +23,7 @@ async function fixture() {
     statePath: path.join(root, "cache", "gh-aw-logs-state.json"),
     outputPath: path.join(root, "cache", "gh-aw-logs"),
     argumentsPath: path.join(root, "arguments.json"),
+    precollectionPath: path.join(root, "precollection.jsonl"),
     controlSettingsPath: path.join(root, "control-settings.json"),
     githubOutput: path.join(root, "github-output"),
   };
@@ -42,6 +43,14 @@ if (args[0] === "api") {
 }
 const repository = args[args.indexOf("--repo") + 1];
 const shardPattern = args[args.indexOf("--cached-jsonl") + 1];
+const shardPrefix = shardPattern.replace(/\\*$/, "");
+const shardDirectory = path.dirname(shardPrefix);
+const shardNamePrefix = path.basename(shardPrefix);
+const cachedRecords = fs.readdirSync(shardDirectory)
+  .filter((name) => name.startsWith(shardNamePrefix) && name.endsWith(".jsonl"))
+  .flatMap((name) => fs.readFileSync(path.join(shardDirectory, name), "utf8").trim().split("\\n"))
+  .filter(Boolean);
+fs.appendFileSync(process.env.PRECOLLECTION_PATH, JSON.stringify({ repository, cachedRecords: cachedRecords.length }) + "\\n");
 const shardPath = shardPattern.replace(/\\*$/, "") + "fixture.jsonl";
 fs.mkdirSync(path.dirname(shardPath), { recursive: true });
 fs.writeFileSync(shardPath, JSON.stringify({ schema_version: 2, kind: "run", run: {
@@ -68,9 +77,18 @@ process.stderr.write("Fetched 1 run\\n");
       REPORT_AIC_CACHE: item.outputPath,
       REPORT_CONTROL_SETTINGS: item.controlSettingsPath,
       GH_ARGS_PATH: item.argumentsPath,
+      PRECOLLECTION_PATH: item.precollectionPath,
       GITHUB_OUTPUT: item.githubOutput,
     };
     await mkdir(item.logsPath, { recursive: true });
+    const duplicate = JSON.stringify({ schema_version: 2, kind: "run", run: {
+      database_id: 43,
+      repository: "github/gh-aw",
+      workflow_path: ".github/workflows/sample.lock.yml",
+      status: "completed"
+    } });
+    await writeFile(path.join(item.logsPath, "github-gh-aw-logs-1000-first.jsonl"), `${duplicate}\n`);
+    await writeFile(path.join(item.logsPath, "github-gh-aw-logs-2000-second.jsonl"), `${duplicate}\n`);
     const collection = await execFileAsync("bash", [path.resolve("activity/collect-logs.sh")], { env });
     const { stdout } = await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], { env });
     const invocations = (await readFile(item.argumentsPath, "utf8")).trim().split("\n").map(JSON.parse);
@@ -95,6 +113,13 @@ process.stderr.write("Fetched 1 run\\n");
       "github/gh-aw",
       "githubnext/gh-aw-cao",
     ]);
+    assert.deepEqual(
+      (await readFile(item.precollectionPath, "utf8")).trim().split("\n").map(JSON.parse),
+      [
+        { repository: "github/gh-aw", cachedRecords: 1 },
+        { repository: "githubnext/gh-aw-cao", cachedRecords: 0 },
+      ],
+    );
     const runs = await readGhAwLogShards(item.logsPath);
     assert.deepEqual(runs.map((run) => run.repository), [
       "github/gh-aw",

@@ -6,7 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var eventsLog = logger.New("cao:collect:events")
 
 // IntentKind classifies what an admitted webhook asks the collector to do.
 type IntentKind string
@@ -66,60 +70,95 @@ func ParseEvent(event string, payload []byte) (Intent, error) {
 	if err := json.Unmarshal(payload, &envelope); err != nil {
 		return Intent{}, fmt.Errorf("parse webhook payload: %w", err)
 	}
-	installationID := envelope.Installation.ID
-	switch strings.TrimSpace(event) {
+	trimmedEvent := strings.TrimSpace(event)
+	var intent Intent
+	var err error
+	switch trimmedEvent {
 	case "workflow_run":
-		if envelope.Action != "completed" {
-			return Intent{Kind: IntentIgnore}, nil
-		}
-		if envelope.Repository.FullName == "" {
-			return Intent{}, errors.New("workflow_run payload is missing a repository")
-		}
-		return Intent{
-			Kind:           IntentCollect,
-			Repository:     envelope.Repository.FullName,
-			InstallationID: installationID,
-			Reason:         "workflow_run",
-		}, nil
+		intent, err = parseWorkflowRunEvent(envelope)
 	case "installation":
-		switch envelope.Action {
-		case "created", "new_permissions_accepted", "unsuspend":
-			return Intent{
-				Kind:           IntentEnroll,
-				Repositories:   names(envelope.Repositories),
-				InstallationID: installationID,
-				Reason:         "installation." + envelope.Action,
-			}, nil
-		case "deleted", "suspend":
-			return Intent{
-				Kind:           IntentRemoveInstallation,
-				InstallationID: installationID,
-				Reason:         "installation." + envelope.Action,
-			}, nil
-		default:
-			return Intent{Kind: IntentIgnore}, nil
-		}
+		intent = parseInstallationEvent(envelope)
 	case "installation_repositories":
-		switch envelope.Action {
-		case "added":
-			return Intent{
-				Kind:           IntentEnroll,
-				Repositories:   names(envelope.RepositoriesAdded),
-				InstallationID: installationID,
-				Reason:         "installation_repositories.added",
-			}, nil
-		case "removed":
-			return Intent{
-				Kind:           IntentUnenroll,
-				Repositories:   names(envelope.RepositoriesRemoved),
-				InstallationID: installationID,
-				Reason:         "installation_repositories.removed",
-			}, nil
-		default:
-			return Intent{Kind: IntentIgnore}, nil
+		intent = parseInstallationRepositoriesEvent(envelope)
+	default:
+		intent = Intent{Kind: IntentIgnore}
+	}
+	if err != nil {
+		return Intent{}, err
+	}
+	// One classification per delivery is a meaningful state transition worth
+	// observing, and this is never called from a polling or retry loop, so
+	// logging every delivery cannot flood the log.
+	eventsLog.Printf("classified webhook event=%s kind=%s", trimmedEvent, intent.Kind)
+	return intent, nil
+}
+
+// parseWorkflowRunEvent maps a "workflow_run" delivery to a collection intent.
+// It is a pure function so this classification's edge cases (an
+// action other than "completed", a missing repository) are testable without
+// constructing a full webhook payload.
+func parseWorkflowRunEvent(envelope webhookEnvelope) (Intent, error) {
+	if envelope.Action != "completed" {
+		return Intent{Kind: IntentIgnore}, nil
+	}
+	if envelope.Repository.FullName == "" {
+		return Intent{}, errors.New("workflow_run payload is missing a repository")
+	}
+	return Intent{
+		Kind:           IntentCollect,
+		Repository:     envelope.Repository.FullName,
+		InstallationID: envelope.Installation.ID,
+		Reason:         "workflow_run",
+	}, nil
+}
+
+// parseInstallationEvent maps an "installation" delivery to an enrollment or
+// removal intent. It is a pure function so this classification's action
+// dispatch is testable independently of json decoding.
+func parseInstallationEvent(envelope webhookEnvelope) Intent {
+	installationID := envelope.Installation.ID
+	switch envelope.Action {
+	case "created", "new_permissions_accepted", "unsuspend":
+		return Intent{
+			Kind:           IntentEnroll,
+			Repositories:   names(envelope.Repositories),
+			InstallationID: installationID,
+			Reason:         "installation." + envelope.Action,
+		}
+	case "deleted", "suspend":
+		return Intent{
+			Kind:           IntentRemoveInstallation,
+			InstallationID: installationID,
+			Reason:         "installation." + envelope.Action,
 		}
 	default:
-		return Intent{Kind: IntentIgnore}, nil
+		return Intent{Kind: IntentIgnore}
+	}
+}
+
+// parseInstallationRepositoriesEvent maps an "installation_repositories"
+// delivery to an enrollment or unenrollment intent. It is a pure function so
+// this classification's action dispatch is testable independently of json
+// decoding.
+func parseInstallationRepositoriesEvent(envelope webhookEnvelope) Intent {
+	installationID := envelope.Installation.ID
+	switch envelope.Action {
+	case "added":
+		return Intent{
+			Kind:           IntentEnroll,
+			Repositories:   names(envelope.RepositoriesAdded),
+			InstallationID: installationID,
+			Reason:         "installation_repositories.added",
+		}
+	case "removed":
+		return Intent{
+			Kind:           IntentUnenroll,
+			Repositories:   names(envelope.RepositoriesRemoved),
+			InstallationID: installationID,
+			Reason:         "installation_repositories.removed",
+		}
+	default:
+		return Intent{Kind: IntentIgnore}
 	}
 }
 

@@ -1,14 +1,16 @@
+import { createDebug } from '../../debug.js';
+
+const debugQuota = createDebug('quota');
+
 /** @param {StorageManager | undefined} storage */
 export async function inspectStorage(storage) {
   if (!storage?.estimate) return { usage: null, quota: null, available: null };
   const estimate = await storage.estimate();
   const usage = Number.isFinite(estimate.usage) ? Number(estimate.usage) : null;
   const quota = Number.isFinite(estimate.quota) ? Number(estimate.quota) : null;
-  return {
-    usage,
-    quota,
-    available: usage !== null && quota !== null ? Math.max(0, quota - usage) : null
-  };
+  const available = usage !== null && quota !== null ? Math.max(0, quota - usage) : null;
+  debugQuota({ event: 'storage-inspected', usage, quota, available });
+  return { usage, quota, available };
 }
 
 /** @param {StorageManager | undefined} storage */
@@ -21,7 +23,10 @@ export async function inspectDatabaseUsage(storage) {
 
 /** @param {StorageManager | undefined} storage */
 export async function requestPersistentStorage(storage) {
-  return storage?.persist ? storage.persist() : false;
+  if (!storage?.persist) return false;
+  const persisted = await storage.persist();
+  debugQuota({ event: 'persistence-requested', persisted });
+  return persisted;
 }
 
 /**
@@ -39,6 +44,7 @@ export async function withQuotaRecovery(operation, reclaim) {
     if (typeof error !== 'object'
       || error === null
       || /** @type {{ name?: unknown }} */ (error).name !== 'QuotaExceededError') throw error;
+    debugQuota({ event: 'quota-recovery-started' });
     await reclaim();
     return operation();
   }

@@ -319,7 +319,6 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   const admission = readFileSync(join(root, "docs", "admission.md"), "utf8");
   const control = readFileSync(join(root, ".github", "workflows", "shared", "control.md"), "utf8");
   const activity = readFileSync(join(root, ".github", "workflows", "cao-activity.yml"), "utf8");
-  const installer = readFileSync(join(root, "install.sh"), "utf8");
   const updateSection = operations.match(/## Update CAO[\s\S]*?(?=\n## |\n### Catalog Release Revocation)/)?.[0] ?? "";
   const policy = JSON.parse(execFileSync(process.execPath, [
     join(root, ".github", "workflows", "shared", "control.mjs"),
@@ -357,15 +356,6 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.match(quickstart, /Rerunning it after those files are installed makes no changes/);
   assert.doesNotMatch(quickstart, /githubnext\/gh-aw-cao@main|commits\/main|full commit SHA/);
   assert.doesNotMatch(quickstart, /base64 -d|contents\/\.github\/cao/);
-  assert.match(installer, /^#!\/usr\/bin\/env bash/);
-  assert.match(installer, /install-gh-aw\.sh/);
-  assert.doesNotMatch(installer, /cao_source|cp "\$cao_source" "\$cao_command"/);
-  assert.match(installer, /cao_cli="activity\/cao\.mjs"/);
-  assert.match(installer, /catalog_source="\$\{1:-githubnext\/gh-aw-cao\}"/);
-  assert.match(installer, /gh aw add "\$catalog_source"/);
-  assert.doesNotMatch(installer, /sort -V/);
-  assert.match(installer, /chmod \+x "\$cao_command"/);
-  assert.match(installer, /"\$cao_command" init/);
   assert.match(updateSection, /\.\/cao\.sh update --major --cool-down 0/);
   assert.match(updateSection, /upgrades `gh-aw` to the minimum version declared by `\.github\/workflows\/cao\.json`/);
   assert.match(updateSection, /resolves published GitHub releases[\s\S]*?updates each installed CAO campaign to its latest compatible release/);
@@ -504,6 +494,15 @@ test("campaign creation guidance defines optional package problem clustering", (
   assert.match(campaignSkill, /fault-isolated, timed, cancelable subprocess/);
 });
 
+test("campaign creation guidance gives dispatchers campaign-scoped repo-memory", () => {
+  const campaignSkill = readFileSync(join(root, "skills", "create-cao-campaign", "SKILL.md"), "utf8");
+
+  assert.match(campaignSkill, /repo-memory:\n  branch-name: "memory\/<campaign-slug>"/);
+  assert.match(campaignSkill, /orchestrator prompt must read and use `\$GH_AW_MEMORY_DIR` before selecting dispatches/);
+  assert.match(campaignSkill, /Encourage workers to use the same campaign memory branch/);
+  assert.match(campaignSkill, /never as policy, target authority, credential storage/);
+});
+
 test("README routes zero-to-CAO requests to the setup skill", () => {
   const readme = readFileSync(join(root, "README.md"), "utf8");
   const setupSkillPath = join(root, "skills", "setup-cao", "SKILL.md");
@@ -550,14 +549,12 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /If the command fails, is forbidden, or is inconclusive, say so once and continue/);
   assert.match(setupSkill, /explicitly author and compile a workflow using another supported engine\/provider/);
   assert.match(setupSkill, /`total_seats: 0`[\s\S]*?HTTP 403/);
-  assert.match(setupSkill, /GitHub App or `GH_AW_GITHUB_TOKEN` for target access does not authenticate model inference/);
+  assert.match(setupSkill, /GitHub App or target-access PAT does not authenticate model inference/);
   assert.match(setupSkill, /every installed Copilot-backed source declares `copilot-requests: write`/);
   assert.match(setupSkill, /no generated lock declares `\$\{\{ secrets\.COPILOT_GITHUB_TOKEN \}\}`/);
   assert.match(setupSkill, /Do not replace `auto` with an explicit model/);
   assert.match(setupSkill, /\.\/cao\.sh add githubnext\/gh-aw-cao\/<campaign-slug>/);
   assert.match(setupSkill, /consumer-owned policy/);
-  assert.match(setupSkill, /edit only `control-plane\.scope` to add `target-owner` and `target-owner\/target-repository`/);
-  assert.match(setupSkill, /Do not put `control-owner` or `control-repository` into this policy unless the selected target is the control repository/);
   assert.match(setupSkill, /if \(\/<\[\^>\]\+>\/\.test\(source\)\) throw new Error\('unresolved policy placeholder'\)/);
   assert.doesNotMatch(setupSkill, /```json\n[\s\S]*?"workers"/);
   assert.match(setupSkill, /campaign-owned orchestrator and worker identities are merged/);

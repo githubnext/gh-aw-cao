@@ -23,6 +23,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/repositorymemory"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
@@ -109,7 +110,7 @@ func ValidateManifest(directory string) (Manifest, []string, []string, error) {
 	return manifest, runs, records, nil
 }
 
-func DirectoryRevision(manifest Manifest, inventory []byte) string {
+func DirectoryRevision(manifest Manifest, inventory []byte, additionalRevisions ...string) string {
 	keys := make([]string, 0, len(manifest))
 	for key := range manifest {
 		keys = append(keys, key)
@@ -121,6 +122,9 @@ func DirectoryRevision(manifest Manifest, inventory []byte) string {
 	}
 	sum := sha256.Sum256(inventory)
 	_, _ = io.WriteString(hasher, "inventory\x00"+hex.EncodeToString(sum[:]))
+	for _, revision := range additionalRevisions {
+		_, _ = io.WriteString(hasher, "\x00additional\x00"+revision)
+	}
 	return "sha256:" + hex.EncodeToString(hasher.Sum(nil))
 }
 
@@ -154,7 +158,11 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 	if err != nil {
 		return Result{}, err
 	}
-	dataRevision := DirectoryRevision(manifest, inventoryContent)
+	memory, err := repositorymemory.Load(directory)
+	if err != nil {
+		return Result{}, err
+	}
+	dataRevision := DirectoryRevision(manifest, inventoryContent, memory.Revision)
 	active, err := store.Active(ctx)
 	if err != nil {
 		return Result{}, fmt.Errorf("read active Redis generation: %w", err)
@@ -218,6 +226,9 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 	}
 	if err := store.PutDiagnostics(ctx, generation, diagnostics); err != nil {
 		return Result{}, fmt.Errorf("stage diagnostics: %w", err)
+	}
+	if err := store.PutRepositoryMemory(ctx, generation, memory.Manifest, memory.Files); err != nil {
+		return Result{}, fmt.Errorf("stage repository memory: %w", err)
 	}
 	evaluatedAt := sourceEvaluationTime(sources)
 	revision, err := store.Activate(ctx, generation, dataRevision, evaluatedAt, counts)
@@ -389,7 +400,7 @@ func projectSources(canonical map[string][]model.Row, inventory map[string]model
 		result, _, _, err := query.ExecuteDefinition(definition, available, query.MaxOperations)
 		return result, err
 	}
-	for _, name := range []string{"campaigns", "repositories", "workflows", "runs", "operational-values"} {
+	for _, name := range []string{"campaigns", "repositories", "workflows", "runs", "overview-runs", "operational-values"} {
 		definition, ok := index[name]
 		if !ok {
 			continue

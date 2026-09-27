@@ -75,7 +75,7 @@ const args = process.argv.slice(2);
 const queryArgument = args.find((argument) => argument.startsWith('query=')) || '';
 fs.appendFileSync(process.env.GRAPHQL_CALLS_PATH, JSON.stringify(args) + '\\n');
 if (queryArgument.includes('repository(')) {
-  const number = queryArgument.includes('issue(number: 43)') ? 43 : 42;
+  const number = queryArgument.includes('issueOrPullRequest(number: 43)') ? 43 : 42;
   process.stdout.write(JSON.stringify({ data: {
     repository: { i0: {
       number,
@@ -168,8 +168,79 @@ test('issue-status enriches issues through one-item GraphQL batches within a sma
     const calls = (await readFile(item.callsPath, 'utf8')).trim().split('\n').map(JSON.parse);
     assert.equal(calls.length, 3);
     assert.ok(calls.every((arguments_) => arguments_.slice(0, 2).join(' ') === 'api graphql'));
-    assert.match(calls[1].find((argument) => argument.startsWith('query=')), /issue\(number: 42\)/);
-    assert.match(calls[2].find((argument) => argument.startsWith('query=')), /issue\(number: 43\)/);
+    assert.match(calls[1].find((argument) => argument.startsWith('query=')), /issueOrPullRequest\(number: 42\)/);
+    assert.match(calls[2].find((argument) => argument.startsWith('query=')), /issueOrPullRequest\(number: 43\)/);
+  } finally {
+    await rm(item.root, { recursive: true, force: true });
+  }
+});
+
+test('issue-status skips missing issues without blocking the rest of a batch', async () => {
+  const item = await fixture();
+  try {
+    const ghPath = path.join(item.bin, 'gh');
+    await writeFile(ghPath, `#!/usr/bin/env node
+const fs = require('node:fs');
+const args = process.argv.slice(2);
+const query = args.find((argument) => argument.startsWith('query=')) || '';
+fs.appendFileSync(process.env.GRAPHQL_CALLS_PATH, JSON.stringify(args) + '\\n');
+process.stdout.write(JSON.stringify(query.includes('repository(') ? {
+  data: {
+    repository: {
+      i0: null,
+      i1: {
+        number: 43,
+        state: 'OPEN',
+        stateReason: null,
+        closedAt: null,
+        url: 'https://github.com/githubnext/gh-aw-cao/issues/43'
+      }
+    },
+    rateLimit: { cost: 1, remaining: 998, resetAt: '2026-09-20T13:00:00Z' }
+  }
+} : {
+  data: {
+    rateLimit: { cost: 1, remaining: 999, resetAt: '2026-09-20T13:00:00Z' }
+  }
+}));
+`);
+    await chmod(ghPath, 0o755);
+    const env = {
+      ...process.env,
+      PATH: `${item.bin}:${process.env.PATH}`,
+      GRAPHQL_CALLS_PATH: item.callsPath
+    };
+    const { stdout } = await execFileAsync(process.execPath, [
+      cao,
+      'issue-status',
+      '--database',
+      item.databasePath,
+      '--input-dir',
+      item.shardDirectory
+    ], { env });
+
+    const result = JSON.parse(stdout);
+    assert.equal(result.queried, 2);
+    assert.equal(result.statuses, 1);
+    assert.equal(result.updatedRecords, 1);
+    assert.equal(result.stopped, null);
+    assert.deepEqual(result.errors, []);
+
+    const records = (await readFile(item.shardPath, 'utf8')).trim().split('\n').map(JSON.parse);
+    assert.equal(records[1].safe_output.github_issue_status, undefined);
+    assert.deepEqual(records[2].safe_output.github_issue_status, {
+      state: 'OPEN',
+      closed: false,
+      state_reason: null,
+      closed_at: null,
+      observed_at: records[2].safe_output.github_issue_status.observed_at
+    });
+
+    const calls = (await readFile(item.callsPath, 'utf8')).trim().split('\n').map(JSON.parse);
+    const issueQuery = calls[1].find((argument) => argument.startsWith('query='));
+    assert.match(issueQuery, /issueOrPullRequest\(number: 42\)/);
+    assert.match(issueQuery, /issueOrPullRequest\(number: 43\)/);
+    assert.match(issueQuery, /\.\.\. on Issue/);
   } finally {
     await rm(item.root, { recursive: true, force: true });
   }
@@ -255,7 +326,7 @@ if (args[0] === 'aw' && args[1] === 'logs') {
 }
 if (args[0] === 'api' && args[1] === 'graphql') {
   const query = args.find((argument) => argument.startsWith('query=')) || '';
-  if (query.includes('issue(number: 42)')) {
+  if (query.includes('issueOrPullRequest(number: 42)')) {
     process.stdout.write(JSON.stringify({ data: {
       // issue-status aliases the first batch item as i0.
       repository: { i0: {
@@ -332,7 +403,7 @@ process.exit(1);
     const graphqlCalls = calls.filter((arguments_) => arguments_.slice(0, 2).join(' ') === 'api graphql');
     // issue-status first checks the rate limit, then queries the one collected issue.
     assert.equal(graphqlCalls.length, 2);
-    const issueQuery = graphqlCalls.find((arguments_) => arguments_.some((argument) => argument.includes('issue(number: 42)')));
+    const issueQuery = graphqlCalls.find((arguments_) => arguments_.some((argument) => argument.includes('issueOrPullRequest(number: 42)')));
     assert.ok(issueQuery);
     assert.ok(issueQuery.some((argument) => argument.includes('owner=githubnext')));
     assert.ok(issueQuery.some((argument) => argument.includes('name=gh-aw-cao')));

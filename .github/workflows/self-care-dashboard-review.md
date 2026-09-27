@@ -31,7 +31,7 @@ on:
 
 checkout:
   repository: ${{ inputs.target_repo }}
-  github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+  github-token: ${{ secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
   fetch-depth: 0
   current: true
 env:
@@ -133,15 +133,15 @@ pre-agent-steps:
         echo "Playwright preflight failed; agent will report the infrastructure blocker."
       fi
   - name: Build expected control-plane inventory
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' }}
     run: |
       mkdir -p /tmp/gh-aw/agent/self-care-dashboard-review
       REPORT_INVENTORY=/tmp/gh-aw/agent/self-care-dashboard-review/expected-inventory.json \
         node activity/inventory.mjs
   - name: Download and grade the live dashboard artifact
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' }}
     env:
-      GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
     run: |
       set -euo pipefail
       review_dir=/tmp/gh-aw/agent/self-care-dashboard-review

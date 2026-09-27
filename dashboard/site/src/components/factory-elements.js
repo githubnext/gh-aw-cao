@@ -5,6 +5,9 @@
 import { batch } from '../reactive.js';
 import { publishSource, requestSource, sourceState } from '../source-store.js';
 import { dashboardViewAliasName } from '../data/queries/view-payload-compiler.js';
+import { createDebug } from '../debug.js';
+
+const debugFactoryElements = createDebug('factory-elements');
 
 /** @typedef {Record<string, unknown>} Row */
 /** @typedef {{ rows: () => Row[], source: () => LogicalSourceInput | undefined, pending: () => boolean, empty: () => boolean, unavailable: () => boolean }} SourceBinding */
@@ -37,6 +40,7 @@ export function resolveFactorySourceNames(defaults, config) {
  * @returns {SourceBindings}
  */
 export function bindFactorySources(sources, names, request, options) {
+  let requestedCount = 0;
   batch(() => {
     for (const [sourceIndex, name] of names.entries()) {
       const source = sources[name];
@@ -47,6 +51,7 @@ export function bindFactorySources(sources, names, request, options) {
         : name;
       if (source && Array.isArray(source.rows)) publishSource(name, source, bindingKey);
       if (!source || options?.refreshViewSources === true) {
+        requestedCount += 1;
         requestSource(name, {
           ...request,
           sourceIndex: effectiveSourceIndex,
@@ -55,6 +60,14 @@ export function bindFactorySources(sources, names, request, options) {
         });
       }
     }
+  });
+  debugFactoryElements({
+    event: 'bound',
+    pageId: request?.pageId,
+    viewId: request?.viewId,
+    sourceCount: names.length,
+    requestedCount,
+    refresh: options?.refreshViewSources === true
   });
   return Object.fromEntries(names.map((name) => {
     const declaredSourceIndex = request?.sourceNames?.indexOf(name) ?? -1;
@@ -97,7 +110,10 @@ export function createFactoryScope() {
         }
       });
       observer.observe(element.ownerDocument, { childList: true, subtree: true });
-      lifetime.signal.addEventListener('abort', () => observer.disconnect(), { once: true });
+      lifetime.signal.addEventListener('abort', () => {
+        observer.disconnect();
+        debugFactoryElements({ event: 'scope-aborted' });
+      }, { once: true });
     }
   };
 }

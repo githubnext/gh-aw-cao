@@ -1,9 +1,9 @@
 import { h } from '../dom.js';
-import { octicon } from '../octicons.js';
 import { render } from '../reactive.js';
 import { createAnimatedNumber } from './animated-number.js';
 import { formatCount } from './count-formatters.js';
 import { formatPercent } from '../view-formatters.js';
+import { renderIconSpan } from './ui-primitives.js';
 
 /** @typedef {{ text: string, href?: string }} StationDetail */
 
@@ -39,7 +39,7 @@ export function renderFactoryStation(icon, options) {
             ? h('a', { href: station.detail.href }, station.detail.text)
             : station.detail.text;
         return [
-          h('span', { className: 'factory-station-icon', 'aria-hidden': 'true' }, octicon(icon)),
+          renderIconSpan('factory-station-icon', icon, { ariaHidden: true }),
           h('span', {}, station.label),
           value.element,
           h('small', {}, detail)

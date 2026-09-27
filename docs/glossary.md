@@ -26,9 +26,9 @@ An evidence-backed warning that a workflow may be harder to control, secure, ope
 
 A general description for work performed with limited manual intervention. Automation is not a distinct CAO entity or workflow role. Prefer the specific term **campaign**, **coordinator**, **worker**, or **run** when naming something in the product or documentation.
 
-## Campaign
+## Agentic campaign
 
-A persistent body of agentic work that continuously pursues a defined outcome across a set of targets. An operator configures, supervises, and evaluates a campaign together with its distributable workflows, shared dependencies, and manifest. A campaign is implemented by one coordinator and one or more workers. Examples include Dependabot review, workflow optimization, and compliance assessment.
+Continuous centralized agentic work that pursues your goals for your enterprise as a whole.
 
 ## Canonical data
 
@@ -62,6 +62,10 @@ The runtime and provider integration used to execute an AI agent. The engine is 
 
 The control repository's exclusive right to admit a `live` worker for a campaign and target, decided solely from `.github/workflows/cao.json` at the exact workflow SHA. A target repository's files cannot widen, narrow, or veto this decision.
 
+## Marketplace
+
+The read-only dashboard catalog of campaign packages resolved from an operator-ordered list of registries declared in `control-plane.marketplace.registries`. It shows normalized package metadata, provenance, and an immutable source coordinate, and only ever offers a copy-only `./cao.sh add` command; it never installs a package or contacts a registry from the browser. See [Browse Campaign Packages](marketplace.md).
+
 ## Operator
 
 A person who configures, supervises, pauses, reviews, or evaluates campaigns. Do not use **operator** as a synonym for coordinator, orchestrator, worker, or agent.
@@ -81,6 +85,10 @@ A campaign-defined, timestamped numeric metric for one repository and campaign. 
 ## Operational grader
 
 The run-scoped result produced by gh-aw's upstream `operational-value` grader protocol. The protocol identifier remains `operational-value` for compatibility, but CAO refers to the resulting grader evidence as an operational grader so it is not confused with campaign-defined repository operational value.
+
+## Repo memory
+
+The canonical gh-aw capability that persists files with unlimited retention in a dedicated `memory/<campaign-slug>` Git branch, distinct from the 7-day `cache-memory`. CAO campaigns configure it with `repo-memory.branch-name` so a coordinator can read and update bounded, advisory cross-run state through `$GH_AW_MEMORY_DIR` before dispatch selection; workers share the branch only when their work benefits from that shared history. Repo memory is never policy, target authority, credential storage, or a substitute for current repository evidence. See the canonical gh-aw definition of [Repo Memory](https://github.github.com/gh-aw/reference/glossary/#repo-memory).
 
 ## Run
 

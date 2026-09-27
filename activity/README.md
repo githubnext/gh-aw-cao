@@ -19,7 +19,8 @@ authority. Per-repository registry failures are published as partial or
 unavailable source evidence rather than complete empty inventories. It uploads
 the completed snapshot as a one-day artifact.
 A dependent job downloads
-that artifact, verifies every snapshot file is present and non-empty, and
+that artifact, verifies every snapshot file is present and non-empty (Drain3
+weights only when the run shards contain records), and
 publishes the source JSONL and its local SQLite projection to the shared cache,
 keeping cache-write permission out of the collection job. An incomplete
 extraction fails that job instead of silently skipping the cache save, which
@@ -150,8 +151,9 @@ agent/model identity and duration, firewall, MCP, operational-value, and audit
 priority aggregates. Every domain, tool, audit, and issue record includes its
 owning run identity. Normalized phase shards use JSONL so browser consumers can
 stream and commit bounded record batches without retaining a complete file in
-memory. Empty phase shards are omitted, so the run and record directories can contain different
-filename stems. The dashboard imports all run-information shards before record
+memory. Empty per-source phase payloads are omitted, so the run and record directories can contain different
+filename stems. A phase with no records at all publishes exactly one header-only shard, so a collection
+that observed no agentic runs is explicit rather than indistinguishable from missing output. The dashboard imports all run-information shards before record
 shards so clients can query runs while detailed ingestion continues.
 Each phase filename retains the source shard's sortable prefix before its
 content and normalization hashes, preserving observation precedence across
@@ -223,7 +225,7 @@ reconstruct its immutable key from the returned run ID and attempt. Producers
 and consumers use this complete path list because GitHub includes paths in the
 cache version. When the current layout misses, Activity restores the preceding
 layout containing `gh-aw-logs-normalized/`; `hash-payloads` processes its
-retained JSONL shard directory to generate non-empty run and record shards.
+retained JSONL shard directory to generate run and record shards.
 The cache is an evictable transport optimization, not durable
 historical authority.
 

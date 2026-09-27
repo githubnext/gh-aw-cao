@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { processDataRequest } from '../../src/data-worker.js';
 import { dashboardQueryDefects, executeDashboardQueries } from '../../src/data/queries/declarative.js';
@@ -6,7 +5,7 @@ import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-
 import { CAMPAIGN_ROUTE_BODY_VALUES } from '../../src/components/route-body-specification.js';
 import { TABLE_FIELDS } from '../../src/specification.js';
 
-const document = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8'));
+import { authoritativeDashboard as document } from '../authoritative-dashboard.js';
 const dashboard = document.dashboard;
 const queries = dashboard.queries;
 const queryNames = new Set(queries.map((/** @type {{ name: string }} */ query) => query.name));
@@ -192,6 +191,20 @@ describe('dashboard view query contracts', () => {
     }]);
   });
 
+  it('keeps Overview runtime health independent from audit-heavy campaign run presentation', () => {
+    const runtimeHealth = dashboard.queries.find(
+      (/** @type {Record<string, unknown>} */ query) => query.name === 'campaign-runtime-health-groups'
+    );
+    const runtimeHealthInput = dashboard.queries.find(
+      (/** @type {Record<string, unknown>} */ query) => query.name === 'campaign-runtime-health-runs'
+    );
+
+    expect(runtimeHealth).toMatchObject({ from: 'campaign-runtime-health-runs' });
+    expect(runtimeHealthInput).toMatchObject({ from: 'overview-runs' });
+    expect(declaredQueryReferences(runtimeHealthInput)).not.toContain('run-incomplete-outcomes');
+    expect(declaredQueryReferences(runtimeHealthInput)).not.toContain('audits');
+  });
+
   it('keeps campaign run navigation first and failure views scoped to dispatches', () => {
     const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-runs');
     const views = viewsOf(page);
@@ -209,6 +222,7 @@ describe('dashboard view query contracts', () => {
       'campaign-problems': 'problems',
       'campaign-runs': 'runs',
       'campaign-issues': 'issues',
+      'campaign-memory': 'memory',
       'campaign-detail': 'overview'
     };
 
@@ -244,14 +258,15 @@ describe('dashboard view query contracts', () => {
     expect(dashboard.pages.some((/** @type {Record<string, unknown>} */ page) => page.id === 'campaign-dispatches')).toBe(false);
   });
 
-  it('uses one declarative route template and Insights destination for every campaign entry path', () => {
+  it('keeps stable campaign route IDs with an Operational Value label across every entry path', () => {
     const campaignPages = dashboard.pages.filter((/** @type {Record<string, unknown>} */ page) => (
       /** @type {Record<string, unknown> | undefined} */ (page.route)?.['hash-query-parameter'] === 'campaign'
     ));
     const expectedTabs = [
-      { id: 'insights', label: 'Insights', icon: 'graph', page: 'campaign-insights' },
-      { id: 'problems', label: 'Problems', icon: 'alert', page: 'campaign-problems' },
-      { id: 'issues', label: 'Issues', icon: 'issue-opened', page: 'campaign-issues' }
+      { id: 'insights', label: 'Operational Value', icon: 'graph', page: 'campaign-insights' },
+      { id: 'problems', label: 'Failures', icon: 'alert', page: 'campaign-problems' },
+      { id: 'issues', label: 'Reports', icon: 'issue-opened', page: 'campaign-issues' },
+      { id: 'memory', label: 'Memory', icon: 'archive', page: 'campaign-memory' }
     ];
 
     for (const page of campaignPages) {
@@ -691,6 +706,7 @@ describe('dashboard view query contracts', () => {
     for (const name of requested) {
       expect(results[name]?.source).toBe(name);
       expect(results[name]?.rows).toEqual(expect.any(Array));
+      expect(results[name]?.metadata.availability, name).not.toBe('unavailable');
     }
   });
 });

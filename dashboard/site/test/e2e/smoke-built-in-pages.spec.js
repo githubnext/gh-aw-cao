@@ -1,10 +1,10 @@
-import { assert, authoritativeDashboard, buildPresenterModuleUrl, builtInPage, expect, hydrateView, readFileSync, registerSmokeRoutes, test } from './helpers/smoke-fixtures.js';
+import { assert, authoritativeDashboard, buildPresenterModuleUrl, builtInPage, expect, hydrateView, registerSmokeRoutes, test } from './helpers/smoke-fixtures.js';
 
 registerSmokeRoutes();
 
 test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inventory, and campaign activity in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
-  const queryDefinitions = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8')).dashboard.queries;
+  const queryDefinitions = authoritativeDashboard.dashboard.queries;
   const campaignInsightsPage = authoritativeDashboard.dashboard.pages.find(
     (/** @type {{ id?: string }} */ candidate) => candidate.id === 'campaign-insights'
   );
@@ -14,9 +14,13 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   const campaignIssuesPage = authoritativeDashboard.dashboard.pages.find(
     (/** @type {{ id?: string }} */ candidate) => candidate.id === 'campaign-issues'
   );
+  const campaignMemoryPage = authoritativeDashboard.dashboard.pages.find(
+    (/** @type {{ id?: string }} */ candidate) => candidate.id === 'campaign-memory'
+  );
   assert(campaignInsightsPage, 'Missing campaign insights page');
   assert(campaignProblemsPage, 'Missing campaign problems page');
   assert(campaignIssuesPage, 'Missing campaign issues page');
+  assert(campaignMemoryPage, 'Missing campaign memory page');
 
   await page.setContent(`
     <div id="root"></div>
@@ -61,6 +65,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
             }))},
             ${JSON.stringify(campaignInsightsPage)},
             ${JSON.stringify(campaignProblemsPage)},
+            ${JSON.stringify(campaignMemoryPage)},
             {
               id: 'campaign-detail',
               kind: 'custom',
@@ -375,22 +380,28 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(page.locator('[data-page-mode]')).toBeHidden();
   await expect(page.locator('[data-nav-page-id="campaigns"]')).toHaveAttribute('aria-current', 'page');
   const campaignNavigation = page.getByRole('navigation', { name: 'Ambient Context views' });
-  await expect(campaignNavigation.getByRole('link')).toHaveCount(3);
+  await expect(campaignNavigation.getByRole('link')).toHaveCount(4);
   await expect(campaignNavigation).toHaveCSS('display', 'flex');
   await expect(campaignNavigation).toHaveCSS('border-bottom-style', 'solid');
   await expect(campaignNavigation.locator('[aria-current="page"]')).toHaveCount(0);
   await expect(campaignNavigation.locator('.count-badge')).toHaveText(['1', '1']);
   const campaignTabBadges = await campaignNavigation.locator('.count-badge').allTextContents();
   await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toHaveCount(0);
-  await campaignNavigation.getByRole('link', { name: 'Problems' }).click();
+  await campaignNavigation.getByRole('link', { name: 'Failures' }).click();
   await expect(page).toHaveURL(/#page-campaign-problems\?campaign=ambient-context$/);
-  await expect(campaignNavigation.getByRole('link', { name: 'Problems' })).toHaveAttribute('aria-current', 'page');
+  await expect(campaignNavigation.getByRole('link', { name: 'Failures' })).toHaveAttribute('aria-current', 'page');
   expect(await campaignNavigation.locator('.count-badge').allTextContents()).toEqual(campaignTabBadges);
   await expect(page.locator('[data-page-id="campaign-problems"] [data-view-id="campaign-current-runtime-problems"]')).toBeVisible();
   const currentCampaignUrl = page.url();
-  await campaignNavigation.getByRole('link', { name: 'Problems' }).click();
+  await campaignNavigation.getByRole('link', { name: 'Failures' }).click();
   expect(page.url()).toBe(currentCampaignUrl);
   await expect(page.locator('[data-page-id="campaign-problems"] [data-view-id="campaign-current-runtime-problems"]')).toBeVisible();
+  await page.evaluate(() => {
+    window.location.hash = '#page-campaign-memory?campaign=ambient-context';
+  });
+  await expect(page).toHaveURL(/#page-campaign-memory\?campaign=ambient-context$/);
+  await expect(campaignNavigation.getByRole('link', { name: 'Memory' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('.campaign-memory-browser')).toContainText('Repository memory is unavailable.');
   await page.evaluate(() => {
     window.location.hash = '#page-campaign-workflows?campaign=ambient-context';
   });
@@ -424,8 +435,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await page.getByRole('button', { name: 'Table' }).click();
   await expect(campaignRunsPage.locator('[data-view-id="campaign-run-table"] tbody tr')).toHaveCount(5);
   await page.getByRole('button', { name: 'Chart' }).click();
-  await campaignNavigation.getByRole('link', { name: 'Issues' }).click();
-  await expect(campaignNavigation.getByRole('link', { name: 'Issues' })).toHaveAttribute('aria-current', 'page');
+  await campaignNavigation.getByRole('link', { name: 'Reports' }).click();
+  await expect(campaignNavigation.getByRole('link', { name: 'Reports' })).toHaveAttribute('aria-current', 'page');
   await page.getByRole('button', { name: 'Cards' }).click();
   const campaignIssueView = page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"]');
   await expect(campaignIssueView).toBeVisible();
@@ -444,7 +455,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(campaignNavigation).toHaveCSS('gap', '0px');
   await expect(campaignNavigation).toHaveCSS('overflow', 'hidden');
   const mobileCampaignLinks = campaignNavigation.locator('a');
-  await expect(mobileCampaignLinks).toHaveCount(3);
+  await expect(mobileCampaignLinks).toHaveCount(4);
   await expect(mobileCampaignLinks.first().locator('.tab-trailing-icon')).toBeVisible();
   expect(await mobileCampaignLinks.first().evaluate((link) => {
     return link.lastElementChild?.classList.contains('tab-trailing-icon') === true;
@@ -460,10 +471,11 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   expect(mobileLinkBoxes.every((box) => box.height >= 44)).toBe(true);
   expect(mobileLinkBoxes.every((box, index) => index === 0 || box.top > mobileLinkBoxes[index - 1].top)).toBe(true);
 
-  await campaignNavigation.getByRole('link', { name: 'Insights' }).click();
+  await campaignNavigation.getByRole('link', { name: 'Operational Value' }).click();
   const campaignInsights = page.locator('[data-page-id="campaign-insights"]');
   await expect(campaignInsights).toBeVisible();
-  await expect(campaignInsights).toHaveAttribute('data-view-mode', 'chart');
+  await expect(campaignInsights.locator('[data-view-id="campaign-audit-event-summary-buckets"]')).toHaveCount(0);
+  await expect(campaignInsights).toHaveAttribute('data-view-mode', 'table');
   await expect(campaignInsights.locator('.view-mode-control')).toHaveCount(0);
   await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })).toBeVisible();
   await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })).toHaveCSS('display', 'grid');
@@ -471,7 +483,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(mobileBack).toBeVisible();
   await expect(page.locator('.overview-header')).toContainText('Operational activity for the Ambient Context campaign.');
   const performanceBaseline = campaignInsights.locator('[data-view-id="campaign-performance-baseline"]');
-  await expect(performanceBaseline).toBeHidden();
+  await expect(performanceBaseline).toBeVisible();
   await expect(performanceBaseline).toContainText('Run success');
   await expect(performanceBaseline).toContainText('Produced outputs');
   await expect(performanceBaseline).toContainText('Average AIC / successful run');
@@ -974,7 +986,7 @@ test('DLS-SAFE-007 DLS-SAFE-008 keyboard navigation moves across labeled page se
 
 test('repository page template follows its JSON-declared hash query route in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
-  const dashboardDocument = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  const dashboardDocument = authoritativeDashboard;
   await page.goto('http://dashboard.test/#page-repository-workflow-inventory?repository=octo-org%2Focto-repo');
   await page.setContent(`
     <div id="root"></div>

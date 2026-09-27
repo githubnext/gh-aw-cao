@@ -24,6 +24,21 @@
       "experimental": true,
       "favicon": "./favicon.svg"
     },
+    "marketplace": {
+      "cache-ttl-seconds": 300,
+      "registries": [
+        {
+          "id": "official",
+          "name": "Official CAO catalog",
+          "repository": "githubnext/gh-aw-cao",
+          "ref": "main",
+          "auth": {
+           "type": "pat",
+           "secret": "GH_TOKEN"
+          }
+        }
+      ]
+    },
     "campaigns": {
       "dashboard": {
         "deploy": false
@@ -233,6 +248,9 @@
           },
           "reactive-ui-expert": {
             "workflow": "self-care-reactive-ui-expert"
+          },
+          "release-blogger": {
+            "workflow": "self-care-release-blogger"
           },
           "server-go-logging": {
             "workflow": "self-care-server-go-logging"

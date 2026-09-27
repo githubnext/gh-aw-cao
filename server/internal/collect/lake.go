@@ -6,7 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var lakeLog = logger.New("cao:collect:lake")
 
 // Lake is the durable evidence lake.
 //
@@ -103,27 +107,44 @@ func (l Lake) Forget(repository string) error {
 		return err
 	}
 	prefix := l.ShardPrefix(normalized)
+	removed := 0
 	for _, directory := range []string{
 		l.ShardDirectory(), l.RunsDirectory(), l.RecordsDirectory(),
 	} {
-		entries, err := os.ReadDir(directory)
+		count, err := removeMatchingFiles(directory, prefix)
 		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				continue
-			}
-			return fmt.Errorf("read evidence lake directory: %w", err)
+			return err
 		}
-		for _, entry := range entries {
-			if entry.IsDir() || !strings.HasPrefix(entry.Name(), prefix) {
-				continue
-			}
-			if err := os.Remove(filepath.Join(directory, entry.Name())); err != nil &&
-				!errors.Is(err, os.ErrNotExist) {
-				return fmt.Errorf("remove retained evidence: %w", err)
-			}
-		}
+		removed += count
 	}
+	lakeLog.Printf("forgot repository shards removed=%d", removed)
 	return nil
+}
+
+// removeMatchingFiles deletes every regular file in directory whose name has
+// prefix, reporting how many files it removed. A missing directory is not an
+// error: a repository that never collected into that directory has nothing to
+// forget there.
+func removeMatchingFiles(directory, prefix string) (int, error) {
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("read evidence lake directory: %w", err)
+	}
+	removed := 0
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasPrefix(entry.Name(), prefix) {
+			continue
+		}
+		if err := os.Remove(filepath.Join(directory, entry.Name())); err != nil &&
+			!errors.Is(err, os.ErrNotExist) {
+			return removed, fmt.Errorf("remove retained evidence: %w", err)
+		}
+		removed++
+	}
+	return removed, nil
 }
 
 // Populated reports whether the lake holds evidence that can repopulate an

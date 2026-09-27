@@ -5,10 +5,11 @@ import { queryDashboardSourceObservations } from './data/queries/ingestion.js';
 import { normalize } from './data/normalize/index.js';
 import { batch } from './reactive.js';
 import { publishNotification } from './notification-service.js';
-import { withDebugParameter } from './debug.js';
+import { createDebug, withDebugParameter } from './debug.js';
 import {
   queryRemoteDashboard,
   queryRemoteDiagnostics,
+  queryRemoteRepositoryMemory,
   refreshRemoteDashboard,
   subscribeRemoteRevision,
   usesRemoteDataBackend
@@ -16,6 +17,8 @@ import {
 
 /** Milliseconds a cooperative cancellation is given before the worker is terminated. */
 const CANCELLATION_GRACE_MS = 250;
+
+const debugDataProcessor = createDebug('data-processor');
 
 /** @type {Worker | null} */
 let worker = null;
@@ -163,6 +166,7 @@ export function cancelDataProcessing(reason = 'Data processing was cancelled.') 
   const cancellation = new Error(reason);
   cancellation.name = 'DataProcessingCancelledError';
   if (processor) scheduleForcedCancellation(processor, ids, cancellation);
+  debugDataProcessor({ event: 'cancel-requested', cancelledCount: ids.length });
   return ids.length;
 }
 
@@ -273,6 +277,48 @@ export function queryCanonicalDatabaseDiagnostics() {
     () => Promise.reject(new Error('Database diagnostics require a data worker.')),
     false
   ));
+}
+
+/**
+ * Lists one campaign's published repository-memory files.
+ * @param {string} campaign
+ * @param {AbortSignal} [signal]
+ */
+export function listRepositoryMemory(campaign, signal) {
+  if (usesRemoteDataBackend()) return queryRemoteRepositoryMemory(campaign, undefined, signal);
+  return processRequest(
+    {
+      operation: 'query-repository-memory',
+      action: 'list',
+      campaign,
+      memoryRoot: new URL('./memory/', document.baseURI).href,
+    },
+    () => Promise.reject(new Error('Repository memory requires a data worker.')),
+    false,
+    signal
+  );
+}
+
+/**
+ * Reads one published repository-memory file.
+ * @param {string} campaign
+ * @param {string} path
+ * @param {AbortSignal} [signal]
+ */
+export function readRepositoryMemoryFile(campaign, path, signal) {
+  if (usesRemoteDataBackend()) return queryRemoteRepositoryMemory(campaign, path, signal);
+  return processRequest(
+    {
+      operation: 'query-repository-memory',
+      action: 'content',
+      campaign,
+      path,
+      memoryRoot: new URL('./memory/', document.baseURI).href,
+    },
+    () => Promise.reject(new Error('Repository memory requires a data worker.')),
+    false,
+    signal
+  );
 }
 
 /**
@@ -668,6 +714,7 @@ function getWorker() {
   if (typeof Worker === 'undefined' || import.meta.url.startsWith('data:')) return null;
   worker = new Worker(withDebugParameter(new URL('./data-worker.js', import.meta.url)), { type: 'module' });
   const processor = worker;
+  debugDataProcessor({ event: 'worker-created' });
   worker.addEventListener('message', (event) => {
     if (event.data?.type === 'loading-progress') {
       const state = event.data.state;
@@ -742,6 +789,7 @@ function getWorker() {
   worker.addEventListener('error', (event) => {
     const failedWorker = processor;
     const error = new Error(event.message || 'Data worker failed.');
+    debugDataProcessor({ event: 'worker-failed', pendingCount: pending.size });
     rejectWorkerRequests(failedWorker, error);
     terminateWorkerSubscriptions(failedWorker, error);
     resetWorker(failedWorker);

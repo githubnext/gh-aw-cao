@@ -163,6 +163,24 @@ export function dashboardPageSourceNames(document, pageId, viewMode) {
   return [...names];
 }
 
+/**
+ * Returns every source rendered by a page, including sources owned by
+ * independently loading UI elements.
+ * @param {DashboardDocument} document
+ * @param {string} pageId
+ * @returns {string[]}
+ */
+export function dashboardPageAllSourceNames(document, pageId) {
+  const page = dashboardPage(document, pageId);
+  if (!page) return [];
+  const names = new Set(dashboardPageSourceNames(document, pageId));
+  const payload = dashboardPagePayload(page, document.dashboard.views);
+  for (const view of payload.views ?? []) {
+    for (const sourceName of getViewSources(view)) names.add(sourceName);
+  }
+  return [...names];
+}
+
 /** @param {unknown} view @param {'chart'|'table'|'card'} mode */
 function viewMatchesMode(view, mode) {
   if (!isPlainObject(view)) return mode === 'chart';

@@ -26,6 +26,10 @@ test("skill tests whether each measured phenomenon existed before adoption", () 
     "utf8",
   );
   assert.match(skill, /Do not confuse workflow adoption with creation of the measured phenomenon/);
+  assert.match(skill, /Do not derive the primary measure from a gh-aw workflow's own output/);
+  assert.match(skill, /pre-existing repository problem/);
+  assert.match(skill, /Count outcome attainment regardless of actor/);
+  assert.match(skill, /security-alert backlog/);
   assert.match(skill, /antecedent-existence test/);
   assert.match(skill, /pre-existing-and-reconstructable/);
   assert.match(skill, /pre-existing-but-not-reconstructable/);
@@ -130,17 +134,20 @@ includes:
 
 test("CAO verification accepts namespaced metrics for multiple repositories", () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), "operational-value-multi-repository-"));
-  const source = path.join(root, "daily-file-diet/operational-value/daily-file-diet.mjs");
-  const valueModule = path.join(temporary, "daily-file-diet.mjs");
+  const source = path.join(root, "optimization/operational-value/optimization-token-optimizer.mjs");
+  const valueModule = path.join(temporary, "example-workflow.mjs");
   const adapter = path.join(temporary, "operational-value.mjs");
   writeFileSync(valueModule, `
 import * as original from ${JSON.stringify(pathToFileURL(source).href)};
 export const definition = {
   ...original.definition,
+  slug: "example-workflow",
+  workflowName: "Example Workflow",
   evidence: {
     ...original.definition.evidence,
     repositories: ["github/gh-aw", "githubnext/gh-aw-cao"]
-  }
+  },
+  metrics: original.definition.metrics.map(({rollup, ...metric}) => metric)
 };
 export const collectBatch = original.collectBatch;
 export const scoreMetric = original.scoreMetric;
@@ -152,12 +159,26 @@ const request = JSON.parse(await new Promise((resolve) => {
   process.stdin.on("data", (chunk) => { input += chunk; });
   process.stdin.on("end", () => resolve(input));
 }));
+console.log(JSON.stringify({
+  kind: "operational_value_definition",
+  workflowSlug: "example-workflow",
+  adoptedAt: "2026-09-15T23:30:36Z",
+  evaluationMode: "baseline-comparable",
+  cadenceDays: 1,
+  repositories: ["github/gh-aw", "githubnext/gh-aw-cao"],
+  valueIds: [
+    "example-workflow.aic-per-successful-run",
+    "example-workflow.failure-rate-percent",
+    "example-workflow.cancellation-rate-percent"
+  ]
+}));
 for (const repository of request.repositories) {
   for (const valueId of [
-    "daily-file-diet.largest-file-health",
-    "daily-file-diet.compliant-line-mass-share"
+    "example-workflow.aic-per-successful-run",
+    "example-workflow.failure-rate-percent",
+    "example-workflow.cancellation-rate-percent"
   ]) {
-    const metricUnit = valueId.endsWith("largest-file-health") ? "score" : "share";
+    const metricUnit = valueId.endsWith("aic-per-successful-run") ? "aic-per-run" : "percent";
     console.log(JSON.stringify({repository, valueId, value: 0.5, metricUnit, timestamp: request.timestamp}));
   }
 }
@@ -176,7 +197,7 @@ for (const repository of request.repositories) {
   assert.equal(output, `verified ${valueModule}\n`);
 });
 
-test("attainment evaluation includes dubious observations from adoption", () => {
+test("attainment evaluation uses a partial post-adoption window before maturity", () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), "operational-value-maturation-"));
   const source = path.join(root, "optimization/operational-value/optimization-token-optimizer.mjs");
   const valueModule = path.join(temporary, "maturation-test.mjs");
@@ -229,8 +250,13 @@ export const scoreMetric = original.scoreMetric;
   ));
   assert.equal(
     timeline.snapshots[0].observedAt,
+    "2026-09-16T23:30:36Z",
+  );
+  assert.equal(
+    timeline.snapshots[0].window.startAt,
     timeline.valueFunction.definition.adoption.adoptedAt,
   );
+  assert.equal(timeline.snapshots[0].window.endAt, "2026-09-16T23:30:36Z");
   assert.equal(timeline.snapshots[0].evidence.maturityStatus, "interim");
   assert.equal(timeline.snapshots[0].evidence.dubious, true);
   assert.equal(timeline.snapshots[0].metrics["aic-per-successful-run"], 0);

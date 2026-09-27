@@ -2,9 +2,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
+import { authoritativeDashboard as dashboardDocument } from '../authoritative-dashboard.js';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
-const dashboardDocument = JSON.parse(readFileSync(join(siteRoot, 'dashboard.json'), 'utf8'));
 
 test.beforeEach(async ({ page, context }) => {
   await context.route('http://dashboard.test/**', async (route) => {

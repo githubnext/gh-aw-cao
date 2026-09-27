@@ -7,6 +7,7 @@ import { parseRolloutMode } from "./dashboard-language-sources.mjs";
 import { firstText } from "./text-utils.mjs";
 
 const apiRoot = "https://api.github.com";
+const githubServerUrl = process.env.GITHUB_SERVER_URL || ["https:", "", "github.com"].join("/");
 const rateLimitDocs = "https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api";
 
 class GitHubRateLimitError extends Error {
@@ -255,7 +256,7 @@ async function collectDashboardRecordsImpl({
         ...run,
         path: workflow.path || "",
         name: workflow.name || "",
-        html_url: `https://github.com/${run.repository || workflow.repository}/actions/runs/${run.runId}`,
+        html_url: `${githubServerUrl}/${run.repository || workflow.repository}/actions/runs/${run.runId}`,
       },
     ])));
 

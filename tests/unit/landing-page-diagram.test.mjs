@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { buildWizardPolicy, selectConfiguredOperations } from "../../docs/lib/configured-operations.mjs";
+import {
+  buildWizardHost,
+  buildWizardPolicy,
+  selectConfiguredOperations,
+} from "../../docs/lib/configured-operations.mjs";
 
 const controlPolicy = JSON.parse(readFileSync(".github/workflows/cao.json", "utf8"));
 
@@ -15,6 +19,7 @@ const setupPage = readFileSync("docs/pages/setup.astro", "utf8");
 const headerLinks = readFileSync("docs/components/HeaderLinks.astro", "utf8");
 const catalog = readFileSync("docs/lib/catalog.ts", "utf8");
 
+<<<<<<< HEAD
 test("landing page presents the product through real operational surfaces", () => {
   assert.match(landingPage, /text: Explore CAO[\s\S]*?link: \/gh-aw-cao\/architecture-at-a-glance\//);
   assert.match(landingPage, /text: Get started[\s\S]*?link: \/gh-aw-cao\/getting-started\//);
@@ -44,6 +49,20 @@ test("landing page presents the product through real operational surfaces", () =
   assert.doesNotMatch(hero, /One operating picture|phone-caption/);
   assert.doesNotMatch(hero, /OpsWizard|Stand up a control plane in three steps/);
   assert.doesNotMatch(hero, /trust-section|Coordination without concentrated risk|section-actions/);
+=======
+function withoutRootPalette(svg) {
+  return svg.replace(/:root \{[^}]+\}/, ":root {}");
+}
+
+test("landing page presents catalog packages as campaigns", () => {
+  assert.match(landingPage, /Run your first campaign/);
+  assert.match(landingPage, /Explore campaigns/);
+  assert.match(hero, /Agentic campaigns as code/);
+  assert.match(hero, /Choose a ready campaign or build your own/);
+  assert.match(wizard, /Start a campaign in four steps/);
+  assert.match(wizard, /Choose the campaign to run/);
+  assert.match(wizard, /Choose optional dashboard hosting/);
+>>>>>>> origin/main
   assert.doesNotMatch(`${landingPage}\n${hero}`, /\bfactor(?:y|ies)\b/i);
 });
 
@@ -113,14 +132,29 @@ test("landing wizard prompt references the raw setup skill", () => {
     wizard,
     /https:\/\/raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/skills\/setup-cao\/SKILL\.md/,
   );
+  assert.match(wizard, /Include `\.github\/workflows\/cao\.json` at the same path/);
 });
 
+<<<<<<< HEAD
 test("landing wizard delegates setup decisions to the setup skill", () => {
   assert.doesNotMatch(wizard, /buildWizardPolicy|CATALOG_REF = "main"/);
   assert.doesNotMatch(wizard, /Set `engine:|gh aw add .*@main/);
   assert.match(wizard, /Ask me to choose the exact repository for the first review run/);
   assert.match(wizard, /Ask separately whether I also want to create a custom campaign/);
   assert.match(wizard, /Use the CAO installer and repository-local `\.\/cao\.sh` commands required by the setup skill/);
+=======
+test("landing wizard client imports its prompt generation dependencies", () => {
+  assert.equal(
+    wizard.match(/import controlPolicy from "\.\.\/\.\.\/\.github\/workflows\/cao\.json";/g)?.length,
+    2,
+  );
+  assert.equal(
+    wizard.match(
+      /import \{ buildWizardHost, buildWizardPolicy \} from "\.\.\/lib\/configured-operations\.mjs";/g,
+    )?.length,
+    2,
+  );
+>>>>>>> origin/main
 });
 
 test("landing wizard operations come from the checked-in control policy", () => {
@@ -179,4 +213,41 @@ test("wizard policy keeps the checked-in campaign configuration", () => {
   assert.deepEqual(policy["control-plane"].scope["allowed-owners"], ["acme"]);
   assert.deepEqual(policy["control-plane"].campaigns.dependabot, expectedCampaign);
   assert.equal(icon, "dependabot");
+});
+
+test("wizard composes app target and Redis provider modules", () => {
+  const host = buildWizardHost("container", "upstash");
+  const policy = buildWizardPolicy(controlPolicy, "acme", "dependabot", host);
+
+  assert.deepEqual(policy["control-plane"].web.host, {
+    target: { module: "container", replicas: 1 },
+    redis: {
+      module: "upstash",
+      "namespace-env": "REDIS_NAMESPACE",
+      tls: { mode: "required" },
+    },
+  });
+  assert.equal(buildWizardHost("none", "generic"), undefined);
+  assert.throws(
+    () => buildWizardHost("azure-functions", "upstash"),
+    /Upstash requires the container app target/,
+  );
+  assert.deepEqual(buildWizardHost("azure-functions", "redis-cloud").redis, {
+    module: "redis-cloud",
+    "namespace-env": "CAO_REDIS_NAMESPACE",
+    "url-env": "CAO_REDIS_URL",
+    tls: { mode: "required" },
+  });
+  assert.deepEqual(buildWizardHost("container", "render").redis, {
+    module: "render",
+    "namespace-env": "REDIS_NAMESPACE",
+    tls: { mode: "auto" },
+    "allow-private-plaintext": true,
+  });
+  assert.deepEqual(buildWizardHost("azure-functions", "render").redis, {
+    module: "render",
+    "namespace-env": "CAO_REDIS_NAMESPACE",
+    "url-env": "CAO_REDIS_URL",
+    tls: { mode: "required" },
+  });
 });

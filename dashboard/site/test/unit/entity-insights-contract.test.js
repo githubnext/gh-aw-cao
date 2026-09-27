@@ -1,7 +1,8 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const dashboard = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8')).dashboard;
+import { authoritativeDashboard } from '../authoritative-dashboard.js';
+
+const dashboard = authoritativeDashboard.dashboard;
 
 describe('canonical entity insights', () => {
   for (const entity of [

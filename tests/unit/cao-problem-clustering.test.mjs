@@ -48,7 +48,13 @@ test('package clustering scripts replace only their validated problem rows', asy
         repository: 'githubnext/gh-aw-cao',
         workflow: 'example',
         fixPrompt: 'Update the workflow evidence and verify the next run is current.',
-        evidence: { source: 'test' }
+        evidence: {
+          source: 'test',
+          runUrl: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42',
+          workflowUrl: 'https://github.com/githubnext/gh-aw-cao/actions/workflows/sample.yml',
+          failureMessage: 'Agent process exited with code 1.',
+          failureLog: '##[error]Agent process exited with code 1.'
+        }
       }));
       console.log(JSON.stringify({
         id: 'missing-owner',
@@ -81,7 +87,13 @@ test('package clustering scripts replace only their validated problem rows', asy
       assert.equal(row.observed_at, timestamp);
       assert.equal(row.severity, 'high');
       assert.equal(row.fix_prompt, 'Update the workflow evidence and verify the next run is current.');
-      assert.deepEqual(JSON.parse(row.evidence), { source: 'test' });
+      assert.deepEqual(JSON.parse(row.evidence), {
+        source: 'test',
+        runUrl: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42',
+        workflowUrl: 'https://github.com/githubnext/gh-aw-cao/actions/workflows/sample.yml',
+        failureMessage: 'Agent process exited with code 1.',
+        failureLog: '##[error]Agent process exited with code 1.'
+      });
       assert.equal(rows[1].problem_id, 'missing-owner');
       assert.equal(rows[1].severity, 'medium');
       database.prepare(`

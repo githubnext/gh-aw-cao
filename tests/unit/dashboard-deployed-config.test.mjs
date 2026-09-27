@@ -11,6 +11,7 @@ import {
   scrollRenderedViewsIntoView,
   shouldIgnoreRequestFailure,
 } from "../e2e/dashboard-deployed-refresh-helpers.mjs";
+import { authoritativeDashboard } from "../helpers/authoritative-dashboard.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -19,8 +20,7 @@ test("deployed dashboard test has enough time for sequential refresh checks", ()
 });
 
 test("deployed dashboard check targets declared navigation pages", () => {
-  const dashboard = JSON.parse(readFileSync(resolve(repositoryRoot, "dashboard/site/dashboard.json"), "utf8"));
-  const navigationPageIds = new Set(dashboard.dashboard.navigation.flatMap(({ pages }) => pages));
+  const navigationPageIds = new Set(authoritativeDashboard.dashboard.navigation.flatMap(({ pages }) => pages));
 
   for (const { pageId, storeName } of populatedDashboardPages) {
     assert.ok(navigationPageIds.has(pageId), `expected '${pageId}' to be a declared navigation page`);

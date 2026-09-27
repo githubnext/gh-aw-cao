@@ -1,0 +1,1136 @@
+{
+  "queries": [
+    {
+      "name": "firewall-domain-totals",
+      "intent": "Show each observed firewall domain with the number of runs and total accepted and blocked requests.",
+      "description": "Distinct runs and accepted and blocked request totals by firewall domain.",
+      "from": "firewall-observations",
+      "filter": {
+        "predicates": [
+          {
+            "field": "decision",
+            "in": [
+              "allowed",
+              "denied"
+            ]
+          }
+        ]
+      },
+      "aggregate": {
+        "by": [
+          "domain"
+        ],
+        "values": [
+          {
+            "field": "run",
+            "as": "run",
+            "reducer": "distinct-count"
+          },
+          {
+            "field": "request-count",
+            "as": "accepted",
+            "reducer": "sum",
+            "filter": {
+              "predicates": [
+                {
+                  "field": "decision",
+                  "equals": "allowed"
+                }
+              ]
+            }
+          },
+          {
+            "field": "request-count",
+            "as": "blocked",
+            "reducer": "sum",
+            "filter": {
+              "predicates": [
+                {
+                  "field": "decision",
+                  "equals": "denied"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "order-by": [
+        {
+          "field": "blocked",
+          "direction": "desc"
+        },
+        {
+          "field": "accepted",
+          "direction": "desc"
+        },
+        {
+          "field": "domain",
+          "direction": "asc"
+        }
+      ]
+    },
+    {
+      "name": "firewall-most-blocked-domains",
+      "intent": "Highlight the domains with the most blocked firewall requests.",
+      "description": "The ten domains with the highest observed blocked request totals.",
+      "from": "firewall-domain-totals",
+      "order-by": [
+        {
+          "field": "blocked",
+          "direction": "desc"
+        },
+        {
+          "field": "domain",
+          "direction": "asc"
+        }
+      ],
+      "limit": 10
+    },
+    {
+      "name": "firewall-least-used-domains",
+      "intent": "Highlight uncommon firewall domains observed in the fewest runs.",
+      "description": "The ten domains observed in the fewest distinct runs.",
+      "from": "firewall-domain-totals",
+      "order-by": [
+        {
+          "field": "run",
+          "direction": "asc"
+        },
+        {
+          "field": "domain",
+          "direction": "asc"
+        }
+      ],
+      "limit": 10
+    },
+    {
+      "name": "firewall-domain-workflows",
+      "intent": "Show workflows that allowed or blocked requests to each observed firewall domain.",
+      "description": "Workflow-level accepted and blocked request totals by firewall domain.",
+      "from": "firewall-observations",
+      "filter": {
+        "predicates": [
+          {
+            "field": "decision",
+            "in": [
+              "allowed",
+              "denied"
+            ]
+          }
+        ]
+      },
+      "compute": [
+        {
+          "as": "workflow-source-url",
+          "function": "link-href",
+          "args": [
+            {
+              "field": "workflow-link"
+            }
+          ]
+        }
+      ],
+      "aggregate": {
+        "by": [
+          "domain",
+          "organization",
+          "repository",
+          "workflow",
+          "workflow-source-url"
+        ],
+        "values": [
+          {
+            "field": "run",
+            "as": "runs",
+            "reducer": "distinct-count"
+          },
+          {
+            "field": "request-count",
+            "as": "accepted",
+            "reducer": "sum",
+            "filter": {
+              "predicates": [
+                {
+                  "field": "decision",
+                  "equals": "allowed"
+                }
+              ]
+            }
+          },
+          {
+            "field": "request-count",
+            "as": "blocked",
+            "reducer": "sum",
+            "filter": {
+              "predicates": [
+                {
+                  "field": "decision",
+                  "equals": "denied"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "order-by": [
+        {
+          "field": "blocked",
+          "direction": "desc"
+        },
+        {
+          "field": "accepted",
+          "direction": "desc"
+        },
+        {
+          "field": "repository",
+          "direction": "asc"
+        },
+        {
+          "field": "workflow",
+          "direction": "asc"
+        }
+      ]
+    },
+    {
+      "name": "mcp-tool-totals",
+      "intent": "Group observed MCP activity by tool and count calls and calling workflows, excluding the internal safe outputs server.",
+      "description": "Observed MCP tool-call totals grouped by MCP server and tool, with the number of distinct calling workflows.",
+      "from": "mcp-tool-calls",
+      "filter": {
+        "predicates": [
+          {
+            "field": "safe-output-server",
+            "equals": false
+          }
+        ]
+      },
+      "aggregate": {
+        "by": [
+          "mcp-tool-label",
+          "mcp-server",
+          "mcp-tool"
+        ],
+        "values": [
+          {
+            "field": "mcp-observation",
+            "as": "calls",
+            "reducer": "count"
+          },
+          {
+            "field": "workflow-key",
+            "as": "workflows",
+            "reducer": "distinct-count"
+          }
+        ]
+      },
+      "select": [
+        {
+          "field": "mcp-tool-label"
+        },
+        {
+          "field": "mcp-tool"
+        },
+        {
+          "field": "mcp-server"
+        },
+        {
+          "field": "calls"
+        },
+        {
+          "field": "workflows"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "calls",
+          "direction": "desc"
+        },
+        {
+          "field": "mcp-tool-label",
+          "direction": "asc"
+        }
+      ]
+    },
+    {
+      "name": "mcp-top-tools",
+      "intent": "Show the ten most frequently called MCP tools.",
+      "description": "The ten MCP tools with the most observed calls, excluding the internal safe outputs server.",
+      "from": "mcp-tool-totals",
+      "order-by": [
+        {
+          "field": "calls",
+          "direction": "desc"
+        },
+        {
+          "field": "mcp-tool-label",
+          "direction": "asc"
+        }
+      ],
+      "limit": 10
+    },
+    {
+      "name": "steering-events",
+      "intent": "Prepare observed gateway steering warnings for aggregation by steering type and workflow.",
+      "description": "Gateway steering warnings emitted when a run approaches its AI Credit budget, time limit, or another declared limit, labelled with a readable steering type.",
+      "from": "audits",
+      "filter": {
+        "predicates": [
+          {
+            "field": "event-type",
+            "equals": "audit.gateway_steering"
+          }
+        ]
+      },
+      "joins": [
+        {
+          "source": "workflows",
+          "type": "left",
+          "on": [
+            {
+              "left": "organization",
+              "right": "organization"
+            },
+            {
+              "left": "repository",
+              "right": "repository"
+            },
+            {
+              "left": "workflow",
+              "right": "workflow"
+            }
+          ],
+          "fields": [
+            {
+              "field": "campaign",
+              "as": "campaign"
+            },
+            {
+              "field": "workflow-name",
+              "as": "workflow-name"
+            }
+          ]
+        }
+      ],
+      "compute": [
+        {
+          "as": "steering-code",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "code"
+            },
+            {
+              "field": "event-status"
+            },
+            {
+              "value": "unknown"
+            }
+          ]
+        },
+        {
+          "as": "_token-steering",
+          "function": "equals-any",
+          "args": [
+            {
+              "field": "steering-code"
+            },
+            {
+              "value": "token_steering"
+            }
+          ]
+        },
+        {
+          "as": "_timeout-steering",
+          "function": "equals-any",
+          "args": [
+            {
+              "field": "steering-code"
+            },
+            {
+              "value": "timeout_steering"
+            }
+          ]
+        },
+        {
+          "as": "_turn-steering",
+          "function": "equals-any",
+          "args": [
+            {
+              "field": "steering-code"
+            },
+            {
+              "value": "turn_steering"
+            },
+            {
+              "value": "max_turns_steering"
+            }
+          ]
+        },
+        {
+          "as": "_turn-steering-type",
+          "function": "if",
+          "args": [
+            {
+              "field": "_turn-steering"
+            },
+            {
+              "value": "Running out of turns"
+            },
+            {
+              "field": "steering-code"
+            }
+          ]
+        },
+        {
+          "as": "_timeout-steering-type",
+          "function": "if",
+          "args": [
+            {
+              "field": "_timeout-steering"
+            },
+            {
+              "value": "Running out of time"
+            },
+            {
+              "field": "_turn-steering-type"
+            }
+          ]
+        },
+        {
+          "as": "steering-type",
+          "function": "if",
+          "args": [
+            {
+              "field": "_token-steering"
+            },
+            {
+              "value": "Running out of tokens"
+            },
+            {
+              "field": "_timeout-steering-type"
+            }
+          ]
+        },
+        {
+          "as": "workflow-coordinate",
+          "function": "concat",
+          "args": [
+            {
+              "field": "organization"
+            },
+            {
+              "value": "/"
+            },
+            {
+              "field": "repository"
+            },
+            {
+              "value": ":"
+            },
+            {
+              "field": "workflow"
+            }
+          ]
+        },
+        {
+          "as": "workflow-label",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "workflow-name"
+            },
+            {
+              "field": "workflow-coordinate"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "id"
+        },
+        {
+          "field": "organization"
+        },
+        {
+          "field": "repository"
+        },
+        {
+          "field": "workflow"
+        },
+        {
+          "field": "workflow-name"
+        },
+        {
+          "field": "workflow-coordinate"
+        },
+        {
+          "field": "workflow-label"
+        },
+        {
+          "field": "campaign"
+        },
+        {
+          "field": "run"
+        },
+        {
+          "field": "run-link"
+        },
+        {
+          "field": "steering-code"
+        },
+        {
+          "field": "steering-type"
+        },
+        {
+          "field": "event-summary"
+        },
+        {
+          "field": "observed-at"
+        }
+      ]
+    },
+    {
+      "name": "steering-type-totals",
+      "intent": "Show how often each kind of steering warning occurred.",
+      "description": "Observed gateway steering warnings grouped by steering type with the number of affected runs and workflows.",
+      "from": "steering-events",
+      "aggregate": {
+        "by": [
+          "steering-type",
+          "steering-code"
+        ],
+        "values": [
+          {
+            "field": "id",
+            "as": "events",
+            "reducer": "count"
+          },
+          {
+            "field": "run",
+            "as": "runs",
+            "reducer": "distinct-count"
+          },
+          {
+            "field": "workflow-coordinate",
+            "as": "workflows",
+            "reducer": "distinct-count"
+          }
+        ]
+      },
+      "select": [
+        {
+          "field": "steering-type"
+        },
+        {
+          "field": "steering-code"
+        },
+        {
+          "field": "events"
+        },
+        {
+          "field": "runs"
+        },
+        {
+          "field": "workflows"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "events",
+          "direction": "desc"
+        },
+        {
+          "field": "steering-type",
+          "direction": "asc"
+        }
+      ]
+    },
+    {
+      "name": "steering-workflow-totals",
+      "intent": "Count steering warnings for each workflow.",
+      "description": "Gateway steering warnings grouped by workflow, split into token-budget and time-limit warnings.",
+      "from": "steering-events",
+      "aggregate": {
+        "by": [
+          "workflow-coordinate",
+          "organization",
+          "repository",
+          "workflow",
+          "workflow-label",
+          "campaign"
+        ],
+        "values": [
+          {
+            "field": "id",
+            "as": "events",
+            "reducer": "count"
+          },
+          {
+            "field": "run",
+            "as": "runs",
+            "reducer": "distinct-count"
+          },
+          {
+            "field": "id",
+            "as": "token-events",
+            "reducer": "count",
+            "filter": {
+              "predicates": [
+                {
+                  "field": "steering-code",
+                  "equals": "token_steering"
+                }
+              ]
+            }
+          },
+          {
+            "field": "id",
+            "as": "time-events",
+            "reducer": "count",
+            "filter": {
+              "predicates": [
+                {
+                  "field": "steering-code",
+                  "equals": "timeout_steering"
+                }
+              ]
+            }
+          },
+          {
+            "field": "steering-type",
+            "as": "steering-types",
+            "reducer": "distinct-count"
+          }
+        ]
+      },
+      "order-by": [
+        {
+          "field": "events",
+          "direction": "desc"
+        },
+        {
+          "field": "workflow-coordinate",
+          "direction": "asc"
+        }
+      ]
+    },
+    {
+      "name": "steering-workflows",
+      "intent": "Present workflow steering totals with a link to each workflow dashboard.",
+      "description": "Workflow steering totals labelled with a link to the workflow runtime page.",
+      "from": "steering-workflow-totals",
+      "compute": [
+        {
+          "as": "encoded-workflow",
+          "function": "url-encode",
+          "args": [
+            {
+              "field": "workflow-coordinate"
+            }
+          ]
+        },
+        {
+          "as": "workflow-dashboard-href",
+          "function": "concat",
+          "args": [
+            {
+              "value": "#page-workflow-runtime?workflow="
+            },
+            {
+              "field": "encoded-workflow"
+            }
+          ]
+        },
+        {
+          "as": "workflow-dashboard-label",
+          "function": "concat",
+          "args": [
+            {
+              "value": "View "
+            },
+            {
+              "field": "workflow-coordinate"
+            },
+            {
+              "value": " workflow dashboard"
+            }
+          ]
+        },
+        {
+          "as": "workflow-dashboard-link",
+          "function": "dashboard-link",
+          "args": [
+            {
+              "value": ""
+            },
+            {
+              "field": "workflow-dashboard-href"
+            },
+            {
+              "field": "workflow-dashboard-label"
+            },
+            {
+              "field": "workflow-label"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "workflow-coordinate"
+        },
+        {
+          "field": "workflow-label"
+        },
+        {
+          "field": "workflow-dashboard-link"
+        },
+        {
+          "field": "organization"
+        },
+        {
+          "field": "repository"
+        },
+        {
+          "field": "campaign"
+        },
+        {
+          "field": "events"
+        },
+        {
+          "field": "runs"
+        },
+        {
+          "field": "token-events"
+        },
+        {
+          "field": "time-events"
+        },
+        {
+          "field": "steering-types"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "events",
+          "direction": "desc"
+        },
+        {
+          "field": "workflow-coordinate",
+          "direction": "asc"
+        }
+      ]
+    },
+    {
+      "name": "steering-top-workflows",
+      "intent": "Highlight the workflows with the most steering warnings.",
+      "description": "The ten workflows with the highest observed gateway steering warning totals.",
+      "from": "steering-workflows",
+      "order-by": [
+        {
+          "field": "events",
+          "direction": "desc"
+        },
+        {
+          "field": "workflow-coordinate",
+          "direction": "asc"
+        }
+      ],
+      "limit": 10
+    }
+  ],
+  "views": [
+    {
+      "id": "firewall-domain-workflows",
+      "title": "Workflows",
+      "description": "Workflows that allowed or blocked requests to the selected firewall domain.",
+      "data": {
+        "source": "firewall-domain-workflows",
+        "arguments": [
+          {
+            "name": "domain",
+            "field": "domain"
+          }
+        ]
+      },
+      "mark": "list",
+      "list": {
+        "style": "entity-cards",
+        "card": "firewall-workflow",
+        "icon": "workflow",
+        "drill": {
+          "type": "external",
+          "field": "workflow-source-url"
+        }
+      },
+      "empty-message": "No workflows allowed or blocked requests to this domain.",
+      "layout": "full-view",
+      "encoding": {
+        "columns": [
+          {
+            "field": "workflow",
+            "type": "nominal",
+            "title": "Workflow",
+            "format": "workflow-relative-path"
+          },
+          {
+            "field": "repository",
+            "type": "nominal",
+            "title": "Repository"
+          },
+          {
+            "field": "workflow-source-url",
+            "type": "nominal",
+            "title": "Workflow source"
+          },
+          {
+            "field": "runs",
+            "type": "quantitative",
+            "title": "Runs"
+          },
+          {
+            "field": "accepted",
+            "type": "quantitative",
+            "title": "Allowed"
+          },
+          {
+            "field": "blocked",
+            "type": "quantitative",
+            "title": "Blocked"
+          },
+          {
+            "field": "organization",
+            "type": "nominal",
+            "title": "Organization"
+          }
+        ]
+      }
+    }
+  ],
+  "pages": [
+    {
+      "id": "steering",
+      "kind": "custom",
+      "title": "Steering",
+      "navigation-label": "Steering",
+      "icon": "stopwatch",
+      "experimental": true,
+      "class-name": "steering-page",
+      "description": "Gateway steering warnings injected when agentic runs approach their AI Credit budget, their time limit, or another declared limit.",
+      "views": [
+        {
+          "id": "steering-type-breakdown",
+          "title": "Steering types",
+          "description": "The share of observed steering warnings by steering type, such as running out of tokens or running out of time.",
+          "data": {
+            "source": "steering-type-totals",
+            "limit": 10
+          },
+          "mark": "chart",
+          "chart": "pie",
+          "layout": "full",
+          "empty-message": "No steering warnings were observed in the selected horizon.",
+          "encoding": {
+            "x": {
+              "field": "steering-type",
+              "type": "nominal",
+              "title": "Steering type"
+            },
+            "y": {
+              "field": "events",
+              "type": "quantitative",
+              "title": "Steering events"
+            }
+          }
+        },
+        {
+          "id": "steering-top-workflows",
+          "title": "Workflows with the most steering",
+          "description": "The ten workflows with the highest observed steering warning totals.",
+          "data": {
+            "source": "steering-top-workflows",
+            "limit": 10
+          },
+          "mark": "chart",
+          "chart": "horizontal-bar",
+          "layout": "full",
+          "empty-message": "No workflow steering warnings were observed in the selected horizon.",
+          "encoding": {
+            "x": {
+              "field": "workflow-coordinate",
+              "type": "nominal",
+              "title": "Workflow",
+              "format": "workflow-identity-label"
+            },
+            "y": {
+              "field": "events",
+              "type": "quantitative",
+              "title": "Steering events"
+            },
+            "href": {
+              "field": "workflow-dashboard-link"
+            }
+          }
+        },
+        {
+          "id": "steering-workflows",
+          "title": "Workflows with steering entries",
+          "description": "Observed steering warnings by workflow, split into token-budget and time-limit warnings.",
+          "data": {
+            "source": "steering-workflows"
+          },
+          "mark": "table",
+          "controls": "interactive",
+          "lazy-list": true,
+          "column-summaries": true,
+          "layout": "full-view",
+          "empty-message": "No workflow steering warnings were observed in the selected horizon.",
+          "encoding": {
+            "columns": [
+              {
+                "field": "workflow-dashboard-link",
+                "type": "nominal",
+                "title": "Workflow"
+              },
+              {
+                "field": "repository",
+                "type": "nominal",
+                "title": "Repository"
+              },
+              {
+                "field": "events",
+                "type": "quantitative",
+                "title": "Steering events"
+              },
+              {
+                "field": "token-events",
+                "type": "quantitative",
+                "title": "Out of tokens"
+              },
+              {
+                "field": "time-events",
+                "type": "quantitative",
+                "title": "Out of time"
+              },
+              {
+                "field": "runs",
+                "type": "quantitative",
+                "title": "Runs"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "firewall",
+      "kind": "custom",
+      "title": "Firewall",
+      "navigation-label": "Firewall",
+      "icon": "globe",
+      "class-name": "firewall-page",
+      "description": "Observed firewall domains and accepted and blocked request totals for agent egress.",
+      "views": [
+        {
+          "id": "security-firewall-most-blocked-domains",
+          "title": "Most blocked domains",
+          "description": "The ten domains with the highest observed blocked request totals.",
+          "data": {
+            "source": "firewall-most-blocked-domains"
+          },
+          "mark": "chart",
+          "chart": "pie",
+          "layout": "full",
+          "empty-message": "No blocked firewall domains are available for this selection.",
+          "encoding": {
+            "x": {
+              "field": "domain",
+              "type": "nominal",
+              "title": "Domain"
+            },
+            "y": {
+              "field": "blocked",
+              "type": "quantitative",
+              "title": "Blocked requests"
+            }
+          }
+        },
+        {
+          "id": "security-firewall-least-used-domains",
+          "title": "Least used domains",
+          "description": "Uncommon domains observed in the fewest distinct runs.",
+          "data": {
+            "source": "firewall-least-used-domains"
+          },
+          "mark": "table",
+          "layout": "full",
+          "empty-message": "No uncommon firewall domains are available for this selection.",
+          "encoding": {
+            "columns": [
+              {
+                "field": "domain",
+                "type": "nominal",
+                "title": "Domain"
+              },
+              {
+                "field": "run",
+                "type": "quantitative",
+                "title": "Runs"
+              },
+              {
+                "field": "accepted",
+                "type": "quantitative",
+                "title": "Allowed"
+              },
+              {
+                "field": "blocked",
+                "type": "quantitative",
+                "title": "Blocked"
+              }
+            ]
+          }
+        },
+        {
+          "id": "security-firewall-domains",
+          "disclosure-label": "All observed domains",
+          "disclosure": "supplemental",
+          "description": "Observed runs and accepted and blocked requests by normalized domain.",
+          "data": {
+            "source": "firewall-domain-totals",
+            "order-by": [
+              {
+                "field": "blocked",
+                "direction": "desc"
+              },
+              {
+                "field": "accepted",
+                "direction": "desc"
+              },
+              {
+                "field": "domain",
+                "direction": "asc"
+              }
+            ]
+          },
+          "mark": "table",
+          "controls": "interactive",
+          "lazy-list": true,
+          "column-summaries": true,
+          "layout": "full-view",
+          "empty-message": "No observed firewall domains are available for this selection.",
+          "encoding": {
+            "columns": [
+              {
+                "field": "domain",
+                "type": "nominal",
+                "title": "Domain"
+              },
+              {
+                "field": "run",
+                "type": "quantitative",
+                "title": "Runs"
+              },
+              {
+                "field": "accepted",
+                "type": "quantitative",
+                "title": "Allowed"
+              },
+              {
+                "field": "blocked",
+                "type": "quantitative",
+                "title": "Blocked"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "firewall-domain-workflows",
+      "kind": "custom",
+      "title": "Workflows",
+      "description": "Workflows that allowed or blocked requests to the selected firewall domain.",
+      "icon": "workflow",
+      "route": {
+        "hash-query-parameter": "domain",
+        "navigation-page": "firewall"
+      },
+      "views": [
+        "firewall-domain-workflows"
+      ]
+    },
+    {
+      "id": "mcps",
+      "kind": "custom",
+      "title": "MCP activity",
+      "navigation-label": "MCPs",
+      "icon": "mcp",
+      "class-name": "mcps-page",
+      "description": "Diagnose MCP tool reliability across agentic workflow runs.",
+      "views": [
+        {
+          "id": "mcp-top-tools",
+          "title": "Top MCP tools",
+          "description": "The ten most frequently called MCP tools, excluding the internal safe outputs server.",
+          "data": {
+            "source": "mcp-top-tools"
+          },
+          "mark": "chart",
+          "chart": "pie",
+          "layout": "full",
+          "empty-message": "No MCP tool activity was observed.",
+          "encoding": {
+            "x": {
+              "field": "mcp-tool-label",
+              "type": "nominal",
+              "title": "MCP tool"
+            },
+            "y": {
+              "field": "calls",
+              "type": "quantitative",
+              "title": "Calls"
+            }
+          }
+        },
+        {
+          "id": "mcp-tool-inventory",
+          "title": "MCP tools",
+          "description": "Observed MCP activity grouped by tool, excluding the internal safe outputs server.",
+          "data": {
+            "source": "mcp-tool-totals"
+          },
+          "mark": "table",
+          "controls": "interactive",
+          "lazy-list": true,
+          "empty-message": "No MCP tool activity was observed.",
+          "layout": "full-view",
+          "encoding": {
+            "columns": [
+              {
+                "field": "mcp-tool-label",
+                "type": "nominal",
+                "title": "MCP tool"
+              },
+              {
+                "field": "mcp-server",
+                "type": "nominal",
+                "title": "MCP server"
+              },
+              {
+                "field": "calls",
+                "type": "quantitative",
+                "title": "Calls"
+              },
+              {
+                "field": "workflows",
+                "type": "quantitative",
+                "title": "Workflows"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

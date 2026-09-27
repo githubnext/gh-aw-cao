@@ -30,10 +30,10 @@ func TestAzureModeRequiresCompleteGitHubOAuthPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = New(redisx.NewStore(client, "test"), Config{
-		HostingMode:   HostingModeAzureFunctions,
+		HostProfile:   azureFunctionsHostProfile(),
 		SiteDirectory: site,
 		AccessToken:   testAccessToken,
-		AzureProxy:    AzureProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
+		Proxy:         ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
 		GitHubOAuth:   validOAuthConfig("https://github.test"),
 	})
 	if err == nil || !strings.Contains(err.Error(), "does not support local bearer") {
@@ -41,9 +41,9 @@ func TestAzureModeRequiresCompleteGitHubOAuthPolicy(t *testing.T) {
 	}
 
 	_, err = New(redisx.NewStore(client, "test"), Config{
-		HostingMode:   HostingModeAzureFunctions,
+		HostProfile:   azureFunctionsHostProfile(),
 		SiteDirectory: site,
-		AzureProxy:    AzureProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
+		Proxy:         ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
 		GitHubOAuth: &GitHubOAuthConfig{
 			ClientID:      "client",
 			ClientSecret:  "secret",
@@ -222,6 +222,22 @@ func TestLogoutStagesCredentialsWithoutRefreshing(t *testing.T) {
 	}
 	if !github.sawRevocation("access-old") || !github.sawRevocation("refresh-old") {
 		t.Fatalf("logout did not revoke unrefreshed credentials: %#v", github.revoked)
+	}
+}
+
+func TestOAuthRevocationKeysCanUseDurablePrefix(t *testing.T) {
+	oauth := newGitHubOAuth(
+		GitHubOAuthConfig{
+			SessionSecret:       "session-secret-0123456789abcdef",
+			RevocationKeyPrefix: "durable:",
+		},
+		redisx.NewStore(nil, "ephemeral"),
+	)
+	if key := oauth.revocationIndexKey(); key != "durable:oauth-revocations" {
+		t.Fatalf("unexpected durable revocation index key: %q", key)
+	}
+	if key := oauth.revocationKey("session"); !strings.HasPrefix(key, "durable:oauth-revocation:") {
+		t.Fatalf("unexpected durable revocation record key: %q", key)
 	}
 }
 
@@ -614,9 +630,9 @@ func newAzureTestApp(t *testing.T, githubURL string) *App {
 		t.Fatal(err)
 	}
 	config := Config{
-		HostingMode:   HostingModeAzureFunctions,
+		HostProfile:   azureFunctionsHostProfile(),
 		SiteDirectory: site,
-		AzureProxy:    AzureProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
+		Proxy:         ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
 		GitHubOAuth:   validOAuthConfig(githubURL),
 	}
 	app, err := New(redisx.NewStore(client, "test"), config)

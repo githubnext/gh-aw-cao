@@ -1,5 +1,6 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { relative, resolve } from 'node:path';
+import { loadDashboardSource } from '../../report/bundle-dashboards.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ignoredDirectories = new Set(['.cao', '.git', 'coverage', 'dist', 'node_modules', 'test-results']);
@@ -179,7 +180,7 @@ async function main() {
   const dashboardPaths = await findDashboardDocuments(repositoryRoot);
 
   for (const dashboardPath of dashboardPaths) {
-    const document = JSON.parse(await readFile(dashboardPath, 'utf8'));
+    const document = (await loadDashboardSource(dashboardPath)).document;
     for (const name of referencedElementNames(document)) references.add(name);
     for (const name of referencedPageNames(document)) pageReferences.add(name);
     pages.push(...dashboardPages(document));

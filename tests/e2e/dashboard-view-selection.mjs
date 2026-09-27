@@ -1,7 +1,9 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync, readdirSync } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { composeDashboardDocuments } from "../../dashboard/report/compose-dashboard-documents.mjs";
+import { loadDashboardSourceSync } from "../../dashboard/report/bundle-dashboards.mjs";
 import { withoutIgnoredDashboardPageIds } from "./dashboard-view-assessment.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "../..");
@@ -63,14 +65,41 @@ function dashboardPaths() {
 
 function readDashboard(path, ref) {
   try {
-    const content = ref
-      ? execFileSync("git", ["show", `${ref}:${path}`], {
+    if (!ref) return loadDashboardSourceSync(join(repositoryRoot, path)).document;
+    const content = execFileSync("git", ["show", `${ref}:${path}`], {
+      cwd: repositoryRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    const document = JSON.parse(content);
+    if (!Array.isArray(document.fragments)) return document;
+
+    const temporaryRoot = mkdtempSync(join(tmpdir(), "cao-dashboard-ref-"));
+    try {
+      const sourcePath = join(temporaryRoot, basename(path));
+      writeFileSync(sourcePath, content);
+      for (const fragmentPath of document.fragments) {
+        const destination = resolve(temporaryRoot, fragmentPath);
+        const relativeDestination = relative(temporaryRoot, destination);
+        if (relativeDestination === ".."
+            || relativeDestination.startsWith(`..${sep}`)
+            || isAbsolute(relativeDestination)) {
+          throw new Error(`dashboard fragment path escapes its source directory: ${fragmentPath}`);
+        }
+        mkdirSync(dirname(destination), { recursive: true });
+        writeFileSync(destination, execFileSync("git", [
+          "show",
+          `${ref}:${join(dirname(path), fragmentPath)}`,
+        ], {
           cwd: repositoryRoot,
           encoding: "utf8",
           stdio: ["ignore", "pipe", "ignore"],
-        })
-      : readFileSync(join(repositoryRoot, path), "utf8");
-    return JSON.parse(content);
+        }));
+      }
+      return loadDashboardSourceSync(sourcePath).document;
+    } finally {
+      rmSync(temporaryRoot, { recursive: true, force: true });
+    }
   } catch {
     return null;
   }
@@ -230,9 +259,12 @@ export function selectAffectedPageIds({ dashboard, changedFiles, baseRef }) {
     rankDashboardPageIds({ dashboard, pageIds, changedFiles, ...options });
 
   for (const path of changedFiles) {
-    if (path.endsWith("/dashboard.json") || path === primaryDashboardPath) {
-      const current = readDashboard(path);
-      const previous = readDashboard(path, baseRef);
+    const isPrimaryFragment = path.startsWith("dashboard/site/dashboard-fragments/")
+      && path.endsWith(".json");
+    if (path.endsWith("/dashboard.json") || path === primaryDashboardPath || isPrimaryFragment) {
+      const dashboardPath = isPrimaryFragment ? primaryDashboardPath : path;
+      const current = readDashboard(dashboardPath);
+      const previous = readDashboard(dashboardPath, baseRef);
       // Shared configuration can affect any page, but PR assessment remains
       // bounded to the top-ranked sample to keep the live-data browser job fast.
       if (sharedDashboardConfigurationChanged(current, previous)) return ranked(allPageIds);

@@ -1,0 +1,735 @@
+{
+  "queries": [
+    {
+      "name": "runs-daily-conclusions",
+      "intent": "Aggregate workflow run conclusions by UTC day for the Runs stacked area graph.",
+      "from": "runs",
+      "compute": [
+        {
+          "as": "day",
+          "function": "date-day",
+          "args": [
+            {
+              "field": "started-at"
+            }
+          ]
+        }
+      ],
+      "aggregate": {
+        "by": [
+          "day",
+          "run-conclusion"
+        ],
+        "values": [
+          {
+            "field": "run",
+            "as": "runs",
+            "reducer": "count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "entity-events",
+      "intent": "Project all run-owned records for reusable cards and run drill-down.",
+      "from": "event-base",
+      "compute": [
+        {
+          "as": "event-url",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "safe-output-url"
+            },
+            {
+              "field": "correlation-id"
+            },
+            {
+              "field": "implementation-pull-request-url"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "organization"
+        },
+        {
+          "field": "repository"
+        },
+        {
+          "field": "workflow"
+        },
+        {
+          "field": "run"
+        },
+        {
+          "field": "run-attempt"
+        },
+        {
+          "field": "event"
+        },
+        {
+          "field": "event-source"
+        },
+        {
+          "field": "event-type"
+        },
+        {
+          "field": "event-summary"
+        },
+        {
+          "field": "event-status"
+        },
+        {
+          "field": "github-entity-type"
+        },
+        {
+          "field": "safe-output-type"
+        },
+        {
+          "field": "event-url"
+        },
+        {
+          "field": "event-timestamp",
+          "as": "observed-at"
+        },
+        {
+          "field": "run-link"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "observed-at",
+          "direction": "desc"
+        },
+        {
+          "field": "event",
+          "direction": "asc"
+        }
+      ]
+    },
+    {
+      "name": "runs-table",
+      "intent": "Show observed workflow runs in a table with execution, repository, workflow, engine, model, and navigation details.",
+      "description": "Observed workflow runs ordered from newest to oldest.",
+      "from": "runs",
+      "compute": [
+        {
+          "as": "repository-coordinate",
+          "function": "concat",
+          "args": [
+            {
+              "field": "organization"
+            },
+            {
+              "value": "/"
+            },
+            {
+              "field": "repository"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "run"
+        },
+        {
+          "field": "run-status"
+        },
+        {
+          "field": "run-conclusion"
+        },
+        {
+          "field": "repository-coordinate"
+        },
+        {
+          "field": "workflow"
+        },
+        {
+          "field": "rollout-mode"
+        },
+        {
+          "field": "engine"
+        },
+        {
+          "field": "engine-version"
+        },
+        {
+          "field": "gh-aw-version"
+        },
+        {
+          "field": "requested-model"
+        },
+        {
+          "field": "resolved-model"
+        },
+        {
+          "field": "started-at"
+        },
+        {
+          "field": "repository-link"
+        },
+        {
+          "field": "workflow-link"
+        },
+        {
+          "field": "run-link"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "started-at",
+          "direction": "desc"
+        }
+      ]
+    },
+    {
+      "name": "workflow-aic-per-run",
+      "intent": "List declared workflows with observed runs and their average AI Credit cost per run.",
+      "description": "Workflow AI Credit averages limited to workflows with at least one observed run.",
+      "from": "workflow-inventory",
+      "filter": {
+        "predicates": [
+          {
+            "field": "has-observed-runs",
+            "equals": true
+          }
+        ]
+      }
+    }
+  ],
+  "views": [
+    {
+      "id": "run-events",
+      "title": "Events",
+      "description": "Observed events for the selected run.",
+      "data": {
+        "source": "entity-events",
+        "arguments": [
+          {
+            "name": "organization",
+            "field": "organization"
+          },
+          {
+            "name": "repository",
+            "field": "repository"
+          },
+          {
+            "name": "workflow",
+            "field": "workflow"
+          },
+          {
+            "name": "run",
+            "field": "run"
+          },
+          {
+            "name": "run-attempt",
+            "field": "run-attempt"
+          }
+        ]
+      },
+      "mark": "list",
+      "list": {
+        "style": "entity-cards",
+        "card": "event",
+        "icon": "pulse",
+        "drill": {
+          "type": "external",
+          "field": "event-url"
+        }
+      },
+      "empty-message": "No events were retained for this run.",
+      "layout": "full",
+      "encoding": {
+        "columns": [
+          {
+            "field": "event-summary",
+            "type": "nominal",
+            "title": "Event"
+          },
+          {
+            "field": "event-type",
+            "type": "nominal",
+            "title": "Type"
+          },
+          {
+            "field": "event-status",
+            "type": "nominal",
+            "title": "Status"
+          },
+          {
+            "field": "event-source",
+            "type": "nominal",
+            "title": "Source"
+          },
+          {
+            "field": "run",
+            "type": "nominal",
+            "title": "Run"
+          },
+          {
+            "field": "observed-at",
+            "type": "temporal",
+            "title": "Observed",
+            "format": "human-friendly-timestamp"
+          },
+          {
+            "field": "event-url",
+            "type": "nominal",
+            "title": "External URL"
+          }
+        ]
+      }
+    }
+  ],
+  "pages": [
+    {
+      "id": "workflows",
+      "kind": "built-in",
+      "page": "workflows",
+      "title": "Workflows",
+      "icon": "workflow",
+      "description": "Inspect declared central campaign and repository-owned workflow relationships. This inventory does not assert that a dispatch occurred.",
+      "definition": {
+        "data-state": {
+          "availability": true
+        },
+        "views": [
+          {
+            "id": "workflows-by-aic-per-run",
+            "title": "Average AIC per run by workflow",
+            "description": "Declared workflows ranked by average AI Credit cost per observed run.",
+            "data": {
+              "source": "workflow-aic-per-run",
+              "order-by": [
+                {
+                  "field": "aic-per-run",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 10
+            },
+            "mark": "chart",
+            "chart": "horizontal-bar",
+            "layout": "full",
+            "empty-message": "No workflow AI Credit cost data is available.",
+            "encoding": {
+              "x": {
+                "field": "workflow-label",
+                "type": "nominal",
+                "format": "workflow-identity-label",
+                "title": "Workflow"
+              },
+              "y": {
+                "field": "aic-per-run",
+                "type": "quantitative",
+                "title": "Average AIC per run",
+                "unit": "aic-per-run"
+              },
+              "href": {
+                "field": "workflow-link",
+                "type": "nominal"
+              }
+            }
+          },
+          {
+            "id": "workflows-inventory",
+            "title": "Workflows",
+            "description": "Declared workflows across the configured repository scope.",
+            "data": {
+              "source": "workflow-inventory"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "column-summaries": true,
+            "layout": "full-view",
+            "empty-message": "No workflows observed.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "workflow-name",
+                  "type": "nominal",
+                  "title": "Workflow",
+                  "display": "workflow-link"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow file",
+                  "format": "workflow-relative-path"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository",
+                  "display": "repository-link"
+                },
+                {
+                  "field": "campaign-name",
+                  "type": "nominal",
+                  "title": "Campaign"
+                },
+                {
+                  "field": "workflow-role",
+                  "type": "nominal",
+                  "title": "Role"
+                },
+                {
+                  "field": "rollout-mode",
+                  "type": "nominal",
+                  "title": "Mode",
+                  "display": "mode"
+                },
+                {
+                  "field": "workflow-active",
+                  "type": "nominal",
+                  "title": "State",
+                  "display": "active-state"
+                },
+                {
+                  "field": "aic",
+                  "type": "quantitative",
+                  "title": "AIC",
+                  "unit": "aic"
+                },
+                {
+                  "field": "runs",
+                  "type": "quantitative",
+                  "title": "Runs"
+                },
+                {
+                  "field": "successful-runs",
+                  "type": "quantitative",
+                  "title": "Success"
+                },
+                {
+                  "field": "failed-runs",
+                  "type": "quantitative",
+                  "title": "Failures"
+                },
+                {
+                  "field": "aic-per-run",
+                  "type": "quantitative",
+                  "title": "Average AIC",
+                  "unit": "aic-per-run"
+                },
+                {
+                  "field": "ingestion",
+                  "type": "nominal",
+                  "title": "Ingestion"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "runs",
+      "kind": "built-in",
+      "page": "runs",
+      "title": "Runs",
+      "icon": "play",
+      "definition": {
+        "data-state": {
+          "availability": true
+        },
+        "views": [
+          {
+            "id": "runs-last-week",
+            "title": "Runs in the last week",
+            "description": "Workflow run conclusions observed during the last seven days.",
+            "data": {
+              "source": "runs-daily-conclusions",
+              "time": {
+                "range": "7d"
+              }
+            },
+            "mark": "chart",
+            "chart": "area",
+            "layout": "horizontal",
+            "encoding": {
+              "x": {
+                "field": "day",
+                "type": "temporal",
+                "format": "human-friendly-timestamp",
+                "title": "Started"
+              },
+              "y": {
+                "field": "runs",
+                "type": "quantitative",
+                "title": "Runs"
+              },
+              "color": {
+                "field": "run-conclusion",
+                "type": "nominal"
+              }
+            }
+          },
+          {
+            "id": "runs-runs-source",
+            "title": "Runs",
+            "description": "Observed workflow runs across the configured repository scope.",
+            "data": {
+              "source": "runs-table"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "column-summaries": true,
+            "layout": "full-view",
+            "empty-message": "No runs observed.",
+            "encoding": {
+              "href": {
+                "field": "run-link",
+                "type": "nominal"
+              },
+              "columns": [
+                {
+                  "field": "run",
+                  "type": "nominal",
+                  "display": "run-link"
+                },
+                {
+                  "field": "run-status",
+                  "type": "nominal",
+                  "display": "status"
+                },
+                {
+                  "field": "run-conclusion",
+                  "type": "nominal",
+                  "display": "status"
+                },
+                {
+                  "field": "repository-coordinate",
+                  "type": "nominal",
+                  "title": "Repository",
+                  "display": "repository-link"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "display": "workflow-link"
+                },
+                {
+                  "field": "rollout-mode",
+                  "type": "nominal",
+                  "display": "mode"
+                },
+                {
+                  "field": "engine",
+                  "type": "nominal"
+                },
+                {
+                  "field": "engine-version",
+                  "type": "nominal"
+                },
+                {
+                  "field": "requested-model",
+                  "type": "nominal"
+                },
+                {
+                  "field": "resolved-model",
+                  "type": "nominal"
+                },
+                {
+                  "field": "started-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "issues",
+      "kind": "built-in",
+      "page": "issues",
+      "title": "Issues",
+      "icon": "issue-opened",
+      "experimental": true,
+      "description": "Retained GitHub issues created by agentic workflow safe outputs.",
+      "definition": {
+        "data-state": {
+          "availability": true
+        },
+        "views": [
+          {
+            "id": "issues-by-repository",
+            "title": "Top repositories with issues",
+            "description": "The share of retained issues attributed to the ten repositories with the most issue safe outputs.",
+            "data": {
+              "source": "issue-repository-totals"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "full",
+            "empty-message": "No issue safe outputs were retained in the current report.",
+            "encoding": {
+              "x": {
+                "field": "repository-coordinate",
+                "type": "nominal",
+                "title": "Repository"
+              },
+              "y": {
+                "field": "issues",
+                "type": "quantitative",
+                "title": "Issues"
+              }
+            }
+          },
+          {
+            "id": "issues-by-status",
+            "title": "Open and closed issues",
+            "description": "The current split of retained issue safe outputs by open state or closing reason.",
+            "data": {
+              "source": "issue-safe-outputs"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "full",
+            "empty-message": "No issue status data was retained in the current report.",
+            "encoding": {
+              "x": {
+                "field": "issue-status-detail",
+                "type": "nominal",
+                "title": "Current status"
+              },
+              "y": {
+                "field": "entity-url",
+                "type": "quantitative",
+                "aggregate": "count",
+                "title": "Issues"
+              }
+            }
+          },
+          {
+            "id": "issues-source",
+            "title": "Issues",
+            "description": "Retained issue safe outputs with their repository, producing workflow, and workflow run.",
+            "data": {
+              "source": "issue-safe-outputs",
+              "limit": 100,
+              "order-by": [
+                {
+                  "field": "observed-at",
+                  "direction": "desc"
+                }
+              ]
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "column-summaries": true,
+            "layout": "full-view",
+            "empty-message": "No issue safe outputs were retained in the current report.",
+            "encoding": {
+              "href": {
+                "field": "entity-url",
+                "type": "nominal"
+              },
+              "columns": [
+                {
+                  "field": "event-summary",
+                  "type": "nominal",
+                  "title": "Issue"
+                },
+                {
+                  "field": "issue-status-detail",
+                  "type": "nominal",
+                  "title": "Current status",
+                  "display": "status"
+                },
+                {
+                  "field": "issue-state",
+                  "type": "nominal",
+                  "title": "State"
+                },
+                {
+                  "field": "issue-closing-status",
+                  "type": "nominal",
+                  "title": "Closing status"
+                },
+                {
+                  "field": "issue-closed-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Closed"
+                },
+                {
+                  "field": "issue-status-observed-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Status observed"
+                },
+                {
+                  "field": "safe-output-type",
+                  "type": "nominal",
+                  "title": "Safe output",
+                  "display": "label"
+                },
+                {
+                  "field": "github-entity-type",
+                  "type": "nominal",
+                  "title": "Entity type"
+                },
+                {
+                  "field": "entity-url",
+                  "type": "nominal",
+                  "title": "Entity URL"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow",
+                  "format": "workflow-relative-path"
+                },
+                {
+                  "field": "run",
+                  "type": "nominal",
+                  "title": "Run",
+                  "display": "run-link"
+                },
+                {
+                  "field": "run-link",
+                  "type": "nominal",
+                  "title": "Run link"
+                },
+                {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Opened"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "run-events",
+      "kind": "custom",
+      "title": "Run",
+      "icon": "pulse",
+      "description": "Observed events for the selected workflow run.",
+      "route": {
+        "hash-query-parameter": "run",
+        "navigation-page": "runs"
+      },
+      "views": [
+        "run-events"
+      ]
+    }
+  ]
+}

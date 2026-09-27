@@ -39,11 +39,11 @@ on:
 
 checkout:
   - repository: ${{ inputs.central_repo || github.repository }}
-    github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+    github-token: ${{ secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
     fetch-depth: 1
     current: true
   - repository: ${{ inputs.target_repo }}
-    github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+    github-token: ${{ secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
     path: target
     fetch-depth: 1
 
@@ -119,7 +119,7 @@ timeout-minutes: 30
 steps:
   - name: Collect bounded defect evidence
     env:
-      GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
       EVIDENCE_DIR: /tmp/gh-aw/eslint-rules/evidence
       WINDOW_DAYS: "14"
       MAX_PULL_REQUESTS: "25"

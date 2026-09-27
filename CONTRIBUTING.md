@@ -6,12 +6,14 @@ contributions from the community and are excited to work with you.
 **IMPORTANT: This project uses agentic development by a core team, primarily
 using Copilot coding agent or local coding agents.**
 
-**Traditional pull requests are not enabled for non-core team members.** If you
-are not part of the core team, please do not create a pull request directly.
-Instead, create a detailed agentic plan in an issue, discuss it with the team,
-and a core team member will create and implement the pull request using agents.
+**Traditional pull requests are not enabled for contributors without write
+access.** If you do not have write access, please do not create a pull request
+directly. Instead, create a detailed agentic plan in an issue, discuss it with
+the team, and a core team member will create and implement the pull request
+using agents.
 
-This document describes the contribution process for non-core team members.
+Contributors who have write access but are not yet core team members may create
+pull requests by following the review workflow below.
 
 ## How development works
 
@@ -24,7 +26,8 @@ means:
   pull request.
 - **Community members contribute through agentic plans** that the core team can
   execute.
-- **Traditional pull requests from non-core members are not enabled.**
+- **Contributors with write access work in draft pull requests** until their
+  changes are ready for core team review.
 
 ### Why this approach?
 
@@ -40,7 +43,7 @@ build and operate agentic workflows. This approach provides:
 
 ## Quick start for community contributors
 
-**If you are not part of the core team, do not create a pull request directly.**
+**If you do not have write access, do not create a pull request directly.**
 Instead, craft a detailed agentic plan in an issue so a core team member can
 implement it using agents.
 
@@ -53,6 +56,10 @@ Before filing a contribution request, use an agent to:
 - Research related issues and existing implementation patterns.
 - Propose specific changes, including code examples when useful.
 - Create a complete plan for implementation and validation.
+
+For CAO deployment failures, use the
+[`debug-cao` skill](skills/debug-cao/SKILL.md) to preserve the failing revision,
+narrow the fault to one system boundary, and collect reproducible evidence.
 
 Remove credentials, private repository data, and other sensitive information
 from prompts, plans, examples, and logs.
@@ -68,6 +75,16 @@ Search existing issues first, then open an issue that:
 - Identifies the relevant files, tests, and documentation.
 - Includes specific implementation details and examples.
 - Uses the appropriate issue labels when available.
+
+## Pull requests for contributors with write access
+
+If you have write access but are not yet a core team member:
+
+1. Open your pull request in draft mode and continue working there.
+2. When the change is complete and validated, mark the pull request ready for
+   review and request a review from the maintainers.
+3. The maintainers will either approve and merge it immediately or return it
+   with comments for follow-up.
 
 ## Core team implementation reference
 

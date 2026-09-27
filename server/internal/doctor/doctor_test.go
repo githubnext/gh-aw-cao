@@ -52,6 +52,36 @@ func testDoctor(client fakeClient) Doctor {
 	}
 }
 
+func TestParseInfoReplyExtractsFieldsAndSkipsSectionHeadersAndBlankLines(t *testing.T) {
+	fields := parseInfoReply("# Memory\r\nused_memory:734003200\r\n\r\nmaxmemory_policy:allkeys-lru\r\n# Comment\r\n")
+	if got, want := fields["used_memory"], "734003200"; got != want {
+		t.Fatalf("used_memory = %q, want %q", got, want)
+	}
+	if got, want := fields["maxmemory_policy"], "allkeys-lru"; got != want {
+		t.Fatalf("maxmemory_policy = %q, want %q", got, want)
+	}
+	if len(fields) != 2 {
+		t.Fatalf("fields = %v, want exactly 2 entries", fields)
+	}
+}
+
+func TestParseInfoReplyIgnoresLinesWithoutAColon(t *testing.T) {
+	fields := parseInfoReply("not-a-field-value-line\r\nrole:master\r\n")
+	if got, want := fields["role"], "master"; got != want {
+		t.Fatalf("role = %q, want %q", got, want)
+	}
+	if len(fields) != 1 {
+		t.Fatalf("fields = %v, want exactly 1 entry", fields)
+	}
+}
+
+func TestParseInfoReplyHandlesEmptyInput(t *testing.T) {
+	fields := parseInfoReply("")
+	if len(fields) != 0 {
+		t.Fatalf("fields = %v, want empty map", fields)
+	}
+}
+
 func TestRedactRedisURLNeverReportsPassword(t *testing.T) {
 	redacted := redactRedisURL(credentialedRedisURL)
 	if strings.Contains(redacted, "super-secret") {

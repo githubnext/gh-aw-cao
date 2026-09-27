@@ -1,7 +1,10 @@
 import { h } from '../dom.js';
 import { debounce, throttle } from '../debounce.js';
+import { createDebug } from '../debug.js';
 
 const DEFAULT_DELAY_MS = 250;
+
+const debugDashboardForm = createDebug('dashboard-form');
 
 /**
  * @param {Record<string, unknown>} definition
@@ -39,13 +42,21 @@ export function renderDashboardForm(definition, currentValues, onChange, idPrefi
     h('div', { className: 'dashboard-parameter-fields' }, ...fields.map(renderField))
   );
   root.addEventListener('submit', (event) => event.preventDefault());
+  debugDashboardForm({ event: 'built', idPrefix, fieldCount: fields.length, strategy: update.strategy === 'throttle' ? 'throttle' : 'debounce', delayMs: delay });
   return root;
 
   function emit() {
-    if (!root.isConnected) return;
+    if (!root.isConnected) {
+      debugDashboardForm({ event: 'emit-skipped', idPrefix, reason: 'disconnected' });
+      return;
+    }
     const serialized = JSON.stringify(values);
-    if (serialized === lastEmitted) return;
+    if (serialized === lastEmitted) {
+      debugDashboardForm({ event: 'emit-skipped', idPrefix, reason: 'unchanged' });
+      return;
+    }
     lastEmitted = serialized;
+    debugDashboardForm({ event: 'emitted', idPrefix, fieldCount: fields.length });
     onChange({ ...values });
   }
 

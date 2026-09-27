@@ -9,6 +9,7 @@ on:
       - package-lock.json
       - tests/e2e/dashboard-query-parity.mjs
       - dashboard/site/dashboard.json
+      - dashboard/site/dashboard-fragments/**
       - dashboard/site/src/**
       - server/go.mod
       - server/go.sum
@@ -24,6 +25,7 @@ on:
       - package-lock.json
       - tests/e2e/dashboard-query-parity.mjs
       - dashboard/site/dashboard.json
+      - dashboard/site/dashboard-fragments/**
       - dashboard/site/src/**
       - server/go.mod
       - server/go.sum

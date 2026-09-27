@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
 import {
   applyTableQuerySafetyLimits,
   logTableCapacityDecision,
   tableRowLimitForEnvironment
 } from '../../src/data/table-capacity.js';
 import { dashboardTableSourceNames } from '../../src/presenter.js';
+import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
 describe('adaptive table capacity', () => {
   it.each([
@@ -58,7 +58,7 @@ describe('adaptive table capacity', () => {
   });
 
   it('applies the safety ceiling to every terminal table-backed dashboard query', () => {
-    const document = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8'));
+    const document = authoritativeDashboard;
     const tableSources = dashboardTableSourceNames(
       /** @type {import('../../src/presenter.js').PresentationDocument} */ (document)
     );

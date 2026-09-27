@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -7,6 +7,7 @@ import test from "node:test";
 import {
   addCaoCampaign,
   ensureGhAwMinimumVersion,
+  fineGrainedTokenSetups,
   initializeCaoPolicy,
   setCaoCampaignMode,
   setCaoCampaignWorkflowsEnabled,
@@ -14,34 +15,57 @@ import {
   updateCaoCampaigns,
 } from "../../activity/cao.mjs";
 
+// gh-aw writes `gh aw version` output to stderr.
 const versionResult = {
   status: 0,
-  stdout: "gh aw version v0.89.17\n",
-  stderr: "",
+  stdout: "",
+  stderr: "gh aw version v0.89.17\n",
 };
+const repositoryLookup = ["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"];
 
-test("cao init writes the minimal control-plane policy", async () => {
+// Answers init's gh-aw version and current-repository lookups.
+function initExecutor(repositoryResult = { status: 0, stdout: "acme/control\n", stderr: "" }, calls = []) {
+  return (command, arguments_) => {
+    calls.push([command, arguments_]);
+    assert.equal(command, "gh");
+    if (arguments_.join(" ") === "aw version") return versionResult;
+    assert.deepEqual(arguments_, repositoryLookup);
+    return repositoryResult;
+  };
+}
+
+test("cao init writes the minimal control-plane policy scoped to the current repository", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-init-"));
   const previousDirectory = process.cwd();
   const policyPath = path.join(root, ".github", "workflows", "cao.json");
+  const calls = [];
   try {
     await mkdir(path.dirname(policyPath), { recursive: true });
     process.chdir(root);
     const result = await initializeCaoPolicy({
       policyPath,
-      execute(command, arguments_) {
-        assert.equal(command, "gh");
-        assert.deepEqual(arguments_, ["aw", "version"]);
-        return versionResult;
-      },
+      execute: initExecutor({ status: 0, stdout: "Acme-Org/ops.tools\n", stderr: "" }, calls),
     });
     const policy = JSON.parse(await readFile(policyPath, "utf8"));
     assert.deepEqual(policy, {
       $schema: "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json",
       version: 1,
       "gh-aw-version": "v0.89.17",
-      "control-plane": { campaigns: {} },
+      "control-plane": {
+        scope: { "allowed-owners": ["Acme-Org"], "allowed-repositories": ["Acme-Org/ops.tools"] },
+        marketplace: {
+          registries: [{
+            id: "official",
+            name: "Official CAO catalog",
+            repository: "githubnext/gh-aw-cao",
+            ref: "main",
+            auth: { type: "none" },
+          }],
+        },
+        campaigns: {},
+      },
     });
+    assert.deepEqual(calls, [["gh", ["aw", "version"]], ["gh", repositoryLookup]]);
     assert.equal(result["gh-aw-version"], "v0.89.17");
   } finally {
     process.chdir(previousDirectory);
@@ -52,13 +76,15 @@ test("cao init writes the minimal control-plane policy", async () => {
 test("cao init does not overwrite an existing policy", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-init-existing-"));
   const policyPath = path.join(root, "cao.json");
+  const calls = [];
   await writeFile(policyPath, '{"version":1}\n');
   try {
     await assert.rejects(
-      initializeCaoPolicy({ policyPath, execute: () => versionResult }),
+      initializeCaoPolicy({ policyPath, execute: initExecutor(undefined, calls) }),
       /cao\.json already exists/,
     );
     assert.equal(await readFile(policyPath, "utf8"), '{"version":1}\n');
+    assert.deepEqual(calls, []);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -70,13 +96,35 @@ test("cao init supports a repository without installed package records", async (
   const policyPath = path.join(root, ".github", "workflows", "cao.json");
   try {
     process.chdir(root);
-    await initializeCaoPolicy({ policyPath, execute: () => versionResult });
+    await initializeCaoPolicy({ policyPath, execute: initExecutor() });
     assert.equal(JSON.parse(await readFile(policyPath, "utf8"))["gh-aw-version"], "v0.89.17");
   } finally {
     process.chdir(previousDirectory);
     await rm(root, { recursive: true, force: true });
   }
 });
+
+for (const [description, repositoryResult] of [
+  ["gh repo view fails", { status: 1, stdout: "", stderr: "not a git repository\n" }],
+  ["gh cannot start", { status: null, stdout: "", stderr: "", error: new Error("spawn gh ENOENT") }],
+  ["the repository is empty", { status: 0, stdout: "\n", stderr: "" }],
+  ["the repository is malformed", { status: 0, stdout: "acme\n", stderr: "" }],
+  ["several repositories are returned", { status: 0, stdout: "acme/control\nacme/other\n", stderr: "" }],
+]) {
+  test(`cao init writes no policy when ${description}`, async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "cao-init-identity-"));
+    const policyPath = path.join(root, ".github", "workflows", "cao.json");
+    try {
+      await assert.rejects(
+        initializeCaoPolicy({ policyPath, execute: initExecutor(repositoryResult) }),
+        /^Error: Unable to determine control repository: .*Run cao init from a GitHub repository checkout with a configured remote\.$/s,
+      );
+      await assert.rejects(readFile(policyPath, "utf8"), { code: "ENOENT" });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+}
 
 test("cao setup-auth delegates private GitHub App setup options", () => {
   const calls = [];
@@ -102,28 +150,121 @@ test("cao setup-auth delegates private GitHub App setup options", () => {
   assert.deepEqual(result, { command: "setup-auth", profile: "github-app" });
 });
 
-test("cao setup-auth configures a consented fine-grained token through stdin", () => {
-  const calls = [];
-  const result = setupCaoAuthentication("token", [
-    "--repo", "acme/control",
-    "--acknowledge-token-risks",
-  ], {
-    execute(command, arguments_, options) {
-      calls.push([command, arguments_, options]);
-      return { status: 0, stdout: "", stderr: "" };
+test("cao setup-auth configures separate read and write fine-grained tokens through stdin", () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "cao-token-"));
+  const policyPath = path.join(root, "cao.json");
+  writeFileSync(policyPath, JSON.stringify({
+    version: 1,
+    "control-plane": {
+      scope: {
+        "allowed-repositories": ["acme/target"],
+      },
     },
-  });
+  }));
+  const calls = [];
+  const instructions = [];
+  const opened = [];
+  try {
+    const result = setupCaoAuthentication("token", [
+      "--repo", "acme/control",
+      "--policy", policyPath,
+      "--write-repository", "acme/output",
+    ], {
+      execute(command, arguments_, options) {
+        calls.push([command, arguments_, options]);
+        return { status: 0, stdout: "", stderr: "" };
+      },
+      launchBrowser(url) {
+        opened.push(url);
+        return true;
+      },
+      writeInstruction(message) {
+        instructions.push(message);
+      },
+    });
 
-  assert.deepEqual(calls, [
-    ["gh", ["auth", "status"], { encoding: "utf8" }],
-    ["gh", ["secret", "set", "GH_AW_GITHUB_TOKEN", "--repo", "acme/control"], { stdio: "inherit" }],
-  ]);
-  assert.deepEqual(result, {
-    command: "setup-auth",
-    profile: "fine-grained-token",
-    secret: "GH_AW_GITHUB_TOKEN",
-    repo: "acme/control",
-  });
+    assert.deepEqual(calls, [
+      ["gh", ["auth", "status"], { encoding: "utf8" }],
+      ["gh", ["secret", "set", "GH_AW_GITHUB_READ_PAT", "--repo", "acme/control"], { stdio: "inherit" }],
+      ["gh", ["secret", "set", "GH_AW_GITHUB_WRITE_PAT", "--repo", "acme/control"], { stdio: "inherit" }],
+    ]);
+    assert.deepEqual(result, {
+      command: "setup-auth",
+      profile: "fine-grained-token",
+      secrets: [
+        { role: "read", secret: "GH_AW_GITHUB_READ_PAT" },
+        { role: "write", secret: "GH_AW_GITHUB_WRITE_PAT" },
+      ],
+      repo: "acme/control",
+      repositories: {
+        read: ["acme/control", "acme/target"],
+        write: ["acme/output"],
+      },
+    });
+    assert.equal(opened.length, 2);
+    const [readUrl, writeUrl] = opened.map((value) => new URL(value));
+    assert.equal(readUrl.origin, "https://github.com");
+    assert.equal(readUrl.pathname, "/settings/personal-access-tokens/new");
+    assert.equal(readUrl.searchParams.get("target_name"), "acme");
+    assert.equal(readUrl.searchParams.get("expires_in"), "30");
+    assert.equal(readUrl.searchParams.get("contents"), "read");
+    assert.equal(readUrl.searchParams.get("name"), "CAO-ACME-CONTROL-PAT-READ");
+    assert.equal(writeUrl.searchParams.get("contents"), "write");
+    assert.equal(writeUrl.searchParams.get("name"), "CAO-ACME-CONTROL-PAT-WRITE");
+    assert.match(instructions.join("\n"), /read fine-grained PAT[\s\S]*acme\/control[\s\S]*acme\/target/);
+    assert.match(instructions.join("\n"), /write fine-grained PAT[\s\S]*acme\/output/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("fine-grained token setup uses the configured enterprise host", () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "cao-token-host-"));
+  const policyPath = path.join(root, "cao.json");
+  writeFileSync(policyPath, JSON.stringify({
+    version: 1,
+    "control-plane": { scope: { "allowed-repositories": ["platform/target"] } },
+  }));
+  try {
+    const setups = fineGrainedTokenSetups({
+      repo: "platform/control",
+      policyPath,
+      environment: { GH_HOST: "contoso-aw.ghe.com" },
+    });
+    assert.equal(setups.length, 2);
+    for (const setup of setups) {
+      assert.match(setup.url, /^https:\/\/contoso-aw\.ghe\.com\/settings\/personal-access-tokens\/new\?/);
+    }
+    assert.deepEqual(setups[0].repositories, ["platform/control", "platform/target"]);
+    assert.deepEqual(setups[1].repositories, ["platform/control"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("fine-grained token setup mirrors CAO App names with uppercase PAT roles", () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "cao-token-name-"));
+  const policyPath = path.join(root, "cao.json");
+  writeFileSync(policyPath, JSON.stringify({
+    version: 1,
+    "control-plane": { scope: { "allowed-repositories": ["platform/aw-playground"] } },
+  }));
+  try {
+    const setups = fineGrainedTokenSetups({
+      repo: "platform/cao-auth-e2e-token",
+      policyPath,
+    });
+    assert.equal(
+      new URL(setups[0].url).searchParams.get("name"),
+      "CAO-PLATFORM-CAO-AUTH-E2E-PAT-READ",
+    );
+    assert.equal(
+      new URL(setups[1].url).searchParams.get("name"),
+      "CAO-PLATFORM-CAO-AUTH-E2E-PAT-WRITE",
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("cao setup-auth configures existing enterprise Apps without key arguments", () => {
@@ -185,13 +326,6 @@ test("cao setup-auth previews enterprise App credential configuration without Gi
       },
     ],
   });
-});
-
-test("cao setup-auth requires explicit token risk acknowledgement", () => {
-  assert.throws(
-    () => setupCaoAuthentication("token", ["--repo", "acme/control"]),
-    /requires --acknowledge-token-risks/,
-  );
 });
 
 test("cao setup-auth accepts the bounded workflow-token profile without secrets", () => {
@@ -441,6 +575,58 @@ test("cao add installs a campaign and merges its declaration safely", async () =
       },
     });
     assert.equal(result.orchestrator, "dependabot");
+  } finally {
+    process.chdir(previousDirectory);
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("cao add without a policy initializes it for the current repository before merging", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-add-new-policy-"));
+  const previousDirectory = process.cwd();
+  const policyPath = path.join(root, ".github", "workflows", "cao.json");
+  const calls = [];
+  try {
+    await mkdir(path.join(root, "dependabot"), { recursive: true });
+    await writeFile(path.join(root, "dependabot", "cao.json"), JSON.stringify({
+      campaign: "dependabot",
+      orchestrator: "dependabot",
+      workers: { "release-train-updater": "dependabot-release-train-updater" },
+    }));
+    process.chdir(root);
+    await addCaoCampaign("githubnext/gh-aw-cao/dependabot@v1", [], {
+      policyPath,
+      execute(command, arguments_) {
+        calls.push([command, arguments_]);
+        if (command === "gh" && arguments_.join(" ") === "aw version") return versionResult;
+        if (command === "gh" && arguments_[0] === "repo") {
+          assert.deepEqual(arguments_, repositoryLookup);
+          return { status: 0, stdout: "acme/control\n", stderr: "" };
+        }
+        return { status: 0, stdout: "", stderr: "" };
+      },
+    });
+    assert.deepEqual(calls.map(([command, arguments_]) => [command, arguments_[0]]), [
+      ["gh", "aw"],
+      [process.execPath, path.join(".github", "workflows", "shared", "materialize-cao.mjs")],
+      ["gh", "aw"],
+      ["gh", "repo"],
+    ]);
+    assert.deepEqual(JSON.parse(await readFile(policyPath, "utf8"))["control-plane"], {
+      scope: { "allowed-owners": ["acme"], "allowed-repositories": ["acme/control"] },
+      marketplace: {
+        registries: [{
+          id: "official",
+          name: "Official CAO catalog",
+          repository: "githubnext/gh-aw-cao",
+          ref: "main",
+          auth: { type: "none" },
+        }],
+      },
+      campaigns: {
+        dependabot: { workers: { "release-train-updater": { workflow: "dependabot-release-train-updater" } } },
+      },
+    });
   } finally {
     process.chdir(previousDirectory);
     await rm(root, { recursive: true, force: true });

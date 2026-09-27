@@ -1,3 +1,7 @@
+import { createDebug } from './debug.js';
+
+const debugSourceLoader = createDebug('source-loader');
+
 /**
  * Loads source collections one at a time when a split-source manifest is
  * available, keeping peak JSON parsing memory independent of the full payload.
@@ -13,6 +17,7 @@ export async function loadDashboardSources(fetchSource, sourcesUrl, options = {}
     if (manifestResponse.status !== 404) {
       throw new Error(`Unable to load dashboard source manifest: ${manifestResponse.status}`);
     }
+    debugSourceLoader({ event: 'monolith-fallback', reason: 'manifest-missing' });
     const response = await fetchSource(sourcesUrl, { cache: 'no-store' });
     if (!response.ok) throw new Error(`Unable to load sources.json: ${response.status}`);
     return response.json();
@@ -40,9 +45,11 @@ export async function loadDashboardSources(fetchSource, sourcesUrl, options = {}
     options.onShardLoaded?.({ name, sizeBytes, cacheStatus });
     const source = await response.json();
     if (manifest.generation && source?.metadata?.['artifact-generation'] !== manifest.generation) {
+      debugSourceLoader({ event: 'generation-mismatch', name });
       throw new Error(`Dashboard source ${name} does not match the source manifest generation.`);
     }
     sources[name] = source;
   }
+  debugSourceLoader({ event: 'split-sources-loaded', count: manifest.sources.length });
   return sources;
 }

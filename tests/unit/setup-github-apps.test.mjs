@@ -7,10 +7,15 @@ import test from "node:test";
 
 import {
   APP_PROFILES,
+  accountInstallationsEndpoint,
+  appInstallationUrl,
+  appPermissionsForServer,
   appRegistrationUrl,
   buildGitHubAppManifest,
   deriveAppName,
   deriveInstallationTargets,
+  deriveWriteInstallationTargets,
+  githubServerUrl,
   installationIncludesRepository,
   installationIncludesTarget,
   installationInstruction,
@@ -40,6 +45,16 @@ test("GitHub App profiles preserve separate permission ceilings", () => {
   assert.equal(write.permissions.contents, "write");
   assert.equal(write.permissions.issues, "write");
   assert.equal(write.permissions.pull_requests, "write");
+});
+
+test("GitHub Enterprise Cloud data-residency manifests omit unsupported campaigns permission", () => {
+  const read = APP_PROFILES.find((profile) => profile.role === "read");
+  assert.ok(read);
+  assert.equal(appPermissionsForServer(read, "https://github.com").campaigns, "read");
+  assert.equal(
+    Object.hasOwn(appPermissionsForServer(read, "https://contoso-aw.ghe.com"), "campaigns"),
+    false,
+  );
 });
 
 test("GitHub App manifests are private and disable webhooks and OAuth", () => {
@@ -81,6 +96,37 @@ test("App registration targets organization ownership", () => {
   );
 });
 
+test("GitHub App setup honors GitHub Enterprise Cloud host configuration", () => {
+  assert.equal(
+    githubServerUrl({ GH_HOST: "contoso-aw.ghe.com" }),
+    "https://contoso-aw.ghe.com",
+  );
+  assert.equal(
+    githubServerUrl({ GITHUB_SERVER_URL: "https://example.ghe.com/" }),
+    "https://example.ghe.com",
+  );
+  assert.equal(
+    appRegistrationUrl("octo", "state", "https://contoso-aw.ghe.com"),
+    "https://contoso-aw.ghe.com/organizations/octo/settings/apps/new?state=state",
+  );
+  assert.equal(
+    appInstallationUrl("octo", "control-read", "https://github.com"),
+    "https://github.com/apps/control-read/installations/new",
+  );
+  assert.equal(
+    appInstallationUrl("octo", "control-read", "https://contoso-aw.ghe.com"),
+    "https://contoso-aw.ghe.com/organizations/octo/settings/apps/control-read/installations",
+  );
+  assert.equal(
+    accountInstallationsEndpoint("octo", "https://github.com"),
+    "/user/installations?per_page=100",
+  );
+  assert.equal(
+    accountInstallationsEndpoint("octo", "https://contoso-aw.ghe.com"),
+    "/orgs/octo/installations?per_page=100",
+  );
+});
+
 test("App setup derives selected-repository installations from CAO policy", () => {
   const targets = deriveInstallationTargets({
     "control-plane": {
@@ -98,6 +144,17 @@ test("App setup derives selected-repository installations from CAO policy", () =
     { owner: "octo", repositories: ["control", "service-a"] },
     { owner: "other-org", repositories: ["service-a", "service-b"] },
   ]);
+});
+
+test("App setup scopes write installations independently", () => {
+  assert.deepEqual(
+    deriveWriteInstallationTargets("octo/control"),
+    [{ owner: "octo", repositories: ["control"] }],
+  );
+  assert.deepEqual(
+    deriveWriteInstallationTargets("octo/control", ["octo/output-b", "octo/output-a"]),
+    [{ owner: "octo", repositories: ["output-a", "output-b"] }],
+  );
 });
 
 test("repository credentials keep the private key out of command arguments", () => {
@@ -140,9 +197,40 @@ test("organization dry run emits private manifests without requiring GitHub acce
     encoding: "utf8",
   });
 
+  test("organization dry run uses the configured GitHub Enterprise Cloud host", (t) => {
+    const directory = mkdtempSync(join(tmpdir(), "cao-setup-policy-"));
+    const policy = join(directory, "cao.json");
+    t.after(() => rmSync(directory, { recursive: true, force: true }));
+    writeFileSync(policy, JSON.stringify({
+      version: 1,
+      "gh-aw-version": "v0.89.21",
+      "control-plane": {
+        scope: { "allowed-repositories": ["platform/control"] },
+        campaigns: {},
+      },
+    }));
+    const result = spawnSync(script, [
+      "--repo", "platform/control",
+      "--policy", policy,
+      "--dry-run",
+    ], {
+      encoding: "utf8",
+      env: { ...process.env, GH_HOST: "contoso-aw.ghe.com" },
+    });
+
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.ok(output.apps.every(
+      (app) => app.manifest.url === "https://contoso-aw.ghe.com/platform/control",
+    ));
+  });
+
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
   assert.equal(output.repo, "githubnext/gh-aw-cao");
+  assert.deepEqual(output.installationTargets.write, [
+    { owner: "githubnext", repositories: ["gh-aw-cao"] },
+  ]);
   assert.ok(output.apps.every((app) => app.manifest.public === false));
   assert.deepEqual(output.apps.map((app) => app.manifest.name), [
     "cao-githubnext-gh-aw-cao-read",

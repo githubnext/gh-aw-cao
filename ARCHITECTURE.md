@@ -129,6 +129,42 @@ produces the same stable check identifiers and observations as human-readable
 text or versioned JSON, never contacts GitHub or mutates Redis, and requires an
 explicit deep mode before reading every active row.
 
+Server construction independently resolves an app server target module and a
+declarative Redis provider module, then composes their provider-agnostic
+capabilities before configuring authentication or ingestion. Target modules own
+authentication, listener ownership, HTTPS, and trusted-proxy requirements.
+Redis modules own environment mappings, session semantics, process namespace
+isolation, replica constraints, and collection support. Local, host-neutral
+container, Azure Functions, and Upstash are compositions rather than provider
+checks in shared request handling.
+Startup rejects configurations or Redis clients that do not satisfy the
+selected capabilities.
+
+Hosted startup may compile that profile and its generic Redis connection from
+the non-secret `control-plane.web.host` section of
+`.github/workflows/cao.json`. The policy names environment variables rather
+than storing connection URLs, credentials, server-name overrides, or CA
+certificates. Managed-provider modules map provider conventions into the same
+generic URL and verified-TLS configuration; they do not create provider-specific
+runtime paths. When no host section exists, legacy environment configuration is
+retained for existing deployments.
+
+Modules are compiled registry entries, not dynamically loaded code. Policy
+selects one target and one Redis module by name. Unknown names, attempts to
+override fixed module capabilities, incompatible compositions, and runtime
+clients that do not satisfy the composed profile fail before serving traffic.
+
+The host-neutral server also has a constrained Upstash profile for a provider
+that guarantees causal ordering only within one TCP session. That profile runs
+exactly one application replica, serializes all Redis operations through one
+non-reconnecting connection, and uses a fresh internal namespace on every
+process start. A lost connection fails closed until restart. Restart rebuilds
+from the verified artifact and invalidates prior sessions. Its encrypted
+pending-revocation queue alone retains a stable deployment prefix so token
+revocation retries survive restart; server-side collection is not available in
+this profile. The default hosted and Azure
+profiles retain their ordinary pooled Redis behavior.
+
 The Redis profile acquires evidence through exactly one of two mutually
 exclusive ingestion profiles. By default the Activity workflow collects
 evidence in GitHub Actions and publishes a snapshot that the server ingests.
@@ -163,6 +199,16 @@ package computation retains its prior rows and cannot mutate canonical evidence,
 while removing a package removes its rows on the next clustering run. Package
 computations run as bounded, timed, cancelable subprocesses so one worker fault
 does not block other contributors.
+
+The read-only campaign marketplace is another trusted-resolution flow. An
+ordered registry list in `cao.json` identifies gh-aw package repositories and
+references secret names, never secret values. Activity resolves registries
+during static precomputation and publishes safe normalized package metadata into
+the canonical IndexedDB path. The hosted Go server resolves the same contract
+on demand and caches safe results in Redis. Registry credentials remain in the
+trusted resolver in both profiles. Marketplace views consume only the existing
+data-worker query boundary and render declarative package cards and copy-only
+CAO add commands; browsers never fetch registries or install packages.
 The browser materializes bounded runtime and failure-scope results by
 generation, computes detailed audit causes only for selected or prioritized
 partitions, and discards every result safely because canonical evidence remains
@@ -178,7 +224,7 @@ reconstructable.
 | `<operation>/problem-clustering.mjs` | Optional bounded problem computation installed with its package. |
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
 | `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
-| `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Redis projection, and server-side Dashboard Language query engine. |
+| `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Redis projection, server-side Dashboard Language query engine, and peer Azure Functions and Coolify deployment profiles. |
 | `dashboard/site/src/data/` | Canonical browser data model, adapters, normalization, storage, and declarative query engine. |
 | `research/` | Executable notebooks and experimental reference runtimes used to validate proposed computation semantics against canonical data; these are not dashboard production code. |
 | `specs/computations.md` | Versioned computation, bounded insight, provenance, quality, and measure contracts. |
@@ -272,15 +318,35 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   cannot replace the projection concurrently. Its client exposes the active
   GitHub login and supports explicit account switching through a fresh OAuth
   account-selection flow without combining account authority. Hosted transport
-  is fail-closed: Redis always uses TLS, a public listener terminates TLS
-  directly, and forwarded host/protocol headers are trusted only across a
-  loopback-bound proxy boundary. Logout atomically removes active session
+  is fail-closed: Redis uses TLS by default and always in Azure; a Coolify-managed
+  Redis service may use private plaintext only through an explicit opt-in and a
+  private address. A public listener terminates TLS directly, while a private
+  Coolify listener may rely on proxy TLS only when the direct proxy peer belongs
+  to an explicit private CIDR allow-list. Forwarded hosts must still match the
+  public host allow-list and forwarded protocol must be HTTPS. Logout atomically removes active session
   authority before remote token revocation; transient GitHub failures retain
   encrypted credentials only in a durable Redis revocation queue drained by a
   bounded maintenance worker. Encrypted records identify their key so controlled
   rotation can retain the previous key until sessions and revocations drain.
   Refreshed sessions use an atomic compare-and-swap so logout cannot be undone
   by a concurrent OAuth refresh.
+- The Coolify image builds the dashboard and Go server together, runs as a
+  non-root user, and mounts the authoritative artifact read-only from an
+  externally populated named volume whose complete payload is hash-verified and
+  atomically installed. Conventional GitHub Actions refuses fork repository
+  payloads. A push to `main` maps to alpha, while
+  published prerelease and non-prerelease events map to beta and stable.
+  Manual alpha runs resolve the current `main` commit; manual beta and stable
+  runs resolve the exact commit of the latest eligible published release for
+  their channel, regardless of whether `main` or `release` is selected. Every
+  locally scanned image is pushed under a
+  unique run candidate, then a canonical source identity is created or accepted
+  only at the same digest without trusting registry labels. Immediately before
+  a protected deployment, the workflow revalidates channel freshness. Its
+  synchronous adapter reports ready only after Coolify completes and
+  `/api/readiness` passes, rolling back to the recorded prior digest on failure.
+  Tiers never promote artifacts implicitly and deployments never consume
+  mutable channel tags or merely accepted asynchronous operations.
 - Browsers and external clients never receive Redis endpoints or credentials.
   Redis generations are staged and validated before atomic activation; a failed
   rebuild leaves the previous generation active, and an empty Redis instance is

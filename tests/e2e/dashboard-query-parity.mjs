@@ -24,6 +24,18 @@ import {
 import {
   installSqliteIndexedDB,
 } from "../../dashboard/site/src/data/storage/sqlite-indexeddb.js";
+import { loadDashboardSourceSync } from "../../dashboard/report/bundle-dashboards.mjs";
+import {
+  queryExecutionRequirements,
+} from "../../dashboard/site/src/agent/catalog.js";
+import {
+  MAX_NAMED_QUERY_LIMIT,
+  executeNamedQuery,
+} from "../../dashboard/site/src/agent/query-executor.js";
+import {
+  MCP_PROTOCOL_VERSION,
+  handleMcpRequest,
+} from "../../activity/mcp-server.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "../..");
 const siteRoot = join(repositoryRoot, "dashboard/site");
@@ -208,7 +220,7 @@ function representativeSources() {
 }
 
 function dashboardQueries() {
-  const document = JSON.parse(readFileSync(dashboardPath, "utf8"));
+  const { document } = loadDashboardSourceSync(dashboardPath);
   const resolveContext = (value) => {
     if (Array.isArray(value)) return value.map(resolveContext);
     if (!value || typeof value !== "object") return value;
@@ -235,6 +247,56 @@ async function executeNodeBackend(factory, sources, queries, names) {
     sourceNames: names,
   });
   return rowsByQuery(result, names);
+}
+
+/**
+ * Executes the shared named-query executor that the `cao` CLI uses so agent
+ * transports stay in parity with the dashboard itself.
+ */
+async function executeNamedQueryBackend(factory, document, names) {
+  const rows = {};
+  for (const name of names) {
+    const result = await executeNamedQuery({
+      indexedDB: factory,
+      document,
+      queryId: name,
+      limit: MAX_NAMED_QUERY_LIMIT,
+    });
+    rows[name] = result.rows;
+  }
+  return rows;
+}
+
+/**
+ * Executes the same named queries over the MCP wire boundary.
+ */
+async function executeMcpBackend(factory, dashboardPath, names) {
+  const rows = {};
+  for (const name of names) {
+    const { status, body } = await handleMcpRequest({
+      headers: {
+        "mcp-protocol-version": MCP_PROTOCOL_VERSION,
+        "mcp-method": "tools/call",
+        "mcp-name": "cao_query",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: {
+          name: "cao_query",
+          arguments: { id: name, limit: MAX_NAMED_QUERY_LIMIT },
+        },
+      }),
+      indexedDB: factory,
+      dashboardPath,
+    });
+    if (status !== 200 || body.result?.isError) {
+      throw new Error(`MCP cao_query failed for ${name}: ${JSON.stringify(body)}`);
+    }
+    rows[name] = body.result.structuredContent.rows;
+  }
+  return rows;
 }
 
 async function executeBrowserBackend(sources, queries, names) {
@@ -351,6 +413,13 @@ async function waitForServer() {
 async function executeRedisBackend(artifactDirectory, queries, names) {
   const binary = process.env.DASHBOARD_SERVER_BINARY;
   if (!binary) throw new Error("DASHBOARD_SERVER_BINARY is required");
+  const marketplacePolicyPath = join(artifactDirectory, "cao.json");
+  await writeFile(marketplacePolicyPath, JSON.stringify({
+    version: 1,
+    "control-plane": {
+      marketplace: { registries: [] },
+    },
+  }));
   const child = spawn(binary, [
     "serve",
     "--source", artifactDirectory,
@@ -361,7 +430,10 @@ async function executeRedisBackend(artifactDirectory, queries, names) {
     "--database-queries", databaseQueriesPath,
     "--redis-url", process.env.REDIS_URL ?? "redis://127.0.0.1:6379/0",
     "--redis-namespace", `query-parity-${process.pid}`,
-  ], { stdio: ["ignore", "pipe", "pipe"] });
+  ], {
+    stdio: ["ignore", "pipe", "pipe"],
+    env: { ...process.env, CAO_MARKETPLACE_POLICY_PATH: marketplacePolicyPath },
+  });
   let logs = "";
   child.stdout.on("data", (chunk) => { logs += chunk; });
   child.stderr.on("data", (chunk) => { logs += chunk; });
@@ -470,6 +542,48 @@ async function main() {
     const nodeRows = await executeNodeBackend(nodeFactory, sources, queries, names);
     await mkdir(artifactDirectory, { recursive: true });
     await writeDeployedArtifact(artifactDirectory, nodeFactory, sources);
+    const resolvedDocumentPath = join(temporaryDirectory, "resolved-dashboard.json");
+    const { document: dashboardDocument } = loadDashboardSourceSync(dashboardPath);
+    const resolvedDocument = {
+      ...dashboardDocument,
+      dashboard: { ...dashboardDocument.dashboard, queries },
+    };
+    writeFileSync(resolvedDocumentPath, JSON.stringify(resolvedDocument));
+    const localNames = names.filter(
+      (name) => queryExecutionRequirements(resolvedDocument, name).local,
+    );
+    const agentSqlitePath = join(temporaryDirectory, "agent.sqlite");
+    const sqliteFactory = installSqliteIndexedDB(agentSqlitePath);
+    await executeNodeBackend(sqliteFactory, sources, queries, names);
+    const agentRows = await executeNamedQueryBackend(
+      sqliteFactory,
+      resolvedDocument,
+      localNames,
+    );
+    const mcpRows = await executeMcpBackend(
+      sqliteFactory,
+      resolvedDocumentPath,
+      localNames,
+    );
+    // Agent transports read only the local projection, so their baseline is the
+    // same dashboard engine reading the database without deployed logical
+    // sources.
+    const databaseBaseline = rowsByQuery(
+      await loadDatabaseQuerySources(nodeFactory, {}, {
+        queries,
+        sourceNames: localNames,
+      }),
+      localNames,
+    );
+    report.agentQueryCount = localNames.length;
+    report.mismatches.push(...compareBackends(
+      {
+        "node-indexeddb": databaseBaseline,
+        "cao-named-query": agentRows,
+        "cao-mcp": mcpRows,
+      },
+      queries,
+    ));
     const [browserRows, sqliteRows, redisRows] = await Promise.all([
       executeBrowserBackend(sources, queries, names),
       executeNodeBackend(installSqliteIndexedDB(sqlitePath), sources, queries, names),
@@ -481,8 +595,8 @@ async function main() {
       "sqlite-indexeddb": sqliteRows,
       redis: redisRows,
     };
-    report.backends = Object.keys(results);
-    report.mismatches = compareBackends(results, queries);
+    report.backends = [...Object.keys(results), "cao-named-query", "cao-mcp"];
+    report.mismatches.push(...compareBackends(results, queries));
     report.status = report.mismatches.length === 0 ? "passed" : "failed";
     if (report.mismatches.length > 0) {
       throw new Error(`${report.mismatches.length} dashboard query parity comparison(s) failed`);

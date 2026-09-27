@@ -322,4 +322,103 @@ describe('time-window filter bar', () => {
 
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it('stays silent by default and logs only scalar metadata under its predictable category', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=filter-bar', output })
+      };
+    });
+    vi.resetModules();
+    const { renderFilterBar: renderFilterBarWithDebug } = await import('../../src/components/filter-bar.js');
+
+    const onChange = vi.fn();
+    const filterBar = renderFilterBarWithDebug(onChange, {
+      defaultRange: '24h',
+      referenceEnd: '2026-09-04T12:00:00Z'
+    });
+    document.body.append(filterBar);
+    await Promise.resolve();
+
+    const select = /** @type {HTMLSelectElement} */ (filterBar.querySelector('[aria-label="Time window"]'));
+    select.value = '6h';
+    select.dispatchEvent(new Event('change'));
+
+    expect(output.debug).toHaveBeenCalledWith('[cao:filter-bar]', { event: 'range-applied', range: '6h' });
+
+    for (const call of output.debug.mock.calls) {
+      const metadata = call[1];
+      expect(Object.values(metadata).every((value) => typeof value !== 'object')).toBe(true);
+    }
+
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
+
+  it('logs a read-settings failure with a sanitized error name, not the raw error or stored value', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=filter-bar', output })
+      };
+    });
+    vi.resetModules();
+    const { renderFilterBar: renderFilterBarWithDebug } = await import('../../src/components/filter-bar.js');
+
+    const getItemSpy = vi.spyOn(window.localStorage.__proto__, 'getItem').mockImplementation(() => {
+      throw new DOMException('blocked', 'SecurityError');
+    });
+
+    const onChange = vi.fn();
+    const filterBar = renderFilterBarWithDebug(onChange, { defaultRange: '24h' });
+    document.body.append(filterBar);
+    await Promise.resolve();
+
+    expect(output.debug).toHaveBeenCalledWith('[cao:filter-bar]', { event: 'read-settings-failed', reason: 'SecurityError' });
+
+    getItemSpy.mockRestore();
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
+
+  it('is disabled by default (no debug output) when the debug query is absent', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '', output })
+      };
+    });
+    vi.resetModules();
+    const { renderFilterBar: renderFilterBarWithoutDebug } = await import('../../src/components/filter-bar.js');
+
+    const onChange = vi.fn();
+    const filterBar = renderFilterBarWithoutDebug(onChange, {
+      defaultRange: '24h',
+      referenceEnd: '2026-09-04T12:00:00Z'
+    });
+    document.body.append(filterBar);
+    await Promise.resolve();
+
+    const select = /** @type {HTMLSelectElement} */ (filterBar.querySelector('[aria-label="Time window"]'));
+    select.value = '6h';
+    select.dispatchEvent(new Event('change'));
+
+    expect(output.debug).not.toHaveBeenCalled();
+
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
 });

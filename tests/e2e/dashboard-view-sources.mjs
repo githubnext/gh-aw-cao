@@ -1,10 +1,8 @@
 import { deriveDataHealthSources } from "../../dashboard/site/src/data-health.js";
-import { readFileSync } from "node:fs";
 import { processDataRequest } from "../../dashboard/site/src/data-worker.js";
+import { authoritativeDashboard } from "../helpers/authoritative-dashboard.mjs";
 
-const dashboard = JSON.parse(readFileSync(
-  new URL("../../dashboard/site/dashboard.json", import.meta.url),
-)).dashboard;
+const dashboard = authoritativeDashboard.dashboard;
 
 function declaredSourceNames(value, names = new Set()) {
   if (Array.isArray(value)) {

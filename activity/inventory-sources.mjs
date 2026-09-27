@@ -2,6 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "./actions-log.mjs";
+import { resolveMarketplace } from "./marketplace.mjs";
 import {
   compilerVersionFromLock,
   normalizeVersion,
@@ -876,6 +877,7 @@ export function buildInventoryDashboardSources({
   latestCampaignResolution = {},
   latestGhAwVersion = null,
   latestGhAwFailure = null,
+  marketplace = { packages: [], diagnostics: [] },
   repository = "",
   generatedAt = inventory.generatedAt || new Date().toISOString(),
 }) {
@@ -917,6 +919,26 @@ export function buildInventoryDashboardSources({
       generatedAt,
       workflowHealth,
     ),
+    "marketplace-packages": source(
+      "marketplace-packages",
+      marketplace.packages,
+      generatedAt,
+      {
+        available: marketplace.diagnostics.some((diagnostic) => diagnostic.status === "available")
+          || marketplace.diagnostics.length === 0,
+        complete: marketplace.diagnostics.every((diagnostic) => diagnostic.status === "available"),
+        failures: marketplace.diagnostics.filter((diagnostic) => diagnostic.status !== "available"),
+      },
+    ),
+    "marketplace-registries": source(
+      "marketplace-registries",
+      marketplace.diagnostics,
+      generatedAt,
+      {
+        available: true,
+        complete: marketplace.diagnostics.every((diagnostic) => diagnostic.status === "available"),
+      },
+    ),
     "configuration-policy": source(
       "configuration-policy",
       configurationPolicyRows(settings),
@@ -933,7 +955,7 @@ export async function discoverInventoryDashboardSources({
   const discoveredRepositories = await discoverRepositories(controlSettings, { controlRepository: repository });
   log.info`Repository discovery selected ${discoveredRepositories.length} repositories`;
   log.info`Starting workflow registry, campaign version, and gh-aw release discovery`;
-  const [rawWorkflowRegistries, latestCampaignResolution, latestGhAwResolution] = await Promise.all([
+  const [rawWorkflowRegistries, latestCampaignResolution, latestGhAwResolution, marketplace] = await Promise.all([
     discoverWorkflowRegistries(discoveredRepositories, { controlRepository: repository }),
     discoverLatestCampaignCommits(inventory),
     discoverLatestGhAwVersion().then((version) => ({ version, failure: null })).catch((error) => ({
@@ -945,6 +967,7 @@ export async function discoverInventoryDashboardSources({
         error?.message || String(error),
       ),
     })),
+    resolveMarketplace(controlSettings?.marketplace ?? { registries: [] }),
   ]);
   const workflowRegistries = await discoverWorkflowVersions(rawWorkflowRegistries);
   log.info`Workflow discovery completed for ${workflowRegistries.length} repository registries`;
@@ -956,6 +979,7 @@ export async function discoverInventoryDashboardSources({
     latestCampaignResolution,
     latestGhAwVersion: latestGhAwResolution.version,
     latestGhAwFailure: latestGhAwResolution.failure,
+    marketplace,
     repository,
   });
 }
@@ -981,19 +1005,14 @@ export async function main() {
       repository,
     });
     await writeFile(path.resolve(outputPath), `${JSON.stringify(sources, null, 2)}\n`);
-    const incompleteRegistries = workflowRegistries.filter((registry) => registry.state !== "complete");
-    if (incompleteRegistries.length > 0) {
-      log.warning`Workflow registry discovery was incomplete for ${incompleteRegistries.length} repositories`;
+    const repositoryFailures = sources.workflows.metadata["repository-failures"] ?? [];
+    if (repositoryFailures.length > 0) {
+      log.warning`Workflow registry discovery was incomplete for ${repositoryFailures.length} repositories`;
     }
-    const workflowVersionFailures = workflowRegistries.flatMap((registry) => registry.versionFailures || []);
-    if (workflowVersionFailures.length > 0) {
-      log.warning`Workflow compiler version discovery was incomplete for ${workflowVersionFailures.length} workflow files`;
-    }
-    if (latestCampaignResolution.failures.length > 0) {
-      log.warning`Campaign version discovery was incomplete for ${latestCampaignResolution.failures.length} repositories`;
-    }
-    if (latestGhAwResolution.failure) {
-      log.warning`Latest stable gh-aw version discovery failed: ${latestGhAwResolution.failure.reason}`;
+    const unavailableRegistries = sources["marketplace-registries"].rows
+      .filter((registry) => registry.status !== "available");
+    if (unavailableRegistries.length > 0) {
+      log.warning`Marketplace discovery was incomplete for ${unavailableRegistries.length} registries`;
     }
     log.info`Wrote ${sources.repositories.rows.length} repositories, ${sources.campaigns.rows.length} campaigns, and ${sources.workflows.rows.length} workflows`;
   } finally {

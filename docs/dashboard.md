@@ -61,6 +61,7 @@ its reviewed workflows and policy.
 
 - Start with [Overview](dashboard-overview.md) to understand the default
 	operational view.
+- Choose where to host the dashboard in [Deployment options](deployment.md).
 - Read [Data ingestion](dashboard-data-ingestion.md) to follow evidence from
 	GitHub Actions into the browser.
 - Use the [Data model](dashboard-data-model.md) to understand entities,
@@ -68,3 +69,6 @@ its reviewed workflows and policy.
 - Build views with the [Dashboard Language guide](dashboard-language.md), then
 	consult the [language specification](dashboard-language-specification.md) and
 	[view catalog](dashboard-view-catalog.md) for complete reference material.
+- Let browser agents read the same pages through [WebMCP](dashboard-webmcp.md),
+	and agents without a browser or shell through
+	[Agent analysis](agent-analysis.md).

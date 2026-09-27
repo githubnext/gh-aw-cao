@@ -2,9 +2,12 @@
  * Dashboard-wide navigation interactions.
  */
 
+import { createDebug } from '../debug.js';
 import { trackViewTransition } from './lazy-view.js';
 
 const directionalViewTransitions = new WeakMap();
+
+const debugInteractions = createDebug('dashboard-interactions');
 
 /**
  * @param {Document} document
@@ -13,8 +16,14 @@ const directionalViewTransitions = new WeakMap();
  */
 export function updateWithViewTransition(document, update, direction) {
   const transitionDocument = /** @type {Document & { startViewTransition?: (update: () => void) => { ready?: Promise<unknown>, finished?: Promise<unknown> } | void }} */ (document);
+  const unsupported = typeof transitionDocument.startViewTransition !== 'function';
   const prefersReducedMotion = document.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
-  if (typeof transitionDocument.startViewTransition !== 'function' || prefersReducedMotion) {
+  if (unsupported || prefersReducedMotion) {
+    debugInteractions({
+      event: 'transition-skipped',
+      reason: unsupported ? 'unsupported' : 'reduced-motion',
+      direction: direction ?? null
+    });
     update();
     return;
   }
@@ -25,6 +34,7 @@ export function updateWithViewTransition(document, update, direction) {
     directionalViewTransitions.delete(document);
     delete document.documentElement.dataset.navigationDirection;
   }
+  debugInteractions({ event: 'transition-started', direction: direction ?? null });
   const transition = transitionDocument.startViewTransition(update);
   trackViewTransition(document, transition);
   if (!direction) return;
@@ -37,6 +47,7 @@ export function updateWithViewTransition(document, update, direction) {
     if (directionalViewTransitions.get(document) !== transition) return;
     directionalViewTransitions.delete(document);
     delete document.documentElement.dataset.navigationDirection;
+    debugInteractions({ event: 'transition-finished', direction });
   });
 }
 

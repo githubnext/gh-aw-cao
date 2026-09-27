@@ -1,6 +1,7 @@
-import { readdir, readFile } from 'node:fs/promises';
+import { readdir } from 'node:fs/promises';
 import { relative, resolve } from 'node:path';
 import { parse } from 'yaml';
+import { loadDashboardSource } from '../../report/bundle-dashboards.mjs';
 import { renderDashboardQueryUsageGraph } from '../src/query-usage.js';
 import { validateDashboardDocument } from '../src/validator.js';
 
@@ -32,7 +33,14 @@ const renderQueryGraphs = process.argv.includes('--render-query-graphs');
 let invalidCount = 0;
 
 for (const dashboardPath of dashboardPaths) {
-  const source = await readFile(dashboardPath, 'utf8');
+  let source;
+  try {
+    source = JSON.stringify((await loadDashboardSource(dashboardPath)).document);
+  } catch (error) {
+    invalidCount += 1;
+    console.error(`${relative(repositoryRoot, dashboardPath)}: ${error instanceof Error ? error.message : String(error)}`);
+    continue;
+  }
   const result = validateDashboardDocument(source);
   const displayPath = relative(repositoryRoot, dashboardPath);
   const hasDeadQueries = !result.ok && result.errors.some((error) => error.code === 'DLS-E015');

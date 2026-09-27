@@ -1,6 +1,9 @@
+import { createDebug } from '../debug.js';
 import { h } from '../dom.js';
 import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from '../debug-events.js';
 import { renderSkeletonBars } from './ui-primitives.js';
+
+const debugLazyView = createDebug('lazy-view');
 
 const renderers = new WeakMap();
 const hydrationPromises = new WeakMap();
@@ -229,6 +232,21 @@ function waitForPaint(ownerDocument) {
 }
 
 /**
+ * @param {string | null} viewId
+ * @param {'started' | 'completed' | 'failed'} status
+ * @param {{ startedAt?: number, error?: unknown }} [context]
+ */
+function logLazyViewHydration(viewId, status, { startedAt, error } = {}) {
+  if (status === 'completed') {
+    debugLazyView({ viewId, status, durationMs: Date.now() - /** @type {number} */ (startedAt) });
+  } else if (status === 'failed') {
+    debugLazyView({ viewId, status, errorName: /** @type {{ name?: unknown }} */ (error)?.name ?? 'Error' });
+  } else {
+    debugLazyView({ viewId, status });
+  }
+}
+
+/**
  * @param {HTMLElement} element
  * @param {() => HTMLElement | Promise<HTMLElement>} render
  * @returns {Promise<void>}
@@ -239,26 +257,32 @@ function renderHydratedView(element, render) {
     viewId: element.getAttribute('data-view-id'),
     label: element.getAttribute('aria-label')?.replace(/^Loading /, '') ?? ''
   };
+  const startedAt = Date.now();
   emitDashboardDebugEvent(element.ownerDocument, DASHBOARD_RENDER_EVENT, { ...detail, status: 'started' });
+  logLazyViewHydration(detail.viewId, 'started');
   try {
     const rendered = render();
     if (rendered instanceof HTMLElement) {
       replaceLazyView(element, rendered);
       emitDashboardDebugEvent(rendered.ownerDocument, DASHBOARD_RENDER_EVENT, { ...detail, status: 'completed' });
+      logLazyViewHydration(detail.viewId, 'completed', { startedAt });
       return Promise.resolve();
     }
     return Promise.resolve(rendered)
       .then((resolved) => {
         replaceLazyView(element, resolved);
         emitDashboardDebugEvent(resolved.ownerDocument, DASHBOARD_RENDER_EVENT, { ...detail, status: 'completed' });
+        logLazyViewHydration(detail.viewId, 'completed', { startedAt });
       })
       .catch((error) => {
         reportHydrationError(element, error);
         emitDashboardDebugEvent(element.ownerDocument, DASHBOARD_RENDER_EVENT, { ...detail, status: 'failed' });
+        logLazyViewHydration(detail.viewId, 'failed', { error });
       });
   } catch (error) {
     reportHydrationError(element, error);
     emitDashboardDebugEvent(element.ownerDocument, DASHBOARD_RENDER_EVENT, { ...detail, status: 'failed' });
+    logLazyViewHydration(detail.viewId, 'failed', { error });
     return Promise.resolve();
   }
 }

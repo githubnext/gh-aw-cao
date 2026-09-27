@@ -167,6 +167,19 @@ export default defineConfig({
           ],
         },
         {
+          label: "Deploy",
+          items: [
+            { label: "Deployment options", link: "/deployment/" },
+            { label: "GitHub Actions only", link: "/deployment-actions/" },
+            { label: "Actions with GitHub Apps", link: "/deployment-actions-github-app/" },
+            { label: "Actions with a PAT", link: "/deployment-actions-pat/" },
+            { label: "Azure", link: "/deployment-azure/" },
+            { label: "Coolify", link: "/deployment-coolify/" },
+            { label: "Upstash Redis", link: "/deployment-upstash/" },
+            { label: "Managed Redis", link: "/deployment-managed-redis/" },
+          ],
+        },
+        {
           label: "Dashboard",
           items: [
             { label: "At a glance", link: "/dashboard/" },
@@ -175,6 +188,8 @@ export default defineConfig({
             { label: "Language", link: "/dashboard-language/" },
             { label: "Language specification", link: "/dashboard-language-specification/" },
             { label: "View catalog", link: "/dashboard-view-catalog/" },
+            { label: "WebMCP", link: "/dashboard-webmcp/" },
+            { label: "Agent analysis", link: "/agent-analysis/" },
             {
               label: "Views",
               items: [
@@ -189,6 +204,7 @@ export default defineConfig({
           items: [
             { label: "Configuration", link: "/configuration/" },
             { label: "CAO Activity", link: "/activity/" },
+            { label: "Campaign package marketplace", link: "/marketplace/" },
             { label: "Operational value", link: "/operational-value/" },
             { label: "Deployment and governance", link: "/deployment-and-governance/" },
             { label: "Execution and safety", link: "/execution-and-safety/" },

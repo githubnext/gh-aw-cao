@@ -6,6 +6,7 @@ import campaignRouteNavigation from './campaign-route-navigation.json' with { ty
 
 export const WORKFLOW_ROUTE_BODY_VALUES = ['insights', 'reports', 'runs'];
 export const WORKFLOW_ROUTE_PAGE_BODY_VALUES = ['insights', 'reports', 'runs'];
+// Keep campaign route IDs stable independently of their user-facing labels.
 export const CAMPAIGN_ROUTE_TABS = Object.freeze(campaignRouteNavigation.tabs);
 export const CAMPAIGN_ROUTE_DEFAULT_BODY = campaignRouteNavigation.default;
 export const CAMPAIGN_ROUTE_ALIASES = Object.freeze(campaignRouteNavigation.aliases);

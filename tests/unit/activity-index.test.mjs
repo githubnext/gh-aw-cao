@@ -58,8 +58,13 @@ graders:
       run_number: 3,
       runAttempt: 2,
       event: "workflow_dispatch",
-      conclusion: "success",
+      conclusion: "failure",
       status: "completed",
+      url: "https://github.com/githubnext/gh-aw-cao/actions/runs/42",
+      classification: "runtime",
+      failure_kind: "driver_exit",
+      failure_detail: "Agent process exited with code 1.",
+      failure_log: "##[error]Agent process exited with code 1.",
       created_at: "2026-09-06T20:00:00Z",
       started_at: "2026-09-06T20:00:01Z",
       updated_at: "2026-09-06T20:01:00Z",
@@ -101,9 +106,14 @@ graders:
     assert.equal(result.repositoryCount, 1);
     assert.deepEqual(result.allowedRepositories, ["githubnext/gh-aw-cao"]);
     assert.equal(result.workflows[0].ghAwVersion, "v0.88.4");
-    assert.equal(result.workflows[0].runHealth.successful, 1);
+    assert.equal(result.workflows[0].runHealth.failed, 1);
     assert.equal(result.workflows[0].runHealth.runRecords[0].runId, 42);
     assert.equal(result.workflows[0].runHealth.runRecords[0].runAttempt, 2);
+    assert.equal(result.workflows[0].runHealth.runRecords[0].runUrl, "https://github.com/githubnext/gh-aw-cao/actions/runs/42");
+    assert.equal(result.workflows[0].runHealth.runRecords[0].classification, "runtime");
+    assert.equal(result.workflows[0].runHealth.runRecords[0].failureKind, "driver_exit");
+    assert.equal(result.workflows[0].runHealth.runRecords[0].failureMessage, "Agent process exited with code 1.");
+    assert.equal(result.workflows[0].runHealth.runRecords[0].failureLog, "##[error]Agent process exited with code 1.");
     assert.deepEqual(result.workflows[0].runHealth.runRecords[0].jobs, [{
       jobId: 84,
       name: "agent",

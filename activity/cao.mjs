@@ -1,8 +1,7 @@
 #!/usr/bin/env node
-
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { createReadStream, createWriteStream, realpathSync } from 'node:fs';
+import { createReadStream, createWriteStream, readFileSync, realpathSync } from 'node:fs';
 import { readFile, readdir, mkdir, mkdtemp, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { createInterface } from 'node:readline';
@@ -29,6 +28,7 @@ import { readCollection, readRecord, readTransactions } from '../dashboard/site/
 import { mergeActivityStructuralRecord } from '../dashboard/site/src/data/storage/retention.js';
 import { doctorSqliteDatabase } from '../dashboard/site/src/data/storage/sqlite-doctor.js';
 import { installSqliteIndexedDB } from '../dashboard/site/src/data/storage/sqlite-indexeddb.js';
+import { loadDashboardSource } from '../dashboard/report/bundle-dashboards.mjs';
 import {
   operationalValueReserve,
   REPOSITORY_COORDINATE,
@@ -38,38 +38,36 @@ import { runProblemClustering } from './problem-clustering.mjs';
 import { discoverInventory } from './inventory.mjs';
 import { discoverInventoryDashboardSources } from './inventory-sources.mjs';
 import { hasComputation, queryComputation } from './computations/index.mjs';
+import { FINE_GRAINED_PAT_PROFILES } from './authentication.mjs';
 import {
   analyzeDashboardComplexity,
   formatDashboardComplexityMarkdown,
   readDashboardTableCounts
 } from './dashboard-complexity.mjs';
 import { pruneDashboardDocument } from './dashboard-prune.mjs';
+import {
+  DEFAULT_ACTIVITY_STATS_ARTIFACT,
+  DEFAULT_ACTIVITY_STATS_LIMIT,
+  DEFAULT_ACTIVITY_STATS_WORKFLOW,
+  DEFAULT_DATABASE_PATH,
+  DEFAULT_DEPLOYED_DATA_URL,
+  DEFAULT_GH_LIMIT,
+  DEFAULT_OUTPUT_DIRECTORY,
+  DEFAULT_SHARDS_PATH,
+  ENTITY_COLLECTIONS,
+  NORMALIZED_COLLECTIONS,
+  QUERY_COLLECTIONS,
+  USAGE
+} from './cli-usage.mjs';
+import { NamedQueryError } from './agent-catalog.mjs';
 import { commandHandlers } from './commands/index.mjs';
 
 const debug = createDebug('ingest');
 const debugHash = createDebug('hash-payloads');
 
-const ENTITY_COLLECTIONS = [
-  'repositories',
-  'workflows',
-  'runs',
-  'domains',
-  'tools',
-  'audits',
-  'issues',
-  'operationalValues'
-];
-const NORMALIZED_COLLECTIONS = ['campaigns', ...ENTITY_COLLECTIONS];
-const QUERY_COLLECTIONS = [...ENTITY_COLLECTIONS, 'transactions'];
-const DEFAULT_DEPLOYED_DATA_URL = 'https://githubnext.github.io/gh-aw-cao/cao/payload-hashes.json';
-const DEFAULT_OUTPUT_DIRECTORY = '.cao';
-const DEFAULT_SHARDS_PATH = `${DEFAULT_OUTPUT_DIRECTORY}/gh-aw-logs-shards`;
-const DEFAULT_DATABASE_PATH = `${DEFAULT_OUTPUT_DIRECTORY}/gh-aw-logs.sqlite`;
+// Commands whose first argument may be an identifier instead of an option.
+const POSITIONAL_COMMANDS = new Set(['dashboard-complexity', 'pages', 'query-info', 'query']);
 const DAY_MS = 24 * 60 * 60 * 1000;
-const DEFAULT_ACTIVITY_STATS_WORKFLOW = 'cao-activity.yml';
-const DEFAULT_ACTIVITY_STATS_ARTIFACT = 'cao-activity-index';
-const DEFAULT_ACTIVITY_STATS_LIMIT = 5;
-const DEFAULT_GH_LIMIT = 30;
 const DEFAULT_ISSUE_STATUS_BATCH_SIZE = 50;
 const DEFAULT_ISSUE_STATUS_GRAPHQL_COST_BUDGET = 25;
 const DEFAULT_ISSUE_STATUS_GRAPHQL_MIN_REMAINING = 500;
@@ -93,104 +91,11 @@ const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location ht
 const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
-const COMMANDS = new Set(['init', 'setup-auth', 'add', 'update', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'issue-status', 'query', 'computation', 'operational-value', 'cluster-problems', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
+const COMMANDS = new Set(['init', 'setup-auth', 'add', 'update', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'issue-status', 'query', 'computation', 'operational-value', 'cluster-problems', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'validate-activity-data', 'gh', 'pages', 'queries', 'query-info', 'mcp']);
 
 // Intentional CLI misuse that should print usage without an internal stack trace.
 class UsageError extends Error {}
 
-const USAGE = `Usage:
-  cao init
-  cao setup-auth github-app [--repo OWNER/REPO] [APP_SETUP_OPTIONS...]
-  cao setup-auth enterprise-app --repo OWNER/REPO --read-client-id ID --write-client-id ID [--dry-run]
-  cao setup-auth token [--repo OWNER/REPO] --acknowledge-token-risks
-  cao setup-auth workflow-token
-  cao add CAMPAIGN [GH_AW_ADD_OPTIONS...]
-  cao update [--pre-releases] [GH_AW_UPDATE_OPTIONS...]
-  cao mode (live|preview) CAMPAIGN...
-  cao enable CAMPAIGN...
-  cao disable CAMPAIGN...
-  cao discover-workflows --control-settings FILE --inventory FILE --output FILE --repo OWNER/REPO [--root DIRECTORY]
-  cao dashboard-complexity [QUERY_ID] --input FILE [--database FILE] [--format json|markdown] [--limit COUNT]
-  cao prune-dashboard --input FILE [--output FILE]
-  cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
-  cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY|--runs-dir DIRECTORY --records-dir DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
-  cao audit-jsonl [--input-dir SHARD_DIRECTORY]
-  cao compact-jsonl --input-dir SHARD_DIRECTORY --group OWNER/REPOSITORY=SHARD_PREFIX [--group OWNER/REPOSITORY=SHARD_PREFIX...] [--max-bytes BYTES]
-  cao issue-status [--database FILE] --input-dir SHARD_DIRECTORY [--batch-size COUNT] [--graphql-cost-budget POINTS] [--graphql-min-remaining POINTS]
-  cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
-  cao computation runtime-health [--database FILE] [--inventory FILE] [--campaign SLUG] [--diagnose]
-  cao operational-value [--database FILE] [--root DIRECTORY] [--output FILE] [--timestamp TIME] [--repository OWNER/REPO] [--retention-days DAYS|all] [--max-github-api-rate-limit LIMIT]
-  cao cluster-problems [--database FILE] [--root DIRECTORY] [--timestamp TIME]
-  cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
-  cao download [--url URL] [--output DIRECTORY]
-  cao hash-payloads [--database FILE] [--shard-dir SHARD_DIRECTORY] [--normalized-dir DIRECTORY] [--runs-dir DIRECTORY] [--records-dir DIRECTORY] [--inventory FILE] [--output FILE]
-  cao activity-stats [--repo OWNER/REPO] [--workflow FILE] [--artifact NAME] [--limit COUNT] [--keep] [--output FILE]
-  cao gh runs [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--status STATUS] [--since TIME] [--until TIME] [--limit COUNT]
-  cao gh issues [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--since TIME] [--until TIME] [--limit COUNT]
-  cao gh prs [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--since TIME] [--until TIME] [--limit COUNT]
-
-Query local CAO data as JSON. Download the deployed snapshot before querying:
-  cao download
-  cao dashboard-complexity --input dashboard/site/dashboard.json
-  cao dashboard-complexity campaign-inventory --input dashboard/site/dashboard.json
-  cao prune-dashboard --input dashboard.json --output dashboard.pruned.json
-  cao issue-status --input-dir .cao/gh-aw-logs-shards --graphql-cost-budget 25 --graphql-min-remaining 500
-  cao computation runtime-health
-  cao computation runtime-health --campaign dependabot
-  cao computation runtime-health --campaign dependabot --diagnose
-  cao operational-value --output .cao/gh-aw-logs-shards/operational-values.jsonl --max-github-api-rate-limit -2000
-  cao cluster-problems
-  cao gh runs -R githubnext/gh-aw-cao -w cao-activity --status failure --since 2026-09-01 --until 2026-09-15
-  cao gh issues -R githubnext/gh-aw-cao --since 2026-09-01
-  cao gh prs -R githubnext/gh-aw-cao -w cao-activity -L 10
-
-Resources:
-  runs    Workflow runs executed in --repo
-  issues  Issues created through safe outputs in the target --repo
-  prs     Pull requests created through safe outputs in the target --repo
-
-gh query options:
-  -R, --repo       Exact OWNER/REPO; execution repo for runs, target repo for issues and prs
-  -w, --workflow   Producing workflow name, path, file name, or ID
-  -s, --status     Runs only: workflow status or conclusion, such as completed or failure
-  -L, --limit      Maximum results, newest first (default ${DEFAULT_GH_LIMIT})
-  --since          Include results at or after ISO 8601 time (example: 2026-09-01T12:00:00Z)
-  --until          Include results at or before ISO 8601 time; a date includes the full day
-  --database       Local SQLite snapshot (default ${DEFAULT_DATABASE_PATH})
-
-Data preparation:
-  cao download writes the deployed JSONL and query-ready SQLite snapshot to ${DEFAULT_OUTPUT_DIRECTORY}/.
-  To query other gh-aw JSONL shards, first run cao ingest-jsonl --input-dir SHARD_DIRECTORY [--database FILE].
-
-Collections: ${QUERY_COLLECTIONS.join(', ')}
-
-Query stdin JSON:
-  {"name":"failed-runs","from":"runs","filter":{"predicates":[{"field":"conclusion","equals":"failure"}]},"limit":20}
-
-Download defaults:
-  URL        DASHBOARD_DATA_URL or ${DEFAULT_DEPLOYED_DATA_URL}
-  DIRECTORY  ${DEFAULT_OUTPUT_DIRECTORY}
-  SHARDS     ${DEFAULT_SHARDS_PATH}
-  DATABASE   ${DEFAULT_DATABASE_PATH}
-
-Activity stats defaults (uses the "gh" CLI and requires GH_TOKEN):
-  REPO      GITHUB_REPOSITORY
-  WORKFLOW  ${DEFAULT_ACTIVITY_STATS_WORKFLOW}
-  ARTIFACT  ${DEFAULT_ACTIVITY_STATS_ARTIFACT}
-  LIMIT     ${DEFAULT_ACTIVITY_STATS_LIMIT}
-
-Operational value scripts:
-  cao operational-value discovers <package>/operational-value.mjs below --root.
-  Each script receives one JSON request on stdin and emits JSONL records with
-  timestamp, repository, valueId, and a finite numeric value.
-
-Problem clustering scripts:
-  cao cluster-problems discovers <package>/problem-clustering.mjs below --root.
-  Each script receives one JSON request on stdin and emits bounded JSONL problem
-  records with actionable fixPrompt fields. Successful output replaces that
-  package's rows in cao_problems.
-
-`;
 
 function isMapping(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -227,7 +132,8 @@ function parseGhAwVersion(result) {
   if (result.error || result.status !== 0) {
     throw new Error(`Unable to determine gh-aw version: ${(result.stderr || '').trim() || result.error?.message || 'gh aw version failed'}`);
   }
-  const version = String(result.stdout || '').match(/\bv[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?\b/)?.[0];
+  // gh-aw prints its version on stderr; accept either stream.
+  const version = `${result.stdout || ''}\n${result.stderr || ''}`.match(/\bv[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?\b/)?.[0];
   if (!version) throw new Error('Unable to determine gh-aw version from "gh aw version" output');
   return version;
 }
@@ -271,12 +177,33 @@ async function writeJsonAtomically(filePath, document) {
   }
 }
 
-function minimalPolicy(version) {
+// New policies authorize only the repository gh resolves for the current
+// checkout; broader collection is an explicit policy and credential decision.
+function resolveControlRepository(execute) {
+  const result = execute('gh', ['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner'], { encoding: 'utf8' });
+  const instruction = 'Run cao init from a GitHub repository checkout with a configured remote.';
+  if (result.error || result.status !== 0) {
+    throw new Error(`Unable to determine control repository: ${commandFailureMessage(result, 'gh repo view failed')}. ${instruction}`);
+  }
+  const repository = String(result.stdout || '').trim();
+  if (!REPOSITORY_COORDINATE.test(repository)) {
+    throw new Error(`Unable to determine control repository: gh repo view returned ${JSON.stringify(repository)}. ${instruction}`);
+  }
+  return repository;
+}
+
+function minimalPolicy(version, repository) {
   return {
     $schema: CAO_SCHEMA_URL,
     version: 1,
     'gh-aw-version': version,
-    'control-plane': { campaigns: {} }
+    'control-plane': {
+      scope: {
+        'allowed-owners': [repository.split('/')[0]],
+        'allowed-repositories': [repository]
+      },
+      marketplace: { registries: [{ id: 'official', name: 'Official CAO catalog', repository: 'githubnext/gh-aw-cao', ref: 'main', auth: { type: 'none' } }] }, campaigns: {}
+    }
   };
 }
 
@@ -293,12 +220,89 @@ export async function initializeCaoPolicy({
   }
 
   const version = parseGhAwVersion(execute('gh', ['aw', 'version'], { encoding: 'utf8' }));
-  await writeJsonAtomically(absolutePath, minimalPolicy(version));
+  const repository = resolveControlRepository(execute);
+  await writeJsonAtomically(absolutePath, minimalPolicy(version, repository));
   return { command: 'init', policy: policyPath, 'gh-aw-version': version };
 }
 
+function githubServerUrl(environment = process.env) {
+  const configured = environment.GH_HOST?.trim()
+    || environment.GITHUB_SERVER_URL?.trim()
+    || 'github.com';
+  const url = configured.includes('://') ? configured : `https://${configured}`;
+  return new URL(url).origin;
+}
+
+function openBrowser(url, execute = spawnSync) {
+  const command = process.platform === 'darwin' ? ['open', [url]]
+    : process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]]
+      : ['xdg-open', [url]];
+  const result = execute(command[0], command[1], { stdio: 'ignore' });
+  return !result.error && result.status === 0;
+}
+
+export function fineGrainedTokenSetups({
+  repo,
+  policyPath = DEFAULT_POLICY_PATH,
+  expiresIn = '30',
+  writeRepositories = [],
+  environment = process.env,
+} = {}) {
+  if (!REPOSITORY_COORDINATE.test(repo || '')) {
+    throw new UsageError('--repo must be an exact OWNER/REPOSITORY');
+  }
+  if (!/^(?:[1-9]|[1-9][0-9]|[12][0-9]{2}|3[0-5][0-9]|36[0-6])$/.test(expiresIn)) {
+    throw new UsageError('--expires-in must be an integer from 1 through 366');
+  }
+  let policy;
+  try {
+    policy = validateGlobalPolicy(JSON.parse(readFileSync(path.resolve(policyPath), 'utf8')), policyPath);
+  } catch (error) {
+    if (error?.code === 'ENOENT') throw new Error(`${policyPath} is required for guided token setup`);
+    if (error instanceof SyntaxError) throw new Error(`${policyPath} contains invalid JSON: ${error.message}`);
+    throw error;
+  }
+  const configuredRepositories = policy['control-plane']?.scope?.['allowed-repositories'] ?? [];
+  if (!Array.isArray(configuredRepositories)
+    || configuredRepositories.some((repository) => typeof repository !== 'string' || !REPOSITORY_COORDINATE.test(repository))) {
+    throw new Error(`${policyPath} control-plane.scope.allowed-repositories must contain exact OWNER/REPOSITORY values`);
+  }
+  if (!Array.isArray(writeRepositories)
+    || writeRepositories.some((repository) => typeof repository !== 'string' || !REPOSITORY_COORDINATE.test(repository))) {
+    throw new UsageError('--write-repository must be an exact OWNER/REPOSITORY');
+  }
+  const readRepositories = [...new Set([repo, ...configuredRepositories])];
+  const selectedWriteRepositories = [...new Set(writeRepositories.length > 0 ? writeRepositories : [repo])];
+  const repositories = [...new Set([...readRepositories, ...selectedWriteRepositories])];
+  const owners = new Set(repositories.map((repository) => repository.split('/')[0].toLowerCase()));
+  if (owners.size !== 1) {
+    throw new Error('fine-grained token setup requires the control repository and all allowed repositories to have one owner');
+  }
+  const [owner, controlRepository] = repo.split('/');
+  const patNameBase = `CAO-${owner}-${controlRepository.replace(/-token$/i, '')}-PAT`.toUpperCase();
+  return FINE_GRAINED_PAT_PROFILES.map((profile) => {
+    const profileRepositories = profile.role === 'read' ? readRepositories : selectedWriteRepositories;
+    const parameters = new URLSearchParams({
+      name: `${patNameBase}-${profile.role.toUpperCase()}`.slice(0, 40),
+      description: `Central Agentic Ops ${profile.role} access for ${repo}`,
+      target_name: owner,
+      expires_in: expiresIn,
+      ...profile.permissions,
+    });
+    return {
+      ...profile,
+      url: `${githubServerUrl(environment)}/settings/personal-access-tokens/new?${parameters}`,
+      owner,
+      repositories: profileRepositories,
+      expiresIn: Number(expiresIn),
+    };
+  });
+}
+
 export function setupCaoAuthentication(method, arguments_ = [], {
-  execute = spawnSync
+  execute = spawnSync,
+  launchBrowser = (url) => openBrowser(url, execute),
+  writeInstruction = (message) => console.error(message),
 } = {}) {
   if (method === 'github-app') {
     const script = path.join('.github', 'workflows', 'shared', 'setup-github-apps.mjs');
@@ -358,29 +362,49 @@ export function setupCaoAuthentication(method, arguments_ = [], {
   }
   if (method === 'token') {
     const options = parseOptions(arguments_);
-    rejectUnknownOptions(options, ['repo', 'acknowledge-token-risks']);
-    if (!options['acknowledge-token-risks']) {
-      throw new UsageError(
-        'token setup requires --acknowledge-token-risks after reviewing the user-bound, '
-        + 'single-owner, expiration, approval, rotation, and API compatibility limits',
-      );
-    }
-    const repo = option(options, 'repo', false);
+    rejectUnknownOptions(options, ['repo', 'write-repository', 'policy', 'expires-in', 'no-open']);
+    const repo = option(options, 'repo');
+    const writeRepositories = options['write-repository'] === undefined
+      ? []
+      : Array.isArray(options['write-repository'])
+        ? options['write-repository']
+        : [options['write-repository']];
+    const setups = fineGrainedTokenSetups({
+      repo,
+      policyPath: option(options, 'policy', false) || DEFAULT_POLICY_PATH,
+      expiresIn: option(options, 'expires-in', false) || '30',
+      writeRepositories,
+    });
     const auth = execute('gh', ['auth', 'status'], { encoding: 'utf8' });
     if (auth.error || auth.status !== 0) {
       throw new Error(`GitHub CLI authentication check failed: ${commandFailureMessage(auth, 'gh auth status failed')}`);
     }
-    const secretArguments = ['secret', 'set', 'GH_AW_GITHUB_TOKEN'];
-    if (repo) secretArguments.push('--repo', repo);
-    const result = execute('gh', secretArguments, { stdio: 'inherit' });
-    if (result.error || result.status !== 0) {
-      throw new Error(`Fine-grained token setup failed: ${commandFailureMessage(result, `exit ${result.status}`)}`);
+    for (const setup of setups) {
+      writeInstruction(`Create the ${setup.role} fine-grained PAT for ${setup.owner}:`);
+      writeInstruction(`- expiration: ${setup.expiresIn} days`);
+      writeInstruction('- repository access: Only select repositories');
+      for (const repository of setup.repositories) writeInstruction(`  - ${repository}`);
+      writeInstruction('- repository permissions:');
+      for (const [permission, level] of Object.entries(setup.permissions)) {
+        writeInstruction(`  - ${permission}: ${level}`);
+      }
+      if (options['no-open'] || !launchBrowser(setup.url)) {
+        writeInstruction(`Open this URL to continue: ${setup.url}`);
+      }
+      writeInstruction(`Generate the token, then paste it only into the secure prompt for ${setup.secret}.`);
+      const result = execute('gh', [
+        'secret', 'set', setup.secret, '--repo', repo,
+      ], { stdio: 'inherit' });
+      if (result.error || result.status !== 0) {
+        throw new Error(`${setup.role} fine-grained token setup failed: ${commandFailureMessage(result, `exit ${result.status}`)}`);
+      }
     }
     return {
       command: 'setup-auth',
       profile: 'fine-grained-token',
-      secret: 'GH_AW_GITHUB_TOKEN',
-      ...(repo ? { repo } : {}),
+      secrets: setups.map(({ role, secret }) => ({ role, secret })),
+      repo,
+      repositories: Object.fromEntries(setups.map(({ role, repositories }) => [role, repositories])),
     };
   }
   if (method === 'workflow-token') {
@@ -755,7 +779,7 @@ export async function addCaoCampaign(campaignSpec, ghAwOptions = [], {
       throw error;
     }
     const version = parseGhAwVersion(execute('gh', ['aw', 'version'], { encoding: 'utf8' }));
-    policy = minimalPolicy(version);
+    policy = minimalPolicy(version, resolveControlRepository(execute));
   }
 
   mergeCaoCampaignDeclaration(policy, declaration);
@@ -933,15 +957,15 @@ function parseOptions(arguments_) {
     const argument = arguments_[index];
     if (!argument.startsWith('--') && !aliases[argument]) throw new UsageError(`Unexpected argument: ${argument}`);
     const name = aliases[argument] ?? argument.slice(2);
-    if (name === 'help' || name === 'stdin' || name === 'keep' || name === 'diagnose'
-      || name === 'acknowledge-token-risks' || name === 'dry-run') {
+    if (name === 'help' || name === 'stdin' || name === 'json' || name === 'keep' || name === 'diagnose'
+      || name === 'dry-run' || name === 'no-open') {
       options[name] = 'true';
       continue;
     }
     const value = arguments_[index + 1];
     if (!value || value.startsWith('--')) throw new UsageError(`Missing value for --${name}`);
     index += 1;
-    if (name === 'where' || name === 'group' || name === 'repository') {
+    if (name === 'where' || name === 'param' || name === 'group' || name === 'repository' || name === 'write-repository') {
       const existing = options[name];
       options[name] = [...(Array.isArray(existing) ? existing : []), value];
     } else if (options[name] !== undefined) {
@@ -1166,33 +1190,41 @@ async function hashFileContents(filePath) {
   return hash.digest('hex');
 }
 
-function workflowRunId(value) {
-  return value === undefined || value === null ? null : String(value);
+async function totalFileBytes(paths) {
+  return (await Promise.all(paths.map(async (filePath) => (await stat(filePath)).size)))
+    .reduce((sum, size) => sum + size, 0);
 }
+
+function workflowRunId(value) { return value === undefined || value === null ? null : String(value); }
 
 function isAgenticWorkflowRun(record) {
-  return typeof record?.run?.workflow_path === 'string'
-    && record.run.workflow_path.endsWith('.lock.yml');
+  return typeof record?.run?.workflow_path === 'string' && record.run.workflow_path.endsWith('.lock.yml');
 }
 
-function compactedJsonlLine(line, agenticRunIds) {
+function createJsonlCompactionState() { return { seenRunRecordDigests: new Set(), deduplicatedRunRecords: 0 }; }
+
+function compactedJsonlLine(line, agenticRunIds, state) {
   const record = JSON.parse(line);
   if (record?.kind === 'run' || record?.kind === 'token_efficiency_run_context') {
-    return isAgenticWorkflowRun(record) ? line : null;
+    if (!isAgenticWorkflowRun(record)) return null;
+    if (record.kind === 'run') {
+      const digest = createHash('sha256').update(line).digest('hex');
+      if (state.seenRunRecordDigests.has(digest)) {
+        state.deduplicatedRunRecords += 1;
+        return null;
+      }
+      state.seenRunRecordDigests.add(digest);
+    }
+    return line;
   }
   if (record?.kind === 'safe_output_item') {
     return agenticRunIds.has(workflowRunId(record.safe_output?.run_id)) ? line : null;
   }
-  if (
-    record?.kind === 'token_efficiency_observation'
-    || record?.kind === 'token_efficiency_lifecycle_observation'
-  ) {
+  if (record?.kind === 'token_efficiency_observation' || record?.kind === 'token_efficiency_lifecycle_observation') {
     return agenticRunIds.has(workflowRunId(record.observation?.optimizerRunId)) ? line : null;
   }
   if (record?.kind !== 'workflow_runs' || !Array.isArray(record.payload)) return line;
-  const payload = record.payload.filter((run) =>
-    agenticRunIds.has(workflowRunId(run?.databaseId))
-  );
+  const payload = record.payload.filter((run) => agenticRunIds.has(workflowRunId(run?.databaseId)));
   if (payload.length === 0) return null;
   return payload.length === record.payload.length ? line : JSON.stringify({ ...record, payload });
 }
@@ -1209,9 +1241,10 @@ async function inspectJsonlCompaction(sourcePaths) {
   let sourceRecords = 0;
   let retainedRecords = 0;
   let filtered = false;
+  const state = createJsonlCompactionState();
   for await (const line of jsonlLines(sourcePaths)) {
     sourceRecords += 1;
-    const retained = compactedJsonlLine(line, agenticRunIds);
+    const retained = compactedJsonlLine(line, agenticRunIds, state);
     if (retained === null) {
       filtered = true;
       continue;
@@ -1219,7 +1252,7 @@ async function inspectJsonlCompaction(sourcePaths) {
     retainedRecords += 1;
     if (retained !== line) filtered = true;
   }
-  return { agenticRunIds, sourceRecords, retainedRecords, filtered };
+  return { agenticRunIds, sourceRecords, retainedRecords, deduplicatedRunRecords: state.deduplicatedRunRecords, filtered };
 }
 
 function* normalizedJsonlLines(payload) {
@@ -1242,8 +1275,7 @@ function* normalizedJsonlLines(payload) {
 
 async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
   const sourcePaths = names.map((name) => path.join(directory, name));
-  const sourceBytes = (await Promise.all(sourcePaths.map(async (filePath) => (await stat(filePath)).size)))
-    .reduce((sum, size) => sum + size, 0);
+  const sourceBytes = await totalFileBytes(sourcePaths);
   const inspection = await inspectJsonlCompaction(sourcePaths);
   if (sourcePaths.length <= 1 && sourceBytes <= maxBytes && !inspection.filtered) {
     return {
@@ -1251,6 +1283,7 @@ async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
       sourceFiles: sourcePaths.length,
       sourceRecords: inspection.sourceRecords,
       retainedRecords: inspection.retainedRecords,
+      deduplicatedRunRecords: inspection.deduplicatedRunRecords,
       sourceBytes,
       compactedBytes: sourceBytes,
       output: sourcePaths[0] ?? null,
@@ -1268,6 +1301,7 @@ async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
   let bufferedLines = [];
   let bufferedBytes = 0;
   let retainedRecords = 0;
+  const state = createJsonlCompactionState();
   const flush = async () => {
     if (bufferedLines.length === 0) return;
     const content = bufferedLines.join('');
@@ -1285,7 +1319,7 @@ async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
   };
   try {
     for await (const line of jsonlLines(sourcePaths)) {
-      const retained = compactedJsonlLine(line, inspection.agenticRunIds);
+      const retained = compactedJsonlLine(line, inspection.agenticRunIds, state);
       if (retained === null) continue;
       const outputLine = `${retained}\n`;
       const lineBytes = Buffer.byteLength(outputLine);
@@ -1300,13 +1334,13 @@ async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
     throw error;
   }
   await Promise.all(sourcePaths.filter((filePath) => !outputPaths.includes(filePath)).map((filePath) => rm(filePath)));
-  const compactedBytes = (await Promise.all(outputPaths.map(async (filePath) => (await stat(filePath)).size)))
-    .reduce((sum, size) => sum + size, 0);
+  const compactedBytes = await totalFileBytes(outputPaths);
   return {
     prefix,
     sourceFiles: sourcePaths.length,
     sourceRecords: inspection.sourceRecords,
     retainedRecords,
+    deduplicatedRunRecords: state.deduplicatedRunRecords,
     sourceBytes,
     compactedBytes,
     output: outputPaths[0] ?? null,
@@ -1814,32 +1848,41 @@ async function consolidatePhasePayloads(phase, cachePaths, outputDirectory, maxB
     }
     if (current.length > 0) parts.push(current);
     for (const [index, part] of parts.entries()) {
-      const header = `${JSON.stringify({
-        kind: 'metadata',
-        schemaVersion: CANONICAL_SCHEMA_VERSION,
-        ingestionVersion: NORMALIZED_JSONL_INGESTION_VERSION,
-        sourceRecords: part.length,
-        phase,
-        records: part.length
-      })}\n`;
-      const content = header + part.join('');
-      const digest = createHash('sha256').update(content).digest('hex');
-      const name = `${bucket}-${String(index).padStart(4, '0')}-${digest.slice(0, 16)}.jsonl`;
-      const outputPath = path.join(outputDirectory, name);
-      written.push(name);
-      try {
-        await stat(outputPath);
-        continue;
-      } catch (error) {
-        if (!(error && error.code === 'ENOENT')) throw error;
-      }
-      const temporaryPath = `${outputPath}.${process.pid}.tmp`;
-      await writeFile(temporaryPath, content, { flag: 'wx' });
-      await rename(temporaryPath, outputPath);
+      written.push(await writeConsolidatedShard(phase, bucket, index, part, outputDirectory));
     }
     buckets.delete(bucket);
   }
+  // A phase with no records still publishes one header-only shard, so an empty
+  // collection is explicit rather than indistinguishable from missing output.
+  if (written.length === 0) {
+    written.push(await writeConsolidatedShard(phase, STRUCTURAL_CONSOLIDATION_BUCKET, 0, [], outputDirectory));
+  }
   return written;
+}
+
+async function writeConsolidatedShard(phase, bucket, index, lines, outputDirectory) {
+  const header = `${JSON.stringify({
+    kind: 'metadata',
+    schemaVersion: CANONICAL_SCHEMA_VERSION,
+    ingestionVersion: NORMALIZED_JSONL_INGESTION_VERSION,
+    sourceRecords: lines.length,
+    phase,
+    records: lines.length
+  })}\n`;
+  const content = header + lines.join('');
+  const digest = createHash('sha256').update(content).digest('hex');
+  const name = `${bucket}-${String(index).padStart(4, '0')}-${digest.slice(0, 16)}.jsonl`;
+  const outputPath = path.join(outputDirectory, name);
+  try {
+    await stat(outputPath);
+    return name;
+  } catch (error) {
+    if (!(error && error.code === 'ENOENT')) throw error;
+  }
+  const temporaryPath = `${outputPath}.${process.pid}.tmp`;
+  await writeFile(temporaryPath, content, { flag: 'wx' });
+  await rename(temporaryPath, outputPath);
+  return name;
 }
 
 async function hashActivityPayloads({
@@ -2345,9 +2388,9 @@ function issueStatusTargets(issues) {
   });
 }
 
-function issueStatusQuery(batch) {
+export function issueStatusQuery(batch) {
   const fields = batch.map((target, index) => (
-    `i${index}: issue(number: ${target.number}) { number state stateReason closedAt url }`
+    `i${index}: issueOrPullRequest(number: ${target.number}) { ... on Issue { number state stateReason closedAt url } }`
   )).join('\n');
   return `query($owner: String!, $name: String!) {
   repository(owner: $owner, name: $name) {
@@ -2676,7 +2719,7 @@ export async function discoverWorkflows({
 export async function pruneDashboardFile({ inputPath, outputPath } = {}) {
   let document;
   try {
-    document = JSON.parse(await readFile(path.resolve(inputPath), 'utf8'));
+    document = (await loadDashboardSource(path.resolve(inputPath))).document;
   } catch (error) {
     if (error instanceof SyntaxError) {
       throw new Error(`${inputPath} contains invalid JSON: ${error.message}`);
@@ -2702,7 +2745,7 @@ export async function analyzeDashboardComplexityFile({
 } = {}) {
   let document;
   try {
-    document = JSON.parse(await readFile(path.resolve(inputPath), 'utf8'));
+    document = (await loadDashboardSource(path.resolve(inputPath))).document;
   } catch (error) {
     if (error instanceof SyntaxError) {
       throw new Error(`${inputPath} contains invalid JSON: ${error.message}`);
@@ -2756,7 +2799,7 @@ export async function runCli(arguments_, input = process.stdin, { signal } = {})
     });
   }
   const optionArguments = [...rawOptionArguments];
-  const positional = command === 'dashboard-complexity' && !optionArguments[0]?.startsWith('--')
+  const positional = POSITIONAL_COMMANDS.has(command) && optionArguments[0] && !optionArguments[0].startsWith('--')
     ? optionArguments.shift()
     : undefined;
   const resource = command === 'gh' ? optionArguments[0] : undefined;
@@ -2771,7 +2814,7 @@ export async function runCli(arguments_, input = process.stdin, { signal } = {})
     ? await rawQueryFromStdin(options, input)
     : undefined;
   const databasePath = option(options, 'database', false) || DEFAULT_DATABASE_PATH;
-  const databaseCommands = new Set(['issue-status', 'gh', 'computation', 'operational-value', 'ingest', 'ingest-jsonl', 'query']);
+  const databaseCommands = new Set(['issue-status', 'gh', 'computation', 'operational-value', 'ingest', 'ingest-jsonl', 'query', 'mcp']);
   const indexedDB = databaseCommands.has(command) ? await createDatabase(databasePath) : undefined;
   return handler({
     options,
@@ -2847,7 +2890,7 @@ async function main() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   main().catch((error) => {
-    const message = error instanceof UsageError
+    const message = error instanceof UsageError || error instanceof NamedQueryError
       ? `Error: ${error.message}`
       : error instanceof Error
         ? error.stack || `${error.name}: ${error.message}`

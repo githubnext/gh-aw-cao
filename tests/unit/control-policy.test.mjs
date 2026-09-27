@@ -98,6 +98,10 @@ test("control policy schema accepts config-defined campaign and worker catalogs"
   assert.equal(schema.$defs.controlPlane.properties.web.$ref, "#/$defs/web");
   assert.equal(policy["control-plane"].web.experimental, true);
   assert.equal(policy["control-plane"].web.favicon, "./favicon.svg");
+  assert.deepEqual(policy["control-plane"].marketplace.registries[0].auth, {
+    type: "pat",
+    secret: "GH_TOKEN",
+  });
   assert.equal(schema.$defs.controlCampaigns.additionalProperties.$ref, "#/$defs/campaignPolicy");
   assert.equal(schema.$defs.targetCampaigns.additionalProperties.$ref, "#/$defs/targetCampaign");
   for (const campaignPolicy of Object.values(policy["control-plane"].campaigns)) {
@@ -106,6 +110,123 @@ test("control policy schema accepts config-defined campaign and worker catalogs"
     }
   }
   assert.equal(validate(JSON.stringify(policy)).status, 0);
+});
+
+test("control policy validates provider-neutral host and Redis configuration", () => {
+  const policy = JSON.parse(minimalPolicy);
+  policy["control-plane"].web = {
+    host: {
+      target: {
+        module: "generic",
+        name: "managed-redis",
+        authentication: "github-oauth",
+        listener: "process",
+        "require-https": true,
+      },
+      redis: {
+        module: "redis-cloud",
+        "url-env": "REDIS_URL",
+        tls: {
+          mode: "required",
+          "server-name-env": "REDIS_TLS_SERVER_NAME",
+          "ca-certificate-env": "REDIS_TLS_CA_CERT",
+        },
+      },
+    },
+  };
+
+  const source = JSON.stringify(policy);
+  assert.equal(validate(source).status, 0);
+  assert.deepEqual(
+    controlSettings(parsePolicy(source), "acme/control").web.host,
+    policy["control-plane"].web.host,
+  );
+});
+
+test("control policy rejects inconsistent host capabilities", () => {
+  const policy = JSON.parse(minimalPolicy);
+  policy["control-plane"].web = {
+    host: {
+      target: {
+        module: "generic",
+        authentication: "github-oauth",
+        listener: "process",
+      },
+      redis: { module: "generic", session: "pooled", "single-replica": true },
+    },
+  };
+
+  const result = validate(JSON.stringify(policy));
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /single-replica requires/);
+});
+
+test("control policy validates every deployment module and rejects incompatible composition", () => {
+  const targetModules = ["container", "azure-functions"];
+  const redisModules = [
+    "generic", "local", "upstash", "aws-elasticache", "redis-cloud",
+    "gcp-memorystore", "railway", "render", "digitalocean",
+  ];
+  assert.deepEqual(schema.$defs.hostTarget.properties.module.enum, ["generic", ...targetModules]);
+  assert.deepEqual(schema.$defs.redisModule.properties.module.enum, redisModules);
+
+  for (const module of targetModules) {
+    const policy = JSON.parse(minimalPolicy);
+    policy["control-plane"].web = {
+      host: { target: { module }, redis: { module: "generic" } },
+    };
+    assert.equal(validate(JSON.stringify(policy)).status, 0, module);
+  }
+  for (const module of redisModules) {
+    const policy = JSON.parse(minimalPolicy);
+    policy["control-plane"].web = {
+      host: {
+        target: { module: "container", ...(module === "upstash" ? { replicas: 1 } : {}) },
+        redis: { module },
+      },
+    };
+    assert.equal(validate(JSON.stringify(policy)).status, 0, module);
+  }
+
+  const incompatible = JSON.parse(minimalPolicy);
+  incompatible["control-plane"].web = {
+    host: {
+      target: { module: "azure-functions" },
+      redis: { module: "upstash" },
+    },
+  };
+  assert.match(validate(JSON.stringify(incompatible)).stderr, /single-replica requirement/);
+
+  const missingReplicaCount = JSON.parse(minimalPolicy);
+  missingReplicaCount["control-plane"].web = {
+    host: {
+      target: { module: "container" },
+      redis: { module: "upstash" },
+    },
+  };
+  assert.match(validate(JSON.stringify(missingReplicaCount)).stderr, /target\.replicas must be 1/);
+});
+
+test("control policy rejects the previous flat host shape", () => {
+  const policy = JSON.parse(minimalPolicy);
+  policy["control-plane"].web = {
+    host: {
+      name: "legacy-host",
+      authentication: "github-oauth",
+      listener: "process",
+      "require-https": true,
+      "supports-collection": true,
+      redis: {
+        preset: "redis-cloud",
+        "url-env": "REDIS_URL",
+        session: "pooled",
+        tls: { mode: "required" },
+      },
+    },
+  };
+  const result = validate(JSON.stringify(policy));
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unknown key control-plane\.web\.host\.name|target is required/);
 });
 
 test("control policy rejects malformed gh-aw compiler versions", () => {
@@ -239,6 +360,7 @@ test("control policy exposes scope and publishing defaults to deterministic add-
       experimental: false,
       favicon: "./favicon.svg",
     },
+    marketplace: { registries: [] },
     campaigns: {
       dependabot: {
         enabled: true,

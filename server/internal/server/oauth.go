@@ -43,6 +43,7 @@ type GitHubOAuthConfig struct {
 	TeamMembershipURL     string
 	RevokeURL             string
 	HTTPClient            *http.Client
+	RevocationKeyPrefix   string
 }
 
 type githubOAuth struct {
@@ -895,11 +896,18 @@ func (oauth *githubOAuth) sessionKey(sessionID string) string {
 
 func (oauth *githubOAuth) revocationKey(sessionID string) string {
 	sum := sha256.Sum256([]byte(sessionID))
-	return oauth.store.Key("oauth-revocation:" + base64.RawURLEncoding.EncodeToString(sum[:]))
+	return oauth.revocationPrefix() + "oauth-revocation:" + base64.RawURLEncoding.EncodeToString(sum[:])
 }
 
 func (oauth *githubOAuth) revocationIndexKey() string {
-	return oauth.store.Key("oauth-revocations")
+	return oauth.revocationPrefix() + "oauth-revocations"
+}
+
+func (oauth *githubOAuth) revocationPrefix() string {
+	if oauth.config.RevocationKeyPrefix != "" {
+		return oauth.config.RevocationKeyPrefix
+	}
+	return oauth.store.Key("")
 }
 
 func (oauth *githubOAuth) setSessionCookies(response http.ResponseWriter, session oauthSession) {

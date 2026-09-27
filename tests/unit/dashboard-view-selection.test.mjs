@@ -41,6 +41,14 @@ test("selects every page for dashboard assessment data changes", () => {
   }), ["experiments", "cost"]);
 });
 
+test("selects pages for primary dashboard fragment changes", () => {
+  assert.deepEqual(selectAffectedPageIds({
+    dashboard,
+    changedFiles: ["dashboard/site/dashboard-fragments/overview.json"],
+    baseRef: "unused",
+  }), ["experiments", "cost"]);
+});
+
 test("selects no pages for unrelated changes", () => {
   assert.deepEqual(selectAffectedPageIds({
     dashboard,

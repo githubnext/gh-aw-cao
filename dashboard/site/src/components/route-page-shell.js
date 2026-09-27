@@ -3,6 +3,7 @@
  */
 
 import { h } from '../dom.js';
+import { createFactoryScope } from './factory-elements.js';
 import { createRouteView } from './route-empty-state.js';
 import { renderRouteTabSet } from './route-tab-set.js';
 
@@ -49,10 +50,8 @@ export function createRoutePageShell(context, options) {
   let routeDescription = '';
   /** @type {HTMLElement | null} */
   let promotedTabs = null;
-  /** @type {MutationObserver | null} */
-  let pageObserver = null;
-  /** @type {HTMLElement | null} */
-  let observedPage = null;
+  /** @type {ReturnType<typeof createFactoryScope> | null} */
+  let tabsScope = null;
   /** @type {HTMLElement} */
   let root;
   root = createRouteView({
@@ -92,18 +91,13 @@ export function createRoutePageShell(context, options) {
           page.querySelector(':scope > .page-chrome, :scope > .filter-bar, :scope > .page-layout-grid, :scope > .custom-view-grid')
         );
         promotedTabs = tabs;
-        if (observedPage !== page) {
-          pageObserver?.disconnect();
-          observedPage = page;
-          pageObserver = new MutationObserver(() => {
-            if (root.isConnected) return;
+        if (!tabsScope) {
+          tabsScope = createFactoryScope();
+          tabsScope.signal.addEventListener('abort', () => {
             promotedTabs?.remove();
             promotedTabs = null;
-            pageObserver?.disconnect();
-            pageObserver = null;
-            observedPage = null;
-          });
-          pageObserver.observe(page, { childList: true });
+          }, { once: true });
+          tabsScope.bind(root);
         }
       } else if (tabs) {
         root.prepend(tabs);

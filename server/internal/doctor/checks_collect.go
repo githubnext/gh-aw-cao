@@ -478,6 +478,34 @@ func (d Doctor) checkProjectionLock(ctx context.Context) Check {
 	}
 }
 
+// toolingLookup are the PATH and filesystem probes missingTooling needs,
+// injected so the missing-tool detection is testable without depending on
+// which binaries or files happen to exist on the test runner.
+type toolingLookup struct {
+	lookPath func(string) (string, error)
+	stat     func(string) (os.FileInfo, error)
+}
+
+// missingTooling reports which collection-tooling dependencies (Node, gh, and
+// the activity CLI script) are unavailable, using the injected lookup. It is
+// a pure function so every combination of missing tool is testable without
+// touching the real PATH or filesystem.
+func missingTooling(lookup toolingLookup, node, gh, script string) []string {
+	var missing []string
+	if _, err := lookup.lookPath(node); err != nil {
+		missing = append(missing, "node")
+	}
+	if _, err := lookup.lookPath(gh); err != nil {
+		missing = append(missing, "gh")
+	}
+	if script == "" {
+		missing = append(missing, "catalog root")
+	} else if _, err := lookup.stat(script); err != nil {
+		missing = append(missing, "activity/cao.mjs")
+	}
+	return missing
+}
+
 // checkTooling confirms the external programs collection shells out to are
 // actually present, which is the difference between a working collector and
 // one that fails on its first task.
@@ -499,18 +527,8 @@ func (d Doctor) checkTooling(context.Context) Check {
 		detail("gh", binaryPresence(gh)),
 		detail("activityCli", orDefault(filePresence(script), "(no catalog root configured)")),
 	}
-	var missing []string
-	if _, err := exec.LookPath(node); err != nil {
-		missing = append(missing, "node")
-	}
-	if _, err := exec.LookPath(gh); err != nil {
-		missing = append(missing, "gh")
-	}
-	if script == "" {
-		missing = append(missing, "catalog root")
-	} else if _, err := os.Stat(script); err != nil {
-		missing = append(missing, "activity/cao.mjs")
-	}
+	missing := missingTooling(toolingLookup{lookPath: exec.LookPath, stat: os.Stat}, node, gh, script)
+	doctorLog.Printf("collection tooling checked missing_count=%d", len(missing))
 	if len(missing) > 0 {
 		return Check{
 			ID: id, Area: areaRuntime, Title: title, Status: StatusFail,

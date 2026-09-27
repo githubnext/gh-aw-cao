@@ -13,6 +13,7 @@ const suites = [
       "activity/",
       "dashboard/",
       "cao.sh",
+      "install.sh",
       ".github/actions/setup-cao-runtime/",
       "cao-evolution/.github/graders/",
       ".github/workflows/graders/cao-evolution-",

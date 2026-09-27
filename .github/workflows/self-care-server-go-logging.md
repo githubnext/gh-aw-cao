@@ -33,7 +33,7 @@ on:
 
 checkout:
   repository: ${{ inputs.target_repo }}
-  github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+  github-token: ${{ secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
   fetch-depth: 0
   current: true
 
@@ -113,6 +113,19 @@ pre-agent-steps:
     with:
       go-version-file: server/go.mod
       cache: false
+  - name: Install golangci-lint
+    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    run: |
+      go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
+      echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+  - name: Lint server baseline
+    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    working-directory: server
+    run: |
+      set -o pipefail
+      golangci-lint fmt --diff | tee /tmp/golangci-lint-fmt.diff
+      test ! -s /tmp/golangci-lint-fmt.diff
+      golangci-lint run ./...
   - name: Validate server baseline
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     run: go -C server test ./...

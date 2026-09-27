@@ -7,8 +7,10 @@ import { effect, state } from '../reactive.js';
 import { formatNumber } from '../view-formatters.js';
 import { renderStatusBadge } from './badge.js';
 import { listChartSeries, renderChartLegend, renderChartWidget } from './chart-elements.js';
+import { createFactoryScope } from './factory-elements.js';
 import { rowsFor } from './source-rows.js';
 import { renderTemporalMetricPlot } from './temporal-metric-plot.js';
+import { formatMediumUtcDateTimeWithSuffix } from './ui-primitives.js';
 
 const SELECT_POINT_MESSAGE = 'Select a point to inspect that observation.';
 
@@ -141,9 +143,9 @@ function renderOperationalValueHistory(context, rows) {
         provisional: onlyInterimEvidence
       }))))];
   }));
-  const lifetime = new AbortController();
+  const elementScope = createFactoryScope();
   selector.addEventListener('change', () => selectedScope.set(selector.value), {
-    signal: lifetime.signal
+    signal: elementScope.signal
   });
 
   const root = h('section', { className: 'measure-history', 'aria-label': context.title },
@@ -164,16 +166,8 @@ function renderOperationalValueHistory(context, rows) {
     selector.value = activeScope;
     for (const [scopeId, panel] of panels) panel.hidden = scopeId !== activeScope;
     scopeStatus.textContent = scopes.find((scope) => scope.id === activeScope)?.description ?? '';
-  }, { signal: lifetime.signal });
-  let wasConnected = root.isConnected;
-  const observer = new MutationObserver(() => {
-    if (root.isConnected) wasConnected = true;
-    if (wasConnected && !root.isConnected) {
-      observer.disconnect();
-      lifetime.abort();
-    }
-  });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  }, { signal: elementScope.signal });
+  elementScope.bind(root);
   return root;
 }
 
@@ -370,9 +364,7 @@ function attachPointSelection(chart, points, readout) {
 /** @param {string} value */
 function formatInstant(value) {
   const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp)
-    ? `${new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(new Date(timestamp))} UTC`
-    : '';
+  return Number.isFinite(timestamp) ? formatMediumUtcDateTimeWithSuffix(timestamp) : '';
 }
 
 /** @param {string} value */

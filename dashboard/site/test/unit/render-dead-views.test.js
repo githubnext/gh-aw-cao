@@ -10,6 +10,7 @@ import {
   referencedPageNames,
   referencedElementNames
 } from '../../scripts/render-dead-views.mjs';
+import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
 describe('dead element view analysis', () => {
   it('reads names from the element renderer registry', () => {
@@ -108,10 +109,7 @@ describe('dead element view analysis', () => {
       resolve(process.cwd(), 'src/components/ui-elements.js'),
       'utf8'
     );
-    const dashboard = JSON.parse(readFileSync(
-      resolve(process.cwd(), 'dashboard.json'),
-      'utf8'
-    ));
+    const dashboard = authoritativeDashboard;
 
     expect(deadElementRendererNames(
       elementRendererNames(rendererSource),

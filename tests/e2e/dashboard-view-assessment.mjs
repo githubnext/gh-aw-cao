@@ -1,4 +1,3 @@
-import { elementLoadsSourcesAsync } from "../../dashboard/site/src/components/ui-elements.js";
 import { resolveDashboardDocument } from "../../dashboard/site/src/dashboard-chunks.js";
 import { renderDashboardQueryUsageGraph } from "../../dashboard/site/src/query-usage.js";
 
@@ -19,9 +18,10 @@ export function withoutIgnoredDashboardPageIds(pageIds) {
 // can actually see are assessed, so hidden views neither block hydration nor
 // consume the assessment's time budget.
 export const visibleViewSelector = "[data-view-id]:visible";
-export const visibleBusyViewSelector = '[aria-busy="true"]:visible';
 export const visibleLoadingViewSelector =
   ".dashboard-view-skeleton:visible, .dashboard-lazy-view-skeleton:visible";
+export const visibleBusyViewSelector =
+  `[aria-busy="true"]:visible, ${visibleLoadingViewSelector}`;
 
 export function declaredDashboardViewIds(pageDefinition, reusableViews = []) {
   const views = pageDefinition?.kind === "built-in"
@@ -40,20 +40,6 @@ export function declaredDashboardViewIds(pageDefinition, reusableViews = []) {
     ));
 }
 
-export function dashboardPageRendersBeforeSources(pageDefinition, reusableViews = []) {
-  const reusableById = new Map(reusableViews.map((view) => [view?.id, view]));
-  const views = pageDefinition?.kind === "built-in"
-    ? pageDefinition.definition?.views
-    : pageDefinition?.views;
-  return Array.isArray(views) && views.some((configured) => {
-    const view = typeof configured === "string" ? reusableById.get(configured) : configured;
-    return typeof view === "object"
-      && view !== null
-      && typeof view.element === "string"
-      && elementLoadsSourcesAsync(view.element);
-  });
-}
-
 export function renderAssessedDashboardQueryUsageGraph(dashboard, pageChunks) {
   const resolved = resolveDashboardDocument(dashboard, pageChunks);
   return renderDashboardQueryUsageGraph(resolved.dashboard);
@@ -65,12 +51,15 @@ export function renderAssessedDashboardQueryUsageGraph(dashboard, pageChunks) {
 // timeout for setup and summary upload, while allowing a margin beyond 49 views.
 export const dashboardAssessmentStartupBudgetMs = 120_000;
 export const dashboardAssessmentPageBudgetMs = 30_000;
+export const dashboardAssessmentCleanupBudgetMs = 15_000;
 export const maximumDashboardAssessmentTimeoutMs = 1_600_000;
 
 export function dashboardAssessmentTimeout(pageCount) {
   const pages = Number.isFinite(pageCount) && pageCount > 0 ? Math.floor(pageCount) : 0;
   return Math.min(
-    dashboardAssessmentStartupBudgetMs + pages * dashboardAssessmentPageBudgetMs,
+    dashboardAssessmentStartupBudgetMs
+      + pages * dashboardAssessmentPageBudgetMs
+      + dashboardAssessmentCleanupBudgetMs,
     maximumDashboardAssessmentTimeoutMs,
   );
 }

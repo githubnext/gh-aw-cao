@@ -67,6 +67,7 @@ function batch() {
       sequence: 1
     }],
     operationalValues: [],
+    marketplacePackages: [],
     audits: [{
       id: 'event:finding',
       sessionId: 'session:42',

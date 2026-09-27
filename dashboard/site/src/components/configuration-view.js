@@ -3,8 +3,9 @@ import { collectFullDiagnostics } from '../diagnostics.js';
 import { capturedConsoleLogText } from '../console-log-capture.js';
 import { createDebug, fullDebugUrl } from '../debug.js';
 import { copyTextToClipboard, createCopyControl, renderCheckbox } from './ui-primitives.js';
-import { isPlainObject, renderLazyDisclosure, renderSectionHeading } from './ui-primitives.js';
+import { isPlainObject, renderLazyDisclosure, renderLiveRegion, renderSectionHeading } from './ui-primitives.js';
 import { renderSettingsCliActions } from './cli-actions.js';
+import { createFactoryScope } from './factory-elements.js';
 import { renderResetDashboardControl } from './reset-dashboard-control.js';
 import {
   automaticDashboardBackgroundUpdatesActive,
@@ -115,13 +116,48 @@ function renderEntry(name, value, path, segments, onChange, depth = 0) {
   }
 
   const control = renderSettingControl(name, value, path, (nextValue) => onChange(segments, nextValue));
-  return h('div', { className: 'configuration-setting-row' },
-    h('div', { className: 'configuration-setting-copy' },
-      h('label', { htmlFor: control.id }, settingLabel(name)),
-      h('code', null, path),
-      h('p', null, explanation(path, value))
-    ),
+  return renderConfigurationSettingRow(
+    {
+      label: h('label', { htmlFor: control.id }, settingLabel(name)),
+      description: h('div', null, h('code', null, path), h('p', null, explanation(path, value)))
+    },
     control
+  );
+}
+
+/**
+ * Renders the shared "label/description copy beside a control" row used by
+ * the policy setting editor and the browser data/debugging settings
+ * sections, which otherwise duplicated the same `configuration-setting-row`
+ * / `configuration-setting-copy` markup with only the copy content and
+ * control differing.
+ * @param {{ label: HTMLElement, description?: HTMLElement | null }} copy
+ * @param {HTMLElement} control
+ * @returns {HTMLElement}
+ */
+function renderConfigurationSettingRow(copy, control) {
+  return h('div', { className: 'configuration-setting-row' },
+    h('div', { className: 'configuration-setting-copy' }, copy.label, copy.description),
+    control
+  );
+}
+
+/**
+ * Renders the shared `configuration-browser-settings-heading` block used by
+ * the browser data-updates and debugging settings sections, which otherwise
+ * duplicated the same heading `<div>`/`<h3>`/`<p>` markup with only the
+ * heading id, title, and description differing.
+ * @param {string} headingId
+ * @param {string} title
+ * @param {string} description
+ * @returns {HTMLElement}
+ */
+function renderConfigurationSectionHeading(headingId, title, description) {
+  return h('div', { className: 'configuration-browser-settings-heading' },
+    h('div', null,
+      h('h3', { id: headingId }, title),
+      h('p', null, description)
+    )
   );
 }
 
@@ -266,10 +302,7 @@ function renderSettingsEditor(policyDocument) {
       updateStatus();
     }
   }, 'Discard changes');
-  const diagnosticsStatus = /** @type {HTMLOutputElement} */ (h('output', {
-    className: 'configuration-copy-status',
-    'aria-live': 'polite'
-  }));
+  const diagnosticsStatus = /** @type {HTMLOutputElement} */ (renderLiveRegion('output', 'configuration-copy-status'));
   const diagnosticsButton = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button',
     className: 'configuration-diagnostics-button',
@@ -357,33 +390,20 @@ function renderAutomaticDataUpdatesSetting() {
   checkbox.setAttribute('aria-describedby', 'configuration-automatic-dashboard-data-updates-status');
   status.id = 'configuration-automatic-dashboard-data-updates-status';
   const section = h('section', { className: 'configuration-browser-settings', 'aria-labelledby': 'configuration-browser-settings-heading' },
-    h('div', { className: 'configuration-browser-settings-heading' },
-      h('div', null,
-        h('h3', { id: 'configuration-browser-settings-heading' }, 'Dashboard data'),
-        h('p', null, 'Browser preferences apply only to this device.')
-      )
-    ),
-    h('div', { className: 'configuration-setting-row' },
-      h('div', { className: 'configuration-setting-copy' },
-        h('label', { htmlFor: checkbox.id }, 'Download updated data every hour'),
-        h('p', null, 'Uses Periodic Background Sync so downloads continue after the dashboard closes. This requires an installed dashboard app and browser support. It is off by default.')
-      ),
+    renderConfigurationSectionHeading('configuration-browser-settings-heading', 'Dashboard data', 'Browser preferences apply only to this device.'),
+    renderConfigurationSettingRow(
+      {
+        label: h('label', { htmlFor: checkbox.id }, 'Download updated data every hour'),
+        description: h('p', null, 'Uses Periodic Background Sync so downloads continue after the dashboard closes. This requires an installed dashboard app and browser support. It is off by default.')
+      },
       checkbox
     ),
     status
   );
   const stopStatusUpdates = onAutomaticDashboardBackgroundUpdateStatus(updateStatus);
-  let wasConnected = section.isConnected;
-  const observer = new MutationObserver(() => {
-    if (section.isConnected) {
-      wasConnected = true;
-      return;
-    }
-    if (!wasConnected) return;
-    observer.disconnect();
-    stopStatusUpdates();
-  });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  const sectionScope = createFactoryScope();
+  sectionScope.signal.addEventListener('abort', stopStatusUpdates, { once: true });
+  sectionScope.bind(section);
   return section;
 }
 
@@ -400,24 +420,19 @@ function renderDebuggingSettings() {
     trackState: true
   });
   return h('section', { className: 'configuration-browser-settings configuration-debug-settings', 'aria-labelledby': 'configuration-debug-heading' },
-    h('div', { className: 'configuration-browser-settings-heading' },
-      h('div', null,
-        h('h3', { id: 'configuration-debug-heading' }, 'Debugging'),
-        h('p', null, 'Collect diagnostic information to share when troubleshooting this dashboard.')
-      )
-    ),
-    h('div', { className: 'configuration-setting-row' },
-      h('div', { className: 'configuration-setting-copy' },
-        h('label', null, 'Enable full debugging'),
-        h('p', null, 'Relaunches this page with all dashboard debug categories enabled.')
-      ),
+    renderConfigurationSectionHeading('configuration-debug-heading', 'Debugging', 'Collect diagnostic information to share when troubleshooting this dashboard.'),
+    renderConfigurationSettingRow(
+      {
+        label: h('label', null, 'Enable full debugging'),
+        description: h('p', null, 'Relaunches this page with all dashboard debug categories enabled.')
+      },
       h('a', { href: fullDebugUrl(), className: 'configuration-transactions-button' }, 'Relaunch with debugging')
     ),
-    h('div', { className: 'configuration-setting-row' },
-      h('div', { className: 'configuration-setting-copy' },
-        h('label', null, 'Console logs'),
-        h('p', null, 'Copies console output captured since this page was loaded.')
-      ),
+    renderConfigurationSettingRow(
+      {
+        label: h('label', null, 'Console logs'),
+        description: h('p', null, 'Copies console output captured since this page was loaded.')
+      },
       h('div', { className: 'configuration-debug-copy' }, copyControl.button, copyControl.status)
     )
   );

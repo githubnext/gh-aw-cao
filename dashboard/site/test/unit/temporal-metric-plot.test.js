@@ -5,14 +5,14 @@ import { renderTemporalMetricPlot } from '../../src/components/temporal-metric-p
 describe('Temporal metric plot', () => {
   it('matches the deterministic timeline SVG structure', () => {
     const rendered = renderTemporalMetricPlot({
-      title: 'Daily File Diet',
+      title: 'Example Workflow',
       mode: 'baseline-comparable',
       adoptionAt: '2025-11-15T13:36:21Z',
       metrics: [
         {
-          id: 'largest-file-lines',
-          label: 'Largest file lines',
-          unit: 'lines',
+          id: 'primary-measure',
+          label: 'Primary measure',
+          unit: 'count',
           direction: 'decrease',
           points: [
             { x: '2025-10-25T13:36:21Z', y: 1640 },
@@ -21,8 +21,8 @@ describe('Temporal metric plot', () => {
           ]
         },
         {
-          id: 'compliant-line-mass-share',
-          label: 'Compliant line mass',
+          id: 'diagnostic-measure',
+          label: 'Diagnostic measure',
           points: [
             { x: '2025-10-25T13:36:21Z', y: 0.82 },
             { x: '2025-12-06T13:36:21Z', y: 0.91 }
@@ -32,7 +32,7 @@ describe('Temporal metric plot', () => {
     });
 
     expect(rendered.querySelector('svg')?.getAttribute('aria-label'))
-      .toBe('Daily File Diet workflow value timeline');
+      .toBe('Example Workflow workflow value timeline');
     expect(rendered.querySelectorAll('.temporal-plot-grid')).toHaveLength(7);
     expect(rendered.querySelectorAll('.temporal-plot-metric')).toHaveLength(2);
     expect(rendered.querySelectorAll('.temporal-plot-point')).toHaveLength(5);

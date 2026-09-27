@@ -16,12 +16,17 @@ import { runIngestJsonl } from "./ingest-jsonl.mjs";
 import { runIngest } from "./ingest.mjs";
 import { runInit } from "./init.mjs";
 import { runIssueStatus } from "./issue-status.mjs";
+import { runMcp } from "./mcp.mjs";
 import { runMode } from "./mode.mjs";
 import { runOperationalValueCommand } from "./operational-value.mjs";
+import { runPages } from "./pages.mjs";
 import { runPruneDashboard } from "./prune-dashboard.mjs";
+import { runQueries } from "./queries.mjs";
+import { runQueryInfo } from "./query-info.mjs";
 import { runQuery } from "./query.mjs";
 import { runSetupAuth } from "./setup-auth.mjs";
 import { runUpdate } from "./update.mjs";
+import { runValidateActivityData } from "./validate-activity-data.mjs";
 
 export const commandHandlers = new Map([
   ["activity-stats", runActivityStats],
@@ -42,10 +47,15 @@ export const commandHandlers = new Map([
   ["ingest-jsonl", runIngestJsonl],
   ["init", runInit],
   ["issue-status", runIssueStatus],
+  ["mcp", runMcp],
   ["mode", runMode],
   ["operational-value", runOperationalValueCommand],
+  ["pages", runPages],
   ["prune-dashboard", runPruneDashboard],
+  ["queries", runQueries],
   ["query", runQuery],
+  ["query-info", runQueryInfo],
   ["setup-auth", runSetupAuth],
   ["update", runUpdate],
+  ["validate-activity-data", runValidateActivityData],
 ]);

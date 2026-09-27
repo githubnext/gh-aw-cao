@@ -26,34 +26,37 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-aw-cao/server/internal/marketplace"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/repositorymemory"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
 var serverLog = logger.New("cao:server")
 
 type Config struct {
-	Listen              string
-	SiteDirectory       string
-	CertFile            string
-	KeyFile             string
-	AccessToken         string
-	HostingMode         HostingMode
-	Proxy               ProxyPolicy
-	AzureProxy          AzureProxyPolicy
-	GitHubOAuth         *GitHubOAuthConfig
-	DatabaseQueriesPath string
-	DashboardQueries    []query.Definition
-	SourceDirectory     string
-	Reconciler          Reconciler
-	Collector           *CollectorConfig
-	WebhookSecret       string
-	AdminUsers          []string
-	Logger              *log.Logger
+	Listen                 string
+	SiteDirectory          string
+	CertFile               string
+	KeyFile                string
+	AccessToken            string
+	HostProfile            HostProfile
+	SingleReplicaConfirmed bool
+	Proxy                  ProxyPolicy
+	GitHubOAuth            *GitHubOAuthConfig
+	DatabaseQueriesPath    string
+	DashboardQueries       []query.Definition
+	SourceDirectory        string
+	Reconciler             Reconciler
+	Collector              *CollectorConfig
+	WebhookSecret          string
+	AdminUsers             []string
+	Logger                 *log.Logger
 }
 
 type App struct {
@@ -64,23 +67,16 @@ type App struct {
 	hub           *eventHub
 	canonical     canonicalService
 	reconciler    Reconciler
+	memory        *repositorymemory.RemoteResolver
 	webhookSecret []byte
 }
 
 func New(store *redisx.Store, config Config) (*App, error) {
-	serverLog.Printf("initializing hosting_mode=%s", config.HostingMode)
-	mode := config.HostingMode
-	if mode == "" {
-		mode = HostingModeLocal
-		config.HostingMode = mode
+	if err := validateHostProfile(store, &config); err != nil {
+		return nil, err
 	}
-	if mode == HostingModeLocal {
-		if err := ValidateListen(config.Listen, config.CertFile, config.KeyFile); err != nil {
-			return nil, err
-		}
-	} else if mode != HostingModeAzureFunctions && mode != HostingModeHosted {
-		return nil, fmt.Errorf("unsupported hosting mode %q", mode)
-	}
+	profile := config.HostProfile
+	serverLog.Printf("initializing host_profile=%s", profile.Name)
 	if err := validateHostedMode(store, &config); err != nil {
 		return nil, err
 	}
@@ -93,7 +89,7 @@ func New(store *redisx.Store, config Config) (*App, error) {
 	}
 	var oauth *githubOAuth
 	var accessToken string
-	if mode == HostingModeAzureFunctions || mode == HostingModeHosted {
+	if profile.Authentication == HostAuthenticationOAuth {
 		oauth = newGitHubOAuth(*config.GitHubOAuth, store)
 	} else {
 		accessToken = strings.TrimSpace(config.AccessToken)
@@ -108,6 +104,7 @@ func New(store *redisx.Store, config Config) (*App, error) {
 		}
 	}
 	reconciler := config.Reconciler
+	var memoryResolver *repositorymemory.RemoteResolver
 	if err := validateProfileExclusivity(config); err != nil {
 		return nil, err
 	}
@@ -117,6 +114,17 @@ func New(store *redisx.Store, config Config) (*App, error) {
 			return nil, fmt.Errorf("configure collection: %w", err)
 		}
 		reconciler = collector
+		if !config.Collector.AdmitOnly {
+			memoryResolver = &repositorymemory.RemoteResolver{
+				Cache:         store,
+				Installations: collector.enrollment,
+				Source:        collector.client,
+				Governor: &githubapp.Budget{
+					Store: store, Floor: config.Collector.RateLimitFloor, Cost: 1,
+				},
+				ControlRepository: config.Collector.ControlRepository,
+			}
+		}
 	}
 	if reconciler == nil && config.SourceDirectory != "" {
 		reconciler = DirectoryReconciler{
@@ -124,15 +132,21 @@ func New(store *redisx.Store, config Config) (*App, error) {
 			DatabaseQueriesPath: config.DatabaseQueriesPath,
 		}
 	}
-	serverLog.Printf("initialized hosting_mode=%s oauth=%t source_ingestion=%t", mode, oauth != nil, config.SourceDirectory != "")
+	serverLog.Printf("initialized host_profile=%s oauth=%t source_ingestion=%t", profile.Name, oauth != nil, config.SourceDirectory != "")
 	return &App{
 		store: store, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
-		canonical: canonicalService{store: store}, reconciler: reconciler,
+		canonical: canonicalService{store: store}, reconciler: reconciler, memory: memoryResolver,
 		webhookSecret: []byte(config.WebhookSecret),
 	}, nil
 }
 
 func (a *App) Serve(ctx context.Context) error {
+	if a.config.HostProfile.Listener != HostListenerProcess {
+		return fmt.Errorf(
+			"host profile %q delegates listener ownership to the platform",
+			a.config.HostProfile.Name,
+		)
+	}
 	serverLog.Printf("starting server tls=%t initial_ingestion=%t", a.config.CertFile != "", a.config.SourceDirectory != "")
 	if a.config.SourceDirectory != "" {
 		result, err := ingest.Run(ctx, a.store, a.config.SourceDirectory, ingest.Options{DatabaseQueriesPath: a.config.DatabaseQueriesPath})
@@ -218,6 +232,8 @@ func (a *App) Handler() http.Handler {
 	register("GET /api/v1/events", a.events)
 	register("POST /api/v1/query", a.query)
 	register("GET /api/v1/diagnostics", a.diagnostics)
+	register("GET /api/v1/memory/{campaign}", a.repositoryMemoryCampaign)
+	register("GET /api/v1/memory/{campaign}/content", a.repositoryMemoryContent)
 	register("POST /api/v1/refresh", a.refresh)
 	register("GET /api/repositories", a.repositories)
 	register("GET /api/repositories/{id}", a.repository)
@@ -246,7 +262,7 @@ func (a *App) Handler() http.Handler {
 			return request.Method + " /*"
 		}),
 	)
-	return securityHeaders(a.requireAccess(instrumented))
+	return securityHeaders(a.preAuthRateLimit(a.requireAccess(a.rateLimit(instrumented))))
 }
 
 // withResponseTraceHeaders exposes the W3C trace/span ids that otelhttp
@@ -341,11 +357,7 @@ func (a *App) authorized(request *http.Request) bool {
 
 func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		policy := a.config.Proxy
-		if len(policy.AllowedHosts) == 0 {
-			policy = a.config.AzureProxy
-		}
-		if !validAzureProxyRequest(request, policy) {
+		if !validProxyRequest(request, a.proxyPolicy()) {
 			a.logAuthBranch("access.proxy_rejected")
 			http.Error(response, "invalid forwarded request host", http.StatusMisdirectedRequest)
 			return
@@ -392,6 +404,10 @@ func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 		request = request.WithContext(context.WithValue(request.Context(), oauthSessionContextKey{}, session))
 		next.ServeHTTP(response, request)
 	})
+}
+
+func (a *App) proxyPolicy() ProxyPolicy {
+	return a.config.Proxy
 }
 
 type oauthSessionContextKey struct{}
@@ -674,6 +690,12 @@ type generationLoader struct {
 }
 
 func (loader *generationLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
+	if name == marketplace.SourceName {
+		// The marketplace catalog is never stored as an ingested Redis source:
+		// it is resolved (and cached) transparently here so every query-engine
+		// caller sees an ordinary source, with no secrets ever leaving this call.
+		return marketplaceSource(loader.ctx, loader.store, loader.generation), model.Metrics{}, nil
+	}
 	source, metrics, err := loader.store.LoadSource(loader.ctx, loader.generation, name, definition)
 	if errors.Is(err, redisx.ErrSourceUnavailable) {
 		return unavailableSource(name), metrics, nil

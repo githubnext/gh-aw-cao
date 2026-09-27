@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-root="$(CDPATH= cd -P "$(dirname "$0")" && pwd)"
+root="$(CDPATH='' cd -P "$(dirname "$0")" && pwd)"
 
 cli="$root/activity/cao.mjs"
 if [ ! -f "$cli" ]; then

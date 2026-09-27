@@ -62,6 +62,7 @@ export const GITHUB_RATE_LIMIT_THRESHOLDS = Object.freeze({
   minimumBurnIntervals: 2,
 });
 const EMPTY_RATE_LIMIT_ERROR = "GitHub API returned no valid rate-limit resources.";
+const githubServerUrl = process.env.GITHUB_SERVER_URL || ["https:", "", "github.com"].join("/");
 
 function repositoryParts(repository = "") {
   const [organization = "", name = ""] = repository.split("/");
@@ -106,7 +107,7 @@ function workflowRunUrl(repository, runId) {
   const parts = String(repository || "").split("/");
   const id = String(runId ?? "");
   return parts.length === 2 && parts.every(Boolean) && /^\d+$/.test(id)
-    ? `https://github.com/${parts[0]}/${parts[1]}/actions/runs/${id}`
+    ? `${githubServerUrl}/${parts[0]}/${parts[1]}/actions/runs/${id}`
     : undefined;
 }
 
@@ -754,6 +755,13 @@ function workflowRows(deployed, generatedAt, inventory, controlSettings) {
       "gh-aw-update-state": workflow.updateState || "unknown",
       "gh-aw-metadata": workflow.ghAwMetadata || null,
       "gh-aw-manifest": workflow.ghAwManifest || null,
+      ...(workflow.path ? {
+        "workflow-link": link(
+          "workflow",
+          `${githubServerUrl}/${workflow.repository}/actions/workflows/${workflow.path.split("/").at(-1)}`,
+          workflow.name || workflow.path,
+        ),
+      } : {}),
       "rollout-mode": details?.campaignTargets?.find(
         (target) => target.repository.toLowerCase() === workflowRepository,
       )?.mode || details?.configuredMode || recentMode,
@@ -788,6 +796,8 @@ function runRows(deployed, usage) {
         "ended-at": run.status === "completed" ? run.updatedAt : undefined,
         "run-status": run.status === "in_progress" ? "in-progress" : run.status || "unknown",
         "run-conclusion": runConclusion(run.conclusion),
+        ...(run.classification ? { classification: run.classification } : {}),
+        ...(run.failureKind ? { "failure-kind": run.failureKind } : {}),
         ...(run.admissionStatus ? { "admission-status": run.admissionStatus } : {}),
         ...(run.admissionReason ? { "admission-reason": run.admissionReason } : {}),
         ...(run.failureJob ? { "failure-job": run.failureJob } : {}),
@@ -815,15 +825,19 @@ function runRows(deployed, usage) {
         "resolved-model": firstText(run.resolvedModel, run.resolved_model, run.model, usageRun.resolvedModel, usageRun.resolved_model, usageRun.model) || "unknown",
         data: dataByRun.get(key.toLowerCase()) ?? null,
         "logs-payload": usageRun.logsPayload ?? null,
-        "repository-link": link("repository", `https://github.com/${workflow.repository}`, workflow.repository),
+        "repository-link": link("repository", `${githubServerUrl}/${workflow.repository}`, workflow.repository),
         ...(workflow.path ? {
           "workflow-link": link(
             "workflow",
-            `https://github.com/${workflow.repository}/actions/workflows/${workflow.path.split("/").at(-1)}`,
+            `${githubServerUrl}/${workflow.repository}/actions/workflows/${workflow.path.split("/").at(-1)}`,
             workflow.name || workflow.path,
           ),
         } : {}),
-        "run-link": link("run", `https://github.com/${workflow.repository}/actions/runs/${run.runId}`, `View run ${run.runId}`),
+        "run-link": link(
+          "run",
+          run.runUrl || `${githubServerUrl}/${workflow.repository}/actions/runs/${run.runId}`,
+          `View run ${run.runId}`,
+        ),
       });
     }
   }

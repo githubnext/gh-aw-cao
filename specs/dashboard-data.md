@@ -262,6 +262,10 @@ JSONL MAY remain in the private Activity cache for audit and rebuild operations,
 but MUST NOT be copied into the dashboard artifact or listed in its deployed
 payload manifest. The browser MUST fail closed when compacted run-information
 shards are absent; it MUST NOT fall back to raw Activity JSONL.
+A phase that has no records SHALL still publish exactly one consolidated shard
+containing only its metadata header (`records: 0`), so a collection that
+observed no agentic workflow runs is explicit. Such a header-only shard
+satisfies the run-information requirement above; its absence does not.
 
 Published phase shards SHALL be consolidated across source shards before
 publication. A canonical record observed by more than one Activity source shard
@@ -304,9 +308,9 @@ The implementation profile defined by this specification is:
 
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
-| Canonical model | 17 | Campaign, Repository, Workflow, Run, Domain, Tool, Audit, Issue, and Operational Value records |
-| Browser IndexedDB | 25 | Nine canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
-| Local SQLite projection | IndexedDB 22 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records`, containing the same logical stores and JSON records as IndexedDB |
+| Canonical model | 19 | Campaign, Repository, Workflow, Run, Domain, Tool, Audit, Issue, Operational Value, and Marketplace Package records |
+| Browser IndexedDB | 27 | Ten canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
+| Local SQLite projection | IndexedDB 27 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records`, containing the same logical stores and JSON records as IndexedDB |
 | Local Redis server projection | Canonical model 14 | Immutable active generation of logical-source row sets, queried only through the loopback Go HTTP(S) server |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
@@ -344,6 +348,7 @@ store uses `id` as its key path. The implemented secondary indexes are:
 | `runs` | `byRepository -> repositoryId`, `byWorkflow -> workflowId`, `byConclusion -> conclusion`, `byEvent -> event`, `byEventConclusion -> [event, conclusion]` |
 | `domains`, `tools`, `audits`, `issues` | `byRun -> runId` |
 | `operationalValues` | `byRepository -> repositoryId`, `byValue -> valueId` |
+| `marketplacePackages` | `byRegistry -> registryId`, `byRepository -> repository` |
 | `transactions` | `byCreatedAt -> createdAt` |
 | `dailyOverviewAggregates` | `byGenerationDay -> [generation, day]` |
 | `overviewAggregateMetadata` | none |
@@ -1741,7 +1746,7 @@ The canonical browser database SHALL use:
 
 ```js
 const DATABASE_NAME = "gh-aw-cao-dashboard-data";
-const DATABASE_VERSION = 25;
+const DATABASE_VERSION = 27;
 ```
 
 The name MAY be scoped by deployment path to prevent unrelated dashboard
@@ -1753,7 +1758,7 @@ rows.
 
 # 27. Object Stores
 
-IndexedDB version 25 SHALL define:
+IndexedDB version 27 SHALL define:
 
 ```text
 campaigns
@@ -1765,6 +1770,7 @@ tools
 audits
 issues
 operationalValues
+marketplacePackages
 transactions
 dailyOverviewAggregates
 overviewAggregateMetadata
@@ -1808,7 +1814,7 @@ conclusion
 
 The generation-ordered runtime-computation indexes described by Section 73 are
 reserved for the physical version that implements the computation projection.
-They are not part of IndexedDB version 25. That implementation MUST increment
+They are not part of IndexedDB version 27. That implementation MUST increment
 the physical version and update Section 5.1 before relying on those indexes.
 
 ### run-linked tables

@@ -59,6 +59,15 @@ The default Central Agentic Ops campaign installs the dashboard builder and manu
 
 The dashboard workflow remains manual and does not enable Pages automatically.
 
+## Agent analysis
+
+Central Agentic Ops can give an agent its dashboard data without a browser or
+shell. Install CAO, run `cao download`, and then either query the snapshot from
+a shell with `cao pages`, `cao queries`, and `cao query QUERY_ID`, or start the
+read-only MCP server with `cao mcp` and let an agent call `cao_catalog` and
+`cao_query`. See [Agent analysis](docs/agent-analysis.md) for the GitHub Actions
+bootstrap.
+
 ## Contributing
 
 Contributions and issue reports are welcome. Read

@@ -48,4 +48,48 @@ describe('createRoutePageShell', () => {
       description: 'Selected demo'
     });
   });
+
+  it('removes page-level promoted tabs once the shell root detaches from the document', async () => {
+    const page = Object.assign(document.createElement('div'), { className: 'dashboard-page' });
+    document.body.append(page);
+    const rendered = createRoutePageShell({
+      pageId: 'custom-page',
+      title: 'Custom page',
+      sourceNames: [],
+      sources: {},
+      contextDetails: [],
+      headingTag: /** @type {'h3'} */ ('h3'),
+      routeParameter: 'workflow'
+    }, {
+      rootClassName: 'shared-route-shell',
+      datasetKey: 'workflow',
+      selectMessage: 'Select one.',
+      notFoundMessage: 'Not found.',
+      currentTab: 'reports',
+      tabListClassName: 'shared-tabs',
+      tabListAriaLabel: (title) => `${title} views`,
+      hasSelection: (value) => value.length > 0,
+      pageLevelTabs: true,
+      tabs: ({ routeValue }) => [
+        { id: 'reports', label: 'Reports', icon: 'issue', href: `#reports-${routeValue}` }
+      ],
+      renderMatched: (routeValue) => ({
+        allocation: { title: 'Demo Workflow', description: `Selected ${routeValue}` },
+        content: Object.assign(document.createElement('div'), { className: 'matched-content', textContent: routeValue })
+      })
+    });
+    page.append(rendered);
+
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'workflow', value: 'demo' }
+    }));
+
+    expect(page.querySelector(':scope > .route-tab-navigation, :scope > [data-route-tabs]')).not.toBeNull();
+
+    rendered.remove();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(page.querySelector(':scope > .route-tab-navigation, :scope > [data-route-tabs]')).toBeNull();
+    page.remove();
+  });
 });

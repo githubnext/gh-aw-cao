@@ -15,6 +15,7 @@ import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { loadDashboardSource } from "../../dashboard/report/bundle-dashboards.mjs";
 import { analyzeDashboardComplexity } from "../../activity/dashboard-complexity.mjs";
 import {
   executeDashboardQueries,
@@ -24,7 +25,10 @@ import {
   queryInputNames,
   resolveDashboardQuerySources,
 } from "../../dashboard/site/src/data/queries/declarative.js";
-import { queryDatabaseSources } from "../../dashboard/site/src/data/queries/database.js";
+import {
+  queryDatabaseSources,
+  queryIndexedDatabaseSources,
+} from "../../dashboard/site/src/data/queries/database.js";
 import {
   canonicalDatabaseName,
   DATABASE_VERSION,
@@ -157,7 +161,7 @@ export async function openDeployedDatabase(databasePath) {
 
 /** @param {string} documentPath */
 export async function readDashboardDocument(documentPath) {
-  return JSON.parse(await readFile(path.resolve(documentPath), "utf8"));
+  return (await loadDashboardSource(path.resolve(documentPath))).document;
 }
 
 /**
@@ -307,16 +311,19 @@ export async function benchmarkDashboardQueryCost({ databasePath, document, limi
     const databaseStartedAt = performance.now();
     // Mirrors the production worker boundary: the canonical projection resolves
     // every required name and declared queries execute over its result.
-    const databaseSources = await queryDatabaseSources(indexedDB, {}, required);
+    const [databaseSources, nativeSources] = await Promise.all([
+      queryDatabaseSources(indexedDB, {}, required),
+      queryIndexedDatabaseSources(indexedDB, {}, definitions, required),
+    ]);
     const databaseMs = performance.now() - databaseStartedAt;
     const dependencySources = executeDashboardQueries(
       definitions,
-      databaseSources,
+      { ...databaseSources, ...nativeSources },
       required.filter((name) => index.has(name)),
       { timeout: BENCHMARK_TIMEOUT_MS, maxOperations: BENCHMARK_MAX_OPERATIONS },
     );
     /** @type {Record<string, any>} */
-    const sources = { ...databaseSources };
+    const sources = { ...databaseSources, ...nativeSources };
     for (const [name, source] of Object.entries(dependencySources)) {
       // Materialize every dependency before measurement so each candidate
       // reports only its own execution cost.

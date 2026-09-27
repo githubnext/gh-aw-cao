@@ -137,6 +137,9 @@ jobs:
                   ...((result.errors || []).length > 0
                     ? [`${result.errors.length} browser error(s)`]
                     : []),
+                  ...((result.assessmentErrors || []).length > 0
+                    ? [`${result.assessmentErrors.length} assessment error(s)`]
+                    : []),
                   ...((result.failedRequests || []).length > 0
                     ? [`${result.failedRequests.length} failed request(s)`]
                     : []),

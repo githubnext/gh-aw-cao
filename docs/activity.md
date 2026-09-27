@@ -9,6 +9,8 @@ CAO Activity is the shared, bounded `gh aw logs` collector for Central Agentic
 Ops. It prevents consumers from independently acquiring the same compiled
 workflow history. It also materializes the canonical log projection in SQLite
 so local tools and agents can query the snapshot without re-ingesting it.
+Every [deployment option](deployment.md) serves dashboard data derived from
+this collector.
 
 ## How Activity works
 
@@ -35,7 +37,10 @@ learning across runs. Downloaded artifacts are job-local inputs and are not
 cached. The dependent publication job verifies that every snapshot file
 extracted from the artifact exists and is non-empty before saving the cache, so
 a path or packaging regression fails immediately instead of leaving consumers
-with a cache miss.
+with a cache miss. A collection that observes no agentic workflow runs, such as
+a newly bootstrapped control repository, still publishes one header-only run
+shard and one header-only record shard; because no logs were clustered, the
+Drain3 weights are required only when the run shards contain records.
 
 Activity uses the `central-agentic-ops-activity` concurrency group with
 `cancel-in-progress: false`, so a running refresh is never cancelled mid-flight

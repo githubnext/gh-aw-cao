@@ -1,8 +1,5 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
 import { renderDashboard as renderDashboardView, disposeDashboard, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageLazySourceNames, resolveQueryDrillPageTitle } from '../../src/presenter.js';
 import { processDataRequest } from '../../src/data-worker.js';
 import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
@@ -12,11 +9,8 @@ import { composeDashboardDocuments } from '../../../report/compose-dashboard-doc
 import { campaignDashboardSources } from '../campaign-dashboard-documents.js';
 import { applyDashboardQueries } from '../workflow-inventory-query.js';
 import { resolveBuiltInPages } from '../../src/dashboard-chunks.js';
+import { authoritativeDashboard as builtInDashboardDocument } from '../authoritative-dashboard.js';
 
-const fixtureDirectory = dirname(fileURLToPath(import.meta.url));
-const builtInDashboardDocument = JSON.parse(
-  readFileSync(resolve(fixtureDirectory, '../../dashboard.json'), 'utf8')
-);
 const campaignDashboardDocuments = campaignDashboardSources.map((source) => JSON.parse(source));
 const authoritativeDashboardDocument = composeDashboardDocuments(
   builtInDashboardDocument,
@@ -823,6 +817,11 @@ describe('presenter built-in and custom pages', () => {
       document: authoritativeDashboardDocument,
       sources: {
         'firewall-most-blocked-domains': { source: 'firewall-most-blocked-domains', rows, metadata },
+        'firewall-least-used-domains': {
+          source: 'firewall-least-used-domains',
+          rows: [...rows].sort((left, right) => left.run - right.run || left.domain.localeCompare(right.domain)),
+          metadata
+        },
         'firewall-domain-totals': { source: 'firewall-domain-totals', rows, metadata },
         'firewall-policy-rules': { source: 'firewall-policy-rules', rows: [], metadata }
       }
@@ -832,6 +831,9 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] [data-chart-widget="pie"]')).not.toBeNull();
     expect(page?.querySelector('[data-chart-category="blocked.example"]')).not.toBeNull();
     expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] .chart-legend-pie strong')?.textContent).toBe('3,177,281');
+    const leastUsed = page?.querySelector('[data-view-id="security-firewall-least-used-domains"]');
+    expect(leastUsed?.querySelector('tbody tr td')?.textContent).toBe('blocked.example');
+    expect(leastUsed?.textContent).toContain('Least used domains');
     expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
     const text = page?.textContent ?? '';
     expect(text).toContain('api.github.com');
@@ -867,6 +869,19 @@ describe('presenter built-in and custom pages', () => {
             availability: 'empty'
           }
         },
+        'firewall-least-used-domains': {
+          source: 'firewall-least-used-domains',
+          rows: [],
+          metadata: {
+            'source-id': 'firewall-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-05T11:00:00Z',
+            'retrieved-at': '2026-09-05T11:05:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'empty'
+          }
+        },
         'firewall-domain-totals': {
           source: 'firewall-domain-totals',
           rows: [],
@@ -884,10 +899,10 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const page = await activatePage(rendered, 'firewall');
-    const view = page?.querySelector('[data-view-id="security-firewall-domains"]');
-    expect(view?.getAttribute('data-view-layout')).toBe('full-view');
+    const view = page?.querySelector('[data-view-id="security-firewall-least-used-domains"]');
+    expect(view?.getAttribute('data-view-layout')).toBe('full');
     expect(view?.textContent).toContain(
-      'No observed firewall domains are available for this selection.'
+      'No uncommon firewall domains are available for this selection.'
     );
     rendered.remove();
   });
@@ -979,6 +994,59 @@ describe('presenter built-in and custom pages', () => {
     const aicInsights = page?.querySelector('[data-view-id="engines-models-aic-insights"]');
     expect(aicInsights?.hasAttribute('data-view-mode-content')).toBe(false);
     expect(aicInsights?.querySelector('table')).not.toBeNull();
+  });
+
+  it('renders skill analytics with workflow drill-through in chart and card views', async () => {
+    const metadata = {
+      'source-id': 'skills-fixture',
+      'source-kind': 'fixture',
+      'as-of': '2026-09-02T12:00:00Z',
+      'retrieved-at': '2026-09-02T12:01:00Z',
+      completeness: /** @type {'complete'} */ ('complete'),
+      freshness: /** @type {'fresh'} */ ('fresh'),
+      availability: /** @type {'available'} */ ('available')
+    };
+    const workflowLink = {
+      'dashboard-href': '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Freview.md',
+      'dashboard-label': 'View githubnext/gh-aw-cao:.github/workflows/review.md workflow dashboard'
+    };
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {
+        'skill-invocations-by-skill': {
+          source: 'skill-invocations-by-skill',
+          rows: [{ skill: 'reactive-ui', invocations: 3 }],
+          metadata
+        },
+        'skill-invocations-by-workflow': {
+          source: 'skill-invocations-by-workflow',
+          rows: [{
+            'workflow-coordinate': 'githubnext/gh-aw-cao:.github/workflows/review.md',
+            'workflow-link': workflowLink,
+            invocations: 3
+          }],
+          metadata
+        },
+        'skill-workflow-inventory': {
+          source: 'skill-workflow-inventory',
+          rows: [{
+            skill: 'reactive-ui',
+            workflow: '.github/workflows/review.md',
+            'repository-coordinate': 'githubnext/gh-aw-cao',
+            'workflow-link': workflowLink,
+            invocations: 3
+          }],
+          metadata
+        },
+        outcomes: { source: 'outcomes', rows: [], metadata }
+      }
+    });
+
+    const page = await activatePage(rendered, 'skills');
+    expect(page?.querySelectorAll('[data-chart-widget="horizontal-bar"]')).toHaveLength(2);
+    expect(page?.querySelector('[data-view-id="skills-workflow-inventory"] table')).not.toBeNull();
+    expect(page?.querySelector('[data-view-id="skills-workflow-inventory"] [data-mobile-card-list] [data-card-drill]')?.getAttribute('href'))
+      .toBe(workflowLink['dashboard-href']);
   });
 
 
@@ -1581,9 +1649,9 @@ describe('presenter built-in and custom pages', () => {
         },
         outcomes: { source: 'outcomes', rows: [], metadata },
         'safe-output-performance': { source: 'safe-output-performance', rows: [], metadata },
-        'operational-graders': { source: 'operational-graders', rows: [], metadata },
         usage: { source: 'usage', rows: [], metadata },
         runs: { source: 'runs', rows: [], metadata },
+        'overview-runs': { source: 'overview-runs', rows: [], metadata },
         repositories: { source: 'repositories', rows: [], metadata },
         'work-items': { source: 'work-items', rows: [], metadata },
         workflows: {

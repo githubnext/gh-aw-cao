@@ -163,7 +163,7 @@ test('ingest-jsonl --input ingests a single JSONL file', async () => {
   assert.equal(transactions[0].payloadScope, 'gh-aw-jsonl');
 });
 
-test('compact-jsonl consolidates exact-prefix shards without reordering observations', async () => {
+test('compact-jsonl deduplicates exact run records without reordering distinct observations', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'activity-compact-jsonl-'));
   const prefix = 'githubnext-gh-aw-cao-logs-';
   const firstPath = path.join(root, `${prefix}1000-aaaa.jsonl`);
@@ -173,10 +173,11 @@ test('compact-jsonl consolidates exact-prefix shards without reordering observat
   const overlappingPrefixPath = path.join(root, `${overlappingPrefix}1000-dddd.jsonl`);
   const first = '{"schema_version":2,"kind":"run","run":{"run_id":1,"repository":"githubnext/gh-aw-cao","workflow_path":".github/workflows/first.lock.yml"}}';
   const second = '{"schema_version":2,"kind":"run","run":{"run_id":2,"repository":"githubnext/gh-aw-cao","workflow_path":".github/workflows/second.lock.yml"}}';
+  const firstUpdated = '{"schema_version":2,"kind":"run","run":{"run_id":1,"repository":"githubnext/gh-aw-cao","workflow_path":".github/workflows/first.lock.yml","status":"completed"}}';
   const third = '{"schema_version":2,"kind":"run","run":{"run_id":3,"repository":"githubnext/gh-aw-cao-logs-123","workflow_path":".github/workflows/third.lock.yml"}}';
   const unrelated = '{"schema_version":2,"kind":"run","run":{"run_id":4,"repository":"github/gh-aw","workflow_path":".github/workflows/fourth.lock.yml"}}';
   await writeFile(firstPath, `${first}\n${second}\n`);
-  await writeFile(secondPath, `${first}\n${third}\n`);
+  await writeFile(secondPath, `${first}\n${firstUpdated}\n${third}\n`);
   await writeFile(unrelatedPath, `${unrelated}\n`);
   await writeFile(overlappingPrefixPath, `${third}\n`);
 
@@ -193,8 +194,9 @@ test('compact-jsonl consolidates exact-prefix shards without reordering observat
   const result = JSON.parse(stdout);
   const compacted = result.groups.find((group) => group.prefix === prefix);
   assert.equal(compacted.sourceFiles, 2);
-  assert.equal(compacted.sourceRecords, 4);
+  assert.equal(compacted.sourceRecords, 5);
   assert.equal(compacted.retainedRecords, 4);
+  assert.equal(compacted.deduplicatedRunRecords, 1);
   assert.equal(
     result.groups.find((group) => group.prefix === overlappingPrefix).sourceFiles,
     1,
@@ -203,7 +205,7 @@ test('compact-jsonl consolidates exact-prefix shards without reordering observat
   const compactedName = path.basename(compacted.output);
   assert.deepEqual(
     (await readFile(path.join(root, compactedName), 'utf8')).trim().split('\n'),
-    [first, second, first, third],
+    [first, second, firstUpdated, third],
   );
   assert.equal(await readFile(unrelatedPath, 'utf8'), `${unrelated}\n`);
   assert.equal(await readFile(overlappingPrefixPath, 'utf8'), `${third}\n`);
@@ -480,7 +482,7 @@ test('hash-payloads excludes info-level audits from record shards', async () => 
   assert.deepEqual(findings.map((audit) => audit.summary), ['Actionable finding']);
 });
 
-test('hash-payloads drops empty phased shards from files and hashes', async () => {
+test('hash-payloads drops empty source payloads and publishes one header-only shard per empty phase', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'activity-empty-phased-shards-'));
   const shardDirectory = path.join(root, 'gh-aw-logs-shards');
   const runsDirectory = path.join(root, 'gh-aw-logs-runs');
@@ -505,10 +507,14 @@ test('hash-payloads drops empty phased shards from files and hashes', async () =
   ]);
 
   const hashes = JSON.parse(stdout);
-  assert.deepEqual(await readShardNames(runsDirectory), []);
-  assert.deepEqual(await readShardNames(recordsDirectory), []);
-  assert.equal(Object.keys(hashes).filter((name) => name.startsWith('gh-aw-logs-runs/')).length, 0);
-  assert.equal(Object.keys(hashes).filter((name) => name.startsWith('gh-aw-logs-records/')).length, 0);
+  for (const [phase, directory] of [['runs', runsDirectory], ['records', recordsDirectory]]) {
+    const names = await readShardNames(directory);
+    assert.equal(names.length, 1);
+    const lines = (await readFile(path.join(directory, names[0]), 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+    assert.deepEqual(lines.map(({ kind, phase: linePhase, records }) => [kind, linePhase, records]), [['metadata', phase, 0]]);
+    assert.deepEqual(Object.keys(hashes).filter((name) => name.startsWith(`gh-aw-logs-${phase}/`)), [`gh-aw-logs-${phase}/${names[0]}`]);
+    assert.deepEqual(await readdir(path.join(directory, '.payloads')), []);
+  }
   assert.equal(Object.hasOwn(hashes, 'gh-aw-logs-shards/empty.jsonl'), false);
   await assert.rejects(readFile(emptySourcePath), { code: 'ENOENT' });
 });
