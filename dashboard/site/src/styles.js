@@ -2053,7 +2053,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .cao-memory-tree, .campaign-memory-files { padding: 8px; }
   .cao-memory-tree h2 { margin: 8px 8px 12px; }
   .cao-memory-campaign-branch > summary, .campaign-memory-directory > summary, .campaign-memory-file { min-height: 44px; }
-  .memory-file-header { min-height: 52px; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; position: sticky; z-index: 1; top: 0; margin: 0; padding: 6px 12px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--canvas) 92%, transparent); backdrop-filter: blur(12px); }
+  .memory-file-header { min-height: 52px; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; position: sticky; z-index: 1; top: 0; margin: 0; padding: 6px 12px; border-bottom: 1px solid var(--border); background: var(--canvas); }
   .memory-file-header h2 { overflow: hidden; font-size: .875rem; text-overflow: ellipsis; white-space: nowrap; }
   .memory-mobile-back { min-width: 44px; min-height: 40px; display: inline-flex; align-items: center; gap: 4px; margin-left: -8px; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; }
   .memory-mobile-back:hover { background: var(--neutral-muted); }
