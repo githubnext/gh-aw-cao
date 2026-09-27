@@ -69,6 +69,7 @@ describe('campaign repository memory', () => {
 
     await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Ambient'));
     expect(rendered.querySelector('.cao-memory-layout')?.getAttribute('data-memory-view')).toBe('browser');
+    expect(document.activeElement).not.toBe(rendered.querySelector('.cao-memory-file-content'));
     expect([...rendered.querySelectorAll('.cao-memory-campaign')].map((node) => node.textContent))
       .toEqual(['Ambient Context', 'Security Review']);
     expect(rendered.querySelector('.cao-memory-tree')).not.toBeNull();
@@ -117,6 +118,55 @@ describe('campaign repository memory', () => {
       ['ambient-context', 'notes/ambient.md'],
       ['security-review', 'security.md'],
     ]);
+  });
+
+  it('preserves Back focus when an all-campaign file finishes loading', async () => {
+    memoryApi.list.mockResolvedValue({
+      branch: 'memory/ambient-context',
+      commit: 'a'.repeat(40),
+      files: [{ path: 'notes/ambient.md', oid: 'b'.repeat(40), size: 9 }],
+      omitted: {},
+    });
+    /** @type {(value: { content: string }) => void} */
+    let finishRead = () => {};
+    memoryApi.read
+      .mockReturnValueOnce(new Promise(() => {}))
+      .mockReturnValueOnce(new Promise((resolve) => {
+        finishRead = resolve;
+      }));
+    const rendered = renderAllCampaignMemory({
+      pageId: 'memory',
+      title: 'Campaign memory',
+      sourceNames: ['campaign-memory-campaigns'],
+      sources: {
+        'campaign-memory-campaigns': {
+          source: 'campaign-memory-campaigns',
+          rows: [{ campaign: 'ambient-context', 'campaign-name': 'Ambient Context' }],
+          metadata: {
+            'source-id': 'campaign-memory-test',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-26T00:00:00Z',
+            'retrieved-at': '2026-09-26T00:00:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available',
+          },
+        },
+      },
+      contextDetails: [],
+      headingTag: 'h3',
+    });
+    document.body.append(rendered);
+    await vi.waitFor(() => expect(memoryApi.read).toHaveBeenCalledTimes(1));
+
+    /** @type {HTMLButtonElement} */ (rendered.querySelector('.campaign-memory-file')).click();
+    await vi.waitFor(() => expect(memoryApi.read).toHaveBeenCalledTimes(2));
+    const back = /** @type {HTMLButtonElement} */ (rendered.querySelector('.memory-mobile-back'));
+    back.focus();
+    finishRead({ content: '# Ambient' });
+
+    await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Ambient'));
+    expect(document.activeElement).toBe(back);
   });
 
   it('renders an honest empty state when no campaigns are registered', () => {

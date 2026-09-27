@@ -106,7 +106,6 @@ export function renderCampaignMemory({ campaignId, campaignName }) {
       if (!controller.signal.aborted) {
         debugCampaignMemory({ operation: 'read-file', status: 'ready', contentLength: content.length });
         fileState.set({ status: 'ready', content, error: '' });
-        if (mobileView.get() === 'file') focusFilePane();
       }
     }).catch((error) => {
       if (error?.name !== 'AbortError') {
@@ -116,7 +115,6 @@ export function renderCampaignMemory({ campaignId, campaignName }) {
           content: '',
           error: error instanceof Error ? error.message : String(error),
         });
-        if (mobileView.get() === 'file') focusFilePane();
       }
     });
   }, { signal: scope.signal });
@@ -203,6 +201,7 @@ function renderCampaignTree(campaigns, signal) {
       files
     ));
     let loaded = false;
+    let preloading = false;
 
     const load = () => {
       if (loaded || !details.open) return;
@@ -225,8 +224,10 @@ function renderCampaignTree(campaigns, signal) {
         /** @param {MemoryFile} entry @param {HTMLButtonElement} button */
         const select = (entry, button) => {
           selectedButton = button;
-          layout.dataset.memoryView = 'file';
-          content.focus();
+          if (!preloading) {
+            layout.dataset.memoryView = 'file';
+            content.focus();
+          }
           fileController?.abort();
           fileController = new AbortController();
           const abort = () => fileController?.abort();
@@ -235,27 +236,26 @@ function renderCampaignTree(campaigns, signal) {
             '.campaign-memory-file[aria-current="true"]'
           ) ?? []) selected.removeAttribute('aria-current');
           button.setAttribute('aria-current', 'true');
+          const fileBody = h(
+            'div',
+            { className: 'memory-file-body' },
+            renderEmptyMessage('Loading file...', { role: 'status', 'aria-busy': 'true' })
+          );
           content.replaceChildren(
             renderMemoryFileHeader(entry.path, showFiles),
-            renderEmptyMessage('Loading file...', { role: 'status', 'aria-busy': 'true' })
+            fileBody
           );
           const activeController = fileController;
           readRepositoryMemoryFile(campaign.campaign, entry.path, activeController.signal).then((result) => {
             if (!activeController.signal.aborted) {
-              content.replaceChildren(
-                renderMemoryFileHeader(entry.path, showFiles),
-                h('pre', null, h('code', null, result.content))
-              );
+              fileBody.replaceChildren(h('pre', null, h('code', null, result.content)));
             }
           }).catch((error) => {
             if (error?.name !== 'AbortError') {
-              content.replaceChildren(
-                renderMemoryFileHeader(entry.path, showFiles),
-                renderEmptyMessage(
-                  `Unable to load this memory file. ${error instanceof Error ? error.message : String(error)}`,
-                  { role: 'alert' }
-                )
-              );
+              fileBody.replaceChildren(renderEmptyMessage(
+                `Unable to load this memory file. ${error instanceof Error ? error.message : String(error)}`,
+                { role: 'alert' }
+              ));
             }
           }).finally(() => signal.removeEventListener('abort', abort));
         };
@@ -269,8 +269,9 @@ function renderCampaignTree(campaigns, signal) {
           tree
         );
         if (index === 0) {
+          preloading = true;
           /** @type {HTMLButtonElement | null} */ (tree.querySelector('.campaign-memory-file'))?.click();
-          layout.dataset.memoryView = 'browser';
+          preloading = false;
         }
       }).catch((error) => {
         if (error?.name !== 'AbortError') {
