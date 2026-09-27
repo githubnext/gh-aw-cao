@@ -309,8 +309,8 @@ The implementation profile defined by this specification is:
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
 | Canonical model | 19 | Campaign, Repository, Workflow, Run, Domain, Tool, Audit, Issue, Operational Value, and Marketplace Package records |
-| Browser IndexedDB | 26 | Ten canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
-| Local SQLite projection | IndexedDB 26 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records`, containing the same logical stores and JSON records as IndexedDB |
+| Browser IndexedDB | 27 | Ten canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
+| Local SQLite projection | IndexedDB 27 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records`, containing the same logical stores and JSON records as IndexedDB |
 | Local Redis server projection | Canonical model 14 | Immutable active generation of logical-source row sets, queried only through the loopback Go HTTP(S) server |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
