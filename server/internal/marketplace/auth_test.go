@@ -170,3 +170,75 @@ func TestAppJWTRejectsAnUnparsableKey(t *testing.T) {
 		t.Fatal("expected an invalid private key to be rejected")
 	}
 }
+
+func TestExchangeGitHubAppTokenExchangesSecretReferencesForAnInstallationToken(t *testing.T) {
+	key := generateTestRSAKey(t)
+	server := newFakeGitHubServer(t, fakeGitHubConfig{installationToken: "installation-token"})
+	registry := Registry{
+		APIURL: server.baseURL(),
+		Auth: Auth{
+			Type:                 AuthGitHubApp,
+			AppIDSecret:          "APP_ID",
+			PrivateKeySecret:     "APP_KEY",
+			InstallationIDSecret: "INSTALLATION_ID",
+		},
+	}
+	opts := Options{
+		HTTPClient: insecureTestClient(),
+		Env: fakeEnv{
+			"APP_ID":          "42",
+			"APP_KEY":         string(pkcs8PEM(t, key)),
+			"INSTALLATION_ID": "123",
+		}.lookup,
+	}
+	token, err := exchangeGitHubAppToken(t.Context(), registry, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if token != "installation-token" {
+		t.Fatalf("unexpected token: %q", token)
+	}
+}
+
+func TestExchangeGitHubAppTokenRejectsAnUnresolvableSecret(t *testing.T) {
+	registry := Registry{
+		Auth: Auth{
+			Type:                 AuthGitHubApp,
+			AppIDSecret:          "MISSING_APP_ID",
+			PrivateKeySecret:     "APP_KEY",
+			InstallationIDSecret: "INSTALLATION_ID",
+		},
+	}
+	if _, err := exchangeGitHubAppToken(t.Context(), registry, Options{}); err == nil {
+		t.Fatal("expected a missing App id secret to be rejected before any network call")
+	}
+}
+
+func TestExchangeGitHubAppTokenRejectsAnInvalidTokenResponse(t *testing.T) {
+	key := generateTestRSAKey(t)
+	server := newFakeGitHubServer(t, fakeGitHubConfig{}) // no installationToken configured -> 404
+	registry := Registry{
+		APIURL: server.baseURL(),
+		Auth: Auth{
+			Type: AuthGitHubApp, AppIDSecret: "APP_ID", PrivateKeySecret: "APP_KEY", InstallationIDSecret: "INSTALLATION_ID",
+		},
+	}
+	opts := Options{
+		HTTPClient: insecureTestClient(),
+		Env: fakeEnv{
+			"APP_ID": "42", "APP_KEY": string(pkcs8PEM(t, key)), "INSTALLATION_ID": "123",
+		}.lookup,
+	}
+	if _, err := exchangeGitHubAppToken(t.Context(), registry, opts); err == nil {
+		t.Fatal("expected a non-2xx installation token exchange to fail")
+	}
+}
+
+func TestAuthTypeLabelDefaultsEmptyTypeToNone(t *testing.T) {
+	if label := authTypeLabel(""); label != AuthNone {
+		t.Fatalf("expected empty auth type to label as %q, got %q", AuthNone, label)
+	}
+	if label := authTypeLabel(AuthPAT); label != AuthPAT {
+		t.Fatalf("expected a configured auth type to pass through unchanged, got %q", label)
+	}
+}
