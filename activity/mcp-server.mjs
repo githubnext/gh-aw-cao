@@ -250,6 +250,9 @@ export async function handleMcpRequest({ headers, body, indexedDB, dashboardPath
   if (!isPlainObject(args)) {
     return { status: 400, body: errorResponse(id, -32602, 'Tool arguments must be an object') };
   }
+  if (signal?.aborted) {
+    return { status: 499, body: errorResponse(id, -32800, 'Request cancelled') };
+  }
   try {
     const payload = name === 'cao_catalog'
       ? await callCatalog(args, { dashboardPath })
@@ -260,6 +263,10 @@ export async function handleMcpRequest({ headers, body, indexedDB, dashboardPath
     if (error instanceof NamedQueryError) {
       debug('%s %s rejected %dms', method, name, Date.now() - startedAt);
       return { status: 200, body: successResponse(id, toolResult({ error: error.message }, true)) };
+    }
+    if (error instanceof Error && error.name === 'AbortError') {
+      debug('%s %s cancelled %dms', method, name, Date.now() - startedAt);
+      return { status: 499, body: errorResponse(id, -32800, 'Request cancelled') };
     }
     debug('%s %s failed %dms', method, name, Date.now() - startedAt);
     return { status: 500, body: errorResponse(id, -32603, 'Internal error executing the request') };
