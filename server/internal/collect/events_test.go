@@ -77,6 +77,107 @@ func TestParseEventClassifiesDeliveries(t *testing.T) {
 	}
 }
 
+func TestParseWorkflowRunEventClassifiesActions(t *testing.T) {
+	cases := []struct {
+		name     string
+		envelope webhookEnvelope
+		wantKind IntentKind
+		wantErr  bool
+	}{
+		{
+			name: "completed run with a repository collects",
+			envelope: webhookEnvelope{
+				Action: "completed",
+				Installation: struct {
+					ID int64 `json:"id"`
+				}{ID: 42},
+				Repository: struct {
+					FullName string `json:"full_name"`
+				}{FullName: "octo/api"},
+			},
+			wantKind: IntentCollect,
+		},
+		{
+			name:     "in-progress run is ignored",
+			envelope: webhookEnvelope{Action: "in_progress"},
+			wantKind: IntentIgnore,
+		},
+		{
+			name:     "completed run without a repository fails closed",
+			envelope: webhookEnvelope{Action: "completed"},
+			wantErr:  true,
+		},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			intent, err := parseWorkflowRunEvent(testCase.envelope)
+			if testCase.wantErr {
+				if err == nil {
+					t.Fatal("expected an error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if intent.Kind != testCase.wantKind {
+				t.Fatalf("kind = %q, want %q", intent.Kind, testCase.wantKind)
+			}
+		})
+	}
+}
+
+func TestParseInstallationEventClassifiesActions(t *testing.T) {
+	cases := []struct {
+		action   string
+		wantKind IntentKind
+	}{
+		{"created", IntentEnroll},
+		{"new_permissions_accepted", IntentEnroll},
+		{"unsuspend", IntentEnroll},
+		{"deleted", IntentRemoveInstallation},
+		{"suspend", IntentRemoveInstallation},
+		{"renamed", IntentIgnore},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.action, func(t *testing.T) {
+			envelope := webhookEnvelope{
+				Action: testCase.action,
+				Installation: struct {
+					ID int64 `json:"id"`
+				}{ID: 7},
+			}
+			intent := parseInstallationEvent(envelope)
+			if intent.Kind != testCase.wantKind {
+				t.Fatalf("kind = %q, want %q", intent.Kind, testCase.wantKind)
+			}
+			if testCase.wantKind != IntentIgnore && intent.InstallationID != 7 {
+				t.Fatalf("installation = %d, want 7", intent.InstallationID)
+			}
+		})
+	}
+}
+
+func TestParseInstallationRepositoriesEventClassifiesActions(t *testing.T) {
+	cases := []struct {
+		action   string
+		wantKind IntentKind
+	}{
+		{"added", IntentEnroll},
+		{"removed", IntentUnenroll},
+		{"other", IntentIgnore},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.action, func(t *testing.T) {
+			envelope := webhookEnvelope{Action: testCase.action}
+			intent := parseInstallationRepositoriesEvent(envelope)
+			if intent.Kind != testCase.wantKind {
+				t.Fatalf("kind = %q, want %q", intent.Kind, testCase.wantKind)
+			}
+		})
+	}
+}
+
 func TestParseEventFailsClosedOnUnusablePayload(t *testing.T) {
 	if _, err := ParseEvent("workflow_run", []byte("not json")); err == nil {
 		t.Fatal("expected a parse failure")
