@@ -7,7 +7,7 @@ prev: false
 next: false
 hero:
   title: Many agentic campaigns.<br />One central control plane.
-  tagline: CAO coordinates GitHub Agentic Workflow campaigns, each across its explicitly enrolled repository fleet—shared policy, staged rollout, bounded execution, cross-campaign evidence, and human decisions about what scales next.
+  tagline: CAO coordinates Agentic Campaigns, each across its explicitly enrolled repository fleet—shared policy, staged rollout, bounded execution, cross-campaign evidence, and human decisions about what scales next.
   actions:
     - text: Explore CAO
       link: /gh-aw-cao/architecture-at-a-glance/
