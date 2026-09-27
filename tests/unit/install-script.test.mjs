@@ -32,39 +32,6 @@ const addedFiles = [
     .map((file) => ({ source: file, destination: file })),
 ];
 
-<<<<<<< HEAD
-function runInstallerInTerminal(answer, options) {
-  const command = `cat "${installScript}" | bash`;
-  if (process.platform === "darwin") {
-    const expectProgram = `
-      set timeout 10
-      spawn bash -c {${command}}
-      expect {
-        -re {Upgrade it now.*\\[y/N\\]} {
-          send -- "${answer}\\r"
-          exp_continue
-        }
-        eof
-      }
-    `;
-    return executeFile("expect", ["-c", expectProgram], options);
-  }
-
-  return executeFile(
-    "bash",
-    ["-c", `printf '${answer}\\n' | script -q -e -c '${command}' /dev/null`],
-    options,
-  );
-}
-
-test("install.sh installs gh-aw, adds the core campaign, and is idempotent", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "cao-install-"));
-  const bin = path.join(root, "bin");
-  const log = path.join(root, "commands.log");
-  const ghAwInstalled = path.join(root, "gh-aw-installed");
-  await mkdir(bin);
-  await writeFile(path.join(bin, "gh"), `#!/usr/bin/env bash
-=======
 const fixtureRoot = await mkdtemp(path.join(os.tmpdir(), "cao-install-fixture-"));
 const archive = path.join(fixtureRoot, "gh-aw-cao.tar.gz");
 const mockFetch = path.join(fixtureRoot, "mock-fetch.mjs");
@@ -95,7 +62,6 @@ test.after(() => rm(fixtureRoot, { recursive: true, force: true }));
 // FAKE_CONTROL_REPOSITORY is gh's answer for the consumer checkout; when it is
 // unset the lookup fails as it does outside a GitHub repository checkout.
 const fakeGh = `#!/usr/bin/env bash
->>>>>>> origin/main
 set -euo pipefail
 if [[ "$*" == "repo view --json nameWithOwner --jq .nameWithOwner" ]]; then
   if [[ -z "\${FAKE_CONTROL_REPOSITORY+set}" ]]; then
@@ -556,20 +522,6 @@ for (const [failure, environment, expectedLog] of [
   });
 }
 
-<<<<<<< HEAD
-    // script supplies a controlling terminal even when the installer is piped into bash.
-    const no = await runInstallerInTerminal("n", { cwd: root, env, timeout: 10_000 });
-    assert.match(no.stdout, /install-gh-aw\.sh.*v0\.89\.22.*rerun the CAO installer/);
-    assert.equal(await readFile(log, "utf8"), "add\n");
-
-    const { stdout } = await runInstallerInTerminal("y", { cwd: root, env, timeout: 10_000 });
-    assert.match(stdout, /Upgrade it now with curl .*install-gh-aw\.sh.*v0\.89\.22/);
-    assert.equal(await readFile(log, "utf8"), "add\ncurl\nadd\n");
-    assert.equal(await readFile(installed, "utf8"), "v0.89.22\n");
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
-=======
 for (const [description, repository] of [
   ["fails", undefined],
   ["returns no repository", ""],
@@ -639,5 +591,4 @@ test("installed Activity still requires the App for an owner-wide policy", async
   await assert.rejects(runInventoryStep(consumer, activityEnv, spawned), /Owner-wide repository discovery requires the read-only GitHub App/);
   assert.deepEqual(spawned, []);
   assert.deepEqual(await githubRequests(activityEnv), []);
->>>>>>> origin/main
 });

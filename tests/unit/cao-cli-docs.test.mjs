@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const docs = readFileSync("docs/cao-cli.md", "utf8");
-const help = readFileSync("activity/cao.mjs", "utf8");
+const help = `${readFileSync("activity/cao.mjs", "utf8")}\n${readFileSync("activity/cli-usage.mjs", "utf8")}`;
 const quickstart = readFileSync("docs/getting-started.md", "utf8");
 
 test("CAO command guide covers the operator-facing command surface", () => {
@@ -29,7 +29,7 @@ test("CAO command guide covers the operator-facing command surface", () => {
     "operational-value",
     "cluster-problems",
   ]) {
-    assert.match(docs, new RegExp(command.replaceAll("-", "\\-")));
+    assert.match(docs, new RegExp(`cao(?:\\.sh)? ${command.replaceAll("-", "\\-")}`));
     assert.match(help, new RegExp(`cao ${command.split(" ")[0]}`));
   }
 });

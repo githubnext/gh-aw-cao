@@ -30,12 +30,7 @@ Apps use short-lived, installation-scoped tokens and do not depend on one person
 
 Run these commands from the control repository.
 
-<<<<<<< HEAD
-### Public review
-=======
-Running a Copilot-backed workflow requires an active organization Copilot entitlement, but verifying it up front is completely optional: most user tokens cannot read organization billing, so an inaccessible or inconclusive billing API is not a blocker and no administrator confirmation is required. A granted `copilot-requests: write` permission alone does not ensure model access; when the entitlement is missing, the run fails with HTTP 403 before the agent starts. Customers may author workflows with another gh-aw-supported engine/provider and configure that provider's credentials in Actions secrets; this requires an explicit workflow change and compilation, not a silent runtime fallback for the bundled workflows. CAO does not support `COPILOT_GITHUB_TOKEN` inference fallback, runtime token precedence, or mixed authentication profiles. A GitHub App, `GH_AW_GITHUB_READ_PAT`, `GH_AW_GITHUB_WRITE_PAT`, OAuth token, or target-access PAT serves a different authorization boundary and cannot authenticate model inference.
-
-## Policy
+### Policy
 
 Target-repository authentication is defined once in `.github/workflows/shared/control.md` and inherited by Orchestrator and worker workflows. The read-only App authenticates GitHub tools, admission, and control precompute. A separate write-capable App serves safe outputs. Safe-output tokens are narrowed to the selected handler's permissions. Copilot inference permission remains explicit in every Copilot-backed workflow. Workflow-local GitHub App blocks should not be added unless a future Agentic Workflow has a documented isolation requirement that shared control cannot satisfy.
 
@@ -52,8 +47,9 @@ The supported control-plane credentials are:
 
 This is runtime availability precedence, not permission to choose a PAT silently. `ignore-if-missing: true` makes each App optional. Read operations fall through to `GH_AW_GITHUB_READ_PAT`, the legacy `GH_AW_GITHUB_TOKEN`, then `GITHUB_TOKEN`; safe outputs fall through to `GH_AW_GITHUB_WRITE_PAT`, the legacy token, then `GITHUB_TOKEN`. The runtime cannot determine why a PAT secret exists or record informed consent. Setup must choose and validate the authentication profile before a run; if App authentication is intended, verify both App ID variables and private key secrets rather than relying on fallback behavior.
 
-The committed root `aw.yml` intentionally has no `config` block so normal installation remains compatible with non-interactive `gh aw add`. See [Control Plane Authentication Profiles](control-plane-authentication.md) for private organization Apps, private enterprise Apps, the fine-grained token fallback, and automatic setup. To configure Apps manually, create and install the two Apps, then configure both credential pairs:
->>>>>>> origin/main
+The committed root `aw.yml` intentionally has no `config` block so normal installation remains compatible with non-interactive `gh aw add`. See [Control Plane Authentication Profiles](control-plane-authentication.md) for private organization Apps, private enterprise Apps, and the fine-grained token fallback; follow Automated App setup below to configure both credential pairs.
+
+### Public review
 
 ```bash
 ./cao.sh setup-auth workflow-token
@@ -125,7 +121,6 @@ node .github/workflows/shared/setup-github-apps.mjs --repo acme/central-agentic-
 
 ### Multiple organizations in one enterprise
 
-<<<<<<< HEAD
 [GitHub App manifests cannot create enterprise-owned Apps](https://docs.github.com/en/enterprise-cloud@latest/apps/sharing-github-apps/registering-a-github-app-from-a-manifest). Create read and write Apps in enterprise settings, install both on selected repositories in every enrolled organization, then run:
 
 ```bash
@@ -142,7 +137,7 @@ node .github/workflows/shared/setup-github-apps.mjs --repo acme/central-agentic-
 ```
 
 The command prompts for each private key. Never put a private key in a command argument. Enterprise ownership alone does not grant repository access; each organization installation is still required.
-=======
+
 The CLI reads `control-plane.scope.allowed-repositories` from `.github/workflows/cao.json`, groups the control repository and exact allowed repositories by owner, and verifies a selected-repository installation for each account. The manifest helper creates private organization-owned Apps only, so every selected repository must belong to the control repository organization. For multiple organizations in one enterprise, manually create enterprise-owned private Apps because GitHub App manifests do not support enterprise-owned App creation. Install them separately on each enrolled organization, then run `./cao.sh setup-auth enterprise-app` to store their client IDs and interactively enter their private keys. Installation IDs and tokens are not stored in policy or dispatch inputs. gh-aw selects the correct installation from the target owner and repository at runtime.
 
 On a GitHub Enterprise Cloud data-residency hostname, export `GH_HOST` before
@@ -259,7 +254,6 @@ Do not copy one broad legacy token into both new secrets. Create independent tok
 5. Delete `GH_AW_GITHUB_TOKEN`, then repeat the bounded review to prove neither path depended on the compatibility fallback.
 
 Use a disposable tag, branch, or equivalent repository-standard probe and always clean it up. Do not perform a write probe against an unapproved production repository.
->>>>>>> origin/main
 
 ### Fine-grained PAT fallback
 
@@ -271,7 +265,6 @@ A PAT is not a substitute for repository or organization access. Use one only wh
 - every campaign API supports it, including the Checks API when the campaign requires checks;
 - repository selection, permissions, expiration, and rotation owner are explicit.
 
-<<<<<<< HEAD
 Explain that the PAT is user-bound, longer-lived than an App token, API-limited, and manually rotated. Obtain explicit confirmation to proceed. Inability to install an App, or the presence of an existing PAT secret, is not consent.
 
 ```bash
@@ -279,14 +272,13 @@ Explain that the PAT is user-bound, longer-lived than an App token, API-limited,
   --repo acme/central-agentic-ops \
   --acknowledge-token-risks
 ```
-=======
+
 For PATs:
 
 1. Create replacement read and write fine-grained PATs with the same or narrower repository access.
 2. Replace `GH_AW_GITHUB_READ_PAT` and `GH_AW_GITHUB_WRITE_PAT`.
 3. Validate read access and safe-output writes independently.
 4. Revoke the previous PATs.
->>>>>>> origin/main
 
 Enter the token only at the `gh secret set` prompt. Never use a classic PAT.
 
@@ -315,9 +307,7 @@ Repeat this check whenever scope, campaign APIs, output mode, or review destinat
 
 CAO installation does not require Copilot organization billing. Bundled workflows do: they use `copilot-requests: write` and the built-in workflow token for inference.
 
-For this reason, verifying it up front is completely optional: most user tokens cannot read organization billing. Without an entitlement, a bundled workflow fails with HTTP 403 before the agent starts.
-
-Customers may author workflows with another gh-aw-supported engine/provider and configure its Actions secrets. That requires an explicit workflow change and compilation. CAO does not support `COPILOT_GITHUB_TOKEN` inference fallback, and target-access credentials cannot authenticate model inference.
+For this reason, verifying it up front is completely optional: most user tokens cannot read organization billing, and a granted `copilot-requests: write` permission alone does not ensure model access. Without an entitlement, a bundled workflow fails with HTTP 403 before the agent starts. Customers may author workflows with another gh-aw-supported engine/provider and configure its Actions secrets; that requires an explicit workflow change and compilation. CAO does not support `COPILOT_GITHUB_TOKEN` inference fallback, runtime token precedence, or mixed authentication profiles, and target-access credentials cannot authenticate model inference.
 
 ## Credential Reference
 
@@ -347,8 +337,6 @@ For Apps, add replacement keys, validate review runs, revoke old keys, and reche
 :::danger[Suspected exposure]
 Cancel active runs and revoke the credential first. Disabling a campaign does not revoke its App installation or PAT. Inspect logs and outputs, rotate credentials, and resume only in `review` mode.
 :::
-<<<<<<< HEAD
-=======
 
 ## Validation
 
@@ -366,4 +354,3 @@ Before promotion, verify:
 - absence of `GH_AW_GITHUB_TOKEN` after a split-PAT migration has passed without the compatibility fallback;
 - a review output in the intended control repository without credential material;
 - authentication-profile review whenever target scope, campaign API requirements, mode, or review destination changes.
->>>>>>> origin/main
