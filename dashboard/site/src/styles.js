@@ -2067,9 +2067,15 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .source-refresh-error { align-items: flex-start; flex-direction: column; }
   .timeline-chart-axis span:not(:first-child):not(:last-child):nth-child(even) { display: none; }
   .horizontal-bar-chart-row { grid-template-columns: minmax(0, 1fr) minmax(56px, 32%) auto; gap: 6px; }
-  /* Flip only the clipping container so mobile ellipses drop the prefix; the inner bdi preserves LTR path order. */
-  .horizontal-bar-chart-label { direction: rtl; text-align: left; }
-  .horizontal-bar-chart-label-text { display: inline; overflow: visible; direction: ltr; unicode-bidi: isolate; }
+  .horizontal-bar-chart-label { direction: ltr; text-align: left; }
+  .horizontal-bar-chart-label-text {
+    display: -webkit-box;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
   :is(.mode-badge, .mode-indicator) .octicon { display: none; }
   .dashboard-root { --dashboard-page-padding-inline: 14px; --dashboard-mobile-page-padding-top: 16px; --dashboard-mobile-page-padding-bottom: 28px; height: auto; min-height: 100vh; overflow: visible; }
   .app-shell { height: auto; min-height: 100vh; display: block; overflow: visible; }

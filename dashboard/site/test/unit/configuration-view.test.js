@@ -224,6 +224,8 @@ describe('Configuration dashboard view', () => {
     const manageNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => candidate.label === 'Updates');
 
     expect(page.title).toBe('Updates');
+    expect(page.description).toContain('Active describes registration only');
+    expect(page.description).toContain('run CAO Activity to refresh inventory');
     expect(page['filter-bar']).toBeUndefined();
     expect(page.views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source))
       .toEqual(['campaigns', 'maintenance-repositories']);
@@ -253,6 +255,11 @@ describe('Configuration dashboard view', () => {
     expect(page.views.some((/** @type {{ disclosure?: string }} */ view) => view.disclosure !== undefined)).toBe(false);
     const templates = new Map(dashboard['card-templates'].map((/** @type {{ id: string }} */ template) => [template.id, template]));
     expect(templates.get('maintenance-campaign')['detail-labels']).toBe('visible');
+    expect(templates.get('maintenance-campaign').details).toContainEqual({
+      field: 'campaign-update-state',
+      title: 'Update confidence',
+      display: 'status'
+    });
     expect(templates.get('maintenance-repository')['detail-labels']).toBe('visible');
     expect(templates.get('maintenance-campaign').actions).toEqual([{
       action: 'update-campaign',

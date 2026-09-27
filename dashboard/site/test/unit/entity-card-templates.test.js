@@ -124,6 +124,7 @@ describe('entity card templates', () => {
       chart: 'horizontal-bar',
       encoding: {
         x: { field: 'campaign-name', type: 'nominal' },
+        color: { field: 'campaign-name', type: 'nominal' },
         y: { field: 'covered-repositories', type: 'quantitative' }
       }
     });

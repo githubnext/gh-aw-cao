@@ -1914,6 +1914,23 @@ describe('presenter built-in and custom pages', () => {
     expect(contexts.at(-1)).toMatchObject({ pageId: 'runs', queryContext: { viewMode: 'card' } });
   });
 
+  it('exposes the same ordered view modes on production chart and table pages', async () => {
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {}
+    });
+
+    for (const pageId of ['repositories', 'mcps', 'firewall', 'runs']) {
+      const page = await activatePage(rendered, pageId);
+      const buttons = [...page?.querySelectorAll(':scope > .page-chrome [data-view-mode-value]') ?? []];
+      expect(buttons.map((button) => button.textContent), pageId).toEqual(['Chart', 'Cards', 'Table']);
+      expect(buttons.map((button) => button.getAttribute('aria-pressed')), pageId).toEqual(['true', 'false', 'false']);
+    }
+
+    const firewall = rendered.querySelector('[data-page-id="firewall"]');
+    expect(firewall?.querySelector('[data-view-id="security-firewall-domains"]')?.closest('details')).not.toBeNull();
+  });
+
   it('keeps the default presentation without view-mode controls when disabled', async () => {
     const rendered = renderDashboard({
       document: {
@@ -2015,6 +2032,53 @@ describe('presenter built-in and custom pages', () => {
     const page = await activatePage(rendered, 'maintenance');
     expect(page?.querySelector(':scope > .page-chrome')).toBeNull();
     expect(page?.getAttribute('data-view-mode')).toBe('card');
+  });
+
+  it('omits page chrome when a page has only one chart view mode', async () => {
+    const rendered = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'chart-only-dashboard',
+          title: 'Chart only',
+          pages: [{
+            id: 'summary',
+            kind: /** @type {'custom'} */ ('custom'),
+            title: 'Summary',
+            views: [{
+              id: 'summary-chart',
+              title: 'Summary chart',
+              data: { source: 'summary' },
+              mark: 'chart',
+              chart: 'pie',
+              encoding: {
+                x: { field: 'label', type: 'nominal' },
+                y: { field: 'count', type: 'quantitative' }
+              }
+            }]
+          }]
+        }
+      },
+      sources: {
+        summary: {
+          source: 'summary',
+          rows: [{ label: 'Available', count: 1 }],
+          metadata: {
+            'source-id': 'summary-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-16T10:00:00Z',
+            'retrieved-at': '2026-09-16T10:00:00Z',
+            availability: 'available',
+            completeness: 'complete',
+            freshness: 'fresh'
+          }
+        }
+      }
+    });
+
+    const page = await activatePage(rendered, 'summary');
+    expect(page?.querySelector(':scope > .page-chrome')).toBeNull();
+    expect(page?.getAttribute('data-view-mode')).toBe('chart');
   });
 
   it('includes the template default view mode in the initial page source request', async () => {

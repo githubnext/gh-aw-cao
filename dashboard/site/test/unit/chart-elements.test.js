@@ -17,46 +17,42 @@ describe('chart element helpers', () => {
       ['value', [points[3]]]
     ]);
     expect(listChartSeries(points)).toEqual([
-      { name: 'fail', className: 'chart-series-1 chart-series-semantic-failure' },
-      { name: 'pass', className: 'chart-series-2 chart-series-semantic-success' },
-      { name: 'value', className: 'chart-series-3' }
+      { name: 'fail', className: 'chart-series-10 chart-series-semantic-failure' },
+      { name: 'pass', className: 'chart-series-1 chart-series-semantic-success' },
+      { name: 'value', className: 'chart-series-1' }
     ]);
 
-    const expandedSeries = Array.from({ length: 13 }, (_, index) => ({
-      x: String(index),
-      y: index,
-      color: `series-${String(index).padStart(2, '0')}`
-    }));
-    expect(listChartSeries(expandedSeries).map(({ className }) => className)).toEqual([
-      'chart-series-1',
-      'chart-series-2',
-      'chart-series-3',
-      'chart-series-4',
-      'chart-series-5',
-      'chart-series-6',
-      'chart-series-7',
-      'chart-series-8',
-      'chart-series-9',
-      'chart-series-10',
-      'chart-series-11',
-      'chart-series-12',
-      'chart-series-1'
-    ]);
+    const reordered = listChartSeries([points[1], points[0]]);
+    const filtered = listChartSeries([points[1]]);
+    expect(reordered.find(({ name }) => name === 'pass')?.className)
+      .toBe(filtered[0].className);
+    expect(reordered.find(({ name }) => name === 'fail')?.className)
+      .toBe(listChartSeries([points[0]])[0].className);
   });
 
   it('assigns color-blind-safe semantic colors before falling back to the palette', () => {
-    expect(chartSeriesClassName('startup-failure', 0)).toBe('chart-series-1 chart-series-semantic-failure');
-    expect(chartSeriesClassName('timed_out', 1)).toBe('chart-series-2 chart-series-semantic-failure');
-    expect(chartSeriesClassName('Success', 2)).toBe('chart-series-3 chart-series-semantic-success');
-    expect(chartSeriesClassName('waiting for approval', 3)).toBe('chart-series-4 chart-series-semantic-waiting');
-    expect(chartSeriesClassName('action_required', 4)).toBe('chart-series-5 chart-series-semantic-waiting');
-    expect(chartSeriesClassName('in-progress', 5)).toBe('chart-series-6 chart-series-semantic-waiting');
-    expect(chartSeriesClassName('cancelled', 6)).toBe('chart-series-7 chart-series-semantic-attention');
-    expect(chartSeriesClassName('skipped', 7)).toBe('chart-series-8 chart-series-semantic-neutral');
-    expect(chartSeriesClassName('repository', 8)).toBe('chart-series-9');
-    expect(chartSeriesClassName('0', 9)).toBe('chart-series-10 chart-series-semantic-failure');
-    expect(chartSeriesClassName('false', 10)).toBe('chart-series-11 chart-series-semantic-failure');
-    expect(chartSeriesClassName('no', 11)).toBe('chart-series-12 chart-series-semantic-failure');
+    expect(chartSeriesClassName('startup-failure', 0)).toContain('chart-series-semantic-failure');
+    expect(chartSeriesClassName('timed_out', 1)).toContain('chart-series-semantic-failure');
+    expect(chartSeriesClassName('Success', 2)).toContain('chart-series-semantic-success');
+    expect(chartSeriesClassName('waiting for approval', 3)).toContain('chart-series-semantic-waiting');
+    expect(chartSeriesClassName('action_required', 4)).toContain('chart-series-semantic-waiting');
+    expect(chartSeriesClassName('in-progress', 5)).toContain('chart-series-semantic-waiting');
+    expect(chartSeriesClassName('cancelled', 6)).toContain('chart-series-semantic-attention');
+    expect(chartSeriesClassName('skipped', 7)).toContain('chart-series-semantic-neutral');
+    expect(chartSeriesClassName('0', 9)).toContain('chart-series-semantic-failure');
+    expect(chartSeriesClassName('false', 10)).toContain('chart-series-semantic-failure');
+    expect(chartSeriesClassName('no', 11)).toContain('chart-series-semantic-failure');
+  });
+
+  it('assigns stable palette colors to existing and new category identities', () => {
+    expect(chartSeriesClassName('githubnext/gh-aw-cao', 0))
+      .toBe(chartSeriesClassName('githubnext/gh-aw-cao', 9));
+    expect(chartSeriesClassName('New Campaign', 1))
+      .toBe(chartSeriesClassName(' new campaign ', 7));
+    expect(chartSeriesClassName('Cafe\u0301', 0)).toBe('chart-series-2');
+    expect(chartSeriesClassName('Café', 11)).toBe('chart-series-2');
+    expect(chartSeriesClassName('value', 3)).toBe(chartSeriesClassName('value', 9));
+    expect(chartSeriesClassName('value', 3)).toBe('chart-series-1');
   });
 
   it('DLS-SAFE-009 renders reusable visual chart legends', () => {
@@ -116,12 +112,6 @@ describe('chart element helpers', () => {
     expect(populated.querySelector('a')?.getAttribute('aria-label')).toBe('View octo-org/open on GitHub');
     expect(empty.querySelectorAll('li')).toHaveLength(0);
 
-    const expanded = renderPieLegend(
-      Array.from({ length: 12 }, (_, index) => [`category-${index}`, index + 1]),
-      78
-    );
-    expect(expanded.querySelector('li:first-child i')?.className).toBe('chart-series-12');
-
     const semantic = renderPieLegend([
       ['failure', 1],
       ['success', 2],
@@ -132,6 +122,32 @@ describe('chart element helpers', () => {
     expect(semantic.querySelector('li:nth-child(1) i')?.classList.contains('chart-series-semantic-waiting')).toBe(true);
     expect(semantic.querySelector('li:nth-child(2) i')?.classList.contains('chart-series-semantic-success')).toBe(true);
     expect(semantic.querySelector('li:nth-child(3) i')?.classList.contains('chart-series-semantic-failure')).toBe(true);
+  });
+
+  it('uses the same identity color for pie marks, ranked legends, bars, and lines', () => {
+    /** @type {Array<[string, number]>} */
+    const entries = [['SelfCare', 2], ['Dependabot', 5]];
+    const chart = renderChartWidget('pie', [], [], { entries, total: 7 });
+    const legend = renderPieLegend(entries, 7);
+
+    for (const [label] of entries) {
+      const markClass = chart.querySelector(`[data-chart-category="${label}"]`)?.getAttribute('class');
+      const swatchClass = [...legend.querySelectorAll('li')]
+        .find((item) => item.querySelector('span')?.textContent === label)
+        ?.querySelector('i')?.className;
+      expect(swatchClass).toBe(markClass?.replace('pie-chart-segment ', ''));
+    }
+
+    const points = [
+      { x: '2026-09-26', y: 2, color: 'SelfCare' },
+      { x: '2026-09-27', y: 3, color: 'SelfCare' }
+    ];
+    const expectedClass = chartSeriesClassName('SelfCare', 0);
+    const series = listChartSeries(points);
+    const bar = renderChartWidget('bar', points, series);
+    const line = renderChartWidget('line', points, series);
+    expect(bar.querySelector('.bar-chart-bar')?.getAttribute('class')).toContain(expectedClass);
+    expect(line.querySelector('.line-chart-series')?.getAttribute('class')).toContain(expectedClass);
   });
 
   it('formats unitless pie counters for quick scanning', () => {
@@ -295,16 +311,36 @@ describe('chart element helpers', () => {
 
   it('preserves complete horizontal bar labels with shared prefixes', () => {
     const points = [
-      { x: 'dependabot-update-planner: Review error logs', y: 25, color: 'success' },
-      { x: 'dependabot-update-planner: Update advisory summary', y: 13, color: 'failure' }
+      {
+        x: 'octo/app:.github/workflows/alpha-shared-health.md',
+        y: 25,
+        color: 'success',
+        link: { href: '#page-alpha', label: 'View workflow dashboard' }
+      },
+      {
+        x: '.github/workflows/beta-shared-health.md',
+        y: 13,
+        color: 'failure',
+        section: 'octo/tools'
+      }
     ];
     const chart = renderChartWidget('horizontal-bar', points, listChartSeries(points));
     const labels = [...chart.querySelectorAll('.horizontal-bar-chart-label')];
+    const links = [...chart.querySelectorAll('.horizontal-bar-chart-label a')];
 
     expect(labels.map((label) => label.textContent)).toEqual(points.map((point) => point.x));
-    expect(labels.map((label) => label.getAttribute('title'))).toEqual(points.map((point) => point.x));
+    expect(labels.map((label) => label.getAttribute('title'))).toEqual([
+      'octo/app:.github/workflows/alpha-shared-health.md',
+      'octo/tools:.github/workflows/beta-shared-health.md'
+    ]);
+    expect(links[0]?.getAttribute('title')).toBe('octo/app:.github/workflows/alpha-shared-health.md');
+    expect(links[0]?.getAttribute('aria-label'))
+      .toBe('View workflow dashboard: octo/app:.github/workflows/alpha-shared-health.md');
+    expect(labels[0]?.hasAttribute('tabindex')).toBe(false);
+    expect(labels[1]?.getAttribute('tabindex')).toBe('0');
+    expect(labels[1]?.getAttribute('aria-label')).toBe('octo/tools:.github/workflows/beta-shared-health.md');
     expect(chart.querySelector('.horizontal-bar-chart-value')?.getAttribute('aria-label'))
-      .toBe('dependabot-update-planner: Review error logs: 25, success');
+      .toBe('octo/app:.github/workflows/alpha-shared-health.md: 25, success');
   });
 
   it('preserves negative horizontal bar values while keeping bars left aligned', () => {

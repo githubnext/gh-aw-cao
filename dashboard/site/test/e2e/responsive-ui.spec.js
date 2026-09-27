@@ -262,8 +262,8 @@ test('full-view chart, card, and table content share the page inset', async ({ p
   expect(contentInsets).toEqual([expectedInset, expectedInset, expectedInset]);
 });
 
-const horizontalBarFixtureLabel = '.github/workflows/extremely-long-dependabot-update-planner.md';
-const horizontalBarFixtureSuffix = 'planner.md';
+const horizontalBarFixtureLabel = 'extremely-long-dependabot-update-planner.md';
+const horizontalBarDesktopFixtureSuffix = 'planner.md';
 
 /**
  * @param {import('@playwright/test').Page} page
@@ -353,30 +353,35 @@ async function measureHorizontalBarLabel(row, suffix) {
   }, suffix);
 }
 
-test('mobile horizontal bar labels preserve readable suffixes', async ({ page }) => {
-  // Keep the fixture narrow enough that the prefix is substantially clipped,
-  // while allowing a subpixel edge tolerance for browser font rendering.
-  const meaningfulPrefixOverflowPx = 20;
-  // Require visible clipping proportional to measured overflow without tying
-  // the assertion to exact glyph widths.
-  const firstCharClipOverflowDivisor = 4;
+test('mobile horizontal bar labels preserve distinguishing prefixes without overflowing', async ({ page }) => {
+  const labels = [
+    'alpha-team-extremely-long-shared-health.md',
+    'beta-team-extremely-long-shared-health.md'
+  ];
   await page.setViewportSize({ width: 390, height: 844 });
-  await renderHorizontalBarFixture(page);
+  await renderHorizontalBarFixture(page, { labels });
 
-  const firstRow = page.locator('.horizontal-bar-chart-row').first();
-  const label = firstRow.locator('.horizontal-bar-chart-label');
-  await expect(label).toBeVisible();
-  await expect(label).toHaveCSS('direction', 'rtl');
-  await expect(label.locator('.horizontal-bar-chart-label-text')).toHaveCSS('direction', 'ltr');
-
-  const labelRendering = await measureHorizontalBarLabel(firstRow, horizontalBarFixtureSuffix);
-
-  expect(labelRendering.overflowed).toBe(true);
-  expect(labelRendering.overflowAmount).toBeGreaterThan(meaningfulPrefixOverflowPx);
-  expect(labelRendering.firstCharClipDistance)
-    .toBeGreaterThan(labelRendering.overflowAmount / firstCharClipOverflowDivisor);
-  expect(labelRendering.suffixLeft).toBeGreaterThanOrEqual(labelRendering.labelLeft);
-  expect(labelRendering.suffixRight).toBeLessThanOrEqual(labelRendering.labelRight);
+  const renderedLabels = page.locator('.horizontal-bar-chart-label');
+  await expect(renderedLabels).toHaveCount(2);
+  await expect(renderedLabels.nth(0)).toHaveAttribute('title', labels[0]);
+  await expect(renderedLabels.nth(1)).toHaveAttribute('aria-label', labels[1]);
+  await expect(renderedLabels.nth(1)).toHaveAttribute('tabindex', '0');
+  await expect(renderedLabels.nth(0)).toHaveCSS('direction', 'ltr');
+  await expect(renderedLabels.nth(0).locator('.horizontal-bar-chart-label-text')).toHaveCSS('white-space', 'normal');
+  await expect.poll(() => renderedLabels.evaluateAll((elements) => (
+    elements.every((element) => element.scrollWidth <= element.clientWidth)
+  ))).toBe(true);
+  expect(await renderedLabels.evaluateAll((elements) => elements.map((element, index) => {
+    const text = element.querySelector('.horizontal-bar-chart-label-text')?.firstChild;
+    if (!text) return false;
+    const range = document.createRange();
+    range.setStart(text, 0);
+    range.setEnd(text, index === 0 ? 'alpha-team'.length : 'beta-team'.length);
+    const fragmentBounds = range.getBoundingClientRect();
+    const labelBounds = element.getBoundingClientRect();
+    return fragmentBounds.left >= labelBounds.left && fragmentBounds.right <= labelBounds.right;
+  }))).toEqual([true, true]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
 
 test('mobile horizontal bar sections keep repository context outside concise workflow labels', async ({ page }) => {
@@ -396,7 +401,7 @@ test('mobile horizontal bar sections keep repository context outside concise wor
 });
 
 test('desktop horizontal bar labels keep standard end truncation', async ({ page }) => {
-  const expectedVisiblePrefix = '.github';
+  const expectedVisiblePrefix = 'extremely';
   await page.setViewportSize({ width: 900, height: 700 });
   await renderHorizontalBarFixture(page);
 
@@ -406,7 +411,7 @@ test('desktop horizontal bar labels keep standard end truncation', async ({ page
   await expect(label).toHaveCSS('direction', 'ltr');
   await expect(label.locator('.horizontal-bar-chart-label-text')).toHaveCSS('display', 'block');
 
-  const labelRendering = await measureHorizontalBarLabel(firstRow, horizontalBarFixtureSuffix);
+  const labelRendering = await measureHorizontalBarLabel(firstRow, horizontalBarDesktopFixtureSuffix);
 
   expect(labelRendering.text.startsWith(expectedVisiblePrefix)).toBe(true);
   expect(labelRendering.textOverflowed).toBe(true);

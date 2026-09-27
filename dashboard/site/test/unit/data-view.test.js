@@ -513,6 +513,7 @@ describe('data view renderer', () => {
         encoding: { columns: [{ field: 'campaign-name' }] }
       },
       rows: [
+        { 'campaign-name': 'Unknown package', campaign: 'unknown', 'campaign-update-state': 'unknown', 'campaign-registration': 'true' },
         { 'campaign-name': 'Current package', campaign: 'current', 'campaign-update-state': 'current', 'campaign-registration': 'true' },
         { 'campaign-name': 'Outdated package', campaign: 'outdated', 'campaign-update-state': 'update-available', 'campaign-registration': 'true', 'campaign-observed-at': '2026-08-31T00:00:00Z' }
       ],
@@ -521,7 +522,7 @@ describe('data view renderer', () => {
           icon: 'workflow',
           title: { field: 'campaign-name' },
           labels: [{ field: 'campaign-registration', title: 'Registration', display: 'active-state' }],
-          details: [],
+          details: [{ field: 'campaign-update-state', title: 'Update confidence', display: 'status' }],
           timing: [{ field: 'campaign-observed-at', title: 'Observed', icon: 'calendar', type: 'temporal' }],
           actions: [{
             action: 'update-campaign',
@@ -541,12 +542,17 @@ describe('data view renderer', () => {
 
     const cards = rendered?.querySelectorAll('.entity-card-list-card') ?? [];
     expect(cards[0]?.querySelector('.entity-card-list-actions')).toBeNull();
-    expect(cards[1]?.querySelector('.entity-card-list-actions button')?.textContent).toContain('Update campaign');
+    expect(cards[1]?.querySelector('.entity-card-list-actions')).toBeNull();
+    expect(cards[2]?.querySelector('.entity-card-list-actions button')?.textContent).toContain('Update campaign');
+    expect(cards[0]?.querySelector('.issue-list-labels .status-success')?.textContent).toBe('Active');
+    expect(cards[0]?.querySelector('.issue-list-card-meta .status-muted')?.textContent).toBe('unknown');
+    expect(cards[1]?.querySelector('.issue-list-card-meta .status-success')?.textContent).toBe('current');
+    expect(cards[2]?.querySelector('.issue-list-card-meta .status-attention')?.textContent).toBe('update-available');
 
     // The row-level action must be rendered after the labels and timing lists in DOM order so
     // that CSS grid auto-placement keeps those badges in their own column instead of pushing
     // them into a stray row/column that renders outside the card bounds (see #13672-style regression).
-    const outdatedCard = cards[1];
+    const outdatedCard = cards[2];
     const children = outdatedCard ? Array.from(outdatedCard.children) : [];
     const labelsIndex = children.findIndex((child) => child.classList.contains('issue-list-labels'));
     const timingIndex = children.findIndex((child) => child.classList.contains('entity-card-list-timing'));

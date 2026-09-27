@@ -695,7 +695,7 @@
           },
           {
             "field": "campaign-update-state",
-            "title": "Update",
+            "title": "Update confidence",
             "display": "status"
           }
         ],
