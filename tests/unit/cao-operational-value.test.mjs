@@ -347,25 +347,17 @@ console.log(JSON.stringify({timestamp:request.timestamp,repository:request.repos
   assert.deepEqual(envelopes.map((entry) => entry.operational_value.campaign), ['successful']);
 });
 
-test('Dependabot operational value measures mature plan consumption signals', () => {
+test('Dependabot operational value measures open security-risk repository state', () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-dependabot-value-'));
   const fakeGh = path.join(temporary, 'gh');
   const calls = path.join(temporary, 'calls.log');
   writeFileSync(fakeGh, `#!/usr/bin/env bash
 set -euo pipefail
 printf '%s\\n' "$*" >> ${JSON.stringify(calls)}
-if [[ " $* " == *" repos/githubnext/gh-aw-cao/issues "* ]]; then
-  printf '%s\\n' '[[{"number":41,"title":"[dependabot:update-planner] Dependency update plan for octo/example","body":"<!-- dependabot-update-plan:repository=octo/example -->","created_at":"2026-09-10T00:00:00Z","state":"open","user":{"login":"cao-test[bot]"}}]]'
-elif [[ " $* " == *"/issues/41/sub_issues"* ]]; then
-  printf '%s\\n' '[[{"number":42,"state":"closed","state_reason":"completed","user":{"login":"cao-test[bot]"}}]]'
-elif [[ " $* " == *"/issues/41/comments"* ]]; then
-  printf '%s\\n' '[[{"created_at":"2026-09-11T00:00:00Z","user":{"login":"maintainer"}}]]'
-elif [[ " $* " == *"/issues/41/timeline"* ]]; then
-  printf '%s\\n' '[[{"event":"assigned","created_at":"2026-09-11T00:00:00Z"},{"event":"cross-referenced","created_at":"2026-09-12T00:00:00Z","source":{"issue":{"pull_request":{"url":"https://api.github.test/pulls/7"}}}},{"event":"closed","created_at":"2026-09-13T00:00:00Z"}]]'
-elif [[ " $* " == *"/issues/42/comments"* ]]; then
-  printf '%s\\n' '[[]]'
-elif [[ " $* " == *"/issues/42/timeline"* ]]; then
-  printf '%s\\n' '[[{"event":"closed","state_reason":"completed","created_at":"2026-09-14T00:00:00Z"}]]'
+if [[ " $* " == *"repos/github/gh-aw/dependabot/alerts"* ]]; then
+  printf '%s\\n' '[[{"created_at":"2026-09-10T00:00:00Z","security_advisory":{"severity":"high"}},{"created_at":"2026-09-12T00:00:00Z","security_advisory":{"severity":"low"}},{"created_at":"2026-09-01T00:00:00Z","fixed_at":"2026-09-15T00:00:00Z","security_advisory":{"severity":"medium"}}]]'
+elif [[ " $* " == *"graphql"* ]]; then
+  printf '%s\\n' '[{"data":{"search":{"issueCount":1,"nodes":[{"createdAt":"2026-09-05T00:00:00Z","closedAt":null}],"pageInfo":{"hasNextPage":false,"endCursor":null}}}}]'
 else
   echo "unexpected gh api arguments: $*" >&2
   exit 1
@@ -374,7 +366,7 @@ fi\n`);
   const request = JSON.stringify({
     schemaVersion: 1,
     timestamp: '2026-10-01T10:00:00.000Z',
-    repositories: ['githubnext/gh-aw-cao']
+    repositories: ['github/gh-aw']
   });
 
   const result = execFileSync(
@@ -388,35 +380,33 @@ fi\n`);
     .filter(({ kind }) => kind !== 'operational_value_definition');
 
   assert.deepEqual(result.map(({ valueId, value }) => ({ valueId, value })), [
-    { valueId: 'dependabot-update-planner.consumed-plan-share', value: 1 },
-    { valueId: 'dependabot-update-planner.assigned-plan-share', value: 1 },
-    { valueId: 'dependabot-update-planner.participated-plan-share', value: 1 },
-    { valueId: 'dependabot-update-planner.progressed-plan-share', value: 1 },
-    { valueId: 'dependabot-update-planner.linked-plan-share', value: 1 },
-    { valueId: 'dependabot-update-planner.closed-plan-share', value: 1 }
+    { valueId: 'dependabot-update-planner.open-security-alert-count', value: 2 },
+    { valueId: 'dependabot-update-planner.open-high-critical-alert-count', value: 1 },
+    { valueId: 'dependabot-update-planner.open-dependabot-pr-count', value: 1 }
   ]);
   const ghCalls = readFileSync(calls, 'utf8');
-  assert.match(ghCalls, /--paginate --slurp repos\/githubnext\/gh-aw-cao\/issues/);
-  assert.equal(ghCalls.match(/\/issues\/41\/timeline/g)?.length, 1);
+  assert.match(ghCalls, /--paginate --slurp repos\/github\/gh-aw\/dependabot\/alerts/);
+  assert.equal(ghCalls.match(/graphql/g)?.length, 1);
 });
 
-test('Dependabot operational value fails closed on unbounded child evidence', () => {
+test('Dependabot operational value fails closed on incomplete pull request evidence', () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-dependabot-value-pages-'));
   const fakeGh = path.join(temporary, 'gh');
   writeFileSync(fakeGh, `#!/usr/bin/env bash
 set -euo pipefail
-if [[ " $* " == *" repos/githubnext/gh-aw-cao/issues "* ]]; then
-  printf '%s\\n' '[[{"number":41,"title":"Dependency update plan for octo/example","body":"","created_at":"2026-09-10T00:00:00Z","state":"open","user":{"login":"cao-test[bot]"}}]]'
-elif [[ " $* " == *"/issues/41/sub_issues"* ]]; then
-  printf '%s\\n' '[[],[]]'
-else
+if [[ " $* " == *"repos/github/gh-aw/dependabot/alerts"* ]]; then
   printf '%s\\n' '[[]]'
+elif [[ " $* " == *"graphql"* ]]; then
+  printf '%s\\n' '[{"data":{"search":{"issueCount":5,"nodes":null,"pageInfo":{"hasNextPage":false,"endCursor":null}}}}]'
+else
+  echo "unexpected gh api arguments: $*" >&2
+  exit 1
 fi\n`);
   chmodSync(fakeGh, 0o755);
   const request = JSON.stringify({
     schemaVersion: 1,
     timestamp: '2026-10-01T10:00:00.000Z',
-    repositories: ['githubnext/gh-aw-cao']
+    repositories: ['github/gh-aw']
   });
 
   assert.throws(() => execFileSync(
@@ -426,7 +416,7 @@ fi\n`);
       ...process.env,
       PATH: `${temporary}:${process.env.PATH}`
     }, stdio: 'pipe' }
-  ), /evidence exceeded its bounded page/);
+  ), /incomplete Dependabot pull request evidence/);
 });
 
 test('cao operational-value warns on non-numeric metrics and bounds retained output', () => {
