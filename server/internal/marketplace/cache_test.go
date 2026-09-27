@@ -155,3 +155,37 @@ func TestLoadCachedRegistryRejectsCorruptPayloads(t *testing.T) {
 		t.Fatal("expected a corrupt cache payload to be treated as a miss")
 	}
 }
+
+func TestClassifyCacheLookup(t *testing.T) {
+	tests := []struct {
+		name string
+		data []byte
+		hit  bool
+		err  error
+		want cacheMissReason
+	}{
+		{name: "read error takes precedence", data: []byte("x"), hit: true, err: context.DeadlineExceeded, want: cacheMissReasonReadError},
+		{name: "no hit is a miss", data: nil, hit: false, err: nil, want: cacheMissReasonNotFound},
+		{name: "hit with empty data is a miss", data: []byte{}, hit: true, err: nil, want: cacheMissReasonNotFound},
+		{name: "hit with data is usable", data: []byte("x"), hit: true, err: nil, want: cacheMissReasonNone},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := classifyCacheLookup(test.data, test.hit, test.err); got != test.want {
+				t.Fatalf("classifyCacheLookup() = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestStoreCachedRegistryPropagatesACacheWriteFailureWithoutPanicking(t *testing.T) {
+	cache := newMemoryCache()
+	cache.setErr = context.DeadlineExceeded
+	// storeCachedRegistry is best-effort: a write failure must not surface to
+	// the caller, only be logged. Reaching this point without panicking or
+	// hanging is the assertion.
+	storeCachedRegistry(t.Context(), cache, "official", "generation-1", time.Minute, []Package{{ID: "example"}})
+	if _, ok := cache.entries[[2]string{"official", "generation-1"}]; ok {
+		t.Fatal("expected a failed write to leave no cached entry")
+	}
+}

@@ -4,7 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var cacheLog = logger.New("cao:marketplace:cache")
 
 // Cache isolates registry results by registry id and by generation (the
 // dashboard's active data revision), so a cache entry from one revision or
@@ -22,6 +26,32 @@ type cachedRegistryPayload struct {
 	Packages []Package `json:"packages"`
 }
 
+// cacheMissReason identifies why loadCachedRegistry treated a lookup as a
+// miss. It is useful for diagnosing a caching problem (versus an ordinary
+// cold cache) without logging the registry id, generation, or cached bytes
+// themselves.
+type cacheMissReason string
+
+const (
+	cacheMissReasonNone      cacheMissReason = ""
+	cacheMissReasonNotFound  cacheMissReason = "not-found"
+	cacheMissReasonReadError cacheMissReason = "read-error"
+)
+
+// classifyCacheLookup inspects the outcome of a Cache.Get call and decides
+// which cacheMissReason applies, or cacheMissReasonNone for a usable hit. It
+// is a pure function so the miss-classification rules are testable without a
+// real or fake Cache.
+func classifyCacheLookup(data []byte, hit bool, err error) cacheMissReason {
+	if err != nil {
+		return cacheMissReasonReadError
+	}
+	if !hit || len(data) == 0 {
+		return cacheMissReasonNotFound
+	}
+	return cacheMissReasonNone
+}
+
 // loadCachedRegistry returns a previously cached, still-safe package list. Any
 // cache error or corrupt payload is treated as a miss so a caching problem
 // never blocks resolution.
@@ -30,11 +60,16 @@ func loadCachedRegistry(ctx context.Context, cache Cache, registryID, generation
 		return nil, false
 	}
 	data, hit, err := cache.Get(ctx, registryID, generation)
-	if err != nil || !hit || len(data) == 0 {
+	switch classifyCacheLookup(data, hit, err) {
+	case cacheMissReasonReadError:
+		cacheLog.Printf("registry cache lookup failed; treating as miss")
+		return nil, false
+	case cacheMissReasonNotFound:
 		return nil, false
 	}
 	var payload cachedRegistryPayload
 	if err := json.Unmarshal(data, &payload); err != nil {
+		cacheLog.Printf("registry cache payload was corrupt; treating as miss")
 		return nil, false
 	}
 	return payload.Packages, true
@@ -49,7 +84,10 @@ func storeCachedRegistry(ctx context.Context, cache Cache, registryID, generatio
 	}
 	data, err := json.Marshal(cachedRegistryPayload{Packages: packages})
 	if err != nil {
+		cacheLog.Printf("registry cache encode failed; not caching")
 		return
 	}
-	_ = cache.Set(ctx, registryID, generation, data, ttl)
+	if err := cache.Set(ctx, registryID, generation, data, ttl); err != nil {
+		cacheLog.Printf("registry cache write failed")
+	}
 }
