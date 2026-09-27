@@ -1,6 +1,9 @@
 import { queryCanonicalDatabaseDiagnostics } from './data-processor.js';
+import { createDebug } from './debug.js';
 
 const REQUIRED_POPULATED_STORES = ['repositories', 'workflows', 'runs', 'audits'];
+
+const debugDiagnostics = createDebug('diagnostics');
 
 /**
  * @typedef {{
@@ -29,10 +32,16 @@ export async function collectFullDiagnostics(options = {}) {
   const document = options.document ?? globalThis.document;
   const location = options.location ?? globalThis.location;
   if (!document) throw new Error('Document is unavailable.');
+  debugDiagnostics({ event: 'collect-start' });
 
   const database = await (options.queryDatabase ?? queryCanonicalDatabaseDiagnostics)();
   const counts = database.counts;
   const relationships = database.relationshipErrors;
+  debugDiagnostics({
+    event: 'database-queried',
+    schemaVersion: database.schemaVersion,
+    relationshipErrorCount: relationships.length
+  });
   const activePage = document.querySelector('[data-page-id]:not([hidden])');
   const renderedViews = [...document.querySelectorAll('[data-view-id]')];
   const unavailableViews = [...document.querySelectorAll('[aria-label^="Unable to load "]')]
@@ -78,6 +87,12 @@ export async function collectFullDiagnostics(options = {}) {
       domNodes: document.querySelectorAll('*').length
     }
   };
+  debugDiagnostics({
+    event: 'collect-complete',
+    passed: report.passed,
+    checkCount: checks.length,
+    failedCheckCount: checks.filter((item) => !item.passed).length
+  });
 
   console.group('Central Agentic Ops full diagnostics');
   console.info('Summary', { passed: report.passed, generatedAt: report.generatedAt, url: report.url });
