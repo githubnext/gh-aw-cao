@@ -1,4 +1,5 @@
 ---
+import DispatchIllustration from "./DispatchIllustration.astro";
 import HeroIntro from "./HeroIntro.astro";
 import TerminalDemo from "./TerminalDemo.astro";
 import ThemeImage from "./ThemeImage.astro";
@@ -41,6 +42,21 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
     </figure>
   </div>
 </div>
+
+<section class="product-story dispatch-story" aria-labelledby="dispatch-title" data-reveal>
+  <p class="section-eyebrow">One goal, many repositories</p>
+  <h2 id="dispatch-title">Agentic Campaigns dispatch work at scale.</h2>
+  <p>
+    Each campaign turns a defined operation into bounded work across an explicitly enrolled set of repositories.
+  </p>
+  <figure class="dispatch-illustration" aria-describedby="dispatch-description">
+    <figcaption id="dispatch-description" class="visually-hidden">
+      A control plane dispatches campaign work across authorized organizations and repositories, then gathers the
+      outcomes into a campaign report.
+    </figcaption>
+    <DispatchIllustration />
+  </figure>
+</section>
 
 <section class="product-story terminal-story" aria-labelledby="terminal-title" data-reveal>
   <div class="product-story-copy">
@@ -112,6 +128,13 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
     />
   </figure>
 </section>
+
+<div class="wizard-launch" data-reveal>
+  <a class="wizard-launch-button" href="/gh-aw-cao/setup/">
+    Launch setup wizard
+    <span aria-hidden="true">→</span>
+  </a>
+</div>
 
 <script>
   const revealTargets = document.querySelectorAll<HTMLElement>("[data-reveal]");
@@ -322,6 +345,8 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
     .hero-visual {
       --phone-width: clamp(15rem, 21vw, 18rem);
       --callout-overlap: 1.25rem;
+      /* Callouts enter only after the Central Agentic Ops name finishes typing. */
+      --callout-delay: 1600ms;
       position: relative;
       isolation: isolate;
       display: grid;
@@ -399,7 +424,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       line-height: 1.25;
       white-space: nowrap;
       backdrop-filter: blur(12px);
-      animation: callout-card-enter 600ms cubic-bezier(0.22, 1, 0.36, 1) 250ms both;
+      animation: callout-card-enter 600ms cubic-bezier(0.22, 1, 0.36, 1) var(--callout-delay) both;
     }
 
     .callout-line {
@@ -408,7 +433,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       height: 1px;
       background: var(--callout-color);
       transform-origin: left;
-      animation: callout-line-enter 700ms cubic-bezier(0.22, 1, 0.36, 1) 500ms both;
+      animation: callout-line-enter 700ms cubic-bezier(0.22, 1, 0.36, 1) calc(var(--callout-delay) + 250ms) both;
     }
 
     .callout-line::after {
@@ -422,7 +447,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       background: var(--cao-page-bg);
       content: "";
       transform: translateY(-50%);
-      animation: callout-point-pulse 2.8s ease-in-out 1.2s infinite;
+      animation: callout-point-pulse 2.8s ease-in-out calc(var(--callout-delay) + 950ms) infinite;
     }
 
     .callout-health {
@@ -539,6 +564,21 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
 
     .terminal-story {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .dispatch-story {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .dispatch-story h2 {
+      max-width: 52rem;
+      margin-inline: auto;
+      text-align: center;
+    }
+
+    .dispatch-illustration {
+      width: min(100%, 58rem);
+      margin-inline: auto;
     }
 
     .product-story::before {
@@ -734,6 +774,46 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       line-height: 1.6;
     }
 
+    .wizard-launch {
+      display: flex;
+      justify-content: center;
+      padding: clamp(2.5rem, 6vw, 5rem) 1rem;
+    }
+
+    .wizard-launch-button {
+      display: inline-flex;
+      min-height: 3rem;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      border: 1px solid #1f883d;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1.25rem;
+      background: #1f883d;
+      box-shadow: 0 0.75rem 2rem rgba(31, 136, 61, 0.22);
+      color: #ffffff;
+      font-weight: 700;
+      text-decoration: none;
+      transition:
+        background-color 160ms ease,
+        border-color 160ms ease,
+        box-shadow 160ms ease,
+        transform 160ms ease;
+    }
+
+    .wizard-launch-button:hover {
+      border-color: #1a7f37;
+      background: #1a7f37;
+      box-shadow: 0 1rem 2.5rem rgba(31, 136, 61, 0.28);
+      color: #ffffff;
+      transform: translateY(-0.125rem);
+    }
+
+    .wizard-launch-button:focus-visible {
+      outline: 2px solid var(--cao-story-heading);
+      outline-offset: 3px;
+    }
+
     @media (max-width: 42rem) {
       .hierarchy-hero {
         width: 100%;
@@ -865,7 +945,8 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       .callout-line::after,
       .product-story::before,
       .product-shot,
-      .terminal-story :global(.terminal) {
+      .terminal-story :global(.terminal),
+      .wizard-launch-button {
         animation: none;
         transition: none;
         translate: none;
@@ -873,7 +954,8 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
 
       .phone-preview:hover,
       .product-shot:hover,
-      .terminal-story :global(.terminal:hover) {
+      .terminal-story :global(.terminal:hover),
+      .wizard-launch-button:hover {
         transform: none;
       }
 

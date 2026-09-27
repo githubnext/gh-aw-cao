@@ -1,4 +1,4 @@
-export const CANONICAL_SCHEMA_VERSION = 19;
+export const CANONICAL_SCHEMA_VERSION = 20;
 
 export const ENTITY_KINDS = /** @type {const} */ ([
   'campaign',
@@ -7,12 +7,21 @@ export const ENTITY_KINDS = /** @type {const} */ ([
   'run',
   'domain',
   'tool',
+  'skill',
+  'friction',
   'audit',
   'issue',
   'operational-value',
   'marketplace-package'
 ]);
-const RUN_LINKED_COLLECTIONS = /** @type {const} */ (['domains', 'tools', 'audits', 'issues']);
+const RUN_LINKED_COLLECTIONS = /** @type {const} */ ([
+  'domains',
+  'tools',
+  'skills',
+  'friction',
+  'audits',
+  'issues'
+]);
 
 /** @typedef {typeof ENTITY_KINDS[number]} EntityKind */
 
@@ -36,6 +45,8 @@ const RUN_LINKED_COLLECTIONS = /** @type {const} */ (['domains', 'tools', 'audit
  * @property {Record<string, unknown>[]} runs
  * @property {Record<string, unknown>[]} domains
  * @property {Record<string, unknown>[]} tools
+ * @property {Record<string, unknown>[]} skills
+ * @property {Record<string, unknown>[]} friction
  * @property {Record<string, unknown>[]} audits
  * @property {Record<string, unknown>[]} issues
  * @property {Record<string, unknown>[]} operationalValues
@@ -124,7 +135,7 @@ export function relationshipErrors(batch) {
     }
   }
   for (const collection of RUN_LINKED_COLLECTIONS) {
-    for (const record of batch[collection]) {
+    for (const record of batch[collection] ?? []) {
       requireReference(record, 'runId', 'runs');
     }
   }

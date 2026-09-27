@@ -19,8 +19,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 )
+
+var resolveLog = logger.New("cao:marketplace:resolve")
 
 // SourceName is the canonical dashboard source name the query engine and
 // generation loader use to request the marketplace catalog.
@@ -323,6 +326,51 @@ func authSecretNames(auth Auth) []string {
 	return []string{auth.Secret, auth.AppIDSecret, auth.PrivateKeySecret, auth.InstallationIDSecret}
 }
 
+// registryOutcome is one registry's resolution outcome within a Resolve pass:
+// its packages (empty on failure), its diagnostic, and whether the result was
+// served from cache rather than resolved against the GitHub API. Splitting
+// this into its own unit lets the three distinct outcomes below — an invalid
+// registry, a cache hit, and a fresh resolution — be exercised directly
+// without assembling a whole Resolve call each time.
+type registryOutcome struct {
+	packages   []Package
+	diagnostic RegistryDiagnostic
+	cacheHit   bool
+}
+
+// resolveOneRegistry validates, then resolves or serves-from-cache, exactly
+// one configured registry. It never returns an error: every failure mode is
+// captured in the returned diagnostic so one bad registry cannot abort the
+// rest of a Resolve pass.
+func resolveOneRegistry(
+	ctx context.Context, raw Registry, index int, generation string, ttl time.Duration, cache Cache, opts Options,
+) registryOutcome {
+	registry, err := ValidateRegistry(raw, index)
+	if err != nil {
+		return registryOutcome{diagnostic: RegistryDiagnostic{
+			RegistryID: fallbackRegistryID(raw, index), Status: "unavailable", Message: safeDiagnosticMessage(err, raw, opts),
+		}}
+	}
+	if cached, hit := loadCachedRegistry(ctx, cache, registry.ID, generation); hit {
+		return registryOutcome{
+			packages:   cached,
+			diagnostic: RegistryDiagnostic{RegistryID: registry.ID, Status: "available", Packages: len(cached)},
+			cacheHit:   true,
+		}
+	}
+	resolved, err := ResolveRegistry(ctx, registry, index, opts)
+	if err != nil {
+		return registryOutcome{diagnostic: RegistryDiagnostic{
+			RegistryID: registry.ID, Status: "unavailable", Message: safeDiagnosticMessage(err, registry, opts),
+		}}
+	}
+	storeCachedRegistry(ctx, cache, registry.ID, generation, ttl, resolved)
+	return registryOutcome{
+		packages:   resolved,
+		diagnostic: RegistryDiagnostic{RegistryID: registry.ID, Status: "available", Packages: len(resolved)},
+	}
+}
+
 // Resolve resolves every configured registry in order, isolating failures
 // into diagnostics, and returns the deduplicated, precedence-sorted package
 // catalog. generation isolates the Cache by dashboard data revision so a
@@ -338,30 +386,22 @@ func Resolve(ctx context.Context, config *Config, generation string, cache Cache
 	}
 	var packages []Package
 	diagnostics := make([]RegistryDiagnostic, 0, len(config.Registries))
+	cacheHits, unavailable := 0, 0
 	for index, raw := range config.Registries {
-		registry, err := ValidateRegistry(raw, index)
-		if err != nil {
-			diagnostics = append(diagnostics, RegistryDiagnostic{
-				RegistryID: fallbackRegistryID(raw, index), Status: "unavailable", Message: safeDiagnosticMessage(err, raw, opts),
-			})
-			continue
+		outcome := resolveOneRegistry(ctx, raw, index, generation, ttl, cache, opts)
+		packages = append(packages, outcome.packages...)
+		diagnostics = append(diagnostics, outcome.diagnostic)
+		if outcome.cacheHit {
+			cacheHits++
 		}
-		if cached, hit := loadCachedRegistry(ctx, cache, registry.ID, generation); hit {
-			packages = append(packages, cached...)
-			diagnostics = append(diagnostics, RegistryDiagnostic{RegistryID: registry.ID, Status: "available", Packages: len(cached)})
-			continue
+		if outcome.diagnostic.Status == "unavailable" {
+			unavailable++
 		}
-		resolved, err := ResolveRegistry(ctx, registry, index, opts)
-		if err != nil {
-			diagnostics = append(diagnostics, RegistryDiagnostic{
-				RegistryID: registry.ID, Status: "unavailable", Message: safeDiagnosticMessage(err, registry, opts),
-			})
-			continue
-		}
-		storeCachedRegistry(ctx, cache, registry.ID, generation, ttl, resolved)
-		packages = append(packages, resolved...)
-		diagnostics = append(diagnostics, RegistryDiagnostic{RegistryID: registry.ID, Status: "available", Packages: len(resolved)})
 	}
+	// One summary per resolution pass is a meaningful boundary worth
+	// observing: it is never called from a polling or per-package loop.
+	resolveLog.Printf("resolved registries total=%d cache_hits=%d unavailable=%d",
+		len(config.Registries), cacheHits, unavailable)
 	return &Result{Packages: sortAndDedupe(packages), Diagnostics: diagnostics}
 }
 

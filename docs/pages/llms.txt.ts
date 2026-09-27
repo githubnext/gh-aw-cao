@@ -3,7 +3,7 @@ import { getCollection } from "astro:content";
 import { catalogEntries } from "../lib/catalog";
 
 const documentationOrder = [
-  "getting-started",
+  "setup-quickstarts",
   "cao-cli",
   "architecture",
   "configuration",

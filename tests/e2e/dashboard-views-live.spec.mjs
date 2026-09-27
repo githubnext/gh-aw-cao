@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
 import {
   dashboardAssessmentCleanupBudgetMs,
+  dashboardAssessmentPageHash,
   dashboardAssessmentPageBudgetMs,
   dashboardAssessmentStartupBudgetMs,
   dashboardAssessmentTimeout,
@@ -182,7 +183,7 @@ test("each selected dashboard view renders with live data", async ({ context }, 
 
       const assessPage = async () => {
         try {
-          await assessedPage.goto(`${preview.url}/#page-${encodeURIComponent(pageDefinition.id)}`, {
+          await assessedPage.goto(`${preview.url}/${dashboardAssessmentPageHash(pageDefinition, dashboard)}`, {
             waitUntil: "domcontentloaded",
           });
           const dashboardRoot = assessedPage.locator(".dashboard-root");

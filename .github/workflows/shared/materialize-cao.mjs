@@ -193,6 +193,8 @@ export function verifyCaoRuntime(bundle, repositoryRoot = process.cwd()) {
     activity: [
       'activity/cao.mjs',
       'activity/commands/index.mjs',
+      'activity/setup.mjs',
+      'activity/upgrade-gh-aw.mjs',
       'activity/control-settings.mjs',
       'activity/collect-logs.sh',
       'activity/marketplace.mjs',

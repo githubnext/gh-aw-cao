@@ -40,6 +40,19 @@ export function declaredDashboardViewIds(pageDefinition, reusableViews = []) {
     ));
 }
 
+// The dashboard declares its control repository but has no canonical values for
+// other parameterized routes, so only repository routes can be assessed with data.
+export function dashboardAssessmentPageHash(pageDefinition, dashboard) {
+  const pageId = typeof pageDefinition?.id === "string" ? pageDefinition.id : "";
+  const routeParameter = pageDefinition?.route?.["hash-query-parameter"];
+  const repository = dashboard?.dashboard?.repository;
+  const parameters = new URLSearchParams();
+  if (routeParameter === "repository" && typeof repository === "string" && repository.trim()) {
+    parameters.set(routeParameter, repository.trim());
+  }
+  return `#page-${encodeURIComponent(pageId)}${parameters.size ? `?${parameters}` : ""}`;
+}
+
 export function renderAssessedDashboardQueryUsageGraph(dashboard, pageChunks) {
   const resolved = resolveDashboardDocument(dashboard, pageChunks);
   return renderDashboardQueryUsageGraph(resolved.dashboard);

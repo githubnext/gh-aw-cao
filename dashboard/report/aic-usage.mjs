@@ -111,6 +111,8 @@ export async function readRunTimeline(outputDirectory, runId, owningRunId, evide
       const eventTimestamp = firstText(call?.timestamp);
       const serverName = firstText(call?.server_name);
       const toolName = firstText(call?.tool_name);
+      const requestSize = call?.input_size ?? call?.request_size;
+      const responseSize = call?.output_size ?? call?.response_size;
       if (!eventTimestamp || !Number.isFinite(Date.parse(eventTimestamp)) || (!serverName && !toolName)) return [];
       return [{
         sourceId: `${owningRunId}:run_summary.json:mcp_tool_usage.tool_calls:${index + 1}`,
@@ -121,6 +123,12 @@ export async function readRunTimeline(outputDirectory, runId, owningRunId, evide
         summary: [serverName, toolName].filter(Boolean).join("/"),
         status: firstText(call?.status),
         correlationId: firstText(call?.tool_call_id, call?.toolCallId, call?.correlation_id, call?.correlationId),
+        ...(requestSize !== null && requestSize !== undefined && requestSize !== "" && Number.isFinite(Number(requestSize))
+          ? { requestBytes: Math.max(0, Number(requestSize)) }
+          : {}),
+        ...(responseSize !== null && responseSize !== undefined && responseSize !== "" && Number.isFinite(Number(responseSize))
+          ? { responseBytes: Math.max(0, Number(responseSize)) }
+          : {}),
         payloadRef: `run_summary.json#mcp_tool_usage.tool_calls[${index}]`,
         sourceSequence: index + 1,
       }];
@@ -128,6 +136,73 @@ export async function readRunTimeline(outputDirectory, runId, owningRunId, evide
   } catch {
     return [];
   }
+}
+
+export function auditSummaryTimeline(run, owningRunId, observedAt) {
+  const audit = run?.audit && typeof run.audit === "object" && !Array.isArray(run.audit) ? run.audit : {};
+  const skillsValue = Object.hasOwn(run || {}, "skill_activations") ? run.skill_activations : audit.skill_activations;
+  const number = (value) => value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value))
+    ? Number(value)
+    : null;
+  const skills = Array.isArray(skillsValue) ? skillsValue.flatMap((skill, index) => {
+    if (!skill || typeof skill !== "object" || Array.isArray(skill)) return [];
+    const name = firstText(skill.name, `Skill ${index + 1}`);
+    return [{
+      sourceId: `${owningRunId}:audit:skill:${index}`,
+      runId: owningRunId,
+      timestamp: firstText(skill.timestamp, observedAt),
+      source: "audit",
+      type: "audit.skill_activation",
+      summary: name,
+      status: firstText(skill.status, "invoked"),
+      name,
+      invocationCount: Math.max(0, number(skill.invocation_count) ?? 1),
+      failedCount: Math.max(0, number(skill.failed_count) ?? 0),
+      activationSource: firstText(skill.source),
+    }];
+  }) : [];
+  const friction = Object.hasOwn(run || {}, "friction") ? run.friction : audit.friction;
+  if (!friction || typeof friction !== "object" || Array.isArray(friction)) return skills;
+  const cost = friction.cost && typeof friction.cost === "object" && !Array.isArray(friction.cost) ? friction.cost : {};
+  const tokens = cost.tokens && typeof cost.tokens === "object" && !Array.isArray(cost.tokens) ? cost.tokens : {};
+  return [...skills, {
+    sourceId: `${owningRunId}:audit:friction`,
+    runId: owningRunId,
+    timestamp: observedAt,
+    source: "audit",
+    type: "workflow_run_friction",
+    summary: "Execution friction cost",
+    status: firstText(friction.measurement_state),
+    measurementState: firstText(friction.measurement_state),
+    canonicalUnit: firstText(friction.canonical_unit),
+    sources: Array.isArray(friction.sources) ? friction.sources : null,
+    totalEvents: number(friction.total_events),
+    totalOccurrences: number(friction.total_occurrences),
+    countedOccurrences: number(friction.counted_occurrences),
+    suppressedOccurrences: number(friction.suppressed_occurrences),
+    linkedInvocations: number(friction.linked_invocations),
+    unattributedOccurrences: number(friction.unattributed_occurrences),
+    aic: number(cost.aic),
+    inputTokens: number(tokens.input),
+    outputTokens: number(tokens.output),
+    cacheReadTokens: number(tokens.cache_read),
+    cacheWriteTokens: number(tokens.cache_write),
+    reasoningTokens: number(tokens.reasoning),
+    totalTokens: number(tokens.total),
+    turns: number(cost.turns),
+    toolCalls: number(cost.tool_calls),
+    latencyMs: number(cost.latency_ms),
+    totalRunAic: number(friction.total_run_aic),
+    frictionRatio: number(friction.friction_ratio),
+    derived: friction.derived === true,
+    dimensionStates: friction.dimension_states ?? null,
+    uncertainty: friction.uncertainty ?? null,
+    drivers: friction.drivers ?? null,
+    groups: friction.groups ?? null,
+    events: friction.events ?? null,
+    eventsTruncated: friction.events_truncated === true,
+    unmeasuredDrivers: friction.unmeasured_drivers ?? null,
+  }];
 }
 
 function emptySecurityTelemetry() {
@@ -494,8 +569,13 @@ export async function readRunSecurityTelemetry(outputDirectory, runId, evidence 
             serverName: firstText(call?.server_name),
             toolName: firstText(call?.tool_name),
             status: firstText(call?.status),
-            outputSize: call?.output_size != null && Number.isFinite(Number(call.output_size))
-              ? Math.max(0, Number(call.output_size))
+            ...((call?.input_size ?? call?.request_size) != null
+              && Number.isFinite(Number(call.input_size ?? call.request_size))
+              ? { inputSize: Math.max(0, Number(call.input_size ?? call.request_size)) }
+              : {}),
+            outputSize: (call?.output_size ?? call?.response_size) != null
+              && Number.isFinite(Number(call.output_size ?? call.response_size))
+              ? Math.max(0, Number(call.output_size ?? call.response_size))
               : null,
           })).filter((call) => call.serverName || call.toolName)
           : [];
@@ -774,6 +854,11 @@ export async function collectAicUsage() {
           security.firewall.firewallEvidenceError = "Firewall artifact parsing failed.";
           log.warning`Firewall evidence unavailable for ${repository} run ${runId}: ${error.message}`;
         }
+        timeline.push(...auditSummaryTimeline(
+          run,
+          canonicalRunId(repositoryOwner, repositoryName, runId),
+          common.createdAt,
+        ));
         const enriched = {
           ...common,
           agentId: firstText(common.agentId, security.agentInfo.agentId),

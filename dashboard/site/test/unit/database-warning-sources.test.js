@@ -50,6 +50,8 @@ function batch() {
     }],
     domains: [],
     tools: [],
+    skills: [],
+    friction: [],
     issues: [{
       id: 'event:safe-output',
       sessionId: 'session:42',

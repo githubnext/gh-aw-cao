@@ -14,7 +14,7 @@ Use this page after installation to answer the urgent operator questions: Is the
 | Update an installed control plane | [Update CAO](#update-cao) |
 | Add or update catalog workflows | [Maintain the catalog](#adding-a-campaign) |
 
-For installation and the first write-free run, begin with the [quickstart](getting-started.md).
+For installation, begin with [Set Up CAO](setup-quickstarts.md). Add and run a campaign only after the bare control plane is committed.
 
 ```text
 Is unsafe activity active or broadly possible?

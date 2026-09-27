@@ -61,7 +61,18 @@ const contentTypes = new Map([
   [".svg", "image/svg+xml"],
   [".webp", "image/webp"],
 ]);
-const redactedTextExtensions = new Set([".css", ".html", ".js", ".md", ".mjs", ".svg"]);
+const redactedTextExtensions = new Set([
+  ".css", ".html", ".js", ".json", ".jsonl", ".md", ".mjs", ".svg", ".txt", ".yaml", ".yml",
+]);
+const repositoryMemoryExtensions = new Set([".json", ".jsonl", ".md", ".txt", ".yaml", ".yml"]);
+const repositoryMemoryContentTypes = new Map([
+  [".json", "application/json; charset=utf-8"],
+  [".jsonl", "application/x-ndjson; charset=utf-8"],
+  [".md", "text/markdown; charset=utf-8"],
+  [".txt", "text/plain; charset=utf-8"],
+  [".yaml", "text/yaml; charset=utf-8"],
+  [".yml", "text/yaml; charset=utf-8"],
+]);
 const compressibleContentTypes = new Set([
   "application/json; charset=utf-8",
   "application/x-ndjson; charset=utf-8",
@@ -648,6 +659,7 @@ export async function startDashboardServer({
   const dashboardDataShards = new Map();
   let payloadHashesContent;
   let inventorySourcesContent;
+  let repositoryMemoryDirectory;
   const splitSourceContent = new Map();
   try {
     await downloadData(dashboardDataDirectory, repository, ghExecutable);
@@ -670,6 +682,10 @@ export async function startDashboardServer({
       inventorySourcesContent = redactJsonSecrets(
         await readFile(join(canonicalDataDirectory, "inventory-sources.json"), "utf8"),
       );
+      const memoryDirectory = await realpath(join(canonicalDataDirectory, "memory")).catch(() => undefined);
+      repositoryMemoryDirectory = memoryDirectory && isWithin(canonicalDataDirectory, memoryDirectory)
+        ? memoryDirectory
+        : undefined;
     } else {
       sourcesContent = redactJsonSecrets(
         await readFile(join(dashboardDataDirectory, "sources.json"), "utf8"),
@@ -1014,6 +1030,35 @@ export async function startDashboardServer({
           return;
         }
         sendContent(request, response, contentTypes.get(".json"), sourceManifestContent);
+        return;
+      }
+      if (pathname.startsWith("/memory/")) {
+        if (!repositoryMemoryDirectory) {
+          response.writeHead(404).end("Not found\n");
+          return;
+        }
+        const candidate = resolve(repositoryMemoryDirectory, `.${pathname.slice("/memory".length)}`);
+        if (!isWithin(repositoryMemoryDirectory, candidate)) {
+          response.writeHead(404).end("Not found\n");
+          return;
+        }
+        const metadata = await stat(candidate).catch(() => null);
+        const extension = extname(candidate).toLowerCase();
+        if (!metadata?.isFile() || !repositoryMemoryExtensions.has(extension)) {
+          response.writeHead(404).end("Not found\n");
+          return;
+        }
+        const canonicalFilePath = await realpath(candidate);
+        if (!isWithin(repositoryMemoryDirectory, canonicalFilePath)) {
+          response.writeHead(404).end("Not found\n");
+          return;
+        }
+        sendContent(
+          request,
+          response,
+          repositoryMemoryContentTypes.get(extension),
+          browserSafeFileContent(canonicalFilePath, await readFile(canonicalFilePath)),
+        );
         return;
       }
       const splitSourceMatch = pathname.match(/^\/sources\/([a-z0-9-]+)\.json$/);

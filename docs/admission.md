@@ -67,7 +67,7 @@ Setup creates one atomic control-plane revision:
 3. Declare the installed campaign and its worker-to-workflow mapping in `.github/workflows/cao.json`.
 4. Commit the workflows, generated locks, campaign records, and policy together, then push before running the campaign.
 
-The Bash installer installs the root CAO campaign and creates the consumer-owned policy. The campaign provides one runtime copy under `.github/workflows/shared/`. Controlled workflows receive it through their existing exact-SHA shared checkout; they do not fetch another copy from the CAO repository. Follow [Install CAO](getting-started.md#3-install-cao) to bootstrap the repository and [Enroll the exact target](getting-started.md#5-enroll-the-exact-target) to configure its scope.
+The Bash installer installs the root CAO campaign and creates the consumer-owned policy. The campaign provides one runtime copy under `.github/workflows/shared/`. Controlled workflows receive it through their existing exact-SHA shared checkout; they do not fetch another copy from the CAO repository. Follow [Set Up CAO](setup-quickstarts.md) to bootstrap the repository and configure its exact scope interactively.
 
 Root campaign installation does not declare a campaign in consumer-owned policy or grant admission. The CAO setup procedure and checked-in control policy own those decisions.
 

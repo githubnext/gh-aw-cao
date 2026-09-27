@@ -12,7 +12,7 @@ async function readNormalizedJsonl(filePath) {
   const lines = (await readFile(filePath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
   const [metadata, ...records] = lines;
   const batch = Object.fromEntries(
-    ['campaigns', 'repositories', 'workflows', 'runs', 'domains', 'tools', 'audits', 'issues', 'operationalValues']
+    ['campaigns', 'repositories', 'workflows', 'runs', 'domains', 'tools', 'skills', 'friction', 'audits', 'issues', 'operationalValues']
       .map((collection) => [collection, []])
   );
   for (const envelope of records) batch[envelope.collection].push(envelope.record);
@@ -31,7 +31,7 @@ async function readPhasePayload(directory) {
   const names = await readShardNames(directory);
   const payloads = await Promise.all(names.map((name) => readNormalizedJsonl(path.join(directory, name))));
   const batch = Object.fromEntries(
-    ['campaigns', 'repositories', 'workflows', 'runs', 'domains', 'tools', 'audits', 'issues', 'operationalValues']
+    ['campaigns', 'repositories', 'workflows', 'runs', 'domains', 'tools', 'skills', 'friction', 'audits', 'issues', 'operationalValues']
       .map((collection) => [collection, []])
   );
   for (const payload of payloads) {
@@ -556,5 +556,7 @@ test('hash-payloads upgrades the legacy cached layout to phased shards', async (
   for (const payload of [normalizedPayload, ...runs.payloads, ...records.payloads]) {
     assert.equal(Object.hasOwn(payload.batch, 'jobs'), false);
     assert.equal(Object.hasOwn(payload.batch, 'sessions'), false);
+    assert.equal(Object.hasOwn(payload.batch, 'skills'), true);
+    assert.equal(Object.hasOwn(payload.batch, 'friction'), true);
   }
 });

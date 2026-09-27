@@ -74,6 +74,48 @@ func TestResolveRedisEndpoint(t *testing.T) {
 	}
 }
 
+func TestResolveVersion(t *testing.T) {
+	const buildVersion = "1.2.3"
+
+	tests := []struct {
+		name        string
+		envOverride string
+		wantVersion string
+		wantSource  versionSource
+	}{
+		{
+			name:        "env override takes priority over the build version",
+			envOverride: "override-9.9.9",
+			wantVersion: "override-9.9.9",
+			wantSource:  versionSourceEnvOverride,
+		},
+		{
+			name:        "build version used when the env override is empty",
+			envOverride: "",
+			wantVersion: buildVersion,
+			wantSource:  versionSourceBuildLdflag,
+		},
+		{
+			name:        "build version used when the env override is only whitespace",
+			envOverride: "   ",
+			wantVersion: buildVersion,
+			wantSource:  versionSourceBuildLdflag,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotVersion, gotSource := resolveVersion(buildVersion, tt.envOverride)
+			if gotVersion != tt.wantVersion {
+				t.Errorf("resolveVersion() version = %q, want %q", gotVersion, tt.wantVersion)
+			}
+			if gotSource != tt.wantSource {
+				t.Errorf("resolveVersion() source = %q, want %q", gotSource, tt.wantSource)
+			}
+		})
+	}
+}
+
 func TestResolveNamespaceDefault(t *testing.T) {
 	const checkoutDefault = "checkout-abc123"
 

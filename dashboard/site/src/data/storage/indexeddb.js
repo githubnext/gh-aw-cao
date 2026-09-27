@@ -7,7 +7,7 @@ import { tidy } from '../../data-operations.js';
 const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 27;
+export const DATABASE_VERSION = 28;
 
 /** @param {string} [pathname] */
 export function canonicalDatabaseName(pathname) {
@@ -21,6 +21,8 @@ export const ENTITY_STORES = /** @type {const} */ ([
   'runs',
   'domains',
   'tools',
+  'skills',
+  'friction',
   'audits',
   'issues',
   'operationalValues',
@@ -77,6 +79,14 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
    keyPath: 'id',
    indexes: { byRun: 'runId' }
  },
+ skills: {
+   keyPath: 'id',
+   indexes: { byRun: 'runId' }
+ },
+ friction: {
+   keyPath: 'id',
+   indexes: { byRun: 'runId' }
+ },
  audits: {
    keyPath: 'id',
    indexes: { byRun: 'runId' }
@@ -123,8 +133,24 @@ const INGESTION_LOCK_RETRY_DELAY_MS = 25;
 const INGESTION_LOCK_WAITING_NOTICE_DELAY_MS = 500;
 const MAX_QUERY_INDEX_LOOKUPS = 32;
 const RECORD_OVERHEAD_BYTES = 512;
-const RETENTION_TIMESTAMPS = new Set(['runs', 'domains', 'tools', 'audits', 'issues', 'operationalValues']);
-const RUN_LINKED_STORES = /** @type {const} */ (['domains', 'tools', 'audits', 'issues']);
+const RETENTION_TIMESTAMPS = new Set([
+  'runs',
+  'domains',
+  'tools',
+  'skills',
+  'friction',
+  'audits',
+  'issues',
+  'operationalValues'
+]);
+const RUN_LINKED_STORES = /** @type {const} */ ([
+  'domains',
+  'tools',
+  'skills',
+  'friction',
+  'audits',
+  'issues'
+]);
 const QUERYABLE_STRING_KEY_PATHS = new Set([
   'slug',
   'repositoryId',
