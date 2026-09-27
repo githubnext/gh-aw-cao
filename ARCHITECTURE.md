@@ -129,12 +129,14 @@ produces the same stable check identifiers and observations as human-readable
 text or versioned JSON, never contacts GitHub or mutates Redis, and requires an
 explicit deep mode before reading every active row.
 
-Server construction resolves a provider-agnostic host capability profile before
-configuring authentication or ingestion. The profile declares authentication,
-listener ownership, HTTPS and trusted-proxy requirements, Redis session
-semantics, process namespace isolation, replica constraints, and collection
-support. Local, host-neutral container, Azure Functions, and Upstash adapters
-select profiles rather than adding provider checks to shared request handling.
+Server construction independently resolves an app server target module and a
+declarative Redis provider module, then composes their provider-agnostic
+capabilities before configuring authentication or ingestion. Target modules own
+authentication, listener ownership, HTTPS, and trusted-proxy requirements.
+Redis modules own environment mappings, session semantics, process namespace
+isolation, replica constraints, and collection support. Local, host-neutral
+container, Azure Functions, and Upstash are compositions rather than provider
+checks in shared request handling.
 Startup rejects configurations or Redis clients that do not satisfy the
 selected capabilities.
 
@@ -142,10 +144,15 @@ Hosted startup may compile that profile and its generic Redis connection from
 the non-secret `control-plane.web.host` section of
 `.github/workflows/cao.json`. The policy names environment variables rather
 than storing connection URLs, credentials, server-name overrides, or CA
-certificates. Managed-provider presets map provider conventions into the same
+certificates. Managed-provider modules map provider conventions into the same
 generic URL and verified-TLS configuration; they do not create provider-specific
 runtime paths. When no host section exists, legacy environment configuration is
 retained for existing deployments.
+
+Modules are compiled registry entries, not dynamically loaded code. Policy
+selects one target and one Redis module by name. Unknown names, attempts to
+override fixed module capabilities, incompatible compositions, and runtime
+clients that do not satisfy the composed profile fail before serving traffic.
 
 The host-neutral server also has a constrained Upstash profile for a provider
 that guarantees causal ordering only within one TCP session. That profile runs

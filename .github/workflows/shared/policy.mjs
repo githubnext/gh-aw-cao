@@ -6,20 +6,32 @@ const CONTROL_KEYS = ["scope", "inventory", "web", "defaults", "campaigns", "pub
 const SCOPE_KEYS = ["allowed-owners", "allowed-repositories"];
 const INVENTORY_KEYS = ["max-scan-repositories", "cell-count", "cell-index", "batch-size", "batch-index"];
 const WEB_KEYS = ["experimental", "favicon", "host"];
-const HOST_KEYS = [
+const HOST_KEYS = ["target", "redis"];
+const LEGACY_HOST_KEYS = [
   "name", "authentication", "listener", "require-https", "trust-platform-proxy",
   "single-replica", "supports-collection", "redis",
 ];
+const TARGET_KEYS = [
+  "module", "name", "authentication", "listener", "require-https",
+  "trust-platform-proxy", "supports-single-replica",
+];
+const TARGET_MODULES = ["generic", "container", "azure-functions"];
 const REDIS_KEYS = [
+  "module", "url-env", "host-env", "port-env", "username-env", "password-env",
+  "namespace-env", "session", "isolate-process-namespace",
+  "single-replica", "supports-collection", "allow-private-plaintext", "tls",
+];
+const REDIS_TLS_KEYS = ["mode", "server-name-env", "ca-certificate-env"];
+const REDIS_MODULES = [
+  "generic", "local", "upstash", "aws-elasticache", "redis-cloud", "gcp-memorystore",
+  "railway", "render", "digitalocean",
+];
+const LEGACY_REDIS_KEYS = [
   "preset", "url-env", "host-env", "port-env", "username-env", "password-env",
   "namespace-env", "session", "isolate-process-namespace",
   "allow-private-plaintext", "tls",
 ];
-const REDIS_TLS_KEYS = ["mode", "server-name-env", "ca-certificate-env"];
-const REDIS_PRESETS = [
-  "generic", "aws-elasticache", "redis-cloud", "gcp-memorystore",
-  "railway", "render", "digitalocean",
-];
+const LEGACY_REDIS_PRESETS = REDIS_MODULES.filter((module) => !["local", "upstash"].includes(module));
 const DEFAULT_KEYS = ["mode", "max-repositories", "rollout-percent", "monthly-ai-credit-budget"];
 const OCTICONS = [
   "mark-github", "code", "repo", "server", "issue", "pull-request", "play", "eye",
@@ -274,7 +286,37 @@ function validateWeb(web) {
 
 function validateHost(host, path) {
   assertMapping(host, path);
+  if (!("target" in host)) {
+    validateLegacyHost(host, path);
+    return;
+  }
   assertKeys(host, HOST_KEYS, path);
+  for (const key of ["target", "redis"]) {
+    if (!(key in host)) throw new PolicyError(`${path}.${key} is required`);
+  }
+  validateTarget(host.target, `${path}.target`);
+  validateRedis(host.redis, `${path}.redis`);
+  if (host.redis.module === "generic" &&
+      host.redis["single-replica"] === true && host.redis.session !== "serialized") {
+    throw new PolicyError(`${path}.redis.single-replica requires a serialized Redis session`);
+  }
+  if (host.redis.module === "generic" &&
+      host.redis["isolate-process-namespace"] === true && host.redis.session !== "serialized") {
+    throw new PolicyError(`${path}.redis.isolate-process-namespace requires a serialized session`);
+  }
+  const targetSupportsSingleReplica =
+    host.target.module === "container" ||
+    (host.target.module === "generic" && host.target["supports-single-replica"] === true);
+  const redisRequiresSingleReplica =
+    host.redis.module === "upstash" ||
+    (host.redis.module === "generic" && host.redis["single-replica"] === true);
+  if (redisRequiresSingleReplica && !targetSupportsSingleReplica) {
+    throw new PolicyError(`${path} target cannot guarantee the Redis module's single-replica requirement`);
+  }
+}
+
+function validateLegacyHost(host, path) {
+  assertKeys(host, LEGACY_HOST_KEYS, path);
   for (const key of ["authentication", "listener", "redis"]) {
     if (!(key in host)) throw new PolicyError(`${path}.${key} is required`);
   }
@@ -284,7 +326,7 @@ function validateHost(host, path) {
   for (const key of ["require-https", "trust-platform-proxy", "single-replica", "supports-collection"]) {
     if (key in host) assertBoolean(host[key], `${path}.${key}`);
   }
-  validateRedis(host.redis, `${path}.redis`);
+  validateLegacyRedis(host.redis, `${path}.redis`);
   if (host.listener === "platform" && host.authentication !== "github-oauth") {
     throw new PolicyError(`${path} platform listeners require github-oauth authentication`);
   }
@@ -299,10 +341,71 @@ function validateHost(host, path) {
   }
 }
 
+function validateTarget(target, path) {
+  assertMapping(target, path);
+  assertKeys(target, TARGET_KEYS, path);
+  if (!("module" in target)) throw new PolicyError(`${path}.module is required`);
+  assertOneOf(target.module, `${path}.module`, TARGET_MODULES);
+  if ("name" in target) assertString(target.name, `${path}.name`, SLUG_PATTERN);
+  if (target.module === "generic") {
+    for (const key of ["authentication", "listener"]) {
+      if (!(key in target)) throw new PolicyError(`${path}.${key} is required for the generic module`);
+    }
+    assertOneOf(target.authentication, `${path}.authentication`, ["github-oauth"]);
+    assertOneOf(target.listener, `${path}.listener`, ["process", "platform"]);
+    if (target.authentication !== "github-oauth") {
+      throw new PolicyError(`${path}.authentication must be github-oauth for a configured host target`);
+    }
+    for (const key of ["require-https", "trust-platform-proxy", "supports-single-replica"]) {
+      if (key in target) assertBoolean(target[key], `${path}.${key}`);
+    }
+    if (target.listener === "platform" && target.authentication !== "github-oauth") {
+      throw new PolicyError(`${path} platform listeners require github-oauth authentication`);
+    }
+    if (target["trust-platform-proxy"] === true && target.listener !== "platform") {
+      throw new PolicyError(`${path}.trust-platform-proxy requires a platform listener`);
+    }
+  } else {
+    for (const key of [
+      "authentication", "listener", "require-https", "trust-platform-proxy",
+      "supports-single-replica",
+    ]) {
+      if (key in target) throw new PolicyError(`${path}.${key} is fixed by module ${target.module}`);
+    }
+  }
+}
+
 function validateRedis(redis, path) {
   assertMapping(redis, path);
   assertKeys(redis, REDIS_KEYS, path);
-  if ("preset" in redis) assertOneOf(redis.preset, `${path}.preset`, REDIS_PRESETS);
+  if (!("module" in redis)) throw new PolicyError(`${path}.module is required`);
+  assertOneOf(redis.module, `${path}.module`, REDIS_MODULES);
+  for (const key of ["url-env", "host-env", "port-env", "username-env", "password-env", "namespace-env"]) {
+    if (key in redis) assertString(redis[key], `${path}.${key}`, SECRET_REFERENCE_PATTERN);
+  }
+  if ("session" in redis) assertOneOf(redis.session, `${path}.session`, ["pooled", "serialized"]);
+  for (const key of ["isolate-process-namespace", "single-replica", "supports-collection", "allow-private-plaintext"]) {
+    if (key in redis) assertBoolean(redis[key], `${path}.${key}`);
+  }
+  if (redis.module !== "generic") {
+    for (const key of ["session", "isolate-process-namespace", "single-replica", "supports-collection"]) {
+      if (key in redis) throw new PolicyError(`${path}.${key} is fixed by module ${redis.module}`);
+    }
+  }
+  if ("tls" in redis) {
+    assertMapping(redis.tls, `${path}.tls`);
+    assertKeys(redis.tls, REDIS_TLS_KEYS, `${path}.tls`);
+    if ("mode" in redis.tls) assertOneOf(redis.tls.mode, `${path}.tls.mode`, ["auto", "required", "disabled"]);
+    for (const key of ["server-name-env", "ca-certificate-env"]) {
+      if (key in redis.tls) assertString(redis.tls[key], `${path}.tls.${key}`, SECRET_REFERENCE_PATTERN);
+    }
+  }
+}
+
+function validateLegacyRedis(redis, path) {
+  assertMapping(redis, path);
+  assertKeys(redis, LEGACY_REDIS_KEYS, path);
+  if ("preset" in redis) assertOneOf(redis.preset, `${path}.preset`, LEGACY_REDIS_PRESETS);
   for (const key of ["url-env", "host-env", "port-env", "username-env", "password-env", "namespace-env"]) {
     if (key in redis) assertString(redis[key], `${path}.${key}`, SECRET_REFERENCE_PATTERN);
   }

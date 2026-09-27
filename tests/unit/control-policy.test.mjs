@@ -112,15 +112,16 @@ test("control policy validates provider-neutral host and Redis configuration", (
   const policy = JSON.parse(minimalPolicy);
   policy["control-plane"].web = {
     host: {
-      name: "managed-redis",
-      authentication: "github-oauth",
-      listener: "process",
-      "require-https": true,
-      "supports-collection": false,
+      target: {
+        module: "generic",
+        name: "managed-redis",
+        authentication: "github-oauth",
+        listener: "process",
+        "require-https": true,
+      },
       redis: {
-        preset: "redis-cloud",
+        module: "redis-cloud",
         "url-env": "REDIS_URL",
-        session: "pooled",
         tls: {
           mode: "required",
           "server-name-env": "REDIS_TLS_SERVER_NAME",
@@ -142,16 +143,72 @@ test("control policy rejects inconsistent host capabilities", () => {
   const policy = JSON.parse(minimalPolicy);
   policy["control-plane"].web = {
     host: {
-      authentication: "bearer",
-      listener: "platform",
-      "single-replica": true,
-      redis: { preset: "generic", session: "pooled" },
+      target: {
+        module: "generic",
+        authentication: "github-oauth",
+        listener: "process",
+      },
+      redis: { module: "generic", session: "pooled", "single-replica": true },
     },
   };
 
   const result = validate(JSON.stringify(policy));
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /platform listeners require github-oauth|single-replica requires/);
+  assert.match(result.stderr, /single-replica requires/);
+});
+
+test("control policy validates every deployment module and rejects incompatible composition", () => {
+  const targetModules = ["container", "azure-functions"];
+  const redisModules = [
+    "generic", "local", "upstash", "aws-elasticache", "redis-cloud",
+    "gcp-memorystore", "railway", "render", "digitalocean",
+  ];
+  assert.deepEqual(schema.$defs.hostTarget.properties.module.enum, ["generic", ...targetModules]);
+  assert.deepEqual(schema.$defs.redisModule.properties.module.enum, redisModules);
+
+  for (const module of targetModules) {
+    const policy = JSON.parse(minimalPolicy);
+    policy["control-plane"].web = {
+      host: { target: { module }, redis: { module: "generic" } },
+    };
+    assert.equal(validate(JSON.stringify(policy)).status, 0, module);
+  }
+  for (const module of redisModules) {
+    const policy = JSON.parse(minimalPolicy);
+    policy["control-plane"].web = {
+      host: { target: { module: "container" }, redis: { module } },
+    };
+    assert.equal(validate(JSON.stringify(policy)).status, 0, module);
+  }
+
+  const incompatible = JSON.parse(minimalPolicy);
+  incompatible["control-plane"].web = {
+    host: {
+      target: { module: "azure-functions" },
+      redis: { module: "upstash" },
+    },
+  };
+  assert.match(validate(JSON.stringify(incompatible)).stderr, /single-replica requirement/);
+});
+
+test("control policy accepts the previous flat host shape during migration", () => {
+  const policy = JSON.parse(minimalPolicy);
+  policy["control-plane"].web = {
+    host: {
+      name: "legacy-host",
+      authentication: "github-oauth",
+      listener: "process",
+      "require-https": true,
+      "supports-collection": true,
+      redis: {
+        preset: "redis-cloud",
+        "url-env": "REDIS_URL",
+        session: "pooled",
+        tls: { mode: "required" },
+      },
+    },
+  };
+  assert.equal(validate(JSON.stringify(policy)).status, 0);
 });
 
 test("control policy rejects malformed gh-aw compiler versions", () => {

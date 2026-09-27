@@ -44,6 +44,11 @@ type hostPolicyDocument struct {
 }
 
 type hostPolicy struct {
+	Target targetPolicy `json:"target"`
+	Redis  redisPolicy  `json:"redis"`
+}
+
+type legacyHostPolicy struct {
 	Name               string             `json:"name"`
 	Authentication     HostAuthentication `json:"authentication"`
 	Listener           HostListener       `json:"listener"`
@@ -51,10 +56,36 @@ type hostPolicy struct {
 	TrustPlatformProxy bool               `json:"trust-platform-proxy"`
 	SingleReplica      bool               `json:"single-replica"`
 	SupportsCollection bool               `json:"supports-collection"`
-	Redis              redisPolicy        `json:"redis"`
+	Redis              legacyRedisPolicy  `json:"redis"`
+}
+
+type targetPolicy struct {
+	Module                string             `json:"module"`
+	Name                  string             `json:"name"`
+	Authentication        HostAuthentication `json:"authentication"`
+	Listener              HostListener       `json:"listener"`
+	RequireHTTPS          *bool              `json:"require-https"`
+	TrustPlatformProxy    *bool              `json:"trust-platform-proxy"`
+	SupportsSingleReplica *bool              `json:"supports-single-replica"`
 }
 
 type redisPolicy struct {
+	Module                  string           `json:"module"`
+	URLEnv                  string           `json:"url-env"`
+	HostEnv                 string           `json:"host-env"`
+	PortEnv                 string           `json:"port-env"`
+	UsernameEnv             string           `json:"username-env"`
+	PasswordEnv             string           `json:"password-env"`
+	NamespaceEnv            string           `json:"namespace-env"`
+	Session                 HostRedisSession `json:"session"`
+	IsolateProcessNamespace *bool            `json:"isolate-process-namespace"`
+	SingleReplica           *bool            `json:"single-replica"`
+	SupportsCollection      *bool            `json:"supports-collection"`
+	AllowPrivatePlaintext   bool             `json:"allow-private-plaintext"`
+	TLS                     redisTLSPolicy   `json:"tls"`
+}
+
+type legacyRedisPolicy struct {
 	Preset                  string           `json:"preset"`
 	URLEnv                  string           `json:"url-env"`
 	HostEnv                 string           `json:"host-env"`
@@ -72,24 +103,6 @@ type redisTLSPolicy struct {
 	Mode             redisTLSMode `json:"mode"`
 	ServerNameEnv    string       `json:"server-name-env"`
 	CACertificateEnv string       `json:"ca-certificate-env"`
-}
-
-type redisPreset struct {
-	urlEnv      string
-	hostEnv     string
-	portEnv     string
-	usernameEnv string
-	passwordEnv string
-}
-
-var redisPresets = map[string]redisPreset{
-	"generic":         {urlEnv: "REDIS_URL"},
-	"aws-elasticache": {urlEnv: "REDIS_URL"},
-	"redis-cloud":     {urlEnv: "REDIS_URL"},
-	"gcp-memorystore": {hostEnv: "REDISHOST", portEnv: "REDISPORT", usernameEnv: "REDIS_USERNAME", passwordEnv: "REDIS_PASSWORD"},
-	"railway":         {urlEnv: "REDIS_URL"},
-	"render":          {urlEnv: "REDIS_URL"},
-	"digitalocean":    {urlEnv: "REDIS_URL"},
 }
 
 func configuredHostPolicyPath() string {
@@ -128,6 +141,19 @@ func loadHostPolicyFromEnv() (*resolvedHostPolicy, error) {
 		string(document.ControlPlane.Web.Host) == "null" {
 		return nil, nil
 	}
+	var discriminator map[string]json.RawMessage
+	if err := json.Unmarshal(document.ControlPlane.Web.Host, &discriminator); err != nil {
+		return nil, errors.New("parse CAO host policy")
+	}
+	if _, modular := discriminator["target"]; !modular {
+		var policy legacyHostPolicy
+		hostDecoder := json.NewDecoder(strings.NewReader(string(document.ControlPlane.Web.Host)))
+		hostDecoder.DisallowUnknownFields()
+		if err := hostDecoder.Decode(&policy); err != nil {
+			return nil, errors.New("parse CAO host policy")
+		}
+		return policy.resolve(os.LookupEnv)
+	}
 	var policy hostPolicy
 	hostDecoder := json.NewDecoder(strings.NewReader(string(document.ControlPlane.Web.Host)))
 	hostDecoder.DisallowUnknownFields()
@@ -138,6 +164,75 @@ func loadHostPolicyFromEnv() (*resolvedHostPolicy, error) {
 }
 
 func (policy hostPolicy) resolve(lookup func(string) (string, bool)) (*resolvedHostPolicy, error) {
+	profile, supportsSingleReplica, err := resolveTargetModule(policy.Target)
+	if err != nil {
+		return nil, err
+	}
+	provider, err := resolveRedisProviderModule(policy.Redis)
+	if err != nil {
+		return nil, err
+	}
+	profile.RedisSession = provider.session
+	profile.IsolateProcessNamespace = provider.isolateProcessNamespace
+	profile.SingleReplica = provider.singleReplica
+	profile.SupportsCollection = provider.supportsCollection
+	if profile.SingleReplica && !supportsSingleReplica {
+		return nil, fmt.Errorf(
+			"host target module %q cannot guarantee the Redis provider's single-replica requirement",
+			policy.Target.Module,
+		)
+	}
+	if err := profile.validate(); err != nil {
+		return nil, err
+	}
+	urlEnv := firstNonempty(policy.Redis.URLEnv, provider.urlEnv)
+	hostEnv := firstNonempty(policy.Redis.HostEnv, provider.hostEnv)
+	portEnv := firstNonempty(policy.Redis.PortEnv, provider.portEnv)
+	usernameEnv := firstNonempty(policy.Redis.UsernameEnv, provider.usernameEnv)
+	passwordEnv := firstNonempty(policy.Redis.PasswordEnv, provider.passwordEnv)
+	tlsMode := policy.Redis.TLS.Mode
+	if tlsMode == "" {
+		tlsMode = provider.tlsMode
+		if tlsMode == "" {
+			tlsMode = redisTLSAuto
+		}
+	} else if provider.tlsMode == redisTLSRequired && tlsMode != redisTLSRequired {
+		return nil, fmt.Errorf("Redis provider module %q requires TLS", policy.Redis.Module)
+	}
+	if tlsMode != redisTLSAuto && tlsMode != redisTLSRequired && tlsMode != redisTLSDisabled {
+		return nil, fmt.Errorf("unsupported Redis TLS mode %q", tlsMode)
+	}
+	redisURL, err := redisURLFromEnvironment(
+		lookup, urlEnv, hostEnv, portEnv, usernameEnv, passwordEnv, tlsMode,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if policy.Redis.Module == "upstash" && !isUpstashRedisURL(redisURL) {
+		return nil, errors.New("Upstash Redis provider module requires an upstash.io endpoint")
+	}
+	namespaceEnv := firstNonempty(policy.Redis.NamespaceEnv, "REDIS_NAMESPACE")
+	namespace := envValue(lookup, namespaceEnv)
+	if namespace == "" {
+		namespace = "hosted-dashboard"
+	}
+	return &resolvedHostPolicy{
+		Profile:                profile,
+		SingleReplicaConfirmed: true,
+		RedisURL:               redisURL,
+		RedisNamespace:         namespace,
+		RedisOptions: redisx.Options{
+			AllowPrivatePlaintext: policy.Redis.AllowPrivatePlaintext,
+			SingleSession:         provider.session == HostRedisSerialized,
+			ForceTLS:              tlsMode == redisTLSRequired,
+			DisableTLS:            tlsMode == redisTLSDisabled,
+			TLSServerName:         envValue(lookup, policy.Redis.TLS.ServerNameEnv),
+			TLSCACertificatePEM:   envValue(lookup, policy.Redis.TLS.CACertificateEnv),
+		},
+	}, nil
+}
+
+func (policy legacyHostPolicy) resolve(lookup func(string) (string, bool)) (*resolvedHostPolicy, error) {
 	name := strings.TrimSpace(policy.Name)
 	if name == "" {
 		name = "configured"
@@ -165,20 +260,14 @@ func (policy hostPolicy) resolve(lookup func(string) (string, bool)) (*resolvedH
 	if err := profile.validate(); err != nil {
 		return nil, err
 	}
-
-	presetName := policy.Redis.Preset
-	if presetName == "" {
-		presetName = "generic"
+	presetName := firstNonempty(policy.Redis.Preset, "generic")
+	if presetName == "local" || presetName == "upstash" {
+		return nil, fmt.Errorf("unsupported Redis preset %q", presetName)
 	}
-	preset, ok := redisPresets[presetName]
+	provider, ok := redisProviderModules[presetName]
 	if !ok {
 		return nil, fmt.Errorf("unsupported Redis preset %q", presetName)
 	}
-	urlEnv := firstNonempty(policy.Redis.URLEnv, preset.urlEnv)
-	hostEnv := firstNonempty(policy.Redis.HostEnv, preset.hostEnv)
-	portEnv := firstNonempty(policy.Redis.PortEnv, preset.portEnv)
-	usernameEnv := firstNonempty(policy.Redis.UsernameEnv, preset.usernameEnv)
-	passwordEnv := firstNonempty(policy.Redis.PasswordEnv, preset.passwordEnv)
 	tlsMode := policy.Redis.TLS.Mode
 	if tlsMode == "" {
 		tlsMode = redisTLSAuto
@@ -187,13 +276,18 @@ func (policy hostPolicy) resolve(lookup func(string) (string, bool)) (*resolvedH
 		return nil, fmt.Errorf("unsupported Redis TLS mode %q", tlsMode)
 	}
 	redisURL, err := redisURLFromEnvironment(
-		lookup, urlEnv, hostEnv, portEnv, usernameEnv, passwordEnv, tlsMode,
+		lookup,
+		firstNonempty(policy.Redis.URLEnv, provider.urlEnv),
+		firstNonempty(policy.Redis.HostEnv, provider.hostEnv),
+		firstNonempty(policy.Redis.PortEnv, provider.portEnv),
+		firstNonempty(policy.Redis.UsernameEnv, provider.usernameEnv),
+		firstNonempty(policy.Redis.PasswordEnv, provider.passwordEnv),
+		tlsMode,
 	)
 	if err != nil {
 		return nil, err
 	}
-	namespaceEnv := firstNonempty(policy.Redis.NamespaceEnv, "REDIS_NAMESPACE")
-	namespace := envValue(lookup, namespaceEnv)
+	namespace := envValue(lookup, firstNonempty(policy.Redis.NamespaceEnv, "REDIS_NAMESPACE"))
 	if namespace == "" {
 		namespace = "hosted-dashboard"
 	}

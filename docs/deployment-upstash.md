@@ -56,18 +56,14 @@ The application host needs outbound access to the Upstash Redis endpoint and to 
    ```json
    {
      "host": {
-       "name": "upstash",
-       "authentication": "github-oauth",
-       "listener": "process",
-       "require-https": true,
-       "single-replica": true,
-       "supports-collection": false,
+       "target": {
+         "module": "container",
+         "name": "upstash"
+       },
        "redis": {
-         "preset": "generic",
+         "module": "upstash",
          "url-env": "REDIS_URL",
          "namespace-env": "REDIS_NAMESPACE",
-         "session": "serialized",
-         "isolate-process-namespace": true,
          "tls": { "mode": "required" }
        }
      }

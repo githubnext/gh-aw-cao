@@ -81,18 +81,20 @@ flowchart LR
 
 ### Host capability profiles
 
-`internal/server/host_profile.go` separates server capabilities from provider
-names. A profile declares authentication, process-owned or platform-owned
-listening, HTTPS and trusted-proxy handling, Redis connection semantics,
-per-process namespace isolation, replica constraints, and server-side collection
-support. Local serving, host-neutral containers, Azure Functions, and Upstash
-select profiles and then use the same validation and request handling.
+`internal/server/host_modules.go` independently resolves an app server target
+module and a declarative Redis provider module. Their capabilities compose into
+the profile validated by `internal/server/host_profile.go`. Target modules own
+authentication, listener, HTTPS, and proxy behavior; Redis modules own
+environment mappings, connection semantics, namespace isolation, replica
+constraints, and collection support.
 
 Hosted deployments normally declare these capabilities under
 `control-plane.web.host` in `.github/workflows/cao.json`. The declaration names
 environment variables for Redis connection and verified TLS inputs; secret
-values remain in the deployment environment. New hosting adapters should map
-their environment into this generic policy and let `server.New` validate it.
+values remain in the deployment environment. New hosting platforms add a target
+module without changing Redis providers; new Redis providers add declarative
+environment defaults without changing target modules. `server.New` validates the
+composed profile.
 Do not add provider-name branches to shared authentication, proxy, ingestion,
 or Redis enforcement. Startup rejects unsupported capability combinations, a
 serialized profile backed by a pooled Redis client, collection on an
@@ -109,7 +111,7 @@ TLS at the CAO service itself. It is not coupled to a Redis provider or cloud
 SDK. Set `CAO_POLICY_PATH` only when the policy is mounted somewhere other than
 `.github/workflows/cao.json`. See
 [`docs/deployment-managed-redis.md`](../docs/deployment-managed-redis.md) for
-the generic `REDIS_URL` and TLS contract and provider presets.
+the generic `REDIS_URL` and TLS contract and provider modules.
 
 The following environment variables remain the compatibility path when
 `control-plane.web.host` is absent:
@@ -141,26 +143,27 @@ configuration.
 
 ### Upstash Redis provider
 
-The host-neutral service has an explicit `CAO_REDIS_MODE=upstash` profile for
-Upstash Redis's per-TCP-session causal consistency. It serializes every command
-through one connection, never recycles that connection, disables transparent
-retries, and permanently fails closed after transport loss. A process restart
-is required to recover.
+The `upstash` Redis module composes with the `container` target for Upstash
+Redis's per-TCP-session causal consistency. It serializes every command through
+one connection, never recycles that connection, disables transparent retries,
+and permanently fails closed after transport loss. A process restart is required
+to recover.
 
-Every start derives a random internal namespace from `CAO_REDIS_NAMESPACE`.
+Every start derives a random internal namespace from `REDIS_NAMESPACE`.
 This prevents state written through an earlier TCP session from reappearing
 after restart, and deliberately invalidates existing OAuth sessions. Superseded
 namespaces remain disposable data and consume capacity until an operator removes
 them while the application is stopped.
 
-This mode requires `CAO_UPSTASH_SINGLE_REPLICA=true`, exactly one application
-replica, a dedicated Upstash database, artifact ingestion through
-`CAO_SOURCE_DIRECTORY`, and `rediss://` transport. Server-side collection and
-standalone collection roles are rejected. The acknowledgement is fail-closed
-configuration, not platform-level replica enforcement; operators must configure
-the hosting platform itself for one replica. Do not configure the Upstash REST
-URL or REST token. For the operator procedure, see [Deploying the dashboard with
-Upstash Redis](https://github.com/githubnext/gh-aw-cao/blob/main/docs/deployment-upstash.md).
+This module requires exactly one application replica, a dedicated Upstash
+database, artifact ingestion through `CAO_SOURCE_DIRECTORY`, and verified TLS.
+Server-side collection and standalone collection roles are rejected. Policy
+validation confirms the target module can be configured for one replica, but
+operators must still set the hosting platform itself to one replica. The legacy
+no-policy path retains `CAO_REDIS_MODE=upstash` and
+`CAO_UPSTASH_SINGLE_REPLICA=true`. Do not configure the Upstash REST URL or REST
+token. For the operator procedure, see [Deploying the dashboard with Upstash
+Redis](https://github.com/githubnext/gh-aw-cao/blob/main/docs/deployment-upstash.md).
 
 ### Coolify container profile
 

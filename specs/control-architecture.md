@@ -231,18 +231,27 @@ Inventory partitioning MUST be deterministic for the same inventory and effectiv
 The optional `web.favicon` value MUST be an absolute HTTPS URL without credentials, query, or fragment, or a non-traversing `./` relative path. Web presentation settings MUST NOT grant or widen rollout authority.
 
 The optional `web.host` object declares non-secret dashboard hosting
-capabilities and Redis connection indirection. It MUST NOT contain a Redis URL,
+modules and Redis connection indirection. It MUST NOT contain a Redis URL,
 password, certificate, token, or other credential value. Environment references
-MUST be uppercase environment-variable names. A host declaration identifies its
-authentication and listener models and MAY constrain HTTPS, platform-proxy
-trust, replica count, collection support, Redis session semantics, process
-namespace isolation, and verified TLS inputs.
+MUST be uppercase environment-variable names. A host declaration MUST compose
+exactly one target module with exactly one Redis provider module. Target modules
+define authentication, listener ownership, HTTPS, and platform-proxy trust.
+Redis modules define environment mappings, replica and collection constraints,
+session semantics, process namespace isolation, and verified TLS inputs.
 
-Provider presets under `web.host.redis.preset` only select environment-variable
-defaults. They MUST resolve into the same generic Redis connection model and
+Provider modules under `web.host.redis.module` only select environment-variable
+defaults and consistency capabilities. They MUST resolve into the same generic
+Redis connection model and
 MUST NOT grant authority, embed credentials, disable certificate verification,
 or introduce provider-specific request handling. An invalid or internally
 inconsistent host declaration MUST fail policy validation or server startup.
+Target and Redis modules MUST be reviewed, compiled registry entries rather than
+code loaded from policy or another runtime path. Fixed module capabilities MUST
+NOT be overridden by policy. Module composition MUST complete and be validated
+before the server accepts traffic.
+Implementations MAY accept the earlier flat host-capability and `redis.preset`
+shape as a compatibility input, but MUST normalize it into the same generic
+connection and validated host-profile boundary.
 
 | Campaign property | Constraint | Authority type |
 | --- | --- | --- |

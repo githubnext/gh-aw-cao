@@ -1,0 +1,118 @@
+package server
+
+import (
+	"errors"
+	"fmt"
+	"strings"
+)
+
+type hostTargetModule struct {
+	authentication        HostAuthentication
+	listener              HostListener
+	requireHTTPS          bool
+	trustPlatformProxy    bool
+	supportsSingleReplica bool
+	configurable          bool
+}
+
+type redisProviderModule struct {
+	urlEnv                  string
+	hostEnv                 string
+	portEnv                 string
+	usernameEnv             string
+	passwordEnv             string
+	session                 HostRedisSession
+	isolateProcessNamespace bool
+	singleReplica           bool
+	supportsCollection      bool
+	tlsMode                 redisTLSMode
+	configurable            bool
+}
+
+var hostTargetModules = map[string]hostTargetModule{
+	"generic":         {configurable: true},
+	"container":       {authentication: HostAuthenticationOAuth, listener: HostListenerProcess, requireHTTPS: true, supportsSingleReplica: true},
+	"azure-functions": {authentication: HostAuthenticationOAuth, listener: HostListenerPlatform, requireHTTPS: true, trustPlatformProxy: true},
+}
+
+var redisProviderModules = map[string]redisProviderModule{
+	"generic":         {urlEnv: "REDIS_URL", session: HostRedisPooled, supportsCollection: true, configurable: true},
+	"local":           {urlEnv: "REDIS_URL", session: HostRedisPooled, supportsCollection: true},
+	"upstash":         {urlEnv: "REDIS_URL", session: HostRedisSerialized, isolateProcessNamespace: true, singleReplica: true, tlsMode: redisTLSRequired},
+	"aws-elasticache": {urlEnv: "REDIS_URL", session: HostRedisPooled, supportsCollection: true},
+	"redis-cloud":     {urlEnv: "REDIS_URL", session: HostRedisPooled, supportsCollection: true},
+	"gcp-memorystore": {hostEnv: "REDISHOST", portEnv: "REDISPORT", usernameEnv: "REDIS_USERNAME", passwordEnv: "REDIS_PASSWORD", session: HostRedisPooled, supportsCollection: true},
+	"railway":         {urlEnv: "REDIS_URL", session: HostRedisPooled, supportsCollection: true},
+	"render":          {urlEnv: "REDIS_URL", session: HostRedisPooled, supportsCollection: true},
+	"digitalocean":    {urlEnv: "REDIS_URL", session: HostRedisPooled, supportsCollection: true},
+}
+
+func resolveTargetModule(policy targetPolicy) (HostProfile, bool, error) {
+	moduleName := strings.TrimSpace(policy.Module)
+	module, ok := hostTargetModules[moduleName]
+	if !ok {
+		return HostProfile{}, false, fmt.Errorf("unsupported host target module %q", moduleName)
+	}
+	if module.configurable {
+		if policy.Authentication == "" || policy.Listener == "" {
+			return HostProfile{}, false, errors.New("generic host target module requires authentication and listener")
+		}
+		module.authentication = policy.Authentication
+		module.listener = policy.Listener
+		if module.authentication != HostAuthenticationOAuth {
+			return HostProfile{}, false, errors.New("configured host target module requires github-oauth authentication")
+		}
+		module.requireHTTPS = true
+		if policy.RequireHTTPS != nil {
+			module.requireHTTPS = *policy.RequireHTTPS
+		}
+		if policy.TrustPlatformProxy != nil {
+			module.trustPlatformProxy = *policy.TrustPlatformProxy
+		}
+		if policy.SupportsSingleReplica != nil {
+			module.supportsSingleReplica = *policy.SupportsSingleReplica
+		}
+	} else if policy.Authentication != "" || policy.Listener != "" ||
+		policy.RequireHTTPS != nil || policy.TrustPlatformProxy != nil ||
+		policy.SupportsSingleReplica != nil {
+		return HostProfile{}, false, fmt.Errorf("host target module %q has fixed capabilities", moduleName)
+	}
+	name := strings.TrimSpace(policy.Name)
+	if name == "" {
+		name = moduleName
+	}
+	return HostProfile{
+		Name:                name,
+		Authentication:      module.authentication,
+		Listener:            module.listener,
+		RequiresHTTPS:       module.requireHTTPS,
+		TrustsPlatformProxy: module.trustPlatformProxy,
+		RequiresRedis:       true,
+	}, module.supportsSingleReplica, nil
+}
+
+func resolveRedisProviderModule(policy redisPolicy) (redisProviderModule, error) {
+	moduleName := strings.TrimSpace(policy.Module)
+	module, ok := redisProviderModules[moduleName]
+	if !ok {
+		return redisProviderModule{}, fmt.Errorf("unsupported Redis provider module %q", moduleName)
+	}
+	if module.configurable {
+		if policy.Session != "" {
+			module.session = policy.Session
+		}
+		if policy.IsolateProcessNamespace != nil {
+			module.isolateProcessNamespace = *policy.IsolateProcessNamespace
+		}
+		if policy.SingleReplica != nil {
+			module.singleReplica = *policy.SingleReplica
+		}
+		if policy.SupportsCollection != nil {
+			module.supportsCollection = *policy.SupportsCollection
+		}
+	} else if policy.Session != "" || policy.IsolateProcessNamespace != nil ||
+		policy.SingleReplica != nil || policy.SupportsCollection != nil {
+		return redisProviderModule{}, fmt.Errorf("Redis provider module %q has fixed capabilities", moduleName)
+	}
+	return module, nil
+}

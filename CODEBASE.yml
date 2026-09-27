@@ -138,7 +138,7 @@ components:
     responsibility: disposable generation-scoped dashboard projection using core Redis row sets
   dashboard_https_server:
     path: server/
-    responsibility: compile non-secret cao.json host policy into provider-agnostic host and generic Redis capabilities, ingest deployed artifacts, execute Dashboard Language queries server-side, and serve bounded canonical results
+    responsibility: independently resolve compiled app-target and declarative Redis-provider modules from non-secret cao.json, compose and validate their capabilities, ingest deployed artifacts, execute Dashboard Language queries server-side, and serve bounded canonical results
   dashboard_coolify_deployment:
     path: server/coolify/
     responsibility: build and run the non-root serve-hosted container behind a fail-closed Coolify TLS proxy with a managed Redis connection and an atomically populated external read-only artifact volume
@@ -336,7 +336,7 @@ invariants:
   - "Policy and workflow changes MUST be committed together."
   - "Upstash mode MUST run exactly one application replica, serialize every Redis operation through one TCP session, fail closed after transport loss, isolate every process start in a fresh namespace except for its stable encrypted pending-revocation queue, and use artifact ingestion rather than server-side collection."
   - "Every server host integration MUST select a validated provider-agnostic capability profile covering authentication, listener ownership, HTTPS and proxy trust, Redis session semantics, namespace isolation, replica constraints, and collection support; startup MUST reject a configuration or Redis client that violates the selected profile."
-  - "control-plane.web.host MAY name environment variables for generic Redis URL and verified TLS inputs but MUST NOT contain connection URLs, credentials, certificates, or provider-specific runtime authority; presets only map environment conventions into the generic connection."
+  - "control-plane.web.host MUST compose one app server target module with one declarative Redis provider module; it MAY name environment variables for generic Redis and TLS inputs but MUST NOT contain secrets or add provider-specific request handling."
   - "Marketplace registry order defines precedence; the official registry is removable configuration rather than hard-coded resolver behavior."
   - "Marketplace registry authentication MUST reference secrets, remain registry-scoped in trusted Activity or hosted resolvers, and MUST NOT enter manifests, canonical package records, IndexedDB, query payloads, or UI state."
   - "Static and hosted marketplace resolvers MUST produce the same normalized package contract; failure of one registry MUST NOT make other registries unavailable."

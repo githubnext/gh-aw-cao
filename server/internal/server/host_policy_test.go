@@ -3,6 +3,8 @@ package server
 import (
 	"os"
 	"path/filepath"
+	"slices"
+	"sort"
 	"strings"
 	"testing"
 
@@ -11,15 +13,19 @@ import (
 
 func TestHostPolicyResolvesGenericRedisURLAndTLS(t *testing.T) {
 	required := true
+	collection := true
 	policy := hostPolicy{
-		Name:               "managed-redis",
-		Authentication:     HostAuthenticationOAuth,
-		Listener:           HostListenerProcess,
-		RequireHTTPS:       &required,
-		SupportsCollection: true,
+		Target: targetPolicy{
+			Module:         "generic",
+			Name:           "managed-redis",
+			Authentication: HostAuthenticationOAuth,
+			Listener:       HostListenerProcess,
+			RequireHTTPS:   &required,
+		},
 		Redis: redisPolicy{
-			Preset:       "generic",
-			NamespaceEnv: "CACHE_NAMESPACE",
+			Module:             "generic",
+			NamespaceEnv:       "CACHE_NAMESPACE",
+			SupportsCollection: &collection,
 			TLS: redisTLSPolicy{
 				Mode:             redisTLSRequired,
 				ServerNameEnv:    "CACHE_SERVER_NAME",
@@ -47,15 +53,14 @@ func TestHostPolicyResolvesGenericRedisURLAndTLS(t *testing.T) {
 	}
 }
 
-func TestRedisPresetsMapProviderEnvironment(t *testing.T) {
-	for _, preset := range []string{
+func TestRedisProviderModulesMapEnvironment(t *testing.T) {
+	for _, module := range []string{
 		"generic", "redis-cloud", "railway", "render", "digitalocean",
 	} {
-		t.Run(preset, func(t *testing.T) {
+		t.Run(module, func(t *testing.T) {
 			policy := hostPolicy{
-				Authentication: HostAuthenticationOAuth,
-				Listener:       HostListenerProcess,
-				Redis:          redisPolicy{Preset: preset},
+				Target: targetPolicy{Module: "container"},
+				Redis:  redisPolicy{Module: module},
 			}
 			resolved, err := policy.resolve(mapLookup(map[string]string{
 				"REDIS_URL": "rediss://cache.example.com:6379",
@@ -64,16 +69,15 @@ func TestRedisPresetsMapProviderEnvironment(t *testing.T) {
 				t.Fatal(err)
 			}
 			if resolved.RedisURL == "" {
-				t.Fatal("provider preset did not map REDIS_URL")
+				t.Fatal("provider module did not map REDIS_URL")
 			}
 		})
 	}
 
 	t.Run("aws-elasticache", func(t *testing.T) {
 		policy := hostPolicy{
-			Authentication: HostAuthenticationOAuth,
-			Listener:       HostListenerProcess,
-			Redis:          redisPolicy{Preset: "aws-elasticache"},
+			Target: targetPolicy{Module: "container"},
+			Redis:  redisPolicy{Module: "aws-elasticache"},
 		}
 		resolved, err := policy.resolve(mapLookup(map[string]string{
 			"REDIS_URL": "rediss://cache.example.amazonaws.com:6379",
@@ -88,10 +92,9 @@ func TestRedisPresetsMapProviderEnvironment(t *testing.T) {
 
 	t.Run("gcp-memorystore", func(t *testing.T) {
 		policy := hostPolicy{
-			Authentication: HostAuthenticationOAuth,
-			Listener:       HostListenerProcess,
+			Target: targetPolicy{Module: "container"},
 			Redis: redisPolicy{
-				Preset: "gcp-memorystore",
+				Module: "gcp-memorystore",
 				TLS:    redisTLSPolicy{Mode: redisTLSRequired},
 			},
 		}
@@ -136,10 +139,8 @@ func TestConfiguredHostPolicyReadsCaoJSON(t *testing.T) {
 			"scope": {"allowed-owners": ["example"]},
 			"web": {
 				"host": {
-					"name": "render",
-					"authentication": "github-oauth",
-					"listener": "process",
-					"redis": {"preset": "render", "tls": {"mode": "required"}}
+					"target": {"module": "container", "name": "render"},
+					"redis": {"module": "render", "tls": {"mode": "required"}}
 				}
 			}
 		}
@@ -155,6 +156,145 @@ func TestConfiguredHostPolicyReadsCaoJSON(t *testing.T) {
 	}
 	if resolved.Profile.Name != "render" || !resolved.RedisOptions.ForceTLS {
 		t.Fatalf("unexpected resolved policy: %+v", resolved)
+	}
+}
+
+func TestLegacyHostPolicyStillResolves(t *testing.T) {
+	resolved, err := (legacyHostPolicy{
+		Name:               "legacy-host",
+		Authentication:     HostAuthenticationOAuth,
+		Listener:           HostListenerProcess,
+		SupportsCollection: true,
+		Redis: legacyRedisPolicy{
+			Preset:  "redis-cloud",
+			Session: HostRedisPooled,
+			TLS:     redisTLSPolicy{Mode: redisTLSRequired},
+		},
+	}).resolve(mapLookup(map[string]string{
+		"REDIS_URL": "rediss://cache.example.com:6379",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.Profile.Name != "legacy-host" ||
+		resolved.Profile.RedisSession != HostRedisPooled ||
+		!resolved.Profile.SupportsCollection {
+		t.Fatalf("legacy policy resolved incorrectly: %+v", resolved.Profile)
+	}
+	invalidTLS := legacyHostPolicy{
+		Authentication: HostAuthenticationOAuth,
+		Listener:       HostListenerProcess,
+		Redis: legacyRedisPolicy{
+			TLS: redisTLSPolicy{Mode: "invalid"},
+		},
+	}
+	if _, err := invalidTLS.resolve(mapLookup(map[string]string{
+		"REDIS_URL": "rediss://cache.example.com:6379",
+	})); err == nil {
+		t.Fatal("legacy policy accepted an invalid TLS mode")
+	}
+}
+
+func TestHostPolicyRejectsMixedModuleAndLegacyFields(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "cao.json")
+	document := `{
+		"control-plane": {
+			"web": {
+				"host": {
+					"target": {"module": "container"},
+					"name": "legacy",
+					"redis": {"module": "generic", "preset": "generic"}
+				}
+			}
+		}
+	}`
+	if err := os.WriteFile(path, []byte(document), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("CAO_POLICY_PATH", path)
+	if _, err := loadHostPolicyFromEnv(); err == nil {
+		t.Fatal("mixed modular and legacy host policy was accepted")
+	}
+}
+
+func TestHostAndRedisModulesComposeIndependently(t *testing.T) {
+	resolved, err := (hostPolicy{
+		Target: targetPolicy{Module: "container"},
+		Redis:  redisPolicy{Module: "upstash"},
+	}).resolve(mapLookup(map[string]string{
+		"REDIS_URL": "rediss://example.upstash.io:6379",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.Profile.Listener != HostListenerProcess ||
+		resolved.Profile.RedisSession != HostRedisSerialized ||
+		!resolved.Profile.SingleReplica ||
+		resolved.Profile.SupportsCollection {
+		t.Fatalf("modules did not compose expected capabilities: %+v", resolved.Profile)
+	}
+
+	azure, err := (hostPolicy{
+		Target: targetPolicy{Module: "azure-functions"},
+		Redis:  redisPolicy{Module: "redis-cloud"},
+	}).resolve(mapLookup(map[string]string{
+		"REDIS_URL": "rediss://cache.example.com:6379",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if azure.Profile.Listener != HostListenerPlatform ||
+		!azure.Profile.TrustsPlatformProxy ||
+		azure.Profile.RedisSession != HostRedisPooled {
+		t.Fatalf("Azure target did not compose with Redis Cloud: %+v", azure.Profile)
+	}
+}
+
+func TestDeploymentModuleRegistry(t *testing.T) {
+	targets := make([]string, 0, len(hostTargetModules))
+	for name := range hostTargetModules {
+		targets = append(targets, name)
+	}
+	sort.Strings(targets)
+	if !slices.Equal(targets, []string{"azure-functions", "container", "generic"}) {
+		t.Fatalf("unexpected host target modules: %v", targets)
+	}
+	providers := make([]string, 0, len(redisProviderModules))
+	for name := range redisProviderModules {
+		providers = append(providers, name)
+	}
+	sort.Strings(providers)
+	if !slices.Equal(providers, []string{
+		"aws-elasticache", "digitalocean", "gcp-memorystore", "generic", "local",
+		"railway", "redis-cloud", "render", "upstash",
+	}) {
+		t.Fatalf("unexpected Redis provider modules: %v", providers)
+	}
+}
+
+func TestModulesRejectUnknownOrOverriddenCapabilities(t *testing.T) {
+	tests := []hostPolicy{
+		{Target: targetPolicy{Module: "unknown"}, Redis: redisPolicy{Module: "generic"}},
+		{Target: targetPolicy{Module: "container", Listener: HostListenerPlatform}, Redis: redisPolicy{Module: "generic"}},
+		{Target: targetPolicy{Module: "container"}, Redis: redisPolicy{Module: "unknown"}},
+		{Target: targetPolicy{Module: "container"}, Redis: redisPolicy{Module: "upstash", Session: HostRedisPooled}},
+		{Target: targetPolicy{Module: "container"}, Redis: redisPolicy{Module: "upstash", TLS: redisTLSPolicy{Mode: redisTLSDisabled}}},
+		{Target: targetPolicy{Module: "azure-functions"}, Redis: redisPolicy{Module: "upstash"}},
+	}
+	for _, policy := range tests {
+		if _, err := policy.resolve(mapLookup(map[string]string{
+			"REDIS_URL": "rediss://cache.example.com:6379",
+		})); err == nil {
+			t.Fatalf("accepted invalid module policy: %+v", policy)
+		}
+		if _, err := (hostPolicy{
+			Target: targetPolicy{Module: "container"},
+			Redis:  redisPolicy{Module: "upstash"},
+		}).resolve(mapLookup(map[string]string{
+			"REDIS_URL": "rediss://cache.example.com:6379",
+		})); err == nil {
+			t.Fatal("Upstash module accepted a non-Upstash endpoint")
+		}
 	}
 }
 

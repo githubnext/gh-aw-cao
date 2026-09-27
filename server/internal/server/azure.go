@@ -184,10 +184,6 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 	//nolint:contextcheck // configureProcessTelemetry intentionally uses context.Background(): the exporter it
 	// configures must outlive the single request/invocation that happens to trigger processTelemetry.ensure.
 	_ = azureProcessTelemetry.ensure(logger)
-	redisURL := strings.TrimSpace(os.Getenv("CAO_REDIS_URL"))
-	if redisURL == "" {
-		return nil, errors.New("CAO_REDIS_URL is required")
-	}
 	localSimulation, err := azureLocalSimulationFromEnv()
 	if err != nil {
 		return nil, err
@@ -197,24 +193,63 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 	if err := validateAzureLocalEndpoints(localSimulation, allowedHosts, redirectURL); err != nil {
 		return nil, err
 	}
-	if err := validateAzureRedisURL(redisURL, localSimulation); err != nil {
-		return nil, err
-	}
-	client, err := redisx.New(redisURL)
+	host, err := loadHostPolicyFromEnv()
 	if err != nil {
 		return nil, err
 	}
-	namespaceValue := strings.TrimSpace(os.Getenv("CAO_REDIS_NAMESPACE"))
-	if namespaceValue == "" {
-		namespaceValue = "azure-dashboard"
-	}
-	namespace, err := redisx.NormalizeNamespace(namespaceValue)
-	if err != nil {
-		return nil, err
-	}
-	store := redisx.NewStore(client, namespace)
-	if err := store.Ping(ctx); err != nil {
-		return nil, errors.New("redis is unavailable")
+	var store *redisx.Store
+	profile := azureFunctionsHostProfile(localSimulation)
+	singleReplicaConfirmed := true
+	if host != nil {
+		if host.Profile.Listener != HostListenerPlatform {
+			return nil, fmt.Errorf("host target module %q does not delegate listener ownership", host.Profile.Name)
+		}
+		if localSimulation && host.Profile.RequiresHTTPS {
+			return nil, errors.New("configured Azure host target requires HTTPS during local simulation")
+		}
+		if err := validateHostedRedisURL(
+			host.RedisURL,
+			host.RedisOptions.AllowPrivatePlaintext,
+			host.RedisOptions.ForceTLS,
+		); err != nil {
+			return nil, err
+		}
+		client, err := redisx.NewWithOptions(host.RedisURL, host.RedisOptions)
+		if err != nil {
+			return nil, err
+		}
+		store, err = storeFromClient(
+			ctx, client, host.RedisNamespace, host.Profile.IsolateProcessNamespace,
+		)
+		if err != nil {
+			return nil, err
+		}
+		profile = host.Profile
+		singleReplicaConfirmed = host.SingleReplicaConfirmed
+	} else {
+		redisURL := strings.TrimSpace(os.Getenv("CAO_REDIS_URL"))
+		if redisURL == "" {
+			return nil, errors.New("CAO_REDIS_URL is required")
+		}
+		if err := validateAzureRedisURL(redisURL, localSimulation); err != nil {
+			return nil, err
+		}
+		client, err := redisx.New(redisURL)
+		if err != nil {
+			return nil, err
+		}
+		namespaceValue := strings.TrimSpace(os.Getenv("CAO_REDIS_NAMESPACE"))
+		if namespaceValue == "" {
+			namespaceValue = "azure-dashboard"
+		}
+		namespace, err := redisx.NormalizeNamespace(namespaceValue)
+		if err != nil {
+			return nil, err
+		}
+		store = redisx.NewStore(client, namespace)
+		if err := store.Ping(ctx); err != nil {
+			return nil, errors.New("redis is unavailable")
+		}
 	}
 	definitions, err := ParseDashboardQueries(dashboardQueriesPath)
 	if err != nil {
@@ -227,12 +262,13 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 		return nil, err
 	}
 	app, err := New(store, Config{
-		HostProfile:      azureFunctionsHostProfile(localSimulation),
-		SiteDirectory:    siteDirectory,
-		DashboardQueries: definitions,
-		Collector:        collector,
-		WebhookSecret:    os.Getenv("CAO_GITHUB_WEBHOOK_SECRET"),
-		AdminUsers:       splitCSV(os.Getenv("CAO_GITHUB_ADMIN_USERS")),
+		HostProfile:            profile,
+		SingleReplicaConfirmed: singleReplicaConfirmed,
+		SiteDirectory:          siteDirectory,
+		DashboardQueries:       definitions,
+		Collector:              collector,
+		WebhookSecret:          os.Getenv("CAO_GITHUB_WEBHOOK_SECRET"),
+		AdminUsers:             splitCSV(os.Getenv("CAO_GITHUB_ADMIN_USERS")),
 		Proxy: ProxyPolicy{
 			AllowedHosts:   allowedHosts,
 			RequireHTTPS:   !localSimulation,

@@ -201,14 +201,22 @@ func hostedProfile(value, redisURL string, allowPrivatePlaintext bool) (HostProf
 		if allowPrivatePlaintext {
 			return HostProfile{}, errors.New("upstash mode does not allow private plaintext Redis")
 		}
-		hostname := strings.ToLower(parsed.Hostname())
-		if hostname != "upstash.io" && !strings.HasSuffix(hostname, ".upstash.io") {
+		if !isUpstashRedisURL(redisURL) {
 			return HostProfile{}, errors.New("upstash mode requires an Upstash Redis endpoint")
 		}
 		return upstashHostProfile(), nil
 	default:
 		return HostProfile{}, errors.New("CAO_REDIS_MODE must be standard, upstash, or unset")
 	}
+}
+
+func isUpstashRedisURL(redisURL string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(redisURL))
+	if err != nil {
+		return false
+	}
+	hostname := strings.ToLower(parsed.Hostname())
+	return hostname == "upstash.io" || strings.HasSuffix(hostname, ".upstash.io")
 }
 
 func exactTrue(value string) bool {

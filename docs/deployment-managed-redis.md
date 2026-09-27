@@ -9,7 +9,8 @@ sidebar:
 
 The hosted server reads non-secret host capabilities from
 `.github/workflows/cao.json`. Redis credentials stay in deployment environment
-variables. Provider presets only select conventional environment-variable names;
+variables. Redis provider modules only select conventional environment-variable names
+and consistency constraints;
 they do not add provider SDKs or weaken TLS verification.
 
 ## 1. Add the host policy
@@ -18,13 +19,12 @@ Add `control-plane.web.host` to `cao.json`:
 
 ```json
 {
-  "name": "managed-redis",
-  "authentication": "github-oauth",
-  "listener": "process",
-  "require-https": true,
-  "supports-collection": true,
+  "target": {
+    "module": "container",
+    "name": "managed-redis"
+  },
   "redis": {
-    "preset": "generic",
+    "module": "generic",
     "url-env": "REDIS_URL",
     "namespace-env": "REDIS_NAMESPACE",
     "session": "pooled",
@@ -47,15 +47,76 @@ contents—not a path—in `REDIS_TLS_CA_CERT`.
 Use `tls.mode: "disabled"` only with a private endpoint and
 `allow-private-plaintext: true`. Public plaintext endpoints are rejected.
 
-## 2. Pick a provider preset
+The target and Redis provider are independent modules. Change `target.module`
+without changing the Redis connection, or change `redis.module` without changing
+the app server target. Built-in targets are `container` and `azure-functions`;
+`generic` accepts explicit OAuth, listener, proxy,
+and single-replica capabilities for a new platform.
 
-Change only `redis.preset`, then map the provider connection into the listed
+### Module deployment flow
+
+1. Policy validation rejects unknown modules and provider-owned capability
+   overrides.
+2. The target module resolves authentication, listener ownership, HTTPS, and
+   proxy trust.
+3. The Redis module resolves environment names, TLS minimums, connection
+   semantics, replica constraints, and collection support.
+4. Startup composes both modules into one host profile, constructs the generic
+   Redis client, and asserts that the client and runtime match every capability.
+5. The selected target adapter starts the process listener or delegates it to
+   the platform. Readiness must succeed before deployment promotion.
+
+Target modules never resolve Redis credentials. Redis modules never own HTTP
+request handling or deployment authority. Adding a module requires a reviewed
+registry entry, schema and policy validation, documentation, and composition
+tests; modules cannot be loaded from an untrusted path at runtime.
+
+The previous flat `web.host` shape and `redis.preset` remain accepted as a
+migration path. New deployments should use `target.module` and `redis.module`;
+the environment-only path remains available when `web.host` is absent.
+
+| App target module | Use |
+| --- | --- |
+| `container` | Coolify, Railway, Render, Kubernetes, VMs, and similar process-owned hosts. |
+| `azure-functions` | Azure Functions' platform-owned listener and trusted platform proxy. |
+| `generic` | A new platform with explicit reviewed capabilities. |
+
+### Example compositions
+
+Coolify and other container platforms pair the `container` target with any
+compatible Redis module:
+
+```json
+{
+  "target": { "module": "container", "name": "coolify" },
+  "redis": { "module": "redis-cloud", "tls": { "mode": "required" } }
+}
+```
+
+Azure Functions can use the same Redis modules without changing its listener
+adapter:
+
+```json
+{
+  "target": { "module": "azure-functions" },
+  "redis": { "module": "gcp-memorystore", "tls": { "mode": "required" } }
+}
+```
+
+Local development remains the `cao-dashboard serve` example with loopback Redis;
+the `local` Redis module describes its ordinary pooled semantics. Upstash pairs
+the `container` target with the constrained `upstash` Redis module; see the
+[Upstash deployment guide](deployment-upstash.md).
+
+## 2. Pick a Redis provider module
+
+Change only `redis.module`, then map the provider connection into the listed
 variables. Percent-encode usernames and passwords placed in a URL.
 
 ### AWS ElastiCache
 
 ```json
-{ "preset": "aws-elasticache", "tls": { "mode": "required" } }
+{ "module": "aws-elasticache", "tls": { "mode": "required" } }
 ```
 
 ```bash
@@ -68,7 +129,7 @@ the cache uses RBAC. Serverless caches require in-transit encryption.
 ### Redis Cloud
 
 ```json
-{ "preset": "redis-cloud", "tls": { "mode": "required", "ca-certificate-env": "REDIS_TLS_CA_CERT" } }
+{ "module": "redis-cloud", "tls": { "mode": "required", "ca-certificate-env": "REDIS_TLS_CA_CERT" } }
 ```
 
 ```bash
@@ -80,11 +141,11 @@ Cloud supplies a private CA.
 
 ### GCP Memorystore
 
-The preset can assemble a URL from `REDISHOST`, `REDISPORT`,
+The module can assemble a URL from `REDISHOST`, `REDISPORT`,
 `REDIS_USERNAME`, and `REDIS_PASSWORD`.
 
 ```json
-{ "preset": "gcp-memorystore", "tls": { "mode": "required", "ca-certificate-env": "REDIS_TLS_CA_CERT" } }
+{ "module": "gcp-memorystore", "tls": { "mode": "required", "ca-certificate-env": "REDIS_TLS_CA_CERT" } }
 ```
 
 ```bash
@@ -101,7 +162,7 @@ non-TLS instance.
 ### Railway
 
 ```json
-{ "preset": "railway", "tls": { "mode": "disabled" }, "allow-private-plaintext": true }
+{ "module": "railway", "tls": { "mode": "disabled" }, "allow-private-plaintext": true }
 ```
 
 In the CAO service variables:
@@ -118,7 +179,7 @@ TCP proxy solely for CAO.
 For a service in the same Render private network:
 
 ```json
-{ "preset": "render", "tls": { "mode": "disabled" }, "allow-private-plaintext": true }
+{ "module": "render", "tls": { "mode": "disabled" }, "allow-private-plaintext": true }
 ```
 
 ```text
@@ -131,7 +192,7 @@ For an external client, use the External Redis URL and
 ### DigitalOcean Managed Valkey
 
 ```json
-{ "preset": "digitalocean", "tls": { "mode": "required" } }
+{ "module": "digitalocean", "tls": { "mode": "required" } }
 ```
 
 ```text
@@ -144,9 +205,9 @@ Use the reported URI and port rather than assuming a default.
 
 | Field | Default | Purpose |
 | --- | --- | --- |
-| `preset` | `generic` | Environment mapping only. |
-| `url-env` | Preset-specific, usually `REDIS_URL` | Complete Redis URL. |
-| `host-env`, `port-env` | Preset-specific | Build a URL when no URL variable is supplied. |
+| `module` | Required | Provider environment mapping and fixed consistency capabilities. |
+| `url-env` | Module-specific, usually `REDIS_URL` | Complete Redis URL. |
+| `host-env`, `port-env` | Module-specific | Build a URL when no URL variable is supplied. |
 | `username-env`, `password-env` | Preset-specific | Credentials used only while building a URL. |
 | `namespace-env` | `REDIS_NAMESPACE` | Stable deployment identity; defaults to `hosted-dashboard`. |
 | `session` | `pooled` | `pooled` or fail-closed `serialized`. |
@@ -154,11 +215,11 @@ Use the reported URI and port rather than assuming a default.
 | `allow-private-plaintext` | `false` | Permit plaintext only for a private host. |
 | `tls.mode` | `auto` | Infer from URL, require TLS, or disable TLS. |
 
-The Upstash example combines `session: "serialized"`,
-`isolate-process-namespace: true`, `single-replica: true`, and disabled
-server-side collection. Local Redis, Azure Functions, Coolify, and Upstash are
-deployment examples built from the same host and Redis fields; they are not
-separate server implementations.
+The `upstash` module fixes serialized sessions, process namespace isolation, one
+replica, required TLS, and disabled server-side collection. The `generic` module
+is the only Redis module that accepts explicit consistency capability fields.
+Local Redis, Azure Functions, Coolify, and Upstash are compositions of target and
+Redis modules; they are not separate shared request implementations.
 
 ## Verify
 
