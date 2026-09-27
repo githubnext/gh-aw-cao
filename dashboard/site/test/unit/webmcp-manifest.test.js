@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { isAgentFacingPage, navigationPageIds, webMCPManifestForDashboard, webMCPToolName } from '../../src/webmcp/manifest.js';
+import { listPages } from '../../src/agent/catalog.js';
+import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
 /** @typedef {import('../../src/webmcp/manifest.js').DashboardPageDefinition} DashboardPageDefinition */
 
@@ -157,5 +159,40 @@ describe('WebMCP manifest generation', () => {
   it('returns no tools for an empty or malformed document', () => {
     expect(webMCPManifestForDashboard({})).toEqual([]);
     expect(webMCPManifestForDashboard(/** @type {never} */ ({ dashboard: { pages: 'none' } }))).toEqual([]);
+  });
+});
+
+describe('webmcp manifest and shared catalog agreement', () => {
+  it('derives one tool for each agent-facing page of the shared catalog', () => {
+    const manifest = webMCPManifestForDashboard(authoritativeDashboard);
+    const pages = listPages(authoritativeDashboard);
+    expect(manifest.map((tool) => tool.pageId)).toEqual(pages.map((page) => page.id));
+    expect(manifest.map((tool) => tool.name))
+      .toEqual(pages.map((page) => webMCPToolName(page.id)));
+  });
+
+  it('exposes the same page parameters the catalog declares', () => {
+    const manifest = webMCPManifestForDashboard(authoritativeDashboard);
+    for (const page of listPages(authoritativeDashboard)) {
+      const tool = requireTool(manifest, webMCPToolName(page.id));
+      expect(Object.keys(tool.inputSchema.properties).toSorted())
+        .toEqual(page.parameters.map((parameter) => parameter.name).toSorted());
+      expect(tool.inputSchema.required ?? [])
+        .toEqual(page.parameters.filter((parameter) => parameter.required).map((parameter) => parameter.name));
+    }
+  });
+
+  it('declares every tool as read-only and closed to undeclared input', () => {
+    for (const tool of webMCPManifestForDashboard(authoritativeDashboard)) {
+      expect(tool.annotations).toEqual({ readOnlyHint: true, untrustedContentHint: true });
+      expect(tool.inputSchema.additionalProperties).toBe(false);
+    }
+  });
+
+  it('never exposes a page the shared catalog withholds', () => {
+    const catalogued = new Set(listPages(dashboardDocument).map((page) => page.id));
+    for (const tool of webMCPManifestForDashboard(dashboardDocument)) {
+      expect(catalogued.has(tool.pageId)).toBe(true);
+    }
   });
 });

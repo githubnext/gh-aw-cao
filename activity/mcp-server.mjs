@@ -162,12 +162,17 @@ async function callQuery(args, { dashboardPath, indexedDB, signal }) {
   if (args.parameters !== undefined && !isPlainObject(args.parameters)) {
     throw new NamedQueryError('cao_query parameters must be an object');
   }
+  // The declared schema types `limit` as an integer, so a string is a client
+  // defect rather than a value to coerce.
+  if (args.limit !== undefined && typeof args.limit !== 'number') {
+    throw new NamedQueryError('cao_query limit must be a positive integer');
+  }
   return runNamedDashboardQuery({
     indexedDB,
     dashboardPath,
     queryId: typeof args.id === 'string' ? args.id : '',
     parameters: /** @type {Record<string, unknown> | undefined} */ (args.parameters),
-    limit: args.limit === undefined ? undefined : Number(args.limit),
+    limit: args.limit,
     signal
   });
 }

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { execFile, execFileSync } from "node:child_process";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import test from "node:test";
@@ -81,5 +83,188 @@ test("cao --help documents the agent analysis bootstrap", async () => {
     "cao mcp",
   ]) {
     assert.ok(output.includes(line), `usage mentions ${line}`);
+  }
+});
+
+/**
+ * Runs the CLI and returns its outcome without throwing, so tests can assert
+ * on exit codes and diagnostics the same way an operator reads them.
+ * @param {string[]} args
+ */
+async function runCaoResult(args) {
+  try {
+    const { stdout, stderr } = await executeFile(process.execPath, [cao, ...args], {
+      maxBuffer: 32 * 1024 * 1024,
+    });
+    return { code: 0, stdout, stderr };
+  } catch (error) {
+    return { code: error.code, stdout: error.stdout, stderr: error.stderr };
+  }
+}
+
+const temporaryDirectory = await mkdtemp(path.join(tmpdir(), "cao-agent-cli-"));
+const database = path.join(temporaryDirectory, "gh-aw-logs.sqlite");
+
+test.after(async () => {
+  await rm(temporaryDirectory, { recursive: true, force: true });
+});
+
+test("cao query reads one named dashboard query as JSON", async () => {
+  const payload = JSON.parse(await runCao(["query", "campaign-runs", "--database", database]));
+  assert.equal(payload.query, "campaign-runs");
+  assert.ok(Array.isArray(payload.rows));
+  assert.equal(payload.metadata.availability, "empty");
+  assert.equal(payload.metadata["returned-rows"], 0);
+  assert.equal(payload.metadata.limit, 500);
+  assert.ok(payload.metadata["as-of"]);
+});
+
+test("cao query honours an explicit row bound", async () => {
+  const payload = JSON.parse(
+    await runCao(["query", "campaign-runs", "--limit", "5", "--database", database]),
+  );
+  assert.equal(payload.metadata.limit, 5);
+});
+
+test("cao query rejects a row bound that is not a positive integer", async () => {
+  for (const limit of ["0", "-1", "abc", "2.5"]) {
+    const result = await runCaoResult(["query", "campaign-runs", "--limit", limit, "--database", database]);
+    assert.equal(result.code, 1, `--limit ${limit} is refused`);
+    assert.doesNotMatch(result.stderr, /\n\s+at /);
+  }
+});
+
+test("cao query accepts a declared parameter", async () => {
+  const payload = JSON.parse(await runCao([
+    "query",
+    "campaign-runs",
+    "--param",
+    "campaign=dashboard",
+    "--database",
+    database,
+  ]));
+  assert.deepEqual(payload.metadata.parameters, { campaign: "dashboard" });
+});
+
+test("cao query refuses an undeclared parameter and names the declared ones", async () => {
+  const result = await runCaoResult([
+    "query",
+    "campaign-runs",
+    "--param",
+    "nope=value",
+    "--database",
+    database,
+  ]);
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /Unknown parameter "nope"/);
+  assert.match(result.stderr, /declared parameters: campaign/);
+});
+
+test("cao query refuses a parameter that is not KEY=VALUE", async () => {
+  const result = await runCaoResult(["query", "campaign-runs", "--param", "campaign", "--database", database]);
+  assert.equal(result.code, 1);
+  assert.doesNotMatch(result.stderr, /\n\s+at /);
+});
+
+test("cao query refuses an unknown named query", async () => {
+  const result = await runCaoResult(["query", "not-a-query", "--database", database]);
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /Unknown dashboard query: not-a-query/);
+});
+
+test("cao query never accepts SQL as a query identifier", async () => {
+  const result = await runCaoResult(["query", "select * from runs", "--database", database]);
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /Unknown dashboard query/);
+});
+
+test("cao query --id names the canonical record option when it is not a query", async () => {
+  const result = await runCaoResult(["query", "--id", "nope", "--database", database]);
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /pass --collection COLLECTION/);
+});
+
+test("cao query keeps reading canonical collections", async () => {
+  const rows = JSON.parse(await runCao([
+    "query",
+    "--collection",
+    "runs",
+    "--limit",
+    "2",
+    "--database",
+    database,
+  ]));
+  assert.ok(Array.isArray(rows));
+});
+
+test("cao query keeps reading a declarative query from stdin", () => {
+  const stdout = execFileSync(
+    process.execPath,
+    [cao, "query", "--stdin", "--database", database],
+    { input: JSON.stringify({ name: "adhoc", from: "runs", limit: 1 }), maxBuffer: 32 * 1024 * 1024 },
+  ).toString();
+  assert.ok(Array.isArray(JSON.parse(stdout)));
+});
+
+test("cao query rejects an option it does not declare", async () => {
+  const result = await runCaoResult(["query", "campaign-runs", "--json", "--database", database]);
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /Unknown option --json/);
+});
+
+test("cao pages reports an unknown page without a stack trace", async () => {
+  const result = await runCaoResult(["pages", "not-a-page"]);
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /Unknown dashboard page: not-a-page/);
+  assert.doesNotMatch(result.stderr, /\n\s+at /);
+});
+
+test("cao pages prints a human readable catalog by default", async () => {
+  const output = await runCao(["pages"]);
+  assert.doesNotMatch(output, /^\{/);
+  const { pages } = JSON.parse(await runCao(["pages", "--json"]));
+  assert.ok(output.includes(pages[0].id));
+});
+
+test("cao query-info prints a human readable report by default", async () => {
+  const output = await runCao(["query-info", "campaign-runs"]);
+  assert.match(output, /campaign-runs/);
+  assert.doesNotMatch(output, /^\{/);
+});
+
+test("cao query-info requires a query identifier", async () => {
+  const result = await runCaoResult(["query-info"]);
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /requires a query identifier/);
+});
+
+test("cao discovery writes JSON to stdout and nothing else", async () => {
+  for (const args of [["queries", "--json"], ["pages", "--json"], ["query-info", "campaign-runs", "--json"]]) {
+    const result = await runCaoResult(args);
+    assert.equal(result.code, 0);
+    assert.doesNotThrow(() => JSON.parse(result.stdout), `${args[0]} emits JSON only`);
+  }
+});
+
+test("cao discovery is deterministic across runs", async () => {
+  const [first, second] = await Promise.all([runCao(["queries", "--json"]), runCao(["queries", "--json"])]);
+  assert.equal(first, second);
+});
+
+test("every catalogued query reports an execution verdict an agent can act on", async () => {
+  const { queries } = JSON.parse(await runCao(["queries", "--json"]));
+  for (const query of queries) {
+    assert.equal(typeof query.execution.local, "boolean");
+    if (query.execution.local) assert.equal(query.execution.backend, "sqlite");
+    else assert.ok(query.execution.reason, `${query.id} explains why it cannot run locally`);
+  }
+});
+
+test("every page relates only to catalogued queries", async () => {
+  const { queries } = JSON.parse(await runCao(["queries", "--json"]));
+  const { pages } = JSON.parse(await runCao(["pages", "--json"]));
+  const catalogued = new Set(queries.map((query) => query.id));
+  for (const page of pages) {
+    for (const queryId of page.queries) assert.ok(catalogued.has(queryId), `${queryId} is catalogued`);
   }
 });

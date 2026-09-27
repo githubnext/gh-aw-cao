@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
+import { authoritativeDashboard } from "../authoritative-dashboard.js";
 import {
   agentCatalog,
+  agentFacingPages,
+  isAgentFacingPage,
+  navigationPageIds,
+  pageParameters,
   describePage,
   describeQuery,
   listPages,
@@ -174,5 +179,305 @@ describe("named query parameters", () => {
     expect(() =>
       resolveNamedQueryParameters(document, "missing", { any: "value" }),
     ).toThrow(NamedQueryError);
+  });
+});
+
+const structuralDocument = {
+  dashboard: {
+    id: "cao",
+    title: "CAO",
+    navigation: [
+      { label: "Operate", pages: ["home"] },
+      { label: "Analyze", pages: ["built-in", "", "unknown-page"] },
+    ],
+    queries: [
+      { name: "runs-base", intent: "Read runs.", from: "runs" },
+      { name: "drill-runs", intent: "Drill into runs.", from: "runs-base" },
+      { name: "counted", intent: "Count runs.", from: "runs-base" },
+      {
+        name: "multi-source",
+        intent: "Join two sources.",
+        from: "runs-base",
+        joins: [{ source: "counted", on: [] }],
+      },
+      { name: "detail", intent: "Report one repository.", from: "runs-base" },
+      { name: "unused", intent: "Never rendered.", from: "audits" },
+      { intent: "Anonymous queries are not catalogued.", from: "runs" },
+    ],
+    pages: [
+      {
+        id: "home",
+        title: "Home",
+        description: "Operate CAO.",
+        views: [
+          {
+            id: "runs-list",
+            data: { source: "multi-source" },
+            list: { drill: { query: "drill-runs" } },
+          },
+          { data: { sources: ["runs-base"] } },
+          { data: { source: "not-a-query" } },
+        ],
+      },
+      {
+        id: "home",
+        title: "Duplicate home",
+        views: [{ data: { source: "unused" } }],
+      },
+      {
+        id: "built-in",
+        kind: "built-in",
+        title: "Built in",
+        experimental: true,
+        definition: {
+          sections: [
+            { "count-source": "counted" },
+            { "count-sources": ["runs-base", "missing-source"] },
+            "not-a-section",
+          ],
+        },
+        form: {
+          fields: [
+            { id: "include-drafts", control: "checkbox", label: "Include drafts", default: true },
+            { id: "window", control: "slider", label: "Window", min: 2, max: 30, step: 2, default: 7 },
+            { id: "offset-window", control: "slider", label: "Offset", min: 1, max: 9, step: 2 },
+            { id: "mode", control: "select", label: "Mode", options: [{ value: "review" }, { value: "live" }], default: "live" },
+            { id: "mixed", control: "radio", label: "Mixed", options: [{ value: "a" }, { value: 2 }] },
+            { id: "empty", control: "select", label: "Empty", options: [] },
+            { id: "free", control: "text", label: "Free", default: "any" },
+            { id: "unsupported", control: "color", label: "Unsupported" },
+            { control: "text", label: "Unnamed" },
+          ],
+        },
+      },
+      {
+        id: "repository",
+        title: "Repository",
+        route: { "hash-query-parameter": "repository" },
+        views: [{ data: { source: "detail", "route-field": "repository" } }],
+      },
+      { id: "untitled", views: [{ data: { source: "unused" } }] },
+    ],
+  },
+};
+
+describe("agent catalog structure", () => {
+  it("reads navigation page identifiers and ignores blank entries", () => {
+    expect([...navigationPageIds(structuralDocument.dashboard.navigation)]).toEqual([
+      "home",
+      "built-in",
+      "unknown-page",
+    ]);
+    expect([...navigationPageIds(undefined)]).toEqual([]);
+    expect([...navigationPageIds([{ pages: "home" }])]).toEqual([]);
+  });
+
+  it("includes route-addressed detail pages that navigation does not list", () => {
+    expect(listPages(structuralDocument).map((page) => page.id)).toEqual([
+      "home",
+      "built-in",
+      "repository",
+    ]);
+  });
+
+  it("excludes pages without an identifier or a title", () => {
+    expect(isAgentFacingPage({ id: "x" })).toBe(false);
+    expect(isAgentFacingPage({ title: "X" })).toBe(false);
+    expect(isAgentFacingPage(/** @type {any} */ ("home"))).toBe(false);
+  });
+
+  it("keeps the first definition of a duplicated page identifier", () => {
+    const pages = agentFacingPages(structuralDocument);
+    expect(pages.filter((page) => page.id === "home")).toHaveLength(1);
+    expect(describePage(structuralDocument, "home")?.title).toBe("Home");
+  });
+
+  it("relates a page to inline, shared-array, and drill-down queries", () => {
+    expect(queriesForPage(structuralDocument, "home")).toEqual([
+      "drill-runs",
+      "multi-source",
+      "runs-base",
+    ]);
+  });
+
+  it("ignores view sources that are not declared queries", () => {
+    expect(queriesForPage(structuralDocument, "home")).not.toContain("not-a-query");
+  });
+
+  it("relates a built-in page to its section count sources", () => {
+    expect(queriesForPage(structuralDocument, "built-in")).toEqual([
+      "counted",
+      "runs-base",
+    ]);
+  });
+
+  it("reports no queries for an unknown page", () => {
+    expect(queriesForPage(structuralDocument, "unknown-page")).toEqual([]);
+    expect(describePage(structuralDocument, "unknown-page")).toBe(null);
+  });
+
+  it("marks experimental pages without hiding them", () => {
+    expect(describePage(structuralDocument, "built-in")?.experimental).toBe(true);
+    expect(describePage(structuralDocument, "home")?.experimental).toBe(false);
+  });
+
+  it("derives a required string parameter from a page route", () => {
+    expect(describePage(structuralDocument, "repository")?.parameters).toEqual([
+      {
+        name: "repository",
+        required: true,
+        description: "The repository this page reports on.",
+        schema: { type: "string", description: "The repository this page reports on." },
+      },
+    ]);
+  });
+
+  it("derives query parameters from route fields", () => {
+    expect(queryParameters(structuralDocument, "detail")).toEqual([
+      { name: "repository", field: "repository" },
+    ]);
+  });
+
+  it("maps declared form controls onto JSON Schema parameters", () => {
+    const parameters = pageParameters(structuralDocument.dashboard.pages[2]);
+    const schemas = Object.fromEntries(
+      parameters.map((parameter) => [parameter.name, parameter.schema]),
+    );
+    expect(parameters.every((parameter) => parameter.required === false)).toBe(true);
+    expect(schemas["include-drafts"]).toEqual({
+      type: "boolean",
+      description: "Include drafts",
+      default: true,
+    });
+    expect(schemas.window).toEqual({
+      type: "number",
+      description: "Window",
+      minimum: 2,
+      maximum: 30,
+      multipleOf: 2,
+      default: 7,
+    });
+    expect(schemas.mode).toEqual({
+      type: "string",
+      description: "Mode",
+      enum: ["review", "live"],
+      default: "live",
+    });
+    expect(schemas.free).toEqual({ type: "string", description: "Free", default: "any" });
+  });
+
+  it("omits a slider step that a non-aligned minimum would misreport", () => {
+    const schemas = Object.fromEntries(
+      pageParameters(structuralDocument.dashboard.pages[2])
+        .map((parameter) => [parameter.name, parameter.schema]),
+    );
+    expect(schemas["offset-window"]).toEqual({
+      type: "number",
+      description: "Offset",
+      minimum: 1,
+      maximum: 9,
+    });
+  });
+
+  it("omits option lists that are empty or mixed, and unsupported controls", () => {
+    const names = pageParameters(structuralDocument.dashboard.pages[2])
+      .map((parameter) => parameter.name);
+    expect(names).not.toContain("mixed");
+    expect(names).not.toContain("empty");
+    expect(names).not.toContain("unsupported");
+    expect(names).toHaveLength(5);
+  });
+
+  it("reports the declared sources of a query", () => {
+    expect(describeQuery(structuralDocument, "multi-source")?.sources).toEqual([
+      "counted",
+      "runs-base",
+    ]);
+  });
+
+  it("resolves requirements through every declared source", () => {
+    const execution = queryExecutionRequirements(structuralDocument, "multi-source");
+    expect(execution.local).toBe(true);
+    expect(execution.requirements).toEqual(["runs"]);
+    expect(execution.missing).toEqual([]);
+  });
+
+  it("reports the pages that read each query", () => {
+    expect(describeQuery(structuralDocument, "runs-base")?.["used-by-pages"]).toEqual([
+      "built-in",
+      "home",
+    ]);
+    expect(describeQuery(structuralDocument, "unused")?.["used-by-pages"]).toEqual([]);
+  });
+
+  it("skips query definitions without a name", () => {
+    expect(listQueries(structuralDocument).some((query) => query.id === "")).toBe(false);
+  });
+
+  it("reports the dashboard identity once for every transport", () => {
+    expect(agentCatalog(structuralDocument).dashboard).toEqual({
+      id: "cao",
+      title: "CAO",
+    });
+  });
+
+  it("tolerates documents without a dashboard", () => {
+    expect(listPages({})).toEqual([]);
+    expect(listQueries(null)).toEqual([]);
+    expect(agentCatalog("nope").dashboard).toEqual({ id: "", title: "" });
+  });
+
+  it("recomputes the catalog when a catalog collection is replaced", () => {
+    const mutable = {
+      dashboard: {
+        navigation: [{ pages: ["one"] }],
+        queries: [{ name: "q", intent: "Read runs.", from: "runs" }],
+        pages: [{ id: "one", title: "One", views: [{ data: { source: "q" } }] }],
+      },
+    };
+    expect(listPages(mutable).map((page) => page.id)).toEqual(["one"]);
+    mutable.dashboard.pages = [
+      { id: "one", title: "Renamed", views: [{ data: { source: "q" } }] },
+    ];
+    expect(describePage(mutable, "one")?.title).toBe("Renamed");
+  });
+});
+
+describe("agent catalog over the authoritative dashboard", () => {
+  it("catalogs the reviewed dashboard without throwing", () => {
+    const catalog = agentCatalog(authoritativeDashboard);
+    expect(catalog.pages.length).toBeGreaterThan(0);
+    expect(catalog.queries.length).toBeGreaterThan(0);
+    expect(catalog.dashboard.id).toBeTruthy();
+  });
+
+  it("gives every catalogued query a stable identifier and execution verdict", () => {
+    const queries = listQueries(authoritativeDashboard);
+    const ids = queries.map((query) => query.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids.every((id) => id.length > 0)).toBe(true);
+    for (const query of queries) {
+      expect(typeof query.execution.local).toBe("boolean");
+      if (query.execution.local) expect(query.execution.backend).toBe("sqlite");
+      else expect(query.execution.reason).toBeTruthy();
+    }
+  });
+
+  it("reports why a non-local query cannot run instead of failing at execution", () => {
+    const blocked = listQueries(authoritativeDashboard)
+      .filter((query) => !query.execution.local);
+    expect(blocked.length).toBeGreaterThan(0);
+    expect(blocked.every((query) => /does not provide/.test(String(query.execution.reason)))).toBe(true);
+  });
+
+  it("only relates pages to queries the document declares", () => {
+    const declared = new Set(listQueries(authoritativeDashboard).map((query) => query.id));
+    for (const page of listPages(authoritativeDashboard)) {
+      for (const queryId of page.queries) expect(declared.has(queryId)).toBe(true);
+    }
+  });
+
+  it("returns an identical catalog for repeated reads", () => {
+    expect(agentCatalog(authoritativeDashboard)).toEqual(agentCatalog(authoritativeDashboard));
   });
 });
