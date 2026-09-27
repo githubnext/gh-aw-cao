@@ -2,6 +2,7 @@ export const FINE_GRAINED_PAT_PROFILES = [
   {
     role: 'read',
     secret: 'GH_AW_GITHUB_READ_PAT',
+    repositoryMapVariable: 'GH_AW_GITHUB_READ_PAT_REPOSITORIES',
     permissions: {
       actions: 'read',
       contents: 'read',
@@ -16,6 +17,7 @@ export const FINE_GRAINED_PAT_PROFILES = [
   {
     role: 'write',
     secret: 'GH_AW_GITHUB_WRITE_PAT',
+    repositoryMapVariable: 'GH_AW_GITHUB_WRITE_PAT_REPOSITORIES',
     permissions: {
       actions: 'write',
       administration: 'read',
@@ -25,3 +27,10 @@ export const FINE_GRAINED_PAT_PROFILES = [
     },
   },
 ];
+
+export const GITHUB_AUTH_MODE_VARIABLE = 'GH_AW_GITHUB_AUTH_MODE';
+
+export function ownerScopedPatSecret(profile, owner) {
+  const suffix = owner.toUpperCase().replaceAll('-', '_');
+  return `${profile.secret}_${suffix}`;
+}

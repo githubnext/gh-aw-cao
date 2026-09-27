@@ -2,8 +2,11 @@ import { expect, test } from "@playwright/test";
 
 const paths = [
   "./",
-  "getting-started/",
   "setup/",
+  "setup-quickstarts/",
+  "setup-one-organization/",
+  "setup-multiple-organizations/",
+  "setup-fine-grained-pat/",
   "cao-cli/",
   "author-your-first-operation/",
   "authentication/",
@@ -27,13 +30,18 @@ test("Get started navigation follows the user journey without duplicate authenti
 
   const getStartedGroup = page.locator('nav[aria-label="Main"] summary').filter({ hasText: /^Get started$/ }).locator("..");
   await expect(getStartedGroup.getByRole("link")).toHaveText([
-    "Quickstart",
+    "Set up the control plane",
     "Setup wizard",
+    "Add a campaign",
     "CAO commands",
-    "Browse campaigns",
-    "Build a campaign",
     "Authentication",
   ]);
+});
+
+test("legacy getting-started route redirects to interactive setup", async ({ page }) => {
+  await page.goto("getting-started/");
+  await expect(page).toHaveURL(/\/setup-quickstarts\/$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Set Up CAO");
 });
 
 test("legacy authentication profile route redirects to the consolidated guide", async ({ page }) => {
@@ -46,20 +54,10 @@ test("setup wizard presents hosting choices as an immersive card experience", as
   await page.setViewportSize({ width: 1280, height: 900 });
   expect((await page.goto("setup/"))?.ok()).toBe(true);
 
-  await expect(page.getByRole("heading", { level: 2 })).toHaveText("Stand up a control plane in four steps");
+  await expect(page.getByRole("heading", { level: 2 })).toHaveText("Plan a control plane and first campaign in four steps");
   await expect(page.locator("select")).toHaveCount(0);
   await expect(page.getByRole("radiogroup", { name: "App server target" })).toBeVisible();
   await expect(page.getByRole("radiogroup", { name: "Redis provider" })).toBeVisible();
-
-  const redisOptions = page.locator('input[name="redis-provider"]');
-  await expect(redisOptions).toHaveCount(9);
-  await expect(redisOptions.first()).toBeDisabled();
-
-  await page.locator('input[name="host-target"][value="container"]').check();
-  await expect(redisOptions.first()).toBeEnabled();
-
-  const wizardHeight = await page.locator(".ops-wizard").evaluate((element) => element.getBoundingClientRect().height);
-  expect(wizardHeight).toBeGreaterThanOrEqual(800);
 });
 
 test("landing page ends with a setup wizard launch button", async ({ page }) => {

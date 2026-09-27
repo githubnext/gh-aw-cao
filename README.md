@@ -17,9 +17,11 @@ Bootstrap an empty control repository with:
 curl --fail --silent --show-error --location \
   https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
   bash
+
+./cao.sh setup
 ```
 
-The installer adds gh-aw and the core CAO campaign, creates the minimal control policy, and makes the repository-local `./cao.sh` CLI executable. It makes no CAO changes when rerun after installation. Install the Agent Plugin separately when you want the portable CAO skills.
+The installer adds gh-aw and the core CAO runtime, creates the minimal control policy, and makes the repository-local `./cao.sh` CLI executable. Interactive setup then asks which repositories CAO should read and offers authentication choices that fit that scope. It installs no user-facing campaign. Install the Agent Plugin separately when you want the portable CAO skills.
 
 Central Agentic Ops provides persistent agentic campaigns that continuously pursue defined outcomes across explicit repository fleets without copying workflows into every repository.
 

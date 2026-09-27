@@ -4,12 +4,12 @@ import test from "node:test";
 
 const docs = readFileSync("docs/cao-cli.md", "utf8");
 const help = `${readFileSync("activity/cao.mjs", "utf8")}\n${readFileSync("activity/cli-usage.mjs", "utf8")}`;
-const quickstart = readFileSync("docs/getting-started.md", "utf8");
+const quickstart = readFileSync("docs/setup-quickstarts.md", "utf8");
 
 test("CAO command guide covers the operator-facing command surface", () => {
   for (const command of [
     "init",
-    "setup-auth workflow-token",
+    "setup",
     "setup-auth github-app",
     "setup-auth enterprise-app",
     "setup-auth token",
@@ -42,16 +42,17 @@ test("CAO command guide explains the workflow execution boundary", () => {
   assert.match(docs, /different from `gh aw doctor`/);
 });
 
-test("quickstart leads with the direct setup and authentication commands", () => {
+test("quickstart uses the interactive setup command and stops before campaigns", () => {
   const installer = quickstart.indexOf("https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh");
-  const authentication = quickstart.indexOf("./cao.sh setup-auth workflow-token");
-  const campaign = quickstart.indexOf("./cao.sh add githubnext/gh-aw-cao/dependabot");
-  const run = quickstart.indexOf("gh aw run dependabot");
-  const guidedSetup = quickstart.indexOf("### Prefer Guided Setup?");
+  const setup = quickstart.indexOf("./cao.sh setup");
+  const review = quickstart.indexOf("git diff --check");
 
   assert.ok(installer > 0);
-  assert.ok(authentication > installer);
-  assert.ok(campaign > authentication);
-  assert.ok(run > campaign);
-  assert.ok(guidedSetup > run);
+  assert.ok(setup > installer);
+  assert.ok(review > setup);
+  assert.doesNotMatch(quickstart, /setup-auth (?:workflow-token|github-app|enterprise-app|token)|gh aw run/);
+  assert.match(quickstart, /installs no campaign and runs no workflow/);
+  assert.match(quickstart, /gh repo create OWNER\/CONTROL_REPOSITORY --private --clone/);
+  assert.match(quickstart, /\.\/cao\.sh add githubnext\/gh-aw-cao\/CAMPAIGN/);
+  assert.doesNotMatch(quickstart, /gh repo create acme\//);
 });
