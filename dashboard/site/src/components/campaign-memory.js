@@ -4,6 +4,7 @@ import { createDebug } from '../debug.js';
 import { octicon } from '../octicons.js';
 import { effect, onCleanup, render, state } from '../reactive.js';
 import { bindFactorySources, createFactoryScope } from './factory-elements.js';
+import { errorMessage } from './count-formatters.js';
 import { renderEmptyMessage } from './ui-primitives.js';
 
 const debugCampaignMemory = createDebug('campaign-memory');
@@ -93,7 +94,7 @@ export function renderCampaignMemory({ campaignId, campaignName }) {
         commit: '',
         files: [],
         omitted: emptyOmissions(),
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage(error),
       });
     }
   });
@@ -124,7 +125,7 @@ export function renderCampaignMemory({ campaignId, campaignName }) {
         fileState.set({
           status: 'error',
           content: '',
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMessage(error),
         });
       }
     });
@@ -268,7 +269,7 @@ function renderCampaignTree(campaigns, signal) {
           }).catch((error) => {
             if (error?.name !== 'AbortError') {
               fileBody.replaceChildren(renderEmptyMessage(
-                `Unable to load this memory file. ${error instanceof Error ? error.message : String(error)}`,
+                `Unable to load this memory file. ${errorMessage(error)}`,
                 { role: 'alert' }
               ));
             }
@@ -291,7 +292,7 @@ function renderCampaignTree(campaigns, signal) {
       }).catch((error) => {
         if (error?.name !== 'AbortError') {
           files.replaceChildren(renderEmptyMessage(
-            `Repository memory is unavailable. ${error instanceof Error ? error.message : String(error)}`,
+            `Repository memory is unavailable. ${errorMessage(error)}`,
             { role: 'alert' }
           ));
         }

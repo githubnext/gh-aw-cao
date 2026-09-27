@@ -123,7 +123,7 @@ create the base Run using its own GitHub and workflow fields.
 | `firewall_analysis.requests_by_domain.*.allowed` or audit equivalent | `firewallAllowedCalls` |
 | `firewall_analysis.requests_by_domain.*.blocked` or audit equivalent | `firewallBlockedCalls` |
 | `mcp_tool_usage.tool_calls` or audit equivalent | `mcpToolCalls` |
-| `mcp_tool_usage.tool_calls[].output_size` or audit equivalent | `mcpResponseBytes` |
+| `mcp_tool_usage.tool_calls[].output_size` or `response_size`, or audit equivalent | `mcpResponseBytes` |
 | the single `graders.results[]` entry identified by `operational-value` | `operationalGrader` |
 | high-severity or high-priority audit findings, insights, and recommendations | `highPriorityAuditItems` |
 | medium-severity or medium-priority audit findings, insights, and recommendations | `mediumPriorityAuditItems` |
@@ -203,14 +203,15 @@ SQLite, and IndexedDB MUST omit them.
 
 ## 4 Run-owned record ownership
 
-Every Domain, Tool, Audit, and Issue emitted from an enriched Run SHALL carry
+Every Domain, Tool, Skill, Friction, Audit, and Issue emitted from an enriched Run SHALL carry
 that Run's canonical `runId`. Source observations that describe an agent or tool
 interaction context SHALL NOT create a canonical entity or intermediate
 ownership relationship between a Run and its records.
 
 Each observation SHALL be classified using `specs/dashboard-data.md`
-Section 11: firewall network activity becomes a Domain, MCP, Bash, and skill
-calls become Tools, issue and pull-request safe outputs become Issues, and every
+Section 11: firewall network activity becomes a Domain, MCP and Bash calls
+become Tools, extracted skill usage becomes Skills, precomputed friction cost
+becomes Friction, issue and pull-request safe outputs become Issues, and every
 other lifecycle, agent, policy, or grader observation becomes an Audit.
 
 ## 5 Run-owned record mapping
@@ -241,7 +242,9 @@ a correlated outcome record. When the run-level projection is absent or empty,
 `audit.mcp_tool_usage.tool_calls[]` SHALL provide the tool calls. A `success`
 status SHALL emit `tool.result`; every other source status SHALL emit
 `tool.error` while preserving that status. Both records SHALL use source `mcp`
-and the source `tool_call_id` as `correlationId`.
+and the source `tool_call_id` as `correlationId`. `input_size` or
+`request_size` SHALL map to `requestBytes`; `output_size` or `response_size`
+SHALL map to `responseBytes`.
 
 Firewall evidence SHALL map to Domain records that preserve the observed host,
 its allowed or blocked decision, and its request count rather than being counted
@@ -252,7 +255,12 @@ audit-shaped store: `key_findings` to `audit.finding`, `observability_insights` 
 `audit.observability`, `recommendations` to `audit.recommendation`,
 `missing_tools` to `audit.missing_tool`, `missing_data` to
 `audit.missing_data`, `noops` to `audit.noop`, `mcp_failures` to
-`audit.mcp_failure`, and `skill_activations` to `audit.skill_activation`.
+`audit.mcp_failure`. Each `skill_activations[]` item SHALL instead map to a
+Skill record preserving `name`, `status`, `source`, `invocation_count`, and
+`failed_count`. A top-level `friction` object, falling back to
+`audit.friction` only when absent, SHALL map to one Friction record preserving
+its measurement state, aggregate dimensions, attribution detail, and
+uncertainty.
 A `skill_activations` item SHALL become a Tool record with `toolType="skill"`
 and `isSkill=true`. Each record SHALL preserve the source item's `code` as its
 machine-readable audit kind. Dashboard queries SHALL use `code` when present and

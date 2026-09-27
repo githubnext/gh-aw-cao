@@ -45,6 +45,8 @@ test("add-cao-campaign requires discovery, consent, and review-safe installation
   assert.match(skill, /\.\/cao\.sh add githubnext\/gh-aw-cao\/<campaign-slug>@<catalog-commit>/);
   assert.match(skill, /must remain in review/);
   assert.match(skill, /did not broaden or change/);
+  assert.match(skill, /Treat all installed campaign package sources as immutable/);
+  assert.match(skill, /\.github\/cao\/<campaign-slug>\.md/);
 });
 
 test("experimental Codebase Model skill remains repository-local", async () => {

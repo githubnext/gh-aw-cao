@@ -62,7 +62,7 @@ const usage = {
 };
 import { authoritativeDashboard as dashboardDocument } from '../authoritative-dashboard.js';
 const dashboardQueries = dashboardDocument.dashboard.queries;
-const emptyRunRecordSources = Object.fromEntries(['domains', 'tools', 'audits', 'issues'].map((source) => [
+const emptyRunRecordSources = Object.fromEntries(['domains', 'tools', 'skills', 'friction', 'audits', 'issues'].map((source) => [
   source,
   { source, rows: [], metadata: metadata(source) }
 ]));
@@ -1042,15 +1042,18 @@ describe('declarative dashboard queries', () => {
         rows: [
           {
             organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md',
-            'mcp-observation': 'call-1', 'mcp-server': 'github', 'mcp-tool': 'search_issues'
+            'mcp-observation': 'call-1', 'mcp-server': 'github', 'mcp-tool': 'search_issues',
+            'request-bytes': 10, 'response-bytes': 20
           },
           {
             organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'b.md',
-            'mcp-observation': 'call-2', 'mcp-server': 'github', 'mcp-tool': 'search_issues'
+            'mcp-observation': 'call-2', 'mcp-server': 'github', 'mcp-tool': 'search_issues',
+            'request-bytes': 30, 'response-bytes': 40
           },
           {
             organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md',
-            'mcp-observation': 'call-3', 'mcp-server': 'github', 'mcp-tool': 'create_issue'
+            'mcp-observation': 'call-3', 'mcp-server': 'github', 'mcp-tool': 'create_issue',
+            'request-bytes': 50, 'response-bytes': 60
           },
           {
             organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md',
@@ -1065,8 +1068,8 @@ describe('declarative dashboard queries', () => {
       expect(Object.keys(derived)).toEqual(['mcp-tool-totals', 'mcp-top-tools']);
       expect(derived['mcp-tool-totals']).toMatchObject({
         rows: [
-          { 'mcp-tool-label': 'github/search_issues', 'mcp-tool': 'search_issues', 'mcp-server': 'github', calls: 2, workflows: 2 },
-          { 'mcp-tool-label': 'github/create_issue', 'mcp-tool': 'create_issue', 'mcp-server': 'github', calls: 1, workflows: 1 }
+          { 'mcp-tool-label': 'github/search_issues', 'mcp-tool': 'search_issues', 'mcp-server': 'github', calls: 2, workflows: 2, 'request-bytes': 40, 'response-bytes': 60 },
+          { 'mcp-tool-label': 'github/create_issue', 'mcp-tool': 'create_issue', 'mcp-server': 'github', calls: 1, workflows: 1, 'request-bytes': 50, 'response-bytes': 60 }
         ],
         metadata: { 'source-kind': 'derived', 'query-name': 'mcp-tool-totals' }
       });
@@ -1080,32 +1083,24 @@ describe('declarative dashboard queries', () => {
   });
 
   it('groups skill invocations by skill and workflow with workflow drill-through links', () => {
-    const tools = {
-      source: 'tools',
+    const skills = {
+      source: 'skills',
       rows: [
         {
           event: 'skill-1', organization: 'githubnext', repository: 'gh-aw-cao',
-          workflow: '.github/workflows/a.md', name: 'reactive-ui', 'is-skill': true
-        },
-        {
-          event: 'skill-2', organization: 'githubnext', repository: 'gh-aw-cao',
-          workflow: '.github/workflows/a.md', name: 'reactive-ui', 'is-skill': true
+          workflow: '.github/workflows/a.md', name: 'reactive-ui', 'invocation-count': 2
         },
         {
           event: 'skill-3', organization: 'githubnext', repository: 'gh-aw-cao',
-          workflow: '.github/workflows/b.md', name: 'dashboard-authoring', 'is-skill': true
-        },
-        {
-          event: 'tool-1', organization: 'githubnext', repository: 'gh-aw-cao',
-          workflow: '.github/workflows/a.md', name: 'bash', 'is-skill': false
+          workflow: '.github/workflows/b.md', name: 'dashboard-authoring', 'invocation-count': 1
         }
       ],
-      metadata: metadata('tools')
+      metadata: metadata('skills')
     };
 
     const derived = executeDashboardQueries(
       dashboardQueries,
-      { tools },
+      { skills },
       ['skill-invocations-by-skill', 'skill-invocations-by-workflow', 'skill-workflow-inventory']
     );
 

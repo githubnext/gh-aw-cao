@@ -11,62 +11,23 @@ import OpsWizard from "../components/OpsWizard.astro";
     editUrl: false,
   }}
 >
-  <main class="setup-page">
-    <div class="setup-intro">
-      <p class="setup-eyebrow">Guided setup</p>
-      <h2>Stand up a control plane in three steps.</h2>
-      <p>
-        Choose a first campaign and coding agent, then generate a prompt that establishes reviewed policy and proves
-        one repository boundary in <code>review</code> mode.
-      </p>
-    </div>
-    <OpsWizard open />
-    <p class="setup-alternative">
-      Prefer direct commands? Follow the <a href="/gh-aw-cao/getting-started/">15-minute Quickstart</a>.
-    </p>
+<main class="setup-page">
+  <OpsWizard />
+  <p class="setup-alternative">
+    Prefer direct commands? Follow the <a href="/gh-aw-cao/getting-started/">15-minute Quickstart</a>.
+  </p>
   </main>
 </StarlightPage>
 
 <style>
   .setup-page {
-    width: min(58rem, calc(100% - 2rem));
-    margin-inline: auto;
-    padding: clamp(3rem, 7vw, 6rem) 0;
-  }
-
-  .setup-intro {
-    max-width: 46rem;
-    margin: 0 auto clamp(2rem, 4vw, 3rem);
-    text-align: center;
-  }
-
-  .setup-eyebrow {
-    margin: 0 0 0.75rem;
-    color: var(--sl-color-text-accent);
-    font-size: 0.8rem;
-    font-weight: 800;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
-
-  .setup-intro h2 {
-    margin: 0;
-    color: var(--sl-color-white);
-    font-size: clamp(2.25rem, 6vw, 4.5rem);
-    letter-spacing: -0.045em;
-    line-height: 0.98;
-  }
-
-  .setup-intro > p:last-child {
-    max-width: 42rem;
-    margin: 1.25rem auto 0;
-    color: var(--sl-color-gray-2);
-    font-size: clamp(1rem, 2vw, 1.15rem);
-    line-height: 1.65;
+    width: 100%;
+    min-height: calc(100svh - var(--sl-nav-height));
   }
 
   .setup-alternative {
-    margin: 1.5rem 0 0;
+    margin: 0;
+    padding: 1.5rem;
     color: var(--sl-color-gray-2);
     text-align: center;
   }

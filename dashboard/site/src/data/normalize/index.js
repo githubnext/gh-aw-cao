@@ -1,5 +1,8 @@
 import { issueCoordinates, issueId, operationalValueId, repositoryId, runId, sourceId, workflowId } from '../model/ids.js';
 import { canonicalTimestamp, requiredString } from '../model/schema.js';
+import { createDebug } from '../../debug.js';
+
+const debugNormalize = createDebug('normalize:index');
 
 /** @type {Record<import('../model/schema.js').EntityKind, keyof import('../model/schema.js').CanonicalBatch>} */
 const COLLECTIONS = {
@@ -9,12 +12,21 @@ const COLLECTIONS = {
   run: 'runs',
   domain: 'domains',
   tool: 'tools',
+  skill: 'skills',
+  friction: 'friction',
   audit: 'audits',
   issue: 'issues',
   'operational-value': 'operationalValues',
   'marketplace-package': 'marketplacePackages'
 };
-const RUN_LINKED_COLLECTIONS = /** @type {const} */ (['domains', 'tools', 'audits', 'issues']);
+const RUN_LINKED_COLLECTIONS = /** @type {const} */ ([
+  'domains',
+  'tools',
+  'skills',
+  'friction',
+  'audits',
+  'issues'
+]);
 
 /**
  * @param {unknown} value
@@ -70,6 +82,8 @@ function identityFor(observation) {
       });
     case 'domain':
     case 'tool':
+    case 'skill':
+    case 'friction':
     case 'audit':
       return sourceId(observation.kind, observation.source, observation.sourceId);
   }
@@ -132,6 +146,7 @@ export function orderRunRecords(records) {
  * @returns {import('../model/schema.js').CanonicalBatch}
  */
 export function normalize(observations, options = {}) {
+  debugNormalize({ event: 'normalize-start', observationCount: observations.length });
   const sourcePrecedence = options.sourcePrecedence ?? {};
   /** @type {Record<keyof import('../model/schema.js').CanonicalBatch, Map<string, Record<string, unknown>>>} */
   const entities = {
@@ -141,6 +156,8 @@ export function normalize(observations, options = {}) {
     runs: new Map(),
     domains: new Map(),
     tools: new Map(),
+    skills: new Map(),
+    friction: new Map(),
     audits: new Map(),
     issues: new Map(),
     operationalValues: new Map(),
@@ -150,7 +167,10 @@ export function normalize(observations, options = {}) {
   const sorted = [...observations].sort((left, right) => compareObservations(left, right, sourcePrecedence));
   for (const observation of sorted) {
     const collection = COLLECTIONS[observation.kind];
-    if (!collection) throw new TypeError(`Unsupported observation kind: ${observation.kind}`);
+    if (!collection) {
+      debugNormalize({ event: 'normalize-failed', reason: 'unsupported-kind', kind: observation.kind });
+      throw new TypeError(`Unsupported observation kind: ${observation.kind}`);
+    }
     const observedAt = canonicalTimestamp(observation.observedAt, 'observation.observedAt');
     const id = identityFor(observation);
     const current = entities[collection].get(id) ?? {};
@@ -176,5 +196,12 @@ export function normalize(observations, options = {}) {
   for (const collection of RUN_LINKED_COLLECTIONS) {
     batch[collection] = orderRunRecords(batch[collection]);
   }
+  const entityCount = Object.values(batch).reduce((total, records) => total + records.length, 0);
+  debugNormalize({
+    event: 'normalize-complete',
+    observationCount: observations.length,
+    entityCount,
+    mergedCount: observations.length - entityCount
+  });
   return batch;
 }

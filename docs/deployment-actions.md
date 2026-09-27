@@ -40,10 +40,9 @@ The Activity collector, orchestrators, and workers call the GitHub API with a cr
 | Profile | Best for | Credentials | Limitations |
 | --- | --- | --- | --- |
 | [GitHub Apps](deployment-actions-github-app.md) | Production | A private read app and a private write app | You need permission to create and install private GitHub Apps. |
-| [Fine-grained PAT](deployment-actions-pat.md) | Getting started and experimentation | A read PAT and a write PAT | Not for production. The tokens are tied to one user, expire, need manual rotation, cover a single resource owner, don't support every API, and share one rate limit. |
-| Built-in workflow token | Reviewing the control repository itself, or reviewing public targets | None beyond `github.token` | Cross-repository Actions, security, issue, and pull request evidence is usually unavailable and is reported as incomplete. |
+| [Fine-grained PAT](deployment-actions-pat.md) | Getting started and experimentation | A read PAT and write PAT for each resource owner | Not for production. The tokens are tied to one user, expire, need manual rotation, don't support every API, and each owner pair has its own rate limit. |
 
-At runtime, CAO uses a configured GitHub App first, then a PAT, then `github.token`.
+At runtime, CAO uses the explicitly selected App or owner-scoped PAT profile. The repository-provided `github.token` remains only as a bounded control-repository fallback.
 
 > [!WARNING]
 > CAO falls back to the next credential without any warning. After you choose a profile, delete the credentials for every profile that you aren't using.
@@ -61,7 +60,7 @@ For more information, see [Configure authentication](authentication.md).
    ```
 
 1. Review, commit, and push the installed files. These include `.github/workflows/cao-activity.yml`, `.github/workflows/cao-dashboard.yml`, and the `activity/` and `dashboard/` directories.
-1. Configure your credential profile. Follow the procedure for [GitHub Apps](deployment-actions-github-app.md#deploying-the-dashboard) or for a [fine-grained PAT](deployment-actions-pat.md#deploying-the-dashboard). If you use the built-in workflow token, skip this step.
+1. Configure your cross-repository credential profile. Follow the procedure for [GitHub Apps](deployment-actions-github-app.md#deploying-the-dashboard) or for [fine-grained PATs](deployment-actions-pat.md#deploying-the-dashboard).
 1. Configure GitHub Pages.
 
    1. On GitHub, navigate to the main page of your control repository.
@@ -156,7 +155,7 @@ If private data was exposed, treat it as a Pages incident. For more information,
 ## Further reading
 
 - [About deployment options](deployment.md)
-- [Quickstart](getting-started.md)
+- [Set Up CAO](setup-quickstarts.md)
 - [Configure authentication](authentication.md)
 - [CAO Activity](activity.md)
 - [Data ingestion](dashboard-data-ingestion.md)

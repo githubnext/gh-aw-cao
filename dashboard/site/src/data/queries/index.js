@@ -44,6 +44,8 @@ export function createCanonicalQueries(indexedDB) {
     },
     domains: runLinkedQueries(indexedDB, 'domains'),
     tools: runLinkedQueries(indexedDB, 'tools'),
+    skills: runLinkedQueries(indexedDB, 'skills'),
+    friction: runLinkedQueries(indexedDB, 'friction'),
     audits: runLinkedQueries(indexedDB, 'audits'),
     issues: runLinkedQueries(indexedDB, 'issues'),
     operationalValues: {
@@ -62,7 +64,7 @@ export function createCanonicalQueries(indexedDB) {
   };
 }
 
-/** @param {IDBFactory} indexedDB @param {'domains' | 'tools' | 'audits' | 'issues'} collection */
+/** @param {IDBFactory} indexedDB @param {'domains' | 'tools' | 'skills' | 'friction' | 'audits' | 'issues'} collection */
 function runLinkedQueries(indexedDB, collection) {
   return {
     list: () => readCollection(indexedDB, collection),

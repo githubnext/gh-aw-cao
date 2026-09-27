@@ -7,6 +7,8 @@ import {
   legacyPhaseJsonToJsonl,
 } from "./dashboard-deployed-refresh-helpers.mjs";
 
+const memoryDownloadConcurrency = 8;
+
 export async function downloadDeployedDashboardData(
   destination,
   sourceUrl,
@@ -30,6 +32,65 @@ export async function downloadDeployedDashboardData(
   if (!inventoryResponse.body) throw new Error("Deployed dashboard inventory response has no body.");
   await mkdir(destination, { recursive: true });
   await pipeline(inventoryResponse.body, createWriteStream(join(destination, "inventory-sources.json")));
+  const memoryRoot = new URL("memory/", sourceUrl);
+  const memoryManifestResponse = await fetcher(new URL("manifest.json", memoryRoot));
+  if (!memoryManifestResponse.ok && memoryManifestResponse.status !== 404) {
+    throw new Error(`Unable to download deployed repository memory: HTTP ${memoryManifestResponse.status}.`);
+  }
+  const memoryManifest = memoryManifestResponse.ok
+    ? await memoryManifestResponse.json()
+    : { version: 1, campaigns: [] };
+  const memoryDirectory = join(destination, "memory");
+  await mkdir(memoryDirectory, { recursive: true });
+  await writeFile(join(memoryDirectory, "manifest.json"), `${JSON.stringify(memoryManifest)}\n`);
+  const memoryFiles = [];
+  for (const campaign of Array.isArray(memoryManifest.campaigns) ? memoryManifest.campaigns : []) {
+    if (
+      typeof campaign?.campaign !== "string"
+      || !/^[a-z0-9](?:[a-z0-9._-]{0,99})$/.test(campaign.campaign)
+      || !Array.isArray(campaign.files)
+    ) continue;
+    const campaignRoot = new URL(`${campaign.campaign}/`, memoryRoot);
+    for (const file of campaign.files) {
+      if (
+        typeof file?.path !== "string"
+        || !file.path
+        || file.path.startsWith("/")
+        || file.path.includes("\\")
+      ) continue;
+      const fileUrl = new URL(file.path, campaignRoot);
+      if (fileUrl.origin !== campaignRoot.origin || !fileUrl.href.startsWith(campaignRoot.href)) continue;
+      const relativePath = decodeURIComponent(
+        fileUrl.pathname.slice(campaignRoot.pathname.length),
+      );
+      if (
+        !relativePath
+        || relativePath.startsWith("/")
+        || relativePath.includes("\\")
+        || relativePath.split("/").some((segment) => !segment || segment === "." || segment === "..")
+      ) continue;
+      memoryFiles.push({
+        campaign: campaign.campaign,
+        path: file.path,
+        url: fileUrl,
+        relativePath,
+      });
+    }
+  }
+  let nextMemoryFile = 0;
+  await Promise.all(Array.from({ length: Math.min(memoryDownloadConcurrency, memoryFiles.length) }, async () => {
+    while (nextMemoryFile < memoryFiles.length) {
+      const file = memoryFiles[nextMemoryFile];
+      nextMemoryFile += 1;
+      const response = await fetcher(file.url);
+      if (!response.ok || !response.body) {
+        throw new Error(`Unable to download deployed repository memory file: ${file.path}.`);
+      }
+      const destinationPath = join(memoryDirectory, file.campaign, file.relativePath);
+      await mkdir(dirname(destinationPath), { recursive: true });
+      await pipeline(response.body, createWriteStream(destinationPath));
+    }
+  }));
   for (const { name, sourceName } of deployedActivityShardEntries(manifest).slice(0, maximumShardCount)) {
     const response = await fetcher(new URL(sourceName, sourceUrl));
     if (!response.ok || !response.body) throw new Error(`Unable to download deployed dashboard shard: ${sourceName}.`);

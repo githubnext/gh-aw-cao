@@ -2,7 +2,7 @@ package model
 
 import "time"
 
-const SchemaVersion = 13
+const SchemaVersion = 14
 
 type Row map[string]any
 

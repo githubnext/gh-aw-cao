@@ -11,12 +11,12 @@
     },
     "run": {
       "payloadPath": "run",
-      "emits": ["repository", "workflow", "run", "domain", "tool", "audit", "issue"],
+      "emits": ["repository", "workflow", "run", "domain", "tool", "skill", "friction", "audit", "issue"],
       "identity": ["run_id", "run_attempt"]
     },
     "token_efficiency_run_context": {
       "payloadPath": "run",
-      "emits": ["repository", "workflow", "run", "domain", "tool", "audit", "issue"],
+      "emits": ["repository", "workflow", "run", "domain", "tool", "skill", "friction", "audit", "issue"],
       "identity": ["run_id", "run_attempt"]
     },
     "safe_output_item": {

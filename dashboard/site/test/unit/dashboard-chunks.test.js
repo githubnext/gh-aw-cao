@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   dashboardPageChunkPath,
   dashboardPageAllSourceNames,
@@ -270,5 +270,79 @@ describe('mergeDashboardPage', () => {
     expect(merged.chunk).toBe(stub.chunk);
     expect(merged['source-names']).toEqual(stub['source-names']);
     expect(merged['independent-source-bindings']).toBe(true);
+  });
+});
+
+describe('dashboard-chunks debug logging', () => {
+  it('is disabled by default (no debug output) when the debug query is absent', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '', output })
+      };
+    });
+    vi.resetModules();
+    const withoutDebug = /** @type {typeof import('../../src/dashboard-chunks.js')} */ (
+      await import('../../src/dashboard-chunks.js')
+    );
+
+    const { core, pageChunks } = withoutDebug.splitDashboardDocument(sampleDocument());
+    withoutDebug.resolveDashboardDocument(core, pageChunks.values());
+    withoutDebug.dashboardPageChunkPath({ id: 'no-chunk-page' });
+
+    expect(output.debug).not.toHaveBeenCalled();
+
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
+
+  it('logs only scalar metadata under its predictable category when enabled', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) =>
+          actual.createDebug(category, { search: () => '?debug=dashboard-chunks', output })
+      };
+    });
+    vi.resetModules();
+    const withDebug = /** @type {typeof import('../../src/dashboard-chunks.js')} */ (
+      await import('../../src/dashboard-chunks.js')
+    );
+
+    const { core, pageChunks } = withDebug.splitDashboardDocument(sampleDocument());
+    expect(output.debug).toHaveBeenCalledWith('[cao:dashboard-chunks]', {
+      event: 'split-complete',
+      pageCount: 4,
+      chunkCount: 4
+    });
+
+    withDebug.resolveDashboardDocument(core, pageChunks.values());
+    expect(output.debug).toHaveBeenCalledWith('[cao:dashboard-chunks]', {
+      event: 'resolve-complete',
+      pageCount: 4,
+      queryCount: expect.any(Number)
+    });
+
+    withDebug.dashboardPageChunkPath({ id: 'no-chunk-page' });
+    expect(output.debug).toHaveBeenCalledWith('[cao:dashboard-chunks]', {
+      event: 'chunk-path-missing',
+      pageId: 'no-chunk-page'
+    });
+
+    for (const call of output.debug.mock.calls) {
+      const metadata = call[1];
+      expect(Object.values(metadata).every((value) => typeof value !== 'object')).toBe(true);
+    }
+
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
   });
 });

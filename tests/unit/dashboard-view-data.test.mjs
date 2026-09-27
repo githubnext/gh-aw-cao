@@ -9,12 +9,17 @@ test("downloads canonical deployed dashboard inputs", async () => {
   const destination = await mkdtemp(join(tmpdir(), "dashboard-view-data-"));
   const requested = [];
   const fetcher = async (url) => {
-    requested.push(String(url));
-    const content = String(url).endsWith(".jsonl")
-      ? '{"kind":"run"}\n'
-      : String(url).endsWith("payload-hashes.json")
-        ? `{"gh-aw-logs-runs/fixture.jsonl":"${"a".repeat(64)}"}`
-        : '{"repositories":[]}';
+    const requestUrl = String(url);
+    requested.push(requestUrl);
+    let content = '{"repositories":[]}';
+    if (requestUrl.endsWith(".jsonl")) content = '{"kind":"run"}\n';
+    if (requestUrl.endsWith("payload-hashes.json")) {
+      content = `{"gh-aw-logs-runs/fixture.jsonl":"${"a".repeat(64)}"}`;
+    }
+    if (requestUrl.endsWith("memory/manifest.json")) {
+      content = '{"campaigns":[{"campaign":"ambient-context","files":[{"path":"notes.md"},{"path":"%2E%2E%2Fescape.md"}]}]}';
+    }
+    if (requestUrl.endsWith("memory/ambient-context/notes.md")) content = "# Memory\n";
     return {
       ok: true,
       body: new Blob([content]).stream(),
@@ -35,6 +40,8 @@ test("downloads canonical deployed dashboard inputs", async () => {
     assert.deepEqual(requested, [
       "https://example.test/cao/payload-hashes.json",
       "https://example.test/cao/inventory-sources.json",
+      "https://example.test/cao/memory/manifest.json",
+      "https://example.test/cao/memory/ambient-context/notes.md",
       "https://example.test/cao/gh-aw-logs-runs/fixture.jsonl",
     ]);
     assert.equal(await readFile(join(destination, "gh-aw-logs-runs", "fixture.jsonl"), "utf8"), '{"kind":"run"}\n');
@@ -42,6 +49,7 @@ test("downloads canonical deployed dashboard inputs", async () => {
       await readFile(join(destination, "inventory-sources.json"), "utf8"),
       '{"repositories":[]}',
     );
+    assert.equal(await readFile(join(destination, "memory", "ambient-context", "notes.md"), "utf8"), "# Memory\n");
   } finally {
     await rm(destination, { recursive: true });
   }
@@ -52,6 +60,7 @@ test("limits the downloaded activity shards when requested", async () => {
   const requested = [];
   const fetcher = async (url) => {
     requested.push(String(url));
+    if (String(url).endsWith("memory/manifest.json")) return { ok: false, status: 404 };
     const content = String(url).endsWith("payload-hashes.json")
       ? JSON.stringify({
           "gh-aw-logs-runs/first.jsonl": "a".repeat(64),
@@ -78,6 +87,7 @@ test("limits the downloaded activity shards when requested", async () => {
     assert.deepEqual(requested, [
       "https://example.test/cao/payload-hashes.json",
       "https://example.test/cao/inventory-sources.json",
+      "https://example.test/cao/memory/manifest.json",
       "https://example.test/cao/gh-aw-logs-runs/first.jsonl",
     ]);
   } finally {
