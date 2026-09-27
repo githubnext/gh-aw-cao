@@ -63,6 +63,7 @@ function identityFor(observation) {
     }
     case 'operational-value':
       return operationalValueId(
+        requiredString(data.campaign, 'operationalValue.campaign'),
         requiredString(data.repository, 'operationalValue.repository'),
         requiredString(data.valueId, 'operationalValue.valueId'),
         requiredString(data.timestamp, 'operationalValue.timestamp')

@@ -381,8 +381,8 @@ function historicalObservationTimes(definition, observedAt, retentionWindow) {
   return times;
 }
 
-function operationalValueKey(repository, valueId, timestamp) {
-  return `${String(repository).toLowerCase()}\0${valueId}\0${timestamp}`;
+function operationalValueKey(campaign, repository, valueId, timestamp) {
+  return `${campaign}\0${String(repository).toLowerCase()}\0${valueId}\0${timestamp}`;
 }
 
 async function retainedOperationalValueEnvelopes(outputPath, cutoff) {
@@ -456,7 +456,7 @@ export async function runOperationalValue({
     : [];
   const retainedKeys = new Set(retained.map((envelope) => {
     const value = envelope.operational_value;
-    return operationalValueKey(value.repository, value.value_id, value.timestamp);
+    return operationalValueKey(value.campaign, value.repository, value.value_id, value.timestamp);
   }));
   const request = `${JSON.stringify({
     schemaVersion: 1,
@@ -504,7 +504,7 @@ export async function runOperationalValue({
             retentionWindow
           ).filter((historyTimestamp) => supportedRepositories.some((repository) => (
             definition.valueIds.some((valueId) => (
-              !retainedKeys.has(operationalValueKey(repository, valueId, historyTimestamp))
+              !retainedKeys.has(operationalValueKey(entry.package, repository, valueId, historyTimestamp))
             ))
           )));
           const historyEnvironment = {
@@ -544,6 +544,7 @@ export async function runOperationalValue({
             historyValues += records.length;
             for (const record of records) {
               retainedKeys.add(operationalValueKey(
+                record.campaign,
                 record.repository,
                 record.valueId,
                 record.timestamp
@@ -600,7 +601,7 @@ export async function runOperationalValue({
     });
     const merged = new Map([...currentRetained, ...envelopes].map((envelope) => {
       const value = envelope.operational_value;
-      return [operationalValueKey(value.repository, value.value_id, value.timestamp), envelope];
+      return [operationalValueKey(value.campaign, value.repository, value.value_id, value.timestamp), envelope];
     }));
     const jsonl = [...merged.values()].map((envelope) => JSON.stringify(envelope)).join('\n');
     const temporary = `${output}.tmp-${process.pid}-${Date.now()}`;

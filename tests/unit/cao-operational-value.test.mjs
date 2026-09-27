@@ -225,6 +225,66 @@ for (const repository of request.repositories) {
   );
 });
 
+test('cao operational-value keeps shared metric IDs isolated per campaign', async () => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-campaign-key-'));
+  const output = path.join(temporary, 'values.jsonl');
+  const database = path.join(temporary, 'dashboard.sqlite');
+  for (const [campaign, metricName, metricUnit, value] of [
+    ['dependabot', 'Dependabot alert risk', 'alerts', 3],
+    ['optimization', 'Optimization opportunity share', 'percent', 0.5]
+  ]) {
+    const packageDirectory = path.join(temporary, campaign);
+    mkdirSync(packageDirectory);
+    writeFileSync(path.join(packageDirectory, 'operational-value.mjs'), `
+const chunks = [];
+for await (const chunk of process.stdin) chunks.push(chunk);
+const request = JSON.parse(Buffer.concat(chunks).toString());
+console.log(JSON.stringify({timestamp:request.timestamp,repository:request.repositories[0],valueId:"primary",value:${value},metricName:${JSON.stringify(metricName)},metricUnit:${JSON.stringify(metricUnit)}}));\n`);
+  }
+
+  try {
+    await runOperationalValue({
+      indexedDB: null,
+      databasePath: database,
+      root: temporary,
+      outputPath: output,
+      timestamp: '2026-09-24T10:00:00Z',
+      repositories: ['githubnext/gh-aw-cao']
+    });
+
+    const values = readFileSync(output, 'utf8').trim().split('\n')
+      .map((line) => JSON.parse(line).operational_value)
+      .toSorted((left, right) => left.campaign.localeCompare(right.campaign));
+    assert.deepEqual(
+      values.map((value) => ({
+        campaign: value.campaign,
+        valueId: value.value_id,
+        name: value.metric_name,
+        unit: value.metric_unit,
+        measured: value.value
+      })),
+      [
+        {
+          campaign: 'dependabot',
+          valueId: 'primary',
+          name: 'Dependabot alert risk',
+          unit: 'alerts',
+          measured: 3
+        },
+        {
+          campaign: 'optimization',
+          valueId: 'primary',
+          name: 'Optimization opportunity share',
+          unit: 'percent',
+          measured: 0.5
+        }
+      ]
+    );
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
 test('cao operational-value materializes queried history and retires obsolete cached metric IDs', () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-definitions-'));
   const packageDirectory = path.join(temporary, 'example');

@@ -110,6 +110,46 @@ describe('canonical normalization', () => {
     });
   });
 
+  it('keeps operational values from different campaigns under separate identities', () => {
+    const common = {
+      repository: 'githubnext/gh-aw-cao',
+      valueId: 'primary',
+      timestamp: '2026-09-24T10:00:00Z'
+    };
+    const batch = normalize([
+      observation('operational-value', 'dependabot-primary', '2026-09-24T10:00:00Z', {
+        ...common,
+        campaign: 'dependabot',
+        value: 3,
+        'operational-value-name': 'Dependabot alert risk'
+      }),
+      observation('operational-value', 'optimization-primary', '2026-09-24T10:00:00Z', {
+        ...common,
+        campaign: 'optimization',
+        value: 0.5,
+        'operational-value-name': 'Optimization opportunity share'
+      })
+    ]);
+
+    expect(batch.operationalValues).toHaveLength(2);
+    expect(batch.operationalValues.map((value) => ({
+      campaign: value.campaign,
+      name: value['operational-value-name'],
+      value: value.value
+    }))).toEqual([
+      {
+        campaign: 'dependabot',
+        name: 'Dependabot alert risk',
+        value: 3
+      },
+      {
+        campaign: 'optimization',
+        name: 'Optimization opportunity share',
+        value: 0.5
+      }
+    ]);
+  });
+
   it('orders run-linked records independently of ingestion order', () => {
     const records = [
       ['result', '2026-09-09T03:00:03Z', 'tool.result', 30],

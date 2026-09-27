@@ -71,15 +71,16 @@ export function issueId(owner, repository, issueNumber) {
   return `github:issue:${coordinate}:${normalizedNumber}`;
 }
 
-/** @param {string} repository @param {string} valueId @param {string} observedAt */
-export function operationalValueId(repository, valueId, observedAt) {
+/** @param {string} campaign @param {string} repository @param {string} valueId @param {string} observedAt */
+export function operationalValueId(campaign, repository, valueId, observedAt) {
+  const campaignId = campaign.trim().toLowerCase();
   const coordinate = repository.trim().toLowerCase();
   const metric = valueId.trim().toLowerCase();
   const timestamp = observedAt.trim();
-  if (!coordinate || !metric || !timestamp) {
-    throw new TypeError('Operational value repository, value ID, and timestamp are required');
+  if (!campaignId || !coordinate || !metric || !timestamp) {
+    throw new TypeError('Operational value campaign, repository, value ID, and timestamp are required');
   }
-  return `operational-value:${encodeURIComponent(`${coordinate}:${metric}:${timestamp}`)}`;
+  return `operational-value:${encodeURIComponent(`${campaignId}:${coordinate}:${metric}:${timestamp}`)}`;
 }
 
 /** @param {string} value */
