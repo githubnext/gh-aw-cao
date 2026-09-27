@@ -14,6 +14,10 @@ test("downloads canonical deployed dashboard inputs", async () => {
       ? '{"kind":"run"}\n'
       : String(url).endsWith("payload-hashes.json")
         ? `{"gh-aw-logs-runs/fixture.jsonl":"${"a".repeat(64)}"}`
+        : String(url).endsWith("memory/manifest.json")
+          ? '{"campaigns":[{"campaign":"ambient-context","files":[{"path":"notes.md"}]}]}'
+          : String(url).endsWith("memory/ambient-context/notes.md")
+            ? "# Memory\n"
         : '{"repositories":[]}';
     return {
       ok: true,
@@ -35,6 +39,8 @@ test("downloads canonical deployed dashboard inputs", async () => {
     assert.deepEqual(requested, [
       "https://example.test/cao/payload-hashes.json",
       "https://example.test/cao/inventory-sources.json",
+      "https://example.test/cao/memory/manifest.json",
+      "https://example.test/cao/memory/ambient-context/notes.md",
       "https://example.test/cao/gh-aw-logs-runs/fixture.jsonl",
     ]);
     assert.equal(await readFile(join(destination, "gh-aw-logs-runs", "fixture.jsonl"), "utf8"), '{"kind":"run"}\n');
@@ -42,6 +48,7 @@ test("downloads canonical deployed dashboard inputs", async () => {
       await readFile(join(destination, "inventory-sources.json"), "utf8"),
       '{"repositories":[]}',
     );
+    assert.equal(await readFile(join(destination, "memory", "ambient-context", "notes.md"), "utf8"), "# Memory\n");
   } finally {
     await rm(destination, { recursive: true });
   }
@@ -59,6 +66,8 @@ test("limits the downloaded activity shards when requested", async () => {
         })
       : String(url).endsWith("inventory-sources.json")
         ? '{"repositories":[]}'
+        : String(url).endsWith("memory/manifest.json")
+          ? '{"campaigns":[]}'
         : '{"kind":"record"}\n';
     return {
       ok: true,
@@ -78,6 +87,7 @@ test("limits the downloaded activity shards when requested", async () => {
     assert.deepEqual(requested, [
       "https://example.test/cao/payload-hashes.json",
       "https://example.test/cao/inventory-sources.json",
+      "https://example.test/cao/memory/manifest.json",
       "https://example.test/cao/gh-aw-logs-runs/first.jsonl",
     ]);
   } finally {

@@ -40,6 +40,17 @@ export function declaredDashboardViewIds(pageDefinition, reusableViews = []) {
     ));
 }
 
+export function dashboardAssessmentPageHash(pageDefinition, dashboard) {
+  const pageId = typeof pageDefinition?.id === "string" ? pageDefinition.id : "";
+  const routeParameter = pageDefinition?.route?.["hash-query-parameter"];
+  const repository = dashboard?.dashboard?.repository;
+  const parameters = new URLSearchParams();
+  if (routeParameter === "repository" && typeof repository === "string" && repository.trim()) {
+    parameters.set(routeParameter, repository.trim());
+  }
+  return `#page-${encodeURIComponent(pageId)}${parameters.size ? `?${parameters}` : ""}`;
+}
+
 export function renderAssessedDashboardQueryUsageGraph(dashboard, pageChunks) {
   const resolved = resolveDashboardDocument(dashboard, pageChunks);
   return renderDashboardQueryUsageGraph(resolved.dashboard);
