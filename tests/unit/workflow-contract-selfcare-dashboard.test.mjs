@@ -176,7 +176,7 @@ test("SelfCare server Go logging worker adds real tests without mocks", () => {
   assert.match(source, /go -C server test \.\/\.\.\./);
   assert.match(source, /draft: true/);
   assert.match(compiled, /self-care-server-go-logging/);
-  assert.match(compiled, /actions\/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32/);
+  assert.match(compiled, /actions\/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e/);
 });
 
 test("SelfCare dashboard reviewer checks deployments through stakeholder personas", () => {
