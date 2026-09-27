@@ -127,24 +127,6 @@ function context() {
           ]
         }]
       },
-      'campaign-operational-value-rollup-series': {
-        source: 'campaign-operational-value-rollup-series',
-        metadata,
-        rows: [{
-          campaign: 'ambient-context',
-          metric: 'ambient-context.guidance-freshness',
-          'operational-value-name': 'Guidance freshness',
-          'maturity-status': 'matured',
-          'adoption-at': '2026-08-01T18:00:00Z',
-          'evaluation-mode': 'baseline-comparable',
-          'workflow-name': 'Ambient Context',
-          'contributing-repositories': 1,
-          points: [
-            { x: '2026-08-01T18:00:00Z', y: 0.25, color: 'Campaign rollup', key: 'value:0' },
-            { x: '2026-08-31T18:00:00Z', y: 0.75, color: 'Campaign rollup', key: 'value:1' }
-          ]
-        }]
-      },
       'campaign-runs': {
         source: 'campaign-runs',
         metadata,

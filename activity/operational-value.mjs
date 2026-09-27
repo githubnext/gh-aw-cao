@@ -387,6 +387,19 @@ function operationalValueKey(campaign, repository, valueId, timestamp) {
   return `${campaignKey}\0${String(repository).toLowerCase()}\0${valueId}\0${timestamp}`;
 }
 
+function operationalValueDefinitionKey(campaign, valueId) {
+  return `${String(campaign).toLowerCase()}\0${valueId}`;
+}
+
+function operationalValueCadenceKey(value, definition) {
+  const cadence = definition.cadenceDays * DAY_MS;
+  const adoption = Date.parse(definition.adoptedAt);
+  const timestamp = Date.parse(value.timestamp);
+  const bucket = Math.ceil((timestamp - adoption) / cadence);
+  const bucketEnd = new Date(adoption + bucket * cadence).toISOString();
+  return `${String(value.campaign).toLowerCase()}\0${String(value.repository).toLowerCase()}\0${value.value_id}\0${bucketEnd}`;
+}
+
 async function retainedOperationalValueEnvelopes(outputPath, cutoff) {
   let content;
   try {
@@ -479,6 +492,7 @@ export async function runOperationalValue({
   const values = [];
   const warnings = [];
   const activeValueIds = new Map();
+  const cadenceDefinitions = new Map();
   let historyValues = 0;
   const worker = operationalValueWorkerEnvironment(databasePath, observedAt, rateLimitReserve);
   const warn = (entry, error) => {
@@ -503,6 +517,14 @@ export async function runOperationalValue({
         activeValueIds.set(entry.package, new Set(
           parsed.definitions.flatMap((definition) => definition.valueIds)
         ));
+        for (const definition of parsed.definitions) {
+          for (const valueId of definition.valueIds) {
+            cadenceDefinitions.set(
+              operationalValueDefinitionKey(entry.package, valueId),
+              definition
+            );
+          }
+        }
       }
       if (entry.package === historyCampaign) {
         for (const definition of parsed.definitions) {
@@ -611,10 +633,23 @@ export async function runOperationalValue({
       const activeIds = activeValueIds.get(value.campaign);
       return !activeIds || activeIds.has(value.value_id);
     });
-    const merged = new Map([...currentRetained, ...envelopes].map((envelope) => {
+    const merged = new Map();
+    for (const envelope of [...currentRetained, ...envelopes]) {
       const value = envelope.operational_value;
-      return [operationalValueKey(value.campaign, value.repository, value.value_id, value.timestamp), envelope];
-    }));
+      const definition = cadenceDefinitions.get(
+        operationalValueDefinitionKey(value.campaign, value.value_id)
+      );
+      const key = definition
+        ? operationalValueCadenceKey(value, definition)
+        : operationalValueKey(value.campaign, value.repository, value.value_id, value.timestamp);
+      const existing = merged.get(key);
+      if (
+        !existing
+        || Date.parse(value.timestamp) >= Date.parse(existing.operational_value.timestamp)
+      ) {
+        merged.set(key, envelope);
+      }
+    }
     const jsonl = [...merged.values()].map((envelope) => JSON.stringify(envelope)).join('\n');
     const temporary = `${output}.tmp-${process.pid}-${Date.now()}`;
     try {

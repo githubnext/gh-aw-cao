@@ -491,22 +491,12 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(operationalValueHistory).toContainText('Repository value');
   await expect(operationalValueHistory).toContainText('Higher is better');
   await expect(operationalValueHistory.locator('.temporal-metric-plot:visible')).toHaveCount(1);
-  const operationalValueScope = operationalValueHistory.getByRole(
+  await expect(operationalValueHistory.getByRole(
     'combobox',
     { name: 'Operational value repository scope' }
-  );
-  await expect(operationalValueScope).toHaveValue('campaign-rollup');
-  await expect(operationalValueHistory).toContainText('1 repository · weighted by eligible evidence');
-  const campaignRollupPanel = operationalValueHistory.locator(
-    '[data-operational-value-scope="campaign-rollup"]'
-  );
-  await expect(campaignRollupPanel.locator('.temporal-metric-plot')).toHaveCount(1);
-  await operationalValueScope.selectOption('repository:gh-aw-cao');
-  await expect(campaignRollupPanel).toBeHidden();
-  await expect(operationalValueHistory.locator('[data-operational-value-scope="repository:gh-aw-cao"]')).toBeVisible();
+  )).toHaveCount(0);
+  await expect(operationalValueHistory).toContainText('campaign rollups are omitted');
   await expect(operationalValueHistory).toContainText('gh-aw-cao');
-  await operationalValueScope.selectOption('campaign-rollup');
-  await expect(operationalValueHistory.locator('[data-operational-value-scope="campaign-rollup"]')).toBeVisible();
   await mobileBack.click();
   await expect(page).toHaveURL(/#page-campaign-detail\?campaign=ambient-context$/);
   await expect(page.locator('[data-page-id="campaign-detail"]')).toBeVisible();

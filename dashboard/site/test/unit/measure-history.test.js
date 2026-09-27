@@ -18,7 +18,6 @@ describe('Measure history', () => {
       title: 'Repository operational value',
       sourceNames: [
         'value-series',
-        'rollup-series',
         'campaign-run-days',
         'repository-run-days',
         'evidence-state'
@@ -111,7 +110,7 @@ describe('Measure history', () => {
   it('uses operational-value metadata to label diagnostic plots', () => {
     const rendered = renderMeasureHistory({
       title: 'Repository operational value',
-      sourceNames: ['value-series', 'rollup-series'],
+      sourceNames: ['value-series'],
       sources: {
         'value-series': {
           source: 'value-series',
@@ -148,8 +147,8 @@ describe('Measure history', () => {
       title: 'Repository operational value',
       sourceNames: [
         'value-series',
-        'rollup-series',
         'campaign-runs',
+        'repository-runs',
         'value-evidence-state'
       ],
       sources: {
@@ -181,6 +180,11 @@ describe('Measure history', () => {
           metadata,
           rows: []
         },
+        'repository-runs': {
+          source: 'repository-runs',
+          metadata,
+          rows: []
+        },
         'value-evidence-state': {
           source: 'value-evidence-state',
           metadata,
@@ -205,7 +209,7 @@ describe('Measure history', () => {
     expect(rendered.querySelector('.temporal-metric-plot-provisional')).not.toBeNull();
   });
 
-  it('defaults to a weighted campaign rollup and drills into one repository', () => {
+  it('plots repositories together by metric and never exposes a campaign rollup', () => {
     const repositoryRows = [{
       metric: 'optimization-token-optimizer.verified-efficiency-improvement-share',
       'operational-value-name': 'Verified efficiency improvement share',
@@ -219,18 +223,13 @@ describe('Measure history', () => {
         { x: '2026-09-24T00:00:00Z', y: 1, color: 'githubnext/gh-aw-cao', key: 'gh-aw-cao' }
       ]
     }];
-    const rollupRows = [{
-      ...repositoryRows[0],
-      'contributing-repositories': 2,
-      points: [{ x: '2026-09-24T00:00:00Z', y: 2 / 3, color: 'Campaign rollup', key: 'rollup' }]
-    }];
     const rendered = renderMeasureHistory({
       title: 'Repository operational value',
-      sourceNames: ['value-series', 'rollup-series', 'campaign-runs', 'evidence-state'],
+      sourceNames: ['value-series', 'campaign-runs', 'repository-runs', 'evidence-state'],
       sources: {
         'value-series': { source: 'value-series', metadata, rows: repositoryRows },
-        'rollup-series': { source: 'rollup-series', metadata, rows: rollupRows },
         'campaign-runs': { source: 'campaign-runs', metadata, rows: [] },
+        'repository-runs': { source: 'repository-runs', metadata, rows: [] },
         'evidence-state': {
           source: 'evidence-state',
           metadata,
@@ -243,26 +242,14 @@ describe('Measure history', () => {
       headingTag: 'h3'
     });
 
-    const selector = /** @type {HTMLSelectElement} */ (
-      rendered.querySelector('[aria-label="Operational value repository scope"]')
-    );
-    expect(selector.value).toBe('campaign-rollup');
-    expect([...selector.options].map((option) => option.textContent)).toEqual([
-      'Campaign rollup',
-      'github/gh-aw',
-      'githubnext/gh-aw-cao'
-    ]);
-    expect(rendered.querySelector('[data-operational-value-scope="campaign-rollup"]')?.hasAttribute('hidden')).toBe(false);
-    expect(rendered.querySelector('.operational-value-scope-status')?.textContent)
-      .toContain('2 repositories · weighted by eligible evidence');
-
-    selector.value = 'repository:github/gh-aw';
-    selector.dispatchEvent(new Event('change'));
-
-    expect(rendered.querySelector('[data-operational-value-scope="campaign-rollup"]')?.hasAttribute('hidden')).toBe(true);
-    expect(rendered.querySelector('[data-operational-value-scope="repository:github/gh-aw"]')?.hasAttribute('hidden')).toBe(false);
-    expect(rendered.querySelector('.operational-value-scope-status')?.textContent)
-      .toContain('github/gh-aw');
+    expect(rendered.querySelector('[aria-label="Operational value repository scope"]')).toBeNull();
+    expect(rendered.querySelector('[data-operational-value-scope="campaign-rollup"]')).toBeNull();
+    expect(rendered.querySelectorAll('.temporal-metric-plot')).toHaveLength(1);
+    expect(rendered.querySelectorAll('.temporal-plot-metric')).toHaveLength(2);
+    expect(rendered.querySelector('.chart-legend')?.textContent).toContain('github/gh-aw');
+    expect(rendered.querySelector('.chart-legend')?.textContent).toContain('githubnext/gh-aw-cao');
+    expect(rendered.textContent).toContain('2repositories');
+    expect(rendered.textContent).toContain('campaign rollups are omitted');
   });
 
   it('renders incompatible native units on separate metric plots', () => {
@@ -293,7 +280,7 @@ describe('Measure history', () => {
     }];
     const rendered = renderMeasureHistory({
       title: 'Repository operational value',
-      sourceNames: ['value-series', 'rollup-series'],
+      sourceNames: ['value-series'],
       sources: {
         'value-series': { source: 'value-series', metadata, rows }
       },

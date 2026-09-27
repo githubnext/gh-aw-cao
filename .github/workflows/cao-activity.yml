@@ -285,7 +285,9 @@ jobs:
         id: operational-value-app-token
         env:
           GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
-        if: ${{ vars.GH_AW_GITHUB_READ_APP_ID != '' && env.GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY != '' }}
+          GH_AW_READ_PAT: ${{ secrets.GH_AW_GITHUB_READ_PAT }}
+          GH_AW_LEGACY_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
+        if: ${{ env.GH_AW_READ_PAT == '' && env.GH_AW_LEGACY_TOKEN == '' && vars.GH_AW_GITHUB_READ_APP_ID != '' && env.GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY != '' }}
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           client-id: ${{ vars.GH_AW_GITHUB_READ_APP_ID }}

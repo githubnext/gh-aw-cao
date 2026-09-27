@@ -3459,6 +3459,48 @@ describe('presenter built-in and custom pages', () => {
     }
   });
 
+  it('reloads a populated route page when its route value changes', async () => {
+    window.history.replaceState(null, '', '/#page-campaign?campaign=optimization');
+    const root = document.createElement('div');
+    root.innerHTML = `
+      <a data-nav-page-id="campaign" href="#page-campaign?campaign=optimization">Campaign</a>
+      <main class="dashboard-prototype">
+        <section class="dashboard-page" id="page-campaign" data-page-id="campaign" data-page-pending data-route-parameter="campaign"></section>
+      </main>
+    `;
+    document.body.append(root);
+    /** @type {string[]} */
+    const renderedCampaigns = [];
+    const renderPage = vi.fn((pageId, options) => {
+      const campaign = options.routeParameters?.campaign ?? '';
+      renderedCampaigns.push(campaign);
+      const page = document.createElement('section');
+      page.className = 'dashboard-page';
+      page.id = `page-${pageId}`;
+      page.dataset.pageId = pageId;
+      page.dataset.routeParameter = 'campaign';
+      page.textContent = campaign;
+      return page;
+    });
+    try {
+      const disposeNavigation = enableDashboardPageNavigation(root, 'Dashboard', renderPage, 'campaign');
+      await vi.waitFor(() => {
+        expect(root.querySelector('#page-campaign')?.textContent).toBe('optimization');
+      });
+
+      window.location.hash = '#page-campaign?campaign=dependabot';
+
+      await vi.waitFor(() => {
+        expect(root.querySelector('#page-campaign')?.textContent).toBe('dependabot');
+      });
+      expect(renderedCampaigns).toEqual(['optimization', 'dependabot']);
+      disposeNavigation();
+    } finally {
+      root.remove();
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
   it('keeps route tabs visible while a sibling view loads', async () => {
     const root = document.createElement('div');
     root.innerHTML = `

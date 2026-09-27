@@ -99,6 +99,7 @@ export function renderTemporalMetricPlot(options) {
   const latestValue = Number.isFinite(options.trend?.endValue)
     ? Number(options.trend?.endValue)
     : Number(metrics[0]?.points.at(-1)?.y);
+  const multipleSeries = metrics.length > 1;
   const modeLabel = options.mode === 'attainment-only' ? 'attainment' : 'value';
   const provisionalDescription = options.provisional
     ? ' The plotted values are interim and are not yet mature.'
@@ -134,10 +135,14 @@ export function renderTemporalMetricPlot(options) {
       h('h3', null, options.title),
       h('p', null, directionLabel || displayUnit(unit))),
     h('div', { className: 'temporal-plot-summary' },
-      h('p', { className: 'temporal-plot-current' },
-        h('strong', null, formatCurrentValue(latestValue, unit)),
-        displayUnit(unit) ? h('span', null, displayUnit(unit)) : null),
-      renderTrendSummary(options.trend, unit, options.provisional))),
+      multipleSeries
+        ? h('p', { className: 'temporal-plot-current' },
+          h('strong', null, String(metrics.length)),
+          h('span', null, metrics.length === 1 ? 'repository' : 'repositories'))
+        : h('p', { className: 'temporal-plot-current' },
+          h('strong', null, formatCurrentValue(latestValue, unit)),
+          displayUnit(unit) ? h('span', null, displayUnit(unit)) : null),
+      multipleSeries ? null : renderTrendSummary(options.trend, unit, options.provisional))),
   h('svg', {
     viewBox: '0 0 1280 366',
     role: 'img',

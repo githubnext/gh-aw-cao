@@ -1306,6 +1306,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   ) => {
      if (navigationOwner.signal.aborted) return;
      const revision = ++activationRevision;
+    const reactivatingPage = activePageId === pageId;
     const requestedScrollTop = pendingScrollPageId === pageId
       ? pendingScrollTop
       : savedScrollTop(pageId);
@@ -1353,7 +1354,18 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const queryContext = pageQueryContext.get(pageId);
     const pageIndex = pages.findIndex((candidate) => candidate.dataset.pageId === pageId);
     const pendingPage = pages[pageIndex];
-    if (pendingPage && (pendingPage.hasAttribute('data-page-pending') || reloadPopulatedPages)) {
+    const pendingRouteParameter = pendingPage?.dataset.routeParameter ?? '';
+    const pendingRouteValue = pendingRouteParameter
+      ? parameters.get(pendingRouteParameter)?.trim() ?? ''
+      : '';
+    const routeValueChanged = reactivatingPage
+      && Boolean(pendingRouteParameter)
+      && (pendingPage?.dataset.routeValue ?? '') !== pendingRouteValue;
+    if (pendingPage && (
+      pendingPage.hasAttribute('data-page-pending')
+      || reloadPopulatedPages
+      || routeValueChanged
+    )) {
       const populate = () => {
         if (revision !== activationRevision || activePageId !== pageId) return;
         let currentPage = pages[pageIndex];
