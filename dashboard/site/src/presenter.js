@@ -1577,6 +1577,22 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     page.dataset.routeNavigationPage = navigationPage;
     syncHistoryBack();
   }, { signal: navigationOwner.signal });
+  root.addEventListener('dashboard-history-push', (event) => {
+    if (!(event instanceof CustomEvent) || !(event.target instanceof Element) || !defaultView) return;
+    const page = event.target.closest('.dashboard-page');
+    if (!(page instanceof HTMLElement) || page.hidden) return;
+    event.preventDefault();
+    const detailState = isPlainObject(event.detail?.state) ? event.detail.state : {};
+    const currentState = isPlainObject(defaultView.history.state) ? defaultView.history.state : {};
+    navigationIndex += 1;
+    defaultView.history.pushState(
+      { ...currentState, ...detailState, [NAVIGATION_INDEX_STATE_KEY]: navigationIndex },
+      '',
+      defaultView.location.href
+    );
+    syncHistoryBack();
+    defaultView.dispatchEvent(new CustomEvent('dashboard-history-change'));
+  }, { signal: navigationOwner.signal });
   if (defaultView && initialNavigationIndex !== navigationIndex) {
     const state = defaultView.history.state && typeof defaultView.history.state === 'object'
       ? defaultView.history.state
@@ -1626,6 +1642,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     navigationIndex += 1;
     defaultView?.history.pushState({ [NAVIGATION_INDEX_STATE_KEY]: navigationIndex }, '', link.href);
     syncHistoryBack();
+    defaultView?.dispatchEvent(new CustomEvent('dashboard-history-change'));
     primePageChrome(pageId, provisionalTitle, provisionalDescription);
     updateWithViewTransition(
       root.ownerDocument,

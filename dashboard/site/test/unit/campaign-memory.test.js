@@ -251,7 +251,8 @@ describe('campaign repository memory', () => {
     expect(window.history.state).toMatchObject({ baseline: true, caoMemoryViewer: 'campaign:ambient-context' });
     expect(rendered.querySelector('.memory-mobile-back')).toBeNull();
 
-    window.dispatchEvent(new PopStateEvent('popstate', { state: { baseline: true } }));
+    window.history.replaceState({ baseline: true }, '', window.location.href);
+    window.dispatchEvent(new CustomEvent('dashboard-history-change'));
     await vi.waitFor(() => expect(page.dataset.routeNavigationPage).toBe('campaigns'));
     expect(rendered.querySelector('.campaign-memory-layout')?.getAttribute('data-memory-view')).toBe('browser');
     Object.defineProperty(window, 'matchMedia', { configurable: true, value: originalMatchMedia });

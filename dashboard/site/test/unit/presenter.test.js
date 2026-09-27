@@ -2190,6 +2190,31 @@ describe('presenter built-in and custom pages', () => {
     window.history.replaceState(null, '', '/');
   });
 
+  it('registers full-screen child history with app navigation', () => {
+    window.history.replaceState(null, '', '/');
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {}
+    });
+    document.body.append(rendered);
+    const page = /** @type {HTMLElement} */ (rendered.querySelector('.dashboard-page:not([hidden])'));
+    const back = /** @type {HTMLButtonElement} */ (rendered.querySelector('.mobile-history-back'));
+
+    page.dispatchEvent(new CustomEvent('dashboard-history-push', {
+      bubbles: true,
+      cancelable: true,
+      detail: { state: { caoMemoryViewer: 'test' } }
+    }));
+
+    expect(window.history.state).toMatchObject({
+      caoMemoryViewer: 'test',
+      centralAgenticOpsNavigationIndex: 1
+    });
+    expect(back.hidden).toBe(false);
+    expect(back.getAttribute('aria-label')).toBe('Go back');
+    window.history.replaceState(null, '', '/');
+  });
+
   it('closes the mobile view menu on Escape and restores focus to its toggle', () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,

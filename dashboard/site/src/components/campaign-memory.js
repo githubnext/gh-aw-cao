@@ -37,11 +37,13 @@ export function renderCampaignMemory({ campaignId, campaignName }) {
     `campaign:${campaignId}`,
     'campaigns',
     () => mobileView.set('file'),
-    () => {
+    (restoreFocus = true) => {
       mobileView.set('browser');
-      afterRender(() => /** @type {HTMLElement | null} */ (
-        root.querySelector('.campaign-memory-file[aria-current="true"]')
-      )?.focus());
+      if (restoreFocus) {
+        afterRender(() => /** @type {HTMLElement | null} */ (
+          root.querySelector('.campaign-memory-file[aria-current="true"]')
+        )?.focus());
+      }
     },
     scope.signal
   );
@@ -468,7 +470,7 @@ function renderMemoryFileHeader(path) {
  * @param {string} scopeKey
  * @param {string} parentPage
  * @param {() => void} showFile
- * @param {() => void} showFiles
+ * @param {(restoreFocus?: boolean) => void} showFiles
  * @param {AbortSignal} signal
  */
 function createMobileMemoryNavigation(root, scopeKey, parentPage, showFile, showFiles, signal) {
@@ -489,7 +491,16 @@ function createMobileMemoryNavigation(root, scopeKey, parentPage, showFile, show
     else showFiles();
     setParent(active ? '' : parentPage);
   };
+  const onHistoryChange = () => {
+    const current = view?.history.state?.[MOBILE_MEMORY_HISTORY_KEY] === scopeKey;
+    if (current === active) return;
+    active = current;
+    if (active) showFile();
+    else showFiles(false);
+    setParent(active ? '' : parentPage);
+  };
   view?.addEventListener('popstate', onPopState, { signal });
+  view?.addEventListener('dashboard-history-change', onHistoryChange, { signal });
   if (active) {
     showFile();
     setParent('');
@@ -501,11 +512,19 @@ function createMobileMemoryNavigation(root, scopeKey, parentPage, showFile, show
         const currentState = view.history.state && typeof view.history.state === 'object'
           ? view.history.state
           : {};
-        view.history.pushState(
-          { ...currentState, [MOBILE_MEMORY_HISTORY_KEY]: scopeKey },
-          '',
-          view.location.href
-        );
+        const handled = !root.dispatchEvent(new CustomEvent('dashboard-history-push', {
+          bubbles: true,
+          cancelable: true,
+          detail: { state: { [MOBILE_MEMORY_HISTORY_KEY]: scopeKey } }
+        }));
+        if (!handled) {
+          view.history.pushState(
+            { ...currentState, [MOBILE_MEMORY_HISTORY_KEY]: scopeKey },
+            '',
+            view.location.href
+          );
+          view.dispatchEvent(new CustomEvent('dashboard-history-change'));
+        }
       }
       active = true;
       setParent('');
