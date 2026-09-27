@@ -10,12 +10,12 @@ Migrate one view at a time to a request-scoped canonical query while preserving 
 
 ## Procedure
 
-1. Locate the view in `dashboard/site/dashboard.json`. Record its page id, view id, `data.source`, filters, ordering, route fields, and every field consumed by its encoding or UI element.
-2. Trace that source only far enough to identify its current producer and the canonical entities needed to replace it. Prefer indexed reads from `dashboard/site/src/data/queries/index.js`; add an index-backed query there when the required access pattern is missing.
-3. Add the smallest projection in `dashboard/site/src/data/queries/view-sources.js` that converts canonical records into the existing renderer payload. Preserve field names and metadata semantics at the renderer boundary.
-4. Make the projection request-scoped. A view request must execute only its required canonical reads and return only requested source payloads. Do not materialize every collection or send unrelated metadata shells.
-5. Route the request through `dashboard/site/src/data-processor.js` and `dashboard/site/src/data-worker.js`. Keep canonical records and IndexedDB access inside the worker; send serializable query inputs in and source-shaped payloads out.
-6. Preserve legacy derivations as compatibility fallbacks for views not yet migrated. Do not rewrite unrelated views, generated data, or published source producers in the same migration.
+1. Locate the view in `dashboard/site/dashboard.json` or its declared fragment under `dashboard/site/dashboard-fragments/`. Record its page id, view id, `data.source`, filters, ordering, route fields, and every field consumed by its encoding or UI element.
+2. Trace that source only far enough to identify its current producer (a published/derived logical-source file or a JavaScript shaping function) and the canonical entities needed to replace it. Prefer indexed reads from `dashboard/site/src/data/queries/index.js`; add an index-backed query there when the required access pattern is missing.
+3. Define the full transformation as a declarative query entry under `dashboard.queries` (in the root document or the relevant fragment), using `from`, `aggregate`, filters, joins, and ordering to shape canonical records into the payload the view's encoding or UI element expects. Do not add a JavaScript projection module: `compileDashboardViewPayloadQueries` in `dashboard/site/src/data/queries/view-payload-compiler.js` and `executeDashboardQueries` in `dashboard/site/src/data/queries/declarative.js` compile and run declarative queries directly against canonical entities.
+4. Bind the view to the new query source in the same document. A view request must execute only its required canonical reads and return only requested source payloads. Do not materialize every collection or send unrelated metadata shells.
+5. The request is routed through `dashboard/site/src/data-processor.js` and `dashboard/site/src/data-worker.js`. Keep canonical records and IndexedDB access inside the worker; send serializable query inputs in and source-shaped payloads out.
+6. Remove the superseded JavaScript or published-source derivation when it is owned only by the migrated view; do not add a compatibility fallback. Do not rewrite unrelated views, generated data, or published source producers in the same migration.
 7. Add a focused unit test under `dashboard/site/test/unit/` for query selection and payload shape. Add or extend a Playwright test under `dashboard/site/test/e2e/` to exercise the real module worker, IndexedDB generation, and initial plus navigated page requests.
 8. Run the focused unit test, focused Playwright spec, `npm run typecheck`, and `npm run lint` from `dashboard/site/`. Report any broader validation not run.
 
