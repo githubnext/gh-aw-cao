@@ -67,6 +67,10 @@ test("landing page explains and illustrates campaign dispatch", () => {
   assert.match(illustration, /control-plane-dispatch-motion\.svg/);
   assert.match(illustration, /control-plane-dispatch-mobile-motion\.svg/);
   assert.match(illustration, /@media \(prefers-reduced-motion: reduce\)/);
+  for (const layout of ["", "-mobile"]) {
+    const motion = readFileSync(`docs/assets/control-plane-dispatch${layout}-motion.svg`, "utf8");
+    assert.doesNotMatch(motion, /prefers-color-scheme/);
+  }
 });
 
 test("setup wizard lives on a dedicated page linked from the header", () => {

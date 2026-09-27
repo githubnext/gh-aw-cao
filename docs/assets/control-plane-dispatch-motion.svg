@@ -1,14 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 560" aria-hidden="true" focusable="false">
   <style>
     :root {
-      --surface: #fff;
-      --foreground: #1f2328;
-      --muted: #656d76;
-      --border: #d0d7de;
-      --success: #1f883d;
-      --attention: #bf8700;
+      --success: #2da44e;
+      --attention: #9a6700;
       --accent: #8250df;
-      --info: #0969da;
     }
 
     .sparkle {
@@ -22,8 +17,6 @@
 
     .campaign-status {
       fill: var(--attention);
-      stroke: var(--surface);
-      stroke-width: 3;
       opacity: 0;
       animation: campaign-status 5s steps(1, end) infinite;
     }
@@ -55,19 +48,6 @@
     @keyframes report-update {
       0%, 76% { opacity: 0; }
       82%, 100% { opacity: 1; }
-    }
-
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --surface: #161b22;
-        --foreground: #f0f6fc;
-        --muted: #8b949e;
-        --border: #30363d;
-        --success: #3fb950;
-        --attention: #d29922;
-        --accent: #a371f7;
-        --info: #58a6ff;
-      }
     }
 
     @media (prefers-reduced-motion: reduce) {
