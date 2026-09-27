@@ -134,7 +134,14 @@ jobs:
             }
             if (!report || !Array.isArray(report.findings) || !report.summary ||
                 !Number.isInteger(report.summary.errors) || !Number.isInteger(report.summary.warnings) ||
-                report.findings.length > 200) {
+                report.findings.length > 200 ||
+                report.findings.some((finding) =>
+                  !finding || typeof finding !== 'object' ||
+                  typeof finding.id !== 'string' || finding.id.length > 100 ||
+                  !['error', 'warning', 'note'].includes(finding.severity) ||
+                  typeof finding.title !== 'string' || finding.title.length > 500 ||
+                  !Array.isArray(finding.files) || finding.files.length > 50 ||
+                  finding.files.some((file) => typeof file !== 'string' || file.length > 500))) {
               throw new Error('Invalid CAO validation artifact schema')
             }
             const openIssues = await github.paginate(github.rest.issues.listForRepo, {

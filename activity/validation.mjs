@@ -2,7 +2,6 @@ import { spawnSync } from "node:child_process";
 import { cp, mkdir, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { parsePolicy, controlSettings, effectivePolicy } from "../.github/workflows/shared/policy.mjs";
 
 export const VALIDATOR_VERSION = "1";
 const POLICY_PATH = ".github/workflows/cao.json";
@@ -181,6 +180,11 @@ export async function validatePolicy(root, source) {
   const findings = [];
   let policy;
   try {
+    const policyModule = await import(new URL(
+      "../.github/workflows/shared/" + "policy.mjs",
+      import.meta.url,
+    ));
+    const { parsePolicy, controlSettings } = policyModule;
     policy = parsePolicy(source);
     const repository = process.env.GITHUB_REPOSITORY || "local/control";
     controlSettings(policy, repository);
@@ -194,6 +198,10 @@ export async function validatePolicy(root, source) {
     return { policy: null, findings };
   }
 
+  const { effectivePolicy } = await import(new URL(
+    "../.github/workflows/shared/" + "policy.mjs",
+    import.meta.url,
+  ));
   const installed = await declarations(root);
   const installedNames = new Set(installed.map(({ campaign }) => campaign));
   const policyCampaigns = policy["control-plane"]?.campaigns ?? {};
@@ -313,7 +321,7 @@ export function validateEnablement(root, execute, installed) {
   return findings;
 }
 
-export async function validateSecurity(root, policySource) {
+export async function validateSecurity(root, policySource, installed = []) {
   const findings = [];
   const workflowRoot = path.join(root, WORKFLOW_DIRECTORY);
   const yamlFiles = (await filesIn(workflowRoot, ".yml")).filter((name) => !name.endsWith(".lock.yml"));
@@ -346,6 +354,51 @@ export async function validateSecurity(root, policySource) {
       observed: "A credential-like value appears in policy",
       remediation: "Revoke the credential and replace it with an Actions secret reference",
     }));
+  }
+  for (const declaration of installed) {
+    if (declaration.error) continue;
+    const roles = [
+      { role: "orchestrator", workflow: declaration.orchestrator },
+      ...Object.values(declaration.workers).map((workflow) => ({ role: "worker", workflow })),
+    ];
+    for (const { role, workflow } of roles) {
+      const relativePath = path.posix.join(WORKFLOW_DIRECTORY, `${workflow}.md`);
+      let source;
+      try {
+        source = await readFile(path.join(root, relativePath), "utf8");
+      } catch (error) {
+        if (error?.code === "ENOENT") continue;
+        throw error;
+      }
+      const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(source)?.[1] ?? "";
+      if (role === "worker" && /^\s*dispatch-workflow\s*:/m.test(frontmatter)) {
+        findings.push(finding("worker-can-dispatch-workflow", "error", "security", "Worker workflow can dispatch additional work", {
+          campaign: declaration.campaign,
+          files: [relativePath],
+          expected: "Only orchestrators dispatch campaign workers",
+          observed: `${workflow} declares dispatch-workflow`,
+          remediation: `Remove dispatch-workflow from ${relativePath}`,
+        }));
+      }
+      if (role === "orchestrator" && /^\s*(?:create-pull-request|push-to-branch|create-issue|add-comment)\s*:/m.test(frontmatter)) {
+        findings.push(finding("orchestrator-can-mutate-target", "error", "security", "Orchestrator declares a direct mutation capability", {
+          campaign: declaration.campaign,
+          files: [relativePath],
+          expected: "Orchestrators select and dispatch; workers perform target work",
+          observed: `${workflow} declares a direct write safe output`,
+          remediation: `Move target mutation from ${workflow} to a bounded worker`,
+        }));
+      }
+      if (role === "orchestrator" && /^\s+(?:token|password|private[_-]key|credential)\s*:/mi.test(frontmatter)) {
+        findings.push(finding("credential-in-dispatch-envelope", "error", "security", "Orchestrator dispatch input can carry credentials", {
+          campaign: declaration.campaign,
+          files: [relativePath],
+          expected: "Dispatch envelopes contain no credentials",
+          observed: `${workflow} declares a credential-like input`,
+          remediation: "Remove the credential input and use repository Actions secrets",
+        }));
+      }
+    }
   }
   return findings;
 }
@@ -422,7 +475,7 @@ export async function validateRepository({
     findings.push(...policyValidation.findings);
     findings.push(...doctorFindings(root, execute));
     findings.push(...validateEnablement(root, execute, policyValidation.installed));
-    findings.push(...await validateSecurity(root, policySource));
+    findings.push(...await validateSecurity(root, policySource, policyValidation.installed));
 
     const counts = summary(findings);
     const exitCode = counts.errors > 0 || (strictWarnings && counts.warnings > 0) ? 1 : 0;

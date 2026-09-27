@@ -191,6 +191,27 @@ test("detects bounded static security findings", async () => {
   }
 });
 
+test("detects worker dispatch and orchestrator mutation capabilities", async () => {
+  const root = await fixture();
+  try {
+    await writeFile(path.join(root, ".github", "workflows", "sample.md"), [
+      "---", "safe-outputs:", "  create-issue:", "---", "",
+    ].join("\n"));
+    await writeFile(path.join(root, ".github", "workflows", "sample-worker.md"), [
+      "---", "safe-outputs:", "  dispatch-workflow:", "---", "",
+    ].join("\n"));
+    const findings = await validateSecurity(root, "{}", [{
+      campaign: "sample", orchestrator: "sample", workers: { worker: "sample-worker" },
+    }]);
+    assert.deepEqual(findings.map(({ id }) => id), [
+      "orchestrator-can-mutate-target",
+      "worker-can-dispatch-workflow",
+    ]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("doctor failures are warnings", () => {
   const execute = (command) => command === "git"
     ? { status: 0, stdout: "https://github.com/acme/control.git\n", stderr: "" }
