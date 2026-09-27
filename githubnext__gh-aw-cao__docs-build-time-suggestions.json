@@ -1,6 +1,6 @@
 {
   "source_sha": "7996d9913959d8a59806233ba2d5d8a8a27985e4",
-  "next_category": "artifact transfer and Pages packaging",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
       "evaluated_at": "2026-09-27T02:35:00Z",
@@ -313,6 +313,37 @@
         36285946650
       ],
       "outcome": "no-op: evidence window 2026-09-27T04:09:12Z to 2026-09-27T07:47:53Z. Analyzed 16 successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days while disclosing 4 excluded completed docs runs in the same bounded sample (4 skipped workflow_run runs). Evaluated category reusable dashboard generation. Median docs.yml workflow execution was 48.5s (p90 56.5s), build median 31.0s (p90 37.5s), deploy median 9.0s (p90 12.0s), and queue median 3.0s (p90 5.5s). Trusted step metadata confirmed dashboard reuse on all 16 sampled successful docs runs: Restore cached CAO Dashboard succeeded on 16/16, Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped on 16/16, and Install dependencies plus Save node_modules were skipped on 16/16. Bounded logs on docs runs 36298831843 and 36304168005 showed the github-pages artifact uploads were 8,113,827 and 8,128,592 bytes, respectively, while comparable successful CAO Dashboard runs 36298790637, 36293444925, 36293377816, 36293106193, 36287787048, and 36285946650 still spent only 1.0s median assembling the dashboard site after reusing restored activity data and 2-3s uploading a 5.7 MB dashboard artifact. Logs from dashboard run 36298790637 showed the reusable dashboard payload already copies a 47.0 MiB SQLite database plus 24 activity shards totaling 26.9 MiB, so downstream docs publishes are dominated by page packaging and deployment rather than dashboard generation itself. This category does not meet the required >=60s or >=15% savings threshold, and no non-duplicate actionable improvement was identified without weakening freshness or correctness."
+    },
+    {
+      "evaluated_at": "2026-09-27T08:35:58Z",
+      "worker_run_id": 36306495809,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        36306368276,
+        36304927204,
+        36304168005,
+        36303538163,
+        36303286401,
+        36302582510,
+        36301641685,
+        36300623710,
+        36298948123,
+        36298831843,
+        36298188984,
+        36297578167,
+        36297070576,
+        36296005275,
+        36295528600,
+        36295103699,
+        36298790637,
+        36293444925,
+        36293377816,
+        36293106193,
+        36287787048,
+        36285946650
+      ],
+      "outcome": "no-op: evidence window 2026-09-27T04:42:49Z to 2026-09-27T08:30:29Z. Analyzed 16 successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days while disclosing 4 excluded completed docs runs in the same bounded sample (1 action_required workflow_run runs and 3 skipped workflow_run runs). Evaluated category artifact transfer and Pages packaging. Median docs.yml workflow execution was 48.0s (p90 54.5s), build median 29.0s (p90 34.0s), deploy median 9.0s (p90 12.0s), and workflow queue median 3.0s (p90 4.0s). Trusted step metadata confirmed docs-side cache hits on all 16 sampled successful docs runs: Install dependencies and Save node_modules were skipped on 16/16, Restore cached CAO Dashboard succeeded on 16/16, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were skipped on 16/16. Bounded logs on docs run 36298831843 confirmed cache hits for npm package data, node_modules, and central-agentic-ops-dashboard, Astro built 58 pages in 7.19s, and Upload Pages artifact uploaded 8,113,827 bytes. Comparable successful CAO Dashboard runs 36298790637, 36293444925, 36293377816, 36293106193, 36287787048, and 36285946650 still ran Install dashboard build dependencies on every rebuild at 7.0s median (10.0s max) even though Assemble Dashboard Language site stayed at 1.0s median and restored activity data avoided the fallback artifact path. This still matches the existing open dependency-caching recommendation fingerprint e76660e8d5e0c2a12c8f rather than producing materially new evidence, and no additional non-duplicate improvement in this cycle meets the required >=60s or >=15% savings threshold.",
+      "suggestion_fingerprint": "e76660e8d5e0c2a12c8f"
     }
   ]
 }
