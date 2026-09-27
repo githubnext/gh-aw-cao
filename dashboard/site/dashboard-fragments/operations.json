@@ -1665,12 +1665,12 @@
       },
       "icon": "tools",
       "class-name": "maintenance-page",
-      "description": "Review CAO campaign packages and gh-aw compiler versions. Vendored agents and skills require separate provenance-backed inventory.",
+      "description": "Review CAO campaign packages and gh-aw compiler versions. Active describes registration only; update confidence is reported separately. If version provenance is unknown, run CAO Activity to refresh inventory, then inspect Indexing diagnostics.",
       "views": [
         {
           "id": "maintenance-campaigns",
           "title": "CAO packages",
-          "description": "Installed campaign revisions and the latest catalog revisions observed for this control repository.",
+          "description": "Installed campaign revisions and the latest catalog revisions observed for this control repository. Unknown update confidence does not mean the package is current.",
           "data": {
             "source": "campaigns"
           },
@@ -1696,7 +1696,7 @@
               {
                 "field": "campaign-update-state",
                 "type": "nominal",
-                "title": "Update",
+                "title": "Update confidence",
                 "display": "status"
               },
               {
