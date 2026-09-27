@@ -993,6 +993,7 @@ For pages that opt in to `filter-bar: true`, the presenter renders a filter bar 
 - **DLS-PAGE-018:** A routed custom page **MAY** declare `route.title-format: title-case`. Before route-owned data resolves, a presenter **MUST** format the route value by capitalizing its hyphen- or underscore-separated words instead of exposing the raw route slug as page identity. A later route allocation **MUST** replace that provisional identity with the authoritative title.
 - **DLS-PAGE-019:** A routed custom page with declared tabs **MAY** declare a canonical `route.tabs-class-name`. A presenter **MUST** apply that class to both loading and hydrated tab sets so route chrome remains structurally and visually stable while data resolves.
 - **DLS-PAGE-020:** `view-mode-control`, when present, **MUST** be Boolean. When `false`, a presenter **MUST** use the page's default presentation and **MUST NOT** expose desktop or mobile controls for switching among chart, card, and table presentations.
+- **DLS-PAGE-021:** Unless `view-mode-control` is `false`, a presenter **MUST** expose every presentation mode represented by the page's essential views, add a card presentation for every table, and order available controls as **Chart**, **Cards**, **Table**. It **MUST** expose the same modes through keyboard-operable desktop and mobile controls when two or more modes are available, and **MUST NOT** expose a mode control when only one mode is available. Supplemental views remain discoverable through their disclosure controls and **MUST NOT** add presentation modes.
 
 ---
 
@@ -1282,7 +1283,7 @@ In the table, “accept” means validation succeeds; “reject” means validat
 | DLS-AGG-001–011 | T-AGG-001 | 2 | Exercise allowed aggregates, compatibility, nulls, UTC buckets, ranking disclosure, and deterministic ties for entity-grain and group-grain outputs, including total-order rejection. |
 | DLS-DATA-001–008 | T-DATA-001 | 2 | Exercise required metadata, derivation traceability, and each distinct data state. |
 | DLS-LINK-001–007 | T-LINK-001 | 2 | Validate link shape, safety, provenance, available associations, absent associations, one-link-per-field cardinality, GitHub URL base resolution, and linked rendering of every GitHub-addressable entity. |
-| DLS-PAGE-001–020 | T-PAGE-001 | 3 | Evaluate each built-in fixture for required content, defaults, context, data states, page classes, and shared filter chrome. |
+| DLS-PAGE-001–021 | T-PAGE-001 | 3 | Evaluate each built-in fixture for required content, defaults, context, data states, page classes, and shared filter chrome. |
 | DLS-VIEW-001–006 | T-VIEW-001 | 3 | Validate custom structure and every allowed mark/channel combination. |
 | DLS-VIEW-007–015, DLS-VIEW-025, DLS-UNIT-001–004 | T-VIEW-002 | 3 | Validate fields, types, link-compatible `href`, units and compact duration formatting, time units, ordering, exclusions, operation order, exposed context, and link labels. |
 | DLS-VIEW-016–021 | T-VIEW-003 | 3 | Validate disclosure vocabulary, one-to-four essential views, initial collapsed state, accessible controls, source order, and unchanged semantic output. |

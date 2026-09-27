@@ -1,4 +1,4 @@
-import { buildPresenterModuleUrl, builtInPage, expect, registerSmokeRoutes, test } from './helpers/smoke-fixtures.js';
+import { authoritativeDashboard, buildPresenterModuleUrl, builtInPage, expect, registerSmokeRoutes, test } from './helpers/smoke-fixtures.js';
 
 registerSmokeRoutes();
 
@@ -384,6 +384,45 @@ test('phone Workflows page cycles through chart, table, and card-list views', as
   await expect(table.locator('.table-region')).toBeVisible();
   await expect(table.locator('tbody')).toContainText('AW Maintenance');
   await expect(viewModeToggle).toHaveAttribute('aria-label', 'Switch to Chart view');
+});
+
+test('production chart and table pages expose consistent desktop and mobile view controls', async ({ page }) => {
+  const documentModel = authoritativeDashboard;
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
+      window.location.hash = '#page-repositories';
+      document.querySelector('#root').append(renderDashboard({
+        document: ${JSON.stringify(documentModel)},
+        sources: {}
+      }));
+    </script>
+  `);
+
+  for (const pageId of ['repositories', 'mcps', 'firewall', 'runs']) {
+    await page.evaluate((id) => { window.location.hash = '#page-' + id; }, pageId);
+    const dashboardPage = page.locator(`[data-page-id="${pageId}"]`);
+    await expect(dashboardPage).toBeVisible();
+    const modes = dashboardPage.locator(':scope > .page-chrome [data-view-mode-value]');
+    await expect(modes).toHaveText(['Chart', 'Cards', 'Table']);
+    await expect(modes.first()).toHaveAttribute('aria-pressed', 'true');
+    if (pageId === 'firewall') {
+      await expect(dashboardPage.locator('summary').filter({ hasText: 'All observed domains' })).toBeVisible();
+    }
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const pageId of ['repositories', 'mcps', 'firewall', 'runs']) {
+    await page.evaluate((id) => { window.location.hash = '#page-' + id; }, pageId);
+    await expect(page.locator(`[data-page-id="${pageId}"]`)).toBeVisible();
+    const toggle = page.locator('.mobile-view-mode-toggle');
+    await expect(toggle).toBeVisible();
+    await expect(toggle).toHaveAttribute('aria-label', 'Switch to Cards view');
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-label', 'Switch to Table view');
+  }
 });
 
 test('phone full-view lazy tables switch between table and card-list modes', async ({ page }) => {

@@ -150,6 +150,18 @@ export function renderViewModeControl(modes, initialMode, onChange) {
       selectedMode.set(mode);
       onChange(mode);
     });
+    button.addEventListener('keydown', (event) => {
+      if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      const modeIndex = modes.indexOf(mode);
+      const nextIndex = event.key === 'Home'
+        ? 0
+        : event.key === 'End'
+          ? modes.length - 1
+          : (modeIndex + ((event.key === 'ArrowRight' || event.key === 'ArrowDown') ? 1 : -1) + modes.length) % modes.length;
+      buttons.get(modes[nextIndex])?.click();
+      buttons.get(modes[nextIndex])?.focus();
+    });
     return [mode, button];
   }));
   root.append(...buttons.values());

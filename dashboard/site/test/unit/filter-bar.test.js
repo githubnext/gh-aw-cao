@@ -7,6 +7,7 @@ import {
   isTimeWindowFilterActive,
   relativeTimeWindow,
   renderFilterBar,
+  renderViewModeControl,
   setTimeWindowFilter,
   setTimeWindowRange
 } from '../../src/components/filter-bar.js';
@@ -35,6 +36,26 @@ describe('time-window filter bar', () => {
       range: '24h',
       start: '2026-09-03T12:00:00.000Z',
       end: '2026-09-04T12:00:00.000Z'
+    });
+  });
+
+  describe('view-mode control', () => {
+    it('keeps mode labels ordered and supports consistent keyboard navigation', () => {
+      const onChange = vi.fn();
+      const control = renderViewModeControl(['chart', 'card', 'table'], 'chart', onChange);
+      document.body.append(control);
+      const buttons = /** @type {HTMLButtonElement[]} */ ([...control.querySelectorAll('button')]);
+
+      expect(buttons.map((button) => button.textContent)).toEqual(['Chart', 'Cards', 'Table']);
+      expect(buttons.map((button) => button.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false']);
+
+      buttons[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+      expect(onChange).toHaveBeenLastCalledWith('table');
+      expect(document.activeElement).toBe(buttons[2]);
+
+      buttons[2].dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+      expect(onChange).toHaveBeenLastCalledWith('chart');
+      expect(document.activeElement).toBe(buttons[0]);
     });
   });
 
