@@ -148,6 +148,10 @@ func NewWithOptions(rawURL string, options Options) (*Client, error) {
 }
 
 func isPrivateRedisHost(hostname string) bool {
+	hostname = strings.ToLower(strings.TrimSuffix(hostname, "."))
+	if strings.HasSuffix(hostname, ".railway.internal") {
+		return true
+	}
 	if strings.Contains(hostname, ".") {
 		ip := net.ParseIP(hostname)
 		return ip != nil && (ip.IsPrivate() || ip.IsLoopback())

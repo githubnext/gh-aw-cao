@@ -60,6 +60,9 @@ func TestHostedRedisRequiresTLSUnlessPrivatePlaintextIsExplicit(t *testing.T) {
 	if err := validateHostedRedisURL("redis://redis:6379/0", true, false); err != nil {
 		t.Fatalf("hosted mode rejected explicitly allowed private Redis: %v", err)
 	}
+	if err := validateHostedRedisURL("redis://redis.railway.internal:6379/0", true, false); err != nil {
+		t.Fatalf("hosted mode rejected explicitly allowed Railway private Redis: %v", err)
+	}
 	if err := validateHostedRedisURL("redis://redis.example.com:6379/0", true, false); err == nil {
 		t.Fatal("hosted mode accepted a public plaintext Redis hostname")
 	}

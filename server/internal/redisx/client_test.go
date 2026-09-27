@@ -63,6 +63,9 @@ func TestNewWithOptionsAllowsOnlyPrivatePlaintextRedis(t *testing.T) {
 	if _, err := NewWithOptions("redis://10.42.0.4:6379/0", Options{AllowPrivatePlaintext: true}); err != nil {
 		t.Fatalf("private IP rejected: %v", err)
 	}
+	if _, err := NewWithOptions("redis://redis.railway.internal:6379/0", Options{AllowPrivatePlaintext: true}); err != nil {
+		t.Fatalf("Railway private hostname rejected: %v", err)
+	}
 	if _, err := NewWithOptions("redis://redis.example.com:6379/0", Options{AllowPrivatePlaintext: true}); err == nil {
 		t.Fatal("public hostname accepted for plaintext Redis")
 	}

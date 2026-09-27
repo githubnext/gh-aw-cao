@@ -231,8 +231,12 @@ func validateSingleReplica(profile HostProfile, value string) error {
 }
 
 func privateRedisHostname(hostname string) bool {
+	hostname = strings.ToLower(strings.TrimSuffix(hostname, "."))
 	if hostname == "" {
 		return false
+	}
+	if strings.HasSuffix(hostname, ".railway.internal") {
+		return true
 	}
 	if ip := net.ParseIP(hostname); ip != nil {
 		return ip.IsPrivate() || ip.IsLoopback()
