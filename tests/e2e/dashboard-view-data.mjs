@@ -41,13 +41,14 @@ export async function downloadDeployedDashboardData(
   const memoryDirectory = join(destination, "memory");
   await mkdir(memoryDirectory, { recursive: true });
   await writeFile(join(memoryDirectory, "manifest.json"), `${JSON.stringify(memoryManifest)}\n`);
+  const memoryFiles = [];
   for (const campaign of Array.isArray(memoryManifest.campaigns) ? memoryManifest.campaigns : []) {
     if (
       typeof campaign?.campaign !== "string"
       || !/^[a-z0-9](?:[a-z0-9._-]{0,99})$/.test(campaign.campaign)
       || !Array.isArray(campaign.files)
     ) continue;
-    const campaignRoot = new URL(`${encodeURIComponent(campaign.campaign)}/`, memoryRoot);
+    const campaignRoot = new URL(`${campaign.campaign}/`, memoryRoot);
     for (const file of campaign.files) {
       if (
         typeof file?.path !== "string"
@@ -61,15 +62,28 @@ export async function downloadDeployedDashboardData(
         fileUrl.pathname.slice(campaignRoot.pathname.length),
       );
       if (!relativePath) continue;
-      const response = await fetcher(fileUrl);
+      memoryFiles.push({
+        campaign: campaign.campaign,
+        path: file.path,
+        url: fileUrl,
+        relativePath,
+      });
+    }
+  }
+  let nextMemoryFile = 0;
+  await Promise.all(Array.from({ length: Math.min(8, memoryFiles.length) }, async () => {
+    while (nextMemoryFile < memoryFiles.length) {
+      const file = memoryFiles[nextMemoryFile];
+      nextMemoryFile += 1;
+      const response = await fetcher(file.url);
       if (!response.ok || !response.body) {
         throw new Error(`Unable to download deployed repository memory file: ${file.path}.`);
       }
-      const destinationPath = join(memoryDirectory, campaign.campaign, relativePath);
+      const destinationPath = join(memoryDirectory, file.campaign, file.relativePath);
       await mkdir(dirname(destinationPath), { recursive: true });
       await pipeline(response.body, createWriteStream(destinationPath));
     }
-  }
+  }));
   for (const { name, sourceName } of deployedActivityShardEntries(manifest).slice(0, maximumShardCount)) {
     const response = await fetcher(new URL(sourceName, sourceUrl));
     if (!response.ok || !response.body) throw new Error(`Unable to download deployed dashboard shard: ${sourceName}.`);
