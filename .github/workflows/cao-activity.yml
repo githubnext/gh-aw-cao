@@ -63,7 +63,7 @@ jobs:
 
       - name: Resolve activity cache key
         id: activity-cache-key
-        run: echo "value=cao-activity-v5-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+        run: echo "value=cao-activity-v6-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore activity cache
         id: activity-cache
@@ -81,23 +81,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/memory
           key: ${{ steps.activity-cache-key.outputs.value }}
           restore-keys: |
-            cao-activity-v5-
-
-      - name: Restore legacy activity cache layout
-        if: steps.activity-cache.outputs.cache-matched-key == ''
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
-            ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
-            ${{ runner.temp }}/cao-activity/gh-aw-logs-normalized
-            ${{ runner.temp }}/cao-activity/payload-hashes.json
-            ${{ runner.temp }}/cao-activity/control-settings.json
-            ${{ runner.temp }}/cao-activity/inventory-sources.json
-            ${{ runner.temp }}/cao-activity/drain3_weights.json
-          key: ${{ steps.activity-cache-key.outputs.value }}
-          restore-keys: |
-            cao-activity-v3-
+            cao-activity-v6-
 
       - name: Resolve dashboard control settings
         id: activity-settings
@@ -382,7 +366,7 @@ jobs:
       - name: Upload activity snapshot
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cao-activity-index
+          name: cao-activity-index-v6
           retention-days: 1
           if-no-files-found: error
           include-hidden-files: true
@@ -407,7 +391,7 @@ jobs:
       - name: Download activity snapshot
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: cao-activity-index
+          name: cao-activity-index-v6
           path: ${{ runner.temp }}/cao-activity
 
       - name: Verify activity snapshot

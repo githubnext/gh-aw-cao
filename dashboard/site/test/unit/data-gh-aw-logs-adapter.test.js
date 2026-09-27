@@ -451,7 +451,27 @@ describe('gh-aw logs adapter', () => {
   });
 
   it('retains failed job diagnostics and runtime metadata for driver exits', () => {
-    const content = JSON.stringify({
+    const content = [{
+      schema_version: 2,
+      kind: 'workflow_runs',
+      request: {
+        host: 'ghe.example.com',
+        repository: 'githubnext/gh-aw-cao',
+        args: ['run', 'list']
+      },
+      payload: [{
+        databaseId: 404,
+        attempt: 1,
+        number: 12,
+        workflowName: 'Optimization / Token Optimizer',
+        displayTitle: 'Optimization / Token Optimizer',
+        event: 'workflow_dispatch',
+        status: 'completed',
+        conclusion: 'failure',
+        createdAt: '2026-09-09T04:00:00Z',
+        updatedAt: '2026-09-09T04:01:00Z'
+      }]
+    }, {
       schema_version: 2,
       kind: 'run',
       run: {
@@ -465,14 +485,19 @@ describe('gh-aw logs adapter', () => {
         conclusion: 'failure',
         failure_kind: 'driver_exit',
         failure_detail: 'Agent process exited with code 1.',
-        failure_log: '##[error]Agent process exited with code 1.',
         created_at: '2026-09-09T04:00:00Z',
         updated_at: '2026-09-09T04:01:00Z',
         job_details: [{
           name: 'agent',
-          conclusion: 'failure',
-          steps: [{ name: 'Execute agent', conclusion: 'failure' }]
+          conclusion: 'failure'
         }],
+        audit: {
+          errors: [{
+            type: 'step_failure',
+            file: 'agent/Execute agent',
+            message: '##[error]Agent process exited with code 1.'
+          }]
+        },
         aw_info: {
           engine_id: 'copilot',
           engine_name: 'GitHub Copilot CLI',
@@ -481,7 +506,7 @@ describe('gh-aw logs adapter', () => {
           cli_version: 'v0.89.21'
         }
       }
-    });
+    }].map((record) => JSON.stringify(record)).join('\n');
 
     const batch = normalize(adaptCachedGhAwJsonl(content, {
       context: JSON.parse(readFileSync(join(fixtureRoot, 'context.json'), 'utf8'))
@@ -493,6 +518,11 @@ describe('gh-aw logs adapter', () => {
       failureMessage: 'Agent process exited with code 1.',
       failureStep: 'Execute agent',
       failureLog: '##[error]Agent process exited with code 1.',
+      runLink: {
+        relation: 'run',
+        href: 'https://ghe.example.com/githubnext/gh-aw-cao/actions/runs/404',
+        label: 'Run 404'
+      },
       ghAwVersion: 'v0.89.21',
       engine: 'GitHub Copilot CLI',
       engineVersion: '1.0.87',

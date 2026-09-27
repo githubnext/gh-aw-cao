@@ -14,9 +14,9 @@ jobs:
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
-          key: cao-activity-v5-lookup-${{ github.run_id }}-${{ github.run_attempt }}-activation
+          key: cao-activity-v6-lookup-${{ github.run_id }}-${{ github.run_attempt }}-activation
           restore-keys: |
-            cao-activity-v5-
+            cao-activity-v6-
 
   agent:
     pre-steps:
@@ -32,9 +32,9 @@ jobs:
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
-          key: cao-activity-v5-lookup-${{ github.run_id }}-${{ github.run_attempt }}-agent
+          key: cao-activity-v6-lookup-${{ github.run_id }}-${{ github.run_attempt }}-agent
           restore-keys: |
-            cao-activity-v5-
+            cao-activity-v6-
 ---
 
 <!--

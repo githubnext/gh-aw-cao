@@ -83,9 +83,9 @@ jobs:
             ${{ runner.temp }}/cao-activity/inventory-sources.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
             ${{ runner.temp }}/cao-activity/memory
-          key: cao-activity-v5-lookup-${{ github.run_id }}-${{ github.run_attempt }}
+          key: cao-activity-v6-lookup-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            cao-activity-v5-
+            cao-activity-v6-
 
       - name: Resolve fallback activity run
         id: activity-artifact-run
@@ -111,7 +111,7 @@ jobs:
         if: steps.activity-cache.outputs.cache-matched-key == ''
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: cao-activity-index
+          name: cao-activity-index-v6
           path: ${{ runner.temp }}/cao-activity
           repository: ${{ github.repository }}
           github-token: ${{ github.token }}

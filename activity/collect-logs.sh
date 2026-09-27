@@ -70,6 +70,27 @@ compact_shards() {
   done
   node "$cao_script" "${compact_args[@]}"
 }
+missing_failure_run_ids() {
+  local shard_prefix="$1"
+  local shard_files=("${shard_prefix}"*.jsonl)
+  [[ -e "${shard_files[0]}" ]] || return 0
+  jq -rs '
+    [
+      .[]
+      | select(.schema_version == 2 and .kind == "run" and (.run | type) == "object")
+      | .run
+    ]
+    | group_by([(.database_id // .run_id // .id | tostring), (.run_attempt // .runAttempt // .attempt // 1 | tostring)])
+    | map(select(
+        any(.[]; ((.conclusion // .result // "") == "failure"
+          or (.conclusion // .result // "") == "timed_out"
+          or (.conclusion // .result // "") == "startup_failure"))
+        and all(.[]; ((.audit.errors // []) | length) == 0)
+      ))
+    | .[]
+    | (.[0].database_id // .[0].run_id // .[0].id)
+  ' "${shard_files[@]}"
+}
 if [[ $exit_code -eq 0 ]]; then
   compact_shards || exit_code=$?
 fi
@@ -96,6 +117,25 @@ for index in "${!repositories[@]}"; do
     "${drain3_args[@]+"${drain3_args[@]}"}"
   repository_exit_code=$?
   set -e
+  if [[ $repository_exit_code -eq 0 ]]; then
+    missing_run_ids="$(missing_failure_run_ids "$shard_prefix")"
+    if [[ -n "$missing_run_ids" ]]; then
+      set +e
+      printf '%s\n' "$missing_run_ids" | gh aw logs --stdin --audit \
+        --repo "$target_repository" \
+        --output "$output_directory/$cache_name" \
+        --summary-file "" \
+        --cached-jsonl "${shard_prefix}*" \
+        --artifacts agent \
+        --timeout "$request_timeout" \
+        --max-github-api-rate-limit "$rate_limit" \
+        --max-storage "$max_storage" \
+        --prune-older-runs \
+        "${drain3_args[@]+"${drain3_args[@]}"}"
+      repository_exit_code=${PIPESTATUS[1]}
+      set -e
+    fi
+  fi
   generated_weights="$output_directory/$cache_name/drain3_weights.json"
   if [[ -n "$drain3_weights_path" && -f "$generated_weights" ]]; then
     mv "$generated_weights" "$drain3_weights_path"

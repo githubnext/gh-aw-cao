@@ -29,12 +29,15 @@ sequenceDiagram
 
 The scheduled and manually dispatchable `.github/workflows/cao-activity.yml`
 checks out the trusted control-repository source, restores its cache, collects
-compiled workflow evidence with `gh aw logs --audit --artifacts usage`, ingests
+compiled workflow evidence with an incremental usage pass and a targeted
+`gh aw logs --stdin --audit --artifacts agent` pass for failures lacking audit evidence, ingests
 the resulting JSONL through the dashboard's Node.js canonical data pipeline,
 and stores both data files plus the generated Drain3 weights. Restored weights
 are passed to the next `gh aw logs` invocation so log clustering can continue
-learning across runs. Downloaded artifacts are job-local inputs and are not
-cached. The dependent publication job verifies that every snapshot file
+learning across runs. The additional agent selection causes `gh aw logs` to
+retrieve workflow-run logs and retain a bounded failed-step diagnostic in its
+audit record. Downloaded artifacts are job-local inputs and are not cached.
+The dependent publication job verifies that every snapshot file
 extracted from the artifact exists and is non-empty before saving the cache, so
 a path or packaging regression fails immediately instead of leaving consumers
 with a cache miss. A collection that observes no agentic workflow runs, such as

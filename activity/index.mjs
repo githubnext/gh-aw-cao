@@ -43,6 +43,12 @@ function firstValue(...values) {
   return values.find((value) => value !== undefined && value !== null && value !== "");
 }
 
+function githubServerUrl(environment = process.env) {
+  const configured = firstValue(environment.GITHUB_SERVER_URL?.trim(), environment.GH_HOST?.trim(), "github.com");
+  const url = configured.includes("://") ? configured : `https://${configured}`;
+  return new URL(url).origin;
+}
+
 function workflowPath(run) {
   const value = String(firstValue(
     run.workflow_path,
@@ -67,11 +73,35 @@ function workflowAliases(workflow) {
   ].filter(Boolean).map((value) => String(value).toLowerCase());
 }
 
+function auditFailure(run) {
+  const audit = run.audit && typeof run.audit === "object" && !Array.isArray(run.audit)
+    ? run.audit
+    : {};
+  const errors = Array.isArray(audit.errors)
+    ? audit.errors.filter((error) => error && typeof error === "object" && !Array.isArray(error))
+    : [];
+  const error = errors.find((candidate) => candidate.type === "step_failure")
+    || errors.find((candidate) => candidate.type === "agent_failure")
+    || errors[0]
+    || {};
+  const file = typeof error.file === "string" ? error.file.trim() : "";
+  const separator = file.indexOf("/");
+  return {
+    job: separator > 0 ? file.slice(0, separator) : "",
+    step: separator > 0 ? file.slice(separator + 1) : file === "agent-stdio.log" ? "Agent execution" : "",
+    log: typeof error.message === "string" ? error.message : "",
+    url: typeof audit.overview === "object" && audit.overview && !Array.isArray(audit.overview)
+      ? audit.overview.url
+      : "",
+  };
+}
+
 function runRecord(run, repository) {
   const runId = Number(firstValue(run.database_id, run.run_id, run.id));
   if (!Number.isSafeInteger(runId)) return null;
   const conclusion = firstValue(run.conclusion, run.result, null);
   const status = firstValue(run.status, conclusion ? "completed" : null);
+  const audit = auditFailure(run);
   return {
     repository: firstValue(run.repository, run.repository_full_name, repository),
     runId,
@@ -84,15 +114,21 @@ function runRecord(run, repository) {
     startedAt: firstValue(run.started_at, run.created_at, null),
     updatedAt: firstValue(run.updated_at, run.completed_at, null),
     displayTitle: firstValue(run.display_title, run.title, null),
-    ...(run.url ? { runUrl: String(run.url) } : {}),
+    runUrl: String(firstValue(
+      run.url,
+      run.html_url,
+      run.htmlUrl,
+      audit.url,
+      repository ? `${githubServerUrl()}/${repository}/actions/runs/${runId}` : "",
+    )),
     ...(run.classification ? { classification: String(run.classification) } : {}),
     ...(run.failure_kind ? { failureKind: String(run.failure_kind) } : {}),
-    ...(run.failure_job ? { failureJob: String(run.failure_job) } : {}),
-    ...(run.failure_step ? { failureStep: String(run.failure_step) } : {}),
+    ...(firstValue(run.failure_job, audit.job) ? { failureJob: String(firstValue(run.failure_job, audit.job)) } : {}),
+    ...(firstValue(run.failure_step, audit.step) ? { failureStep: String(firstValue(run.failure_step, audit.step)) } : {}),
     ...(firstValue(run.failure_message, run.failure_detail)
       ? { failureMessage: String(firstValue(run.failure_message, run.failure_detail)) }
       : {}),
-    ...(failureLog(run.failure_log ?? run.failureLog ?? run.failed_step_log ?? run.failedStepLog)),
+    ...(failureLog(firstValue(run.failure_log, run.failureLog, run.failed_step_log, run.failedStepLog, audit.log))),
     ...(Array.isArray(run.jobs) ? { jobs: run.jobs.map(performanceJobRecord) } : {}),
   };
 }

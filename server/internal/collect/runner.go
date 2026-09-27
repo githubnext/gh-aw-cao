@@ -1,13 +1,16 @@
 package collect
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -198,7 +201,121 @@ func (r Runner) downloadLogs(ctx context.Context, repository, workspace, token s
 		"--max-storage", strconv.Itoa(r.maxStorage()),
 		"--prune-older-runs",
 	}
-	return r.execute(ctx, r.gh(), arguments, []string{"GH_TOKEN=" + token})
+	environment := []string{"GH_TOKEN=" + token}
+	if err := r.execute(ctx, r.gh(), arguments, environment); err != nil {
+		return err
+	}
+	runIDs, err := failedRunIDsWithoutAudit(shardPrefix)
+	if err != nil {
+		return err
+	}
+	if len(runIDs) == 0 {
+		return nil
+	}
+	auditArguments := []string{
+		"aw", "logs", "--stdin", "--audit",
+		"--repo", repository,
+		"--output", filepath.Join(workspace, "logs"),
+		"--summary-file", "",
+		"--cached-jsonl", shardPrefix + "*",
+		"--artifacts", "agent",
+		"--timeout", strconv.Itoa(r.requestTimeout()),
+		"--max-github-api-rate-limit", strconv.Itoa(-reserve),
+		"--max-storage", strconv.Itoa(r.maxStorage()),
+		"--prune-older-runs",
+	}
+	return r.executeWithInput(ctx, r.gh(), auditArguments, environment, strings.Join(runIDs, "\n")+"\n")
+}
+
+type runAuditState struct {
+	id      string
+	failed  bool
+	audited bool
+}
+
+func failedRunIDsWithoutAudit(shardPrefix string) ([]string, error) {
+	paths, err := filepath.Glob(shardPrefix + "*.jsonl")
+	if err != nil {
+		return nil, fmt.Errorf("match gh-aw log shards: %w", err)
+	}
+	sort.Strings(paths)
+	states := map[string]runAuditState{}
+	for _, path := range paths {
+		file, err := os.Open(path) // #nosec G304 -- paths are constrained to the configured lake shard prefix.
+		if err != nil {
+			return nil, fmt.Errorf("open gh-aw log shard: %w", err)
+		}
+		scanner := bufio.NewScanner(file)
+		scanner.Buffer(make([]byte, 64*1024), 2*1024*1024)
+		for scanner.Scan() {
+			var envelope struct {
+				SchemaVersion int    `json:"schema_version"`
+				Kind          string `json:"kind"`
+				Run           struct {
+					DatabaseID json.RawMessage `json:"database_id"`
+					RunID      json.RawMessage `json:"run_id"`
+					ID         json.RawMessage `json:"id"`
+					Attempt    json.RawMessage `json:"run_attempt"`
+					RunAttempt json.RawMessage `json:"runAttempt"`
+					Conclusion string          `json:"conclusion"`
+					Result     string          `json:"result"`
+					Audit      struct {
+						Errors []json.RawMessage `json:"errors"`
+					} `json:"audit"`
+				} `json:"run"`
+			}
+			if err := json.Unmarshal(scanner.Bytes(), &envelope); err != nil {
+				_ = file.Close()
+				return nil, fmt.Errorf("parse gh-aw log shard: %w", err)
+			}
+			if envelope.SchemaVersion != 2 || envelope.Kind != "run" {
+				continue
+			}
+			id := firstJSONIdentifier(envelope.Run.DatabaseID, envelope.Run.RunID, envelope.Run.ID)
+			if id == "" {
+				continue
+			}
+			attempt := firstJSONIdentifier(envelope.Run.Attempt, envelope.Run.RunAttempt)
+			if attempt == "" {
+				attempt = "1"
+			}
+			key := id + ":" + attempt
+			state := states[key]
+			state.id = id
+			conclusion := envelope.Run.Conclusion
+			if conclusion == "" {
+				conclusion = envelope.Run.Result
+			}
+			state.failed = state.failed || conclusion == "failure" || conclusion == "timed_out" || conclusion == "startup_failure"
+			state.audited = state.audited || len(envelope.Run.Audit.Errors) > 0
+			states[key] = state
+		}
+		if err := scanner.Err(); err != nil {
+			_ = file.Close()
+			return nil, fmt.Errorf("read gh-aw log shard: %w", err)
+		}
+		if err := file.Close(); err != nil {
+			return nil, fmt.Errorf("close gh-aw log shard: %w", err)
+		}
+	}
+	runIDs := make([]string, 0, len(states))
+	for _, state := range states {
+		if state.failed && !state.audited {
+			runIDs = append(runIDs, state.id)
+		}
+	}
+	sort.Strings(runIDs)
+	return runIDs, nil
+}
+
+func firstJSONIdentifier(values ...json.RawMessage) string {
+	for _, value := range values {
+		text := strings.Trim(string(value), `"`)
+		if text != "" && text != "null" {
+			return text
+		}
+	}
+	return ""
 }
 
 func (r Runner) compact(ctx context.Context, repository string) error {
@@ -212,11 +329,18 @@ func (r Runner) compact(ctx context.Context, repository string) error {
 }
 
 func (r Runner) execute(ctx context.Context, name string, arguments []string, environment []string) error {
+	return r.executeWithInput(ctx, name, arguments, environment, "")
+}
+
+func (r Runner) executeWithInput(ctx context.Context, name string, arguments []string, environment []string, input string) error {
 	// #nosec G204 -- name and arguments are constructed from validated
 	// configuration and a normalized repository reference.
 	command := exec.CommandContext(ctx, name, arguments...)
 	command.Dir = r.CatalogRoot
 	command.Env = append(collectionEnvironment(), environment...)
+	if input != "" {
+		command.Stdin = strings.NewReader(input)
+	}
 	var output bytes.Buffer
 	limit := r.MaxOutputBytes
 	if limit <= 0 {

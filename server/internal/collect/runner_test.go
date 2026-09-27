@@ -90,6 +90,27 @@ func TestRunnerDoesNotLeakAmbientCredentials(t *testing.T) {
 	}
 }
 
+func TestFailedRunIDsWithoutAuditExcludesEnrichedRuns(t *testing.T) {
+	directory := t.TempDir()
+	prefix := filepath.Join(directory, "octo-api-logs-")
+	records := []string{
+		`{"schema_version":2,"kind":"run","run":{"database_id":41,"run_attempt":1,"conclusion":"success"}}`,
+		`{"schema_version":2,"kind":"run","run":{"database_id":42,"run_attempt":1,"conclusion":"failure"}}`,
+		`{"schema_version":2,"kind":"run","run":{"database_id":43,"run_attempt":1,"conclusion":"failure"}}`,
+		`{"schema_version":2,"kind":"run","run":{"database_id":43,"run_attempt":1,"conclusion":"failure","audit":{"errors":[{"message":"failed"}]}}}`,
+	}
+	if err := os.WriteFile(prefix+"fixture.jsonl", []byte(strings.Join(records, "\n")+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runIDs, err := failedRunIDsWithoutAudit(prefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(runIDs) != 1 || runIDs[0] != "42" {
+		t.Fatalf("failed run IDs = %v, want [42]", runIDs)
+	}
+}
+
 func TestLakeUsesThePublishedSnapshotLayout(t *testing.T) {
 	lake := Lake{Directory: t.TempDir()}
 	if err := lake.Prepare(); err != nil {

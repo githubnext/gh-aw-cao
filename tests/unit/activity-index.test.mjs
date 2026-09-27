@@ -60,11 +60,16 @@ graders:
       event: "workflow_dispatch",
       conclusion: "failure",
       status: "completed",
-      url: "https://github.com/githubnext/gh-aw-cao/actions/runs/42",
       classification: "runtime",
       failure_kind: "driver_exit",
       failure_detail: "Agent process exited with code 1.",
-      failure_log: "##[error]Agent process exited with code 1.",
+      audit: {
+        errors: [{
+          type: "step_failure",
+          file: "agent/Execute agent",
+          message: "##[error]Agent process exited with code 1.",
+        }],
+      },
       created_at: "2026-09-06T20:00:00Z",
       started_at: "2026-09-06T20:00:01Z",
       updated_at: "2026-09-06T20:01:00Z",
@@ -94,6 +99,7 @@ graders:
       cwd: path.resolve("."),
       env: {
         ...process.env,
+        GITHUB_SERVER_URL: "https://ghe.example.com",
         GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
         REPORT_ROOT: root,
         REPORT_INVENTORY: inventoryPath,
@@ -109,10 +115,12 @@ graders:
     assert.equal(result.workflows[0].runHealth.failed, 1);
     assert.equal(result.workflows[0].runHealth.runRecords[0].runId, 42);
     assert.equal(result.workflows[0].runHealth.runRecords[0].runAttempt, 2);
-    assert.equal(result.workflows[0].runHealth.runRecords[0].runUrl, "https://github.com/githubnext/gh-aw-cao/actions/runs/42");
+    assert.equal(result.workflows[0].runHealth.runRecords[0].runUrl, "https://ghe.example.com/githubnext/gh-aw-cao/actions/runs/42");
     assert.equal(result.workflows[0].runHealth.runRecords[0].classification, "runtime");
     assert.equal(result.workflows[0].runHealth.runRecords[0].failureKind, "driver_exit");
     assert.equal(result.workflows[0].runHealth.runRecords[0].failureMessage, "Agent process exited with code 1.");
+    assert.equal(result.workflows[0].runHealth.runRecords[0].failureJob, "agent");
+    assert.equal(result.workflows[0].runHealth.runRecords[0].failureStep, "Execute agent");
     assert.equal(result.workflows[0].runHealth.runRecords[0].failureLog, "##[error]Agent process exited with code 1.");
     assert.deepEqual(result.workflows[0].runHealth.runRecords[0].jobs, [{
       jobId: 84,

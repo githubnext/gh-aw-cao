@@ -137,6 +137,69 @@ process.stderr.write("Fetched 1 run\\n");
   }
 });
 
+test("activity logs fetches agent evidence only once for an unaudited failed run", async () => {
+  const item = await fixture();
+  const ghPath = path.join(item.bin, "gh");
+  const stdinPath = path.join(item.root, "stdin.txt");
+  await writeFile(ghPath, `#!/usr/bin/env node
+const fs = require("node:fs");
+const path = require("node:path");
+const args = process.argv.slice(2);
+fs.appendFileSync(process.env.GH_ARGS_PATH, JSON.stringify(args) + "\\n");
+const shardPattern = args[args.indexOf("--cached-jsonl") + 1];
+const shardPrefix = shardPattern.replace(/\\*$/, "");
+fs.mkdirSync(path.dirname(shardPrefix), { recursive: true });
+if (args.includes("--stdin")) {
+  const input = fs.readFileSync(0, "utf8");
+  fs.appendFileSync(process.env.GH_STDIN_PATH, input);
+  fs.writeFileSync(shardPrefix + "audit.jsonl", JSON.stringify({ schema_version: 2, kind: "run", run: {
+    database_id: 42,
+    run_attempt: 1,
+    repository: "githubnext/gh-aw-cao",
+    workflow_path: ".github/workflows/sample.lock.yml",
+    status: "completed",
+    conclusion: "failure",
+    audit: { errors: [{ type: "step_failure", file: "agent/Execute agent", message: "failed" }] }
+  } }) + "\\n");
+} else if (!fs.existsSync(shardPrefix + "usage.jsonl")) {
+  fs.writeFileSync(shardPrefix + "usage.jsonl", JSON.stringify({ schema_version: 2, kind: "run", run: {
+    database_id: 42,
+    run_attempt: 1,
+    repository: "githubnext/gh-aw-cao",
+    workflow_path: ".github/workflows/sample.lock.yml",
+    status: "completed",
+    conclusion: "failure"
+  } }) + "\\n");
+}
+`);
+  await chmod(ghPath, 0o755);
+  await mkdir(item.logsPath, { recursive: true });
+  const env = {
+    ...process.env,
+    PATH: `${item.bin}:${process.env.PATH}`,
+    GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
+    REPORT_GH_AW_LOGS_SHARDS: item.logsPath,
+    REPORT_GH_AW_LOGS_EXIT_CODE: path.join(item.root, "cache", "gh-aw-logs-exit-code"),
+    REPORT_AIC_CACHE: item.outputPath,
+    GH_ARGS_PATH: item.argumentsPath,
+    GH_STDIN_PATH: stdinPath,
+  };
+  try {
+    await execFileAsync("bash", [path.resolve("activity/collect-logs.sh")], { env });
+    await execFileAsync("bash", [path.resolve("activity/collect-logs.sh")], { env });
+    const invocations = (await readFile(item.argumentsPath, "utf8")).trim().split("\n").map(JSON.parse);
+    assert.deepEqual(invocations.map((args) => args[args.indexOf("--artifacts") + 1]), [
+      "usage",
+      "agent",
+      "usage",
+    ]);
+    assert.equal(invocations[1].includes("--stdin"), true);
+    assert.equal(await readFile(stdinPath, "utf8"), "42\n");
+  } finally {
+    await rm(item.root, { recursive: true, force: true });
+  }
+});
+
 test("activity logs preserves cached runs and records collection failure", async () => {
   const item = await fixture();
   const ghPath = path.join(item.bin, "gh");

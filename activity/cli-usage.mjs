@@ -24,7 +24,7 @@ export const DEFAULT_OUTPUT_DIRECTORY = '.cao';
 export const DEFAULT_SHARDS_PATH = `${DEFAULT_OUTPUT_DIRECTORY}/gh-aw-logs-shards`;
 export const DEFAULT_DATABASE_PATH = `${DEFAULT_OUTPUT_DIRECTORY}/gh-aw-logs.sqlite`;
 export const DEFAULT_ACTIVITY_STATS_WORKFLOW = 'cao-activity.yml';
-export const DEFAULT_ACTIVITY_STATS_ARTIFACT = 'cao-activity-index';
+export const DEFAULT_ACTIVITY_STATS_ARTIFACT = 'cao-activity-index-v6';
 export const DEFAULT_ACTIVITY_STATS_LIMIT = 5;
 export const DEFAULT_GH_LIMIT = 30;
 

@@ -6,7 +6,8 @@ rollout mode, safe-output, target-writing, indexing, or reporting authority.
 
 The scheduled and manually dispatchable `CAO Activity` workflow checks out the
 control repository, restores the latest compatible log cache, and runs one
-bounded `gh aw logs --audit --artifacts usage --repo OWNER/REPOSITORY` command
+bounded usage collection followed by `gh aw logs --stdin --audit --artifacts agent`
+only for failed runs that do not already have retained audit errors
 for each repository in the distinct union of the control repository and the
 allowed repositories resolved from `cao.json`. `cao.json` bounds collection; it
 does not declare runtime workflow or run identities. The collector then ingests
@@ -35,7 +36,10 @@ repository's retained files into bounded shards, retaining only runs whose
 workflow path ends in `.lock.yml` and their associated records. This excludes
 non-agentic Actions workflows while preserving observation precedence and
 dependent-record association. The bounded files limit peak browser parsing
-memory. Failed collections leave the prior files untouched. Shards containing only
+memory. The agent selection also makes `gh aw logs` retrieve workflow-run logs;
+its bounded audit result retains the failed job, failed step, and diagnostic
+excerpt without publishing the downloaded raw artifacts. Failed collections
+leave the prior files untouched. Shards containing only
 out-of-range dated records are pruned by `gh aw logs --cache-before`. The
 ingestion step passes the shard directory to `cao ingest-jsonl --input-dir`,
 which tracks each compacted shard by content hash.
@@ -219,13 +223,13 @@ Logging is a no-op by default; set `NODE_DEBUG=cao:*` (or a specific category)
 to see it.
 
 Snapshots use the immutable key
-`cao-activity-v5-${github.run_id}-${github.run_attempt}` and restore prefix
-`cao-activity-v5-`. Dispatching consumers wait for the exact Activity run and
+`cao-activity-v6-${github.run_id}-${github.run_attempt}` and restore prefix
+`cao-activity-v6-`. Dispatching consumers wait for the exact Activity run and
 reconstruct its immutable key from the returned run ID and attempt. Producers
 and consumers use this complete path list because GitHub includes paths in the
-cache version. When the current layout misses, Activity restores the preceding
-layout containing `gh-aw-logs-normalized/`; `hash-payloads` processes its
-retained JSONL shard directory to generate run and record shards.
+cache version. The v6 cache and `cao-activity-index-v6` artifact intentionally do not restore earlier layouts:
+existing usage-only Run records must be recollected so audited failed-step
+diagnostics are present.
 The cache is an evictable transport optimization, not durable
 historical authority.
 

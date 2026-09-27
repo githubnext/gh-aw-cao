@@ -2160,7 +2160,7 @@ async function hashFileNames(hashesPath) {
 }
 
 /**
- * Downloads the `cao-activity-index` artifact for a single workflow run
+ * Downloads the versioned Activity snapshot artifact for a single workflow run
  * (via `gh run download`) into a throwaway directory, times the download,
  * and reports the size of the SQLite payload, retained wildcard shard files,
  * and recorded payload hash files. Shards are audited sequentially so the
@@ -2212,7 +2212,7 @@ async function inspectActivityRun(repo, run, artifact, execute, keep) {
 
 /**
  * Investigates the performance and health of recent `cao-activity.yml`
- * workflow runs: for each of the most recent runs, the `cao-activity-index`
+ * workflow runs: for each of the most recent runs, the versioned Activity snapshot
  * artifact is downloaded via the `gh` CLI and inspected for download
  * duration, SQLite payload size, retained shard files, recorded
  * payload hash files, and raw/duplicate run-observation counts. Intended

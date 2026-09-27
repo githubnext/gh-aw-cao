@@ -259,23 +259,77 @@ function runFailureMetadata(raw, enriched) {
   const step = failedStep && typeof failedStep === 'object' && !Array.isArray(failedStep)
     ? /** @type {Record<string, unknown>} */ (failedStep)
     : {};
+  const audit = enriched.audit && typeof enriched.audit === 'object' && !Array.isArray(enriched.audit)
+    ? /** @type {Record<string, unknown>} */ (enriched.audit)
+    : {};
+  const auditErrors = Array.isArray(audit.errors)
+    ? audit.errors.filter((error) => error && typeof error === 'object' && !Array.isArray(error))
+    : [];
+  const auditError = /** @type {Record<string, unknown>} */ (
+    auditErrors.find((error) => error.type === 'step_failure')
+    ?? auditErrors.find((error) => error.type === 'agent_failure')
+    ?? auditErrors[0]
+    ?? {}
+  );
+  const auditFile = firstOptionalString(auditError.file) ?? '';
+  const separator = auditFile.indexOf('/');
+  const auditJob = separator > 0 ? auditFile.slice(0, separator) : undefined;
+  const auditStep = separator > 0
+    ? auditFile.slice(separator + 1)
+    : auditFile === 'agent-stdio.log' ? 'Agent execution' : undefined;
   const failureLog = firstOptionalString(
     enriched.failure_log,
     enriched.failed_step_log,
     raw.failureLog,
-    raw.failure_log
+    raw.failure_log,
+    auditError.message
   );
   return {
-    failureJob: firstOptionalString(enriched.failure_job, raw.failureJob, raw.failure_job, job.name),
+    failureJob: firstOptionalString(enriched.failure_job, raw.failureJob, raw.failure_job, job.name, auditJob),
     failureMessage: firstOptionalString(
       enriched.failure_message,
       enriched.failure_detail,
       raw.failureMessage,
       raw.failure_message
     ),
-    failureStep: firstOptionalString(enriched.failure_step, raw.failureStep, raw.failure_step, step.name),
+    failureStep: firstOptionalString(enriched.failure_step, raw.failureStep, raw.failure_step, step.name, auditStep),
     failureLog
   };
+}
+
+/**
+ * @param {Record<string, unknown>} raw
+ * @param {Record<string, unknown>} enriched
+ * @param {string} repository
+ * @param {string} githubRunId
+ * @param {string | undefined} serverUrl
+ */
+function canonicalRunLink(raw, enriched, repository, githubRunId, serverUrl) {
+  const audit = enriched.audit && typeof enriched.audit === 'object' && !Array.isArray(enriched.audit)
+    ? /** @type {Record<string, unknown>} */ (enriched.audit)
+    : {};
+  const overview = audit.overview && typeof audit.overview === 'object' && !Array.isArray(audit.overview)
+    ? /** @type {Record<string, unknown>} */ (audit.overview)
+    : {};
+  let href = firstOptionalString(
+    raw.url,
+    raw.html_url,
+    raw.htmlUrl,
+    enriched.url,
+    enriched.html_url,
+    enriched.htmlUrl,
+    overview.url
+  );
+  if (!href && serverUrl) {
+    const configured = serverUrl.includes('://') ? serverUrl : `https://${serverUrl}`;
+    try {
+      href = `${new URL(configured).origin}/${repository}/actions/runs/${githubRunId}`;
+    } catch {
+      href = undefined;
+    }
+  }
+  if (!href) return undefined;
+  return { relation: 'run', href, label: `Run ${githubRunId}` };
 }
 
 /** @param {Record<string, unknown>} run */
@@ -936,7 +990,8 @@ function createCachedGhAwJsonlAccumulator(options) {
    *   name: string,
    *   fullName: string,
    *   workflowName: string,
-   *   workflowPath?: string
+   *   workflowPath?: string,
+   *   serverUrl?: string
    * }} CachedRun
    */
 
@@ -1066,7 +1121,8 @@ function createCachedGhAwJsonlAccumulator(options) {
         value: run,
         ...coordinates,
         workflowName,
-        workflowPath
+        workflowPath,
+        serverUrl: firstOptionalString(run.host, run.server_url, run.serverUrl)
       };
       enrichedRuns.set(id, enrichedRuns.has(id)
         ? preferNewer(/** @type {CachedRun} */ (enrichedRuns.get(id)), candidate)
@@ -1112,7 +1168,8 @@ function createCachedGhAwJsonlAccumulator(options) {
         value: run,
         ...coordinates,
         workflowName,
-        workflowPath: undefined
+        workflowPath: undefined,
+        serverUrl: firstOptionalString(request.host)
       };
       rawRuns.set(id, rawRuns.has(id)
         ? preferNewer(/** @type {CachedRun} */ (rawRuns.get(id)), candidate)
@@ -1323,7 +1380,13 @@ function createCachedGhAwJsonlAccumulator(options) {
           ?? null,
         completedAt: status === 'completed' ? updatedAt : null,
         updatedAt,
-        runLink: optionalString(rawValue.url) ?? optionalString(enrichedValue.url) ?? null,
+        runLink: canonicalRunLink(
+          rawValue,
+          enrichedValue,
+          structural.fullName,
+          githubRunId,
+          firstOptionalString(raw?.serverUrl, enriched?.serverUrl)
+        ),
         classification: optionalString(enrichedValue.classification),
         intentionalFailure: enrichedValue.intentional_failure,
         failureKind: optionalString(enrichedValue.failure_kind),
