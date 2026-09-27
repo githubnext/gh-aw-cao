@@ -10,6 +10,9 @@
 
 import databaseQueries from '../data/queries/database.json' with { type: 'json' };
 import { queryInputNames } from '../data/queries/declarative.js';
+import { createDebug } from '../debug.js';
+
+const debugCatalog = createDebug('catalog');
 
 /**
  * Canonical record collections that the database layer projects from run
@@ -81,8 +84,10 @@ function memoize(document, key, compute) {
   const collections = catalogCollections(document);
   let cache = caches.get(document);
   if (!cache || cache.collections.some((value, index) => value !== collections[index])) {
+    const stale = Boolean(cache);
     cache = { collections, entries: new Map() };
     caches.set(document, cache);
+    debugCatalog({ event: 'cache-rebuild', reason: stale ? 'stale' : 'new' });
   }
   if (!cache.entries.has(key)) cache.entries.set(key, compute());
   return cache.entries.get(key);
@@ -467,14 +472,16 @@ function computeQueryExecutionRequirements(document, queryId) {
   }
   const sorted = [...requirements].toSorted();
   const unavailable = [...missing].toSorted();
-  return unavailable.length > 0
-    ? {
-        local: false,
-        requirements: sorted,
-        missing: unavailable,
-        reason: `Requires ${unavailable.join(', ')}, which the local SQLite projection does not provide.`
-      }
-    : { local: true, backend: 'sqlite', requirements: sorted, missing: [] };
+  if (unavailable.length > 0) {
+    debugCatalog({ event: 'query-execution', queryId: id, local: false, missingCount: unavailable.length });
+    return {
+      local: false,
+      requirements: sorted,
+      missing: unavailable,
+      reason: `Requires ${unavailable.join(', ')}, which the local SQLite projection does not provide.`
+    };
+  }
+  return { local: true, backend: 'sqlite', requirements: sorted, missing: [] };
 }
 
 /**
@@ -554,7 +561,10 @@ export function describeQuery(document, queryId) {
   const index = memoize(document, 'query-index', () => new Map(
     listQueries(document).map((query) => [query.id, query])
   ));
-  return index.get(text(queryId)) ?? null;
+  const id = text(queryId);
+  const found = index.get(id) ?? null;
+  if (!found) debugCatalog({ event: 'describe-query', queryId: id, status: 'not-found' });
+  return found;
 }
 
 /**
