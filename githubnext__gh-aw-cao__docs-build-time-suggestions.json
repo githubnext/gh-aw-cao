@@ -1,6 +1,6 @@
 {
-  "source_sha": "025972354a78cb8c3879d30be9a4f55800ad24bc",
-  "next_category": "artifact transfer and Pages packaging",
+  "source_sha": "4ebc9eb446da747d97b32405c31af002c6e461af",
+  "next_category": "Astro documentation generation",
   "evaluations": [
     {
       "evaluated_at": "2026-09-27T03:00:00Z",
@@ -711,6 +711,30 @@
         36317693796
       ],
       "outcome": "no-op: evidence window 2026-09-27T12:32:47Z to 2026-09-27T13:47:18Z. Analyzed 10 successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days while disclosing 10 excluded completed docs runs in the same bounded sample (5 action_required workflow_run runs, 3 skipped workflow_run runs, and 2 cancelled runs). Evaluated category dependency installation and caching. Median docs.yml workflow execution was 57.5s (p90 79.7s), build median 26.0s (p90 35.0s), deploy median 10.5s (p90 11.0s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed docs-side cache hits on all 10 sampled successful docs runs: Install dependencies and Save node_modules were skipped on 10/10, Restore cached CAO Dashboard succeeded on 10/10, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were skipped on 10/10. Bounded logs on docs runs 36323515662 and 36323513489 confirmed cache restores for npm package data, node_modules, and central-agentic-ops-dashboard. Comparable successful CAO Dashboard runs 36323783502, 36323470014, 36322714979, 36320977258, and 36317693796 still ran Install dashboard build dependencies on every rebuild at 7.0s median (p90 9.2s) while Restore collected activity data was 1.0s median, Assemble Dashboard Language site was 1.0s median, and Upload dashboard artifact was 2.0s median. However, an open issue already tracks this recommendation with fingerprint 882cfe96ddd72f82030c and the current evidence does not materially change the timing or source conditions.",
+      "suggestion_fingerprint": "882cfe96ddd72f82030c"
+    },
+    {
+      "evaluated_at": "2026-09-27T14:24:17Z",
+      "worker_run_id": 36325565675,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36325643174,
+        36325218010,
+        36324435754,
+        36324295370,
+        36324213860,
+        36323823829,
+        36323515662,
+        36323513489,
+        36322757241,
+        36322714980,
+        36322696177,
+        36322104135,
+        36321019386,
+        36323783502,
+        36323470014
+      ],
+      "outcome": "no-op: evidence window 2026-09-27T13:02:29Z to 2026-09-27T14:22:48Z. Analyzed 13 successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days while disclosing 7 excluded completed docs runs in the same bounded sample (4 action_required, 1 cancelled, 2 skipped). Evaluated category dependency installation and caching. Median docs.yml workflow execution was 53.0s (p90 78.0s), build median 27.0s (p90 34.0s), deploy median 11.0s (p90 12.0s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed docs-side cache hits on all 13 sampled successful docs runs: Install dependencies and Save node_modules were skipped on 13/13, Restore cached CAO Dashboard succeeded on 13/13, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were skipped on 13/13. Bounded logs on docs run 36323515662 confirmed npm and node_modules cache hits plus a cached dashboard restore before uploading a 9,510,940-byte Pages artifact, while comparable successful CAO Dashboard runs 36323783502, 36323470014 still ran Install dashboard build dependencies on every rebuild at 7.5s median while Restore collected activity data was 0.5s median, Upgrade fallback activity data 7.0s median, Assemble Dashboard Language site 0.0s median, and Upload dashboard artifact 3.0s median. Bounded dashboard logs on run 36323783502 showed npm ci still added 268 packages in 7s before copying a 53.9 MiB SQLite file and 25 activity shards totaling 31.1 MiB. The current workflow source at .github/workflows/cao-dashboard.yml still uses an unconditional npm ci --prefix dashboard/site --ignore-scripts path with no restore/save cache around dashboard/site dependencies, but no open issue with the same canonical subject is currently visible in the repository and the latest evidence does not materially change the existing recommendation fingerprint 882cfe96ddd72f82030c. No additional non-duplicate suggestion is actionable in this cycle.",
       "suggestion_fingerprint": "882cfe96ddd72f82030c"
     }
   ]
