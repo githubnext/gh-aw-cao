@@ -9,9 +9,12 @@
  * document can be executed.
  */
 
+import { createDebug } from '../debug.js';
 import { loadDatabaseQuerySources } from '../data/queries/database.js';
 import { DASHBOARD_QUERY_LIMITS } from '../data/queries/declarative.js';
 import { describeQuery, queryExecutionRequirements, queryParameters } from './catalog.js';
+
+const debugQueryExecutor = createDebug('query-executor');
 
 /** Maximum rows one named-query result returns when no smaller limit is given. */
 export const DEFAULT_NAMED_QUERY_LIMIT = 500;
@@ -136,11 +139,19 @@ export async function executeNamedQuery({ indexedDB, document, queryId, paramete
   const id = typeof queryId === 'string' ? queryId.trim() : '';
   if (!id) throw new NamedQueryError('A dashboard query identifier is required');
   const definition = describeQuery(document, id);
-  if (!definition) throw new NamedQueryError(`Unknown dashboard query: ${id}`);
+  if (!definition) {
+    debugQueryExecutor({ query: id, outcome: 'unknown-query' });
+    throw new NamedQueryError(`Unknown dashboard query: ${id}`);
+  }
   const filters = resolveNamedQueryParameters(document, id, parameters);
   const maxRows = resolveLimit(limit);
   const execution = queryExecutionRequirements(document, id);
   if (!execution.local) {
+    debugQueryExecutor({
+      query: id,
+      outcome: 'unavailable',
+      missingCount: Array.isArray(execution.missing) ? execution.missing.length : 0
+    });
     return {
       query: id,
       rows: [],
@@ -171,6 +182,13 @@ export async function executeNamedQuery({ indexedDB, document, queryId, paramete
   // reported as partial completeness rather than silently returned as complete.
   const truncated = selected.length > maxRows;
   const rows = truncated ? selected.slice(0, maxRows) : selected;
+  debugQueryExecutor({
+    query: id,
+    outcome: 'executed',
+    'returned-rows': rows.length,
+    truncated,
+    completeness: truncated ? 'partial' : (metadata.completeness ?? 'unknown')
+  });
   return {
     query: id,
     rows,
