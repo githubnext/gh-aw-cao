@@ -838,7 +838,9 @@ describe('dashboard document validation', () => {
       'mcp-tool-label',
       'mcp-server',
       'calls',
-      'workflows'
+      'workflows',
+      'request-bytes',
+      'response-bytes'
     ]);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });

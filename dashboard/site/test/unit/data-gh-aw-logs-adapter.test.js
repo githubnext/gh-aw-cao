@@ -182,7 +182,14 @@ describe('gh-aw logs adapter', () => {
             },
             key_findings: [{ code: 'high_token_usage', title: 'Slow response', severity: 'medium' }],
             missing_tools: [{ tool: 'search', timestamp: '2026-09-09T04:00:20Z' }],
-            skill_activations: [{ name: 'review', status: 'success', timestamp: '2026-09-09T04:00:30Z' }],
+            skill_activations: [{
+              name: 'review',
+              status: 'success',
+              source: 'usage_summary',
+              invocation_count: 3,
+              failed_count: 1,
+              timestamp: '2026-09-09T04:00:30Z'
+            }],
             gateway_steering_events: [
               {
                 type: 'token_steering',
@@ -208,6 +215,23 @@ describe('gh-aw logs adapter', () => {
               'api.github.com:443': { allowed: 3, blocked: 1 },
               'objects.githubusercontent.com:443': { allowed: 2, blocked: 0 }
             }
+          },
+          friction: {
+            measurement_state: 'statistical',
+            canonical_unit: 'aic',
+            total_events: 2,
+            total_occurrences: 3,
+            counted_occurrences: 2,
+            suppressed_occurrences: 1,
+            cost: {
+              aic: 0.25,
+              tokens: { input: 10, output: 5, total: 15 },
+              turns: 1,
+              tool_calls: 2,
+              latency_ms: 250
+            },
+            total_run_aic: 2.5,
+            friction_ratio: 0.1
           },
           agent_id: '',
           agent_version: '',
@@ -351,7 +375,9 @@ describe('gh-aw logs adapter', () => {
         source: 'mcp',
         type: 'tool.call',
         correlationId: 'call-7',
-        summary: 'github/get_file'
+        summary: 'github/get_file',
+        requestBytes: 42,
+        responseBytes: 128
       }),
       expect.objectContaining({
         source: 'mcp',
@@ -359,12 +385,27 @@ describe('gh-aw logs adapter', () => {
         correlationId: 'call-7',
         status: 'success'
       }),
+    ]));
+    expect(batch.skills).toEqual([
       expect.objectContaining({
         type: 'audit.skill_activation',
-        toolType: 'skill',
-        isSkill: true
+        name: 'review',
+        invocationCount: 3,
+        failedCount: 1,
+        activationSource: 'usage_summary'
       })
-    ]));
+    ]);
+    expect(batch.friction).toEqual([
+      expect.objectContaining({
+        type: 'workflow_run_friction',
+        measurementState: 'statistical',
+        canonicalUnit: 'aic',
+        countedOccurrences: 2,
+        aic: 0.25,
+        totalTokens: 15,
+        frictionRatio: 0.1
+      })
+    ]);
     expect(batch.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         source: 'safe-output',

@@ -128,7 +128,8 @@ const sources = {  campaigns: {
         'event-summary': 'github.list_issues', 'event-status': 'requested',
         'request-count': 7,
         'correlation-id': 'call-1', 'safe-output-type': 'create_issue',
-        'mcp-server-version': '1.0.0', 'mcp-protocol-version': '2025-06-18', 'response-bytes': 256,
+        'mcp-server-version': '1.0.0', 'mcp-protocol-version': '2025-06-18',
+        'request-bytes': 128, 'response-bytes': 256,
         'github-entity-type': 'issue', 'source-sequence': 0, 'observed-at': '2026-09-09T04:00:10Z'
       }
     ],
@@ -666,6 +667,7 @@ describe('canonical view sources', () => {
         'mcp-status': 'requested',
         'mcp-server-version': '1.0.0',
         'mcp-protocol-version': '2025-06-18',
+        'request-bytes': 128,
         'response-bytes': 256
       }],
       metadata: { 'source-kind': 'database-query' }

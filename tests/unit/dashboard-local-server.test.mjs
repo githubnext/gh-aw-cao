@@ -237,6 +237,41 @@ test("local dashboard server fails when dashboard data cannot be downloaded", as
   }
 });
 
+test("local dashboard server serves repository memory from canonical dashboard data", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "dashboard-local-server-memory-"));
+  const siteRoot = path.join(root, "site");
+  await mkdir(siteRoot, { recursive: true });
+  await writeFile(path.join(siteRoot, "index.html"), "<!doctype html><body>preview</body>");
+  await writeFile(path.join(siteRoot, "dashboard.json"), dashboard("built-in"));
+  const preview = await startDashboardServer({
+    siteRoot,
+    catalogRoot: null,
+    downloadData: async (destination) => {
+      const dataRoot = path.join(destination, "cao");
+      await mkdir(path.join(dataRoot, "gh-aw-logs-runs"), { recursive: true });
+      await mkdir(path.join(dataRoot, "memory", "ambient-context"), { recursive: true });
+      await writeFile(path.join(dataRoot, "inventory-sources.json"), "{}");
+      await writeFile(path.join(dataRoot, "memory", "manifest.json"), JSON.stringify({ version: 1 }));
+      await writeFile(
+        path.join(dataRoot, "memory", "ambient-context", "notes.md"),
+        "token ghp_abcdefghijklmnopqrstuvwxyz123456",
+      );
+    },
+    workingDirectory: root,
+    port: 0,
+  });
+  try {
+    assert.deepEqual(await (await fetch(`${preview.url}/memory/manifest.json`)).json(), { version: 1 });
+    assert.equal(
+      await (await fetch(`${preview.url}/memory/ambient-context/notes.md`)).text(),
+      "token [REDACTED]",
+    );
+  } finally {
+    await preview.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("canvas dashboard executes only declared CLI actions through the provided executor", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-canvas-actions-"));
   const calls = [];

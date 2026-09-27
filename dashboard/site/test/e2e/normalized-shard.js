@@ -28,7 +28,7 @@ export function normalizedActivityShards(jsonl) {
   };
   return {
     runs: encode('runs', ['campaigns', 'repositories', 'workflows', 'runs']),
-    records: encode('records', ['domains', 'tools', 'audits', 'issues'])
+    records: encode('records', ['domains', 'tools', 'skills', 'friction', 'audits', 'issues', 'operationalValues'])
   };
 }
 

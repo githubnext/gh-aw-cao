@@ -5,7 +5,7 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { formatAggregateValue, formatRelativeTime, formatString } from '../view-formatters.js';
-import { formatCount, titleCase } from './count-formatters.js';
+import { errorMessage, formatCount, titleCase } from './count-formatters.js';
 import { renderCellDisplay } from './cell-display.js';
 import { resolveCardStatus } from './card-status.js';
 import { listChartSeries, pieChartEntries, renderChartLegend, renderPieChartLayout, renderPieLegend, renderChartWidget } from './chart-elements.js';
@@ -1449,7 +1449,7 @@ function renderChartView(context) {
           }
         } catch (error) {
           if (!active) return;
-          const message = error instanceof Error ? error.message : String(error);
+          const message = errorMessage(error);
           console.error(`Unable to load additional swimlane runs: ${message}`);
           continuationState.set({ ...current, token: undefined, error: message });
         } finally {

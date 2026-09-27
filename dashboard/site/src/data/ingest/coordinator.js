@@ -50,6 +50,8 @@ const NORMALIZED_BATCH_COLLECTIONS = /** @type {const} */ ([
   'runs',
   'domains',
   'tools',
+  'skills',
+  'friction',
   'audits',
   'issues',
   'operationalValues',
@@ -656,7 +658,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
           throw new TypeError(`Normalized activity JSONL line ${lineNumber} must contain a canonical record`);
         }
         const excluded = header.phase === 'runs'
-          ? ['domains', 'tools', 'audits', 'issues', 'operationalValues']
+          ? ['domains', 'tools', 'skills', 'friction', 'audits', 'issues', 'operationalValues']
           : header.phase === 'records'
             ? ['campaigns', 'repositories', 'workflows', 'runs']
             : [];
@@ -831,6 +833,8 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       runs: batch.runs.length,
       domains: batch.domains.length,
       tools: batch.tools.length,
+      skills: batch.skills.length,
+      friction: batch.friction.length,
       audits: batch.audits.length,
       issues: batch.issues.length
     });

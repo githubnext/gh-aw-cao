@@ -138,7 +138,7 @@ Invalid caps, out-of-scope owners, and incomplete control facts stop before work
 | 🟢 Pass | Worker ceiling omitted | Worker remains enabled and inherits the resolved campaign or exact-target mode. |
 | 🟢 Pass | Review destination is public or inaccessible | Rejected before agent execution. |
 | 🟢 Pass | Aggregate AI Credit request exceeds `1100` default | Repository selection is reduced to fit the shared cap. |
-| 🟢 Pass | Public targets without an App or PAT | Built-in `GITHUB_TOKEN` supports bounded review runs in the control repository; private access, alternate review repositories, and live target writes remain prohibited. |
+| 🟢 Pass | Repository-token fallback | Built-in `GITHUB_TOKEN` remains bounded to control-repository operations and cannot substitute for the selected cross-repository App or PAT profile. |
 | 🟢 Pass | Runaway prevention | Every workflow has finite AI credits and timeout; overlapping same-scope runs cancel. |
 | 🟢 Pass | API rate limit or budget exhaustion | No internal retry/wait loop or self-dispatch; unresolved work is incomplete and requires a new bounded run. |
 | 🟢 Pass | Same-scope queue pressure | Newest run supersedes older running or pending work; no unbounded Actions backlog. |

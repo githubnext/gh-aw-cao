@@ -1,0 +1,151 @@
+---
+import dispatchFallback from "../assets/control-plane-dispatch-fallback.svg";
+import dispatchFallbackDark from "../assets/control-plane-dispatch-fallback-dark-mode.svg";
+import dispatchMotion from "../assets/control-plane-dispatch-motion.svg";
+import mobileDispatchFallback from "../assets/control-plane-dispatch-mobile.svg";
+import mobileDispatchFallbackDark from "../assets/control-plane-dispatch-mobile-dark-mode.svg";
+import mobileDispatchMotion from "../assets/control-plane-dispatch-mobile-motion.svg";
+---
+
+<div class="desktop-scene" aria-hidden="true">
+  <img
+    src={dispatchFallback.src}
+    width={dispatchFallback.width}
+    height={dispatchFallback.height}
+    alt=""
+    loading="eager"
+    decoding="async"
+    class="pipeline-image theme-light"
+  />
+  <img
+    src={dispatchFallbackDark.src}
+    width={dispatchFallbackDark.width}
+    height={dispatchFallbackDark.height}
+    alt=""
+    loading="eager"
+    decoding="async"
+    class="pipeline-image theme-dark"
+  />
+  <img
+    src={dispatchMotion.src}
+    width={dispatchMotion.width}
+    height={dispatchMotion.height}
+    alt=""
+    loading="eager"
+    decoding="async"
+    class="dispatch-motion"
+  />
+</div>
+
+<div class="mobile-scene" aria-hidden="true">
+  <img
+    src={mobileDispatchFallback.src}
+    width={mobileDispatchFallback.width}
+    height={mobileDispatchFallback.height}
+    alt=""
+    loading="eager"
+    decoding="async"
+    class="mobile-pipeline-image theme-light"
+  />
+  <img
+    src={mobileDispatchFallbackDark.src}
+    width={mobileDispatchFallbackDark.width}
+    height={mobileDispatchFallbackDark.height}
+    alt=""
+    loading="eager"
+    decoding="async"
+    class="mobile-pipeline-image theme-dark"
+  />
+  <img
+    src={mobileDispatchMotion.src}
+    width={mobileDispatchMotion.width}
+    height={mobileDispatchMotion.height}
+    alt=""
+    loading="eager"
+    decoding="async"
+    class="dispatch-motion mobile-dispatch-motion"
+  />
+</div>
+
+<style>
+  @layer starlight.core {
+    .desktop-scene {
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+      aspect-ratio: 31 / 14;
+      isolation: isolate;
+    }
+
+    .pipeline-image,
+    .dispatch-motion {
+      position: absolute;
+      top: -26.053%;
+      left: -44.706%;
+      width: 145.882% !important;
+      height: 145.882% !important;
+    }
+
+    .pipeline-image {
+      object-fit: contain;
+    }
+
+    .theme-dark {
+      display: block;
+    }
+
+    .theme-light {
+      display: none;
+    }
+
+    :global(:root[data-theme="light"]) .theme-dark {
+      display: none;
+    }
+
+    :global(:root[data-theme="light"]) .theme-light {
+      display: block;
+    }
+
+    .dispatch-motion {
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .mobile-scene {
+      display: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .dispatch-motion {
+        display: none;
+      }
+    }
+
+    @media (max-width: 42rem) {
+      .desktop-scene {
+        display: none;
+      }
+
+      .mobile-scene {
+        position: relative;
+        display: block;
+        width: min(100%, 24.375rem);
+        aspect-ratio: 390 / 886;
+        margin-inline: auto;
+        isolation: isolate;
+      }
+
+      .mobile-pipeline-image,
+      .mobile-dispatch-motion {
+        position: absolute;
+        inset: 0;
+        width: 100% !important;
+        height: 100% !important;
+      }
+
+      .mobile-pipeline-image {
+        object-fit: contain;
+      }
+    }
+  }
+</style>

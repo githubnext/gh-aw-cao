@@ -3,6 +3,7 @@ import { test } from "node:test";
 import dashboardViewsConfig from "../playwright/configs/dashboard-views.config.mjs";
 import {
   dashboardAssessmentPageBudgetMs,
+  dashboardAssessmentPageHash,
   dashboardAssessmentCleanupBudgetMs,
   dashboardAssessmentStartupBudgetMs,
   dashboardAssessmentTimeout,
@@ -41,6 +42,24 @@ test("finds declared views in loaded custom and built-in page definitions", () =
     definition: { views: [{ id: "details" }] },
   }), ["details"]);
   assert.deepEqual(declaredDashboardViewIds({ kind: "custom" }), []);
+});
+
+test("uses the dashboard repository when assessing repository routes", () => {
+  const dashboard = { dashboard: { repository: "githubnext/gh-aw-cao" } };
+  assert.equal(
+    dashboardAssessmentPageHash({
+      id: "repository-settings",
+      route: { "hash-query-parameter": "repository" },
+    }, dashboard),
+    "#page-repository-settings?repository=githubnext%2Fgh-aw-cao",
+  );
+  assert.equal(
+    dashboardAssessmentPageHash({
+      id: "campaign-detail",
+      route: { "hash-query-parameter": "campaign" },
+    }, dashboard),
+    "#page-campaign-detail",
+  );
 });
 
 test("renders the assessed page chunks as a view-query graph", () => {

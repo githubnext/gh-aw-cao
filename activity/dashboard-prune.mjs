@@ -593,6 +593,8 @@ function normalizeQueryNameToken(token) {
     issues: 'issue',
     audits: 'audit',
     tools: 'tool',
+    skills: 'skill',
+    friction: 'friction',
     domains: 'domain'
   };
   return singular[token] ?? token;
