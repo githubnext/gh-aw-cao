@@ -119,6 +119,13 @@ safe-outputs:
       - "self-care-dashboard-performance-evidence/**"
     defaults:
       if-no-files: ignore
+steps:
+  - name: Skip unsupported dashboard performance dispatch
+    if: ${{ inputs.target_repo != 'githubnext/gh-aw-cao' || (inputs.safe_output_mode || 'review') != 'live' }}
+    run: |
+      printf '%s\n' \
+        '{"type":"noop","message":"Dashboard performance runs only in live mode for githubnext/gh-aw-cao."}' \
+        >> "$GH_AW_SAFE_OUTPUTS"
 pre-agent-steps:
   - name: Install dashboard dependencies
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
