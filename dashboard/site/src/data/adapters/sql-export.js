@@ -1,5 +1,8 @@
 import { repositoryId, runId, sourceId, workflowId } from '../model/ids.js';
 import { canonicalTimestamp, ENTITY_KINDS, requiredString } from '../model/schema.js';
+import { createDebug } from '../../debug.js';
+
+const debugSqlExport = createDebug('data:adapters:sql-export');
 
 export const SQL_EXPORT_CONTRACT = 'gh-aw-cao.dashboard-sql-export';
 export const SQL_EXPORT_VERSION = 3;
@@ -72,15 +75,20 @@ function optionalEnum(value, field, allowed) {
  */
 export function adaptSqlExport(input) {
   const document = objectValue(input, 'SQL export');
-  if (document.contract !== SQL_EXPORT_CONTRACT) {
-    throw new TypeError(`SQL export contract must be ${SQL_EXPORT_CONTRACT}`);
-  }
-  if (document.schema_version !== SQL_EXPORT_VERSION) {
+  if (document.contract !== SQL_EXPORT_CONTRACT || document.schema_version !== SQL_EXPORT_VERSION) {
+    debugSqlExport({
+      event: 'adapt-failed',
+      reason: document.contract !== SQL_EXPORT_CONTRACT ? 'unsupported-contract' : 'unsupported-schema-version'
+    });
+    if (document.contract !== SQL_EXPORT_CONTRACT) {
+      throw new TypeError(`SQL export contract must be ${SQL_EXPORT_CONTRACT}`);
+    }
     throw new TypeError(`Unsupported SQL export schema version: ${String(document.schema_version)}`);
   }
   const exportedAt = canonicalTimestamp(document.exported_at, 'SQL export exported_at');
   const source = `sql:${requiredString(document.source, 'SQL export source')}`;
   if (!Array.isArray(document.rows)) throw new TypeError('SQL export rows must be an array');
+  debugSqlExport({ event: 'adapt-start', rowCount: document.rows.length });
   const repositoryCoordinates = new Map(document.rows.flatMap((candidate, index) => {
     const row = objectValue(candidate, `SQL export row ${index}`);
     if (row.entity_kind !== 'repository') return [];
@@ -465,5 +473,6 @@ export function adaptSqlExport(input) {
     });
   }
 
+  debugSqlExport({ event: 'adapt-complete', rowCount: document.rows.length, observationCount: observations.length });
   return { observations };
 }
