@@ -46,6 +46,8 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(terminal, /--raw-field safe_output_mode="review"/);
   assert.match(hero, /See every campaign\. Focus where it diverges/);
   assert.match(hero, /Prove value before multiplying work/);
+  assert.match(hero, /class="wizard-launch-button" href="\/gh-aw-cao\/setup\/"/);
+  assert.match(hero, /Launch setup wizard/);
   assert.doesNotMatch(hero, /One operating picture|phone-caption/);
   assert.doesNotMatch(hero, /OpsWizard|Stand up a control plane in three steps/);
   assert.doesNotMatch(hero, /trust-section|Coordination without concentrated risk|section-actions/);

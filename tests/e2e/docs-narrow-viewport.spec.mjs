@@ -62,6 +62,14 @@ test("setup wizard presents hosting choices as an immersive card experience", as
   expect(wizardHeight).toBeGreaterThanOrEqual(800);
 });
 
+test("landing page ends with a setup wizard launch button", async ({ page }) => {
+  expect((await page.goto(""))?.ok()).toBe(true);
+
+  const launchButton = page.getByRole("link", { name: "Launch setup wizard" });
+  await expect(launchButton).toBeVisible();
+  await expect(launchButton).toHaveAttribute("href", "/gh-aw-cao/setup/");
+});
+
 for (const colorScheme of ["light", "dark"]) {
   test.describe(`${colorScheme} scheme`, () => {
     test.use({ colorScheme, viewport: { width: 320, height: 900 } });
