@@ -4,6 +4,7 @@ import {
   automaticDashboardBackgroundUpdatesActive,
   automaticDashboardDataUpdatesEnabled,
   dashboardBackgroundUpdatesUnavailableReason,
+  dashboardServiceWorkerUrl,
   dashboardInstalled,
   dashboardDataUpdateBlockedReason,
   ensureHealthyDashboardServiceWorker,
@@ -105,6 +106,34 @@ describe('automatic dashboard data updates', () => {
     expect(reload).toHaveBeenCalledOnce();
     expect(worker.messages).toContainEqual(expect.objectContaining({ type: 'CACHE_APP_ASSETS' }));
     stop();
+  });
+
+  it('registers a stable service worker script URL that ignores page debug parameters', async () => {
+    const originalUrl = window.location.href;
+    window.history.replaceState(null, '', '/?debug=*&debug-shard-limit=2&debug-eager-ingest=1');
+    try {
+      const scriptUrl = dashboardServiceWorkerUrl();
+      expect(scriptUrl.search).toBe('');
+      expect(scriptUrl.pathname.endsWith('/service-worker.js')).toBe(true);
+
+      const worker = new FakeWorker();
+      const currentRegistration = registration(worker);
+      const register = vi.fn().mockResolvedValue(currentRegistration);
+      const serviceWorkers = Object.assign(new EventTarget(), { controller: worker, register });
+      const reload = vi.fn();
+      const stop = startDashboardAppUpdates({
+        serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
+        reload,
+        setTimer: /** @type {typeof window.setTimeout} */ (/** @type {unknown} */ (vi.fn()))
+      });
+      await vi.waitFor(() => expect(register).toHaveBeenCalledOnce());
+      const [registeredUrl] = register.mock.calls[0];
+      expect(String(registeredUrl)).toBe(scriptUrl.href);
+      expect(reload).not.toHaveBeenCalled();
+      stop();
+    } finally {
+      window.history.replaceState(null, '', originalUrl);
+    }
   });
 
   it('checks deployed application assets when a refresh is requested', async () => {

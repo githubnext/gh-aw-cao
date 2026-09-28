@@ -13,10 +13,12 @@ const RECORD_SHARD_PATH = /\/gh-aw-logs-records\/[^/]+\.jsonl$/i;
 
 /**
  * Extracts the raw `debug` query parameter from a location search string
- * without depending on `URLSearchParams`, which the service worker's
- * `self.location.search` reflects from its own (registered) script URL. The
- * dashboard forwards the page's `?debug=` value onto that script URL so this
- * context can see the same debug configuration as the page and data worker.
+ * without depending on `URLSearchParams`. The dashboard registers this worker
+ * with a stable script URL, because a script URL that varies with the page's
+ * `?debug=` value is a service worker update that activates a replacement
+ * worker and reloads every controlled page. The page forwards its `debug`
+ * value on each `DOWNLOAD_DATA` message instead; `self.location.search` is
+ * only a fallback for registrations that still carry the parameter.
  * @param {string} search
  */
 function debugParameterValue(search) {
@@ -30,9 +32,11 @@ function debugPatternExpression(pattern) {
   return new RegExp(`^${escaped.replaceAll('\\*', '.*')}$`, 'i');
 }
 
-/** @param {string} category */
-function isDebugEnabled(category) {
-  const value = debugParameterValue(self.location?.search ?? '');
+/**
+ * @param {string} category
+ * @param {string} [value]
+ */
+function isDebugEnabled(category, value = debugParameterValue(self.location?.search ?? '')) {
   if (!value) return false;
   const patterns = value.split(/[\s,]+/).filter(Boolean);
   const included = patterns
@@ -51,11 +55,12 @@ function isDebugEnabled(category) {
  * script, so this is a minimal, dependency-free port of the same behavior.
  * `test/unit/service-worker.test.js` cross-checks pattern-matching parity
  * with `debug.js` so the two stay in sync.
+ * @param {string | undefined} debug Page-supplied `debug` value, if any.
  * @param {string} category
  * @param {unknown[]} values
  */
-function debugLog(category, ...values) {
-  if (typeof console === 'undefined' || !isDebugEnabled(category)) return;
+function debugLog(debug, category, ...values) {
+  if (typeof console === 'undefined' || !isDebugEnabled(category, debug || undefined)) return;
   console.debug(`[${DEBUG_PREFIX}:${category}]`, ...values);
 }
 
@@ -85,12 +90,12 @@ function isAppAssetUrl(value) {
   }
 }
 
-async function downloadData(urls) {
+async function downloadData(urls, debug) {
   const requested = [...new Set(urls)].filter(isDashboardDataUrl);
   if (!requested.some((url) => new URL(url).pathname.endsWith('/payload-hashes.json'))) {
     throw new Error('Dashboard data URL is missing.');
   }
-  debugLog('data:ingestion:sw', 'downloading dashboard data', { urls: requested });
+  debugLog(debug, 'data:ingestion:sw', 'downloading dashboard data', { urls: requested });
   const cache = await caches.open(DATA_CACHE);
   const hashesUrl = requested.find((url) => new URL(url).pathname.endsWith('/payload-hashes.json'));
   let hashesResponse;
@@ -153,16 +158,16 @@ async function downloadData(urls) {
   if (shardEntries.length === 0) {
     throw new Error('Dashboard activity shard manifest contains no compacted run-information shards.');
   }
-  debugLog('data:ingestion:sw', 'published activity manifest', { shardCount: shardEntries.length });
+  debugLog(debug, 'data:ingestion:sw', 'published activity manifest', { shardCount: shardEntries.length });
   const currentShardUrls = new Set();
   for (const [index, [name, hash]] of shardEntries.entries()) {
     const url = new URL(`./${name}`, hashesUrl).href;
     currentShardUrls.add(url);
     if (previousHashes?.[name]?.toLowerCase?.() === hash.toLowerCase()) {
-      debugLog('data:ingestion:sw', 'skipping current shard', { name, index: index + 1, shardCount: shardEntries.length });
+      debugLog(debug, 'data:ingestion:sw', 'skipping current shard', { name, index: index + 1, shardCount: shardEntries.length });
       continue;
     }
-    debugLog('data:ingestion:sw', 'downloading shard', { name, index: index + 1, shardCount: shardEntries.length });
+    debugLog(debug, 'data:ingestion:sw', 'downloading shard', { name, index: index + 1, shardCount: shardEntries.length });
     const response = await fetch(url, {
       cache: 'no-store',
       credentials: 'same-origin',
@@ -170,7 +175,7 @@ async function downloadData(urls) {
     });
     if (!response.ok) throw new Error(`Dashboard data download returned ${response.status}.`);
     await cache.put(url, response);
-    debugLog('data:ingestion:sw', 'cached shard', { name, index: index + 1, shardCount: shardEntries.length });
+    debugLog(debug, 'data:ingestion:sw', 'cached shard', { name, index: index + 1, shardCount: shardEntries.length });
   }
   for (const request of await cache.keys()) {
     if ((RUN_SHARD_PATH.test(new URL(request.url).pathname)
@@ -180,7 +185,7 @@ async function downloadData(urls) {
     }
   }
   if (hashesUrl && hashesResponse) await cache.put(hashesUrl, hashesResponse.clone());
-  debugLog('data:ingestion:sw', 'dashboard data download complete');
+  debugLog(debug, 'data:ingestion:sw', 'dashboard data download complete');
 }
 
 async function storeDataUrls(urls) {
@@ -221,7 +226,7 @@ async function readDataConfig(cache) {
   };
 }
 
-async function downloadConfiguredData(force = false, fallbackUrls = []) {
+async function downloadConfiguredData(force = false, fallbackUrls = [], debug = undefined) {
   const connection = self.navigator?.connection;
   if (connection?.saveData || connection?.metered || connection?.type === 'cellular') return;
   // Periodic Background Sync itself is deferred by the browser when power conditions are unsuitable.
@@ -235,7 +240,7 @@ async function downloadConfiguredData(force = false, fallbackUrls = []) {
   if (!force && config.lastSuccess > 0 && Date.now() - config.lastSuccess < UPDATE_INTERVAL_MS) {
     return config.lastSuccess;
   }
-  await downloadData(config.urls);
+  await downloadData(config.urls, debug);
   config.lastSuccess = Date.now();
   await cache.put(CONFIG_URL, new Response(JSON.stringify(config), {
     headers: { 'content-type': 'application/json' }
@@ -346,7 +351,8 @@ self.addEventListener('message', (event) => {
     return;
   }
   if (event.data?.type !== 'DOWNLOAD_DATA' || !Array.isArray(event.data.urls)) return;
-  const task = downloadConfiguredData(true, event.data.urls).then(
+  const debug = typeof event.data.debug === 'string' ? event.data.debug : undefined;
+  const task = downloadConfiguredData(true, event.data.urls, debug).then(
     (lastSuccess) => event.ports[0]?.postMessage({
       type: 'DOWNLOAD_COMPLETE',
       version: VERSION,

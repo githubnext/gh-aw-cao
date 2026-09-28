@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createDebug,
   debugEagerIngest,
+  debugParameter,
   debugShardLimit,
   fullDebugUrl,
   isDebugEnabled,
@@ -29,9 +30,14 @@ describe('dashboard debug logging', () => {
     expect(isDebugEnabled('other', '?debug=data,render')).toBe(false);
   });
 
-  it('forwards the debug parameter onto a worker or service worker script URL', () => {
+  it('forwards the debug parameter onto a data worker script URL', () => {
     const url = withDebugParameter(new URL('https://example.test/data-worker.js'), '?debug=data:*&debug-shard-limit=10&mode=live');
     expect(url.href).toBe('https://example.test/data-worker.js?debug=data%3A*&debug-shard-limit=10');
+  });
+
+  it('reads the raw debug parameter for service worker messages', () => {
+    expect(debugParameter('?debug=data:*,-render&mode=live')).toBe('data:*,-render');
+    expect(debugParameter('?mode=live')).toBe('');
   });
 
   it('leaves a worker script URL untouched when debug is not set', () => {
