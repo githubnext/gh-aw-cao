@@ -66,10 +66,19 @@ test("dashboard build accepts resolved settings and extracts composed policy set
       web: { experimental: true },
     });
 
-    const railwaySettings = path.resolve(".github/workflows/cao.railway.json");
-    const composedSettings = await loadDashboardControlSettings(railwaySettings);
+    const baseSettings = path.join(root, "cao.json");
+    await writeFile(baseSettings, await readFile(path.resolve(".github/workflows/cao.json"), "utf8"));
+    const profileSettings = path.join(root, "cao.test.json");
+    await writeFile(profileSettings, JSON.stringify({
+      extends: "cao.json",
+      "control-plane": { web: { host: {
+        target: { module: "container", name: "test" },
+        redis: { module: "generic" },
+      } } },
+    }));
+    const composedSettings = await loadDashboardControlSettings(profileSettings);
     assert.equal(composedSettings.web.experimental, true);
-    assert.equal(composedSettings.web.host.target.name, "railway");
+    assert.equal(composedSettings.web.host.target.name, "test");
     assert.ok(composedSettings.campaigns);
   } finally {
     await rm(root, { recursive: true, force: true });

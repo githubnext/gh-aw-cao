@@ -119,13 +119,23 @@ test("control policy schema accepts config-defined campaign and worker catalogs"
 });
 
 test("deployment profile extends cao.json without replacing rollout policy", () => {
-  const profile = loadPolicyFile(join(root, ".github", "workflows", "cao.railway.json"));
-  const base = JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
+  const directory = mkdtempSync(join(tmpdir(), "cao-profile-"));
+  const base = JSON.parse(minimalPolicy);
+  base["control-plane"].web = { experimental: true };
+  writeFileSync(join(directory, "cao.json"), JSON.stringify(base));
+  writeFileSync(join(directory, "cao.test.json"), JSON.stringify({
+    extends: "cao.json",
+    "control-plane": { web: { host: {
+      target: { module: "container", name: "test" },
+      redis: { module: "generic" },
+    } } },
+  }));
+  const profile = loadPolicyFile(join(directory, "cao.test.json"));
 
   assert.deepEqual(profile["control-plane"].campaigns, base["control-plane"].campaigns);
   assert.equal(profile["control-plane"].web.experimental, true);
-  assert.equal(profile["control-plane"].web.host.target.name, "railway");
-  assert.equal(profile["control-plane"].web.host.redis.module, "railway");
+  assert.equal(profile["control-plane"].web.host.target.name, "test");
+  assert.equal(profile["control-plane"].web.host.redis.module, "generic");
 });
 
 test("deployment profiles reject rollout overrides, cycles, and directory traversal", () => {
@@ -138,7 +148,7 @@ test("deployment profiles reject rollout overrides, cycles, and directory traver
     extends: "cao.json",
     "control-plane": {
       campaigns: { dependabot: { mode: "live" } },
-      web: { host: { target: { module: "container" }, redis: { module: "railway" } } },
+      web: { host: { target: { module: "container" }, redis: { module: "generic" } } },
     },
   }));
   assert.throws(() => loadPolicyFile(widening), /unknown key deployment profile\.control-plane\.campaigns/);

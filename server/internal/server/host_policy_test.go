@@ -161,7 +161,7 @@ func TestConfiguredHostPolicyReadsCaoJSON(t *testing.T) {
 func TestConfiguredHostPolicyComposesDeploymentProfile(t *testing.T) {
 	directory := t.TempDir()
 	basePath := filepath.Join(directory, "cao.json")
-	profilePath := filepath.Join(directory, "cao.railway.json")
+	profilePath := filepath.Join(directory, "cao.test.json")
 	base := `{
 		"version": 1,
 		"control-plane": {
@@ -174,12 +174,8 @@ func TestConfiguredHostPolicyComposesDeploymentProfile(t *testing.T) {
 		"control-plane": {
 			"web": {
 				"host": {
-					"target": {"module": "container", "name": "railway", "replicas": 1},
-					"redis": {
-						"module": "railway",
-						"allow-private-plaintext": true,
-						"tls": {"mode": "disabled"}
-					}
+					"target": {"module": "container", "name": "test", "replicas": 1},
+					"redis": {"module": "generic", "tls": {"mode": "required"}}
 				}
 			}
 		}
@@ -191,12 +187,12 @@ func TestConfiguredHostPolicyComposesDeploymentProfile(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("CAO_POLICY_PATH", profilePath)
-	t.Setenv("REDIS_URL", "redis://redis.railway.internal:6379")
+	t.Setenv("REDIS_URL", "rediss://cache.example.com:6379")
 	resolved, err := loadHostPolicyFromEnv()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resolved.Profile.Name != "railway" || !resolved.RedisOptions.AllowPrivatePlaintext {
+	if resolved.Profile.Name != "test" || !resolved.RedisOptions.ForceTLS {
 		t.Fatalf("unexpected resolved deployment profile: %+v", resolved)
 	}
 }
