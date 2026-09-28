@@ -129,6 +129,13 @@ func TestMCPTraceContextPreservesCancellation(t *testing.T) {
 	}
 }
 
+func TestMCPMetadataAllowsTypedNilParams(t *testing.T) {
+	var params *mcp.PingParams
+	if metadata := mcpMetadata(params); metadata != nil {
+		t.Fatalf("typed-nil params returned metadata %#v", metadata)
+	}
+}
+
 func findSpan(t *testing.T, spans tracetest.SpanStubs, name string) tracetest.SpanStub {
 	t.Helper()
 	for _, span := range spans {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strconv"
 
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
@@ -72,7 +73,18 @@ func mcpServerTelemetry() mcp.Middleware {
 }
 
 func mcpParentContext(ambient context.Context, request mcp.Request) (context.Context, []trace.Link) {
-	return mcpTraceContext(ambient, request.GetParams().GetMeta())
+	return mcpTraceContext(ambient, mcpMetadata(request.GetParams()))
+}
+
+func mcpMetadata(params mcp.Params) map[string]any {
+	if params == nil {
+		return nil
+	}
+	value := reflect.ValueOf(params)
+	if value.Kind() == reflect.Pointer && value.IsNil() {
+		return nil
+	}
+	return params.GetMeta()
 }
 
 func mcpTraceContext(ambient context.Context, metadata map[string]any) (context.Context, []trace.Link) {
