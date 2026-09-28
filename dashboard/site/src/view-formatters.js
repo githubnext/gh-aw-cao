@@ -16,6 +16,17 @@ const HUMAN_DATE_WITH_YEAR_FORMAT = new Intl.DateTimeFormat('en', {
 });
 
 /**
+ * Formats a Date/timestamp as a short, UTC month-and-day string (e.g. "Aug 9"),
+ * matching the date portion used by relative-timestamp rendering elsewhere in the
+ * dashboard. Shared so chart axis/tooltip labels stay visually consistent with it.
+ * @param {number | Date} value
+ * @returns {string}
+ */
+export function formatShortUtcDate(value) {
+  return HUMAN_DATE_FORMAT.format(value);
+}
+
+/**
  * @param {Array<Record<string, unknown>>} rows
  * @param {string | null} fieldName
  * @param {string} aggregate
