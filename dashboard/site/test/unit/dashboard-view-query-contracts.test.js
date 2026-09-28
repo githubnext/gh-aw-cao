@@ -134,7 +134,7 @@ describe('dashboard view query contracts', () => {
     ]);
   });
 
-  it('renders operational value with an Insights-first value-ID timeline in the Data section', () => {
+  it('renders experimental operational value as a chart followed by a full-view observations table', () => {
     const page = dashboard.pages.find(
       (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'operational-value'
     );
@@ -147,18 +147,7 @@ describe('dashboard view query contracts', () => {
     expect(page).toMatchObject({
       kind: 'built-in',
       page: 'operational-value',
-      definition: {
-        sections: [
-          {
-            id: 'insights',
-            views: ['operational-value-history']
-          },
-          {
-            id: 'observations',
-            views: ['operational-value-observations']
-          }
-        ]
-      }
+      experimental: true
     });
     expect(viewsOf(page)[0]).toMatchObject({
       id: 'operational-value-history',
@@ -171,6 +160,15 @@ describe('dashboard view query contracts', () => {
         color: { field: 'operational-value-definition', type: 'nominal' }
       }
     });
+    expect(viewsOf(page)[1]).toMatchObject({
+      id: 'operational-value-observations',
+      title: 'Operational value observations',
+      mark: 'table',
+      layout: 'full-view',
+      controls: 'interactive',
+      'lazy-list': true
+    });
+    expect(/** @type {Record<string, unknown>} */ (page).definition).not.toHaveProperty('sections');
   });
 
   it('renders the failed-runs ledger as a bounded lazy table', () => {
