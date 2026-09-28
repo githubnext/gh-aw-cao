@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const artifactNames = ["llms.txt", "llms-small.txt", "llms-full.txt"];
 const scopedIndexPath = "agent/llms.txt";
+const dashboardAgentGuide = "https://githubnext.github.io/gh-aw-cao/cao/llms.txt";
 const requiredRoutes = [
   "/architecture/",
   "/cao-cli/",
@@ -123,6 +124,9 @@ export async function validateAgentDocs({
     if (!links.includes("https://githubnext.github.io/gh-aw-cao/agent/llms.txt")) {
       errors.push("llms.txt must route directly to the scoped agent resource index");
     }
+    if (!links.includes(dashboardAgentGuide)) {
+      errors.push("llms.txt must route directly to the dashboard agent access guide");
+    }
     for (const route of requiredRoutes) {
       if (!links.some((link) => link === `https://githubnext.github.io/gh-aw-cao${route}`)) {
         errors.push(`llms.txt must route directly to ${route}`);
@@ -148,7 +152,8 @@ export async function validateAgentDocs({
         errors.push(`llms.txt contains a non-canonical Pages URL: ${link}`);
         continue;
       }
-      if (!await isRegularNonemptyFile(builtPathForUrl(distDirectory, url))) {
+      if (link !== dashboardAgentGuide
+        && !await isRegularNonemptyFile(builtPathForUrl(distDirectory, url))) {
         errors.push(`llms.txt contains an unresolved internal link: ${link}`);
       }
     }
@@ -250,6 +255,7 @@ export async function validateAgentDocs({
     for (const link of markdownLinks(scoped)) {
       const url = new URL(link);
       if (url.hostname === "githubnext.github.io"
+        && link !== dashboardAgentGuide
         && !await isRegularNonemptyFile(builtPathForUrl(distDirectory, url))) {
         errors.push(`${scopedIndexPath} contains an unresolved link: ${link}`);
       }

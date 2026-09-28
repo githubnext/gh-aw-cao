@@ -61,7 +61,7 @@ imports:
     with:
       campaign: self-care
       role: orchestrator
-      dispatch_max: 18
+      dispatch_max: 19
       orchestrator_credits: 200
       worker_credits_per_target: 5000
 

@@ -85,6 +85,7 @@ async function createFixture() {
     `- [Abridged](${pagesBase}/llms-small.txt)`,
     `- [Full](${pagesBase}/llms-full.txt)`,
     `- [Scoped resources](${pagesBase}/agent/llms.txt)`,
+    `- [Dashboard agent guide](${pagesBase}/cao/llms.txt)`,
     ...routeLinks,
     ...skillLinks,
   ].join("\n"));
@@ -99,6 +100,7 @@ async function createFixture() {
   await mkdir(path.join(dist, "agent"), { recursive: true });
   await writeFile(path.join(dist, "agent", "llms.txt"), [
     "# Agent resources",
+    `- [Dashboard agent guide](${pagesBase}/cao/llms.txt)`,
     ...Object.keys(routeTypes).flatMap((route) => [
       `- [${route}](${pagesBase}/${route}/)`,
       `- [${route} metadata](${pagesBase}/${route}/index.json)`,
@@ -130,6 +132,16 @@ test("rejects a missing required route", async () => {
   const index = await import("node:fs/promises").then(({ readFile }) => readFile(indexPath, "utf8"));
   await writeFile(indexPath, index.replace(`- [activity](${pagesBase}/activity/)\n`, ""));
   assert.ok((await validateAgentDocs({ root })).some((error) => error.includes("/activity/")));
+});
+
+test("requires the separately assembled dashboard agent guide", async () => {
+  const root = await createFixture();
+  const indexPath = path.join(root, "dist", "llms.txt");
+  const index = await import("node:fs/promises").then(({ readFile }) => readFile(indexPath, "utf8"));
+  await writeFile(indexPath, index.replace(`- [Dashboard agent guide](${pagesBase}/cao/llms.txt)\n`, ""));
+  assert.ok((await validateAgentDocs({ root })).some((error) =>
+    error.includes("dashboard agent access guide")
+  ));
 });
 
 test("rejects development paths and credential-like content", async () => {
