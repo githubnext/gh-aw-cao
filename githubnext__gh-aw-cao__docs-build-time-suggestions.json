@@ -1,6 +1,6 @@
 {
   "source_sha": "be1bd405623baf08bc73e2ca681c97098a057cff",
-  "next_category": "dependency installation and caching",
+  "next_category": "Astro documentation generation",
   "evaluations": [
     {
       "evaluated_at": "2026-09-28T12:05:00Z",
@@ -625,6 +625,30 @@
       ],
       "outcome": "suggestion: docs.yml successful runs in the latest bounded sample continued to hit node_modules and dashboard cache warm paths, but the workflow_run handoff after successful CAO Dashboard completions added 70-75s before the first docs job started on runs 36485707720 and 36488247559. Across 11 successful docs.yml runs from 2026-09-28T21:22:47Z to 2026-09-28T22:24:39Z, workflow execution median was 64.0s (p90 107.0s), build median 38.5s (p90 45.5s), deploy median 16.0s (p90 16.8s on publishing schedule runs), and trusted step timings showed Restore node_modules median 5.5s, Build documentation median 12.0s, Restore cached CAO Dashboard median 1.0s, and Upload Pages artifact median 4.0s. Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on every successful docs build, confirming cache hits from trusted metadata rather than syntax. Nearby successful cao-dashboard.yml runs showed workflow median 61.0s, build median 43.0s, and cache-job median 10.0s. Replacing the delayed workflow_run pickup with a direct post-dashboard invocation or equivalent immediate dispatch is expected to save roughly 70s on the high-latency path without weakening correctness, freshness, or deployment safety.",
       "suggestion_fingerprint": "c104eb9cf85d493d0203"
+    },
+    {
+      "evaluated_at": "2026-09-28T22:40:44Z",
+      "worker_run_id": 36493369131,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36492101241,
+        36488247559,
+        36488240917,
+        36487614023,
+        36486913427,
+        36486882491,
+        36486702204,
+        36485926891,
+        36485707720,
+        36485693011,
+        36488144576,
+        36487499801,
+        36486777247,
+        36485810867,
+        36485576804
+      ],
+      "outcome": "no-op: evaluated scheduling, concurrency, and avoidable rebuilds across 10 comparable successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days, disclosing 10 excluded completed runs (3 success schedule-freshness-only runs that skipped build, 4 skipped/action_required workflow_run runs, and 2 cancelled runs). Evidence window 2026-09-28T21:22:47Z to 2026-09-28T22:24:39Z. docs.yml workflow execution median was 66.0s (p90 109.2s), queue-to-build-start median 13.5s (p90 72.6s), build median 38.5s (p90 45.5s), and deploy median 16.0s (p90 16.8s on publishing schedule runs). Trusted step metadata showed Restore node_modules median 5.5s, Build documentation median 12.0s, Restore cached CAO Dashboard median 1.0s, and Upload Pages artifact median 4.0s; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on every successful docs build, confirming stable cache hits from trusted metadata. Comparable successful cao-dashboard.yml runs 36488144576, 36487499801, 36486777247, 36485810867, and 36485576804 showed workflow median 61.0s (p90 66.8s), build median 43.0s (p90 47.2s), cache-job median 10.0s, and build queue median 5.0s. Workflow_run-triggered docs runs 36485707720 and 36488247559 again showed 72-78s queue-to-build-start delays, but that same direct-post-dashboard handoff optimization is already represented by suggestion fingerprint c104eb9cf85d493d0203 and no canonical open issue with the stable subject was found in the current open-issue inventory. Because the underlying source and timing evidence have not materially changed enough to justify a duplicate issue, no new recommendation was emitted in this cycle.",
+      "suggestion_fingerprint": null
     }
   ]
 }
