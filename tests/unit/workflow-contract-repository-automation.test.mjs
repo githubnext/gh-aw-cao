@@ -129,7 +129,7 @@ test("workflow contracts isolate authenticated campaign lifecycle checks", () =>
   assert.match(campaignLifecycle, /GH_TOKEN: \$\{\{ github\.token \}\}/);
   assert.match(
     campaignLifecycle,
-    /export CENTRAL_AGENTIC_OPS_CAMPAIGN_SOURCE="\$\{GITHUB_REPOSITORY\}@\$\(git rev-parse --short=12 "\$GITHUB_SHA"\)"/,
+    /export CENTRAL_AGENTIC_OPS_CAMPAIGN_SOURCE="\$\{GITHUB_REPOSITORY\}@\$\{GITHUB_SHA\}"/,
   );
   assert.match(campaignLifecycle, /npm run test:campaign-lifecycle/);
   assert.match(campaignLifecycle, /grep -Fq "API rate limit exceeded for installation"/);

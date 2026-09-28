@@ -501,18 +501,12 @@
             "field": "publisher",
             "title": "By"
           }
-        ],
-        "actions": [
-          {
-            "action": "add-marketplace-package",
-            "context": ["package-source"]
-          }
         ]
       },
       {
         "id": "marketplace-package",
         "icon": "archive",
-        "detail-labels": "visible",
+        "icon-field": "package-icon",
         "title": {
           "field": "package-name",
           "title": "Package"
@@ -536,7 +530,29 @@
         "details": [
           {
             "field": "publisher",
-            "title": "Publisher"
+            "title": "By"
+          }
+        ],
+        "actions": [
+          {
+            "action": "add-marketplace-package",
+            "context": ["package-source"]
+          }
+        ]
+      },
+      {
+        "id": "marketplace-package-about",
+        "icon": "info",
+        "detail-labels": "visible",
+        "labels": [],
+        "title": {
+          "field": "package-description",
+          "title": "About"
+        },
+        "details": [
+          {
+            "field": "publisher",
+            "title": "By"
           },
           {
             "field": "repository",
@@ -547,18 +563,24 @@
             "title": "Path"
           },
           {
+            "field": "registry-name",
+            "title": "Registry"
+          },
+          {
+            "field": "package-version",
+            "title": "Version"
+          },
+          {
             "field": "package-ref",
             "title": "Configured ref"
           },
           {
+            "field": "resolved-commit",
+            "title": "Resolved commit"
+          },
+          {
             "field": "package-contents",
             "title": "Contents"
-          }
-        ],
-        "actions": [
-          {
-            "action": "add-marketplace-package",
-            "context": ["package-source"]
           }
         ]
       },
@@ -917,9 +939,9 @@
       },
       {
         "id": "add-marketplace-package",
-        "label": "Copy add command",
-        "description": "Copy the canonical CAO command for this package. The dashboard does not install packages.",
-        "icon": "copy",
+        "label": "Add",
+        "description": "Copy the canonical CAO add command for this package. The dashboard does not install packages.",
+        "icon": "plus",
         "command": "./cao.sh add {{package-source}}",
         "placement": "row",
         "copy-only": true

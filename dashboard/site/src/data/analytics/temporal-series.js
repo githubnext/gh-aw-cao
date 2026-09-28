@@ -3,6 +3,10 @@
  * statistics, and browser-side modeling in the data worker.
  */
 
+import { createDebug } from '../../debug.js';
+
+const debugTemporalSeries = createDebug('temporal-series');
+
 const MAX_METRICS_PER_OBSERVATION = 64;
 const MAX_OUTPUT_ROWS = 100_000;
 
@@ -26,6 +30,7 @@ const MAX_OUTPUT_ROWS = 100_000;
  * @returns {Row[]}
  */
 export function projectTemporalSeries(rows, definition) {
+  debugTemporalSeries({ event: 'projection-started', inputRows: rows.length, shape: definition.shape ?? 'tidy' });
   /** @type {Row[]} */
   const projected = [];
   for (const row of rows) {
@@ -74,9 +79,11 @@ export function projectTemporalSeries(rows, definition) {
       }
     }
   }
-  return definition.shape === 'groups'
+  const result = definition.shape === 'groups'
     ? groupTemporalSeries(projected, definition.carry ?? [], definition.trend?.direction)
     : projected;
+  debugTemporalSeries({ event: 'projection-completed', outputRows: result.length });
+  return result;
 }
 
 /**
@@ -166,6 +173,7 @@ function appendTrend(group, preferredDirection) {
 /** @param {Row[]} rows @param {Row} row */
 function append(rows, row) {
   if (rows.length >= MAX_OUTPUT_ROWS) {
+    debugTemporalSeries({ event: 'projection-rejected', reason: 'output-row-limit', limit: MAX_OUTPUT_ROWS });
     throw new RangeError(`Temporal series exceeds the ${MAX_OUTPUT_ROWS}-row output limit.`);
   }
   rows.push(row);

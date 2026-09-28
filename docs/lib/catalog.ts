@@ -1,8 +1,6 @@
 import type { MarkdownInstance } from "astro";
 import { parse } from "yaml";
-import controlPolicy from "../../.github/workflows/cao.json";
 import rootManifestSource from "../../aw.yml?raw";
-import { selectConfiguredOperations } from "./configured-operations.mjs";
 
 type CampaignReadme = MarkdownInstance<Record<string, unknown>>;
 
@@ -118,5 +116,3 @@ export const catalogEntries = campaignEntries
     const advisoryRank = (entry: CatalogEntry) => /advisor(y|ies)?/i.test(entry.name) ? 1 : 0;
     return advisoryRank(left) - advisoryRank(right) || left.name.localeCompare(right.name);
   });
-
-export const configuredOperationEntries = selectConfiguredOperations(controlPolicy, campaignEntries);

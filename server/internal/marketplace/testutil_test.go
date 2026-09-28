@@ -25,6 +25,11 @@ type fakeGitHubConfig struct {
 	// manifestPaths lists the tree entries returned for git/trees requests.
 	// Defaults to a single "demo/aw.yml" entry.
 	manifestPaths []string
+	// readme is served (base64-encoded) for README blob requests when
+	// readmePaths lists a README tree entry.
+	readme string
+	// readmePaths lists README tree entries returned for git/trees requests.
+	readmePaths []string
 	// failStatus, if non-zero, makes every request fail with that HTTP status.
 	failStatus int
 	// installationToken, if set, answers GitHub App installation token
@@ -52,6 +57,10 @@ func newFakeGitHubServer(t *testing.T, cfg fakeGitHubConfig) *fakeGitHubServer {
 	if paths == nil {
 		paths = []string{"demo/aw.yml"}
 	}
+	readme := cfg.readme
+	if readme == "" {
+		readme = "# Demo\n\nExample package readme.\n"
+	}
 	fake := &fakeGitHubServer{}
 	fake.server = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fake.mu.Lock()
@@ -72,11 +81,19 @@ func newFakeGitHubServer(t *testing.T, cfg fakeGitHubConfig) *fakeGitHubServer {
 		case strings.Contains(r.URL.Path, "/commits/"):
 			writeJSON(w, map[string]any{"sha": fakeCommitSHA})
 		case strings.Contains(r.URL.Path, "/git/trees/"):
-			entries := make([]map[string]any, 0, len(paths))
+			entries := make([]map[string]any, 0, len(paths)+len(cfg.readmePaths))
 			for _, path := range paths {
 				entries = append(entries, map[string]any{"type": "blob", "path": path, "sha": "blob-" + path})
 			}
+			for _, path := range cfg.readmePaths {
+				entries = append(entries, map[string]any{"type": "blob", "path": path, "sha": "readme-" + path})
+			}
 			writeJSON(w, map[string]any{"tree": entries})
+		case strings.Contains(r.URL.Path, "/git/blobs/readme-"):
+			writeJSON(w, map[string]any{
+				"encoding": "base64",
+				"content":  base64.StdEncoding.EncodeToString([]byte(readme)),
+			})
 		case strings.Contains(r.URL.Path, "/git/blobs/"):
 			writeJSON(w, map[string]any{
 				"encoding": "base64",

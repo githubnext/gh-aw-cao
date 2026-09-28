@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DataRequestWorker } from '../data-request-worker.js';
 import { renderDataView } from '../../src/components/data-view.js';
 import { setDeclaredCliActions } from '../../src/components/cli-actions.js';
 import { processDataRequest } from '../../src/data-worker.js';
@@ -41,6 +42,9 @@ function stubIntersectionObserver() {
   );
   return intersect;
 }
+beforeEach(() => {
+  vi.stubGlobal('Worker', DataRequestWorker);
+});
 
 describe('data view renderer', () => {
   afterEach(() => {

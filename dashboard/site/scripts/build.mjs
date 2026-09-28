@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 import { bundleDashboardFiles } from "../../report/bundle-dashboards.mjs";
 import { configureSite } from "../../report/configure-site.mjs";
+import { loadPolicyFile } from "../../../.github/workflows/shared/policy.mjs";
 import { buildDashboardPageChunkPath, splitDashboardDocument } from "../src/dashboard-chunks.js";
 import { generateDashboardLlms } from "./llms.mjs";
 
@@ -87,6 +88,16 @@ export async function buildDashboardSite({
       await writeFile(absoluteChunkPath, `${JSON.stringify(chunk, null, 2)}\n`);
     }
   }
+}
+
+export async function loadDashboardControlSettings(settingsPath) {
+  const resolvedPath = resolve(settingsPath);
+  const document = JSON.parse(await readFile(resolvedPath, "utf8"));
+  if (document && typeof document === "object" && !Array.isArray(document)
+      && ("extends" in document || "control-plane" in document)) {
+    return loadPolicyFile(resolvedPath)["control-plane"];
+  }
+  return document;
 }
 
 export function embedDashboardVersion(html, commitSha) {
@@ -226,9 +237,7 @@ function redirectDocument(pageId) {
 }
 
 async function main([destination, settingsPath, commitSha, activityDataPath]) {
-  const controlSettings = settingsPath
-    ? JSON.parse(await readFile(resolve(settingsPath), "utf8"))
-    : {};
+  const controlSettings = settingsPath ? await loadDashboardControlSettings(settingsPath) : {};
   await buildDashboardSite({
     destination: destination ?? new URL("dist/", siteRoot),
     controlSettings,

@@ -5,10 +5,14 @@ description: Configure registries and browse campaign packages without granting 
 
 The experimental **Marketplace** page appears under **Updates** in the CAO
 dashboard. It provides a read-only view of campaign packages from an ordered
-set of registries. Selecting a package shows its normalized metadata,
-provenance, contents, and immutable source coordinate.
+set of registries. Selecting a package shows its published README beside an
+**About** panel carrying its normalized metadata, provenance, contents, and
+immutable source coordinate, with an **Add** button above both.
 
-The dashboard does not contact registries or install packages. Its package
+A package README is the `README.md` published beside its `aw.yml` manifest. A
+package without one simply shows no README preview.
+
+The dashboard does not contact registries or install packages. Its **Add**
 action only copies the canonical command:
 
 ```sh

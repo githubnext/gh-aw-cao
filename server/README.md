@@ -108,12 +108,13 @@ Kubernetes workload, or comparable host. It defaults to
 `127.0.0.1:8080`, where a same-host or same-pod HTTPS proxy may forward requests.
 A non-loopback listener is accepted only when `--cert` and `--key` configure
 TLS at the CAO service itself. It is not coupled to a Redis provider or cloud
-SDK. Set `CAO_POLICY_PATH` only when the policy is mounted somewhere other than
+SDK. Set `CAO_POLICY_PATH` when loading a reviewed deployment-specific host
+extension or when the policy is mounted somewhere other than
 `.github/workflows/cao.json`. See
 [`docs/deployment-managed-redis.md`](../docs/deployment-managed-redis.md) for
 the generic `REDIS_URL` and TLS contract and provider modules.
 
-Every hosted process requires `control-plane.web.host` in `cao.json`. Redis
+Every hosted process requires `control-plane.web.host` in the composed policy. Redis
 provider selection, TLS behavior, environment-variable names, namespace
 selection, connection semantics, and replica count come only from that policy.
 The selected environment variables hold secret values; they do not select or
@@ -298,6 +299,12 @@ GitHub login; OAuth login requests are keyed by a digest of the client IP, and
 valid callbacks by a digest of their signed state. Forwarding headers are
 considered only at the configured trusted-proxy boundary. Raw logins, client
 addresses, and OAuth state are not stored in rate-limit keys.
+Query requests reserve one cost unit before execution. Completed queries cost
+the greatest of execution duration, measured operations and Redis rows, peak
+working rows, and estimated bytes. Structural complexity is bounded separately
+and emitted as privacy-preserving telemetry. Cost is capped at the query bucket
+capacity; the additional cost is charged atomically before the result is
+returned.
 Enterprise proxy boundaries may supply either `X-Forwarded-For` or RFC 7239
 `Forwarded`; only the final value written by the trusted boundary is accepted.
 Authenticated quotas are per GitHub login, and OAuth callbacks use their opaque
@@ -411,7 +418,7 @@ The ingestion sequence is:
 3. Read compacted run-linked record shards.
 4. Load `inventory-sources.json` as already-logical published sources.
 5. Project canonical Campaign, Repository, Workflow, Run, Domain, Tool, Audit,
-   and Issue records through
+   Issue, and Operational Value records through
    `dashboard/site/src/data/queries/database.json`.
 6. Stage every logical source, its metadata, diagnostics, and row set under a
    new immutable generation.
@@ -462,9 +469,14 @@ Collection separates three concerns that fail differently:
    runs, writing into the evidence lake. One repository is collected at a time,
    and GitHub budget is reserved per installation before each collection.
 3. **Projection.** Collected evidence is projected by the existing
-   `internal/ingest` package. Projection is coalesced behind a dirty flag and a
-   minimum interval, so projection cost follows the collection rate rather than
-   the event rate.
+   `internal/ingest` package. Before finalizing the payload manifest, projection
+   builds a temporary Activity database and runs the native Go
+   operational-value orchestrator, whose output is equivalence-tested against
+   `cao operational-value`. Campaign adapters remain shared JavaScript modules,
+   invoked with one installation-scoped token per repository. Operational-value
+   failure remains best-effort and does not block newer Activity evidence.
+   Projection is coalesced behind a dirty flag and a minimum interval, so
+   projection cost follows the collection rate rather than the event rate.
 
 The evidence lake is laid out byte-compatibly with a snapshot published by the
 Activity workflow:
@@ -682,6 +694,15 @@ The browser sends declarative query definitions and requested source names to
 `POST /api/v1/query`. The server validates the query graph and resource limits
 before loading data.
 
+Execution fails closed when a requested plan exceeds 16 dependency levels, 256
+derived queries, or 16 joins along one dependency path. Independent queries in a
+batch do not consume one another's structural join allowance. Runtime guards cap
+a query at 5 million row operations, 500,000 simultaneously referenced or
+retained rows, and 256 MiB of estimated working or retained row data. Per-query
+input, join, output, and operator limits remain independently enforced.
+Expensive stages, including sorting, are charged against the operation budget
+before they allocate or run.
+
 For compatible base-source queries, the planner pushes work into Redis:
 
 - exact TAG and numeric/time-range filters;
@@ -748,9 +769,11 @@ start dedicated `cao_dashboard.query.execute` and `cao_dashboard.ingest.run`
 spans. MCP requests use the OpenTelemetry MCP semantic conventions, including
 `mcp.method.name`, `mcp.protocol.version`, `gen_ai.operation.name`, and
 `gen_ai.tool.name`; tool arguments and results are never recorded. Application
-attributes are limited to non-secret aggregate counts, revisions, and durations
-(no Redis URLs, credentials, GitHub tokens, or row
-contents). Identifiers follow the W3C Trace Context specification: the tracer
+attributes are limited to non-secret aggregate counts, revisions, durations,
+operation and row counts, rate-limit cost, and structural operator counts. Query
+names, source names, fields, predicates, literals, route parameters, result
+values, Redis URLs, credentials, GitHub tokens, and row contents are never
+recorded. Identifiers follow the W3C Trace Context specification: the tracer
 provider installs `propagation.TraceContext` so a client-sent HTTP `traceparent`
 continues an existing transport trace. MCP spans use trace context from
 `params._meta` as their remote parent and link the ambient HTTP span. Every API

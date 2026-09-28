@@ -102,9 +102,13 @@ type Coordinates struct {
 	Path           string
 	Ref            string
 	ResolvedCommit string
+	Readme         string
+	ReadmePath     string
 }
 
 var awManifestSuffix = regexp.MustCompile(`/?aw\.yml$`)
+
+var readmePattern = regexp.MustCompile(`(?i)^readme\.(?:md|markdown)$`)
 
 // ParsePackageManifest normalizes one aw.yml manifest's safe, publicly
 // documented fields into the shared Package DTO. It never reads any field
@@ -118,6 +122,11 @@ func ParsePackageManifest(source string, coordinates Coordinates) (Package, erro
 		return Package{}, fmt.Errorf("package manifest name is required")
 	}
 	contents := includes(source)
+	readme := coordinates.Readme
+	readmePath := coordinates.ReadmePath
+	if readme == "" {
+		readmePath = ""
+	}
 	version := scalar(source, "version")
 	if version == "" {
 		version = coordinates.Ref
@@ -152,6 +161,8 @@ func ParsePackageManifest(source string, coordinates Coordinates) (Package, erro
 		Icon:               icon,
 		Artwork:            scalar(source, "artwork"),
 		Contents:           contents,
+		Readme:             readme,
+		ReadmePath:         readmePath,
 		Source:             sourceCoordinate,
 		AddCommand:         "./cao.sh add " + sourceCoordinate,
 	}, nil
@@ -255,6 +266,7 @@ func ResolveRegistry(ctx context.Context, registry Registry, precedence int, opt
 		prefix = registry.Path + "/"
 	}
 	entries := manifestEntries(rawTree, prefix)
+	readmes := readmeEntries(rawTree, prefix)
 
 	packages := make([]Package, 0, len(entries))
 	skippedPrivate := 0
@@ -272,6 +284,13 @@ func ResolveRegistry(ctx context.Context, registry Registry, precedence int, opt
 			skippedPrivate++
 			continue
 		}
+		readme, readmePath := "", ""
+		if readmeEntry, ok := readmes[strings.TrimSuffix(entry.path, "aw.yml")]; ok {
+			readme = fetchReadme(ctx, opts, base, repositoryPath, token, readmeEntry.sha)
+			if readme != "" {
+				readmePath = readmeEntry.path
+			}
+		}
 		pkg, err := ParsePackageManifest(manifest, Coordinates{
 			RegistryID:     registry.ID,
 			RegistryName:   registry.Name,
@@ -280,6 +299,8 @@ func ResolveRegistry(ctx context.Context, registry Registry, precedence int, opt
 			Path:           entry.path,
 			Ref:            registry.Ref,
 			ResolvedCommit: commit,
+			Readme:         readme,
+			ReadmePath:     readmePath,
 		})
 		if err != nil {
 			return nil, err
@@ -306,6 +327,63 @@ func decodeManifestBlob(blobPayload map[string]any) (string, error) {
 		return "", fmt.Errorf("package manifest blob is invalid")
 	}
 	return string(decoded), nil
+}
+
+// readmeEntries indexes each package directory's README blob by directory
+// prefix. A README is optional presentation detail, so a directory without one
+// simply resolves to no entry.
+func readmeEntries(rawTree []any, prefix string) map[string]treeEntry {
+	entries := map[string]treeEntry{}
+	for _, raw := range rawTree {
+		entry, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		entryType, _ := entry["type"].(string)
+		entryPath, _ := entry["path"].(string)
+		entrySHA, _ := entry["sha"].(string)
+		if entryType != "blob" || entryPath == "" || entrySHA == "" {
+			continue
+		}
+		if !strings.HasPrefix(entryPath, prefix) {
+			continue
+		}
+		separator := strings.LastIndex(entryPath, "/")
+		if separator < 0 {
+			continue
+		}
+		if !readmePattern.MatchString(entryPath[separator+1:]) {
+			continue
+		}
+		if size, ok := entry["size"].(float64); ok && size > maxReadmeBytes {
+			continue
+		}
+		directory := entryPath[:separator+1]
+		if _, seen := entries[directory]; !seen {
+			entries[directory] = treeEntry{path: entryPath, sha: entrySHA}
+		}
+	}
+	return entries
+}
+
+// fetchReadme reads one README blob. Every failure resolves to empty content
+// because an unreadable README must never fail an otherwise usable registry.
+func fetchReadme(ctx context.Context, opts Options, base, repositoryPath, token, sha string) string {
+	blobPayload, err := githubJSON(ctx, opts, http.MethodGet,
+		fmt.Sprintf("%s/repos/%s/git/blobs/%s", base, repositoryPath, sha), token)
+	if err != nil {
+		return ""
+	}
+	encoding, _ := blobPayload["encoding"].(string)
+	content, _ := blobPayload["content"].(string)
+	if encoding != "base64" || content == "" {
+		return ""
+	}
+	decoded, err := base64.StdEncoding.DecodeString(stripBase64Whitespace(content))
+	if err != nil || len(decoded) > maxReadmeBytes {
+		return ""
+	}
+	return string(decoded)
 }
 
 func manifestEntries(rawTree []any, prefix string) []treeEntry {

@@ -685,6 +685,20 @@ export function renderIconSpan(className, iconName, options = {}) {
 }
 
 /**
+ * Renders a visually-hidden `<span class="sr-only action-label">` used
+ * alongside an icon-only trigger to give it an accessible name. Shared by
+ * the account menu avatar, the dashboard repository link, the dashboard
+ * horizon toggle, and the appearance control summary, which otherwise
+ * duplicated the identical `h('span', { className: 'sr-only action-label' },
+ * text)` call at each icon-only trigger.
+ * @param {string} text
+ * @returns {HTMLSpanElement}
+ */
+export function renderActionLabel(text) {
+  return /** @type {HTMLSpanElement} */ (h('span', { className: 'sr-only action-label' }, text));
+}
+
+/**
  * Renders the shared dismiss/close icon button used by overlay-style
  * components (dialogs, callouts) that need a labelled "x" trigger with
  * matching `title` and `aria-label` text.

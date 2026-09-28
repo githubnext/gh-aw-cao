@@ -27,14 +27,29 @@ function registry(id, overrides = {}) {
   };
 }
 
-function registryFetch({ manifest = "name: Demo\ndescription: Example\nincludes:\n  - demo.md\n", fail = false } = {}) {
+function registryFetch({
+  manifest = "name: Demo\ndescription: Example\nincludes:\n  - demo.md\n",
+  readme = "# Demo\n\nExample package readme.\n",
+  readmeUnavailable = false,
+  fail = false,
+} = {}) {
   const calls = [];
   const fetchImpl = async (url, init = {}) => {
     calls.push({ url, init });
     if (fail) return response({}, 503);
     if (url.includes("/commits/")) return response({ sha: SHA });
     if (url.includes("/git/trees/")) {
-      return response({ tree: [{ type: "blob", path: "demo/aw.yml", sha: "blob" }] });
+      return response({
+        tree: [
+          { type: "blob", path: "demo/aw.yml", sha: "blob" },
+          { type: "blob", path: "demo/README.md", sha: "readme", size: readme.length },
+        ],
+      });
+    }
+    if (url.endsWith("/git/blobs/readme")) {
+      return readmeUnavailable
+        ? response({}, 404)
+        : response({ encoding: "base64", content: Buffer.from(readme).toString("base64") });
     }
     if (url.includes("/git/blobs/")) {
       return response({ encoding: "base64", content: Buffer.from(manifest).toString("base64") });
@@ -57,6 +72,21 @@ test("package manifests normalize immutable coordinates and the canonical add co
   assert.equal(normalized.source, `example/packages/demo@${SHA}`);
   assert.equal(normalized["add-command"], `./cao.sh add example/packages/demo@${SHA}`);
   assert.deepEqual(normalized.contents, ["workflow.md"]);
+});
+
+test("packages carry the README preview published beside their manifest", async () => {
+  const fake = registryFetch();
+  const result = await resolveMarketplace({ registries: [registry("official")] }, { fetchImpl: fake.fetchImpl });
+  assert.equal(result.packages[0].readme, "# Demo\n\nExample package readme.\n");
+  assert.equal(result.packages[0]["readme-path"], "demo/README.md");
+});
+
+test("an unreadable README leaves the package resolvable", async () => {
+  const fake = registryFetch({ readmeUnavailable: true });
+  const result = await resolveMarketplace({ registries: [registry("official")] }, { fetchImpl: fake.fetchImpl });
+  assert.equal(result.diagnostics[0].status, "available");
+  assert.equal(result.packages[0].readme, "");
+  assert.equal(result.packages[0]["readme-path"], "");
 });
 
 test("marketplace resolves multiple registries in order and isolates failures", async () => {

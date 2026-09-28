@@ -132,13 +132,6 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
   </figure>
 </section>
 
-<div class="wizard-launch" data-reveal>
-  <a class="wizard-launch-button" href="/gh-aw-cao/setup/">
-    Launch setup wizard
-    <span aria-hidden="true">→</span>
-  </a>
-</div>
-
 <script>
   const revealTargets = document.querySelectorAll<HTMLElement>("[data-reveal]");
 
@@ -792,46 +785,6 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       line-height: 1.6;
     }
 
-    .wizard-launch {
-      display: flex;
-      justify-content: center;
-      padding: clamp(2.5rem, 6vw, 5rem) 1rem;
-    }
-
-    .wizard-launch-button {
-      display: inline-flex;
-      min-height: 3rem;
-      align-items: center;
-      justify-content: center;
-      gap: 0.6rem;
-      border: 1px solid #1f883d;
-      border-radius: 0.5rem;
-      padding: 0.75rem 1.25rem;
-      background: #1f883d;
-      box-shadow: 0 0.75rem 2rem rgba(31, 136, 61, 0.22);
-      color: #ffffff;
-      font-weight: 700;
-      text-decoration: none;
-      transition:
-        background-color 160ms ease,
-        border-color 160ms ease,
-        box-shadow 160ms ease,
-        transform 160ms ease;
-    }
-
-    .wizard-launch-button:hover {
-      border-color: #1a7f37;
-      background: #1a7f37;
-      box-shadow: 0 1rem 2.5rem rgba(31, 136, 61, 0.28);
-      color: #ffffff;
-      transform: translateY(-0.125rem);
-    }
-
-    .wizard-launch-button:focus-visible {
-      outline: 2px solid var(--cao-story-heading);
-      outline-offset: 3px;
-    }
-
     @media (max-width: 42rem) {
       .hierarchy-hero {
         width: 100%;
@@ -967,8 +920,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       .callout-line::after,
       .product-story::before,
       .product-shot,
-      .terminal-story :global(.terminal),
-      .wizard-launch-button {
+      .terminal-story :global(.terminal) {
         animation: none;
         transition: none;
         translate: none;
@@ -976,8 +928,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
 
       .phone-preview:hover,
       .product-shot:hover,
-      .terminal-story :global(.terminal:hover),
-      .wizard-launch-button:hover {
+      .terminal-story :global(.terminal:hover) {
         transform: none;
       }
 

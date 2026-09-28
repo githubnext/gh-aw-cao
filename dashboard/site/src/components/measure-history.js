@@ -3,12 +3,15 @@
  */
 
 import { h } from '../dom.js';
+import { createDebug } from '../debug.js';
 import { formatNumber } from '../view-formatters.js';
 import { renderStatusBadge } from './badge.js';
 import { listChartSeries, renderChartLegend, renderChartWidget } from './chart-elements.js';
 import { rowsFor } from './source-rows.js';
 import { renderTemporalMetricPlot } from './temporal-metric-plot.js';
 import { formatMediumUtcDateTimeWithSuffix, renderVisualizationEmptyMessage } from './ui-primitives.js';
+
+const debugMeasureHistory = createDebug('measure-history');
 
 const SELECT_POINT_MESSAGE = 'Select a point to inspect that observation.';
 
@@ -37,9 +40,11 @@ export function renderMeasureHistory(context) {
     ? 'operational-value'
     : 'operational-grader';
   if (metrics.length === 0) {
+    debugMeasureHistory({ measureSource, metricCount: 0, status: 'empty' });
     return h('section', { className: 'measure-history', 'aria-label': context.title },
       renderVisualizationEmptyMessage(context.elementConfig?.['empty-message'] ?? 'No measure history was observed in the selected horizon.'));
   }
+  debugMeasureHistory({ measureSource, metricCount: metrics.length, status: 'rendered' });
   if (measureSource === 'operational-value') {
     return renderOperationalValueHistory(context, metrics);
   }
@@ -295,6 +300,7 @@ function attachPointSelection(chart, points, readout) {
       else candidate.removeAttribute('data-selected');
     }
     const point = selectedMark ? pointsByMark.get(selectedMark) : undefined;
+    debugMeasureHistory({ event: 'point-selection', selected: Boolean(point) });
     if (!point) {
       readout.replaceChildren(SELECT_POINT_MESSAGE);
       return;

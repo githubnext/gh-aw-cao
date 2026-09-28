@@ -2,7 +2,7 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { scopedStorageKey } from '../storage-scope.js';
 import { createDebug } from '../debug.js';
-import { enableDetailsMenuDismissal } from './ui-primitives.js';
+import { enableDetailsMenuDismissal, renderActionLabel } from './ui-primitives.js';
 
 const THEME_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.theme');
 const debugTheme = createDebug('theme-settings');
@@ -80,7 +80,7 @@ export function renderThemeControl() {
   return h('details', { className: 'theme-control' },
     h('summary', { 'aria-label': 'Appearance', title: 'Appearance' },
       octicon('sun'),
-      h('span', { className: 'sr-only action-label' }, 'Appearance')
+      renderActionLabel('Appearance')
     ),
     h('div', { className: 'theme-control-popover', 'aria-labelledby': 'dashboard-appearance-heading' },
       h('div', { className: 'theme-control-heading' },

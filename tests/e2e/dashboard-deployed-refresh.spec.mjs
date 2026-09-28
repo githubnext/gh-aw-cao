@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
+  activateTableViewMode,
   deployedDashboardUrl as dashboardUrl,
   populatedDashboardPages,
   scrollRenderedViewsIntoView,
@@ -85,6 +86,9 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
           && detail?.pageId === nextPageId
           && detail?.status === "completed"
         ), pageId, { timeout: 120_000 });
+      if (await activateTableViewMode(activePage)) {
+        await expect(activePage).toHaveAttribute("data-view-mode", "table");
+      }
       await activePage.locator("details.view-disclosure").evaluateAll((details) => {
         for (const detail of details) {
           detail.open = true;

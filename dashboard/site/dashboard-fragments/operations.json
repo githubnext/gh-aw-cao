@@ -1199,7 +1199,7 @@
           "mark": "list",
           "list": {
             "style": "entity-cards",
-            "appearance": "grouped",
+            "appearance": "marketplace",
             "icon": "archive",
             "card": "marketplace-package"
           },
@@ -1224,6 +1224,96 @@
           },
           "layout": "full",
           "empty-message": "The selected package is unavailable."
+        },
+        {
+          "id": "marketplace-package-readme",
+          "title": "README",
+          "data": {
+            "sources": [
+              "marketplace-package-detail"
+            ],
+            "arguments": [
+              {
+                "name": "package-source",
+                "field": "package-source"
+              }
+            ]
+          },
+          "mark": "element",
+          "element": "markdown",
+          "config": {
+            "content-field": "package-readme",
+            "path-field": "package-readme-path",
+            "empty-message": "This package does not publish a README."
+          },
+          "layout": "full"
+        },
+        {
+          "id": "marketplace-package-about",
+          "title": "About",
+          "data": {
+            "source": "marketplace-package-detail",
+            "arguments": [
+              {
+                "name": "package-source",
+                "field": "package-source"
+              }
+            ]
+          },
+          "mark": "list",
+          "list": {
+            "style": "entity-cards",
+            "appearance": "grouped",
+            "icon": "info",
+            "card": "marketplace-package-about"
+          },
+          "encoding": {
+            "columns": [
+              {
+                "field": "publisher",
+                "type": "nominal",
+                "title": "By"
+              },
+              {
+                "field": "registry-name",
+                "type": "nominal",
+                "title": "Registry"
+              },
+              {
+                "field": "package-version",
+                "type": "nominal",
+                "title": "Version"
+              }
+            ]
+          },
+          "layout": "full",
+          "empty-message": "The selected package is unavailable."
+        }
+      ],
+      "sections": [
+        {
+          "id": "package",
+          "title": "Package",
+          "layout": "full",
+          "views": [
+            "marketplace-package-detail"
+          ]
+        },
+        {
+          "id": "readme",
+          "title": "README",
+          "layout": "wide",
+          "views": [
+            "marketplace-package-readme"
+          ]
+        },
+        {
+          "id": "about",
+          "title": "About",
+          "layout": "narrow",
+          "views": [
+            "marketplace-package-about"
+          ]
         }
       ]
     },
