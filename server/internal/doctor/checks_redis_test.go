@@ -1,6 +1,7 @@
 package doctor
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -70,6 +71,98 @@ func TestClassifyRedisMemory(t *testing.T) {
 			}
 			if !testCase.remedyEmpty && got.remedy == "" {
 				t.Fatalf("remedy is empty, want a remedy for status %s", got.status)
+			}
+		})
+	}
+}
+
+func TestClassifyRedisNamespace(t *testing.T) {
+	cases := []struct {
+		name        string
+		namespace   string
+		keyCount    int
+		complete    bool
+		wantStatus  Status
+		wantReason  namespaceClassificationReason
+		wantLabel   string
+		summaryHas  string
+		remedyEmpty bool
+	}{
+		{
+			name: "empty namespace warns", namespace: "cao-dev", keyCount: 0, complete: true,
+			wantStatus: StatusWarn, wantReason: namespaceReasonEmpty,
+			wantLabel: "0", summaryHas: "holds no keys",
+		},
+		{
+			name: "populated namespace with a complete scan passes", namespace: "cao-dev", keyCount: 42, complete: true,
+			wantStatus: StatusPass, wantReason: namespaceReasonPopulated,
+			wantLabel: "42", summaryHas: "holds 42 keys", remedyEmpty: true,
+		},
+		{
+			name: "populated namespace with a bounded sample reports it as sampled", namespace: "cao-dev", keyCount: 20000, complete: false,
+			wantStatus: StatusPass, wantReason: namespaceReasonPopulated,
+			wantLabel: "at least 20000 (sampled)", summaryHas: "at least 20000 (sampled) keys", remedyEmpty: true,
+		},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			got := classifyRedisNamespace(testCase.namespace, testCase.keyCount, testCase.complete)
+			if got.status != testCase.wantStatus {
+				t.Fatalf("status = %s, want %s", got.status, testCase.wantStatus)
+			}
+			if got.reason != testCase.wantReason {
+				t.Fatalf("reason = %s, want %s", got.reason, testCase.wantReason)
+			}
+			if got.countLabel != testCase.wantLabel {
+				t.Fatalf("countLabel = %q, want %q", got.countLabel, testCase.wantLabel)
+			}
+			if !strings.Contains(got.summary, testCase.summaryHas) {
+				t.Fatalf("summary = %q, want it to contain %q", got.summary, testCase.summaryHas)
+			}
+			if testCase.remedyEmpty && got.remedy != "" {
+				t.Fatalf("remedy = %q, want empty for a passing check", got.remedy)
+			}
+			if !testCase.remedyEmpty && got.remedy == "" {
+				t.Fatalf("remedy is empty, want a remedy for status %s", got.status)
+			}
+		})
+	}
+}
+
+func TestForeignNamespacesOf(t *testing.T) {
+	cases := []struct {
+		name      string
+		namespace string
+		keys      []string
+		want      []string
+	}{
+		{
+			name:      "excludes keys scoped to the namespace",
+			namespace: "cao-dev",
+			keys:      []string{"cao-dev:g:1", "cao-dev:index:runs"},
+			want:      []string{},
+		},
+		{
+			name:      "collects and sorts distinct foreign prefixes",
+			namespace: "cao-dev",
+			keys:      []string{"other-app:key1", "cao-dev:g:1", "zeta:key2", "other-app:key3"},
+			want:      []string{"other-app", "zeta"},
+		},
+		{
+			name:      "ignores keys without a colon separator",
+			namespace: "cao-dev",
+			keys:      []string{"nocolon", "cao-dev:g:1"},
+			want:      []string{},
+		},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			got := foreignNamespacesOf(testCase.namespace, testCase.keys)
+			if len(got) == 0 && len(testCase.want) == 0 {
+				return
+			}
+			if !reflect.DeepEqual(got, testCase.want) {
+				t.Fatalf("foreignNamespacesOf() = %v, want %v", got, testCase.want)
 			}
 		})
 	}

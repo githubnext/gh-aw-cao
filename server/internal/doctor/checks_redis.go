@@ -369,6 +369,70 @@ func (d Doctor) checkRedisTransport(context.Context) Check {
 	}
 }
 
+// foreignNamespacesOf collects the top-level namespace prefixes present in
+// keys that are not scoped to namespace, sorted for stable rendering. It is a
+// pure function so checkRedisNamespace's "other namespaces sharing the
+// instance" detail is testable without a fake Redis SCAN reply.
+func foreignNamespacesOf(namespace string, keys []string) []string {
+	others := map[string]struct{}{}
+	for _, key := range keys {
+		if strings.HasPrefix(key, namespace+":") {
+			continue
+		}
+		if prefix, _, found := strings.Cut(key, ":"); found {
+			others[prefix] = struct{}{}
+		}
+	}
+	return sortedKeys(others)
+}
+
+// namespaceClassificationReason names why checkRedisNamespace reached its
+// status, stable across summary wording changes so it is useful to log
+// without exposing the namespace or key count.
+type namespaceClassificationReason string
+
+const (
+	namespaceReasonEmpty     namespaceClassificationReason = "empty"
+	namespaceReasonPopulated namespaceClassificationReason = "populated"
+)
+
+// namespaceClassification is the status, summary, remedy, and key-count
+// label classifyRedisNamespace derives from a namespace's observed key
+// count.
+type namespaceClassification struct {
+	status     Status
+	summary    string
+	remedy     string
+	reason     namespaceClassificationReason
+	countLabel string
+}
+
+// classifyRedisNamespace decides the redis.namespace check's outcome from
+// the namespace, its observed key count, and whether that count is a
+// complete scan or a bounded sample. It is a pure function so the
+// empty-namespace warning is testable without a fake Redis SCAN reply.
+func classifyRedisNamespace(namespace string, keyCount int, complete bool) namespaceClassification {
+	countLabel := fmt.Sprint(keyCount)
+	if !complete {
+		countLabel = fmt.Sprintf("at least %d (sampled)", keyCount)
+	}
+	if keyCount == 0 {
+		return namespaceClassification{
+			status:     StatusWarn,
+			summary:    fmt.Sprintf("namespace %q holds no keys", namespace),
+			remedy:     "confirm --redis-namespace matches the writer; an empty namespace looks identical to an empty database",
+			reason:     namespaceReasonEmpty,
+			countLabel: countLabel,
+		}
+	}
+	return namespaceClassification{
+		status:     StatusPass,
+		summary:    fmt.Sprintf("namespace %q holds %s keys", namespace, countLabel),
+		reason:     namespaceReasonPopulated,
+		countLabel: countLabel,
+	}
+}
+
 // checkRedisNamespace confirms this process is looking where the data is. A
 // namespace mismatch presents exactly like an empty database, so naming it
 // explicitly saves a long misdiagnosis.
@@ -382,43 +446,23 @@ func (d Doctor) checkRedisNamespace(ctx context.Context) Check {
 	if err != nil {
 		return failed(id, areaRedis, title, err)
 	}
-	countLabel := fmt.Sprint(len(keys))
-	if !complete {
-		countLabel = fmt.Sprintf("at least %d (sampled)", len(keys))
-	}
+	classification := classifyRedisNamespace(d.Namespace, len(keys), complete)
+	doctorLog.Printf("redis namespace classified status=%s reason=%s", classification.status, classification.reason)
 	details := []Detail{
 		detail("namespace", d.Namespace),
-		detail("keys", countLabel),
+		detail("keys", classification.countLabel),
 	}
 	// Other namespaces sharing the instance are legitimate, but naming them is
 	// what turns an empty-namespace report into a diagnosis: they are the
 	// usual explanation for a namespace that looks like an empty database.
 	foreign, _, foreignErr := d.scanKeys(ctx, "*", 2000)
 	if foreignErr == nil {
-		others := map[string]struct{}{}
-		for _, key := range foreign {
-			if strings.HasPrefix(key, d.Namespace+":") {
-				continue
-			}
-			if prefix, _, found := strings.Cut(key, ":"); found {
-				others[prefix] = struct{}{}
-			}
-		}
-		if len(others) > 0 {
-			details = append(details, detail("otherNamespaces", strings.Join(sortedKeys(others), ", ")))
-		}
-	}
-	if len(keys) == 0 {
-		return Check{
-			ID: id, Area: areaRedis, Title: title, Status: StatusWarn,
-			Summary: fmt.Sprintf("namespace %q holds no keys", d.Namespace),
-			Details: details,
-			Remedy:  "confirm --redis-namespace matches the writer; an empty namespace looks identical to an empty database",
+		if others := foreignNamespacesOf(d.Namespace, foreign); len(others) > 0 {
+			details = append(details, detail("otherNamespaces", strings.Join(others, ", ")))
 		}
 	}
 	return Check{
-		ID: id, Area: areaRedis, Title: title, Status: StatusPass,
-		Summary: fmt.Sprintf("namespace %q holds %s keys", d.Namespace, countLabel),
-		Details: details,
+		ID: id, Area: areaRedis, Title: title, Status: classification.status,
+		Summary: classification.summary, Details: details, Remedy: classification.remedy,
 	}
 }
