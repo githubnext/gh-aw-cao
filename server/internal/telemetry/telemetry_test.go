@@ -9,6 +9,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+const testSpanName = "test-span"
+
 func TestResolveExporterDecision(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -79,7 +81,7 @@ func TestSetupWithoutEndpointStaysNoop(t *testing.T) {
 	if err := shutdown(context.Background()); err != nil {
 		t.Fatalf("no-op shutdown must not fail: %v", err)
 	}
-	_, span := Tracer().Start(context.Background(), "test-span")
+	_, span := Tracer().Start(context.Background(), testSpanName)
 	defer span.End()
 	if span.SpanContext().IsValid() {
 		t.Fatal("the default no-op tracer provider must not produce an exported span context")
@@ -117,6 +119,35 @@ func TestSetupWithHTTPEndpointConfiguresProvider(t *testing.T) {
 	provider := otel.GetTracerProvider()
 	if provider == nil {
 		t.Fatal("expected a global tracer provider to be installed")
+	}
+}
+
+func TestSetupWithMetricsEndpointConfiguresMeterProviderOnly(t *testing.T) {
+	previousMeterProvider := otel.GetMeterProvider()
+	previousTracerProvider := otel.GetTracerProvider()
+	t.Cleanup(func() {
+		otel.SetMeterProvider(previousMeterProvider)
+		otel.SetTracerProvider(previousTracerProvider)
+	})
+	t.Setenv("OTEL_SDK_DISABLED", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "http://127.0.0.1:4318")
+
+	shutdown, err := Setup(context.Background(), "test")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 0)
+		defer cancel()
+		_ = shutdown(ctx)
+	}()
+	if otel.GetMeterProvider() == previousMeterProvider {
+		t.Fatal("expected a global meter provider to be installed")
+	}
+	if otel.GetTracerProvider() != previousTracerProvider {
+		t.Fatal("metrics-only configuration must not replace the tracer provider")
 	}
 }
 

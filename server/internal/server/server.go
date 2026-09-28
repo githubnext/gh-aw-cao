@@ -247,7 +247,7 @@ func (a *App) Handler() http.Handler {
 	register("GET /api/admin/rebuild/status", a.rebuildStatus)
 	register("GET /api/admin/collection/status", a.collectionStatus)
 	mux.HandleFunc("/", a.static)
-	instrumented := otelhttp.NewHandler(withResponseTraceHeaders(mux), telemetry.ServiceName,
+	instrumented := otelhttp.NewHandler(withResponseTraceHeaders(mux), telemetry.SpanHTTPServer,
 		otelhttp.WithSpanNameFormatter(func(_ string, request *http.Request) string {
 			// Match against the fixed, small set of registered API/auth
 			// patterns directly instead of calling mux.Handler, which
@@ -583,7 +583,7 @@ type paginationRequest struct {
 }
 
 func (a *App) query(response http.ResponseWriter, request *http.Request) {
-	ctx, span := telemetry.Tracer().Start(request.Context(), "cao_dashboard.query.execute")
+	ctx, span := telemetry.Tracer().Start(request.Context(), telemetry.SpanQueryExecute)
 	defer span.End()
 	request = request.WithContext(ctx)
 	fail := func(status int, message string) {
