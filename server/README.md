@@ -751,10 +751,11 @@ spans. MCP requests use the OpenTelemetry MCP semantic conventions, including
 attributes are limited to non-secret aggregate counts, revisions, and durations
 (no Redis URLs, credentials, GitHub tokens, or row
 contents). Identifiers follow the W3C Trace Context specification: the tracer
-provider installs `propagation.TraceContext` so a client-sent `traceparent`
-header continues an existing trace, and every API response echoes the active
-request's ids as `X-Trace-Id` / `X-Span-Id` headers for correlating a
-client-visible request with exported spans.
+provider installs `propagation.TraceContext` so a client-sent HTTP `traceparent`
+continues an existing transport trace. MCP spans use trace context from
+`params._meta` as their remote parent and link the ambient HTTP span. Every API
+response also echoes the active request's ids as `X-Trace-Id` / `X-Span-Id`
+headers for correlating a client-visible request with exported spans.
 
 Telemetry is configured entirely through the standard OpenTelemetry SDK
 environment variables. Traces and metrics are independently optional, and no

@@ -9,6 +9,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
@@ -16,12 +17,18 @@ import (
 
 func TestMCPToolCallsEmitSemanticSpansWithoutContent(t *testing.T) {
 	previousProvider := otel.GetTracerProvider()
+	previousPropagator := otel.GetTextMapPropagator()
 	exporter := tracetest.NewInMemoryExporter()
 	provider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
 	otel.SetTracerProvider(provider)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
 	t.Cleanup(func() {
 		_ = provider.Shutdown(t.Context())
 		otel.SetTracerProvider(previousProvider)
+		otel.SetTextMapPropagator(previousPropagator)
 	})
 
 	app := newMCPTestApp(t, true)
@@ -41,6 +48,9 @@ func TestMCPToolCallsEmitSemanticSpansWithoutContent(t *testing.T) {
 	exporter.Reset()
 
 	success, err := session.CallTool(t.Context(), &mcp.CallToolParams{
+		Meta: mcp.Meta{
+			"traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+		},
 		Name: "cao_catalog", Arguments: map[string]any{"kind": "queries"},
 	})
 	if err != nil || success.IsError {
@@ -59,6 +69,11 @@ func TestMCPToolCallsEmitSemanticSpansWithoutContent(t *testing.T) {
 	if successSpan.Status.Code != codes.Unset {
 		t.Fatalf("successful span status = %v, want unset", successSpan.Status.Code)
 	}
+	if successSpan.Parent.TraceID().String() != "4bf92f3577b34da6a3ce929d0e0e4736" ||
+		successSpan.Parent.SpanID().String() != "00f067aa0ba902b7" ||
+		!successSpan.Parent.IsRemote() {
+		t.Fatalf("MCP span parent = %v, want remote params._meta trace context", successSpan.Parent)
+	}
 
 	failureSpan := findSpan(t, exporter.GetSpans(), "tools/call cao_query")
 	assertMCPToolSpan(t, failureSpan, "cao_query")
@@ -72,6 +87,12 @@ func TestMCPToolCallsEmitSemanticSpansWithoutContent(t *testing.T) {
 	unknownSpan := findSpan(t, exporter.GetSpans(), "tools/call")
 	if _, ok := spanAttributes(unknownSpan.Attributes)[genAIToolNameKey]; ok {
 		t.Fatal("an unknown client-controlled tool name must not become a telemetry attribute")
+	}
+	if unknownSpan.Status.Code != codes.Unset {
+		t.Fatalf("unknown tool span status = %v, want unset caller error", unknownSpan.Status.Code)
+	}
+	if got := spanAttributes(unknownSpan.Attributes)[rpcStatusCodeKey]; got != "-32602" {
+		t.Fatalf("unknown tool rpc.response.status_code = %#v, want -32602", got)
 	}
 }
 
@@ -91,8 +112,8 @@ func assertMCPToolSpan(t *testing.T, span tracetest.SpanStub, toolName string) {
 	if span.SpanKind != trace.SpanKindServer {
 		t.Fatalf("span kind = %v, want server", span.SpanKind)
 	}
-	if !span.Parent.IsValid() || span.Parent.TraceID() != span.SpanContext.TraceID() {
-		t.Fatal("MCP span is not linked to its HTTP server span")
+	if len(span.Links) != 1 || !span.Links[0].SpanContext.IsValid() {
+		t.Fatal("MCP span does not link its ambient HTTP server span")
 	}
 	attributes := spanAttributes(span.Attributes)
 	for key, want := range map[string]any{
