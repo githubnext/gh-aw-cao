@@ -12,6 +12,8 @@ The hosted server reads non-secret host capabilities from
 variables. Redis provider modules only select conventional environment-variable names
 and consistency constraints;
 they do not add provider SDKs or weaken TLS verification.
+To keep hosting settings separate from rollout policy, you can instead use a
+reviewed [deployment-specific host extension](configuration.md#deployment-specific-host-extensions).
 
 ## 1. Add the host policy
 
