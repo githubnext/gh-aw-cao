@@ -502,7 +502,7 @@ function enableTableFilter(region, options, rows) {
 function applyProcessed(result, apply) {
   if (result instanceof Promise) {
    result.then(apply).catch((/** @type {Error} */ error) => {
-     debugTableRegion({ event: 'row-operations-failed', reason: error?.name ?? 'Error' });
+     debugTableRegion({ event: 'row-operations-failed', reason: error?.message ?? String(error) });
    });
   } else {
    apply(result);

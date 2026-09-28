@@ -447,10 +447,11 @@ describe('renderTableRegion', () => {
     more.click();
     await vi.waitFor(() => expect(rendered.querySelectorAll('tbody > tr')).toHaveLength(50));
     more.click();
-    await vi.waitFor(() => expect(rendered.querySelector('tbody > tr')?.textContent).toBe('26'));
+    await vi.waitFor(() => expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 75 of 100 results'));
 
     const loadedRows = [...rendered.querySelectorAll('tbody > tr')];
     expect(loadedRows).toHaveLength(50);
+    expect(loadedRows[0]?.textContent).toBe('26');
     expect(loadedRows.at(-1)?.textContent).toBe('75');
     expect(rendered.querySelector('[data-lazy-list-spacer]')).toBeNull();
     expect(scroll.scrollTop).toBe(380);

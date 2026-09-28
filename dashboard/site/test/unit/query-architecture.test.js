@@ -121,7 +121,7 @@ describe('dashboard query architecture', () => {
     }
   });
 
-  it('runs tidy row pipelines only inside the data worker', () => {
+  it('runs tidy row pipelines only inside the data worker', async () => {
     const workerSideModules = new Set([
       'src/data-worker.js',
       'src/data/queries/declarative.js',
@@ -132,7 +132,8 @@ describe('dashboard query architecture', () => {
       .map((file) => file.split(sep).join('/'));
 
     expect(new Set(importers)).toEqual(workerSideModules);
-    expect(read('src/data-processor.js')).toContain("Promise.reject(new Error('Row operations require a data worker.'))");
+    const { processRows } = await import('../../src/data-processor.js');
+    await expect(processRows([], [])).rejects.toThrow('Row operations require a data worker.');
   });
 
   it('keeps canonical database reads out of the UI JavaScript layer', () => {
