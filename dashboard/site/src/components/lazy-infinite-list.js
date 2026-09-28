@@ -1,5 +1,8 @@
 import { h } from '../dom.js';
 import { observeLoadMoreBoundary } from './ui-primitives.js';
+import { createDebug } from '../debug.js';
+
+const debugLazyInfiniteList = createDebug('lazy-infinite-list');
 
 /**
  * @template T
@@ -26,11 +29,13 @@ export function renderLazyInfiniteList({ items, batchSize, renderItems, renderEm
       boundaryObserver?.disconnect();
       list.replaceChildren(renderEmpty());
       afterRender();
+      debugLazyInfiniteList({ event: 'empty' });
       return;
     }
 
     const loadMore = () => {
       renderedLimit = Math.min(items().length, renderedLimit + batchSize);
+      debugLazyInfiniteList({ event: 'load-more', renderedLimit, total: items().length });
       render(false);
     };
     const boundary = remaining > 0 ? h('div', {
@@ -47,6 +52,7 @@ export function renderLazyInfiniteList({ items, batchSize, renderItems, renderEm
     boundaryObserver = observeLoadMoreBoundary(globalThis.IntersectionObserver, boundary, loadMore, {
       rootMargin: `${Number(globalThis.window?.innerHeight) || 768}px 0px`
     });
+    debugLazyInfiniteList({ event: 'boundary-observed', rendered: renderedItems.length, remaining });
   };
 
   render();
