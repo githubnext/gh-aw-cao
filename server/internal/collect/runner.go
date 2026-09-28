@@ -56,19 +56,53 @@ type Runner struct {
 	Budget         *githubapp.Budget
 }
 
-// Validate reports whether the runner can collect at all.
-func (r Runner) Validate() error {
-	if err := r.Lake.Validate(); err != nil {
-		return err
-	}
-	if strings.TrimSpace(r.CatalogRoot) == "" {
+// runnerValidationStage identifies which prerequisite check failed during
+// Runner.Validate. It is useful for diagnosing misconfiguration without
+// logging the catalog root path or other configuration values.
+type runnerValidationStage string
+
+const (
+	runnerValidationStageLake        runnerValidationStage = "lake"
+	runnerValidationStageCatalogRoot runnerValidationStage = "catalog-root"
+	runnerValidationStageActivityCLI runnerValidationStage = "activity-cli"
+	runnerValidationStageTokens      runnerValidationStage = "tokens"
+)
+
+// validateActivityCatalog reports whether catalogRoot names a non-blank
+// directory containing the activity/cao.mjs compactor the collect subprocess
+// invokes. It is split out from Validate so the catalog-root and
+// activity-CLI checks can be exercised without constructing a full Runner,
+// and stat is injected so tests can exercise both outcomes without relying
+// on real filesystem layout beyond a temporary directory.
+func validateActivityCatalog(catalogRoot string, stat func(string) (os.FileInfo, error)) error {
+	if strings.TrimSpace(catalogRoot) == "" {
 		return errors.New("catalog root containing activity/cao.mjs is required")
 	}
-	script := filepath.Join(r.CatalogRoot, "activity", "cao.mjs")
-	if _, err := os.Stat(script); err != nil {
+	script := filepath.Join(catalogRoot, "activity", "cao.mjs")
+	if _, err := stat(script); err != nil {
 		return fmt.Errorf("activity CLI is unavailable at %s: %w", script, err)
 	}
+	return nil
+}
+
+// Validate reports whether the runner can collect at all. On failure it logs
+// only which prerequisite stage failed, so misconfiguration can be diagnosed
+// without exposing the catalog root or other configuration values.
+func (r Runner) Validate() error {
+	if err := r.Lake.Validate(); err != nil {
+		runnerLog.Printf("runner validation failed stage=%s", runnerValidationStageLake)
+		return err
+	}
+	if err := validateActivityCatalog(r.CatalogRoot, os.Stat); err != nil {
+		stage := runnerValidationStageCatalogRoot
+		if strings.TrimSpace(r.CatalogRoot) != "" {
+			stage = runnerValidationStageActivityCLI
+		}
+		runnerLog.Printf("runner validation failed stage=%s", stage)
+		return err
+	}
 	if r.Tokens == nil {
+		runnerLog.Printf("runner validation failed stage=%s", runnerValidationStageTokens)
 		return errors.New("an installation token provider is required")
 	}
 	return nil

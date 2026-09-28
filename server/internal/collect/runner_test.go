@@ -9,6 +9,53 @@ import (
 	"testing"
 )
 
+func TestValidateActivityCatalogRequiresANonBlankRoot(t *testing.T) {
+	err := validateActivityCatalog("  ", os.Stat)
+	if err == nil {
+		t.Fatal("expected an error for a blank catalog root")
+	}
+	if !strings.Contains(err.Error(), "catalog root") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateActivityCatalogRequiresTheCompactorScript(t *testing.T) {
+	directory := t.TempDir()
+	if err := validateActivityCatalog(directory, os.Stat); err == nil {
+		t.Fatal("expected an error when activity/cao.mjs is missing")
+	}
+	if err := os.MkdirAll(filepath.Join(directory, "activity"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, "activity", "cao.mjs"), []byte("//"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := validateActivityCatalog(directory, os.Stat); err != nil {
+		t.Fatalf("expected a populated catalog root to validate, got: %v", err)
+	}
+}
+
+func TestRunnerValidateFailsOnAMissingTokenProvider(t *testing.T) {
+	directory := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(directory, "activity"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, "activity", "cao.mjs"), []byte("//"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runner := Runner{
+		Lake:        Lake{Directory: filepath.Join(directory, "lake")},
+		CatalogRoot: directory,
+	}
+	err := runner.Validate()
+	if err == nil {
+		t.Fatal("expected an error when no token provider is configured")
+	}
+	if !strings.Contains(err.Error(), "installation token provider") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 // fakeTokens satisfies TokenProvider without contacting GitHub.
 type fakeTokens struct{ token string }
 
