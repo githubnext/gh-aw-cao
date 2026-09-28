@@ -85,6 +85,9 @@ test("landing page explains and illustrates campaign dispatch", () => {
 test("setup wizard remains available alongside the command quickstart", () => {
   assert.match(headerLinks, /\{ label: "Setup", href: "\/gh-aw-cao\/setup\/" \}/);
   assert.match(setupPage, /<OpsWizard \/>/);
+  assert.doesNotMatch(setupPage, /StarlightPage/);
+  assert.match(setupPage, /<title>\{title\}<\/title>/);
+  assert.match(setupPage, /const title = "Setup wizard \| Central Agentic Ops";/);
   assert.match(wizard, /Plan a control plane and first campaign in four steps/);
   assert.match(wizard, /skills\/setup-cao\/SKILL\.md/);
   assert.match(wizard, /skills\/add-cao-campaign\/SKILL\.md/);

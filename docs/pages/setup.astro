@@ -1,34 +1,38 @@
 ---
-import StarlightPage from "@astrojs/starlight/components/StarlightPage.astro";
 import OpsWizard from "../components/OpsWizard.astro";
+import "../styles/wizard-page.css";
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+const title = "Setup wizard | Central Agentic Ops";
+const description = "Generate an agent-ready prompt for a bounded Central Agentic Ops setup.";
 ---
 
-<StarlightPage
-  frontmatter={{
-    title: "Setup wizard",
-    description: "Generate an agent-ready prompt for a bounded Central Agentic Ops setup.",
-    template: "splash",
-    editUrl: false,
-  }}
->
-<main class="setup-page">
-  <OpsWizard />
-  <p class="setup-alternative">
-    Prefer direct commands? Follow the <a href="/gh-aw-cao/getting-started/">15-minute Quickstart</a>.
-  </p>
-  </main>
-</StarlightPage>
-
-<style>
-  .setup-page {
-    width: 100%;
-    min-height: calc(100svh - var(--sl-nav-height));
-  }
-
-  .setup-alternative {
-    margin: 0;
-    padding: 1.5rem;
-    color: var(--sl-color-gray-2);
-    text-align: center;
-  }
-</style>
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <link rel="icon" href={`${base}/favicon.svg`} />
+    <script is:inline>
+      const storedTheme = localStorage.getItem("starlight-theme");
+      const theme = storedTheme === "light" || storedTheme === "dark"
+        ? storedTheme
+        : window.matchMedia("(prefers-color-scheme: light)").matches
+          ? "light"
+          : "dark";
+      document.documentElement.dataset.theme = theme;
+    </script>
+  </head>
+  <body>
+    <main class="setup-page">
+      <OpsWizard />
+      <p class="setup-alternative">
+        Prefer direct commands? Follow the <a href={`${base}/setup-quickstarts/`}>15-minute Quickstart</a>.
+      </p>
+    </main>
+  </body>
+</html>

@@ -54,10 +54,29 @@ test("setup wizard presents hosting choices as an immersive card experience", as
   await page.setViewportSize({ width: 1280, height: 900 });
   expect((await page.goto("setup/"))?.ok()).toBe(true);
 
-  await expect(page.getByRole("heading", { level: 2 })).toHaveText("Plan a control plane and first campaign in four steps");
+  await expect(page).toHaveTitle("Setup wizard | Central Agentic Ops");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Plan a control plane and first campaign in four steps");
   await expect(page.locator("select")).toHaveCount(0);
   await expect(page.getByRole("radiogroup", { name: "App server target" })).toBeVisible();
   await expect(page.getByRole("radiogroup", { name: "Redis provider" })).toBeVisible();
+});
+
+test("setup wizard renders standalone without site chrome and keeps mobile gutters", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect((await page.goto("setup/"))?.ok()).toBe(true);
+
+  await expect(page.locator("header.header")).toHaveCount(0);
+  await expect(page.locator('nav[aria-label="Main"]')).toHaveCount(0);
+  await expect(page.locator(".content-panel")).toHaveCount(0);
+
+  const gutters = await page.locator(".wizard-eyebrow, .wizard-toggle-title, .wizard-step").evaluateAll((elements) =>
+    elements.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return { left: rect.left, right: window.innerWidth - rect.right };
+    }),
+  );
+  expect(gutters.length).toBeGreaterThan(0);
+  expect(gutters.every(({ left, right }) => left >= 16 && right >= 16)).toBe(true);
 });
 
 for (const { colorScheme, canvas, foreground, accent } of [
@@ -70,7 +89,7 @@ for (const { colorScheme, canvas, foreground, accent } of [
     await page.setViewportSize({ width: 1280, height: 900 });
     expect((await page.goto("setup/"))?.ok()).toBe(true);
 
-    const canvasStyles = await page.locator(".content-panel:has(.ops-wizard-shell)").evaluate((element) => {
+    const canvasStyles = await page.locator("body:has(.ops-wizard-shell)").evaluate((element) => {
       const styles = getComputedStyle(element);
       return { backgroundColor: styles.backgroundColor, backgroundImage: styles.backgroundImage };
     });
