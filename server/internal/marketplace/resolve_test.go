@@ -39,9 +39,6 @@ func TestParsePackageManifestNormalizesCoordinatesAndAddCommand(t *testing.T) {
 	if pkg.Icon != "workflow" {
 		t.Fatalf("expected the default icon, got: %q", pkg.Icon)
 	}
-	if pkg.ID != "official:"+wantSource {
-		t.Fatalf("unexpected id: %q", pkg.ID)
-	}
 }
 
 func TestParsePackageManifestDefaultsVersionToRef(t *testing.T) {

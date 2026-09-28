@@ -305,9 +305,15 @@ test('marketplace page renders canonical package cards after ingestion', async (
   await expect(page.getByRole('heading', { name: 'Marketplace', exact: true, level: 1 })).toBeVisible();
   const packageCards = marketplace.locator('.entity-card-list-marketplace .entity-card-list-card');
   await expect(packageCards).toHaveCount(3);
+  await expect(packageCards.locator('.issue-list-card-title')).toHaveText([
+    'AW Optimization',
+    'CAO Evolution',
+    'Dependabot'
+  ]);
   const packageCard = packageCards.filter({ hasText: 'Dependabot' });
   await expect(marketplace.locator('.entity-card-list-marketplace')).toHaveCSS('display', 'grid');
   const cardBoxes = await packageCards.evaluateAll((cards) => cards.map((card) => card.getBoundingClientRect().toJSON()));
+  expect(cardBoxes).toHaveLength(3);
   expect(cardBoxes[1].y).toBe(cardBoxes[0].y);
   expect(cardBoxes[1].x).toBeGreaterThanOrEqual(cardBoxes[0].x + cardBoxes[0].width + 12);
   await expect(marketplace).toContainText('Dependabot');
