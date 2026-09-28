@@ -952,8 +952,17 @@ go -C server run ./cmd/cao-dashboard serve --mcp-enabled
 ```
 
 `/mcp` is not registered unless `--mcp-enabled` is present. Clients authenticate
-with the same bearer capability as the local JSON APIs. The endpoint exposes
-only `cao_catalog` and `cao_query`; it accepts no
+with the same bearer capability as the local JSON APIs.
+
+In GitHub Actions, `serve` also reads the standard `GITHUB_TOKEN` and
+`GITHUB_ACTOR` environment variables. When both are available, an MCP client can
+send the token in the bearer `Authorization` header and the actor in
+`X-GitHub-Actor`.
+The configured pair is accepted only at `/mcp`; it does not grant access to the
+JSON APIs. Keep the token in the Actions environment rather than passing it on a
+command line, and grant the workflow only the read permissions it needs.
+
+The endpoint exposes only `cao_catalog` and `cao_query`; it accepts no
 SQL, arbitrary query definitions, refresh, rebuild, webhook, administration, or
 repository mutation operations.
 

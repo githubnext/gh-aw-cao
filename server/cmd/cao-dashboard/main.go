@@ -472,6 +472,8 @@ func newServeCommand() *cobra.Command {
 			AgentCatalogPath:     *agentCatalog,
 			MCPContractPath:      *mcpContract,
 			MCPEnabled:           *mcpEnabled,
+			GitHubActionsToken:   os.Getenv("GITHUB_TOKEN"),
+			GitHubActionsActor:   os.Getenv("GITHUB_ACTOR"),
 			Logger:               log.New(os.Stderr, "cao-dashboard: ", log.LstdFlags),
 		})
 		if err != nil {

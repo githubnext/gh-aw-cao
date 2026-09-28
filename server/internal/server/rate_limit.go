@@ -119,6 +119,9 @@ func (a *App) rateLimitSubject(request *http.Request) string {
 		strings.TrimSpace(session.Login) != "" {
 		return "user:" + strings.ToLower(strings.TrimSpace(session.Login))
 	}
+	if actor, ok := request.Context().Value(githubActionsActorContextKey{}).(string); ok && actor != "" {
+		return "actions-actor:" + actor
+	}
 	if request.URL.Path == "/auth/callback" && a.oauth != nil && a.oauth.validState(request) {
 		if cookie, err := request.Cookie("cao_oauth_state"); err == nil && cookie.Value != "" {
 			return "oauth-state:" + cookie.Value

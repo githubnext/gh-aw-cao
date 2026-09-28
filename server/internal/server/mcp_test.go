@@ -17,6 +17,8 @@ import (
 const (
 	testAgentCatalog = "../../../dashboard/site/src/agent/catalog.generated.json"
 	testMCPContract  = "../../../dashboard/site/src/agent/mcp-contract.json"
+	testActionsToken = "test-actions-token-0123456789abcdef0123456789"
+	testActionsActor = "octocat"
 )
 
 func TestMCPDisabledEndpointIsAbsent(t *testing.T) {
@@ -64,6 +66,66 @@ func TestMCPRequiresLocalBearerAndDiscoversReadOnlyTools(t *testing.T) {
 		if tool.Annotations == nil || !tool.Annotations.ReadOnlyHint {
 			t.Fatalf("tool %q is not read-only", tool.Name)
 		}
+	}
+}
+
+func TestMCPAcceptsConfiguredGitHubActionsIdentityOnly(t *testing.T) {
+	app := newMCPTestAppWithActions(t, testActionsToken, testActionsActor)
+	body := []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{},"io.modelcontextprotocol/clientInfo":{"name":"test","version":"1"}}}}`)
+	request := func(path, token, actor string) *http.Request {
+		value := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "http://localhost"+path, bytes.NewReader(body))
+		value.Header.Set("Content-Type", "application/json")
+		value.Header.Set("Accept", "application/json, text/event-stream")
+		value.Header.Set("MCP-Protocol-Version", "2026-07-28")
+		value.Header.Set("Mcp-Method", "tools/list")
+		value.Header.Set("Authorization", "Bearer "+token)
+		value.Header.Set("X-GitHub-Actor", actor)
+		return value
+	}
+	for _, test := range []struct {
+		name   string
+		path   string
+		token  string
+		actor  string
+		status int
+	}{
+		{"valid", "/mcp", testActionsToken, "OctoCat", http.StatusOK},
+		{"wrong token", "/mcp", testActionsToken + "x", testActionsActor, http.StatusUnauthorized},
+		{"wrong actor", "/mcp", testActionsToken, "attacker", http.StatusUnauthorized},
+		{"missing actor", "/mcp", testActionsToken, "", http.StatusUnauthorized},
+		{"API scope", "/api/v1/query", testActionsToken, testActionsActor, http.StatusUnauthorized},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			response := httptest.NewRecorder()
+			app.Handler().ServeHTTP(response, request(test.path, test.token, test.actor))
+			if response.Code != test.status {
+				t.Fatalf("status = %d, want %d: %s", response.Code, test.status, response.Body.String())
+			}
+		})
+	}
+}
+
+func TestGitHubActionsMCPIdentityValidation(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		config Config
+		wantOK bool
+	}{
+		{"disabled", Config{GitHubActionsToken: "short", GitHubActionsActor: testActionsActor}, true},
+		{"valid", Config{MCPEnabled: true, GitHubActionsToken: testActionsToken, GitHubActionsActor: testActionsActor}, true},
+		{"dashboard token reused", Config{
+			MCPEnabled: true, GitHubActionsToken: testAccessToken, GitHubActionsActor: testActionsActor,
+		}, false},
+		{"missing actor", Config{MCPEnabled: true, GitHubActionsToken: testActionsToken}, false},
+		{"short token", Config{MCPEnabled: true, GitHubActionsToken: "short", GitHubActionsActor: testActionsActor}, false},
+		{"invalid actor", Config{MCPEnabled: true, GitHubActionsToken: testActionsToken, GitHubActionsActor: "octo cat"}, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			_, _, err := githubActionsMCPIdentity(test.config, testAccessToken)
+			if (err == nil) != test.wantOK {
+				t.Fatalf("githubActionsMCPIdentity() error = %v, want success %t", err, test.wantOK)
+			}
+		})
 	}
 }
 
@@ -228,6 +290,16 @@ func (transport bearerTransport) RoundTrip(request *http.Request) (*http.Respons
 
 func newMCPTestApp(t *testing.T, enabled bool) *App {
 	t.Helper()
+	return newMCPTestAppConfig(t, enabled, "", "")
+}
+
+func newMCPTestAppWithActions(t *testing.T, token, actor string) *App {
+	t.Helper()
+	return newMCPTestAppConfig(t, true, token, actor)
+}
+
+func newMCPTestAppConfig(t *testing.T, enabled bool, actionsToken, actionsActor string) *App {
+	t.Helper()
 	address, closeRedis := fakeRedis(t)
 	t.Cleanup(closeRedis)
 	client, err := redisx.New("redis://" + address + "/0")
@@ -246,6 +318,7 @@ func newMCPTestApp(t *testing.T, enabled bool) *App {
 		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
 		DashboardQueries: definitions, AgentCatalogPath: testAgentCatalog,
 		MCPContractPath: testMCPContract, MCPEnabled: enabled,
+		GitHubActionsToken: actionsToken, GitHubActionsActor: actionsActor,
 	})
 	if err != nil {
 		t.Fatal(err)

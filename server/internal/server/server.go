@@ -55,6 +55,8 @@ type Config struct {
 	AgentCatalogPath       string
 	MCPContractPath        string
 	MCPEnabled             bool
+	GitHubActionsToken     string
+	GitHubActionsActor     string
 	SourceDirectory        string
 	Reconciler             Reconciler
 	Collector              *CollectorConfig
@@ -74,6 +76,8 @@ type App struct {
 	memory        *repositorymemory.RemoteResolver
 	webhookSecret []byte
 	mcp           http.Handler
+	actionsToken  string
+	actionsActor  string
 }
 
 func New(store *redisx.Store, config Config) (*App, error) {
@@ -140,11 +144,15 @@ func New(store *redisx.Store, config Config) (*App, error) {
 	if config.MCPEnabled && profile.Authentication != HostAuthenticationBearer {
 		return nil, errors.New("MCP is available only in local bearer-authenticated mode")
 	}
+	actionsToken, actionsActor, err := githubActionsMCPIdentity(config, accessToken)
+	if err != nil {
+		return nil, err
+	}
 	serverLog.Printf("initialized host_profile=%s oauth=%t source_ingestion=%t", profile.Name, oauth != nil, config.SourceDirectory != "")
 	app := &App{
 		store: store, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
 		canonical: canonicalService{store: store}, reconciler: reconciler, memory: memoryResolver,
-		webhookSecret: []byte(config.WebhookSecret),
+		webhookSecret: []byte(config.WebhookSecret), actionsToken: actionsToken, actionsActor: actionsActor,
 	}
 	if config.MCPEnabled {
 		handler, err := app.newMCPHandler()
@@ -345,6 +353,16 @@ func (a *App) requireAccess(next http.Handler) http.Handler {
 			next.ServeHTTP(response, request)
 			return
 		}
+		if request.URL.Path == "/mcp" {
+			if actor, ok := a.authorizedGitHubActions(request); ok {
+				a.logAuthBranch("access.local_actions_accepted")
+				request = request.WithContext(context.WithValue(
+					request.Context(), githubActionsActorContextKey{}, actor))
+				next.ServeHTTP(response, request)
+				return
+			}
+			a.logAuthBranch("access.local_actions_rejected")
+		}
 		a.logAuthBranch("access.local_bearer_rejected")
 		writeError(response, http.StatusUnauthorized, "dashboard access token is required")
 	})
@@ -369,10 +387,50 @@ func validLocalRequestHost(value string) bool {
 }
 
 func (a *App) authorized(request *http.Request) bool {
+	token, ok := bearerToken(request)
+	return ok && constantTimeTokenEqual(token, a.accessToken)
+}
+
+type githubActionsActorContextKey struct{}
+
+func githubActionsMCPIdentity(config Config, accessToken string) (string, string, error) {
+	token := strings.TrimSpace(config.GitHubActionsToken)
+	if !config.MCPEnabled || token == "" {
+		return "", "", nil
+	}
+	actor := strings.TrimSpace(config.GitHubActionsActor)
+	if len(token) < 32 {
+		return "", "", errors.New("GitHub Actions MCP token must contain at least 32 characters")
+	}
+	if constantTimeTokenEqual(token, accessToken) {
+		return "", "", errors.New("GitHub Actions MCP token must differ from the dashboard access token")
+	}
+	if actor == "" {
+		return "", "", errors.New("GitHub Actions MCP actor is required when its token is configured")
+	}
+	if len(actor) > 100 || strings.IndexFunc(actor, func(value rune) bool {
+		return value <= ' ' || value == '\x7f'
+	}) >= 0 {
+		return "", "", errors.New("GitHub Actions MCP actor is invalid")
+	}
+	return token, strings.ToLower(actor), nil
+}
+
+func (a *App) authorizedGitHubActions(request *http.Request) (string, bool) {
+	if a.actionsToken == "" || a.actionsActor == "" {
+		return "", false
+	}
+	token, ok := bearerToken(request)
+	actor := strings.ToLower(strings.TrimSpace(request.Header.Get("X-GitHub-Actor")))
+	return a.actionsActor, ok &&
+		constantTimeTokenEqual(token, a.actionsToken) &&
+		constantTimeTokenEqual(actor, a.actionsActor)
+}
+
+func bearerToken(request *http.Request) (string, bool) {
 	const prefix = "Bearer "
 	authorization := request.Header.Get("Authorization")
-	return strings.HasPrefix(authorization, prefix) &&
-		constantTimeTokenEqual(strings.TrimPrefix(authorization, prefix), a.accessToken)
+	return strings.TrimPrefix(authorization, prefix), strings.HasPrefix(authorization, prefix)
 }
 
 func (a *App) requireGitHubAccess(next http.Handler) http.Handler {

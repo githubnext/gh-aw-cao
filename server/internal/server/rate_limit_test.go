@@ -117,6 +117,34 @@ func TestMCPUsesQueryRateLimitBeforeHandler(t *testing.T) {
 	}
 }
 
+func TestMCPRateLimitUsesValidatedGitHubActionsActor(t *testing.T) {
+	client := &serverRateLimitClient{result: []any{int64(0), int64(0), int64(1500), int64(60000)}}
+	app := &App{
+		store:        redisx.NewStore(client, "test"),
+		accessToken:  testAccessToken,
+		actionsToken: testActionsToken,
+		actionsActor: testActionsActor,
+		mcp: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+			t.Fatal("rate-limited MCP request reached handler")
+		}),
+	}
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "http://localhost/mcp", nil)
+	request.Header.Set("Authorization", "Bearer "+testActionsToken)
+	request.Header.Set("X-GitHub-Actor", "OctoCat")
+	response := httptest.NewRecorder()
+
+	app.Handler().ServeHTTP(response, request)
+
+	if response.Code != http.StatusTooManyRequests {
+		t.Fatalf("rate-limited MCP returned %d, want 429", response.Code)
+	}
+	sum := sha256.Sum256([]byte("actions-actor:" + testActionsActor))
+	expectedKey := "cao:test:rate-limit:query:" + hex.EncodeToString(sum[:])
+	if len(client.command) < 4 || client.command[3] != expectedKey {
+		t.Fatalf("MCP rate limit key = %#v, want %q", client.command, expectedKey)
+	}
+}
+
 func TestRateLimitUsesHashedAuthenticatedIdentity(t *testing.T) {
 	client := &serverRateLimitClient{result: []any{int64(1), int64(119), int64(0), int64(500)}}
 	app := &App{store: redisx.NewStore(client, "test")}
