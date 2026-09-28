@@ -71,6 +71,7 @@ type Installation struct {
 type Repository struct {
 	FullName string
 	PushedAt time.Time
+	Private  bool
 }
 
 // GitTreeEntry is one entry returned by the Git tree API.
@@ -202,6 +203,7 @@ func (c *Client) ListRepositories(ctx context.Context, installationID int64) ([]
 				repositories = append(repositories, Repository{
 					FullName: name,
 					PushedAt: repository.GetPushedAt().Time,
+					Private:  repository.GetPrivate(),
 				})
 			}
 		}
@@ -212,6 +214,57 @@ func (c *Client) ListRepositories(ctx context.Context, installationID int64) ([]
 	}
 	appLog.Printf("enumerated installation repositories count=%d", len(repositories))
 	return repositories, nil
+}
+
+// ValidateRepositoryAccess enumerates the App's complete repository scope and
+// rejects a public control repository whose credentials can read private
+// repositories. The full enumeration is intentional: startup must fail before
+// private evidence can enter a publicly operated database.
+func (c *Client) ValidateRepositoryAccess(ctx context.Context, controlRepository string) error {
+	installations, err := c.ListInstallations(ctx)
+	if err != nil {
+		return err
+	}
+	var repositories []Repository
+	for _, installation := range installations {
+		covered, err := c.ListRepositories(ctx, installation.ID)
+		if err != nil {
+			return err
+		}
+		repositories = append(repositories, covered...)
+	}
+	return ValidateRepositoryVisibility(controlRepository, repositories)
+}
+
+// ValidateRepositoryVisibility enforces the public-control repository boundary
+// without including private repository names in diagnostics.
+func ValidateRepositoryVisibility(controlRepository string, repositories []Repository) error {
+	controlRepository = strings.TrimSpace(controlRepository)
+	if controlRepository == "" {
+		return errors.New("control repository is required for repository visibility validation")
+	}
+	controlPrivate := false
+	controlFound := false
+	privateCount := 0
+	for _, repository := range repositories {
+		if strings.EqualFold(repository.FullName, controlRepository) {
+			controlFound = true
+			controlPrivate = repository.Private
+		}
+		if repository.Private {
+			privateCount++
+		}
+	}
+	if !controlFound {
+		return errors.New("control repository visibility could not be verified")
+	}
+	if !controlPrivate && privateCount > 0 {
+		return fmt.Errorf(
+			"public control repository cannot access private repositories: private repository count=%d",
+			privateCount,
+		)
+	}
+	return nil
 }
 
 // InstallationToken mints a token for the collection subprocess. The token is

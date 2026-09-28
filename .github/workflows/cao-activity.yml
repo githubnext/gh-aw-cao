@@ -156,6 +156,18 @@ jobs:
         with:
           version: ${{ steps.gh-aw-compiler.outputs.version }}
 
+      - name: Validate repository visibility boundary
+        env:
+          REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          github-token: ${{ steps.activity-app-token.outputs.token || secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || github.token }}
+          script: |
+            const path = require('path')
+            const { pathToFileURL } = require('url')
+            const visibility = await import(pathToFileURL(path.resolve('activity/repository-visibility.mjs')).href)
+            await visibility.main({ core, github, context, exec, io, getOctokit }, [process.env.REPORT_CONTROL_SETTINGS])
+
       - name: Collect dashboard inventory
         env:
           ACTIVITY_APP_TOKEN: ${{ steps.activity-app-token.outputs.token }}

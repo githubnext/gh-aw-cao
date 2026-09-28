@@ -167,6 +167,9 @@ func NewCollector(store *redisx.Store, config CollectorConfig, databaseQueriesPa
 	if err != nil {
 		return nil, err
 	}
+	if err := client.ValidateRepositoryAccess(context.Background(), config.ControlRepository); err != nil {
+		return nil, fmt.Errorf("validate repository visibility: %w", err)
+	}
 	lake := collect.Lake{Directory: config.LakeDirectory}
 	if err := lake.Prepare(); err != nil {
 		return nil, err
