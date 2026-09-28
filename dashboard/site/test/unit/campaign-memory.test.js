@@ -67,9 +67,20 @@ describe('campaign repository memory', () => {
     });
     document.body.append(rendered);
 
-    await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Ambient'));
+    await vi.waitFor(() => expect(memoryApi.list).toHaveBeenCalledTimes(2));
+    const firstCampaign = /** @type {HTMLDetailsElement} */ (
+      rendered.querySelector('.cao-memory-campaign-branch')
+    );
+    expect(firstCampaign.open).toBe(false);
+    expect(rendered.querySelector('pre')).toBeNull();
+    expect(memoryApi.read).not.toHaveBeenCalled();
     expect(rendered.querySelector('.cao-memory-layout')?.getAttribute('data-memory-view')).toBe('browser');
-    expect(document.activeElement).not.toBe(rendered.querySelector('.cao-memory-file-content'));
+    firstCampaign.open = true;
+    await vi.waitFor(() => expect(firstCampaign.querySelector('.campaign-memory-file')).not.toBeNull());
+    /** @type {HTMLButtonElement} */ (firstCampaign.querySelector('.campaign-memory-file')).click();
+    await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Ambient'));
+    expect(rendered.querySelector('.cao-memory-layout')?.getAttribute('data-memory-view')).toBe('file');
+    expect(document.activeElement).toBe(rendered.querySelector('.cao-memory-file-content'));
     expect([...rendered.querySelectorAll('.cao-memory-campaign')].map((node) => node.textContent))
       .toEqual(['Ambient Context', 'Security Review']);
     expect(rendered.querySelector('.cao-memory-tree')).not.toBeNull();
@@ -83,7 +94,6 @@ describe('campaign repository memory', () => {
       rendered.querySelectorAll('.cao-memory-campaign-branch')[1]
     );
     secondCampaign.open = true;
-    secondCampaign.dispatchEvent(new Event('toggle'));
     await vi.waitFor(() => expect(secondCampaign.querySelector('.campaign-memory-file')).not.toBeNull());
     /** @type {HTMLButtonElement} */ (secondCampaign.querySelector('.campaign-memory-file')).click();
     await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Security'));
@@ -126,7 +136,6 @@ describe('campaign repository memory', () => {
     /** @type {(value: { content: string }) => void} */
     let finishRead = () => {};
     memoryApi.read
-      .mockReturnValueOnce(new Promise(() => {}))
       .mockReturnValueOnce(new Promise((resolve) => {
         finishRead = resolve;
       }));
@@ -153,16 +162,66 @@ describe('campaign repository memory', () => {
       headingTag: 'h3',
     });
     document.body.append(rendered);
-    await vi.waitFor(() => expect(memoryApi.read).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(rendered.querySelector('.campaign-memory-file')).not.toBeNull());
 
+    /** @type {HTMLDetailsElement} */ (rendered.querySelector('.cao-memory-campaign-branch')).open = true;
     /** @type {HTMLButtonElement} */ (rendered.querySelector('.campaign-memory-file')).click();
-    await vi.waitFor(() => expect(memoryApi.read).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(memoryApi.read).toHaveBeenCalledTimes(1));
     const content = /** @type {HTMLElement} */ (rendered.querySelector('.cao-memory-file-content'));
     content.focus();
     finishRead({ content: '# Ambient' });
 
     await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Ambient'));
     expect(document.activeElement).toBe(content);
+  });
+
+  it('shows campaigns without memory entries as non-interactive disabled rows', async () => {
+    memoryApi.list
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ branch: 'memory/empty', commit: 'a'.repeat(40), files: [], omitted: {} })
+      .mockResolvedValueOnce({
+        branch: 'memory/available',
+        commit: 'b'.repeat(40),
+        files: [{ path: 'notes.md', oid: 'c'.repeat(40), size: 5 }],
+        omitted: {},
+      });
+    const rendered = renderAllCampaignMemory({
+      pageId: 'memory',
+      title: 'Campaign memory',
+      sourceNames: ['campaign-memory-campaigns'],
+      sources: {
+        'campaign-memory-campaigns': {
+          source: 'campaign-memory-campaigns',
+          rows: [
+            { campaign: 'missing', 'campaign-name': 'Missing' },
+            { campaign: 'empty', 'campaign-name': 'Empty' },
+            { campaign: 'available', 'campaign-name': 'Available' },
+          ],
+          metadata: {
+            'source-id': 'campaign-memory-test',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-26T00:00:00Z',
+            'retrieved-at': '2026-09-26T00:00:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available',
+          },
+        },
+      },
+      contextDetails: [],
+      headingTag: 'h3',
+    });
+    document.body.append(rendered);
+
+    await vi.waitFor(() => expect(rendered.querySelectorAll('.cao-memory-campaign-disabled')).toHaveLength(2));
+    expect([...rendered.querySelectorAll('.cao-memory-campaign-disabled')].map((row) => row.textContent))
+      .toEqual(['Missing', 'Empty']);
+    expect([...rendered.querySelectorAll('.cao-memory-campaign-disabled')].every((row) =>
+      row.getAttribute('aria-disabled') === 'true' && row.querySelector('summary') === null
+    )).toBe(true);
+    expect(rendered.querySelectorAll('.cao-memory-campaign-branch')).toHaveLength(1);
+    expect(rendered.querySelector('.cao-memory-campaign-branch')?.hasAttribute('open')).toBe(false);
+    expect(memoryApi.read).not.toHaveBeenCalled();
   });
 
   it('renders an honest empty state when no campaigns are registered', () => {

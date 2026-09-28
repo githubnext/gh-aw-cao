@@ -222,62 +222,58 @@ function renderCampaignTree(campaigns, signal) {
     }, octicon('file-directory-fill'), h('span', null, campaign.campaignName));
 
     listRepositoryMemory(campaign.campaign, signal).then((manifest) => {
-        if (signal.aborted) return;
-        if (!manifest) {
-          details.replaceWith(disabledRow());
-          return;
-        }
-        const warning = renderOmissionWarning(manifest.omitted);
-        if (manifest.files.length === 0) {
-          details.replaceWith(disabledRow());
-          return;
-        }
-        /** @param {MemoryFile} entry @param {HTMLButtonElement} button */
-        const select = (entry, button) => {
-          selectedButton = button;
-          layout.dataset.memoryView = 'file';
-          mobileNavigation.open();
-          content.focus();
-          fileController?.abort();
-          fileController = new AbortController();
-          const abort = () => fileController?.abort();
-          signal.addEventListener('abort', abort, { once: true });
-          for (const selected of details.closest('.cao-memory-browser')?.querySelectorAll(
-            '.campaign-memory-file[aria-current="true"]'
-          ) ?? []) selected.removeAttribute('aria-current');
-          button.setAttribute('aria-current', 'true');
-          const fileBody = h(
-            'div',
-            { className: 'memory-file-body' },
-            renderLoadingMessage('Loading file...')
-          );
-          content.replaceChildren(
-            renderMemoryFileHeader(entry.path),
-            fileBody
-          );
-          const activeController = fileController;
-          readRepositoryMemoryFile(campaign.campaign, entry.path, activeController.signal).then((result) => {
-            if (!activeController.signal.aborted) {
-              fileBody.replaceChildren(h('pre', null, h('code', null, result.content)));
-            }
-          }).catch((error) => {
-            if (error?.name !== 'AbortError') {
-              fileBody.replaceChildren(renderEmptyMessage(
-                `Unable to load this memory file. ${errorMessage(error)}`,
-                { role: 'alert' }
-              ));
-            }
-          }).finally(() => signal.removeEventListener('abort', abort));
-        };
-        const tree = renderFileTree(manifest.files, select);
-        files.replaceChildren(
-          h('p', { className: 'campaign-memory-branch' },
-            h('strong', null, manifest.branch),
-            ` at ${manifest.commit.slice(0, 7)}`
-          ),
-          ...(warning ? [warning] : []),
-          tree
+      if (signal.aborted) return;
+      if (!manifest || manifest.files.length === 0) {
+        details.replaceWith(disabledRow());
+        return;
+      }
+      const warning = renderOmissionWarning(manifest.omitted);
+      /** @param {MemoryFile} entry @param {HTMLButtonElement} button */
+      const select = (entry, button) => {
+        selectedButton = button;
+        layout.dataset.memoryView = 'file';
+        mobileNavigation.open();
+        content.focus();
+        fileController?.abort();
+        fileController = new AbortController();
+        const abort = () => fileController?.abort();
+        signal.addEventListener('abort', abort, { once: true });
+        for (const selected of details.closest('.cao-memory-browser')?.querySelectorAll(
+          '.campaign-memory-file[aria-current="true"]'
+        ) ?? []) selected.removeAttribute('aria-current');
+        button.setAttribute('aria-current', 'true');
+        const fileBody = h(
+          'div',
+          { className: 'memory-file-body' },
+          renderLoadingMessage('Loading file...')
         );
+        content.replaceChildren(
+          renderMemoryFileHeader(entry.path),
+          fileBody
+        );
+        const activeController = fileController;
+        readRepositoryMemoryFile(campaign.campaign, entry.path, activeController.signal).then((result) => {
+          if (!activeController.signal.aborted) {
+            fileBody.replaceChildren(h('pre', null, h('code', null, result.content)));
+          }
+        }).catch((error) => {
+          if (error?.name !== 'AbortError') {
+            fileBody.replaceChildren(renderEmptyMessage(
+              `Unable to load this memory file. ${errorMessage(error)}`,
+              { role: 'alert' }
+            ));
+          }
+        }).finally(() => signal.removeEventListener('abort', abort));
+      };
+      const tree = renderFileTree(manifest.files, select);
+      files.replaceChildren(
+        h('p', { className: 'campaign-memory-branch' },
+          h('strong', null, manifest.branch),
+          ` at ${manifest.commit.slice(0, 7)}`
+        ),
+        ...(warning ? [warning] : []),
+        tree
+      );
       }).catch((error) => {
         if (error?.name !== 'AbortError') {
           files.replaceChildren(renderEmptyMessage(
