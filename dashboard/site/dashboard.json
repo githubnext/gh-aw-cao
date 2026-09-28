@@ -577,10 +577,6 @@
           {
             "field": "resolved-commit",
             "title": "Resolved commit"
-          },
-          {
-            "field": "package-contents",
-            "title": "Contents"
           }
         ]
       },

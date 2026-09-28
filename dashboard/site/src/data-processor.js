@@ -301,6 +301,30 @@ export function listRepositoryMemory(campaign, signal) {
 }
 
 /**
+ * Lists registered campaigns' repository-memory files with one static manifest request.
+ * @param {string[]} campaigns
+ * @param {AbortSignal} [signal]
+ * @returns {Promise<Array<{ branch: string, commit: string, files: Array<{path: string, oid: string, size: number}>, omitted: {fileLimit: number, fileSize: number, totalSize: number, extension: number, nesting: number, unsafePath: number, invalidContent: number, unsupportedType: number} } | null | {error: unknown}>>}
+ */
+export function listRepositoryMemoryCampaigns(campaigns, signal) {
+  if (usesRemoteDataBackend()) {
+    return Promise.all(campaigns.map((campaign) => queryRemoteRepositoryMemory(campaign, undefined, signal)
+      .catch((error) => ({ error }))));
+  }
+  return /** @type {Promise<Array<{ branch: string, commit: string, files: Array<{path: string, oid: string, size: number}>, omitted: {fileLimit: number, fileSize: number, totalSize: number, extension: number, nesting: number, unsafePath: number, invalidContent: number, unsupportedType: number} } | null>>} */ (processRequest(
+    {
+      operation: 'query-repository-memory',
+      action: 'list-campaigns',
+      campaigns,
+      memoryRoot: new URL('./memory/', document.baseURI).href,
+    },
+    () => Promise.reject(new Error('Repository memory requires a data worker.')),
+    false,
+    signal
+  ));
+}
+
+/**
  * Reads one published repository-memory file.
  * @param {string} campaign
  * @param {string} path

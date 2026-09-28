@@ -8,6 +8,35 @@ afterEach(() => {
 });
 
 describe('repository-memory worker protocol', () => {
+  it('lists all requested campaigns from one manifest without inventing missing entries', async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      version: 1,
+      campaigns: [{
+        campaign: 'available',
+        branch: 'memory/available',
+        commit: 'a'.repeat(40),
+        files: [{ path: 'notes.md', oid: 'b'.repeat(40), size: 5 }],
+        omitted: {},
+      }],
+    })));
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(processDataRequest({
+      operation: 'query-repository-memory',
+      action: 'list-campaigns',
+      campaigns: ['missing', 'available'],
+      memoryRoot: 'http://localhost:3000/memory/',
+    })).resolves.toMatchObject([null, { branch: 'memory/available', files: [{ path: 'notes.md' }] }]);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await expect(processDataRequest({
+      operation: 'query-repository-memory',
+      action: 'list-campaigns',
+      campaigns: ['invalid/id'],
+      memoryRoot: 'http://localhost:3000/memory/',
+    })).rejects.toThrow('Repository-memory campaign is invalid.');
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it('lists files and returns verified content from static memory data', async () => {
     vi.stubGlobal('crypto', webcrypto);
     const content = '# Memory\n';

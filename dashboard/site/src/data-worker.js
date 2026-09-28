@@ -268,7 +268,10 @@ async function boundedRepositoryMemoryContent(response) {
 
 /** @param {Record<string, unknown>} request @param {AbortSignal} [signal] */
 async function queryRepositoryMemory(request, signal) {
-  if (!REPOSITORY_MEMORY_CAMPAIGN_PATTERN.test(String(request.campaign ?? ''))) {
+  const campaignIds = request.action === 'list-campaigns' ? request.campaigns : [request.campaign];
+  if (!Array.isArray(campaignIds) || !campaignIds.every(
+    (campaign) => typeof campaign === 'string' && REPOSITORY_MEMORY_CAMPAIGN_PATTERN.test(campaign)
+  )) {
     throw new Error('Repository-memory campaign is invalid.');
   }
   if (typeof request.memoryRoot !== 'string') throw new Error('Repository-memory root is invalid.');
@@ -288,12 +291,16 @@ async function queryRepositoryMemory(request, signal) {
     throw new Error('Repository-memory manifest is invalid.');
   }
   validateRepositoryMemoryTotalSize(manifest.campaigns);
+  const findCampaign = (/** @type {string} */ campaignId) => {
+    const campaignValue = manifest.campaigns.find(
+      (/** @type {Record<string, unknown>} */ entry) => entry?.campaign === campaignId
+    );
+    return campaignValue ? repositoryMemoryCampaign(campaignValue, campaignId) : null;
+  };
+  if (request.action === 'list-campaigns') return campaignIds.map(findCampaign);
   const campaignId = String(request.campaign);
-  const campaignValue = manifest.campaigns.find(
-    (/** @type {Record<string, unknown>} */ entry) => entry?.campaign === campaignId
-  );
-  if (!campaignValue) return null;
-  const campaign = repositoryMemoryCampaign(campaignValue, campaignId);
+  const campaign = findCampaign(campaignId);
+  if (!campaign) return null;
   if (request.action === 'list') return campaign;
   if (request.action !== 'content') throw new Error('Repository-memory action is invalid.');
   const filePath = repositoryMemoryPath(request.path);
@@ -683,7 +690,7 @@ export function publishedPhasedActivityShards(hashes) {
 }
 
 /**
- * @param {{ id?: unknown, operation?: unknown, action?: unknown, campaign?: unknown, path?: unknown, memoryRoot?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, ingest?: unknown, pageId?: unknown, viewId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
+ * @param {{ id?: unknown, operation?: unknown, action?: unknown, campaign?: unknown, campaigns?: unknown, path?: unknown, memoryRoot?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, ingest?: unknown, pageId?: unknown, viewId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
  * @param {AbortSignal} [signal] cancels declarative query execution
  * @returns {unknown}
  */

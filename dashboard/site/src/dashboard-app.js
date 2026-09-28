@@ -19,9 +19,12 @@
         normalizeDashboardPageChunk,
         splitDashboardDocument,
       } from "./dashboard-chunks.js";
+      import { createDebug } from "./debug.js";
 
       /** @typedef {{ name?: string } & Record<string, unknown>} DashboardQueryDefinition */
       /** @typedef {{ 'language-version': string, dashboard: import('./presenter.js').PresentableDashboard }} DashboardSchema */
+
+      const debugDashboardApp = createDebug("dashboard-app");
 
       startConsoleLogCapture();
 
@@ -200,6 +203,7 @@
         let pendingChunk = dashboardPageChunkLoads.get(pageId);
         if (!pendingChunk) {
           const revision = dashboardSchemaRevision;
+          debugDashboardApp({ event: "page-chunk-fetch-start", pageId });
           pendingChunk = fetch(`./${chunkPath}`, { cache: "reload" })
             .then((response) => {
               if (!response.ok) throw new Error(`Unable to load dashboard page "${pageId}": ${response.status}`);
@@ -211,6 +215,19 @@
                 throw new DOMException("Dashboard definition changed while loading the page.", "AbortError");
               }
               return chunk;
+            })
+            .then((chunk) => {
+              debugDashboardApp({ event: "page-chunk-fetch-outcome", pageId, status: "success" });
+              return chunk;
+            })
+            .catch((error) => {
+              debugDashboardApp({
+                event: "page-chunk-fetch-outcome",
+                pageId,
+                status: "error",
+                errorName: error instanceof Error ? error.name : "unknown"
+              });
+              throw error;
             })
             .finally(() => {
               dashboardPageChunkLoads.delete(pageId);

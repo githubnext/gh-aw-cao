@@ -1,5 +1,5 @@
 import { h } from '../dom.js';
-import { listRepositoryMemory, readRepositoryMemoryFile } from '../data-processor.js';
+import { listRepositoryMemory, listRepositoryMemoryCampaigns, readRepositoryMemoryFile } from '../data-processor.js';
 import { createDebug } from '../debug.js';
 import { octicon } from '../octicons.js';
 import { effect, onCleanup, render, state } from '../reactive.js';
@@ -204,102 +204,87 @@ function renderCampaignTree(campaigns, signal) {
   );
   /** @type {AbortController | null} */
   let fileController = null;
-  const branches = campaigns.map((campaign, index) => {
-    const files = h('div', { className: 'cao-memory-tree-status', role: 'status' }, 'Expand to load files.');
+  /** @type {Array<(manifest: CampaignMemory | null) => void>} */
+  const showManifests = [];
+  /** @type {Array<(error: unknown) => void>} */
+  const showErrors = [];
+  const branches = campaigns.map((campaign) => {
+    const files = h('div', { className: 'cao-memory-tree-status', role: 'status' }, renderLoadingMessage('Loading repository memory...'));
     const details = /** @type {HTMLDetailsElement} */ (h(
       'details',
-      { className: 'cao-memory-campaign-branch', open: index === 0 },
+      { className: 'cao-memory-campaign-branch' },
       h('summary', { className: 'cao-memory-campaign' },
         octicon('file-directory-fill'),
         h('span', null, campaign.campaignName)
       ),
       files
     ));
-    let loaded = false;
-    let preloading = false;
+    const disabledRow = () => h('div', {
+      className: 'cao-memory-campaign cao-memory-campaign-disabled',
+      'aria-disabled': 'true',
+      title: 'No repository memory files are available for this campaign',
+    }, octicon('file-directory-fill'), h('span', null, campaign.campaignName));
 
-    const load = () => {
-      if (loaded || !details.open) return;
-      loaded = true;
-      files.replaceChildren(renderLoadingMessage('Loading repository memory...'));
-      listRepositoryMemory(campaign.campaign, signal).then((manifest) => {
-        if (signal.aborted) return;
-        if (!manifest) {
-          files.replaceChildren(renderEmptyMessage('No repository-memory branch has been published for this campaign.'));
-          return;
-        }
-        const warning = renderOmissionWarning(manifest.omitted);
-        if (manifest.files.length === 0) {
-          files.replaceChildren(
-            ...(warning ? [warning] : []),
-            renderEmptyMessage('The repository-memory branch contains no supported files.')
-          );
-          return;
-        }
-        /** @param {MemoryFile} entry @param {HTMLButtonElement} button */
-        const select = (entry, button) => {
-          selectedButton = button;
-          if (!preloading) {
-            layout.dataset.memoryView = 'file';
-            mobileNavigation.open();
-            content.focus();
-          }
-          fileController?.abort();
-          fileController = new AbortController();
-          const abort = () => fileController?.abort();
-          signal.addEventListener('abort', abort, { once: true });
-          for (const selected of details.closest('.cao-memory-browser')?.querySelectorAll(
-            '.campaign-memory-file[aria-current="true"]'
-          ) ?? []) selected.removeAttribute('aria-current');
-          button.setAttribute('aria-current', 'true');
-          const fileBody = h(
-            'div',
-            { className: 'memory-file-body' },
-            renderLoadingMessage('Loading file...')
-          );
-          content.replaceChildren(
-            renderMemoryFileHeader(entry.path),
-            fileBody
-          );
-          const activeController = fileController;
-          readRepositoryMemoryFile(campaign.campaign, entry.path, activeController.signal).then((result) => {
-            if (!activeController.signal.aborted) {
-              fileBody.replaceChildren(h('pre', null, h('code', null, result.content)));
-            }
-          }).catch((error) => {
-            if (error?.name !== 'AbortError') {
-              fileBody.replaceChildren(renderEmptyMessage(
-                `Unable to load this memory file. ${errorMessage(error)}`,
-                { role: 'alert' }
-              ));
-            }
-          }).finally(() => signal.removeEventListener('abort', abort));
-        };
-        const tree = renderFileTree(manifest.files, select);
-        files.replaceChildren(
-          h('p', { className: 'campaign-memory-branch' },
-            h('strong', null, manifest.branch),
-            ` at ${manifest.commit.slice(0, 7)}`
-          ),
-          ...(warning ? [warning] : []),
-          tree
+    showManifests.push((manifest) => {
+      if (signal.aborted) return;
+      if (!manifest || manifest.files.length === 0) {
+        details.replaceWith(disabledRow());
+        return;
+      }
+      const warning = renderOmissionWarning(manifest.omitted);
+      /** @param {MemoryFile} entry @param {HTMLButtonElement} button */
+      const select = (entry, button) => {
+        selectedButton = button;
+        layout.dataset.memoryView = 'file';
+        mobileNavigation.open();
+        content.focus();
+        fileController?.abort();
+        fileController = new AbortController();
+        const abort = () => fileController?.abort();
+        signal.addEventListener('abort', abort, { once: true });
+        for (const selected of details.closest('.cao-memory-browser')?.querySelectorAll(
+          '.campaign-memory-file[aria-current="true"]'
+        ) ?? []) selected.removeAttribute('aria-current');
+        button.setAttribute('aria-current', 'true');
+        const fileBody = h(
+          'div',
+          { className: 'memory-file-body' },
+          renderLoadingMessage('Loading file...')
         );
-        if (index === 0) {
-          preloading = true;
-          /** @type {HTMLButtonElement | null} */ (tree.querySelector('.campaign-memory-file'))?.click();
-          preloading = false;
-        }
-      }).catch((error) => {
-        if (error?.name !== 'AbortError') {
-          files.replaceChildren(renderEmptyMessage(
-            `Repository memory is unavailable. ${errorMessage(error)}`,
-            { role: 'alert' }
-          ));
-        }
-      });
-    };
-    details.addEventListener('toggle', load);
-    if (details.open) queueMicrotask(load);
+        content.replaceChildren(
+          renderMemoryFileHeader(entry.path),
+          fileBody
+        );
+        const activeController = fileController;
+        readRepositoryMemoryFile(campaign.campaign, entry.path, activeController.signal).then((result) => {
+          if (!activeController.signal.aborted) {
+            fileBody.replaceChildren(h('pre', null, h('code', null, result.content)));
+          }
+        }).catch((error) => {
+          if (error?.name !== 'AbortError') {
+            fileBody.replaceChildren(renderEmptyMessage(
+              `Unable to load this memory file. ${errorMessage(error)}`,
+              { role: 'alert' }
+            ));
+          }
+        }).finally(() => signal.removeEventListener('abort', abort));
+      };
+      const tree = renderFileTree(manifest.files, select);
+      files.replaceChildren(
+        h('p', { className: 'campaign-memory-branch' },
+          h('strong', null, manifest.branch),
+          ` at ${manifest.commit.slice(0, 7)}`
+        ),
+        ...(warning ? [warning] : []),
+        tree
+      );
+    });
+    showErrors.push((error) => {
+      files.replaceChildren(renderEmptyMessage(
+        `Repository memory is unavailable. ${errorMessage(error)}`,
+        { role: 'alert' }
+      ));
+    });
     return h('li', null, details);
   });
 
@@ -323,8 +308,17 @@ function renderCampaignTree(campaigns, signal) {
       content.focus();
     },
     showFiles,
-    signal
+    signal,
+    false
   );
+  listRepositoryMemoryCampaigns(campaigns.map(({ campaign }) => campaign), signal).then((manifests) => {
+    if (!signal.aborted) manifests.forEach((manifest, index) => {
+      if (manifest && 'error' in manifest) showErrors[index](manifest.error);
+      else showManifests[index](manifest);
+    });
+  }).catch((error) => {
+    if (!signal.aborted && error?.name !== 'AbortError') showErrors.forEach((showError) => showError(error));
+  });
   return layout;
 }
 
@@ -473,10 +467,17 @@ function renderMemoryFileHeader(path) {
  * @param {() => void} showFile
  * @param {(restoreFocus?: boolean) => void} showFiles
  * @param {AbortSignal} signal
+ * @param {boolean} [restoreFile]
  */
-function createMobileMemoryNavigation(root, scopeKey, parentPage, showFile, showFiles, signal) {
+function createMobileMemoryNavigation(root, scopeKey, parentPage, showFile, showFiles, signal, restoreFile = true) {
   const view = root.ownerDocument.defaultView;
   let active = view?.history.state?.[MOBILE_MEMORY_HISTORY_KEY] === scopeKey;
+  if (view && active && !restoreFile) {
+    const rest = { ...view.history.state };
+    delete rest[MOBILE_MEMORY_HISTORY_KEY];
+    view.history.replaceState(rest, '', view.location.href);
+    active = false;
+  }
   /** @param {string} navigationPage */
   const setParent = (navigationPage) => queueMicrotask(() => {
     if (!root.isConnected) return;
