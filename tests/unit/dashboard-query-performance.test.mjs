@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { runInNewContext } from "node:vm";
 import { parse } from "yaml";
 import config from "../playwright/configs/dashboard-query-performance.config.mjs";
 import {
@@ -46,6 +47,69 @@ test("deployed integration isolates query benchmark reporting from test permissi
   assert.match(workflow, /pattern: dashboard-query-performance-\*/);
   assert.match(workflow, /scripts\/merge-dashboard-query-performance\.mjs/);
   assert.match(workflow, /dashboard-query-performance-results/);
+});
+
+test("query performance comment waits for the installation rate limit to reset", async () => {
+  const workflow = parse(readFileSync(deployedIntegrationWorkflowPath, "utf8"));
+  const script = workflow.jobs["query-performance-comment"].steps.find(
+    ({ name }) => name === "Comment with query performance results",
+  ).with.script;
+  const waits = [];
+  const calls = [];
+  let requests = 0;
+  const github = {
+    rest: {
+      issues: {
+        listComments() {},
+        async createComment(options) { calls.push(options); },
+      },
+    },
+    async paginate() {
+      requests++;
+      if (requests === 1) {
+        throw Object.assign(new Error("rate limit"), {
+          status: 403,
+          response: { headers: {
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": String(Math.ceil(Date.now() / 1000) + 2),
+          } },
+        });
+      }
+      return [];
+    },
+  };
+  const context = {
+    serverUrl: "https://github.com",
+    repo: { owner: "example", repo: "dashboard" },
+    issue: { number: 42 },
+    runId: 123,
+  };
+  await runInNewContext(`(async () => { ${script} })()`, {
+    require: () => ({ readFileSync: () => "benchmark results" }),
+    github,
+    context,
+    setTimeout(resolve, duration) { waits.push(duration); resolve(); },
+  });
+  assert.equal(requests, 2);
+  assert.equal(waits.length, 1);
+  assert.ok(waits[0] >= 1000);
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].body, /benchmark results/);
+
+  await assert.rejects(
+    runInNewContext(`(async () => { ${script} })()`, {
+      require: () => ({ readFileSync: () => "benchmark results" }),
+      github: {
+        ...github,
+        async paginate() {
+          throw Object.assign(new Error("permission denied"), { status: 403 });
+        },
+      },
+      context,
+      setTimeout() { assert.fail("permission errors must not be retried"); },
+    }),
+    /permission denied/,
+  );
 });
 
 test("deployed integration pull request trigger only watches query benchmark inputs", () => {
