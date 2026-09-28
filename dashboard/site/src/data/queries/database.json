@@ -19,6 +19,8 @@
       { "field": "icon", "as": "package-icon" },
       { "field": "artwork", "as": "package-artwork" },
       { "field": "contents", "as": "package-contents" },
+      { "field": "readme", "as": "package-readme" },
+      { "field": "readmePath", "as": "package-readme-path" },
       { "field": "sourceCoordinate", "as": "package-source" },
       { "field": "addCommand", "as": "add-command" },
       { "field": "observedAt", "as": "observed-at" }

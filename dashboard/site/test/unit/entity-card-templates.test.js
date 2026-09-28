@@ -23,7 +23,8 @@ describe('entity card templates', () => {
       'campaign',
       'operation',
       'marketplace-package-summary',
-      'marketplace-package'
+      'marketplace-package',
+      'marketplace-package-about'
     ]));
   });
 
@@ -38,10 +39,19 @@ describe('entity card templates', () => {
     });
     expect(templates['marketplace-package']).toMatchObject({
       icon: 'archive',
-      'detail-labels': 'visible',
+      'icon-field': 'package-icon',
       title: { field: 'package-name' },
       subtitle: { field: 'package-description' },
       actions: [{ action: 'add-marketplace-package', context: ['package-source'] }]
+    });
+    expect(templates['marketplace-package-about']).toMatchObject({
+      icon: 'info',
+      'detail-labels': 'visible',
+      title: { field: 'package-description' },
+      details: expect.arrayContaining([
+        { field: 'publisher', title: 'By' },
+        { field: 'package-contents', title: 'Contents' }
+      ])
     });
   });
 
@@ -65,14 +75,26 @@ describe('entity card templates', () => {
       route: { 'hash-query-parameter': 'package-source', 'navigation-page': 'marketplace' }
     });
     expect(pages['marketplace-package'].views[0]).toMatchObject({
-      list: { icon: 'archive', card: 'marketplace-package' }
+      list: { icon: 'archive', appearance: 'marketplace', card: 'marketplace-package' }
     });
+    expect(pages['marketplace-package'].views[1]).toMatchObject({
+      element: 'markdown',
+      config: { 'content-field': 'package-readme', 'path-field': 'package-readme-path' }
+    });
+    expect(pages['marketplace-package'].views[2]).toMatchObject({
+      list: { card: 'marketplace-package-about' }
+    });
+    expect(pages['marketplace-package'].sections.map(
+      (/** @type {Record<string, any>} */ section) => [section.id, section.layout]
+    )).toEqual([['package', 'full'], ['readme', 'wide'], ['about', 'narrow']]);
   });
 
   it('declares the marketplace action as copy-only', () => {
     expect(dashboard['cli-actions'].find(
       (/** @type {Record<string, any>} */ action) => action.id === 'add-marketplace-package'
     )).toMatchObject({
+      label: 'Add',
+      icon: 'plus',
       command: './cao.sh add {{package-source}}',
       placement: 'row',
       'copy-only': true

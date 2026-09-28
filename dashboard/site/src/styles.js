@@ -284,6 +284,18 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .entity-card-list-marketplace .issue-list-labels { grid-column: 2; justify-content: flex-start; }
 .entity-card-list-marketplace .entity-card-list-chevron { grid-column: 3; grid-row: 1; align-self: center; }
 .entity-card-list-marketplace .entity-card-list-actions { grid-column: 2; margin-top: 0; }
+.marketplace-detail-page .custom-view { border: 0; background: transparent; box-shadow: none; }
+.marketplace-detail-page .custom-view > header { padding-inline: 0; }
+.marketplace-detail-page .layout-section { padding: 0; border: 0; background: transparent; }
+.marketplace-detail-page .layout-section[data-section-layout="full"] > .layout-section-header { display: none; }
+.marketplace-detail-page .entity-card-list-marketplace .entity-card-list-card { min-height: 0; align-items: center; }
+.marketplace-detail-page .entity-card-list-marketplace .issue-list-card-title { color: var(--fg); font-size: 1.5rem; font-weight: 600; }
+.marketplace-detail-page .entity-card-list-marketplace .entity-card-list-actions { grid-column: 3; grid-row: 1 / span 2; align-self: center; margin: 0; }
+.marketplace-detail-page .entity-card-list-actions .table-cli-action-button { min-height: 36px; padding: 6px 18px; border-color: var(--accent); background: var(--accent); color: var(--canvas); font-weight: 600; }
+.marketplace-detail-page .entity-card-list-actions .table-cli-action-button:hover { filter: brightness(1.08); }
+.marketplace-detail-page .entity-card-list-actions .table-cli-action-button .cli-action-trigger-copy strong { font-size: .875rem; }
+.marketplace-detail-page .dashboard-markdown { padding: 24px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
+.marketplace-detail-page .entity-card-list-grouped { border-radius: 6px; }
 .entity-card-list-chevron { display: flex; align-items: center; color: var(--muted); }
 .entity-card-list-chevron .octicon { width: 14px; height: 14px; }
 .link-button-list-view { display: grid; gap: 12px; }
@@ -2455,6 +2467,8 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .entity-card-list-marketplace .issue-list-card-icon { width: 40px; height: 40px; }
   .entity-card-list-marketplace .issue-list-labels, .entity-card-list-marketplace .entity-card-list-actions { grid-column: 2; }
   .entity-card-list-marketplace .entity-card-list-chevron { display: none; }
+  .marketplace-detail-page .entity-card-list-marketplace .entity-card-list-actions { grid-column: 2; grid-row: auto; margin-top: 12px; }
+  .marketplace-detail-page .dashboard-markdown { padding: 16px; }
   .outcome-meta { grid-template-columns: 1fr; }
   .problem-view-header { align-items: stretch; flex-direction: column; }
   .problem-view-highlights { grid-template-columns: 1fr; }
