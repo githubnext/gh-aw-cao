@@ -1,6 +1,6 @@
 {
-  "source_sha": "0a58c1dfdef0d5eb96c626e42ba35af56429cdd3",
-  "next_category": "Astro documentation generation",
+  "source_sha": "d48a580c68a733a0f00339cf60a8cd233294ba3e",
+  "next_category": "dependency installation and caching",
   "evaluations": [
     {
       "evaluated_at": "2026-09-28T12:05:00Z",
@@ -672,6 +672,21 @@
         36485576804
       ],
       "outcome": "incomplete: the latest 20 completed docs.yml runs in the last 14 days contained only 4 comparable successful runs with a successful build job (36492101241, 36488247559, 36488240917, 36487614023). The remaining completed runs were freshness-only scheduled successes or skipped/action_required workflow_run runs, so the required minimum of five comparable successful runs was not met. Because the task requires at least five comparable successful docs runs before computing bounded medians/p90s and issuing a recommendation, no safe actionable improvement was evaluated in this cycle."
+    },
+    {
+      "evaluated_at": "2026-09-28T23:30:00Z",
+      "worker_run_id": 36497724813,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36497706349,
+        36496814464,
+        36496051788,
+        36495934799,
+        36495750672,
+        36496696511,
+        36495934699
+      ],
+      "outcome": "no-op: evaluated scheduling, concurrency, and avoidable rebuilds across 5 comparable successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days, disclosing 15 excluded completed docs runs (10 action_required workflow_run runs and 5 skipped workflow_run runs). Evidence window 2026-09-28T23:01:35Z to 2026-09-28T23:24:16Z. docs.yml workflow execution median was 49.0s (p90 87.2s), queue-to-build-start median 3.0s (p90 4.6s), build median 44.0s (p90 45.2s), and deploy median 0.0s (p90 23.0s because only one of the comparable successful runs published). Trusted step metadata showed Restore node_modules median 6.0s, Build documentation median 12.0s, Restore cached CAO Dashboard median 2.0s, and Upload Pages artifact median 4.0s; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on every successful docs build, confirming stable cache hits from trusted metadata. Comparable successful cao-dashboard.yml runs 36496696511 and 36495934699 showed workflow durations of 74-75s, build durations of 55-60s, and cache-job durations of 6-14s, with trusted logs confirming each build copied inventory-sources.json (1.1 MiB), gh-aw-logs.sqlite (165.8-166.2 MiB), and 52 activity shards (112.8-113.0 MiB) before upload, then the separate cache job re-downloaded the just-built artifact and rewrote the constant central-agentic-ops-dashboard cache. However, that optimization is already represented by the existing open issue subject [cao] CAO Dashboard workflow failure for the current dashboard breakage and by prior recorded reusable-dashboard-generation and scheduling suggestion fingerprints; the bounded sample here does not materially change the source or timing evidence or support a second distinct issue above the threshold."
     }
   ]
 }
