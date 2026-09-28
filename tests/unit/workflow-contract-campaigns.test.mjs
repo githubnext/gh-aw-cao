@@ -194,7 +194,13 @@ test("campaign manifests exclude repository-only tests", () => {
 });
 
 test("activity and dashboard campaigns include every local JavaScript dependency", () => {
-  const bundled = new Set(["activity", "dashboard"].flatMap((directory) => JavaScriptFiles(join(root, directory))));
+  const rootResources = parse(readFileSync(join(root, "aw.yml"), "utf8")).resources
+    .map(({ source }) => source)
+    .filter((source) => /\.(?:c|m)?js$/.test(source));
+  const bundled = new Set([
+    ...["activity", "dashboard"].flatMap((directory) => JavaScriptFiles(join(root, directory))),
+    ...rootResources.map((source) => realpathSync(join(root, source))),
+  ]);
 
   const pending = [...bundled];
   const visited = new Set();

@@ -609,7 +609,11 @@ test("gh aw update replaces workflows and restores campaign-owned assets after c
   try {
     const orchestratorPath = join(consumer, ".github", "workflows", "dependabot.md");
     const orchestrator = readFileSync(orchestratorPath, "utf8");
-    writeFileSync(orchestratorPath, `${orchestrator}\n# local integration-test change\n`);
+    writeFileSync(orchestratorPath, `${orchestrator.replace(/^source: .*$/m, `source: ${campaignSource}`)}\n# local integration-test change\n`);
+
+    const plannerPath = join(consumer, ".github", "workflows", "dependabot-update-planner.md");
+    const planner = readFileSync(plannerPath, "utf8");
+    writeFileSync(plannerPath, planner.replace(/^source: .*$/m, `source: ${campaignSource}`));
 
     const removedFiles = [
       "dependabot/operational-value.mjs",
