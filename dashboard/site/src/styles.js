@@ -272,16 +272,16 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .marketplace-page .custom-view > header { padding-inline: 0; }
 .marketplace-page .document-list-header { padding: 0 0 16px; }
 .entity-card-list-marketplace { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 16px; border: 0; background: transparent; }
-.entity-card-list-marketplace .entity-card-list-card { position: relative; min-height: 220px; grid-template-columns: minmax(0, 1fr); align-content: start; justify-items: center; gap: 8px; padding: 32px 20px 24px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); text-align: center; }
+.entity-card-list-marketplace .entity-card-list-card { min-height: 220px; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; align-content: start; justify-items: center; gap: 8px; padding: 12px 20px 24px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); text-align: center; }
 .entity-card-list-marketplace .entity-card-list-card:has([data-card-drill]):hover { border-color: var(--accent); background: var(--canvas-subtle); }
-.entity-card-list-marketplace .issue-list-card-icon { width: 56px; height: 56px; display: grid; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--canvas-subtle); color: var(--fg); }
+.entity-card-list-marketplace .issue-list-card-icon { grid-row: 2; width: 56px; height: 56px; display: grid; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--canvas-subtle); color: var(--fg); }
 .entity-card-list-marketplace .issue-list-card-icon .octicon { width: 28px; height: 28px; }
-.entity-card-list-marketplace .issue-list-card-content { display: grid; justify-items: center; gap: 6px; }
+.entity-card-list-marketplace .issue-list-card-content { grid-row: 3; display: grid; justify-items: center; gap: 6px; }
 .entity-card-list-marketplace .issue-list-card-title { color: var(--fg); font-size: 1rem; }
 .entity-card-list-marketplace .issue-list-card-subtitle { max-width: 36ch; color: var(--muted); font-size: .875rem; line-height: 1.5; }
 .entity-card-list-marketplace .issue-list-card-meta { justify-content: center; margin-top: 4px; color: var(--muted); }
 .entity-card-list-marketplace .issue-list-card-meta dt { text-transform: none; }
-.entity-card-list-marketplace .issue-list-labels { position: absolute; top: 12px; right: 12px; margin: 0; justify-content: flex-end; }
+.entity-card-list-marketplace .issue-list-labels { grid-row: 1; max-width: 100%; margin: 0; justify-self: end; justify-content: flex-end; }
 .entity-card-list-marketplace .entity-card-list-chevron { display: none; }
 .entity-card-list-chevron { display: flex; align-items: center; color: var(--muted); }
 .entity-card-list-chevron .octicon { width: 14px; height: 14px; }
@@ -2451,7 +2451,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .entity-card-list-timing { grid-column: 2; }
   .marketplace-page > .page-chrome { padding: 28px 20px; border-radius: 8px; }
   .entity-card-list-marketplace { grid-template-columns: 1fr; gap: 12px; }
-  .entity-card-list-marketplace .entity-card-list-card { min-height: 0; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 24px 16px 20px; }
+  .entity-card-list-marketplace .entity-card-list-card { min-height: 0; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 12px 16px 20px; }
   .entity-card-list-marketplace .issue-list-card-icon { width: 48px; height: 48px; }
   .entity-card-list-marketplace .issue-list-card-icon .octicon { width: 24px; height: 24px; }
   .outcome-meta { grid-template-columns: 1fr; }
