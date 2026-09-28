@@ -12,7 +12,7 @@
       { "field": "description", "as": "package-description" },
       { "field": "publisher" },
       { "field": "repository" },
-      { "field": "repository-link" },
+      { "field": "repositoryLink", "as": "repository-link" },
       { "field": "path" },
       { "field": "ref", "as": "package-ref" },
       { "field": "resolvedCommit", "as": "resolved-commit" },

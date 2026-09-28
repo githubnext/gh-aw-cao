@@ -1247,7 +1247,7 @@
           "id": "marketplace-package-about",
           "title": "About",
           "data": {
-            "source": "marketplace-package-detail",
+            "sources": ["marketplace-package-detail"],
             "arguments": [
               {
                 "name": "package-source",
@@ -1264,8 +1264,7 @@
             "fallback-icon": "archive",
             "empty-message": "No related materials are available."
           },
-          "layout": "full",
-          "empty-message": "The selected package is unavailable."
+          "layout": "full"
         }
       ],
       "sections": [
