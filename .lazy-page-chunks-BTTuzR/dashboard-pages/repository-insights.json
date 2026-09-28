@@ -1,0 +1,383 @@
+{
+  "page": {
+    "id": "repository-insights",
+    "kind": "custom",
+    "title": "Repository",
+    "description": "Execution health observed for the workflows in this repository.",
+    "icon": "graph",
+    "class-name": "repository-insights-page",
+    "route": {
+      "hash-query-parameter": "repository",
+      "navigation-page": "repositories",
+      "tab": "insights",
+      "tabs": [
+        {
+          "id": "overview",
+          "label": "Overview",
+          "icon": "repo",
+          "page": "repository-detail"
+        },
+        {
+          "id": "insights",
+          "label": "Insights",
+          "icon": "graph",
+          "page": "repository-insights"
+        },
+        {
+          "id": "workflows",
+          "label": "Workflows",
+          "icon": "workflow",
+          "page": "repository-workflow-inventory"
+        },
+        {
+          "id": "runs",
+          "label": "Runs",
+          "icon": "play",
+          "page": "repository-runs"
+        },
+        {
+          "id": "settings",
+          "label": "Settings",
+          "icon": "gear",
+          "page": "repository-settings"
+        }
+      ]
+    },
+    "views": [
+      {
+        "id": "repository-run-health",
+        "title": "Run health trend",
+        "description": "Daily run conclusions show this repository's execution health at a glance.",
+        "data": {
+          "source": "repository-runs",
+          "route-field": "repository-coordinate"
+        },
+        "mark": "chart",
+        "chart": "line",
+        "layout": "full",
+        "empty-message": "No runs have been observed for this repository.",
+        "encoding": {
+          "x": {
+            "field": "started-at",
+            "type": "temporal",
+            "format": "human-friendly-timestamp",
+            "time-unit": "day"
+          },
+          "y": {
+            "field": "run",
+            "type": "quantitative",
+            "aggregate": "count"
+          },
+          "color": {
+            "field": "run-conclusion",
+            "type": "nominal"
+          }
+        }
+      }
+    ]
+  },
+  "queries": [
+    {
+      "name": "maintenance-repository-versions",
+      "intent": "Group installed and current gh-aw compiler versions and upgrade evidence by repository.",
+      "from": "workflows",
+      "filter": {
+        "predicates": [
+          {
+            "field": "workflow",
+            "includes": ".md"
+          }
+        ]
+      },
+      "compute": [
+        {
+          "as": "repository-coordinate",
+          "function": "concat",
+          "args": [
+            {
+              "field": "organization"
+            },
+            {
+              "value": "/"
+            },
+            {
+              "field": "repository"
+            }
+          ]
+        },
+        {
+          "as": "update-available",
+          "function": "equals-any",
+          "args": [
+            {
+              "field": "gh-aw-update-state"
+            },
+            {
+              "value": "update-available"
+            }
+          ]
+        },
+        {
+          "as": "upgrade-state-unknown",
+          "function": "equals-any",
+          "args": [
+            {
+              "field": "gh-aw-update-state"
+            },
+            {
+              "value": "unknown"
+            }
+          ]
+        },
+        {
+          "as": "upgrade-state-unknown-value",
+          "function": "if",
+          "args": [
+            {
+              "field": "upgrade-state-unknown"
+            },
+            {
+              "value": 1
+            },
+            {
+              "value": 0
+            }
+          ]
+        },
+        {
+          "as": "upgrade-required-value",
+          "function": "if",
+          "args": [
+            {
+              "field": "update-available"
+            },
+            {
+              "value": 1
+            },
+            {
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "aggregate": {
+        "by": [
+          "repository-coordinate"
+        ],
+        "values": [
+          {
+            "field": "gh-aw-version",
+            "as": "gh-aw-version",
+            "reducer": "distinct-list"
+          },
+          {
+            "field": "gh-aw-current-version",
+            "as": "gh-aw-current-version",
+            "reducer": "distinct-list"
+          },
+          {
+            "field": "upgrade-required-value",
+            "as": "upgrade-required",
+            "reducer": "max"
+          },
+          {
+            "field": "upgrade-state-unknown-value",
+            "as": "upgrade-state-unknown",
+            "reducer": "max"
+          }
+        ]
+      }
+    },
+    {
+      "name": "maintenance-repositories",
+      "intent": "List each repository with compiler versions and an explicit upgrade recommendation.",
+      "from": "maintenance-repository-versions",
+      "compute": [
+        {
+          "as": "should-upgrade",
+          "function": "equals-any",
+          "args": [
+            {
+              "field": "upgrade-required"
+            },
+            {
+              "value": 1
+            }
+          ]
+        },
+        {
+          "as": "upgrade-status-unavailable",
+          "function": "equals-any",
+          "args": [
+            {
+              "field": "upgrade-state-unknown"
+            },
+            {
+              "value": 1
+            }
+          ]
+        },
+        {
+          "as": "current-or-unavailable",
+          "function": "if",
+          "args": [
+            {
+              "field": "upgrade-status-unavailable"
+            },
+            {
+              "value": "Upgrade status unavailable"
+            },
+            {
+              "value": "Current"
+            }
+          ]
+        },
+        {
+          "as": "upgrade-state",
+          "function": "if",
+          "args": [
+            {
+              "field": "should-upgrade"
+            },
+            {
+              "value": "Upgrade recommended"
+            },
+            {
+              "field": "current-or-unavailable"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "repository-coordinate",
+          "as": "repository"
+        },
+        {
+          "field": "gh-aw-version"
+        },
+        {
+          "field": "gh-aw-current-version"
+        },
+        {
+          "field": "upgrade-required"
+        },
+        {
+          "field": "upgrade-state"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "repository",
+          "direction": "asc"
+        }
+      ]
+    },
+    {
+      "name": "maintenance-campaign-updates",
+      "intent": "Expose at most one CAO package update row for the Updates navigation indicator.",
+      "from": "campaigns",
+      "filter": {
+        "predicates": [
+          {
+            "field": "campaign-update-state",
+            "equals": "update-available"
+          }
+        ]
+      },
+      "select": [
+        {
+          "field": "campaign-update-state"
+        }
+      ],
+      "limit": 1
+    },
+    {
+      "name": "maintenance-repository-upgrades",
+      "intent": "Expose at most one gh-aw compiler upgrade row for the Updates navigation indicator.",
+      "from": "maintenance-repositories",
+      "filter": {
+        "predicates": [
+          {
+            "field": "upgrade-required",
+            "equals": 1
+          }
+        ]
+      },
+      "select": [
+        {
+          "field": "upgrade-required"
+        }
+      ],
+      "limit": 1
+    },
+    {
+      "name": "repository-runs",
+      "intent": "Project canonical runs into repository-addressable run evidence.",
+      "description": "Workflow runs with a stable repository route key.",
+      "from": "runs",
+      "compute": [
+        {
+          "as": "repository-coordinate",
+          "function": "concat",
+          "args": [
+            {
+              "field": "organization"
+            },
+            {
+              "value": "/"
+            },
+            {
+              "field": "repository"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "repository-coordinate"
+        },
+        {
+          "field": "workflow"
+        },
+        {
+          "field": "run"
+        },
+        {
+          "field": "run-title"
+        },
+        {
+          "field": "event"
+        },
+        {
+          "field": "started-at"
+        },
+        {
+          "field": "run-status"
+        },
+        {
+          "field": "run-conclusion"
+        },
+        {
+          "field": "rollout-mode"
+        },
+        {
+          "field": "aic-total"
+        },
+        {
+          "field": "run-link"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "started-at",
+          "direction": "desc"
+        },
+        {
+          "field": "run",
+          "direction": "desc"
+        }
+      ]
+    }
+  ]
+}

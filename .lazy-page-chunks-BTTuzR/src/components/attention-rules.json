@@ -1,0 +1,74 @@
+[
+  {
+    "id": "control-policy-unavailable",
+    "metric": "control-policy-unavailable",
+    "icon": "shield",
+    "tone": "danger",
+    "title": "Control policy resolution unavailable",
+    "detail": "{{reason}}"
+  },
+  {
+    "id": "admission-blocked",
+    "metric": "admission-blocked",
+    "icon": "shield",
+    "tone": "danger",
+    "title": "{{count}} workflow{{count:suffix::s}} blocked by admission",
+    "detail": "{{list}}"
+  },
+  {
+    "id": "api-capacity-blocked",
+    "metric": "api-capacity-blocked",
+    "icon": "meter",
+    "tone": "danger",
+    "title": "{{count}} run{{count:suffix::s}} blocked by GitHub API capacity",
+    "detail": "{{detail}}"
+  },
+  {
+    "id": "failed-runs",
+    "metric": "runs-failed",
+    "icon": "issue",
+    "tone": "danger",
+    "title": "{{count}} failed run{{count:suffix::s}}",
+    "detail": "Across {{repositories}} repositor{{repositories:suffix:y:ies}} in the current window"
+  },
+  {
+    "id": "approval-required",
+    "metric": "runs-approval",
+    "icon": "shield",
+    "tone": "attention",
+    "title": "{{count}} run{{count:suffix::s}} awaiting approval",
+    "detail": "A maintainer must approve execution in GitHub Actions"
+  },
+  {
+    "id": "disabled-workflows",
+    "metric": "disabled-workflows",
+    "icon": "eye",
+    "tone": "attention",
+    "title": "{{count}} disabled workflow{{count:suffix::s}}",
+    "detail": "Repository-owned workflows not currently active"
+  },
+  {
+    "id": "campaign-gaps",
+    "metric": "campaign-gaps",
+    "icon": "goal",
+    "tone": "attention",
+    "title": "{{count}} campaign inventory gap{{count:suffix::s}}",
+    "detail": "An orchestrator, worker, or active workflow is missing"
+  },
+  {
+    "id": "open-findings",
+    "metric": "open-findings",
+    "icon": "issue",
+    "tone": "attention",
+    "title": "{{count}} open finding{{count:suffix::s}}",
+    "detail": "Durable operational findings are ready for follow-up"
+  },
+  {
+    "id": "coverage-gaps",
+    "metric": "coverage-gaps",
+    "icon": "meter",
+    "tone": "attention",
+    "title": "Coverage needs context",
+    "detail": "{{list}} telemetry is partial, stale, or unavailable"
+  }
+]

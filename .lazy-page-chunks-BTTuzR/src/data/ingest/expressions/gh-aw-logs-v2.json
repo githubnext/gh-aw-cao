@@ -1,0 +1,48 @@
+{
+  "contract": "gh-aw-cao.jsonl-ingestion",
+  "version": 1,
+  "source": "gh-aw-logs",
+  "sourceSchemaVersion": 2,
+  "variants": {
+    "workflow_runs": {
+      "payloadPath": "payload",
+      "emits": ["repository", "workflow", "run"],
+      "identity": ["databaseId", "attempt"]
+    },
+    "run": {
+      "payloadPath": "run",
+      "emits": ["repository", "workflow", "run", "domain", "tool", "skill", "friction", "audit", "issue"],
+      "identity": ["run_id", "run_attempt"]
+    },
+    "token_efficiency_run_context": {
+      "payloadPath": "run",
+      "emits": ["repository", "workflow", "run", "domain", "tool", "skill", "friction", "audit", "issue"],
+      "identity": ["run_id", "run_attempt"]
+    },
+    "safe_output_item": {
+      "payloadPath": "safe_output",
+      "emits": ["issue", "audit"],
+      "identity": ["run_id", "type", "url", "timestamp"]
+    },
+    "token_efficiency_observation": {
+      "payloadPath": "observation",
+      "emits": ["audit"],
+      "identity": ["optimizerRunId", "runAttempt", "opportunityId", "interventionId"]
+    },
+    "token_efficiency_lifecycle_observation": {
+      "payloadPath": "observation",
+      "emits": ["audit"],
+      "identity": ["optimizerRunId", "lifecycleObservationId"]
+    },
+    "github_api_rate_limit": {
+      "payloadPath": "rate_limit",
+      "emits": ["audit"],
+      "requiresContext": ["repository", "workflow", "run", "observedAt"]
+    },
+    "operational_value": {
+      "payloadPath": "operational_value",
+      "emits": ["repository", "operational-value"],
+      "identity": ["repository", "value_id", "timestamp"]
+    }
+  }
+}

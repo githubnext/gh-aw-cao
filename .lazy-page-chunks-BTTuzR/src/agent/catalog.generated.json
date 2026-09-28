@@ -1,0 +1,3906 @@
+{
+  "dashboard": {
+    "id": "central-agentic-ops-dashboard",
+    "title": "Central Agentic Ops Dashboard"
+  },
+  "pages": [
+    {
+      "id": "steering",
+      "title": "Steering",
+      "description": "Gateway steering warnings injected when agentic runs approach their AI Credit budget, their time limit, or another declared limit.",
+      "experimental": true,
+      "parameters": [],
+      "queries": [
+        "steering-top-workflows",
+        "steering-type-totals",
+        "steering-workflows"
+      ]
+    },
+    {
+      "id": "firewall",
+      "title": "Firewall",
+      "description": "Observed firewall domains and accepted and blocked request totals for agent egress.",
+      "experimental": false,
+      "parameters": [],
+      "queries": [
+        "firewall-domain-totals",
+        "firewall-least-used-domains",
+        "firewall-most-blocked-domains"
+      ]
+    },
+    {
+      "id": "firewall-domain-workflows",
+      "title": "Workflows",
+      "description": "Workflows that allowed or blocked requests to the selected firewall domain.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "domain",
+          "required": true,
+          "description": "The domain this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The domain this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "firewall-domain-workflows"
+      ]
+    },
+    {
+      "id": "mcps",
+      "title": "MCP activity",
+      "description": "Diagnose MCP tool reliability across agentic workflow runs.",
+      "experimental": false,
+      "parameters": [],
+      "queries": [
+        "mcp-tool-totals",
+        "mcp-top-tools"
+      ]
+    },
+    {
+      "id": "repositories",
+      "title": "Repositories",
+      "description": "Repository-owned workflow health and AI Credit usage across the configured repository scope.",
+      "experimental": false,
+      "parameters": [],
+      "queries": [
+        "issue-repository-totals",
+        "repository-activity"
+      ]
+    },
+    {
+      "id": "repository-workflows",
+      "title": "Repository workflows",
+      "description": "Declared workflows for the selected repository.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "repository",
+          "required": true,
+          "description": "The repository this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The repository this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "entity-runs",
+        "entity-workflows"
+      ]
+    },
+    {
+      "id": "repository-detail",
+      "title": "Repository",
+      "description": "Observed workflow health and AI Credit usage for this repository.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "repository",
+          "required": true,
+          "description": "The repository this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The repository this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "repository-activity"
+      ]
+    },
+    {
+      "id": "repository-insights",
+      "title": "Repository",
+      "description": "Execution health observed for the workflows in this repository.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "repository",
+          "required": true,
+          "description": "The repository this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The repository this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "repository-runs"
+      ]
+    },
+    {
+      "id": "repository-workflow-inventory",
+      "title": "Repository",
+      "description": "Authored GitHub Agentic Workflows owned by this repository.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "repository",
+          "required": true,
+          "description": "The repository this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The repository this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "workflow-inventory"
+      ]
+    },
+    {
+      "id": "repository-runs",
+      "title": "Repository",
+      "description": "Observed GitHub Actions runs for the workflows in this repository.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "repository",
+          "required": true,
+          "description": "The repository this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The repository this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "repository-runs"
+      ]
+    },
+    {
+      "id": "repository-settings",
+      "title": "Repository",
+      "description": "Agentic workflow maintenance actions for this repository.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "repository",
+          "required": true,
+          "description": "The repository this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The repository this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "maintenance-repositories"
+      ]
+    },
+    {
+      "id": "workflow-detail",
+      "title": "Workflow",
+      "description": "Durable reports produced by this authored GitHub Agentic Workflow.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "workflow",
+          "required": true,
+          "description": "The workflow this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The workflow this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "workflow-reports"
+      ]
+    },
+    {
+      "id": "workflow-runs",
+      "title": "Workflow runs",
+      "description": "Observed GitHub Actions runs for this authored workflow.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "workflow",
+          "required": true,
+          "description": "The workflow this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The workflow this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "workflow-runs"
+      ]
+    },
+    {
+      "id": "workflow-run-cards",
+      "title": "Workflow runs",
+      "description": "Observed runs for the selected workflow.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "workflow",
+          "required": true,
+          "description": "The workflow this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The workflow this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "entity-events",
+        "entity-runs"
+      ]
+    },
+    {
+      "id": "workflow-runtime",
+      "title": "Workflow runtime",
+      "description": "Run health, AI Credit usage, and operational value for this authored workflow.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "workflow",
+          "required": true,
+          "description": "The workflow this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The workflow this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "workflow-runs"
+      ]
+    },
+    {
+      "id": "outcome-detail",
+      "title": "Outcome",
+      "description": "Published safe-output outcome details and provenance.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "outcome",
+          "required": true,
+          "description": "The outcome this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The outcome this page reports on."
+          }
+        }
+      ],
+      "queries": []
+    },
+    {
+      "id": "campaigns",
+      "title": "Campaigns",
+      "description": "Activity from centrally managed campaigns.",
+      "experimental": false,
+      "parameters": [],
+      "queries": [
+        "campaign-inventory"
+      ]
+    },
+    {
+      "id": "memory",
+      "title": "Memory",
+      "description": "Browse repository memory published by centrally managed campaigns.",
+      "experimental": true,
+      "parameters": [],
+      "queries": [
+        "campaign-memory-campaigns"
+      ]
+    },
+    {
+      "id": "campaign-detail",
+      "title": "Campaign",
+      "description": "Operational activity for this campaign.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "campaign",
+          "required": true,
+          "description": "The campaign this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The campaign this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "campaign-insight-tab-counts",
+        "campaign-issue-tab-counts",
+        "campaign-problem-tab-counts",
+        "campaign-readme-details"
+      ]
+    },
+    {
+      "id": "campaign-workflows",
+      "title": "Campaign",
+      "description": "Operational activity for this campaign.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "campaign",
+          "required": true,
+          "description": "The campaign this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The campaign this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "campaign-workflows"
+      ]
+    },
+    {
+      "id": "campaign-issues",
+      "title": "Campaign",
+      "description": "Operational activity for this campaign.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "campaign",
+          "required": true,
+          "description": "The campaign this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The campaign this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "campaign-insight-tab-counts",
+        "campaign-issue-tab-counts",
+        "campaign-problem-tab-counts",
+        "campaign-worker-issues"
+      ]
+    },
+    {
+      "id": "campaign-repositories",
+      "title": "Campaign",
+      "description": "Operational activity for this campaign.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "campaign",
+          "required": true,
+          "description": "The campaign this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The campaign this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "campaign-workflows"
+      ]
+    },
+    {
+      "id": "campaign-reports",
+      "title": "Campaign",
+      "description": "Operational activity for this campaign.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "campaign",
+          "required": true,
+          "description": "The campaign this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The campaign this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "campaign-reports"
+      ]
+    },
+    {
+      "id": "campaign-memory",
+      "title": "Campaign",
+      "description": "Repository memory published for this campaign.",
+      "experimental": true,
+      "parameters": [
+        {
+          "name": "campaign",
+          "required": true,
+          "description": "The campaign this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The campaign this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "campaign-insight-tab-counts",
+        "campaign-issue-tab-counts",
+        "campaign-problem-tab-counts"
+      ]
+    },
+    {
+      "id": "campaign-runs",
+      "title": "Campaign",
+      "description": "Operational activity for this campaign.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "campaign",
+          "required": true,
+          "description": "The campaign this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The campaign this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "campaign-insight-tab-counts",
+        "campaign-issue-tab-counts",
+        "campaign-problem-tab-counts",
+        "campaign-runs",
+        "dispatches"
+      ]
+    },
+    {
+      "id": "campaign-problems",
+      "title": "Campaign",
+      "description": "Operational activity for this campaign.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "campaign",
+          "required": true,
+          "description": "The campaign this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The campaign this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "campaign-insight-tab-counts",
+        "campaign-issue-tab-counts",
+        "campaign-problem-items",
+        "campaign-problem-tab-counts"
+      ]
+    },
+    {
+      "id": "campaign-problem-detail",
+      "title": "Problem",
+      "description": "Runtime failure details and repair guidance for a specific campaign problem.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "target-repository",
+          "required": true,
+          "description": "The target-repository this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The target-repository this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "campaign-problem-items"
+      ]
+    },
+    {
+      "id": "campaign-insights",
+      "title": "Campaign",
+      "description": "Operational activity for this campaign.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "campaign",
+          "required": true,
+          "description": "The campaign this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The campaign this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "audit-event-summary-buckets",
+        "campaign-insight-tab-counts",
+        "campaign-issue-tab-counts",
+        "campaign-operational-value-evidence-state",
+        "campaign-operational-value-primary-series",
+        "campaign-operational-value-run-days",
+        "campaign-performance-baseline",
+        "campaign-problem-tab-counts"
+      ]
+    },
+    {
+      "id": "workflows",
+      "title": "Workflows",
+      "description": "Inspect declared central campaign and repository-owned workflow relationships. This inventory does not assert that a dispatch occurred.",
+      "experimental": false,
+      "parameters": [],
+      "queries": [
+        "workflow-aic-per-run",
+        "workflow-inventory"
+      ]
+    },
+    {
+      "id": "runs",
+      "title": "Runs",
+      "description": "",
+      "experimental": false,
+      "parameters": [],
+      "queries": [
+        "runs-daily-conclusions",
+        "runs-table"
+      ]
+    },
+    {
+      "id": "issues",
+      "title": "Issues",
+      "description": "Retained GitHub issues created by agentic workflow safe outputs.",
+      "experimental": true,
+      "parameters": [],
+      "queries": [
+        "issue-repository-totals",
+        "issue-safe-outputs"
+      ]
+    },
+    {
+      "id": "run-events",
+      "title": "Run",
+      "description": "Observed events for the selected workflow run.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "run",
+          "required": true,
+          "description": "The run this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The run this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "entity-events"
+      ]
+    },
+    {
+      "id": "marketplace",
+      "title": "Marketplace",
+      "description": "Find campaign packages to extend your agentic operations.",
+      "experimental": true,
+      "parameters": [],
+      "queries": [
+        "marketplace-package-detail"
+      ]
+    },
+    {
+      "id": "marketplace-package",
+      "title": "Package",
+      "description": "Review normalized package metadata and copy the canonical CAO add command.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "package-source",
+          "required": true,
+          "description": "The package-source this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The package-source this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "marketplace-package-detail"
+      ]
+    },
+    {
+      "id": "indexing",
+      "title": "Indexing",
+      "description": "Monitor CAO Activity ingestion and inspect retained dashboard transactions.",
+      "experimental": true,
+      "parameters": [],
+      "queries": [
+        "indexing-daily-records",
+        "indexing-daily-workflow-runs",
+        "indexing-database-table-counts",
+        "indexing-transactions"
+      ]
+    },
+    {
+      "id": "skills",
+      "title": "Skills",
+      "description": "Analyze observed skill invocations and drill into the workflows that invoked them.",
+      "experimental": true,
+      "parameters": [],
+      "queries": [
+        "skill-invocations-by-skill",
+        "skill-invocations-by-workflow",
+        "skill-workflow-inventory"
+      ]
+    },
+    {
+      "id": "engines-models",
+      "title": "Models & Agents",
+      "description": "Compare observed agent and model combinations from workflow runs.",
+      "experimental": false,
+      "parameters": [],
+      "queries": [
+        "engines-models-usage"
+      ]
+    },
+    {
+      "id": "friction",
+      "title": "Friction",
+      "description": "Avoidable execution cost attributed by gh aw audit across observed workflow runs.",
+      "experimental": true,
+      "parameters": [],
+      "queries": [
+        "friction-by-workflow",
+        "friction-observations"
+      ]
+    },
+    {
+      "id": "operational-value",
+      "title": "Operational Value",
+      "description": "Computed package-defined operational value for each repository.",
+      "experimental": false,
+      "parameters": [],
+      "queries": []
+    },
+    {
+      "id": "maintenance",
+      "title": "Updates",
+      "description": "Review CAO campaign packages and gh-aw compiler versions. Active describes registration only; update confidence is reported separately. If version provenance is unknown, run CAO Activity to refresh inventory, then inspect Indexing diagnostics.",
+      "experimental": false,
+      "parameters": [],
+      "queries": [
+        "maintenance-repositories"
+      ]
+    },
+    {
+      "id": "configuration",
+      "title": "Settings",
+      "description": "Review and edit the entries in the checked-in .github/workflows/cao.json policy.",
+      "experimental": false,
+      "parameters": [],
+      "queries": []
+    },
+    {
+      "id": "overview",
+      "title": "Overview",
+      "description": "",
+      "experimental": false,
+      "parameters": [],
+      "queries": [
+        "overview-campaign-links",
+        "overview-campaign-station",
+        "overview-header-presentation",
+        "overview-repository-station",
+        "overview-rhythm"
+      ]
+    },
+    {
+      "id": "cost",
+      "title": "Cost",
+      "description": "Observed AI Credit cost across campaigns, repositories, and workflows.",
+      "experimental": false,
+      "parameters": [],
+      "queries": [
+        "cost-by-campaign",
+        "cost-by-repository",
+        "cost-by-workflow"
+      ]
+    },
+    {
+      "id": "domain-insights",
+      "title": "Domain",
+      "description": "Insights for the selected domain entity.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "domain",
+          "required": true,
+          "description": "The domain this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The domain this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "domain-entity-insights"
+      ]
+    },
+    {
+      "id": "domain-runs",
+      "title": "Domain",
+      "description": "Runs related to the selected domain entity.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "domain",
+          "required": true,
+          "description": "The domain this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The domain this page reports on."
+          }
+        }
+      ],
+      "queries": []
+    },
+    {
+      "id": "tool-insights",
+      "title": "Tool",
+      "description": "Insights for the selected tool entity.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "tool",
+          "required": true,
+          "description": "The tool this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The tool this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "mcp-tool-calls",
+        "tool-entity-insights"
+      ]
+    },
+    {
+      "id": "tool-runs",
+      "title": "Tool",
+      "description": "Runs related to the selected tool entity.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "tool",
+          "required": true,
+          "description": "The tool this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The tool this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "mcp-tool-calls"
+      ]
+    },
+    {
+      "id": "audit-insights",
+      "title": "Audit event",
+      "description": "Insights for the selected audit event entity.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "audit",
+          "required": true,
+          "description": "The audit this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The audit this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "audit-entity-insights"
+      ]
+    },
+    {
+      "id": "audit-runs",
+      "title": "Audit event",
+      "description": "Runs related to the selected audit event entity.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "audit",
+          "required": true,
+          "description": "The audit this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The audit this page reports on."
+          }
+        }
+      ],
+      "queries": []
+    }
+  ],
+  "queries": [
+    {
+      "id": "event-base",
+      "intent": "Reuse shared query stages for entity-events, event-runs",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "audits",
+        "domains",
+        "issues",
+        "tools"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "domains",
+          "issues",
+          "tools"
+        ]
+      }
+    },
+    {
+      "id": "event-runs",
+      "intent": "Identify each workflow run that has one or more imported run-owned records.",
+      "description": "Distinct workflow runs represented by imported domain, tool, audit, or issue records.",
+      "parameters": [],
+      "sources": [
+        "event-base"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "domains",
+          "issues",
+          "tools"
+        ]
+      }
+    },
+    {
+      "id": "run-import-status",
+      "intent": "Identify observed runs that have one or more imported run-owned records.",
+      "description": "Observed runs enriched with imported-record status.",
+      "parameters": [],
+      "sources": [
+        "event-runs",
+        "runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "domains",
+          "issues",
+          "runs",
+          "tools"
+        ]
+      }
+    },
+    {
+      "id": "workflow-run-totals",
+      "intent": "Summarize observed run counts and imported runs by declared workflow.",
+      "description": "Observed run and imported-run totals for each declared workflow.",
+      "parameters": [],
+      "sources": [
+        "run-import-status"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "domains",
+          "issues",
+          "runs",
+          "tools"
+        ]
+      }
+    },
+    {
+      "id": "workflow-aic-totals",
+      "intent": "Summarize observed AI Credit usage by declared workflow.",
+      "description": "Observed AI Credit totals for each declared workflow.",
+      "parameters": [],
+      "sources": [
+        "runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "mcp-tool-calls",
+      "intent": "Prepare MCP tool calls for aggregation while excluding calls to the safe outputs server.",
+      "description": "Observed MCP tool calls labeled with whether they belong to the internal safe outputs server.",
+      "parameters": [
+        {
+          "name": "tool",
+          "field": "mcp-tool-label"
+        }
+      ],
+      "sources": [
+        "mcp-calls"
+      ],
+      "used-by-pages": [
+        "tool-insights",
+        "tool-runs"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "mcp-calls"
+        ]
+      }
+    },
+    {
+      "id": "issue-safe-outputs",
+      "intent": "List retained GitHub issue safe outputs.",
+      "description": "Issue-only projection of retained safe-output items.",
+      "parameters": [],
+      "sources": [
+        "issues",
+        "runs"
+      ],
+      "used-by-pages": [
+        "issues"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "issues",
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "issue-repository-totals",
+      "intent": "Rank the ten repositories with the most retained GitHub issue safe outputs.",
+      "description": "Top repositories by retained issue safe-output count.",
+      "parameters": [],
+      "sources": [
+        "issue-safe-outputs"
+      ],
+      "used-by-pages": [
+        "issues",
+        "repositories"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "issues",
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "workflow-inventory",
+      "intent": "List declared workflows with their campaign, repository, configuration, and observed execution totals.",
+      "description": "Central campaign and repository-owned workflow inventory with observed execution totals.",
+      "parameters": [
+        {
+          "name": "repository",
+          "field": "repository"
+        }
+      ],
+      "sources": [
+        "workflow-aic-totals",
+        "workflow-run-totals",
+        "workflows"
+      ],
+      "used-by-pages": [
+        "repository-workflow-inventory",
+        "workflows"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "domains",
+          "issues",
+          "runs",
+          "tools",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "repository-aic-totals",
+      "intent": "Summarize observed AI Credit usage by repository.",
+      "description": "Observed AI Credit totals for each repository.",
+      "parameters": [],
+      "sources": [
+        "runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "maintenance-repository-versions",
+      "intent": "Group installed and current gh-aw compiler versions and upgrade evidence by repository.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "workflows"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "maintenance-repositories",
+      "intent": "List each repository with compiler versions and an explicit upgrade recommendation.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "repository",
+          "field": "repository"
+        }
+      ],
+      "sources": [
+        "maintenance-repository-versions"
+      ],
+      "used-by-pages": [
+        "maintenance",
+        "repository-settings"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "maintenance-campaign-updates",
+      "intent": "Expose at most one CAO package update row for the Updates navigation indicator.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "campaigns"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "campaigns"
+        ]
+      }
+    },
+    {
+      "id": "maintenance-repository-upgrades",
+      "intent": "Expose at most one gh-aw compiler upgrade row for the Updates navigation indicator.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "maintenance-repositories"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "run-incomplete-outcomes",
+      "intent": "Project retained report-incomplete terminal outcomes as concise run diagnoses.",
+      "description": "One retained incomplete-evidence diagnosis per workflow Run when the agent explicitly reported that required evidence or access was unavailable.",
+      "parameters": [],
+      "sources": [
+        "audits"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits"
+        ]
+      }
+    },
+    {
+      "id": "campaign-runs",
+      "intent": "Project workflow runs with campaign attribution and retained failure evidence.",
+      "description": "Canonical workflow runs joined to their declared campaign and workflow identity.",
+      "parameters": [
+        {
+          "name": "campaign",
+          "field": "campaign"
+        }
+      ],
+      "sources": [
+        "run-incomplete-outcomes",
+        "runs",
+        "workflows"
+      ],
+      "used-by-pages": [
+        "campaign-runs"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-runtime-health-runs",
+      "intent": "Project only the run and workflow fields required to classify current campaign runtime health.",
+      "description": "A bounded runtime-health input that excludes audit outcomes and presentation-only campaign run fields.",
+      "parameters": [],
+      "sources": [
+        "overview-runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "overview-runs"
+        ]
+      }
+    },
+    {
+      "id": "campaign-runtime-health-groups",
+      "intent": "Compute each campaign workflow and runtime repository's latest consecutive failure streak in the selected horizon.",
+      "description": "Current retained failure streaks grouped by campaign workflow and runtime repository, considering only concluded Runs so an in-flight retry cannot mask an active failure streak.",
+      "parameters": [],
+      "sources": [
+        "campaign-runtime-health-runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "overview-runs"
+        ]
+      }
+    },
+    {
+      "id": "campaign-runtime-problem-candidates",
+      "intent": "Mark campaign workflow and runtime repository partitions whose latest retained run streak is failing.",
+      "description": "Campaign runtime partitions annotated with whether their current retained streak contains failures.",
+      "parameters": [],
+      "sources": [
+        "campaign-runtime-health-groups"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "overview-runs"
+        ]
+      }
+    },
+    {
+      "id": "campaign-current-runtime-failures",
+      "intent": "Show only campaign workflow and runtime repository partitions whose latest retained run streak is failing.",
+      "description": "Campaign runtime partitions with one or more consecutive failures after their latest retained success.",
+      "parameters": [],
+      "sources": [
+        "campaign-runtime-problem-candidates"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "overview-runs"
+        ]
+      }
+    },
+    {
+      "id": "workflow-run-observation-counts",
+      "intent": "Count retained Runs for each workflow identity in the selected horizon.",
+      "description": "One row per organization, repository, and workflow with retained Run counts, safe to join without row multiplication.",
+      "parameters": [],
+      "sources": [
+        "overview-runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "overview-runs"
+        ]
+      }
+    },
+    {
+      "id": "campaign-active-orchestrator-run-presence",
+      "intent": "Count retained Runs for each active campaign orchestrator in the selected horizon.",
+      "description": "Active campaign orchestrators annotated with retained Run presence.",
+      "parameters": [],
+      "sources": [
+        "workflow-run-observation-counts",
+        "workflows"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "overview-runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-unobserved-orchestrator-candidates",
+      "intent": "Mark active campaign orchestrators with no retained Runs in the selected horizon.",
+      "description": "Active orchestrators annotated with whether runtime evidence is absent.",
+      "parameters": [],
+      "sources": [
+        "campaign-active-orchestrator-run-presence"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "overview-runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-unobserved-orchestrators",
+      "intent": "Show active campaign orchestrators with no retained Runs in the selected horizon.",
+      "description": "Active campaign orchestrators whose runtime state cannot be established from retained evidence.",
+      "parameters": [],
+      "sources": [
+        "campaign-unobserved-orchestrator-candidates"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "overview-runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-runtime-problems",
+      "intent": "Combine current runtime failures with active orchestrators that have no retained Run evidence.",
+      "description": "Current campaign runtime problems requiring investigation.",
+      "parameters": [],
+      "sources": [
+        "campaign-current-runtime-failures",
+        "campaign-unobserved-orchestrators"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "overview-runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "dispatches",
+      "intent": "Select workflow-dispatch runs from campaign-attributed workflow run evidence.",
+      "description": "Canonical workflow runs whose authoritative trigger is workflow_dispatch.",
+      "parameters": [
+        {
+          "name": "campaign",
+          "field": "campaign"
+        }
+      ],
+      "sources": [
+        "campaign-runs"
+      ],
+      "used-by-pages": [
+        "campaign-runs"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-dispatch-totals",
+      "intent": "Summarize observed workflow dispatches for each centrally managed campaign.",
+      "description": "Observed workflow-dispatch run totals grouped by campaign.",
+      "parameters": [],
+      "sources": [
+        "dispatches"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-workflow-totals",
+      "intent": "Summarize observed workflow and execution totals for each centrally managed campaign.",
+      "description": "Observed workflow, rollout, run, and AI Credit totals grouped by campaign.",
+      "parameters": [],
+      "sources": [
+        "workflow-inventory"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "domains",
+          "issues",
+          "runs",
+          "tools",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-repository-coverage",
+      "intent": "Count distinct registered target repositories reached by successful worker dispatches for each campaign.",
+      "description": "Campaign repository coverage derived from successful worker dispatch runs in the selected horizon.",
+      "parameters": [],
+      "sources": [
+        "repositories",
+        "runs",
+        "workflows"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "repositories",
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-inventory",
+      "intent": "List centrally managed campaigns with their observed workflow and execution totals.",
+      "description": "Canonical campaign inventory enriched with observed workflow, rollout, run, repository coverage, and AI Credit totals.",
+      "parameters": [],
+      "sources": [
+        "campaign-dispatch-totals",
+        "campaign-repository-coverage",
+        "campaign-workflow-totals",
+        "campaigns"
+      ],
+      "used-by-pages": [
+        "campaigns"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "campaigns",
+          "domains",
+          "issues",
+          "repositories",
+          "runs",
+          "tools",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "firewall-domain-totals",
+      "intent": "Show each observed firewall domain with the number of runs and total accepted and blocked requests.",
+      "description": "Distinct runs and accepted and blocked request totals by firewall domain.",
+      "parameters": [],
+      "sources": [
+        "firewall-observations"
+      ],
+      "used-by-pages": [
+        "firewall"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "firewall-observations"
+        ]
+      }
+    },
+    {
+      "id": "firewall-most-blocked-domains",
+      "intent": "Highlight the domains with the most blocked firewall requests.",
+      "description": "The ten domains with the highest observed blocked request totals.",
+      "parameters": [],
+      "sources": [
+        "firewall-domain-totals"
+      ],
+      "used-by-pages": [
+        "firewall"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "firewall-observations"
+        ]
+      }
+    },
+    {
+      "id": "firewall-least-used-domains",
+      "intent": "Highlight uncommon firewall domains observed in the fewest runs.",
+      "description": "The ten domains observed in the fewest distinct runs.",
+      "parameters": [],
+      "sources": [
+        "firewall-domain-totals"
+      ],
+      "used-by-pages": [
+        "firewall"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "firewall-observations"
+        ]
+      }
+    },
+    {
+      "id": "firewall-domain-workflows",
+      "intent": "Show workflows that allowed or blocked requests to each observed firewall domain.",
+      "description": "Workflow-level accepted and blocked request totals by firewall domain.",
+      "parameters": [
+        {
+          "name": "domain",
+          "field": "domain"
+        }
+      ],
+      "sources": [
+        "firewall-observations"
+      ],
+      "used-by-pages": [
+        "firewall-domain-workflows"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "firewall-observations"
+        ]
+      }
+    },
+    {
+      "id": "mcp-tool-totals",
+      "intent": "Group observed MCP activity by tool and count calls and calling workflows, excluding the internal safe outputs server.",
+      "description": "Observed MCP tool-call totals grouped by MCP server and tool, with the number of distinct calling workflows.",
+      "parameters": [],
+      "sources": [
+        "mcp-tool-calls"
+      ],
+      "used-by-pages": [
+        "mcps"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "mcp-calls"
+        ]
+      }
+    },
+    {
+      "id": "mcp-top-tools",
+      "intent": "Show the ten most frequently called MCP tools.",
+      "description": "The ten MCP tools with the most observed calls, excluding the internal safe outputs server.",
+      "parameters": [],
+      "sources": [
+        "mcp-tool-totals"
+      ],
+      "used-by-pages": [
+        "mcps"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "mcp-calls"
+        ]
+      }
+    },
+    {
+      "id": "steering-events",
+      "intent": "Prepare observed gateway steering warnings for aggregation by steering type and workflow.",
+      "description": "Gateway steering warnings emitted when a run approaches its AI Credit budget, time limit, or another declared limit, labelled with a readable steering type.",
+      "parameters": [],
+      "sources": [
+        "audits",
+        "workflows"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "steering-type-totals",
+      "intent": "Show how often each kind of steering warning occurred.",
+      "description": "Observed gateway steering warnings grouped by steering type with the number of affected runs and workflows.",
+      "parameters": [],
+      "sources": [
+        "steering-events"
+      ],
+      "used-by-pages": [
+        "steering"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "steering-workflow-totals",
+      "intent": "Count steering warnings for each workflow.",
+      "description": "Gateway steering warnings grouped by workflow, split into token-budget and time-limit warnings.",
+      "parameters": [],
+      "sources": [
+        "steering-events"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "steering-workflows",
+      "intent": "Present workflow steering totals with a link to each workflow dashboard.",
+      "description": "Workflow steering totals labelled with a link to the workflow runtime page.",
+      "parameters": [],
+      "sources": [
+        "steering-workflow-totals"
+      ],
+      "used-by-pages": [
+        "steering"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "steering-top-workflows",
+      "intent": "Highlight the workflows with the most steering warnings.",
+      "description": "The ten workflows with the highest observed gateway steering warning totals.",
+      "parameters": [],
+      "sources": [
+        "steering-workflows"
+      ],
+      "used-by-pages": [
+        "steering"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "entity-workflow-run-totals",
+      "intent": "Summarize run outcomes and AI Credit consumption for reusable workflow cards.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "entity-workflows",
+      "intent": "Project workflow entities for reusable workflow cards and repository drill-down.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "organization",
+          "field": "organization"
+        },
+        {
+          "name": "repository",
+          "field": "repository"
+        }
+      ],
+      "sources": [
+        "entity-workflow-run-totals",
+        "workflows"
+      ],
+      "used-by-pages": [
+        "repository-workflows"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "repository-runs",
+      "intent": "Project canonical runs into repository-addressable run evidence.",
+      "description": "Workflow runs with a stable repository route key.",
+      "parameters": [
+        {
+          "name": "repository",
+          "field": "repository-coordinate"
+        }
+      ],
+      "sources": [
+        "runs"
+      ],
+      "used-by-pages": [
+        "repository-insights",
+        "repository-runs"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "repository-workflow-totals",
+      "intent": "Summarize declared and disabled workflow counts by repository.",
+      "description": "Declared and disabled workflow totals for each repository.",
+      "parameters": [],
+      "sources": [
+        "workflows"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "repository-report-totals",
+      "intent": "Summarize published outcome report counts by repository.",
+      "description": "Published report totals for each repository.",
+      "parameters": [],
+      "sources": [
+        "outcomes"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "outcomes"
+        ]
+      }
+    },
+    {
+      "id": "repository-run-totals",
+      "intent": "Summarize distinct runs, failures, and approval-required runs by repository.",
+      "description": "Distinct run and conclusion totals for each repository.",
+      "parameters": [],
+      "sources": [
+        "run-import-status"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "domains",
+          "issues",
+          "runs",
+          "tools"
+        ]
+      }
+    },
+    {
+      "id": "repository-activity-core",
+      "intent": "Join each repository with its workflow, report, evaluation, and run totals.",
+      "description": "Repository inventory joined with workflow, report, evaluation, and run totals.",
+      "parameters": [],
+      "sources": [
+        "repositories",
+        "repository-report-totals",
+        "repository-run-totals",
+        "repository-workflow-totals"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "domains",
+          "issues",
+          "outcomes",
+          "repositories",
+          "runs",
+          "tools",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "repository-activity",
+      "intent": "Show repository-level execution health, outcome activity, and AI Credit usage in an actionable inventory.",
+      "description": "Repository-local execution health and attributed outcome totals.",
+      "parameters": [
+        {
+          "name": "repository",
+          "field": "repository"
+        }
+      ],
+      "sources": [
+        "repository-activity-core",
+        "repository-aic-totals"
+      ],
+      "used-by-pages": [
+        "repositories",
+        "repository-detail"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "domains",
+          "issues",
+          "outcomes",
+          "repositories",
+          "runs",
+          "tools",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "entity-runs",
+      "intent": "Project run entities for reusable run cards and workflow drill-down.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "organization",
+          "field": "organization"
+        },
+        {
+          "name": "repository",
+          "field": "repository"
+        },
+        {
+          "name": "workflow",
+          "field": "workflow"
+        }
+      ],
+      "sources": [
+        "runs"
+      ],
+      "used-by-pages": [
+        "repository-workflows",
+        "workflow-run-cards"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "workflow-runs",
+      "intent": "Project canonical runs into route-addressable workflow run evidence.",
+      "description": "Workflow runs with a stable repository and workflow route key.",
+      "parameters": [
+        {
+          "name": "workflow",
+          "field": "workflow-route"
+        }
+      ],
+      "sources": [
+        "runs"
+      ],
+      "used-by-pages": [
+        "workflow-runs",
+        "workflow-runtime"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "workflow-reports",
+      "intent": "Project retained outcomes into route-addressable workflow reports.",
+      "description": "Workflow outcome reports with stable route keys and disposition fields.",
+      "parameters": [
+        {
+          "name": "workflow",
+          "field": "workflow-route"
+        }
+      ],
+      "sources": [
+        "outcomes"
+      ],
+      "used-by-pages": [
+        "workflow-detail"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "outcomes"
+        ]
+      }
+    },
+    {
+      "id": "audit-event-summary-buckets",
+      "intent": "Aggregate high- and medium-severity audit events with the same severity and summary by workflow.",
+      "description": "High- and medium-severity audit event counts grouped by severity, workflow, and shared summary.",
+      "parameters": [
+        {
+          "name": "campaign",
+          "field": "campaign"
+        }
+      ],
+      "sources": [
+        "audits",
+        "tools",
+        "workflows"
+      ],
+      "used-by-pages": [
+        "campaign-insights"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "tools",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-workflows",
+      "intent": "List campaign-owned orchestrator and worker workflows with database-backed execution totals.",
+      "description": "Campaign workflows projected from the canonical workflow inventory.",
+      "parameters": [
+        {
+          "name": "campaign",
+          "field": "campaign"
+        }
+      ],
+      "sources": [
+        "workflow-inventory"
+      ],
+      "used-by-pages": [
+        "campaign-repositories",
+        "campaign-workflows"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "domains",
+          "issues",
+          "runs",
+          "tools",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-reports",
+      "intent": "Project retained outcomes into campaign-addressable report evidence.",
+      "description": "Campaign outcome reports with database-backed disposition fields.",
+      "parameters": [
+        {
+          "name": "campaign",
+          "field": "campaign"
+        }
+      ],
+      "sources": [
+        "outcomes"
+      ],
+      "used-by-pages": [
+        "campaign-reports"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "outcomes"
+        ]
+      }
+    },
+    {
+      "id": "campaign-worker-issues",
+      "intent": "Project issue outcomes created by campaign worker workflows.",
+      "description": "Campaign-addressable issue outcomes restricted to declared worker workflows.",
+      "parameters": [
+        {
+          "name": "campaign",
+          "field": "campaign"
+        }
+      ],
+      "sources": [
+        "outcomes",
+        "workflows"
+      ],
+      "used-by-pages": [
+        "campaign-issues"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "outcomes",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-issue-tab-counts",
+      "intent": "Count the retained worker issues available for each campaign Reports tab.",
+      "description": "One campaign row with the number of retained issue outcomes produced by campaign workers.",
+      "parameters": [
+        {
+          "name": "campaign",
+          "field": "campaign"
+        }
+      ],
+      "sources": [
+        "campaign-worker-issues"
+      ],
+      "used-by-pages": [
+        "campaign-detail",
+        "campaign-insights",
+        "campaign-issues",
+        "campaign-memory",
+        "campaign-problems",
+        "campaign-runs"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "outcomes",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-readme-orchestrators",
+      "intent": "Resolve one repository link for each campaign README from its declared orchestrator workflow.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "workflows"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-readme-details",
+      "intent": "Present retained campaign README content with its repository-relative link context.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "campaign",
+          "field": "campaign"
+        }
+      ],
+      "sources": [
+        "campaign-readme-orchestrators",
+        "campaigns"
+      ],
+      "used-by-pages": [
+        "campaign-detail"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "campaigns",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-memory-campaigns",
+      "intent": "Provide the registered campaigns whose repository memory can be browsed together.",
+      "description": "Registered campaigns ordered for the all-campaign repository-memory browser.",
+      "parameters": [],
+      "sources": [
+        "campaigns"
+      ],
+      "used-by-pages": [
+        "memory"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "campaigns"
+        ]
+      }
+    },
+    {
+      "id": "campaign-operational-value-repository-run-day-totals",
+      "intent": "Summarize concluded campaign run outcomes by repository and UTC day as aligned context for operational-value history.",
+      "description": "Daily repository success, failure, and other concluded-run counts for visual association only; these observations do not establish causation.",
+      "parameters": [],
+      "sources": [
+        "campaign-runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-operational-value-repository-run-days",
+      "intent": "Provide daily repository run outcomes as nearby context for operational-value observations.",
+      "description": "Repository success and failure counts for temporal proximity only, without converting run outcomes into operational value or implying causation.",
+      "parameters": [],
+      "sources": [
+        "campaign-operational-value-repository-run-day-totals"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-operational-value-run-day-totals",
+      "intent": "Summarize concluded campaign run outcomes by UTC day as aligned context for weighted campaign operational-value history.",
+      "description": "Daily campaign-wide success context aggregated from repository run-day counts without implying a causal relationship.",
+      "parameters": [],
+      "sources": [
+        "campaign-operational-value-repository-run-days"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-operational-value-run-days",
+      "intent": "Provide daily campaign-wide run outcomes as nearby context for weighted operational-value observations.",
+      "description": "Campaign success and failure counts for temporal proximity only, without implying a causal relationship.",
+      "parameters": [
+        {
+          "name": "campaign",
+          "field": "campaign"
+        }
+      ],
+      "sources": [
+        "campaign-operational-value-run-day-totals"
+      ],
+      "used-by-pages": [
+        "campaign-insights"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-performance-baseline-totals",
+      "intent": "Establish a selected-horizon campaign baseline from concluded run attempts while keeping reliability, unverified production, and efficiency as separate facts.",
+      "description": "Canonical campaign run attempts aggregated into bounded selected-horizon baseline totals without treating runtime success or produced outputs as operational value.",
+      "parameters": [],
+      "sources": [
+        "campaign-runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-performance-baseline",
+      "intent": "Turn each campaign's selected-horizon baseline totals into deterministic reliability and production signals with an explicit successful-run efficiency fact.",
+      "description": "A bounded, explainable baseline that distinguishes runtime reliability, unverified output production, and AI Credit efficiency.",
+      "parameters": [
+        {
+          "name": "campaign",
+          "field": "campaign"
+        }
+      ],
+      "sources": [
+        "campaign-performance-baseline-totals"
+      ],
+      "used-by-pages": [
+        "campaign-insights"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-problem-runs",
+      "intent": "List retained failed runs for campaign problem investigation.",
+      "description": "Failed campaign runs ordered from newest to oldest with retained diagnostic metadata.",
+      "parameters": [],
+      "sources": [
+        "campaign-runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-problem-run-evidence",
+      "intent": "Attach the current campaign runtime problem summary to each retained failed Run for that partition.",
+      "description": "Failed campaign runs annotated with the failure-count and problem-kind of their active runtime problem, one row per retained failed Run.",
+      "parameters": [],
+      "sources": [
+        "campaign-problem-runs",
+        "campaign-runtime-problems"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "overview-runs",
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-problem-latest-target-runs",
+      "intent": "Identify the most recent retained failed Run for each campaign workflow target repository.",
+      "description": "One row per campaign workflow and target repository with its most recent retained failed Run identity.",
+      "parameters": [],
+      "sources": [
+        "campaign-problem-run-evidence"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "overview-runs",
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-problem-error-groups",
+      "intent": "Cluster retained failed Run evidence by workflow, runtime repository, target repository, and error signature so repeated identical failures for one target collapse into one diagnosable group.",
+      "description": "One row per distinct target repository and error signature within a campaign runtime problem partition, with an occurrence count and the most recent matching Run identity for follow-up.",
+      "parameters": [],
+      "sources": [
+        "campaign-problem-run-evidence"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "overview-runs",
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-current-problem-error-groups",
+      "intent": "Keep only the newest error signature for each campaign workflow target repository.",
+      "description": "Current target-specific error groups whose representative Run is the target repository's most recent retained failed Run.",
+      "parameters": [],
+      "sources": [
+        "campaign-problem-error-groups",
+        "campaign-problem-latest-target-runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "overview-runs",
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-problem-items",
+      "intent": "Attach the most recent representative Run evidence to each distinct campaign runtime problem error signature.",
+      "description": "Current campaign runtime problems represented by the newest error signature for each target repository, with its effective rollout mode, an occurrence count, the most recent matching failed Run, and a repair prompt.",
+      "parameters": [
+        {
+          "name": "campaign",
+          "field": "campaign"
+        },
+        {
+          "name": "error-signature",
+          "field": "error-signature"
+        },
+        {
+          "name": "target-repository",
+          "field": "target-repository"
+        },
+        {
+          "name": "workflow",
+          "field": "workflow"
+        }
+      ],
+      "sources": [
+        "campaign-current-problem-error-groups",
+        "campaign-problem-run-evidence",
+        "campaign-unobserved-orchestrators"
+      ],
+      "used-by-pages": [
+        "campaign-problem-detail",
+        "campaign-problems"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "overview-runs",
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-problem-tab-counts",
+      "intent": "Count the current runtime problem items available for each campaign Problems tab.",
+      "description": "One campaign row with the number of current runtime problem groups.",
+      "parameters": [
+        {
+          "name": "campaign",
+          "field": "campaign"
+        }
+      ],
+      "sources": [
+        "campaign-problem-items"
+      ],
+      "used-by-pages": [
+        "campaign-detail",
+        "campaign-insights",
+        "campaign-issues",
+        "campaign-memory",
+        "campaign-problems",
+        "campaign-runs"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "overview-runs",
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-operational-value-primary-series",
+      "intent": "Project repository-level campaign operational value into temporal series while preserving maturity status.",
+      "description": "Repository operational-value history with interim observations kept visibly separate from matured evidence.",
+      "parameters": [
+        {
+          "name": "campaign",
+          "field": "campaign"
+        }
+      ],
+      "sources": [
+        "operational-values"
+      ],
+      "used-by-pages": [
+        "campaign-insights"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-values"
+        ]
+      }
+    },
+    {
+      "id": "campaign-operational-value-evidence-state-totals",
+      "intent": "Summarize whether selected-horizon repository operational-value observations include matured evidence or only interim evidence.",
+      "description": "Campaign-level maturity counts used to distinguish interim from matured operational-value evidence.",
+      "parameters": [],
+      "sources": [
+        "operational-values"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-values"
+        ]
+      }
+    },
+    {
+      "id": "campaign-operational-value-evidence-state",
+      "intent": "Classify selected-horizon repository operational-value evidence by maturity without changing native values.",
+      "description": "Campaign-level evidence state consumed by the repository operational-value history presenter.",
+      "parameters": [
+        {
+          "name": "campaign",
+          "field": "campaign"
+        }
+      ],
+      "sources": [
+        "campaign-operational-value-evidence-state-totals"
+      ],
+      "used-by-pages": [
+        "campaign-insights"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-values"
+        ]
+      }
+    },
+    {
+      "id": "campaign-operational-value-plot-inventory",
+      "intent": "Describe each repository operational-value plot rendered on campaign Insights.",
+      "description": "One plot-inventory row for every repository operational-value measure and maturity state.",
+      "parameters": [],
+      "sources": [
+        "campaign-operational-value-primary-series"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-values"
+        ]
+      }
+    },
+    {
+      "id": "campaign-audit-summary-plot-inventory",
+      "intent": "Describe the rendered audit-summary chart using the shared campaign Insights plot contract.",
+      "description": "One plot-inventory row per campaign when its high- and medium-severity audit summary chart has data.",
+      "parameters": [],
+      "sources": [
+        "audit-event-summary-buckets"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "tools",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-insight-plot-inventory",
+      "intent": "Inventory every plot rendered on each campaign Insights page through one reusable plot contract.",
+      "description": "One campaign row per rendered Insights plot, independent of the plot's data source or renderer.",
+      "parameters": [],
+      "sources": [
+        "campaign-audit-summary-plot-inventory",
+        "campaign-operational-value-plot-inventory"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "operational-values",
+          "tools",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-insight-tab-counts",
+      "intent": "Count the plots declared by the shared campaign Insights plot inventory.",
+      "description": "One campaign row with the number of rendered Insights plots, independent of plot type.",
+      "parameters": [
+        {
+          "name": "campaign",
+          "field": "campaign"
+        }
+      ],
+      "sources": [
+        "campaign-insight-plot-inventory"
+      ],
+      "used-by-pages": [
+        "campaign-detail",
+        "campaign-insights",
+        "campaign-issues",
+        "campaign-memory",
+        "campaign-problems",
+        "campaign-runs"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "operational-values",
+          "tools",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "runs-daily-conclusions",
+      "intent": "Aggregate workflow run conclusions by UTC day for the Runs stacked area graph.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "runs"
+      ],
+      "used-by-pages": [
+        "runs"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "entity-events",
+      "intent": "Project all run-owned records for reusable cards and run drill-down.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "organization",
+          "field": "organization"
+        },
+        {
+          "name": "repository",
+          "field": "repository"
+        },
+        {
+          "name": "run",
+          "field": "run"
+        },
+        {
+          "name": "run-attempt",
+          "field": "run-attempt"
+        },
+        {
+          "name": "workflow",
+          "field": "workflow"
+        }
+      ],
+      "sources": [
+        "event-base"
+      ],
+      "used-by-pages": [
+        "run-events",
+        "workflow-run-cards"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "domains",
+          "issues",
+          "tools"
+        ]
+      }
+    },
+    {
+      "id": "runs-table",
+      "intent": "Show observed workflow runs in a table with execution, repository, workflow, engine, model, and navigation details.",
+      "description": "Observed workflow runs ordered from newest to oldest.",
+      "parameters": [],
+      "sources": [
+        "runs"
+      ],
+      "used-by-pages": [
+        "runs"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "workflow-aic-per-run",
+      "intent": "List declared workflows with observed runs and their average AI Credit cost per run.",
+      "description": "Workflow AI Credit averages limited to workflows with at least one observed run.",
+      "parameters": [],
+      "sources": [
+        "workflow-inventory"
+      ],
+      "used-by-pages": [
+        "workflows"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "domains",
+          "issues",
+          "runs",
+          "tools",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "marketplace-package-detail",
+      "intent": "Select one normalized marketplace package by its resolver-produced source coordinate.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "package-source",
+          "field": "package-source"
+        }
+      ],
+      "sources": [
+        "marketplace-packages"
+      ],
+      "used-by-pages": [
+        "marketplace",
+        "marketplace-package"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "marketplace-packages"
+        ]
+      }
+    },
+    {
+      "id": "friction-by-workflow",
+      "intent": "Identify workflows with the greatest measured avoidable AI Credit cost.",
+      "description": "Total gh-aw audit friction cost grouped by repository and workflow.",
+      "parameters": [],
+      "sources": [
+        "friction"
+      ],
+      "used-by-pages": [
+        "friction"
+      ],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires friction, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "friction-observations",
+      "intent": "List retained gh-aw audit friction measurements with their run context and attribution totals.",
+      "description": "Newest friction measurements first, preserving the native audit values and uncertainty state.",
+      "parameters": [],
+      "sources": [
+        "friction"
+      ],
+      "used-by-pages": [
+        "friction"
+      ],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires friction, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "indexing-daily-records",
+      "intent": "Aggregate records committed from CAO Activity by ingestion UTC day.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "transactions"
+      ],
+      "used-by-pages": [
+        "indexing"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "transactions"
+        ]
+      }
+    },
+    {
+      "id": "indexing-daily-workflow-runs",
+      "intent": "Aggregate workflow runs ingested from CAO Activity by UTC day.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "transactions"
+      ],
+      "used-by-pages": [
+        "indexing"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "transactions"
+        ]
+      }
+    },
+    {
+      "id": "indexing-campaigns-table-count",
+      "intent": "Count retained campaigns rows in the dashboard database.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "campaigns"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "campaigns"
+        ]
+      }
+    },
+    {
+      "id": "indexing-repositories-table-count",
+      "intent": "Count retained repositories rows in the dashboard database.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "repositories"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "repositories"
+        ]
+      }
+    },
+    {
+      "id": "indexing-workflows-table-count",
+      "intent": "Count retained workflows rows in the dashboard database.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "workflows"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "indexing-runs-table-count",
+      "intent": "Count retained workflow runs rows in the dashboard database.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "indexing-domains-table-count",
+      "intent": "Count retained network domains rows in the dashboard database.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "domains"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "domains"
+        ]
+      }
+    },
+    {
+      "id": "indexing-tools-table-count",
+      "intent": "Count retained tool events rows in the dashboard database.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "tools"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "tools"
+        ]
+      }
+    },
+    {
+      "id": "indexing-audits-table-count",
+      "intent": "Count retained audit events rows in the dashboard database.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "audits"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits"
+        ]
+      }
+    },
+    {
+      "id": "indexing-issues-table-count",
+      "intent": "Count retained issue events rows in the dashboard database.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "issues"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "issues"
+        ]
+      }
+    },
+    {
+      "id": "indexing-operational-values-table-count",
+      "intent": "Count retained operational values rows in the dashboard database.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "operational-values"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-values"
+        ]
+      }
+    },
+    {
+      "id": "indexing-transactions-table-count",
+      "intent": "Count retained ingestion transactions rows in the dashboard database.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "transactions"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "transactions"
+        ]
+      }
+    },
+    {
+      "id": "indexing-database-table-counts",
+      "intent": "Count retained canonical dashboard database rows by table.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "indexing-audits-table-count",
+        "indexing-campaigns-table-count",
+        "indexing-domains-table-count",
+        "indexing-issues-table-count",
+        "indexing-operational-values-table-count",
+        "indexing-repositories-table-count",
+        "indexing-runs-table-count",
+        "indexing-tools-table-count",
+        "indexing-transactions-table-count",
+        "indexing-workflows-table-count"
+      ],
+      "used-by-pages": [
+        "indexing"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "campaigns",
+          "domains",
+          "issues",
+          "operational-values",
+          "repositories",
+          "runs",
+          "tools",
+          "transactions",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "indexing-transactions",
+      "intent": "Prepare retained ingestion transactions for card presentation.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "transactions"
+      ],
+      "used-by-pages": [
+        "indexing"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "transactions"
+        ]
+      }
+    },
+    {
+      "id": "engines-models-usage",
+      "intent": "Summarize run-level AIC and token usage by agent and model identifiers without treating unavailable telemetry as zero.",
+      "description": "Observed workflow runs grouped by agent ID and model ID. Each AIC and token statistic uses only runs that reported that metric.",
+      "parameters": [],
+      "sources": [
+        "runs"
+      ],
+      "used-by-pages": [
+        "engines-models"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "skill-invocations",
+      "intent": "Select observed skill invocations for skill usage analytics.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "skills"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires skills, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "skill-invocations-by-skill",
+      "intent": "Rank skills by their observed invocation count.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "skill-invocations"
+      ],
+      "used-by-pages": [
+        "skills"
+      ],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires skills, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "skill-invocations-by-workflow-totals",
+      "intent": "Rank workflows by their observed skill invocation count.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "skill-invocations"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires skills, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "skill-invocations-by-workflow",
+      "intent": "Present workflow skill invocation totals with drill-through navigation to the workflow dashboard.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "skill-invocations-by-workflow-totals"
+      ],
+      "used-by-pages": [
+        "skills"
+      ],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires skills, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "skill-workflow-totals",
+      "intent": "Count observed invocations for each skill and workflow.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "skill-invocations"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires skills, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "skill-workflow-inventory",
+      "intent": "List observed skills by workflow with drill-through navigation to the workflow dashboard.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "skill-workflow-totals"
+      ],
+      "used-by-pages": [
+        "skills"
+      ],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires skills, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "database-campaign-count",
+      "intent": "Count campaigns in the dashboard database.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "campaigns"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "campaigns"
+        ]
+      }
+    },
+    {
+      "id": "overview-run-summary",
+      "intent": "Summarize successful, failed, and active runs with rollout-mode counts.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "overview-runs"
+        ]
+      }
+    },
+    {
+      "id": "overview-delivery-summary",
+      "intent": "Count distinct target repositories with successful worker dispatch runs in the selected horizon.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-runs",
+        "repositories"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "overview-runs",
+          "repositories"
+        ]
+      }
+    },
+    {
+      "id": "overview-value-summary",
+      "intent": "Count all observed grader results.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "grader-observations"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires grader-observations, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "overview-run-status-input",
+      "intent": "Prepare the compact run summary for declarative factory status classification.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-run-summary"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "overview-runs"
+        ]
+      }
+    },
+    {
+      "id": "overview-value-status-input",
+      "intent": "Prepare the compact value summary for declarative factory status classification.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-value-summary"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires grader-observations, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "overview-factory-status",
+      "intent": "Classify the factory heading from compact run and optional value evidence.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-run-status-input",
+        "overview-value-status-input"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": false,
+        "requirements": [
+          "overview-runs"
+        ],
+        "reason": "Requires grader-observations, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "overview-registered-repository-summary",
+      "intent": "Count canonical repository identities registered in the resolved control-plane scope.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "repositories"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "repositories"
+        ]
+      }
+    },
+    {
+      "id": "overview-delivery-coverage-input",
+      "intent": "Prepare successful delivery totals for the repository coverage summary.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-delivery-summary"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "overview-runs",
+          "repositories"
+        ]
+      }
+    },
+    {
+      "id": "overview-registered-repository-coverage-input",
+      "intent": "Prepare registered repository totals for the repository coverage summary.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-registered-repository-summary"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "repositories"
+        ]
+      }
+    },
+    {
+      "id": "overview-rhythm",
+      "intent": "Show current-week successful runs from Monday through today and the matching previous-week count for weekdays not yet reached.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-runs"
+      ],
+      "used-by-pages": [
+        "overview"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "overview-runs"
+        ]
+      }
+    },
+    {
+      "id": "campaign-runtime-problem-counts",
+      "intent": "Count current failing workflow and runtime repository partitions for each campaign.",
+      "description": "Current retained runtime problem counts by campaign.",
+      "parameters": [],
+      "sources": [
+        "campaign-runtime-problems"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "overview-runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "overview-repository-coverage-summary",
+      "intent": "Aggregate reached and total repositories across the resolved organization scope.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-delivery-coverage-input",
+        "overview-registered-repository-coverage-input"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "overview-runs",
+          "repositories"
+        ]
+      }
+    },
+    {
+      "id": "overview-repository-coverage",
+      "intent": "Measure registered repository reach from successful worker execution.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-repository-coverage-summary"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "overview-runs",
+          "repositories"
+        ]
+      }
+    },
+    {
+      "id": "overview-healthy-campaign-count",
+      "intent": "Count campaigns with no retained workflow or target errors.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "campaign-runtime-problem-counts",
+        "campaigns"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "campaigns",
+          "overview-runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "overview-campaign-count-presentation-input",
+      "intent": "Prepare the campaign inventory count for Overview presentation queries.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "database-campaign-count"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "campaigns"
+        ]
+      }
+    },
+    {
+      "id": "overview-healthy-campaign-presentation-input",
+      "intent": "Prepare the healthy campaign count for Overview presentation queries.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-healthy-campaign-count"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "campaigns",
+          "overview-runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "overview-campaign-health-presentation",
+      "intent": "Produce presentation-ready campaign health values for the Overview header and floor.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-campaign-count-presentation-input",
+        "overview-healthy-campaign-presentation-input"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "campaigns",
+          "overview-runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "overview-header-status-presentation-input",
+      "intent": "Prepare the factory status heading for the declarative Overview header.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-factory-status"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": false,
+        "requirements": [
+          "overview-runs"
+        ],
+        "reason": "Requires grader-observations, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "overview-header-presentation",
+      "intent": "Resolve the Overview heading from declarative status and campaign-health evidence.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-campaign-health-presentation",
+        "overview-header-status-presentation-input"
+      ],
+      "used-by-pages": [
+        "overview"
+      ],
+      "execution": {
+        "local": false,
+        "requirements": [
+          "campaigns",
+          "overview-runs",
+          "workflows"
+        ],
+        "reason": "Requires grader-observations, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "overview-run-motion-presentation-input",
+      "intent": "Prepare active run state for Overview station presentation.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-run-summary"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "overview-runs"
+        ]
+      }
+    },
+    {
+      "id": "overview-campaign-station",
+      "intent": "Provide the presentation-ready campaign health station for Overview.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-campaign-health-presentation",
+        "overview-run-motion-presentation-input"
+      ],
+      "used-by-pages": [
+        "overview"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "campaigns",
+          "overview-runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "overview-repository-station-presentation-input",
+      "intent": "Prepare repository coverage for the presentation-ready Overview station.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-repository-coverage"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "overview-runs",
+          "repositories"
+        ]
+      }
+    },
+    {
+      "id": "overview-repository-station",
+      "intent": "Provide the presentation-ready repository coverage station for Overview.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-repository-station-presentation-input",
+        "overview-run-motion-presentation-input"
+      ],
+      "used-by-pages": [
+        "overview"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "overview-runs",
+          "repositories"
+        ]
+      }
+    },
+    {
+      "id": "overview-disabled-dispatchers",
+      "intent": "Identify campaigns whose dispatcher is disabled in GitHub Actions.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "workflows"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "overview-campaign-links",
+      "intent": "Provide one navigation row per registered campaign that opens its dedicated campaign view.",
+      "description": "Registered campaigns with a resolved dashboard link to their dedicated campaign view.",
+      "parameters": [],
+      "sources": [
+        "campaign-runtime-problem-counts",
+        "campaigns",
+        "overview-disabled-dispatchers"
+      ],
+      "used-by-pages": [
+        "overview"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "campaigns",
+          "overview-runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "cost-by-campaign",
+      "intent": "Present observed AI Credit cost grouped by centrally managed campaign.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "campaign-inventory"
+      ],
+      "used-by-pages": [
+        "cost"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "campaigns",
+          "domains",
+          "issues",
+          "repositories",
+          "runs",
+          "tools",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "cost-by-repository",
+      "intent": "Present observed AI Credit cost grouped by repository.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "repository-aic-totals"
+      ],
+      "used-by-pages": [
+        "cost"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "cost-by-workflow",
+      "intent": "Present observed AI Credit cost grouped by repository-owned workflow.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "workflow-aic-totals"
+      ],
+      "used-by-pages": [
+        "cost"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "failure-run-base",
+      "intent": "Reuse shared query stages for failed-runs, overview-failing-runs",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "failed-runs",
+      "intent": "List failed workflow runs that need operator attention.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "failure-run-base"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "overview-failing-runs",
+      "intent": "Identify failed runs in the selected snapshot horizon so subsequent streak logic can use the same declarative failure definition.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "failure-run-base"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "overview-failing-workflows",
+      "intent": "Identify only workflows that have at least one failed run in the selected snapshot horizon before computing streaks.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-failing-runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "overview-repeated-failure-groups",
+      "intent": "Group each workflow's latest consecutive failing run sequence in the selected snapshot horizon, resetting the group after any successful run.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-failing-runs",
+        "overview-failing-workflows",
+        "runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "overview-repeated-failure-candidates",
+      "intent": "Attach selected-horizon failure counts to each workflow's latest canonical work item.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-repeated-failure-groups",
+        "work-items"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": false,
+        "requirements": [
+          "runs"
+        ],
+        "reason": "Requires work-items, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "overview-repeated-failure-attention",
+      "intent": "Keep only unresolved workflows with two or more failures in the selected horizon.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-repeated-failure-candidates"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": false,
+        "requirements": [
+          "runs"
+        ],
+        "reason": "Requires work-items, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "overview-review-attention",
+      "intent": "Select only unresolved outputs explicitly awaiting human review with their retained GitHub evidence destination.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "work-items"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires work-items, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "overview-needs-attention",
+      "intent": "Combine grouped repeated failures and unresolved review outputs without introducing ordinary activity or duplicate work items.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-repeated-failure-attention",
+        "overview-review-attention"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": false,
+        "requirements": [
+          "runs"
+        ],
+        "reason": "Requires work-items, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "domain-entity-insights",
+      "intent": "Summarize one domain entity for its dedicated Insights view.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "domain",
+          "field": "domain"
+        }
+      ],
+      "sources": [
+        "domains"
+      ],
+      "used-by-pages": [
+        "domain-insights"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "domains"
+        ]
+      }
+    },
+    {
+      "id": "tool-entity-insights",
+      "intent": "Summarize one tool entity for its dedicated Insights view.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "tool",
+          "field": "mcp-tool-label"
+        }
+      ],
+      "sources": [
+        "mcp-tool-calls"
+      ],
+      "used-by-pages": [
+        "tool-insights"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "mcp-calls"
+        ]
+      }
+    },
+    {
+      "id": "audit-entity-insights",
+      "intent": "Summarize one audit event entity for its dedicated Insights view.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "audit",
+          "field": "event-summary"
+        }
+      ],
+      "sources": [
+        "audits"
+      ],
+      "used-by-pages": [
+        "audit-insights"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits"
+        ]
+      }
+    }
+  ]
+}

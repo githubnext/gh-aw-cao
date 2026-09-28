@@ -1,0 +1,5 @@
+[
+  { "max": 0.5, "status": "low" },
+  { "max": 0.8, "status": "medium" },
+  { "status": "high" }
+]

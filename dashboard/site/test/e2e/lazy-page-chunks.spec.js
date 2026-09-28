@@ -294,6 +294,19 @@ test('marketplace page renders canonical package cards after ingestion', async (
   await expect(packageCard.getByRole('button', { name: 'Add' })).toHaveCount(0);
   await expect(marketplace).not.toContainText('Unable to load this page.');
 
+  for (let navigation = 0; navigation < 3; navigation += 1) {
+    await navigateToPage(page, 'repositories');
+    await expect(page.getByRole('heading', { name: 'Repositories', exact: true, level: 1 })).toBeVisible();
+    await navigateToPage(page, 'marketplace');
+    await expect(page.getByRole('heading', { name: 'Marketplace', exact: true, level: 1 })).toBeVisible();
+    await expect(packageCards).toHaveCount(3);
+    await expect(packageCards.locator('.issue-list-card-title')).toHaveText([
+      'AW Optimization',
+      'CAO Evolution',
+      'Dependabot'
+    ]);
+  }
+
   await packageCard.getByRole('link', { name: 'Dependabot' }).click();
   const detail = page.locator('[data-page-id="marketplace-package"]');
   await expect(detail).toBeVisible();
