@@ -71,7 +71,27 @@ const inventory = {
       'readme-path': 'dependabot/README.md',
       source: `githubnext/gh-aw-cao/dependabot@${'a'.repeat(40)}`,
       'add-command': `./cao.sh add githubnext/gh-aw-cao/dependabot@${'a'.repeat(40)}`,
-    }],
+    }, ...['aw-optimization', 'cao-evolution'].map((path, index) => ({
+      id: `official:githubnext/gh-aw-cao/${path}@${'b'.repeat(40)}`,
+      'registry-id': 'official',
+      'registry-name': 'Official CAO catalog',
+      'registry-precedence': 0,
+      name: index === 0 ? 'AW Optimization' : 'CAO Evolution',
+      description: `${path} automation`,
+      publisher: 'githubnext',
+      repository: 'githubnext/gh-aw-cao',
+      path,
+      ref: 'main',
+      'resolved-commit': 'b'.repeat(40),
+      version: 'main',
+      icon: 'workflow',
+      artwork: '',
+      contents: ['aw.yml'],
+      readme: `# ${path}\n`,
+      'readme-path': `${path}/README.md`,
+      source: `githubnext/gh-aw-cao/${path}@${'b'.repeat(40)}`,
+      'add-command': `./cao.sh add githubnext/gh-aw-cao/${path}@${'b'.repeat(40)}`,
+    }))],
     metadata: { 'as-of': '2026-09-15T10:00:00Z', 'retrieved-at': '2026-09-15T10:00:00Z', completeness: 'complete', freshness: 'fresh', availability: 'available' },
   },
   'configuration-policy': {
@@ -261,8 +281,13 @@ test('marketplace page renders canonical package cards after ingestion', async (
 
   const marketplace = page.locator('[data-page-id="marketplace"]');
   await expect(page.getByRole('heading', { name: 'Marketplace', exact: true, level: 1 })).toBeVisible();
-  const packageCard = marketplace.locator('.entity-card-list-marketplace .entity-card-list-card');
-  await expect(packageCard).toHaveCount(1);
+  const packageCards = marketplace.locator('.entity-card-list-marketplace .entity-card-list-card');
+  await expect(packageCards).toHaveCount(3);
+  const packageCard = packageCards.filter({ hasText: 'Dependabot' });
+  await expect(marketplace.locator('.entity-card-list-marketplace')).toHaveCSS('display', 'grid');
+  const cardBoxes = await packageCards.evaluateAll((cards) => cards.map((card) => card.getBoundingClientRect().toJSON()));
+  expect(cardBoxes[1].y).toBe(cardBoxes[0].y);
+  expect(cardBoxes[1].x).toBeGreaterThanOrEqual(cardBoxes[0].x + cardBoxes[0].width + 12);
   await expect(marketplace).toContainText('Dependabot');
   await expect(packageCard).toContainText('By');
   await expect(packageCard).toContainText('githubnext');
