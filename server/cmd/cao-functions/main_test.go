@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -150,7 +151,12 @@ func getWithContext(t *testing.T, url string) error {
 	if err != nil {
 		return err
 	}
-	return response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
+
+	if _, err := io.Copy(io.Discard, response.Body); err != nil {
+		t.Fatalf("unexpected error draining response body: %v", err)
+	}
+	return nil
 }
 
 // TestShutdownOnDone_WaitsForContext confirms shutdownOnDone blocks until
