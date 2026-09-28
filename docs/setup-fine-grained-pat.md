@@ -45,11 +45,13 @@ In `.github/workflows/cao.json`, add only the required owners and exact reposito
 ```bash
 ./cao.sh setup-auth token \
   --repo "$CONTROL_REPO" \
+  --write-repository "$CONTROL_REPO" \
   --expires-in 30 \
   --dry-run
 
 ./cao.sh setup-auth token \
   --repo "$CONTROL_REPO" \
+  --write-repository "$CONTROL_REPO" \
   --expires-in 30 \
   --acknowledge-token-risks
 ```
@@ -81,7 +83,11 @@ git commit -m "Install Central Agentic Ops control plane"
 git push --set-upstream origin HEAD
 ```
 
-Setup is complete when the policy parses, the owner-scoped secret maps match the exact repositories, and `gh aw doctor` reports no blocking installation error.
+Credential setup is complete when the policy parses, the owner-scoped secret
+maps match the exact repositories, and `gh aw doctor` reports no blocking
+installation error. Before live activation, complete the current-revision
+dashboard, review, and live checks in
+[Validate before activation](control-plane-authentication.md#validate-before-activation).
 
 ## Next: Add a Campaign
 

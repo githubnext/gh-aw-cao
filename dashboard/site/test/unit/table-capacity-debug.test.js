@@ -32,7 +32,7 @@ describe('table capacity debug logging', () => {
     );
 
     tableRowLimitForEnvironment({});
-    logTableCapacityDecision({ rowLimit: 25000, mobile: false, deviceMemoryGiB: 4, heapSizeLimitGiB: null, hardwareConcurrency: 8 }, { info: () => {} });
+    logTableCapacityDecision({ rowLimit: 25000, mobile: false, deviceMemoryGiB: 4, heapSizeLimitGiB: null, hardwareConcurrency: 8 });
     applyTableQuerySafetyLimits([{ name: 'events', from: 'raw-events', limit: 500000 }], ['events']);
 
     expect(debugFn).not.toHaveBeenCalled();
@@ -57,13 +57,19 @@ describe('table capacity debug logging', () => {
     const { logTableCapacityDecision } = await import('../../src/data/table-capacity.js');
 
     logTableCapacityDecision(
-      { rowLimit: 25000, mobile: false, deviceMemoryGiB: 4, heapSizeLimitGiB: null, hardwareConcurrency: 8 },
-      { info: () => {} }
+      { rowLimit: 25000, mobile: false, deviceMemoryGiB: 4, heapSizeLimitGiB: null, hardwareConcurrency: 8 }
     );
 
     expect(debugFn).toHaveBeenCalledWith(
       '[cao:table-capacity]',
-      expect.objectContaining({ event: 'row-limit-selected', rowLimit: 25000, mobile: false, hardwareConcurrency: 8 })
+      expect.objectContaining({
+        event: 'row-limit-selected',
+        rowLimit: 25000,
+        mobile: false,
+        deviceMemoryGiB: 4,
+        heapSizeLimitGiB: null,
+        hardwareConcurrency: 8
+      })
     );
   });
 
@@ -99,8 +105,7 @@ describe('table capacity debug logging', () => {
 
     tableRowLimitForEnvironment({ hardwareConcurrency: 8 });
     logTableCapacityDecision(
-      { rowLimit: 25000, mobile: false, deviceMemoryGiB: 4, heapSizeLimitGiB: null, hardwareConcurrency: 8 },
-      { info: () => {} }
+      { rowLimit: 25000, mobile: false, deviceMemoryGiB: 4, heapSizeLimitGiB: null, hardwareConcurrency: 8 }
     );
     applyTableQuerySafetyLimits([{ name: 'events', from: 'raw-events', limit: 500000 }], ['events']);
 

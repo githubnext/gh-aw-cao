@@ -243,7 +243,11 @@ export async function setupCaoControlPlane({
     if (profile === 'github-app' || profile === 'token') {
       authenticationArguments.push('--policy', intendedPolicyPath);
     }
+    if (profile === 'github-app' || profile === 'enterprise-app' || profile === 'token') {
+      authenticationArguments.push('--write-repository', control.repository);
+    }
     if (profile === 'enterprise-app') {
+      authenticationArguments.push('--policy', intendedPolicyPath);
       const readClientId = await interactive.text('Read App client ID');
       const writeClientId = await interactive.text('Write App client ID');
       if (!readClientId || !writeClientId) {
@@ -261,6 +265,7 @@ export async function setupCaoControlPlane({
     interactive.note('\nSetup plan');
     interactive.note(`  Control repository: ${control.repository} (${control.visibility})`);
     interactive.note(`  Read scope: ${repositories.join(', ')}`);
+    interactive.note(`  Review output write scope: ${control.repository}`);
     interactive.note(`  Authentication: ${profile}`);
     interactive.note('  Campaigns: none');
     interactive.note(`  Dashboard Pages: GitHub Actions source${control.visibility === 'public' ? ' (public)' : ' (repository-restricted access required)'}`);

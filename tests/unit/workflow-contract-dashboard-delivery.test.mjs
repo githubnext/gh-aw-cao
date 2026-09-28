@@ -227,6 +227,10 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   const dashboardCampaign = parse(dashboardManifest);
   const canonicalPolicyResolver = readFileSync(join(root, ".github", "workflows", "shared", "policy.mjs"), "utf8");
   const activityWorkflow = readFileSync(join(root, ".github", "workflows", "cao-activity.yml"), "utf8");
+  assert.match(
+    activityWorkflow,
+    /Configure GitHub CLI host[\s\S]*?GH_HOST=\$\{GITHUB_SERVER_URL#\*:\/\/\}[\s\S]*?\$GITHUB_ENV/,
+  );
   const activityIndexJob = activityWorkflow.match(/\n  index:\n([\s\S]*?)\n  cache:\n/)?.[1];
   const activityCacheJob = activityWorkflow.match(/\n  cache:\n([\s\S]*?)\n  notify-failure:\n/)?.[1];
   const activityNotifyFailureJob = activityWorkflow.match(/\n  notify-failure:\n([\s\S]*)/)?.[1];

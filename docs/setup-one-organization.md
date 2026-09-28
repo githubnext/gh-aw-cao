@@ -50,6 +50,13 @@ For both browser flows:
 3. Select only the repositories printed in the terminal.
 4. Finish the installation and return to the terminal.
 
+Setup verifies the exact selected repository membership. On a data-residency
+host, refresh the GitHub CLI credential with `read:user` access if verification
+fails; setup does not accept a manual-verification fallback. The write App
+defaults to the control repository so review outputs have an approved
+destination. Ensure every dispatched worker admits the write App's
+`APP-SLUG[bot]` login.
+
 ## Validate and Commit
 
 ```bash
@@ -67,7 +74,11 @@ git commit -m "Install Central Agentic Ops control plane"
 git push --set-upstream origin HEAD
 ```
 
-Setup is complete when the policy parses, the expected App variables and secrets exist, and `gh aw doctor` reports no blocking installation error.
+Credential setup is complete when the policy parses, exact App installation
+membership is verified, the expected App variables and secrets exist, and
+`gh aw doctor` reports no blocking installation error. Before live activation,
+complete the current-revision dashboard, review, and live checks in
+[Validate before activation](control-plane-authentication.md#validate-before-activation).
 
 ## Next: Add a Campaign
 

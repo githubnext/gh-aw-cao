@@ -44,13 +44,13 @@ App registration, installation, and settings URLs. On GitHub Enterprise Cloud
 data-residency hosts (`*.ghe.com`), it omits the unavailable Campaigns App
 permission from the generated read-App manifest.
 
-On data-residency hosts, GitHub exposes organization installation metadata but
-does not expose the selected repository list to the CLI's OAuth token. The
-helper verifies that each installation uses **Only select repositories**, opens
-the organization-owned App installation settings route, and prints the exact
-repositories that the operator must verify there. The first bounded workflow
-run must then prove read access to every intended repository and write access
-only in an approved safe-output repository.
+On data-residency hosts, the helper must read the selected repository list for
+each installation and verify every exact repository before setup can complete.
+If the GitHub CLI credential cannot read that membership, setup fails closed.
+Refresh the CLI credential with `read:user` access and retry; do not substitute
+manual inspection for the automated membership check. The first bounded
+workflow run must still prove read access to every intended repository and
+write access only in an approved safe-output repository.
 
 An organization-owned private App fails closed when policy enrolls a repository owned by another organization.
 
@@ -61,13 +61,23 @@ For organizations in one enterprise, create the read and write Apps manually in 
   --repo acme/central-agentic-ops \
   --read-client-id '<read-app-client-id>' \
   --write-client-id '<write-app-client-id>' \
+  --policy .github/workflows/cao.json \
+  --write-repository acme/central-agentic-ops \
   --dry-run
 
 ./cao.sh setup-auth enterprise-app \
   --repo acme/central-agentic-ops \
   --read-client-id '<read-app-client-id>' \
-  --write-client-id '<write-app-client-id>'
+  --write-client-id '<write-app-client-id>' \
+  --policy .github/workflows/cao.json \
+  --write-repository acme/central-agentic-ops
 ```
+
+The command derives the read-App repository selection from the policy and
+records the exact read and write scopes in its result. Repeat
+`--write-repository OWNER/REPO` only for additional repositories explicitly
+approved to receive safe outputs. Without that option, interactive setup keeps
+the write scope at the control repository.
 
 Use the same separate permission ceilings as the organization-owned Apps:
 
@@ -160,11 +170,21 @@ owner-scoped control planes; CAO never exposes every owner token to one agent.
 - Confirm the chosen credential covers every enrolled repository but no unrelated repository.
 - Confirm the read App has no write permissions.
 - Install the write App only where approved safe outputs require writes.
+- For App profiles, confirm the write App's bot login (`APP-SLUG[bot]`) is
+  admitted by every worker workflow it may dispatch. A successful
+  pre-activation job with skipped activation is not a successful worker run.
 - For an enterprise App profile, mint and test the read token separately for every enrolled organization, then perform and clean up a reversible write probe using only the write App in an approved output repository.
 - Confirm PAT approval, expiration, resource owner, and API compatibility when using a token.
 - For a PAT profile, prove independently that the read PAT can read every enrolled repository but cannot perform the selected reversible write probe, then prove that the write PAT can perform and clean up that probe only in an approved output repository.
 - When migrating from `GH_AW_GITHUB_TOKEN`, rerun the same proof after deleting the legacy secret so a successful run cannot be using the compatibility fallback.
-- Run the first campaign with `max_repos=1`, `rollout_percent=100`, and `safe_output_mode=review`.
+- Require successful current-revision authentication, Activity, and Dashboard
+  runs, and confirm the dedicated Pages site is private and workflow-backed.
+- Run the first campaign with `max_repos=1`, `rollout_percent=100`, and
+  `safe_output_mode=review`. Require an activated worker, routed guidance in
+  the approved review repository, and no target mutation.
+- Promote one bounded run to `safe_output_mode=live` only after explicit policy
+  approval. Require an activated worker and verify the intended target changes
+  while unrelated repositories remain unchanged.
 - Reassess authentication whenever target scope, campaign API requirements, mode, or review destination changes.
 
 See [Configure Authentication](authentication.md) for permission details, precedence, rotation, and incident response.

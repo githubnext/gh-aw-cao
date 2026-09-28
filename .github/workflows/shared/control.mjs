@@ -904,11 +904,13 @@ async function writeOrchestratorPrecompute(context) {
   const percentCap = resolvedCandidates.length === 0
     ? 0
     : Math.max(1, Math.ceil(resolvedCandidates.length * context.policy.rollout_percent / 100));
-  const dispatchCap = eligibleWorkers === 0 ? 0 : Math.floor(context.dispatchMaximum / eligibleWorkers);
+  const workersPerTarget = Math.min(eligibleWorkers, context.dispatchMaximum);
+  const dispatchCap = workersPerTarget === 0 ? 0 : Math.floor(context.dispatchMaximum / workersPerTarget);
   const effectiveMaximum = Math.min(context.policy.max_repositories, percentCap, dispatchCap);
   logDecision("repository-cap", "resolved", {
     candidates: resolvedCandidates.length,
     eligible_workers: eligibleWorkers,
+    workers_per_target: workersPerTarget,
     policy_cap: context.policy.max_repositories,
     rollout_cap: percentCap,
     dispatch_cap: dispatchCap,

@@ -3,7 +3,7 @@
  */
 
 import { h } from '../dom.js';
-import { formatNumber, toNumber } from '../view-formatters.js';
+import { formatNumber, formatShortUtcDate, toNumber } from '../view-formatters.js';
 import { formatCount, formatCoveragePercent, pluralSuffix } from './count-formatters.js';
 import { binHistogramValues } from './histogram.js';
 import { renderSafeLink } from './link-content.js';
@@ -1485,9 +1485,10 @@ function swimlaneLayout(laneCount) {
 
 /** @param {number} instant @param {number} span */
 function formatSwimlaneAxisTime(instant, span) {
-  return new Intl.DateTimeFormat('en', span <= 86_400_000
-    ? { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }
-    : { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(instant));
+  if (span <= 86_400_000) {
+    return new Intl.DateTimeFormat('en', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }).format(new Date(instant));
+  }
+  return formatShortUtcDate(new Date(instant));
 }
 
 /** @param {number} instant */
@@ -1632,9 +1633,9 @@ function formatTimelineTick(value) {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return value;
 
-  const options = value.includes('T')
-    ? { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC', timeZoneName: 'short' }
-    : { month: 'short', day: 'numeric', timeZone: 'UTC' };
+  if (!value.includes('T')) return formatShortUtcDate(date);
+
+  const options = { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC', timeZoneName: 'short' };
   return new Intl.DateTimeFormat('en', /** @type {Intl.DateTimeFormatOptions} */ (options)).format(date);
 }
 

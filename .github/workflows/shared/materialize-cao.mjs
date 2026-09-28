@@ -8,9 +8,13 @@ const repository = 'githubnext/gh-aw-cao';
 const rootResources = [
   'activity',
   'dashboard',
+  'skills',
   'cao.sh',
   '.github/actions/setup-cao-runtime',
   '.github/cao/instructions.md',
+  '.github/workflows/shared/activity-cache.md',
+  '.github/workflows/shared/control.md',
+  '.github/workflows/shared/review-bundle.md',
 ];
 function validateCampaign(campaign) {
   if (!/^(?:root|activity|dashboard|[a-z0-9-]+)$/.test(campaign)) {
@@ -60,6 +64,7 @@ function exactRecordFor(records, campaign) {
 }
 
 function recordFor(records, campaign) {
+  const name = campaign === 'root' ? repository : `${repository}/${campaign}`;
   const exact = exactRecordFor(records, campaign);
   if (exact) return exact;
   if (campaign === 'activity' || campaign === 'dashboard') {
@@ -86,6 +91,29 @@ function copyResource(sourceRoot, repositoryRoot, resource) {
   const destination = path.join(repositoryRoot, ...resource.split('/'));
   rmSync(destination, { force: true, recursive: true });
   cpSync(source, destination, { force: true, recursive: true });
+}
+
+function copyTrackedResource(sourceRoot, repositoryRoot, resource) {
+  const listing = spawnSync('git', ['-C', sourceRoot, 'ls-files', '-z', '--', resource], {
+    encoding: 'utf8',
+  });
+  if (listing.error || listing.status !== 0) {
+    throw new Error(
+      `Unable to list tracked CAO source files for ${resource}: `
+      + `${(listing.stderr || listing.error?.message || `exit ${listing.status}`).trim()}`,
+    );
+  }
+  const files = listing.stdout.split('\0').filter(Boolean);
+  if (files.length === 0) {
+    throw new Error(`CAO source resource has no tracked files: ${resource}`);
+  }
+  rmSync(path.join(repositoryRoot, ...resource.split('/')), { force: true, recursive: true });
+  for (const file of files) {
+    const source = path.join(sourceRoot, ...file.split('/'));
+    const destination = path.join(repositoryRoot, ...file.split('/'));
+    mkdirSync(path.dirname(destination), { recursive: true });
+    cpSync(source, destination, { force: true });
+  }
 }
 
 function removeUndeployedRootResources(sourceRoot, repositoryRoot) {
@@ -119,7 +147,7 @@ export function materializeCaoFromSource(campaign, sourceRoot, repositoryRoot) {
   validateCampaign(campaign);
   const resources = campaign === 'root' ? rootResources : [campaign];
   validateResources(sourceRoot, resources);
-  for (const resource of resources) copyResource(sourceRoot, repositoryRoot, resource);
+  for (const resource of resources) copyTrackedResource(sourceRoot, repositoryRoot, resource);
   if (campaign === 'root') removeUndeployedRootResources(sourceRoot, repositoryRoot);
   return resources;
 }
@@ -220,13 +248,17 @@ export function verifyCaoRuntime(bundle, repositoryRoot = process.cwd()) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const [command, argument = 'root'] = process.argv.slice(2);
+  const [command, argument = 'root', sourceRoot] = process.argv.slice(2);
   if (command === 'materialize') {
     const result = await materializeCao(argument);
     console.log(`Materialized CAO ${result.campaign} ${result.revision}: ${result.resources.join(', ')}`);
+  } else if (command === 'materialize-source') {
+    if (!sourceRoot) throw new Error('materialize-source requires a source directory');
+    const resources = materializeCaoFromSource(argument, path.resolve(sourceRoot), process.cwd());
+    console.log(`Materialized CAO ${argument} from ${path.resolve(sourceRoot)}: ${resources.join(', ')}`);
   } else if (command === 'verify') {
     verifyCaoRuntime(argument);
   } else {
-    throw new Error('Usage: materialize-cao.mjs <materialize CAMPAIGN|verify BUNDLE>');
+    throw new Error('Usage: materialize-cao.mjs <materialize CAMPAIGN|materialize-source CAMPAIGN SOURCE|verify BUNDLE>');
   }
 }

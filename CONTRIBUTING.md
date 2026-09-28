@@ -113,5 +113,25 @@ npm run check
 Workflow source changes must pass `npm run compile`. Run
 `npm run compile:locks` only when generated lock files should be updated.
 
+Setup-path changes must also pass the clean consumer integration suite:
+
+```bash
+npm run test:integration:setup-pathways
+```
+
+Maintainers with access to the dedicated Contoso fixtures can dispatch the
+complete authentication, Activity, private Pages dashboard, campaign review,
+and bounded live-mutation acceptance journey:
+
+```bash
+npm run test:e2e:setup-pathways
+```
+
+To verify existing current-revision evidence without dispatching new runs:
+
+```bash
+npm run test:e2e:setup-pathways:contoso
+```
+
 By participating in this project, you agree to follow our
 [Code of Conduct](CODE_OF_CONDUCT.md).

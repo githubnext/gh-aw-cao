@@ -21,6 +21,7 @@ import {
   installationInstruction,
   installationTargetInstruction,
   isManifestCode,
+  selectedInstallation,
   setRepositoryCredentials,
   validateAppName,
   validateInstallationScope,
@@ -326,4 +327,37 @@ test("App setup verifies every selected repository for an account installation",
     installationTargetInstruction(target),
     'Choose "other-org", choose "Only select repositories", select other-org/service-a, other-org/service-b, and save.',
   );
+});
+
+test("App setup does not accept an installation whose selected repositories omit a target", () => {
+  const app = { name: "cao-octo-control-write", clientId: "Iv1.write" };
+  const target = { owner: "octo", repositories: ["control"] };
+  const installation = {
+    id: "123",
+    clientId: "Iv1.write",
+    repositorySelection: "selected",
+  };
+
+  assert.equal(selectedInstallation(app, target, {
+    findInstallation: () => installation,
+    listRepositories: () => ["octo/other"],
+  }), undefined);
+});
+
+test("App setup fails closed when selected repository membership cannot be read", () => {
+  const app = { name: "cao-platform-control-write", clientId: "Iv1.write" };
+  const target = { owner: "platform", repositories: ["control"] };
+  const installation = {
+    id: "123",
+    clientId: "Iv1.write",
+    repositorySelection: "selected",
+  };
+
+  assert.throws(() => selectedInstallation(app, target, {
+    findInstallation: () => installation,
+    listRepositories: () => {
+      throw new Error("HTTP 403");
+    },
+    serverUrl: "https://contoso-aw.ghe.com",
+  }), /unable to verify selected repository membership.*read:user access/);
 });
