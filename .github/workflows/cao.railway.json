@@ -1,0 +1,21 @@
+{
+  "extends": "cao.json",
+  "control-plane": {
+    "web": {
+      "host": {
+        "target": {
+          "module": "container",
+          "name": "railway",
+          "replicas": 1
+        },
+        "redis": {
+          "module": "railway",
+          "allow-private-plaintext": true,
+          "tls": {
+            "mode": "disabled"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,10 +1,16 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { controlSettings, effectivePolicy, parsePolicy } from "../../.github/workflows/shared/policy.mjs";
+import {
+  controlSettings,
+  effectivePolicy,
+  loadPolicyFile,
+  parsePolicy,
+} from "../../.github/workflows/shared/policy.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const control = join(root, ".github", "workflows", "shared", "control.mjs");
@@ -110,6 +116,50 @@ test("control policy schema accepts config-defined campaign and worker catalogs"
     }
   }
   assert.equal(validate(JSON.stringify(policy)).status, 0);
+});
+
+test("deployment profile extends cao.json without replacing rollout policy", () => {
+  const profile = loadPolicyFile(join(root, ".github", "workflows", "cao.railway.json"));
+  const base = JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
+
+  assert.deepEqual(profile["control-plane"].campaigns, base["control-plane"].campaigns);
+  assert.equal(profile["control-plane"].web.experimental, true);
+  assert.equal(profile["control-plane"].web.host.target.name, "railway");
+  assert.equal(profile["control-plane"].web.host.redis.module, "railway");
+});
+
+test("deployment profiles reject rollout overrides, cycles, and directory traversal", () => {
+  const directory = mkdtempSync(join(tmpdir(), "cao-profile-"));
+  const base = join(directory, "cao.json");
+  writeFileSync(base, minimalPolicy);
+
+  const widening = join(directory, "cao.widening.json");
+  writeFileSync(widening, JSON.stringify({
+    extends: "cao.json",
+    "control-plane": {
+      campaigns: { dependabot: { mode: "live" } },
+      web: { host: { target: { module: "container" }, redis: { module: "railway" } } },
+    },
+  }));
+  assert.throws(() => loadPolicyFile(widening), /unknown key deployment profile\.control-plane\.campaigns/);
+
+  writeFileSync(join(directory, "cao.a.json"), JSON.stringify({
+    extends: "cao.b.json",
+    "control-plane": { web: { host: {} } },
+  }));
+  writeFileSync(join(directory, "cao.b.json"), JSON.stringify({
+    extends: "cao.a.json",
+    "control-plane": { web: { host: {} } },
+  }));
+  assert.throws(() => loadPolicyFile(join(directory, "cao.a.json")), /cycle/);
+
+  const parentPolicy = join(dirname(directory), "cao.outside.json");
+  writeFileSync(parentPolicy, minimalPolicy);
+  writeFileSync(join(directory, "cao.escape.json"), JSON.stringify({
+    extends: "../cao.outside.json",
+    "control-plane": { web: { host: {} } },
+  }));
+  assert.throws(() => loadPolicyFile(join(directory, "cao.escape.json")), /within the policy directory/);
 });
 
 test("control policy validates provider-neutral host and Redis configuration", () => {

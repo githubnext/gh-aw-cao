@@ -1,3 +1,6 @@
+import { readFileSync, realpathSync } from "node:fs";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
+
 export class PolicyError extends Error {}
 
 const SCHEMA_URI = "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json";
@@ -52,6 +55,7 @@ const LOGIN_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const GH_AW_VERSION_PATTERN = /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/;
 const MODES = ["review", "live"];
+const MAX_PROFILE_DEPTH = 8;
 
 function log(message) {
   console.error(`[CAO policy] ${message}`);
@@ -63,6 +67,13 @@ function isRecord(value) {
 
 export function parsePolicy(source) {
   log("Parsing control policy.");
+  const document = parseDocument(source);
+  validateDocument(document);
+  log("Validated control policy.");
+  return document;
+}
+
+function parseDocument(source) {
   let document;
   try {
     document = JSON.parse(source);
@@ -74,9 +85,76 @@ export function parsePolicy(source) {
   if (!isRecord(document)) throw new PolicyError("policy root must be a mapping");
 
   rejectExpressions(document);
-  validateDocument(document);
-  log("Validated control policy.");
   return document;
+}
+
+export function loadPolicyFile(path) {
+  const entryPath = realpathSync(resolve(path));
+  const rootDirectory = realpathSync(dirname(entryPath));
+  const loading = new Set();
+
+  function load(currentPath, depth) {
+    if (depth > MAX_PROFILE_DEPTH) {
+      throw new PolicyError(`deployment profile import depth exceeds ${MAX_PROFILE_DEPTH}`);
+    }
+    const canonicalPath = realpathSync(currentPath);
+    if (loading.has(canonicalPath)) throw new PolicyError("deployment profile import cycle");
+    const pathFromRoot = relative(rootDirectory, canonicalPath);
+    if (pathFromRoot === ".." || pathFromRoot.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`) || isAbsolute(pathFromRoot)) {
+      throw new PolicyError("deployment profile imports must remain within the policy directory");
+    }
+
+    loading.add(canonicalPath);
+    try {
+      const document = parseDocument(readFileSync(canonicalPath, "utf8"));
+      const basePath = document.extends;
+      if (basePath === undefined) return document;
+      validateDeploymentProfile(document);
+      if (typeof basePath !== "string" || !basePath || isAbsolute(basePath)) {
+        throw new PolicyError("deployment profile extends must be a non-empty relative path");
+      }
+      const importedPath = resolve(dirname(canonicalPath), basePath);
+      const overlay = { ...document };
+      delete overlay.extends;
+      return mergePolicyObjects(load(importedPath, depth + 1), overlay);
+    } finally {
+      loading.delete(canonicalPath);
+    }
+  }
+
+  log(`Loading control policy profile ${entryPath}.`);
+  const document = load(entryPath, 0);
+  validateDocument(document);
+  log("Validated composed control policy.");
+  return document;
+}
+
+function validateDeploymentProfile(document) {
+  assertKeys(document, ["extends", "control-plane"], "deployment profile");
+  if (!("extends" in document) || !("control-plane" in document)) {
+    throw new PolicyError("deployment profile requires extends and control-plane.web.host");
+  }
+  assertMapping(document["control-plane"], "deployment profile.control-plane");
+  assertKeys(document["control-plane"], ["web"], "deployment profile.control-plane");
+  if (!("web" in document["control-plane"])) {
+    throw new PolicyError("deployment profile requires control-plane.web.host");
+  }
+  assertMapping(document["control-plane"].web, "deployment profile.control-plane.web");
+  assertKeys(document["control-plane"].web, ["host"], "deployment profile.control-plane.web");
+  if (!("host" in document["control-plane"].web)) {
+    throw new PolicyError("deployment profile requires control-plane.web.host");
+  }
+}
+
+function mergePolicyObjects(base, overlay) {
+  if (!isRecord(base) || !isRecord(overlay)) return overlay;
+  const merged = { ...base };
+  for (const [key, value] of Object.entries(overlay)) {
+    merged[key] = key in base && isRecord(base[key]) && isRecord(value)
+      ? mergePolicyObjects(base[key], value)
+      : value;
+  }
+  return merged;
 }
 
 function assertNoDuplicateKeys(source) {

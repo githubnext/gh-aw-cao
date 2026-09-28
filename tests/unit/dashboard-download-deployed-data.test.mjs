@@ -7,6 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
+import { downloadDeployedDashboardData } from "../../activity/cao.mjs";
 
 const executeFile = promisify(execFile);
 function executeFileWithInput(file, arguments_, input, options = {}) {
@@ -457,6 +458,8 @@ test("downloads the deployed compacted activity shards and SQLite file without r
       "download",
       "--url",
       `http://127.0.0.1:${address.port}/cao/payload-hashes.json`,
+      "--manifest-sha256",
+      createHash("sha256").update(manifest).digest("hex"),
       "--output",
       output,
     ]);
@@ -477,6 +480,52 @@ test("downloads the deployed compacted activity shards and SQLite file without r
       "gh-aw-logs-records",
       "gh-aw-logs-runs",
     ]);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("binds a deployed snapshot to an independent manifest trust anchor", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "deployed-dashboard-manifest-checksum-"));
+  const output = path.join(root, "activity");
+  const logsContent = '{"kind":"metadata","phase":"runs","records":0}\n';
+  const databaseContent = Buffer.from("published sqlite bytes");
+  const inventoryContent = JSON.stringify({ campaigns: { rows: [] } });
+  const manifest = JSON.stringify({
+    "gh-aw-logs.sqlite": createHash("sha256").update(databaseContent).digest("hex"),
+    "gh-aw-logs-runs/fixture.jsonl": createHash("sha256").update(logsContent).digest("hex"),
+  });
+  const server = createServer((request, response) => {
+    response.writeHead(200, { "content-type": "application/x-ndjson" });
+    response.end(request.url?.endsWith(".sqlite")
+      ? databaseContent
+      : request.url?.endsWith("inventory-sources.json") ? inventoryContent
+      : request.url?.endsWith("payload-hashes.json") ? manifest : logsContent);
+  });
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    await downloadDeployedDashboardData({
+      url: `http://127.0.0.1:${address.port}/cao/payload-hashes.json`,
+      manifestSha256: createHash("sha256").update(manifest).digest("hex"),
+      output,
+    });
+    assert.deepEqual(await readFile(path.join(output, "gh-aw-logs.sqlite")), databaseContent);
+
+    await assert.rejects(
+      downloadDeployedDashboardData({
+        url: `http://127.0.0.1:${address.port}/cao/payload-hashes.json`,
+        manifestSha256: "0".repeat(64),
+        output,
+      }),
+      /Activity snapshot manifest checksum mismatch: payload-hashes\.json/,
+    );
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await rm(root, { recursive: true, force: true });

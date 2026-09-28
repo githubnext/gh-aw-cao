@@ -1554,11 +1554,15 @@ async function replaceFile(source, destination) {
 
 export async function downloadDeployedDashboardData({
   url = process.env.DASHBOARD_DATA_URL || DEFAULT_DEPLOYED_DATA_URL,
-  output = DEFAULT_OUTPUT_DIRECTORY
+  output = DEFAULT_OUTPUT_DIRECTORY,
+  manifestSha256 = process.env.DASHBOARD_MANIFEST_SHA256
 } = {}) {
   const manifestUrl = deployedDataUrl(url);
   if (!manifestUrl.pathname.endsWith('/payload-hashes.json')) {
     throw new Error('Dashboard data URL must identify payload-hashes.json.');
+  }
+  if (manifestSha256 && !/^[a-f0-9]{64}$/i.test(manifestSha256)) {
+    throw new Error('Dashboard manifest SHA-256 must contain exactly 64 hexadecimal characters.');
   }
   const databaseUrl = new URL('gh-aw-logs.sqlite', manifestUrl);
   const inventoryUrl = new URL('inventory-sources.json', manifestUrl);
@@ -1590,6 +1594,12 @@ export async function downloadDeployedDashboardData({
         await Promise.allSettled(downloads);
         throw error;
       });
+      if (manifestSha256) {
+        const manifestDigest = await hashFileContents(temporaryManifest);
+        if (manifestDigest !== manifestSha256.toLowerCase()) {
+          throw new Error('Activity snapshot manifest checksum mismatch: payload-hashes.json');
+        }
+      }
       const inventorySources = JSON.parse(await readFile(temporaryInventory, 'utf8'));
       if (!isMapping(inventorySources)) {
         throw new Error('Deployed inventory sources must contain a JSON object.');

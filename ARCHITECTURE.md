@@ -224,7 +224,7 @@ reconstructable.
 | `<operation>/problem-clustering.mjs` | Optional bounded problem computation installed with its package. |
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
 | `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
-| `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Redis projection, server-side Dashboard Language query engine, and peer Azure Functions and Coolify deployment profiles. |
+| `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Redis projection, server-side Dashboard Language query engine, and peer Azure Functions, Coolify, and Railway deployment profiles. |
 | `dashboard/site/src/data/` | Canonical browser data model, adapters, normalization, storage, and declarative query engine. |
 | `research/` | Executable notebooks and experimental reference runtimes used to validate proposed computation semantics against canonical data; these are not dashboard production code. |
 | `specs/computations.md` | Versioned computation, bounded insight, provenance, quality, and measure contracts. |
@@ -347,6 +347,19 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   `/api/readiness` passes, rolling back to the recorded prior digest on failure.
   Tiers never promote artifacts implicitly and deployments never consume
   mutable channel tags or merely accepted asynchronous operations.
+- The Railway test image builds the dashboard and Go server together, downloads
+  one public deployed snapshot at image-build time, verifies its manifest
+  against a separately reviewed SHA-256 trust anchor, verifies every payload
+  against that manifest, and ingests the immutable source into private Railway
+  Redis before serving. Its Caddy binary and runtime base are independently
+  digest-pinned rather than resolved from a mutable package repository.
+  Railway does not publish a stable ingress proxy CIDR, so a same-container
+  Caddy process is the only public listener and rewrites the platform headers
+  across a loopback trust boundary. The CAO server listens only on loopback,
+  trusts only loopback proxy CIDRs, and still enforces HTTPS, an exact public
+  host, GitHub OAuth, explicit organization or team authorization, server-side
+  sessions, webhook signatures, and readiness that includes Redis projection
+  state. Redis remains private on Railway's encrypted service network.
 - Browsers and external clients never receive Redis endpoints or credentials.
   Redis generations are staged and validated before atomic activation; a failed
   rebuild leaves the previous generation active, and an empty Redis instance is
@@ -362,6 +375,12 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   editing `.github/aw/campaigns/*.json`.
 - Keep policy and workflow changes together because admission resolves policy
   at the exact workflow SHA.
+- `.github/workflows/cao.json` remains the only rollout policy. Optional
+  `.github/workflows/cao.<deployment>.json` profiles may extend it only with
+  `control-plane.web.host`; composition is relative, directory-confined,
+  cycle-bounded, duplicate-key rejecting, and validated after merging. A
+  deployment profile cannot alter scope, campaign enablement, modes, targets,
+  workers, credentials, or any other control-plane authority.
 
 ## Technology choices
 

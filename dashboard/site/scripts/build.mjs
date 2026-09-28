@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 import { bundleDashboardFiles } from "../../report/bundle-dashboards.mjs";
 import { configureSite } from "../../report/configure-site.mjs";
+import { loadPolicyFile } from "../../../.github/workflows/shared/policy.mjs";
 import { buildDashboardPageChunkPath, splitDashboardDocument } from "../src/dashboard-chunks.js";
 import { generateDashboardLlms } from "./llms.mjs";
 
@@ -226,9 +227,7 @@ function redirectDocument(pageId) {
 }
 
 async function main([destination, settingsPath, commitSha, activityDataPath]) {
-  const controlSettings = settingsPath
-    ? JSON.parse(await readFile(resolve(settingsPath), "utf8"))
-    : {};
+  const controlSettings = settingsPath ? loadPolicyFile(resolve(settingsPath)) : {};
   await buildDashboardSite({
     destination: destination ?? new URL("dist/", siteRoot),
     controlSettings,
