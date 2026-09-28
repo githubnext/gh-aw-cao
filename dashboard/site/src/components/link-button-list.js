@@ -22,21 +22,25 @@ export function renderLinkButtonList(context) {
   const indicatorField = text(context.elementConfig?.['indicator-field']);
   const indicatorLabelField = text(context.elementConfig?.['indicator-label-field']);
   const fallbackIcon = text(context.elementConfig?.['fallback-icon']) || 'link';
+  const rowKey = (/** @type {Record<string, unknown>} */ row, /** @type {number} */ index) =>
+    findLink(row, linkField)?.href || text(row[labelField]) || String(index);
+  /** @type {Map<string, HTMLElement>} */
+  const labelBadgesByKey = new Map();
   const items = keyed(
     source.rows(),
-    (row) => {
+    (row, index) => {
       const label = text(row[labelField]) || 'Link';
       const labelBadge = labelBadgeField ? text(row[labelBadgeField]) : '';
       const indicator = text(row[indicatorField]);
       const indicatorLabel = text(row[indicatorLabelField]);
+      const badge = labelBadgeField
+        ? h('span', { className: 'link-button-list-label-badge', hidden: !labelBadge }, labelBadge)
+        : null;
+      if (badge) labelBadgesByKey.set(rowKey(row, index), badge);
       const link = renderSafeLink(
         h('span', { className: 'link-button-list-content' },
           renderIconSpan('link-button-list-icon', text(row[iconField]) || fallbackIcon, { ariaHidden: true }),
-          h('span', { className: 'link-button-list-label' },
-            label,
-            labelBadgeField
-              ? h('span', { className: 'link-button-list-label-badge', hidden: !labelBadge }, labelBadge)
-              : null),
+          h('span', { className: 'link-button-list-label' }, label, badge),
           indicator
             ? h(
                 'span',
@@ -70,7 +74,7 @@ export function renderLinkButtonList(context) {
         link
       );
     },
-    (row, index) => findLink(row, linkField)?.href || text(row[labelField]) || String(index)
+    rowKey
   );
   const list = h('ul', { className: 'link-button-list' }, items);
   const skeleton = h(
@@ -102,10 +106,16 @@ export function renderLinkButtonList(context) {
     items.items = source.rows();
     items.render();
     if (labelBadgeField) {
-      list.querySelectorAll('.link-button-list-label-badge').forEach((badge, index) => {
-        const labelBadge = text(items.items[index]?.[labelBadgeField]);
+      const nextKeys = new Set(items.items.map(rowKey));
+      for (const key of [...labelBadgesByKey.keys()]) {
+        if (!nextKeys.has(key)) labelBadgesByKey.delete(key);
+      }
+      items.items.forEach((row, index) => {
+        const badge = labelBadgesByKey.get(rowKey(row, index));
+        if (!badge) return;
+        const labelBadge = text(row[labelBadgeField]);
         badge.textContent = labelBadge;
-        /** @type {HTMLElement} */ (badge).hidden = !labelBadge;
+        badge.hidden = !labelBadge;
       });
     }
     const pending = source.pending();
