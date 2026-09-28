@@ -70,7 +70,7 @@ for (const { colorScheme, canvas, foreground, accent } of [
     await page.setViewportSize({ width: 1280, height: 900 });
     expect((await page.goto("setup/"))?.ok()).toBe(true);
 
-    const canvasStyles = await page.locator(".content-panel").first().evaluate((element) => {
+    const canvasStyles = await page.locator(".content-panel:has(.ops-wizard-shell)").evaluate((element) => {
       const styles = getComputedStyle(element);
       return { backgroundColor: styles.backgroundColor, backgroundImage: styles.backgroundImage };
     });

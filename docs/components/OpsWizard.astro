@@ -1073,11 +1073,12 @@ const hostTargets = [
 
     .wizard-toggle-title {
       max-width: 18ch;
-      color: var(--wizard-fg);
+      color: var(--wizard-fg) !important;
       font-size: clamp(2.75rem, 5vw, 3.5rem);
-      font-weight: 500;
+      font-weight: 500 !important;
       letter-spacing: -0.03em;
       line-height: 1.1;
+      -webkit-text-fill-color: currentColor;
     }
 
     .wizard-toggle-lede,
