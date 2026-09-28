@@ -68,6 +68,21 @@ test("landing page ends with a setup wizard launch button", async ({ page }) => 
   await expect(launchButton).toHaveAttribute("href", "/gh-aw-cao/setup/");
 });
 
+test("landing page exposes mobile navigation and header controls", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect((await page.goto("./"))?.ok()).toBe(true);
+
+  await expect(page.getByRole("button", { name: /Switch to (light|dark) theme/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: "GitHub repository" })).toBeVisible();
+
+  const menu = page.locator(".cao-mobile-nav");
+  await expect(menu.locator("summary")).toBeVisible();
+  await expect(menu.getByRole("navigation", { name: "Primary navigation menu" })).toBeHidden();
+  await menu.locator("summary").click();
+  await expect(menu).toHaveAttribute("open", "");
+  await expect(menu.getByRole("link")).toHaveText(["Setup", "Campaigns", "Blog"]);
+});
+
 for (const colorScheme of ["light", "dark"]) {
   test.describe(`${colorScheme} scheme`, () => {
     test.use({ colorScheme, viewport: { width: 320, height: 900 } });

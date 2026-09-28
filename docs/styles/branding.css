@@ -58,6 +58,21 @@
   color: #1f2328 !important;
 }
 
+@media (max-width: 49.999rem) {
+  :root:not([data-has-sidebar]) .right-group {
+    display: flex;
+  }
+
+  :root:not([data-has-sidebar]) .right-group,
+  :root:not([data-has-sidebar]) .right-group .social-icons {
+    gap: 0.2rem;
+  }
+
+  :root:not([data-has-sidebar]) .right-group .social-icons::after {
+    display: none;
+  }
+}
+
 :root[data-theme="dark"] .right-group .social-icons a,
 :root[data-theme="dark"] .right-group .theme-toggle {
   color: #f0f6fc !important;
