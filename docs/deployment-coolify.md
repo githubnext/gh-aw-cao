@@ -41,6 +41,7 @@ In the following steps, replace `PUBLIC-HOST` with the public host name of your 
 
      ```bash
      docker build -f server/Dockerfile \
+       --build-arg CAO_PROFILE=cao.coolify.json \
        --build-arg VERSION=0.0.0-alpha \
        --build-arg REVISION="$(git rev-parse HEAD)" \
        --build-arg CREATED="$(git show -s --format=%cI HEAD)" \
@@ -51,26 +52,14 @@ In the following steps, replace `PUBLIC-HOST` with the public host name of your 
 
 1. Register a GitHub OAuth app. Set its **Authorization callback URL** to `https://PUBLIC-HOST/auth/callback`. For more information, see [Creating an OAuth app](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app) in the GitHub documentation.
 1. Create a Redis service in Coolify on the same private network as the dashboard, or use an external `rediss://` endpoint. To use Upstash, follow [Deploying the dashboard with Upstash Redis](deployment-upstash.md), select the `upstash` Redis module with `target.replicas: 1`, and keep the Coolify resource at exactly one replica.
-1. Add a modular `control-plane.web.host` declaration to
-   `.github/workflows/cao.json`. The Compose file mounts this reviewed policy and
-   startup fails when it is absent. For Coolify-managed Redis, use:
-
-   ```json
-   {
-     "target": { "module": "container", "name": "coolify" },
-     "redis": {
-       "module": "local",
-       "url-env": "REDIS_URL",
-       "namespace-env": "REDIS_NAMESPACE",
-       "allow-private-plaintext": true,
-       "tls": { "mode": "disabled" }
-     }
-   }
-   ```
-
-   Place this object at `control-plane.web.host`; don't replace the rest of the
-   control policy. For an external service, use the matching provider module
-   from [Managed Redis in one minute](deployment-managed-redis.md).
+1. Review `.github/workflows/cao.coolify.json`. This CAO deployment profile
+   extends the authoritative `cao.json` rollout policy with only the
+   `control-plane.web.host` settings required by Coolify. The Compose file
+   mounts both files and startup fails when the composed profile is missing or
+   invalid. For an external Redis service, change only the profile's Redis
+   provider module as described in
+   [Managed Redis in one minute](deployment-managed-redis.md); don't copy host
+   settings into `cao.json`.
 1. Prepare the artifact volume.
 
    1. Create a new volume that isn't attached to any service.
@@ -98,8 +87,8 @@ For a test deployment of the `githubnext/gh-aw-cao` dashboard:
 1. Create a Git-backed Docker Compose application in Coolify from this repository.
    Keep the repository root as the working directory and set the Compose location
    to `server/coolify/compose.yml`. Enable **Preserve Repository During
-   Deployment** so the checked-in `cao.json` bind mount remains available. A
-   pasted Compose file cannot resolve that bind mount.
+   Deployment** so the checked-in `cao.json` and `cao.coolify.json` bind mounts
+   remain available. A pasted Compose file cannot resolve those profiles.
 1. Configure the variables in `.env.example`, including one non-preview
    `CAO_IMAGE` variable that is not marked **Shown Once**. Use an immutable
    `ghcr.io/githubnext/gh-aw-cao/cao-dashboard@sha256:...` value. If the GHCR
@@ -187,7 +176,7 @@ The `server/coolify/compose.yml` file reads the following variables.
 | `CAO_ARTIFACT_VOLUME` | Yes | No | Existing Coolify volume that contains the verified payload. It is mounted read-only at `/app/source`. |
 | `REDIS_URL` | Yes | Yes | Redis URL selected by `control-plane.web.host.redis.url-env`. Use `rediss://` when possible. |
 | `REDIS_NAMESPACE` | No. Defaults to `coolify-dashboard`. | No | Prefix selected by `control-plane.web.host.redis.namespace-env`. |
-| `CAO_POLICY_PATH` | Set by Compose. | No | Points at the read-only `cao.json` bind mount. |
+| `CAO_POLICY_PATH` | Set by Compose. | No | Points at the read-only `cao.coolify.json` deployment profile, which extends `cao.json`. |
 | `CAO_ALLOWED_HOSTS` | Yes | No | Comma-separated list of public host names. |
 | `CAO_TRUSTED_PROXY_CIDRS` | Yes | No | Exact private CIDR of the Coolify proxy network. |
 | `CAO_GITHUB_CLIENT_ID` | Yes | No | Client ID of the OAuth app. |

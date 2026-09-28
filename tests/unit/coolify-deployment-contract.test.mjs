@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { parse } from "yaml";
+import { loadPolicyFile } from "../../.github/workflows/shared/policy.mjs";
 
 const root = new URL("../../", import.meta.url);
 
@@ -86,18 +87,22 @@ test("Coolify image is multi-stage, non-root, versioned, and health checked", as
   assert.match(dockerfile, /HEALTHCHECK[\s\S]*\/api\/readiness/);
   assert.doesNotMatch(dockerfile, /HEALTHCHECK[\s\S]*\/api\/v1\/health/);
   assert.match(dockerfile, /org\.opencontainers\.image\.revision="\$\{REVISION\}"/);
+  assert.match(dockerfile, /ARG CAO_PROFILE=cao\.json/);
+  assert.match(dockerfile, /dashboard\/site run build -- dist "\$\{policy\}"/);
   assert.match(dockerfile, /COPY --from=dashboard-build[\s\S]*\/app\/site\//);
   assert.match(dockerfile, /VOLUME \["\/app\/source"\]/);
 });
 
 test("Coolify Compose contains no credentials and requires immutable image input", async () => {
   const source = await text("server/coolify/compose.yml");
+  const profile = JSON.parse(await text(".github/workflows/cao.coolify.json"));
+  const composedProfile = loadPolicyFile(new URL(".github/workflows/cao.coolify.json", root).pathname);
   const compose = parse(source);
   const dashboard = compose.services.dashboard;
   assert.match(dashboard.image, /\$\{CAO_IMAGE:\?.*immutable/);
   assert.equal(dashboard.environment.CAO_SOURCE_DIRECTORY, "/app/source");
   assert.equal(dashboard.environment.REDIS_URL, "${REDIS_URL:-}");
-  assert.equal(dashboard.environment.CAO_POLICY_PATH, "/app/config/cao.json");
+  assert.equal(dashboard.environment.CAO_POLICY_PATH, "/app/config/cao.coolify.json");
   assert.equal(dashboard.environment.CAO_REDIS_URL, undefined);
   assert.equal(dashboard.environment.CAO_REDIS_MODE, undefined);
   assert.equal(dashboard.environment.CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS, undefined);
@@ -107,7 +112,19 @@ test("Coolify Compose contains no credentials and requires immutable image input
   assert.deepEqual(dashboard.volumes, [
     "cao-dashboard-artifact:/app/source:ro",
     "../../.github/workflows/cao.json:/app/config/cao.json:ro",
+    "../../.github/workflows/cao.coolify.json:/app/config/cao.coolify.json:ro",
   ]);
+  assert.equal(profile.extends, "cao.json");
+  assert.deepEqual(Object.keys(profile).sort(), ["control-plane", "extends"]);
+  assert.deepEqual(profile["control-plane"].web.host.target, {
+    module: "container",
+    name: "coolify",
+  });
+  assert.equal(profile["control-plane"].web.host.redis.module, "local");
+  assert.deepEqual(
+    composedProfile["control-plane"].campaigns,
+    JSON.parse(await text(".github/workflows/cao.json"))["control-plane"].campaigns,
+  );
   assert.equal(compose.volumes["cao-dashboard-artifact"].external, true);
   assert.match(compose.volumes["cao-dashboard-artifact"].name, /^\$\{CAO_ARTIFACT_VOLUME:\?/);
   assert.doesNotMatch(source, /\.\/artifact:/);
@@ -143,6 +160,7 @@ test("sample Coolify workflow builds, scans, publishes, and deploys an exact ima
   assert.equal(workflow.on.workflow_dispatch, null);
   assert.deepEqual(workflow.permissions, { contents: "read" });
   assert.deepEqual(authorize.permissions, { contents: "read" });
+  assert.match(build.run, /--build-arg "CAO_PROFILE=cao\.coolify\.json"/);
   for (const step of [authorization, publishAuthorization, deployAuthorization]) {
     assert.equal(step.env.ORIGINAL_ACTOR, "${{ github.actor }}");
     assert.equal(step.env.TRIGGERING_ACTOR, "${{ github.triggering_actor }}");

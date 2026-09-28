@@ -1,6 +1,7 @@
 FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS dashboard-build
 
 ARG REVISION
+ARG CAO_PROFILE=cao.json
 WORKDIR /workspace
 COPY dashboard/site/package.json dashboard/site/package-lock.json ./dashboard/site/
 RUN sed -i \
@@ -8,10 +9,12 @@ RUN sed -i \
       dashboard/site/package-lock.json \
     && npm --prefix dashboard/site ci
 COPY . .
-RUN if echo "${REVISION}" | grep -Eq '^[0-9a-f]{40}$'; then \
-      npm --prefix dashboard/site run build -- dist ../../.github/workflows/cao.json "${REVISION}"; \
+RUN printf '%s' "${CAO_PROFILE}" | grep -Eq '^cao(\.[a-z0-9-]+)?\.json$' \
+    && policy="../../.github/workflows/${CAO_PROFILE}" \
+    && if echo "${REVISION}" | grep -Eq '^[0-9a-f]{40}$'; then \
+      npm --prefix dashboard/site run build -- dist "${policy}" "${REVISION}"; \
     else \
-      npm --prefix dashboard/site run build -- dist ../../.github/workflows/cao.json; \
+      npm --prefix dashboard/site run build -- dist "${policy}"; \
     fi
 
 FROM golang:1.27-alpine@sha256:8a5910f31396cd4d89662f56c68b3ae31d374308270a1c3bd96672ee5ed43414 AS server-build

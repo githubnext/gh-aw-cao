@@ -143,6 +143,7 @@ jobs:
           created="$(git show -s --format=%cI "${REVISION}")"
           docker build \
             --file server/Dockerfile \
+            --build-arg "CAO_PROFILE=cao.coolify.json" \
             --build-arg "VERSION=sample-${REVISION}" \
             --build-arg "REVISION=${REVISION}" \
             --build-arg "CREATED=${created}" \
