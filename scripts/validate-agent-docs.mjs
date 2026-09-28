@@ -103,17 +103,18 @@ async function findHtmlFiles(directory) {
       files.push(filePath);
     }
 
-    async function findMarkdownFiles(directory) {
-      const files = [];
-      for (const entry of await readdir(directory, { withFileTypes: true })) {
-        const filePath = path.join(directory, entry.name);
-        if (entry.isDirectory()) {
-          files.push(...await findMarkdownFiles(filePath));
-        } else if (entry.name.endsWith(".md")) {
-          files.push(filePath);
-        }
-      }
-      return files;
+  }
+  return files;
+}
+
+async function findMarkdownFiles(directory) {
+  const files = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const filePath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...await findMarkdownFiles(filePath));
+    } else if (entry.name.endsWith(".md")) {
+      files.push(filePath);
     }
   }
   return files;
@@ -257,8 +258,8 @@ export async function validateAgentDocs({
           );
         }
       }
-    } catch {
-      errors.push("unable to verify authoritative documentation coverage");
+    } catch (error) {
+      errors.push(`unable to verify authoritative documentation coverage: ${error.message}`);
     }
   }
 

@@ -13,7 +13,8 @@ frontmatter, and the normative specifications under `specs/`.
 
 The normal documentation build generates:
 
-- `llms.txt`, `llms-small.txt`, and `llms-full.txt` through
+- `llms.txt` as a one-hop task router, `llms-small.txt` as compact project
+  context, and `llms-full.txt` as the complete documentation corpus through
   `starlight-llms-txt`;
 - `agent/llms.txt` as a compact index of prominent resources; and
 - `agent/resources.json` as a deterministic compact index of every resource; and
@@ -21,6 +22,13 @@ The normal documentation build generates:
 
 Do not edit or commit these outputs. The Pages workflow publishes them from the
 same `dist/` tree as the human site.
+
+The validator limits `llms.txt` to 4 KiB, `llms-small.txt` to 64 KiB, and each
+routed `skills/*/SKILL.md` entry point to 12 KiB. It also requires every common
+task in `llms.txt` to resolve to exactly one skill in one hop and verifies that
+every non-draft authoritative Markdown heading remains in `llms-full.txt`.
+Specialized skill guidance belongs in a targeted `references/` document rather
+than the skill entry point.
 
 ## Resource metadata
 

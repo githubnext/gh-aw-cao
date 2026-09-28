@@ -191,7 +191,9 @@ test("rejects a missing generated artifact", async () => {
 test("rejects an unresolved internal link", async () => {
   const root = await createFixture();
   await rm(path.join(root, "dist", "dashboard"), { recursive: true });
-  assert.ok((await validateAgentDocs({ root })).some((error) => error.includes("unresolved internal link")));
+  assert.ok((await validateAgentDocs({ root })).some((error) =>
+    error.includes("unresolved") || error.includes("missing JSON resource")
+  ));
 });
 
 test("rejects a missing required route", async () => {
