@@ -1,5 +1,7 @@
 /* Tokens and base styles for the standalone setup wizard page, which renders
    without Starlight chrome but keeps the shared design tokens the wizard uses. */
+/* OpsWizard scopes its styles to the `starlight.core` layer, so declare that
+   layer first to keep its rules ordered ahead of the unlayered rules below. */
 @layer starlight.core;
 
 @font-face {

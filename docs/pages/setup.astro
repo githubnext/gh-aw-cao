@@ -18,7 +18,12 @@ const description = "Generate an agent-ready prompt for a bounded Central Agenti
     <meta property="og:description" content={description} />
     <link rel="icon" href={`${base}/favicon.svg`} />
     <script is:inline>
-      const storedTheme = localStorage.getItem("starlight-theme");
+      let storedTheme = null;
+      try {
+        storedTheme = localStorage.getItem("starlight-theme");
+      } catch {
+        storedTheme = null;
+      }
       const theme = storedTheme === "light" || storedTheme === "dark"
         ? storedTheme
         : window.matchMedia("(prefers-color-scheme: light)").matches
