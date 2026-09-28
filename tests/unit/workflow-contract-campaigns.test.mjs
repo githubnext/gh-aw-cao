@@ -52,7 +52,7 @@ test("campaigns and repository workflows pin the supported gh-aw version", () =>
     assert.equal(parse(readFileSync(join(root, manifest), "utf8"))["min-version"], ghAwVersion, manifest);
   }
 
-  for (const name of ["copilot-setup-steps.yml", "release.lock.yml", "workflow-contracts.yml"]) {
+  for (const name of ["cao-validate.yml", "copilot-setup-steps.yml", "release.lock.yml", "workflow-contracts.yml"]) {
     const source = workflow(name);
     assert.match(source, /uses: \.\/\.github\/actions\/setup-gh-aw/);
   }

@@ -55,7 +55,7 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
       - name: Install policy-pinned gh-aw
-        run: npm run install:gh-aw
+        uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
       - name: Validate CAO
         id: validation
         continue-on-error: true
