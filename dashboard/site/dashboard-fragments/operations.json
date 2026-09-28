@@ -1214,11 +1214,6 @@
                 "field": "package-source",
                 "type": "nominal",
                 "title": "Source"
-              },
-              {
-                "field": "package-contents",
-                "type": "nominal",
-                "title": "Contents"
               }
             ]
           },

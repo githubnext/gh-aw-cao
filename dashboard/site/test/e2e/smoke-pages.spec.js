@@ -685,6 +685,19 @@ test('desktop navigation sections collapse and expand around the current view', 
 test('clean navigation preserves the Overview decision hierarchy across desktop and mobile', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const documentModel = authoritativeDashboard;
+  await page.route('http://dashboard.test/memory/manifest.json', (route) => route.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({
+      version: 1,
+      campaigns: [{
+        campaign: 'aw-doctor',
+        branch: 'memory/aw-doctor',
+        commit: 'a'.repeat(40),
+        files: [{ path: 'notes.md', oid: 'b'.repeat(40), size: 5 }],
+        omitted: {},
+      }],
+    }),
+  }));
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.setContent(`
     <div id="root"></div>
@@ -997,10 +1010,14 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(page).toHaveURL(/#page-memory$/);
   await expect(page.getByRole('heading', { name: 'Memory', exact: true, level: 1 })).toBeVisible();
   const memoryView = page.getByRole('region', { name: 'CAO repository memory' });
+  const disabledCampaigns = memoryView.locator('.cao-memory-campaign-disabled');
+  await expect(disabledCampaigns).toHaveText(['Dependabot']);
+  await expect(disabledCampaigns.first()).toHaveAttribute('aria-disabled', 'true');
   const campaignBranches = memoryView.locator('.cao-memory-campaign-branch');
-  await expect(campaignBranches.locator(':scope > summary')).toHaveText(['AW Doctor', 'Dependabot']);
-  await campaignBranches.nth(1).locator(':scope > summary').click();
-  await expect(campaignBranches.nth(1)).toHaveAttribute('open', '');
+  await expect(campaignBranches.locator(':scope > summary')).toHaveText(['AW Doctor']);
+  await expect(campaignBranches.first()).not.toHaveAttribute('open', '');
+  await campaignBranches.first().locator(':scope > summary').click();
+  await expect(campaignBranches.first()).toHaveAttribute('open', '');
   await expect(page).toHaveURL(/#page-memory$/);
   await expect(memoryView.getByRole('link')).toHaveCount(0);
   await expect(updatesSection.locator('summary')).toHaveText('Updates');

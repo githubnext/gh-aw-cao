@@ -24,8 +24,9 @@ const revision = "1".repeat(40);
 const timeout = 30_000;
 const policyPath = path.join(".github", "workflows", "cao.json");
 const materializer = path.join(".github", "workflows", "shared", "materialize-cao.mjs");
-const manualUpgrade = (version) => new RegExp(`Run \`curl -sL \\S+/install-gh-aw\\.sh \\| bash -s -- ${version.replaceAll(".", "\\.")}\`, then rerun the CAO installer`);
-const upgradePrompt = /Upgrade it now with curl -sL \S+\/install-gh-aw\.sh \| bash -s -- v\S+\? \[y\/N\]/;
+const curlCommand = "curl --fail --show-error --location";
+const manualUpgrade = (version) => new RegExp(`Run \`${curlCommand} \\S+/install-gh-aw\\.sh \\| bash -s -- ${version.replaceAll(".", "\\.")}\`, then rerun the CAO installer`);
+const upgradePrompt = new RegExp(`Upgrade it now with ${curlCommand} \\S+/install-gh-aw\\.sh \\| bash -s -- v\\S+\\? \\[y/N\\]`);
 const addedFiles = [
   ...manifest.resources.map(({ source, destination }) => ({ source, destination })),
   ...[".github/workflows/cao-activity.yml", ".github/workflows/cao-dashboard.yml"]
@@ -368,6 +369,19 @@ for (const [state, initialVersion, expectedVersion, expectedLog] of [
     await assertCompleteInstall(consumer, env, expectedVersion, repository);
   });
 }
+
+test("install.sh reports useful progress and does not silence curl", async (t) => {
+  const { consumer, env } = await createConsumer(t);
+  const result = await streamInstaller(consumer, env);
+  assert.equal(result.code, 0, result.stderr);
+  assert.match(result.stdout, new RegExp(`Installing gh-aw ${supportedGhAw.replaceAll(".", "\\.")}`));
+  assert.match(result.stdout, /Installing the CAO campaign/);
+  assert.match(result.stdout, /Materializing the CAO runtime/);
+  assert.match(result.stdout, /Making the CAO launcher executable/);
+  assert.match(result.stdout, /Initializing the CAO policy/);
+  assert.match(result.stdout, /CAO installation complete/);
+  assert.doesNotMatch(installerSource, /--silent|curl -s/);
+});
 
 test("streamed install.sh scopes policy to gh's current repository, not the ambient GITHUB_REPOSITORY", async (t) => {
   const { consumer, repository, env, log } = await createConsumer(t, supportedGhAw, { repository: "beta-org/ops.tools" });
