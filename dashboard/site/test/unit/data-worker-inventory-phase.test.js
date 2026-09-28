@@ -83,6 +83,7 @@ it('publishes inventory-only sources before historical shards finish ingesting',
         'registry-precedence': 1,
         name: 'Self Care',
         repository: 'githubnext/gh-aw-cao',
+        path: 'self-care',
         ref: 'main',
         'resolved-commit': 'e'.repeat(40),
         source: 'githubnext/gh-aw-cao/self-care@main',
@@ -162,7 +163,7 @@ it('publishes inventory-only sources before historical shards finish ingesting',
   expect(posted.find(({ subscriptionId }) => subscriptionId === 'marketplace')).toMatchObject({
     data: {
       'marketplace-package-summary': {
-        rows: [{ id: 'marketplace:package:githubnext/gh-aw-cao:self-care', 'package-name': 'Self Care' }]
+        rows: [{ id: 'githubnext/gh-aw-cao/self-care', 'package-name': 'Self Care' }]
       }
     }
   });
