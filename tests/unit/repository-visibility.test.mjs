@@ -100,3 +100,25 @@ test("owner-wide user controls fall back to installation repositories", async ()
   });
   assert.deepEqual(routes, ["GET /orgs/{org}/repos", "GET /installation/repositories"]);
 });
+
+test("owner-wide user controls inspect authenticated repositories when installation discovery is unavailable", async () => {
+  const repositories = new Map([
+    ["octo/control", { full_name: "octo/control", visibility: "public" }],
+  ]);
+  const routes = [];
+  await assert.rejects(validateRepositoryVisibility({
+    controlRepository: "octo/control",
+    allowedRepositories: [],
+    request: requestFor(repositories),
+    paginate: async (route, _params, map) => {
+      routes.push(route);
+      if (route === "GET /orgs/{org}/repos") throw Object.assign(new Error("not an organization"), { status: 404 });
+      if (route === "GET /installation/repositories") throw new Error("not an installation token");
+      return map({ data: [
+        { full_name: "octo/private", visibility: "private" },
+        { full_name: "other/private", visibility: "private" },
+      ] });
+    },
+  }), /non-public repository count: 1/);
+  assert.deepEqual(routes, ["GET /orgs/{org}/repos", "GET /installation/repositories", "GET /user/repos"]);
+});

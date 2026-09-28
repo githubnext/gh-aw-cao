@@ -38,11 +38,13 @@ async function ownerRepositories(paginate, owner) {
       ),
     );
   } catch {
-    return paginate("GET /users/{username}/repos", {
-      username: owner,
-      type: "owner",
-      per_page: 100,
-    });
+    return paginate(
+      "GET /user/repos",
+      { per_page: 100 },
+      (response) => (response.data || []).filter(
+        (repository) => repository.full_name?.split("/", 1)[0]?.toLowerCase() === owner.toLowerCase(),
+      ),
+    );
   }
 }
 
