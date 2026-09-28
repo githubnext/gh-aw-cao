@@ -138,6 +138,7 @@ Evaluate the next category that has sufficient evidence. Do not repeat a suggest
 Do not modify repository content or create a pull request. After persisting the evaluation:
 
 - Provide only the unprefixed subject as the safe-output title. The configured `title-prefix` is added automatically; do not repeat it or add a semantically equivalent category prefix.
+- The noop cap is two only to tolerate one accidental placeholder call: still call `noop` exactly once for the terminal decision, and never send multiple terminal decisions.
 - Call `create_issue` exactly once when one non-duplicate actionable improvement meets the threshold.
 - Otherwise call `noop` exactly once with the evidence window, evaluated category, and concise reason nothing is actionable.
 

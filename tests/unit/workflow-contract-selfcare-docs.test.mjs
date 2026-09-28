@@ -241,6 +241,7 @@ test("SelfCare docs build-time investigator rotates evidenced recommendations", 
   assert.match(source, /repo-memory:\n\s+branch-name: memory\/self-care-docs-build-time/);
   assert.match(source, /githubnext__gh-aw-cao__docs-build-time-suggestions\.json/);
   assert.match(source, /Advance `next_category` after every complete evaluation/);
+  assert.match(source, /noop cap is two only to tolerate one accidental placeholder call/);
   assert.match(source, /Call `create_issue` exactly once/);
   assert.match(source, /Otherwise call `noop` exactly once/);
   assert.match(source, /title-prefix: "\[self-care:docs-build-time-investigator\] "/);
