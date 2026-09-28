@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCheckbox, renderCloseButton, renderDashboardViewSkeleton, renderDigest, renderDisclosureSummaryLabel, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderFilterSelectControl, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderLoadingPlaceholderBlocks, renderSearchInput, renderSectionHeading, renderSkeletonBars, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
+import { coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCheckbox, renderCloseButton, renderDashboardViewSkeleton, renderDigest, renderDisclosureSummaryLabel, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderFilterSelectControl, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderLoadingMessage, renderLoadingPlaceholderBlocks, renderSearchInput, renderSectionHeading, renderSkeletonBars, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
 import { h } from '../../src/dom.js';
 import { effect, state } from '../../src/reactive.js';
 
@@ -27,6 +27,16 @@ describe('ui primitives', () => {
     expect(checkbox.checked).toBe(true);
     expect(onChange).toHaveBeenCalledOnce();
     expect(parentClick).not.toHaveBeenCalled();
+  });
+
+  it('renders a loading placeholder announced as an in-progress status region', () => {
+    const rendered = renderLoadingMessage('Loading campaign data...');
+
+    expect(rendered.tagName).toBe('P');
+    expect(rendered.className).toBe('empty');
+    expect(rendered.textContent).toBe('Loading campaign data...');
+    expect(rendered.getAttribute('role')).toBe('status');
+    expect(rendered.getAttribute('aria-busy')).toBe('true');
   });
 
   it('renders shared section-heading markup with configurable heading levels', () => {

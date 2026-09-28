@@ -383,6 +383,17 @@ export function renderVisualizationEmptyMessage(message) {
 }
 
 /**
+ * Renders the shared "loading" placeholder paragraph used by route/panel
+ * views while data is still in flight: a {@link renderEmptyMessage} paragraph
+ * announced as an in-progress live-region status.
+ * @param {string} message
+ * @returns {HTMLElement}
+ */
+export function renderLoadingMessage(message) {
+  return renderEmptyMessage(message, { role: 'status', 'aria-busy': 'true' });
+}
+
+/**
  * Renders a `<ul>` of caller-supplied `<li>` elements when `items` is
  * non-empty, or a component-specific empty-state paragraph otherwise. Shared
  * by the configuration-actions list and the campaign-status repository list,

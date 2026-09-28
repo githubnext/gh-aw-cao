@@ -5,7 +5,7 @@
 import { createRoutePageShell } from './route-page-shell.js';
 import { normalizeCampaignRoute, campaignNameForRoute } from './campaign-route-composition.js';
 import { CAMPAIGN_ROUTE_TABS } from './route-body-specification.js';
-import { renderEmptyMessage } from './ui-primitives.js';
+import { renderEmptyMessage, renderLoadingMessage } from './ui-primitives.js';
 import { text } from './count-formatters.js';
 import { findLink } from './link-content.js';
 import { bindFactorySources, createFactoryScope } from './factory-elements.js';
@@ -91,10 +91,7 @@ export function renderCampaignRouteShell(context, config) {
               description: config.description.replace('{campaignName}', campaignName),
               navigationPage: 'campaigns'
             },
-            content: renderEmptyMessage('Loading campaign data...', {
-              role: 'status',
-              'aria-busy': 'true'
-            })
+            content: renderLoadingMessage('Loading campaign data...')
           };
         }
         const workflowsSource = bindings.workflows.source();
@@ -108,10 +105,7 @@ export function renderCampaignRouteShell(context, config) {
               description: config.description.replace('{campaignName}', campaignName),
               navigationPage: 'campaigns'
             },
-            content: renderEmptyMessage('Loading campaign data...', {
-              role: 'status',
-              'aria-busy': 'true'
-            })
+            content: renderLoadingMessage('Loading campaign data...')
           };
         }
         if (bindings.workflows.empty()) {

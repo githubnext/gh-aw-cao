@@ -5,7 +5,7 @@ import { octicon } from '../octicons.js';
 import { effect, onCleanup, render, state } from '../reactive.js';
 import { bindFactorySources, createFactoryScope } from './factory-elements.js';
 import { errorMessage } from './count-formatters.js';
-import { renderEmptyMessage } from './ui-primitives.js';
+import { renderEmptyMessage, renderLoadingMessage } from './ui-primitives.js';
 
 const debugCampaignMemory = createDebug('campaign-memory');
 const MOBILE_MEMORY_HISTORY_KEY = 'caoMemoryViewer';
@@ -150,7 +150,7 @@ export function renderAllCampaignMemory(context) {
   effect(() => {
     if (source.pending()) {
       if (renderedCampaigns) return;
-      root.replaceChildren(renderEmptyMessage('Loading campaign memory...', { role: 'status', 'aria-busy': 'true' }));
+      root.replaceChildren(renderLoadingMessage('Loading campaign memory...'));
       root.setAttribute('aria-busy', 'true');
       return;
     }
@@ -221,7 +221,7 @@ function renderCampaignTree(campaigns, signal) {
     const load = () => {
       if (loaded || !details.open) return;
       loaded = true;
-      files.replaceChildren(renderEmptyMessage('Loading repository memory...', { role: 'status', 'aria-busy': 'true' }));
+      files.replaceChildren(renderLoadingMessage('Loading repository memory...'));
       listRepositoryMemory(campaign.campaign, signal).then((manifest) => {
         if (signal.aborted) return;
         if (!manifest) {
@@ -255,7 +255,7 @@ function renderCampaignTree(campaigns, signal) {
           const fileBody = h(
             'div',
             { className: 'memory-file-body' },
-            renderEmptyMessage('Loading file...', { role: 'status', 'aria-busy': 'true' })
+            renderLoadingMessage('Loading file...')
           );
           content.replaceChildren(
             renderMemoryFileHeader(entry.path),
@@ -393,7 +393,7 @@ function renderFileTree(entries, select) {
  */
 function memoryView({ campaignName, manifest, selectedPath, file, mobileView, select }) {
   if (manifest.status === 'loading') {
-    return renderEmptyMessage('Loading repository memory...', { role: 'status', 'aria-busy': 'true' });
+    return renderLoadingMessage('Loading repository memory...');
   }
   if (manifest.status === 'error') {
     return renderEmptyMessage(`Repository memory is unavailable. ${manifest.error}`, { role: 'alert' });
@@ -442,7 +442,7 @@ function memoryView({ campaignName, manifest, selectedPath, file, mobileView, se
         { className: 'campaign-memory-content', 'aria-live': 'polite', tabindex: '-1' },
         selected ? renderMemoryFileHeader(selected.path) : null,
         file.status === 'loading'
-          ? renderEmptyMessage('Loading file...', { role: 'status', 'aria-busy': 'true' })
+          ? renderLoadingMessage('Loading file...')
           : file.status === 'error'
             ? renderEmptyMessage(`Unable to load this memory file. ${file.error}`, { role: 'alert' })
             : file.status === 'ready'
