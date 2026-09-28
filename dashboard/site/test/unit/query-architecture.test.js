@@ -128,7 +128,11 @@ describe('dashboard query architecture', () => {
       'src/data/storage/indexeddb.js'
     ]);
     const importers = globSync('src/**/*.js')
-      .filter((file) => /import\s*\{[^}]*\btidy\b[^}]*\}\s*from\s*'[^']*data-operations\.js'/.test(read(file)))
+      .filter((file) => {
+        const source = read(file);
+        return /from\s*['"][^'"]*data-operations\.js['"]|import\(\s*['"][^'"]*data-operations\.js['"]/.test(source)
+          && /\btidy\b/.test(source);
+      })
       .map((file) => file.split(sep).join('/'));
 
     expect(new Set(importers)).toEqual(workerSideModules);
