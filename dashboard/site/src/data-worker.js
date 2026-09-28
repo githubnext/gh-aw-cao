@@ -321,17 +321,20 @@ async function queryRepositoryMemory(request, signal) {
 }
 
 /**
- * Sources that the published inventory payload alone satisfies. They are
- * canonical as soon as the inventory commit lands, so their subscriptions must
- * not wait for historical activity shards to finish ingesting.
+ * Inventory sources whose canonical records no activity shard ever observes.
+ * They can be committed before historical shard ingestion starts without
+ * changing how the complete inventory commit resolves shared structural
+ * records, so their subscriptions render immediately.
  */
-const INVENTORY_PHASE_DATABASE_SOURCES = new Set([
+const INVENTORY_PHASE_SOURCES = ['marketplace-packages'];
+const INVENTORY_PHASE_DATABASE_SOURCES = new Set(INVENTORY_PHASE_SOURCES);
+const RUN_PHASE_DATABASE_SOURCES = new Set([
+  ...INVENTORY_PHASE_SOURCES,
   'campaigns',
   'repositories',
   'workflows',
-  'marketplace-packages'
+  'runs'
 ]);
-const RUN_PHASE_DATABASE_SOURCES = new Set([...INVENTORY_PHASE_DATABASE_SOURCES, 'runs']);
 
 /** @param {{ sourceNames: string[], context: ReturnType<typeof dashboardContext> }} subscription */
 function subscriptionDatabaseSources(subscription) {
@@ -759,29 +762,31 @@ export function processDataRequest(request, signal) {
             sources = inventorySources;
             if (typeof request.id === 'number') inFlightDashboardSources.set(request.id, sources);
             progress.log('Inventory metadata refreshed.');
-            // Inventory is committed before any activity shard so that
-            // inventory-only pages, such as Marketplace, render from canonical
-            // records instead of waiting for historical shards. Shard ingestion
-            // preserves discovery-owned inventory fields, so this order also
-            // keeps inventory authoritative for repositories and workflows.
-            progress.log('Normalizing inventory metadata.');
-            const inventoryIngestion = await ingestDashboardSources(indexedDB, sources, {
-              storage: globalThis.navigator?.storage,
-              retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
-              payloadScope: inventoryUrl.href,
-              onWriteProgress: (written) => progress.store(written),
-              onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
-              signal
-            });
-            changed ||= inventoryIngestion.updated;
-            progress.log('skipped' in inventoryIngestion && inventoryIngestion.skipped
-              ? 'Inventory metadata is already current.'
-              : `Inventory ingestion committed ${inventoryIngestion.committedRecords} canonical records.`);
-            if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
-            await refreshDashboardSubscriptions(
-              /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
-              'inventory'
-            );
+            // Commit and publish the inventory-only sources before any activity
+            // shard is downloaded so pages such as Marketplace render without
+            // waiting for historical ingestion. The complete inventory payload
+            // is still committed after shard ingestion, under its own scope, so
+            // inventory keeps resolving shared structural records last.
+            const inventoryPhaseSources = Object.fromEntries(INVENTORY_PHASE_SOURCES
+              .filter((name) => Object.hasOwn(sources, name))
+              .map((name) => [name, /** @type {Record<string, unknown>} */ (sources)[name]]));
+            if (Object.keys(inventoryPhaseSources).length > 0) {
+              progress.log('Normalizing inventory-only metadata.');
+              const inventoryPhaseIngestion = await ingestDashboardSources(indexedDB, inventoryPhaseSources, {
+                storage: globalThis.navigator?.storage,
+                retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
+                payloadScope: `${inventoryUrl.href}#inventory-phase`,
+                onWriteProgress: (written) => progress.store(written),
+                onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
+                signal
+              });
+              changed ||= inventoryPhaseIngestion.updated;
+              if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
+              await refreshDashboardSubscriptions(
+                /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
+                'inventory'
+              );
+            }
           } else {
             progress.log('No separate inventory metadata was published.');
           }
@@ -943,6 +948,21 @@ export function processDataRequest(request, signal) {
               onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
               signal
             });
+          }
+          if (inventoryResponse.ok) {
+            progress.log('Normalizing inventory metadata.');
+            const inventoryIngestion = await ingestDashboardSources(indexedDB, sources, {
+              storage: globalThis.navigator?.storage,
+              retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
+              payloadScope: inventoryUrl.href,
+              onWriteProgress: (written) => progress.store(written),
+              onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
+              signal
+            });
+            changed ||= inventoryIngestion.updated;
+            progress.log('skipped' in inventoryIngestion && inventoryIngestion.skipped
+              ? 'Inventory metadata is already current.'
+              : `Inventory ingestion committed ${inventoryIngestion.committedRecords} canonical records.`);
           }
         } else {
           progress.log('Normalizing dashboard source data.');
