@@ -6,12 +6,12 @@ import { CANONICAL_SCHEMA_VERSION } from '../../src/data/model/schema.js';
 import { normalize } from '../../src/data/normalize/index.js';
 import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
 
-/** @param {() => boolean} ready */
-async function waitFor(ready) {
+/** @param {string} description @param {() => boolean} ready */
+async function waitFor(description, ready) {
   for (let attempt = 0; attempt < 400 && !ready(); attempt += 1) {
     await new Promise((resolve) => { setTimeout(resolve, 5); });
   }
-  return ready();
+  if (!ready()) throw new Error(`Timed out waiting for ${description}.`);
 }
 
 beforeEach(async () => {
@@ -158,7 +158,7 @@ it('publishes inventory-only sources before historical shards finish ingesting',
   const marketplacePublished = () => posted.some(({ subscriptionId, data }) =>
     subscriptionId === 'marketplace'
     && /** @type {{ 'marketplace-package-summary'?: { rows?: unknown[] } }} */ (data)?.['marketplace-package-summary']?.rows?.length === 1);
-  expect(await waitFor(marketplacePublished)).toBe(true);
+  await waitFor('the marketplace subscription to be published', marketplacePublished);
   expect(posted.find(({ subscriptionId }) => subscriptionId === 'marketplace')).toMatchObject({
     data: {
       'marketplace-package-summary': {
@@ -172,9 +172,10 @@ it('publishes inventory-only sources before historical shards finish ingesting',
   expect(posted.some(({ id }) => id === 1)).toBe(false);
 
   releaseShards();
-  await waitFor(() => posted.some(({ id }) => id === 1));
+  await waitFor('the ingestion request to complete', () => posted.some(({ id }) => id === 1));
   expect(posted.find(({ id }) => id === 1)?.error).toBeUndefined();
-  await waitFor(() => posted.some(({ subscriptionId }) => subscriptionId === 'runs'));
+  await waitFor('the runs subscription to be published',
+    () => posted.some(({ subscriptionId }) => subscriptionId === 'runs'));
   expect(posted.find(({ subscriptionId }) => subscriptionId === 'runs')).toMatchObject({
     data: { 'run-summary': { rows: [{ run: '404' }] } }
   });

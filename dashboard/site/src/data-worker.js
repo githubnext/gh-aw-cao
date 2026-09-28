@@ -601,6 +601,8 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
  * @returns {Promise<void>}
  */
 function refreshDashboardSubscriptions(logicalSources, phase) {
+  // Phases are published in widening order within one ingestion, which always
+  // ends at 'complete', so a narrower phase never supersedes a wider one.
   const publication = phase !== 'complete' && eagerIngest ? 'complete' : phase;
   // The complete logical sources stay available to every published
   // subscription: the phase gate below, not this payload, decides which
@@ -768,6 +770,10 @@ export function processDataRequest(request, signal) {
             const inventoryPhaseSources = Object.fromEntries([...INVENTORY_PHASE_DATABASE_SOURCES]
               .filter((name) => Object.hasOwn(sources, name))
               .map((name) => [name, /** @type {Record<string, unknown>} */ (sources)[name]]));
+            debugIngestion('planned inventory-phase publication', {
+              sources: Object.keys(inventoryPhaseSources),
+              inventorySources: Object.keys(/** @type {Record<string, unknown>} */ (sources)).length
+            });
             if (Object.keys(inventoryPhaseSources).length > 0) {
               progress.log('Normalizing inventory-only metadata.');
               const inventoryPhaseIngestion = await ingestDashboardSources(indexedDB, inventoryPhaseSources, {
