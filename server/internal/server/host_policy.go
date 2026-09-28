@@ -158,7 +158,7 @@ func loadComposedHostPolicy(path string) (map[string]any, error) {
 		loading[canonicalPath] = true
 		defer delete(loading, canonicalPath)
 
-		// #nosec G304 -- the operator explicitly configures the reviewed policy path,
+		// #nosec G304,G703 -- the operator explicitly configures the reviewed policy path,
 		// and imported paths are constrained to its directory.
 		data, err := os.ReadFile(canonicalPath)
 		if err != nil {

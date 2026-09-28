@@ -1554,8 +1554,7 @@ async function replaceFile(source, destination) {
 
 export async function downloadDeployedDashboardData({
   url = process.env.DASHBOARD_DATA_URL || DEFAULT_DEPLOYED_DATA_URL,
-  output = DEFAULT_OUTPUT_DIRECTORY,
-  manifestSha256 = process.env.DASHBOARD_MANIFEST_SHA256
+  output = DEFAULT_OUTPUT_DIRECTORY, manifestSha256 = process.env.DASHBOARD_MANIFEST_SHA256
 } = {}) {
   const manifestUrl = deployedDataUrl(url);
   if (!manifestUrl.pathname.endsWith('/payload-hashes.json')) {
@@ -1594,11 +1593,8 @@ export async function downloadDeployedDashboardData({
         await Promise.allSettled(downloads);
         throw error;
       });
-      if (manifestSha256) {
-        const manifestDigest = await hashFileContents(temporaryManifest);
-        if (manifestDigest !== manifestSha256.toLowerCase()) {
-          throw new Error('Activity snapshot manifest checksum mismatch: payload-hashes.json');
-        }
+      if (manifestSha256 && await hashFileContents(temporaryManifest) !== manifestSha256.toLowerCase()) {
+        throw new Error('Activity snapshot manifest checksum mismatch: payload-hashes.json');
       }
       const inventorySources = JSON.parse(await readFile(temporaryInventory, 'utf8'));
       if (!isMapping(inventorySources)) {

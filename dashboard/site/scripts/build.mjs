@@ -90,6 +90,16 @@ export async function buildDashboardSite({
   }
 }
 
+export async function loadDashboardControlSettings(settingsPath) {
+  const resolvedPath = resolve(settingsPath);
+  const document = JSON.parse(await readFile(resolvedPath, "utf8"));
+  if (document && typeof document === "object" && !Array.isArray(document)
+      && ("extends" in document || "control-plane" in document)) {
+    return loadPolicyFile(resolvedPath)["control-plane"];
+  }
+  return document;
+}
+
 export function embedDashboardVersion(html, commitSha) {
   if (commitSha === undefined) return html;
   if (typeof commitSha !== "string" || !/^[0-9a-f]{40}$/.test(commitSha)) {
@@ -227,7 +237,7 @@ function redirectDocument(pageId) {
 }
 
 async function main([destination, settingsPath, commitSha, activityDataPath]) {
-  const controlSettings = settingsPath ? loadPolicyFile(resolve(settingsPath)) : {};
+  const controlSettings = settingsPath ? await loadDashboardControlSettings(settingsPath) : {};
   await buildDashboardSite({
     destination: destination ?? new URL("dist/", siteRoot),
     controlSettings,

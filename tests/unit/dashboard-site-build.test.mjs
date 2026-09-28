@@ -6,7 +6,12 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
 import { promisify } from "node:util";
-import { buildDashboardSite, embedDashboardVersion, filterExperimentalDashboardViews } from "../../dashboard/site/scripts/build.mjs";
+import {
+  buildDashboardSite,
+  embedDashboardVersion,
+  filterExperimentalDashboardViews,
+  loadDashboardControlSettings,
+} from "../../dashboard/site/scripts/build.mjs";
 import { validateDashboardAgentArtifacts } from "../../dashboard/site/scripts/llms.mjs";
 
 const execFileAsync = promisify(execFile);
@@ -50,6 +55,25 @@ test("dashboard site embeds a validated commit SHA", () => {
     () => embedDashboardVersion(html, "not-a-commit"),
     /dashboard commit SHA must be a 40-character lowercase hexadecimal string/,
   );
+});
+
+test("dashboard build accepts resolved settings and extracts composed policy settings", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "dashboard-control-settings-"));
+  try {
+    const resolvedSettings = path.join(root, "control-settings.json");
+    await writeFile(resolvedSettings, '{"web":{"experimental":true}}\n');
+    assert.deepEqual(await loadDashboardControlSettings(resolvedSettings), {
+      web: { experimental: true },
+    });
+
+    const railwaySettings = path.resolve(".github/workflows/cao.railway.json");
+    const composedSettings = await loadDashboardControlSettings(railwaySettings);
+    assert.equal(composedSettings.web.experimental, true);
+    assert.equal(composedSettings.web.host.target.name, "railway");
+    assert.ok(composedSettings.campaigns);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("dashboard site ignores the legacy flat dashboards directory", async () => {
