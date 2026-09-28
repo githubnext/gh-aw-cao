@@ -14,7 +14,9 @@ import {
   resolveDashboardQuerySources
 } from './declarative.js';
 import { TABLE_FIELDS } from '../../specification.js';
+import { createDebug } from '../../debug.js';
 
+const debugDatabase = createDebug('database');
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 const databaseQueryIndex = dashboardQueryIndex(databaseQueries);
 const RUN_RECORD_STORES = new Set(['domains', 'tools', 'skills', 'friction', 'audits', 'issues']);
@@ -201,6 +203,12 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     return operators ? [{ name, definition: executable, operators }] : [];
   });
   const stores = [...new Set(countPlans.map(({ source }) => source))];
+  debugDatabase({
+    event: 'indexed-pushdown-resolved',
+    countPlanCount: countPlans.length,
+    filterPlanCount: filterPlans.length,
+    storeCount: stores.length
+  });
   const counts = await countCollections(
     indexedDB,
     /** @type {typeof import('../storage/indexeddb.js').DATABASE_STORES[number][]} */ (stores)
@@ -508,12 +516,21 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
     result[name] = executeDatabaseQuery(name, inputs, sources, name);
   }
   const totalMs = monotonicNow() - startedAt;
+  const recordsRead = Object.values(collections).reduce((total, records) => total + records.length, 0)
+    + transactions.length;
+  debugDatabase({
+    event: 'query-sources-resolved',
+    requestedCount: requested.size,
+    databaseMs: Math.round(databaseMs),
+    totalMs: Math.round(totalMs),
+    recordsRead,
+    storeCount: stores.length
+  });
   options.onMetrics?.({
     databaseMs,
     projectionMs: Math.max(0, totalMs - databaseMs),
     totalMs,
-    recordsRead: Object.values(collections).reduce((total, records) => total + records.length, 0)
-      + transactions.length,
+    recordsRead,
     stores
   });
   return result;
@@ -526,6 +543,7 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
  */
 export async function loadDatabaseQuerySources(indexedDB, sources, options = {}) {
   if (options.ingest) await ingestDashboardSources(indexedDB, sources, { storage: options.storage });
+  debugDatabase({ event: 'load-database-query-sources', ingested: Boolean(options.ingest), sourceCount: Object.keys(sources).length });
   const sourceNames = Array.isArray(options.sourceNames) ? options.sourceNames : Object.keys(sources);
   const required = resolveDashboardQuerySources(options.queries ?? [], sourceNames);
   const database = await queryDatabaseSources(indexedDB, sources, required);
