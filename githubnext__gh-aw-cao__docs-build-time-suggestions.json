@@ -1,6 +1,6 @@
 {
-  "source_sha": "c8fea592546a35a3621685e55da8133047d3a484",
-  "next_category": "reusable dashboard generation",
+  "source_sha": "952fd56a3ac8b927e639cfff4454e23d0a8612c5",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
       "evaluated_at": "2026-09-28T12:05:00Z",
@@ -466,6 +466,27 @@
         36465277491
       ],
       "outcome": "no-op: evaluated Astro documentation generation across 7 comparable successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days, disclosing one skipped scheduled success and excluding cancelled runs. Evidence window 2026-09-28T18:18:17Z to 2026-09-28T19:47:33Z. docs.yml workflow execution median was 67.0s (p90 83.8s), queue median 3.0s (p90 4.0s), build median 41.0s (p90 43.2s), deploy median 11.0s (p90 32.0s on 5 publishing runs), and schedule-freshness median 7.0s (p90 9.6s). Trusted step metadata showed Restore node_modules median 5.0s, Build documentation median 12.0s, Restore cached CAO Dashboard median 2.0s, and Upload Pages artifact median 4.0s; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on every successful docs build, confirming stable cache hits. Comparable successful cao-dashboard.yml runs 36472082690 and 36465277491 showed the dashboard/site build itself still completed in about 0.5s while the build job spent 37-45s mostly restoring activity data, upgrading it, copying 163.7-166.0 MiB SQLite plus 98.9-100.3 MiB of shards into the artifact, and uploading a 15.8-16.6 MiB artifact; the separate cache job then spent 11-13s re-downloading that same artifact and rewriting the constant central-agentic-ops-dashboard cache key. Because Astro documentation generation itself remains about 12s of a 67s median docs run and the only evidence-backed >=15% optimization remains the already-recorded open-subject dashboard-cache rewrite issue, no new non-duplicate Astro recommendation met the threshold in this cycle.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-09-28T20:27:13.739826Z",
+      "worker_run_id": 36478847012,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        36478955497,
+        36478673446,
+        36478662643,
+        36477040435,
+        36476739478,
+        36476668317,
+        36476325631,
+        36474552709,
+        36478523879,
+        36476823997,
+        36472082690,
+        36465277491
+      ],
+      "outcome": "no-op: evaluated reusable dashboard generation across 8 completed successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days, disclosing 8 excluded completed docs runs (7 workflow_run action_required/skipped and 1 scheduled freshness no-build success) plus 4 comparable successful cao-dashboard.yml runs. Evidence window 2026-09-28T19:46:29Z to 2026-09-28T20:25:37Z. docs.yml workflow execution median was 51.5s (p90 72.0s), queue-to-build-start median 13.0s (p90 16.0s on runs with a build job), build median 41.0s (p90 44.0s), and deploy median 10.0s (p90 11.0s on publishing runs). Trusted step metadata showed Restore node_modules median 5.0s, Build documentation median 12.0s, Restore cached CAO Dashboard median 2.0s, and Upload Pages artifact median 4.0s; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on every successful docs build, confirming stable dashboard cache hits from trusted metadata. Comparable successful cao-dashboard.yml runs 36465277491, 36472082690, 36476823997, and 36478523879 showed workflow median 86.5s, build median 48.0s, and cache-job median 10.5s. Trusted logs showed the build already restored activity data from cache, then copied inventory-sources.json (1.1 MiB), gh-aw-logs.sqlite (148.4-166.8 MiB), and 48-49 activity shards (98.9-101.4 MiB) before uploading a 15.5-16.7 MB dashboard artifact; the separate cache job then re-downloaded that same artifact, deleted the previous constant central-agentic-ops-dashboard cache entry, and saved the cache again. This remains the same underlying optimization already represented by the previously recorded suggestion fingerprint 691cf332ab4dfe9aa28b, and no open issue with the canonical subject is currently present; no duplicate issue was created in this cycle.",
       "suggestion_fingerprint": null
     }
   ]
