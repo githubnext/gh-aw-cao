@@ -128,8 +128,7 @@ pre-agent-steps:
     run: |
       database="$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite"
       if [[ ! -s "$database" ]]; then
-        echo "Activity SQLite snapshot is unavailable" >&2
-        exit 1
+        echo "Activity SQLite snapshot is unavailable; starting CAO MCP with an empty local projection" >&2
       fi
       nohup node activity/cao.mjs mcp \
         --database "$database" \

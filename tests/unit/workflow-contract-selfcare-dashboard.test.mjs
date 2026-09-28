@@ -16,6 +16,8 @@ test("SelfCare agent discoverability audits bounded access-path routing", () => 
   assert.match(source, /`cao_catalog`, then one bounded `cao_query`/);
   assert.match(source, /UI scraping attempted/);
   assert.match(source, /Repository search required/);
+  assert.match(source, /Activity SQLite snapshot is unavailable; starting CAO MCP with an empty local projection/);
+  assert.doesNotMatch(stepBlock(source, "Start read-only CAO MCP server"), /exit 1/);
   assert.match(source, /create-issue:/);
   assert.match(source, /create-pull-request:/);
   assert.match(source, /Never create both an issue and a pull request/);
