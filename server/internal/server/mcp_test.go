@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -126,6 +127,51 @@ func TestGitHubActionsMCPIdentityValidation(t *testing.T) {
 				t.Fatalf("githubActionsMCPIdentity() error = %v, want success %t", err, test.wantOK)
 			}
 		})
+	}
+}
+
+func TestGitHubActionsMCPRequiresAllReadPermissions(t *testing.T) {
+	for _, denied := range []string{"", "actions", "contents", "issues", "pull-requests"} {
+		t.Run("denied="+denied, func(t *testing.T) {
+			seen := map[string]bool{}
+			api := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				if request.Header.Get("Authorization") != "Bearer "+testActionsToken {
+					t.Error("permission probe did not use the configured token")
+				}
+				permission := permissionForProbePath(request.URL.Path)
+				seen[permission] = true
+				if permission == denied {
+					response.WriteHeader(http.StatusForbidden)
+					return
+				}
+				response.WriteHeader(http.StatusOK)
+			}))
+			defer api.Close()
+			err := verifyGitHubActionsPermissions(t.Context(), Config{
+				ActionsRepository: "githubnext/gh-aw-cao",
+				GitHubAPIURL:      api.URL,
+				ActionsHTTPClient: api.Client(),
+			}, testActionsToken)
+			if denied == "" {
+				if err != nil {
+					t.Fatalf("complete permissions rejected: %v", err)
+				}
+				for _, permission := range []string{"actions", "contents", "issues", "pull-requests"} {
+					if !seen[permission] {
+						t.Errorf("%s permission was not checked", permission)
+					}
+				}
+			} else if err == nil || !strings.Contains(err.Error(), denied+": read") {
+				t.Fatalf("denied %s permission returned %v", denied, err)
+			}
+		})
+	}
+}
+
+func TestGitHubActionsMCPPermissionCheckRequiresRepository(t *testing.T) {
+	err := verifyGitHubActionsPermissions(t.Context(), Config{}, testActionsToken)
+	if err == nil || !strings.Contains(err.Error(), "GITHUB_REPOSITORY") {
+		t.Fatalf("missing repository returned %v", err)
 	}
 }
 
@@ -290,15 +336,24 @@ func (transport bearerTransport) RoundTrip(request *http.Request) (*http.Respons
 
 func newMCPTestApp(t *testing.T, enabled bool) *App {
 	t.Helper()
-	return newMCPTestAppConfig(t, enabled, "", "")
+	return newMCPTestAppConfig(t, enabled, "", "", "", nil)
 }
 
 func newMCPTestAppWithActions(t *testing.T, token, actor string) *App {
 	t.Helper()
-	return newMCPTestAppConfig(t, true, token, actor)
+	api := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(api.Close)
+	return newMCPTestAppConfig(t, true, token, actor, api.URL, api.Client())
 }
 
-func newMCPTestAppConfig(t *testing.T, enabled bool, actionsToken, actionsActor string) *App {
+func newMCPTestAppConfig(
+	t *testing.T,
+	enabled bool,
+	actionsToken, actionsActor, apiURL string,
+	httpClient *http.Client,
+) *App {
 	t.Helper()
 	address, closeRedis := fakeRedis(t)
 	t.Cleanup(closeRedis)
@@ -319,9 +374,26 @@ func newMCPTestAppConfig(t *testing.T, enabled bool, actionsToken, actionsActor 
 		DashboardQueries: definitions, AgentCatalogPath: testAgentCatalog,
 		MCPContractPath: testMCPContract, MCPEnabled: enabled,
 		GitHubActionsToken: actionsToken, GitHubActionsActor: actionsActor,
+		ActionsRepository: "githubnext/gh-aw-cao",
+		GitHubAPIURL:      apiURL, ActionsHTTPClient: httpClient,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return app
+}
+
+func permissionForProbePath(path string) string {
+	switch {
+	case strings.HasSuffix(path, "/actions/runs"):
+		return "actions"
+	case strings.HasSuffix(path, "/contents"):
+		return "contents"
+	case strings.HasSuffix(path, "/issues"):
+		return "issues"
+	case strings.HasSuffix(path, "/pulls"):
+		return "pull-requests"
+	default:
+		return ""
+	}
 }

@@ -107,11 +107,13 @@ and loopback host restriction. In GitHub Actions it may alternatively use the
 server's `GITHUB_TOKEN` and `GITHUB_ACTOR`: clients must provide the token as a
 bearer credential and the matching actor in `X-GitHub-Actor`. This pair is
 constant-time checked, scoped to `/mcp`, never logged, and used as the
-rate-limiting identity. The actor header is an assertion bound to the
-server-configured value, not an independently trusted client identity. MCP is
-disabled by default, is read-only, and is rejected by hosted profiles until
-remote MCP OAuth is integrated with the existing hosted session and
-authorization lifecycle.
+rate-limiting identity. Before accepting this authentication mode, startup
+probes the configured `GITHUB_REPOSITORY` with the token and fails closed unless
+`actions`, `contents`, `issues`, and `pull-requests` all have read access.
+The actor header is an assertion bound to the server-configured value, not an
+independently trusted client identity. MCP is disabled by default, is read-only,
+and is rejected by hosted profiles until remote MCP OAuth is integrated with
+the existing hosted session and authorization lifecycle.
 
 ## HTTP and TLS protections
 

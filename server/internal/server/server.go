@@ -57,6 +57,9 @@ type Config struct {
 	MCPEnabled             bool
 	GitHubActionsToken     string
 	GitHubActionsActor     string
+	ActionsRepository      string
+	GitHubAPIURL           string
+	ActionsHTTPClient      *http.Client
 	SourceDirectory        string
 	Reconciler             Reconciler
 	Collector              *CollectorConfig
@@ -148,6 +151,11 @@ func New(store *redisx.Store, config Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	if actionsToken != "" {
+		if err := verifyGitHubActionsPermissionsAtStartup(config, actionsToken); err != nil {
+			return nil, err
+		}
+	}
 	serverLog.Printf("initialized host_profile=%s oauth=%t source_ingestion=%t", profile.Name, oauth != nil, config.SourceDirectory != "")
 	app := &App{
 		store: store, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
@@ -162,6 +170,13 @@ func New(store *redisx.Store, config Config) (*App, error) {
 		app.mcp = handler
 	}
 	return app, nil
+}
+
+//nolint:contextcheck // Startup validation has no request context.
+func verifyGitHubActionsPermissionsAtStartup(config Config, token string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	return verifyGitHubActionsPermissions(ctx, config, token)
 }
 
 func (a *App) Serve(ctx context.Context) error {

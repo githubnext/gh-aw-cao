@@ -959,8 +959,21 @@ In GitHub Actions, `serve` also reads the standard `GITHUB_TOKEN` and
 send the token in the bearer `Authorization` header and the actor in
 `X-GitHub-Actor`.
 The configured pair is accepted only at `/mcp`; it does not grant access to the
-JSON APIs. Keep the token in the Actions environment rather than passing it on a
-command line, and grant the workflow only the read permissions it needs.
+JSON APIs. Before enabling this gate, the server probes the current
+`GITHUB_REPOSITORY` through `GITHUB_API_URL` and fails closed unless the token
+can read Actions runs, contents, issues, and pull requests. Grant exactly these
+permissions:
+
+```yaml
+permissions:
+  actions: read
+  contents: read
+  issues: read
+  pull-requests: read
+```
+
+Keep the token in the Actions environment rather than passing it on a command
+line.
 
 The endpoint exposes only `cao_catalog` and `cao_query`; it accepts no
 SQL, arbitrary query definitions, refresh, rebuild, webhook, administration, or
