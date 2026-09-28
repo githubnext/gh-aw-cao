@@ -99,7 +99,7 @@ const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location ht
 const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
-const COMMANDS = new Set(['init', 'setup', 'setup-auth', 'add', 'update', 'upgrade-gh-aw', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'issue-status', 'query', 'computation', 'operational-value', 'cluster-problems', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'validate-activity-data', 'gh', 'pages', 'queries', 'query-info', 'mcp']);
+const COMMANDS = new Set(['init', 'setup', 'setup-auth', 'add', 'update', 'upgrade-gh-aw', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'issue-status', 'query', 'computation', 'operational-value', 'cluster-problems', 'doctor', 'validate', 'download', 'hash-payloads', 'activity-stats', 'validate-activity-data', 'gh', 'pages', 'queries', 'query-info', 'mcp']);
 
 // Intentional CLI misuse that should print usage without an internal stack trace.
 class UsageError extends Error {}
@@ -1036,7 +1036,8 @@ function parseOptions(arguments_) {
     if (!argument.startsWith('--') && !aliases[argument]) throw new UsageError(`Unexpected argument: ${argument}`);
     const name = aliases[argument] ?? argument.slice(2);
     if (name === 'help' || name === 'stdin' || name === 'json' || name === 'keep' || name === 'diagnose'
-      || name === 'dry-run' || name === 'no-open' || name === 'acknowledge-token-risks') {
+      || name === 'dry-run' || name === 'no-open' || name === 'acknowledge-token-risks'
+      || name === 'strict-warnings') {
       options[name] = 'true';
       continue;
     }
@@ -2962,6 +2963,11 @@ async function main() {
   }
   try {
     const output = await runCli(arguments_, process.stdin, { signal: controller.signal });
+    if (typeof output === 'object' && output?.command === 'validate') {
+      process.stdout.write(`${output.output}\n`);
+      process.exitCode = output.exitCode;
+      return;
+    }
     process.stdout.write(`${typeof output === 'string' ? output : JSON.stringify(output, null, 2)}\n`);
     if (typeof output === 'object' && output?.command === 'doctor' && !output.healthy) process.exitCode = 2;
   } catch (error) {

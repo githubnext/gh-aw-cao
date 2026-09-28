@@ -1,0 +1,52 @@
+---
+title: Agent-readable documentation
+description: Maintain generated discovery indexes and structured documentation metadata without creating another source of truth.
+agent:
+  type: maintainer-reference
+---
+
+Use this page when adding a documentation route or changing how coding agents
+discover CAO guidance. Authoritative content remains in Markdown, Starlight
+frontmatter, and the normative specifications under `specs/`.
+
+## Generated outputs
+
+The normal documentation build generates:
+
+- `llms.txt`, `llms-small.txt`, and `llms-full.txt` through
+  `starlight-llms-txt`;
+- `agent/llms.txt` as a compact index of prominent resources; and
+- `index.json` beside each Starlight documentation route.
+
+Do not edit or commit these outputs. The Pages workflow publishes them from the
+same `dist/` tree as the human site.
+
+## Resource metadata
+
+The local `starlight-agent` plugin derives each JSON representation from the
+same content-collection entry used to render its HTML page. The projection
+contains identity, type, title, description, canonical URL, bounded
+relationships found in the Markdown, provenance, and freshness. It intentionally
+omits the page body and all large operational datasets.
+
+Every Starlight page advertises `agent/llms.txt` with `rel="describedby"` and
+its JSON projection with `rel="alternate" type="application/json"`. Both links
+use Astro's configured base path.
+
+## Opting in and enriching a resource
+
+All non-draft Starlight documents receive a JSON projection. Add the optional
+`agent` frontmatter object to provide a stable domain `type`, mark an important
+page as `prominent` in the scoped index, add bounded typed relationships, or
+provide a reliable underlying `dataUpdatedAt` timestamp. These fields are the
+plugin's extension hooks; do not create a separate resource registry.
+
+`freshness.generatedAt` is the representation build time.
+`freshness.sourceCommittedAt` is the source commit time.
+`freshness.dataUpdatedAt` appears only when authoritative underlying-data
+freshness is supplied. Provenance identifies the repository, exact build commit
+when available, source document, generator, and generator version.
+
+Use [Agent analysis](agent-analysis.md) and its read-only CLI or MCP query
+surface for large datasets and historical analysis instead of expanding static
+JSON representations.

@@ -23,6 +23,11 @@ the complete Activity corpus. They operate on canonical evidence, preserve
 quality and provenance, and produce compact, versioned results that can be
 incrementally refreshed and independently explained.
 
+Implementers should read `docs/dashboard-data-model.md` and
+`specs/dashboard-data.md` first, then use this specification before changing
+computation producers, materialized projections, or Dashboard Language
+consumers.
+
 This specification defines five independently versioned measures. **Runtime
 health** establishes current runtime facts. **How well does it run?** reports
 successful Run production, native operational-grader measurements, and resource

@@ -237,6 +237,9 @@
           "docs-maintainer": {
             "workflow": "self-care-docs-maintainer"
           },
+          "documentation-discoverability": {
+            "workflow": "self-care-documentation-discoverability"
+          },
           "glossary": {
             "workflow": "self-care-glossary"
           },

@@ -1,9 +1,19 @@
 ---
 title: CAO Commands
 description: Configure, control, inspect, and evolve a CAO control plane from its repository-local CLI.
+agent:
+  type: cli-reference
+  prominent: true
 ---
 
-The CAO installer adds an executable `./cao.sh` wrapper to the control repository. Run it from the repository root to manage the control plane and query its operational data:
+Use this reference when operating CAO or adding a CLI command. The installer
+adds an executable `./cao.sh` wrapper to the control repository; command
+implementation lives under `activity/cao.mjs` and its focused modules. Agents
+using the CLI should follow the
+[`cao-cli` skill](https://github.com/githubnext/gh-aw-cao/blob/main/skills/cao-cli/SKILL.md);
+agents querying activity data should use
+[`analyze-cao`](https://github.com/githubnext/gh-aw-cao/blob/main/skills/analyze-cao/SKILL.md).
+Run the wrapper from the repository root:
 
 ```bash
 ./cao.sh --help
@@ -79,6 +89,19 @@ These commands accept multiple campaign slugs:
 `mode live` does not widen repository scope, grant target consent, or create credential access. Complete the [live rollout gates](rollout-and-routing.md) separately.
 
 `disable` prevents new starts for the campaign's installed workflows. It does not cancel an active run or replace the [control-plane emergency stop](operations.md#emergency-stop).
+
+## Validate the Control Plane
+
+Run the same read-only validator locally and in CI:
+
+```bash
+./cao.sh validate
+./cao.sh validate --json
+```
+
+Validation checks the policy with the production resolver, the installed gh-aw compiler version, strict compilation and generated workflow drift, campaign workflow identity and enablement, `gh aw doctor`, and bounded trust-boundary security rules. GitHub workflow state is reported as unknown when API access is unavailable. Warnings do not fail by default; use `--strict-warnings` to make them fail.
+
+Exit code `0` means no validation errors, `1` means validation findings failed the requested threshold, and `2` means the validator itself could not complete. Validation never rewrites workflow artifacts; run `npm run compile:locks` to regenerate stale locks.
 
 ## Run and Watch a Campaign
 

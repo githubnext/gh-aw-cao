@@ -238,7 +238,6 @@ describe('dashboard view query contracts', () => {
           ? [
               'campaign-operational-value-primary-series',
               'campaign-operational-value-run-days',
-              'campaign-operational-value-repository-run-days',
               'campaign-operational-value-evidence-state'
             ]
           : [])
@@ -310,7 +309,6 @@ describe('dashboard view query contracts', () => {
           'campaign-issue-tab-counts',
           'campaign-operational-value-primary-series',
           'campaign-operational-value-run-days',
-          'campaign-operational-value-repository-run-days',
           'campaign-operational-value-evidence-state'
         ],
         arguments: [{ name: 'campaign', field: 'campaign' }]

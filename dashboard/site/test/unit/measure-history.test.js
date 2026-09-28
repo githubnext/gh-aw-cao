@@ -19,7 +19,6 @@ describe('Measure history', () => {
       sourceNames: [
         'value-series',
         'campaign-run-days',
-        'repository-run-days',
         'evidence-state'
       ],
       sources: {
@@ -57,28 +56,6 @@ describe('Measure history', () => {
           rows: [
             { 'run-day': '2026-09-18', 'successful-runs': 8, 'failed-runs': 2, 'success-rate-percent': 80, 'concluded-runs': 10 },
             { 'run-day': '2026-09-20', 'successful-runs': 4, 'failed-runs': 4, 'success-rate-percent': 50, 'concluded-runs': 8 }
-          ]
-        },
-        'repository-run-days': {
-          source: 'repository-run-days',
-          metadata,
-          rows: [
-            {
-              repository: 'gh-aw',
-              'run-day': '2026-09-18',
-              'successful-runs': 8,
-              'failed-runs': 2,
-              'success-rate-percent': 80,
-              'concluded-runs': 10
-            },
-            {
-              repository: 'gh-aw',
-              'run-day': '2026-09-20',
-              'successful-runs': 4,
-              'failed-runs': 4,
-              'success-rate-percent': 50,
-              'concluded-runs': 8
-            }
           ]
         },
         'evidence-state': {
@@ -148,7 +125,6 @@ describe('Measure history', () => {
       sourceNames: [
         'value-series',
         'campaign-runs',
-        'repository-runs',
         'value-evidence-state'
       ],
       sources: {
@@ -177,11 +153,6 @@ describe('Measure history', () => {
         },
         'campaign-runs': {
           source: 'campaign-runs',
-          metadata,
-          rows: []
-        },
-        'repository-runs': {
-          source: 'repository-runs',
           metadata,
           rows: []
         },
@@ -225,11 +196,10 @@ describe('Measure history', () => {
     }];
     const rendered = renderMeasureHistory({
       title: 'Repository operational value',
-      sourceNames: ['value-series', 'campaign-runs', 'repository-runs', 'evidence-state'],
+      sourceNames: ['value-series', 'campaign-runs', 'evidence-state'],
       sources: {
         'value-series': { source: 'value-series', metadata, rows: repositoryRows },
         'campaign-runs': { source: 'campaign-runs', metadata, rows: [] },
-        'repository-runs': { source: 'repository-runs', metadata, rows: [] },
         'evidence-state': {
           source: 'evidence-state',
           metadata,

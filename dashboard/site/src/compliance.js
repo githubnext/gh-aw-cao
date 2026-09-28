@@ -6,6 +6,9 @@ import overviewFragment from '../dashboard-fragments/overview.json' with { type:
 import { validateDashboardDocument, validateLogicalSources } from './validator.js';
 import { renderDashboard } from './presenter.js';
 import { resolveBuiltInPages as resolveBuiltInPagesAgainstTemplate } from './dashboard-chunks.js';
+import { createDebug } from './debug.js';
+
+const debug = createDebug('compliance');
 
 export const IMPLEMENTATION_VERSION = '0.1.0-prototype';
 
@@ -329,10 +332,13 @@ dashboard:
  * @returns {ComplianceResult[]}
  */
 export function runComplianceSmokeSuite() {
+  debug({ operation: 'compliance-smoke-suite', status: 'start' });
+
   /** @type {ComplianceResult[]} */
   const results = [];
 
   const appendixAValidation = validateDashboardDocument(appendixAFixture);
+  debug({ operation: 'appendix-a-validation', status: appendixAValidation.ok ? 'ok' : 'invalid' });
   const appendixASources = createAppendixASources();
   results.push(createResult(
     'T-DOC-001',
@@ -402,6 +408,12 @@ export function runComplianceSmokeSuite() {
     ));
   }
 
+  debug({
+    operation: 'compliance-smoke-suite',
+    status: 'complete',
+    count: results.length,
+    failCount: results.filter((result) => result.status === 'fail').length
+  });
   return results;
 }
 

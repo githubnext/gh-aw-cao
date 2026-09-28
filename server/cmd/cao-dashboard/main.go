@@ -232,6 +232,27 @@ func setupTelemetry(ctx context.Context, version string, setup telemetrySetupFun
 	}, nil
 }
 
+// hostedTLSMode identifies whether the serve-hosted command's --cert flag
+// configured a TLS certificate. It is useful for diagnosing a misconfigured
+// deployment without logging the certificate or key paths.
+type hostedTLSMode string
+
+const (
+	hostedTLSModeConfigured hostedTLSMode = "configured"
+	hostedTLSModeDisabled   hostedTLSMode = "disabled"
+)
+
+// resolveHostedTLSMode reports whether serve-hosted's --cert flag configures
+// TLS. It is a pure function, mirroring the other resolve* helpers in this
+// file, so serve-hosted's flag-parsing diagnostic is testable without
+// starting a listener.
+func resolveHostedTLSMode(certFile string) hostedTLSMode {
+	if certFile != "" {
+		return hostedTLSModeConfigured
+	}
+	return hostedTLSModeDisabled
+}
+
 // versionSource identifies which input determined the reported
 // service.version resource attribute. It is useful for diagnosing a
 // mismatched build without logging the version string itself.
@@ -376,6 +397,7 @@ func newServeHostedCommand() *cobra.Command {
 	databaseQueries := cmd.Flags().String("database-queries", "../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
 	dashboardQueries := cmd.Flags().String("dashboard-queries", "../dashboard/site/dashboard.json", "default dashboard query document")
 	cmd.RunE = func(*cobra.Command, []string) error {
+		commandLog.Printf("serve-hosted flags parsed tls=%s", resolveHostedTLSMode(*cert))
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
 		closeTelemetry, err := setupTelemetry(ctx, version, telemetry.Setup)

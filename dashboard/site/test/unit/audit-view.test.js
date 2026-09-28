@@ -32,7 +32,6 @@ describe('Audit dashboard view', () => {
         'campaign-issue-tab-counts',
         'campaign-operational-value-primary-series',
         'campaign-operational-value-run-days',
-        'campaign-operational-value-repository-run-days',
         'campaign-operational-value-evidence-state'
       ],
       arguments: [{ name: 'campaign', field: 'campaign' }]

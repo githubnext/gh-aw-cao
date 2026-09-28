@@ -182,6 +182,32 @@ func (q Queue) Complete(ctx context.Context, lease Lease) error {
 	return q.Store.StreamAck(ctx, taskStream, q.group(), lease.MessageID)
 }
 
+// retryDecision is the pure outcome of applying bounded retry counting to one
+// failed task: either rescheduled with a backoff-delayed NotBefore, or
+// dead-lettered with a recorded reason once attempts are exhausted.
+type retryDecision struct {
+	task       Task
+	deadLetter bool
+	reason     string
+}
+
+// decideRetry increments a failed task's attempt count and decides whether it
+// is rescheduled or dead-lettered. It is a pure function, so the
+// exhausted-attempts boundary and the default dead-letter reason are testable
+// without a backing store or the jittered backoff clock.
+func decideRetry(task Task, cause error, maxAttempts int, now time.Time, backoffFor func(int) time.Duration) retryDecision {
+	task.Attempt++
+	if task.Attempt >= maxAttempts {
+		reason := "unknown failure"
+		if cause != nil {
+			reason = cause.Error()
+		}
+		return retryDecision{task: task, deadLetter: true, reason: reason}
+	}
+	task.NotBefore = now.Add(backoffFor(task.Attempt))
+	return retryDecision{task: task}
+}
+
 // Retry acknowledges a failed task and re-enqueues it with bounded attempts
 // and jittered backoff, dead-lettering it when the attempts are exhausted. A
 // failed task never partially replaces a repository's existing evidence.
@@ -189,18 +215,13 @@ func (q Queue) Retry(ctx context.Context, lease Lease, cause error) error {
 	if err := q.Store.StreamAck(ctx, taskStream, q.group(), lease.MessageID); err != nil {
 		return err
 	}
-	task := lease.Task
-	task.Attempt++
-	if task.Attempt >= q.maxAttempts() {
-		reason := "unknown failure"
-		if cause != nil {
-			reason = cause.Error()
-		}
-		queueLog.Printf("dead-lettering task repository=%s attempts=%d", task.Repository, task.Attempt)
-		return q.deadLetter(ctx, task, reason)
+	decision := decideRetry(lease.Task, cause, q.maxAttempts(), time.Now().UTC(), backoff)
+	if decision.deadLetter {
+		queueLog.Printf("dead-lettering task repository=%s attempts=%d", decision.task.Repository, decision.task.Attempt)
+		return q.deadLetter(ctx, decision.task, decision.reason)
 	}
-	task.NotBefore = time.Now().UTC().Add(backoff(task.Attempt))
-	_, err := q.Enqueue(ctx, task)
+	queueLog.Printf("rescheduling task repository=%s attempt=%d", decision.task.Repository, decision.task.Attempt)
+	_, err := q.Enqueue(ctx, decision.task)
 	return err
 }
 

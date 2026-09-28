@@ -14,7 +14,11 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var authLog = logger.New("cao:marketplace:auth")
 
 // EnvLookup resolves an environment variable by name, matching
 // os.LookupEnv's signature so tests can substitute a fake environment
@@ -34,43 +38,69 @@ func secretValue(env EnvLookup, name, field string) (string, error) {
 
 // registryToken resolves the bearer token a registry's configured auth
 // requires, reading only named secrets from the environment. It never
-// returns or logs the secret names alongside the resolved value.
+// returns or logs the secret names or values alongside the resolved token.
 func registryToken(ctx context.Context, registry Registry, opts Options) (string, error) {
+	token, err := resolveRegistryToken(ctx, registry, opts)
+	// One resolution per registry is a meaningful boundary worth observing,
+	// and registryToken is never called from a per-package or polling loop.
+	authLog.Printf("resolved registry token auth_type=%s ok=%t", authTypeLabel(registry.Auth.Type), err == nil)
+	return token, err
+}
+
+func resolveRegistryToken(ctx context.Context, registry Registry, opts Options) (string, error) {
 	switch registry.Auth.Type {
 	case "", AuthNone:
 		return "", nil
 	case AuthPAT:
 		return secretValue(opts.env(), registry.Auth.Secret, "registry PAT")
 	case AuthGitHubApp:
-		appID, err := secretValue(opts.env(), registry.Auth.AppIDSecret, "registry GitHub App id")
-		if err != nil {
-			return "", err
-		}
-		privateKey, err := secretValue(opts.env(), registry.Auth.PrivateKeySecret, "registry GitHub App private key")
-		if err != nil {
-			return "", err
-		}
-		installationID, err := secretValue(opts.env(), registry.Auth.InstallationIDSecret, "registry GitHub App installation id")
-		if err != nil {
-			return "", err
-		}
-		jwt, err := appJWT(appID, []byte(privateKey), opts.now())
-		if err != nil {
-			return "", err
-		}
-		base := apiBase(registry)
-		payload, err := githubJSON(ctx, opts, http.MethodPost, base+"/app/installations/"+pathEscape(installationID)+"/access_tokens", jwt)
-		if err != nil {
-			return "", err
-		}
-		token, _ := payload["token"].(string)
-		if token == "" {
-			return "", errors.New("registry GitHub App token response is invalid")
-		}
-		return token, nil
+		return exchangeGitHubAppToken(ctx, registry, opts)
 	default:
 		return "", fmt.Errorf("registry authentication type %q is unsupported", registry.Auth.Type)
 	}
+}
+
+// authTypeLabel normalizes an empty Auth.Type to AuthNone's label, so the
+// log line always names a concrete auth type instead of an empty string.
+func authTypeLabel(authType AuthType) AuthType {
+	if authType == "" {
+		return AuthNone
+	}
+	return authType
+}
+
+// exchangeGitHubAppToken resolves a registry's GitHub App credential
+// secrets, mints a short-lived JWT, and exchanges it for an installation
+// access token. It is a pure orchestration step (its GitHub call goes
+// through opts.httpClient()) so the exchange is testable with a fake GitHub
+// server without exercising registryToken's other auth branches.
+func exchangeGitHubAppToken(ctx context.Context, registry Registry, opts Options) (string, error) {
+	appID, err := secretValue(opts.env(), registry.Auth.AppIDSecret, "registry GitHub App id")
+	if err != nil {
+		return "", err
+	}
+	privateKey, err := secretValue(opts.env(), registry.Auth.PrivateKeySecret, "registry GitHub App private key")
+	if err != nil {
+		return "", err
+	}
+	installationID, err := secretValue(opts.env(), registry.Auth.InstallationIDSecret, "registry GitHub App installation id")
+	if err != nil {
+		return "", err
+	}
+	jwt, err := appJWT(appID, []byte(privateKey), opts.now())
+	if err != nil {
+		return "", err
+	}
+	base := apiBase(registry)
+	payload, err := githubJSON(ctx, opts, http.MethodPost, base+"/app/installations/"+pathEscape(installationID)+"/access_tokens", jwt)
+	if err != nil {
+		return "", err
+	}
+	token, _ := payload["token"].(string)
+	if token == "" {
+		return "", errors.New("registry GitHub App token response is invalid")
+	}
+	return token, nil
 }
 
 // appJWT mints a short-lived GitHub App JWT (RS256), mirroring the appJwt

@@ -1,9 +1,17 @@
 ---
 title: Monitor, Recover, and Maintain
 description: Monitor control-plane runs, stop unsafe activity, recover from incidents, and maintain installed campaigns.
+agent:
+  type: operations
+  prominent: true
 ---
 
 Use this page after installation to answer the urgent operator questions: Is the control plane healthy? How do I stop it? What evidence should I collect? How do I recover safely?
+
+For a failed deployment or runtime, follow the
+[`debug-cao` skill](https://github.com/githubnext/gh-aw-cao/blob/main/skills/debug-cao/SKILL.md)
+before changing or rerunning anything, then use the deployment-specific guide
+linked from [deployment options](deployment.md).
 
 | Need | Start here |
 | --- | --- |

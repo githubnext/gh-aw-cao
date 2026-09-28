@@ -15,6 +15,11 @@ editors:
 **Target implementation:** Dashboard data subsystem
 **Date:** 2026-09-24
 
+Implementers changing canonical data, ingestion, storage, or query execution
+should read `docs/dashboard-data-model.md` first, then this specification and
+the production boundary under `dashboard/site/src/data/`. Computation changes
+must also follow `specs/computations.md`.
+
 | Browser storage | IndexedDB keeps all available run summaries and expires detailed run-linked records after 30 days. |
 | --- | --- |
 

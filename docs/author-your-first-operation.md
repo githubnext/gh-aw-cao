@@ -1,9 +1,18 @@
 ---
 title: Build Your First Campaign
 description: Define one repository outcome, generate the workflows, and prove the campaign in review mode.
+agent:
+  type: campaign-guide
+  prominent: true
 ---
 
-Build a campaign only when the [catalog](catalog.md) does not already produce the outcome you need.
+Use this guide when the [catalog](catalog.md) does not already produce the
+outcome you need. Agents should follow the
+[`create-cao-campaign` skill](https://github.com/githubnext/gh-aw-cao/blob/main/skills/create-cao-campaign/SKILL.md);
+to install an existing campaign instead, use the
+[`add-cao-campaign` skill](https://github.com/githubnext/gh-aw-cao/blob/main/skills/add-cao-campaign/SKILL.md).
+Before implementation, read [Orchestrators and Workers](orchestrators-and-workers.md)
+and the [control architecture specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/control-architecture.md).
 
 A campaign has:
 

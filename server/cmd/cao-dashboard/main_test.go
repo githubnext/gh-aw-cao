@@ -116,6 +116,33 @@ func TestResolveVersion(t *testing.T) {
 	}
 }
 
+func TestResolveHostedTLSMode(t *testing.T) {
+	tests := []struct {
+		name     string
+		certFile string
+		want     hostedTLSMode
+	}{
+		{
+			name:     "non-empty cert flag is configured",
+			certFile: "/etc/cao/tls.pem",
+			want:     hostedTLSModeConfigured,
+		},
+		{
+			name:     "empty cert flag is disabled",
+			certFile: "",
+			want:     hostedTLSModeDisabled,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := resolveHostedTLSMode(tt.certFile); got != tt.want {
+				t.Errorf("resolveHostedTLSMode(%q) = %q, want %q", tt.certFile, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestResolveNamespaceDefault(t *testing.T) {
 	const checkoutDefault = "checkout-abc123"
 
