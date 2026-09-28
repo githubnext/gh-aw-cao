@@ -1,4 +1,5 @@
 const terminalStatuses = new Set(["finished", "failed", "cancelled-by-user"]);
+const immutableImagePattern = /^ghcr\.io\/githubnext\/gh-aw-cao\/cao-dashboard@sha256:[0-9a-f]{64}$/;
 
 function required(value, name) {
   if (!value) throw new Error(`${name} is required`);
@@ -32,6 +33,7 @@ export async function deployCoolify({
   pollInterval = 5000,
   readinessAttempts = 12,
   readinessInterval = 5000,
+  cancellationAttempts = 12,
 }) {
   const headers = {
     ["Author" + "ization"]: `${"Bea" + "rer"} ${required(token, "COOLIFY_API_TOKEN")}`,
@@ -39,7 +41,7 @@ export async function deployCoolify({
   };
   const application = encodeURIComponent(required(applicationUuid, "COOLIFY_APPLICATION_UUID"));
   const requestedImage = required(image, "CAO_IMAGE");
-  if (!/^ghcr\.io\/githubnext\/gh-aw-cao\/cao-dashboard@sha256:[0-9a-f]{64}$/.test(requestedImage)) {
+  if (!immutableImagePattern.test(requestedImage)) {
     throw new Error("CAO_IMAGE must be an immutable githubnext/gh-aw-cao dashboard digest");
   }
 
@@ -55,8 +57,11 @@ export async function deployCoolify({
     const response = await api(`/api/v1/applications/${application}/envs`);
     const variables = await responseJson(response, "reading Coolify environment variables");
     const matches = variables.filter((variable) => variable.key === "CAO_IMAGE" && !variable.is_preview);
-    if (matches.length !== 1 || typeof matches[0].value !== "string" || !matches[0].value) {
-      throw new Error("Coolify application must have exactly one non-preview CAO_IMAGE variable");
+    if (matches.length !== 1 || matches[0].is_shown_once ||
+        typeof matches[0].value !== "string" || !matches[0].value) {
+      throw new Error(
+        "Coolify application must expose exactly one non-preview CAO_IMAGE variable; check read:sensitive access",
+      );
     }
     return matches[0].value;
   }
@@ -100,24 +105,44 @@ export async function deployCoolify({
       }
       await sleep(pollInterval);
     }
-    throw new Error("Coolify deployment did not finish before the timeout");
+    const cancel = await api(`/api/v1/deployments/${encodeURIComponent(deploymentUuid)}/cancel`, {
+      method: "POST",
+    });
+    if (!cancel.ok) throw new Error(`cancelling timed-out Coolify deployment failed with HTTP ${cancel.status}`);
+    for (let attempt = 0; attempt < cancellationAttempts; attempt += 1) {
+      const response = await api(`/api/v1/deployments/${encodeURIComponent(deploymentUuid)}`);
+      const deployment = await responseJson(response, "reading cancelled Coolify deployment status");
+      if (deployment.status === "finished") return;
+      if (terminalStatuses.has(deployment.status)) {
+        throw new Error("Coolify deployment did not finish before the timeout");
+      }
+      await sleep(pollInterval);
+    }
+    throw new Error("timed-out Coolify deployment did not stop after cancellation");
   }
 
   async function verifyReadiness() {
     let status = 0;
     for (let attempt = 0; attempt < readinessAttempts; attempt += 1) {
-      const response = await fetchImpl(readinessUrl, {
-        redirect: "error",
-        signal: AbortSignal.timeout(30000),
-      });
-      status = response.status;
-      if (status === 200) return;
+      try {
+        const response = await fetchImpl(readinessUrl, {
+          redirect: "error",
+          signal: AbortSignal.timeout(30000),
+        });
+        status = response.status;
+        if (status === 200) return;
+      } catch {
+        status = 0;
+      }
       await sleep(readinessInterval);
     }
-    throw new Error(`dashboard readiness failed with HTTP ${status}`);
+    throw new Error(status ? `dashboard readiness failed with HTTP ${status}` : "dashboard readiness request failed");
   }
 
   const previousImage = await imageVariable();
+  if (!immutableImagePattern.test(previousImage)) {
+    throw new Error("existing CAO_IMAGE must be an immutable githubnext/gh-aw-cao dashboard digest");
+  }
   let imageUpdated = false;
   try {
     imageUpdated = true;
@@ -133,6 +158,9 @@ export async function deployCoolify({
       await setImage(previousImage);
       await waitForDeployment(await startDeployment());
       await verifyReadiness();
+      if (await imageVariable() !== previousImage) {
+        throw new Error("Coolify CAO_IMAGE changed during rollback");
+      }
     } catch (rollbackError) {
       throw new Error(`deployment failed and rollback failed: ${rollbackError.message}`, { cause: error });
     }

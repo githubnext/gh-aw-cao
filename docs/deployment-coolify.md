@@ -97,13 +97,18 @@ For a test deployment of the `githubnext/gh-aw-cao` dashboard:
 
 1. Create a Git-backed Docker Compose application in Coolify from this repository.
    Keep the repository root as the working directory and set the Compose location
-   to `server/coolify/compose.yml`. A pasted Compose file cannot resolve the
-   checked-in `cao.json` bind mount.
+   to `server/coolify/compose.yml`. Enable **Preserve Repository During
+   Deployment** so the checked-in `cao.json` bind mount remains available. A
+   pasted Compose file cannot resolve that bind mount.
 1. Configure the variables in `.env.example`, including one non-preview
-   `CAO_IMAGE` variable. If the GHCR package isn't public, configure registry
-   credentials that can pull it.
-1. Enable the Coolify API and create a token with `read`, `write`, and `deploy`
-   abilities.
+   `CAO_IMAGE` variable that is not marked **Shown Once**. Use an immutable
+   `ghcr.io/githubnext/gh-aw-cao/cao-dashboard@sha256:...` value. If the GHCR
+   package isn't public, configure registry credentials that can pull it.
+1. Enable the Coolify API and create a token with `read`, `read:sensitive`,
+   `write`, and `deploy` abilities. `read:sensitive` lets rollback read the
+   previous `CAO_IMAGE`; store the token only in the protected environment.
+1. Use an amd64 Coolify host. The sample workflow builds on GitHub's amd64
+   `ubuntu-latest` runner.
 1. Configure protected `coolify-sample-publish` and `coolify-sample` GitHub
    environments. Store `COOLIFY_API_TOKEN` only as a `coolify-sample` secret.
    Add these `coolify-sample` environment variables:
@@ -118,6 +123,10 @@ For a test deployment of the `githubnext/gh-aw-cao` dashboard:
    default branch, and add only repository maintainers or administrators as
    required reviewers. These controls are required because GitHub loads a
    workflow definition from the ref selected by the person dispatching it.
+1. Disable Coolify automatic deployments and deploy webhooks for this
+   application. The sample workflow must be the exclusive writer of
+   `CAO_IMAGE`; GitHub concurrency cannot prevent deployments started in the
+   Coolify UI or by other automation.
 1. From the default branch, manually run **Deploy sample dashboard to Coolify**.
 
 The workflow fails closed unless both the original actor and, for a rerun, the
@@ -130,6 +139,10 @@ publishes it to GHCR with a unique run identity, updates the application's
 `/api/readiness`. Image publication cannot access the deployment environment or
 its secrets. If deployment or readiness fails, the workflow restores and
 redeploys the previous image before reporting failure.
+
+This native API client is specific to the manual sample workflow. The separate
+channel-based `coolify-deploy.yml` workflow continues to use the adapter
+contract described in [Automating delivery](#automating-delivery).
 
 ### Updating the data
 
@@ -245,14 +258,14 @@ You configure traces for orchestrators and workers in the control repository. Fo
 - **Trusted proxies only.** The server trusts forwarded headers only from `CAO_TRUSTED_PROXY_CIDRS`. The forwarded protocol must be `https`, and the host must exactly match `CAO_ALLOWED_HOSTS`.
 - **Encrypted Redis by default.** The server refuses plaintext Redis unless you allow it for a private address or a single-label service name.
 - **Immutable images.** Every deployment uses an exact, scanned image digest. Channel tags never identify a deployment, and no channel promotes another channel's image.
-- **Automatic rollback.** If an adapter deployment fails, the adapter redeploys and verifies the previous digest before it reports the failure.
+- **Automatic rollback.** The sample workflow and the channel adapter each redeploy and verify the previous digest before reporting a failed rollout.
 - **Safe ingestion.** Ingestion and rebuilds activate only complete generations. If they fail, the previous generation stays active.
 
 ## What this deployment does not guarantee
 
 - **Platform operations.** You operate Coolify, the host, Docker, TLS certificates, and the proxy network. CAO provides no SLA and doesn't harden the host.
 - **Redis operations.** You're responsible for Redis authentication, access control lists, persistence, memory sizing, and network isolation. Redis holds disposable data, and CAO doesn't back it up.
-- **A deployment adapter.** The repository doesn't include a Coolify deployment adapter. You must build and secure one that meets the [contract](#automating-delivery).
+- **A channel deployment adapter.** The repository includes a native client for the manual sample workflow, but not an adapter for `coolify-deploy.yml`. You must build and secure one that meets the [contract](#automating-delivery).
 - **Data freshness.** Nothing refreshes the artifact volume automatically. Data is only as fresh as the last volume that you prepared or the last rebuild. For the upstream schedule, see [CAO Activity](activity.md).
 - **Live updates.** Server-sent events are best effort. If they stop, clients fall back to polling.
 - **Per-repository authorization.** Authorized users can read all of the active data.

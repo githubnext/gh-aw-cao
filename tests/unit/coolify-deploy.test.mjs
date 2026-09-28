@@ -12,8 +12,8 @@ function json(body, status = 200) {
   });
 }
 
-function fakeCoolify({ deploymentStatuses, readinessStatuses = [200] }) {
-  let image = oldImage;
+function fakeCoolify({ deploymentStatuses, readinessStatuses = [200], initialImage = oldImage }) {
+  let image = initialImage;
   let deployments = 0;
   const requests = [];
   const fetchImpl = async (url, options = {}) => {
@@ -35,11 +35,16 @@ function fakeCoolify({ deploymentStatuses, readinessStatuses = [200] }) {
         }],
       });
     }
+    if (path.endsWith("/cancel") && options.method === "POST") {
+      return json({ message: "Cancellation request queued." });
+    }
     if (path.startsWith("/api/v1/deployments/")) {
       return json({ status: deploymentStatuses.shift() });
     }
     if (path === "/api/readiness") {
-      return new Response(null, { status: readinessStatuses.shift() });
+      const readiness = readinessStatuses.shift();
+      if (readiness instanceof Error) throw readiness;
+      return new Response(null, { status: readiness });
     }
     return json({ message: "not found" }, 404);
   };
@@ -109,4 +114,64 @@ test("reports rollback failure without exposing the token", async () => {
       return true;
     },
   );
+});
+
+test("retries transient readiness request failures", async () => {
+  const coolify = fakeCoolify({
+    deploymentStatuses: ["finished"],
+    readinessStatuses: [new Error("temporary DNS failure"), 200],
+  });
+
+  await deployCoolify({ ...configuration, fetchImpl: coolify.fetchImpl });
+
+  assert.equal(coolify.image(), newImage);
+});
+
+test("rejects a mutable previous image before changing the application", async () => {
+  const coolify = fakeCoolify({
+    deploymentStatuses: [],
+    initialImage: "ghcr.io/githubnext/gh-aw-cao/cao-dashboard:latest",
+  });
+
+  await assert.rejects(
+    deployCoolify({ ...configuration, fetchImpl: coolify.fetchImpl }),
+    /existing CAO_IMAGE must be an immutable/,
+  );
+  assert.equal(coolify.deployments(), 0);
+});
+
+test("cancels a timed-out deployment before rolling back", async () => {
+  const coolify = fakeCoolify({
+    deploymentStatuses: ["queued", "cancelled-by-user", "finished"],
+  });
+
+  await assert.rejects(
+    deployCoolify({
+      ...configuration,
+      fetchImpl: coolify.fetchImpl,
+      pollAttempts: 1,
+    }),
+    /deployment failed; previous image restored: Coolify deployment did not finish before the timeout/,
+  );
+
+  assert.equal(coolify.image(), oldImage);
+  assert.equal(
+    coolify.requests.filter(({ url }) => url.endsWith("/cancel")).length,
+    1,
+  );
+});
+
+test("accepts a deployment that finishes while cancellation is requested", async () => {
+  const coolify = fakeCoolify({
+    deploymentStatuses: ["queued", "finished"],
+  });
+
+  await deployCoolify({
+    ...configuration,
+    fetchImpl: coolify.fetchImpl,
+    pollAttempts: 1,
+  });
+
+  assert.equal(coolify.image(), newImage);
+  assert.equal(coolify.deployments(), 1);
 });
