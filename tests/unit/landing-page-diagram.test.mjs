@@ -41,9 +41,11 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(terminalText, /--raw-field safe_output_mode="review"/);
   assert.match(hero, /See every campaign\. Focus where it diverges/);
   assert.match(hero, /Prove value before multiplying work/);
-  assert.doesNotMatch(hero, /wizard-launch|Launch setup wizard/);
   assert.doesNotMatch(hero, /One operating picture|phone-caption/);
-  assert.doesNotMatch(hero, /OpsWizard|Stand up a control plane in three steps/);
+  assert.doesNotMatch(
+    hero,
+    /wizard-launch|Launch setup wizard|OpsWizard|Plan a control plane and first campaign in four steps|Stand up a control plane in three steps/,
+  );
   assert.doesNotMatch(hero, /trust-section|Coordination without concentrated risk|section-actions/);
   assert.doesNotMatch(`${landingPage}\n${hero}`, /\bfactor(?:y|ies)\b/i);
   assert.doesNotMatch(`${landingPage}\n${hero}`, /\bfleets?\b/i);
