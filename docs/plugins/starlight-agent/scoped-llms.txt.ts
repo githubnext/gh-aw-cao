@@ -28,6 +28,8 @@ export const GET: APIRoute = async ({ site }) => {
     "",
     "Use these routes to navigate the documentation and dashboard architecture without executing client-side JavaScript. Each HTML documentation page advertises a compact JSON representation containing stable identity, relationships, provenance, and freshness.",
     "",
+    `- [Complete machine-readable resource index](${new URL(`${starlightAgentConfig.scopePath}/resources.json`, base)})`,
+    "",
     "## Important resources",
     "",
     ...resources,

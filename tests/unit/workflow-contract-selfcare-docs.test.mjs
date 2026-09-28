@@ -124,6 +124,10 @@ test("SelfCare documentation discoverability audits the public agent entry point
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /githubnext\.github\.io\/gh-aw-cao\/llms\.txt/);
   assert.match(source, /llms-small\.txt/);
+  assert.match(source, /agent\/resources\.json/);
+  assert.match(source, /resource\.json/);
+  assert.match(source, /cao_catalog/);
+  assert.match(source, /WebMCP bindings/);
   assert.match(source, /sha256sum/);
   assert.match(source, /Evaluate exactly these ten tasks/);
   assert.match(source, /more than two document hops/);

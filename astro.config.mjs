@@ -118,6 +118,11 @@ export default defineConfig({
               description: "Compact navigation to HTML pages, JSON resource metadata, provenance, and freshness.",
             },
             {
+              label: "Machine-readable resource index",
+              url: "https://githubnext.github.io/gh-aw-cao/agent/resources.json",
+              description: "Deterministic index of generated JSON resources and their available operational interfaces.",
+            },
+            {
               label: "Architecture",
               url: "https://githubnext.github.io/gh-aw-cao/architecture/",
               description: "Control-plane roles, authority boundaries, and execution flow.",

@@ -1,10 +1,16 @@
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadAgentDashboardDocument } from "../activity/agent-catalog.mjs";
+import { commandHandlers } from "../activity/commands/index.mjs";
+import { MCP_TOOLS } from "../activity/mcp-server.mjs";
+import { webMCPManifestForDashboard } from "../dashboard/site/src/webmcp/manifest.js";
 
 const artifactNames = ["llms.txt", "llms-small.txt", "llms-full.txt"];
 const scopedIndexPath = "agent/llms.txt";
+const resourceIndexPath = "agent/resources.json";
 const requiredRoutes = [
   "/architecture/",
   "/cao-cli/",
@@ -111,17 +117,31 @@ export async function validateAgentDocs({
   const small = artifacts["llms-small.txt"];
   const full = artifacts["llms-full.txt"];
   const scopedPath = path.join(distDirectory, scopedIndexPath);
+  const resourceIndexFile = path.join(distDirectory, resourceIndexPath);
   let scoped;
   if (!await isRegularNonemptyFile(scopedPath)) {
     errors.push(`${scopedIndexPath} must exist as a non-empty regular file`);
   } else {
     scoped = await readFile(scopedPath, "utf8");
   }
+  let resourceIndex;
+  if (!await isRegularNonemptyFile(resourceIndexFile)) {
+    errors.push(`${resourceIndexPath} must exist as a non-empty regular file`);
+  } else {
+    try {
+      resourceIndex = JSON.parse(await readFile(resourceIndexFile, "utf8"));
+    } catch {
+      errors.push(`${resourceIndexPath} is not valid JSON`);
+    }
+  }
 
   if (index) {
     const links = markdownLinks(index);
     if (!links.includes("https://githubnext.github.io/gh-aw-cao/agent/llms.txt")) {
       errors.push("llms.txt must route directly to the scoped agent resource index");
+    }
+    if (!links.includes("https://githubnext.github.io/gh-aw-cao/agent/resources.json")) {
+      errors.push("llms.txt must route directly to the machine-readable resource index");
     }
     for (const route of requiredRoutes) {
       if (!links.some((link) => link === `https://githubnext.github.io/gh-aw-cao${route}`)) {
@@ -167,6 +187,14 @@ export async function validateAgentDocs({
 
   const resourceTypes = new Set();
   const generationTimes = new Set();
+  const interfaceKinds = new Set();
+  const resourceIds = new Set();
+  const cliCommands = new Set(commandHandlers.keys());
+  const cliMcpCapabilities = new Set(MCP_TOOLS.map((tool) => tool.name));
+  const dashboardDocument = await loadAgentDashboardDocument();
+  const webMcpTools = new Map(
+    webMCPManifestForDashboard(dashboardDocument).map((tool) => [tool.name, tool]),
+  );
   let resourceFiles = [];
   try {
     resourceFiles = await findResourceFiles(distDirectory);
@@ -191,6 +219,7 @@ export async function validateAgentDocs({
       if (typeof resource[field] !== "string" || !resource[field]) {
         errors.push(`${relative} is missing string field ${field}`);
       }
+      resourceIds.add(resource.id);
     }
     resourceTypes.add(resource.type);
     if (!resource.provenance || resource.provenance.repository !== "githubnext/gh-aw-cao") {
@@ -209,6 +238,62 @@ export async function validateAgentDocs({
       errors.push(`${relative} is missing a valid generatedAt timestamp`);
     } else {
       generationTimes.add(resource.freshness.generatedAt);
+    }
+    if (!resource.source
+      || resource.source.repository !== "githubnext/gh-aw-cao"
+      || typeof resource.source.path !== "string"
+      || typeof resource.source.url !== "string") {
+      errors.push(`${relative} is missing canonical source metadata`);
+    }
+    if (resource.integrity?.algorithm !== "sha256"
+      || !/^[0-9a-f]{64}$/.test(resource.integrity?.sourceDigest ?? "")) {
+      errors.push(`${relative} is missing SHA-256 source integrity`);
+    } else if (resource.source?.path) {
+      try {
+        const sourceBytes = await readFile(path.join(root, resource.source.path));
+        const digest = createHash("sha256").update(sourceBytes).digest("hex");
+        if (digest !== resource.integrity.sourceDigest) {
+          errors.push(`${relative} source integrity does not match ${resource.source.path}`);
+        }
+      } catch {
+        errors.push(`${relative} source path cannot be read: ${resource.source.path}`);
+      }
+    }
+    for (const binding of resource.interfaces?.cli ?? []) {
+      interfaceKinds.add("cli");
+      if (binding.command !== "cao" || !cliCommands.has(binding.subcommand)) {
+        errors.push(`${relative} references an unregistered CLI command`);
+      }
+      if (binding.readOnly !== true) {
+        errors.push(`${relative} CLI binding must declare readOnly`);
+      }
+    }
+    for (const binding of resource.interfaces?.mcp ?? []) {
+      const kind = binding.transport === "web" ? "web-mcp" : "cli-mcp";
+      interfaceKinds.add(kind);
+      if (binding.transport === "cli" && !cliMcpCapabilities.has(binding.capability)) {
+        errors.push(`${relative} references an unregistered CLI MCP capability`);
+      }
+      if (binding.transport === "web") {
+        const tool = webMcpTools.get(binding.capability);
+        if (!tool || tool.pageId !== binding.resourceId) {
+          errors.push(`${relative} references an unregistered WebMCP capability`);
+        }
+      }
+      if (binding.readOnly !== true) {
+        errors.push(`${relative} MCP binding must declare readOnly`);
+      }
+    }
+    if (resource.recommendedInterface) {
+      const available = new Set([
+        ...((resource.interfaces?.cli?.length ?? 0) > 0 ? ["cli"] : []),
+        ...(resource.interfaces?.mcp ?? []).map((binding) =>
+          binding.transport === "web" ? "web-mcp" : "cli-mcp"),
+      ]);
+      if (!available.has(resource.recommendedInterface.default)
+        || !(resource.recommendedInterface.alternatives ?? []).every((kind) => available.has(kind))) {
+        errors.push(`${relative} recommends an unavailable interface`);
+      }
     }
     for (const link of resource.links ?? []) {
       let url;
@@ -235,6 +320,9 @@ export async function validateAgentDocs({
       if (!html.includes(`rel="describedby" href="/gh-aw-cao/agent/llms.txt"`)) {
         errors.push(`${path.relative(distDirectory, htmlPath)} does not advertise the scoped llms.txt`);
       }
+      if (!html.includes(`rel="index" type="application/json" href="/gh-aw-cao/agent/resources.json"`)) {
+        errors.push(`${path.relative(distDirectory, htmlPath)} does not advertise the resource index`);
+      }
       if (!html.includes(`rel="alternate" type="application/json" href="${expectedAlternate}"`)) {
         errors.push(`${path.relative(distDirectory, htmlPath)} does not advertise ${expectedAlternate}`);
       }
@@ -245,6 +333,32 @@ export async function validateAgentDocs({
   }
   for (const type of requiredResourceTypes) {
     if (!resourceTypes.has(type)) errors.push(`structured resources must include type ${type}`);
+  }
+  for (const kind of ["cli", "cli-mcp", "web-mcp"]) {
+    if (!interfaceKinds.has(kind)) errors.push(`structured resources must expose ${kind} bindings`);
+  }
+  if (resourceIndex) {
+    if (resourceIndex.schemaVersion !== "1" || !Array.isArray(resourceIndex.resources)) {
+      errors.push(`${resourceIndexPath} must contain a versioned resource list`);
+    } else {
+      const ids = resourceIndex.resources.map((resource) => resource.id);
+      if (new Set(ids).size !== ids.length) {
+        errors.push(`${resourceIndexPath} contains duplicate resource identifiers`);
+      }
+      if (ids.join("\0") !== [...ids].sort((left, right) => left.localeCompare(right)).join("\0")) {
+        errors.push(`${resourceIndexPath} resources must be sorted by identifier`);
+      }
+      if (ids.length !== resourceIds.size || ids.some((id) => !resourceIds.has(id))) {
+        errors.push(`${resourceIndexPath} does not match generated resource routes`);
+      }
+      for (const summary of resourceIndex.resources) {
+        if (typeof summary.agent !== "string"
+          || !await isRegularNonemptyFile(builtPathForUrl(distDirectory, new URL(summary.agent)))) {
+          errors.push(`${resourceIndexPath} contains an unresolved agent resource`);
+          break;
+        }
+      }
+    }
   }
   if (scoped) {
     for (const link of markdownLinks(scoped)) {
@@ -259,6 +373,7 @@ export async function validateAgentDocs({
   for (const [artifactName, content] of Object.entries({
     ...artifacts,
     ...(scoped ? { [scopedIndexPath]: scoped } : {}),
+    ...(resourceIndex ? { [resourceIndexPath]: JSON.stringify(resourceIndex) } : {}),
   })) {
     for (const pattern of credentialPatterns) {
       if (pattern.test(content)) {
@@ -284,6 +399,7 @@ export async function validateAgentDocs({
     const normalized = file.replaceAll("\\", "/");
     if (
       /(^|\/)agent-index\.json$/.test(normalized)
+      || /(^|\/)agent\/resources\.json$/.test(normalized)
       || /(^|\/)llms(?:-small|-full)?\.txt$/.test(normalized)
     ) {
       errors.push(`generated agent documentation must not be committed: ${normalized}`);

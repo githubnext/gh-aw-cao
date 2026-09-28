@@ -12,4 +12,5 @@ const hasStructuredResource = "filePath" in entry && Boolean(entry.filePath);
 
 <DefaultHead />
 <link rel="describedby" href={`${base}${starlightAgentConfig.scopePath}/llms.txt`} />
+<link rel="index" type="application/json" href={`${base}${starlightAgentConfig.scopePath}/resources.json`} />
 {hasStructuredResource && <link rel="alternate" type="application/json" href={`${base}${resourcePath}`} />}
