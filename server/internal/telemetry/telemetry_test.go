@@ -9,6 +9,62 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+func TestResolveExporterDecision(t *testing.T) {
+	tests := []struct {
+		name              string
+		sdkDisabledEnv    string
+		tracesEndpointEnv string
+		endpointEnv       string
+		wantEndpoint      string
+		wantDecision      exporterDecision
+	}{
+		{
+			name:           "sdk disabled overrides a configured endpoint",
+			sdkDisabledEnv: "true",
+			endpointEnv:    "http://127.0.0.1:4318",
+			wantEndpoint:   "",
+			wantDecision:   exporterDecisionDisabled,
+		},
+		{
+			name:           "sdk disabled comparison is case-insensitive and trims whitespace",
+			sdkDisabledEnv: " True ",
+			endpointEnv:    "http://127.0.0.1:4318",
+			wantEndpoint:   "",
+			wantDecision:   exporterDecisionDisabled,
+		},
+		{
+			name:         "no endpoint configured stays noop",
+			wantEndpoint: "",
+			wantDecision: exporterDecisionNoEndpoint,
+		},
+		{
+			name:              "traces endpoint takes priority over the general endpoint",
+			tracesEndpointEnv: "http://traces.example:4318",
+			endpointEnv:       "http://general.example:4318",
+			wantEndpoint:      "http://traces.example:4318",
+			wantDecision:      exporterDecisionConfigured,
+		},
+		{
+			name:         "general endpoint is used when no traces endpoint is set",
+			endpointEnv:  "http://general.example:4318",
+			wantEndpoint: "http://general.example:4318",
+			wantDecision: exporterDecisionConfigured,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotEndpoint, gotDecision := resolveExporterDecision(tt.sdkDisabledEnv, tt.tracesEndpointEnv, tt.endpointEnv)
+			if gotEndpoint != tt.wantEndpoint {
+				t.Errorf("endpoint = %q, want %q", gotEndpoint, tt.wantEndpoint)
+			}
+			if gotDecision != tt.wantDecision {
+				t.Errorf("decision = %q, want %q", gotDecision, tt.wantDecision)
+			}
+		})
+	}
+}
+
 func TestSetupWithoutEndpointStaysNoop(t *testing.T) {
 	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
 	t.Setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "")

@@ -23,15 +23,48 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
 
 // ServiceName is the standardized service.name resource attribute reported by
 // every dashboard server process, regardless of hosting mode.
 const ServiceName = "cao-dashboard"
 
+var setupLog = logger.New("cao:telemetry")
+
 // Shutdown flushes and stops any exporter started by Setup. It is always
 // non-nil and safe to call even when Setup did not configure an exporter.
 type Shutdown func(context.Context) error
+
+// exporterDecision identifies why Setup did or did not start an OTLP
+// exporter. It is useful for diagnosing a deployment that unexpectedly has
+// no exported spans, without logging the endpoint or version values.
+type exporterDecision string
+
+const (
+	exporterDecisionDisabled   exporterDecision = "sdk-disabled"
+	exporterDecisionNoEndpoint exporterDecision = "no-endpoint"
+	exporterDecisionConfigured exporterDecision = "configured"
+)
+
+// resolveExporterDecision applies the standard priority for whether Setup
+// starts a real OTLP exporter: an explicit OTEL_SDK_DISABLED override, then
+// an explicit traces endpoint, then the general OTLP endpoint. It returns the
+// resolved endpoint (empty unless exporterDecisionConfigured) and which
+// input decided the outcome, so callers can log the decision without
+// exposing the endpoint value. It is a pure function so this priority is
+// testable without installing a global TracerProvider.
+func resolveExporterDecision(sdkDisabledEnv, tracesEndpointEnv, endpointEnv string) (string, exporterDecision) {
+	if strings.EqualFold(strings.TrimSpace(sdkDisabledEnv), "true") {
+		return "", exporterDecisionDisabled
+	}
+	endpoint := firstNonEmpty(tracesEndpointEnv, endpointEnv)
+	if endpoint == "" {
+		return "", exporterDecisionNoEndpoint
+	}
+	return endpoint, exporterDecisionConfigured
+}
 
 // Setup installs a global TracerProvider and W3C Trace Context propagator
 // for the dashboard server. When OTEL_SDK_DISABLED is "true" or no OTLP
@@ -44,17 +77,17 @@ func Setup(ctx context.Context, version string) (Shutdown, error) {
 		propagation.TraceContext{},
 		propagation.Baggage{},
 	))
-	if strings.EqualFold(strings.TrimSpace(os.Getenv("OTEL_SDK_DISABLED")), "true") {
-		return noop, nil
-	}
-	endpoint := firstNonEmpty(
+	endpoint, decision := resolveExporterDecision(
+		os.Getenv("OTEL_SDK_DISABLED"),
 		os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"),
 		os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 	)
-	if endpoint == "" {
-		// No exporter destination is configured; keep the default no-op
-		// tracer provider so instrumentation stays inert instead of
-		// spending resources on unexported spans.
+	setupLog.Printf("telemetry setup decision=%s", decision)
+	if decision != exporterDecisionConfigured {
+		// Either the SDK is disabled or no exporter destination is
+		// configured; keep the default no-op tracer provider so
+		// instrumentation stays inert instead of spending resources on
+		// unexported spans.
 		return noop, nil
 	}
 	var exporterOptions []otlptracehttp.Option
