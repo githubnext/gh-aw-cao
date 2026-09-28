@@ -28,8 +28,9 @@ const jobs = [
     repository: "github/gh-aw",
     mode: "live",
     duration: "2m 18s",
-    organizationPath: "M0 100 H41 V172 H82",
-    repositoryPath: "M0 172 H41 V100 H82",
+    targetRow: 6,
+    organizationPath: "M0 100 H41 V344 H82",
+    repositoryPath: "M0 344 H41 V308 H82",
     organizationTimes: "0;0.51;0.52;0.55;0.56;1",
     repositoryTimes: "0;0.55;0.56;0.59;0.60;1",
   },
@@ -41,8 +42,9 @@ const jobs = [
     repository: "githubnext/gh-aw-cao",
     mode: "review",
     duration: "3m 41s",
-    organizationPath: "M0 172 H41 V344 H82",
-    repositoryPath: "M0 344 H41 V172 H82",
+    targetRow: 2,
+    organizationPath: "M0 172 H82",
+    repositoryPath: "M0 172 H41 V100 H82",
     organizationTimes: "0;0.60;0.61;0.64;0.65;1",
     repositoryTimes: "0;0.64;0.65;0.68;0.69;1",
   },
@@ -54,8 +56,9 @@ const jobs = [
     repository: "github/gh-aw-firewall",
     mode: "live",
     duration: "2m 56s",
-    organizationPath: "M0 308 H41 V172 H82",
-    repositoryPath: "M0 172 H41 V308 H82",
+    targetRow: 7,
+    organizationPath: "M0 308 H41 V344 H82",
+    repositoryPath: "M0 344 H41 V380 H82",
     organizationTimes: "0;0.66;0.67;0.70;0.71;1",
     repositoryTimes: "0;0.70;0.71;0.74;0.75;1",
   },
@@ -68,7 +71,7 @@ const jobs = [
     mode: "review",
     duration: "4m 12s",
     failed: true,
-    organizationPath: "M0 380 H41 V344 H82",
+    organizationPath: "M0 380 H41 V172 H82",
     organizationTimes: "0;0.75;0.76;0.79;0.80;1",
     repositoryTimes: "0;0.79;0.80;0.83;0.84;1",
   },
@@ -80,8 +83,9 @@ const jobs = [
     repository: "githubnext/gh-aw",
     mode: "live",
     duration: "5m 07s",
-    organizationPath: "M0 456 H41 V344 H82",
-    repositoryPath: "M0 344 H41 V456 H82",
+    targetRow: 3,
+    organizationPath: "M0 456 H41 V172 H82",
+    repositoryPath: "M0 172 H82",
     organizationTimes: "0;0.84;0.85;0.88;0.89;1",
     repositoryTimes: "0;0.88;0.89;0.92;0.93;1",
   },
@@ -91,32 +95,25 @@ const campaigns = [
   {
     name: "Dependabot",
     dispatcherClass: "dispatcher-dependabot",
-    organizations: ["github", "githubnext"],
-    jobs: jobs.slice(0, 2),
+    organizations: ["githubnext", "github"],
+    jobs: [jobs[1], jobs[0]],
   },
   {
     name: "Repo Assist",
     dispatcherClass: "dispatcher-repo-assist",
-    organizations: ["github", "githubnext"],
-    jobs: jobs.slice(2),
+    organizations: ["githubnext", "github"],
+    jobs: [jobs[3], jobs[4], jobs[2]],
   },
 ];
 
 const successfulJobs = jobs.filter((job) => !job.failed);
 const controlRepository = successfulJobs.find((job) => job.repository === "githubnext/gh-aw-cao");
-const targetJobs = successfulJobs;
+const targetJobs = [...successfulJobs].sort((left, right) => left.targetRow - right.targetRow);
 
 const organizationNodes = [
-  { organization: "github", top: 146 },
-  { organization: "githubnext", top: 318 },
-].map((node) => {
-  const organizationJobs = targetJobs.filter((job) => job.repository.startsWith(`${node.organization}/`));
-  return {
-    ...node,
-    campaigns: new Set(organizationJobs.map((job) => job.workflow.split(" / ")[0])).size,
-    repositories: new Set(organizationJobs.map((job) => job.repository)).size,
-  };
-});
+  { organization: "githubnext", top: 146 },
+  { organization: "github", top: 318 },
+];
 ---
 
 <div class="dispatch-illustration" aria-hidden="true">
@@ -260,7 +257,6 @@ const organizationNodes = [
               <svg class="organization-icon" viewBox="0 0 16 16"><path d={organizationPath}></path></svg>
               <span>
                 <strong>{node.organization}</strong>
-                <small>{node.campaigns} {node.campaigns === 1 ? "campaign" : "campaigns"} · {node.repositories} {node.repositories === 1 ? "repository" : "repositories"}</small>
               </span>
             </article>
           ))}
@@ -309,15 +305,11 @@ const organizationNodes = [
         <h3>Target Repositories</h3>
         <div class="target-grid">
           {targetJobs.map((job) => (
-            <article class={`repository-card ${job.timing} ${job.mode}`} style={`grid-row: ${job.row}`}>
+            <article class={`repository-card ${job.timing} ${job.mode}`} style={`grid-row: ${job.targetRow}`}>
               <svg class="repo-icon repository-icon" viewBox="0 0 16 16"><path d={repoPath}></path></svg>
               <span class="repository-copy">
                 <strong>{job.repository}</strong>
-                <small>
-                  {job.repository === controlRepository?.repository
-                    ? "review output · CAO control repository"
-                    : "live rollout"}
-                </small>
+                {job.repository === controlRepository?.repository && <small>CAO control plane</small>}
               </span>
             </article>
           ))}
@@ -406,11 +398,7 @@ const organizationNodes = [
                     <svg class="repo-icon repository-icon" viewBox="0 0 16 16"><path d={repoPath}></path></svg>
                     <span>
                       <strong>{job.repository}</strong>
-                      <small>
-                        {job.repository === controlRepository?.repository
-                          ? `review output · CAO control repository · ${job.duration}`
-                          : `live rollout · ${job.duration}`}
-                      </small>
+                      {job.repository === controlRepository?.repository && <small>CAO control plane</small>}
                     </span>
                   </article>
                 )}
@@ -577,6 +565,15 @@ const organizationNodes = [
     border-left: 1px solid var(--line);
   }
 
+  .repository-card.review {
+    border-color: color-mix(in srgb, var(--review) 55%, var(--line));
+    background: color-mix(in srgb, var(--review) 10%, var(--panel));
+  }
+
+  .repository-card.review .repository-icon {
+    fill: var(--review);
+  }
+
   .dispatcher {
     margin-right: 0;
   }
@@ -593,8 +590,7 @@ const organizationNodes = [
     transform: translateY(-4px);
   }
 
-  .run-card.job-5,
-  .repository-card.job-5 {
+  .run-card.job-5 {
     transform: translateY(4px);
   }
 
@@ -1210,11 +1206,6 @@ const organizationNodes = [
       border: 1px solid var(--line);
       border-radius: 8px;
       background: color-mix(in srgb, var(--sl-color-bg) 98%, var(--sl-color-gray-6));
-    }
-
-    .repository-card.review {
-      border-color: color-mix(in srgb, var(--review) 55%, var(--line));
-      background: color-mix(in srgb, var(--review) 10%, var(--panel));
     }
 
     .mobile-repository-card.review {
