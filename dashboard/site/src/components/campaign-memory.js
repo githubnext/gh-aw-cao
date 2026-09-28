@@ -1,5 +1,5 @@
 import { h } from '../dom.js';
-import { listRepositoryMemory, readRepositoryMemoryFile } from '../data-processor.js';
+import { listRepositoryMemory, listRepositoryMemoryCampaigns, readRepositoryMemoryFile } from '../data-processor.js';
 import { createDebug } from '../debug.js';
 import { octicon } from '../octicons.js';
 import { effect, onCleanup, render, state } from '../reactive.js';
@@ -204,6 +204,10 @@ function renderCampaignTree(campaigns, signal) {
   );
   /** @type {AbortController | null} */
   let fileController = null;
+  /** @type {Array<(manifest: CampaignMemory | null) => void>} */
+  const showManifests = [];
+  /** @type {Array<(error: unknown) => void>} */
+  const showErrors = [];
   const branches = campaigns.map((campaign) => {
     const files = h('div', { className: 'cao-memory-tree-status', role: 'status' }, renderLoadingMessage('Loading repository memory...'));
     const details = /** @type {HTMLDetailsElement} */ (h(
@@ -221,7 +225,7 @@ function renderCampaignTree(campaigns, signal) {
       title: 'No repository memory files are available for this campaign',
     }, octicon('file-directory-fill'), h('span', null, campaign.campaignName));
 
-    listRepositoryMemory(campaign.campaign, signal).then((manifest) => {
+    showManifests.push((manifest) => {
       if (signal.aborted) return;
       if (!manifest || manifest.files.length === 0) {
         details.replaceWith(disabledRow());
@@ -274,14 +278,13 @@ function renderCampaignTree(campaigns, signal) {
         ...(warning ? [warning] : []),
         tree
       );
-      }).catch((error) => {
-        if (error?.name !== 'AbortError') {
-          files.replaceChildren(renderEmptyMessage(
-            `Repository memory is unavailable. ${errorMessage(error)}`,
-            { role: 'alert' }
-          ));
-        }
-      });
+    });
+    showErrors.push((error) => {
+      files.replaceChildren(renderEmptyMessage(
+        `Repository memory is unavailable. ${errorMessage(error)}`,
+        { role: 'alert' }
+      ));
+    });
     return h('li', null, details);
   });
 
@@ -305,8 +308,17 @@ function renderCampaignTree(campaigns, signal) {
       content.focus();
     },
     showFiles,
-    signal
+    signal,
+    false
   );
+  listRepositoryMemoryCampaigns(campaigns.map(({ campaign }) => campaign), signal).then((manifests) => {
+    if (!signal.aborted) manifests.forEach((manifest, index) => {
+      if (manifest && 'error' in manifest) showErrors[index](manifest.error);
+      else showManifests[index](manifest);
+    });
+  }).catch((error) => {
+    if (!signal.aborted && error?.name !== 'AbortError') showErrors.forEach((showError) => showError(error));
+  });
   return layout;
 }
 
@@ -455,10 +467,17 @@ function renderMemoryFileHeader(path) {
  * @param {() => void} showFile
  * @param {(restoreFocus?: boolean) => void} showFiles
  * @param {AbortSignal} signal
+ * @param {boolean} [restoreFile]
  */
-function createMobileMemoryNavigation(root, scopeKey, parentPage, showFile, showFiles, signal) {
+function createMobileMemoryNavigation(root, scopeKey, parentPage, showFile, showFiles, signal, restoreFile = true) {
   const view = root.ownerDocument.defaultView;
   let active = view?.history.state?.[MOBILE_MEMORY_HISTORY_KEY] === scopeKey;
+  if (view && active && !restoreFile) {
+    const rest = { ...view.history.state };
+    delete rest[MOBILE_MEMORY_HISTORY_KEY];
+    view.history.replaceState(rest, '', view.location.href);
+    active = false;
+  }
   /** @param {string} navigationPage */
   const setParent = (navigationPage) => queueMicrotask(() => {
     if (!root.isConnected) return;

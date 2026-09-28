@@ -6,10 +6,12 @@ import { publishSource, resetSourceStore } from '../../src/source-store.js';
 
 const memoryApi = vi.hoisted(() => ({
   list: vi.fn(),
+  listAll: vi.fn(),
   read: vi.fn(),
 }));
 vi.mock('../../src/data-processor.js', () => ({
   listRepositoryMemory: memoryApi.list,
+  listRepositoryMemoryCampaigns: memoryApi.listAll,
   readRepositoryMemoryFile: memoryApi.read,
 }));
 
@@ -17,25 +19,25 @@ beforeEach(resetSourceStore);
 afterEach(() => {
   resetSourceStore();
   memoryApi.list.mockReset();
+  memoryApi.listAll.mockReset();
   memoryApi.read.mockReset();
   document.body.replaceChildren();
 });
 
 describe('campaign repository memory', () => {
   it('browses every campaign memory in place', async () => {
-    memoryApi.list
-      .mockResolvedValueOnce({
+    memoryApi.listAll
+      .mockResolvedValueOnce([{
         branch: 'memory/ambient-context',
         commit: 'a'.repeat(40),
         files: [{ path: 'notes/ambient.md', oid: 'b'.repeat(40), size: 9 }],
         omitted: {},
-      })
-      .mockResolvedValueOnce({
+      }, {
         branch: 'memory/security-review',
         commit: 'c'.repeat(40),
         files: [{ path: 'security.md', oid: 'd'.repeat(40), size: 10 }],
         omitted: {},
-      });
+      }]);
     memoryApi.read
       .mockResolvedValueOnce({ content: '# Ambient' })
       .mockResolvedValueOnce({ content: '# Security' });
@@ -67,7 +69,7 @@ describe('campaign repository memory', () => {
     });
     document.body.append(rendered);
 
-    await vi.waitFor(() => expect(memoryApi.list).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(memoryApi.listAll).toHaveBeenCalledTimes(1));
     const firstCampaign = /** @type {HTMLDetailsElement} */ (
       rendered.querySelector('.cao-memory-campaign-branch')
     );
@@ -118,8 +120,7 @@ describe('campaign repository memory', () => {
     }, dashboardViewAliasName('memory', { id: 'campaign-memory-browser' }, 0, 'campaign-memory-campaigns', 0));
     await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Security'));
     expect(location.hash).toBe('');
-    expect(memoryApi.list.mock.calls.map(([campaign]) => campaign))
-      .toEqual(['ambient-context', 'security-review']);
+    expect(memoryApi.listAll.mock.calls[0][0]).toEqual(['ambient-context', 'security-review']);
     expect(memoryApi.read.mock.calls.map(([campaign, path]) => [campaign, path])).toEqual([
       ['ambient-context', 'notes/ambient.md'],
       ['security-review', 'security.md'],
@@ -127,12 +128,12 @@ describe('campaign repository memory', () => {
   });
 
   it('preserves file-pane focus when an all-campaign file finishes loading', async () => {
-    memoryApi.list.mockResolvedValue({
+    memoryApi.listAll.mockResolvedValue([{
       branch: 'memory/ambient-context',
       commit: 'a'.repeat(40),
       files: [{ path: 'notes/ambient.md', oid: 'b'.repeat(40), size: 9 }],
       omitted: {},
-    });
+    }]);
     /** @type {(value: { content: string }) => void} */
     let finishRead = () => {};
     memoryApi.read
@@ -176,15 +177,14 @@ describe('campaign repository memory', () => {
   });
 
   it('shows campaigns without memory entries as non-interactive disabled rows', async () => {
-    memoryApi.list
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ branch: 'memory/empty', commit: 'a'.repeat(40), files: [], omitted: {} })
-      .mockResolvedValueOnce({
+    memoryApi.listAll.mockResolvedValue([null,
+      { branch: 'memory/empty', commit: 'a'.repeat(40), files: [], omitted: {} },
+      {
         branch: 'memory/available',
         commit: 'b'.repeat(40),
         files: [{ path: 'notes.md', oid: 'c'.repeat(40), size: 5 }],
         omitted: {},
-      });
+      }]);
     const rendered = renderAllCampaignMemory({
       pageId: 'memory',
       title: 'Campaign memory',
@@ -222,6 +222,90 @@ describe('campaign repository memory', () => {
     expect(rendered.querySelectorAll('.cao-memory-campaign-branch')).toHaveLength(1);
     expect(rendered.querySelector('.cao-memory-campaign-branch')?.hasAttribute('open')).toBe(false);
     expect(memoryApi.read).not.toHaveBeenCalled();
+    expect(memoryApi.listAll).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores the campaign browser instead of an empty mobile file pane', async () => {
+    window.history.replaceState({ caoMemoryViewer: 'all-campaigns', baseline: true }, '', window.location.href);
+    memoryApi.listAll.mockResolvedValue([{
+      branch: 'memory/available',
+      commit: 'a'.repeat(40),
+      files: [{ path: 'notes.md', oid: 'b'.repeat(40), size: 5 }],
+      omitted: {},
+    }]);
+    const rendered = renderAllCampaignMemory({
+      pageId: 'memory',
+      title: 'Campaign memory',
+      sourceNames: ['campaign-memory-campaigns'],
+      sources: {
+        'campaign-memory-campaigns': {
+          source: 'campaign-memory-campaigns',
+          rows: [{ campaign: 'available', 'campaign-name': 'Available' }],
+          metadata: {
+            'source-id': 'campaign-memory-test',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-26T00:00:00Z',
+            'retrieved-at': '2026-09-26T00:00:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available',
+          },
+        },
+      },
+      contextDetails: [],
+      headingTag: 'h3',
+    });
+    document.body.append(rendered);
+    await vi.waitFor(() => expect(rendered.querySelector('.campaign-memory-file')).not.toBeNull());
+
+    expect(rendered.querySelector('.cao-memory-layout')?.getAttribute('data-memory-view')).toBe('browser');
+    expect(window.history.state).toEqual({ baseline: true });
+    expect(memoryApi.read).not.toHaveBeenCalled();
+    window.history.replaceState(null, '', window.location.href);
+  });
+
+  it('keeps available campaigns browsable when another campaign fails to load', async () => {
+    memoryApi.listAll.mockResolvedValue([
+      { error: new Error('Temporarily unavailable') },
+      {
+        branch: 'memory/available',
+        commit: 'a'.repeat(40),
+        files: [{ path: 'notes.md', oid: 'b'.repeat(40), size: 5 }],
+        omitted: {},
+      },
+    ]);
+    const rendered = renderAllCampaignMemory({
+      pageId: 'memory',
+      title: 'Campaign memory',
+      sourceNames: ['campaign-memory-campaigns'],
+      sources: {
+        'campaign-memory-campaigns': {
+          source: 'campaign-memory-campaigns',
+          rows: [
+            { campaign: 'unavailable', 'campaign-name': 'Unavailable' },
+            { campaign: 'available', 'campaign-name': 'Available' },
+          ],
+          metadata: {
+            'source-id': 'campaign-memory-test',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-26T00:00:00Z',
+            'retrieved-at': '2026-09-26T00:00:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available',
+          },
+        },
+      },
+      contextDetails: [],
+      headingTag: 'h3',
+    });
+    document.body.append(rendered);
+    await vi.waitFor(() => expect(rendered.querySelector('.campaign-memory-file')).not.toBeNull());
+
+    const branches = rendered.querySelectorAll('.cao-memory-campaign-branch');
+    expect(branches[0].textContent).toContain('Temporarily unavailable');
+    expect(branches[1].querySelector('.campaign-memory-file')?.textContent).toContain('notes.md');
+    expect(rendered.querySelector('.cao-memory-campaign-disabled')).toBeNull();
   });
 
   it('renders an honest empty state when no campaigns are registered', () => {
