@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { renderUiElement } from '../../src/components/ui-elements.js';
-import { configureSourceLoader, resetSourceStore } from '../../src/source-store.js';
+import { configureSourceLoader, publishSource, resetSourceStore } from '../../src/source-store.js';
+import { dashboardViewAliasName } from '../../src/data/queries/view-payload-compiler.js';
 
 /** @type {import('../../src/presenter.js').SourceMetadata} */
 const metadata = {
@@ -104,7 +105,39 @@ it('renders campaign shortcuts through the reusable link button list', () => {
     .toBe('Current failing workflow or target partitions: 2');
   expect(rendered?.querySelector('.link-button-list-indicator .octicon-alert')).not.toBeNull();
   expect(rendered?.querySelector('.link-button-list-item .link-button-list-label-badge')?.textContent).toBe('Disabled');
-  expect(rendered?.querySelectorAll('.link-button-list-label-badge')).toHaveLength(1);
+  expect(rendered?.querySelectorAll('.link-button-list-label-badge:not([hidden])')).toHaveLength(1);
+});
+
+it('updates disabled labels on refreshed campaign rows without replacing their links', () => {
+  const name = 'overview-campaign-links';
+  const row = {
+    campaign: 'aw-doctor',
+    'campaign-name': 'AW Doctor',
+    'campaign-dashboard-link': {
+      'dashboard-href': '#page-campaign-insights?campaign=aw-doctor',
+      'dashboard-label': 'View AW Doctor campaign dashboard'
+    }
+  };
+  const rendered = renderUiElement('link-button-list', context('link-button-list', {
+    [name]: source(name, [row])
+  }, {
+    'label-field': 'campaign-name',
+    'label-badge-field': 'disabled-label',
+    'link-field': 'campaign-dashboard-link'
+  }));
+  const link = rendered?.querySelector('.link-button-list-item a');
+  const badge = rendered?.querySelector('.link-button-list-label-badge');
+  const bindingKey = dashboardViewAliasName('overview', { id: 'overview-campaigns' }, 2, name, 0);
+
+  expect(badge?.hasAttribute('hidden')).toBe(true);
+  publishSource(name, source(name, [{ ...row, 'disabled-label': 'Disabled' }]), bindingKey);
+  expect(badge?.textContent).toBe('Disabled');
+  expect(badge?.hasAttribute('hidden')).toBe(false);
+  expect(rendered?.querySelector('.link-button-list-item a')).toBe(link);
+
+  publishSource(name, source(name, [row]), bindingKey);
+  expect(badge?.hasAttribute('hidden')).toBe(true);
+  expect(rendered?.querySelector('.link-button-list-item a')).toBe(link);
 });
 
 it('renders a link button list skeleton until its source resolves', async () => {

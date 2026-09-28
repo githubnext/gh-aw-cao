@@ -34,7 +34,9 @@ export function renderLinkButtonList(context) {
           renderIconSpan('link-button-list-icon', text(row[iconField]) || fallbackIcon, { ariaHidden: true }),
           h('span', { className: 'link-button-list-label' },
             label,
-            labelBadge ? h('span', { className: 'link-button-list-label-badge' }, labelBadge) : null),
+            labelBadgeField
+              ? h('span', { className: 'link-button-list-label-badge', hidden: !labelBadge }, labelBadge)
+              : null),
           indicator
             ? h(
                 'span',
@@ -99,6 +101,13 @@ export function renderLinkButtonList(context) {
   effect(() => {
     items.items = source.rows();
     items.render();
+    if (labelBadgeField) {
+      list.querySelectorAll('.link-button-list-label-badge').forEach((badge, index) => {
+        const labelBadge = text(items.items[index]?.[labelBadgeField]);
+        badge.textContent = labelBadge;
+        /** @type {HTMLElement} */ (badge).hidden = !labelBadge;
+      });
+    }
     const pending = source.pending();
     const hasRows = items.items.length > 0;
     list.hidden = !hasRows;
