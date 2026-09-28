@@ -61,6 +61,9 @@ test("setup wizard presents hosting choices as an immersive card experience", as
   await expect(page.getByRole("radiogroup", { name: "Redis provider" })).toBeVisible();
 });
 
+// Matches the lower bound of the wizard's `--wizard-gutter: clamp(1rem, 4vw, 2rem)` token.
+const MIN_WIZARD_GUTTER_PX = 16;
+
 test("setup wizard renders standalone without site chrome and keeps mobile gutters", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   expect((await page.goto("setup/"))?.ok()).toBe(true);
@@ -76,7 +79,7 @@ test("setup wizard renders standalone without site chrome and keeps mobile gutte
     }),
   );
   expect(gutters.length).toBeGreaterThan(0);
-  expect(gutters.every(({ left, right }) => left >= 16 && right >= 16)).toBe(true);
+  expect(gutters.every(({ left, right }) => left >= MIN_WIZARD_GUTTER_PX && right >= MIN_WIZARD_GUTTER_PX)).toBe(true);
 });
 
 for (const { colorScheme, canvas, foreground, accent } of [

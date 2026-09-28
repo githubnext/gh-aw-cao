@@ -19,22 +19,6 @@
   --sl-text-base: 1rem;
   --sl-text-lg: 1.125rem;
   --sl-text-3xl: 1.8125rem;
-  --sl-color-bg: #17181c;
-  --sl-color-black: #17181c;
-  --sl-color-white: #fff;
-  --sl-color-gray-1: #edeef3;
-  --sl-color-gray-2: #c1c3c8;
-  --sl-color-gray-3: #888c96;
-  --sl-color-gray-5: #353841;
-  --sl-color-gray-6: #23262f;
-  --sl-color-green: hsl(101, 82%, 63%);
-  --sl-color-accent: #3369ff;
-  --sl-color-text-accent: #b3c7ff;
-
-  color-scheme: dark;
-}
-
-:root[data-theme="light"] {
   --sl-color-bg: #fff;
   --sl-color-black: #fff;
   --sl-color-white: #17181c;
@@ -48,6 +32,22 @@
   --sl-color-text-accent: #3d50f5;
 
   color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --sl-color-bg: #17181c;
+  --sl-color-black: #17181c;
+  --sl-color-white: #fff;
+  --sl-color-gray-1: #edeef3;
+  --sl-color-gray-2: #c1c3c8;
+  --sl-color-gray-3: #888c96;
+  --sl-color-gray-5: #353841;
+  --sl-color-gray-6: #23262f;
+  --sl-color-green: hsl(101, 82%, 63%);
+  --sl-color-accent: #3369ff;
+  --sl-color-text-accent: #b3c7ff;
+
+  color-scheme: dark;
 }
 
 *,
