@@ -59,7 +59,12 @@ async function createFixture() {
     const sourcePath = `docs/${route}.md`;
     await writeFile(path.join(root, sourcePath), sourceContent);
     const interfaces = route === "dashboard" ? {
-      cli: [{ command: "cao", subcommand: "pages", readOnly: true }],
+      cli: [{
+        command: "cao",
+        subcommand: "pages",
+        arguments: { positional: ["overview"], options: { "--json": true } },
+        readOnly: true,
+      }],
       mcp: [
         { transport: "cli", capability: "cao_catalog", readOnly: true },
         { transport: "web", capability: "cao_overview", resourceId: "overview", readOnly: true },

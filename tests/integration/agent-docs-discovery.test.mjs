@@ -68,6 +68,10 @@ test("an external agent can traverse static discovery and resource metadata", as
 
   const dashboard = JSON.parse(await readFile(path.join(dist, "dashboard", "index.json"), "utf8"));
   assert.equal(dashboard.interfaces.cli[0].subcommand, "pages");
+  assert.deepEqual(dashboard.interfaces.cli[0].arguments, {
+    positional: ["overview"],
+    options: { "--json": true },
+  });
   assert.deepEqual(
     dashboard.interfaces.mcp.map((binding) => [binding.transport, binding.capability]),
     [["cli", "cao_catalog"], ["web", "cao_overview"]],

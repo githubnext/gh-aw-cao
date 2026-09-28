@@ -264,6 +264,12 @@ export async function validateAgentDocs({
       if (binding.command !== "cao" || !cliCommands.has(binding.subcommand)) {
         errors.push(`${relative} references an unregistered CLI command`);
       }
+      if (!Array.isArray(binding.arguments?.positional)
+        || !binding.arguments?.options
+        || typeof binding.arguments.options !== "object"
+        || Array.isArray(binding.arguments.options)) {
+        errors.push(`${relative} CLI binding must separate positional arguments and options`);
+      }
       if (binding.readOnly !== true) {
         errors.push(`${relative} CLI binding must declare readOnly`);
       }

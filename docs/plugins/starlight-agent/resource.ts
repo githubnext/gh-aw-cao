@@ -112,14 +112,14 @@ function interfacesFor(binding?: AgentBinding) {
         {
           command: "cao",
           subcommand: "pages",
-          arguments: { json: true },
+          arguments: { positional: [], options: { "--json": true } },
           purpose: "Discover agent-facing dashboard pages.",
           readOnly: true,
         },
         {
           command: "cao",
           subcommand: "queries",
-          arguments: { json: true },
+          arguments: { positional: [], options: { "--json": true } },
           purpose: "Discover named dashboard queries.",
           readOnly: true,
         },
@@ -141,7 +141,7 @@ function interfacesFor(binding?: AgentBinding) {
         {
           command: "cao",
           subcommand: "query-info",
-          arguments: { query: resourceId, json: true },
+          arguments: { positional: [resourceId], options: { "--json": true } },
           resourceId,
           purpose: "Inspect this named dashboard query.",
           readOnly: true,
@@ -149,7 +149,7 @@ function interfacesFor(binding?: AgentBinding) {
         {
           command: "cao",
           subcommand: "query",
-          arguments: { query: resourceId },
+          arguments: { positional: [resourceId], options: {} },
           resourceId,
           purpose: "Execute this named dashboard query.",
           readOnly: true,
@@ -172,7 +172,7 @@ function interfacesFor(binding?: AgentBinding) {
     cli: [{
       command: "cao",
       subcommand: "pages",
-      arguments: { page: resourceId, json: true },
+      arguments: { positional: [resourceId], options: { "--json": true } },
       resourceId,
       purpose: "Inspect this dashboard page and its named queries.",
       readOnly: true,
