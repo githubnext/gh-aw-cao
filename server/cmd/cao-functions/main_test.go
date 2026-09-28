@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestResolveFunctionsConfig_RequiresPort(t *testing.T) {
@@ -98,4 +102,64 @@ func TestEnvOrDefault(t *testing.T) {
 	if got := envOrDefault(getenv, "MISSING_VALUE", "fallback"); got != "fallback" {
 		t.Errorf("envOrDefault(MISSING_VALUE) = %q, want %q", got, "fallback")
 	}
+}
+
+// TestShutdownOnDone_GracefulShutdownOnCancel verifies that cancelling ctx
+// triggers a real *http.Server shutdown that stops it from serving further
+// requests, using an actual listener rather than a mock.
+func TestShutdownOnDone_GracefulShutdownOnCancel(t *testing.T) {
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	server.Start()
+	defer server.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		shutdownOnDone(ctx, server.Config, time.Second)
+		close(done)
+	}()
+
+	cancel()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("shutdownOnDone did not return after context cancellation")
+	}
+
+	if _, err := http.Get(server.URL); err == nil {
+		t.Fatal("expected requests to fail after shutdown, but request succeeded")
+	}
+}
+
+// TestShutdownOnDone_WaitsForContext confirms shutdownOnDone blocks until
+// ctx is done, rather than shutting down immediately.
+func TestShutdownOnDone_WaitsForContext(t *testing.T) {
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	server.Start()
+	defer server.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan struct{})
+	go func() {
+		shutdownOnDone(ctx, server.Config, time.Second)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		t.Fatal("shutdownOnDone returned before context was cancelled")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	resp, err := http.Get(server.URL)
+	if err != nil {
+		t.Fatalf("expected server to still accept requests, got error: %v", err)
+	}
+	resp.Body.Close()
 }
