@@ -61,13 +61,7 @@ For more information, see [Configure authentication](authentication.md).
 
 1. Review, commit, and push the installed files. These include `.github/workflows/cao-activity.yml`, `.github/workflows/cao-dashboard.yml`, and the `activity/` and `dashboard/` directories.
 1. Configure your cross-repository credential profile. Follow the procedure for [GitHub Apps](deployment-actions-github-app.md#deploying-the-dashboard) or for [fine-grained PATs](deployment-actions-pat.md#deploying-the-dashboard).
-1. Configure GitHub Pages.
-
-   1. On GitHub, navigate to the main page of your control repository.
-   1. Under your repository name, click **Settings**.
-   1. In the "Code and automation" section of the sidebar, click **Pages**.
-   1. Under "Build and deployment", under "Source", select **GitHub Actions**.
-   1. Limit the site's visibility to the people who should see it.
+1. Run `./cao.sh setup` in the control repository to configure GitHub Pages with GitHub Actions as its source. For a private repository it also restricts access to repository readers; this requires a plan that supports private Pages and permission to manage Pages settings. Setup fails rather than leaving a public site eligible for deployment if access cannot be restricted. If setup was already completed, confirm the Pages source and visibility in **Settings > Pages**.
 
 1. Optionally, protect the `github-pages` environment. For more information, see [Managing environments for deployment](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-deployments/managing-environments-for-deployment) in the GitHub documentation.
 1. Run the Activity workflow.
