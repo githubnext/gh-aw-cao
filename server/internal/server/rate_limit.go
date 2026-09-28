@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/model"
 )
 
 const (
@@ -144,9 +146,37 @@ func (a *App) chargeQueryRateLimit(
 	return http.StatusOK, nil
 }
 
-func queryRateLimitCost(durationMS int64) int {
-	cost := max(1, int((durationMS+999)/1000))
+func queryRateLimitCost(metrics model.Metrics) int {
+	durationCost := int((metrics.DurationMS + 999) / 1000)
+	operationCost := ceilingUnits(metrics.Operations+metrics.RedisRows, 250_000)
+	rowCost := ceilingUnits(metrics.PeakWorkingRows, 100_000)
+	memoryCost := ceilingUnits64(metrics.PeakWorkingBytes, 16<<20)
+	structurePoints := metrics.QueryCount +
+		metrics.UnionCount +
+		metrics.JoinCount*4 +
+		metrics.FilterCount +
+		metrics.ComputeCount +
+		metrics.AggregateValueCount +
+		metrics.TemporalSeriesCount*4 +
+		metrics.SelectCount +
+		metrics.OrderByCount*2
+	structureCost := ceilingUnits(structurePoints, 8)
+	cost := max(1, durationCost, operationCost, rowCost, memoryCost, structureCost)
 	return min(cost, queryRateLimit)
+}
+
+func ceilingUnits(value, unit int) int {
+	if value <= 0 {
+		return 0
+	}
+	return (value + unit - 1) / unit
+}
+
+func ceilingUnits64(value int64, unit int64) int {
+	if value <= 0 {
+		return 0
+	}
+	return int((value + unit - 1) / unit)
 }
 
 func requiresPreAuthRateLimit(path string) bool {

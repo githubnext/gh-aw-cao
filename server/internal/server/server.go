@@ -709,7 +709,7 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 		fail(status, err.Error())
 		return
 	}
-	result.Metrics.RateLimitCost = queryRateLimitCost(result.Metrics.DurationMS)
+	result.Metrics.RateLimitCost = queryRateLimitCost(result.Metrics)
 	if status, err := a.chargeQueryRateLimit(ctx, response, result.Metrics.RateLimitCost); err != nil {
 		fail(status, err.Error())
 		return

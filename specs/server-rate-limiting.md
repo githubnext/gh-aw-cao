@@ -47,7 +47,7 @@ The server MUST apply the following token buckets.
 
 | Class | Requests | Capacity | Refill period | Subject |
 | --- | --- | ---: | ---: | --- |
-| Query | `POST /api/v1/query` | 30 cost units | 1 minute | authenticated GitHub login |
+| Query | `POST /api/v1/query`, `/mcp` query tools | 30 cost units | 1 minute | authenticated GitHub login or validated GitHub Actions actor |
 | OAuth | `/auth/login`, `/auth/callback` | 10 | 5 minutes | client address for login; OAuth state for callback when present |
 | General | other `/api/` and `/auth/` requests | 120 | 1 minute | authenticated GitHub login, otherwise client address |
 | Hosted edge | non-public hosted requests before session loading | 1,200 | 1 minute | client address |
@@ -72,19 +72,39 @@ atomic Redis operation. The operation MUST:
 1. use Redis server time so replicas share one clock;
 2. refill continuously up to the configured capacity;
 3. consume exactly one token for an ordinary allowed request;
-4. for a completed query, atomically consume one total cost unit per started
-   second of execution, capped at the query bucket capacity (the initial request
-   token counts toward that cost), preserving fractional tokens on ordinary
-   one-token denials and draining available tokens on a denied additional query
-   charge;
-5. retain fractional tokens;
-6. return the remaining whole-token count and durations until retry and reset;
-7. expire an idle bucket no earlier than two refill periods; and
-8. tolerate a Redis clock that moves backward without creating tokens.
+4. for a completed query, atomically consume a total cost derived from the
+   greatest of started execution seconds, measured row operations plus Redis
+   rows, peak working rows, estimated peak working bytes, and a weighted
+   structural score; the cost is capped at the query bucket capacity and the
+   initial request token counts toward it;
+5. preserve fractional tokens on ordinary one-token denials and drain available
+   tokens on a denied additional query charge;
+6. retain fractional tokens;
+7. return the remaining whole-token count and durations until retry and reset;
+8. expire an idle bucket no earlier than two refill periods; and
+9. tolerate a Redis clock that moves backward without creating tokens.
 
 Bucket keys MUST contain a cryptographic digest of the subject and MUST NOT
 contain a GitHub login, client address, OAuth state, session identifier, or
 credential in plaintext.
+
+### 3.1 Query cost
+
+The total cost of a completed query MUST be the greatest of:
+
+- one;
+- execution duration rounded up to seconds;
+- measured row operations plus Redis rows, rounded up in units of 250,000;
+- peak working rows, rounded up in units of 100,000;
+- estimated peak working bytes, rounded up in units of 16 MiB; and
+- structural points rounded up in units of eight, where each query, union,
+  filter, selected field, and computed field costs one point, each join costs
+  four, each aggregate value costs one, each temporal series costs four, and
+  each ordered field costs two.
+
+The result MUST be capped at the query bucket capacity. Telemetry and rate-limit
+accounting MUST contain only these aggregate numeric properties, never authored
+names, fields, predicates, literals, parameters, or result values.
 
 ## 4. Enterprise proxy identity
 
@@ -140,7 +160,7 @@ A conforming implementation MUST test:
 
 1. atomic Redis script arguments, result validation, and invalid configuration;
 2. allowed and exhausted responses and all required headers;
-3. weighted query cost assignment and its capacity cap;
+3. deterministic multi-factor query cost assignment and its capacity cap;
 4. authenticated identity hashing;
 5. pre-authentication coverage for rejected, static, and OAuth entry requests;
 6. trusted versus untrusted forwarding headers;

@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
@@ -69,19 +71,25 @@ func TestRateLimitReturnsStandardHeaders(t *testing.T) {
 
 func TestQueryRateLimitCostChargesLongRunningQueries(t *testing.T) {
 	for _, testCase := range []struct {
-		durationMS int64
-		want       int
+		name    string
+		metrics model.Metrics
+		want    int
 	}{
-		{0, 1},
-		{999, 1},
-		{1000, 1},
-		{1001, 2},
-		{5000, 5},
-		{60000, queryRateLimit},
+		{"minimum", model.Metrics{}, 1},
+		{"duration", model.Metrics{DurationMS: 5000}, 5},
+		{"operations", model.Metrics{Operations: 1_000_000}, 4},
+		{"redis work", model.Metrics{RedisRows: 750_000}, 3},
+		{"working rows", model.Metrics{PeakWorkingRows: 500_000}, 5},
+		{"structure", model.Metrics{QueryCount: 1, JoinCount: 12}, 7},
+		{"bytes", model.Metrics{PeakWorkingBytes: 64 << 20}, 4},
+		{"highest signal wins", model.Metrics{DurationMS: 2000, Operations: 1_000_000, PeakWorkingRows: 300_000}, 4},
+		{"capacity cap", model.Metrics{DurationMS: 60000, Operations: query.MaxOperations}, queryRateLimit},
 	} {
-		if got := queryRateLimitCost(testCase.durationMS); got != testCase.want {
-			t.Errorf("queryRateLimitCost(%d) = %d, want %d", testCase.durationMS, got, testCase.want)
-		}
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := queryRateLimitCost(testCase.metrics); got != testCase.want {
+				t.Errorf("queryRateLimitCost(%#v) = %d, want %d", testCase.metrics, got, testCase.want)
+			}
+		})
 	}
 }
 

@@ -19,6 +19,11 @@ type Metrics struct {
 	DurationMS          int64    `json:"durationMs"`
 	Operations          int      `json:"operations"`
 	OutputRows          int      `json:"outputRows"`
+	PeakWorkingRows     int      `json:"peakWorkingRows"`
+	RetainedRows        int      `json:"retainedRows"`
+	PeakWorkingBytes    int64    `json:"peakWorkingBytes"`
+	RetainedBytes       int64    `json:"retainedBytes"`
+	DependencyDepth     int      `json:"dependencyDepth"`
 	RateLimitCost       int      `json:"rateLimitCost"`
 	QueryCount          int      `json:"queryCount"`
 	UnionCount          int      `json:"unionCount"`

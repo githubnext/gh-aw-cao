@@ -284,7 +284,7 @@ func (runtime *mcpRuntime) callQuery(ctx context.Context, args map[string]any) (
 		span.SetStatus(codes.Error, "query execution failed")
 		return nil, err
 	}
-	result.Metrics.RateLimitCost = queryRateLimitCost(result.Metrics.DurationMS)
+	result.Metrics.RateLimitCost = queryRateLimitCost(result.Metrics)
 	if _, err := runtime.app.chargeQueryRateLimit(queryCtx, nil, result.Metrics.RateLimitCost); err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "query rate limit exceeded")

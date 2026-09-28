@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/bits"
 	"net/url"
 	"sort"
 	"strconv"
@@ -160,14 +161,24 @@ func validateFilter(filter *Filter) error {
 }
 
 func Dependencies(definitions []Definition, requested []string) ([]string, error) {
+	order, _, err := dependencyPlan(definitions, requested)
+	return order, err
+}
+
+func dependencyPlan(definitions []Definition, requested []string) ([]string, int, error) {
 	index := make(map[string]Definition, len(definitions))
 	for _, definition := range definitions {
 		index[definition.Name] = definition
 	}
 	visiting, visited := map[string]bool{}, map[string]bool{}
 	var result []string
-	var visit func(string) error
-	visit = func(name string) error {
+	maxDepth := 0
+	var visit func(string, int) error
+	visit = func(name string, depth int) error {
+		if depth > MaxDependencyDepth {
+			return fmt.Errorf("query dependency graph exceeds max depth of %d", MaxDependencyDepth)
+		}
+		maxDepth = max(maxDepth, depth)
 		if visited[name] {
 			return nil
 		}
@@ -182,7 +193,7 @@ func Dependencies(definitions []Definition, requested []string) ([]string, error
 			}
 			for _, input := range inputs {
 				if _, isQuery := index[input]; isQuery {
-					if err := visit(input); err != nil {
+					if err := visit(input, depth+1); err != nil {
 						return err
 					}
 				}
@@ -194,11 +205,11 @@ func Dependencies(definitions []Definition, requested []string) ([]string, error
 		return nil
 	}
 	for _, name := range requested {
-		if err := visit(name); err != nil {
-			return nil, err
+		if err := visit(name, 1); err != nil {
+			return nil, 0, err
 		}
 	}
-	return result, nil
+	return result, maxDepth, nil
 }
 
 func (e *Engine) Execute(definitions []Definition, requested []string) (map[string]model.Source, model.Metrics, error) {
@@ -211,13 +222,28 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 	for i := range definitions {
 		index[definitions[i].Name] = &definitions[i]
 	}
-	order, err := Dependencies(definitions, requested)
+	order, dependencyDepth, err := dependencyPlan(definitions, requested)
 	if err != nil {
 		return nil, model.Metrics{}, err
 	}
+	queryCount, joinCount := 0, 0
+	for _, name := range order {
+		if definition := index[name]; definition != nil {
+			queryCount++
+			joinCount += len(definition.Joins)
+		}
+	}
+	if queryCount > MaxPlanQueries {
+		return nil, model.Metrics{}, fmt.Errorf("query plan exceeds max queries of %d", MaxPlanQueries)
+	}
+	if joinCount > MaxPlanJoins {
+		return nil, model.Metrics{}, fmt.Errorf("query plan exceeds max joins of %d", MaxPlanJoins)
+	}
 	sources := map[string]model.Source{}
-	metrics := model.Metrics{}
+	metrics := model.Metrics{DependencyDepth: dependencyDepth}
 	operations := 0
+	retainedRows := 0
+	var retainedBytes int64
 	load := func(name string, definition *Definition) error {
 		if _, ok := sources[name]; ok {
 			return nil
@@ -226,7 +252,18 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 		if err != nil {
 			return err
 		}
+		sourceBytes := estimateRowsBytes(source.Rows, MaxRetainedBytes-retainedBytes)
+		if retainedRows+len(source.Rows) > MaxRetainedRows {
+			return fmt.Errorf("query plan exceeds max retained rows of %d", MaxRetainedRows)
+		}
+		if sourceBytes > MaxRetainedBytes-retainedBytes {
+			return fmt.Errorf("query plan exceeds max retained bytes of %d", MaxRetainedBytes)
+		}
 		sources[name] = source
+		retainedRows += len(source.Rows)
+		retainedBytes += sourceBytes
+		metrics.RetainedRows = max(metrics.RetainedRows, retainedRows)
+		metrics.RetainedBytes = max(metrics.RetainedBytes, retainedBytes)
 		mergeMetrics(&metrics, loadedMetrics)
 		return nil
 	}
@@ -274,6 +311,15 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 			}
 			available[join.Source] = sources[join.Source]
 		}
+		workingRows, workingBytes := referencedSize(*definition, available)
+		metrics.PeakWorkingRows = max(metrics.PeakWorkingRows, workingRows)
+		metrics.PeakWorkingBytes = max(metrics.PeakWorkingBytes, workingBytes)
+		if workingRows > MaxWorkingRows {
+			return nil, metrics, fmt.Errorf("query %q exceeds max working rows of %d", definition.Name, MaxWorkingRows)
+		}
+		if workingBytes > MaxWorkingBytes {
+			return nil, metrics, fmt.Errorf("query %q exceeds max working bytes of %d", definition.Name, MaxWorkingBytes)
+		}
 		result, used, fallback, err := ExecuteDefinition(residual, available, MaxOperations-operations)
 		operations += used
 		metrics.QueryCount++
@@ -299,9 +345,21 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 		if err != nil {
 			return nil, metrics, err
 		}
+		resultBytes := estimateRowsBytes(result.Rows, MaxRetainedBytes-retainedBytes)
+		if retainedRows+len(result.Rows) > MaxRetainedRows {
+			return nil, metrics, fmt.Errorf("query plan exceeds max retained rows of %d", MaxRetainedRows)
+		}
+		if resultBytes > MaxRetainedBytes-retainedBytes {
+			return nil, metrics, fmt.Errorf("query plan exceeds max retained bytes of %d", MaxRetainedBytes)
+		}
 		queryLog.Printf("executed query rows=%d operations=%d fallback=%d", len(result.Rows), used, len(fallback))
 		sources[name] = result
+		retainedRows += len(result.Rows)
+		retainedBytes += resultBytes
+		metrics.RetainedRows = max(metrics.RetainedRows, retainedRows)
+		metrics.RetainedBytes = max(metrics.RetainedBytes, retainedBytes)
 	}
+
 	output := make(map[string]model.Source, len(requested))
 	for _, name := range requested {
 		if source, ok := sources[name]; ok {
@@ -319,6 +377,72 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 	}
 	queryLog.Printf("completed outputs=%d operations=%d redis_commands=%d redis_rows=%d", len(output), operations, metrics.RedisCommands, metrics.RedisRows)
 	return output, metrics, nil
+}
+
+func referencedSize(definition Definition, sources map[string]model.Source) (int, int64) {
+	names := append([]string{definition.From}, definition.Union...)
+	for _, join := range definition.Joins {
+		names = append(names, join.Source)
+	}
+	seen := map[string]bool{}
+	rows := 0
+	var bytes int64
+	for _, name := range names {
+		if !seen[name] {
+			rows += len(sources[name].Rows)
+			bytes += estimateRowsBytes(sources[name].Rows, MaxWorkingBytes-bytes)
+			seen[name] = true
+		}
+	}
+	return rows, bytes
+}
+
+func estimateRowsBytes(rows []model.Row, remaining int64) int64 {
+	var total int64
+	for _, row := range rows {
+		total += 64
+		for key, value := range row {
+			total += int64(len(key)) + 48 + estimateValueBytes(value, 0)
+			if total > remaining {
+				return total
+			}
+		}
+	}
+	return total
+}
+
+func estimateValueBytes(value any, depth int) int64 {
+	if depth > 32 {
+		return MaxWorkingBytes + 1
+	}
+	switch typed := value.(type) {
+	case nil:
+		return 0
+	case bool, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
+		return 8
+	case string:
+		return int64(len(typed))
+	case []string:
+		total := int64(24)
+		for _, item := range typed {
+			total += 16 + int64(len(item))
+		}
+		return total
+	case []any:
+		total := int64(24)
+		for _, item := range typed {
+			total += 16 + estimateValueBytes(item, depth+1)
+		}
+		return total
+	case map[string]any:
+		total := int64(48)
+		for key, item := range typed {
+			total += int64(len(key)) + 32 + estimateValueBytes(item, depth+1)
+		}
+		return total
+	default:
+		return 32
+	}
 }
 
 func residualDefinition(definition Definition, pushed []string) Definition {
@@ -379,6 +503,17 @@ func ExecuteDefinition(definition Definition, sources map[string]model.Source, r
 	}
 	operations := len(rows)
 	fallback := []string{"from"}
+	if operations > remaining {
+		return model.Source{}, operations, fallback, fmt.Errorf("query %q exceeds max operations", definition.Name)
+	}
+	spend := func(cost int) error {
+		if cost > remaining-operations {
+			operations += cost
+			return fmt.Errorf("query %q exceeds max operations", definition.Name)
+		}
+		operations += cost
+		return nil
+	}
 	for _, join := range definition.Joins {
 		source, exists := sources[join.Source]
 		if !exists && join.Type != "left" {
@@ -392,12 +527,16 @@ func ExecuteDefinition(definition Definition, sources map[string]model.Source, r
 		fallback = append(fallback, "join")
 	}
 	if definition.Filter != nil {
-		operations += len(rows)
+		if err := spend(len(rows)); err != nil {
+			return model.Source{}, operations, fallback, err
+		}
 		rows = filterRows(rows, *definition.Filter)
 		fallback = append(fallback, "filter")
 	}
 	if len(definition.Compute) > 0 {
-		operations += len(rows) * len(definition.Compute)
+		if err := spend(len(rows) * len(definition.Compute)); err != nil {
+			return model.Source{}, operations, fallback, err
+		}
 		var err error
 		rows, err = computeRows(rows, definition.Compute)
 		if err != nil {
@@ -406,12 +545,16 @@ func ExecuteDefinition(definition Definition, sources map[string]model.Source, r
 		fallback = append(fallback, "compute")
 	}
 	if definition.Aggregate != nil {
-		operations += len(rows) * len(definition.Aggregate.Values)
+		if err := spend(len(rows) * len(definition.Aggregate.Values)); err != nil {
+			return model.Source{}, operations, fallback, err
+		}
 		rows = aggregateRows(rows, *definition.Aggregate)
 		fallback = append(fallback, "aggregate")
 	}
 	if definition.TemporalSeries != nil {
-		operations += len(rows)
+		if err := spend(len(rows)); err != nil {
+			return model.Source{}, operations, fallback, err
+		}
 		var err error
 		rows, err = temporalRows(rows, *definition.TemporalSeries)
 		if err != nil {
@@ -420,14 +563,20 @@ func ExecuteDefinition(definition Definition, sources map[string]model.Source, r
 		fallback = append(fallback, "temporal-series")
 	}
 	if len(definition.Select) > 0 {
-		operations += len(rows)
+		if err := spend(len(rows)); err != nil {
+			return model.Source{}, operations, fallback, err
+		}
 		rows = selectRows(rows, definition.Select)
 		fallback = append(fallback, "select")
 	}
 	if len(definition.OrderBy) > 0 {
+		if err := spend(sortCost(len(rows))); err != nil {
+			return model.Source{}, operations, fallback, err
+		}
 		sortRows(rows, definition.OrderBy)
 		fallback = append(fallback, "order-by")
 	}
+
 	if definition.Limit != nil && len(rows) > *definition.Limit {
 		rows = rows[:*definition.Limit]
 		fallback = append(fallback, "limit")
@@ -451,6 +600,13 @@ func ExecuteDefinition(definition Definition, sources map[string]model.Source, r
 	}
 	metadata["row-count"] = len(rows)
 	return model.Source{Source: definition.Name, Rows: rows, Metadata: metadata}, operations, fallback, nil
+}
+
+func sortCost(rows int) int {
+	if rows < 2 {
+		return rows
+	}
+	return rows * (bits.Len(uint(rows)) - 1)
 }
 
 func sourceUnavailable(source model.Source) bool {
