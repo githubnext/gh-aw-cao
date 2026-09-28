@@ -296,7 +296,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .marketplace-detail-page .entity-card-list-marketplace .issue-list-card-meta { justify-content: flex-start; }
 .marketplace-detail-page .entity-card-list-marketplace .issue-list-labels { grid-column: 2; grid-row: 2; justify-self: start; justify-content: flex-start; }
 .marketplace-detail-page .entity-card-list-marketplace .entity-card-list-actions { grid-column: 3; grid-row: 1 / span 2; align-self: center; margin: 0; }
-.marketplace-detail-page .entity-card-list-actions .table-cli-action-button { min-height: 36px; padding: 6px 18px; border-color: var(--accent); background: var(--accent); color: var(--canvas); font-weight: 600; }
+.marketplace-detail-page .entity-card-list-actions .table-cli-action-button { min-height: 36px; padding: 6px 18px; border-color: var(--accent); background: var(--accent); color: var(--on-emphasis); font-weight: 600; }
 .marketplace-detail-page .entity-card-list-actions .table-cli-action-button:hover { filter: brightness(1.08); }
 .marketplace-detail-page .entity-card-list-actions .table-cli-action-button .cli-action-trigger-copy strong { font-size: .875rem; }
 .marketplace-detail-page .dashboard-markdown { padding: 24px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }

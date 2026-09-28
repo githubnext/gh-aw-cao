@@ -49,10 +49,12 @@ describe('entity card templates', () => {
       'detail-labels': 'visible',
       title: { field: 'package-description' },
       details: expect.arrayContaining([
-        { field: 'publisher', title: 'By' },
-        { field: 'package-contents', title: 'Contents' }
+        { field: 'publisher', title: 'By' }
       ])
     });
+    expect(templates['marketplace-package-about'].details).not.toContainEqual(
+      expect.objectContaining({ field: 'package-contents' })
+    );
   });
 
   it('declares marketplace list and detail routes', () => {

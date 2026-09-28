@@ -375,6 +375,8 @@ test("publishes normalized marketplace packages and registry-level health", () =
     ref: "main",
     "resolved-commit": "a".repeat(40),
     version: "main",
+    readme: "# Demo\n\nMarketplace package documentation.\n",
+    "readme-path": "demo/README.md",
     source: `acme/packages/demo@${"a".repeat(40)}`,
     "add-command": `./cao.sh add acme/packages/demo@${"a".repeat(40)}`,
   };
