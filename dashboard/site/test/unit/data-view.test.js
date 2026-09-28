@@ -496,13 +496,29 @@ describe('data view renderer', () => {
   });
 
   it('renders declared conditional CLI actions on entity cards', () => {
-    setDeclaredCliActions([{
-      id: 'update-campaign',
-      label: 'Update campaign',
-      icon: 'sync',
-      command: 'gh aw update {{campaign}}',
-      placement: 'row'
-    }], { canExecute: false });
+    setDeclaredCliActions([
+      {
+        id: 'update-campaign',
+        label: 'Update campaign',
+        icon: 'sync',
+        command: 'gh aw update {{campaign}}',
+        placement: 'row'
+      },
+      {
+        id: 'enable-campaign',
+        label: 'Activate campaign',
+        icon: 'play',
+        command: './cao.sh enable {{campaign}}',
+        placement: 'row'
+      },
+      {
+        id: 'disable-campaign',
+        label: 'Deactivate campaign',
+        icon: 'pause',
+        command: './cao.sh disable {{campaign}}',
+        placement: 'row'
+      }
+    ], { canExecute: false });
     const rendered = renderDataView('list', {
       pageId: 'maintenance',
       title: 'CAO packages',
@@ -514,7 +530,7 @@ describe('data view renderer', () => {
       },
       rows: [
         { 'campaign-name': 'Unknown package', campaign: 'unknown', 'campaign-update-state': 'unknown', 'campaign-registration': 'true' },
-        { 'campaign-name': 'Current package', campaign: 'current', 'campaign-update-state': 'current', 'campaign-registration': 'true' },
+        { 'campaign-name': 'Current package', campaign: 'current', 'campaign-update-state': 'current', 'campaign-registration': 'false' },
         { 'campaign-name': 'Outdated package', campaign: 'outdated', 'campaign-update-state': 'update-available', 'campaign-registration': 'true', 'campaign-observed-at': '2026-08-31T00:00:00Z' }
       ],
       cardTemplates: {
@@ -528,6 +544,14 @@ describe('data view renderer', () => {
             action: 'update-campaign',
             context: ['campaign'],
             when: { field: 'campaign-update-state', equals: 'update-available' }
+          }, {
+            action: 'disable-campaign',
+            context: ['campaign'],
+            when: { field: 'campaign-registration', equals: 'true' }
+          }, {
+            action: 'enable-campaign',
+            context: ['campaign'],
+            when: { field: 'campaign-registration', equals: 'false' }
           }]
         }
       },
@@ -541,9 +565,12 @@ describe('data view renderer', () => {
     });
 
     const cards = rendered?.querySelectorAll('.entity-card-list-card') ?? [];
-    expect(cards[0]?.querySelector('.entity-card-list-actions')).toBeNull();
-    expect(cards[1]?.querySelector('.entity-card-list-actions')).toBeNull();
-    expect(cards[2]?.querySelector('.entity-card-list-actions button')?.textContent).toContain('Update campaign');
+    expect(cards[0]?.querySelector('.entity-card-list-actions')?.textContent).toContain('Deactivate campaign');
+    expect(cards[1]?.querySelector('.entity-card-list-actions')?.textContent).toContain('Activate campaign');
+    expect(cards[2]?.querySelector('.entity-card-list-actions')?.textContent).toContain('Update campaign');
+    expect(cards[2]?.querySelector('.entity-card-list-actions')?.textContent).toContain('Deactivate campaign');
+    expect(rendered?.textContent).toContain('./cao.sh enable current');
+    expect(rendered?.textContent).toContain('./cao.sh disable outdated');
     expect(cards[0]?.querySelector('.issue-list-labels .status-success')?.textContent).toBe('Active');
     expect(cards[0]?.querySelector('.issue-list-card-meta .status-muted')?.textContent).toBe('unknown');
     expect(cards[1]?.querySelector('.issue-list-card-meta .status-success')?.textContent).toBe('current');

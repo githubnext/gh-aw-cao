@@ -29,8 +29,21 @@ func (s *Store) TakeRateLimitToken(
 	capacity int,
 	refillPeriod time.Duration,
 ) (RateLimitResult, error) {
-	if capacity <= 0 || refillPeriod < time.Millisecond {
-		return RateLimitResult{}, errors.New("rate limit capacity must be positive and refill period must be at least one millisecond")
+	return s.TakeRateLimitTokens(ctx, key, capacity, refillPeriod, 1)
+}
+
+// TakeRateLimitTokens atomically consumes a weighted cost from a Redis-backed
+// token bucket. A denied weighted charge drains the available tokens so an
+// expensive request cannot repeatedly avoid its assessed cost.
+func (s *Store) TakeRateLimitTokens(
+	ctx context.Context,
+	key string,
+	capacity int,
+	refillPeriod time.Duration,
+	cost int,
+) (RateLimitResult, error) {
+	if capacity <= 0 || refillPeriod < time.Millisecond || cost <= 0 || cost > capacity {
+		return RateLimitResult{}, errors.New("rate limit capacity and cost must be positive, cost must not exceed capacity, and refill period must be at least one millisecond")
 	}
 	script := `
 local current = redis.call("TIME")
@@ -41,15 +54,18 @@ local updated = tonumber(state[2]) or now
 local elapsed = math.max(0, now - updated)
 local capacity = tonumber(ARGV[1])
 local period = tonumber(ARGV[2])
+local cost = tonumber(ARGV[3])
 tokens = math.min(capacity, tokens + elapsed * capacity / period)
 local allowed = 0
-if tokens >= 1 then
-  tokens = tokens - 1
+if tokens >= cost then
+  tokens = tokens - cost
   allowed = 1
+elseif cost > 1 then
+  tokens = 0
 end
 local retry = 0
 if allowed == 0 then
-  retry = math.ceil((1 - tokens) * period / capacity)
+  retry = math.ceil((cost - tokens) * period / capacity)
 end
 local reset = math.ceil((capacity - tokens) * period / capacity)
 redis.call("HSET", KEYS[1], "tokens", tokens, "updated", now)
@@ -63,6 +79,7 @@ return {allowed, math.floor(tokens), retry, reset}`
 		s.Key("rate-limit:"+key),
 		strconv.Itoa(capacity),
 		strconv.FormatInt(refillPeriod.Milliseconds(), 10),
+		strconv.Itoa(cost),
 	)
 	if err != nil {
 		return RateLimitResult{}, fmt.Errorf("update Redis rate limit: %w", err)

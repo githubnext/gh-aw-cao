@@ -625,6 +625,28 @@
             "title": "# aic",
             "unit": "aic"
           }
+        ],
+        "actions": [
+          {
+            "action": "disable-campaign",
+            "context": [
+              "campaign"
+            ],
+            "when": {
+              "field": "registration",
+              "equals": "true"
+            }
+          },
+          {
+            "action": "enable-campaign",
+            "context": [
+              "campaign"
+            ],
+            "when": {
+              "field": "registration",
+              "equals": "false"
+            }
+          }
         ]
       },
       {
@@ -708,6 +730,26 @@
             "when": {
               "field": "campaign-update-state",
               "equals": "update-available"
+            }
+          },
+          {
+            "action": "disable-campaign",
+            "context": [
+              "campaign"
+            ],
+            "when": {
+              "field": "campaign-registration",
+              "equals": "true"
+            }
+          },
+          {
+            "action": "enable-campaign",
+            "context": [
+              "campaign"
+            ],
+            "when": {
+              "field": "campaign-registration",
+              "equals": "false"
             }
           }
         ],
@@ -851,16 +893,16 @@
       },
       {
         "id": "enable-campaign",
-        "label": "Enable campaign",
-        "description": "Enable this campaign's orchestrator and worker workflows.",
+        "label": "Activate campaign",
+        "description": "Activate this campaign's orchestrator and worker workflows.",
         "icon": "play",
         "command": "./cao.sh enable {{campaign}}",
         "placement": "row"
       },
       {
         "id": "disable-campaign",
-        "label": "Pause campaign",
-        "description": "Disable future campaign workflow runs. Active runs continue until separately cancelled on GitHub.",
+        "label": "Deactivate campaign",
+        "description": "Deactivate future campaign workflow runs. Active runs continue until separately cancelled on GitHub.",
         "icon": "pause",
         "command": "./cao.sh disable {{campaign}}",
         "placement": "row"
@@ -960,6 +1002,7 @@
           "issues",
           "operational-value",
           "cost",
+          "friction",
           "engines-models",
           "skills",
           "firewall",
