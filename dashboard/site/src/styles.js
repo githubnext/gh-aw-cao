@@ -264,26 +264,25 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .entity-card-list-grouped .entity-card-list-card:first-child { border-top: 0; }
 .entity-card-list-grouped .entity-card-list-card:has([data-card-drill]):hover { background: var(--neutral-muted); }
 .entity-card-list-grouped .issue-list-labels { justify-content: flex-end; }
-.marketplace-page > .page-chrome { margin-bottom: 8px; padding: 40px 32px; border: 1px solid var(--border); border-radius: 12px; background: radial-gradient(circle at top right, var(--accent-muted), transparent 44%), var(--canvas-subtle); text-align: center; }
+.marketplace-page > .page-chrome { margin-bottom: 8px; padding: 40px 32px; border: 1px solid var(--border); border-radius: 12px; background: radial-gradient(circle at top right, var(--accent-muted), transparent 44%), var(--canvas-subtle); }
 .marketplace-page > .page-chrome h1 { font-size: clamp(1.75rem, 4vw, 2.5rem); }
-.marketplace-page > .page-chrome p { max-width: 640px; margin-inline: auto; font-size: .9375rem; }
+.marketplace-page > .page-chrome p { max-width: 640px; font-size: .9375rem; }
 .marketplace-page .custom-view-grid { max-width: 1012px; margin-inline: auto; }
 .marketplace-page .custom-view { border: 0; background: transparent; box-shadow: none; }
 .marketplace-page .custom-view > header { padding-inline: 0; }
 .marketplace-page .document-list-header { padding: 0 0 16px; }
-.entity-card-list-marketplace { overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
-.entity-card-list-marketplace .entity-card-list-card { min-height: 132px; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: start; gap: 16px; padding: 24px; }
-.entity-card-list-marketplace .entity-card-list-card:first-child { border-top: 0; }
-.entity-card-list-marketplace .entity-card-list-card:has([data-card-drill]):hover { background: var(--canvas-subtle); }
-.entity-card-list-marketplace .issue-list-card-icon { width: 48px; height: 48px; display: grid; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 10px; background: var(--canvas-subtle); color: var(--fg); }
-.entity-card-list-marketplace .issue-list-card-icon .octicon { width: 24px; height: 24px; }
-.entity-card-list-marketplace .issue-list-card-title { color: var(--accent); font-size: 1rem; }
-.entity-card-list-marketplace .issue-list-card-subtitle { max-width: 680px; color: var(--fg); font-size: .875rem; line-height: 1.5; }
-.entity-card-list-marketplace .issue-list-card-meta { margin-top: 8px; color: var(--muted); }
+.entity-card-list-marketplace { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 16px; border: 0; background: transparent; }
+.entity-card-list-marketplace .entity-card-list-card { position: relative; min-height: 220px; grid-template-columns: minmax(0, 1fr); align-content: start; justify-items: center; gap: 8px; padding: 32px 20px 24px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); text-align: center; }
+.entity-card-list-marketplace .entity-card-list-card:has([data-card-drill]):hover { border-color: var(--accent); background: var(--canvas-subtle); }
+.entity-card-list-marketplace .issue-list-card-icon { width: 56px; height: 56px; display: grid; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--canvas-subtle); color: var(--fg); }
+.entity-card-list-marketplace .issue-list-card-icon .octicon { width: 28px; height: 28px; }
+.entity-card-list-marketplace .issue-list-card-content { display: grid; justify-items: center; gap: 6px; }
+.entity-card-list-marketplace .issue-list-card-title { color: var(--fg); font-size: 1rem; }
+.entity-card-list-marketplace .issue-list-card-subtitle { max-width: 36ch; color: var(--muted); font-size: .875rem; line-height: 1.5; }
+.entity-card-list-marketplace .issue-list-card-meta { justify-content: center; margin-top: 4px; color: var(--muted); }
 .entity-card-list-marketplace .issue-list-card-meta dt { text-transform: none; }
-.entity-card-list-marketplace .issue-list-labels { grid-column: 2; justify-content: flex-start; }
-.entity-card-list-marketplace .entity-card-list-chevron { grid-column: 3; grid-row: 1; align-self: center; }
-.entity-card-list-marketplace .entity-card-list-actions { grid-column: 2; margin-top: 0; }
+.entity-card-list-marketplace .issue-list-labels { position: absolute; top: 12px; right: 12px; margin: 0; justify-content: flex-end; }
+.entity-card-list-marketplace .entity-card-list-chevron { display: none; }
 .entity-card-list-chevron { display: flex; align-items: center; color: var(--muted); }
 .entity-card-list-chevron .octicon { width: 14px; height: 14px; }
 .link-button-list-view { display: grid; gap: 12px; }
@@ -2451,10 +2450,10 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .entity-card-list-card:has(.entity-card-list-timing) { grid-template-columns: 20px minmax(0, 1fr); }
   .entity-card-list-timing { grid-column: 2; }
   .marketplace-page > .page-chrome { padding: 28px 20px; border-radius: 8px; }
-  .entity-card-list-marketplace .entity-card-list-card { grid-template-columns: 40px minmax(0, 1fr); gap: 12px; padding: 18px 16px; }
-  .entity-card-list-marketplace .issue-list-card-icon { width: 40px; height: 40px; }
-  .entity-card-list-marketplace .issue-list-labels, .entity-card-list-marketplace .entity-card-list-actions { grid-column: 2; }
-  .entity-card-list-marketplace .entity-card-list-chevron { display: none; }
+  .entity-card-list-marketplace { grid-template-columns: 1fr; gap: 12px; }
+  .entity-card-list-marketplace .entity-card-list-card { min-height: 0; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 24px 16px 20px; }
+  .entity-card-list-marketplace .issue-list-card-icon { width: 48px; height: 48px; }
+  .entity-card-list-marketplace .issue-list-card-icon .octicon { width: 24px; height: 24px; }
   .outcome-meta { grid-template-columns: 1fr; }
   .problem-view-header { align-items: stretch; flex-direction: column; }
   .problem-view-highlights { grid-template-columns: 1fr; }
