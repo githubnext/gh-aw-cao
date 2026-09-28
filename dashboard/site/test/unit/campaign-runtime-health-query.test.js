@@ -72,6 +72,42 @@ it('opens campaigns with runtime problems on Problems and healthy campaigns on I
   ]);
 });
 
+it('labels only campaigns with a GitHub-disabled dispatcher, not disabled workers or unknown dispatchers', () => {
+  const disabledDispatchersQuery = dashboard.queries.find(
+    (/** @type {{ name?: string }} */ candidate) => candidate.name === 'overview-disabled-dispatchers'
+  );
+  const sources = executeDashboardQueries([disabledDispatchersQuery, query], {
+    campaigns: {
+      source: 'campaigns',
+      metadata,
+      rows: ['aw-doctor', 'dependabot', 'unknown'].map((campaign) => ({
+        campaign, 'campaign-name': campaign, 'campaign-icon': 'gear'
+      }))
+    },
+    workflows: {
+      source: 'workflows',
+      metadata,
+      rows: [
+        { campaign: 'aw-doctor', workflow: 'doctor.md', 'workflow-role': 'orchestrator', 'workflow-active': 'false' },
+        { campaign: 'dependabot', workflow: 'worker.md', 'workflow-role': 'worker', 'workflow-active': 'false' },
+        { campaign: 'dependabot', workflow: 'planner.md', 'workflow-role': 'orchestrator', 'workflow-active': 'true' },
+        { campaign: 'unknown', workflow: 'unknown.md', 'workflow-role': 'orchestrator', 'workflow-active': 'unknown' }
+      ]
+    },
+    'campaign-runtime-problem-counts': {
+      source: 'campaign-runtime-problem-counts',
+      metadata,
+      rows: []
+    }
+  }, ['overview-campaign-links']);
+
+  expect(sources['overview-campaign-links'].rows.map((row) => [row.campaign, row['disabled-label']])).toEqual([
+    ['aw-doctor', 'Disabled'],
+    ['dependabot', ''],
+    ['unknown', '']
+  ]);
+});
+
 it('keeps campaign error groups scoped to their target repository', () => {
   expect(problemGroupsQuery).toMatchObject({
     aggregate: {

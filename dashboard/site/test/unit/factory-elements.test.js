@@ -60,17 +60,29 @@ it('renders campaign shortcuts through the reusable link button list', () => {
         campaign: 'aw-doctor',
         'campaign-name': 'AW Doctor',
         'campaign-icon': 'gear',
+        'disabled-label': 'Disabled',
         'problem-indicator': 'alert',
         'problem-indicator-label': 'Current failing workflow or target partitions: 2',
         'campaign-dashboard-link': {
           'dashboard-href': '#page-campaign-insights?campaign=aw-doctor',
           'dashboard-label': 'View AW Doctor campaign dashboard'
         }
+      },
+      {
+        campaign: 'dependabot',
+        'campaign-name': 'Dependabot',
+        'campaign-icon': 'dependabot',
+        'disabled-label': '',
+        'campaign-dashboard-link': {
+          'dashboard-href': '#page-campaign-insights?campaign=dependabot',
+          'dashboard-label': 'View Dependabot campaign dashboard'
+        }
       }
     ])
     }),
     elementConfig: {
       'label-field': 'campaign-name',
+      'label-badge-field': 'disabled-label',
       'link-field': 'campaign-dashboard-link',
       'icon-field': 'campaign-icon',
       'fallback-icon': 'goal',
@@ -79,7 +91,7 @@ it('renders campaign shortcuts through the reusable link button list', () => {
     }
   });
 
-  expect(rendered?.querySelectorAll('.link-button-list-item')).toHaveLength(1);
+  expect(rendered?.querySelectorAll('.link-button-list-item')).toHaveLength(2);
   expect(rendered?.querySelector('.link-button-list-item a')?.getAttribute('href'))
     .toBe('#page-campaign-insights?campaign=aw-doctor');
   expect(rendered?.querySelector('.link-button-list-item a')?.getAttribute('aria-label'))
@@ -91,6 +103,8 @@ it('renders campaign shortcuts through the reusable link button list', () => {
   expect(rendered?.querySelector('.link-button-list-indicator')?.getAttribute('aria-label'))
     .toBe('Current failing workflow or target partitions: 2');
   expect(rendered?.querySelector('.link-button-list-indicator .octicon-alert')).not.toBeNull();
+  expect(rendered?.querySelector('.link-button-list-item .link-button-list-label-badge')?.textContent).toBe('Disabled');
+  expect(rendered?.querySelectorAll('.link-button-list-label-badge')).toHaveLength(1);
 });
 
 it('renders a link button list skeleton until its source resolves', async () => {

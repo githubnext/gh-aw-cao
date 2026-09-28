@@ -298,6 +298,8 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .link-button-list-item > a:is(:hover, :active) { background: var(--neutral-muted); }
 .link-button-list-item > a:focus-visible { outline: 2px solid var(--focus, Highlight); outline-offset: -3px; }
 .link-button-list-icon { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--accent-muted); color: var(--accent); }
+.link-button-list-label { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.link-button-list-label-badge { padding: 2px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--neutral-muted); color: var(--muted); font-size: .75rem; line-height: 1.2; }
 .link-button-list-indicator { grid-column: 3; display: inline-flex; color: var(--danger); }
 .link-button-list-indicator .octicon { width: 16px; height: 16px; }
 .link-button-list-chevron { grid-column: 4; display: inline-flex; color: color-mix(in srgb, var(--muted) 70%, transparent); }

@@ -8666,6 +8666,35 @@
     ]
   },
   {
+    "name": "overview-disabled-dispatchers",
+    "intent": "Identify campaigns whose dispatcher is disabled in GitHub Actions.",
+    "from": "workflows",
+    "filter": {
+      "predicates": [
+        {
+          "field": "workflow-role",
+          "equals": "orchestrator"
+        },
+        {
+          "field": "workflow-active",
+          "equals": "false"
+        }
+      ]
+    },
+    "aggregate": {
+      "by": [
+        "campaign"
+      ],
+      "values": [
+        {
+          "field": "workflow",
+          "as": "disabled-dispatchers",
+          "reducer": "count"
+        }
+      ]
+    }
+  },
+  {
     "name": "overview-campaign-links",
     "intent": "Provide one navigation row per registered campaign that opens its dedicated campaign view.",
     "description": "Registered campaigns with a resolved dashboard link to their dedicated campaign view.",
@@ -8686,9 +8715,52 @@
             "as": "observed-problem-partitions"
           }
         ]
+      },
+      {
+        "source": "overview-disabled-dispatchers",
+        "type": "left",
+        "on": [
+          {
+            "left": "campaign",
+            "right": "campaign"
+          }
+        ],
+        "fields": [
+          {
+            "field": "disabled-dispatchers",
+            "as": "disabled-dispatchers"
+          }
+        ]
       }
     ],
     "compute": [
+      {
+        "as": "dispatcher-disabled",
+        "function": "greater-than",
+        "args": [
+          {
+            "field": "disabled-dispatchers"
+          },
+          {
+            "value": 0
+          }
+        ]
+      },
+      {
+        "as": "disabled-label",
+        "function": "if",
+        "args": [
+          {
+            "field": "dispatcher-disabled"
+          },
+          {
+            "value": "Disabled"
+          },
+          {
+            "value": ""
+          }
+        ]
+      },
       {
         "as": "problem-partitions",
         "function": "coalesce",
@@ -8813,6 +8885,9 @@
       },
       {
         "field": "campaign-icon"
+      },
+      {
+        "field": "disabled-label"
       },
       {
         "field": "problem-indicator"

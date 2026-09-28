@@ -29,6 +29,7 @@ const sources = {
       campaign: 'aw-doctor',
       'campaign-name': 'AW Doctor',
       'campaign-icon': 'gear',
+      'disabled-label': 'Disabled',
       'problem-indicator': 'alert',
       'problem-indicator-label': 'Current failing workflow or target partitions: 2',
       'campaign-dashboard-link': {
@@ -40,6 +41,7 @@ const sources = {
       campaign: 'dependabot',
       'campaign-name': 'Dependabot',
       'campaign-icon': 'dependabot',
+      'disabled-label': '',
       'campaign-dashboard-link': {
         'dashboard-href': '#page-campaign-insights?campaign=dependabot',
         'dashboard-label': 'View Dependabot campaign dashboard'
@@ -199,6 +201,10 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
       .toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
     await expect(campaigns.getByRole('link', { name: 'View Dependabot campaign dashboard' }))
       .toHaveAttribute('href', '#page-campaign-insights?campaign=dependabot');
+    await expect(campaigns.locator('.link-button-list-label-badge')).toHaveText('Disabled');
+    expect(await campaigns.locator('.link-button-list-label-badge').evaluate((element) =>
+      getComputedStyle(element).color === getComputedStyle(element).getPropertyValue('--muted').trim()
+    )).toBe(true);
     await expect(factory.locator(':scope > .factory-intro + .factory-floor')).toHaveCount(1);
     const notifications = page.locator('[data-page-id="notifications"]');
     await expect(notifications).toHaveCount(0);

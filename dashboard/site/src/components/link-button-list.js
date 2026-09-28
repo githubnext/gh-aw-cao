@@ -16,6 +16,7 @@ export function renderLinkButtonList(context) {
   const scope = createFactoryScope();
   const source = bindings[sourceName];
   const labelField = text(context.elementConfig?.['label-field']);
+  const labelBadgeField = text(context.elementConfig?.['label-badge-field']);
   const linkField = text(context.elementConfig?.['link-field']);
   const iconField = text(context.elementConfig?.['icon-field']);
   const indicatorField = text(context.elementConfig?.['indicator-field']);
@@ -25,12 +26,15 @@ export function renderLinkButtonList(context) {
     source.rows(),
     (row) => {
       const label = text(row[labelField]) || 'Link';
+      const labelBadge = labelBadgeField ? text(row[labelBadgeField]) : '';
       const indicator = text(row[indicatorField]);
       const indicatorLabel = text(row[indicatorLabelField]);
       const link = renderSafeLink(
         h('span', { className: 'link-button-list-content' },
           renderIconSpan('link-button-list-icon', text(row[iconField]) || fallbackIcon, { ariaHidden: true }),
-          h('span', null, label),
+          h('span', { className: 'link-button-list-label' },
+            label,
+            labelBadge ? h('span', { className: 'link-button-list-label-badge' }, labelBadge) : null),
           indicator
             ? h(
                 'span',

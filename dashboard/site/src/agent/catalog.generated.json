@@ -3527,13 +3527,31 @@
       }
     },
     {
+      "id": "overview-disabled-dispatchers",
+      "intent": "Identify campaigns whose dispatcher is disabled in GitHub Actions.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "workflows"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "workflows"
+        ]
+      }
+    },
+    {
       "id": "overview-campaign-links",
       "intent": "Provide one navigation row per registered campaign that opens its dedicated campaign view.",
       "description": "Registered campaigns with a resolved dashboard link to their dedicated campaign view.",
       "parameters": [],
       "sources": [
         "campaign-runtime-problem-counts",
-        "campaigns"
+        "campaigns",
+        "overview-disabled-dispatchers"
       ],
       "used-by-pages": [
         "overview"
