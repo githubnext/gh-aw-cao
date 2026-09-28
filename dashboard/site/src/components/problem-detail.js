@@ -10,6 +10,9 @@ import { renderIntentAction } from './data-view.js';
 import { findLink, renderExternalLinkOrFallback } from './link-content.js';
 import { createRouteView } from './route-empty-state.js';
 import { rowsFor } from './source-rows.js';
+import { createDebug } from '../debug.js';
+
+const debugProblemDetail = createDebug('problem-detail');
 
 const REPAIR_ACTION = {
   action: 'create-agent-task',
@@ -82,6 +85,7 @@ const DETAIL_GROUPS = [
  */
 export function renderProblemDetail(context) {
   const problems = rowsFor(context.sources, 'campaign-problem-items');
+  debugProblemDetail({ event: 'initialized', problemCount: problems.length });
   const root = createRouteView({
     rootClassName: 'problem-detail',
     routeParameter: context.routeParameter,
@@ -90,7 +94,10 @@ export function renderProblemDetail(context) {
     notFoundMessage: 'This runtime problem is no longer present in the selected horizon.',
     renderMatched: () => {
       const problem = problems[0];
-      if (!problem) return null;
+      if (!problem) {
+        debugProblemDetail({ event: 'not-found' });
+        return null;
+      }
       root.dispatchEvent(new CustomEvent('dashboard-route-allocation', {
         bubbles: true,
         detail: {
@@ -98,6 +105,7 @@ export function renderProblemDetail(context) {
           description: problemDescription(problem)
         }
       }));
+      debugProblemDetail({ event: 'matched', problemKind: text(problem['problem-kind']) });
       return renderProblem(problem);
     }
   });
