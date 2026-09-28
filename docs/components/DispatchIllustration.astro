@@ -1,151 +1,1258 @@
 ---
-import dispatchFallback from "../assets/control-plane-dispatch-fallback.svg";
-import dispatchFallbackDark from "../assets/control-plane-dispatch-fallback-dark-mode.svg";
-import dispatchMotion from "../assets/control-plane-dispatch-motion.svg";
-import mobileDispatchFallback from "../assets/control-plane-dispatch-mobile.svg";
-import mobileDispatchFallbackDark from "../assets/control-plane-dispatch-mobile-dark-mode.svg";
-import mobileDispatchMotion from "../assets/control-plane-dispatch-mobile-motion.svg";
+const checkPath =
+  "M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0Zm3.78 6.28a.75.75 0 0 0-1.06-1.06L7 8.94 5.28 7.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.06 0l4.25-4.25Z";
+const failurePath =
+  "M2.343 13.657A8 8 0 1 1 13.658 2.343 8 8 0 0 1 2.343 13.657ZM6.03 4.97a.751.751 0 0 0-1.042.018.751.751 0 0 0-.018 1.042L6.94 8 4.97 9.97a.749.749 0 0 0 .326 1.275.749.749 0 0 0 .734-.215L8 9.06l1.97 1.97a.749.749 0 0 0 1.275-.326.749.749 0 0 0-.215-.734L9.06 8l1.97-1.97a.749.749 0 0 0-.326-1.275.749.749 0 0 0-.734.215L8 6.94Z";
+const clockPath =
+  "M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0Zm0 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM8.75 4a.75.75 0 0 0-1.5 0v4c0 .199.079.39.22.53l2.75 2.75a.75.75 0 1 0 1.06-1.06L8.75 7.69V4Z";
+const calendarPath =
+  "M4.75 0a.75.75 0 0 1 .75.75V2h5V.75a.75.75 0 0 1 1.5 0V2h1.25c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 13.25 16H2.75A1.75 1.75 0 0 1 1 14.25V3.75C1 2.784 1.784 2 2.75 2H4V.75A.75.75 0 0 1 4.75 0ZM2.5 7.5v6.75c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25V7.5Zm10.75-4H2.75a.25.25 0 0 0-.25.25V6h11V3.75a.25.25 0 0 0-.25-.25Z";
+const stopwatchPath =
+  "M5.75.75A.75.75 0 0 1 6.5 0h3a.75.75 0 0 1 0 1.5h-.75v1l-.001.041a6.724 6.724 0 0 1 3.464 1.435l.007-.006.75-.75a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734l-.75.75-.006.007a6.75 6.75 0 1 1-10.548 0L2.72 5.03l-.75-.75a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l.75.75.007.006A6.72 6.72 0 0 1 7.25 2.541V1.5H6.5a.75.75 0 0 1-.75-.75ZM8 14.5a5.25 5.25 0 1 0-.001-10.501A5.25 5.25 0 0 0 8 14.5Zm.389-6.7 1.33-1.33a.75.75 0 1 1 1.061 1.06L9.45 8.861A1.503 1.503 0 0 1 8 10.75a1.499 1.499 0 1 1 .389-2.95Z";
+const repoPath =
+  "M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z";
+const organizationPath =
+  "M1.75 16A1.75 1.75 0 0 1 0 14.25V1.75C0 .784.784 0 1.75 0h8.5C11.216 0 12 .784 12 1.75v12.5c0 .085-.006.168-.018.25h2.268a.25.25 0 0 0 .25-.25V8.285a.25.25 0 0 0-.111-.208l-1.055-.703a.749.749 0 1 1 .832-1.248l1.055.703c.487.325.779.871.779 1.456v5.965A1.75 1.75 0 0 1 14.25 16h-3.5a.766.766 0 0 1-.197-.026c-.099.017-.2.026-.303.026h-3a.75.75 0 0 1-.75-.75V14h-1v1.25a.75.75 0 0 1-.75.75Zm-.25-1.75c0 .138.112.25.25.25H4v-1.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 .75.75v1.25h2.25a.25.25 0 0 0 .25-.25V1.75a.25.25 0 0 0-.25-.25h-8.5a.25.25 0 0 0-.25.25ZM3.75 6h.5a.75.75 0 0 1 0 1.5h-.5a.75.75 0 0 1 0-1.5ZM3 3.75A.75.75 0 0 1 3.75 3h.5a.75.75 0 0 1 0 1.5h-.5A.75.75 0 0 1 3 3.75Zm4 3A.75.75 0 0 1 7.75 6h.5a.75.75 0 0 1 0 1.5h-.5A.75.75 0 0 1 7 6.75ZM7.75 3h.5a.75.75 0 0 1 0 1.5h-.5a.75.75 0 0 1 0-1.5ZM3 9.75A.75.75 0 0 1 3.75 9h.5a.75.75 0 0 1 0 1.5h-.5A.75.75 0 0 1 3 9.75ZM7.75 9h.5a.75.75 0 0 1 0 1.5h-.5a.75.75 0 0 1 0-1.5Z";
+const goalPaths = [
+  "M13.637 2.363h-.001l1.676.335c.09.018.164.084.19.173a.25.25 0 0 1-.062.249l-1.373 1.374a.876.876 0 0 1-.619.256H12.31L9.45 7.611A1.5 1.5 0 1 1 6.5 8a1.501 1.501 0 0 1 1.889-1.449l2.861-2.862V2.552c0-.232.092-.455.256-.619L12.88.559a.25.25 0 0 1 .249-.062c.089.026.155.1.173.19Z",
+  "M2 8a6 6 0 1 0 11.769-1.656.751.751 0 1 1 1.442-.413 7.502 7.502 0 0 1-12.513 7.371A7.501 7.501 0 0 1 10.069.789a.75.75 0 0 1-.413 1.442A6.001 6.001 0 0 0 2 8Z",
+  "M5 8a3.002 3.002 0 0 0 4.699 2.476 3 3 0 0 0 1.28-2.827.748.748 0 0 1 1.045-.782.75.75 0 0 1 .445.61A4.5 4.5 0 1 1 8.516 3.53a.75.75 0 1 1-.17 1.49A3 3 0 0 0 5 8Z",
+];
+
+const jobs = [
+  {
+    row: 2,
+    timing: "job-1",
+    operation: "Dependabot update planner",
+    workflow: "Dependabot / Update Planner",
+    repository: "github/gh-aw",
+    mode: "live",
+    duration: "2m 18s",
+    organizationPath: "M0 100 H41 V172 H82",
+    repositoryPath: "M0 172 H41 V100 H82",
+    organizationTimes: "0;0.51;0.52;0.55;0.56;1",
+    repositoryTimes: "0;0.55;0.56;0.59;0.60;1",
+  },
+  {
+    row: 3,
+    timing: "job-2",
+    operation: "Dependabot update planner",
+    workflow: "Dependabot / Update Planner",
+    repository: "githubnext/gh-aw-cao",
+    mode: "review",
+    duration: "3m 41s",
+    organizationPath: "M0 172 H41 V344 H82",
+    repositoryPath: "M0 344 H41 V172 H82",
+    organizationTimes: "0;0.60;0.61;0.64;0.65;1",
+    repositoryTimes: "0;0.64;0.65;0.68;0.69;1",
+  },
+  {
+    row: 6,
+    timing: "job-3",
+    operation: "Repo Assist issue triage",
+    workflow: "Repo Assist / Issue Triage",
+    repository: "github/copilot-cli",
+    mode: "live",
+    duration: "2m 56s",
+    organizationPath: "M0 308 H41 V172 H82",
+    repositoryPath: "M0 172 H41 V308 H82",
+    organizationTimes: "0;0.66;0.67;0.70;0.71;1",
+    repositoryTimes: "0;0.70;0.71;0.74;0.75;1",
+  },
+  {
+    row: 7,
+    timing: "job-4",
+    operation: "Repo Assist issue fix",
+    workflow: "Repo Assist / Issue Fix",
+    repository: "githubnext/agentics",
+    mode: "review",
+    duration: "4m 12s",
+    failed: true,
+    organizationPath: "M0 380 H41 V344 H82",
+    repositoryPath: "M0 344 H41 V380 H82",
+    organizationTimes: "0;0.75;0.76;0.79;0.80;1",
+    repositoryTimes: "0;0.79;0.80;0.83;0.84;1",
+  },
+  {
+    row: 8,
+    timing: "job-5",
+    operation: "Repo Assist maintenance",
+    workflow: "Repo Assist / Maintenance",
+    repository: "githubnext/gh-aw",
+    mode: "live",
+    duration: "5m 07s",
+    organizationPath: "M0 456 H41 V344 H82",
+    repositoryPath: "M0 344 H41 V456 H82",
+    organizationTimes: "0;0.84;0.85;0.88;0.89;1",
+    repositoryTimes: "0;0.88;0.89;0.92;0.93;1",
+  },
+];
+
+const campaigns = [
+  {
+    name: "Dependabot",
+    dispatcherClass: "dispatcher-dependabot",
+    organizations: ["github", "githubnext"],
+    jobs: jobs.slice(0, 2),
+  },
+  {
+    name: "Repo Assist",
+    dispatcherClass: "dispatcher-repo-assist",
+    organizations: ["github", "githubnext"],
+    jobs: jobs.slice(2),
+  },
+];
+
+const organizationNodes = [
+  { organization: "github", top: 146 },
+  { organization: "githubnext", top: 318 },
+].map((node) => {
+  const organizationJobs = jobs.filter((job) => job.repository.startsWith(`${node.organization}/`));
+  return {
+    ...node,
+    campaigns: new Set(organizationJobs.map((job) => job.workflow.split(" / ")[0])).size,
+    repositories: new Set(organizationJobs.map((job) => job.repository)).size,
+  };
+});
 ---
 
-<div class="desktop-scene" aria-hidden="true">
-  <img
-    src={dispatchFallback.src}
-    width={dispatchFallback.width}
-    height={dispatchFallback.height}
-    alt=""
-    loading="eager"
-    decoding="async"
-    class="pipeline-image theme-light"
-  />
-  <img
-    src={dispatchFallbackDark.src}
-    width={dispatchFallbackDark.width}
-    height={dispatchFallbackDark.height}
-    alt=""
-    loading="eager"
-    decoding="async"
-    class="pipeline-image theme-dark"
-  />
-  <img
-    src={dispatchMotion.src}
-    width={dispatchMotion.width}
-    height={dispatchMotion.height}
-    alt=""
-    loading="eager"
-    decoding="async"
-    class="dispatch-motion"
-  />
-</div>
+<div class="dispatch-illustration" aria-hidden="true">
+  <section class="control-plane">
+    <header class="control-plane-heading">
+      <span>Central Agentic Ops (CAO)</span>
+      <small>Control plane</small>
+    </header>
 
-<div class="mobile-scene" aria-hidden="true">
-  <img
-    src={mobileDispatchFallback.src}
-    width={mobileDispatchFallback.width}
-    height={mobileDispatchFallback.height}
-    alt=""
-    loading="eager"
-    decoding="async"
-    class="mobile-pipeline-image theme-light"
-  />
-  <img
-    src={mobileDispatchFallbackDark.src}
-    width={mobileDispatchFallbackDark.width}
-    height={mobileDispatchFallbackDark.height}
-    alt=""
-    loading="eager"
-    decoding="async"
-    class="mobile-pipeline-image theme-dark"
-  />
-  <img
-    src={mobileDispatchMotion.src}
-    width={mobileDispatchMotion.width}
-    height={mobileDispatchMotion.height}
-    alt=""
-    loading="eager"
-    decoding="async"
-    class="dispatch-motion mobile-dispatch-motion"
-  />
+    <div class="flow-layout">
+      <section class="actions-column cao-surface">
+        <div class="campaign-cue">
+          <svg viewBox="0 0 16 16">{goalPaths.map((path) => <path d={path}></path>)}</svg>
+          <span>Configured campaigns</span>
+          <strong>Dependabot</strong>
+          <strong>Repo Assist</strong>
+        </div>
+        <h3>GitHub Actions</h3>
+        <div class="execution-grid">
+          <article class="run-card dispatcher dispatcher-dependabot" style="grid-row: 1">
+            <span class="status-stack">
+              <svg class="status queued" viewBox="0 0 16 16"><path d={clockPath}></path></svg>
+              <svg class="status running action-progress" viewBox="0 0 16 16">
+                <circle class="progress-track" cx="8" cy="8" r="6.25"></circle>
+                <circle class="progress-ring" cx="8" cy="8" r="6.25"></circle>
+                <circle class="progress-dot" cx="8" cy="8" r="3.15"></circle>
+              </svg>
+              <svg class="status complete" viewBox="0 0 16 16"><path d={checkPath}></path></svg>
+            </span>
+            <span class="run-copy"><strong>Dependabot</strong><small>Campaign dispatcher</small></span>
+            <span class="branch">main</span>
+            <span class="run-meta">
+              <span class="run-age"><svg viewBox="0 0 16 16"><path d={calendarPath}></path></svg>now</span>
+              <span class="run-state">
+                <svg viewBox="0 0 16 16"><path d={stopwatchPath}></path></svg>
+                <i class="status-label queued">Queued</i>
+                <i class="status-label running">In progress</i>
+                <i class="status-label complete">Done</i>
+              </span>
+            </span>
+          </article>
+
+          <article class="run-card dispatcher dispatcher-repo-assist" style="grid-row: 5">
+            <span class="status-stack">
+              <svg class="status queued" viewBox="0 0 16 16"><path d={clockPath}></path></svg>
+              <svg class="status running action-progress" viewBox="0 0 16 16">
+                <circle class="progress-track" cx="8" cy="8" r="6.25"></circle>
+                <circle class="progress-ring" cx="8" cy="8" r="6.25"></circle>
+                <circle class="progress-dot" cx="8" cy="8" r="3.15"></circle>
+              </svg>
+              <svg class="status complete" viewBox="0 0 16 16"><path d={checkPath}></path></svg>
+            </span>
+            <span class="run-copy"><strong>Repo Assist</strong><small>Campaign dispatcher</small></span>
+            <span class="branch">main</span>
+            <span class="run-meta">
+              <span class="run-age"><svg viewBox="0 0 16 16"><path d={calendarPath}></path></svg>now</span>
+              <span class="run-state">
+                <svg viewBox="0 0 16 16"><path d={stopwatchPath}></path></svg>
+                <i class="status-label queued">Queued</i>
+                <i class="status-label running">In progress</i>
+                <i class="status-label complete">Done</i>
+              </span>
+            </span>
+          </article>
+
+          {jobs.map((job) => (
+            <article class={`run-card worker ${job.timing}`} style={`grid-row: ${job.row}`}>
+              <span class="status-stack">
+                <svg class="status queued" viewBox="0 0 16 16"><path d={clockPath}></path></svg>
+                <svg class="status running action-progress" viewBox="0 0 16 16">
+                  <circle class="progress-track" cx="8" cy="8" r="6.25"></circle>
+                  <circle class="progress-ring" cx="8" cy="8" r="6.25"></circle>
+                  <circle class="progress-dot" cx="8" cy="8" r="3.15"></circle>
+                </svg>
+                <svg class={`status ${job.failed ? "failed" : "complete"}`} viewBox="0 0 16 16">
+                  <path d={job.failed ? failurePath : checkPath}></path>
+                </svg>
+              </span>
+              <span class="run-copy">
+                <strong>{job.operation} · {job.repository} · {job.mode}</strong>
+                <small>{job.workflow}</small>
+              </span>
+              <span class="branch">main</span>
+              <span class="run-meta">
+                <span class="run-age"><svg viewBox="0 0 16 16"><path d={calendarPath}></path></svg>now</span>
+                <span class="run-state">
+                  <svg viewBox="0 0 16 16"><path d={stopwatchPath}></path></svg>
+                  <i class="status-label queued">Queued</i>
+                  <i class="status-label running">In progress</i>
+                  <i class={`status-label ${job.failed ? "failed" : "complete"}`}>
+                    {job.failed ? "Failed" : "Done"} · {job.duration}
+                  </i>
+                </span>
+              </span>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section class="organization-routes">
+        <div class="stage-cue-spacer" aria-hidden="true"></div>
+        <h3>Organization routes</h3>
+        <div class="graph-route-stage">
+          <svg class="graph-routes" viewBox="0 0 82 488" preserveAspectRatio="none">
+            {jobs.map((job) => (
+              <>
+                <path d={job.organizationPath}></path>
+                <circle class={job.failed ? "graph-route-dot failed" : "graph-route-dot"} r="2.5">
+                  <animateMotion
+                    dur="14s"
+                    repeatCount="indefinite"
+                    path={job.organizationPath}
+                    keyTimes={job.organizationTimes}
+                    keyPoints="0;0;0;1;1;1"
+                    calcMode="linear"
+                  />
+                  <animate
+                    attributeName="opacity"
+                    dur="14s"
+                    repeatCount="indefinite"
+                    values="0;0;1;1;0;0"
+                    keyTimes={job.organizationTimes}
+                  />
+                </circle>
+              </>
+            ))}
+            <circle class="graph-junction" cx="41" cy="172" r="2.5"></circle>
+            <circle class="graph-junction" cx="41" cy="344" r="2.5"></circle>
+          </svg>
+        </div>
+      </section>
+
+      <section class="organizations-column">
+        <div class="stage-cue-spacer" aria-hidden="true"></div>
+        <h3>Organizations</h3>
+        <div class="organization-stage">
+          {organizationNodes.map((node) => (
+            <article class="organization-node" style={`top: ${node.top}px`}>
+              <svg class="organization-icon" viewBox="0 0 16 16"><path d={organizationPath}></path></svg>
+              <span>
+                <strong>{node.organization}</strong>
+                <small>{node.campaigns} campaigns · {node.repositories} repositories</small>
+              </span>
+            </article>
+          ))}
+        </div>
+        <div class="node-continuation node-continuation-no-icon">
+          <b>•••</b>
+          <small>more organizations</small>
+        </div>
+      </section>
+
+      <section class="repository-routes">
+        <div class="stage-cue-spacer" aria-hidden="true"></div>
+        <h3>Repository routes</h3>
+        <div class="graph-route-stage">
+          <svg class="graph-routes" viewBox="0 0 82 488" preserveAspectRatio="none">
+            {jobs.map((job) => (
+              <>
+                <path d={job.repositoryPath}></path>
+                <circle class={job.failed ? "graph-route-dot failed" : "graph-route-dot"} r="2.5">
+                  <animateMotion
+                    dur="14s"
+                    repeatCount="indefinite"
+                    path={job.repositoryPath}
+                    keyTimes={job.repositoryTimes}
+                    keyPoints="0;0;0;1;1;1"
+                    calcMode="linear"
+                  />
+                  <animate
+                    attributeName="opacity"
+                    dur="14s"
+                    repeatCount="indefinite"
+                    values="0;0;1;1;0;0"
+                    keyTimes={job.repositoryTimes}
+                  />
+                </circle>
+              </>
+            ))}
+            <circle class="graph-junction" cx="41" cy="172" r="2.5"></circle>
+            <circle class="graph-junction" cx="41" cy="344" r="2.5"></circle>
+          </svg>
+        </div>
+      </section>
+
+      <section class="repositories-column">
+        <div class="stage-cue-spacer" aria-hidden="true"></div>
+        <h3>Representative repositories</h3>
+        <div class="target-grid">
+          {jobs.map((job) => (
+            <article class={`repository-card ${job.timing}`} style={`grid-row: ${job.row}`}>
+              <svg class="repo-icon repository-icon" viewBox="0 0 16 16"><path d={repoPath}></path></svg>
+              <span class="repository-copy">
+                <strong>{job.repository}</strong>
+                <small>{job.mode} rollout</small>
+              </span>
+            </article>
+          ))}
+        </div>
+        <div class="node-continuation">
+          <svg viewBox="0 0 16 16"><path d={repoPath}></path></svg>
+          <b>•••</b>
+          <small>more repositories</small>
+        </div>
+      </section>
+    </div>
+
+    <div class="mobile-flow">
+      <div class="campaign-cue">
+        <svg viewBox="0 0 16 16">{goalPaths.map((path) => <path d={path}></path>)}</svg>
+        <span>Configured campaigns</span>
+        <strong>Dependabot</strong>
+        <strong>Repo Assist</strong>
+      </div>
+
+      {campaigns.map((campaign) => (
+        <section class="mobile-campaign">
+          <header class="mobile-campaign-heading">
+            <span>{campaign.name}</span>
+            <span class="mobile-campaign-organizations">
+              {campaign.organizations.map((organization) => (
+                <small>
+                  <svg class="organization-icon" viewBox="0 0 16 16"><path d={organizationPath}></path></svg>
+                  {organization}
+                </small>
+              ))}
+              <em>+ others</em>
+            </span>
+          </header>
+
+          <article class={`mobile-action-card mobile-dispatcher ${campaign.dispatcherClass}`}>
+            <span class="status-stack">
+              <svg class="status queued" viewBox="0 0 16 16"><path d={clockPath}></path></svg>
+              <svg class="status running action-progress" viewBox="0 0 16 16">
+                <circle class="progress-track" cx="8" cy="8" r="6.25"></circle>
+                <circle class="progress-ring" cx="8" cy="8" r="6.25"></circle>
+                <circle class="progress-dot" cx="8" cy="8" r="3.15"></circle>
+              </svg>
+              <svg class="status complete" viewBox="0 0 16 16"><path d={checkPath}></path></svg>
+            </span>
+            <span>
+              <strong>{campaign.name}</strong>
+              <small>Campaign dispatcher</small>
+            </span>
+          </article>
+
+          <div class="mobile-workers">
+            <p>Parallel workers</p>
+            {campaign.jobs.map((job) => (
+              <div class="mobile-dispatch-pair">
+                <article class={`mobile-action-card mobile-worker ${job.timing}`}>
+                  <span class="status-stack">
+                    <svg class="status queued" viewBox="0 0 16 16"><path d={clockPath}></path></svg>
+                    <svg class="status running action-progress" viewBox="0 0 16 16">
+                      <circle class="progress-track" cx="8" cy="8" r="6.25"></circle>
+                      <circle class="progress-ring" cx="8" cy="8" r="6.25"></circle>
+                      <circle class="progress-dot" cx="8" cy="8" r="3.15"></circle>
+                    </svg>
+                    <svg class={`status ${job.failed ? "failed" : "complete"}`} viewBox="0 0 16 16">
+                      <path d={job.failed ? failurePath : checkPath}></path>
+                    </svg>
+                  </span>
+                  <span>
+                    <strong>{job.workflow}</strong>
+                    <small>{job.operation}</small>
+                  </span>
+                </article>
+                <span class={`mobile-pair-route ${job.timing}`}><i></i></span>
+                <article class="mobile-repository-card">
+                  <svg class="repo-icon repository-icon" viewBox="0 0 16 16"><path d={repoPath}></path></svg>
+                  <span>
+                    <strong>{job.repository}</strong>
+                    <small>{job.mode} rollout · {job.failed ? "failed" : job.duration}</small>
+                  </span>
+                </article>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+
+      <div class="mobile-scale-cue">
+        <span class="mobile-scale-icons">
+          <svg class="organization-icon" viewBox="0 0 16 16"><path d={organizationPath}></path></svg>
+          <svg class="repository-icon" viewBox="0 0 16 16"><path d={repoPath}></path></svg>
+        </span>
+        <span><strong>More organizations and repositories</strong><small>The bounded dispatch pattern continues.</small></span>
+        <b>•••</b>
+      </div>
+    </div>
+  </section>
 </div>
 
 <style>
-  @layer starlight.core {
-    .desktop-scene {
-      position: relative;
+  .dispatch-illustration {
+    --line: color-mix(in srgb, var(--sl-color-gray-4) 72%, transparent);
+    --muted: var(--sl-color-gray-3);
+    --panel: color-mix(in srgb, var(--sl-color-bg) 91%, var(--sl-color-gray-6));
+    --card: color-mix(in srgb, var(--sl-color-bg) 96%, var(--sl-color-gray-5));
+    --success: #2da44e;
+    --attention: #bf8700;
+    --danger: #cf222e;
+    width: min(100%, 1270px);
+    margin: 0 auto;
+    padding: 0 8px;
+    box-sizing: border-box;
+    color: var(--sl-color-white);
+    text-align: left;
+  }
+
+  :global([data-theme="dark"]) .dispatch-illustration {
+    --success: #3fb950;
+    --attention: #d29922;
+    --danger: #f85149;
+  }
+
+  h3 {
+    height: 34px;
+    margin: 0;
+    color: var(--sl-color-white);
+    font-size: 0.78rem;
+    font-weight: 650;
+    letter-spacing: 0.02em;
+    line-height: 34px;
+  }
+
+  .control-plane {
+    overflow: visible;
+  }
+
+  .control-plane-heading {
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
+    height: 42px;
+    padding: 0 4px;
+    font-size: 0.9rem;
+    font-weight: 700;
+  }
+
+  .control-plane-heading small {
+    color: var(--muted);
+    font-size: 0.7rem;
+    font-weight: 500;
+  }
+
+  .flow-layout {
+    display: grid;
+    grid-template-columns: minmax(520px, 740px) 72px 150px 72px 220px;
+    gap: 0;
+  }
+
+  .mobile-flow {
+    display: none;
+  }
+
+  .cao-surface {
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--sl-color-bg) 97%, var(--sl-color-gray-6));
+  }
+
+  .campaign-cue,
+  .stage-cue-spacer {
+    height: 34px;
+  }
+
+  .campaign-cue {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0 10px;
+    border-bottom: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.58rem;
+    white-space: nowrap;
+  }
+
+  .campaign-cue svg {
+    flex: 0 0 13px;
+    width: 13px;
+    height: 13px;
+    fill: var(--sl-color-accent-high);
+  }
+
+  .campaign-cue strong {
+    padding: 2px 6px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--sl-color-white);
+    font-size: 0.56rem;
+    font-weight: 600;
+  }
+
+  .actions-column > h3 {
+    padding-inline: 10px;
+  }
+
+  .actions-column {
+    align-self: start;
+  }
+
+  .execution-grid,
+  .route-grid,
+  .target-grid {
+    height: 488px;
+  }
+
+  .execution-grid,
+  .route-grid,
+  .target-grid {
+    display: grid;
+    grid-template-rows: 64px 72px 72px 0 64px 72px 72px 72px;
+  }
+
+  .run-card,
+  .repository-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    align-self: center;
+  }
+
+  .run-card {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 9px;
+    height: 64px;
+    padding: 0 10px;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    border-left: 1px solid var(--line);
+  }
+
+  .dispatcher {
+    margin-right: 0;
+  }
+
+  .worker {
+    margin-left: 0;
+  }
+
+  .run-card.job-5 {
+    border-bottom: 0;
+  }
+
+  .execution-grid .dispatcher-repo-assist {
+    transform: translateY(-4px);
+  }
+
+  .run-card.job-5,
+  .repository-card.job-5 {
+    transform: translateY(4px);
+  }
+
+  .worker::before {
+    position: absolute;
+    left: -19px;
+    width: 18px;
+    height: 1px;
+    top: 50%;
+    background: var(--line);
+    content: "";
+  }
+
+  .worker::after {
+    position: absolute;
+    right: -19px;
+    width: 19px;
+    height: 1px;
+    top: 50%;
+    background: var(--line);
+    content: "";
+  }
+
+  .status-stack {
+    position: relative;
+    align-self: start;
+    flex: 0 0 12px;
+    width: 12px;
+    height: 12px;
+    margin-top: 18.5px;
+  }
+
+  .status {
+    position: absolute;
+    inset: 0;
+    width: 12px;
+    height: 12px;
+    opacity: 0;
+  }
+
+  .status.queued {
+    fill: var(--muted);
+    opacity: 1;
+  }
+
+  .status.running {
+    fill: var(--attention);
+  }
+
+  .action-progress {
+    overflow: visible;
+  }
+
+  .progress-track,
+  .progress-ring {
+    fill: none;
+    stroke: var(--attention);
+    stroke-width: 2;
+  }
+
+  .progress-track {
+    opacity: 0.35;
+  }
+
+  .progress-ring {
+    stroke-dasharray: 22 18;
+    stroke-linecap: round;
+    transform-origin: center;
+    animation: spin 1.05s linear infinite;
+  }
+
+  .progress-dot {
+    fill: var(--attention);
+  }
+
+  .status.complete {
+    fill: var(--success);
+  }
+
+  .status.failed {
+    fill: var(--danger);
+  }
+
+  .run-card strong,
+  .repository-card strong {
+    display: block;
+    overflow: hidden;
+    color: var(--sl-color-white);
+    font-size: 0.76rem;
+    font-weight: 620;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .run-card small,
+  .repository-card small {
+    display: block;
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 0.62rem;
+    line-height: 1.2;
+  }
+
+  .run-copy {
+    min-width: 0;
+    width: calc(62% - 38px);
+  }
+
+  .run-copy small {
+    padding-right: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .branch {
+    position: absolute;
+    left: 62%;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: color-mix(in srgb, #0969da 14%, transparent);
+    color: #4493f8;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 0.61rem;
+    font-weight: 650;
+  }
+
+  .run-meta {
+    position: absolute;
+    right: 23px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: grid;
+    gap: 1px;
+    width: 82px;
+    color: var(--muted);
+    font-size: 0.52rem;
+    white-space: nowrap;
+  }
+
+  .run-age,
+  .run-state {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 13px;
+  }
+
+  .run-age svg,
+  .run-state svg {
+    flex: 0 0 11px;
+    width: 11px;
+    height: 11px;
+    fill: currentColor;
+  }
+
+  .run-state {
+    position: relative;
+    font-style: italic;
+  }
+
+  .status-label {
+    position: absolute;
+    top: 0;
+    left: 15px;
+    font-style: inherit;
+    opacity: 0;
+  }
+
+  .status-label.queued {
+    opacity: 1;
+  }
+
+  .status-label.failed {
+    color: var(--danger);
+  }
+
+  .organization-routes h3,
+  .repository-routes h3 {
+    color: transparent;
+    user-select: none;
+  }
+
+  .organization-routes,
+  .organizations-column,
+  .repository-routes,
+  .repositories-column {
+    padding-top: 1px;
+  }
+
+  .graph-route-stage,
+  .organization-stage {
+    position: relative;
+    height: 488px;
+  }
+
+  .graph-routes {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    color: var(--success);
+  }
+
+  .graph-routes path {
+    fill: none;
+    stroke: var(--line);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .graph-route-dot {
+    fill: currentColor;
+    opacity: 0;
+  }
+
+  .repositories-column {
+    padding-left: 12px;
+  }
+
+  .organization-node {
+    position: absolute;
+    right: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 52px;
+    padding: 0 9px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--panel);
+  }
+
+  .organization-icon,
+  .repository-icon {
+    flex: 0 0 16px;
+    width: 16px;
+    height: 16px;
+    overflow: visible;
+  }
+
+  .organization-icon {
+    fill: var(--muted);
+  }
+
+  .repository-icon {
+    fill: var(--muted);
+  }
+
+  .organization-node > span {
+    min-width: 0;
+  }
+
+  .organization-node strong {
+    display: block;
+    color: var(--sl-color-white);
+    font-size: 0.72rem;
+    line-height: 1.2;
+  }
+
+  .organization-node small {
+    display: block;
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 0.52rem;
+    line-height: 1.2;
+  }
+
+  .repository-card {
+    gap: 9px;
+    height: 52px;
+    padding: 0 10px;
+    border-top: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    border-left: 1px solid var(--line);
+  }
+
+  .repository-card::before {
+    position: absolute;
+    left: -12px;
+    width: 12px;
+    height: 1px;
+    background: var(--line);
+    content: "";
+  }
+
+  .repo-icon {
+    flex: 0 0 16px;
+  }
+
+  .repository-copy {
+    min-width: 0;
+  }
+
+  .node-continuation {
+    display: grid;
+    grid-template-columns: 14px auto;
+    align-items: center;
+    gap: 5px;
+    margin-top: 10px;
+    padding: 6px 7px;
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+    color: var(--muted);
+  }
+
+  .node-continuation svg {
+    grid-row: 1 / span 2;
+  }
+
+  .node-continuation-no-icon {
+    grid-template-columns: 1fr;
+  }
+
+  .node-continuation b {
+    font-size: 0.65rem;
+    line-height: 0.7;
+    letter-spacing: 0.08em;
+  }
+
+  .node-continuation small {
+    font-size: 0.5rem;
+    line-height: 1;
+  }
+
+  .mobile-action-card strong,
+  .mobile-repository-card strong {
+    display: block;
+    overflow: hidden;
+    color: var(--sl-color-white);
+    font-size: 0.74rem;
+    font-weight: 620;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-action-card small,
+  .mobile-repository-card small {
+    display: block;
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 0.61rem;
+    line-height: 1.2;
+  }
+
+  .dispatcher-dependabot .queued { animation: dep-dispatch-queued 14s linear infinite; }
+  .dispatcher-dependabot .running { animation: dep-dispatch-running 14s linear infinite; }
+  .dispatcher-dependabot .complete { animation: dep-dispatch-complete 14s linear infinite; }
+  .dispatcher-repo-assist .queued { animation: repo-dispatch-queued 14s linear infinite; }
+  .dispatcher-repo-assist .running { animation: repo-dispatch-running 14s linear infinite; }
+  .dispatcher-repo-assist .complete { animation: repo-dispatch-complete 14s linear infinite; }
+
+  .job-1 .queued { animation: job-1-queued 14s linear infinite; }
+  .job-1 .running { animation: job-1-running 14s linear infinite; }
+  .job-1 .complete { animation: job-1-complete 14s linear infinite; }
+  .job-2 .queued { animation: job-2-queued 14s linear infinite; }
+  .job-2 .running { animation: job-2-running 14s linear infinite; }
+  .job-2 .complete { animation: job-2-complete 14s linear infinite; }
+  .job-3 .queued { animation: job-3-queued 14s linear infinite; }
+  .job-3 .running { animation: job-3-running 14s linear infinite; }
+  .job-3 .complete { animation: job-3-complete 14s linear infinite; }
+  .job-4 .queued { animation: job-4-queued 14s linear infinite; }
+  .job-4 .running { animation: job-4-running 14s linear infinite; }
+  .job-4 .failed { animation: job-4-complete 14s linear infinite; }
+  .job-5 .queued { animation: job-5-queued 14s linear infinite; }
+  .job-5 .running { animation: job-5-running 14s linear infinite; }
+  .job-5 .complete { animation: job-5-complete 14s linear infinite; }
+
+  .graph-route-dot.failed {
+    color: var(--danger);
+  }
+
+  .graph-junction {
+    fill: var(--panel);
+    stroke: var(--line);
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+  }
+  .mobile-pair-route.job-1 i { animation: mobile-route-job-1 14s linear infinite; }
+  .mobile-pair-route.job-2 i { animation: mobile-route-job-2 14s linear infinite; }
+  .mobile-pair-route.job-3 i { animation: mobile-route-job-3 14s linear infinite; }
+  .mobile-pair-route.job-4 i {
+    background: var(--danger);
+    animation: mobile-route-job-4 14s linear infinite;
+  }
+  .mobile-pair-route.job-5 i { animation: mobile-route-job-5 14s linear infinite; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @keyframes dep-dispatch-queued { 0%, 13% { opacity: 1; } 14%, 100% { opacity: 0; } }
+  @keyframes dep-dispatch-running { 0%, 13%, 29%, 100% { opacity: 0; } 14%, 28% { opacity: 1; } }
+  @keyframes dep-dispatch-complete { 0%, 28% { opacity: 0; } 29%, 100% { opacity: 1; } }
+  @keyframes repo-dispatch-queued { 0%, 29% { opacity: 1; } 30%, 100% { opacity: 0; } }
+  @keyframes repo-dispatch-running { 0%, 29%, 44%, 100% { opacity: 0; } 30%, 43% { opacity: 1; } }
+  @keyframes repo-dispatch-complete { 0%, 43% { opacity: 0; } 44%, 100% { opacity: 1; } }
+
+  @keyframes job-1-queued { 0%, 29% { opacity: 1; } 30%, 100% { opacity: 0; } }
+  @keyframes job-1-running { 0%, 29%, 52%, 100% { opacity: 0; } 30%, 51% { opacity: 1; } }
+  @keyframes job-1-complete { 0%, 51% { opacity: 0; } 52%, 100% { opacity: 1; } }
+  @keyframes job-2-queued { 0%, 29% { opacity: 1; } 30%, 100% { opacity: 0; } }
+  @keyframes job-2-running { 0%, 29%, 61%, 100% { opacity: 0; } 30%, 60% { opacity: 1; } }
+  @keyframes job-2-complete { 0%, 60% { opacity: 0; } 61%, 100% { opacity: 1; } }
+  @keyframes job-3-queued { 0%, 44% { opacity: 1; } 45%, 100% { opacity: 0; } }
+  @keyframes job-3-running { 0%, 44%, 67%, 100% { opacity: 0; } 45%, 66% { opacity: 1; } }
+  @keyframes job-3-complete { 0%, 66% { opacity: 0; } 67%, 100% { opacity: 1; } }
+  @keyframes job-4-queued { 0%, 44% { opacity: 1; } 45%, 100% { opacity: 0; } }
+  @keyframes job-4-running { 0%, 44%, 76%, 100% { opacity: 0; } 45%, 75% { opacity: 1; } }
+  @keyframes job-4-complete { 0%, 75% { opacity: 0; } 76%, 100% { opacity: 1; } }
+  @keyframes job-5-queued { 0%, 44% { opacity: 1; } 45%, 100% { opacity: 0; } }
+  @keyframes job-5-running { 0%, 44%, 85%, 100% { opacity: 0; } 45%, 84% { opacity: 1; } }
+  @keyframes job-5-complete { 0%, 84% { opacity: 0; } 85%, 100% { opacity: 1; } }
+
+  @keyframes mobile-route-job-1 {
+    0%, 51% { top: 0; opacity: 0; }
+    52% { top: 0; opacity: 1; }
+    59% { top: calc(100% - 5px); opacity: 1; }
+    60%, 100% { top: calc(100% - 5px); opacity: 0; }
+  }
+  @keyframes mobile-route-job-2 {
+    0%, 60% { top: 0; opacity: 0; }
+    61% { top: 0; opacity: 1; }
+    68% { top: calc(100% - 5px); opacity: 1; }
+    69%, 100% { top: calc(100% - 5px); opacity: 0; }
+  }
+  @keyframes mobile-route-job-3 {
+    0%, 66% { top: 0; opacity: 0; }
+    67% { top: 0; opacity: 1; }
+    74% { top: calc(100% - 5px); opacity: 1; }
+    75%, 100% { top: calc(100% - 5px); opacity: 0; }
+  }
+  @keyframes mobile-route-job-4 {
+    0%, 75% { top: 0; opacity: 0; }
+    76% { top: 0; opacity: 1; }
+    83% { top: calc(100% - 5px); opacity: 1; }
+    84%, 100% { top: calc(100% - 5px); opacity: 0; }
+  }
+  @keyframes mobile-route-job-5 {
+    0%, 84% { top: 0; opacity: 0; }
+    85% { top: 0; opacity: 1; }
+    92% { top: calc(100% - 5px); opacity: 1; }
+    93%, 100% { top: calc(100% - 5px); opacity: 0; }
+  }
+
+  @media (max-width: 1180px) {
+    .dispatch-illustration {
+      width: min(100%, 620px);
+    }
+
+    .flow-layout {
+      display: none;
+    }
+
+    .mobile-flow {
+      display: block;
+    }
+
+    .mobile-flow > .campaign-cue {
       overflow: hidden;
-      width: 100%;
-      aspect-ratio: 31 / 14;
-      isolation: isolate;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--panel);
     }
 
-    .pipeline-image,
-    .dispatch-motion {
+    .mobile-campaign {
+      margin-top: 18px;
+    }
+
+    .mobile-campaign-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding: 0 4px;
+    }
+
+    .mobile-campaign-heading > span {
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .mobile-campaign-organizations {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+    }
+
+    .mobile-campaign-heading small {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--sl-color-white);
+      font-size: 0.67rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .mobile-campaign-organizations em {
+      color: var(--muted);
+      font-size: 0.58rem;
+      font-style: normal;
+      white-space: nowrap;
+    }
+
+    .mobile-campaign-heading svg {
+      fill: var(--muted);
+    }
+
+    .mobile-action-card {
+      position: relative;
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr);
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+      height: 58px;
+      padding: 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .mobile-action-card .status-stack {
+      margin-top: 0;
+      align-self: center;
+    }
+
+    .mobile-dispatcher::after {
       position: absolute;
-      top: -26.053%;
-      left: -44.706%;
-      width: 145.882% !important;
-      height: 145.882% !important;
+      bottom: -19px;
+      left: 24px;
+      width: 1px;
+      height: 18px;
+      background: var(--line);
+      content: "";
     }
 
-    .pipeline-image {
-      object-fit: contain;
+    .mobile-workers {
+      margin: 18px 0 0 24px;
+      padding-left: 18px;
+      border-left: 1px solid var(--line);
     }
 
-    .theme-dark {
+    .mobile-workers > p {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 0.59rem;
+      font-weight: 650;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .mobile-dispatch-pair {
+      position: relative;
+      margin-bottom: 14px;
+    }
+
+    .mobile-dispatch-pair::before {
+      position: absolute;
+      top: 29px;
+      left: -18px;
+      width: 17px;
+      height: 1px;
+      background: var(--line);
+      content: "";
+    }
+
+    .mobile-pair-route {
+      position: relative;
+      display: block;
+      width: 1px;
+      height: 20px;
+      margin-left: 24px;
+      background: var(--line);
+    }
+
+    .mobile-pair-route i {
+      position: absolute;
+      top: 0;
+      left: -2px;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--success);
+      opacity: 0;
+    }
+
+    .mobile-repository-card {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+      height: 52px;
+      padding: 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--sl-color-bg) 98%, var(--sl-color-gray-6));
+    }
+
+    .mobile-scale-cue {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 9px;
+      margin-top: 20px;
+      padding: 11px 13px;
+      border: 1px dashed var(--line);
+      border-radius: 9px;
+      color: var(--muted);
+      background: color-mix(in srgb, var(--panel) 68%, transparent);
+    }
+
+    .mobile-scale-icons {
+      display: flex;
+      gap: 4px;
+    }
+
+    .mobile-scale-cue svg {
+      fill: currentColor;
+    }
+
+    .mobile-scale-cue strong,
+    .mobile-scale-cue small {
       display: block;
     }
 
-    .theme-light {
-      display: none;
+    .mobile-scale-cue strong {
+      color: var(--sl-color-white);
+      font-size: 0.7rem;
     }
 
-    :global(:root[data-theme="light"]) .theme-dark {
-      display: none;
+    .mobile-scale-cue small {
+      margin-top: 2px;
+      font-size: 0.59rem;
     }
 
-    :global(:root[data-theme="light"]) .theme-light {
-      display: block;
+    .mobile-scale-cue b {
+      letter-spacing: 0.08em;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .campaign-cue {
+      gap: 5px;
+      padding-inline: 8px;
+      font-size: 0.55rem;
     }
 
-    .dispatch-motion {
-      z-index: 2;
-      pointer-events: none;
+    .campaign-cue strong {
+      padding-inline: 5px;
+      font-size: 0.53rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dispatch-illustration *,
+    .dispatch-illustration *::before,
+    .dispatch-illustration *::after {
+      animation: none !important;
     }
 
-    .mobile-scene {
-      display: none;
+    .status.queued,
+    .status.running,
+    .status-label.queued,
+    .status-label.running,
+    .graph-route-dot,
+    .mobile-pair-route i {
+      opacity: 0 !important;
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      .dispatch-motion {
-        display: none;
-      }
-    }
-
-    @media (max-width: 42rem) {
-      .desktop-scene {
-        display: none;
-      }
-
-      .mobile-scene {
-        position: relative;
-        display: block;
-        width: min(100%, 24.375rem);
-        aspect-ratio: 390 / 886;
-        margin-inline: auto;
-        isolation: isolate;
-      }
-
-      .mobile-pipeline-image,
-      .mobile-dispatch-motion {
-        position: absolute;
-        inset: 0;
-        width: 100% !important;
-        height: 100% !important;
-      }
-
-      .mobile-pipeline-image {
-        object-fit: contain;
-      }
+    .status.complete,
+    .status.failed,
+    .status-label.complete,
+    .status-label.failed {
+      opacity: 1 !important;
     }
   }
 </style>

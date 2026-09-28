@@ -63,23 +63,141 @@ test("landing page presents the product through real operational surfaces", () =
 test("landing page explains and illustrates campaign dispatch", () => {
   assert.match(hero, /One goal, many repositories/);
   assert.match(hero, /Agentic Campaigns dispatch work at scale\./);
+  assert.match(hero, /\.dispatch-story \{[\s\S]*?width: min\(calc\(100% - 2rem\), 86rem\)/);
+  assert.match(hero, /\.dispatch-story > \.section-eyebrow \{[\s\S]*?justify-self: center/);
+  assert.match(hero, /\.dispatch-story > p:not\(\.section-eyebrow\) \{[\s\S]*?max-width: 64rem/);
+  assert.match(hero, /@media \(min-width: 64rem\) \{[\s\S]*?\.dispatch-story h2 \{[\s\S]*?white-space: nowrap/);
   assert.match(
     hero,
     /Each campaign turns a defined operation into bounded work across an explicitly enrolled set of repositories\./,
   );
+  assert.match(hero, /A\s+dispatcher resolves reviewed rollout policy/);
+  assert.match(hero, /namespaced workers in parallel—one authorized target\s+per worker, across organizations/);
+  assert.match(hero, /centralized scale and a shared operating rhythm without giving any\s+worker open-ended repository reach/);
   assert.match(hero, /<DispatchIllustration \/>/);
   assert.match(hero, /aria-describedby="dispatch-description"/);
-  assert.match(illustration, /control-plane-dispatch-fallback\.svg/);
-  assert.match(illustration, /control-plane-dispatch-fallback-dark-mode\.svg/);
-  assert.match(illustration, /control-plane-dispatch-mobile\.svg/);
-  assert.match(illustration, /control-plane-dispatch-mobile-dark-mode\.svg/);
-  assert.match(illustration, /control-plane-dispatch-motion\.svg/);
-  assert.match(illustration, /control-plane-dispatch-mobile-motion\.svg/);
+  assert.doesNotMatch(illustration, /cao-dashboard-campaign/);
+  assert.match(illustration, /Central Agentic Ops \(CAO\)/);
+  assert.match(illustration, /<small>Control plane<\/small>/);
+  assert.match(illustration, /class="campaign-cue"/);
+  assert.match(illustration, /Configured campaigns/);
+  assert.match(illustration, /<strong>Dependabot<\/strong>/);
+  assert.match(illustration, /<strong>Repo Assist<\/strong>/);
+  assert.match(illustration, /const goalPaths = \[/);
+  assert.match(illustration, /M13\.637 2\.363h-\.001l1\.676\.335/);
+  assert.match(illustration, /\{goalPaths\.map\(\(path\) => <path d=\{path\}><\/path>\)\}/);
+  assert.match(illustration, /GitHub Actions/);
+  assert.ok(
+    illustration.indexOf("<h3>GitHub Actions</h3>") < illustration.indexOf("<h3>Organizations</h3>") &&
+      illustration.indexOf("<h3>Organizations</h3>") <
+        illustration.indexOf("<h3>Representative repositories</h3>"),
+  );
+  assert.match(illustration, /const organizationNodes = \[/);
+  assert.match(illustration, /organizationJobs = jobs\.filter/);
+  assert.match(illustration, /campaigns: new Set\(organizationJobs\.map/);
+  assert.match(illustration, /repositories: new Set\(organizationJobs\.map/);
+  assert.match(illustration, /\{node\.campaigns\} campaigns · \{node\.repositories\} repositories/);
+  assert.match(illustration, /class="organization-node" style={`top: \$\{node\.top\}px`}/);
+  assert.match(illustration, /<svg class="graph-routes" viewBox="0 0 82 488"/);
+  assert.match(illustration, /<animateMotion/);
+  assert.match(illustration, /keyPoints="0;0;0;1;1;1"/);
+  assert.match(illustration, /class="node-continuation"/);
+  assert.match(illustration, /class="node-continuation node-continuation-no-icon">\s*<b>•••<\/b>\s*<small>more organizations<\/small>/);
+  assert.match(illustration, /<small>more organizations<\/small>/);
+  assert.match(illustration, /<small>more repositories<\/small>/);
+  assert.match(illustration, /path=\{job\.organizationPath\}/);
+  assert.match(illustration, /path=\{job\.repositoryPath\}/);
+  assert.match(illustration, /organizationPath: "M0 100 H41 V172 H82"/);
+  assert.match(illustration, /organizationPath: "M0 308 H41 V172 H82"/);
+  assert.match(illustration, /repositoryPath: "M0 172 H41 V100 H82"/);
+  assert.match(illustration, /repositoryPath: "M0 172 H41 V308 H82"/);
+  assert.match(illustration, /class="graph-junction" cx="41" cy="172"/);
+  assert.match(illustration, /class="graph-junction" cx="41" cy="344"/);
+  assert.match(illustration, /\.organization-icon,[\s\S]*?\.repository-icon \{[\s\S]*?width: 16px;[\s\S]*?height: 16px/);
+  assert.match(illustration, /class="organization-icon"/);
+  assert.match(illustration, /\.organization-icon \{[\s\S]*?fill: var\(--muted\)/);
+  assert.match(illustration, /class="repo-icon repository-icon"/);
+  assert.match(illustration, /\.repository-card \{[\s\S]*?border-top: 1px solid var\(--line\)/);
+  assert.match(illustration, /class="mobile-scale-cue"/);
+  assert.match(illustration, /More organizations and repositories/);
+  assert.match(illustration, /The bounded dispatch pattern continues\./);
+  assert.match(
+    illustration,
+    /grid-template-columns: minmax\(520px, 740px\) 72px 150px 72px 220px/,
+  );
+  assert.match(illustration, /width: min\(100%, 1270px\)/);
+  assert.match(illustration, /text-align: left/);
+  assert.match(illustration, /class="actions-column cao-surface"/);
+  assert.match(illustration, /class="organizations-column"/);
+  assert.match(illustration, /class="repositories-column"/);
+  assert.doesNotMatch(illustration, /class="(?:organizations|repositories)-column cao-surface"/);
+  assert.doesNotMatch(illustration, /dashboard-column|dashboard-route|route-dashboard/);
+  assert.match(illustration, /\.cao-surface \{[\s\S]*?border: 1px solid var\(--line\)/);
+  assert.match(illustration, /\.control-plane \{\s*overflow: visible;/);
+  assert.match(illustration, /const campaigns = \[/);
+  assert.match(illustration, /class="mobile-flow"/);
+  assert.match(illustration, /class="mobile-campaign"/);
+  assert.match(illustration, /class="mobile-workers"/);
+  assert.match(illustration, /Parallel workers/);
+  assert.match(illustration, /class="mobile-dispatch-pair"/);
+  assert.match(illustration, /class={`mobile-pair-route \$\{job\.timing\}`}/);
+  assert.match(illustration, /@keyframes mobile-route-job-1/);
+  assert.match(illustration, /@keyframes mobile-route-job-5/);
+  assert.match(
+    illustration,
+    /@media \(max-width: 1180px\) \{[\s\S]*?\.flow-layout \{[\s\S]*?display: none[\s\S]*?\.mobile-flow \{[\s\S]*?display: block/,
+  );
+  assert.match(hero, /width: min\(100%, 80rem\)/);
+  assert.match(illustration, /operation: "Dependabot update planner"/);
+  assert.match(illustration, /workflow: "Dependabot \/ Update Planner"/);
+  assert.match(illustration, /repository: "github\/gh-aw"/);
+  assert.match(illustration, /operation: "Repo Assist issue triage"/);
+  assert.match(illustration, /workflow: "Repo Assist \/ Issue Triage"/);
+  assert.match(illustration, /operation: "Repo Assist issue fix"/);
+  assert.match(illustration, /workflow: "Repo Assist \/ Issue Fix"/);
+  assert.match(illustration, /operation: "Repo Assist maintenance"/);
+  assert.match(illustration, /workflow: "Repo Assist \/ Maintenance"/);
+  assert.match(illustration, /\{job\.operation\} · \{job\.repository\} · \{job\.mode\}/);
+  assert.match(illustration, /class="run-card dispatcher dispatcher-dependabot"/);
+  assert.match(illustration, /class="run-card dispatcher dispatcher-repo-assist"/);
+  assert.match(illustration, /Campaign dispatcher/);
+  assert.match(illustration, /class={`run-card worker \$\{job\.timing\}`}/);
+  assert.match(illustration, /animation: spin/);
+  assert.match(illustration, /class="status running action-progress"/);
+  assert.match(illustration, /class="progress-track"/);
+  assert.match(illustration, /class="progress-ring"/);
+  assert.match(illustration, /class="progress-dot"/);
+  assert.match(illustration, /stroke-dasharray: 22 18/);
+  assert.match(illustration, /M8 0a8 8 0 1 1 0 16/);
+  assert.match(illustration, /repository: "github\/copilot-cli"/);
+  assert.match(illustration, /repository: "githubnext\/gh-aw-cao"/);
+  assert.match(illustration, /repository: "githubnext\/agentics"/);
+  assert.match(illustration, /failed: true/);
+  assert.match(illustration, /repository: "githubnext\/gh-aw"/);
+  assert.match(illustration, /organizations: \["github", "githubnext"\]/);
+  assert.match(illustration, /class="mobile-campaign-organizations"/);
+  assert.match(illustration, /<em>\+ others<\/em>/);
+  assert.match(illustration, /class="branch">main<\/span>/);
+  assert.match(illustration, /class="run-age"/);
+  assert.match(illustration, /class="run-meta"/);
+  assert.doesNotMatch(illustration, /class="run-menu"/);
+  assert.match(illustration, /In progress/);
+  assert.match(illustration, /\{job\.failed \? "Failed" : "Done"\} · \{job\.duration\}/);
+  assert.match(illustration, /M2\.343 13\.657A8 8 0 1 1/);
+  assert.match(illustration, /@keyframes dep-dispatch-running/);
+  assert.match(illustration, /@keyframes repo-dispatch-running/);
+  assert.match(illustration, /@keyframes job-1-running/);
+  assert.match(illustration, /@keyframes job-5-running/);
+  assert.match(illustration, /grid-template-rows: 64px 72px 72px 0 64px 72px 72px 72px/);
+  assert.match(illustration, /\.execution-grid \.dispatcher-repo-assist \{[\s\S]*?translateY\(-4px\)/);
+  assert.match(illustration, /\.run-card\.job-5,[\s\S]*?\.repository-card\.job-5 \{[\s\S]*?translateY\(4px\)/);
+  assert.match(illustration, /\.actions-column \{[\s\S]*?align-self: start/);
   assert.match(illustration, /@media \(prefers-reduced-motion: reduce\)/);
-  for (const layout of ["", "-mobile"]) {
-    const motion = readFileSync(`docs/assets/control-plane-dispatch${layout}-motion.svg`, "utf8");
-    assert.doesNotMatch(motion, /prefers-color-scheme/);
-  }
+  assert.match(
+    illustration,
+    /\.dispatch-illustration \*,[\s\S]*?\.dispatch-illustration \*::before,[\s\S]*?\.dispatch-illustration \*::after \{[\s\S]*?animation: none/,
+  );
+  assert.match(illustration, /\.status\.complete \{[\s\S]*?opacity: 1 !important/);
 });
 
 test("setup wizard remains available alongside the command quickstart", () => {

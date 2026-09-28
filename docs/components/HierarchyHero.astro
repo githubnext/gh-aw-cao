@@ -47,12 +47,15 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
   <p class="section-eyebrow">One goal, many repositories</p>
   <h2 id="dispatch-title">Agentic Campaigns dispatch work at scale.</h2>
   <p>
-    Each campaign turns a defined operation into bounded work across an explicitly enrolled set of repositories.
+    Each campaign turns a defined operation into bounded work across an explicitly enrolled set of repositories. A
+    dispatcher resolves reviewed rollout policy, then launches namespaced workers in parallel—one authorized target
+    per worker, across organizations. Teams gain centralized scale and a shared operating rhythm without giving any
+    worker open-ended repository reach.
   </p>
   <figure class="dispatch-illustration" aria-describedby="dispatch-description">
     <figcaption id="dispatch-description" class="visually-hidden">
-      A control plane dispatches campaign work across authorized organizations and repositories, then gathers the
-      outcomes into a campaign report.
+      Central Agentic Ops configures campaigns, runs dispatchers followed by namespaced workers in GitHub Actions,
+      and sends each worker to one explicitly enrolled external repository.
     </figcaption>
     <DispatchIllustration />
   </figure>
@@ -567,17 +570,32 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
     }
 
     .dispatch-story {
+      width: min(calc(100% - 2rem), 86rem);
       grid-template-columns: minmax(0, 1fr);
+      text-align: center;
+    }
+
+    .dispatch-story > .section-eyebrow {
+      justify-self: center;
     }
 
     .dispatch-story h2 {
-      max-width: 52rem;
+      max-width: none;
       margin-inline: auto;
       text-align: center;
     }
 
+    .dispatch-story > p:not(.section-eyebrow) {
+      max-width: 64rem;
+      margin: 1rem auto 0;
+      color: var(--cao-story-text);
+      font-size: clamp(1rem, 1.4vw, 1.125rem);
+      line-height: 1.6;
+      text-wrap: balance;
+    }
+
     .dispatch-illustration {
-      width: min(100%, 58rem);
+      width: min(100%, 80rem);
       margin-inline: auto;
     }
 
@@ -902,6 +920,10 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
     }
 
     @media (min-width: 64rem) {
+      .dispatch-story h2 {
+        white-space: nowrap;
+      }
+
       .hierarchy-hero {
         grid-template-columns: minmax(22rem, 0.95fr) minmax(18rem, 0.7fr);
         gap: clamp(2.5rem, 5vw, 5rem);
