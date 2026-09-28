@@ -204,46 +204,40 @@ function renderCampaignTree(campaigns, signal) {
   );
   /** @type {AbortController | null} */
   let fileController = null;
-  const branches = campaigns.map((campaign, index) => {
-    const files = h('div', { className: 'cao-memory-tree-status', role: 'status' }, 'Expand to load files.');
+  const branches = campaigns.map((campaign) => {
+    const files = h('div', { className: 'cao-memory-tree-status', role: 'status' }, renderLoadingMessage('Loading repository memory...'));
     const details = /** @type {HTMLDetailsElement} */ (h(
       'details',
-      { className: 'cao-memory-campaign-branch', open: index === 0 },
+      { className: 'cao-memory-campaign-branch' },
       h('summary', { className: 'cao-memory-campaign' },
         octicon('file-directory-fill'),
         h('span', null, campaign.campaignName)
       ),
       files
     ));
-    let loaded = false;
-    let preloading = false;
+    const disabledRow = () => h('div', {
+      className: 'cao-memory-campaign cao-memory-campaign-disabled',
+      'aria-disabled': 'true',
+      title: 'No repository memory files are available for this campaign',
+    }, octicon('file-directory-fill'), h('span', null, campaign.campaignName));
 
-    const load = () => {
-      if (loaded || !details.open) return;
-      loaded = true;
-      files.replaceChildren(renderLoadingMessage('Loading repository memory...'));
-      listRepositoryMemory(campaign.campaign, signal).then((manifest) => {
+    listRepositoryMemory(campaign.campaign, signal).then((manifest) => {
         if (signal.aborted) return;
         if (!manifest) {
-          files.replaceChildren(renderEmptyMessage('No repository-memory branch has been published for this campaign.'));
+          details.replaceWith(disabledRow());
           return;
         }
         const warning = renderOmissionWarning(manifest.omitted);
         if (manifest.files.length === 0) {
-          files.replaceChildren(
-            ...(warning ? [warning] : []),
-            renderEmptyMessage('The repository-memory branch contains no supported files.')
-          );
+          details.replaceWith(disabledRow());
           return;
         }
         /** @param {MemoryFile} entry @param {HTMLButtonElement} button */
         const select = (entry, button) => {
           selectedButton = button;
-          if (!preloading) {
-            layout.dataset.memoryView = 'file';
-            mobileNavigation.open();
-            content.focus();
-          }
+          layout.dataset.memoryView = 'file';
+          mobileNavigation.open();
+          content.focus();
           fileController?.abort();
           fileController = new AbortController();
           const abort = () => fileController?.abort();
@@ -284,11 +278,6 @@ function renderCampaignTree(campaigns, signal) {
           ...(warning ? [warning] : []),
           tree
         );
-        if (index === 0) {
-          preloading = true;
-          /** @type {HTMLButtonElement | null} */ (tree.querySelector('.campaign-memory-file'))?.click();
-          preloading = false;
-        }
       }).catch((error) => {
         if (error?.name !== 'AbortError') {
           files.replaceChildren(renderEmptyMessage(
@@ -297,9 +286,6 @@ function renderCampaignTree(campaigns, signal) {
           ));
         }
       });
-    };
-    details.addEventListener('toggle', load);
-    if (details.open) queueMicrotask(load);
     return h('li', null, details);
   });
 

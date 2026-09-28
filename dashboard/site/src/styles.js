@@ -1290,6 +1290,8 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .campaign-memory-directory > summary .octicon { color: var(--muted); }
 .cao-memory-campaign-branch > summary { font-weight: 600; }
 .cao-memory-campaign-branch > summary:hover, .campaign-memory-directory > summary:hover { background: var(--neutral-muted); }
+.cao-memory-campaign-disabled { min-height: 32px; display: flex; align-items: center; gap: 6px; padding: 5px 8px; color: var(--muted); }
+.cao-memory-campaign-disabled > .octicon { color: var(--muted); }
 .campaign-memory-directory > ul { margin-left: 9px; padding-left: 10px; border-left: 1px solid var(--border-muted); }
 .cao-memory-tree-status > .empty-message { margin: 4px 8px 8px 16px; }
 .cao-memory-file-content { min-width: 0; padding: 20px; overflow: auto; }
@@ -2113,7 +2115,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   :is(.cao-memory-layout, .campaign-memory-layout)[data-memory-view="file"] :is(.cao-memory-file-content, .campaign-memory-content) { transform: translateX(0); visibility: visible; transition-delay: 0s; }
   .cao-memory-tree, .campaign-memory-files { padding: 8px; }
   .cao-memory-tree h2 { margin: 8px 8px 12px; }
-  .cao-memory-campaign-branch > summary, .campaign-memory-directory > summary, .campaign-memory-file { min-height: 44px; }
+  .cao-memory-campaign-branch > summary, .cao-memory-campaign-disabled, .campaign-memory-directory > summary, .campaign-memory-file { min-height: 44px; }
   .memory-file-header { min-height: 52px; display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; position: sticky; z-index: 1; top: 0; margin: 0; padding: 6px 12px; border-bottom: 1px solid var(--border); background: var(--canvas); }
   .memory-file-header h2 { overflow: hidden; font-size: .875rem; text-overflow: ellipsis; white-space: nowrap; }
   .cao-memory-file-content pre, .campaign-memory-content pre { min-height: calc(100% - 52px); padding: 16px; border-radius: 0; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 2; }
