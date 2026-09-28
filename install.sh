@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+info() {
+  printf '==> %s\n' "$1"
+}
+
 version_at_least() {
   node -e '
 const parse = (value) => {
@@ -21,7 +25,8 @@ process.exit(1);
 }
 
 install_gh_aw() {
-  curl --fail --silent --show-error --location \
+  info "Installing gh-aw $required_gh_aw..."
+  curl --fail --show-error --location \
     https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh |
     bash -s -- "$required_gh_aw"
 }
@@ -50,7 +55,7 @@ verify_gh_aw_version() {
 # manual-upgrade guidance; a confirmed upgrade that fails still fails the run.
 upgrade_gh_aw() {
   local answer
-  local upgrade_command="curl -sL https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- $required_gh_aw"
+  local upgrade_command="curl --fail --show-error --location https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- $required_gh_aw"
   if { printf 'The installed gh-aw is too old for this CAO campaign. Upgrade it now with %s? [y/N] ' "$upgrade_command" > /dev/tty; } 2>/dev/null &&
     IFS= read -r answer < /dev/tty && [[ "$answer" =~ ^[Yy]$ ]]; then
     if ! install_gh_aw; then
@@ -91,26 +96,38 @@ main() {
     verify_gh_aw_version
   elif ! version_at_least "$current_gh_aw" "$required_gh_aw"; then
     upgrade_gh_aw
+  else
+    info "Using gh-aw $current_gh_aw."
   fi
 
   # gh-aw's markdown scanner rejects the GitHub App manifest page embedded in
   # .github/workflows/shared/setup-github-apps.mjs, so catalog installs skip it.
   if [[ ! -f "$cao_cli" || ! -f "$cao_command" || ! -f "$control_runtime" || ! -f "$materializer" || ! -f "$runtime_action" ]]; then
+    info "Installing the CAO campaign from $catalog_source..."
     gh aw add "$catalog_source" --no-security-scanner
   elif [[ $# -gt 0 ]]; then
+    info "Refreshing the CAO campaign from $catalog_source..."
     gh aw add "$catalog_source" --force --no-security-scanner
+  else
+    info "The CAO campaign files are already installed."
   fi
+  info "Materializing the CAO runtime..."
   if [[ -d "$catalog_source" ]]; then
     node "$materializer" materialize-source root "$catalog_source"
   else
     node "$materializer" materialize root
   fi
 
+  info "Making the CAO launcher executable..."
   chmod +x "$cao_command"
 
   if [[ ! -f "$policy_path" ]]; then
+    info "Initializing the CAO policy..."
     "$cao_command" init
+  else
+    info "Keeping the existing CAO policy."
   fi
+  info "CAO installation complete."
 }
 
 main "$@" </dev/null
