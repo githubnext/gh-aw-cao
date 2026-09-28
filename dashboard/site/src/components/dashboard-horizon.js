@@ -1,7 +1,7 @@
 import { h } from '../dom.js';
 import { effect, state } from '../reactive.js';
 import { octicon } from '../octicons.js';
-import { renderLabeledSpan, renderTooltip } from './ui-primitives.js';
+import { renderActionLabel, renderLabeledSpan, renderTooltip } from './ui-primitives.js';
 import { createDebug } from '../debug.js';
 
 const debugDashboardHorizon = createDebug('dashboard-horizon');
@@ -35,7 +35,7 @@ export function renderDashboardHorizon(options) {
   const label = horizon?.label || 'Horizon';
   const skeleton = h('span', { 'aria-hidden': 'true' });
   const durationLabel = h('strong');
-  const accessibleLabel = h('span', { className: 'sr-only action-label' });
+  const accessibleLabel = renderActionLabel('');
   const toggle = h(
     'button',
     {

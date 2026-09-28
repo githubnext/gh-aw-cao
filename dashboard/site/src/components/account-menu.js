@@ -1,7 +1,7 @@
 import { h } from '../dom.js';
 import { createDebug } from '../debug.js';
 import { octicon } from '../octicons.js';
-import { enableDetailsMenuDismissal } from './ui-primitives.js';
+import { enableDetailsMenuDismissal, renderActionLabel } from './ui-primitives.js';
 
 const debugAuth = createDebug('auth');
 
@@ -152,7 +152,7 @@ export function renderAccountMenu(options = {}) {
         title: 'User'
       },
       octicon('person'),
-      h('span', { className: 'sr-only action-label' }, 'GitHub account')
+      renderActionLabel('GitHub account')
     ),
     h(
       'div',
