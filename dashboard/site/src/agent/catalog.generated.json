@@ -665,7 +665,7 @@
       "id": "operational-value",
       "title": "Operational Value",
       "description": "Computed package-defined operational value for each repository.",
-      "experimental": false,
+      "experimental": true,
       "parameters": [],
       "queries": []
     },
