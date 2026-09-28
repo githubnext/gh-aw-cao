@@ -265,7 +265,11 @@ func ResolveRegistry(ctx context.Context, registry Registry, precedence int, opt
 	if registry.Path != "" {
 		prefix = registry.Path + "/"
 	}
-	entries := manifestEntries(rawTree, prefix)
+	entries, truncated := manifestEntries(rawTree, prefix)
+	if truncated {
+		resolveLog.Printf("registry manifests truncated registry_id=%s limit=%d",
+			registry.ID, maxPackagesPerRegistry)
+	}
 	readmes := readmeEntries(rawTree, prefix)
 
 	packages := make([]Package, 0, len(entries))
@@ -386,36 +390,49 @@ func fetchReadme(ctx context.Context, opts Options, base, repositoryPath, token,
 	return string(decoded)
 }
 
-func manifestEntries(rawTree []any, prefix string) []treeEntry {
-	var entries []treeEntry
+// manifestEntries collects eligible package manifests from a registry tree in
+// order, stopping at maxPackagesPerRegistry. truncated reports whether at least
+// one further eligible manifest was dropped because of the cap.
+func manifestEntries(rawTree []any, prefix string) (entries []treeEntry, truncated bool) {
 	for _, raw := range rawTree {
-		if len(entries) >= maxPackagesPerRegistry {
-			break
-		}
-		entry, ok := raw.(map[string]any)
+		entry, ok := manifestTreeEntry(raw, prefix)
 		if !ok {
 			continue
 		}
-		entryType, _ := entry["type"].(string)
-		entryPath, _ := entry["path"].(string)
-		entrySHA, _ := entry["sha"].(string)
-		if entryType != "blob" || entryPath == "" || entrySHA == "" {
-			continue
+		if len(entries) >= maxPackagesPerRegistry {
+			return entries, true
 		}
-		if !strings.HasPrefix(entryPath, prefix) || !strings.HasSuffix(entryPath, "/aw.yml") {
-			continue
-		}
-		if entryPath == prefix+"aw.yml" {
-			continue
-		}
-		relative := entryPath[len(prefix):]
-		firstSegment, _, _ := strings.Cut(relative, "/")
-		if internalPackages[firstSegment] {
-			continue
-		}
-		entries = append(entries, treeEntry{path: entryPath, sha: entrySHA})
+		entries = append(entries, entry)
 	}
-	return entries
+	return entries, false
+}
+
+// manifestTreeEntry reports whether one raw Git tree entry is a package
+// manifest within prefix, excluding the registry root manifest and internal
+// packages.
+func manifestTreeEntry(raw any, prefix string) (treeEntry, bool) {
+	entry, ok := raw.(map[string]any)
+	if !ok {
+		return treeEntry{}, false
+	}
+	entryType, _ := entry["type"].(string)
+	entryPath, _ := entry["path"].(string)
+	entrySHA, _ := entry["sha"].(string)
+	if entryType != "blob" || entryPath == "" || entrySHA == "" {
+		return treeEntry{}, false
+	}
+	if !strings.HasPrefix(entryPath, prefix) || !strings.HasSuffix(entryPath, "/aw.yml") {
+		return treeEntry{}, false
+	}
+	if entryPath == prefix+"aw.yml" {
+		return treeEntry{}, false
+	}
+	relative := entryPath[len(prefix):]
+	firstSegment, _, _ := strings.Cut(relative, "/")
+	if internalPackages[firstSegment] {
+		return treeEntry{}, false
+	}
+	return treeEntry{path: entryPath, sha: entrySHA}, true
 }
 
 func stripBase64Whitespace(value string) string {

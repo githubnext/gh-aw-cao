@@ -2,6 +2,7 @@ package marketplace
 
 import (
 	"encoding/base64"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -207,5 +208,78 @@ func TestResolveRegistryLeavesPackagesResolvableWithoutAReadme(t *testing.T) {
 	}
 	if len(packages) != 1 || packages[0].Readme != "" || packages[0].ReadmePath != "" {
 		t.Fatalf("expected a package without README content, got: %#v", packages)
+	}
+}
+
+func manifestBlob(path, sha string) map[string]any {
+	return map[string]any{"type": "blob", "path": path, "sha": sha}
+}
+
+func TestManifestTreeEntryAcceptsAnEligiblePackageManifest(t *testing.T) {
+	entry, ok := manifestTreeEntry(manifestBlob("packages/triage/aw.yml", "abc"), "packages/")
+	if !ok || entry.path != "packages/triage/aw.yml" || entry.sha != "abc" {
+		t.Fatalf("manifestTreeEntry = %+v, %v; want eligible triage manifest", entry, ok)
+	}
+}
+
+func TestManifestTreeEntryRejectsNonBlobShapes(t *testing.T) {
+	for name, raw := range map[string]any{
+		"not a map":   "triage/aw.yml",
+		"tree type":   map[string]any{"type": "tree", "path": "triage/aw.yml", "sha": "abc"},
+		"empty path":  manifestBlob("", "abc"),
+		"missing sha": manifestBlob("triage/aw.yml", ""),
+	} {
+		if _, ok := manifestTreeEntry(raw, ""); ok {
+			t.Errorf("%s: manifestTreeEntry accepted %v", name, raw)
+		}
+	}
+}
+
+func TestManifestTreeEntryRejectsOutOfScopeAndRootAndInternalPaths(t *testing.T) {
+	for _, path := range []string{
+		"other/triage/aw.yml",
+		"packages/aw.yml",
+		"packages/triage/README.md",
+		"packages/dashboard/aw.yml",
+		"packages/activity/nested/aw.yml",
+	} {
+		if _, ok := manifestTreeEntry(manifestBlob(path, "abc"), "packages/"); ok {
+			t.Errorf("manifestTreeEntry accepted %q", path)
+		}
+	}
+}
+
+func TestManifestEntriesReturnsAllEligibleEntriesWhenUnderTheCap(t *testing.T) {
+	rawTree := []any{
+		manifestBlob("aw.yml", "root"),
+		manifestBlob("triage/aw.yml", "a"),
+		manifestBlob("dashboard/aw.yml", "internal"),
+		manifestBlob("review/aw.yml", "b"),
+	}
+	entries, truncated := manifestEntries(rawTree, "")
+	if truncated {
+		t.Fatal("manifestEntries reported truncation under the cap")
+	}
+	if len(entries) != 2 || entries[0].path != "triage/aw.yml" || entries[1].path != "review/aw.yml" {
+		t.Fatalf("entries = %+v, want triage then review", entries)
+	}
+}
+
+func TestManifestEntriesReportsTruncationBeyondTheCap(t *testing.T) {
+	rawTree := make([]any, 0, maxPackagesPerRegistry+1)
+	for i := 0; i < maxPackagesPerRegistry; i++ {
+		rawTree = append(rawTree, manifestBlob(fmt.Sprintf("pkg-%d/aw.yml", i), "sha"))
+	}
+	exact, truncated := manifestEntries(rawTree, "")
+	if truncated || len(exact) != maxPackagesPerRegistry {
+		t.Fatalf("at the cap: len=%d truncated=%v, want %d and false", len(exact), truncated, maxPackagesPerRegistry)
+	}
+	rawTree = append(rawTree, manifestBlob("extra/aw.yml", "sha"))
+	entries, truncated := manifestEntries(rawTree, "")
+	if !truncated || len(entries) != maxPackagesPerRegistry {
+		t.Fatalf("beyond the cap: len=%d truncated=%v, want %d and true", len(entries), truncated, maxPackagesPerRegistry)
+	}
+	if entries[len(entries)-1].path != fmt.Sprintf("pkg-%d/aw.yml", maxPackagesPerRegistry-1) {
+		t.Fatalf("last entry = %q, want the last in-cap manifest", entries[len(entries)-1].path)
 	}
 }
