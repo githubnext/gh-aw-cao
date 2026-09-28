@@ -287,7 +287,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .marketplace-detail-page .custom-view { border: 0; background: transparent; box-shadow: none; }
 .marketplace-detail-page .custom-view > header { padding-inline: 0; }
 .marketplace-detail-page .layout-section { padding: 0; border: 0; background: transparent; }
-.marketplace-detail-page .layout-section[data-section-layout="full"] > .layout-section-header { display: none; }
+.marketplace-detail-page .layout-section > .layout-section-header { display: none; }
 .marketplace-detail-page .entity-card-list-marketplace .entity-card-list-card { min-height: 0; align-items: center; }
 .marketplace-detail-page .entity-card-list-marketplace .issue-list-card-title { color: var(--fg); font-size: 1.5rem; font-weight: 600; }
 .marketplace-detail-page .entity-card-list-marketplace .entity-card-list-actions { grid-column: 3; grid-row: 1 / span 2; align-self: center; margin: 0; }
