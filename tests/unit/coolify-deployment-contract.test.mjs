@@ -121,11 +121,20 @@ test("Coolify Compose contains no credentials and requires immutable image input
 test("sample Coolify workflow builds, scans, publishes, and deploys an exact image digest", async () => {
   const source = await text(".github/workflows/coolify-sample-deploy.yml");
   const workflow = parse(source);
+  const authorize = workflow.jobs.authorize;
+  const publishJob = workflow.jobs.publish;
   const deploy = workflow.jobs.deploy;
-  const sourceCheck = deploy.steps.find((step) => step.name === "Verify sample source");
-  const build = deploy.steps.find((step) => step.name === "Build sample image");
-  const scan = deploy.steps.find((step) => step.name === "Scan sample image");
-  const publish = deploy.steps.find((step) => step.name === "Publish sample image");
+  const authorization = authorize.steps.find((step) => step.name === "Require maintainer or administrator");
+  const publishAuthorization = publishJob.steps.find(
+    (step) => step.name === "Reauthorize maintainer or administrator",
+  );
+  const deployAuthorization = deploy.steps.find(
+    (step) => step.name === "Reauthorize maintainer or administrator",
+  );
+  const sourceCheck = publishJob.steps.find((step) => step.name === "Verify sample source");
+  const build = publishJob.steps.find((step) => step.name === "Build sample image");
+  const scan = publishJob.steps.find((step) => step.name === "Scan sample image");
+  const publish = publishJob.steps.find((step) => step.name === "Publish sample image");
   const request = deploy.steps.find((step) => step.name === "Deploy sample image");
 
   assert.equal(workflow.on.pull_request_target, undefined);
@@ -133,9 +142,27 @@ test("sample Coolify workflow builds, scans, publishes, and deploys an exact ima
   assert.equal(workflow.on.push, undefined);
   assert.equal(workflow.on.workflow_dispatch, null);
   assert.deepEqual(workflow.permissions, { contents: "read" });
-  assert.deepEqual(deploy.permissions, { contents: "read", packages: "write" });
+  assert.deepEqual(authorize.permissions, { contents: "read" });
+  for (const step of [authorization, publishAuthorization, deployAuthorization]) {
+    assert.equal(step.env.ORIGINAL_ACTOR, "${{ github.actor }}");
+    assert.equal(step.env.TRIGGERING_ACTOR, "${{ github.triggering_actor }}");
+    assert.equal(step.env.WORKFLOW_REF, "${{ github.ref }}");
+    assert.equal(step.env.WORKFLOW_SHA, "${{ github.sha }}");
+    assert.match(step.with.script, /getCollaboratorPermissionLevel/);
+    assert.match(step.with.script, /process\.env\.ORIGINAL_ACTOR/);
+    assert.match(step.with.script, /process\.env\.TRIGGERING_ACTOR/);
+    assert.match(step.with.script, /\['admin', 'maintain'\]\.includes\(access\.role_name\)/);
+    assert.doesNotMatch(step.with.script, /includes\(access\.permission\)/);
+    assert.match(step.with.script, /WORKFLOW_REF/);
+    assert.match(step.with.script, /getBranch/);
+    assert.match(step.with.script, /WORKFLOW_SHA/);
+  }
+  assert.deepEqual(publishJob.permissions, { contents: "read", packages: "write" });
+  assert.equal(publishJob.needs, "authorize");
+  assert.equal(publishJob.environment.name, "coolify-sample-publish");
   assert.equal(deploy.environment.name, "coolify-sample");
-  assert.match(sourceCheck.run, /GITHUB_REPOSITORY.*EXPECTED_REPOSITORY/);
+  assert.equal(deploy.needs, "publish");
+  assert.deepEqual(deploy.permissions, { contents: "read" });
   assert.match(sourceCheck.run, /source_sha.*GITHUB_SHA/);
   assert.match(build.run, /docker build/);
   assert.match(build.run, /server\/Dockerfile/);
@@ -146,6 +173,8 @@ test("sample Coolify workflow builds, scans, publishes, and deploys an exact ima
   assert.match(publish.run, />> "\$\{GITHUB_OUTPUT\}"/);
   assert.equal(request.env.COOLIFY_DEPLOY_ENDPOINT, "${{ secrets.COOLIFY_DEPLOY_ENDPOINT }}");
   assert.equal(request.env.COOLIFY_DEPLOY_TOKEN, "${{ secrets.COOLIFY_DEPLOY_TOKEN }}");
+  assert.equal(request.env.IMAGE, "${{ needs.publish.outputs.image }}");
+  assert.equal(request.env.DIGEST, "${{ needs.publish.outputs.digest }}");
   assert.match(request.run, /IMAGE.*DIGEST/);
   assert.match(request.run, /curl --config -/);
   assert.doesNotMatch(request.run, /--oauth2-bearer/);

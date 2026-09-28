@@ -93,15 +93,24 @@ In the following steps, replace `PUBLIC-HOST` with the public host name of your 
 
 ### Deploying a sample image
 
-For a test deployment of the `githubnext/gh-aw-cao` dashboard, configure a
-protected `coolify-sample` GitHub environment with `COOLIFY_DEPLOY_ENDPOINT` and
-`COOLIFY_DEPLOY_TOKEN`, then manually run **Deploy sample dashboard to Coolify**.
+For a test deployment of the `githubnext/gh-aw-cao` dashboard, configure protected
+`coolify-sample-publish` and `coolify-sample` GitHub environments. Store
+`COOLIFY_DEPLOY_ENDPOINT` and `COOLIFY_DEPLOY_TOKEN` only in `coolify-sample`,
+then manually run **Deploy sample dashboard to Coolify**. Configure both
+environments to accept deployments only from the protected default branch, and
+add only repository maintainers or administrators as required reviewers. These
+environment controls are required because GitHub loads a workflow definition
+from the ref selected by the person dispatching it.
 
-The workflow builds `server/Dockerfile` from the selected commit, scans the
-image for critical and high vulnerabilities, publishes it to GHCR with a unique
-run identity, and asks the deployment adapter to deploy the resulting immutable
-digest. The run succeeds only after the adapter reports that the exact digest is
-ready.
+The workflow fails closed unless both the original actor and, for a rerun, the
+triggering actor have the `maintain` or `admin` repository role. It also requires
+the current default-branch commit. Every job that can publish or deploy repeats
+these checks, including when an individual job is rerun. The workflow builds
+`server/Dockerfile`, scans the image for critical and high vulnerabilities,
+publishes it to GHCR with a unique run identity, and asks the deployment adapter
+to deploy the resulting immutable digest. Image publication cannot access the
+deployment environment or its secrets. The run succeeds only after the adapter
+reports that the exact digest is ready.
 
 ### Updating the data
 

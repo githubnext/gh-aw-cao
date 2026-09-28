@@ -11,16 +11,112 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: Build, publish, and deploy sample
+  authorize:
+    name: Authorize sample deployment
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Require maintainer or administrator
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          ORIGINAL_ACTOR: ${{ github.actor }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+          WORKFLOW_REF: ${{ github.ref }}
+          WORKFLOW_SHA: ${{ github.sha }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            if (`${context.repo.owner}/${context.repo.repo}` !== 'githubnext/gh-aw-cao') {
+              throw new Error('Sample deployment is restricted to githubnext/gh-aw-cao');
+            }
+            for (const actor of new Set([
+              process.env.ORIGINAL_ACTOR,
+              process.env.TRIGGERING_ACTOR,
+            ])) {
+              const { data: access } = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                username: actor,
+              });
+              if (!['admin', 'maintain'].includes(access.role_name)) {
+                throw new Error('Sample deployment requires maintain or admin repository permission');
+              }
+              core.info(`Authorized ${actor} with ${access.role_name} role`);
+            }
+            const { data: repository } = await github.rest.repos.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            if (process.env.WORKFLOW_REF !== `refs/heads/${repository.default_branch}`) {
+              throw new Error('Sample deployment must run from the default branch');
+            }
+            const { data: branch } = await github.rest.repos.getBranch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: repository.default_branch,
+            });
+            if (process.env.WORKFLOW_SHA !== branch.commit.sha) {
+              throw new Error('Sample deployment source is not the current default-branch commit');
+            }
+            core.info(`Authorized default-branch commit ${branch.commit.sha}`);
+
+  publish:
+    name: Build, scan, and publish sample
+    needs: authorize
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
     environment:
-      name: coolify-sample
+      name: coolify-sample-publish
     permissions:
       contents: read
       packages: write
+    outputs:
+      image: ${{ steps.publish.outputs.image }}
+      digest: ${{ steps.publish.outputs.digest }}
+      source_sha: ${{ steps.source.outputs.sha }}
     steps:
+      - name: Reauthorize maintainer or administrator
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          ORIGINAL_ACTOR: ${{ github.actor }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+          WORKFLOW_REF: ${{ github.ref }}
+          WORKFLOW_SHA: ${{ github.sha }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            if (`${context.repo.owner}/${context.repo.repo}` !== 'githubnext/gh-aw-cao') {
+              throw new Error('Sample deployment is restricted to githubnext/gh-aw-cao');
+            }
+            for (const actor of new Set([
+              process.env.ORIGINAL_ACTOR,
+              process.env.TRIGGERING_ACTOR,
+            ])) {
+              const { data: access } = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                username: actor,
+              });
+              if (!['admin', 'maintain'].includes(access.role_name)) {
+                throw new Error('Sample deployment requires maintain or admin repository permission');
+              }
+            }
+            const { data: repository } = await github.rest.repos.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            const { data: branch } = await github.rest.repos.getBranch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: repository.default_branch,
+            });
+            if (process.env.WORKFLOW_REF !== `refs/heads/${repository.default_branch}` ||
+                process.env.WORKFLOW_SHA !== branch.commit.sha) {
+              throw new Error('Sample deployment source is not the current default-branch commit');
+            }
+
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -30,14 +126,8 @@ jobs:
 
       - id: source
         name: Verify sample source
-        env:
-          EXPECTED_REPOSITORY: githubnext/gh-aw-cao
         run: |
           set -euo pipefail
-          if [[ "${GITHUB_REPOSITORY}" != "${EXPECTED_REPOSITORY}" ]]; then
-            echo "sample deployment is restricted to githubnext/gh-aw-cao" >&2
-            exit 1
-          fi
           source_sha="$(git rev-parse --verify 'HEAD^{commit}')"
           if [[ "${source_sha}" != "${GITHUB_SHA}" || ! "${source_sha}" =~ ^[0-9a-f]{40}$ ]]; then
             echo "sample checkout does not match the workflow source commit" >&2
@@ -105,6 +195,59 @@ jobs:
             echo "- Image: \`${repository}@${digest}\`"
           } >> "${GITHUB_STEP_SUMMARY}"
 
+  deploy:
+    name: Deploy sample
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: coolify-sample-deployment
+      cancel-in-progress: false
+    environment:
+      name: coolify-sample
+    permissions:
+      contents: read
+    steps:
+      - name: Reauthorize maintainer or administrator
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          ORIGINAL_ACTOR: ${{ github.actor }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+          WORKFLOW_REF: ${{ github.ref }}
+          WORKFLOW_SHA: ${{ github.sha }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            if (`${context.repo.owner}/${context.repo.repo}` !== 'githubnext/gh-aw-cao') {
+              throw new Error('Sample deployment is restricted to githubnext/gh-aw-cao');
+            }
+            for (const actor of new Set([
+              process.env.ORIGINAL_ACTOR,
+              process.env.TRIGGERING_ACTOR,
+            ])) {
+              const { data: access } = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                username: actor,
+              });
+              if (!['admin', 'maintain'].includes(access.role_name)) {
+                throw new Error('Sample deployment requires maintain or admin repository permission');
+              }
+            }
+            const { data: repository } = await github.rest.repos.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            const { data: branch } = await github.rest.repos.getBranch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: repository.default_branch,
+            });
+            if (process.env.WORKFLOW_REF !== `refs/heads/${repository.default_branch}` ||
+                process.env.WORKFLOW_SHA !== branch.commit.sha) {
+              throw new Error('Sample deployment source is not the current default-branch commit');
+            }
+
       - name: Verify deployment adapter configuration
         env:
           COOLIFY_DEPLOY_ENDPOINT: ${{ secrets.COOLIFY_DEPLOY_ENDPOINT }}
@@ -120,9 +263,9 @@ jobs:
         env:
           COOLIFY_DEPLOY_ENDPOINT: ${{ secrets.COOLIFY_DEPLOY_ENDPOINT }}
           COOLIFY_DEPLOY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
-          IMAGE: ${{ steps.publish.outputs.image }}
-          DIGEST: ${{ steps.publish.outputs.digest }}
-          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+          IMAGE: ${{ needs.publish.outputs.image }}
+          DIGEST: ${{ needs.publish.outputs.digest }}
+          SOURCE_SHA: ${{ needs.publish.outputs.source_sha }}
         run: |
           set -euo pipefail
           case "${COOLIFY_DEPLOY_ENDPOINT}" in
