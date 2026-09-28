@@ -449,6 +449,52 @@ func TestResolveBackfillMode(t *testing.T) {
 	}
 }
 
+func TestClassifyWorkerStop(t *testing.T) {
+	someErr := errors.New("lease failed")
+
+	tests := []struct {
+		name          string
+		runErr        error
+		ctxErr        error
+		wantReason    workerStopReason
+		wantPropagate bool
+	}{
+		{
+			name:          "nil run error is a clean stop regardless of context",
+			runErr:        nil,
+			ctxErr:        context.Canceled,
+			wantReason:    workerStopReasonClean,
+			wantPropagate: false,
+		},
+		{
+			name:          "run error with a cancelled context is an expected shutdown",
+			runErr:        someErr,
+			ctxErr:        context.Canceled,
+			wantReason:    workerStopReasonShutdown,
+			wantPropagate: false,
+		},
+		{
+			name:          "run error with a live context is a real failure",
+			runErr:        someErr,
+			ctxErr:        nil,
+			wantReason:    workerStopReasonError,
+			wantPropagate: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotReason, gotPropagate := classifyWorkerStop(tt.runErr, tt.ctxErr)
+			if gotReason != tt.wantReason {
+				t.Errorf("classifyWorkerStop() reason = %q, want %q", gotReason, tt.wantReason)
+			}
+			if gotPropagate != tt.wantPropagate {
+				t.Errorf("classifyWorkerStop() propagate = %v, want %v", gotPropagate, tt.wantPropagate)
+			}
+		})
+	}
+}
+
 func TestRootCommandRegistersEverySubcommand(t *testing.T) {
 	want := []string{"backfill", "collect", "doctor", "ingest", "serve", "serve-hosted"}
 	root := newRootCommand()

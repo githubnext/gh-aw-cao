@@ -151,6 +151,53 @@ function resolveCardListEmptyMessage(metadata, view) {
     : typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No items available.';
 }
 
+/**
+ * Renders the shared card-list section shell: view chrome, a header with the
+ * view description and list action, the `<ul>` of cards (or the shared empty
+ * message when there are none), and any list footer, all wrapped in
+ * {@link renderPageSection}. Shared by `renderListView`, `renderIssueListView`,
+ * and `renderEntityCardListView`, which build different `<li>` card markup
+ * but otherwise assemble identical wrapping chrome around it.
+ * @param {{
+ *   pageId: string,
+ *   title: string,
+ *   view: Record<string, any>,
+ *   metadata: import('../presenter.js').SourceMetadata,
+ *   contextDetails: string[],
+ *   headingTag: 'h3'|'h4',
+ *   listAction: HTMLElement | null,
+ *   cards: HTMLElement[],
+ *   listClassName: string,
+ *   listAttrs?: Record<string, unknown>,
+ *   footer?: HTMLElement[],
+ *   sectionDescription?: boolean
+ * }} options
+ * @returns {HTMLElement}
+ */
+function renderCardListSection(options) {
+  const { pageId, title, view, metadata, contextDetails, headingTag, listAction, cards, listClassName, listAttrs = {}, footer = [], sectionDescription = false } = options;
+  const emptyMessage = resolveCardListEmptyMessage(metadata, view);
+  return renderPageSection(
+    pageId,
+    title,
+    [
+      ...renderViewSectionChrome(metadata, contextDetails),
+      h(
+        'header',
+        { className: 'document-list-header' },
+        view.description ? h('p', null, view.description) : null,
+        listAction
+      ),
+      cards.length > 0
+        ? h('ul', { className: listClassName, ...listAttrs }, cards)
+        : h('p', { className: 'document-list-empty' }, emptyMessage),
+      ...footer
+    ],
+    headingTag,
+    sectionDescription ? view.description : undefined
+  );
+}
+
 /** @param {DataViewContext} context */
 function renderMetricView(context) {
   const { pageId, title, view, rows, metadata, contextDetails, headingTag, toText, units = {} } = context;
@@ -299,24 +346,17 @@ function renderListView(context) {
         : null
     );
   });
-  const emptyMessage = resolveCardListEmptyMessage(metadata, view);
-  return renderPageSection(
+  return renderCardListSection({
     pageId,
     title,
-    [
-      ...renderViewSectionChrome(metadata, contextDetails),
-      h(
-        'header',
-        { className: 'document-list-header' },
-        view.description ? h('p', null, view.description) : null,
-        listAction
-      ),
-      cards.length > 0
-        ? h('ul', { className: 'document-list' }, cards)
-        : h('p', { className: 'document-list-empty' }, emptyMessage)
-    ],
-    headingTag
-  );
+    view,
+    metadata,
+    contextDetails,
+    headingTag,
+    listAction,
+    cards,
+    listClassName: 'document-list'
+  });
 }
 
 /**
@@ -350,40 +390,36 @@ function renderEntityCardListView(options) {
     drill,
     chevron: grouped || marketplace
   });
-  const emptyMessage = resolveCardListEmptyMessage(metadata, view);
   const viewAll = isPlainObject(view.list) && isPlainObject(view.list['view-all']) ? view.list['view-all'] : null;
   const viewAllPage = typeof viewAll?.page === 'string' ? viewAll.page : '';
-  return renderPageSection(
+  return renderCardListSection({
     pageId,
     title,
-    [
-      ...renderViewSectionChrome(metadata, contextDetails),
-      h('header', { className: 'document-list-header' }, view.description ? h('p', null, view.description) : null, listAction),
-      cards.length > 0
-        ? h('ul', {
-          className: `document-list issue-list entity-card-list${isPlainObject(view.list) && view.list.layout === 'grid' ? ' entity-card-list-grid' : ''}${grouped ? ' entity-card-list-grouped' : ''}${marketplace ? ' entity-card-list-marketplace' : ''}`,
-          'data-custom-view-mark': 'list'
-        }, cards)
-        : h('p', { className: 'document-list-empty' }, emptyMessage),
-      ...(viewAllPage
-        ? [h(
-          'footer',
-          { className: 'document-list-footer' },
-          h(
-            'a',
-            {
-              href: `#page-${encodeURIComponent(viewAllPage)}`,
-              dataset: { navPageId: viewAllPage }
-            },
-            typeof viewAll?.label === 'string' && viewAll.label ? viewAll.label : 'View all',
-            octicon('arrow-right')
-          )
-        )]
-        : [])
-    ],
+    view,
+    metadata,
+    contextDetails,
     headingTag,
-    view.description
-  );
+    listAction,
+    cards,
+    listClassName: `document-list issue-list entity-card-list${isPlainObject(view.list) && view.list.layout === 'grid' ? ' entity-card-list-grid' : ''}${grouped ? ' entity-card-list-grouped' : ''}${marketplace ? ' entity-card-list-marketplace' : ''}`,
+    listAttrs: { 'data-custom-view-mark': 'list' },
+    footer: viewAllPage
+      ? [h(
+        'footer',
+        { className: 'document-list-footer' },
+        h(
+          'a',
+          {
+            href: `#page-${encodeURIComponent(viewAllPage)}`,
+            dataset: { navPageId: viewAllPage }
+          },
+          typeof viewAll?.label === 'string' && viewAll.label ? viewAll.label : 'View all',
+          octicon('arrow-right')
+        )
+      )]
+      : [],
+    sectionDescription: true
+  });
 }
 
 /**
@@ -697,25 +733,19 @@ function renderIssueListView(options) {
         : [])
     );
   });
-  const emptyMessage = resolveCardListEmptyMessage(metadata, view);
-  return renderPageSection(
+  return renderCardListSection({
     pageId,
     title,
-    [
-      ...renderViewSectionChrome(metadata, contextDetails),
-      h(
-        'header',
-        { className: 'document-list-header' },
-        view.description ? h('p', null, view.description) : null,
-        listAction
-      ),
-      cards.length > 0
-        ? h('ul', { className: 'document-list issue-list', 'data-custom-view-mark': 'list' }, cards)
-        : h('p', { className: 'document-list-empty' }, emptyMessage)
-    ],
+    view,
+    metadata,
+    contextDetails,
     headingTag,
-    view.description
-  );
+    listAction,
+    cards,
+    listClassName: 'document-list issue-list',
+    listAttrs: { 'data-custom-view-mark': 'list' },
+    sectionDescription: true
+  });
 }
 
 /**

@@ -1,24 +1,16 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
-import {
-  buildWizardHost,
-  buildWizardPolicy,
-  selectConfiguredOperations,
-} from "../../docs/lib/configured-operations.mjs";
-
-const controlPolicy = JSON.parse(readFileSync(".github/workflows/cao.json", "utf8"));
 const landingPage = readFileSync("docs/README.md", "utf8");
 const hero = readFileSync("docs/components/HierarchyHero.astro", "utf8");
 const heroIntro = readFileSync("docs/components/HeroIntro.astro", "utf8");
 const illustration = readFileSync("docs/components/DispatchIllustration.astro", "utf8");
 const terminal = readFileSync("docs/components/TerminalDemo.astro", "utf8");
 const terminalText = terminal.replaceAll(/<[^>]+>/g, "");
-const wizard = readFileSync("docs/components/OpsWizard.astro", "utf8");
-const setupPage = readFileSync("docs/pages/setup.astro", "utf8");
 const headerLinks = readFileSync("docs/components/HeaderLinks.astro", "utf8");
 const catalog = readFileSync("docs/lib/catalog.ts", "utf8");
+const astroConfig = readFileSync("astro.config.mjs", "utf8");
 
 test("landing page presents the product through real operational surfaces", () => {
   assert.match(landingPage, /text: Explore CAO[\s\S]*?link: \/gh-aw-cao\/architecture-at-a-glance\//);
@@ -51,10 +43,11 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(terminalText, /--raw-field safe_output_mode="review"/);
   assert.match(hero, /See every campaign\. Focus where it diverges/);
   assert.match(hero, /Prove value before multiplying work/);
-  assert.match(hero, /class="wizard-launch-button" href="\/gh-aw-cao\/setup\/"/);
-  assert.match(hero, /Launch setup wizard/);
   assert.doesNotMatch(hero, /One operating picture|phone-caption/);
-  assert.doesNotMatch(hero, /OpsWizard|Stand up a control plane in three steps/);
+  assert.doesNotMatch(
+    hero,
+    /wizard-launch|Launch setup wizard|OpsWizard|Plan a control plane and first campaign in four steps|Stand up a control plane in three steps/,
+  );
   assert.doesNotMatch(hero, /trust-section|Coordination without concentrated risk|section-actions/);
   assert.doesNotMatch(`${landingPage}\n${hero}`, /\bfactor(?:y|ies)\b/i);
   assert.doesNotMatch(`${landingPage}\n${hero}`, /\bfleets?\b/i);
@@ -228,17 +221,26 @@ test("landing page explains and illustrates campaign dispatch", () => {
   assert.match(illustration, /\.status\.complete \{[\s\S]*?opacity: 1 !important/);
 });
 
-test("setup wizard remains available alongside the command quickstart", () => {
-  assert.match(headerLinks, /\{ label: "Setup", href: "\/gh-aw-cao\/setup\/" \}/);
-  assert.match(setupPage, /<OpsWizard \/>/);
-  assert.doesNotMatch(setupPage, /StarlightPage/);
-  assert.match(setupPage, /<title>\{title\}<\/title>/);
-  assert.match(setupPage, /const title = "Setup wizard \| Central Agentic Ops";/);
-  assert.match(wizard, /Plan a control plane and first campaign in four steps/);
-  assert.match(wizard, /skills\/setup-cao\/SKILL\.md/);
-  assert.match(wizard, /skills\/add-cao-campaign\/SKILL\.md/);
-  assert.match(wizard, /bare control plane/);
-  assert.doesNotMatch(wizard, /<select/);
+test("the home navigation no longer links to the setup wizard", () => {
+  assert.doesNotMatch(headerLinks, /\{ label: "Setup", href: "\/gh-aw-cao\/setup\/" \}/);
+});
+
+test("the removed setup route redirects to the command quickstart", () => {
+  assert.match(astroConfig, /"\/setup": "\/gh-aw-cao\/setup-quickstarts\/"/);
+});
+
+test("wizard page, UI, styles, and policy helpers are removed", () => {
+  assert.equal(existsSync("docs/pages/setup.astro"), false);
+  assert.equal(existsSync("docs/components/OpsWizard.astro"), false);
+  assert.equal(existsSync("docs/styles/wizard-page.css"), false);
+  assert.equal(existsSync("docs/lib/configured-operations.mjs"), false);
+});
+
+test("the campaign catalog remains independent of setup wizard configuration", () => {
+  assert.match(catalog, /import rootManifestSource from "\.\.\/\.\.\/aw\.yml\?raw"/);
+  assert.match(catalog, /\.experimental\/\*\/aw\.\{yml,yaml\}/);
+  assert.match(catalog, /export const catalogEntries = campaignEntries\s+\.filter\(\(entry\) => !entry\.private\)/);
+  assert.doesNotMatch(catalog, /controlPolicy|configuredOperationEntries|selectConfiguredOperations/);
 });
 
 test("landing page uses a theme-aware blueprint background", () => {
@@ -299,12 +301,4 @@ test("landing terminal uses accessible CSS motion without a JavaScript player", 
   assert.match(terminal, /class="syntax-placeholder"/);
   assert.match(terminal, /--terminal-syntax-placeholder: #953800/);
   assert.match(terminal, /--terminal-syntax-placeholder: #ffa657/);
-});
-
-test("landing wizard operations come from the checked-in control policy", () => {
-  assert.match(catalog, /import controlPolicy from "\.\.\/\.\.\/\.github\/workflows\/cao\.json"/);
-  assert.match(catalog, /\.experimental\/\*\/aw\.\{yml,yaml\}/);
-  assert.match(catalog, /export const catalogEntries = campaignEntries\s+\.filter\(\(entry\) => !entry\.private\)/);
-  assert.match(catalog, /selectConfiguredOperations\(controlPolicy, campaignEntries\)/);
-  assert.match(wizard, /configuredOperationEntries as operations/);
 });

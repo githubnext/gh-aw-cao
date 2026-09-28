@@ -1,10 +1,14 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderTableRegion } from '../../src/components/table-region.js';
-import { processDataRequest } from '../../src/data-worker.js';
+import { DataRequestWorker } from '../data-request-worker.js';
 import { h } from '../../src/dom.js';
 
 describe('renderTableRegion', () => {
+  beforeEach(() => {
+    vi.stubGlobal('Worker', DataRequestWorker);
+  });
+
   it('renders headers and provided body rows', () => {
     const rendered = renderTableRegion({
       tableClassName: 'runs-table',
@@ -22,7 +26,7 @@ describe('renderTableRegion', () => {
     expect(rendered.className).toBe('table-region');
   });
 
-  it('adds reusable data summaries to the table header', () => {
+  it('adds reusable data summaries to the table header', async () => {
     const rendered = renderTableRegion({
       tableClassName: 'custom-table',
       emptyMessage: 'No rows available.',
@@ -38,7 +42,7 @@ describe('renderTableRegion', () => {
     });
 
     expect(rendered.querySelectorAll('thead tr')).toHaveLength(2);
-    expect(rendered.querySelector('.table-summary-categories')?.textContent).toContain('open66.7%');
+    await vi.waitFor(() => expect(rendered.querySelector('.table-summary-categories')?.textContent).toContain('open66.7%'));
     expect(rendered.querySelector('.table-summary-histogram')).not.toBeNull();
   });
 
@@ -112,7 +116,7 @@ describe('renderTableRegion', () => {
     expect(rendered.querySelector('tbody')?.textContent).not.toContain('No eval definitions available.');
   });
 
-  it('filters rows and announces the visible result count', () => {
+  it('filters rows and announces the visible result count', async () => {
     const rendered = renderTableRegion({
       tableClassName: 'custom-table',
       emptyMessage: 'No runs available.',
@@ -129,16 +133,16 @@ describe('renderTableRegion', () => {
     const rows = [...rendered.querySelectorAll('tbody tr')];
     expect(input.closest('label')?.textContent).toBe('Filter recent runs');
     expect(input.closest('label')?.querySelector('span')?.classList.contains('sr-only')).toBe(true);
-    expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 2 of 2 results');
+    await vi.waitFor(() => expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 2 of 2 results'));
 
     input.value = 'failure';
     input.dispatchEvent(new Event('input'));
 
-    expect(rows.map((row) => row.hasAttribute('hidden'))).toEqual([true, false]);
+    await vi.waitFor(() => expect(rows.map((row) => row.hasAttribute('hidden'))).toEqual([true, false]));
     expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 1 of 1 result');
   });
 
-  it('renders facets as field headers and restores hash URL state', () => {
+  it('renders facets as field headers and restores hash URL state', async () => {
     window.history.replaceState(null, '', '/#page-workflows?workflow-catalog.mode=live');
     const rows = Array.from({ length: 60 }, (_, index) => h(
       'tr',
@@ -166,18 +170,18 @@ describe('renderTableRegion', () => {
     expect([...mode.options].map((option) => option.textContent)).toEqual(['Mode', 'live', 'review']);
     expect(mode.value).toBe('live');
     expect(more.textContent).toBe('Show all rows');
-    expect(rows.filter((row) => !row.hidden)).toHaveLength(25);
+    await vi.waitFor(() => expect(rows.filter((row) => !row.hidden)).toHaveLength(25));
     expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 25 of 30 results');
     expect(rendered.querySelector('.table-filter')?.querySelector('select')).toBeNull();
 
     more.click();
-    expect(rows.filter((row) => !row.hidden)).toHaveLength(30);
+    await vi.waitFor(() => expect(rows.filter((row) => !row.hidden)).toHaveLength(30));
     expect(more.hidden).toBe(true);
     expect(rendered.classList.contains('table-region-expanded')).toBe(true);
 
     mode.value = 'review';
     mode.dispatchEvent(new Event('input'));
-    expect(rows.filter((row) => !row.hidden)).toHaveLength(25);
+    await vi.waitFor(() => expect(rows.filter((row) => !row.hidden)).toHaveLength(25));
     expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 25 of 30 results');
     expect(rendered.classList.contains('table-region-expanded')).toBe(false);
     expect(window.location.hash).toBe('#page-workflows?workflow-catalog.mode=review');
@@ -227,7 +231,7 @@ describe('renderTableRegion', () => {
     expect([...rendered.children].some((child) => child.classList.contains('table-filter'))).toBe(false);
   });
 
-  it('sorts rows numerically and temporally when a column header is activated', () => {
+  it('sorts rows numerically and temporally when a column header is activated', async () => {
     const rendered = renderTableRegion({
       tableClassName: 'custom-table',
       emptyMessage: 'No runs available.',
@@ -248,20 +252,20 @@ describe('renderTableRegion', () => {
       .map((row) => /** @type {HTMLTableRowElement} */ (row).cells[0]?.textContent);
 
     runSort.click();
-    expect(runValues()).toEqual(['2', '9', '10']);
+    await vi.waitFor(() => expect(runValues()).toEqual(['2', '9', '10']));
     expect(headers[0]?.getAttribute('aria-sort')).toBe('ascending');
 
     runSort.click();
-    expect(runValues()).toEqual(['10', '9', '2']);
+    await vi.waitFor(() => expect(runValues()).toEqual(['10', '9', '2']));
     expect(headers[0]?.getAttribute('aria-sort')).toBe('descending');
 
     startedSort.click();
-    expect(runValues()).toEqual(['9', '2', '10']);
+    await vi.waitFor(() => expect(runValues()).toEqual(['9', '2', '10']));
     expect(headers[0]?.getAttribute('aria-sort')).toBe('none');
     expect(headers[1]?.getAttribute('aria-sort')).toBe('ascending');
   });
 
-  it('sorts matching relative-time labels by their complete timestamps', () => {
+  it('sorts matching relative-time labels by their complete timestamps', async () => {
     const rendered = renderTableRegion({
       tableClassName: 'custom-table',
       emptyMessage: 'No runs available.',
@@ -276,12 +280,12 @@ describe('renderTableRegion', () => {
 
     /** @type {HTMLButtonElement} */ (rendered.querySelector('[data-table-sort="1"]')).click();
 
-    expect([...rendered.querySelectorAll('tbody tr')].map((row) => (
+    await vi.waitFor(() => expect([...rendered.querySelectorAll('tbody tr')].map((row) => (
       /** @type {HTMLTableRowElement} */ (row).cells[0]?.textContent
-    ))).toEqual(['older', 'newer']);
+    ))).toEqual(['older', 'newer']));
   });
 
-  it('falls back to visible text when the underlying sort value is empty', () => {
+  it('falls back to visible text when the underlying sort value is empty', async () => {
     const rendered = renderTableRegion({
       tableClassName: 'custom-table',
       emptyMessage: 'No runs available.',
@@ -296,10 +300,10 @@ describe('renderTableRegion', () => {
 
     /** @type {HTMLButtonElement} */ (rendered.querySelector('[data-table-sort="0"]')).click();
 
-    expect([...rendered.querySelectorAll('tbody tr')].map((row) => row.textContent)).toEqual(['1', '2']);
+    await vi.waitFor(() => expect([...rendered.querySelectorAll('tbody tr')].map((row) => row.textContent)).toEqual(['1', '2']));
   });
 
-  it('keeps pagination consistent after sorting', () => {
+  it('keeps pagination consistent after sorting', async () => {
     const rows = Array.from({ length: 30 }, (_, index) => h(
       'tr',
       null,
@@ -318,14 +322,14 @@ describe('renderTableRegion', () => {
     runSort.click();
     runSort.click();
 
-    const visible = [...rendered.querySelectorAll('tbody tr')]
+    const visibleRows = () => [...rendered.querySelectorAll('tbody tr')]
       .filter((row) => !(/** @type {HTMLTableRowElement} */ (row).hidden));
-    expect(visible).toHaveLength(25);
-    expect(visible[0]?.textContent).toBe('30');
+    await vi.waitFor(() => expect(visibleRows()).toHaveLength(25));
+    expect(visibleRows()[0]?.textContent).toBe('30');
     expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 25 of 30 results');
   });
 
-  it('reveals lazy-list table rows in bounded batches', () => {
+  it('reveals lazy-list table rows in bounded batches', async () => {
     const rows = Array.from({ length: 60 }, (_, index) => h(
       'tr',
       null,
@@ -344,10 +348,10 @@ describe('renderTableRegion', () => {
     const more = /** @type {HTMLButtonElement} */ (rendered.querySelector('[data-table-more]'));
     expect(rendered.hasAttribute('data-lazy-list')).toBe(true);
     expect(more.textContent).toBe('Load more rows');
-    expect(rows.filter((row) => row.parentElement)).toHaveLength(25);
+    await vi.waitFor(() => expect(rows.filter((row) => row.parentElement)).toHaveLength(25));
 
     more.click();
-    expect(rows.filter((row) => row.parentElement)).toHaveLength(50);
+    await vi.waitFor(() => expect(rows.filter((row) => row.parentElement)).toHaveLength(50));
     expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 50 of 60 results');
   });
 
@@ -401,7 +405,7 @@ describe('renderTableRegion', () => {
       continuation: { token: 'next-page', totalRows: 10, load }
     });
 
-    expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 5 of 10 results');
+    await vi.waitFor(() => expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 5 of 10 results'));
     const status = /** @type {HTMLSelectElement} */ (rendered.querySelector('[data-table-facet="status"]'));
     expect([...status.options].map((option) => option.value)).toEqual(['', 'success']);
     /** @type {HTMLButtonElement} */ (rendered.querySelector('[data-table-more]')).click();
@@ -413,7 +417,7 @@ describe('renderTableRegion', () => {
     expect(rendered.querySelector('[data-table-more]')?.hasAttribute('hidden')).toBe(true);
   });
 
-  it('unloads lazy-list prefix rows without moving the retained rows', () => {
+  it('unloads lazy-list prefix rows without moving the retained rows', async () => {
     const rows = Array.from({ length: 100 }, (_, index) => h(
       'tr',
       null,
@@ -441,7 +445,9 @@ describe('renderTableRegion', () => {
     scroll.scrollTop = 400;
 
     more.click();
+    await vi.waitFor(() => expect(rendered.querySelectorAll('tbody > tr')).toHaveLength(50));
     more.click();
+    await vi.waitFor(() => expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 75 of 100 results'));
 
     const loadedRows = [...rendered.querySelectorAll('tbody > tr')];
     expect(loadedRows).toHaveLength(50);
@@ -453,18 +459,6 @@ describe('renderTableRegion', () => {
   });
 
   it('defers table summary computation to the data worker', async () => {
-    class SummaryWorker extends EventTarget {
-      /** @param {Record<string, unknown>} request */
-      postMessage(request) {
-        queueMicrotask(() => this.dispatchEvent(new MessageEvent('message', {
-          data: { id: request.id, data: processDataRequest(request) }
-        })));
-      }
-
-      terminate() {}
-    }
-    vi.stubGlobal('Worker', SummaryWorker);
-
     const rendered = renderTableRegion({
       tableClassName: 'custom-table',
       emptyMessage: 'No rows available.',

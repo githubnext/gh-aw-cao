@@ -526,6 +526,32 @@ func newIngestCommand() *cobra.Command {
 	return cmd
 }
 
+// workerStopReason classifies why the collection worker's Run loop returned,
+// so callers can log the outcome without duplicating this decision.
+type workerStopReason string
+
+const (
+	workerStopReasonClean    workerStopReason = "clean"
+	workerStopReasonShutdown workerStopReason = "shutdown"
+	workerStopReasonError    workerStopReason = "error"
+)
+
+// classifyWorkerStop applies the standard priority for interpreting
+// worker.Run's returned error: a nil error is a clean exit, an error
+// alongside a cancelled context means the process is shutting down and the
+// error is expected, and any other error is a real failure the caller must
+// propagate. It returns the resolved reason and whether the caller should
+// propagate runErr, so this decision is testable without starting a worker.
+func classifyWorkerStop(runErr, ctxErr error) (workerStopReason, bool) {
+	if runErr == nil {
+		return workerStopReasonClean, false
+	}
+	if ctxErr != nil {
+		return workerStopReasonShutdown, false
+	}
+	return workerStopReasonError, true
+}
+
 // newCollectCommand builds the collection worker role subcommand. It is the
 // same binary as the server, started with a different role, so collection
 // scales independently without a second deployment artifact.
@@ -558,8 +584,11 @@ func newCollectCommand() *cobra.Command {
 		worker.Project = *project
 		commandLog.Printf("collect resolved consumer name source=%s", nameSource)
 		log.Printf("collection worker %s started", name)
-		if err := worker.Run(ctx); err != nil && ctx.Err() == nil {
-			return err
+		runErr := worker.Run(ctx)
+		reason, propagate := classifyWorkerStop(runErr, ctx.Err())
+		commandLog.Printf("collect worker stopped reason=%s", reason)
+		if propagate {
+			return runErr
 		}
 		return nil
 	}
