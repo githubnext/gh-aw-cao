@@ -257,23 +257,19 @@ func ResolveRegistry(ctx context.Context, registry Registry, precedence int, opt
 	entries := manifestEntries(rawTree, prefix)
 
 	packages := make([]Package, 0, len(entries))
+	skippedPrivate := 0
 	for _, entry := range entries {
 		blobPayload, err := githubJSON(ctx, opts, http.MethodGet,
 			fmt.Sprintf("%s/repos/%s/git/blobs/%s", base, repositoryPath, entry.sha), token)
 		if err != nil {
 			return nil, err
 		}
-		encoding, _ := blobPayload["encoding"].(string)
-		content, _ := blobPayload["content"].(string)
-		if encoding != "base64" || content == "" {
-			return nil, fmt.Errorf("package manifest blob is invalid")
-		}
-		decoded, err := base64.StdEncoding.DecodeString(stripBase64Whitespace(content))
+		manifest, err := decodeManifestBlob(blobPayload)
 		if err != nil {
-			return nil, fmt.Errorf("package manifest blob is invalid")
+			return nil, err
 		}
-		manifest := string(decoded)
 		if scalar(manifest, "private") == "true" {
+			skippedPrivate++
 			continue
 		}
 		pkg, err := ParsePackageManifest(manifest, Coordinates{
@@ -290,7 +286,26 @@ func ResolveRegistry(ctx context.Context, registry Registry, precedence int, opt
 		}
 		packages = append(packages, pkg)
 	}
+	resolveLog.Printf("resolved registry registry_id=%s entries=%d packages=%d skipped_private=%d",
+		registry.ID, len(entries), len(packages), skippedPrivate)
 	return packages, nil
+}
+
+// decodeManifestBlob extracts and base64-decodes one aw.yml manifest from a
+// GitHub git/blobs API response. It is a pure function so the blob-shape
+// validation ResolveRegistry relies on (a missing encoding, empty content, or
+// content that fails to base64-decode) is testable without a fake GitHub API.
+func decodeManifestBlob(blobPayload map[string]any) (string, error) {
+	encoding, _ := blobPayload["encoding"].(string)
+	content, _ := blobPayload["content"].(string)
+	if encoding != "base64" || content == "" {
+		return "", fmt.Errorf("package manifest blob is invalid")
+	}
+	decoded, err := base64.StdEncoding.DecodeString(stripBase64Whitespace(content))
+	if err != nil {
+		return "", fmt.Errorf("package manifest blob is invalid")
+	}
+	return string(decoded), nil
 }
 
 func manifestEntries(rawTree []any, prefix string) []treeEntry {

@@ -1,6 +1,7 @@
 package marketplace
 
 import (
+	"encoding/base64"
 	"strings"
 	"testing"
 )
@@ -130,5 +131,51 @@ func TestResolveRegistryRejectsAnInvalidRepositoryShape(t *testing.T) {
 	registry := Registry{ID: "official", Repository: "not-a-repository", Ref: "main"}
 	if _, err := ResolveRegistry(t.Context(), registry, 0, Options{}); err == nil {
 		t.Fatal("expected an invalid repository coordinate to be rejected")
+	}
+}
+
+func TestDecodeManifestBlobDecodesValidBase64Content(t *testing.T) {
+	payload := map[string]any{
+		"encoding": "base64",
+		"content":  base64.StdEncoding.EncodeToString([]byte(demoManifest)),
+	}
+	manifest, err := decodeManifestBlob(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manifest != demoManifest {
+		t.Fatalf("unexpected decoded manifest: %q", manifest)
+	}
+}
+
+func TestDecodeManifestBlobToleratesWhitespaceWithinContent(t *testing.T) {
+	encoded := base64.StdEncoding.EncodeToString([]byte(demoManifest))
+	// GitHub's blob API wraps base64 content across lines; the decoder must
+	// strip that whitespace rather than fail to decode.
+	wrapped := encoded[:len(encoded)/2] + "\n" + encoded[len(encoded)/2:]
+	manifest, err := decodeManifestBlob(map[string]any{"encoding": "base64", "content": wrapped})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manifest != demoManifest {
+		t.Fatalf("unexpected decoded manifest: %q", manifest)
+	}
+}
+
+func TestDecodeManifestBlobRejectsMissingEncoding(t *testing.T) {
+	if _, err := decodeManifestBlob(map[string]any{"content": "abc"}); err == nil {
+		t.Fatal("expected a missing encoding to be rejected")
+	}
+}
+
+func TestDecodeManifestBlobRejectsEmptyContent(t *testing.T) {
+	if _, err := decodeManifestBlob(map[string]any{"encoding": "base64", "content": ""}); err == nil {
+		t.Fatal("expected empty content to be rejected")
+	}
+}
+
+func TestDecodeManifestBlobRejectsInvalidBase64(t *testing.T) {
+	if _, err := decodeManifestBlob(map[string]any{"encoding": "base64", "content": "!!! not base64 !!!"}); err == nil {
+		t.Fatal("expected invalid base64 content to be rejected")
 	}
 }
