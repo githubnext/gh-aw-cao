@@ -1,4 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
+import { createDebug } from '../../debug.js';
+
+const debug = createDebug('sqlite-indexeddb');
 
 export const SQLITE_INDEXEDDB_METADATA_SCHEMA = `
   PRAGMA foreign_keys = ON;
@@ -419,6 +422,12 @@ class SqliteIDBTransaction {
     } catch (error) {
       this.error = error instanceof Error ? error : new Error(String(error));
     }
+    debug({
+      event: 'transaction-finished',
+      mode: this.mode,
+      storeCount: this.storeNames.size,
+      outcome: this.error ? 'rolled-back' : 'committed'
+    });
     if (this.error) {
       emit(this, 'onerror');
       emit(this, 'onabort');
@@ -645,9 +654,16 @@ export class SqliteIndexedDBFactory {
             throw error;
           }
         }
+        debug({
+          event: 'database-opened',
+          oldVersion,
+          newVersion: requestedVersion,
+          upgraded: requestedVersion > oldVersion
+        });
         request.succeed(database);
       } catch (error) {
         if (connection) connection.close();
+        debug({ event: 'database-open-failed', error: error instanceof Error ? error.name : 'Error' });
         request.fail(error);
       }
     });
