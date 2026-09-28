@@ -12,6 +12,13 @@ const (
 	MaxJoinRows              = 200_000
 	MaxOutputRows            = 100_000
 	MaxJoins                 = 4
+	MaxDependencyDepth       = 16
+	MaxPlanQueries           = 256
+	MaxDependencyJoins       = 16
+	MaxWorkingRows           = 500_000
+	MaxRetainedRows          = 500_000
+	MaxWorkingBytes          = 256 << 20
+	MaxRetainedBytes         = 256 << 20
 	MaxAggregateValues       = 64
 	MaxPredicateAlternatives = 32
 	MaxOperations            = 5_000_000

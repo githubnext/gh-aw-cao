@@ -180,8 +180,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           NODE_OPTIONS: '--test-name-pattern="${{ matrix.test-pattern }}"'
         run: |
-          # shellcheck disable=SC2155
-          export CENTRAL_AGENTIC_OPS_CAMPAIGN_SOURCE="${GITHUB_REPOSITORY}@$(git rev-parse --short=12 "$GITHUB_SHA")"
+          # gh-aw only classifies a 40-character hex ref as a commit SHA; an abbreviated
+          # SHA is treated as a branch name, so `gh aw update` resolves the campaign
+          # source against a branch that does not exist. Pin the full commit SHA, as the
+          # release workflow already does.
+          export CENTRAL_AGENTIC_OPS_CAMPAIGN_SOURCE="${GITHUB_REPOSITORY}@${GITHUB_SHA}"
           set +e
           output="$(npm run test:campaign-lifecycle 2>&1)"
           status=$?
@@ -192,6 +195,16 @@ jobs:
           fi
           if grep -Fq "API rate limit exceeded for installation" <<< "$output"; then
             echo "::warning title=Campaign lifecycle incomplete::The shared GitHub App installation API quota was exhausted during clean-room campaign tests."
+            echo "Campaign lifecycle tests became inconclusive because the shared GitHub App installation API quota was exhausted during the run." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          # `gh aw update` swallows the underlying error for a package that installs no
+          # agentic workflows, so an exhausted quota surfaces only as "no workflows were
+          # successfully updated". The run started with at least 500 core requests, so a
+          # quota that is now spent is itself the rate-limit evidence the grep cannot see.
+          remaining="$(gh api rate_limit --jq '.resources.core.remaining' || echo 500)"
+          if (( remaining < 50 )); then
+            echo "::warning title=Campaign lifecycle incomplete::The shared GitHub App installation has $remaining core API requests remaining after the clean-room campaign tests."
             echo "Campaign lifecycle tests became inconclusive because the shared GitHub App installation API quota was exhausted during the run." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi

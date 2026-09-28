@@ -77,7 +77,13 @@ async function* responseChunks(body) {
 
 /** @type {{ logicalSources: Record<string, import('./presenter.js').LogicalSourceInput>, revision: number } | null} */
 let liveDashboard = null;
-let runPhaseOnly = false;
+/**
+ * The narrowest phase whose canonical data is currently published. While a
+ * partial phase is published, only subscriptions fully satisfied by that
+ * phase's sources may be emitted.
+ * @type {'inventory' | 'runs' | 'complete'}
+ */
+let publicationPhase = 'complete';
 /**
  * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' } }} DashboardSubscription
  */
@@ -314,17 +320,41 @@ async function queryRepositoryMemory(request, signal) {
   }
 }
 
-const RUN_PHASE_DATABASE_SOURCES = new Set(['campaigns', 'repositories', 'workflows', 'runs']);
+/**
+ * Inventory sources whose canonical records no activity shard ever observes.
+ * They can be committed before historical shard ingestion starts without
+ * changing how the complete inventory commit resolves shared structural
+ * records, so their subscriptions render immediately.
+ */
+const INVENTORY_PHASE_DATABASE_SOURCES = new Set(['marketplace-packages']);
+const RUN_PHASE_DATABASE_SOURCES = new Set([
+  ...INVENTORY_PHASE_DATABASE_SOURCES,
+  'campaigns',
+  'repositories',
+  'workflows',
+  'runs'
+]);
 
 /** @param {{ sourceNames: string[], context: ReturnType<typeof dashboardContext> }} subscription */
-function isRunPhaseSubscription(subscription) {
+function subscriptionDatabaseSources(subscription) {
   const queryNames = new Set(subscription.context.queries
     .filter((definition) => definition && typeof definition === 'object' && !Array.isArray(definition))
     .map((definition) => /** @type {{ name?: unknown }} */ (definition).name)
     .filter((name) => typeof name === 'string'));
   return resolveDashboardQuerySources(subscription.context.queries, subscription.sourceNames)
-    .filter((name) => !queryNames.has(name))
-    .every((name) => RUN_PHASE_DATABASE_SOURCES.has(name));
+    .filter((name) => !queryNames.has(name));
+}
+
+/**
+ * @param {{ sourceNames: string[], context: ReturnType<typeof dashboardContext> }} subscription
+ * @param {'inventory' | 'runs' | 'complete'} phase
+ */
+function isPhaseSubscription(subscription, phase) {
+  if (phase === 'complete') return true;
+  const available = phase === 'inventory'
+    ? INVENTORY_PHASE_DATABASE_SOURCES
+    : RUN_PHASE_DATABASE_SOURCES;
+  return subscriptionDatabaseSources(subscription).every((name) => available.has(name));
 }
 
 /**
@@ -562,27 +592,39 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
  * shard download. The subscription flusher coalesces commits that arrive while
  * an earlier refresh is still running.
  *
+ * A partial phase publishes only the subscriptions whose sources that phase
+ * already satisfies, so a page such as Marketplace renders from the committed
+ * inventory while historical activity shards are still being ingested.
+ *
  * @param {Record<string, import('./presenter.js').LogicalSourceInput>} logicalSources
- * @param {boolean} runsOnly
+ * @param {'inventory' | 'runs' | 'complete'} phase
  * @returns {Promise<void>}
  */
-function refreshDashboardSubscriptions(logicalSources, runsOnly) {
-  const runPhasePublication = runsOnly && !eagerIngest;
-  if (runsOnly !== runPhasePublication) {
-    debugIngestion('publishing every phase because eager ingestion is active', {
-      subscriptions: dashboardSubscriptions.size
-    });
-  }
+function refreshDashboardSubscriptions(logicalSources, phase) {
+  // Phases are published in widening order within one ingestion, which always
+  // ends at 'complete', so a narrower phase never supersedes a wider one.
+  const publication = phase !== 'complete' && eagerIngest ? 'complete' : phase;
+  // The complete logical sources stay available to every published
+  // subscription: the phase gate below, not this payload, decides which
+  // subscriptions may read the partially committed canonical database.
   liveDashboard = {
     logicalSources,
     revision: (liveDashboard?.revision ?? 0) + 1
   };
-  runPhaseOnly = runPhasePublication;
-  scheduleDashboardSubscriptions(runPhasePublication
-    ? [...dashboardSubscriptions]
-        .filter(([, subscription]) => isRunPhaseSubscription(subscription))
-        .map(([id]) => id)
-    : dashboardSubscriptions.keys());
+  publicationPhase = publication;
+  const published = publication === 'complete'
+    ? [...dashboardSubscriptions.keys()]
+    : [...dashboardSubscriptions]
+      .filter(([, subscription]) => isPhaseSubscription(subscription, publication))
+      .map(([id]) => id);
+  debugIngestion('publishing canonical phase', {
+    phase: publication,
+    requestedPhase: phase,
+    eagerIngest,
+    subscriptions: dashboardSubscriptions.size,
+    published: published.length
+  });
+  scheduleDashboardSubscriptions(published);
   return flushDashboardSubscriptions(true);
 }
 
@@ -720,6 +762,35 @@ export function processDataRequest(request, signal) {
             sources = inventorySources;
             if (typeof request.id === 'number') inFlightDashboardSources.set(request.id, sources);
             progress.log('Inventory metadata refreshed.');
+            // Commit and publish the inventory-only sources before any activity
+            // shard is downloaded so pages such as Marketplace render without
+            // waiting for historical ingestion. The complete inventory payload
+            // is still committed after shard ingestion, under its own scope, so
+            // inventory keeps resolving shared structural records last.
+            const inventoryPhaseSources = Object.fromEntries([...INVENTORY_PHASE_DATABASE_SOURCES]
+              .filter((name) => Object.hasOwn(sources, name))
+              .map((name) => [name, /** @type {Record<string, unknown>} */ (sources)[name]]));
+            debugIngestion('planned inventory-phase publication', {
+              sources: Object.keys(inventoryPhaseSources),
+              inventorySources: Object.keys(/** @type {Record<string, unknown>} */ (sources)).length
+            });
+            if (Object.keys(inventoryPhaseSources).length > 0) {
+              progress.log('Normalizing inventory-only metadata.');
+              const inventoryPhaseIngestion = await ingestDashboardSources(indexedDB, inventoryPhaseSources, {
+                storage: globalThis.navigator?.storage,
+                retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
+                payloadScope: `${inventoryUrl.href}#inventory-phase`,
+                onWriteProgress: (written) => progress.store(written),
+                onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
+                signal
+              });
+              changed ||= inventoryPhaseIngestion.updated;
+              if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
+              await refreshDashboardSubscriptions(
+                /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
+                'inventory'
+              );
+            }
           } else {
             progress.log('No separate inventory metadata was published.');
           }
@@ -922,7 +993,7 @@ export function processDataRequest(request, signal) {
           logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
           revision: nextRevision
         };
-        runPhaseOnly = false;
+        publicationPhase = 'complete';
         scheduleDashboardSubscriptions();
         progress.complete();
         const projected = await queryLiveDashboard(
@@ -1057,7 +1128,7 @@ if (typeof document === 'undefined' && workerScope) {
         };
         dashboardSubscriptions.set(subscriptionId, subscription);
         if (liveDashboard && event.data.emitCurrent !== false) {
-          if (!runPhaseOnly || isRunPhaseSubscription(subscription)) {
+          if (isPhaseSubscription(subscription, publicationPhase)) {
             scheduleDashboardSubscriptions([subscriptionId]);
           }
         }
@@ -1091,7 +1162,7 @@ if (typeof document === 'undefined' && workerScope) {
       if (sources) {
         void refreshDashboardSubscriptions(
           /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
-          false
+          'complete'
         );
       }
       return;

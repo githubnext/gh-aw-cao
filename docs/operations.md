@@ -206,7 +206,7 @@ For a standalone Pages site:
 3. Run **Central Agentic Ops Dashboard** from the repository's **Actions** page.
 4. Verify the deployment URL and confirm that the report shows data only from the intended control-plane repository.
 
-The standalone workflow passes `enablement: false` to `actions/configure-pages` and has no schedule. Set `control-plane.campaigns.dashboard.deploy` to `false` when an existing Pages workflow owns deployment. The dashboard workflow continues to publish `central-agentic-ops-dashboard`; the owning workflow can list successful `cao-dashboard.yml` runs on the default branch, download the latest artifact into its site output, and deploy the combined artifact.
+Run `./cao.sh setup` to configure the control repository's Pages source as GitHub Actions with repository-restricted access for private repositories. The standalone workflow passes `enablement: false` to `actions/configure-pages`, checks private-site access before publishing, and has no schedule. Set `control-plane.campaigns.dashboard.deploy` to `false` when an existing Pages workflow owns deployment. The dashboard workflow continues to publish `central-agentic-ops-dashboard`; the owning workflow can list successful `cao-dashboard.yml` runs on the default branch, download the latest artifact into its site output, and deploy the combined artifact.
 
 The Activity workflow restores its log cache, runs one bounded `gh aw logs --audit --artifacts usage` command for compiled workflows in the checked-out control repository, and saves only the refreshed JSONL. It does not index, normalize, collect telemetry, or generate dashboard records. Consumers restore the JSONL cache and apply their own bounded processing without publishing secondary Activity cache files.
 

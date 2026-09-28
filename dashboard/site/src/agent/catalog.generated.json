@@ -651,6 +651,17 @@
       ]
     },
     {
+      "id": "friction",
+      "title": "Friction",
+      "description": "Avoidable execution cost attributed by gh aw audit across observed workflow runs.",
+      "experimental": true,
+      "parameters": [],
+      "queries": [
+        "friction-by-workflow",
+        "friction-observations"
+      ]
+    },
+    {
       "id": "operational-value",
       "title": "Operational Value",
       "description": "Computed package-defined operational value for each repository.",
@@ -2708,6 +2719,40 @@
         "requirements": [
           "marketplace-packages"
         ]
+      }
+    },
+    {
+      "id": "friction-by-workflow",
+      "intent": "Identify workflows with the greatest measured avoidable AI Credit cost.",
+      "description": "Total gh-aw audit friction cost grouped by repository and workflow.",
+      "parameters": [],
+      "sources": [
+        "friction"
+      ],
+      "used-by-pages": [
+        "friction"
+      ],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires friction, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "friction-observations",
+      "intent": "List retained gh-aw audit friction measurements with their run context and attribution totals.",
+      "description": "Newest friction measurements first, preserving the native audit values and uncertainty state.",
+      "parameters": [],
+      "sources": [
+        "friction"
+      ],
+      "used-by-pages": [
+        "friction"
+      ],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires friction, which the local SQLite projection does not provide."
       }
     },
     {

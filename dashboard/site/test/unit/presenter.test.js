@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { DataRequestWorker } from '../data-request-worker.js';
 import { renderDashboard as renderDashboardView, disposeDashboard, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageLazySourceNames, resolveQueryDrillPageTitle } from '../../src/presenter.js';
 import { processDataRequest } from '../../src/data-worker.js';
 import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
@@ -110,6 +111,9 @@ async function activatePage(rendered, pageId) {
   rendered.ownerDocument.defaultView?.history.replaceState(null, '', '/');
   return rendered.querySelector(`[data-page-id="${pageId}"]`);
 }
+beforeEach(() => {
+  vi.stubGlobal('Worker', DataRequestWorker);
+});
 
 describe('dashboard DOM provenance', () => {
 
@@ -4063,7 +4067,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.textContent).toContain('Run 4');
   });
 
-  it('DLS-AGG-008 DLS-VIEW-003 renders report-style aggregate rankings in declared order before applying limit', () => {
+  it('DLS-AGG-008 DLS-VIEW-003 renders report-style aggregate rankings in declared order before applying limit', async () => {
     const rendered = renderDashboard({
       document: {
         languageVersion: '0.1.0',
@@ -4124,7 +4128,7 @@ describe('presenter built-in and custom pages', () => {
     expect(filter.closest('label')?.textContent).toContain('Filter Repository usage');
     filter.value = 'alpha';
     filter.dispatchEvent(new Event('input'));
-    expect(rows.map((row) => row.hasAttribute('hidden'))).toEqual([true, false]);
+    await vi.waitFor(() => expect(rows.map((row) => row.hasAttribute('hidden'))).toEqual([true, false]));
     expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 1 of 1 result');
     expect(rendered.querySelector('.freshness')).toBeNull();
   });

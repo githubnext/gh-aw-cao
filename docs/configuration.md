@@ -64,6 +64,48 @@ Each entry under `control-plane.campaigns` may override the defaults with `enabl
 
 The optional `control-plane.web` section configures deterministic web surfaces without changing rollout authority. Dashboard views declared in experimental navigation sections are omitted by default; set `experimental` to `true` to include them. Set `favicon` to an absolute HTTPS URL without credentials, query, or fragment, or to a non-traversing `./` relative path available in the generated site. The dashboard campaign ships `./favicon.svg` as its default.
 
+### Deployment-specific host extensions
+
+When a hosted dashboard needs different server and Redis capabilities from the
+default deployment, keep `.github/workflows/cao.json` as the sole rollout
+policy and create an optional, reviewed host extension in the same directory,
+such as `.github/workflows/cao.host.json`:
+
+```json
+{
+  "extends": "cao.json",
+  "control-plane": {
+    "web": {
+      "host": {
+        "target": { "module": "container", "name": "hosted-dashboard" },
+        "redis": { "module": "generic", "tls": { "mode": "required" } }
+      }
+    }
+  }
+}
+```
+
+This is an overlay, **not** a standalone control policy: only
+`control-plane.web.host` may be supplied. Do not copy `scope`, `campaigns`,
+`defaults`, `target-authority`, or any other rollout or credential fields into
+it. Keep Redis URLs, passwords, and TLS certificates in the deployment's
+secret environment, not in either JSON document.
+
+To use the extension, explicitly point the hosted server's `CAO_POLICY_PATH`
+at the reviewed extension and pass that file as the dashboard build's control
+settings argument (for example, from `dashboard/site/`,
+`npm run build -- dist ../../.github/workflows/cao.host.json`). The dashboard
+build loads the composed control settings; the Go server resolves the same
+host declaration. Operational workflows continue to read `cao.json` at their
+exact workflow SHA and never obtain rollout authority from the extension.
+
+Imports resolve relative to the importing file and must remain within the
+extension's directory after symlink resolution. Cycles, more than eight
+imports, duplicate keys, expressions, non-host overrides, and invalid
+composed policy fail closed. See the
+[control architecture specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/control-architecture.md#531-deployment-specific-host-extensions)
+and [managed Redis guide](deployment-managed-redis.md) for host-module options.
+
 For example, this policy keeps Dependabot in review across its scope while promoting one exact target to live:
 
 ```json

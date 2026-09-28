@@ -36,6 +36,7 @@ const DefaultCacheTTL = 5 * time.Minute
 const (
 	maxPolicyBytes         = 4 << 20 // 4 MiB: cao.json is small; this bounds a misconfigured or hostile policy file.
 	maxManifestBytes       = 256 * 1024
+	maxReadmeBytes         = 256 * 1024
 	maxPackagesPerRegistry = 500
 )
 
@@ -98,6 +99,8 @@ type Package struct {
 	Icon               string   `json:"icon"`
 	Artwork            string   `json:"artwork"`
 	Contents           []string `json:"contents"`
+	Readme             string   `json:"readme"`
+	ReadmePath         string   `json:"readme-path"`
 	Source             string   `json:"source"`
 	AddCommand         string   `json:"add-command"`
 }
@@ -125,6 +128,8 @@ func (p Package) Row() model.Row {
 		"package-icon":        p.Icon,
 		"package-artwork":     p.Artwork,
 		"package-contents":    contents,
+		"package-readme":      p.Readme,
+		"package-readme-path": p.ReadmePath,
 		"package-source":      p.Source,
 		"add-command":         p.AddCommand,
 	}

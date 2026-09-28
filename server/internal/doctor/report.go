@@ -17,7 +17,11 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var reportLog = logger.New("cao:doctor:report")
 
 // Status is one check's outcome.
 //
@@ -150,29 +154,45 @@ func sortChecks(checks []Check) {
 	})
 }
 
-// summarize counts outcomes and resolves the report's overall status to the
-// worst check it contains.
-func summarize(checks []Check, elapsed time.Duration) Summary {
-	summary := Summary{Total: len(checks), Status: StatusPass, DurationMS: elapsed.Milliseconds()}
-	worst := StatusPass
+// tallyStatuses counts each check's outcome and resolves the worst status
+// among them, skipping StatusSkip because a skipped check is not a problem
+// even though it outranks pass for rendering purposes. It is split out from
+// summarize so the counting and worst-status resolution can be exercised
+// directly, independent of duration handling.
+func tallyStatuses(checks []Check) (pass, warn, fail, skip int, worst Status) {
+	worst = StatusPass
 	for _, check := range checks {
 		switch check.Status {
 		case StatusPass:
-			summary.Pass++
+			pass++
 		case StatusWarn:
-			summary.Warn++
+			warn++
 		case StatusFail:
-			summary.Fail++
+			fail++
 		case StatusSkip:
-			summary.Skip++
+			skip++
 		}
-		// A skipped check is not a problem, so it never becomes the report's
-		// status even though it outranks pass for rendering purposes.
 		if check.Status != StatusSkip && check.Status.severity() > worst.severity() {
 			worst = check.Status
 		}
 	}
-	summary.Status = worst
+	return pass, warn, fail, skip, worst
+}
+
+// summarize counts outcomes and resolves the report's overall status to the
+// worst check it contains.
+func summarize(checks []Check, elapsed time.Duration) Summary {
+	pass, warn, fail, skip, worst := tallyStatuses(checks)
+	summary := Summary{
+		Total:      len(checks),
+		Pass:       pass,
+		Warn:       warn,
+		Fail:       fail,
+		Skip:       skip,
+		Status:     worst,
+		DurationMS: elapsed.Milliseconds(),
+	}
+	reportLog.Printf("summarized checks total=%d status=%s duration_ms=%d", summary.Total, summary.Status, summary.DurationMS)
 	return summary
 }
 

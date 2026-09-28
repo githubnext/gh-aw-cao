@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { parse } from "yaml";
+import { loadPolicyFile } from "../../.github/workflows/shared/policy.mjs";
 
 const root = new URL("../../", import.meta.url);
 
@@ -86,18 +87,22 @@ test("Coolify image is multi-stage, non-root, versioned, and health checked", as
   assert.match(dockerfile, /HEALTHCHECK[\s\S]*\/api\/readiness/);
   assert.doesNotMatch(dockerfile, /HEALTHCHECK[\s\S]*\/api\/v1\/health/);
   assert.match(dockerfile, /org\.opencontainers\.image\.revision="\$\{REVISION\}"/);
+  assert.match(dockerfile, /ARG CAO_PROFILE=cao\.json/);
+  assert.match(dockerfile, /dashboard\/site run build -- dist "\$\{policy\}"/);
   assert.match(dockerfile, /COPY --from=dashboard-build[\s\S]*\/app\/site\//);
   assert.match(dockerfile, /VOLUME \["\/app\/source"\]/);
 });
 
 test("Coolify Compose contains no credentials and requires immutable image input", async () => {
   const source = await text("server/coolify/compose.yml");
+  const profile = JSON.parse(await text(".github/workflows/cao.coolify.json"));
+  const composedProfile = loadPolicyFile(new URL(".github/workflows/cao.coolify.json", root).pathname);
   const compose = parse(source);
   const dashboard = compose.services.dashboard;
   assert.match(dashboard.image, /\$\{CAO_IMAGE:\?.*immutable/);
   assert.equal(dashboard.environment.CAO_SOURCE_DIRECTORY, "/app/source");
   assert.equal(dashboard.environment.REDIS_URL, "${REDIS_URL:-}");
-  assert.equal(dashboard.environment.CAO_POLICY_PATH, "/app/config/cao.json");
+  assert.equal(dashboard.environment.CAO_POLICY_PATH, "/app/config/cao.coolify.json");
   assert.equal(dashboard.environment.CAO_REDIS_URL, undefined);
   assert.equal(dashboard.environment.CAO_REDIS_MODE, undefined);
   assert.equal(dashboard.environment.CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS, undefined);
@@ -107,7 +112,19 @@ test("Coolify Compose contains no credentials and requires immutable image input
   assert.deepEqual(dashboard.volumes, [
     "cao-dashboard-artifact:/app/source:ro",
     "../../.github/workflows/cao.json:/app/config/cao.json:ro",
+    "../../.github/workflows/cao.coolify.json:/app/config/cao.coolify.json:ro",
   ]);
+  assert.equal(profile.extends, "cao.json");
+  assert.deepEqual(Object.keys(profile).sort(), ["control-plane", "extends"]);
+  assert.deepEqual(profile["control-plane"].web.host.target, {
+    module: "container",
+    name: "coolify",
+  });
+  assert.equal(profile["control-plane"].web.host.redis.module, "local");
+  assert.deepEqual(
+    composedProfile["control-plane"].campaigns,
+    JSON.parse(await text(".github/workflows/cao.json"))["control-plane"].campaigns,
+  );
   assert.equal(compose.volumes["cao-dashboard-artifact"].external, true);
   assert.match(compose.volumes["cao-dashboard-artifact"].name, /^\$\{CAO_ARTIFACT_VOLUME:\?/);
   assert.doesNotMatch(source, /\.\/artifact:/);
@@ -116,6 +133,77 @@ test("Coolify Compose contains no credentials and requires immutable image input
       assert.match(value, /^\$\{/, `${name} must be injected by Coolify`);
     }
   }
+});
+
+test("sample Coolify workflow builds, scans, publishes, and deploys an exact image digest", async () => {
+  const source = await text(".github/workflows/coolify-sample-deploy.yml");
+  const workflow = parse(source);
+  const authorize = workflow.jobs.authorize;
+  const publishJob = workflow.jobs.publish;
+  const deploy = workflow.jobs.deploy;
+  const authorization = authorize.steps.find((step) => step.name === "Require maintainer or administrator");
+  const publishAuthorization = publishJob.steps.find(
+    (step) => step.name === "Reauthorize maintainer or administrator",
+  );
+  const deployAuthorization = deploy.steps.find(
+    (step) => step.name === "Reauthorize maintainer or administrator",
+  );
+  const sourceCheck = publishJob.steps.find((step) => step.name === "Verify sample source");
+  const build = publishJob.steps.find((step) => step.name === "Build sample image");
+  const scan = publishJob.steps.find((step) => step.name === "Scan sample image");
+  const publish = publishJob.steps.find((step) => step.name === "Publish sample image");
+  const request = deploy.steps.find((step) => step.name === "Deploy sample image");
+
+  assert.equal(workflow.on.pull_request_target, undefined);
+  assert.equal(workflow.on.pull_request, undefined);
+  assert.equal(workflow.on.push, undefined);
+  assert.equal(workflow.on.workflow_dispatch, null);
+  assert.deepEqual(workflow.permissions, { contents: "read" });
+  assert.deepEqual(authorize.permissions, { contents: "read" });
+  assert.match(build.run, /--build-arg "CAO_PROFILE=cao\.coolify\.json"/);
+  for (const step of [authorization, publishAuthorization, deployAuthorization]) {
+    assert.equal(step.env.ORIGINAL_ACTOR, "${{ github.actor }}");
+    assert.equal(step.env.TRIGGERING_ACTOR, "${{ github.triggering_actor }}");
+    assert.equal(step.env.WORKFLOW_REF, "${{ github.ref }}");
+    assert.equal(step.env.WORKFLOW_SHA, "${{ github.sha }}");
+    assert.match(step.with.script, /getCollaboratorPermissionLevel/);
+    assert.match(step.with.script, /process\.env\.ORIGINAL_ACTOR/);
+    assert.match(step.with.script, /process\.env\.TRIGGERING_ACTOR/);
+    assert.match(step.with.script, /\['admin', 'maintain'\]\.includes\(access\.role_name\)/);
+    assert.doesNotMatch(step.with.script, /includes\(access\.permission\)/);
+    assert.match(step.with.script, /WORKFLOW_REF/);
+    assert.match(step.with.script, /getBranch/);
+    assert.match(step.with.script, /WORKFLOW_SHA/);
+  }
+  assert.deepEqual(publishJob.permissions, { contents: "read", packages: "write" });
+  assert.equal(publishJob.needs, "authorize");
+  assert.equal(publishJob.environment.name, "coolify-sample-publish");
+  assert.equal(deploy.environment.name, "coolify-sample");
+  assert.equal(deploy.needs, "publish");
+  assert.deepEqual(deploy.permissions, { contents: "read" });
+  assert.match(sourceCheck.run, /source_sha.*GITHUB_SHA/);
+  assert.match(build.run, /docker build/);
+  assert.match(build.run, /server\/Dockerfile/);
+  assert.match(scan.uses, /^aquasecurity\/trivy-action@[0-9a-f]{40}$/);
+  assert.match(publish.run, /docker push/);
+  assert.match(publish.run, /ghcr\.io\/githubnext\/gh-aw-cao\/cao-dashboard/);
+  assert.match(publish.run, /echo "digest=\$\{digest\}"/);
+  assert.match(publish.run, />> "\$\{GITHUB_OUTPUT\}"/);
+  assert.equal(request.env.COOLIFY_BASE_URL, "${{ vars.COOLIFY_BASE_URL }}");
+  assert.equal(request.env.COOLIFY_APPLICATION_UUID, "${{ vars.COOLIFY_APPLICATION_UUID }}");
+  assert.equal(request.env.COOLIFY_READINESS_URL, "${{ vars.COOLIFY_READINESS_URL }}");
+  assert.equal(request.env.COOLIFY_API_TOKEN, "${{ secrets.COOLIFY_API_TOKEN }}");
+  assert.equal(request.env.CAO_IMAGE, "${{ needs.publish.outputs.image }}");
+  assert.equal(request.run, "node scripts/deploy-coolify.mjs");
+
+  for (const match of source.matchAll(/uses:\s+[^@\s]+@([^\s#]+)/g)) {
+    assert.match(match[1], /^[0-9a-f]{40}$/, `action is not pinned: ${match[0]}`);
+  }
+  assert.doesNotMatch(source, /set\s+-[^ \n]*x/);
+  assert.doesNotMatch(
+    source,
+    /(?:echo|printf|cat|head|tail)\b[^\n]*(?:COOLIFY_API_TOKEN|secrets\.)/,
+  );
 });
 
 test("deployment workflow publishes no mutable channel and gates every Coolify tier", async () => {

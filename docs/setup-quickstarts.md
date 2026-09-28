@@ -33,8 +33,9 @@ The setup command:
 1. asks which repositories CAO should read;
 2. checks their visibility and owners;
 3. offers only authentication options that fit that scope;
-4. shows the exact plan before changing policy or credentials;
-5. installs no campaign and runs no workflow.
+4. shows the exact plan before changing policy, credentials, or Pages settings;
+5. configures the control repository's Pages source as GitHub Actions and, for a private repository, restricts the site to repository readers (requires Pages access control support and permission to manage Pages settings);
+6. installs no campaign and runs no workflow.
 
 ## 3. Review and Save
 

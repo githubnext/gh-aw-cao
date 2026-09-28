@@ -81,6 +81,51 @@ function inspectRepository(repository, execute) {
   };
 }
 
+export function configureDashboardPages({ repository, visibility, execute = spawnSync }) {
+  const endpoint = `repos/${repository}/pages`;
+  const request = (arguments_) => execute('gh', ['api', ...arguments_, endpoint], { encoding: 'utf8' });
+  const read = () => {
+    const result = request([]);
+    if (result.error || result.status !== 0) return { result };
+    try {
+      return { site: JSON.parse(result.stdout) };
+    } catch {
+      throw new Error('Unable to inspect dashboard Pages site: GitHub returned invalid JSON');
+    }
+  };
+
+  let { site, result } = read();
+  if (!site) {
+    if (result.error || !/\bHTTP 404\b/.test(result.stderr || '')) {
+      throw new Error(`Unable to inspect dashboard Pages site: ${commandFailureMessage(result, 'gh api failed')}`);
+    }
+    result = request(['-X', 'POST', '-f', 'build_type=workflow']);
+    if (result.error || result.status !== 0) {
+      throw new Error(`Unable to create dashboard Pages site: ${commandFailureMessage(result, 'gh api failed')}`);
+    }
+  }
+
+  if (visibility !== 'public' && site?.public !== false) {
+    result = request(['-X', 'PUT', '-F', 'public=false']);
+    if (result.error || result.status !== 0) {
+      throw new Error(
+        `Unable to restrict dashboard Pages access; do not deploy the dashboard: ${commandFailureMessage(result, 'gh api failed')}`,
+      );
+    }
+  }
+  if (site && site.build_type !== 'workflow') {
+    result = request(['-X', 'PUT', '-f', 'build_type=workflow']);
+    if (result.error || result.status !== 0) {
+      throw new Error(`Unable to select GitHub Actions as the Pages source: ${commandFailureMessage(result, 'gh api failed')}`);
+    }
+  }
+
+  ({ site } = read());
+  if (!site || site.build_type !== 'workflow' || (visibility !== 'public' && site.public !== false)) {
+    throw new Error('Dashboard Pages configuration could not be verified; do not deploy the dashboard');
+  }
+}
+
 function createTerminalPrompt({ input, output, UsageError }) {
   if (!input.isTTY || !output.isTTY) {
     throw new UsageError('cao setup requires an interactive terminal');
@@ -223,11 +268,13 @@ export async function setupCaoControlPlane({
     interactive.note(`  Review output write scope: ${control.repository}`);
     interactive.note(`  Authentication: ${profile}`);
     interactive.note('  Campaigns: none');
+    interactive.note(`  Dashboard Pages: GitHub Actions source${control.visibility === 'public' ? ' (public)' : ' (repository-restricted access required)'}`);
     if (!await interactive.confirm('Apply this setup?')) {
       return { command: 'setup', cancelled: true };
     }
 
     const authentication = setupAuthentication(profile, authenticationArguments, { execute });
+    configureDashboardPages({ repository: control.repository, visibility: control.visibility, execute });
     await writeJsonAtomically(path.resolve(policyPath), intendedPolicy);
     return {
       command: 'setup',

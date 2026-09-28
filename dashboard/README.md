@@ -45,8 +45,10 @@ Direct `gh aw add` of the component `activity/` or `dashboard/` manifests is not
 a complete installation: gh-aw cannot run the required post-install materialization step
 for component manifests, and those manifests intentionally contain no duplicate
 runtime resources. The root installation adds the deterministic dashboard
-automation without an additional enable variable. The standalone publisher
-remains manual-only and cannot enable Pages for the repository.
+automation without an additional enable variable. Run `./cao.sh setup` to
+configure Pages for GitHub Actions with repository-restricted access for a
+private control repository. The standalone publisher remains manual-only and
+cannot enable Pages for the repository.
 
 To refresh or restore campaign-owned files, rerun the installer with the same
 reviewed campaign revision:
@@ -151,13 +153,13 @@ This starts the local preview through Playwright with the Pixel 7 profile and a 
 
 ## Standalone Pages site
 
-Before running the standalone deployment, configure the private control-plane or review repository that will own the Pages site:
+Before running the standalone deployment, run `./cao.sh setup` in the control repository. It configures the Pages source as GitHub Actions and requires repository-restricted access for a private repository. If your plan does not support private Pages or you cannot manage Pages settings, setup fails rather than proceeding with a public dashboard. For an already configured review repository, verify the same settings:
 
-1. In **Settings > Pages**, select **GitHub Actions** as the source.
-2. Restrict site access to the intended audience.
+1. In **Settings > Pages**, confirm **GitHub Actions** is the source.
+2. Confirm site access is restricted to the intended audience.
 3. Protect the `github-pages` environment as required by your organization.
 
-The workflow passes `enablement: false` to `actions/configure-pages`, so a run validates existing Pages configuration but never enables Pages for the repository.
+The workflow passes `enablement: false` to `actions/configure-pages`, so a run validates existing Pages configuration but never enables Pages for the repository. The deploy job also refuses to publish a private repository's dashboard to a public Pages site.
 
 Use **Refresh** in the dashboard header to open **Central Agentic Ops Dashboard** on the repository's **Actions** page, then click **Run workflow**. The build restores the latest complete schema-versioned activity snapshot and normalizes its usage records into the dashboard tables without triggering collection or indexing. Run **CAO Activity** separately when a fresh snapshot is required. The standalone workflow is deliberately not scheduled, so installing the campaign cannot replace an existing Pages deployment without an explicit run. Operational-value collection preserves the ordered native metrics already present in retained gh-aw run records. Actions caches accelerate refreshes but are evictable and are not historical authority.
 

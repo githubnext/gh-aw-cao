@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
@@ -64,6 +66,53 @@ func TestRateLimitReturnsStandardHeaders(t *testing.T) {
 	}
 	if retry := response.Header().Get("Retry-After"); retry != "" {
 		t.Fatalf("allowed request returned Retry-After %q", retry)
+	}
+}
+
+func TestQueryRateLimitCostChargesLongRunningQueries(t *testing.T) {
+	for _, testCase := range []struct {
+		name    string
+		metrics model.Metrics
+		want    int
+	}{
+		{"minimum", model.Metrics{}, 1},
+		{"duration", model.Metrics{DurationMS: 5000}, 5},
+		{"operations", model.Metrics{Operations: 1_000_000}, 4},
+		{"redis work", model.Metrics{RedisRows: 750_000}, 3},
+		{"working rows", model.Metrics{PeakWorkingRows: 500_000}, 5},
+		{"bytes", model.Metrics{PeakWorkingBytes: 64 << 20}, 4},
+		{"highest signal wins", model.Metrics{DurationMS: 2000, Operations: 1_000_000, PeakWorkingRows: 300_000}, 4},
+		{"capacity cap", model.Metrics{DurationMS: 60000, Operations: query.MaxOperations}, queryRateLimit},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := queryRateLimitCost(testCase.metrics); got != testCase.want {
+				t.Errorf("queryRateLimitCost(%#v) = %d, want %d", testCase.metrics, got, testCase.want)
+			}
+		})
+	}
+}
+
+func TestChargeQueryRateLimitUsesReservedSubjectAndAdditionalCost(t *testing.T) {
+	client := &serverRateLimitClient{result: []any{int64(1), int64(24), int64(0), int64(12000)}}
+	app := &App{store: redisx.NewStore(client, "test")}
+	reservation := rateLimitReservation{
+		key:    "query:opaque-subject",
+		policy: requestRatePolicy{name: "query", capacity: queryRateLimit, window: queryRateWindow},
+	}
+	ctx := context.WithValue(t.Context(), rateLimitReservationContextKey{}, reservation)
+	response := httptest.NewRecorder()
+
+	status, err := app.chargeQueryRateLimit(ctx, response, 7)
+	if err != nil || status != http.StatusOK {
+		t.Fatalf("weighted query charge failed: status=%d err=%v", status, err)
+	}
+	if len(client.command) != 7 || client.command[3] != "cao:test:rate-limit:query:opaque-subject" ||
+		client.command[6] != "6" {
+		t.Fatalf("unexpected weighted query charge: %#v", client.command)
+	}
+	if response.Header().Get("RateLimit-Remaining") != "24" ||
+		response.Header().Get("RateLimit-Reset") != "12" {
+		t.Fatalf("weighted query charge did not refresh headers: %#v", response.Header())
 	}
 }
 

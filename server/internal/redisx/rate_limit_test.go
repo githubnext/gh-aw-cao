@@ -32,9 +32,9 @@ func TestTakeRateLimitTokenUsesAtomicRedisTokenBucket(t *testing.T) {
 	if !result.Allowed || result.Remaining != 29 || result.RetryAfter != 0 || result.ResetAfter != 2*time.Second {
 		t.Fatalf("unexpected rate limit result: %#v", result)
 	}
-	if len(client.command) != 6 || client.command[0] != "EVAL" || client.command[2] != "1" ||
+	if len(client.command) != 7 || client.command[0] != "EVAL" || client.command[2] != "1" ||
 		client.command[3] != "cao:rate-test:rate-limit:query:subject" ||
-		client.command[4] != "30" || client.command[5] != "60000" {
+		client.command[4] != "30" || client.command[5] != "60000" || client.command[6] != "1" {
 		t.Fatalf("unexpected Redis command: %#v", client.command)
 	}
 	script := client.command[1]
@@ -42,6 +42,28 @@ func TestTakeRateLimitTokenUsesAtomicRedisTokenBucket(t *testing.T) {
 		if !strings.Contains(script, operation) {
 			t.Fatalf("rate limit script does not contain %s", operation)
 		}
+	}
+}
+
+func TestTakeRateLimitTokensAssignsWeightedCost(t *testing.T) {
+	client := &rateLimitCommandClient{value: []any{int64(1), int64(24), int64(0), int64(12000)}}
+	store := NewStore(client, "rate-test")
+
+	result, err := store.TakeRateLimitTokens(t.Context(), "query:subject", 30, time.Minute, 6)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Allowed || result.Remaining != 24 {
+		t.Fatalf("unexpected weighted rate limit result: %#v", result)
+	}
+	if len(client.command) != 7 || client.command[6] != "6" {
+		t.Fatalf("weighted cost was not passed to Redis: %#v", client.command)
+	}
+	if !strings.Contains(client.command[1], "tokens >= cost") ||
+		!strings.Contains(client.command[1], "tokens = tokens - cost") ||
+		!strings.Contains(client.command[1], "elseif cost > 1") ||
+		!strings.Contains(client.command[1], "(cost - tokens)") {
+		t.Fatal("rate limit script does not apply the weighted cost atomically")
 	}
 }
 
@@ -56,6 +78,12 @@ func TestTakeRateLimitTokenRejectsInvalidBoundsAndResponses(t *testing.T) {
 	}
 	if _, err := store.TakeRateLimitToken(t.Context(), "general:subject", 1, time.Nanosecond); err == nil {
 		t.Fatal("sub-millisecond refill period was accepted")
+	}
+	if _, err := store.TakeRateLimitTokens(t.Context(), "general:subject", 1, time.Minute, 0); err == nil {
+		t.Fatal("zero cost was accepted")
+	}
+	if _, err := store.TakeRateLimitTokens(t.Context(), "general:subject", 1, time.Minute, 2); err == nil {
+		t.Fatal("cost above capacity was accepted")
 	}
 	if _, err := store.TakeRateLimitToken(t.Context(), "general:subject", 1, time.Minute); err == nil {
 		t.Fatal("invalid Redis response was accepted")

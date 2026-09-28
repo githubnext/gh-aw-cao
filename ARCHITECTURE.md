@@ -362,6 +362,12 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   editing `.github/aw/campaigns/*.json`.
 - Keep policy and workflow changes together because admission resolves policy
   at the exact workflow SHA.
+- `.github/workflows/cao.json` remains the only rollout policy. Optional
+  `.github/workflows/cao.<deployment>.json` profiles may extend it only with
+  `control-plane.web.host`; composition is relative, directory-confined,
+  cycle-bounded, duplicate-key rejecting, and validated after merging. A
+  deployment profile cannot alter scope, campaign enablement, modes, targets,
+  workers, credentials, or any other control-plane authority.
 
 ## Technology choices
 

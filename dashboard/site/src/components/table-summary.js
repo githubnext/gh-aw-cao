@@ -7,7 +7,7 @@ import { effect, state } from '../reactive.js';
 import { renderHistogramBins } from './histogram.js';
 import { formatCount, formatCountNoun } from './count-formatters.js';
 import { renderDefinitionListRows } from './view-chrome.js';
-import { formatMediumUtcDateTime, renderLegendList, renderSkeletonBars, renderTableSummaryEmpty } from './ui-primitives.js';
+import { formatMediumUtcDateTime, renderLegendList, renderSkeletonBars, renderTableSummaryEmpty, syncToggleButtonState } from './ui-primitives.js';
 import { formatClockDuration, formatPercent } from '../view-formatters.js';
 import { chartSeriesClassName, renderChartWidget } from './chart-elements.js';
 import { octicon } from '../octicons.js';
@@ -124,10 +124,12 @@ function addTableSummaryToggle(row) {
   );
   toggle.addEventListener('click', () => {
     const expanded = toggle.getAttribute('aria-expanded') !== 'true';
-    toggle.setAttribute('aria-expanded', String(expanded));
-    toggle.setAttribute('aria-label', expanded ? 'Collapse column summaries' : 'Expand column summaries');
-    toggle.setAttribute('title', expanded ? 'Collapse column summaries' : 'Expand column summaries');
-    toggle.replaceChildren(octicon(expanded ? 'chevron-up' : 'chevron-down'));
+    syncToggleButtonState(toggle, expanded, {
+      expandedLabel: 'Collapse column summaries',
+      collapsedLabel: 'Expand column summaries',
+      expandedIcon: 'chevron-up',
+      collapsedIcon: 'chevron-down'
+    });
     row.classList.toggle('table-summary-collapsed', !expanded);
     for (const content of row.querySelectorAll('.table-summary-expanded')) content.toggleAttribute('hidden', !expanded);
     for (const content of row.querySelectorAll('.table-summary-compact')) content.toggleAttribute('hidden', expanded);

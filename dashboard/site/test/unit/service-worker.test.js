@@ -501,6 +501,49 @@ describe('dashboard service worker', () => {
     );
   });
 
+  it('logs data ingestion steps when the page forwards its debug value on DOWNLOAD_DATA', async () => {
+    const { listeners, fetch, debugConsole } = serviceWorkerHarness();
+    const runName = `gh-aw-logs-runs/logs-${'a'.repeat(64)}-${'b'.repeat(16)}.jsonl`;
+    fetch.mockImplementation(async (url) => new Response(
+      String(url).endsWith('/payload-hashes.json') ? JSON.stringify({ [runName]: 'c'.repeat(64) }) : 'shard data'
+    ));
+    const completed = vi.fn();
+
+    await dispatchExtendedEvent(listeners.message, {
+      data: {
+        type: 'DOWNLOAD_DATA',
+        urls: ['https://example.test/dashboard/payload-hashes.json'],
+        debug: '*'
+      },
+      ports: [{ postMessage: completed }]
+    });
+
+    expect(completed).toHaveBeenCalledWith(expect.objectContaining({ type: 'DOWNLOAD_COMPLETE' }));
+    expect(debugConsole.debug).toHaveBeenCalledWith(
+      '[cao:data:ingestion:sw]',
+      'dashboard data download complete'
+    );
+  });
+
+  it('does not log data ingestion steps without a debug value', async () => {
+    const { listeners, fetch, debugConsole } = serviceWorkerHarness();
+    const runName = `gh-aw-logs-runs/logs-${'a'.repeat(64)}-${'b'.repeat(16)}.jsonl`;
+    fetch.mockImplementation(async (url) => new Response(
+      String(url).endsWith('/payload-hashes.json') ? JSON.stringify({ [runName]: 'c'.repeat(64) }) : 'shard data'
+    ));
+
+    await dispatchExtendedEvent(listeners.message, {
+      data: {
+        type: 'DOWNLOAD_DATA',
+        urls: ['https://example.test/dashboard/payload-hashes.json'],
+        debug: ''
+      },
+      ports: [{ postMessage: vi.fn() }]
+    });
+
+    expect(debugConsole.debug).not.toHaveBeenCalled();
+  });
+
   it('matches the page debug logger category semantics for representative patterns', () => {
     const { isDebugEnabled: workerIsDebugEnabled } = serviceWorkerHarness([], { search: '?debug=data:ingestion:*,-data:ingestion:sw:noisy' });
     const cases = [

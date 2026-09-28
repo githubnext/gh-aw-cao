@@ -5,6 +5,7 @@ const COMMIT_PATTERN = /^[0-9a-f]{40}$/i;
 const SAFE_PATH_PATTERN = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))[A-Za-z0-9._/-]*$/;
 const INTERNAL_PACKAGES = new Set(["activity", "dashboard"]);
 const MAX_MANIFEST_BYTES = 256 * 1024;
+const MAX_README_BYTES = 256 * 1024;
 const MAX_PACKAGES_PER_REGISTRY = 500;
 
 function base64url(value) {
@@ -86,6 +87,8 @@ function includes(source) {
 
 export function parsePackageManifest(source, coordinates) {
   if (Buffer.byteLength(source) > MAX_MANIFEST_BYTES) throw new Error("package manifest exceeds size limit");
+  const readme = typeof coordinates.readme === "string" ? coordinates.readme : "";
+  const readmePath = readme ? String(coordinates.readmePath ?? "") : "";
   const name = scalar(source, "name");
   if (!name) throw new Error("package manifest name is required");
   const contents = includes(source);
@@ -108,6 +111,8 @@ export function parsePackageManifest(source, coordinates) {
     icon: scalar(source, "icon") || "workflow",
     artwork: scalar(source, "artwork") || "",
     contents,
+    readme,
+    "readme-path": readmePath,
     source: sourceCoordinate,
     "add-command": `./cao.sh add ${sourceCoordinate}`,
   };
@@ -133,6 +138,35 @@ function safeDiagnostic(error, registry, environment) {
     if (typeof value === "string" && value) message = message.replaceAll(value, "[redacted]");
   }
   return message.slice(0, 500);
+}
+
+function readmeEntries(tree, prefix) {
+  const entries = new Map();
+  for (const entry of tree) {
+    if (entry?.type !== "blob" || typeof entry.path !== "string" || !entry.path.startsWith(prefix)) continue;
+    const separator = entry.path.lastIndexOf("/");
+    if (separator < 0) continue;
+    const directory = entry.path.slice(0, separator + 1);
+    if (!/^readme\.(?:md|markdown)$/i.test(entry.path.slice(separator + 1))) continue;
+    if (typeof entry.size === "number" && entry.size > MAX_README_BYTES) continue;
+    if (!entries.has(directory)) entries.set(directory, entry);
+  }
+  return entries;
+}
+
+async function fetchReadme(entry, { base, repositoryPath, token, fetchImpl }) {
+  try {
+    const response = await githubRequest(fetchImpl, `${base}/repos/${repositoryPath}/git/blobs/${entry.sha}`, token);
+    const blob = await response.json();
+    if (blob.encoding !== "base64" || typeof blob.content !== "string") return "";
+    const content = Buffer.from(blob.content.replace(/\s/g, ""), "base64");
+    if (content.byteLength > MAX_README_BYTES) return "";
+    return content.toString("utf8");
+  } catch {
+    // A package README is optional presentation detail: an unreadable blob
+    // must never fail an otherwise resolvable registry.
+    return "";
+  }
 }
 
 async function resolveRegistry(registry, precedence, options) {
@@ -165,12 +199,17 @@ async function resolveRegistry(registry, precedence, options) {
       && entry.path !== `${prefix}aw.yml`)
     .filter((entry) => !INTERNAL_PACKAGES.has(entry.path.slice(prefix.length).split("/", 1)[0]))
     .slice(0, MAX_PACKAGES_PER_REGISTRY);
+  const readmes = readmeEntries(treePayload.tree, prefix);
   return Promise.all(manifests.map(async (entry) => {
     const blobResponse = await githubRequest(options.fetchImpl, `${base}/repos/${repositoryPath}/git/blobs/${entry.sha}`, token);
     const blob = await blobResponse.json();
     if (blob.encoding !== "base64" || typeof blob.content !== "string") throw new Error("package manifest blob is invalid");
     const manifest = Buffer.from(blob.content.replace(/\s/g, ""), "base64").toString("utf8");
     if (scalar(manifest, "private") === "true") return null;
+    const readmeEntry = readmes.get(entry.path.slice(0, -"aw.yml".length));
+    const readme = readmeEntry
+      ? await fetchReadme(readmeEntry, { base, repositoryPath, token, fetchImpl: options.fetchImpl })
+      : "";
     return parsePackageManifest(manifest, {
       registryId: registry.id,
       registryName: registry.name,
@@ -179,6 +218,8 @@ async function resolveRegistry(registry, precedence, options) {
       path: entry.path,
       ref: registry.ref,
       resolvedCommit: commit,
+      readme,
+      readmePath: readme ? readmeEntry.path : "",
     });
   })).then((packages) => packages.filter(Boolean));
 }

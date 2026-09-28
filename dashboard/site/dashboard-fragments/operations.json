@@ -6,6 +6,160 @@
       "from": "marketplace-packages"
     },
     {
+      "name": "friction-by-workflow",
+      "intent": "Identify workflows with the greatest measured avoidable AI Credit cost.",
+      "description": "Total gh-aw audit friction cost grouped by repository and workflow.",
+      "from": "friction",
+      "compute": [
+        {
+          "as": "repository-coordinate",
+          "function": "concat",
+          "args": [
+            {
+              "field": "organization"
+            },
+            {
+              "value": "/"
+            },
+            {
+              "field": "repository"
+            }
+          ]
+        },
+        {
+          "as": "workflow-coordinate",
+          "function": "concat",
+          "args": [
+            {
+              "field": "organization"
+            },
+            {
+              "value": "/"
+            },
+            {
+              "field": "repository"
+            },
+            {
+              "value": ":"
+            },
+            {
+              "field": "workflow"
+            }
+          ]
+        }
+      ],
+      "aggregate": {
+        "by": [
+          "workflow-coordinate",
+          "repository-coordinate",
+          "workflow"
+        ],
+        "values": [
+          {
+            "field": "aic",
+            "as": "friction-aic",
+            "reducer": "sum"
+          },
+          {
+            "field": "run",
+            "as": "runs",
+            "reducer": "distinct-count"
+          }
+        ]
+      },
+      "order-by": [
+        {
+          "field": "friction-aic",
+          "direction": "desc"
+        },
+        {
+          "field": "workflow-coordinate",
+          "direction": "asc"
+        }
+      ]
+    },
+    {
+      "name": "friction-observations",
+      "intent": "List retained gh-aw audit friction measurements with their run context and attribution totals.",
+      "description": "Newest friction measurements first, preserving the native audit values and uncertainty state.",
+      "from": "friction",
+      "compute": [
+        {
+          "as": "repository-coordinate",
+          "function": "concat",
+          "args": [
+            {
+              "field": "organization"
+            },
+            {
+              "value": "/"
+            },
+            {
+              "field": "repository"
+            }
+          ]
+        },
+        {
+          "as": "friction-percent",
+          "function": "format-percent",
+          "args": [
+            {
+              "field": "friction-ratio"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "event-timestamp",
+          "as": "observed-at"
+        },
+        {
+          "field": "repository-coordinate"
+        },
+        {
+          "field": "workflow"
+        },
+        {
+          "field": "run"
+        },
+        {
+          "field": "run-link"
+        },
+        {
+          "field": "measurement-state"
+        },
+        {
+          "field": "aic"
+        },
+        {
+          "field": "total-run-aic"
+        },
+        {
+          "field": "friction-percent"
+        },
+        {
+          "field": "counted-occurrences"
+        },
+        {
+          "field": "suppressed-occurrences"
+        },
+        {
+          "field": "unattributed-occurrences"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "observed-at",
+          "direction": "desc"
+        },
+        {
+          "field": "run",
+          "direction": "desc"
+        }
+      ]
+    },
+    {
       "name": "indexing-daily-records",
       "intent": "Aggregate records committed from CAO Activity by ingestion UTC day.",
       "from": "transactions",
@@ -1045,7 +1199,7 @@
           "mark": "list",
           "list": {
             "style": "entity-cards",
-            "appearance": "grouped",
+            "appearance": "marketplace",
             "icon": "archive",
             "card": "marketplace-package"
           },
@@ -1070,6 +1224,96 @@
           },
           "layout": "full",
           "empty-message": "The selected package is unavailable."
+        },
+        {
+          "id": "marketplace-package-readme",
+          "title": "README",
+          "data": {
+            "sources": [
+              "marketplace-package-detail"
+            ],
+            "arguments": [
+              {
+                "name": "package-source",
+                "field": "package-source"
+              }
+            ]
+          },
+          "mark": "element",
+          "element": "markdown",
+          "config": {
+            "content-field": "package-readme",
+            "path-field": "package-readme-path",
+            "empty-message": "This package does not publish a README."
+          },
+          "layout": "full"
+        },
+        {
+          "id": "marketplace-package-about",
+          "title": "About",
+          "data": {
+            "source": "marketplace-package-detail",
+            "arguments": [
+              {
+                "name": "package-source",
+                "field": "package-source"
+              }
+            ]
+          },
+          "mark": "list",
+          "list": {
+            "style": "entity-cards",
+            "appearance": "grouped",
+            "icon": "info",
+            "card": "marketplace-package-about"
+          },
+          "encoding": {
+            "columns": [
+              {
+                "field": "publisher",
+                "type": "nominal",
+                "title": "By"
+              },
+              {
+                "field": "registry-name",
+                "type": "nominal",
+                "title": "Registry"
+              },
+              {
+                "field": "package-version",
+                "type": "nominal",
+                "title": "Version"
+              }
+            ]
+          },
+          "layout": "full",
+          "empty-message": "The selected package is unavailable."
+        }
+      ],
+      "sections": [
+        {
+          "id": "package",
+          "title": "Package",
+          "layout": "full",
+          "views": [
+            "marketplace-package-detail"
+          ]
+        },
+        {
+          "id": "readme",
+          "title": "README",
+          "layout": "wide",
+          "views": [
+            "marketplace-package-readme"
+          ]
+        },
+        {
+          "id": "about",
+          "title": "About",
+          "layout": "narrow",
+          "views": [
+            "marketplace-package-about"
+          ]
         }
       ]
     },
@@ -1530,6 +1774,123 @@
       ],
       "navigation-label": "Models & Agents",
       "description": "Compare observed agent and model combinations from workflow runs."
+    },
+    {
+      "id": "friction",
+      "kind": "custom",
+      "title": "Friction",
+      "navigation-label": "Friction",
+      "icon": "pulse",
+      "experimental": true,
+      "description": "Avoidable execution cost attributed by gh aw audit across observed workflow runs.",
+      "views": [
+        {
+          "id": "friction-by-workflow",
+          "title": "Friction cost by workflow",
+          "description": "The share of measured avoidable AI Credit cost attributed to each workflow.",
+          "data": {
+            "source": "friction-by-workflow",
+            "limit": 10
+          },
+          "mark": "chart",
+          "chart": "pie",
+          "layout": "full",
+          "empty-message": "No gh-aw audit friction measurements were observed.",
+          "encoding": {
+            "x": {
+              "field": "workflow-coordinate",
+              "type": "nominal",
+              "title": "Workflow"
+            },
+            "y": {
+              "field": "friction-aic",
+              "type": "quantitative",
+              "title": "Friction AIC",
+              "unit": "aic"
+            }
+          }
+        },
+        {
+          "id": "friction-observations",
+          "title": "Friction observations",
+          "description": "Run-level gh-aw audit measurements, including attribution coverage and native friction ratio.",
+          "data": {
+            "source": "friction-observations",
+            "limit": 100
+          },
+          "mark": "table",
+          "controls": "interactive",
+          "lazy-list": true,
+          "column-summaries": true,
+          "layout": "full-view",
+          "empty-message": "No gh-aw audit friction measurements were observed.",
+          "encoding": {
+            "columns": [
+              {
+                "field": "observed-at",
+                "type": "temporal",
+                "title": "Observed",
+                "format": "human-friendly-timestamp"
+              },
+              {
+                "field": "repository-coordinate",
+                "type": "nominal",
+                "title": "Repository"
+              },
+              {
+                "field": "workflow",
+                "type": "nominal",
+                "title": "Workflow",
+                "format": "workflow-relative-path"
+              },
+              {
+                "field": "run",
+                "type": "nominal",
+                "title": "Run",
+                "display": "run-link"
+              },
+              {
+                "field": "measurement-state",
+                "type": "nominal",
+                "title": "Measurement",
+                "display": "status"
+              },
+              {
+                "field": "aic",
+                "type": "quantitative",
+                "title": "Friction AIC",
+                "unit": "aic"
+              },
+              {
+                "field": "total-run-aic",
+                "type": "quantitative",
+                "title": "Run AIC",
+                "unit": "aic"
+              },
+              {
+                "field": "friction-percent",
+                "type": "nominal",
+                "title": "Friction ratio"
+              },
+              {
+                "field": "counted-occurrences",
+                "type": "quantitative",
+                "title": "Counted"
+              },
+              {
+                "field": "suppressed-occurrences",
+                "type": "quantitative",
+                "title": "Suppressed"
+              },
+              {
+                "field": "unattributed-occurrences",
+                "type": "quantitative",
+                "title": "Unattributed"
+              }
+            ]
+          }
+        }
+      ]
     },
     {
       "id": "operational-value",

@@ -261,11 +261,35 @@ describe('Configuration dashboard view', () => {
       display: 'status'
     });
     expect(templates.get('maintenance-repository')['detail-labels']).toBe('visible');
-    expect(templates.get('maintenance-campaign').actions).toEqual([{
-      action: 'update-campaign',
-      context: ['campaign'],
-      when: { field: 'campaign-update-state', equals: 'update-available' }
-    }]);
+    expect(templates.get('maintenance-campaign').actions).toEqual([
+      {
+        action: 'update-campaign',
+        context: ['campaign'],
+        when: { field: 'campaign-update-state', equals: 'update-available' }
+      },
+      {
+        action: 'disable-campaign',
+        context: ['campaign'],
+        when: { field: 'campaign-registration', equals: 'true' }
+      },
+      {
+        action: 'enable-campaign',
+        context: ['campaign'],
+        when: { field: 'campaign-registration', equals: 'false' }
+      }
+    ]);
+    expect(templates.get('campaign').actions).toEqual([
+      {
+        action: 'disable-campaign',
+        context: ['campaign'],
+        when: { field: 'registration', equals: 'true' }
+      },
+      {
+        action: 'enable-campaign',
+        context: ['campaign'],
+        when: { field: 'registration', equals: 'false' }
+      }
+    ]);
     expect(templates.get('maintenance-repository').actions).toEqual([{
       action: 'upgrade-target-repository',
       context: ['repository']

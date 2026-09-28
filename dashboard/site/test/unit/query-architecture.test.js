@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, globSync, readFileSync } from 'node:fs';
+import { resolve, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { TABLE_FIELDS } from '../../src/specification.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
@@ -119,6 +119,25 @@ describe('dashboard query architecture', () => {
     ]) {
       expect(existsSync(resolve('src', legacyModule))).toBe(false);
     }
+  });
+
+  it('runs tidy row pipelines only inside the data worker', async () => {
+    const workerSideModules = new Set([
+      'src/data-worker.js',
+      'src/data/queries/declarative.js',
+      'src/data/storage/indexeddb.js'
+    ]);
+    const importers = globSync('src/**/*.js')
+      .filter((file) => {
+        const source = read(file);
+        return /from\s*['"][^'"]*data-operations\.js['"]|import\(\s*['"][^'"]*data-operations\.js['"]/.test(source)
+          && /\btidy\b/.test(source);
+      })
+      .map((file) => file.split(sep).join('/'));
+
+    expect(new Set(importers)).toEqual(workerSideModules);
+    const { processRows } = await import('../../src/data-processor.js');
+    await expect(processRows([], [])).rejects.toThrow('Row operations require a data worker.');
   });
 
   it('keeps canonical database reads out of the UI JavaScript layer', () => {

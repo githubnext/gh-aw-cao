@@ -4,7 +4,7 @@ import { navigationIndicator } from '../navigation-indicator.js';
 import { agenticWorkflowMark, octicon } from '../octicons.js';
 import { scopedStorageKey } from '../storage-scope.js';
 import { titleCase } from './count-formatters.js';
-import { enableDetailsMenuDismissal } from './ui-primitives.js';
+import { enableDetailsMenuDismissal, syncToggleButtonState } from './ui-primitives.js';
 
 const debugNavigation = createDebug('dashboard-navigation');
 
@@ -341,11 +341,12 @@ function enableSidebarToggle(root) {
   /** @param {boolean} collapsed */
   const setCollapsed = (collapsed) => {
     appShell.classList.toggle('sidebar-collapsed', collapsed);
-    const label = collapsed ? 'Expand navigation' : 'Collapse navigation';
-    toggle.setAttribute('aria-label', label);
-    toggle.setAttribute('aria-expanded', String(!collapsed));
-    toggle.setAttribute('title', label);
-    toggle.replaceChildren(octicon(collapsed ? 'sidebar-collapse' : 'sidebar-expand'));
+    syncToggleButtonState(toggle, !collapsed, {
+      expandedLabel: 'Collapse navigation',
+      collapsedLabel: 'Expand navigation',
+      expandedIcon: 'sidebar-expand',
+      collapsedIcon: 'sidebar-collapse'
+    });
   };
 
   let collapsed = false;

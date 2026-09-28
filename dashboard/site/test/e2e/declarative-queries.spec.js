@@ -80,6 +80,47 @@ function queryScenarioSources() {
       ],
       metadata
     },
+    friction: {
+      rows: [
+        {
+          organization: 'githubnext',
+          repository: 'gh-aw-cao',
+          workflow: dashboardWorkflow.workflow,
+          run: '1001',
+          'run-attempt': 1,
+          event: 'friction-1001',
+          'event-timestamp': '2026-09-09T01:05:00Z',
+          'event-source': 'audit',
+          'event-type': 'workflow_run_friction',
+          'measurement-state': 'measured',
+          aic: 0.5,
+          'total-run-aic': 2,
+          'friction-ratio': 0.25,
+          'counted-occurrences': 2,
+          'suppressed-occurrences': 0,
+          'unattributed-occurrences': 0
+        },
+        {
+          organization: 'githubnext',
+          repository: 'gh-aw-cao',
+          workflow: dashboardWorkflow.workflow,
+          run: '1002',
+          'run-attempt': 1,
+          event: 'friction-1002',
+          'event-timestamp': '2026-09-09T02:05:00Z',
+          'event-source': 'audit',
+          'event-type': 'workflow_run_friction',
+          'measurement-state': 'statistical',
+          aic: 1,
+          'total-run-aic': 4,
+          'friction-ratio': 0.25,
+          'counted-occurrences': 3,
+          'suppressed-occurrences': 1,
+          'unattributed-occurrences': 1
+        }
+      ],
+      metadata
+    },
     'security-findings': {
       rows: [
         {
@@ -405,6 +446,36 @@ test('the authored basic table queries return the populated canonical database r
   expect(payload['runs-table'].rows.map((row) => row.run)).toEqual(['1005', '1004', '1003', '1002', '1001']);
   expect(payload['campaign-inventory'].rows).toEqual([
     expect.objectContaining({ campaign: 'dashboard', 'campaign-name': 'CAO Dashboard', workflows: 1, runs: 3, dispatches: 2 })
+  ]);
+});
+
+test('the authored friction page reads only its canonical worker projections', async ({ page }) => {
+  const dashboard = authoritativeDashboard;
+  const requested = ['friction-by-workflow', 'friction-observations'];
+  const payload = await loadThroughWorker(page, dashboard.dashboard.queries, requested);
+
+  expect(Object.keys(payload).sort()).toEqual([...requested].sort());
+  expect(payload['friction-by-workflow'].rows).toEqual([
+    expect.objectContaining({
+      'repository-coordinate': 'githubnext/gh-aw-cao',
+      workflow: dashboardWorkflow.workflow,
+      'friction-aic': 1.5,
+      runs: 2
+    })
+  ]);
+  expect(payload['friction-observations'].rows).toEqual([
+    expect.objectContaining({
+      run: '1002',
+      'measurement-state': 'statistical',
+      aic: 1,
+      'friction-percent': '25%'
+    }),
+    expect.objectContaining({
+      run: '1001',
+      'measurement-state': 'measured',
+      aic: 0.5,
+      'friction-percent': '25%'
+    })
   ]);
 });
 

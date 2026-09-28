@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
@@ -710,14 +709,12 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 		fail(status, err.Error())
 		return
 	}
-	span.SetAttributes(
-		attribute.Int64("cao_dashboard.query.revision", result.Revision),
-		attribute.Int("cao_dashboard.query.source_count", len(input.SourceNames)),
-		attribute.Int("cao_dashboard.query.alias_count", len(input.Aliases)),
-		attribute.Int64("cao_dashboard.query.duration_ms", result.Metrics.DurationMS),
-		attribute.Int("cao_dashboard.query.pushed_down_count", len(result.Metrics.PushedDown)),
-		attribute.Int("cao_dashboard.query.fallback_count", len(result.Metrics.FallbackOperations)),
-	)
+	result.Metrics.RateLimitCost = queryRateLimitCost(result.Metrics)
+	if status, err := a.chargeQueryRateLimit(ctx, response, result.Metrics.RateLimitCost); err != nil {
+		fail(status, err.Error())
+		return
+	}
+	span.SetAttributes(queryTelemetryAttributes(input, result)...)
 	span.SetStatus(codes.Ok, "")
 	writeJSON(response, http.StatusOK, result)
 }

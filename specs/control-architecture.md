@@ -257,6 +257,29 @@ Hosted server implementations MUST require the modular `web.host` declaration
 and MUST reject the earlier flat host-capability shape, `redis.preset`, and
 environment-only host selection.
 
+#### 5.3.1 Deployment-specific host extensions
+
+A control repository MAY keep a deployment-specific JSON document alongside
+`.github/workflows/cao.json` and load it explicitly for a hosted dashboard.
+Such a document is not a second rollout policy and MUST NOT be used to
+authorize an orchestrator or worker. It MUST contain `extends` and
+`control-plane.web.host`; its only permitted root keys are `extends` and
+`control-plane`, whose only permitted nested keys before `host` are `web` and
+`host`, respectively. It MUST NOT set scope, inventory, defaults, campaigns,
+target authority, publishing, credentials, or other policy fields. The host
+value MUST satisfy the same requirements as `web.host` in Section 5.3.
+
+`extends` MUST identify a non-empty relative path. Imports MUST resolve
+relative to the importing file, remain within the entry document's directory
+after resolving symlinks, and reject cycles and chains deeper than eight
+imports. Duplicate JSON keys and GitHub Actions expressions MUST be rejected.
+The host extension is merged into its base document, preserving all
+non-host fields; the composed policy MUST be validated before dashboard use.
+Missing files, invalid imports, disallowed keys, or invalid composition MUST
+fail closed. Only `.github/workflows/cao.json` at the reviewed workflow SHA
+grants rollout and target authority, regardless of which host extension the
+dashboard loads.
+
 | Campaign property | Constraint | Authority type |
 | --- | --- | --- |
 | `mode` | `review` or `live` | Output-mode ceiling |

@@ -59,7 +59,7 @@ export const USAGE = `Usage:
   cao cluster-problems [--database FILE] [--root DIRECTORY] [--timestamp TIME]
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao validate [--json] [--strict-warnings]
-  cao download [--url URL] [--output DIRECTORY]
+  cao download [--url URL] [--output DIRECTORY] [--manifest-sha256 DIGEST]
   cao hash-payloads [--database FILE] [--shard-dir SHARD_DIRECTORY] [--normalized-dir DIRECTORY] [--runs-dir DIRECTORY] [--records-dir DIRECTORY] [--inventory FILE] [--output FILE]
   cao activity-stats [--repo OWNER/REPO] [--workflow FILE] [--artifact NAME] [--limit COUNT] [--keep] [--output FILE]
   cao validate-activity-data --database FILE --shard-dir DIRECTORY --payload-hashes FILE --control-settings FILE --inventory FILE --memory-manifest FILE
@@ -126,6 +126,7 @@ Query stdin JSON:
 
 Download defaults:
   URL        DASHBOARD_DATA_URL or ${DEFAULT_DEPLOYED_DATA_URL}
+  MANIFEST   Optional DASHBOARD_MANIFEST_SHA256 trust anchor
   DIRECTORY  ${DEFAULT_OUTPUT_DIRECTORY}
   SHARDS     ${DEFAULT_SHARDS_PATH}
   DATABASE   ${DEFAULT_DATABASE_PATH}

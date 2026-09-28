@@ -2,11 +2,25 @@ package query
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 )
+
+type testLoader struct {
+	sources map[string]model.Source
+}
+
+func (loader *testLoader) LoadSource(name string, _ *Definition) (model.Source, model.Metrics, error) {
+	source, ok := loader.sources[name]
+	if !ok {
+		return model.Source{}, model.Metrics{}, nil
+	}
+	source.Source = name
+	return source, model.Metrics{}, nil
+}
 
 func TestExecuteDefinitionPipeline(t *testing.T) {
 	limit := 2
@@ -56,6 +70,161 @@ func TestExecuteDefinitionPipeline(t *testing.T) {
 	models, ok := row["models"].([]string)
 	if !ok || strings.Join(models, ",") != "a,b" {
 		t.Fatalf("unexpected distinct values: %#v", row["models"])
+	}
+}
+
+func TestExecuteReportsPrivacyPreservingStructureAndPerformanceMetrics(t *testing.T) {
+	limit := 1
+	definition := Definition{
+		Name:  "private-query-name",
+		From:  "private-source-name",
+		Union: []string{"other-private-source"},
+		Joins: []Join{{
+			Source: "private-join-source",
+			Type:   "left",
+			On:     []JoinKey{{Left: "secret-left-field", Right: "secret-right-field"}},
+			Fields: []SelectedField{{Field: "secret-value", As: "private-alias"}},
+		}},
+		Filter:  &Filter{Predicates: []Predicate{{Field: "secret-field", Equals: "secret-value"}}},
+		Compute: []ComputedField{{As: "computed", Function: "literal", Args: []Argument{{Value: "private-literal"}}}},
+		Aggregate: &Aggregate{Values: []AggregateValue{{
+			Field: "secret-field", As: "count", Reducer: "count",
+		}}},
+		Select:  []SelectedField{{Field: "count"}},
+		OrderBy: []OrderField{{Field: "count"}},
+		Limit:   &limit,
+	}
+	loader := &testLoader{sources: map[string]model.Source{
+		"private-source-name":  {Rows: []model.Row{{"secret-field": "secret-value"}}},
+		"other-private-source": {Rows: []model.Row{}},
+		"private-join-source":  {Rows: []model.Row{}},
+	}}
+
+	sources, metrics, err := New(loader).Execute([]Definition{definition}, []string{definition.Name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sources[definition.Name].Rows) != 1 || metrics.Operations == 0 || metrics.OutputRows != 1 {
+		t.Fatalf("unexpected execution metrics: %#v", metrics)
+	}
+	if metrics.DependencyDepth != 1 || metrics.PeakWorkingRows != 1 || metrics.RetainedRows != 1 ||
+		metrics.PeakWorkingBytes == 0 || metrics.RetainedBytes == 0 {
+		t.Fatalf("unexpected resource metrics: %#v", metrics)
+	}
+	if metrics.QueryCount != 1 || metrics.UnionCount != 1 || metrics.JoinCount != 1 ||
+		metrics.FilterCount != 1 || metrics.ComputeCount != 1 || metrics.AggregateCount != 1 ||
+		metrics.AggregateValueCount != 1 || metrics.SelectCount != 1 ||
+		metrics.OrderByCount != 1 || metrics.LimitCount != 1 {
+		t.Fatalf("unexpected structural metrics: %#v", metrics)
+	}
+	encoded, err := json.Marshal(metrics)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, private := range []string{
+		definition.Name, definition.From, "secret-field", "secret-value", "private-alias", "private-literal",
+	} {
+		if strings.Contains(string(encoded), private) {
+			t.Fatalf("metrics exposed private query content %q: %s", private, encoded)
+		}
+	}
+}
+
+func TestExecuteRejectsExcessiveDependencyDepth(t *testing.T) {
+	definitions := make([]Definition, MaxDependencyDepth+1)
+	previous := "rows"
+	for index := range definitions {
+		name := fmt.Sprintf("query-%d", index)
+		definitions[index] = Definition{Name: name, From: previous}
+		previous = name
+	}
+	_, _, err := New(&testLoader{sources: map[string]model.Source{
+		"rows": {Rows: []model.Row{}},
+	}}).Execute(definitions, []string{definitions[len(definitions)-1].Name})
+	if err == nil || !strings.Contains(err.Error(), "max depth") {
+		t.Fatalf("expected dependency-depth guard, got %v", err)
+	}
+}
+
+func TestExecuteRejectsTooManyJoinsAcrossDependencyPath(t *testing.T) {
+	definitions := make([]Definition, MaxDependencyJoins/MaxJoins+1)
+	previous := "rows"
+	for index := range definitions {
+		joins := make([]Join, MaxJoins)
+		for joinIndex := range joins {
+			joins[joinIndex] = Join{
+				Source: fmt.Sprintf("join-%d-%d", index, joinIndex),
+				On:     []JoinKey{{Left: "id", Right: "id"}},
+			}
+		}
+		definitions[index] = Definition{
+			Name:  fmt.Sprintf("query-%d", index),
+			From:  previous,
+			Joins: joins,
+		}
+		previous = definitions[index].Name
+	}
+	_, _, err := New(&testLoader{}).Execute(definitions, []string{definitions[len(definitions)-1].Name})
+	if err == nil || !strings.Contains(err.Error(), "max joins") {
+		t.Fatalf("expected cumulative-join guard, got %v", err)
+	}
+}
+
+func TestExecuteRejectsExcessiveWorkingAndRetainedRows(t *testing.T) {
+	rows := make([]model.Row, MaxInputRows)
+	t.Run("working rows", func(t *testing.T) {
+		definition := Definition{
+			Name: "wide", From: "base",
+			Joins: []Join{
+				{Source: "join-a", On: []JoinKey{{Left: "id", Right: "id"}}},
+				{Source: "join-b", On: []JoinKey{{Left: "id", Right: "id"}}},
+			},
+		}
+		_, _, err := New(&testLoader{sources: map[string]model.Source{
+			"base": {Rows: rows}, "join-a": {Rows: rows}, "join-b": {Rows: rows},
+		}}).Execute([]Definition{definition}, []string{definition.Name})
+		if err == nil || !strings.Contains(err.Error(), "max working rows") {
+			t.Fatalf("expected working-row guard, got %v", err)
+		}
+	})
+	t.Run("retained rows", func(t *testing.T) {
+		_, _, err := New(&testLoader{sources: map[string]model.Source{
+			"one": {Rows: rows}, "two": {Rows: rows}, "three": {Rows: rows},
+		}}).Execute(nil, []string{"one", "two", "three"})
+		if err == nil || !strings.Contains(err.Error(), "max retained rows") {
+			t.Fatalf("expected retained-row guard, got %v", err)
+		}
+	})
+	t.Run("working bytes", func(t *testing.T) {
+		large := strings.Repeat("x", 1<<20)
+		byteRows := make([]model.Row, 300)
+		for index := range byteRows {
+			byteRows[index] = model.Row{"value": large}
+		}
+		definition := Definition{Name: "large", From: "rows"}
+		_, _, err := New(&testLoader{sources: map[string]model.Source{
+			"rows": {Rows: byteRows},
+		}}).Execute([]Definition{definition}, []string{definition.Name})
+		if err == nil || !strings.Contains(err.Error(), "max working bytes") {
+			t.Fatalf("expected working-byte guard, got %v", err)
+		}
+	})
+}
+
+func TestExecuteDefinitionRejectsRunawayStageBeforeAllocation(t *testing.T) {
+	fields := make([]ComputedField, 128)
+	for index := range fields {
+		fields[index] = ComputedField{
+			As: fmt.Sprintf("field-%d", index), Function: "literal", Args: []Argument{{Value: index}},
+		}
+	}
+	_, operations, _, err := ExecuteDefinition(Definition{
+		Name: "runaway", From: "rows", Compute: fields,
+	}, map[string]model.Source{
+		"rows": {Rows: make([]model.Row, 50_000)},
+	}, MaxOperations)
+	if err == nil || !strings.Contains(err.Error(), "max operations") {
+		t.Fatalf("expected operation guard, got operations=%d err=%v", operations, err)
 	}
 }
 

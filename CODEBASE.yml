@@ -35,6 +35,7 @@ structure:
   workflow_artifacts: .github/workflows/*.lock.yml
   workflow_shared: .github/workflows/shared/
   rollout_policy: .github/workflows/cao.json
+  deployment_profiles: .github/workflows/cao.<deployment>.json
   campaign_runtime: <campaign>/
   agent_instruction_resources: .github/aw/
   campaign_records: .github/aw/campaigns/
@@ -303,6 +304,7 @@ invariants:
   - "The hosted Redis profile MUST use GitHub OAuth with explicit organization or team authorization, explicit rebuild administrators, server-side secrets and sessions, and an explicit account-selection flow for switching GitHub identities."
   - "Hosted Redis MUST use TLS by default and Azure Functions MUST always require TLS; private plaintext Redis is allowed only through an explicit opt-in and only for a private IP or single-label service hostname."
   - "A hosted non-loopback listener MUST terminate TLS or explicitly trust only private proxy CIDRs; forwarded headers are authoritative only from a direct peer in those CIDRs, with an exact allowed host and HTTPS protocol."
+  - "cao.json MUST remain the only rollout policy; cao.<deployment>.json profiles MAY extend only control-plane.web.host and MUST reject traversal, cycles, duplicate keys, and any authority or campaign override."
   - "Coolify delivery MUST refuse fork repository payloads; map main pushes to alpha and published prerelease/non-prerelease events to beta/stable; admit manual alpha only from current main and manual beta/stable from main or release only at the latest eligible published tag commit; independently scan exact sources, deploy exact digests through tier-specific protected environments, and never implicitly promote or deploy mutable channel tags."
   - "Hosted logout and account switching MUST remove active session authority before remote token revocation; failed GitHub revocations MUST retain encrypted credentials only in the durable Redis pending-revocation queue for bounded maintenance retries through credential expiry."
   - "Hosted session encryption MUST identify the active key and support one explicitly configured previous key during controlled rotation; the previous key MUST remain available until sessions and revocation records using it drain."
