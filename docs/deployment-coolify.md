@@ -91,6 +91,19 @@ In the following steps, replace `PUBLIC-HOST` with the public host name of your 
    1. Confirm that the dashboard refuses an unauthorized account.
    1. If you use webhooks, send a signed test delivery.
 
+### Generating a sample Compose bundle
+
+For a test deployment of the `githubnext/gh-aw-cao` dashboard, manually run
+**Generate sample Coolify Compose**. Supply an immutable
+`ghcr.io/githubnext/gh-aw-cao/cao-dashboard@sha256:...` image, the public host,
+the exact private proxy CIDR, and the name of a pre-populated artifact volume.
+
+The `coolify-sample-compose` artifact contains a generated `compose.yml`, the
+reviewed `cao.json` policy, and `.env.example`. Upload those files together as
+the Coolify resource source. The generated file fills only non-secret deployment
+values. Configure every credential listed in `.env.example` as a Coolify secret;
+the workflow does not accept, read, or emit credentials.
+
 ### Updating the data
 
 To update the data, prepare a new volume in the same way, set `CAO_ARTIFACT_VOLUME` to the new volume, and redeploy. An administrator listed in `CAO_GITHUB_ADMIN_USERS` can also start a rebuild with `POST /api/admin/rebuild`.

@@ -118,6 +118,39 @@ test("Coolify Compose contains no credentials and requires immutable image input
   }
 });
 
+test("sample Coolify Compose workflow validates inputs and publishes a secret-free bundle", async () => {
+  const source = await text(".github/workflows/coolify-sample-compose.yml");
+  const workflow = parse(source);
+  const dispatch = workflow.on.workflow_dispatch;
+  const generate = workflow.jobs.generate;
+  const script = generate.steps.find((step) => step.name === "Generate sample Compose file").run;
+  const upload = generate.steps.find((step) => step.name === "Upload sample bundle");
+
+  assert.equal(workflow.on.pull_request_target, undefined);
+  assert.equal(workflow.on.pull_request, undefined);
+  assert.equal(workflow.on.push, undefined);
+  assert.deepEqual(workflow.permissions, { contents: "read" });
+  assert.equal(dispatch.inputs.image.required, true);
+  assert.equal(dispatch.inputs.public_host.required, true);
+  assert.equal(dispatch.inputs.trusted_proxy_cidr.required, true);
+  assert.equal(dispatch.inputs.artifact_volume.default, "cao-dashboard-artifact");
+  assert.match(script, /githubnext\/gh-aw-cao\/cao-dashboard@sha256/);
+  assert.match(script, /ipaddress\.ip_network\(cidr_text, strict=True\)/);
+  assert.match(script, /network\.is_private/);
+  assert.match(script, /"\.\.\/\.\.\/\.github\/workflows\/cao\.json": "\.\/cao\.json"/);
+  assert.match(script, /output \/ "compose\.yml"/);
+  assert.match(script, /output \/ "cao\.json"/);
+  assert.match(script, /output \/ "\.env\.example"/);
+  assert.equal(upload.with.name, "coolify-sample-compose");
+  assert.equal(upload.with["include-hidden-files"], true);
+
+  for (const match of source.matchAll(/uses:\s+[^@\s]+@([^\s#]+)/g)) {
+    assert.match(match[1], /^[0-9a-f]{40}$/, `action is not pinned: ${match[0]}`);
+  }
+  assert.doesNotMatch(source, /secrets\./);
+  assert.doesNotMatch(source, /set\s+-[^ \n]*x/);
+});
+
 test("deployment workflow publishes no mutable channel and gates every Coolify tier", async () => {
   const source = await text(".github/workflows/coolify-deploy.yml");
   const workflow = parse(source);
