@@ -78,17 +78,31 @@ func run() error {
 		WriteTimeout:      65 * time.Second,
 		IdleTimeout:       90 * time.Second,
 	}
-	go func() {
-		<-ctx.Done()
-		shutdown, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-		defer cancel()
-		_ = httpServer.Shutdown(shutdown)
-	}()
+	go shutdownOnDone(ctx, httpServer, 5*time.Second)
 	err = httpServer.Serve(listener)
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
 	return err
+}
+
+// shutdownOnDone waits for ctx to be cancelled, then gracefully shuts down
+// httpServer within timeout. It is extracted from run's inline goroutine so
+// the shutdown boundary is independently testable with a real
+// *http.Server, without starting a listener or a full process.
+//
+// The shutdown context survives cancellation of ctx, because ctx is
+// normally already cancelled by the signal handler that triggered this
+// shutdown. A failed or timed-out shutdown is logged rather than
+// propagated: this goroutine has no return path, and Serve's own returned
+// error remains the caller's signal for a failed shutdown.
+func shutdownOnDone(ctx context.Context, httpServer *http.Server, timeout time.Duration) {
+	<-ctx.Done()
+	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), timeout)
+	defer cancel()
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		startupLog.Printf("graceful shutdown failed")
+	}
 }
 
 func envOrDefault(getenv func(string) string, name, fallback string) string {
