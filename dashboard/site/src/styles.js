@@ -3,9 +3,35 @@
  */
 
 /**
+ * Minifies a CSS string while preserving the contents of double-quoted
+ * strings (e.g. `content: "Segoe UI"`, font-family lists) untouched. Strips
+ * comments, collapses whitespace runs, and removes whitespace around
+ * structural punctuation to reduce the bytes shipped in the inlined
+ * `<style>` element (Lighthouse "Minify CSS" / "Reduce unused CSS" audits).
+ * @param {string} css
  * @returns {string}
  */
-export function notificationStylesheet() {
+function minifyCss(css) {
+  /** @type {string[]} */
+  const strings = [];
+  const masked = css.replace(/"[^"]*"/g, (match) => {
+    strings.push(match);
+    return `@@CSS_STR_${strings.length - 1}@@`;
+  });
+  const minified = masked
+    .replace(/\/\*[^]*?\*\//g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/ *([{};]) */g, '$1')
+    .replace(/: /g, ':')
+    .replace(/;}/g, '}')
+    .trim();
+  return minified.replace(/@@CSS_STR_(\d+)@@/g, (_match, index) => strings[Number(index)]);
+}
+
+/**
+ * @returns {string}
+ */
+function notificationStylesheetSource() {
   return `
 .dashboard-notifications { width: min(480px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 8px; position: fixed; z-index: 1001; right: 16px; bottom: 16px; pointer-events: none; }
 .dashboard-notifications[hidden] { display: none; }
@@ -40,9 +66,18 @@ export function notificationStylesheet() {
 }
 
 /**
+ * CSS injected for toast-style dashboard notifications, minified to reduce
+ * the bytes shipped in the inlined `<style>` element.
  * @returns {string}
  */
-export function primerStylesheet() {
+export function notificationStylesheet() {
+  return minifyCss(notificationStylesheetSource());
+}
+
+/**
+ * @returns {string}
+ */
+function primerStylesheetSource() {
   return `:root {
   color-scheme: dark;
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
@@ -2498,6 +2533,15 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   a { color: inherit; text-decoration: underline; }
 }
 `;
+}
+
+/**
+ * GitHub Primer CSS tokens and element styles, minified to reduce the bytes
+ * shipped in the inlined `<style>` element (Lighthouse "Minify CSS" audit).
+ * @returns {string}
+ */
+export function primerStylesheet() {
+  return minifyCss(primerStylesheetSource());
 }
 
 export const getPrimerStyles = primerStylesheet;
