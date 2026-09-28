@@ -1,0 +1,183 @@
+name: Deploy sample dashboard to Coolify
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: coolify-sample
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build, publish, and deploy sample
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: coolify-sample
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - id: source
+        name: Verify sample source
+        env:
+          EXPECTED_REPOSITORY: githubnext/gh-aw-cao
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REPOSITORY}" != "${EXPECTED_REPOSITORY}" ]]; then
+            echo "sample deployment is restricted to githubnext/gh-aw-cao" >&2
+            exit 1
+          fi
+          source_sha="$(git rev-parse --verify 'HEAD^{commit}')"
+          if [[ "${source_sha}" != "${GITHUB_SHA}" || ! "${source_sha}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "sample checkout does not match the workflow source commit" >&2
+            exit 1
+          fi
+          echo "sha=${source_sha}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build sample image
+        env:
+          REVISION: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          created="$(git show -s --format=%cI "${REVISION}")"
+          docker build \
+            --file server/Dockerfile \
+            --build-arg "VERSION=sample-${REVISION}" \
+            --build-arg "REVISION=${REVISION}" \
+            --build-arg "CREATED=${created}" \
+            --tag "cao-dashboard:${REVISION}" \
+            .
+
+      - name: Scan sample image
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          image-ref: cao-dashboard:${{ steps.source.outputs.sha }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+
+      - name: Log in to GHCR
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: publish
+        name: Publish sample image
+        env:
+          REVISION: ${{ steps.source.outputs.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          repository="ghcr.io/githubnext/gh-aw-cao/cao-dashboard"
+          reference="${repository}:sample-${RUN_ID}-${RUN_ATTEMPT}"
+          docker tag "cao-dashboard:${REVISION}" "${reference}"
+          docker push "${reference}" >/dev/null
+          manifest="$(docker buildx imagetools inspect \
+            "${reference}" --format '{{json .Manifest}}')"
+          digest="$(jq -r '.digest // empty' <<<"${manifest}")"
+          if [[ ! "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "published sample image did not resolve to an immutable digest" >&2
+            exit 1
+          fi
+          {
+            echo "digest=${digest}"
+            echo "image=${repository}@${digest}"
+          } >> "${GITHUB_OUTPUT}"
+          {
+            echo "### Sample image"
+            echo
+            echo "- Source commit: \`${REVISION}\`"
+            echo "- Image: \`${repository}@${digest}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Verify deployment adapter configuration
+        env:
+          COOLIFY_DEPLOY_ENDPOINT: ${{ secrets.COOLIFY_DEPLOY_ENDPOINT }}
+          COOLIFY_DEPLOY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${COOLIFY_DEPLOY_ENDPOINT}" || -z "${COOLIFY_DEPLOY_TOKEN}" ]]; then
+            echo "deployment adapter configuration is incomplete" >&2
+            exit 1
+          fi
+
+      - name: Deploy sample image
+        env:
+          COOLIFY_DEPLOY_ENDPOINT: ${{ secrets.COOLIFY_DEPLOY_ENDPOINT }}
+          COOLIFY_DEPLOY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
+          IMAGE: ${{ steps.publish.outputs.image }}
+          DIGEST: ${{ steps.publish.outputs.digest }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          case "${COOLIFY_DEPLOY_ENDPOINT}" in
+            https://*) ;;
+            *) echo "deployment adapter URL must use HTTPS" >&2; exit 1 ;;
+          esac
+          if [[ "${IMAGE}" != *"@${DIGEST}" || ! "${DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "refusing a mutable deployment reference" >&2
+            exit 1
+          fi
+          payload="$(jq -cn \
+            --arg image "${IMAGE}" \
+            --arg digest "${DIGEST}" \
+            --arg source_sha "${SOURCE_SHA}" \
+            '{image: $image, digest: $digest, source_sha: $source_sha, tier: "sample"}')"
+          response_file="${RUNNER_TEMP}/coolify-sample-response.json"
+          (umask 077 && : > "${response_file}")
+          trap 'rm -f -- "${response_file}"' EXIT
+          authorization_header='header = "Authorization: Bearer '
+          authorization_header+="${COOLIFY_DEPLOY_TOKEN}\""
+          if ! curl_metrics="$(echo "${authorization_header}" | curl --config - --fail --silent \
+              --connect-timeout 10 \
+              --max-time 300 \
+              --max-filesize 65536 \
+              --request POST \
+              --header "Content-Type: application/json" \
+              --data "${payload}" \
+              --output "${response_file}" \
+              --write-out '%{http_code} %{time_total}' \
+              "${COOLIFY_DEPLOY_ENDPOINT}")"; then
+            echo "deployment adapter request failed" >&2
+            exit 1
+          fi
+          read -r http_status request_seconds <<<"${curl_metrics}"
+          if [[ ! "${http_status}" =~ ^2[0-9][0-9]$ ||
+                ! "${request_seconds}" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+            echo "deployment adapter returned invalid request metrics" >&2
+            exit 1
+          fi
+          if ! jq -e \
+            --arg image "${IMAGE}" \
+            --arg digest "${DIGEST}" \
+            'type == "object" and
+             .status == "ready" and
+             .image == $image and
+             .digest == $digest' \
+            "${response_file}" >/dev/null; then
+            echo "deployment adapter did not confirm the requested ready digest" >&2
+            exit 1
+          fi
+          {
+            echo "### Sample deployment"
+            echo
+            echo "- Source commit: \`${SOURCE_SHA}\`"
+            echo "- Image: \`${IMAGE}\`"
+            echo "- Result: ready digest confirmed"
+            echo "- Request time: ${request_seconds} seconds"
+          } >> "${GITHUB_STEP_SUMMARY}"

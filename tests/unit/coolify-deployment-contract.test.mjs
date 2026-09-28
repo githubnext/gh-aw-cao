@@ -118,37 +118,48 @@ test("Coolify Compose contains no credentials and requires immutable image input
   }
 });
 
-test("sample Coolify Compose workflow validates inputs and publishes a secret-free bundle", async () => {
-  const source = await text(".github/workflows/coolify-sample-compose.yml");
+test("sample Coolify workflow builds, scans, publishes, and deploys an exact image digest", async () => {
+  const source = await text(".github/workflows/coolify-sample-deploy.yml");
   const workflow = parse(source);
-  const dispatch = workflow.on.workflow_dispatch;
-  const generate = workflow.jobs.generate;
-  const script = generate.steps.find((step) => step.name === "Generate sample Compose file").run;
-  const upload = generate.steps.find((step) => step.name === "Upload sample bundle");
+  const deploy = workflow.jobs.deploy;
+  const sourceCheck = deploy.steps.find((step) => step.name === "Verify sample source");
+  const build = deploy.steps.find((step) => step.name === "Build sample image");
+  const scan = deploy.steps.find((step) => step.name === "Scan sample image");
+  const publish = deploy.steps.find((step) => step.name === "Publish sample image");
+  const request = deploy.steps.find((step) => step.name === "Deploy sample image");
 
   assert.equal(workflow.on.pull_request_target, undefined);
   assert.equal(workflow.on.pull_request, undefined);
   assert.equal(workflow.on.push, undefined);
+  assert.equal(workflow.on.workflow_dispatch, null);
   assert.deepEqual(workflow.permissions, { contents: "read" });
-  assert.equal(dispatch.inputs.image.required, true);
-  assert.equal(dispatch.inputs.public_host.required, true);
-  assert.equal(dispatch.inputs.trusted_proxy_cidr.required, true);
-  assert.equal(dispatch.inputs.artifact_volume.default, "cao-dashboard-artifact");
-  assert.match(script, /githubnext\/gh-aw-cao\/cao-dashboard@sha256/);
-  assert.match(script, /ipaddress\.ip_network\(cidr_text, strict=True\)/);
-  assert.match(script, /network\.is_private/);
-  assert.match(script, /"\.\.\/\.\.\/\.github\/workflows\/cao\.json": "\.\/cao\.json"/);
-  assert.match(script, /output \/ "compose\.yml"/);
-  assert.match(script, /output \/ "cao\.json"/);
-  assert.match(script, /output \/ "\.env\.example"/);
-  assert.equal(upload.with.name, "coolify-sample-compose");
-  assert.equal(upload.with["include-hidden-files"], true);
+  assert.deepEqual(deploy.permissions, { contents: "read", packages: "write" });
+  assert.equal(deploy.environment.name, "coolify-sample");
+  assert.match(sourceCheck.run, /GITHUB_REPOSITORY.*EXPECTED_REPOSITORY/);
+  assert.match(sourceCheck.run, /source_sha.*GITHUB_SHA/);
+  assert.match(build.run, /docker build/);
+  assert.match(build.run, /server\/Dockerfile/);
+  assert.match(scan.uses, /^aquasecurity\/trivy-action@[0-9a-f]{40}$/);
+  assert.match(publish.run, /docker push/);
+  assert.match(publish.run, /ghcr\.io\/githubnext\/gh-aw-cao\/cao-dashboard/);
+  assert.match(publish.run, /echo "digest=\$\{digest\}"/);
+  assert.match(publish.run, />> "\$\{GITHUB_OUTPUT\}"/);
+  assert.equal(request.env.COOLIFY_DEPLOY_ENDPOINT, "${{ secrets.COOLIFY_DEPLOY_ENDPOINT }}");
+  assert.equal(request.env.COOLIFY_DEPLOY_TOKEN, "${{ secrets.COOLIFY_DEPLOY_TOKEN }}");
+  assert.match(request.run, /IMAGE.*DIGEST/);
+  assert.match(request.run, /curl --config -/);
+  assert.doesNotMatch(request.run, /--oauth2-bearer/);
+  assert.match(request.run, /\.status == "ready"/);
+  assert.match(request.run, /trap 'rm -f -- "\$\{response_file\}"' EXIT/);
 
   for (const match of source.matchAll(/uses:\s+[^@\s]+@([^\s#]+)/g)) {
     assert.match(match[1], /^[0-9a-f]{40}$/, `action is not pinned: ${match[0]}`);
   }
-  assert.doesNotMatch(source, /secrets\./);
   assert.doesNotMatch(source, /set\s+-[^ \n]*x/);
+  assert.doesNotMatch(
+    source,
+    /(?:echo|printf|cat|head|tail)\b[^\n]*(?:COOLIFY_DEPLOY_ENDPOINT|COOLIFY_DEPLOY_TOKEN|\$\{payload\}|\$\{response_file\})/,
+  );
 });
 
 test("deployment workflow publishes no mutable channel and gates every Coolify tier", async () => {
