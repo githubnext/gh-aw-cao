@@ -144,7 +144,7 @@ async function createConsumer(t, ghAwVersion, { repository = "alpha-org/control"
   if (ghAwVersion) await writeFile(ghAwInstalled, `${ghAwVersion}\n`);
   const env = {
     ...process.env,
-    PATH: `${bin.replace(/^([A-Za-z]):/, (_, drive) => `/${drive.toLowerCase()}`).replaceAll("\\", "/")}:${process.env.PATH}`,
+    PATH: `${bin}${path.delimiter}${process.env.PATH}`,
     NODE_OPTIONS: [process.env.NODE_OPTIONS, `--import=${pathToFileURL(mockFetch).href}`].filter(Boolean).join(" "),
     FAKE_CATALOG: catalog,
     FAKE_CAO_ARCHIVE: archive,
