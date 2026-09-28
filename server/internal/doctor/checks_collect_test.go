@@ -137,3 +137,71 @@ func TestClassifyQueueBacklogPassesWhenNoMaximumIsConfigured(t *testing.T) {
 		t.Fatalf("reason = %v, want %v", classification.reason, queueBacklogReasonHealthy)
 	}
 }
+
+func TestResolvePrivateKeySourceReportsAbsentWhenNothingIsConfigured(t *testing.T) {
+	result := resolvePrivateKeySource(fakeStat(nil), "", "")
+	if result.label != "absent" || result.present || result.err != nil {
+		t.Fatalf("result = %+v, want label=absent present=false err=nil", result)
+	}
+	if result.reason != privateKeySourceReasonAbsent {
+		t.Fatalf("reason = %v, want %v", result.reason, privateKeySourceReasonAbsent)
+	}
+}
+
+func TestResolvePrivateKeySourcePrefersFileOverInline(t *testing.T) {
+	stat := func(string) (os.FileInfo, error) {
+		return fakeRegularFileInfo{}, nil
+	}
+	result := resolvePrivateKeySource(stat, "/etc/cao/key.pem", "inline-value")
+	if result.label != "file (configured)" || !result.present || result.err != nil {
+		t.Fatalf("result = %+v, want label=file (configured) present=true err=nil", result)
+	}
+	if result.reason != privateKeySourceReasonFileConfigured {
+		t.Fatalf("reason = %v, want %v", result.reason, privateKeySourceReasonFileConfigured)
+	}
+}
+
+func TestResolvePrivateKeySourceReportsUnreadableFile(t *testing.T) {
+	result := resolvePrivateKeySource(fakeStat(nil), "/etc/cao/missing.pem", "")
+	if result.label != "file (unreadable)" || result.present || result.err == nil {
+		t.Fatalf("result = %+v, want label=file (unreadable) present=false non-nil err", result)
+	}
+	if result.reason != privateKeySourceReasonFileUnreadable {
+		t.Fatalf("reason = %v, want %v", result.reason, privateKeySourceReasonFileUnreadable)
+	}
+}
+
+func TestResolvePrivateKeySourceRejectsADirectory(t *testing.T) {
+	stat := func(string) (os.FileInfo, error) {
+		return fakeDirInfo{}, nil
+	}
+	result := resolvePrivateKeySource(stat, "/etc/cao/keys", "")
+	if result.label != "file (not a file)" || result.present || result.err == nil {
+		t.Fatalf("result = %+v, want label=file (not a file) present=false non-nil err", result)
+	}
+	if result.reason != privateKeySourceReasonFileNotAFile {
+		t.Fatalf("reason = %v, want %v", result.reason, privateKeySourceReasonFileNotAFile)
+	}
+}
+
+func TestResolvePrivateKeySourceReportsInlineWhenNoFileIsConfigured(t *testing.T) {
+	result := resolvePrivateKeySource(fakeStat(nil), "", "inline-value")
+	if result.label != "inline environment variable (configured)" || !result.present || result.err != nil {
+		t.Fatalf("result = %+v, want label=inline environment variable (configured) present=true err=nil", result)
+	}
+	if result.reason != privateKeySourceReasonInlineConfigured {
+		t.Fatalf("reason = %v, want %v", result.reason, privateKeySourceReasonInlineConfigured)
+	}
+}
+
+// fakeDirInfo and fakeRegularFileInfo are minimal os.FileInfo stand-ins whose
+// IsDir reports a fixed value, so resolvePrivateKeySource's directory
+// rejection and regular-file acceptance are testable without creating a real
+// file or directory on disk.
+type fakeDirInfo struct{ os.FileInfo }
+
+func (fakeDirInfo) IsDir() bool { return true }
+
+type fakeRegularFileInfo struct{ os.FileInfo }
+
+func (fakeRegularFileInfo) IsDir() bool { return false }
