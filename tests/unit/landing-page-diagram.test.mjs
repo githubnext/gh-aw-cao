@@ -202,7 +202,7 @@ test("landing page explains and illustrates campaign dispatch", () => {
   assert.match(illustration, /@keyframes job-1-running/);
   assert.match(illustration, /@keyframes job-5-running/);
   assert.match(illustration, /grid-template-rows: 64px 72px 72px 0 64px 72px 72px 72px/);
-  assert.match(illustration, /\.execution-grid \.dispatcher-repo-assist \{[\s\S]*?translateY\(-4px\)/);
+  assert.match(illustration, /\.execution-grid \.dispatcher-repo-assist \{[\s\S]*?border-bottom-color: color-mix[\s\S]*?translateY\(-4px\)/);
   assert.match(illustration, /\.run-card\.job-5,[\s\S]*?\.repository-card\.job-5 \{[\s\S]*?translateY\(4px\)/);
   assert.match(illustration, /\.actions-column \{[\s\S]*?align-self: start/);
   assert.match(illustration, /@media \(prefers-reduced-motion: reduce\)/);
