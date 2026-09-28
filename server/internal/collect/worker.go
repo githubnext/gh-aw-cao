@@ -38,19 +38,42 @@ type Worker struct {
 	OnProjection func(revision int64)
 }
 
-func (w Worker) consumer() string {
-	if w.Consumer != "" {
-		return w.Consumer
+// consumerNameSource identifies which input determined a worker's resolved
+// consumer name. It is useful for diagnosing a misconfigured deployment
+// without logging the name itself.
+type consumerNameSource string
+
+const (
+	consumerNameSourceExplicit  consumerNameSource = "explicit"
+	consumerNameSourceGenerated consumerNameSource = "generated"
+)
+
+// resolveConsumerName applies the standard priority for a worker's consumer
+// name: an explicit configured value, then a name generated from hostname
+// and a random suffix obtained from hostnameFunc and tokenFunc. It is a pure
+// function so the resolution logic can be exercised without depending on the
+// real hostname or a random token. It returns the resolved name and which
+// input supplied it, so callers can log the source without exposing the
+// name.
+func resolveConsumerName(explicit string, hostnameFunc func() (string, error), tokenFunc func() (string, error)) (string, consumerNameSource) {
+	if explicit != "" {
+		return explicit, consumerNameSourceExplicit
 	}
-	host, err := os.Hostname()
+	host, err := hostnameFunc()
 	if err != nil || host == "" {
 		host = "worker"
 	}
-	suffix, err := operationToken()
+	suffix, err := tokenFunc()
 	if err != nil {
-		return host
+		return host, consumerNameSourceGenerated
 	}
-	return host + "-" + suffix[:8]
+	return host + "-" + suffix[:8], consumerNameSourceGenerated
+}
+
+func (w Worker) consumer() string {
+	name, source := resolveConsumerName(w.Consumer, os.Hostname, operationToken)
+	workerLog.Printf("worker resolved consumer name source=%s", source)
+	return name
 }
 
 func (w Worker) batchSize() int {
