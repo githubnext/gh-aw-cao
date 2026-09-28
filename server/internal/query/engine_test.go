@@ -276,3 +276,75 @@ func TestLeftJoinPreservesMissingFieldsAsNull(t *testing.T) {
 }
 
 func fieldArgument(name string) Argument { return Argument{Field: &name} }
+
+func TestDistinctValuesSortsAndDeduplicates(t *testing.T) {
+	got := distinctValues([]any{"beta", "alpha", "beta", 1, 1})
+	want := []string{"1", "alpha", "beta"}
+	if len(got) != len(want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("got %v, want %v", got, want)
+		}
+	}
+}
+
+func TestDistinctValuesEmptyInput(t *testing.T) {
+	if got := distinctValues(nil); len(got) != 0 {
+		t.Fatalf("got %v, want empty", got)
+	}
+}
+
+func TestNumericReduceSumIncludesZeroValues(t *testing.T) {
+	result, ok := numericReduce([]float64{1, 2, 3}, "sum")
+	if !ok {
+		t.Fatal("sum should be a supported reducer")
+	}
+	if result != float64(6) {
+		t.Fatalf("got %v, want 6", result)
+	}
+	result, ok = numericReduce(nil, "sum")
+	if !ok || result != float64(0) {
+		t.Fatalf("empty sum: got %v, %v, want 0, true", result, ok)
+	}
+}
+
+func TestNumericReduceMeanMinMaxTreatEmptyAsNil(t *testing.T) {
+	for _, reducer := range []string{"mean", "min", "max"} {
+		result, ok := numericReduce(nil, reducer)
+		if !ok || result != nil {
+			t.Fatalf("reducer %q on empty input: got %v, %v, want nil, true", reducer, result, ok)
+		}
+	}
+	result, ok := numericReduce([]float64{4, 1, 3}, "mean")
+	if !ok || result != float64(8)/3 {
+		t.Fatalf("mean: got %v, %v, want %v, true", result, ok, float64(8)/3)
+	}
+	result, ok = numericReduce([]float64{4, 1, 3}, "min")
+	if !ok || result != float64(1) {
+		t.Fatalf("min: got %v, %v, want 1, true", result, ok)
+	}
+	result, ok = numericReduce([]float64{4, 1, 3}, "max")
+	if !ok || result != float64(4) {
+		t.Fatalf("max: got %v, %v, want 4, true", result, ok)
+	}
+}
+
+func TestNumericReduceUnsupportedReducerReportsNotOK(t *testing.T) {
+	result, ok := numericReduce([]float64{1, 2}, "median")
+	if ok {
+		t.Fatalf("expected ok=false for unsupported reducer, got result %v", result)
+	}
+	if result != nil {
+		t.Fatalf("got %v, want nil", result)
+	}
+}
+
+func TestReduceUnsupportedReducerReturnsNil(t *testing.T) {
+	// Validate rejects unsupported reducers before Execute runs; reduce
+	// still fails closed to nil if one ever reaches it directly.
+	if result := reduce([]any{1, 2, 3}, "median"); result != nil {
+		t.Fatalf("got %v, want nil", result)
+	}
+}

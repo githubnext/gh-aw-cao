@@ -851,6 +851,65 @@ func aggregateRows(rows []model.Row, aggregate Aggregate) []model.Row {
 	return output
 }
 
+// distinctValues returns the sorted set of unique string representations of
+// values, used by the distinct-count, distinct-list, and distinct-values
+// reducers.
+func distinctValues(values []any) []string {
+	set := map[string]bool{}
+	for _, value := range values {
+		set[fmt.Sprint(value)] = true
+	}
+	distinct := make([]string, 0, len(set))
+	for value := range set {
+		distinct = append(distinct, value)
+	}
+	sort.Strings(distinct)
+	return distinct
+}
+
+// numericReduce computes a numeric aggregate reducer ("sum", "mean", "min",
+// "max") over already-filtered numbers. It returns ok=false when reducer
+// names none of those, so callers can distinguish "no data" (nil result)
+// from "unsupported reducer" without duplicating the reducer name switch.
+func numericReduce(numbers []float64, reducer string) (any, bool) {
+	if reducer == "sum" {
+		var sum float64
+		for _, value := range numbers {
+			sum += value
+		}
+		return sum, true
+	}
+	if len(numbers) == 0 {
+		return nil, true
+	}
+	switch reducer {
+	case "mean":
+		var sum float64
+		for _, value := range numbers {
+			sum += value
+		}
+		return sum / float64(len(numbers)), true
+	case "min":
+		result := numbers[0]
+		for _, value := range numbers[1:] {
+			if value < result {
+				result = value
+			}
+		}
+		return result, true
+	case "max":
+		result := numbers[0]
+		for _, value := range numbers[1:] {
+			if value > result {
+				result = value
+			}
+		}
+		return result, true
+	default:
+		return nil, false
+	}
+}
+
 func reduce(values []any, reducer string) any {
 	present := values[:0]
 	for _, value := range values {
@@ -862,15 +921,7 @@ func reduce(values []any, reducer string) any {
 	case "count":
 		return len(present)
 	case "distinct-count", "distinct-list", "distinct-values":
-		set := map[string]bool{}
-		for _, value := range present {
-			set[fmt.Sprint(value)] = true
-		}
-		distinct := make([]string, 0, len(set))
-		for value := range set {
-			distinct = append(distinct, value)
-		}
-		sort.Strings(distinct)
+		distinct := distinctValues(present)
 		if reducer == "distinct-count" {
 			return len(distinct)
 		}
@@ -889,42 +940,13 @@ func reduce(values []any, reducer string) any {
 			numbers = append(numbers, numeric)
 		}
 	}
-	if reducer == "sum" {
-		var sum float64
-		for _, value := range numbers {
-			sum += value
-		}
-		return sum
+	result, ok := numericReduce(numbers, reducer)
+	if !ok {
+		// Validate rejects unsupported reducers before Execute runs, so
+		// reaching this path means a reducer bypassed validation.
+		queryLog.Printf("unsupported reducer reached aggregation reducer=%q", reducer)
 	}
-	if len(numbers) == 0 {
-		return nil
-	}
-	switch reducer {
-	case "mean":
-		var sum float64
-		for _, value := range numbers {
-			sum += value
-		}
-		return sum / float64(len(numbers))
-	case "min":
-		result := numbers[0]
-		for _, value := range numbers[1:] {
-			if value < result {
-				result = value
-			}
-		}
-		return result
-	case "max":
-		result := numbers[0]
-		for _, value := range numbers[1:] {
-			if value > result {
-				result = value
-			}
-		}
-		return result
-	default:
-		return nil
-	}
+	return result
 }
 
 func latestFailureStreak(values []any) int {
