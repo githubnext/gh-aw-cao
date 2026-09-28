@@ -104,6 +104,7 @@ func (a *App) newMCPHandler() (http.Handler, error) {
 		Instructions:              contract.Instructions,
 		SupportedProtocolVersions: []string{contract.ProtocolVersion},
 	})
+	server.AddReceivingMiddleware(mcpServerTelemetry())
 	registered := map[string]bool{}
 	for _, declared := range contract.Tools {
 		tool := declared

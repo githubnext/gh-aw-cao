@@ -745,8 +745,11 @@ supplies OpenTelemetry HTTP semantic-convention attributes and the standard
 `http.server.request.duration`, `http.server.request.body.size`, and
 `http.server.response.body.size` metrics. The query engine and ingestion paths
 start dedicated `cao_dashboard.query.execute` and `cao_dashboard.ingest.run`
-spans. Application attributes are limited to non-secret aggregate counts,
-revisions, and durations (no Redis URLs, credentials, GitHub tokens, or row
+spans. MCP requests use the OpenTelemetry MCP semantic conventions, including
+`mcp.method.name`, `mcp.protocol.version`, `gen_ai.operation.name`, and
+`gen_ai.tool.name`; tool arguments and results are never recorded. Application
+attributes are limited to non-secret aggregate counts, revisions, and durations
+(no Redis URLs, credentials, GitHub tokens, or row
 contents). Identifiers follow the W3C Trace Context specification: the tracer
 provider installs `propagation.TraceContext` so a client-sent `traceparent`
 header continues an existing trace, and every API response echoes the active
