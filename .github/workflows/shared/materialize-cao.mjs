@@ -187,11 +187,16 @@ export async function materializeCao(campaign = 'root', repositoryRoot = process
     for (const [index, plan] of plans.entries()) {
       let sourceRoot = sourceRoots.get(plan.revision);
       if (!sourceRoot) {
-        const extractionDirectory = path.join(temporaryDirectory, String(index));
-        const archive = path.join(temporaryDirectory, `${index}.tar.gz`);
+        const extractionDirectoryName = String(index);
+        const extractionDirectory = path.join(temporaryDirectory, extractionDirectoryName);
+        const archiveName = `${index}.tar.gz`;
+        const archive = path.join(temporaryDirectory, archiveName);
         mkdirSync(extractionDirectory);
         await downloadArchive(plan.revision, archive);
-        const tar = spawnSync('tar', ['-xzf', archive, '-C', extractionDirectory], { encoding: 'utf8' });
+        const tar = spawnSync('tar', ['-xzf', archiveName, '-C', extractionDirectoryName], {
+          cwd: temporaryDirectory,
+          encoding: 'utf8',
+        });
         if (tar.error || tar.status !== 0) {
           throw new Error(`Unable to extract CAO ${plan.revision}: ${(tar.stderr || tar.error?.message || 'tar failed').trim()}`);
         }

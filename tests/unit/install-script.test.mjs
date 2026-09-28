@@ -34,9 +34,10 @@ const addedFiles = [
 
 const fixtureRoot = await mkdtemp(path.join(os.tmpdir(), "cao-install-fixture-"));
 const archive = path.join(fixtureRoot, "gh-aw-cao.tar.gz");
+const archiveName = path.basename(archive);
 const mockFetch = path.join(fixtureRoot, "mock-fetch.mjs");
 await executeFile("tar", [
-  "-czf", archive,
+  "-czf", archiveName,
   "--exclude=node_modules", "--exclude=dist", "--exclude=test-results",
   "-C", path.dirname(catalog),
   ...[
@@ -51,7 +52,7 @@ await executeFile("tar", [
     ".github/workflows/shared/review-bundle.md",
   ]
     .map((member) => `${path.basename(catalog)}/${member}`),
-]);
+], { cwd: fixtureRoot });
 await writeFile(mockFetch, `
 import { appendFileSync, readFileSync } from "node:fs";
 

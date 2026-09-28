@@ -1,0 +1,39 @@
+name: Windows installer
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/install-windows.yml
+      - .github/workflows/shared/materialize-cao.mjs
+      - install.sh
+      - tests/unit/install-script.test.mjs
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/install-windows.yml
+      - .github/workflows/shared/materialize-cao.mjs
+      - install.sh
+      - tests/unit/install-script.test.mjs
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    name: Test install.sh
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+      - name: Test install.sh
+        shell: bash
+        run: node --test tests/unit/install-script.test.mjs
