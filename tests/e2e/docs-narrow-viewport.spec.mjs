@@ -62,7 +62,7 @@ test("setup wizard presents hosting choices as an immersive card experience", as
 
 for (const { colorScheme, canvas, foreground, accent } of [
   { colorScheme: "light", canvas: "rgb(247, 250, 248)", foreground: "rgb(31, 35, 40)", accent: "rgb(31, 136, 61)" },
-  { colorScheme: "dark", canvas: "rgb(3, 7, 5)", foreground: "rgb(240, 246, 252)", accent: "rgb(63, 185, 80)" },
+  { colorScheme: "dark", canvas: "rgb(3, 7, 5)", foreground: "rgb(240, 246, 252)", accent: "rgb(31, 136, 61)" },
 ]) {
   test(`setup wizard follows the landing page visual language in ${colorScheme} mode`, async ({ page }) => {
     await page.addInitScript(() => localStorage.removeItem("starlight-theme"));
