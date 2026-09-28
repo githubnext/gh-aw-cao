@@ -9,6 +9,7 @@ import { promisify } from "node:util";
 import test from "node:test";
 import vm from "node:vm";
 import { parse } from "yaml";
+import { materializeCaoFromSource } from "../../.github/workflows/shared/materialize-cao.mjs";
 
 const executeFile = promisify(execFile);
 const catalog = path.resolve(".");
@@ -607,7 +608,12 @@ test("streamed install.sh initializes repository-only Activity without an App", 
 
 test("installed Activity still requires the App for an owner-wide policy", async (t) => {
   const { root, consumer, repository, env } = await createConsumer(t, supportedGhAw);
-  await streamInstaller(consumer, env);
+  materializeCaoFromSource("root", catalog, consumer);
+  for (const { source, destination } of addedFiles) {
+    const target = path.join(consumer, destination);
+    await mkdir(path.dirname(target), { recursive: true });
+    fs.cpSync(path.join(catalog, source), target, { recursive: true });
+  }
   await writeFile(path.join(consumer, policyPath), `${JSON.stringify({
     version: 1,
     "gh-aw-version": supportedGhAw,
