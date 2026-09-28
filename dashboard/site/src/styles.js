@@ -1370,7 +1370,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .home-catchup-metric { position: relative; display: grid; gap: 1px; padding: 13px 16px; }
 .home-catchup-metric + .home-catchup-metric { border-left: 1px solid var(--border-muted); }
 .home-catchup-metric dt { grid-row: 2; color: var(--muted); font-size: .6875rem; }
-.home-catchup-metric dd { margin: 0; font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.home-catchup-metric dd { margin: 0; font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .home-catchup-metric-success dd, .home-positive { color: var(--success); }
 .home-catchup-metric-attention dd { color: var(--attention); }
 .home-catchup-metric-accent dd { color: var(--accent); }
@@ -1393,14 +1393,14 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .home-catchup-side-charts { display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .home-work-now { display: grid; grid-template-columns: 82px minmax(0, 1fr); align-items: center; gap: 14px; margin-top: 14px; }
 .home-work-ring { width: 76px; aspect-ratio: 1; display: grid; place-content: center; border-radius: 50%; background: radial-gradient(circle, var(--canvas) 55%, transparent 57%), conic-gradient(var(--accent) 0 var(--running), var(--attention) var(--running) var(--review), var(--border-muted) var(--review)); text-align: center; }
-.home-work-ring strong { font-size: 1.1rem; line-height: 1; }
+.home-work-ring strong { font-size: 1.125rem; line-height: 1; }
 .home-work-ring span { color: var(--muted); font-size: .625rem; }
 .home-work-now dl { display: grid; gap: 7px; margin: 0; }
 .home-work-now dl div { display: flex; justify-content: space-between; gap: 10px; font-size: .6875rem; }
 .home-work-now dt { color: var(--muted); }
 .home-work-now dd { margin: 0; font-weight: 700; }
 .home-value-gain { display: grid; grid-template-columns: auto minmax(80px, 1fr); align-items: end; gap: 12px; margin-top: 12px; }
-.home-value-gain strong { font-size: 1.15rem; white-space: nowrap; }
+.home-value-gain strong { font-size: 1.125rem; white-space: nowrap; }
 .home-value-gain svg { width: 100%; height: 50px; overflow: visible; }
 .home-value-line { fill: none; stroke: var(--success); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .home-catchup-stories { min-width: 0; display: grid; gap: 9px; }
@@ -1545,9 +1545,9 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .factory-station-final .factory-station-icon { border-color: color-mix(in srgb, var(--attention) 46%, var(--border)); background: color-mix(in srgb, var(--attention) 9%, var(--canvas)); color: var(--attention); }
 .factory-station-empty .factory-station-icon { border-color: var(--border); background: var(--canvas); color: var(--muted); box-shadow: none; }
 .factory-station-pending .factory-station-icon { border-color: var(--border-muted); background: var(--canvas-subtle); color: var(--muted); box-shadow: none; }
-.factory-station-pending strong { min-width: 48px; height: 1.8rem; border-radius: 6px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
+.factory-station-pending strong { min-width: 48px; height: 1.75rem; border-radius: 6px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
 .factory-station > span:nth-child(2) { color: var(--muted); font-size: .6875rem; font-weight: 700; text-transform: uppercase; }
-.factory-station strong { margin-top: 3px; font-size: 1.8rem; font-variant-numeric: tabular-nums; line-height: 1; }
+.factory-station strong { margin-top: 3px; font-size: 1.75rem; font-variant-numeric: tabular-nums; line-height: 1; }
 .factory-station small { margin-top: 5px; color: var(--muted); font-size: .6875rem; }
 .factory-station a { min-width: 24px; min-height: 24px; display: inline-flex; align-items: center; justify-content: center; color: inherit; text-decoration: none; }
 .factory-station a:hover { color: var(--accent); text-decoration: underline; }
