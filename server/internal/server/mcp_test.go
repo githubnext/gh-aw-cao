@@ -9,8 +9,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
 const (

@@ -11,9 +11,10 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 type mcpContract struct {
