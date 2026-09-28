@@ -62,6 +62,7 @@ describe('Friction dashboard view', () => {
     );
 
     expect(dataSection.pages).toContain('friction');
+    expect(page.experimental).toBe(true);
     expect(page.views).toMatchObject([
       {
         id: 'friction-by-workflow',
