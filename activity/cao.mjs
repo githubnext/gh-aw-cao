@@ -42,6 +42,8 @@ import {
   configureEnterpriseApps,
   FINE_GRAINED_PAT_PROFILES,
   GITHUB_AUTH_MODE_VARIABLE,
+  githubServerUrl,
+  openBrowser,
   ownerScopedPatSecret,
 } from './authentication.mjs';
 import {
@@ -232,22 +234,6 @@ export async function initializeCaoPolicy({
   const repository = resolveControlRepository(execute);
   await writeJsonAtomically(absolutePath, minimalPolicy(version, repository));
   return { command: 'init', policy: policyPath, 'gh-aw-version': version };
-}
-
-function githubServerUrl(environment = process.env) {
-  const configured = environment.GH_HOST?.trim()
-    || environment.GITHUB_SERVER_URL?.trim()
-    || 'github.com';
-  const url = configured.includes('://') ? configured : `https://${configured}`;
-  return new URL(url).origin;
-}
-
-function openBrowser(url, execute = spawnSync) {
-  const command = process.platform === 'darwin' ? ['open', [url]]
-    : process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]]
-      : ['xdg-open', [url]];
-  const result = execute(command[0], command[1], { stdio: 'ignore' });
-  return !result.error && result.status === 0;
 }
 
 export function fineGrainedTokenSetups({

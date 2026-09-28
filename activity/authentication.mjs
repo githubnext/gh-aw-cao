@@ -1,3 +1,5 @@
+import { spawnSync } from 'node:child_process';
+
 export const FINE_GRAINED_PAT_PROFILES = [
   {
     role: 'read',
@@ -29,6 +31,22 @@ export const FINE_GRAINED_PAT_PROFILES = [
 ];
 
 export const GITHUB_AUTH_MODE_VARIABLE = 'GH_AW_GITHUB_AUTH_MODE';
+
+export function githubServerUrl(environment = process.env) {
+  const configured = environment.GH_HOST?.trim()
+    || environment.GITHUB_SERVER_URL?.trim()
+    || 'github.com';
+  const url = configured.includes('://') ? configured : `https://${configured}`;
+  return new URL(url).origin;
+}
+
+export function openBrowser(url, execute = spawnSync) {
+  const command = process.platform === 'darwin' ? ['open', [url]]
+    : process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]]
+      : ['xdg-open', [url]];
+  const result = execute(command[0], command[1], { stdio: 'ignore' });
+  return !result.error && result.status === 0;
+}
 
 export function ownerScopedPatSecret(profile, owner) {
   const suffix = owner.toUpperCase().replaceAll('-', '_');

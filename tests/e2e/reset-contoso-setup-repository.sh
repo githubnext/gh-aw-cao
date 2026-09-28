@@ -2,7 +2,8 @@
 
 set -euo pipefail
 
-readonly repository_root="$(git rev-parse --show-toplevel)"
+repository_root="$(git rev-parse --show-toplevel)"
+readonly repository_root
 cd "$repository_root"
 
 for path in ./* ./.github/*; do
