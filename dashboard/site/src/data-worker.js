@@ -326,10 +326,9 @@ async function queryRepositoryMemory(request, signal) {
  * changing how the complete inventory commit resolves shared structural
  * records, so their subscriptions render immediately.
  */
-const INVENTORY_PHASE_SOURCES = ['marketplace-packages'];
-const INVENTORY_PHASE_DATABASE_SOURCES = new Set(INVENTORY_PHASE_SOURCES);
+const INVENTORY_PHASE_DATABASE_SOURCES = new Set(['marketplace-packages']);
 const RUN_PHASE_DATABASE_SOURCES = new Set([
-  ...INVENTORY_PHASE_SOURCES,
+  ...INVENTORY_PHASE_DATABASE_SOURCES,
   'campaigns',
   'repositories',
   'workflows',
@@ -603,12 +602,9 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
  */
 function refreshDashboardSubscriptions(logicalSources, phase) {
   const publication = phase !== 'complete' && eagerIngest ? 'complete' : phase;
-  if (phase !== publication) {
-    debugIngestion('publishing every phase because eager ingestion is active', {
-      phase,
-      subscriptions: dashboardSubscriptions.size
-    });
-  }
+  // The complete logical sources stay available to every published
+  // subscription: the phase gate below, not this payload, decides which
+  // subscriptions may read the partially committed canonical database.
   liveDashboard = {
     logicalSources,
     revision: (liveDashboard?.revision ?? 0) + 1
@@ -621,6 +617,8 @@ function refreshDashboardSubscriptions(logicalSources, phase) {
       .map(([id]) => id);
   debugIngestion('publishing canonical phase', {
     phase: publication,
+    requestedPhase: phase,
+    eagerIngest,
     subscriptions: dashboardSubscriptions.size,
     published: published.length
   });
@@ -767,7 +765,7 @@ export function processDataRequest(request, signal) {
             // waiting for historical ingestion. The complete inventory payload
             // is still committed after shard ingestion, under its own scope, so
             // inventory keeps resolving shared structural records last.
-            const inventoryPhaseSources = Object.fromEntries(INVENTORY_PHASE_SOURCES
+            const inventoryPhaseSources = Object.fromEntries([...INVENTORY_PHASE_DATABASE_SOURCES]
               .filter((name) => Object.hasOwn(sources, name))
               .map((name) => [name, /** @type {Record<string, unknown>} */ (sources)[name]]));
             if (Object.keys(inventoryPhaseSources).length > 0) {
