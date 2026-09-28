@@ -302,6 +302,63 @@ describe('database table ingestion and queries', () => {
     expect((await readCanonicalBatch(indexedDB)).repositories).toHaveLength(251);
   });
 
+  it('reuses a single database connection across multiple bounded writes in one shard', async () => {
+    // Regression test: opening and closing a connection per write batch adds
+    // per-call overhead that dominates ingestion time once a shard requires
+    // many batches (as seen with large activity shards). The connection used
+    // for writing buffered batches must be opened once per shard and reused
+    // for every flush, so the number of connection opens must not scale with
+    // the number of write batches a shard requires.
+    /** @param {number} recordCount @param {string} identity */
+    const shard = (recordCount, identity) => {
+      const records = Array.from({ length: recordCount }, (_, index) => ({
+        kind: 'record',
+        collection: 'repositories',
+        record: {
+          id: `repository:reused-connection-${identity}-${index}`,
+          observedAt: '2026-09-09T05:00:00Z',
+          provenance: { source: 'test', sourceId: String(index), observedAt: '2026-09-09T05:00:00Z' }
+        }
+      }));
+      const lines = [
+        {
+          kind: 'metadata',
+          schemaVersion: CANONICAL_SCHEMA_VERSION,
+          ingestionVersion: 3,
+          sourceRecords: records.length,
+          phase: 'all',
+          records: records.length
+        },
+        ...records
+      ].map((line) => JSON.stringify(line)).join('\n');
+      return async function* () { yield lines; };
+    };
+
+    /** @param {number} recordCount @param {string} identity */
+    const countConnectionOpens = async (recordCount, identity) => {
+      const openSpy = vi.spyOn(indexedDB, 'open');
+      const result = await ingestNormalizedJsonl(indexedDB, shard(recordCount, identity)(), {
+        deferMaintenance: true,
+        payloadIdentity: identity.repeat(64),
+        payloadScope: `https://example.test/gh-aw-logs-normalized/reused-connection-${identity}.jsonl`
+      });
+      const opens = openSpy.mock.calls.length;
+      openSpy.mockRestore();
+      return { opens, result };
+    };
+
+    // 250 records fits in a single write batch; 2,000 records requires eight.
+    // Both should open the canonical database the same fixed number of times
+    // (one lookup for the "already ingested" check plus one shared write
+    // connection), independent of how many batches were written.
+    const small = await countConnectionOpens(250, 'a');
+    const large = await countConnectionOpens(2_000, 'b');
+
+    expect(small.result).toMatchObject({ committedBatches: 1, committedRecords: 250 });
+    expect(large.result).toMatchObject({ committedBatches: 8, committedRecords: 2_000 });
+    expect(large.opens).toBe(small.opens);
+  });
+
   it('retries a truncated normalized stream without recording a receipt', async () => {
     const metadata = {
       kind: 'metadata',

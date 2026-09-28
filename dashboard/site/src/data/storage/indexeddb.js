@@ -339,13 +339,19 @@ export function openCanonicalDatabase(indexedDB) {
 }
 
 /**
- * Directly upserts a canonical batch using bounded transactions.
+ * Upserts a canonical batch onto an already-open database connection using
+ * bounded transactions. Callers that write many small batches in sequence
+ * (such as streamed JSONL ingestion) should open the connection once with
+ * {@link openCanonicalDatabase} and reuse it across calls: repeatedly
+ * opening and closing a connection for every batch adds IPC/versioning
+ * overhead per call that dominates ingestion time once batch counts grow
+ * into the hundreds.
  *
- * @param {IDBFactory} indexedDB
+ * @param {IDBDatabase} database
  * @param {import('../model/schema.js').CanonicalBatch} batch
  * @param {{ batchSize?: number, validateRelationships?: boolean, signal?: AbortSignal, onBatchCommitted?: (progress: { committedBatches: number, committedRecords: number }) => void | Promise<void> }} [options]
  */
-export async function upsertCanonicalBatch(indexedDB, batch, options = {}) {
+export async function upsertCanonicalBatchWithConnection(database, batch, options = {}) {
   options.signal?.throwIfAborted();
   if (options.validateRelationships !== false) {
     const errors = relationshipErrors(batch);
@@ -360,30 +366,44 @@ export async function upsertCanonicalBatch(indexedDB, batch, options = {}) {
     throw new TypeError('Write batch size must be a positive integer');
   }
 
+  let committedRecords = 0;
+  let committedBatches = 0;
+  for (const storeName of ENTITY_STORES) {
+    options.signal?.throwIfAborted();
+    const records = batch[storeName] ?? [];
+    for (let offset = 0; offset < records.length; offset += batchSize) {
+      options.signal?.throwIfAborted();
+      const boundedRecords = records.slice(offset, offset + batchSize);
+      const transaction = readwriteTransaction(database, storeName);
+      const done = transactionDone(transaction);
+      const store = transaction.objectStore(storeName);
+      for (const record of boundedRecords) {
+        store.put(record);
+      }
+      commitTransaction(transaction);
+      await done;
+      committedRecords += boundedRecords.length;
+      committedBatches += 1;
+      await options.onBatchCommitted?.({ committedBatches, committedRecords });
+    }
+  }
+  return { committedBatches, committedRecords };
+}
+
+/**
+ * Directly upserts a canonical batch using bounded transactions, opening and
+ * closing a database connection for this call only. Prefer
+ * {@link upsertCanonicalBatchWithConnection} when writing many batches in a
+ * loop so the connection can be reused.
+ *
+ * @param {IDBFactory} indexedDB
+ * @param {import('../model/schema.js').CanonicalBatch} batch
+ * @param {{ batchSize?: number, validateRelationships?: boolean, signal?: AbortSignal, onBatchCommitted?: (progress: { committedBatches: number, committedRecords: number }) => void | Promise<void> }} [options]
+ */
+export async function upsertCanonicalBatch(indexedDB, batch, options = {}) {
   const database = await openCanonicalDatabase(indexedDB);
   try {
-    let committedRecords = 0;
-    let committedBatches = 0;
-    for (const storeName of ENTITY_STORES) {
-      options.signal?.throwIfAborted();
-      const records = batch[storeName] ?? [];
-      for (let offset = 0; offset < records.length; offset += batchSize) {
-        options.signal?.throwIfAborted();
-        const boundedRecords = records.slice(offset, offset + batchSize);
-        const transaction = readwriteTransaction(database, storeName);
-        const done = transactionDone(transaction);
-        const store = transaction.objectStore(storeName);
-        for (const record of boundedRecords) {
-          store.put(record);
-        }
-        commitTransaction(transaction);
-        await done;
-        committedRecords += boundedRecords.length;
-        committedBatches += 1;
-        await options.onBatchCommitted?.({ committedBatches, committedRecords });
-      }
-    }
-    return { committedBatches, committedRecords };
+    return await upsertCanonicalBatchWithConnection(database, batch, options);
   } finally {
     database.close();
   }
@@ -822,6 +842,21 @@ function indexedQueryPlan(store, operators) {
 }
 
 /**
+ * Reads a canonical record from an already-open database connection. Prefer
+ * this over {@link readRecord} when reading many records in a loop (such as
+ * per-record structural-metadata merges) so the connection can be reused
+ * instead of reopened for each read.
+ *
+ * @param {IDBDatabase} database
+ * @param {typeof ENTITY_STORES[number]} storeName
+ * @param {string} id
+ */
+export async function readRecordWithConnection(database, storeName, id) {
+  const result = await requestResult(database.transaction(storeName).objectStore(storeName).get(id));
+  return result && typeof result === 'object' ? result : null;
+}
+
+/**
  * @param {IDBFactory} indexedDB
  * @param {typeof ENTITY_STORES[number]} storeName
  * @param {string} id
@@ -829,8 +864,7 @@ function indexedQueryPlan(store, operators) {
 export async function readRecord(indexedDB, storeName, id) {
   const database = await openCanonicalDatabase(indexedDB);
   try {
-    const result = await requestResult(database.transaction(storeName).objectStore(storeName).get(id));
-    return result && typeof result === 'object' ? result : null;
+    return await readRecordWithConnection(database, storeName, id);
   } finally {
     database.close();
   }
