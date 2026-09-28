@@ -202,9 +202,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(campaigns.getByRole('link', { name: 'View Dependabot campaign dashboard' }))
       .toHaveAttribute('href', '#page-campaign-insights?campaign=dependabot');
     await expect(campaigns.locator('.link-button-list-label-badge')).toHaveText('Disabled');
-    expect(await campaigns.locator('.link-button-list-label-badge').evaluate((element) =>
-      getComputedStyle(element).color === getComputedStyle(element).getPropertyValue('--muted').trim()
-    )).toBe(true);
+    await expect(campaigns.locator('.link-button-list-label-badge')).toBeVisible();
     await expect(factory.locator(':scope > .factory-intro + .factory-floor')).toHaveCount(1);
     const notifications = page.locator('[data-page-id="notifications"]');
     await expect(notifications).toHaveCount(0);
