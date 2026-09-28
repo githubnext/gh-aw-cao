@@ -531,21 +531,28 @@ export function installationIncludesTarget(installation, target, listRepositorie
   return target.repositories.every((repository) => selected.has(`${target.owner}/${repository}`.toLowerCase()));
 }
 
-function selectedInstallation(app, target) {
-  const installation = matchingInstallation(app, target.owner);
+export function selectedInstallation(app, target, {
+  findInstallation = matchingInstallation,
+  listRepositories = listInstallationRepositories,
+  serverUrl = githubServerUrl(),
+} = {}) {
+  const installation = findInstallation(app, target.owner);
   if (!installation) {
     return undefined;
   }
-  if (isDataResidencyServer()) {
-    validateInstallationScope(installation, target.owner);
-    const settingsUrl = `${githubServerUrl()}/organizations/${target.owner}/settings/installations/${installation.id}`;
-    console.error(
-      `GitHub does not expose selected repository membership to this CLI credential on ${githubServerUrl()}; `
-      + `verify ${target.repositories.map((repository) => `${target.owner}/${repository}`).join(", ")} at ${settingsUrl}.`,
-    );
-    return installation;
+  try {
+    return installationIncludesTarget(installation, target, listRepositories)
+      ? installation
+      : undefined;
+  } catch (error) {
+    if (isDataResidencyServer(serverUrl) && error?.message) {
+      throw new Error(
+        `unable to verify selected repository membership for ${app.name || app.slug} on ${target.owner}: `
+        + `${error.message}. Refresh the GitHub CLI credential with read:user access and retry`,
+      );
+    }
+    throw error;
   }
-  return installationIncludesTarget(installation, target) ? installation : undefined;
 }
 
 function openInstallation(app, openBrowser) {

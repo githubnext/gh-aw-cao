@@ -100,7 +100,11 @@ main() {
   elif [[ $# -gt 0 ]]; then
     gh aw add "$catalog_source" --force --no-security-scanner
   fi
-  node "$materializer" materialize root
+  if [[ -d "$catalog_source" ]]; then
+    node "$materializer" materialize-source root "$catalog_source"
+  else
+    node "$materializer" materialize root
+  fi
 
   chmod +x "$cao_command"
 

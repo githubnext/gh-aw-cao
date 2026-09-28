@@ -169,4 +169,3 @@ function qualifiedRepository(row) {
   const repository = text(row.repository);
   return repository.includes('/') ? repository : `${text(row.organization)}/${repository}`.replace(/^\/|\/$/g, '');
 }
-

@@ -312,6 +312,66 @@ esac
   });
 }
 
+test("orchestrator retains one target when eligible workers exceed the dispatch budget", () => {
+  const workers = ["triage", "fix", "maintenance", "upkeep"];
+  const result = runPrecompute(
+    {
+      ROLE: "orchestrator",
+      TARGET_REPO: "",
+      DISPATCH_MAX: "3",
+      CAO_DISPATCH_MAX: "3",
+    },
+    `
+case "$*" in
+  *contents/.github/workflows/dependabot.md*)
+    printf '%s\\n' '---
+safe-outputs:
+  dispatch-workflow:
+    workflows: [triage, fix, maintenance, upkeep]
+---' | base64 | tr -d '\\n'
+    ;;
+  *actions/workflows*)
+    printf '%s\\n' \
+      '{"id":1,"name":"Triage","path":".github/workflows/triage.lock.yml","state":"active"}' \
+      '{"id":2,"name":"Fix","path":".github/workflows/fix.lock.yml","state":"active"}' \
+      '{"id":3,"name":"Maintenance","path":".github/workflows/maintenance.lock.yml","state":"active"}' \
+      '{"id":4,"name":"Upkeep","path":".github/workflows/upkeep.lock.yml","state":"active"}'
+    ;;
+  *repos/acme/target*)
+    printf '{"id":1,"full_name":"acme/target","archived":false,"disabled":false,"private":true,"pushed_at":"2026-09-03T00:00:00Z","default_branch":"main"}\\n'
+    ;;
+  *) printf 'true\\n' ;;
+esac
+`,
+    JSON.stringify({
+      version: 1,
+      "gh-aw-version": "v0.89.20",
+      "control-plane": {
+        scope: {
+          "allowed-owners": ["acme"],
+          "allowed-repositories": ["acme/target"],
+        },
+        campaigns: {
+          dependabot: {
+            mode: "review",
+            "max-repositories": 1,
+            "rollout-percent": 100,
+            workers: Object.fromEntries(workers.map((worker) => [
+              worker,
+              { workflow: worker },
+            ])),
+          },
+        },
+      },
+    }),
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /"eligible_workers":4,"workers_per_target":3/);
+  const precompute = JSON.parse(readFileSync("/tmp/gh-aw/agent/control-precompute.json", "utf8"));
+  assert.equal(precompute.effective_max_repos, 1);
+});
+
 test("orchestrator discovery collapses renamed repository aliases", () => {
   const result = runPrecompute(
     {

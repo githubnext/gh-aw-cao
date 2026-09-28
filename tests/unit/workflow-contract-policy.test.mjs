@@ -318,7 +318,8 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
   assert.match(precompute, /batch_id/);
   assert.match(precompute, /id % cellCount/);
   assert.match(precompute, /dispatch_max must be an integer from 1 through 1000/);
-  assert.match(precompute, /Math\.floor\(context\.dispatchMaximum \/ eligibleWorkers\)/);
+  assert.match(precompute, /Math\.min\(eligibleWorkers, context\.dispatchMaximum\)/);
+  assert.match(precompute, /Math\.floor\(context\.dispatchMaximum \/ workersPerTarget\)/);
   assert.doesNotMatch(precompute, /monthly_credit_budget must be a non-negative integer/);
   assert.doesNotMatch(precompute, /gh", \["aw", "logs"/);
   assert.doesNotMatch(precompute, /--paginate/);

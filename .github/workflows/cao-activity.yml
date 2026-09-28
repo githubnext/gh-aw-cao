@@ -61,6 +61,9 @@ jobs:
         with:
           node-version: 24
 
+      - name: Configure GitHub CLI host
+        run: echo "GH_HOST=${GITHUB_SERVER_URL#*://}" >> "$GITHUB_ENV"
+
       - name: Resolve activity cache key
         id: activity-cache-key
         run: echo "value=cao-activity-v5-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"

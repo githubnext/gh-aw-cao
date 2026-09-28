@@ -39,7 +39,17 @@ await executeFile("tar", [
   "-czf", archive,
   "--exclude=node_modules", "--exclude=dist", "--exclude=test-results",
   "-C", path.dirname(catalog),
-  ...["activity", "dashboard", "cao.sh", "skills", ".github/actions/setup-cao-runtime", ".github/cao/instructions.md"]
+  ...[
+    "activity",
+    "dashboard",
+    "cao.sh",
+    "skills",
+    ".github/actions/setup-cao-runtime",
+    ".github/cao/instructions.md",
+    ".github/workflows/shared/activity-cache.md",
+    ".github/workflows/shared/control.md",
+    ".github/workflows/shared/review-bundle.md",
+  ]
     .map((member) => `${path.basename(catalog)}/${member}`),
 ]);
 await writeFile(mockFetch, `

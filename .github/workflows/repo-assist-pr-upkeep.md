@@ -76,9 +76,7 @@ permissions:
   issues: read
   pull-requests: read
 
-engine:
-  id: pi
-  model: copilot/gpt-5.4
+engine: copilot
 
 strict: true
 

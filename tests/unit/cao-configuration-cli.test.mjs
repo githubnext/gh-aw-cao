@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -552,6 +552,10 @@ test("cao setup-auth configures existing enterprise Apps without key arguments",
     command: "setup-auth",
     profile: "enterprise-app",
     repo: "acme/control",
+    repositories: {
+      read: ["acme/control"],
+      write: ["acme/control"],
+    },
   });
   assert.equal(calls.flatMap(([, arguments_]) => arguments_).some((value) => /PRIVATE KEY/.test(value)), false);
 });
@@ -586,6 +590,10 @@ test("cao setup-auth previews enterprise App credential configuration without Gi
         secret: "GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY",
       },
     ],
+    repositories: {
+      read: ["acme/control"],
+      write: ["acme/control"],
+    },
   });
 });
 
@@ -834,6 +842,57 @@ test("cao add installs a campaign and merges its declaration safely", async () =
       },
     });
     assert.equal(result.orchestrator, "dependabot");
+  } finally {
+    process.chdir(previousDirectory);
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("cao add materializes a local campaign from its catalog checkout", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-add-local-"));
+  const catalogRoot = path.join(root, "catalog");
+  const consumerRoot = path.join(root, "consumer");
+  const campaignSource = path.join(catalogRoot, "repo-assist");
+  const policyPath = path.join(consumerRoot, ".github", "workflows", "cao.json");
+  const calls = [];
+  const previousDirectory = process.cwd();
+  try {
+    await mkdir(campaignSource, { recursive: true });
+    await mkdir(path.dirname(policyPath), { recursive: true });
+    await writeFile(path.join(campaignSource, "aw.yml"), "name: Repo Assist\n");
+    await mkdir(path.join(consumerRoot, "repo-assist"), { recursive: true });
+    await writeFile(path.join(consumerRoot, "repo-assist", "cao.json"), JSON.stringify({
+      campaign: "repo-assist",
+      orchestrator: "repo-assist",
+      workers: { maintenance: "repo-assist-maintenance" },
+    }));
+    await writeFile(policyPath, JSON.stringify({
+      version: 1,
+      "gh-aw-version": "v0.89.22",
+      "control-plane": { campaigns: {} },
+    }));
+    process.chdir(consumerRoot);
+
+    await addCaoCampaign(campaignSource, ["--force"], {
+      policyPath,
+      execute(command, arguments_) {
+        calls.push([command, arguments_]);
+        return { status: 0, stdout: "", stderr: "" };
+      },
+    });
+
+    assert.deepEqual(calls, [
+      ["gh", ["aw", "add", campaignSource, "--force"]],
+      [
+        process.execPath,
+        [
+          path.join(".github", "workflows", "shared", "materialize-cao.mjs"),
+          "materialize-source",
+          "repo-assist",
+          realpathSync(catalogRoot),
+        ],
+      ],
+    ]);
   } finally {
     process.chdir(previousDirectory);
     await rm(root, { recursive: true, force: true });

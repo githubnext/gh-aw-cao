@@ -39,6 +39,7 @@ import { discoverInventory } from './inventory.mjs';
 import { discoverInventoryDashboardSources } from './inventory-sources.mjs';
 import { hasComputation, queryComputation } from './computations/index.mjs';
 import {
+  configureEnterpriseApps,
   FINE_GRAINED_PAT_PROFILES,
   GITHUB_AUTH_MODE_VARIABLE,
   ownerScopedPatSecret,
@@ -337,57 +338,50 @@ export function setupCaoAuthentication(method, arguments_ = [], {
   }
   if (method === 'enterprise-app') {
     const options = parseOptions(arguments_);
-    rejectUnknownOptions(options, ['repo', 'read-client-id', 'write-client-id', 'dry-run']);
+    rejectUnknownOptions(options, [
+      'repo',
+      'read-client-id',
+      'write-client-id',
+      'write-repository',
+      'policy',
+      'dry-run',
+    ]);
     const repo = option(options, 'repo');
-    const credentials = [
-      {
-        role: 'read',
-        clientId: option(options, 'read-client-id'),
-        variable: 'GH_AW_GITHUB_READ_APP_ID',
-        secret: 'GH_AW_GITHUB_READ_APP_PRIVATE_KEY',
-      },
-      {
-        role: 'write',
-        clientId: option(options, 'write-client-id'),
-        variable: 'GH_AW_GITHUB_WRITE_APP_ID',
-        secret: 'GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY',
-      },
-    ];
-    if (options['dry-run']) {
-      return {
-        command: 'setup-auth',
-        profile: 'enterprise-app',
-        repo,
-        credentials: credentials.map(({ role, clientId, variable, secret }) => ({
-          role, clientId, variable, secret,
-        })),
-      };
+    const policyPath = option(options, 'policy', false);
+    const writeRepositories = options['write-repository'] === undefined
+      ? [repo]
+      : Array.isArray(options['write-repository'])
+        ? options['write-repository']
+        : [options['write-repository']];
+    if (writeRepositories.some((repository) => !REPOSITORY_COORDINATE.test(repository))) {
+      throw new UsageError('--write-repository must be an exact OWNER/REPOSITORY');
     }
-    const auth = execute('gh', ['auth', 'status'], { encoding: 'utf8' });
-    if (auth.error || auth.status !== 0) {
-      throw new Error(`GitHub CLI authentication check failed: ${commandFailureMessage(auth, 'gh auth status failed')}`);
-    }
-    for (const credential of credentials) {
-      const variableResult = execute('gh', [
-        'variable', 'set', credential.variable, '--repo', repo, '--body', credential.clientId,
-      ], { encoding: 'utf8' });
-      if (variableResult.error || variableResult.status !== 0) {
-        throw new Error(`Enterprise App variable setup failed: ${commandFailureMessage(variableResult, `exit ${variableResult.status}`)}`);
+    let readRepositories = [];
+    if (policyPath) {
+      let policy;
+      try {
+        policy = validateGlobalPolicy(JSON.parse(readFileSync(path.resolve(policyPath), 'utf8')), policyPath);
+      } catch (error) {
+        if (error?.code === 'ENOENT') throw new Error(`${policyPath} is required for enterprise App setup`);
+        if (error instanceof SyntaxError) throw new Error(`${policyPath} contains invalid JSON: ${error.message}`);
+        throw error;
       }
-      const secretResult = execute('gh', [
-        'secret', 'set', credential.secret, '--repo', repo,
-      ], { stdio: 'inherit' });
-      if (secretResult.error || secretResult.status !== 0) {
-        throw new Error(`Enterprise App private-key setup failed: ${commandFailureMessage(secretResult, `exit ${secretResult.status}`)}`);
-      }
+      readRepositories = policy['control-plane']?.scope?.['allowed-repositories'] ?? [];
     }
-    const modeResult = execute('gh', [
-      'variable', 'set', GITHUB_AUTH_MODE_VARIABLE, '--repo', repo, '--body', 'app',
-    ], { encoding: 'utf8' });
-    if (modeResult.error || modeResult.status !== 0) {
-      throw new Error(`authentication mode setup failed: ${commandFailureMessage(modeResult, `exit ${modeResult.status}`)}`);
+    if (!Array.isArray(readRepositories)
+      || readRepositories.some((repository) => !REPOSITORY_COORDINATE.test(repository))) {
+      throw new Error(`${policyPath} control-plane.scope.allowed-repositories must contain exact OWNER/REPOSITORY values`);
     }
-    return { command: 'setup-auth', profile: 'enterprise-app', repo };
+    return configureEnterpriseApps({
+      repo,
+      readClientId: option(options, 'read-client-id'),
+      writeClientId: option(options, 'write-client-id'),
+      readRepositories,
+      writeRepositories,
+      dryRun: options['dry-run'],
+      execute,
+      failureMessage: commandFailureMessage,
+    });
   }
   if (method === 'token') {
     const options = parseOptions(arguments_);
@@ -624,9 +618,12 @@ async function installedCampaignRecords(root = process.cwd(), { caoOnly = true }
   return [...records.values()].sort((left, right) => left.campaign.localeCompare(right.campaign));
 }
 
-function materializeInstalledCao(campaign, execute = spawnSync) {
+function materializeInstalledCao(campaign, execute = spawnSync, sourceRoot) {
   const script = path.join('.github', 'workflows', 'shared', 'materialize-cao.mjs');
-  const result = execute(process.execPath, [script, 'materialize', campaign], {
+  const arguments_ = sourceRoot
+    ? [script, 'materialize-source', campaign, sourceRoot]
+    : [script, 'materialize', campaign];
+  const result = execute(process.execPath, arguments_, {
     encoding: 'utf8',
     maxBuffer: 16 * 1024 * 1024
   });
@@ -835,6 +832,15 @@ export async function addCaoCampaign(campaignSpec, ghAwOptions = [], {
   if (expectedCampaign === 'gh-aw-cao') {
     throw new UsageError('cao add cannot install the CAO root package; use install.sh');
   }
+  let localSourceRoot;
+  try {
+    const localSource = path.resolve(campaignSpec);
+    if ((await stat(localSource)).isDirectory()) {
+      localSourceRoot = path.dirname(realpathSync(localSource));
+    }
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error;
+  }
   const install = execute('gh', ['aw', 'add', campaignSpec, ...ghAwOptions], {
     encoding: 'utf8',
     maxBuffer: 16 * 1024 * 1024
@@ -843,7 +849,7 @@ export async function addCaoCampaign(campaignSpec, ghAwOptions = [], {
     throw new Error(`gh aw add failed: ${commandFailureMessage(install, 'unknown error')}`);
   }
 
-  materializeInstalledCao(expectedCampaign, execute);
+  materializeInstalledCao(expectedCampaign, execute, localSourceRoot);
   const declaration = await readInstalledCaoDeclaration(campaignSpec);
   if (!declaration) throw new Error(`Campaign ${expectedCampaign} did not install ${expectedCampaign}/cao.json`);
 

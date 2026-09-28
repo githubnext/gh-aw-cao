@@ -1,5 +1,15 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -10,6 +20,15 @@ import {
 } from "../../.github/workflows/shared/materialize-cao.mjs";
 
 const sourceRoot = path.resolve(import.meta.dirname, "..", "..");
+
+function filesBelow(root, prefix = "") {
+  return readdirSync(path.join(root, prefix)).flatMap((name) => {
+    const relative = path.join(prefix, name);
+    return statSync(path.join(root, relative)).isDirectory()
+      ? filesBelow(root, relative)
+      : [relative.split(path.sep).join("/")];
+  });
+}
 
 test("CAO materialization preserves canonical source paths", () => {
   const destination = mkdtempSync(path.join(tmpdir(), "cao-materialize-layout-"));
@@ -42,10 +61,23 @@ test("CAO materialization preserves canonical source paths", () => {
     assert.equal(existsSync(staleCampaignFile), false);
     assert.ok(existsSync(path.join(destination, "activity", "cao.mjs")));
     assert.ok(existsSync(path.join(destination, "dashboard", "site", "package.json")));
+    assert.ok(existsSync(path.join(destination, "skills", "setup-cao", "SKILL.md")));
     assert.ok(existsSync(path.join(destination, "dependabot", "cao.json")));
     assert.ok(existsSync(path.join(destination, ".github", "actions", "setup-cao-runtime", "action.yml")));
     assert.ok(existsSync(path.join(destination, ".github", "cao", "instructions.md")));
+    assert.ok(existsSync(path.join(destination, ".github", "workflows", "shared", "activity-cache.md")));
+    assert.ok(existsSync(path.join(destination, ".github", "workflows", "shared", "control.md")));
+    assert.ok(existsSync(path.join(destination, ".github", "workflows", "shared", "review-bundle.md")));
     assert.match(readFileSync(path.join(destination, "cao.sh"), "utf8"), /activity\/cao\.mjs/);
+    const trackedDashboardFiles = spawnSync(
+      "git",
+      ["-C", sourceRoot, "ls-files", "--", "dashboard"],
+      { encoding: "utf8" },
+    ).stdout.trim().split("\n");
+    assert.deepEqual(
+      filesBelow(destination, "dashboard").sort(),
+      trackedDashboardFiles.sort(),
+    );
     assert.equal(existsSync(path.join(destination, ".github", "aw", "instructions.md")), false);
     assert.equal(existsSync(path.join(destination, ".github", "aw", "activity")), false);
     assert.equal(existsSync(path.join(destination, ".github", "aw", "dashboard")), false);
@@ -107,9 +139,13 @@ test("root materialization preserves exact focused package revisions", () => {
         revision: rootRevision,
         resources: [
           "dashboard",
+          "skills",
           "cao.sh",
           ".github/actions/setup-cao-runtime",
           ".github/cao/instructions.md",
+          ".github/workflows/shared/activity-cache.md",
+          ".github/workflows/shared/control.md",
+          ".github/workflows/shared/review-bundle.md",
         ],
       },
       {
