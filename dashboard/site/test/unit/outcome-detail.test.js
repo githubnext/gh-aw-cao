@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderOutcomeDetail } from '../../src/components/outcome-detail.js';
 import { renderOutcomeDetailSection } from '../../src/components/outcome-detail-sections.js';
 
@@ -113,5 +113,67 @@ describe('outcome detail', () => {
     expect(metadataSection?.className).toBe('outcome-meta');
     expect(metadataSection?.textContent).toContain('DispositionLifecycle Close');
     expect(metadataSection?.querySelectorAll('a')).toHaveLength(3);
+  });
+});
+
+describe('outcome detail debug logging', () => {
+  afterEach(() => {
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
+
+  it('stays silent by default and logs only scalar metadata under its predictable category', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=outcome-detail', output })
+      };
+    });
+    vi.resetModules();
+    const { renderOutcomeDetail: renderOutcomeDetailWithDebug } = await import('../../src/components/outcome-detail.js');
+
+    const rendered = renderOutcomeDetailWithDebug(context());
+    expect(output.debug).toHaveBeenCalledWith('[cao:outcome-detail]', { event: 'initialized', pageId: 'outcome-detail', rowCount: 1 });
+
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'outcome', value: 'outcome-1' }
+    }));
+    expect(output.debug).toHaveBeenCalledWith('[cao:outcome-detail]', { event: 'matched', pageId: 'outcome-detail' });
+
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'outcome', value: 'missing' }
+    }));
+    expect(output.debug).toHaveBeenCalledWith('[cao:outcome-detail]', { event: 'not-found', pageId: 'outcome-detail' });
+
+    for (const call of output.debug.mock.calls) {
+      const metadata = call[1];
+      expect(Object.values(metadata).every((value) => typeof value !== 'object')).toBe(true);
+    }
+  });
+
+  it('is disabled by default (no debug output) when the debug query is absent', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '', output })
+      };
+    });
+    vi.resetModules();
+    const { renderOutcomeDetail: renderOutcomeDetailWithoutDebug } = await import('../../src/components/outcome-detail.js');
+
+    const rendered = renderOutcomeDetailWithoutDebug(context());
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'outcome', value: 'outcome-1' }
+    }));
+
+    expect(output.debug).not.toHaveBeenCalled();
   });
 });

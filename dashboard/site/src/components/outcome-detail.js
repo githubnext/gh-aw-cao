@@ -8,6 +8,9 @@ import { renderOutcomeDetailSection } from './outcome-detail-sections.js';
 import { createRouteView } from './route-empty-state.js';
 import { rowsFor } from './source-rows.js';
 import { text, titleCase } from './count-formatters.js';
+import { createDebug } from '../debug.js';
+
+const debugOutcomeDetail = createDebug('outcome-detail');
 
 /**
  * @param {import('./ui-elements.js').ElementRenderContext} context
@@ -15,6 +18,7 @@ import { text, titleCase } from './count-formatters.js';
  */
 export function renderOutcomeDetail(context) {
   const outcomes = rowsFor(context.sources, 'outcomes');
+  debugOutcomeDetail({ event: 'initialized', pageId: context.pageId, rowCount: outcomes.length });
   const root = createRouteView({
     rootClassName: 'outcome-detail',
     routeParameter: context.routeParameter,
@@ -25,8 +29,10 @@ export function renderOutcomeDetail(context) {
       const outcomeId = routeValue.trim();
       const outcome = outcomes.find((row) => String(row['safe-output']) === outcomeId);
       if (!outcome) {
+        debugOutcomeDetail({ event: 'not-found', pageId: context.pageId });
         return null;
       }
+      debugOutcomeDetail({ event: 'matched', pageId: context.pageId });
       root.dispatchEvent(new CustomEvent('dashboard-route-allocation', {
         bubbles: true,
         detail: {
