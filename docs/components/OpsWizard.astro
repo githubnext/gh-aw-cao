@@ -396,7 +396,6 @@ const hostTargets = [
     }
 
     .ops-wizard {
-      --wizard-gutter: clamp(1rem, 4vw, 2rem);
       --wizard-blue: #00d4ff;
       --wizard-indigo: #5b5cff;
       --wizard-pink: #ff4ecd;
@@ -1008,6 +1007,7 @@ const hostTargets = [
     }
 
     :global(body:has(.ops-wizard-shell)) {
+      --wizard-gutter: clamp(1rem, 4vw, 2rem);
       --wizard-page-bg: #f7faf8;
       --wizard-grid-minor: rgba(26, 127, 55, 0.055);
       --wizard-grid-major: rgba(26, 127, 55, 0.13);
