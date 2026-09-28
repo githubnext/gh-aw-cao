@@ -13,10 +13,14 @@
  * derived by summing daily values and are intentionally excluded.
  */
 
+import { createDebug } from '../../debug.js';
+
 /** Conclusions treated as failed for run/dispatch aggregation. */
 export const FAILED_RUN_CONCLUSIONS = ['failure', 'startup-failure', 'stale', 'timed-out'];
 const FAILED_CONCLUSIONS = new Set(FAILED_RUN_CONCLUSIONS);
 export const DISPATCH_EVENT = 'workflow_dispatch';
+
+const debugAggregates = createDebug('daily-overview-aggregates');
 
 /**
  * @typedef {object} DailyOverviewAggregateRecord
@@ -67,9 +71,11 @@ export function buildDailyOverviewAggregates(runs) {
     if (typeof id !== 'string' || !id) continue;
     runsById.set(id, run);
   }
+  debugAggregates({ operation: 'build', inputRuns: runs?.length ?? 0, dedupedRuns: runsById.size });
 
   /** @type {Map<string, DailyOverviewAggregateRecord>} */
   const byDay = new Map();
+  let skippedRuns = 0;
   /** @param {string} day */
   const dayRecord = (day) => {
     let record = byDay.get(day);
@@ -93,7 +99,10 @@ export function buildDailyOverviewAggregates(runs) {
     // Intentionally excluded from every metric (spec §72.3) rather than
     // attributed to a fallback bucket: a run without any parseable timestamp
     // cannot be placed on the UTC day axis this projection is keyed by.
-    if (!day) continue;
+    if (!day) {
+      skippedRuns += 1;
+      continue;
+    }
     const record = dayRecord(day);
     const conclusion = typeof run.conclusion === 'string' ? run.conclusion : null;
     const isDispatch = run.event === DISPATCH_EVENT;
@@ -110,5 +119,7 @@ export function buildDailyOverviewAggregates(runs) {
     }
   }
 
-  return [...byDay.values()].sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
+  const result = [...byDay.values()].sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
+  debugAggregates({ operation: 'build-complete', days: result.length, skippedRuns });
+  return result;
 }
