@@ -91,6 +91,32 @@ func TestRateLimitRejectsExhaustedBucketWithCooldown(t *testing.T) {
 	}
 }
 
+func TestMCPUsesQueryRateLimitBeforeHandler(t *testing.T) {
+	client := &serverRateLimitClient{result: []any{int64(0), int64(0), int64(1500), int64(60000)}}
+	app := &App{
+		store:       redisx.NewStore(client, "test"),
+		accessToken: testAccessToken,
+		mcp: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+			t.Fatal("rate-limited MCP request reached handler")
+		}),
+	}
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "http://localhost/mcp", nil)
+	authorize(request)
+	response := httptest.NewRecorder()
+
+	app.Handler().ServeHTTP(response, request)
+
+	if response.Code != http.StatusTooManyRequests {
+		t.Fatalf("rate-limited MCP returned %d, want 429", response.Code)
+	}
+	if len(client.command) < 6 ||
+		!strings.HasPrefix(client.command[3], "cao:test:rate-limit:query:") ||
+		client.command[4] != "30" ||
+		client.command[5] != "60000" {
+		t.Fatalf("MCP rate limiter command = %#v, want query policy", client.command)
+	}
+}
+
 func TestRateLimitUsesHashedAuthenticatedIdentity(t *testing.T) {
 	client := &serverRateLimitClient{result: []any{int64(1), int64(119), int64(0), int64(500)}}
 	app := &App{store: redisx.NewStore(client, "test")}
