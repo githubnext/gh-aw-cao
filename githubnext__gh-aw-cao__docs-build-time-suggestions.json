@@ -1,5 +1,5 @@
 {
-  "source_sha": "be1bd405623baf08bc73e2ca681c97098a057cff",
+  "source_sha": "0a58c1dfdef0d5eb96c626e42ba35af56429cdd3",
   "next_category": "Astro documentation generation",
   "evaluations": [
     {
@@ -649,6 +649,29 @@
       ],
       "outcome": "no-op: evaluated scheduling, concurrency, and avoidable rebuilds across 10 comparable successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days, disclosing 10 excluded completed runs (3 success schedule-freshness-only runs that skipped build, 4 skipped/action_required workflow_run runs, and 2 cancelled runs). Evidence window 2026-09-28T21:22:47Z to 2026-09-28T22:24:39Z. docs.yml workflow execution median was 66.0s (p90 109.2s), queue-to-build-start median 13.5s (p90 72.6s), build median 38.5s (p90 45.5s), and deploy median 16.0s (p90 16.8s on publishing schedule runs). Trusted step metadata showed Restore node_modules median 5.5s, Build documentation median 12.0s, Restore cached CAO Dashboard median 1.0s, and Upload Pages artifact median 4.0s; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on every successful docs build, confirming stable cache hits from trusted metadata. Comparable successful cao-dashboard.yml runs 36488144576, 36487499801, 36486777247, 36485810867, and 36485576804 showed workflow median 61.0s (p90 66.8s), build median 43.0s (p90 47.2s), cache-job median 10.0s, and build queue median 5.0s. Workflow_run-triggered docs runs 36485707720 and 36488247559 again showed 72-78s queue-to-build-start delays, but that same direct-post-dashboard handoff optimization is already represented by suggestion fingerprint c104eb9cf85d493d0203 and no canonical open issue with the stable subject was found in the current open-issue inventory. Because the underlying source and timing evidence have not materially changed enough to justify a duplicate issue, no new recommendation was emitted in this cycle.",
       "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-09-28T22:53:44Z",
+      "worker_run_id": 36494660091,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        36492101241,
+        36488247559,
+        36488240917,
+        36487614023,
+        36486913427,
+        36486882491,
+        36486702204,
+        36485926891,
+        36485707720,
+        36485693011,
+        36488144576,
+        36487499801,
+        36486777247,
+        36485810867,
+        36485576804
+      ],
+      "outcome": "incomplete: the latest 20 completed docs.yml runs in the last 14 days contained only 4 comparable successful runs with a successful build job (36492101241, 36488247559, 36488240917, 36487614023). The remaining completed runs were freshness-only scheduled successes or skipped/action_required workflow_run runs, so the required minimum of five comparable successful runs was not met. Because the task requires at least five comparable successful docs runs before computing bounded medians/p90s and issuing a recommendation, no safe actionable improvement was evaluated in this cycle."
     }
   ]
 }
