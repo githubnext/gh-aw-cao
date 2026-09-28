@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { gunzipSync } from 'node:zlib';
 
 const repository = 'githubnext/gh-aw-cao';
 const rootResources = [
@@ -84,6 +85,87 @@ function archiveRoot(directory) {
   const entries = readdirSync(directory, { withFileTypes: true }).filter((entry) => entry.isDirectory());
   if (entries.length !== 1) throw new Error('CAO archive did not contain exactly one repository root');
   return path.join(directory, entries[0].name);
+}
+
+function tarString(buffer, start, length) {
+  return buffer.subarray(start, start + length).toString('utf8').replace(/\0.*$/, '');
+}
+
+function tarSize(buffer) {
+  const value = tarString(buffer, 124, 12).trim();
+  if (!/^[0-7]*$/.test(value)) throw new Error('CAO archive has an invalid entry size');
+  return Number.parseInt(value || '0', 8);
+}
+
+function tarDestination(directory, entry) {
+  if (!entry || entry.startsWith('/') || entry.split('/').some((part) => part === '' || part === '.' || part === '..')) {
+    throw new Error(`CAO archive has an unsafe entry path: ${JSON.stringify(entry)}`);
+  }
+  const destination = path.resolve(directory, ...entry.split('/'));
+  if (!destination.startsWith(`${path.resolve(directory)}${path.sep}`)) {
+    throw new Error(`CAO archive has an unsafe entry path: ${JSON.stringify(entry)}`);
+  }
+  return destination;
+}
+
+function paxAttributes(data) {
+  const attributes = {};
+  let offset = 0;
+  while (offset < data.length) {
+    const separator = data.indexOf(0x20, offset);
+    const length = Number.parseInt(data.subarray(offset, separator).toString('utf8'), 10);
+    if (!Number.isSafeInteger(length) || length <= 0 || offset + length > data.length) {
+      throw new Error('CAO archive has an invalid PAX header');
+    }
+    const record = data.subarray(separator + 1, offset + length - 1).toString('utf8');
+    const equals = record.indexOf('=');
+    if (equals > 0) attributes[record.slice(0, equals)] = record.slice(equals + 1);
+    offset += length;
+  }
+  return attributes;
+}
+
+export function extractCaoArchive(archive, directory, native = process.platform === 'win32') {
+  if (!native) {
+    const tar = spawnSync('tar', ['-xzf', archive, '-C', directory], { encoding: 'utf8' });
+    if (tar.error || tar.status !== 0) {
+      throw new Error((tar.stderr || tar.error?.message || 'tar failed').trim());
+    }
+    return;
+  }
+
+  const data = gunzipSync(readFileSync(archive));
+  let offset = 0;
+  let nextPath;
+  while (offset + 512 <= data.length) {
+    const header = data.subarray(offset, offset + 512);
+    if (header.every((byte) => byte === 0)) break;
+    const size = tarSize(header);
+    const payloadStart = offset + 512;
+    const payloadEnd = payloadStart + size;
+    if (payloadEnd > data.length) throw new Error('CAO archive ended before an entry was complete');
+    const type = String.fromCharCode(header[156] || 0);
+    const payload = data.subarray(payloadStart, payloadEnd);
+    if (type === 'x' || type === 'g') {
+      const attributes = paxAttributes(payload);
+      if (attributes.path) nextPath = attributes.path;
+    } else if (type === 'L') {
+      nextPath = payload.toString('utf8').replace(/\0.*$/, '');
+    } else {
+      const entry = nextPath || [tarString(header, 345, 155), tarString(header, 0, 100)].filter(Boolean).join('/');
+      nextPath = undefined;
+      const destination = tarDestination(directory, entry);
+      if (type === '5') {
+        mkdirSync(destination, { recursive: true });
+      } else if (type === '\0' || type === '0') {
+        mkdirSync(path.dirname(destination), { recursive: true });
+        writeFileSync(destination, payload);
+      } else {
+        throw new Error(`CAO archive has unsupported entry type: ${type}`);
+      }
+    }
+    offset = payloadStart + Math.ceil(size / 512) * 512;
+  }
 }
 
 function copyResource(sourceRoot, repositoryRoot, resource) {
@@ -187,22 +269,15 @@ export async function materializeCao(campaign = 'root', repositoryRoot = process
     for (const [index, plan] of plans.entries()) {
       let sourceRoot = sourceRoots.get(plan.revision);
       if (!sourceRoot) {
-        const extractionDirectoryName = String(index);
-        const extractionDirectory = path.join(temporaryDirectory, extractionDirectoryName);
+        const extractionDirectory = path.join(temporaryDirectory, String(index));
         const archiveName = `${index}.tar.gz`;
         const archive = path.join(temporaryDirectory, archiveName);
         mkdirSync(extractionDirectory);
         await downloadArchive(plan.revision, archive);
-        const tar = spawnSync('tar', [
-          ...(process.platform === 'win32' ? ['--force-local'] : []),
-          '-xzf',
-          `../${archiveName}`,
-        ], {
-          cwd: extractionDirectory,
-          encoding: 'utf8',
-        });
-        if (tar.error || tar.status !== 0) {
-          throw new Error(`Unable to extract CAO ${plan.revision}: ${(tar.stderr || tar.error?.message || 'tar failed').trim()}`);
+        try {
+          extractCaoArchive(archive, extractionDirectory);
+        } catch (error) {
+          throw new Error(`Unable to extract CAO ${plan.revision}: ${error.message}`, { cause: error });
         }
         sourceRoot = archiveRoot(extractionDirectory);
         sourceRoots.set(plan.revision, sourceRoot);
