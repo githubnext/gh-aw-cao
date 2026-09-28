@@ -84,3 +84,10 @@ When changing a CLI command, MCP schema, Dashboard Language page identifier, or
 documentation binding, update the authoritative source and its focused tests in
 the same pull request. Never patch generated JSON or compiled workflow output by
 hand.
+
+CLI `arguments.positional` values appear in order immediately after the
+subcommand. Each `arguments.options` key is an option name; a `true` value emits
+the key as a bare flag, while other values follow the option as its argument.
+Bindings describe the interfaces at `provenance.commit`. An agent using a
+different CAO revision must rediscover its local CLI or MCP catalog rather than
+assuming forward compatibility.

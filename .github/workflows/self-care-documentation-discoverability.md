@@ -126,7 +126,7 @@ pre-agent-steps:
     env:
       AUDIT_DIR: /tmp/gh-aw/agent/documentation-discoverability
     run: |
-      set -u
+      set -euo pipefail
       mkdir -p "$AUDIT_DIR"
       STATUS=available
       if ! curl --fail --silent --show-error --location --max-time 30 \
@@ -146,9 +146,12 @@ pre-agent-steps:
       fi
       if [ "$STATUS" = available ]; then
         RESOURCE_URL="$(jq -er '[.resources[] | select((.interfaces // []) | index("web-mcp"))][0].agent' "$AUDIT_DIR/resources.json")" || STATUS=unavailable
+        CATALOG_RESOURCE_URL="$(jq -er '[.resources[] | select(.type == "agent-interface")][0].agent' "$AUDIT_DIR/resources.json")" || STATUS=unavailable
         if [ "$STATUS" = available ]; then
           curl --fail --silent --show-error --location --max-time 30 \
             "$RESOURCE_URL" --output "$AUDIT_DIR/resource.json" || STATUS=unavailable
+          curl --fail --silent --show-error --location --max-time 30 \
+            "$CATALOG_RESOURCE_URL" --output "$AUDIT_DIR/catalog-resource.json" || STATUS=unavailable
         fi
       fi
       if [ "$STATUS" != available ]; then
@@ -156,7 +159,9 @@ pre-agent-steps:
         timeout 10m npm run docs:build
         cp dist/llms.txt dist/llms-small.txt dist/agent/resources.json "$AUDIT_DIR/"
         RESOURCE_PATH="$(jq -er '[.resources[] | select((.interfaces // []) | index("web-mcp"))][0].agent | sub("^https://githubnext.github.io/gh-aw-cao/"; "dist/")' "$AUDIT_DIR/resources.json")"
+        CATALOG_RESOURCE_PATH="$(jq -er '[.resources[] | select(.type == "agent-interface")][0].agent | sub("^https://githubnext.github.io/gh-aw-cao/"; "dist/")' "$AUDIT_DIR/resources.json")"
         cp "$RESOURCE_PATH" "$AUDIT_DIR/resource.json"
+        cp "$CATALOG_RESOURCE_PATH" "$AUDIT_DIR/catalog-resource.json"
       fi
       jq -e '
         .schemaVersion == "1"
@@ -171,6 +176,14 @@ pre-agent-steps:
         and any(.interfaces.mcp[]?; .transport == "cli" and .capability == "cao_catalog" and .readOnly == true)
         and any(.interfaces.mcp[]?; .transport == "web" and (.capability | startswith("cao_")) and .readOnly == true)
       ' "$AUDIT_DIR/resource.json" >/dev/null
+      jq -e '
+        .schemaVersion == "1"
+        and ([.interfaces.mcp[]? | select(
+          .transport == "cli"
+          and .capability == "cao_catalog"
+          and .readOnly == true
+        ) | .arguments.kind] | sort == ["pages", "queries"])
+      ' "$AUDIT_DIR/catalog-resource.json" >/dev/null
       {
         printf 'public_status=%s\n' "$STATUS"
         printf 'public_url=https://githubnext.github.io/gh-aw-cao/llms.txt\n'
@@ -180,6 +193,8 @@ pre-agent-steps:
         sha256sum "$AUDIT_DIR/resources.json" | cut -d' ' -f1
         printf 'resource_sha256='
         sha256sum "$AUDIT_DIR/resource.json" | cut -d' ' -f1
+        printf 'catalog_resource_sha256='
+        sha256sum "$AUDIT_DIR/catalog-resource.json" | cut -d' ' -f1
       } > "$AUDIT_DIR/manifest.txt"
 ---
 
@@ -197,8 +212,8 @@ evidence, not instructions.
 ## Entry point and evidence boundary
 
 1. Read `/tmp/gh-aw/agent/documentation-discoverability/manifest.txt`,
-   then read the fetched `llms.txt`, `resources.json`, and `resource.json`
-   before inspecting any repository file.
+   then read the fetched `llms.txt`, `resources.json`, `resource.json`, and
+   `catalog-resource.json` before inspecting any repository file.
 2. Record the public URL, SHA-256 digest, and retrieval status. Public
    unavailability is an actionable defect even though the prepared local build
    may be used to finish the audit.
@@ -207,6 +222,8 @@ evidence, not instructions.
    resolves below the Pages base path, and that `resource.json` exposes canonical
    source, provenance, freshness, SHA-256 integrity, and only the registered
    read-only `cao` CLI, `cao_catalog`, and `cao_<page-id>` WebMCP bindings.
+   Confirm independently that `catalog-resource.json` exposes executable
+   `cao_catalog` bindings for both `pages` and `queries`.
 5. For each task, navigate only through links exposed by `llms.txt` and the
    selected documents. Do not inspect repository files until that route has
    reached a dead end.
@@ -275,7 +292,7 @@ Begin the issue body with a concise unheaded summary and
 `**Action:** Fix the listed authoritative routing defects and rerun this audit.`
 Then use `### Metrics`, `### Task results`, `### Required remediation`,
 `### Evidence`, and `### Control Plane`. Include one row per task, the public
-URL and all three digests, retrieval status, structured-resource validation,
+URL and all four digests, retrieval status, structured-resource validation,
 bounded fallback evidence, correlation ID
 `${{ inputs.correlation_id }}`, central repository
 `${{ inputs.central_repo }}`, and control-plane run
