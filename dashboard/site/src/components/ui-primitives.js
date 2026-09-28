@@ -706,6 +706,23 @@ export function renderCloseButton({ className, label, onClick }) {
 }
 
 /**
+ * Synchronizes a toggle button's `aria-expanded` attribute, accessible label,
+ * title, and icon with the given expanded state. Shared by the sidebar
+ * collapse toggle and the table column-summary toggle, which otherwise
+ * duplicated the same attribute/label/icon swap on every click.
+ * @param {HTMLElement} toggle
+ * @param {boolean} expanded
+ * @param {{ expandedLabel: string, collapsedLabel: string, expandedIcon: string, collapsedIcon: string }} options
+ */
+export function syncToggleButtonState(toggle, expanded, { expandedLabel, collapsedLabel, expandedIcon, collapsedIcon }) {
+  const label = expanded ? expandedLabel : collapsedLabel;
+  toggle.setAttribute('aria-expanded', String(expanded));
+  toggle.setAttribute('aria-label', label);
+  toggle.setAttribute('title', label);
+  toggle.replaceChildren(octicon(expanded ? expandedIcon : collapsedIcon));
+}
+
+/**
  * Creates a `<dialog>` element with open/close helpers that fall back to the
  * `open` attribute on runtimes without `HTMLDialogElement.showModal`/`close`
  * support. Shared by the table intent-action prompt preview and the
