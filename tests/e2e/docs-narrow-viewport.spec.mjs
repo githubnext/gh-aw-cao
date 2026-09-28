@@ -2,7 +2,6 @@ import { expect, test } from "@playwright/test";
 
 const paths = [
   "./",
-  "setup/",
   "setup-quickstarts/",
   "setup-one-organization/",
   "setup-multiple-organizations/",
@@ -50,7 +49,7 @@ test("legacy authentication profile route redirects to the consolidated guide", 
 });
 
 test("removed setup wizard route redirects to the command quickstart", async ({ page }) => {
-  expect((await page.goto("setup/"))?.ok()).toBe(true);
+  expect((await page.goto("setup"))?.ok()).toBe(true);
   await expect(page).toHaveURL(/\/setup-quickstarts\/$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Set Up CAO");
 });

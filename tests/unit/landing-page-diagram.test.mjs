@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 const landingPage = readFileSync("docs/README.md", "utf8");
@@ -222,6 +222,13 @@ test("landing page explains and illustrates campaign dispatch", () => {
 
 test("the home navigation no longer links to the setup wizard", () => {
   assert.doesNotMatch(headerLinks, /label: "Setup"|\/setup\//);
+});
+
+test("wizard page, UI, styles, and policy helpers are removed", () => {
+  assert.equal(existsSync("docs/pages/setup.astro"), false);
+  assert.equal(existsSync("docs/components/OpsWizard.astro"), false);
+  assert.equal(existsSync("docs/styles/wizard-page.css"), false);
+  assert.equal(existsSync("docs/lib/configured-operations.mjs"), false);
 });
 
 test("the campaign catalog remains independent of setup wizard configuration", () => {
