@@ -171,15 +171,12 @@ test("sample Coolify workflow builds, scans, publishes, and deploys an exact ima
   assert.match(publish.run, /ghcr\.io\/githubnext\/gh-aw-cao\/cao-dashboard/);
   assert.match(publish.run, /echo "digest=\$\{digest\}"/);
   assert.match(publish.run, />> "\$\{GITHUB_OUTPUT\}"/);
-  assert.equal(request.env.COOLIFY_DEPLOY_ENDPOINT, "${{ secrets.COOLIFY_DEPLOY_ENDPOINT }}");
-  assert.equal(request.env.COOLIFY_DEPLOY_TOKEN, "${{ secrets.COOLIFY_DEPLOY_TOKEN }}");
-  assert.equal(request.env.IMAGE, "${{ needs.publish.outputs.image }}");
-  assert.equal(request.env.DIGEST, "${{ needs.publish.outputs.digest }}");
-  assert.match(request.run, /IMAGE.*DIGEST/);
-  assert.match(request.run, /curl --config -/);
-  assert.doesNotMatch(request.run, /--oauth2-bearer/);
-  assert.match(request.run, /\.status == "ready"/);
-  assert.match(request.run, /trap 'rm -f -- "\$\{response_file\}"' EXIT/);
+  assert.equal(request.env.COOLIFY_BASE_URL, "${{ vars.COOLIFY_BASE_URL }}");
+  assert.equal(request.env.COOLIFY_APPLICATION_UUID, "${{ vars.COOLIFY_APPLICATION_UUID }}");
+  assert.equal(request.env.COOLIFY_READINESS_URL, "${{ vars.COOLIFY_READINESS_URL }}");
+  assert.equal(request.env.COOLIFY_API_TOKEN, "${{ secrets.COOLIFY_API_TOKEN }}");
+  assert.equal(request.env.CAO_IMAGE, "${{ needs.publish.outputs.image }}");
+  assert.equal(request.run, "node scripts/deploy-coolify.mjs");
 
   for (const match of source.matchAll(/uses:\s+[^@\s]+@([^\s#]+)/g)) {
     assert.match(match[1], /^[0-9a-f]{40}$/, `action is not pinned: ${match[0]}`);
@@ -187,7 +184,7 @@ test("sample Coolify workflow builds, scans, publishes, and deploys an exact ima
   assert.doesNotMatch(source, /set\s+-[^ \n]*x/);
   assert.doesNotMatch(
     source,
-    /(?:echo|printf|cat|head|tail)\b[^\n]*(?:COOLIFY_DEPLOY_ENDPOINT|COOLIFY_DEPLOY_TOKEN|\$\{payload\}|\$\{response_file\})/,
+    /(?:echo|printf|cat|head|tail)\b[^\n]*(?:COOLIFY_API_TOKEN|secrets\.)/,
   );
 });
 

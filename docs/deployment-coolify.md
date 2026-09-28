@@ -93,24 +93,43 @@ In the following steps, replace `PUBLIC-HOST` with the public host name of your 
 
 ### Deploying a sample image
 
-For a test deployment of the `githubnext/gh-aw-cao` dashboard, configure protected
-`coolify-sample-publish` and `coolify-sample` GitHub environments. Store
-`COOLIFY_DEPLOY_ENDPOINT` and `COOLIFY_DEPLOY_TOKEN` only in `coolify-sample`,
-then manually run **Deploy sample dashboard to Coolify**. Configure both
-environments to accept deployments only from the protected default branch, and
-add only repository maintainers or administrators as required reviewers. These
-environment controls are required because GitHub loads a workflow definition
-from the ref selected by the person dispatching it.
+For a test deployment of the `githubnext/gh-aw-cao` dashboard:
+
+1. Create a Git-backed Docker Compose application in Coolify from this repository.
+   Keep the repository root as the working directory and set the Compose location
+   to `server/coolify/compose.yml`. A pasted Compose file cannot resolve the
+   checked-in `cao.json` bind mount.
+1. Configure the variables in `.env.example`, including one non-preview
+   `CAO_IMAGE` variable. If the GHCR package isn't public, configure registry
+   credentials that can pull it.
+1. Enable the Coolify API and create a token with `read`, `write`, and `deploy`
+   abilities.
+1. Configure protected `coolify-sample-publish` and `coolify-sample` GitHub
+   environments. Store `COOLIFY_API_TOKEN` only as a `coolify-sample` secret.
+   Add these `coolify-sample` environment variables:
+
+   | Variable | Value |
+   | --- | --- |
+   | `COOLIFY_BASE_URL` | Origin of the Coolify instance, such as `https://coolify.example.com`. |
+   | `COOLIFY_APPLICATION_UUID` | UUID shown for the Compose application. |
+   | `COOLIFY_READINESS_URL` | Public dashboard origin, such as `https://dashboard.example.com`. |
+
+1. Configure both environments to accept deployments only from the protected
+   default branch, and add only repository maintainers or administrators as
+   required reviewers. These controls are required because GitHub loads a
+   workflow definition from the ref selected by the person dispatching it.
+1. From the default branch, manually run **Deploy sample dashboard to Coolify**.
 
 The workflow fails closed unless both the original actor and, for a rerun, the
 triggering actor have the `maintain` or `admin` repository role. It also requires
 the current default-branch commit. Every job that can publish or deploy repeats
 these checks, including when an individual job is rerun. The workflow builds
 `server/Dockerfile`, scans the image for critical and high vulnerabilities,
-publishes it to GHCR with a unique run identity, and asks the deployment adapter
-to deploy the resulting immutable digest. Image publication cannot access the
-deployment environment or its secrets. The run succeeds only after the adapter
-reports that the exact digest is ready.
+publishes it to GHCR with a unique run identity, updates the application's
+`CAO_IMAGE`, starts a Coolify deployment, polls it to completion, and verifies
+`/api/readiness`. Image publication cannot access the deployment environment or
+its secrets. If deployment or readiness fails, the workflow restores and
+redeploys the previous image before reporting failure.
 
 ### Updating the data
 
