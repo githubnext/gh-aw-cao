@@ -76,14 +76,14 @@ export function browserTableCapacityDecision(browserWindow) {
 
 /**
  * @param {ReturnType<typeof browserTableCapacityDecision>} decision
- * @param {{ info: (...data: unknown[]) => void }} [logger]
  */
-export function logTableCapacityDecision(decision, logger = console) {
-  logger.info('[dashboard-table-capacity]', decision);
+export function logTableCapacityDecision(decision) {
   debugTableCapacity({
     event: 'row-limit-selected',
     rowLimit: decision.rowLimit,
     mobile: decision.mobile,
+    deviceMemoryGiB: decision.deviceMemoryGiB,
+    heapSizeLimitGiB: decision.heapSizeLimitGiB,
     hardwareConcurrency: decision.hardwareConcurrency
   });
 }

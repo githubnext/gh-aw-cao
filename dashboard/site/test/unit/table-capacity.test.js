@@ -28,19 +28,24 @@ describe('adaptive table capacity', () => {
     })).toBe(25000);
   });
 
-  it('logs the selected row limit and browser capacity signals', () => {
-    const info = vi.fn();
-    const decision = {
-      rowLimit: 25000,
-      mobile: false,
-      deviceMemoryGiB: 4,
-      heapSizeLimitGiB: 2,
-      hardwareConcurrency: 8
-    };
+  it('does not write the table capacity decision directly to the console', () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      logTableCapacityDecision({
+        rowLimit: 25000,
+        mobile: false,
+        deviceMemoryGiB: 4,
+        heapSizeLimitGiB: 2,
+        hardwareConcurrency: 8
+      });
 
-    logTableCapacityDecision(decision, { info });
-
-    expect(info).toHaveBeenCalledWith('[dashboard-table-capacity]', decision);
+      expect(info).not.toHaveBeenCalled();
+      expect(log).not.toHaveBeenCalled();
+    } finally {
+      info.mockRestore();
+      log.mockRestore();
+    }
   });
 
   it('applies the engine safety ceiling while preserving smaller declared limits', () => {
