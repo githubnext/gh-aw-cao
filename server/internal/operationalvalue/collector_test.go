@@ -33,7 +33,8 @@ func TestParseOutputRejectsExplicitNullOptionalFields(t *testing.T) {
 	}
 }
 
-func testEnvelope(campaign, valueID, timestamp string, value float64) envelope {
+func testEnvelope(valueID, timestamp string, value float64) envelope {
+	const campaign = "example"
 	return envelope{
 		SchemaVersion: 2, Kind: "operational_value",
 		OperationalValue: operationalValue{
@@ -48,13 +49,13 @@ func testEnvelope(campaign, valueID, timestamp string, value float64) envelope {
 
 func TestPersistValuesRetiresInactiveValuesAndMergesDuplicates(t *testing.T) {
 	retained := []envelope{
-		testEnvelope("example", "stale.value", "2026-09-01T00:00:00.000Z", 1),
-		testEnvelope("example", "current.value", "2026-09-01T00:00:00.000Z", 1),
+		testEnvelope("stale.value", "2026-09-01T00:00:00.000Z", 1),
+		testEnvelope("current.value", "2026-09-01T00:00:00.000Z", 1),
 	}
 	fresh := []envelope{
 		// Same exact key as the retained current.value entry, so merging must
 		// replace it rather than keep both.
-		testEnvelope("example", "current.value", "2026-09-01T00:00:00.000Z", 2),
+		testEnvelope("current.value", "2026-09-01T00:00:00.000Z", 2),
 	}
 	active := map[string]map[string]struct{}{
 		"example": {"current.value": {}},
@@ -72,7 +73,7 @@ func TestPersistValuesKeepsRetainedValuesWithoutActiveEntry(t *testing.T) {
 	// A campaign that produced no definitions this run (e.g. it failed or was
 	// skipped) must not retire every value it previously reported.
 	retained := []envelope{
-		testEnvelope("example", "current.value", "2026-09-01T00:00:00.000Z", 1),
+		testEnvelope("current.value", "2026-09-01T00:00:00.000Z", 1),
 	}
 	merged := persistValues(retained, nil, map[string]map[string]struct{}{}, map[string]definition{})
 	if len(merged) != 1 || merged[0].OperationalValue.ValueID != "current.value" {
