@@ -313,8 +313,8 @@ The implementation profile defined by this specification is:
 
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
-| Canonical model | 21 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, and Marketplace Package records |
-| Browser IndexedDB | 29 | Twelve canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
+| Canonical model | 22 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, and Marketplace Package records |
+| Browser IndexedDB | 30 | Twelve canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
 | Local SQLite projection | IndexedDB 27 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records`, containing the same logical stores and JSON records as IndexedDB |
 | Local Redis server projection | Canonical model 14 | Immutable active generation of logical-source row sets, queried only through the loopback Go HTTP(S) server |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
@@ -1753,7 +1753,7 @@ The canonical browser database SHALL use:
 
 ```js
 const DATABASE_NAME = "gh-aw-cao-dashboard-data";
-const DATABASE_VERSION = 29;
+const DATABASE_VERSION = 30;
 ```
 
 The name MAY be scoped by deployment path to prevent unrelated dashboard
@@ -1765,7 +1765,7 @@ rows.
 
 # 27. Object Stores
 
-IndexedDB version 29 SHALL define:
+IndexedDB version 30 SHALL define:
 
 ```text
 campaigns
@@ -1823,7 +1823,7 @@ conclusion
 
 The generation-ordered runtime-computation indexes described by Section 73 are
 reserved for the physical version that implements the computation projection.
-They are not part of IndexedDB version 29. That implementation MUST increment
+They are not part of IndexedDB version 30. That implementation MUST increment
 the physical version and update Section 5.1 before relying on those indexes.
 
 ### run-linked tables
@@ -1857,7 +1857,7 @@ Every secondary index increases storage and write amplification.
 # 29. Canonical Browser Reconciliation
 
 Canonical entity rows SHALL use `id` as the primary key and SHALL NOT carry a
-canonical generation key in IndexedDB version 21. Ingestion serializes writers,
+canonical generation key in IndexedDB version 30. Ingestion serializes writers,
 normalizes source observations, validates complete in-memory batches where the
 input mode permits it, and reconciles each store in bounded transactions.
 
@@ -3484,7 +3484,7 @@ and MUST NOT change canonical results.
 
 # 73. Materialized Computation Projection
 
-This section defines the next physical storage profile. IndexedDB version 21
+This section defines the next physical storage profile. IndexedDB version 30
 does not contain `computationResults`, `computationMetadata`, or the ordered
 runtime-computation indexes. Implementing this section SHALL increment the
 physical IndexedDB version, update Section 5.1, and add the conformance tests
