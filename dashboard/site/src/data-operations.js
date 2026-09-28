@@ -1,7 +1,9 @@
 /**
  * A small, serializable subset of tidy-style row operations.
  *
- * Operators are plain data so the same pipeline can run in a Web Worker.
+ * Operators are plain data so the pipeline runs inside the data Web Worker.
+ * `tidy` must never execute on the main thread; main-thread callers go through
+ * `processRows` in `data-processor.js`, which delegates to the worker.
  */
 
 import { formatCount, titleCase } from './components/count-formatters.js';

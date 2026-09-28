@@ -1,4 +1,3 @@
-import { tidy } from './data-operations.js';
 import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
 import { queryDashboardSourceObservations } from './data/queries/ingestion.js';
@@ -190,16 +189,18 @@ function rejectWorkerRequests(processor, error) {
 }
 
 /**
- * Runs a serializable tidy pipeline in a Web Worker when the environment supports it.
+ * Runs a serializable row pipeline exclusively in the data worker.
+ * There is no main-thread fallback: row operations either run in the worker or fail.
  * @param {Array<Record<string, unknown>>} data
- * @param {Parameters<typeof tidy>[1]} operators
- * @returns {Array<Record<string, unknown>>|Promise<Array<Record<string, unknown>>>}
+ * @param {import('./data-operations.js').DataOperator[]} operators
+ * @returns {Promise<Array<Record<string, unknown>>>}
  */
 export function processRows(data, operators) {
-  return processRequest(
+  return /** @type {Promise<Array<Record<string, unknown>>>} */ (processRequest(
     { data, operators },
-    () => tidy(data, operators)
-  );
+    () => Promise.reject(new Error('Row operations require a data worker.')),
+    false
+  ));
 }
 
 /**
