@@ -647,7 +647,6 @@
       "title": "Memory",
       "navigation-label": "Memory",
       "icon": "archive",
-      "experimental": true,
       "class-name": "memory-page",
       "description": "Browse repository memory published by centrally managed campaigns.",
       "views": [

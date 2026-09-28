@@ -44,7 +44,7 @@ Built-in pages carry renderer-defined semantic requirements and required source 
 | `findings` | Linked security and quality findings with status and severity. |
 | `issues` | Reusable issue entity cards bound to safe-output queries with explicit drill behavior. |
 | `cost` | Observed AI Credit cost across campaigns, repositories, and workflows. |
-| `memory` (experimental) | Browses repository memory published by centrally managed campaigns. |
+| `memory` | Browses repository memory published by centrally managed campaigns. |
 | `skills` (experimental) | Observed skill invocations and the workflows that invoked them. |
 | `marketplace` (experimental) | Read-only CAO campaign packages from the configured registries. See [Browse campaign packages](marketplace.md). |
 
