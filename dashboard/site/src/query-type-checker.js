@@ -11,12 +11,15 @@ import {
   TEMPORAL_FIELD_NAMES,
   TEXT_COMPUTE_FUNCTIONS
 } from './specification.js';
+import { createDebug } from './debug.js';
 
 /**
  * @typedef {'scalar'|'text'|'boolean'|'numeric'|'temporal'|'link'|'unknown'} FieldType
  * @typedef {{ code: string, message: string, path: string }} ValidationError
  * @typedef {{ fields: Map<string, FieldType> | undefined, tables: Set<string>, rowTables: Set<string> }} QueryType
  */
+
+const debugCompile = createDebug('query-type-checker');
 
 /**
  * Compiles the query declarations into symbol and type tables.
@@ -34,8 +37,10 @@ import {
  * }}
  */
 export function compileDashboardQueryTypes(definitions) {
+  const startedAt = Date.now();
   const errors = [];
   const queries = Array.isArray(definitions) ? definitions : [];
+  debugCompile('compile-start', { queryCount: queries.length });
   /** @type {Map<string, { query: Record<string, unknown>, index: number }>} */
   const symbols = new Map();
 
@@ -120,6 +125,7 @@ export function compileDashboardQueryTypes(definitions) {
       reference?.path ?? `$.dashboard.queries[${symbol.index}].from`
     ));
   }
+  if (cyclic.size > 0) debugCompile('dependency-cycle', { cyclicQueryCount: cyclic.size });
 
   // Type-check pass.
   /** @type {Map<string, QueryType | undefined>} */
@@ -132,6 +138,12 @@ export function compileDashboardQueryTypes(definitions) {
     }
     compiled.set(name, compileQuery(symbol.query, symbol.index, symbols, compiled, errors));
   }
+
+  debugCompile('compile-complete', {
+    queryCount: queries.length,
+    errorCount: errors.length,
+    durationMs: Date.now() - startedAt
+  });
 
   return {
     queryFields: new Map([...symbols.keys()].map((name) => {
