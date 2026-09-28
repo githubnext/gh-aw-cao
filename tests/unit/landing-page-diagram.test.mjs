@@ -10,6 +10,7 @@ const terminal = readFileSync("docs/components/TerminalDemo.astro", "utf8");
 const terminalText = terminal.replaceAll(/<[^>]+>/g, "");
 const headerLinks = readFileSync("docs/components/HeaderLinks.astro", "utf8");
 const catalog = readFileSync("docs/lib/catalog.ts", "utf8");
+const astroConfig = readFileSync("astro.config.mjs", "utf8");
 
 test("landing page presents the product through real operational surfaces", () => {
   assert.match(landingPage, /text: Explore CAO[\s\S]*?link: \/gh-aw-cao\/architecture-at-a-glance\//);
@@ -221,7 +222,8 @@ test("landing page explains and illustrates campaign dispatch", () => {
 });
 
 test("the home navigation no longer links to the setup wizard", () => {
-  assert.doesNotMatch(headerLinks, /label: "Setup"|\/setup\//);
+  assert.doesNotMatch(headerLinks, /\{ label: "Setup", href: "\/gh-aw-cao\/setup\/" \}/);
+  assert.match(astroConfig, /"\/setup": "\/gh-aw-cao\/setup-quickstarts\/"/);
 });
 
 test("wizard page, UI, styles, and policy helpers are removed", () => {
