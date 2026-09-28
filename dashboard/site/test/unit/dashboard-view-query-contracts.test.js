@@ -130,6 +130,18 @@ describe('dashboard view query contracts', () => {
           section: { field: 'repository-coordinate' },
           y: { field: 'aic', unit: 'aic' }
         }
+      },
+      {
+        id: 'cost-per-workflow-run',
+        title: 'Cost per workflow run',
+        data: { source: 'cost-per-workflow-run' },
+        mark: 'chart',
+        chart: 'horizontal-bar',
+        encoding: {
+          x: { field: 'workflow' },
+          section: { field: 'repository-coordinate' },
+          y: { field: 'aic-per-run', unit: 'aic-per-run' }
+        }
       }
     ]);
   });

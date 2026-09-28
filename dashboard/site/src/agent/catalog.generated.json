@@ -710,7 +710,8 @@
       "queries": [
         "cost-by-campaign",
         "cost-by-repository",
-        "cost-by-workflow"
+        "cost-by-workflow",
+        "cost-per-workflow-run"
       ]
     },
     {
@@ -3672,6 +3673,30 @@
         "backend": "sqlite",
         "requirements": [
           "runs"
+        ]
+      }
+    },
+    {
+      "id": "cost-per-workflow-run",
+      "intent": "Present the average observed AI Credit cost of a single run for each repository-owned workflow.",
+      "description": "Observed AI Credit totals divided by observed run attempts for each declared workflow.",
+      "parameters": [],
+      "sources": [
+        "workflow-aic-totals",
+        "workflow-run-totals"
+      ],
+      "used-by-pages": [
+        "cost"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "domains",
+          "issues",
+          "runs",
+          "tools"
         ]
       }
     },
