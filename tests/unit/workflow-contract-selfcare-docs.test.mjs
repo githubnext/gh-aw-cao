@@ -230,6 +230,7 @@ test("SelfCare docs maintainer uses daily merged-change and ADR evidence", () =>
 
 test("SelfCare docs build-time investigator rotates evidenced recommendations", () => {
   const source = workflow("self-care-docs-build-time-investigator.md");
+  const compiled = workflow("self-care-docs-build-time-investigator.lock.yml");
 
   assert.match(source, /^name: "SelfCare \/ Docs Build Time"$/m);
   assert.match(source, /on:\n\s+bots: \["github-actions\[bot\]", "cao-githubnext-gh-aw-cao-write\[bot\]"\]/);
@@ -243,6 +244,8 @@ test("SelfCare docs build-time investigator rotates evidenced recommendations", 
   assert.match(source, /Call `create_issue` exactly once/);
   assert.match(source, /Otherwise call `noop` exactly once/);
   assert.match(source, /title-prefix: "\[self-care:docs-build-time-investigator\] "/);
+  assert.match(source, /noop:\n\s+max: 2\n\s+report-as-issue: false/);
+  assert.match(compiled, /\\"noop\\":\{\\"max\\":2,\\"report-as-issue\\":\\"false\\"\}/);
   assert.doesNotMatch(source, /^\s+(create-pull-request|add-comment|create-discussion|push-to-pull-request-branch):/m);
 });
 

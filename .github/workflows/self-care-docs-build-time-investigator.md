@@ -98,6 +98,9 @@ safe-outputs:
     deduplicate-by-title: true
     max: 1
     expires: 14d
+  noop:
+    max: 2
+    report-as-issue: false
 ---
 
 # SelfCare Docs Build-Time Investigator
