@@ -129,6 +129,32 @@ describe('dashboard source ingestion queries', () => {
       }
     });
 
+    it('preserves marketplace repository links during canonical ingestion', () => {
+      const repositoryLink = {
+        relation: 'repository',
+        href: 'https://github.com/example/packages',
+        label: 'Open example/packages on GitHub'
+      };
+      const adapted = queryDashboardSourceObservations({
+        'marketplace-packages': {
+          rows: [{
+            id: 'example/packages/demo',
+            'registry-id': 'official',
+            repository: 'example/packages',
+            'repository-link': repositoryLink,
+            ref: 'main',
+            'resolved-commit': 'a'.repeat(40),
+            source: `example/packages/demo@${'a'.repeat(40)}`,
+            'add-command': `./cao.sh add example/packages/demo@${'a'.repeat(40)}`,
+            'observed-at': '2026-09-09T04:00:00Z'
+          }],
+          metadata
+        }
+      });
+
+      expect(normalize(adapted.observations).marketplacePackages[0].repositoryLink).toEqual(repositoryLink);
+    });
+
     const batch = normalize(adapted.observations);
 
     expect(batch.repositories[0]).toMatchObject({

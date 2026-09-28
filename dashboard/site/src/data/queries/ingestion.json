@@ -211,6 +211,7 @@
         "description": { "field": "description", "default": "" },
         "publisher": { "field": "publisher", "default": "" },
         "repository": { "field": "repository" },
+        "repositoryLink": { "field": "repository-link", "default": null },
         "path": { "field": "path", "default": "" },
         "ref": { "field": "ref" },
         "resolvedCommit": { "field": "resolved-commit" },
