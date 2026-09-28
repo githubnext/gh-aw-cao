@@ -421,6 +421,39 @@ func newServeHostedCommand() *cobra.Command {
 	return cmd
 }
 
+// actionsEnvironment holds the GitHub Actions environment variables the
+// serve command forwards into server.Config. It is built by
+// resolveActionsEnvironment rather than read inline, so the presence of each
+// variable is independently testable without exposing the values themselves
+// in a log line.
+type actionsEnvironment struct {
+	Token      string
+	Actor      string
+	Repository string
+	APIURL     string
+}
+
+// resolveActionsEnvironment reads the GitHub Actions environment variables
+// serve forwards into server.Config. It is a pure function over getenv, so
+// the resolution is testable with a fake environment rather than mutating
+// the real process environment.
+func resolveActionsEnvironment(getenv func(string) string) actionsEnvironment {
+	return actionsEnvironment{
+		Token:      getenv("GITHUB_TOKEN"),
+		Actor:      getenv("GITHUB_ACTOR"),
+		Repository: getenv("GITHUB_REPOSITORY"),
+		APIURL:     getenv("GITHUB_API_URL"),
+	}
+}
+
+// present reports which of the resolved GitHub Actions environment variables
+// are non-empty, formatted for a log line. It never includes the variables'
+// values, only whether each was set.
+func (e actionsEnvironment) present() string {
+	return fmt.Sprintf("token=%t actor=%t repository=%t api_url=%t",
+		e.Token != "", e.Actor != "", e.Repository != "", e.APIURL != "")
+}
+
 func newServeCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "serve",
@@ -459,6 +492,8 @@ func newServeCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
+		actionsEnv := resolveActionsEnvironment(os.Getenv)
+		commandLog.Printf("serve resolved actions environment %s", actionsEnv.present())
 		app, err := server.New(ctx, store, server.Config{
 			Listen:               *listen,
 			SiteDirectory:        *siteDirectory,
@@ -472,10 +507,10 @@ func newServeCommand() *cobra.Command {
 			AgentCatalogPath:     *agentCatalog,
 			MCPContractPath:      *mcpContract,
 			MCPEnabled:           *mcpEnabled,
-			GitHubActionsToken:   os.Getenv("GITHUB_TOKEN"),
-			GitHubActionsActor:   os.Getenv("GITHUB_ACTOR"),
-			ActionsRepository:    os.Getenv("GITHUB_REPOSITORY"),
-			GitHubAPIURL:         os.Getenv("GITHUB_API_URL"),
+			GitHubActionsToken:   actionsEnv.Token,
+			GitHubActionsActor:   actionsEnv.Actor,
+			ActionsRepository:    actionsEnv.Repository,
+			GitHubAPIURL:         actionsEnv.APIURL,
 			Logger:               log.New(os.Stderr, "cao-dashboard: ", log.LstdFlags),
 		})
 		if err != nil {
