@@ -103,12 +103,14 @@ const campaigns = [
 ];
 
 const successfulJobs = jobs.filter((job) => !job.failed);
+const controlRepository = successfulJobs.find((job) => job.repository === "githubnext/gh-aw-cao");
+const targetJobs = successfulJobs;
 
 const organizationNodes = [
   { organization: "github", top: 146 },
   { organization: "githubnext", top: 318 },
 ].map((node) => {
-  const organizationJobs = successfulJobs.filter((job) => job.repository.startsWith(`${node.organization}/`));
+  const organizationJobs = targetJobs.filter((job) => job.repository.startsWith(`${node.organization}/`));
   return {
     ...node,
     campaigns: new Set(organizationJobs.map((job) => job.workflow.split(" / ")[0])).size,
@@ -274,7 +276,7 @@ const organizationNodes = [
         <h3>Repository routes</h3>
         <div class="graph-route-stage">
           <svg class="graph-routes" viewBox="0 0 82 488" preserveAspectRatio="none">
-            {successfulJobs.map((job) => (
+            {targetJobs.map((job) => (
               <>
                 <path d={job.repositoryPath}></path>
                 <circle class={job.mode === "review" ? "graph-route-dot review" : "graph-route-dot"} r="2.5">
@@ -304,14 +306,18 @@ const organizationNodes = [
 
       <section class="repositories-column">
         <div class="stage-cue-spacer" aria-hidden="true"></div>
-        <h3>Representative repositories</h3>
+        <h3>Target Repositories</h3>
         <div class="target-grid">
-          {successfulJobs.map((job) => (
+          {targetJobs.map((job) => (
             <article class={`repository-card ${job.timing} ${job.mode}`} style={`grid-row: ${job.row}`}>
               <svg class="repo-icon repository-icon" viewBox="0 0 16 16"><path d={repoPath}></path></svg>
               <span class="repository-copy">
                 <strong>{job.repository}</strong>
-                <small>{job.mode === "review" ? "review output · CAO control repository" : "live rollout"}</small>
+                <small>
+                  {job.repository === controlRepository?.repository
+                    ? "review output · CAO control repository"
+                    : "live rollout"}
+                </small>
               </span>
             </article>
           ))}
@@ -400,7 +406,11 @@ const organizationNodes = [
                     <svg class="repo-icon repository-icon" viewBox="0 0 16 16"><path d={repoPath}></path></svg>
                     <span>
                       <strong>{job.repository}</strong>
-                      <small>{job.mode === "review" ? "review output · CAO control repository" : `live rollout · ${job.duration}`}</small>
+                      <small>
+                        {job.repository === controlRepository?.repository
+                          ? `review output · CAO control repository · ${job.duration}`
+                          : `live rollout · ${job.duration}`}
+                      </small>
                     </span>
                   </article>
                 )}
@@ -580,7 +590,6 @@ const organizationNodes = [
   }
 
   .execution-grid .dispatcher-repo-assist {
-    border-bottom-color: color-mix(in srgb, var(--line) 55%, var(--sl-color-white));
     transform: translateY(-4px);
   }
 
@@ -989,7 +998,6 @@ const organizationNodes = [
   }
 
   @keyframes spin { to { transform: rotate(360deg); } }
-
   @keyframes dep-dispatch-queued { 0%, 13% { opacity: 1; } 14%, 100% { opacity: 0; } }
   @keyframes dep-dispatch-running { 0%, 13%, 29%, 100% { opacity: 0; } 14%, 28% { opacity: 1; } }
   @keyframes dep-dispatch-complete { 0%, 28% { opacity: 0; } 29%, 100% { opacity: 1; } }

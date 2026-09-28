@@ -90,11 +90,13 @@ test("landing page explains and illustrates campaign dispatch", () => {
   assert.ok(
     illustration.indexOf("<h3>GitHub Actions</h3>") < illustration.indexOf("<h3>Organizations</h3>") &&
       illustration.indexOf("<h3>Organizations</h3>") <
-        illustration.indexOf("<h3>Representative repositories</h3>"),
+        illustration.indexOf("<h3>Target Repositories</h3>"),
   );
   assert.match(illustration, /const organizationNodes = \[/);
   assert.match(illustration, /const successfulJobs = jobs\.filter\(\(job\) => !job\.failed\)/);
-  assert.match(illustration, /organizationJobs = successfulJobs\.filter/);
+  assert.match(illustration, /const controlRepository = successfulJobs\.find/);
+  assert.match(illustration, /const targetJobs = successfulJobs;/);
+  assert.match(illustration, /organizationJobs = targetJobs\.filter/);
   assert.match(illustration, /campaigns: new Set\(organizationJobs\.map/);
   assert.match(illustration, /repositories: new Set\(organizationJobs\.map/);
   assert.match(illustration, /\{node\.campaigns\} \{node\.campaigns === 1 \? "campaign" : "campaigns"\}/);
@@ -118,7 +120,10 @@ test("landing page explains and illustrates campaign dispatch", () => {
   assert.match(illustration, /class="graph-junction" cx="41" cy="344"/);
   assert.doesNotMatch(illustration, /CAO review queue/);
   assert.match(illustration, /graph-route-dot review/);
+  assert.doesNotMatch(illustration, /class="control-repository-card"/);
   assert.match(illustration, /review output · CAO control repository/);
+  assert.match(illustration, /\{jobs\.map\(\(job\) => \(/);
+  assert.match(illustration, /\{targetJobs\.map\(\(job\) => \(/);
   assert.match(illustration, /class={`repository-card \$\{job\.timing\} \$\{job\.mode\}`}/);
   assert.match(illustration, /--review: #0969da/);
   assert.match(illustration, /--review: #58a6ff/);
@@ -202,7 +207,8 @@ test("landing page explains and illustrates campaign dispatch", () => {
   assert.match(illustration, /@keyframes job-1-running/);
   assert.match(illustration, /@keyframes job-5-running/);
   assert.match(illustration, /grid-template-rows: 64px 72px 72px 0 64px 72px 72px 72px/);
-  assert.match(illustration, /\.execution-grid \.dispatcher-repo-assist \{[\s\S]*?border-bottom-color: color-mix[\s\S]*?translateY\(-4px\)/);
+  assert.match(illustration, /\.execution-grid \.dispatcher-repo-assist \{\s*transform: translateY\(-4px\)/);
+  assert.doesNotMatch(illustration, /\.execution-grid \.dispatcher-repo-assist \{[\s\S]*?border-bottom-color:/);
   assert.match(illustration, /\.run-card\.job-5,[\s\S]*?\.repository-card\.job-5 \{[\s\S]*?translateY\(4px\)/);
   assert.match(illustration, /\.actions-column \{[\s\S]*?align-self: start/);
   assert.match(illustration, /@media \(prefers-reduced-motion: reduce\)/);
