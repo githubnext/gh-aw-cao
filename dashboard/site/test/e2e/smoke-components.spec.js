@@ -79,7 +79,10 @@ test('campaign problem detail renders a responsive full view without a table', a
   await expect(problemDetail.getByRole('heading', { name: 'Scope' })).toBeVisible();
   await expect(problemDetail.getByRole('heading', { name: 'Runtime environment' })).toBeVisible();
   await expect(problemDetail.getByRole('button', { name: 'Fix It' })).toBeVisible();
-  await expect(problemDetail.getByRole('link', { name: 'View run' })).toHaveAttribute('rel', 'noopener noreferrer');
+  const runLink = problemDetail.getByRole('link', { name: 'https://github.com/github/gh-aw/actions/runs/1' });
+  await expect(runLink).toHaveAttribute('href', 'https://github.com/github/gh-aw/actions/runs/1');
+  await expect(runLink).toHaveAttribute('rel', 'noopener noreferrer');
+  await expect(runLink.locator('svg')).toHaveCount(0);
   await page.setViewportSize({ width: 500, height: 800 });
   await expect(problemDetail.locator('.problem-view-sections')).toHaveCSS('grid-template-columns', '500px');
 });

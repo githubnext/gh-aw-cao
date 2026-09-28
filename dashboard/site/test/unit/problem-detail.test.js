@@ -94,7 +94,10 @@ describe('problem detail', () => {
     expect(rendered.querySelector('.problem-view-highlights')?.textContent).toContain('Occurrences65');
     expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('Error signaturedependency-update-failed');
     expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('Resolved modelmodel-b');
-    expect(rendered.querySelector('a[href*="/actions/runs/1"]')?.textContent).toBe('View run');
+    const runAnchor = rendered.querySelector('.problem-view-highlights a[href*="/actions/runs/1"]');
+    expect(runAnchor?.textContent).toBe('https://github.com/github/gh-aw/actions/runs/1');
+    expect(runAnchor?.getAttribute('rel')).toBe('noopener noreferrer');
+    expect(runAnchor?.querySelector('svg')).toBeNull();
     expect(rendered.querySelector('a[href="#page-repository-detail?repository=githubnext%2Fgh-aw-cao"]')?.textContent).toBe('githubnext/gh-aw-cao');
     expect(rendered.querySelector('a[href*="/actions/workflows/dependabot.lock.yml"]')?.textContent).toBe('Dependabot / Update Planner');
     expect(rendered.querySelector('a[href="#page-repository-detail?repository=github%2Fgh-aw"]')?.textContent).toBe('github/gh-aw');
@@ -139,6 +142,19 @@ describe('problem detail', () => {
     expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('Requested modelAutomatic model selection was requested.');
     expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('Resolved modelModel resolution did not complete before the failure.');
     expect(rendered.querySelector('.problem-view-log')?.textContent).toContain('did not retain raw output');
+  });
+
+  it('does not invent a link when run evidence is missing or unsafe', () => {
+    for (const runLink of [undefined, { href: 'javascript:alert(1)', label: 'Unsafe' }]) {
+      const sparseProblem = /** @type {Record<string, unknown>} */ ({ ...problem(), 'run-link': runLink });
+      const rendered = renderProblemDetail(context([sparseProblem]));
+      rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+        detail: { parameter: 'target-repository', value: 'github/gh-aw' }
+      }));
+
+      expect(rendered.querySelector('.problem-view-highlights')?.textContent).toContain('Workflow runUnavailable');
+      expect(rendered.querySelector('.problem-view-highlights a')).toBeNull();
+    }
   });
 });
 

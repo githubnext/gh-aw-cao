@@ -138,7 +138,7 @@ function renderProblem(problem) {
       renderHighlight('Occurrences', problem['occurrence-count']),
       renderHighlight('Failures', problem['failure-count']),
       renderHighlight('Observed', formatUtcDateTime(problem['started-at'])),
-      renderHighlight('Workflow run', renderExternalLinkOrFallback(runLink, 'View run'))
+      renderHighlight('Workflow run', renderExternalLinkOrFallback(runLink, runLink?.externalHref ?? runLink?.href))
     ),
     h(
       'div',
