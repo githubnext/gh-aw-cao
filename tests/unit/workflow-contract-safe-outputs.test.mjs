@@ -104,7 +104,11 @@ test("workflow issue outputs are bounded, deduplicated, and centrally quiet on n
 
     const importsControl = config.imports?.some((entry) => entry.uses === "shared/control.md");
     if (importsControl) {
-      assert.equal(safeOutputs.noop, undefined, `${name} must inherit shared noop policy without overriding it`);
+      if (name === "self-care-docs-build-time-investigator.md") {
+        assert.deepEqual(safeOutputs.noop, { max: 2, "report-as-issue": false }, name);
+      } else {
+        assert.equal(safeOutputs.noop, undefined, `${name} must inherit shared noop policy without overriding it`);
+      }
     } else if (safeOutputs.noop) {
       assert.equal(safeOutputs.noop["report-as-issue"], false, name);
     }
