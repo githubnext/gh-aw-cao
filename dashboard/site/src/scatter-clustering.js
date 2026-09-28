@@ -1,4 +1,8 @@
+import { createDebug } from './debug.js';
+
 export const MAX_RENDERED_SCATTER_POINTS = 400;
+
+const debugScatterClustering = createDebug('scatter-clustering');
 
 /**
  * @typedef {{
@@ -20,7 +24,10 @@ export const MAX_RENDERED_SCATTER_POINTS = 400;
  */
 export function clusterScatterPoints(points, maximumClusters = MAX_RENDERED_SCATTER_POINTS) {
   const limit = Math.max(1, Math.floor(maximumClusters));
-  if (points.length <= limit) return points;
+  if (points.length <= limit) {
+    debugScatterClustering({ event: 'skipped', pointCount: points.length, limit });
+    return points;
+  }
 
   /** @type {Map<string, ScatterPoint[]>} */
   const grouped = new Map();
@@ -34,6 +41,13 @@ export function clusterScatterPoints(points, maximumClusters = MAX_RENDERED_SCAT
   const series = [...grouped.entries()]
     .sort(([left], [right]) => left.localeCompare(right));
   const quotas = allocateClusterQuotas(series.map(([, entries]) => entries.length), limit);
+  debugScatterClustering({
+    event: 'clustered',
+    pointCount: points.length,
+    limit,
+    seriesCount: series.length,
+    clusterCount: quotas.reduce((sum, quota) => sum + quota, 0)
+  });
 
   return series.flatMap(([name, entries], seriesIndex) => {
     const sorted = [...entries].sort((left, right) => Date.parse(left.x) - Date.parse(right.x));
@@ -67,6 +81,7 @@ export function clusterScatterPoints(points, maximumClusters = MAX_RENDERED_SCAT
  */
 function allocateClusterQuotas(sizes, limit) {
   if (sizes.length >= limit) {
+    debugScatterClustering({ event: 'series-clamped', seriesCount: sizes.length, limit });
     return sizes.map((_, index) => index < limit ? 1 : 0);
   }
   const quotas = sizes.map(() => 1);
