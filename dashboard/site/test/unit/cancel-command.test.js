@@ -34,6 +34,25 @@ describe('dashboard cancel command', () => {
     expect(notification.textContent).toBe('Cancelling…');
   });
 
+  it('exposes expandable details with elapsed time and context', () => {
+    let elapsedMs = 0;
+    const cancel = vi.fn(() => 1);
+    offerCancelCommand(document, { delay: 5000, cancel, now: () => elapsedMs });
+
+    elapsedMs = 5000;
+    vi.advanceTimersByTime(5000);
+    const toggle = /** @type {HTMLButtonElement} */ (document.querySelector('.dashboard-notification-toggle'));
+    expect(toggle).not.toBeNull();
+    toggle.click();
+    const details = /** @type {HTMLElement} */ (document.querySelector('.dashboard-notification-details'));
+    expect(details.textContent).toContain('Elapsed time: 0s');
+
+    elapsedMs = 8000;
+    vi.advanceTimersByTime(3000);
+    expect(details.textContent).toContain('Elapsed time: 3s');
+    expect(details.textContent).toContain('rate limits');
+  });
+
   it('cancels from the keyboard only while the command is offered', () => {
     const cancel = vi.fn(() => 1);
     offerCancelCommand(document, { delay: 5000, cancel });
