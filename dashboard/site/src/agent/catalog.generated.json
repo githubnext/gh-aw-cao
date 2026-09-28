@@ -24,7 +24,6 @@
       "parameters": [],
       "queries": [
         "firewall-domain-totals",
-        "firewall-least-used-domains",
         "firewall-most-blocked-domains"
       ]
     },
@@ -1471,25 +1470,6 @@
       "id": "firewall-most-blocked-domains",
       "intent": "Highlight the domains with the most blocked firewall requests.",
       "description": "The ten domains with the highest observed blocked request totals.",
-      "parameters": [],
-      "sources": [
-        "firewall-domain-totals"
-      ],
-      "used-by-pages": [
-        "firewall"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "firewall-observations"
-        ]
-      }
-    },
-    {
-      "id": "firewall-least-used-domains",
-      "intent": "Highlight uncommon firewall domains observed in the fewest runs.",
-      "description": "The ten domains observed in the fewest distinct runs.",
       "parameters": [],
       "sources": [
         "firewall-domain-totals"
