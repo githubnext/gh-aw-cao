@@ -13,57 +13,86 @@ package telemetry
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
 
 // ServiceName is the standardized service.name resource attribute reported by
 // every dashboard server process, regardless of hosting mode.
 const ServiceName = "cao-dashboard"
 
+var setupLog = logger.New("cao:telemetry")
+
 // Shutdown flushes and stops any exporter started by Setup. It is always
 // non-nil and safe to call even when Setup did not configure an exporter.
 type Shutdown func(context.Context) error
 
-// Setup installs a global TracerProvider and W3C Trace Context propagator
-// for the dashboard server. When OTEL_SDK_DISABLED is "true" or no OTLP
-// endpoint is configured, the global propagator is still installed but no
-// exporter is started, so handlers can unconditionally start spans without
-// checking whether telemetry is enabled: unexported spans are cheap no-ops.
+// exporterDecision identifies why Setup did or did not start an OTLP signal
+// exporter. It is useful for diagnosing a deployment that unexpectedly has
+// no exported telemetry, without logging endpoint, header, or version values.
+type exporterDecision string
+
+const (
+	exporterDecisionDisabled   exporterDecision = "sdk-disabled"
+	exporterDecisionNoEndpoint exporterDecision = "no-endpoint"
+	exporterDecisionConfigured exporterDecision = "configured"
+)
+
+// resolveExporterDecision applies the standard priority for whether Setup
+// starts a real OTLP signal exporter: an explicit OTEL_SDK_DISABLED override,
+// then a signal-specific endpoint, then the general OTLP endpoint. It returns the
+// resolved endpoint (empty unless exporterDecisionConfigured) and which
+// input decided the outcome, so callers can log the decision without
+// exposing the endpoint value. It is a pure function so this priority is
+// testable without installing a global TracerProvider.
+func resolveExporterDecision(sdkDisabledEnv, signalEndpointEnv, endpointEnv string) (string, exporterDecision) {
+	if strings.EqualFold(strings.TrimSpace(sdkDisabledEnv), "true") {
+		return "", exporterDecisionDisabled
+	}
+	endpoint := firstNonEmpty(signalEndpointEnv, endpointEnv)
+	if endpoint == "" {
+		return "", exporterDecisionNoEndpoint
+	}
+	return endpoint, exporterDecisionConfigured
+}
+
+// Setup installs global trace and metric providers and a W3C Trace Context
+// propagator for the dashboard server. Each signal is enabled independently
+// by its standard OTLP endpoint environment variable or by the shared endpoint.
+// When OTEL_SDK_DISABLED is "true" or no OTLP endpoint is configured, the
+// global propagator is still installed but no exporter is started.
 func Setup(ctx context.Context, version string) (Shutdown, error) {
 	noop := func(context.Context) error { return nil }
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
 		propagation.Baggage{},
 	))
-	if strings.EqualFold(strings.TrimSpace(os.Getenv("OTEL_SDK_DISABLED")), "true") {
-		return noop, nil
-	}
-	endpoint := firstNonEmpty(
+	traceEndpoint, traceDecision := resolveExporterDecision(
+		os.Getenv("OTEL_SDK_DISABLED"),
 		os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"),
 		os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 	)
-	if endpoint == "" {
-		// No exporter destination is configured; keep the default no-op
-		// tracer provider so instrumentation stays inert instead of
-		// spending resources on unexported spans.
+	metricEndpoint, metricDecision := resolveExporterDecision(
+		os.Getenv("OTEL_SDK_DISABLED"),
+		os.Getenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"),
+		os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+	)
+	setupLog.Printf("telemetry setup traces=%s metrics=%s", traceDecision, metricDecision)
+	if traceDecision != exporterDecisionConfigured && metricDecision != exporterDecisionConfigured {
 		return noop, nil
-	}
-	var exporterOptions []otlptracehttp.Option
-	if strings.HasPrefix(endpoint, "http://") {
-		exporterOptions = append(exporterOptions, otlptracehttp.WithInsecure())
-	}
-	exporter, err := otlptracehttp.New(ctx, exporterOptions...)
-	if err != nil {
-		return noop, fmt.Errorf("create OTLP trace exporter: %w", err)
 	}
 	serviceName := firstNonEmpty(os.Getenv("OTEL_SERVICE_NAME"), ServiceName)
 	res, err := resource.New(ctx,
@@ -78,12 +107,58 @@ func Setup(ctx context.Context, version string) (Shutdown, error) {
 	if err != nil {
 		return noop, fmt.Errorf("build OpenTelemetry resource: %w", err)
 	}
-	provider := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exporter),
-		sdktrace.WithResource(res),
-	)
-	otel.SetTracerProvider(provider)
-	return provider.Shutdown, nil
+
+	var traceProvider *sdktrace.TracerProvider
+	if traceDecision == exporterDecisionConfigured {
+		var options []otlptracehttp.Option
+		if strings.HasPrefix(traceEndpoint, "http://") {
+			options = append(options, otlptracehttp.WithInsecure())
+		}
+		exporter, exporterErr := otlptracehttp.New(ctx, options...)
+		if exporterErr != nil {
+			return noop, fmt.Errorf("create OTLP trace exporter: %w", exporterErr)
+		}
+		traceProvider = sdktrace.NewTracerProvider(
+			sdktrace.WithBatcher(exporter),
+			sdktrace.WithResource(res),
+		)
+	}
+
+	var meterProvider *sdkmetric.MeterProvider
+	if metricDecision == exporterDecisionConfigured {
+		var options []otlpmetrichttp.Option
+		if strings.HasPrefix(metricEndpoint, "http://") {
+			options = append(options, otlpmetrichttp.WithInsecure())
+		}
+		exporter, exporterErr := otlpmetrichttp.New(ctx, options...)
+		if exporterErr != nil {
+			if traceProvider != nil {
+				_ = traceProvider.Shutdown(ctx)
+			}
+			return noop, fmt.Errorf("create OTLP metric exporter: %w", exporterErr)
+		}
+		meterProvider = sdkmetric.NewMeterProvider(
+			sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exporter)),
+			sdkmetric.WithResource(res),
+		)
+	}
+
+	if traceProvider != nil {
+		otel.SetTracerProvider(traceProvider)
+	}
+	if meterProvider != nil {
+		otel.SetMeterProvider(meterProvider)
+	}
+	return func(shutdownCtx context.Context) error {
+		var metricErr, traceErr error
+		if meterProvider != nil {
+			metricErr = meterProvider.Shutdown(shutdownCtx)
+		}
+		if traceProvider != nil {
+			traceErr = traceProvider.Shutdown(shutdownCtx)
+		}
+		return errors.Join(metricErr, traceErr)
+	}, nil
 }
 
 func firstNonEmpty(values ...string) string {

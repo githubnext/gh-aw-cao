@@ -3,6 +3,9 @@ import { octicon } from '../octicons.js';
 import { findLink } from './link-content.js';
 import { rowsFor as rowsForSource } from './source-rows.js';
 import { renderEmptyMessage } from './ui-primitives.js';
+import { createDebug } from '../debug.js';
+
+const debugMarkdown = createDebug('markdown');
 
 /** @type {Record<string, { label: string, icon: string }>} */
 const GFM_ALERTS = {
@@ -27,12 +30,15 @@ export function renderMarkdownElement(context) {
   const source = rows.find((row) => value(row[contentField])) ?? rows[0];
   const markdown = source ? value(source[contentField]) : '';
   if (!markdown) {
+    debugMarkdown({ event: 'render', pageId: context.pageId, status: 'empty' });
     return renderEmptyMessage(value(config['empty-message']) || 'Markdown content is unavailable.');
   }
+  const blocks = renderMarkdownBlocks(markdown, source, { pathField, baseLinkField });
+  debugMarkdown({ event: 'render', pageId: context.pageId, status: 'rendered', blockCount: blocks.length });
   return h(
     'article',
     { className: 'dashboard-markdown markdown-body', 'aria-label': context.title },
-    ...renderMarkdownBlocks(markdown, source, { pathField, baseLinkField })
+    ...blocks
   );
 }
 

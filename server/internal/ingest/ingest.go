@@ -130,7 +130,7 @@ func DirectoryRevision(manifest Manifest, inventory []byte, additionalRevisions 
 
 func Run(ctx context.Context, store *redisx.Store, directory string, options Options) (result Result, err error) {
 	ingestLog.Printf("starting ingestion")
-	ctx, span := telemetry.Tracer().Start(ctx, "cao_dashboard.ingest.run")
+	ctx, span := telemetry.Tracer().Start(ctx, telemetry.SpanIngestRun)
 	defer func() {
 		if err != nil {
 			span.RecordError(err)

@@ -12,6 +12,15 @@ import (
 // otelhttp's automatic HTTP server instrumentation).
 const tracerName = "github.com/githubnext/gh-aw-cao/server"
 
+// Span names are centralized so every application-created span has a stable,
+// low-cardinality name. HTTP request attributes and metrics are supplied by
+// otelhttp's OpenTelemetry semantic-convention instrumentation.
+const (
+	SpanHTTPServer   = ServiceName
+	SpanIngestRun    = "cao_dashboard.ingest.run"
+	SpanQueryExecute = "cao_dashboard.query.execute"
+)
+
 // Tracer returns the dashboard server's instrumentation-scoped tracer. It
 // always resolves against the current global TracerProvider, so it reflects
 // whichever provider Setup installed (or the no-op default).
