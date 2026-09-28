@@ -10,8 +10,11 @@
  */
 
 import { agentFacingPages, isAgentFacingPage, navigationPageIds, pageParameters } from '../agent/catalog.js';
+import { createDebug } from '../debug.js';
 
 export { isAgentFacingPage, navigationPageIds };
+
+const debugManifest = createDebug('webmcp-manifest');
 
 /**
  * @typedef {{
@@ -112,10 +115,20 @@ export function webMCPManifestForDashboard(document) {
   const dashboardTitle = text(document?.dashboard?.title);
   /** @type {Map<string, WebMCPToolDescriptor>} */
   const tools = new Map();
+  let skippedCount = 0;
   for (const page of agentFacingPages(document)) {
     const tool = webMCPToolForPage(page, { dashboardTitle });
-    if (tool.name === TOOL_NAME_PREFIX || tools.has(tool.name)) continue;
+    if (tool.name === TOOL_NAME_PREFIX || tools.has(tool.name)) {
+      skippedCount += 1;
+      debugManifest({
+        event: 'tool-skipped',
+        pageId: tool.pageId,
+        reason: tool.name === TOOL_NAME_PREFIX ? 'empty-name' : 'duplicate-name'
+      });
+      continue;
+    }
     tools.set(tool.name, tool);
   }
+  debugManifest({ event: 'manifest-generated', toolCount: tools.size, skippedCount });
   return [...tools.values()];
 }
