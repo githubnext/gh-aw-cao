@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { ENTITY_STORES } from "../../dashboard/site/src/data/storage/indexeddb.js";
 import config from "../playwright/configs/dashboard-deployed.config.mjs";
 import {
+  activateTableViewMode,
   deployedDashboardUrl,
   populatedDashboardPages,
   scrollRenderedViewsIntoView,
@@ -74,6 +75,43 @@ test("deployed dashboard scrolling uses a stable view snapshot", async () => {
     { preventScroll: true },
   ]);
   assert.deepEqual(disposed, [0, 1]);
+});
+
+test("deployed dashboard activates table mode before hydrating table views", async () => {
+  const clicks = [];
+  const activePage = {
+    locator(selector) {
+      assert.equal(selector, '[data-view-mode-value="table"]');
+      return {
+        async count() {
+          return 1;
+        },
+        async click() {
+          clicks.push(selector);
+        },
+      };
+    },
+  };
+
+  assert.equal(await activateTableViewMode(activePage), true);
+  assert.deepEqual(clicks, ['[data-view-mode-value="table"]']);
+});
+
+test("deployed dashboard tolerates pages without table mode", async () => {
+  const activePage = {
+    locator() {
+      return {
+        async count() {
+          return 0;
+        },
+        async click() {
+          assert.fail("table mode should not be clicked");
+        },
+      };
+    },
+  };
+
+  assert.equal(await activateTableViewMode(activePage), false);
 });
 
 test("deployed dashboard scrolling tolerates lazy view replacement only", async () => {

@@ -68,6 +68,13 @@ export function shouldIgnoreRequestFailure({ method, url, errorText, reloading =
   );
 }
 
+export async function activateTableViewMode(activePage) {
+  const tableMode = activePage.locator('[data-view-mode-value="table"]');
+  if (await tableMode.count() === 0) return false;
+  await tableMode.click();
+  return true;
+}
+
 function isDeployedDashboardShardProbe({ method, url }) {
   if (method !== "HEAD" || typeof url !== "string") return false;
   try {
