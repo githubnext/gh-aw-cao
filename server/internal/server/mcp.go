@@ -12,9 +12,11 @@ import (
 	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"go.opentelemetry.io/otel/codes"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
+	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
 type mcpContract struct {
@@ -270,13 +272,26 @@ func (runtime *mcpRuntime) callQuery(ctx context.Context, args map[string]any) (
 	if len(filters) > 0 {
 		bounded.Filter = &query.Filter{Predicates: filters}
 	}
-	result, _, err := runtime.app.executeQuery(ctx, queryRequest{
+	input := queryRequest{
 		Aliases: []string{alias}, Queries: runtime.app.config.DashboardQueries,
 		CompiledQueries: []query.Definition{cloned, bounded},
-	})
+	}
+	queryCtx, span := telemetry.Tracer().Start(ctx, telemetry.SpanQueryExecute)
+	defer span.End()
+	result, _, err := runtime.app.executeQuery(queryCtx, input)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "query execution failed")
 		return nil, err
 	}
+	result.Metrics.RateLimitCost = queryRateLimitCost(result.Metrics.DurationMS)
+	if _, err := runtime.app.chargeQueryRateLimit(queryCtx, nil, result.Metrics.RateLimitCost); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "query rate limit exceeded")
+		return nil, err
+	}
+	span.SetAttributes(queryTelemetryAttributes(input, result)...)
+	span.SetStatus(codes.Ok, "")
 	source := result.Sources[alias]
 	rows := source.Rows
 	truncated := len(rows) > limit

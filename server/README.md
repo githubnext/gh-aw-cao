@@ -298,6 +298,9 @@ GitHub login; OAuth login requests are keyed by a digest of the client IP, and
 valid callbacks by a digest of their signed state. Forwarding headers are
 considered only at the configured trusted-proxy boundary. Raw logins, client
 addresses, and OAuth state are not stored in rate-limit keys.
+Query requests reserve one cost unit before execution. Completed queries cost
+one unit per started second, capped at the query bucket capacity; the additional
+cost is charged atomically before the result is returned.
 Enterprise proxy boundaries may supply either `X-Forwarded-For` or RFC 7239
 `Forwarded`; only the final value written by the trusted boundary is accepted.
 Authenticated quotas are per GitHub login, and OAuth callbacks use their opaque
@@ -748,9 +751,11 @@ start dedicated `cao_dashboard.query.execute` and `cao_dashboard.ingest.run`
 spans. MCP requests use the OpenTelemetry MCP semantic conventions, including
 `mcp.method.name`, `mcp.protocol.version`, `gen_ai.operation.name`, and
 `gen_ai.tool.name`; tool arguments and results are never recorded. Application
-attributes are limited to non-secret aggregate counts, revisions, and durations
-(no Redis URLs, credentials, GitHub tokens, or row
-contents). Identifiers follow the W3C Trace Context specification: the tracer
+attributes are limited to non-secret aggregate counts, revisions, durations,
+operation and row counts, rate-limit cost, and structural operator counts. Query
+names, source names, fields, predicates, literals, route parameters, result
+values, Redis URLs, credentials, GitHub tokens, and row contents are never
+recorded. Identifiers follow the W3C Trace Context specification: the tracer
 provider installs `propagation.TraceContext` so a client-sent HTTP `traceparent`
 continues an existing transport trace. MCP spans use trace context from
 `params._meta` as their remote parent and link the ambient HTTP span. Every API

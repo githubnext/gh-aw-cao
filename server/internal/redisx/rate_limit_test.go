@@ -60,7 +60,9 @@ func TestTakeRateLimitTokensAssignsWeightedCost(t *testing.T) {
 		t.Fatalf("weighted cost was not passed to Redis: %#v", client.command)
 	}
 	if !strings.Contains(client.command[1], "tokens >= cost") ||
-		!strings.Contains(client.command[1], "tokens = tokens - cost") {
+		!strings.Contains(client.command[1], "tokens = tokens - cost") ||
+		!strings.Contains(client.command[1], "elseif cost > 1") ||
+		!strings.Contains(client.command[1], "(cost - tokens)") {
 		t.Fatal("rate limit script does not apply the weighted cost atomically")
 	}
 }

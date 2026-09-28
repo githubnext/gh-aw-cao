@@ -60,12 +60,12 @@ local allowed = 0
 if tokens >= cost then
   tokens = tokens - cost
   allowed = 1
-else
+elseif cost > 1 then
   tokens = 0
 end
 local retry = 0
 if allowed == 0 then
-  retry = math.ceil((1 - tokens) * period / capacity)
+  retry = math.ceil((cost - tokens) * period / capacity)
 end
 local reset = math.ceil((capacity - tokens) * period / capacity)
 redis.call("HSET", KEYS[1], "tokens", tokens, "updated", now)

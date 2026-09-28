@@ -47,7 +47,7 @@ The server MUST apply the following token buckets.
 
 | Class | Requests | Capacity | Refill period | Subject |
 | --- | --- | ---: | ---: | --- |
-| Query | `POST /api/v1/query` | 30 | 1 minute | authenticated GitHub login |
+| Query | `POST /api/v1/query` | 30 cost units | 1 minute | authenticated GitHub login |
 | OAuth | `/auth/login`, `/auth/callback` | 10 | 5 minutes | client address for login; OAuth state for callback when present |
 | General | other `/api/` and `/auth/` requests | 120 | 1 minute | authenticated GitHub login, otherwise client address |
 | Hosted edge | non-public hosted requests before session loading | 1,200 | 1 minute | client address |
@@ -71,11 +71,16 @@ atomic Redis operation. The operation MUST:
 
 1. use Redis server time so replicas share one clock;
 2. refill continuously up to the configured capacity;
-3. consume exactly one token for an allowed request;
-4. retain fractional tokens;
-5. return the remaining whole-token count and durations until retry and reset;
-6. expire an idle bucket no earlier than two refill periods; and
-7. tolerate a Redis clock that moves backward without creating tokens.
+3. consume exactly one token for an ordinary allowed request;
+4. for a completed query, atomically consume one total cost unit per started
+   second of execution, capped at the query bucket capacity (the initial request
+   token counts toward that cost), preserving fractional tokens on ordinary
+   one-token denials and draining available tokens on a denied additional query
+   charge;
+5. retain fractional tokens;
+6. return the remaining whole-token count and durations until retry and reset;
+7. expire an idle bucket no earlier than two refill periods; and
+8. tolerate a Redis clock that moves backward without creating tokens.
 
 Bucket keys MUST contain a cryptographic digest of the subject and MUST NOT
 contain a GitHub login, client address, OAuth state, session identifier, or
@@ -118,7 +123,8 @@ Every metered response MUST include:
 - `RateLimit-Reset`, seconds until the bucket is full; and
 - `RateLimit-Policy`, formatted as `<capacity>;w=<refill-period-seconds>`.
 
-An exhausted bucket MUST return `429 Too Many Requests`, MUST include
+If a completed query's additional cost cannot be charged, its result MUST NOT be
+returned. An exhausted bucket MUST return `429 Too Many Requests`, MUST include
 `Retry-After` as the positive number of seconds until one token is available,
 and MUST NOT invoke the protected handler.
 
@@ -134,13 +140,14 @@ A conforming implementation MUST test:
 
 1. atomic Redis script arguments, result validation, and invalid configuration;
 2. allowed and exhausted responses and all required headers;
-3. authenticated identity hashing;
-4. pre-authentication coverage for rejected, static, and OAuth entry requests;
-5. trusted versus untrusted forwarding headers;
-6. repeated and comma-separated proxy headers, address-and-port forms, RFC 7239
+3. weighted query cost assignment and its capacity cap;
+4. authenticated identity hashing;
+5. pre-authentication coverage for rejected, static, and OAuth entry requests;
+6. trusted versus untrusted forwarding headers;
+7. repeated and comma-separated proxy headers, address-and-port forms, RFC 7239
    values, and malformed final-value fallback;
-7. separate OAuth callback subjects behind one enterprise egress address; and
-8. health/readiness exemptions and pre-signature webhook edge coverage.
+8. separate OAuth callback subjects behind one enterprise egress address; and
+9. health/readiness exemptions and pre-signature webhook edge coverage.
 
 ## 7. Security and privacy considerations
 
@@ -176,3 +183,4 @@ GitHub API budget governor.
 
 - Defined distributed token-bucket policies, identity, headers, and failures.
 - Defined trusted enterprise proxy and shared-egress behavior.
+- Added duration-weighted query costs.

@@ -131,10 +131,14 @@ func (a *App) chargeQueryRateLimit(
 		serverLog.Printf("rate limit unavailable policy=%s", reservation.policy.name)
 		return http.StatusServiceUnavailable, errors.New("request rate limiter is unavailable")
 	}
-	response.Header().Set("RateLimit-Remaining", strconv.FormatInt(result.Remaining, 10))
-	response.Header().Set("RateLimit-Reset", strconv.Itoa(cooldownSeconds(result.ResetAfter)))
+	if response != nil {
+		response.Header().Set("RateLimit-Remaining", strconv.FormatInt(result.Remaining, 10))
+		response.Header().Set("RateLimit-Reset", strconv.Itoa(cooldownSeconds(result.ResetAfter)))
+	}
 	if !result.Allowed {
-		response.Header().Set("Retry-After", strconv.Itoa(cooldownSeconds(result.RetryAfter)))
+		if response != nil {
+			response.Header().Set("Retry-After", strconv.Itoa(cooldownSeconds(result.RetryAfter)))
+		}
 		return http.StatusTooManyRequests, errors.New("rate limit exceeded")
 	}
 	return http.StatusOK, nil
