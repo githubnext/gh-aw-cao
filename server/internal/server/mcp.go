@@ -235,6 +235,14 @@ func (runtime *mcpRuntime) callQuery(ctx context.Context, args map[string]any) (
 	if !ok {
 		return nil, fmt.Errorf("Unknown dashboard query: %s", id)
 	}
+	limit, err := runtime.queryLimit(args["limit"])
+	if err != nil {
+		return nil, err
+	}
+	filters, parameterValues, err := runtime.queryFilters(catalogQuery, args["parameters"])
+	if err != nil {
+		return nil, err
+	}
 	if !catalogQuery.Execution.Local {
 		return map[string]any{
 			"query": id, "rows": []model.Row{},
@@ -250,14 +258,6 @@ func (runtime *mcpRuntime) callQuery(ctx context.Context, args map[string]any) (
 	definition, ok := findDefinition(runtime.app.config.DashboardQueries, id)
 	if !ok {
 		return nil, fmt.Errorf("Unknown dashboard query: %s", id)
-	}
-	limit, err := runtime.queryLimit(args["limit"])
-	if err != nil {
-		return nil, err
-	}
-	filters, parameterValues, err := runtime.queryFilters(catalogQuery, args["parameters"])
-	if err != nil {
-		return nil, err
 	}
 	alias := "agent:" + id
 	sourceName := alias + ":source"

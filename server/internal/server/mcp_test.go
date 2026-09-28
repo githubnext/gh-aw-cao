@@ -152,6 +152,17 @@ func TestMCPCatalogAndNamedQueryUseSharedData(t *testing.T) {
 	if err != nil || !invalidParameters.IsError {
 		t.Fatalf("invalid parameters were not a tool error: result=%#v err=%v", invalidParameters, err)
 	}
+
+	invalidUnavailableParameters, err := session.CallTool(t.Context(), &mcp.CallToolParams{
+		Name: "cao_query",
+		Arguments: map[string]any{
+			"id": "skill-invocations", "parameters": map[string]any{"unknown": "value"},
+		},
+	})
+	if err != nil || !invalidUnavailableParameters.IsError {
+		t.Fatalf("invalid parameters for unavailable query were not a tool error: result=%#v err=%v",
+			invalidUnavailableParameters, err)
+	}
 }
 
 func TestHostedMCPConfigurationFailsClosed(t *testing.T) {
@@ -160,11 +171,15 @@ func TestHostedMCPConfigurationFailsClosed(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err := New(&redisx.Store{}, Config{
-		HostProfile: hostedHostProfile(), SiteDirectory: site, MCPEnabled: true,
+		HostProfile: hostedHostProfile(), Listen: "127.0.0.1:8080",
+		SiteDirectory: site, MCPEnabled: true,
+		Proxy: ProxyPolicy{
+			AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true,
+		},
 		GitHubOAuth: validOAuthConfig("https://github.test"),
 	})
-	if err == nil {
-		t.Fatal("hosted mode accepted MCP enablement")
+	if err == nil || err.Error() != "MCP is available only in local bearer-authenticated mode" {
+		t.Fatalf("hosted mode returned %v, want MCP rejection", err)
 	}
 }
 
