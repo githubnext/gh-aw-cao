@@ -1,5 +1,6 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
+import { renderActionLabel } from './ui-primitives.js';
 
 /**
  * @param {{ title: string, description?: string, experimental?: boolean, overviewPageHref: string, dashboardHorizon: HTMLElement, dashboardAppearance: HTMLElement, githubUrlBase: string, dashboardRepository: string | null }} options
@@ -55,7 +56,7 @@ export function renderDashboardHeader(options) {
                 title: `View ${options.dashboardRepository} on GitHub`
               },
               octicon('mark-github'),
-              h('span', { className: 'sr-only action-label' }, options.dashboardRepository)
+              renderActionLabel(options.dashboardRepository)
             )
           : null
       )

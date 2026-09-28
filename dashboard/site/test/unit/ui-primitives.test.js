@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCheckbox, renderCloseButton, renderDashboardViewSkeleton, renderDigest, renderDisclosureSummaryLabel, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderFilterSelectControl, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderLoadingMessage, renderLoadingPlaceholderBlocks, renderSearchInput, renderSectionHeading, renderSkeletonBars, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
+import { coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderActionLabel, renderCheckbox, renderCloseButton, renderDashboardViewSkeleton, renderDigest, renderDisclosureSummaryLabel, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderFilterSelectControl, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderLoadingMessage, renderLoadingPlaceholderBlocks, renderSearchInput, renderSectionHeading, renderSkeletonBars, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
 import { h } from '../../src/dom.js';
 import { effect, state } from '../../src/reactive.js';
 
@@ -348,6 +348,14 @@ describe('ui primitives', () => {
     expect(rendered.className).toBe('post-avatar');
     expect(rendered.getAttribute('aria-hidden')).toBe('true');
     expect(rendered.querySelector('svg.octicon-mark-github path')).not.toBeNull();
+  });
+
+  it('renders a visually-hidden action label span with the given text', () => {
+    const rendered = renderActionLabel('GitHub account');
+
+    expect(rendered.tagName).toBe('SPAN');
+    expect(rendered.className).toBe('sr-only action-label');
+    expect(rendered.textContent).toBe('GitHub account');
   });
 
   it('renders the shared close/dismiss icon button with matching title and aria-label text', () => {
