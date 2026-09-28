@@ -48,11 +48,24 @@ test("public control repositories reject private repositories without naming the
       paginate: async () => [],
     }),
     (error) => {
-      assert.match(error.message, /Public control repository cannot access private repositories/);
+      assert.match(error.message, /Public control repository cannot access non-public repositories/);
       assert.doesNotMatch(error.message, /secret\/private/);
       return true;
     },
   );
+});
+
+test("public control repositories reject internal repositories", async () => {
+  const repositories = new Map([
+    ["octo/control", { full_name: "octo/control", visibility: "public", private: false }],
+    ["octo/internal", { full_name: "octo/internal", visibility: "internal", private: false }],
+  ]);
+  await assert.rejects(validateRepositoryVisibility({
+    controlRepository: "octo/control",
+    allowedRepositories: ["octo/internal"],
+    request: requestFor(repositories),
+    paginate: async () => [],
+  }), /non-public repository count: 1/);
 });
 
 test("owner-wide public controls inspect every repository", async () => {
@@ -67,5 +80,23 @@ test("owner-wide public controls inspect every repository", async () => {
       { full_name: "octo/public", private: false },
       { full_name: "octo/private", private: true },
     ],
-  }), /private repository count: 1/);
+  }), /non-public repository count: 1/);
+});
+
+test("owner-wide user controls fall back to installation repositories", async () => {
+  const repositories = new Map([
+    ["octo/control", { full_name: "octo/control", visibility: "public" }],
+  ]);
+  const routes = [];
+  await validateRepositoryVisibility({
+    controlRepository: "octo/control",
+    allowedRepositories: [],
+    request: requestFor(repositories),
+    paginate: async (route, _params, map) => {
+      routes.push(route);
+      if (route === "GET /orgs/{org}/repos") throw Object.assign(new Error("not an organization"), { status: 404 });
+      return map({ data: { repositories: [{ full_name: "octo/public", visibility: "public" }] } });
+    },
+  });
+  assert.deepEqual(routes, ["GET /orgs/{org}/repos", "GET /installation/repositories"]);
 });

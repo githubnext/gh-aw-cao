@@ -69,9 +69,10 @@ type Installation struct {
 
 // Repository is one enrolled repository.
 type Repository struct {
-	FullName string
-	PushedAt time.Time
-	Private  bool
+	FullName   string
+	PushedAt   time.Time
+	Private    bool
+	Visibility string
 }
 
 // GitTreeEntry is one entry returned by the Git tree API.
@@ -201,9 +202,10 @@ func (c *Client) ListRepositories(ctx context.Context, installationID int64) ([]
 					continue
 				}
 				repositories = append(repositories, Repository{
-					FullName: name,
-					PushedAt: repository.GetPushedAt().Time,
-					Private:  repository.GetPrivate(),
+					FullName:   name,
+					PushedAt:   repository.GetPushedAt().Time,
+					Private:    repository.GetPrivate(),
+					Visibility: repository.GetVisibility(),
 				})
 			}
 		}
@@ -243,28 +245,35 @@ func ValidateRepositoryVisibility(controlRepository string, repositories []Repos
 	if controlRepository == "" {
 		return errors.New("control repository is required for repository visibility validation")
 	}
-	controlPrivate := false
+	controlPublic := false
 	controlFound := false
 	privateCount := 0
 	for _, repository := range repositories {
 		if strings.EqualFold(repository.FullName, controlRepository) {
 			controlFound = true
-			controlPrivate = repository.Private
+			controlPublic = repositoryPublic(repository)
 		}
-		if repository.Private {
+		if !repositoryPublic(repository) {
 			privateCount++
 		}
 	}
 	if !controlFound {
 		return errors.New("control repository visibility could not be verified")
 	}
-	if !controlPrivate && privateCount > 0 {
+	if controlPublic && privateCount > 0 {
 		return fmt.Errorf(
-			"public control repository cannot access private repositories: private repository count=%d",
+			"public control repository cannot access non-public repositories: non-public repository count=%d",
 			privateCount,
 		)
 	}
 	return nil
+}
+
+func repositoryPublic(repository Repository) bool {
+	if repository.Visibility != "" {
+		return repository.Visibility == "public"
+	}
+	return !repository.Private
 }
 
 // InstallationToken mints a token for the collection subprocess. The token is

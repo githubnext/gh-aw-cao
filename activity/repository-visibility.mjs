@@ -13,6 +13,39 @@ async function repositoryMetadata(request, repository) {
   return (await request("GET /repos/{owner}/{repo}", { owner, repo })).data;
 }
 
+function isPublic(repository) {
+  return repository.visibility
+    ? repository.visibility === "public"
+    : repository.private !== true;
+}
+
+async function ownerRepositories(paginate, owner) {
+  try {
+    return await paginate("GET /orgs/{org}/repos", {
+      org: owner,
+      type: "all",
+      per_page: 100,
+    });
+  } catch (error) {
+    if (error?.status !== 404) throw error;
+  }
+  try {
+    return await paginate(
+      "GET /installation/repositories",
+      { per_page: 100 },
+      (response) => (response.data.repositories || []).filter(
+        (repository) => repository.full_name?.split("/", 1)[0]?.toLowerCase() === owner.toLowerCase(),
+      ),
+    );
+  } catch {
+    return paginate("GET /users/{username}/repos", {
+      username: owner,
+      type: "owner",
+      per_page: 100,
+    });
+  }
+}
+
 export async function validateRepositoryVisibility({
   controlRepository,
   allowedRepositories,
@@ -20,7 +53,7 @@ export async function validateRepositoryVisibility({
   paginate,
 }) {
   const control = await repositoryMetadata(request, repositoryName(controlRepository));
-  if (control.private === true) return;
+  if (!isPublic(control)) return;
 
   let repositories;
   if (allowedRepositories.length > 0) {
@@ -29,18 +62,14 @@ export async function validateRepositoryVisibility({
       repositories.push(await repositoryMetadata(request, repository));
     }
   } else {
-    const [organization] = controlRepository.split("/");
-    repositories = await paginate("GET /orgs/{org}/repos", {
-      org: organization,
-      type: "all",
-      per_page: 100,
-    });
+    const [owner] = controlRepository.split("/");
+    repositories = await ownerRepositories(paginate, owner);
   }
 
-  const privateCount = repositories.filter((repository) => repository.private === true).length;
-  if (privateCount > 0) {
+  const nonPublicCount = repositories.filter((repository) => !isPublic(repository)).length;
+  if (nonPublicCount > 0) {
     throw new Error(
-      `Public control repository cannot access private repositories (private repository count: ${privateCount})`,
+      `Public control repository cannot access non-public repositories (non-public repository count: ${nonPublicCount})`,
     );
   }
 }

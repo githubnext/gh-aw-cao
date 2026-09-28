@@ -87,7 +87,16 @@ func TestValidateRepositoryVisibility(t *testing.T) {
 				{FullName: "octo/control"},
 				{FullName: "secret/private", Private: true},
 			},
-			wantError: "public control repository cannot access private repositories",
+			wantError: "public control repository cannot access non-public repositories",
+		},
+		{
+			name:    "public control rejects internal repositories",
+			control: "octo/control",
+			repositories: []Repository{
+				{FullName: "octo/control", Visibility: "public"},
+				{FullName: "secret/internal", Visibility: "internal"},
+			},
+			wantError: "public control repository cannot access non-public repositories",
 		},
 		{
 			name:         "missing control repository fails closed",
