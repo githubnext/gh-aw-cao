@@ -65,7 +65,7 @@ function renderOperationalValueHistory(context, rows) {
     ? 'attainment-only'
     : 'baseline-comparable';
   const campaignOutcomeSource = context.sourceNames[1] ?? '';
-  const evidenceStateSource = context.sourceNames[3] ?? '';
+  const evidenceStateSource = context.sourceNames[2] ?? '';
   const campaignOutcomes = outcomeContext(rowsFor(context.sources, campaignOutcomeSource));
   const evidenceState = rowsFor(context.sources, evidenceStateSource)[0] ?? {};
   const fallbackObservationCount = rows.reduce(
