@@ -223,6 +223,9 @@ test("landing page explains and illustrates campaign dispatch", () => {
 
 test("the home navigation no longer links to the setup wizard", () => {
   assert.doesNotMatch(headerLinks, /\{ label: "Setup", href: "\/gh-aw-cao\/setup\/" \}/);
+});
+
+test("the removed setup route redirects to the command quickstart", () => {
   assert.match(astroConfig, /"\/setup": "\/gh-aw-cao\/setup-quickstarts\/"/);
 });
 
