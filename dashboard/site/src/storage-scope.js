@@ -1,4 +1,8 @@
+import { createDebug } from './debug.js';
+
 const SOURCE_PATH_SEGMENT = '/src/';
+
+const debugStorageScope = createDebug('storage-scope');
 
 /**
  * Resolve the deployment path shared by the page and its data worker.
@@ -14,6 +18,8 @@ export function dashboardPagePath(
   const sourceIndex = moduleUrl.protocol.startsWith('http')
     ? moduleUrl.pathname.lastIndexOf(SOURCE_PATH_SEGMENT)
     : -1;
+  const source = sourceIndex >= 0 ? 'module-url' : (typeof documentPath === 'string' && documentPath ? 'document' : 'default-root');
+  debugStorageScope({ event: 'page-path-resolved', source });
   if (sourceIndex >= 0) return moduleUrl.pathname.slice(0, sourceIndex + 1);
   if (typeof documentPath === 'string' && documentPath) return documentPath;
   return '/';
@@ -34,6 +40,7 @@ export function scopedStorageKey(key, pathname = dashboardPagePath()) {
  */
 export function clearScopedStorage(storage, pathname = dashboardPagePath()) {
   const suffix = pathname === '/' ? '' : `:${encodeURIComponent(pathname)}`;
+  let removedCount = 0;
   for (let index = storage.length - 1; index >= 0; index -= 1) {
     const key = storage.key(index);
     const appKey = key?.startsWith('central-agentic-ops.dashboard.') === true;
@@ -41,6 +48,8 @@ export function clearScopedStorage(storage, pathname = dashboardPagePath()) {
     const inScope = pathname === '/' ? !key?.includes(':') : key?.endsWith(suffix);
     if (appKey && inScope) {
       storage.removeItem(key);
+      removedCount += 1;
     }
   }
+  debugStorageScope({ event: 'scoped-storage-cleared', removedCount });
 }
