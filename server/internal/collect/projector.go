@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
@@ -38,6 +41,9 @@ type Projector struct {
 	Enrollment          Enrollment
 	CatalogRoot         string
 	NodeBinary          string
+	Tokens              TokenProvider
+	Budget              *githubapp.Budget
+	WindowDays          int
 	DatabaseQueriesPath string
 	// ControlRepository names the control repository used during inventory
 	// discovery.
@@ -91,6 +97,13 @@ func (p Projector) node() string {
 		return p.NodeBinary
 	}
 	return "node"
+}
+
+func (p Projector) windowDays() int {
+	if p.WindowDays <= 0 {
+		return 30
+	}
+	return p.WindowDays
 }
 
 // RequestProjection marks the lake as changed. Marking is idempotent, so a
@@ -196,7 +209,16 @@ func (p Projector) refreshCompaction(ctx context.Context) error {
 		// completeness; it must not discard collected evidence.
 		projectorLog.Printf("inventory discovery failed; continuing with the previous inventory")
 	}
-	return p.refreshManifest(ctx)
+	if err := p.refreshManifest(ctx); err != nil {
+		return err
+	}
+	if p.Tokens != nil {
+		if err := p.refreshOperationalValues(ctx); err != nil {
+			return err
+		}
+		return p.refreshManifest(ctx)
+	}
+	return nil
 }
 
 // refreshManifest regenerates payload-hashes.json, gh-aw-logs-runs, and
@@ -213,6 +235,114 @@ func (p Projector) refreshManifest(ctx context.Context) error {
 		"--output", p.Lake.ManifestPath(),
 	}
 	return p.run(ctx, arguments)
+}
+
+// refreshOperationalValues reconstructs the same retained operational-value
+// history as the Actions profile, using a short-lived Activity projection and
+// one installation-scoped token per enrolled repository.
+func (p Projector) refreshOperationalValues(ctx context.Context) error {
+	repositories, err := p.enrolledRepositories(ctx)
+	if err != nil {
+		return err
+	}
+	if len(repositories) == 0 {
+		return nil
+	}
+	workspace, err := os.MkdirTemp("", "cao-operational-value-")
+	if err != nil {
+		return fmt.Errorf("create operational value workspace: %w", err)
+	}
+	defer func() {
+		_ = os.RemoveAll(workspace)
+	}()
+	database := filepath.Join(workspace, "activity.sqlite")
+	retentionDays := strconv.Itoa(p.windowDays())
+	if err := p.run(ctx, []string{
+		filepath.Join(p.CatalogRoot, "activity", "cao.mjs"),
+		"ingest-jsonl",
+		"--database", database,
+		"--runs-dir", p.Lake.RunsDirectory(),
+		"--records-dir", p.Lake.RecordsDirectory(),
+		"--retention-days", retentionDays,
+		"--run-retention-days", retentionDays,
+	}); err != nil {
+		return err
+	}
+	observedAt := time.Now().UTC().Format(time.RFC3339)
+	output := filepath.Join(p.Lake.ShardDirectory(), "operational-values.jsonl")
+	history := false
+	if _, err := os.Stat(filepath.Join(p.CatalogRoot, "optimization", "operational-value.mjs")); err == nil {
+		history = true
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	for _, repository := range repositories {
+		installationID, err := p.Enrollment.InstallationFor(ctx, repository)
+		if err != nil || installationID <= 0 {
+			return fmt.Errorf("resolve installation for %s: %w", repository, err)
+		}
+		reserve, err := p.rateLimitReserve(ctx, installationID)
+		if err != nil {
+			return err
+		}
+		token, err := p.Tokens.InstallationToken(ctx, installationID)
+		if err != nil {
+			return err
+		}
+		arguments := operationalValueArguments(
+			p.CatalogRoot, database, output, observedAt, repository,
+			retentionDays, history, reserve,
+		)
+		if err := p.runWithEnvironment(ctx, arguments, []string{
+			"CAO_OPERATIONAL_VALUE_GH_TOKEN=" + token,
+			"GH_TOKEN=" + token,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func operationalValueArguments(
+	catalogRoot, database, output, observedAt, repository, retentionDays string,
+	history bool, reserve int,
+) []string {
+	arguments := []string{
+		filepath.Join(catalogRoot, "activity", "cao.mjs"),
+		"operational-value",
+		"--database", database,
+		"--root", catalogRoot,
+		"--output", output,
+		"--timestamp", observedAt,
+		"--repository", repository,
+		"--retention-days", retentionDays,
+	}
+	if history {
+		arguments = append(arguments, "--history-campaign", "optimization")
+	}
+	return append(arguments, "--max-github-api-rate-limit", strconv.Itoa(-reserve))
+}
+
+func (p Projector) rateLimitReserve(ctx context.Context, installationID int64) (int, error) {
+	if p.Budget == nil {
+		return 2000, nil
+	}
+	reserve, err := p.Budget.Reserve(ctx, installationID)
+	if !errors.Is(err, githubapp.ErrBudgetUnknown) {
+		return reserve, err
+	}
+	provider, ok := p.Tokens.(rateLimitProvider)
+	if !ok {
+		return 0, errors.New("rate-limit budget is unknown and cannot be refreshed")
+	}
+	remaining, reset, err := provider.RateLimit(ctx, installationID)
+	if err != nil {
+		return 0, err
+	}
+	if err := p.Budget.Observe(ctx, installationID, remaining, reset); err != nil {
+		return 0, err
+	}
+	return p.Budget.Reserve(ctx, installationID)
 }
 
 // refreshInventory rebuilds the logical source inventory from the enrollment
@@ -301,10 +431,14 @@ func collectEnrolledRepositories(ctx context.Context, limit int, scanPage scanRe
 }
 
 func (p Projector) run(ctx context.Context, arguments []string) error {
+	return p.runWithEnvironment(ctx, arguments, nil)
+}
+
+func (p Projector) runWithEnvironment(ctx context.Context, arguments, environment []string) error {
 	// #nosec G204 -- arguments are built from validated configuration paths.
 	command := exec.CommandContext(ctx, p.node(), arguments...)
 	command.Dir = p.CatalogRoot
-	command.Env = collectionEnvironment()
+	command.Env = append(collectionEnvironment(), environment...)
 	output, err := command.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("activity CLI failed: %w: %s", err, summarize(string(output)))

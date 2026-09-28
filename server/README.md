@@ -410,12 +410,15 @@ The ingestion sequence is:
 2. Require and read all compacted run-information shards.
 3. Read compacted run-linked record shards.
 4. Load `inventory-sources.json` as already-logical published sources.
-5. Project canonical Campaign, Repository, Workflow, Run, Domain, Tool, Audit,
-   and Issue records through
+5. In the collection profile, rebuild a temporary Activity projection and
+   reconstruct current and retained operational-value observations before
+   finalizing the payload manifest.
+6. Project canonical Campaign, Repository, Workflow, Run, Domain, Tool, Audit,
+   Issue, and Operational Value records through
    `dashboard/site/src/data/queries/database.json`.
-6. Stage every logical source, its metadata, diagnostics, and row set under a
+7. Stage every logical source, its metadata, diagnostics, and row set under a
    new immutable generation.
-7. Atomically update the namespaced active pointer and increment the namespaced
+8. Atomically update the namespaced active pointer and increment the namespaced
    active revision only after the generation is complete.
 
 An ingestion with the same artifact revision reuses the active generation.

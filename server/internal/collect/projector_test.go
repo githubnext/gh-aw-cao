@@ -3,6 +3,8 @@ package collect
 import (
 	"context"
 	"errors"
+	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -117,6 +119,51 @@ func TestCollectEnrolledRepositoriesHandlesNoRepositories(t *testing.T) {
 	got, err := collectEnrolledRepositories(context.Background(), 0, scan)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+
+	func TestOperationalValueReconstructionMatchesActionsProfile(t *testing.T) {
+		root := filepath.Join("catalog", "root")
+		got := operationalValueArguments(
+			root,
+			filepath.Join("workspace", "activity.sqlite"),
+			filepath.Join("lake", "gh-aw-logs-shards", "operational-values.jsonl"),
+			"2026-09-28T16:28:53Z",
+			"githubnext/gh-aw-cao",
+			"30",
+			true,
+			2000,
+		)
+		want := []string{
+			filepath.Join(root, "activity", "cao.mjs"),
+			"operational-value",
+			"--database", filepath.Join("workspace", "activity.sqlite"),
+			"--root", root,
+			"--output", filepath.Join("lake", "gh-aw-logs-shards", "operational-values.jsonl"),
+			"--timestamp", "2026-09-28T16:28:53Z",
+			"--repository", "githubnext/gh-aw-cao",
+			"--retention-days", "30",
+			"--history-campaign", "optimization",
+			"--max-github-api-rate-limit", "-2000",
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("operational-value arguments differ from the Actions profile:\ngot  %q\nwant %q", got, want)
+		}
+	}
+
+	func TestOperationalValueReconstructionOmitsUnavailableHistoryCampaign(t *testing.T) {
+		arguments := operationalValueArguments(
+			"catalog", "activity.sqlite", "operational-values.jsonl",
+			"2026-09-28T16:28:53Z", "octo/api", "14", false, 500,
+		)
+		joined := strings.Join(arguments, "\n")
+		if strings.Contains(joined, "--history-campaign") {
+			t.Fatalf("unexpected history campaign in %q", arguments)
+		}
+		for _, expected := range []string{"--retention-days\n14", "--max-github-api-rate-limit\n-500"} {
+			if !strings.Contains(joined, expected) {
+				t.Fatalf("operational-value arguments are missing %q: %q", expected, arguments)
+			}
+		}
 	}
 	if len(got) != 0 {
 		t.Fatalf("len(got) = %d, want 0", len(got))

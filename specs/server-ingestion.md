@@ -74,6 +74,10 @@ window and the same underlying GitHub activity.
 - The collector profile MUST acquire logs with the same `gh aw logs --audit`
   invocation and compact them with the same `activity/cao.mjs` commands the
   Actions profile uses.
+- The collector profile MUST reconstruct retained operational-value observations
+  with the same `cao operational-value` command, retention window, historical
+  campaign selection, and installation-scoped GitHub credentials as the Actions
+  profile.
 - An implementation MUST NOT maintain a second implementation of the canonical
   mapping, the shard format, or the payload-hash manifest.
 - A conforming implementation MUST provide a profile equivalence test that
