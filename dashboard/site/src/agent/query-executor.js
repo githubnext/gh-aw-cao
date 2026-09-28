@@ -13,20 +13,21 @@ import { createDebug } from '../debug.js';
 import { loadDatabaseQuerySources } from '../data/queries/database.js';
 import { DASHBOARD_QUERY_LIMITS } from '../data/queries/declarative.js';
 import { describeQuery, queryExecutionRequirements, queryParameters } from './catalog.js';
+import mcpContract from './mcp-contract.json' with { type: 'json' };
 
 const debugQueryExecutor = createDebug('query-executor');
 
 /** Maximum rows one named-query result returns when no smaller limit is given. */
-export const DEFAULT_NAMED_QUERY_LIMIT = 500;
+export const DEFAULT_NAMED_QUERY_LIMIT = mcpContract.limits.defaultQueryRows;
 
 /** Hard upper bound on rows returned by one named-query result. */
-export const MAX_NAMED_QUERY_LIMIT = 5000;
+export const MAX_NAMED_QUERY_LIMIT = mcpContract.limits.maxQueryRows;
 
 /** Maximum number of parameters accepted by one named-query invocation. */
-export const MAX_NAMED_QUERY_PARAMETERS = 8;
+export const MAX_NAMED_QUERY_PARAMETERS = mcpContract.limits.maxParameters;
 
 /** Maximum length of one parameter value. */
-export const MAX_NAMED_QUERY_PARAMETER_LENGTH = 256;
+export const MAX_NAMED_QUERY_PARAMETER_LENGTH = mcpContract.limits.maxParameterLength;
 
 /** Raised for invalid agent input so transports can report it without a stack trace. */
 export class NamedQueryError extends Error {}

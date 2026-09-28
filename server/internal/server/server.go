@@ -51,6 +51,10 @@ type Config struct {
 	GitHubOAuth            *GitHubOAuthConfig
 	DatabaseQueriesPath    string
 	DashboardQueries       []query.Definition
+	DashboardQueriesPath   string
+	AgentCatalogPath       string
+	MCPContractPath        string
+	MCPEnabled             bool
 	SourceDirectory        string
 	Reconciler             Reconciler
 	Collector              *CollectorConfig
@@ -69,6 +73,7 @@ type App struct {
 	reconciler    Reconciler
 	memory        *repositorymemory.RemoteResolver
 	webhookSecret []byte
+	mcp           http.Handler
 }
 
 func New(store *redisx.Store, config Config) (*App, error) {
@@ -131,13 +136,24 @@ func New(store *redisx.Store, config Config) (*App, error) {
 			Store: store, SourceDirectory: config.SourceDirectory,
 			DatabaseQueriesPath: config.DatabaseQueriesPath,
 		}
+		if config.MCPEnabled && profile.Authentication != HostAuthenticationBearer {
+			return nil, errors.New("MCP is available only in local bearer-authenticated mode")
+		}
 	}
 	serverLog.Printf("initialized host_profile=%s oauth=%t source_ingestion=%t", profile.Name, oauth != nil, config.SourceDirectory != "")
-	return &App{
+	app := &App{
 		store: store, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
 		canonical: canonicalService{store: store}, reconciler: reconciler, memory: memoryResolver,
 		webhookSecret: []byte(config.WebhookSecret),
-	}, nil
+	}
+	if config.MCPEnabled {
+		handler, err := app.newMCPHandler()
+		if err != nil {
+			return nil, fmt.Errorf("configure MCP: %w", err)
+		}
+		app.mcp = handler
+	}
+	return app, nil
 }
 
 func (a *App) Serve(ctx context.Context) error {
@@ -231,6 +247,10 @@ func (a *App) Handler() http.Handler {
 	register("GET /api/readiness", a.readiness)
 	register("GET /api/v1/events", a.events)
 	register("POST /api/v1/query", a.query)
+	if a.mcp != nil {
+		mux.Handle("POST /mcp", a.mcp)
+		routePatterns["POST /mcp"] = struct{}{}
+	}
 	register("GET /api/v1/diagnostics", a.diagnostics)
 	register("GET /api/v1/memory/{campaign}", a.repositoryMemoryCampaign)
 	register("GET /api/v1/memory/{campaign}/content", a.repositoryMemoryContent)
@@ -309,7 +329,7 @@ func (a *App) requireAccess(next http.Handler) http.Handler {
 			next.ServeHTTP(response, request)
 			return
 		}
-		if !strings.HasPrefix(request.URL.Path, "/api/") {
+		if !strings.HasPrefix(request.URL.Path, "/api/") && request.URL.Path != "/mcp" {
 			if (request.Method == http.MethodGet || request.Method == http.MethodHead) &&
 				constantTimeTokenEqual(request.URL.Query().Get("access_token"), a.accessToken) {
 				a.logAuthBranch("access.local_capability_accepted")
@@ -612,28 +632,42 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 			return
 		}
 	}
-	active, err := a.store.Active(ctx)
-	if err != nil || active.Generation == "" {
-		fail(http.StatusServiceUnavailable, "dashboard data is unavailable")
+	result, status, err := a.executeQuery(ctx, input)
+	if err != nil {
+		fail(status, err.Error())
 		return
 	}
 	span.SetAttributes(
-		attribute.Int64("cao_dashboard.query.revision", active.Revision),
+		attribute.Int64("cao_dashboard.query.revision", result.Revision),
 		attribute.Int("cao_dashboard.query.source_count", len(input.SourceNames)),
 		attribute.Int("cao_dashboard.query.alias_count", len(input.Aliases)),
+		attribute.Int64("cao_dashboard.query.duration_ms", result.Metrics.DurationMS),
+		attribute.Int("cao_dashboard.query.pushed_down_count", len(result.Metrics.PushedDown)),
+		attribute.Int("cao_dashboard.query.fallback_count", len(result.Metrics.FallbackOperations)),
 	)
+	span.SetStatus(codes.Ok, "")
+	writeJSON(response, http.StatusOK, result)
+}
+
+type queryResponse struct {
+	Revision    int64                   `json:"revision"`
+	EvaluatedAt string                  `json:"evaluatedAt"`
+	Sources     map[string]model.Source `json:"sources"`
+	Metrics     model.Metrics           `json:"metrics"`
+}
+
+func (a *App) executeQuery(ctx context.Context, input queryRequest) (queryResponse, int, error) {
+	active, err := a.store.Active(ctx)
+	if err != nil || active.Generation == "" {
+		return queryResponse{}, http.StatusServiceUnavailable, errors.New("dashboard data is unavailable")
+	}
 	evaluatedAt := evaluationTime(active)
 	if len(input.SourceNames) == 0 && len(input.Aliases) == 0 {
-		writeJSON(response, http.StatusOK, map[string]any{
-			"revision":    active.Revision,
-			"evaluatedAt": evaluatedAt,
-			"sources":     map[string]model.Source{},
-			"metrics": model.Metrics{
-				PushedDown:         []string{},
-				FallbackOperations: []string{},
-			},
-		})
-		return
+		return queryResponse{
+			Revision: active.Revision, EvaluatedAt: evaluatedAt,
+			Sources: map[string]model.Source{},
+			Metrics: model.Metrics{PushedDown: []string{}, FallbackOperations: []string{}},
+		}, http.StatusOK, nil
 	}
 	definitions := append([]query.Definition{}, a.config.DashboardQueries...)
 	if len(input.Queries) > 0 {
@@ -657,8 +691,7 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 	sources, metrics, err := engine.Execute(definitions, requested)
 	if err != nil {
 		serverLog.Printf("query failed")
-		fail(http.StatusBadRequest, err.Error())
-		return
+		return queryResponse{}, http.StatusBadRequest, err
 	}
 	for name, page := range input.Pagination {
 		source, ok := sources[name]
@@ -667,20 +700,15 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 		}
 		paginated, err := paginate(source, strconv.FormatInt(active.Revision, 10), page)
 		if err != nil {
-			fail(http.StatusBadRequest, err.Error())
-			return
+			return queryResponse{}, http.StatusBadRequest, err
 		}
 		sources[name] = paginated
 	}
 	metrics.DurationMS = time.Since(started).Milliseconds()
 	serverLog.Printf("query completed sources=%d duration_ms=%d redis_commands=%d redis_rows=%d", len(sources), metrics.DurationMS, metrics.RedisCommands, metrics.RedisRows)
-	span.SetAttributes(
-		attribute.Int64("cao_dashboard.query.duration_ms", metrics.DurationMS),
-		attribute.Int("cao_dashboard.query.pushed_down_count", len(metrics.PushedDown)),
-		attribute.Int("cao_dashboard.query.fallback_count", len(metrics.FallbackOperations)),
-	)
-	span.SetStatus(codes.Ok, "")
-	writeJSON(response, http.StatusOK, map[string]any{"revision": active.Revision, "evaluatedAt": evaluatedAt, "sources": sources, "metrics": metrics})
+	return queryResponse{
+		Revision: active.Revision, EvaluatedAt: evaluatedAt, Sources: sources, Metrics: metrics,
+	}, http.StatusOK, nil
 }
 
 type generationLoader struct {
@@ -804,7 +832,7 @@ func resolveQueryContext(definitions []query.Definition, evaluatedAt string) {
 }
 
 func (a *App) static(response http.ResponseWriter, request *http.Request) {
-	if strings.HasPrefix(request.URL.Path, "/api/") {
+	if strings.HasPrefix(request.URL.Path, "/api/") || request.URL.Path == "/mcp" {
 		http.NotFound(response, request)
 		return
 	}
@@ -924,10 +952,16 @@ func ParseDashboardQueries(path string) ([]query.Definition, error) {
 		return definitions, nil
 	}
 	var document struct {
-		Queries []query.Definition `json:"queries"`
+		Queries   []query.Definition `json:"queries"`
+		Dashboard struct {
+			Queries []query.Definition `json:"queries"`
+		} `json:"dashboard"`
 	}
 	if err := json.Unmarshal(content, &document); err != nil {
 		return nil, fmt.Errorf("parse dashboard query file: %w", err)
+	}
+	if len(document.Queries) == 0 {
+		document.Queries = document.Dashboard.Queries
 	}
 	return document.Queries, nil
 }

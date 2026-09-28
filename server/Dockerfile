@@ -42,13 +42,16 @@ LABEL org.opencontainers.image.title="Central Agentic Ops dashboard server" \
 RUN apk add --no-cache ca-certificates \
     && addgroup -S -g 65532 cao \
     && adduser -S -D -H -u 65532 -G cao cao \
-    && mkdir -p /app/site /app/source /app/queries \
+    && mkdir -p /app/site /app/source /app/queries /app/agent \
     && chown -R cao:cao /app
 
 COPY --from=server-build --chown=cao:cao /out/cao-dashboard /app/cao-dashboard
 COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/dist/ /app/site/
 COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/dashboard.json /app/dashboard.json
 COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/src/data/queries/database.json /app/queries/database.json
+COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/src/agent/catalog.generated.json /app/agent/catalog.json
+COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/src/agent/dashboard.generated.json /app/agent/dashboard.json
+COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/src/agent/mcp-contract.json /app/agent/mcp-contract.json
 COPY --from=dashboard-build --chown=cao:cao /workspace/.github/workflows/cao.json /app/.github/workflows/cao.json
 
 WORKDIR /app

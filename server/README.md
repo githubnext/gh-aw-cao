@@ -942,6 +942,26 @@ go -C server run ./cmd/cao-dashboard serve \
   --access-token 0123456789abcdef0123456789abcdef
 ```
 
+### Local MCP endpoint
+
+The Go server can expose the dashboard's reviewed, read-only agent catalog and
+named queries on the same listener:
+
+```bash
+go -C server run ./cmd/cao-dashboard serve --mcp-enabled
+```
+
+`/mcp` is not registered unless `--mcp-enabled` is present. Clients authenticate
+with the same bearer capability as the local JSON APIs. The endpoint exposes
+only `cao_catalog` and `cao_query`; it accepts no
+SQL, arbitrary query definitions, refresh, rebuild, webhook, administration, or
+repository mutation operations.
+
+MCP is intentionally unavailable from `serve-hosted` in this first slice.
+Hosted enablement requires a remote-client OAuth flow tied to the existing CAO
+session, organization/team authorization, account-selection, and revocation
+model; attempts to pass `--mcp-enabled` to `serve-hosted` fail closed.
+
 Use `--redis-url` and optional `--redis-namespace` only on the server command
 line. The same namespace must be supplied to `ingest` and `serve` when
 overriding the checkout-derived default:

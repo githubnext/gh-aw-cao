@@ -105,7 +105,7 @@ func ratePolicy(request *http.Request) (requestRatePolicy, bool) {
 		return requestRatePolicy{}, false
 	case request.URL.Path == "/auth/login", request.URL.Path == "/auth/callback":
 		return requestRatePolicy{name: "auth", capacity: authRateLimit, window: authRateWindow}, true
-	case request.URL.Path == "/api/v1/query":
+	case request.URL.Path == "/api/v1/query", request.URL.Path == "/mcp":
 		return requestRatePolicy{name: "query", capacity: queryRateLimit, window: queryRateWindow}, true
 	case strings.HasPrefix(request.URL.Path, "/api/"), strings.HasPrefix(request.URL.Path, "/auth/"):
 		return requestRatePolicy{name: "general", capacity: generalRateLimit, window: generalRateWindow}, true

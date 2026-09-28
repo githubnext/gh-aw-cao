@@ -102,6 +102,11 @@ Treat the capability URL and browser session as credentials. Do not paste the UR
 issues, logs, screenshots, shell history shared with others, or browser
 telemetry. Restart the server to rotate an automatically generated token.
 
+When local MCP is explicitly enabled, `/mcp` uses this same bearer capability
+and loopback host restriction. MCP is disabled by default, is read-only, and is
+rejected by hosted profiles until remote MCP OAuth is integrated with the
+existing hosted session and authorization lifecycle.
+
 ## HTTP and TLS protections
 
 - The listener must be `localhost` or a loopback IP address. Non-loopback bind

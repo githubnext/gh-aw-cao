@@ -41,6 +41,8 @@ const repositoryRoot = resolve(import.meta.dirname, "../..");
 const siteRoot = join(repositoryRoot, "dashboard/site");
 const dashboardPath = join(siteRoot, "dashboard.json");
 const databaseQueriesPath = join(siteRoot, "src/data/queries/database.json");
+const agentCatalogPath = join(siteRoot, "src/agent/catalog.generated.json");
+const mcpContractPath = join(siteRoot, "src/agent/mcp-contract.json");
 const reportDirectory = resolve(
   process.env.DASHBOARD_QUERY_PARITY_OUTPUT ?? "test-results/dashboard-query-parity",
 );
@@ -56,6 +58,35 @@ const metadata = {
 
 function logicalSource(rows) {
   return { rows, metadata };
+}
+
+function firstDifference(left, right, path = "$") {
+  if (Object.is(left, right)) return null;
+  if (typeof left !== typeof right || left === null || right === null) {
+    return { path, left, right };
+  }
+  if (Array.isArray(left) || Array.isArray(right)) {
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) {
+      return { path, leftLength: left?.length, rightLength: right?.length };
+    }
+    for (let index = 0; index < left.length; index += 1) {
+      const difference = firstDifference(left[index], right[index], `${path}[${index}]`);
+      if (difference) return difference;
+    }
+    return null;
+  }
+  if (typeof left === "object") {
+    const keys = [...new Set([...Object.keys(left), ...Object.keys(right)])].toSorted();
+    for (const key of keys) {
+      if (!Object.hasOwn(left, key) || !Object.hasOwn(right, key)) {
+        return { path: `${path}.${key}`, left: left[key], right: right[key] };
+      }
+      const difference = firstDifference(left[key], right[key], `${path}.${key}`);
+      if (difference) return difference;
+    }
+    return null;
+  }
+  return { path, left, right };
 }
 
 function representativeSources() {
@@ -294,9 +325,67 @@ async function executeMcpBackend(factory, dashboardPath, names) {
     if (status !== 200 || body.result?.isError) {
       throw new Error(`MCP cao_query failed for ${name}: ${JSON.stringify(body)}`);
     }
+
     rows[name] = body.result.structuredContent.rows;
   }
   return rows;
+}
+
+async function callGoMcp(method, params = {}) {
+  const response = await fetch(`${serverURL}/mcp`, {
+    method: "POST",
+    headers: {
+      authorization: ["Bearer", accessToken].join(" "),
+      accept: "application/json, text/event-stream",
+      "content-type": "application/json",
+      "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
+      "Mcp-Method": method,
+      ...(params.name ? { "Mcp-Name": params.name } : {}),
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method,
+      params: {
+        ...params,
+        _meta: {
+          "io.modelcontextprotocol/protocolVersion": MCP_PROTOCOL_VERSION,
+          "io.modelcontextprotocol/clientCapabilities": {},
+          "io.modelcontextprotocol/clientInfo": { name: "parity", version: "1" },
+        },
+      },
+    }),
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(`Go MCP ${method} failed (${response.status}): ${JSON.stringify(body)}`);
+  return body;
+}
+
+async function callNodeMcp(factory, dashboardDocumentPath, method, params = {}) {
+  const { status, body } = await handleMcpRequest({
+    headers: {
+      "mcp-protocol-version": MCP_PROTOCOL_VERSION,
+      "mcp-method": method,
+      ...(params.name ? { "mcp-name": params.name } : {}),
+    },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+    indexedDB: factory,
+    dashboardPath: dashboardDocumentPath,
+  });
+  if (status !== 200) throw new Error(`Node MCP ${method} failed (${status}): ${JSON.stringify(body)}`);
+  return body;
+}
+
+function canonicalToolResult(result) {
+  const canonical = structuredClone(result);
+  for (const key of ["_meta", "content", "resultType", "ttlMs", "cacheScope"]) delete canonical[key];
+  if (canonical.isError === false) delete canonical.isError;
+  const metadata = canonical.structuredContent?.metadata;
+  if (metadata) {
+    delete metadata["as-of"];
+    delete metadata.freshness;
+  }
+  return canonical;
 }
 
 async function executeBrowserBackend(sources, queries, names) {
@@ -411,7 +500,14 @@ async function waitForServer() {
   throw new Error(`Redis dashboard server did not become ready: ${lastError}`);
 }
 
-async function executeRedisBackend(artifactDirectory, queries, names) {
+async function executeRedisBackend(
+  artifactDirectory,
+  dashboardDocumentPath,
+  agentFactory,
+  queries,
+  names,
+  localNames,
+) {
   const binary = process.env.DASHBOARD_SERVER_BINARY;
   if (!binary) throw new Error("DASHBOARD_SERVER_BINARY is required");
   const marketplacePolicyPath = join(artifactDirectory, "cao.json");
@@ -427,7 +523,10 @@ async function executeRedisBackend(artifactDirectory, queries, names) {
     "--access-token", accessToken,
     "--listen", "127.0.0.1:18443",
     "--site", siteRoot,
-    "--dashboard-queries", dashboardPath,
+    "--dashboard-queries", dashboardDocumentPath,
+    "--agent-catalog", agentCatalogPath,
+    "--mcp-contract", mcpContractPath,
+    "--mcp-enabled",
     "--database-queries", databaseQueriesPath,
     "--redis-url", process.env.REDIS_URL ?? "redis://127.0.0.1:6379/0",
     "--redis-namespace", `query-parity-${process.pid}`,
@@ -450,7 +549,71 @@ async function executeRedisBackend(artifactDirectory, queries, names) {
     });
     const payload = await response.json();
     if (!response.ok) throw new Error(`Redis query failed (${response.status}): ${JSON.stringify(payload)}`);
-    return rowsByQuery(payload.sources, names);
+    const goTools = await callGoMcp("tools/list");
+    const nodeTools = await handleMcpRequest({
+      headers: {
+        "mcp-protocol-version": MCP_PROTOCOL_VERSION,
+        "mcp-method": "tools/list",
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }),
+      indexedDB: new IDBFactory(),
+    });
+    if (stableJSON(goTools.result.tools) !== stableJSON(nodeTools.body.result.tools)) {
+      throw new Error(`MCP contract drift: ${JSON.stringify({
+        node: nodeTools.body.result.tools,
+        go: goTools.result.tools,
+      })}`);
+    }
+    for (const testCase of [
+      { name: "cao_catalog", arguments: { kind: "queries" } },
+      { name: "cao_query", arguments: { id: "campaign-runs", limit: 1 } },
+      {
+        name: "cao_query",
+        arguments: { id: "mcp-tool-calls", parameters: { tool: "github/search" }, limit: 2 },
+      },
+      { name: "cao_query", arguments: { id: "not-a-query" } },
+      {
+        name: "cao_query",
+        arguments: { id: "campaign-runs", parameters: { unknown: "value" } },
+      },
+    ]) {
+      const params = { name: testCase.name, arguments: testCase.arguments };
+      const [nodeResult, goResult] = await Promise.all([
+        callNodeMcp(
+          agentFactory,
+          testCase.name === "cao_catalog" ? dashboardPath : dashboardDocumentPath,
+          "tools/call",
+          params,
+        ),
+        callGoMcp("tools/call", params),
+      ]);
+      const expected = canonicalToolResult(nodeResult.result);
+      const actual = canonicalToolResult(goResult.result);
+      if (stableJSON(actual) !== stableJSON(expected)) {
+        throw new Error(
+          `MCP behavioral drift for ${JSON.stringify(testCase)}: `
+          + JSON.stringify(firstDifference(expected, actual)),
+        );
+      }
+    }
+    const goMcpRows = {};
+    const representativeNames = [
+      "campaign-runs",
+      "mcp-tool-calls",
+      "runs-table",
+      "workflow-inventory",
+    ].filter((name) => localNames.includes(name));
+    for (const name of representativeNames) {
+      const result = await callGoMcp("tools/call", {
+        name: "cao_query",
+        arguments: { id: name, limit: MAX_NAMED_QUERY_LIMIT },
+      });
+      if (result.result?.isError) {
+        throw new Error(`Go MCP cao_query failed for ${name}: ${JSON.stringify(result)}`);
+      }
+      goMcpRows[name] = result.result.structuredContent.rows;
+    }
+    return { redis: rowsByQuery(payload.sources, names), goMcp: goMcpRows };
   } finally {
     child.kill("SIGTERM");
     await Promise.race([
@@ -585,19 +748,33 @@ async function main() {
       },
       queries,
     ));
-    const [browserRows, sqliteRows, redisRows] = await Promise.all([
+    const [browserRows, sqliteRows, redisResult] = await Promise.all([
       executeBrowserBackend(sources, queries, names),
       executeNodeBackend(installSqliteIndexedDB(sqlitePath), sources, queries, names),
-      executeRedisBackend(artifactDirectory, queries, names),
+      executeRedisBackend(
+        artifactDirectory,
+        resolvedDocumentPath,
+        sqliteFactory,
+        queries,
+        names,
+        localNames,
+      ),
     ]);
     const results = {
       "node-indexeddb": nodeRows,
       "playwright-indexeddb": browserRows,
       "sqlite-indexeddb": sqliteRows,
-      redis: redisRows,
+      redis: redisResult.redis,
     };
     report.backends = [...Object.keys(results), "cao-named-query", "cao-mcp"];
     report.mismatches.push(...compareBackends(results, queries));
+    report.mismatches.push(...compareBackends({
+      "node-indexeddb": Object.fromEntries(
+        Object.keys(redisResult.goMcp).map((name) => [name, databaseBaseline[name]]),
+      ),
+      "go-mcp": redisResult.goMcp,
+    }, queries));
+    report.backends.push("go-mcp");
     report.status = report.mismatches.length === 0 ? "passed" : "failed";
     if (report.mismatches.length > 0) {
       throw new Error(`${report.mismatches.length} dashboard query parity comparison(s) failed`);

@@ -1,0 +1,238 @@
+package server
+
+import (
+	"bytes"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+)
+
+const (
+	testAgentCatalog = "../../../dashboard/site/src/agent/catalog.generated.json"
+	testMCPContract  = "../../../dashboard/site/src/agent/mcp-contract.json"
+)
+
+func TestMCPDisabledEndpointIsAbsent(t *testing.T) {
+	app := newMCPTestApp(t, false)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "http://localhost/mcp", nil)
+	authorize(request)
+	response := httptest.NewRecorder()
+	app.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("disabled MCP returned %d, want 404", response.Code)
+	}
+}
+
+func TestMCPRequiresLocalBearerAndDiscoversReadOnlyTools(t *testing.T) {
+	app := newMCPTestApp(t, true)
+	httpServer := httptest.NewServer(app.Handler())
+	defer httpServer.Close()
+
+	unauthorized := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "http://localhost/mcp", nil)
+	rejected := httptest.NewRecorder()
+	app.Handler().ServeHTTP(rejected, unauthorized)
+	if rejected.Code != http.StatusUnauthorized {
+		t.Fatalf("unauthenticated MCP returned %d, want 401", rejected.Code)
+	}
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "1"}, nil)
+	session, err := client.Connect(t.Context(), &mcp.StreamableClientTransport{
+		Endpoint: httpServer.URL + "/mcp",
+		HTTPClient: &http.Client{Transport: bearerTransport{
+			token: testAccessToken, base: http.DefaultTransport,
+		}},
+	}, &mcp.ClientSessionOptions{ProtocolVersion: "2026-07-28"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = session.Close() }()
+	listed, err := session.ListTools(t.Context(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(listed.Tools) != 2 || listed.Tools[0].Name != "cao_catalog" || listed.Tools[1].Name != "cao_query" {
+		t.Fatalf("unexpected tools: %#v", listed.Tools)
+	}
+	for _, tool := range listed.Tools {
+		if tool.Annotations == nil || !tool.Annotations.ReadOnlyHint {
+			t.Fatalf("tool %q is not read-only", tool.Name)
+		}
+	}
+}
+
+func TestMCPCatalogAndNamedQueryUseSharedData(t *testing.T) {
+	app := newMCPTestApp(t, true)
+	httpServer := httptest.NewServer(app.Handler())
+	defer httpServer.Close()
+	client := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "1"}, nil)
+	session, err := client.Connect(t.Context(), &mcp.StreamableClientTransport{
+		Endpoint: httpServer.URL + "/mcp",
+		HTTPClient: &http.Client{Transport: bearerTransport{
+			token: testAccessToken, base: http.DefaultTransport,
+		}},
+	}, &mcp.ClientSessionOptions{ProtocolVersion: "2026-07-28"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = session.Close() }()
+
+	catalog, err := session.CallTool(t.Context(), &mcp.CallToolParams{
+		Name: "cao_catalog", Arguments: map[string]any{"kind": "queries", "id": "campaign-runs"},
+	})
+	if err != nil || catalog.IsError {
+		t.Fatalf("catalog call failed: result=%#v err=%v", catalog, err)
+	}
+	entry := catalog.StructuredContent.(map[string]any)["query"].(map[string]any)
+	if entry["id"] != "campaign-runs" {
+		t.Fatalf("unexpected catalog entry: %#v", entry)
+	}
+
+	result, err := session.CallTool(t.Context(), &mcp.CallToolParams{
+		Name: "cao_query", Arguments: map[string]any{"id": "campaign-runs", "limit": 1},
+	})
+	if err != nil || result.IsError {
+		text := ""
+		if len(result.Content) > 0 {
+			if content, ok := result.Content[0].(*mcp.TextContent); ok {
+				text = content.Text
+			}
+		}
+		t.Fatalf("query call failed: %s err=%v", text, err)
+	}
+	payload := result.StructuredContent.(map[string]any)
+	if payload["query"] != "campaign-runs" {
+		t.Fatalf("unexpected query result: %#v", payload)
+	}
+	rows := payload["rows"].([]any)
+	if len(rows) != 0 {
+		t.Fatalf("empty fixture returned rows: %#v", rows)
+	}
+	metadata := payload["metadata"].(map[string]any)
+	if metadata["availability"] != "empty" {
+		t.Fatalf("unexpected availability: %#v", metadata)
+	}
+
+	invalid, err := session.CallTool(t.Context(), &mcp.CallToolParams{
+		Name: "cao_query", Arguments: map[string]any{"id": "not-a-query"},
+	})
+	if err != nil || !invalid.IsError {
+		t.Fatalf("invalid query was not a tool error: result=%#v err=%v", invalid, err)
+	}
+
+	parameterized, err := session.CallTool(t.Context(), &mcp.CallToolParams{
+		Name: "cao_query",
+		Arguments: map[string]any{
+			"id": "mcp-tool-calls", "parameters": map[string]any{"tool": "github/search"},
+			"limit": 1000000,
+		},
+	})
+	if err != nil || parameterized.IsError {
+		t.Fatalf("parameterized query failed: result=%#v err=%v", parameterized, err)
+	}
+	parameterMetadata := parameterized.StructuredContent.(map[string]any)["metadata"].(map[string]any)
+	if parameterMetadata["limit"] != float64(5000) {
+		t.Fatalf("oversized limit was not bounded: %#v", parameterMetadata)
+	}
+	if parameterMetadata["parameters"].(map[string]any)["tool"] != "github/search" {
+		t.Fatalf("query parameters were not reported: %#v", parameterMetadata)
+	}
+
+	invalidParameters, err := session.CallTool(t.Context(), &mcp.CallToolParams{
+		Name: "cao_query",
+		Arguments: map[string]any{
+			"id": "campaign-runs", "parameters": map[string]any{"unknown": "value"},
+		},
+	})
+	if err != nil || !invalidParameters.IsError {
+		t.Fatalf("invalid parameters were not a tool error: result=%#v err=%v", invalidParameters, err)
+	}
+}
+
+func TestHostedMCPConfigurationFailsClosed(t *testing.T) {
+	site := t.TempDir()
+	if err := os.WriteFile(filepath.Join(site, "index.html"), []byte("<html></html>"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := New(&redisx.Store{}, Config{
+		HostProfile: hostedHostProfile(), SiteDirectory: site, MCPEnabled: true,
+		GitHubOAuth: validOAuthConfig("https://github.test"),
+	})
+	if err == nil {
+		t.Fatal("hosted mode accepted MCP enablement")
+	}
+}
+
+func TestMCPContractAnnotationsArePreservedOnWire(t *testing.T) {
+	app := newMCPTestApp(t, true)
+	body := []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{},"io.modelcontextprotocol/clientInfo":{"name":"test","version":"1"}}}}`)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "http://localhost/mcp", bytes.NewReader(body))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Accept", "application/json, text/event-stream")
+	request.Header.Set("MCP-Protocol-Version", "2026-07-28")
+	request.Header.Set("Mcp-Method", "tools/list")
+	authorize(request)
+	response := httptest.NewRecorder()
+	app.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("tools/list returned %d: %s", response.Code, response.Body.String())
+	}
+	var message struct {
+		Result struct {
+			Tools []struct {
+				Annotations map[string]any `json:"annotations"`
+			} `json:"tools"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &message); err != nil {
+		t.Fatal(err)
+	}
+	for _, tool := range message.Result.Tools {
+		if tool.Annotations["readOnlyHint"] != true || tool.Annotations["untrustedContentHint"] != true {
+			t.Fatalf("contract annotations drifted: %#v", tool.Annotations)
+		}
+	}
+}
+
+type bearerTransport struct {
+	token string
+	base  http.RoundTripper
+}
+
+func (transport bearerTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	clone := request.Clone(request.Context())
+	clone.Header.Set("Authorization", "Bearer "+transport.token)
+	return transport.base.RoundTrip(clone)
+}
+
+func newMCPTestApp(t *testing.T, enabled bool) *App {
+	t.Helper()
+	address, closeRedis := fakeRedis(t)
+	t.Cleanup(closeRedis)
+	client, err := redisx.New("redis://" + address + "/0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	site := t.TempDir()
+	if err := os.WriteFile(filepath.Join(site, "index.html"), []byte("<html></html>"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	definitions, err := ParseDashboardQueries("../../../dashboard/site/src/agent/dashboard.generated.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := New(redisx.NewStore(client, "test"), Config{
+		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
+		DashboardQueries: definitions, AgentCatalogPath: testAgentCatalog,
+		MCPContractPath: testMCPContract, MCPEnabled: enabled,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return app
+}
