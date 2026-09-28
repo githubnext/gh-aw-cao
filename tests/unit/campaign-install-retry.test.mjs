@@ -37,3 +37,12 @@ test("recognizes transient GitHub HTTP failures", () => {
   assert.equal(isTransientCampaignInstallError(new Error("HTTP 503 from GitHub")), true);
   assert.equal(isTransientCampaignInstallError({ stderr: "TLS handshake timeout" }), true);
 });
+
+test("recognizes an interrupted package file download during update", () => {
+  assert.equal(
+    isTransientCampaignInstallError({
+      stderr: "unable to download new package agent .github/agents/agentic-workflows.md: failed to fetch file co...",
+    }),
+    true,
+  );
+});

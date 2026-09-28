@@ -196,6 +196,20 @@ function run(command, args, cwd, input = undefined) {
   });
 }
 
+async function updateCampaign(consumer, source) {
+  return retryTransientCampaignInstall(() => run("gh", [
+    "aw",
+    "update",
+    source,
+    "--force",
+    "--no-merge",
+    "--no-compile",
+    "--no-security-scanner",
+    "--cool-down",
+    "0",
+  ], consumer));
+}
+
 async function installCampaign(source) {
   const packageName = source.slice(0, source.lastIndexOf("@"));
   const campaign = packageName === "githubnext/gh-aw-cao"
@@ -345,17 +359,7 @@ test("root campaign bootstraps an empty CAO and preserves resources during workf
 
     const removedRuntime = controlRuntimeFiles[0];
     rmSync(join(consumer, removedRuntime));
-    run("gh", [
-      "aw",
-      "update",
-      campaignUpdateSource,
-      "--force",
-      "--no-merge",
-      "--no-compile",
-      "--no-security-scanner",
-      "--cool-down",
-      "0",
-    ], consumer);
+    await updateCampaign(consumer, campaignUpdateSource);
 
     assert.ok(existsSync(join(consumer, removedRuntime)), "gh aw update did not restore the control runtime");
     assert.equal(existsSync(join(consumer, ".github", "aw", "cao")), false);
@@ -620,17 +624,7 @@ test("gh aw update replaces workflows and restores campaign-owned assets after c
       rmSync(join(consumer, relativePath));
     }
 
-    run("gh", [
-      "aw",
-      "update",
-      dependabotCampaignUpdateSource,
-      "--force",
-      "--no-merge",
-      "--no-compile",
-      "--no-security-scanner",
-      "--cool-down",
-      "0",
-    ], consumer);
+    await updateCampaign(consumer, dependabotCampaignUpdateSource);
     run(process.execPath, [materializerScript, "materialize", "dependabot"], consumer);
 
     const updatedOrchestrator = readFileSync(orchestratorPath, "utf8");

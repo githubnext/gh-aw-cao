@@ -7,6 +7,10 @@ const transientGitHubErrors = [
   "http 502",
   "http 503",
   "http 504",
+  // gh aw reports a remote file read that failed mid-download generically; the
+  // catalog file always exists at the resolved ref, so retry once instead of
+  // failing the lifecycle test on a dropped GitHub response.
+  "unable to download new package",
 ];
 export const campaignInstallRetryDelayMilliseconds = 1_000;
 
