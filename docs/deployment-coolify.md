@@ -70,7 +70,7 @@ In the following steps, replace `PUBLIC-HOST` with the public host name of your 
    > Never copy files into a volume that a running service uses.
 
 1. In Coolify, create a Docker Compose resource from `server/coolify/compose.yml`. The file doesn't publish a host port. Attach your public domain to container port `8080` through the Coolify proxy.
-1. Set the variables and secrets listed in [Configuration reference](#configuration-reference). Store every credential as a Coolify secret.
+1. Set the variables and secrets listed in [Configuration reference](#configuration-reference), following [Setting the variables in Coolify](#setting-the-variables-in-coolify). Store every credential as a Coolify secret.
 1. Set `CAO_TRUSTED_PROXY_CIDRS` to the exact private subnet that Coolify assigns to its proxy network. Don't use `0.0.0.0/0` or a whole private address range. The server doesn't start if the value is missing, malformed, or public.
 1. Deploy the resource. When the container starts, `serve-hosted` reads the data in `CAO_SOURCE_DIRECTORY` (`/app/source`), prepares a generation, and makes it active.
 1. Verify the deployment.
@@ -189,6 +189,43 @@ The `server/coolify/compose.yml` file reads the following variables.
 | `CAO_GITHUB_ADMIN_USERS` | Yes | No | GitHub usernames that can start rebuilds. |
 | `CAO_GITHUB_WEBHOOK_SECRET` | Yes | Yes | Secret for verifying webhook signatures. At least 32 characters. |
 | `CAO_BUILD_VERSION` | No | No | Build version that the server reports. |
+
+### Setting the variables in Coolify
+
+Coolify marks a variable **Required** when `compose.yml` declares it with the `${NAME:?...}` form. A deployment fails before the container starts if any of those values are missing, so set all of them before the first deploy.
+
+Set these required variables:
+
+- `CAO_IMAGE`
+- `CAO_ARTIFACT_VOLUME`
+- `CAO_ALLOWED_HOSTS`
+- `CAO_TRUSTED_PROXY_CIDRS`
+- `CAO_GITHUB_CLIENT_ID`
+- `CAO_GITHUB_CLIENT_SECRET`
+- `CAO_GITHUB_REDIRECT_URL`
+- `CAO_SESSION_SECRET`
+- `CAO_GITHUB_ADMIN_USERS`
+- `CAO_GITHUB_WEBHOOK_SECRET`
+
+Also set `REDIS_URL`, and at least one of `CAO_GITHUB_ALLOWED_ORGS` or `CAO_GITHUB_ALLOWED_TEAMS`. Coolify doesn't mark them **Required**, because Compose leaves them empty by default, but the server refuses to serve requests without them.
+
+Follow these rules when you add the values.
+
+- **Store credentials as Coolify secrets.** `REDIS_URL`, `CAO_GITHUB_CLIENT_SECRET`, `CAO_SESSION_SECRET`, `CAO_SESSION_SECRET_PREVIOUS`, and `CAO_GITHUB_WEBHOOK_SECRET` are credentials. Never commit them to the repository, paste them into `.env.example`, or echo them in a build or deployment log.
+- **Generate the two server-side secrets yourself.** `CAO_SESSION_SECRET` and `CAO_GITHUB_WEBHOOK_SECRET` must each be at least 32 characters. Generate each one separately, and don't reuse one value for both.
+
+  ```bash
+  openssl rand -hex 32
+  ```
+
+  Use the same `CAO_GITHUB_WEBHOOK_SECRET` value in the GitHub webhook configuration. A webhook secret is required even when you don't send webhooks.
+- **Take the OAuth values from your OAuth app.** `CAO_GITHUB_CLIENT_ID` and `CAO_GITHUB_CLIENT_SECRET` come from the GitHub OAuth app that you registered, and `CAO_GITHUB_REDIRECT_URL` must exactly match that app's **Authorization callback URL**, `https://PUBLIC-HOST/auth/callback`.
+- **Keep `CAO_IMAGE` readable.** Don't mark it **Shown Once**. Rollback and the sample deployment workflow read the currently deployed digest before they replace it.
+- **Enable Runtime.** The server reads every variable at startup, so each one needs the **Runtime** scope. **Buildtime** matters only for a Coolify-built image.
+- **Leave managed variables alone.** Coolify shows `CAO_SOURCE_DIRECTORY` as **Managed**, because `compose.yml` pins it to `/app/source`, the read-only mount of the artifact volume. Don't override it. `CAO_POLICY_PATH` is set the same way.
+- **Duplicate the values for Preview if you use preview deployments.** Coolify keeps **Production** and **Preview** values separate, so a preview deployment fails on the same required variables until you set them again for **Preview**. Give each preview its own `REDIS_NAMESPACE`, artifact volume, host name, OAuth app, and secrets. Sharing a namespace or session secret with production lets a preview build read and write production sessions and data. If you don't use preview deployments, turn them off instead of copying production credentials.
+
+After a value changes, redeploy the resource. The container reads its environment only at startup.
 
 The Compose service also sets the following hardening options. Keep them in place.
 
