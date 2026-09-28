@@ -7,6 +7,9 @@
 import { formatCount, titleCase } from './components/count-formatters.js';
 import { projectTemporalSeries } from './data/analytics/temporal-series.js';
 import { formatPercent } from './view-formatters.js';
+import { createDebug } from './debug.js';
+
+const debugDataOperations = createDebug('data-operations');
 
 /**
  * @typedef {Record<string, unknown>} Row
@@ -78,7 +81,15 @@ export const PREDICTION_METHODS = ['linear', 'log', 'exp', 'pow', 'quad', 'poly'
  * @returns {Row[]}
  */
 export function tidy(rows, operators) {
-  return operators.reduce((current, operator) => applyOperator(current, operator), [...rows]);
+  const startedAt = performance.now();
+  debugDataOperations({ event: 'pipeline-started', inputRows: rows.length, operatorCount: operators.length });
+  const result = operators.reduce((current, operator) => applyOperator(current, operator), [...rows]);
+  debugDataOperations({
+    event: 'pipeline-completed',
+    outputRows: result.length,
+    durationMs: Math.round(performance.now() - startedAt)
+  });
+  return result;
 }
 
 /** @param {Row[]} rows @param {DataOperator} operator */
@@ -94,6 +105,7 @@ function applyOperator(rows, operator) {
     const offset = Number.isInteger(operator.offset) ? Math.max(0, Number(operator.offset)) : 0;
     return rows.slice(offset, offset + Math.max(0, operator.limit));
   }
+  debugDataOperations({ event: 'pipeline-rejected', op: String(/** @type {{ op?: unknown }} */ (operator).op) });
   throw new TypeError(`Unsupported data operator: ${String(/** @type {{ op?: unknown }} */ (operator).op)}`);
 }
 
