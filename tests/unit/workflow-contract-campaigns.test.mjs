@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { parse } from "yaml";
-import { escapedGhAwVersion, ghAwVersion, root, script, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
+import { escapedGhAwVersion, ghAwVersion, portableSkill, root, script, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
 
 // Campaign manifest, bundle, and catalog ownership contracts.
 
@@ -479,7 +479,7 @@ test("compiled workflow locks are not ignored", () => {
 test("Agent customizations preserve deterministic core campaign boundaries", () => {
   const agent = readFileSync(join(root, ".github", "agents", "agentic-workflows.md"), "utf8");
   const agenticWorkflowsSkill = readFileSync(join(root, ".github", "skills", "agentic-workflows", "SKILL.md"), "utf8");
-  const campaignSkill = readFileSync(join(root, "skills", "create-cao-campaign", "SKILL.md"), "utf8");
+  const campaignSkill = portableSkill("create-cao-campaign");
   const repositoryInstructions = readFileSync(join(root, ".github", "cao", "instructions.md"), "utf8");
 
   assert.match(agent, /\.github\/aw\/instructions\.md/);
@@ -505,7 +505,7 @@ test("Agent customizations preserve deterministic core campaign boundaries", () 
 });
 
 test("campaign creation guidance defines optional package problem clustering", () => {
-  const campaignSkill = readFileSync(join(root, "skills", "create-cao-campaign", "SKILL.md"), "utf8");
+  const campaignSkill = portableSkill("create-cao-campaign");
 
   assert.match(campaignSkill, /<campaign-slug>\/problem-clustering\.mjs/);
   assert.match(campaignSkill, /Emit a JSONL sequence: zero or more newline-delimited JSON objects/);
@@ -515,7 +515,7 @@ test("campaign creation guidance defines optional package problem clustering", (
 });
 
 test("campaign creation guidance gives dispatchers campaign-scoped repo-memory", () => {
-  const campaignSkill = readFileSync(join(root, "skills", "create-cao-campaign", "SKILL.md"), "utf8");
+  const campaignSkill = portableSkill("create-cao-campaign");
 
   assert.match(campaignSkill, /repo-memory:\n  branch-name: "memory\/<campaign-slug>"/);
   assert.match(campaignSkill, /orchestrator prompt must read and use `\$GH_AW_MEMORY_DIR` before selecting dispatches/);
@@ -567,7 +567,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
 
 test("README routes CAO failures to the debug skill", () => {
   const readme = readFileSync(join(root, "README.md"), "utf8");
-  const skill = readFileSync(join(root, "skills", "debug-cao", "SKILL.md"), "utf8");
+  const skill = portableSkill("debug-cao");
 
   assert.ok(readme.split("\n").slice(0, 20).some((line) =>
     line.includes("skills/debug-cao/SKILL.md")

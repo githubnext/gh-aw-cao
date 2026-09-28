@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { parse } from "yaml";
-import { root, workflow } from "./workflow-contract.helpers.mjs";
+import { portableSkill, root, workflow } from "./workflow-contract.helpers.mjs";
 
 // CAO Evolution and Optimization operation contracts.
 
@@ -123,7 +123,7 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
   assert.match(efficiency, /Select one campaign and one change to cadence, target selection, worker boundaries, evidence reuse, budget allocation, or review-output quality/);
   assert.match(efficiency, /Do not duplicate `Optimization`/);
 
-  const campaignSkill = readFileSync(join(root, "skills", "create-cao-campaign", "SKILL.md"), "utf8");
+  const campaignSkill = portableSkill("create-cao-campaign");
   assert.match(campaignSkill, /When a worker optimizes a campaign or campaign portfolio/);
   assert.match(campaignSkill, /A campaign workflow has no dashboard browser session/);
   assert.match(campaignSkill, /never add browser automation or Pages access merely to query IndexedDB/);

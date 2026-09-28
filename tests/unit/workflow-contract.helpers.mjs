@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -18,6 +18,19 @@ export function workflow(name, directory = workflowsDirectory) {
 
 export function script(name, directory) {
   return readFileSync(join(directory, name), "utf8").replaceAll("\r\n", "\n").replace(/\n$/, "");
+}
+
+export function portableSkill(name) {
+  const directory = join(root, "skills", name);
+  const references = join(directory, "references");
+  const guidance = [
+    readFileSync(join(directory, "SKILL.md"), "utf8"),
+    ...readdirSync(references, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map((entry) => readFileSync(join(references, entry.name), "utf8")),
+  ].join("\n").replaceAll("\r\n", "\n");
+  return `${guidance}\n${guidance.replace(/\s+/g, " ")}`;
 }
 
 export function controlPrecompute() {

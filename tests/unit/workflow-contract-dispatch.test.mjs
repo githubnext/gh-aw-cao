@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { controlPrecompute, root, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
+import { controlPrecompute, portableSkill, root, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
 
 // Orchestrator-to-worker dispatch, provenance, and telemetry contracts.
 
@@ -75,7 +75,7 @@ test("orchestrators emit dedicated bounded dispatcher telemetry", () => {
   const control = workflow("shared/control.md");
   const configuration = readFileSync(join(root, "docs", "configuration.md"), "utf8");
   const operations = readFileSync(join(root, "docs", "operations.md"), "utf8");
-  const campaignSkill = readFileSync(join(root, "skills", "create-cao-campaign", "SKILL.md"), "utf8");
+  const campaignSkill = portableSkill("create-cao-campaign");
 
   assert.match(control, /post-steps:[\s\S]*?Emit control-plane dispatcher telemetry/);
   assert.match(control, /if: \$\{\{ always\(\) \}\}/);

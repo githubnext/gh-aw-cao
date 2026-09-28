@@ -58,6 +58,10 @@ argument-hint: "Describe the operational outcome, target repositories, and desir
 
 - [Workflow contract](references/workflow-contract.md): required orchestrator,
   worker, steering, memory, and safe-output invariants.
+- [Safe outputs](references/safe-outputs.md): idempotency, labels, expiry, and
+  human-first report formatting.
+- [Package extensions](references/package-extensions.md): operational-value,
+  problem-clustering, optimization, and the dashboard add-on exception.
 - [Build Your First Campaign](../../docs/author-your-first-operation.md):
   authoring sequence and package shape.
 - [Orchestrators and Workers](../../docs/orchestrators-and-workers.md):

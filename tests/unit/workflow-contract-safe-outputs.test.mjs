@@ -3,12 +3,12 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { parse } from "yaml";
-import { root, stepBlock, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
+import { portableSkill, root, stepBlock, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
 
 // Safe-output reporting, issue, and pull request contracts.
 
 test("operations creation guidance scopes detection and omits worker evals", () => {
-  const campaignSkill = readFileSync(join(root, "skills", "create-cao-campaign", "SKILL.md"), "utf8");
+  const campaignSkill = portableSkill("create-cao-campaign");
 
   assert.match(campaignSkill, /safe-outputs\.threat-detection: false/);
   assert.match(campaignSkill, /default new dispatchers to `hourly`/);
@@ -216,7 +216,7 @@ test("review bundles skip safely when the agent artifact omits their prepared di
 });
 
 test("workers inherit human-first progressive report disclosure", () => {
-  const campaignSkill = readFileSync(join(root, "skills", "create-cao-campaign", "SKILL.md"), "utf8");
+  const campaignSkill = portableSkill("create-cao-campaign");
   const sharedControl = workflow("shared/control.md");
   const workers = readdirSync(workflowsDirectory)
     .filter((name) => name.endsWith(".md"))

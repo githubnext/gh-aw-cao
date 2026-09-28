@@ -4,7 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { parse } from "yaml";
 import { policyCases, userFacingScenarios } from "./workflow-contract.matrix.mjs";
-import { controlPrecompute, generatedJobs, modes, resolvePolicy, root, stepBlock, transitivelyNeeds, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
+import { controlPrecompute, generatedJobs, modes, portableSkill, resolvePolicy, root, stepBlock, transitivelyNeeds, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
 
 // Central policy resolution, rollout limits, and activation contracts.
 
@@ -496,7 +496,7 @@ test("orchestrators use checked-in policy with independent manual narrowing", ()
 });
 
 test("operation workflows optionally load per-operation markdown steering", () => {
-  const campaignSkill = readFileSync(join(root, "skills", "create-cao-campaign", "SKILL.md"), "utf8");
+  const campaignSkill = portableSkill("create-cao-campaign");
 
   assert.match(campaignSkill, /Every orchestrator and worker prompt must include[\s\S]*at the bottom of the Markdown body/);
   assert.match(campaignSkill, /Never place the runtime import at the top of the Markdown body/);
