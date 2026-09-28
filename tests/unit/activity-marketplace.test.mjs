@@ -69,6 +69,7 @@ test("package manifests normalize immutable coordinates and the canonical add co
     ref: "main",
     resolvedCommit: SHA,
   });
+  assert.equal(normalized.id, "example/packages/demo");
   assert.equal(normalized.source, `example/packages/demo@${SHA}`);
   assert.equal(normalized["add-command"], `./cao.sh add example/packages/demo@${SHA}`);
   assert.deepEqual(normalized.contents, ["workflow.md"]);

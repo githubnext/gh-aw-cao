@@ -1,6 +1,9 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { renderCloseButton } from './ui-primitives.js';
+import { createDebug } from '../debug.js';
+
+const debugRefreshError = createDebug('refresh-error');
 
 /**
  * @param {() => void} retry
@@ -24,7 +27,10 @@ export function renderRefreshError(retry) {
         {
           type: 'button',
           className: 'refresh-button source-refresh-retry',
-          onclick: retry
+          onclick: () => {
+            debugRefreshError({ event: 'retry-requested' });
+            retry();
+          }
         },
         octicon('sync'),
         h('span', null, 'Retry')
@@ -32,9 +38,13 @@ export function renderRefreshError(retry) {
       renderCloseButton({
         className: 'source-refresh-dismiss',
         label: 'Dismiss partial data warning',
-        onClick: () => element.remove()
+        onClick: () => {
+          debugRefreshError({ event: 'dismissed' });
+          element.remove();
+        }
       })
     )
   );
+  debugRefreshError({ event: 'shown' });
   return element;
 }

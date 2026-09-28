@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { normalizedRunShard } from './normalized-shard.js';
@@ -8,7 +9,7 @@ import { expect, test } from '@playwright/test';
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 const buildScript = fileURLToPath(new URL('../../scripts/build.mjs', import.meta.url));
 const controlSettings = fileURLToPath(new URL('../performance/fixtures/control-settings.json', import.meta.url));
-const buildRoot = mkdtempSync(join(process.cwd(), '.lazy-page-chunks-'));
+const buildRoot = mkdtempSync(join(tmpdir(), 'lazy-page-chunks-'));
 const origin = 'http://lazy-page-chunks.dashboard.test';
 const shardName = `gh-aw-logs-runs/logs-${'a'.repeat(64)}-${'b'.repeat(16)}.jsonl`;
 
@@ -91,7 +92,29 @@ const inventory = {
       'readme-path': `${path}/README.md`,
       source: `githubnext/gh-aw-cao/${path}@${'b'.repeat(40)}`,
       'add-command': `./cao.sh add githubnext/gh-aw-cao/${path}@${'b'.repeat(40)}`,
-    }))],
+      'observed-at': '2026-09-15T10:00:00Z',
+    })), {
+      id: `official:githubnext/gh-aw-cao/aw-optimization@${'c'.repeat(40)}`,
+      'registry-id': 'official',
+      'registry-name': 'Official CAO catalog',
+      'registry-precedence': 0,
+      name: 'AW Optimization',
+      description: 'Earlier package revision',
+      publisher: 'githubnext',
+      repository: 'githubnext/gh-aw-cao',
+      path: 'aw-optimization',
+      ref: 'main',
+      'resolved-commit': 'c'.repeat(40),
+      version: 'main',
+      icon: 'workflow',
+      artwork: '',
+      contents: ['aw.yml'],
+      readme: '# aw-optimization\n',
+      'readme-path': 'aw-optimization/README.md',
+      source: `githubnext/gh-aw-cao/aw-optimization@${'c'.repeat(40)}`,
+      'add-command': `./cao.sh add githubnext/gh-aw-cao/aw-optimization@${'c'.repeat(40)}`,
+      'observed-at': '2026-09-14T10:00:00Z',
+    }],
     metadata: { 'as-of': '2026-09-15T10:00:00Z', 'retrieved-at': '2026-09-15T10:00:00Z', completeness: 'complete', freshness: 'fresh', availability: 'available' },
   },
   'configuration-policy': {
@@ -283,16 +306,36 @@ test('marketplace page renders canonical package cards after ingestion', async (
   await expect(page.getByRole('heading', { name: 'Marketplace', exact: true, level: 1 })).toBeVisible();
   const packageCards = marketplace.locator('.entity-card-list-marketplace .entity-card-list-card');
   await expect(packageCards).toHaveCount(3);
+  await expect(packageCards.locator('.issue-list-card-title')).toHaveText([
+    'AW Optimization',
+    'CAO Evolution',
+    'Dependabot'
+  ]);
   const packageCard = packageCards.filter({ hasText: 'Dependabot' });
   await expect(marketplace.locator('.entity-card-list-marketplace')).toHaveCSS('display', 'grid');
   const cardBoxes = await packageCards.evaluateAll((cards) => cards.map((card) => card.getBoundingClientRect().toJSON()));
+  expect(cardBoxes).toHaveLength(3);
   expect(cardBoxes[1].y).toBe(cardBoxes[0].y);
   expect(cardBoxes[1].x).toBeGreaterThanOrEqual(cardBoxes[0].x + cardBoxes[0].width + 12);
   await expect(marketplace).toContainText('Dependabot');
   await expect(packageCard).toContainText('By');
   await expect(packageCard).toContainText('githubnext');
+  await expect(packageCards.filter({ hasText: 'Earlier package revision' })).toHaveCount(0);
   await expect(packageCard.getByRole('button', { name: 'Add' })).toHaveCount(0);
   await expect(marketplace).not.toContainText('Unable to load this page.');
+
+  for (let navigation = 0; navigation < 3; navigation += 1) {
+    await navigateToPage(page, 'repositories');
+    await expect(page.getByRole('heading', { name: 'Repositories', exact: true, level: 1 })).toBeVisible();
+    await navigateToPage(page, 'marketplace');
+    await expect(page.getByRole('heading', { name: 'Marketplace', exact: true, level: 1 })).toBeVisible();
+    await expect(packageCards).toHaveCount(3);
+    await expect(packageCards.locator('.issue-list-card-title')).toHaveText([
+      'AW Optimization',
+      'CAO Evolution',
+      'Dependabot'
+    ]);
+  }
 
   await packageCard.getByRole('link', { name: 'Dependabot' }).click();
   const detail = page.locator('[data-page-id="marketplace-package"]');

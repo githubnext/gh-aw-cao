@@ -145,8 +145,12 @@ func ParsePackageManifest(source string, coordinates Coordinates) (Package, erro
 	if index := strings.Index(publisher, "/"); index >= 0 {
 		publisher = publisher[:index]
 	}
+	packageID := strings.ToLower(coordinates.Repository)
+	if packagePath != "" {
+		packageID += "/" + strings.ToLower(packagePath)
+	}
 	return Package{
-		ID:                 coordinates.RegistryID + ":" + sourceCoordinate,
+		ID:                 packageID,
 		RegistryID:         coordinates.RegistryID,
 		RegistryName:       coordinates.RegistryName,
 		RegistryPrecedence: coordinates.Precedence,

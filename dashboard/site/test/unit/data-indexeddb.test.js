@@ -314,6 +314,25 @@ describe('canonical IndexedDB', () => {
     database.close();
   });
 
+  it('clears stale marketplace snapshots when package identity changes', async () => {
+    const legacy = await new Promise((resolve, reject) => {
+      const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION - 1);
+      request.onupgradeneeded = () => {
+        const packages = request.result.createObjectStore('marketplacePackages', { keyPath: 'id' });
+        packages.put({ id: 'official:example/packages/demo@old' });
+        packages.put({ id: 'official:example/packages/demo@new' });
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    legacy.close();
+
+    const database = await openCanonicalDatabase(indexedDB);
+
+    expect(await readCollection(indexedDB, 'marketplacePackages')).toEqual([]);
+    database.close();
+  });
+
   it('rebuilds package-store caches during the campaigns schema upgrade', async () => {
     const legacy = await new Promise((resolve, reject) => {
       const request = indexedDB.open(DATABASE_NAME, LEGACY_PACKAGES_DATABASE_VERSION);

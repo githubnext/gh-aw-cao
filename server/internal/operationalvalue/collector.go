@@ -19,7 +19,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var collectLog = logger.New("cao:operationalvalue")
 
 const (
 	baselineObservations   = 3
@@ -155,6 +159,7 @@ func Collect(ctx context.Context, config Config) (Result, error) {
 	if err != nil {
 		return result, err
 	}
+	collectLog.Printf("discovered campaign adapters count=%d", len(scripts))
 	if config.HistoryCampaign != "" && !hasCampaign(scripts, config.HistoryCampaign) {
 		return result, fmt.Errorf("operational value history campaign not found: %s", config.HistoryCampaign)
 	}
@@ -268,13 +273,25 @@ func Collect(ctx context.Context, config Config) (Result, error) {
 	}
 	result.Values = len(values)
 	if config.Output != "" {
-		currentRetained := retireValues(retained, activeIDs)
-		merged := mergeValues(append(currentRetained, values...), definitions)
+		merged := persistValues(retained, values, activeIDs, definitions)
 		if err := writeEnvelopes(config.Output, merged); err != nil {
 			return result, err
 		}
+		collectLog.Printf("persisted operational values total=%d history=%d", len(merged), result.HistoryValues)
 	}
 	return result, nil
+}
+
+// persistValues combines this run's freshly collected values with the
+// previously retained shard, retiring any retained value whose campaign no
+// longer declares it active and resolving duplicates by cadence bucket or
+// exact key. It is a pure function so the retire-then-merge decision is
+// testable independently of the temp-file rename writeEnvelopes performs.
+func persistValues(
+	retained, values []envelope, activeIDs map[string]map[string]struct{}, definitions map[string]definition,
+) []envelope {
+	currentRetained := retireValues(retained, activeIDs)
+	return mergeValues(append(currentRetained, values...), definitions)
 }
 
 func discoverScripts(root string) ([]script, error) {
