@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
@@ -94,7 +95,7 @@ func TestQueryTransparentlyInjectsMarketplacePackagesWithoutSecretLeakage(t *tes
 	if err := os.WriteFile(site+"/index.html", []byte("<html><head></head></html>"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	app, err := New(redisx.NewStore(client, "test"), Config{
+	app, err := New(context.Background(), redisx.NewStore(client, "test"), Config{
 		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
 	})
 	if err != nil {
@@ -154,7 +155,7 @@ func TestQueryDegradesMarketplacePackagesToUnavailableWhenThePolicyFileIsMissing
 	if err := os.WriteFile(site+"/index.html", []byte("<html><head></head></html>"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	app, err := New(redisx.NewStore(client, "test"), Config{
+	app, err := New(context.Background(), redisx.NewStore(client, "test"), Config{
 		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
 	})
 	if err != nil {

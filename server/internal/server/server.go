@@ -71,7 +71,7 @@ type App struct {
 	webhookSecret []byte
 }
 
-func New(store *redisx.Store, config Config) (*App, error) {
+func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) {
 	if err := validateHostProfile(store, &config); err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func New(store *redisx.Store, config Config) (*App, error) {
 		return nil, err
 	}
 	if config.Collector != nil {
-		collector, err := NewCollector(store, *config.Collector, config.DatabaseQueriesPath)
+		collector, err := NewCollector(ctx, store, *config.Collector, config.DatabaseQueriesPath)
 		if err != nil {
 			return nil, fmt.Errorf("configure collection: %w", err)
 		}

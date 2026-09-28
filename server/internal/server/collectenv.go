@@ -136,5 +136,5 @@ func NewCollectorFromEnv(ctx context.Context, databaseQueriesPath string) (*Coll
 	if err != nil {
 		return nil, err
 	}
-	return NewCollector(store, *config, databaseQueriesPath)
+	return NewCollector(ctx, store, *config, databaseQueriesPath)
 }

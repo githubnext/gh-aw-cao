@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"go/ast"
 	"go/parser"
@@ -29,7 +30,7 @@ func TestAzureModeRequiresCompleteGitHubOAuthPolicy(t *testing.T) {
 	if err := os.WriteFile(site+"/index.html", []byte("<html><head></head></html>"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, err = New(redisx.NewStore(client, "test"), Config{
+	_, err = New(context.Background(), redisx.NewStore(client, "test"), Config{
 		HostProfile:   azureFunctionsHostProfile(),
 		SiteDirectory: site,
 		AccessToken:   testAccessToken,
@@ -40,7 +41,7 @@ func TestAzureModeRequiresCompleteGitHubOAuthPolicy(t *testing.T) {
 		t.Fatalf("expected bearer rejection in Azure mode, got %v", err)
 	}
 
-	_, err = New(redisx.NewStore(client, "test"), Config{
+	_, err = New(context.Background(), redisx.NewStore(client, "test"), Config{
 		HostProfile:   azureFunctionsHostProfile(),
 		SiteDirectory: site,
 		Proxy:         ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
@@ -635,7 +636,7 @@ func newAzureTestApp(t *testing.T, githubURL string) *App {
 		Proxy:         ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
 		GitHubOAuth:   validOAuthConfig(githubURL),
 	}
-	app, err := New(redisx.NewStore(client, "test"), config)
+	app, err := New(context.Background(), redisx.NewStore(client, "test"), config)
 	if err != nil {
 		t.Fatal(err)
 	}

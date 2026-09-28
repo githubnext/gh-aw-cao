@@ -258,7 +258,7 @@ func TestAPINeverReturnsRedisCredentials(t *testing.T) {
 	if err := os.WriteFile(site+"/index.html", []byte("<html><head></head><body></body></html>"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	app, err := New(redisx.NewStore(client, "test"), Config{
+	app, err := New(context.Background(), redisx.NewStore(client, "test"), Config{
 		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
 	})
 	if err != nil {
@@ -308,7 +308,7 @@ func TestAPIResponsesCarryStandardizedTraceIdentifiers(t *testing.T) {
 	if err := os.WriteFile(site+"/index.html", []byte("<html><head></head><body></body></html>"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	app, err := New(redisx.NewStore(client, "test"), Config{
+	app, err := New(context.Background(), redisx.NewStore(client, "test"), Config{
 		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
 	})
 	if err != nil {
@@ -401,7 +401,7 @@ func TestRefreshAndQueryReturnAuthoritativeEvaluatedAt(t *testing.T) {
 	if err := os.WriteFile(site+"/index.html", []byte("<html><head></head></html>"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	app, err := New(redisx.NewStore(client, "test"), Config{
+	app, err := New(context.Background(), redisx.NewStore(client, "test"), Config{
 		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
 	})
 	if err != nil {
@@ -452,7 +452,7 @@ func TestQueryAllowsEmptyReadinessProbe(t *testing.T) {
 	if err := os.WriteFile(site+"/index.html", []byte("<html><head></head></html>"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	app, err := New(redisx.NewStore(client, "test"), Config{
+	app, err := New(context.Background(), redisx.NewStore(client, "test"), Config{
 		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
 	})
 	if err != nil {
@@ -507,7 +507,7 @@ func TestStaticIndexInjectsBackendMeta(t *testing.T) {
 	if err := os.WriteFile(site+"/index.html", []byte("<html><head><title>CAO</title></head><body></body></html>"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	app, err := New(redisx.NewStore(client, "test"), Config{
+	app, err := New(context.Background(), redisx.NewStore(client, "test"), Config{
 		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
 	})
 	if err != nil {
@@ -533,7 +533,7 @@ func TestCapabilityTokenProtectsStaticAssetsAndAPI(t *testing.T) {
 	if err := os.WriteFile(site+"/index.html", []byte("<html><head></head><body></body></html>"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	app, err := New(redisx.NewStore(client, "test"), Config{
+	app, err := New(context.Background(), redisx.NewStore(client, "test"), Config{
 		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
 	})
 	if err != nil {

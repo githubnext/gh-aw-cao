@@ -231,7 +231,7 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 	if err != nil {
 		return nil, err
 	}
-	app, err := New(store, Config{
+	app, err := New(ctx, store, Config{
 		HostProfile:            profile,
 		SingleReplicaConfirmed: host.SingleReplicaConfirmed,
 		SiteDirectory:          siteDirectory,

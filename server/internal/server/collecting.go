@@ -136,7 +136,9 @@ var _ Reconciler = (*Collector)(nil)
 var _ EventAdmitter = (*Collector)(nil)
 
 // NewCollector assembles the collection profile from configuration.
-func NewCollector(store *redisx.Store, config CollectorConfig, databaseQueriesPath string) (*Collector, error) {
+func NewCollector(
+	ctx context.Context, store *redisx.Store, config CollectorConfig, databaseQueriesPath string,
+) (*Collector, error) {
 	if err := config.Validate(); err != nil {
 		return nil, err
 	}
@@ -167,7 +169,7 @@ func NewCollector(store *redisx.Store, config CollectorConfig, databaseQueriesPa
 	if err != nil {
 		return nil, err
 	}
-	if err := client.ValidateRepositoryAccess(context.Background(), config.ControlRepository); err != nil {
+	if err := client.ValidateRepositoryAccess(ctx, config.ControlRepository); err != nil {
 		return nil, fmt.Errorf("validate repository visibility: %w", err)
 	}
 	lake := collect.Lake{Directory: config.LakeDirectory}

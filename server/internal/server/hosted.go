@@ -113,7 +113,7 @@ func NewHostedAppFromEnv(
 		},
 		Logger: logger,
 	}
-	return New(store, config)
+	return New(ctx, store, config)
 }
 
 func validateHostedRedisURL(redisURL string, allowPrivatePlaintext, forceTLS bool) error {

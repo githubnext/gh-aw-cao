@@ -452,7 +452,7 @@ func newServeCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		app, err := server.New(store, server.Config{
+		app, err := server.New(ctx, store, server.Config{
 			Listen:              *listen,
 			SiteDirectory:       *siteDirectory,
 			CertFile:            *cert,
