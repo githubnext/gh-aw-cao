@@ -1,6 +1,6 @@
 {
   "source_sha": "c8fea592546a35a3621685e55da8133047d3a484",
-  "next_category": "Astro documentation generation",
+  "next_category": "reusable dashboard generation",
   "evaluations": [
     {
       "evaluated_at": "2026-09-28T12:05:00Z",
@@ -448,6 +448,24 @@
         36465277491
       ],
       "outcome": "no-op: evaluated dependency installation and caching across 8 successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days, disclosing 12 excluded completed docs runs in the bounded sample (5 skipped workflow_run, 5 action_required workflow_run, 1 skipped workflow_run on a non-default-branch dashboard push, and 1 cancelled dashboard-triggered run). Evidence window 2026-09-28T18:18:17Z to 2026-09-28T19:32:49Z. docs.yml workflow execution median was 60.5s (p90 85.3s), queue median 0.0s (p90 0.0s), build median 41.0s (p90 44.4s), deploy median 10.5s (p90 35.5s on publishing runs), and schedule-freshness median 7.0s (p90 9.6s). Trusted step metadata showed Restore node_modules median 5.0s (p90 6.0s), Build documentation median 12.0s (p90 12.4s), Restore cached CAO Dashboard median 2.0s (p90 2.0s), and Upload Pages artifact median 4.0s (p90 4.4s). Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on every successful docs build, confirming stable node_modules and dashboard cache hits. Trusted logs on docs run 36472983222 confirmed setup-node package-manager cache restoration, a node_modules cache restore, and a 13.76 MB central-agentic-ops-dashboard cache hit restored in about 2s. Comparable successful cao-dashboard.yml runs 36472082690 and 36465277491 showed the dashboard build still installs dashboard/site dependencies in 6-8s and spends 11-13s in the separate cache job rewriting the constant central-agentic-ops-dashboard cache, but that optimization is already represented by the open issue subject Stop rewriting the CAO Dashboard artifact into a constant Actions cache and no new dependency-installation or caching recommendation meeting the >=60s or >=15% threshold was identified.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-09-28T20:12:00Z",
+      "worker_run_id": 36474969581,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        36474552709,
+        36472983222,
+        36472296239,
+        36471618355,
+        36468235930,
+        36465781573,
+        36465386989,
+        36472082690,
+        36465277491
+      ],
+      "outcome": "no-op: evaluated Astro documentation generation across 7 comparable successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days, disclosing one skipped scheduled success and excluding cancelled runs. Evidence window 2026-09-28T18:18:17Z to 2026-09-28T19:47:33Z. docs.yml workflow execution median was 67.0s (p90 83.8s), queue median 3.0s (p90 4.0s), build median 41.0s (p90 43.2s), deploy median 11.0s (p90 32.0s on 5 publishing runs), and schedule-freshness median 7.0s (p90 9.6s). Trusted step metadata showed Restore node_modules median 5.0s, Build documentation median 12.0s, Restore cached CAO Dashboard median 2.0s, and Upload Pages artifact median 4.0s; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on every successful docs build, confirming stable cache hits. Comparable successful cao-dashboard.yml runs 36472082690 and 36465277491 showed the dashboard/site build itself still completed in about 0.5s while the build job spent 37-45s mostly restoring activity data, upgrading it, copying 163.7-166.0 MiB SQLite plus 98.9-100.3 MiB of shards into the artifact, and uploading a 15.8-16.6 MiB artifact; the separate cache job then spent 11-13s re-downloading that same artifact and rewriting the constant central-agentic-ops-dashboard cache key. Because Astro documentation generation itself remains about 12s of a 67s median docs run and the only evidence-backed >=15% optimization remains the already-recorded open-subject dashboard-cache rewrite issue, no new non-duplicate Astro recommendation met the threshold in this cycle.",
       "suggestion_fingerprint": null
     }
   ]
