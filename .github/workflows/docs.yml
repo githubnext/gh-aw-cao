@@ -55,31 +55,27 @@ jobs:
               repo,
               branch,
             })
+            // Fail closed with a rebuild when the latest deployment is no longer recent.
+            const maxDocsRunsToInspect = 100
+            const successfulDocsRuns = await github.rest.actions.listWorkflowRuns({
+              owner,
+              repo,
+              workflow_id: 'docs.yml',
+              branch,
+              status: 'success',
+              per_page: maxDocsRunsToInspect,
+            })
             let deployedDocsRun
-            for (let page = 1; !deployedDocsRun; page += 1) {
-              const successfulDocsRuns = await github.rest.actions.listWorkflowRuns({
+            for (const run of successfulDocsRuns.data.workflow_runs) {
+              const jobs = await github.rest.actions.listJobsForWorkflowRun({
                 owner,
                 repo,
-                workflow_id: 'docs.yml',
-                branch,
-                status: 'success',
+                run_id: run.id,
+                filter: 'latest',
                 per_page: 100,
-                page,
               })
-              for (const run of successfulDocsRuns.data.workflow_runs) {
-                const jobs = await github.rest.actions.listJobsForWorkflowRun({
-                  owner,
-                  repo,
-                  run_id: run.id,
-                  filter: 'latest',
-                  per_page: 100,
-                })
-                if (jobs.data.jobs.some((job) => job.name === 'deploy' && job.conclusion === 'success')) {
-                  deployedDocsRun = run
-                  break
-                }
-              }
-              if (successfulDocsRuns.data.workflow_runs.length < 100) {
+              if (jobs.data.jobs.some((job) => job.name === 'deploy' && job.conclusion === 'success')) {
+                deployedDocsRun = run
                 break
               }
             }
@@ -107,7 +103,7 @@ jobs:
   build:
     needs: schedule-freshness
     if: >-
-      always() && (github.event_name != 'schedule' || needs.schedule-freshness.outputs.should-build == 'true')
+      !failure() && !cancelled() && (github.event_name != 'schedule' || needs.schedule-freshness.outputs.should-build == 'true')
       && (github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == github.event.repository.default_branch))
     runs-on: ubuntu-latest
     permissions:
