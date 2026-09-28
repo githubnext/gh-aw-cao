@@ -68,6 +68,7 @@ const jobs = [
     repository: "githubnext/agentics",
     mode: "review",
     duration: "4m 12s",
+    failed: true,
     organizationPath: "M0 380 H41 V276 H82",
     organizationTimes: "0;0.75;0.76;0.79;0.80;1",
     repositoryTimes: "0;0.79;0.80;0.83;0.84;1",
@@ -102,8 +103,9 @@ const campaigns = [
   },
 ];
 
-const liveJobs = jobs.filter((job) => job.mode === "live");
-const reviewJobs = jobs.filter((job) => job.mode === "review");
+const successfulJobs = jobs.filter((job) => !job.failed);
+const liveJobs = successfulJobs.filter((job) => job.mode === "live");
+const reviewJobs = successfulJobs.filter((job) => job.mode === "review");
 
 const organizationNodes = [
   { organization: "github", top: 146 },
@@ -223,26 +225,25 @@ const organizationNodes = [
             {jobs.map((job) => (
               <>
                 <path d={job.organizationPath}></path>
-                <circle
-                  class={job.mode === "review" ? "graph-route-dot review" : job.failed ? "graph-route-dot failed" : "graph-route-dot"}
-                  r="2.5"
-                >
-                  <animateMotion
-                    dur="14s"
-                    repeatCount="indefinite"
-                    path={job.organizationPath}
-                    keyTimes={job.organizationTimes}
-                    keyPoints="0;0;0;1;1;1"
-                    calcMode="linear"
-                  />
-                  <animate
-                    attributeName="opacity"
-                    dur="14s"
-                    repeatCount="indefinite"
-                    values="0;0;1;1;0;0"
-                    keyTimes={job.organizationTimes}
-                  />
-                </circle>
+                {!job.failed && (
+                  <circle class={job.mode === "review" ? "graph-route-dot review" : "graph-route-dot"} r="2.5">
+                    <animateMotion
+                      dur="14s"
+                      repeatCount="indefinite"
+                      path={job.organizationPath}
+                      keyTimes={job.organizationTimes}
+                      keyPoints="0;0;0;1;1;1"
+                      calcMode="linear"
+                    />
+                    <animate
+                      attributeName="opacity"
+                      dur="14s"
+                      repeatCount="indefinite"
+                      values="0;0;1;1;0;0"
+                      keyTimes={job.organizationTimes}
+                    />
+                  </circle>
+                )}
               </>
             ))}
             <circle class="graph-junction" cx="41" cy="172" r="2.5"></circle>
@@ -269,7 +270,7 @@ const organizationNodes = [
             <svg class="review-queue-icon" viewBox="0 0 16 16"><path d={inboxPath}></path></svg>
             <span>
               <strong>CAO review queue</strong>
-              <small>{reviewJobs.length} review items</small>
+              <small>{reviewJobs.length} review {reviewJobs.length === 1 ? "item" : "items"}</small>
             </span>
           </article>
         </div>
@@ -394,8 +395,18 @@ const organizationNodes = [
                     <small>{job.operation}</small>
                   </span>
                 </article>
-                <span class={`mobile-pair-route ${job.timing} ${job.mode}`}><i></i></span>
-                {job.mode === "review" ? (
+                <span class={`mobile-pair-route ${job.timing} ${job.mode} ${job.failed ? "failed" : ""}`}>
+                  {!job.failed && <i></i>}
+                </span>
+                {job.failed ? (
+                  <article class="mobile-repository-card mobile-no-output">
+                    <svg class="status-icon" viewBox="0 0 16 16"><path d={failurePath}></path></svg>
+                    <span>
+                      <strong>No output dispatched</strong>
+                      <small>{job.repository} · worker failed</small>
+                    </span>
+                  </article>
+                ) : job.mode === "review" ? (
                   <article class="mobile-repository-card mobile-review-queue">
                     <svg class="review-queue-icon" viewBox="0 0 16 16"><path d={inboxPath}></path></svg>
                     <span>
@@ -1230,6 +1241,16 @@ const organizationNodes = [
     .mobile-review-queue {
       border-color: color-mix(in srgb, var(--review) 55%, var(--line));
       background: color-mix(in srgb, var(--review) 10%, var(--panel));
+    }
+
+    .mobile-no-output {
+      border-color: color-mix(in srgb, var(--danger) 45%, var(--line));
+      color: var(--muted);
+      background: color-mix(in srgb, var(--danger) 6%, var(--panel));
+    }
+
+    .mobile-no-output .status-icon {
+      fill: var(--danger);
     }
 
     .mobile-scale-cue {
