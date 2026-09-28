@@ -12,6 +12,9 @@ import {
 } from './route-body-specification.js';
 import { renderMeasureHistory } from './measure-history.js';
 import { renderCampaignMemory } from './campaign-memory.js';
+import { createDebug } from '../debug.js';
+
+const debugCampaignRouteComposition = createDebug('campaign-route-composition');
 
 const CAMPAIGN_OPERATIONAL_VALUE_SOURCES = [
   'campaign-operational-value-primary-series',
@@ -135,7 +138,13 @@ export function campaignRouteComposition(body) {
   const selected = typeof body === 'string' && Object.hasOwn(CAMPAIGN_ROUTE_ALIASES, body)
     ? CAMPAIGN_ROUTE_ALIASES[/** @type {keyof typeof CAMPAIGN_ROUTE_ALIASES} */ (body)]
     : body;
-  return /** @type {CampaignRouteComposition} */ (CAMPAIGN_ROUTE_BODY_CONFIG.composition(CAMPAIGN_ROUTE_COMPOSITIONS, selected));
+  const resolved = /** @type {CampaignRouteComposition} */ (CAMPAIGN_ROUTE_BODY_CONFIG.composition(CAMPAIGN_ROUTE_COMPOSITIONS, selected));
+  debugCampaignRouteComposition({
+    event: 'composition-resolved',
+    tab: resolved.currentTab,
+    fellBackToDefault: resolved.currentTab !== selected
+  });
+  return resolved;
 }
 
 /**
@@ -173,11 +182,17 @@ export function campaignModeForRoute(workflows) {
       .filter((target) => String(target?.repository ?? '').toLowerCase() === repository)
       .map((target) => String(target?.mode ?? '').toLowerCase());
   });
-  if (targetModes.includes('live')) return 'live';
-  if (targetModes.includes('review')) return 'review';
-  const orchestrator = workflows.find((workflow) => workflow['workflow-role'] === 'orchestrator');
-  const mode = String(orchestrator?.['rollout-mode'] ?? workflows[0]?.['rollout-mode'] ?? '');
-  return mode === 'review' || mode === 'live' ? mode : '';
+  const resolved = targetModes.includes('live')
+    ? 'live'
+    : targetModes.includes('review')
+      ? 'review'
+      : (() => {
+        const orchestrator = workflows.find((workflow) => workflow['workflow-role'] === 'orchestrator');
+        const mode = String(orchestrator?.['rollout-mode'] ?? workflows[0]?.['rollout-mode'] ?? '');
+        return mode === 'review' || mode === 'live' ? mode : '';
+      })();
+  debugCampaignRouteComposition({ event: 'mode-resolved', mode: resolved || 'unknown', workflowCount: workflows.length });
+  return resolved;
 }
 
 /**
@@ -186,5 +201,9 @@ export function campaignModeForRoute(workflows) {
 export function normalizeCampaignRoute(value) {
   if (typeof value !== 'string') return '';
   const campaignId = value.trim();
-  return /^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,99})$/.test(campaignId) ? campaignId : '';
+  const valid = /^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,99})$/.test(campaignId);
+  if (!valid && campaignId) {
+    debugCampaignRouteComposition({ event: 'route-rejected', length: campaignId.length });
+  }
+  return valid ? campaignId : '';
 }
