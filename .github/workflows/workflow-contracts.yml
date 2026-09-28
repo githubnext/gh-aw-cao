@@ -198,4 +198,14 @@ jobs:
             echo "Campaign lifecycle tests became inconclusive because the shared GitHub App installation API quota was exhausted during the run." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
+          # `gh aw update` swallows the underlying error for a package that installs no
+          # agentic workflows, so an exhausted quota surfaces only as "no workflows were
+          # successfully updated". The run started with at least 500 core requests, so a
+          # quota that is now spent is itself the rate-limit evidence the grep cannot see.
+          remaining="$(gh api rate_limit --jq '.resources.core.remaining' || echo 500)"
+          if (( remaining < 50 )); then
+            echo "::warning title=Campaign lifecycle incomplete::The shared GitHub App installation has $remaining core API requests remaining after the clean-room campaign tests."
+            echo "Campaign lifecycle tests became inconclusive because the shared GitHub App installation API quota was exhausted during the run." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           exit "$status"
