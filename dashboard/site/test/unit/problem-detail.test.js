@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderProblemDetail } from '../../src/components/problem-detail.js';
 
 const metadata = {
@@ -139,5 +139,68 @@ describe('problem detail', () => {
     expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('Requested modelAutomatic model selection was requested.');
     expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('Resolved modelModel resolution did not complete before the failure.');
     expect(rendered.querySelector('.problem-view-log')?.textContent).toContain('did not retain raw output');
+  });
+});
+
+describe('problem detail debug logging', () => {
+  afterEach(() => {
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
+
+  it('stays silent by default and logs only scalar metadata under its predictable category', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=problem-detail', output })
+      };
+    });
+    vi.resetModules();
+    const { renderProblemDetail: renderProblemDetailWithDebug } = await import('../../src/components/problem-detail.js');
+
+    const rendered = renderProblemDetailWithDebug(context());
+    expect(output.debug).toHaveBeenCalledWith('[cao:problem-detail]', { event: 'initialized', problemCount: 1 });
+
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'target-repository', value: 'github/gh-aw' }
+    }));
+    expect(output.debug).toHaveBeenCalledWith('[cao:problem-detail]', { event: 'matched', problemKind: 'failure' });
+
+    const emptyRendered = renderProblemDetailWithDebug(context([]));
+    emptyRendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'target-repository', value: 'github/gh-aw' }
+    }));
+    expect(output.debug).toHaveBeenCalledWith('[cao:problem-detail]', { event: 'not-found' });
+
+    for (const call of output.debug.mock.calls) {
+      const metadata = call[1];
+      expect(Object.values(metadata).every((value) => typeof value !== 'object')).toBe(true);
+    }
+  });
+
+  it('is disabled by default (no debug output) when the debug query is absent', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '', output })
+      };
+    });
+    vi.resetModules();
+    const { renderProblemDetail: renderProblemDetailWithoutDebug } = await import('../../src/components/problem-detail.js');
+
+    const rendered = renderProblemDetailWithoutDebug(context());
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'target-repository', value: 'github/gh-aw' }
+    }));
+
+    expect(output.debug).not.toHaveBeenCalled();
   });
 });

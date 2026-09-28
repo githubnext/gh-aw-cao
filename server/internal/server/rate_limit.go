@@ -105,7 +105,7 @@ func ratePolicy(request *http.Request) (requestRatePolicy, bool) {
 		return requestRatePolicy{}, false
 	case request.URL.Path == "/auth/login", request.URL.Path == "/auth/callback":
 		return requestRatePolicy{name: "auth", capacity: authRateLimit, window: authRateWindow}, true
-	case request.URL.Path == "/api/v1/query":
+	case request.URL.Path == "/api/v1/query", request.URL.Path == "/mcp":
 		return requestRatePolicy{name: "query", capacity: queryRateLimit, window: queryRateWindow}, true
 	case strings.HasPrefix(request.URL.Path, "/api/"), strings.HasPrefix(request.URL.Path, "/auth/"):
 		return requestRatePolicy{name: "general", capacity: generalRateLimit, window: generalRateWindow}, true
@@ -118,6 +118,9 @@ func (a *App) rateLimitSubject(request *http.Request) string {
 	if session, ok := request.Context().Value(oauthSessionContextKey{}).(oauthSession); ok &&
 		strings.TrimSpace(session.Login) != "" {
 		return "user:" + strings.ToLower(strings.TrimSpace(session.Login))
+	}
+	if actor, ok := request.Context().Value(githubActionsActorContextKey{}).(string); ok && actor != "" {
+		return "actions-actor:" + actor
 	}
 	if request.URL.Path == "/auth/callback" && a.oauth != nil && a.oauth.validState(request) {
 		if cookie, err := request.Cookie("cao_oauth_state"); err == nil && cookie.Value != "" {

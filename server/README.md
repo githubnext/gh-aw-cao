@@ -745,13 +745,17 @@ supplies OpenTelemetry HTTP semantic-convention attributes and the standard
 `http.server.request.duration`, `http.server.request.body.size`, and
 `http.server.response.body.size` metrics. The query engine and ingestion paths
 start dedicated `cao_dashboard.query.execute` and `cao_dashboard.ingest.run`
-spans. Application attributes are limited to non-secret aggregate counts,
-revisions, and durations (no Redis URLs, credentials, GitHub tokens, or row
+spans. MCP requests use the OpenTelemetry MCP semantic conventions, including
+`mcp.method.name`, `mcp.protocol.version`, `gen_ai.operation.name`, and
+`gen_ai.tool.name`; tool arguments and results are never recorded. Application
+attributes are limited to non-secret aggregate counts, revisions, and durations
+(no Redis URLs, credentials, GitHub tokens, or row
 contents). Identifiers follow the W3C Trace Context specification: the tracer
-provider installs `propagation.TraceContext` so a client-sent `traceparent`
-header continues an existing trace, and every API response echoes the active
-request's ids as `X-Trace-Id` / `X-Span-Id` headers for correlating a
-client-visible request with exported spans.
+provider installs `propagation.TraceContext` so a client-sent HTTP `traceparent`
+continues an existing transport trace. MCP spans use trace context from
+`params._meta` as their remote parent and link the ambient HTTP span. Every API
+response also echoes the active request's ids as `X-Trace-Id` / `X-Span-Id`
+headers for correlating a client-visible request with exported spans.
 
 Telemetry is configured entirely through the standard OpenTelemetry SDK
 environment variables. Traces and metrics are independently optional, and no
@@ -946,6 +950,48 @@ go -C server run ./cmd/cao-dashboard serve \
   --source /absolute/path/to/deployed-dashboard \
   --access-token 0123456789abcdef0123456789abcdef
 ```
+
+### Local MCP endpoint
+
+The Go server can expose the dashboard's reviewed, read-only agent catalog and
+named queries on the same listener:
+
+```bash
+go -C server run ./cmd/cao-dashboard serve --mcp-enabled
+```
+
+`/mcp` is not registered unless `--mcp-enabled` is present. Clients authenticate
+with the same bearer capability as the local JSON APIs.
+
+In GitHub Actions, `serve` also reads the standard `GITHUB_TOKEN` and
+`GITHUB_ACTOR` environment variables. When both are available, an MCP client can
+send the token in the bearer `Authorization` header and the actor in
+`X-GitHub-Actor`.
+The configured pair is accepted only at `/mcp`; it does not grant access to the
+JSON APIs. Before enabling this gate, the server probes the current
+`GITHUB_REPOSITORY` through `GITHUB_API_URL` and fails closed unless the token
+can read Actions runs, contents, issues, and pull requests. Grant exactly these
+permissions:
+
+```yaml
+permissions:
+  actions: read
+  contents: read
+  issues: read
+  pull-requests: read
+```
+
+Keep the token in the Actions environment rather than passing it on a command
+line.
+
+The endpoint exposes only `cao_catalog` and `cao_query`; it accepts no
+SQL, arbitrary query definitions, refresh, rebuild, webhook, administration, or
+repository mutation operations.
+
+MCP is intentionally unavailable from `serve-hosted` in this first slice.
+Hosted enablement requires a remote-client OAuth flow tied to the existing CAO
+session, organization/team authorization, account-selection, and revocation
+model; attempts to pass `--mcp-enabled` to `serve-hosted` fail closed.
 
 Use `--redis-url` and optional `--redis-namespace` only on the server command
 line. The same namespace must be supplied to `ingest` and `serve` when

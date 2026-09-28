@@ -135,6 +135,22 @@ function chartRowLimit(view) {
   return Number.isSafeInteger(limit) && limit > 0 ? limit : Number.POSITIVE_INFINITY;
 }
 
+/**
+ * Resolves the "no data" message shown below an empty entity, issue, or
+ * document card list: an unavailability notice when the view's source
+ * failed to resolve, otherwise the view's declared `empty-message` or a
+ * generic fallback. Shared by every card-list renderer (list, entity-card,
+ * issue), which otherwise duplicated the same three-way fallback.
+ * @param {{ availability?: string }} metadata
+ * @param {Record<string, any>} view
+ * @returns {string}
+ */
+function resolveCardListEmptyMessage(metadata, view) {
+  return metadata.availability === 'unavailable'
+    ? 'Data is unavailable for this view.'
+    : typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No items available.';
+}
+
 /** @param {DataViewContext} context */
 function renderMetricView(context) {
   const { pageId, title, view, rows, metadata, contextDetails, headingTag, toText, units = {} } = context;
@@ -283,9 +299,7 @@ function renderListView(context) {
         : null
     );
   });
-  const emptyMessage = metadata.availability === 'unavailable'
-    ? 'Data is unavailable for this view.'
-    : typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No items available.';
+  const emptyMessage = resolveCardListEmptyMessage(metadata, view);
   return renderPageSection(
     pageId,
     title,
@@ -336,9 +350,7 @@ function renderEntityCardListView(options) {
     drill,
     chevron: grouped || marketplace
   });
-  const emptyMessage = metadata.availability === 'unavailable'
-    ? 'Data is unavailable for this view.'
-    : typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No items available.';
+  const emptyMessage = resolveCardListEmptyMessage(metadata, view);
   const viewAll = isPlainObject(view.list) && isPlainObject(view.list['view-all']) ? view.list['view-all'] : null;
   const viewAllPage = typeof viewAll?.page === 'string' ? viewAll.page : '';
   return renderPageSection(
@@ -685,9 +697,7 @@ function renderIssueListView(options) {
         : [])
     );
   });
-  const emptyMessage = metadata.availability === 'unavailable'
-    ? 'Data is unavailable for this view.'
-    : typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No items available.';
+  const emptyMessage = resolveCardListEmptyMessage(metadata, view);
   return renderPageSection(
     pageId,
     title,

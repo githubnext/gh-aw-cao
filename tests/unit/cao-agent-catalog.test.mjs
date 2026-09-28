@@ -7,10 +7,26 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import test from "node:test";
 
+import {
+  loadAgentDashboardDocument,
+  readAgentCatalog,
+} from "../../activity/agent-catalog.mjs";
+
 const executeFile = promisify(execFile);
 const campaignJsonUrl = new URL("../../package.json", import.meta.url);
 const campaignJson = JSON.parse(await readFile(campaignJsonUrl, "utf8"));
 const cao = fileURLToPath(new URL(campaignJson.bin.cao, campaignJsonUrl));
+
+test("materialized Go agent artifacts match the dashboard source", async () => {
+  const [catalog, dashboard, generatedCatalog, generatedDashboard] = await Promise.all([
+    readAgentCatalog(),
+    loadAgentDashboardDocument(),
+    readFile(new URL("../../dashboard/site/src/agent/catalog.generated.json", import.meta.url), "utf8"),
+    readFile(new URL("../../dashboard/site/src/agent/queries.generated.json", import.meta.url), "utf8"),
+  ]);
+  assert.deepEqual(JSON.parse(generatedCatalog), catalog);
+  assert.deepEqual(JSON.parse(generatedDashboard), dashboard.dashboard.queries);
+});
 
 /**
  * @param {string[]} args

@@ -149,20 +149,61 @@ func (d Doctor) checkCollectionSettings(context.Context) Check {
 // privateKeySource reports where the App private key comes from without
 // reading it. The file is stat-ed, never opened.
 func (d Doctor) privateKeySource() (label string, present bool, err error) {
-	if path := d.getenv("CAO_COLLECT_PRIVATE_KEY_FILE"); path != "" {
-		info, statErr := os.Stat(path)
+	result := resolvePrivateKeySource(os.Stat, d.getenv("CAO_COLLECT_PRIVATE_KEY_FILE"), d.getenv("CAO_COLLECT_PRIVATE_KEY"))
+	doctorLog.Printf("private key source resolved reason=%s present=%t", result.reason, result.present)
+	return result.label, result.present, result.err
+}
+
+// privateKeySourceReason names why resolvePrivateKeySource reached its
+// result, stable across label wording changes so it is useful to log
+// without exposing the configured file path.
+type privateKeySourceReason string
+
+const (
+	privateKeySourceReasonFileConfigured   privateKeySourceReason = "file-configured"
+	privateKeySourceReasonFileUnreadable   privateKeySourceReason = "file-unreadable"
+	privateKeySourceReasonFileNotAFile     privateKeySourceReason = "file-not-a-file"
+	privateKeySourceReasonInlineConfigured privateKeySourceReason = "inline-configured"
+	privateKeySourceReasonAbsent           privateKeySourceReason = "absent"
+)
+
+// privateKeySourceResult is the label, presence, error, and stable reason
+// resolvePrivateKeySource derives from the configured private key inputs.
+type privateKeySourceResult struct {
+	label   string
+	present bool
+	err     error
+	reason  privateKeySourceReason
+}
+
+// resolvePrivateKeySource applies the standard priority for the collection
+// App's private key: a configured file path, stat-ed but never opened, then
+// an inline environment variable, then absent. It is a pure function given
+// an injected stat, so every branch — an unreadable file, a directory passed
+// as the key file, an inline value, and no configuration at all — is
+// testable without depending on which files happen to exist on the test
+// runner.
+func resolvePrivateKeySource(stat func(string) (os.FileInfo, error), filePath, inlineValue string) privateKeySourceResult {
+	if filePath != "" {
+		info, statErr := stat(filePath)
 		if statErr != nil {
-			return "file (unreadable)", false, statErr
+			return privateKeySourceResult{label: "file (unreadable)", err: statErr, reason: privateKeySourceReasonFileUnreadable}
 		}
 		if info.IsDir() {
-			return "file (not a file)", false, fmt.Errorf("%s is a directory", path)
+			return privateKeySourceResult{
+				label:  "file (not a file)",
+				err:    fmt.Errorf("%s is a directory", filePath),
+				reason: privateKeySourceReasonFileNotAFile,
+			}
 		}
-		return "file (configured)", true, nil
+		return privateKeySourceResult{label: "file (configured)", present: true, reason: privateKeySourceReasonFileConfigured}
 	}
-	if d.getenv("CAO_COLLECT_PRIVATE_KEY") != "" {
-		return "inline environment variable (configured)", true, nil
+	if inlineValue != "" {
+		return privateKeySourceResult{
+			label: "inline environment variable (configured)", present: true, reason: privateKeySourceReasonInlineConfigured,
+		}
 	}
-	return "absent", false, nil
+	return privateKeySourceResult{label: "absent", reason: privateKeySourceReasonAbsent}
 }
 
 func (d Doctor) collectEnrollment() collect.Enrollment {

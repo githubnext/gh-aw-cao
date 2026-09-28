@@ -396,7 +396,11 @@ func newServeHostedCommand() *cobra.Command {
 	siteDirectory := cmd.Flags().String("site", "../dashboard/site/dist", "built dashboard site directory")
 	databaseQueries := cmd.Flags().String("database-queries", "../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
 	dashboardQueries := cmd.Flags().String("dashboard-queries", "../dashboard/site/dashboard.json", "default dashboard query document")
+	mcpEnabled := cmd.Flags().Bool("mcp-enabled", false, "serve the read-only MCP endpoint at /mcp")
 	cmd.RunE = func(*cobra.Command, []string) error {
+		if *mcpEnabled {
+			return errors.New("MCP is not available in hosted mode")
+		}
 		commandLog.Printf("serve-hosted flags parsed tls=%s", resolveHostedTLSMode(*cert))
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
@@ -431,7 +435,10 @@ func newServeCommand() *cobra.Command {
 	accessToken := cmd.Flags().String("access-token", "", "dashboard access token (generated when omitted)")
 	source := cmd.Flags().String("source", "", "deployed dashboard directory to ingest before serving")
 	databaseQueries := cmd.Flags().String("database-queries", "../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
-	dashboardQueries := cmd.Flags().String("dashboard-queries", "../dashboard/site/dashboard.json", "default dashboard query document")
+	dashboardQueries := cmd.Flags().String("dashboard-queries", "../dashboard/site/src/agent/queries.generated.json", "materialized dashboard query definitions")
+	agentCatalog := cmd.Flags().String("agent-catalog", "../dashboard/site/src/agent/catalog.generated.json", "materialized read-only agent catalog")
+	mcpContract := cmd.Flags().String("mcp-contract", "../dashboard/site/src/agent/mcp-contract.json", "shared MCP tool contract")
+	mcpEnabled := cmd.Flags().Bool("mcp-enabled", false, "serve the read-only MCP endpoint at /mcp")
 	cmd.RunE = func(*cobra.Command, []string) error {
 		if namespaceErr != nil {
 			return namespaceErr
@@ -453,15 +460,23 @@ func newServeCommand() *cobra.Command {
 			return err
 		}
 		app, err := server.New(ctx, store, server.Config{
-			Listen:              *listen,
-			SiteDirectory:       *siteDirectory,
-			CertFile:            *cert,
-			KeyFile:             *key,
-			AccessToken:         *accessToken,
-			SourceDirectory:     *source,
-			DatabaseQueriesPath: *databaseQueries,
-			DashboardQueries:    definitions,
-			Logger:              log.New(os.Stderr, "cao-dashboard: ", log.LstdFlags),
+			Listen:               *listen,
+			SiteDirectory:        *siteDirectory,
+			CertFile:             *cert,
+			KeyFile:              *key,
+			AccessToken:          *accessToken,
+			SourceDirectory:      *source,
+			DatabaseQueriesPath:  *databaseQueries,
+			DashboardQueries:     definitions,
+			DashboardQueriesPath: *dashboardQueries,
+			AgentCatalogPath:     *agentCatalog,
+			MCPContractPath:      *mcpContract,
+			MCPEnabled:           *mcpEnabled,
+			GitHubActionsToken:   os.Getenv("GITHUB_TOKEN"),
+			GitHubActionsActor:   os.Getenv("GITHUB_ACTOR"),
+			ActionsRepository:    os.Getenv("GITHUB_REPOSITORY"),
+			GitHubAPIURL:         os.Getenv("GITHUB_API_URL"),
+			Logger:               log.New(os.Stderr, "cao-dashboard: ", log.LstdFlags),
 		})
 		if err != nil {
 			return err
