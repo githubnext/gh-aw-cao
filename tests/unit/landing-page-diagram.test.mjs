@@ -9,6 +9,7 @@ const illustration = readFileSync("docs/components/DispatchIllustration.astro", 
 const terminal = readFileSync("docs/components/TerminalDemo.astro", "utf8");
 const terminalText = terminal.replaceAll(/<[^>]+>/g, "");
 const headerLinks = readFileSync("docs/components/HeaderLinks.astro", "utf8");
+const catalog = readFileSync("docs/lib/catalog.ts", "utf8");
 
 test("landing page presents the product through real operational surfaces", () => {
   assert.match(landingPage, /text: Explore CAO[\s\S]*?link: \/gh-aw-cao\/architecture-at-a-glance\//);
@@ -221,6 +222,13 @@ test("landing page explains and illustrates campaign dispatch", () => {
 
 test("the home navigation no longer links to the setup wizard", () => {
   assert.doesNotMatch(headerLinks, /label: "Setup"|\/setup\//);
+});
+
+test("the campaign catalog remains independent of setup wizard configuration", () => {
+  assert.match(catalog, /import rootManifestSource from "\.\.\/\.\.\/aw\.yml\?raw"/);
+  assert.match(catalog, /\.experimental\/\*\/aw\.\{yml,yaml\}/);
+  assert.match(catalog, /export const catalogEntries = campaignEntries\s+\.filter\(\(entry\) => !entry\.private\)/);
+  assert.doesNotMatch(catalog, /controlPolicy|configuredOperationEntries|selectConfiguredOperations/);
 });
 
 test("landing page uses a theme-aware blueprint background", () => {

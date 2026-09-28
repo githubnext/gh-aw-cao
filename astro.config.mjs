@@ -24,7 +24,7 @@ export default defineConfig({
   redirects: {
     "/control-plane-authentication": "/gh-aw-cao/authentication/",
     "/getting-started": "/gh-aw-cao/setup-quickstarts/",
-    "/setup": "/gh-aw-cao/setup-quickstarts/",
+    "/setup/": "/gh-aw-cao/setup-quickstarts/",
   },
   srcDir: "./docs",
   markdown: {
