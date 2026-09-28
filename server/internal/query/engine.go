@@ -161,11 +161,11 @@ func validateFilter(filter *Filter) error {
 }
 
 func Dependencies(definitions []Definition, requested []string) ([]string, error) {
-	order, _, err := dependencyPlan(definitions, requested)
+	order, _, _, err := dependencyPlan(definitions, requested)
 	return order, err
 }
 
-func dependencyPlan(definitions []Definition, requested []string) ([]string, int, error) {
+func dependencyPlan(definitions []Definition, requested []string) ([]string, int, int, error) {
 	index := make(map[string]Definition, len(definitions))
 	for _, definition := range definitions {
 		index[definition.Name] = definition
@@ -206,10 +206,34 @@ func dependencyPlan(definitions []Definition, requested []string) ([]string, int
 	}
 	for _, name := range requested {
 		if err := visit(name, 1); err != nil {
-			return nil, 0, err
+			return nil, 0, 0, err
 		}
 	}
-	return result, maxDepth, nil
+	depths := map[string]int{}
+	joinDepths := map[string]int{}
+	maxDepth = 0
+	maxJoinDepth := 0
+	for _, name := range result {
+		definition, isQuery := index[name]
+		if !isQuery {
+			continue
+		}
+		depth := 1
+		joinDepth := len(definition.Joins)
+		inputs := append([]string{definition.From}, definition.Union...)
+		for _, join := range definition.Joins {
+			inputs = append(inputs, join.Source)
+		}
+		for _, input := range inputs {
+			depth = max(depth, depths[input]+1)
+			joinDepth = max(joinDepth, joinDepths[input]+len(definition.Joins))
+		}
+		depths[name] = depth
+		joinDepths[name] = joinDepth
+		maxDepth = max(maxDepth, depth)
+		maxJoinDepth = max(maxJoinDepth, joinDepth)
+	}
+	return result, maxDepth, maxJoinDepth, nil
 }
 
 func (e *Engine) Execute(definitions []Definition, requested []string) (map[string]model.Source, model.Metrics, error) {
@@ -222,22 +246,21 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 	for i := range definitions {
 		index[definitions[i].Name] = &definitions[i]
 	}
-	order, dependencyDepth, err := dependencyPlan(definitions, requested)
+	order, dependencyDepth, dependencyJoins, err := dependencyPlan(definitions, requested)
 	if err != nil {
 		return nil, model.Metrics{}, err
 	}
-	queryCount, joinCount := 0, 0
+	queryCount := 0
 	for _, name := range order {
 		if definition := index[name]; definition != nil {
 			queryCount++
-			joinCount += len(definition.Joins)
 		}
 	}
 	if queryCount > MaxPlanQueries {
 		return nil, model.Metrics{}, fmt.Errorf("query plan exceeds max queries of %d", MaxPlanQueries)
 	}
-	if joinCount > MaxPlanJoins {
-		return nil, model.Metrics{}, fmt.Errorf("query plan exceeds max joins of %d", MaxPlanJoins)
+	if dependencyJoins > MaxDependencyJoins {
+		return nil, model.Metrics{}, fmt.Errorf("query dependency path exceeds max joins of %d", MaxDependencyJoins)
 	}
 	sources := map[string]model.Source{}
 	metrics := model.Metrics{DependencyDepth: dependencyDepth}

@@ -132,12 +132,11 @@ func TestExecuteReportsPrivacyPreservingStructureAndPerformanceMetrics(t *testin
 
 func TestExecuteRejectsExcessiveDependencyDepth(t *testing.T) {
 	definitions := make([]Definition, MaxDependencyDepth+1)
+	previous := "rows"
 	for index := range definitions {
-		from := "rows"
-		if index > 0 {
-			from = definitions[index-1].Name
-		}
-		definitions[index] = Definition{Name: fmt.Sprintf("query-%d", index), From: from}
+		name := fmt.Sprintf("query-%d", index)
+		definitions[index] = Definition{Name: name, From: previous}
+		previous = name
 	}
 	_, _, err := New(&testLoader{sources: map[string]model.Source{
 		"rows": {Rows: []model.Row{}},
@@ -147,8 +146,9 @@ func TestExecuteRejectsExcessiveDependencyDepth(t *testing.T) {
 	}
 }
 
-func TestExecuteRejectsTooManyJoinsAcrossPlan(t *testing.T) {
-	definitions := make([]Definition, MaxPlanJoins/MaxJoins+1)
+func TestExecuteRejectsTooManyJoinsAcrossDependencyPath(t *testing.T) {
+	definitions := make([]Definition, MaxDependencyJoins/MaxJoins+1)
+	previous := "rows"
 	for index := range definitions {
 		joins := make([]Join, MaxJoins)
 		for joinIndex := range joins {
@@ -158,16 +158,11 @@ func TestExecuteRejectsTooManyJoinsAcrossPlan(t *testing.T) {
 			}
 		}
 		definitions[index] = Definition{
-			Name: fmt.Sprintf("query-%d", index),
-			From: "rows",
-			Union: func() []string {
-				if index == 0 {
-					return nil
-				}
-				return []string{definitions[index-1].Name}
-			}(),
+			Name:  fmt.Sprintf("query-%d", index),
+			From:  previous,
 			Joins: joins,
 		}
+		previous = definitions[index].Name
 	}
 	_, _, err := New(&testLoader{}).Execute(definitions, []string{definitions[len(definitions)-1].Name})
 	if err == nil || !strings.Contains(err.Error(), "max joins") {

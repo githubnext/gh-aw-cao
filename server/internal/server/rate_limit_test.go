@@ -80,7 +80,6 @@ func TestQueryRateLimitCostChargesLongRunningQueries(t *testing.T) {
 		{"operations", model.Metrics{Operations: 1_000_000}, 4},
 		{"redis work", model.Metrics{RedisRows: 750_000}, 3},
 		{"working rows", model.Metrics{PeakWorkingRows: 500_000}, 5},
-		{"structure", model.Metrics{QueryCount: 1, JoinCount: 12}, 7},
 		{"bytes", model.Metrics{PeakWorkingBytes: 64 << 20}, 4},
 		{"highest signal wins", model.Metrics{DurationMS: 2000, Operations: 1_000_000, PeakWorkingRows: 300_000}, 4},
 		{"capacity cap", model.Metrics{DurationMS: 60000, Operations: query.MaxOperations}, queryRateLimit},

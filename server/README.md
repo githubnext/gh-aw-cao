@@ -300,9 +300,10 @@ considered only at the configured trusted-proxy boundary. Raw logins, client
 addresses, and OAuth state are not stored in rate-limit keys.
 Query requests reserve one cost unit before execution. Completed queries cost
 the greatest of execution duration, measured operations and Redis rows, peak
-working rows and estimated bytes, and weighted structural complexity. Cost is
-capped at the query bucket capacity; the additional cost is charged atomically
-before the result is returned.
+working rows, and estimated bytes. Structural complexity is bounded separately
+and emitted as privacy-preserving telemetry. Cost is capped at the query bucket
+capacity; the additional cost is charged atomically before the result is
+returned.
 Enterprise proxy boundaries may supply either `X-Forwarded-For` or RFC 7239
 `Forwarded`; only the final value written by the trusted boundary is accepted.
 Authenticated quotas are per GitHub login, and OAuth callbacks use their opaque
@@ -688,11 +689,13 @@ The browser sends declarative query definitions and requested source names to
 before loading data.
 
 Execution fails closed when a requested plan exceeds 16 dependency levels, 256
-derived queries, or 32 cumulative joins. Runtime guards cap a query at 5 million
-row operations, 500,000 simultaneously referenced or retained rows, and 256 MiB
-of estimated working or retained row data. Per-query input, join, output, and
-operator limits remain independently enforced. Expensive stages, including
-sorting, are charged against the operation budget before they allocate or run.
+derived queries, or 16 joins along one dependency path. Independent queries in a
+batch do not consume one another's structural join allowance. Runtime guards cap
+a query at 5 million row operations, 500,000 simultaneously referenced or
+retained rows, and 256 MiB of estimated working or retained row data. Per-query
+input, join, output, and operator limits remain independently enforced.
+Expensive stages, including sorting, are charged against the operation budget
+before they allocate or run.
 
 For compatible base-source queries, the planner pushes work into Redis:
 

@@ -151,17 +151,7 @@ func queryRateLimitCost(metrics model.Metrics) int {
 	operationCost := ceilingUnits(metrics.Operations+metrics.RedisRows, 250_000)
 	rowCost := ceilingUnits(metrics.PeakWorkingRows, 100_000)
 	memoryCost := ceilingUnits64(metrics.PeakWorkingBytes, 16<<20)
-	structurePoints := metrics.QueryCount +
-		metrics.UnionCount +
-		metrics.JoinCount*4 +
-		metrics.FilterCount +
-		metrics.ComputeCount +
-		metrics.AggregateValueCount +
-		metrics.TemporalSeriesCount*4 +
-		metrics.SelectCount +
-		metrics.OrderByCount*2
-	structureCost := ceilingUnits(structurePoints, 8)
-	cost := max(1, durationCost, operationCost, rowCost, memoryCost, structureCost)
+	cost := max(1, durationCost, operationCost, rowCost, memoryCost)
 	return min(cost, queryRateLimit)
 }
 

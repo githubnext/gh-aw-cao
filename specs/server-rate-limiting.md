@@ -74,9 +74,8 @@ atomic Redis operation. The operation MUST:
 3. consume exactly one token for an ordinary allowed request;
 4. for a completed query, atomically consume a total cost derived from the
    greatest of started execution seconds, measured row operations plus Redis
-   rows, peak working rows, estimated peak working bytes, and a weighted
-   structural score; the cost is capped at the query bucket capacity and the
-   initial request token counts toward it;
+   rows, peak working rows, and estimated peak working bytes; the cost is capped
+   at the query bucket capacity and the initial request token counts toward it;
 5. preserve fractional tokens on ordinary one-token denials and drain available
    tokens on a denied additional query charge;
 6. retain fractional tokens;
@@ -96,15 +95,13 @@ The total cost of a completed query MUST be the greatest of:
 - execution duration rounded up to seconds;
 - measured row operations plus Redis rows, rounded up in units of 250,000;
 - peak working rows, rounded up in units of 100,000;
-- estimated peak working bytes, rounded up in units of 16 MiB; and
-- structural points rounded up in units of eight, where each query, union,
-  filter, selected field, and computed field costs one point, each join costs
-  four, each aggregate value costs one, each temporal series costs four, and
-  each ordered field costs two.
+- estimated peak working bytes, rounded up in units of 16 MiB.
 
 The result MUST be capped at the query bucket capacity. Telemetry and rate-limit
-accounting MUST contain only these aggregate numeric properties, never authored
-names, fields, predicates, literals, parameters, or result values.
+accounting MUST contain only aggregate numeric properties, including
+privacy-preserving structural counts used to observe and tune the separate
+structural guardrails. They MUST never contain authored names, fields,
+predicates, literals, parameters, or result values.
 
 ## 4. Enterprise proxy identity
 
