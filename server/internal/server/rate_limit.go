@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"net"
 	"net/http"
 	"strconv"
@@ -28,6 +29,13 @@ type requestRatePolicy struct {
 	capacity int
 	window   time.Duration
 }
+
+type rateLimitReservation struct {
+	key    string
+	policy requestRatePolicy
+}
+
+type rateLimitReservationContextKey struct{}
 
 func (a *App) rateLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
@@ -91,7 +99,50 @@ func (a *App) enforceRateLimit(
 		writeError(response, http.StatusTooManyRequests, "rate limit exceeded")
 		return
 	}
+	if policy.name == "query" {
+		request = request.WithContext(context.WithValue(
+			request.Context(),
+			rateLimitReservationContextKey{},
+			rateLimitReservation{key: key, policy: policy},
+		))
+	}
 	next.ServeHTTP(response, request)
+}
+
+func (a *App) chargeQueryRateLimit(
+	ctx context.Context,
+	response http.ResponseWriter,
+	cost int,
+) (int, error) {
+	reservation, ok := ctx.Value(rateLimitReservationContextKey{}).(rateLimitReservation)
+	if !ok || cost <= 1 {
+		return http.StatusOK, nil
+	}
+	chargeCtx, cancel := context.WithTimeout(ctx, rateLimitTimeout)
+	defer cancel()
+	result, err := a.store.TakeRateLimitTokens(
+		chargeCtx,
+		reservation.key,
+		reservation.policy.capacity,
+		reservation.policy.window,
+		cost-1,
+	)
+	if err != nil {
+		serverLog.Printf("rate limit unavailable policy=%s", reservation.policy.name)
+		return http.StatusServiceUnavailable, errors.New("request rate limiter is unavailable")
+	}
+	response.Header().Set("RateLimit-Remaining", strconv.FormatInt(result.Remaining, 10))
+	response.Header().Set("RateLimit-Reset", strconv.Itoa(cooldownSeconds(result.ResetAfter)))
+	if !result.Allowed {
+		response.Header().Set("Retry-After", strconv.Itoa(cooldownSeconds(result.RetryAfter)))
+		return http.StatusTooManyRequests, errors.New("rate limit exceeded")
+	}
+	return http.StatusOK, nil
+}
+
+func queryRateLimitCost(durationMS int64) int {
+	cost := max(1, int((durationMS+999)/1000))
+	return min(cost, queryRateLimit)
 }
 
 func requiresPreAuthRateLimit(path string) bool {

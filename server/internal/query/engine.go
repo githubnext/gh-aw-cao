@@ -276,6 +276,25 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 		}
 		result, used, fallback, err := ExecuteDefinition(residual, available, MaxOperations-operations)
 		operations += used
+		metrics.QueryCount++
+		metrics.UnionCount += len(definition.Union)
+		metrics.JoinCount += len(definition.Joins)
+		if definition.Filter != nil {
+			metrics.FilterCount++
+		}
+		metrics.ComputeCount += len(definition.Compute)
+		if definition.Aggregate != nil {
+			metrics.AggregateCount++
+			metrics.AggregateValueCount += len(definition.Aggregate.Values)
+		}
+		if definition.TemporalSeries != nil {
+			metrics.TemporalSeriesCount++
+		}
+		metrics.SelectCount += len(definition.Select)
+		metrics.OrderByCount += len(definition.OrderBy)
+		if definition.Limit != nil {
+			metrics.LimitCount++
+		}
 		metrics.FallbackOperations = append(metrics.FallbackOperations, fallback...)
 		if err != nil {
 			return nil, metrics, err
@@ -293,6 +312,10 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 			return nil, metrics, err
 		}
 		output[name] = sources[name]
+	}
+	metrics.Operations = operations
+	for _, source := range output {
+		metrics.OutputRows += len(source.Rows)
 	}
 	queryLog.Printf("completed outputs=%d operations=%d redis_commands=%d redis_rows=%d", len(output), operations, metrics.RedisCommands, metrics.RedisRows)
 	return output, metrics, nil

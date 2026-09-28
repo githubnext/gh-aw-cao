@@ -8,6 +8,19 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 )
 
+type testLoader struct {
+	sources map[string]model.Source
+}
+
+func (loader *testLoader) LoadSource(name string, _ *Definition) (model.Source, model.Metrics, error) {
+	source, ok := loader.sources[name]
+	if !ok {
+		return model.Source{}, model.Metrics{}, nil
+	}
+	source.Source = name
+	return source, model.Metrics{}, nil
+}
+
 func TestExecuteDefinitionPipeline(t *testing.T) {
 	limit := 2
 	definition := Definition{
@@ -56,6 +69,59 @@ func TestExecuteDefinitionPipeline(t *testing.T) {
 	models, ok := row["models"].([]string)
 	if !ok || strings.Join(models, ",") != "a,b" {
 		t.Fatalf("unexpected distinct values: %#v", row["models"])
+	}
+}
+
+func TestExecuteReportsPrivacyPreservingStructureAndPerformanceMetrics(t *testing.T) {
+	limit := 1
+	definition := Definition{
+		Name:  "private-query-name",
+		From:  "private-source-name",
+		Union: []string{"other-private-source"},
+		Joins: []Join{{
+			Source: "private-join-source",
+			Type:   "left",
+			On:     []JoinKey{{Left: "secret-left-field", Right: "secret-right-field"}},
+			Fields: []SelectedField{{Field: "secret-value", As: "private-alias"}},
+		}},
+		Filter:  &Filter{Predicates: []Predicate{{Field: "secret-field", Equals: "secret-value"}}},
+		Compute: []ComputedField{{As: "computed", Function: "literal", Args: []Argument{{Value: "private-literal"}}}},
+		Aggregate: &Aggregate{Values: []AggregateValue{{
+			Field: "secret-field", As: "count", Reducer: "count",
+		}}},
+		Select:  []SelectedField{{Field: "count"}},
+		OrderBy: []OrderField{{Field: "count"}},
+		Limit:   &limit,
+	}
+	loader := &testLoader{sources: map[string]model.Source{
+		"private-source-name":  {Rows: []model.Row{{"secret-field": "secret-value"}}},
+		"other-private-source": {Rows: []model.Row{}},
+		"private-join-source":  {Rows: []model.Row{}},
+	}}
+
+	sources, metrics, err := New(loader).Execute([]Definition{definition}, []string{definition.Name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sources[definition.Name].Rows) != 1 || metrics.Operations == 0 || metrics.OutputRows != 1 {
+		t.Fatalf("unexpected execution metrics: %#v", metrics)
+	}
+	if metrics.QueryCount != 1 || metrics.UnionCount != 1 || metrics.JoinCount != 1 ||
+		metrics.FilterCount != 1 || metrics.ComputeCount != 1 || metrics.AggregateCount != 1 ||
+		metrics.AggregateValueCount != 1 || metrics.SelectCount != 1 ||
+		metrics.OrderByCount != 1 || metrics.LimitCount != 1 {
+		t.Fatalf("unexpected structural metrics: %#v", metrics)
+	}
+	encoded, err := json.Marshal(metrics)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, private := range []string{
+		definition.Name, definition.From, "secret-field", "secret-value", "private-alias", "private-literal",
+	} {
+		if strings.Contains(string(encoded), private) {
+			t.Fatalf("metrics exposed private query content %q: %s", private, encoded)
+		}
 	}
 }
 

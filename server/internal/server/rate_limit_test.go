@@ -67,6 +67,48 @@ func TestRateLimitReturnsStandardHeaders(t *testing.T) {
 	}
 }
 
+func TestQueryRateLimitCostChargesLongRunningQueries(t *testing.T) {
+	for _, testCase := range []struct {
+		durationMS int64
+		want       int
+	}{
+		{0, 1},
+		{999, 1},
+		{1000, 1},
+		{1001, 2},
+		{5000, 5},
+		{60000, queryRateLimit},
+	} {
+		if got := queryRateLimitCost(testCase.durationMS); got != testCase.want {
+			t.Errorf("queryRateLimitCost(%d) = %d, want %d", testCase.durationMS, got, testCase.want)
+		}
+	}
+}
+
+func TestChargeQueryRateLimitUsesReservedSubjectAndAdditionalCost(t *testing.T) {
+	client := &serverRateLimitClient{result: []any{int64(1), int64(24), int64(0), int64(12000)}}
+	app := &App{store: redisx.NewStore(client, "test")}
+	reservation := rateLimitReservation{
+		key:    "query:opaque-subject",
+		policy: requestRatePolicy{name: "query", capacity: queryRateLimit, window: queryRateWindow},
+	}
+	ctx := context.WithValue(t.Context(), rateLimitReservationContextKey{}, reservation)
+	response := httptest.NewRecorder()
+
+	status, err := app.chargeQueryRateLimit(ctx, response, 7)
+	if err != nil || status != http.StatusOK {
+		t.Fatalf("weighted query charge failed: status=%d err=%v", status, err)
+	}
+	if len(client.command) != 7 || client.command[3] != "cao:test:rate-limit:query:opaque-subject" ||
+		client.command[6] != "6" {
+		t.Fatalf("unexpected weighted query charge: %#v", client.command)
+	}
+	if response.Header().Get("RateLimit-Remaining") != "24" ||
+		response.Header().Get("RateLimit-Reset") != "12" {
+		t.Fatalf("weighted query charge did not refresh headers: %#v", response.Header())
+	}
+}
+
 func TestRateLimitRejectsExhaustedBucketWithCooldown(t *testing.T) {
 	client := &serverRateLimitClient{result: []any{int64(0), int64(0), int64(1500), int64(60000)}}
 	app := &App{store: redisx.NewStore(client, "test")}

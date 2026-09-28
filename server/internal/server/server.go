@@ -710,11 +710,32 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 		fail(status, err.Error())
 		return
 	}
+	result.Metrics.RateLimitCost = queryRateLimitCost(result.Metrics.DurationMS)
+	if status, err := a.chargeQueryRateLimit(ctx, response, result.Metrics.RateLimitCost); err != nil {
+		fail(status, err.Error())
+		return
+	}
 	span.SetAttributes(
 		attribute.Int64("cao_dashboard.query.revision", result.Revision),
 		attribute.Int("cao_dashboard.query.source_count", len(input.SourceNames)),
 		attribute.Int("cao_dashboard.query.alias_count", len(input.Aliases)),
 		attribute.Int64("cao_dashboard.query.duration_ms", result.Metrics.DurationMS),
+		attribute.Int("cao_dashboard.query.operations", result.Metrics.Operations),
+		attribute.Int("cao_dashboard.query.output_rows", result.Metrics.OutputRows),
+		attribute.Int("cao_dashboard.query.rate_limit_cost", result.Metrics.RateLimitCost),
+		attribute.Int("cao_dashboard.query.redis_commands", result.Metrics.RedisCommands),
+		attribute.Int("cao_dashboard.query.redis_rows", result.Metrics.RedisRows),
+		attribute.Int("cao_dashboard.query.structure.query_count", result.Metrics.QueryCount),
+		attribute.Int("cao_dashboard.query.structure.union_count", result.Metrics.UnionCount),
+		attribute.Int("cao_dashboard.query.structure.join_count", result.Metrics.JoinCount),
+		attribute.Int("cao_dashboard.query.structure.filter_count", result.Metrics.FilterCount),
+		attribute.Int("cao_dashboard.query.structure.compute_count", result.Metrics.ComputeCount),
+		attribute.Int("cao_dashboard.query.structure.aggregate_count", result.Metrics.AggregateCount),
+		attribute.Int("cao_dashboard.query.structure.aggregate_value_count", result.Metrics.AggregateValueCount),
+		attribute.Int("cao_dashboard.query.structure.temporal_series_count", result.Metrics.TemporalSeriesCount),
+		attribute.Int("cao_dashboard.query.structure.select_count", result.Metrics.SelectCount),
+		attribute.Int("cao_dashboard.query.structure.order_by_count", result.Metrics.OrderByCount),
+		attribute.Int("cao_dashboard.query.structure.limit_count", result.Metrics.LimitCount),
 		attribute.Int("cao_dashboard.query.pushed_down_count", len(result.Metrics.PushedDown)),
 		attribute.Int("cao_dashboard.query.fallback_count", len(result.Metrics.FallbackOperations)),
 	)
