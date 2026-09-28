@@ -95,7 +95,7 @@ In the following steps, replace `FUNCTION-APP-NAME` with a globally unique name 
    Before building, verify that `.github/workflows/cao.json` contains
    `control-plane.web.host` with `target.module: "azure-functions"` and the
    selected Redis provider module. Hosted startup rejects a policy without this
-   declaration. The landing-page wizard can generate the composed policy.
+   declaration. Configure the host and Redis modules directly in the policy.
 
    ```bash
    npm --prefix dashboard/site ci

@@ -24,6 +24,7 @@ export default defineConfig({
   redirects: {
     "/control-plane-authentication": "/gh-aw-cao/authentication/",
     "/getting-started": "/gh-aw-cao/setup-quickstarts/",
+    "/setup": "/gh-aw-cao/setup-quickstarts/",
   },
   srcDir: "./docs",
   markdown: {
@@ -253,7 +254,6 @@ export default defineConfig({
           label: "Get started",
           items: [
             { label: "Set up the control plane", link: "/setup-quickstarts/" },
-            { label: "Setup wizard", link: "/setup/" },
             { label: "Add a campaign", link: "/catalog/" },
             { label: "CAO commands", link: "/cao-cli/" },
             { label: "Authentication", link: "/authentication/" },

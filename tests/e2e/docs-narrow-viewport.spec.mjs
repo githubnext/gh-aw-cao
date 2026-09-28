@@ -31,7 +31,6 @@ test("Get started navigation follows the user journey without duplicate authenti
   const getStartedGroup = page.locator('nav[aria-label="Main"] summary').filter({ hasText: /^Get started$/ }).locator("..");
   await expect(getStartedGroup.getByRole("link")).toHaveText([
     "Set up the control plane",
-    "Setup wizard",
     "Add a campaign",
     "CAO commands",
     "Authentication",
@@ -50,74 +49,10 @@ test("legacy authentication profile route redirects to the consolidated guide", 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Authentication");
 });
 
-test("setup wizard presents hosting choices as an immersive card experience", async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 });
+test("removed setup wizard route redirects to the command quickstart", async ({ page }) => {
   expect((await page.goto("setup/"))?.ok()).toBe(true);
-
-  await expect(page).toHaveTitle("Setup wizard | Central Agentic Ops");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Plan a control plane and first campaign in four steps");
-  await expect(page.locator("select")).toHaveCount(0);
-  await expect(page.getByRole("radiogroup", { name: "App server target" })).toBeVisible();
-  await expect(page.getByRole("radiogroup", { name: "Redis provider" })).toBeVisible();
-});
-
-// Matches the lower bound of the wizard's `--wizard-gutter: clamp(1rem, 4vw, 2rem)` token.
-const MIN_WIZARD_GUTTER_PX = 16;
-
-test("setup wizard renders standalone without site chrome and keeps mobile gutters", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  expect((await page.goto("setup/"))?.ok()).toBe(true);
-
-  await expect(page.locator("header.header")).toHaveCount(0);
-  await expect(page.locator('nav[aria-label="Main"]')).toHaveCount(0);
-  await expect(page.locator(".content-panel")).toHaveCount(0);
-
-  const gutters = await page.locator(".wizard-eyebrow, .wizard-toggle-title, .wizard-step").evaluateAll((elements) =>
-    elements.map((element) => {
-      const rect = element.getBoundingClientRect();
-      return { left: rect.left, right: window.innerWidth - rect.right };
-    }),
-  );
-  expect(gutters.length).toBeGreaterThan(0);
-  expect(gutters.every(({ left, right }) => left >= MIN_WIZARD_GUTTER_PX && right >= MIN_WIZARD_GUTTER_PX)).toBe(true);
-});
-
-for (const { colorScheme, canvas, foreground, accent } of [
-  { colorScheme: "light", canvas: "rgb(247, 250, 248)", foreground: "rgb(31, 35, 40)", accent: "rgb(31, 136, 61)" },
-  { colorScheme: "dark", canvas: "rgb(3, 7, 5)", foreground: "rgb(240, 246, 252)", accent: "rgb(31, 136, 61)" },
-]) {
-  test(`setup wizard follows the landing page visual language in ${colorScheme} mode`, async ({ page }) => {
-    await page.addInitScript(() => localStorage.removeItem("starlight-theme"));
-    await page.emulateMedia({ colorScheme });
-    await page.setViewportSize({ width: 1280, height: 900 });
-    expect((await page.goto("setup/"))?.ok()).toBe(true);
-
-    const canvasStyles = await page.locator("body:has(.ops-wizard-shell)").evaluate((element) => {
-      const styles = getComputedStyle(element);
-      return { backgroundColor: styles.backgroundColor, backgroundImage: styles.backgroundImage };
-    });
-    expect(canvasStyles.backgroundColor).toBe(canvas);
-    expect(canvasStyles.backgroundImage).toContain("linear-gradient");
-
-    const titleStyles = await page.locator(".wizard-toggle-title").evaluate((element) => {
-      const styles = getComputedStyle(element);
-      return { color: styles.color, fontFamily: styles.fontFamily, fontWeight: styles.fontWeight };
-    });
-    expect(titleStyles.color).toBe(foreground);
-    expect(titleStyles.fontFamily).toContain("ui-sans-serif");
-    expect(titleStyles.fontWeight).toBe("500");
-
-    await expect(page.locator(".wizard-copy-button")).toHaveCSS("background-color", accent);
-    await expect(page.locator(".wizard-step").first()).toHaveCSS("border-radius", "24px");
-  });
-}
-
-test("landing page ends with a setup wizard launch button", async ({ page }) => {
-  expect((await page.goto(""))?.ok()).toBe(true);
-
-  const launchButton = page.getByRole("link", { name: "Launch setup wizard" });
-  await expect(launchButton).toBeVisible();
-  await expect(launchButton).toHaveAttribute("href", "/gh-aw-cao/setup/");
+  await expect(page).toHaveURL(/\/setup-quickstarts\/$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Set Up CAO");
 });
 
 test("landing page exposes mobile navigation and header controls", async ({ page }) => {
@@ -132,7 +67,7 @@ test("landing page exposes mobile navigation and header controls", async ({ page
   await expect(menu.getByRole("navigation", { name: "Primary navigation menu" })).toBeHidden();
   await menu.locator("summary").click();
   await expect(menu).toHaveAttribute("open", "");
-  await expect(menu.getByRole("link")).toHaveText(["Setup", "Campaigns", "Blog"]);
+  await expect(menu.getByRole("link")).toHaveText(["Campaigns", "Blog"]);
 });
 
 for (const colorScheme of ["light", "dark"]) {
