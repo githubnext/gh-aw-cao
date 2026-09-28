@@ -131,6 +131,7 @@ jobs:
           REPORT_PAYLOAD_HASHES: ${{ runner.temp }}/cao-activity/payload-hashes.json
         with:
           script: |
+            const path = require('path')
             await exec.exec(process.execPath, [
               'activity/cao.mjs',
               'hash-payloads',
