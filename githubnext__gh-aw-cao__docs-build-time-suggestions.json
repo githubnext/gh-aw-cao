@@ -1,6 +1,6 @@
 {
-  "source_sha": "82c7b544086f471d9d068f9c4f9c3e741f13858c",
-  "next_category": "dependency installation and caching",
+  "source_sha": "7d46073104fc2f30406a504d606e38a0d7b26a92",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
       "evaluated_at": "2026-09-28T11:32:00Z",
@@ -312,6 +312,28 @@
         36434321334
       ],
       "outcome": "no-op: evaluated scheduling, concurrency, and avoidable rebuilds across 13 successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days, disclosing 7 excluded completed docs runs (5 skipped workflow_run runs and 2 action_required workflow_run runs). Evidence window 2026-09-28T14:46:28Z to 2026-09-28T16:30:38Z. docs.yml workflow execution median was 53.0s (p90 88.0s), queue median 4.0s (p90 4.8s), build median 42.0s (p90 48.0s), and deploy median 20.0s (p90 34.2s on 5 publishing runs). Trusted step metadata showed Restore node_modules median 5.0s (p90 7.0s), Build documentation median 12.0s (p90 14.0s), Restore cached CAO Dashboard median 1.0s (p90 2.0s), and Upload Pages artifact median 4.0s (p90 4.0s); Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on all 13 successful runs, confirming stable cache hits from trusted metadata. Trusted scheduling evidence also showed docs.yml already avoided two scheduled rebuilds at runs 36445157576 and 36448066271 by using the schedule-freshness gate. Comparable successful cao-dashboard.yml runs 36434321334, 36439201360, 36442687635, and 36450622954 showed workflow median 58.0s, build median 36.5s, cache-job median 9.0s, and repeated cache-job overhead from downloading the just-built dashboard artifact, deleting the previous constant central-agentic-ops-dashboard cache entry, and saving the cache again. Logs for current comparable dashboard run 36450622954 confirmed the build copied inventory-sources.json (1.1 MiB), gh-aw-logs.sqlite (151.3 MiB), and 45 activity shards (91.1 MiB), uploaded a 15,336,440-byte artifact, then the cache job downloaded that artifact and rewrote a 12,856,630-byte cache under the same constant key. However, this underlying improvement is already represented by the previously recorded reusable-dashboard-generation suggestion fingerprint 691cf332ab4dfe9aa28b and there is no open issue for it yet; no new non-duplicate scheduling-specific recommendation met the threshold in this cycle."
+    },
+    {
+      "evaluated_at": "2026-09-28T16:59:00Z",
+      "worker_run_id": 36454374489,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        36454201749,
+        36454143120,
+        36453874894,
+        36453192543,
+        36451378880,
+        36450770367,
+        36448066271,
+        36446561617,
+        36454441270,
+        36453990175,
+        36453753793,
+        36450622954,
+        36442687635
+      ],
+      "outcome": "suggestion: docs.yml successful runs in the bounded sample restored the central-agentic-ops-dashboard cache on every publishing build and never needed the fallback artifact download path, while comparable successful cao-dashboard.yml runs still spent a separate cache job downloading the dashboard artifact and rewriting the same constant Actions cache key. Across 8 successful docs.yml runs from 2026-09-28T15:49:56Z to 2026-09-28T16:54:30Z, workflow execution median was 47.0s (p90 84.8s), queue median 0.0s (p90 0.0s), build median 40.5s (p90 46.0s), deploy median 11.0s (p90 18.2s on publishing runs), Restore cached CAO Dashboard median 1.3s, and Build documentation median about 12.4s. In the latest 5 comparable successful cao-dashboard.yml runs, build median was 42.0s (p90 45.0s) and the extra cache job added median 10.0s (p90 10.0s) after upload. Trusted dashboard logs on runs 36454441270, 36453990175, 36453753793, and 36450622954 showed the build already restored activity data from cache, then copied inventory-sources.json (1.1 MiB), gh-aw-logs.sqlite (151.3-152.3 MiB), and 45 activity shards (91.1-91.7 MiB) before uploading a 15.4 MB dashboard artifact. The cache job then re-downloaded that same artifact, deleted the previous central-agentic-ops-dashboard cache entry, and saved a new 12.9 MB cache with the identical constant key. Because docs.yml consumes only the latest successful dashboard artifact and already has a trusted artifact-download fallback path, removing the cache rewrite and restoring directly from the latest successful dashboard artifact would eliminate roughly 10s from every successful CAO Dashboard run, about 24% of the current 42s dashboard-build median, without weakening docs freshness or Pages safety.",
+      "suggestion_fingerprint": "fea7f9669841d948147b"
     }
   ]
 }
