@@ -1,6 +1,6 @@
 {
-  "source_sha": "ad8f9d846f3108e2e134cf1c3cac690ecac962fe",
-  "next_category": "artifact transfer and Pages packaging",
+  "source_sha": "ae2fed7cc23a0ba2c5de88f1f0b40c7a933f8f99",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
       "evaluated_at": "2026-09-28T12:05:00Z",
@@ -555,6 +555,27 @@
         36478523879
       ],
       "outcome": "no-op: evaluated reusable dashboard generation across 17 comparable successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days, disclosing 3 excluded successful schedule runs that executed only schedule-freshness and skipped build because docs and dashboard were already current; cancelled runs were excluded. Evidence window 2026-09-28T19:21:01Z to 2026-09-28T21:25:37Z. docs.yml queue-to-build-start median was 13.0s (p90 45.0s), workflow execution median 64.0s (p90 107.0s), build median 41.0s (p90 44.0s), deploy median 11.0s (p90 47.0s on 7 publishing runs), and schedule-freshness median 7.0s (p90 10.0s on 7 scheduled build runs). Trusted docs step metadata showed Restore node_modules median about 5s, Build documentation median 12s, Restore cached CAO Dashboard median 2s, and Upload Pages artifact median 4s; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on every comparable successful docs build, confirming stable dashboard cache hits from trusted Actions metadata. Comparable successful cao-dashboard.yml runs 36485810867, 36485576804, 36483005283, 36481614053, and 36478523879 showed dashboard build median 43.0s (p90 48.0s) and cache-job median 9.0s (p90 10.0s). Trusted dashboard metadata showed Install dashboard build dependencies 7-10s, Upgrade fallback activity data 11-16s, Assemble Dashboard Language site 2-3s, Upload dashboard artifact 3-4s, then a separate cache job re-downloaded that artifact for 2-4s, deleted the previous constant cache entry in about 1s, and saved the cache in 1-2s. This remains the same underlying optimization already represented by the existing open issue subject Stop rewriting the CAO Dashboard artifact into a constant Actions cache, and the source and timing evidence have not materially changed enough to justify a duplicate issue.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-09-28T21:38:30Z",
+      "worker_run_id": 36487208525,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        36486913427,
+        36486882491,
+        36486702204,
+        36485926891,
+        36485707720,
+        36485693011,
+        36483313782,
+        36483112838,
+        36485810867,
+        36485576804,
+        36483005283,
+        36481614053
+      ],
+      "outcome": "no-op: evaluated artifact transfer and Pages packaging across 8 comparable successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days, disclosing 4 excluded completed docs runs in the bounded sample (3 successful scheduled freshness-only runs that skipped build because docs and dashboard were current, and 1 cancelled scheduled run). Evidence window 2026-09-28T20:58:27Z to 2026-09-28T21:34:50Z. docs.yml workflow execution median was 59.0s (p90 86.4s), queue-to-build-start median 10.0s (p90 13.9s on runs with a build job), build median 39.5s (p90 42.6s), and deploy median 0.0s (p90 0.0s because all comparable successful runs skipped deploy after push or workflow_run gating). Trusted docs step metadata showed Restore node_modules median 5.0s, Build documentation median 13.0s, Restore cached CAO Dashboard median 1.0s, and Upload Pages artifact median 4.0s; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on every comparable successful docs build, confirming stable node_modules and dashboard cache hits without fallback artifact download. Comparable successful cao-dashboard.yml runs 36485810867, 36485576804, 36483005283, and 36481614053 showed dashboard build median 46.0s (p90 51.6s), cache-job median 9.0s (p90 9.7s), Download dashboard artifact median 2.0s, Delete previous dashboard cache median 1.0s, and Save dashboard cache median 1.0s. Because the only evidence-backed improvement in this area remains the already recorded recommendation to stop rewriting the CAO Dashboard artifact into a constant Actions cache and no canonical open issue with that subject is currently present in the sampled open-issue inventory, no new non-duplicate recommendation was emitted in this cycle.",
       "suggestion_fingerprint": null
     }
   ]
