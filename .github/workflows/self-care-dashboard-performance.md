@@ -64,7 +64,9 @@ permissions:
   copilot-requests: write
   pull-requests: read
 
-engine: copilot
+engine:
+  id: pi
+  model: copilot/gpt-5.4
 strict: true
 max-ai-credits: 400
 max-daily-ai-credits: -1

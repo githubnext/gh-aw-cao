@@ -252,6 +252,7 @@ test("SelfCare dashboard performance worker selects one highest-ROI small win", 
   const liveGuard = "if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}";
   assert.match(source, /^name: "SelfCare \/ Dashboard Performance"$/m);
   assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: dashboard-performance/);
+  assert.match(source, /engine:\n\s+id: pi\n\s+model: copilot\/gpt-5\.4/);
   assert.match(source, /safe_output_mode` is `live`/);
   const noopGate = stepBlock(source, "Emit noop for unsupported dashboard performance dispatch");
   assert.match(
