@@ -169,7 +169,7 @@ test("landing page explains and illustrates campaign dispatch", () => {
   assert.match(illustration, /class="progress-dot"/);
   assert.match(illustration, /stroke-dasharray: 22 18/);
   assert.match(illustration, /M8 0a8 8 0 1 1 0 16/);
-  assert.match(illustration, /repository: "github\/copilot-cli"/);
+  assert.match(illustration, /repository: "github\/gh-aw-firewall"/);
   assert.match(illustration, /repository: "githubnext\/gh-aw-cao"/);
   assert.match(illustration, /repository: "githubnext\/agentics"/);
   assert.match(illustration, /failed: true/);
