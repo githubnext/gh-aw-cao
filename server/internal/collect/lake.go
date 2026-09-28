@@ -84,12 +84,30 @@ func (l Lake) Prepare() error {
 			return fmt.Errorf("create evidence lake directory: %w", err)
 		}
 	}
+	seeded, err := l.seedInventoryIfMissing()
+	if err != nil {
+		return err
+	}
+	lakeLog.Printf("prepared evidence lake seeded_inventory=%t", seeded)
+	return nil
+}
+
+// seedInventoryIfMissing writes an empty inventory document only when the
+// path does not yet exist, so a projection that already populated the
+// inventory is never overwritten by a later Prepare call. It reports whether
+// it wrote the seed, which Prepare logs to distinguish first-time lake
+// creation from a repeat call against an already-populated lake. A stat
+// error other than "not exist" is treated the same as an existing file: the
+// seed is skipped rather than risk overwriting content Prepare cannot
+// actually confirm is absent.
+func (l Lake) seedInventoryIfMissing() (bool, error) {
 	if _, err := os.Stat(l.InventoryPath()); errors.Is(err, os.ErrNotExist) {
 		if err := WriteFileAtomic(l.InventoryPath(), []byte("{}\n")); err != nil {
-			return err
+			return false, err
 		}
+		return true, nil
 	}
-	return nil
+	return false, nil
 }
 
 // Forget deletes every shard collected for repository.

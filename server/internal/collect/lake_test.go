@@ -52,6 +52,48 @@ func TestLakePrepareCreatesLayoutAndSeedsInventory(t *testing.T) {
 	}
 }
 
+func TestSeedInventoryIfMissingWritesEmptyDocumentAndReportsTrue(t *testing.T) {
+	lake := Lake{Directory: t.TempDir()}
+	seeded, err := lake.seedInventoryIfMissing()
+	if err != nil {
+		t.Fatalf("seed inventory: %v", err)
+	}
+	if !seeded {
+		t.Fatal("expected seeded=true when the inventory did not exist")
+	}
+	data, err := os.ReadFile(lake.InventoryPath())
+	if err != nil {
+		t.Fatalf("read seeded inventory: %v", err)
+	}
+	if string(data) != "{}\n" {
+		t.Fatalf("unexpected seeded inventory content: %q", data)
+	}
+}
+
+func TestSeedInventoryIfMissingSkipsExistingInventoryAndReportsFalse(t *testing.T) {
+	lake := Lake{Directory: t.TempDir()}
+	if err := os.MkdirAll(lake.Directory, 0o750); err != nil {
+		t.Fatalf("create lake directory: %v", err)
+	}
+	if err := os.WriteFile(lake.InventoryPath(), []byte(`{"sources":1}`), 0o600); err != nil {
+		t.Fatalf("seed populated inventory: %v", err)
+	}
+	seeded, err := lake.seedInventoryIfMissing()
+	if err != nil {
+		t.Fatalf("seed inventory: %v", err)
+	}
+	if seeded {
+		t.Fatal("expected seeded=false when the inventory already existed")
+	}
+	data, err := os.ReadFile(lake.InventoryPath())
+	if err != nil {
+		t.Fatalf("read inventory: %v", err)
+	}
+	if string(data) != `{"sources":1}` {
+		t.Fatalf("seedInventoryIfMissing overwrote a populated inventory: %q", data)
+	}
+}
+
 func TestLakeForgetRemovesOnlyMatchingShardsAcrossDirectories(t *testing.T) {
 	lake := Lake{Directory: t.TempDir()}
 	if err := lake.Prepare(); err != nil {
