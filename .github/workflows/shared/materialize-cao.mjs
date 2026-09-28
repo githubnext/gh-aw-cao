@@ -193,7 +193,11 @@ export async function materializeCao(campaign = 'root', repositoryRoot = process
         const archive = path.join(temporaryDirectory, archiveName);
         mkdirSync(extractionDirectory);
         await downloadArchive(plan.revision, archive);
-        const tar = spawnSync('tar', ['-xzf', `../${archiveName}`], {
+        const tar = spawnSync('tar', [
+          ...(process.platform === 'win32' ? ['--force-local'] : []),
+          '-xzf',
+          `../${archiveName}`,
+        ], {
           cwd: extractionDirectory,
           encoding: 'utf8',
         });
