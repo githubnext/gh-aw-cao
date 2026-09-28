@@ -501,12 +501,6 @@
             "field": "publisher",
             "title": "By"
           }
-        ],
-        "actions": [
-          {
-            "action": "add-marketplace-package",
-            "context": ["package-source"]
-          }
         ]
       },
       {

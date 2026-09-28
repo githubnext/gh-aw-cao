@@ -266,7 +266,7 @@ test('marketplace page renders canonical package cards after ingestion', async (
   await expect(marketplace).toContainText('Dependabot');
   await expect(packageCard).toContainText('By');
   await expect(packageCard).toContainText('githubnext');
-  await expect(packageCard.getByRole('button', { name: 'Add' })).toBeVisible();
+  await expect(packageCard.getByRole('button', { name: 'Add' })).toHaveCount(0);
   await expect(marketplace).not.toContainText('Unable to load this page.');
 
   await packageCard.getByRole('link', { name: 'Dependabot' }).click();

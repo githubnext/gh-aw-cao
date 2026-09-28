@@ -417,7 +417,7 @@ The ingestion sequence is:
 3. Read compacted run-linked record shards.
 4. Load `inventory-sources.json` as already-logical published sources.
 5. Project canonical Campaign, Repository, Workflow, Run, Domain, Tool, Audit,
-   and Issue records through
+   Issue, and Operational Value records through
    `dashboard/site/src/data/queries/database.json`.
 6. Stage every logical source, its metadata, diagnostics, and row set under a
    new immutable generation.
@@ -468,9 +468,14 @@ Collection separates three concerns that fail differently:
    runs, writing into the evidence lake. One repository is collected at a time,
    and GitHub budget is reserved per installation before each collection.
 3. **Projection.** Collected evidence is projected by the existing
-   `internal/ingest` package. Projection is coalesced behind a dirty flag and a
-   minimum interval, so projection cost follows the collection rate rather than
-   the event rate.
+   `internal/ingest` package. Before finalizing the payload manifest, projection
+   builds a temporary Activity database and runs the native Go
+   operational-value orchestrator, whose output is equivalence-tested against
+   `cao operational-value`. Campaign adapters remain shared JavaScript modules,
+   invoked with one installation-scoped token per repository. Operational-value
+   failure remains best-effort and does not block newer Activity evidence.
+   Projection is coalesced behind a dirty flag and a minimum interval, so
+   projection cost follows the collection rate rather than the event rate.
 
 The evidence lake is laid out byte-compatibly with a snapshot published by the
 Activity workflow:

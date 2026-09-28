@@ -34,9 +34,9 @@ describe('entity card templates', () => {
       'icon-field': 'package-icon',
       title: { field: 'package-name' },
       subtitle: { field: 'package-description' },
-      details: [{ field: 'publisher', title: 'By' }],
-      actions: [{ action: 'add-marketplace-package', context: ['package-source'] }]
+      details: [{ field: 'publisher', title: 'By' }]
     });
+    expect(templates['marketplace-package-summary'].actions).toBeUndefined();
     expect(templates['marketplace-package']).toMatchObject({
       icon: 'archive',
       'icon-field': 'package-icon',
