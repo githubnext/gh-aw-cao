@@ -32,7 +32,7 @@ export const USAGE = `Usage:
   cao init
   cao setup
   cao setup-auth github-app [--repo OWNER/REPO] [APP_SETUP_OPTIONS...]
-  cao setup-auth enterprise-app --repo OWNER/REPO --read-client-id ID --write-client-id ID [--dry-run]
+  cao setup-auth enterprise-app --repo OWNER/REPO --read-client-id ID --write-client-id ID [--write-repository OWNER/REPO...] [--policy PATH] [--dry-run]
   cao setup-auth token --repo OWNER/REPO [--write-repository OWNER/REPO...] [--policy PATH] [--expires-in DAYS] [--dry-run] [--no-open] --acknowledge-token-risks
   cao add CAMPAIGN [GH_AW_ADD_OPTIONS...]
   cao update [--pre-releases] [GH_AW_UPDATE_OPTIONS...]

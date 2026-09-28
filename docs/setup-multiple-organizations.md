@@ -53,15 +53,24 @@ Enterprise ownership alone grants no repository access.
   --repo "$CONTROL_REPO" \
   --read-client-id "<read-app-client-id>" \
   --write-client-id "<write-app-client-id>" \
+  --policy .github/workflows/cao.json \
+  --write-repository "$CONTROL_REPO" \
   --dry-run
 
 ./cao.sh setup-auth enterprise-app \
   --repo "$CONTROL_REPO" \
   --read-client-id "<read-app-client-id>" \
-  --write-client-id "<write-app-client-id>"
+  --write-client-id "<write-app-client-id>" \
+  --policy .github/workflows/cao.json \
+  --write-repository "$CONTROL_REPO"
 ```
 
 Paste private keys only into the secure prompts.
+
+The read App must cover the control repository and every exact repository in
+the policy. The write App must cover the control repository for review output;
+repeat `--write-repository` only for additional approved output repositories.
+Ensure every dispatched worker admits the write App's `APP-SLUG[bot]` login.
 
 ## Validate and Commit
 
@@ -80,7 +89,10 @@ git commit -m "Install Central Agentic Ops control plane"
 git push --set-upstream origin HEAD
 ```
 
-If an App installation or exact repository selection is missing, correct the installation instead of widening policy.
+If an App installation or exact repository selection is missing, correct the
+installation instead of widening policy. Before live activation, complete the
+current-revision dashboard, review, and live checks in
+[Validate before activation](control-plane-authentication.md#validate-before-activation).
 
 ## Next: Add a Campaign
 

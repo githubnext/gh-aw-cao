@@ -57,7 +57,9 @@ Grant only the permissions that your installed campaigns need. For more informat
      ./cao.sh setup-auth enterprise-app \
        --repo OWNER/CONTROL-REPOSITORY \
        --read-client-id READ-APP-CLIENT-ID \
-       --write-client-id WRITE-APP-CLIENT-ID
+       --write-client-id WRITE-APP-CLIENT-ID \
+       --policy .github/workflows/cao.json \
+       --write-repository OWNER/CONTROL-REPOSITORY
      ```
 
    Replace the placeholders as follows:
@@ -68,6 +70,13 @@ Grant only the permissions that your installed campaigns need. For more informat
 1. For every installation, select **Only select repositories**.
    - Install the read app on the control repository and on every repository that `.github/workflows/cao.json` allows.
    - Install the write app only on approved safe-output repositories. By default, that's only the control repository.
+   - On a data-residency host, setup fails closed unless the CLI credential can
+     read and verify the exact selected repository membership. Refresh it with
+     `read:user` access rather than relying on manual verification.
+1. Add the write App's `APP-SLUG[bot]` login to the `on.bots` allowlist of
+   every worker workflow that the App may dispatch, then recompile those
+   workflow sources. A run whose pre-activation job succeeds while activation
+   is skipped has not executed the worker.
 1. Confirm that the helper stored the client IDs as variables and the private keys as secrets. For the names, see [Configuration reference](#configuration-reference). The helper passes private keys to `gh secret set` through standard input, so they are never written to disk or passed as command arguments.
 1. Delete any `GH_AW_GITHUB_READ_PAT`, `GH_AW_GITHUB_WRITE_PAT`, or `GH_AW_GITHUB_TOKEN` secrets. If you leave them in place and an app is misconfigured, CAO silently uses the PAT instead.
 1. Run the CAO Activity workflow, then the CAO Dashboard workflow. For the remaining steps, see [Deploying the dashboard](deployment-actions.md#deploying-the-dashboard).
