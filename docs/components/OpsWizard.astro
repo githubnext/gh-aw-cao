@@ -1004,6 +1004,250 @@ const hostTargets = [
       cursor: pointer;
     }
 
+    :global(.content-panel:has(.ops-wizard-shell)) {
+      --wizard-page-bg: #f7faf8;
+      --wizard-grid-minor: rgba(26, 127, 55, 0.055);
+      --wizard-grid-major: rgba(26, 127, 55, 0.13);
+      --wizard-page-glow: rgba(26, 127, 55, 0.12);
+      padding-inline: 0;
+      background-color: var(--wizard-page-bg);
+      background-image:
+        radial-gradient(circle at 76% 7%, var(--wizard-page-glow), transparent 31rem),
+        linear-gradient(var(--wizard-grid-major) 1px, transparent 1px),
+        linear-gradient(90deg, var(--wizard-grid-major) 1px, transparent 1px),
+        linear-gradient(var(--wizard-grid-minor) 1px, transparent 1px),
+        linear-gradient(90deg, var(--wizard-grid-minor) 1px, transparent 1px);
+      background-position: center top;
+      background-size: auto, 160px 160px, 160px 160px, 32px 32px, 32px 32px;
+    }
+
+    :global(:root[data-theme="dark"] .content-panel:has(.ops-wizard-shell)) {
+      --wizard-page-bg: #030705;
+      --wizard-grid-minor: rgba(63, 185, 80, 0.09);
+      --wizard-grid-major: rgba(63, 185, 80, 0.22);
+      --wizard-page-glow: rgba(63, 185, 80, 0.22);
+    }
+
+    .ops-wizard {
+      --wizard-accent: #1f883d;
+      --wizard-accent-hover: #1a7f37;
+      --wizard-accent-soft: rgba(26, 127, 55, 0.1);
+      --wizard-fg: #1f2328;
+      --wizard-muted: #4d5560;
+      --wizard-subtle: #59636e;
+      --wizard-panel: rgba(255, 255, 255, 0.84);
+      --wizard-panel-strong: rgba(255, 255, 255, 0.94);
+      --wizard-border: rgba(31, 35, 40, 0.17);
+      --wizard-border-strong: #8c959f;
+      --wizard-shadow: rgba(31, 35, 40, 0.1);
+      --wizard-code-bg: #f6f8fa;
+      min-height: calc(100svh - var(--sl-nav-height));
+      background: transparent;
+      color: var(--wizard-fg);
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    :global(:root[data-theme="dark"]) .ops-wizard {
+      --wizard-accent: #3fb950;
+      --wizard-accent-hover: #56d364;
+      --wizard-accent-soft: rgba(63, 185, 80, 0.14);
+      --wizard-fg: #f0f6fc;
+      --wizard-muted: #b1bac4;
+      --wizard-subtle: #8c959f;
+      --wizard-panel: rgba(13, 17, 23, 0.84);
+      --wizard-panel-strong: rgba(13, 17, 23, 0.94);
+      --wizard-border: rgba(240, 246, 252, 0.15);
+      --wizard-border-strong: #57606a;
+      --wizard-shadow: rgba(0, 0, 0, 0.28);
+      --wizard-code-bg: #0d1117;
+    }
+
+    .ops-wizard::before,
+    .ops-wizard::after {
+      display: none;
+    }
+
+    .wizard-header {
+      padding-block: clamp(3rem, 8vh, 5rem) clamp(2rem, 5vh, 3rem);
+    }
+
+    .wizard-toggle-title {
+      max-width: 18ch;
+      color: var(--wizard-fg);
+      font-size: clamp(2.75rem, 5vw, 3.5rem);
+      font-weight: 500;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+    }
+
+    .wizard-toggle-lede,
+    .wizard-lede,
+    .option-description,
+    .choice-label,
+    label[for],
+    .run-hint,
+    .copy-status,
+    .prompt-summary,
+    .copy-dialog-card p,
+    .copy-dialog-steps {
+      color: var(--wizard-muted);
+    }
+
+    .wizard-eyebrow {
+      border: 0;
+      border-radius: 0;
+      background: none;
+      padding: 0;
+      color: var(--wizard-subtle);
+      font-family: "Mona Sans Mono", monospace;
+      font-size: 0.875rem;
+      font-weight: 600;
+      letter-spacing: 0.015em;
+      text-transform: none;
+    }
+
+    .wizard-badges li {
+      border-color: var(--wizard-border);
+      background: var(--wizard-panel);
+      color: var(--wizard-subtle);
+    }
+
+    .wizard-step {
+      border-color: var(--wizard-border);
+      border-radius: 1.5rem;
+      background: var(--wizard-panel);
+      box-shadow: 0 1.5rem 4rem var(--wizard-shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    .wizard-step legend,
+    .option-name {
+      color: var(--wizard-fg);
+    }
+
+    .step-number {
+      border-radius: 0.35rem;
+      background: var(--wizard-accent);
+      color: #fff;
+      box-shadow: 0 0.5rem 1.25rem color-mix(in srgb, var(--wizard-accent) 24%, transparent);
+    }
+
+    .option-card,
+    .option-card:has(input:disabled):hover {
+      border-color: var(--wizard-border);
+      border-radius: 0.55rem;
+      background: var(--wizard-panel-strong);
+      box-shadow: none;
+    }
+
+    .option-card:hover,
+    .option-card:has(input:checked) {
+      border-color: var(--wizard-accent);
+      background: color-mix(in srgb, var(--wizard-accent) 8%, var(--wizard-panel-strong));
+      box-shadow: 0 0.75rem 1.5rem var(--wizard-shadow);
+    }
+
+    .option-card:focus-within,
+    .ops-wizard input[type="text"]:focus-visible {
+      border-color: var(--wizard-accent);
+      outline-color: var(--wizard-accent);
+    }
+
+    .option-card input {
+      accent-color: var(--wizard-accent);
+    }
+
+    .option-check {
+      background: var(--wizard-accent);
+    }
+
+    .option-check::after {
+      border-color: #fff;
+    }
+
+    .ops-wizard input[type="text"] {
+      border-color: var(--wizard-border);
+      border-radius: 0.375rem;
+      background: var(--wizard-panel-strong);
+      color: var(--wizard-fg);
+    }
+
+    .prompt-panel {
+      border-color: var(--wizard-border-strong);
+      border-radius: 0.875rem;
+      background: var(--wizard-code-bg);
+      box-shadow: 0 1rem 2.5rem var(--wizard-shadow);
+    }
+
+    .prompt-toolbar {
+      border-color: var(--wizard-border);
+      background: color-mix(in srgb, var(--wizard-accent) 8%, var(--wizard-code-bg));
+    }
+
+    .prompt-preview-label {
+      border-color: var(--wizard-border);
+      color: var(--wizard-subtle);
+    }
+
+    .prompt-panel pre {
+      color: var(--wizard-fg);
+    }
+
+    .wizard-copy-button,
+    .copy-dialog-close {
+      border-color: var(--wizard-accent);
+      border-radius: 0.5rem;
+      background: var(--wizard-accent);
+      color: #fff;
+      box-shadow: 0 0.75rem 2rem color-mix(in srgb, var(--wizard-accent) 22%, transparent);
+    }
+
+    .wizard-copy-button:hover,
+    .wizard-copy-button:focus-visible,
+    .copy-dialog-close:hover,
+    .copy-dialog-close:focus-visible {
+      border-color: var(--wizard-accent-hover);
+      background: var(--wizard-accent-hover);
+      box-shadow: 0 1rem 2.5rem color-mix(in srgb, var(--wizard-accent) 28%, transparent);
+      filter: none;
+    }
+
+    .wizard-copy-button.is-copied {
+      border-color: var(--wizard-accent);
+      background: var(--wizard-accent);
+    }
+
+    .copy-dialog {
+      background:
+        radial-gradient(circle at 50% 10%, var(--wizard-accent-soft), transparent 34rem),
+        var(--wizard-page-bg);
+      color: var(--wizard-fg);
+    }
+
+    .copy-dialog::backdrop {
+      background: color-mix(in srgb, #000 70%, transparent);
+    }
+
+    .copy-dialog-card::before {
+      background: var(--wizard-accent);
+      box-shadow: 0 0.5rem 1.5rem color-mix(in srgb, var(--wizard-accent) 35%, transparent);
+    }
+
+    .copy-dialog-kicker {
+      color: var(--wizard-accent);
+      font-family: "Mona Sans Mono", monospace;
+    }
+
+    .copy-dialog-card .copy-dialog-title {
+      color: var(--wizard-fg);
+      font-weight: 500;
+      letter-spacing: -0.03em;
+    }
+
+    .copy-dialog-steps li::marker {
+      color: var(--wizard-accent);
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .option-card,
       .option-check,

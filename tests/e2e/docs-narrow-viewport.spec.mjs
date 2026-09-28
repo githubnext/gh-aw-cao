@@ -60,6 +60,36 @@ test("setup wizard presents hosting choices as an immersive card experience", as
   await expect(page.getByRole("radiogroup", { name: "Redis provider" })).toBeVisible();
 });
 
+for (const { colorScheme, canvas, foreground, accent } of [
+  { colorScheme: "light", canvas: "rgb(247, 250, 248)", foreground: "rgb(31, 35, 40)", accent: "rgb(31, 136, 61)" },
+  { colorScheme: "dark", canvas: "rgb(3, 7, 5)", foreground: "rgb(240, 246, 252)", accent: "rgb(63, 185, 80)" },
+]) {
+  test(`setup wizard follows the landing page visual language in ${colorScheme} mode`, async ({ page }) => {
+    await page.addInitScript(() => localStorage.removeItem("starlight-theme"));
+    await page.emulateMedia({ colorScheme });
+    await page.setViewportSize({ width: 1280, height: 900 });
+    expect((await page.goto("setup/"))?.ok()).toBe(true);
+
+    const canvasStyles = await page.locator(".content-panel").first().evaluate((element) => {
+      const styles = getComputedStyle(element);
+      return { backgroundColor: styles.backgroundColor, backgroundImage: styles.backgroundImage };
+    });
+    expect(canvasStyles.backgroundColor).toBe(canvas);
+    expect(canvasStyles.backgroundImage).toContain("linear-gradient");
+
+    const titleStyles = await page.locator(".wizard-toggle-title").evaluate((element) => {
+      const styles = getComputedStyle(element);
+      return { color: styles.color, fontFamily: styles.fontFamily, fontWeight: styles.fontWeight };
+    });
+    expect(titleStyles.color).toBe(foreground);
+    expect(titleStyles.fontFamily).toContain("ui-sans-serif");
+    expect(titleStyles.fontWeight).toBe("500");
+
+    await expect(page.locator(".wizard-copy-button")).toHaveCSS("background-color", accent);
+    await expect(page.locator(".wizard-step").first()).toHaveCSS("border-radius", "24px");
+  });
+}
+
 test("landing page ends with a setup wizard launch button", async ({ page }) => {
   expect((await page.goto(""))?.ok()).toBe(true);
 
