@@ -129,9 +129,28 @@ func TestShutdownOnDone_GracefulShutdownOnCancel(t *testing.T) {
 		t.Fatal("shutdownOnDone did not return after context cancellation")
 	}
 
-	if _, err := http.Get(server.URL); err == nil {
+	if err := getWithContext(t, server.URL); err == nil {
 		t.Fatal("expected requests to fail after shutdown, but request succeeded")
 	}
+}
+
+// getWithContext issues a context-scoped GET request and closes the response
+// body, keeping tests free of the context-less http.Get helper.
+func getWithContext(t *testing.T, url string) error {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		t.Fatalf("unexpected error building request: %v", err)
+	}
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return err
+	}
+	return response.Body.Close()
 }
 
 // TestShutdownOnDone_WaitsForContext confirms shutdownOnDone blocks until
@@ -157,9 +176,7 @@ func TestShutdownOnDone_WaitsForContext(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 	}
 
-	resp, err := http.Get(server.URL)
-	if err != nil {
+	if err := getWithContext(t, server.URL); err != nil {
 		t.Fatalf("expected server to still accept requests, got error: %v", err)
 	}
-	resp.Body.Close()
 }
