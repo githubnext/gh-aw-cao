@@ -23,8 +23,7 @@ describe('entity card templates', () => {
       'campaign',
       'operation',
       'marketplace-package-summary',
-      'marketplace-package',
-      'marketplace-package-about'
+      'marketplace-package'
     ]));
   });
 
@@ -44,17 +43,6 @@ describe('entity card templates', () => {
       subtitle: { field: 'package-description' },
       actions: [{ action: 'add-marketplace-package', context: ['package-source'] }]
     });
-    expect(templates['marketplace-package-about']).toMatchObject({
-      icon: 'info',
-      'detail-labels': 'visible',
-      title: { field: 'package-description' },
-      details: expect.arrayContaining([
-        { field: 'publisher', title: 'By' }
-      ])
-    });
-    expect(templates['marketplace-package-about'].details).not.toContainEqual(
-      expect.objectContaining({ field: 'package-contents' })
-    );
   });
 
   it('declares marketplace list and detail routes', () => {
@@ -84,7 +72,8 @@ describe('entity card templates', () => {
       config: { 'content-field': 'package-readme', 'path-field': 'package-readme-path' }
     });
     expect(pages['marketplace-package'].views[2]).toMatchObject({
-      list: { card: 'marketplace-package-about' }
+      element: 'link-button-list',
+      config: { 'label-field': 'repository', 'link-field': 'repository-link' }
     });
     expect(pages['marketplace-package'].sections.map(
       (/** @type {Record<string, any>} */ section) => [section.id, section.layout]

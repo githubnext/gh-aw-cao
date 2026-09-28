@@ -27,9 +27,13 @@ backend. Secret values and access tokens are never serialized.
 Both backends return rows with the same safe fields:
 
 `id`, `registry-id`, `registry-name`, `registry-precedence`, `name`,
-`description`, `publisher`, `repository`, `path`, `ref`, `resolved-commit`,
+`description`, `publisher`, `repository`, `repository-link`, `path`, `ref`, `resolved-commit`,
 `version`, `icon`, `artwork`, `contents`, `readme`, `readme-path`, `source`,
 and `add-command`.
+
+`repository-link` is a safe repository relation link derived from the registry's
+GitHub API URL when its public repository URL can be determined. It is omitted
+for unsupported API URL shapes.
 
 The package `id` identifies the case-insensitive repository/path coordinate and
 does not change when a mutable registry ref resolves to a new commit. `source`

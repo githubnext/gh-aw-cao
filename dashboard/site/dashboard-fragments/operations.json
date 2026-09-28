@@ -1255,31 +1255,14 @@
               }
             ]
           },
-          "mark": "list",
-          "list": {
-            "style": "entity-cards",
-            "appearance": "grouped",
-            "icon": "info",
-            "card": "marketplace-package-about"
-          },
-          "encoding": {
-            "columns": [
-              {
-                "field": "publisher",
-                "type": "nominal",
-                "title": "By"
-              },
-              {
-                "field": "registry-name",
-                "type": "nominal",
-                "title": "Registry"
-              },
-              {
-                "field": "package-version",
-                "type": "nominal",
-                "title": "Version"
-              }
-            ]
+          "mark": "element",
+          "element": "link-button-list",
+          "config": {
+            "label-field": "repository",
+            "link-field": "repository-link",
+            "icon-field": "package-icon",
+            "fallback-icon": "archive",
+            "empty-message": "No related materials are available."
           },
           "layout": "full",
           "empty-message": "The selected package is unavailable."

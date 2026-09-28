@@ -541,46 +541,6 @@
         ]
       },
       {
-        "id": "marketplace-package-about",
-        "icon": "info",
-        "detail-labels": "visible",
-        "labels": [],
-        "title": {
-          "field": "package-description",
-          "title": "About"
-        },
-        "details": [
-          {
-            "field": "publisher",
-            "title": "By"
-          },
-          {
-            "field": "repository",
-            "title": "Repository"
-          },
-          {
-            "field": "path",
-            "title": "Path"
-          },
-          {
-            "field": "registry-name",
-            "title": "Registry"
-          },
-          {
-            "field": "package-version",
-            "title": "Version"
-          },
-          {
-            "field": "package-ref",
-            "title": "Configured ref"
-          },
-          {
-            "field": "resolved-commit",
-            "title": "Resolved commit"
-          }
-        ]
-      },
-      {
         "id": "attention-signal",
         "icon": "issue-opened",
         "icon-field": "icon",
