@@ -1,10 +1,15 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
+import { promisify } from "node:util";
 import { buildDashboardSite, embedDashboardVersion, filterExperimentalDashboardViews } from "../../dashboard/site/scripts/build.mjs";
+import { validateDashboardAgentArtifacts } from "../../dashboard/site/scripts/llms.mjs";
+
+const execFileAsync = promisify(execFile);
 
 async function builtSiteSha(destination) {
   const index = await readFile(new URL("index.html", destination), "utf8");
@@ -82,6 +87,21 @@ test("docs dashboard installs renderer assets without experimental campaign page
       /<link rel="icon" href="https:\/\/example\.com\/dashboard\.svg">/,
     );
     const builtIndex = await readFile(new URL("index.html", destination), "utf8");
+    assert.match(builtIndex, /<link rel="alternate" type="text\/plain" href="\.\/llms\.txt"/);
+    assert.match(builtIndex, /<a href="\.\/llms\.txt">Agent access guide<\/a>/);
+    const llms = await readFile(new URL("llms.txt", destination), "utf8");
+    for (const section of [
+      "## Choose the cheapest access path",
+      "## Skills",
+      "## Published Activity artifacts",
+      "## Targeted queries with MCP",
+      "## Bulk analysis with CAO CLI and SQLite",
+      "## Schema and freshness",
+    ]) {
+      assert.match(llms, new RegExp(section));
+    }
+    assert.match(llms, /raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/skills\/debug-cao\/SKILL\.md/);
+    assert.match(llms, /\[Agent summary\]\(\.\/agent-summary\.json\)/);
     const mainHash = builtIndex.match(/<script type="module" src="\.\/src\/main\.js\?sha=([a-f0-9]{64})"><\/script>/)?.[1];
     assert.ok(mainHash, "entry module includes the site content SHA");
     assert.match(
@@ -156,6 +176,60 @@ test("dashboard cache hashes are stable and change with assembled site content",
     assert.equal(secondSha, firstSha, "identical content produces the same cache hash");
     assert.notEqual(changedSha, firstSha, "changed content produces a different cache hash");
     assert.match(await readFile(new URL("src/main.js", changedDestination), "utf8"), /sourceMappingURL=main\.js\.map/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("dashboard agent guide describes and validates the assembled public artifacts", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "dashboard-agent-guide-"));
+  const activityDataPath = path.join(root, "activity");
+  const destination = path.join(root, "cao");
+  const artifacts = {
+    "agent-summary.json": '{"schemaVersion":1,"generatedAt":"2026-09-27T00:00:00Z"}\n',
+    "inventory-sources.json": "{}\n",
+    "payload-hashes.json": "{}\n",
+    "gh-aw-logs.sqlite": "sqlite fixture",
+  };
+
+  try {
+    await mkdir(activityDataPath);
+    for (const [name, content] of Object.entries(artifacts)) {
+      await writeFile(path.join(activityDataPath, name), content);
+    }
+    await buildDashboardSite({ destination, activityDataPath, controlSettings: { campaigns: {} } });
+    for (const [name, content] of Object.entries(artifacts)) {
+      await writeFile(path.join(destination, name), content);
+    }
+    await execFileAsync(process.execPath, [
+      path.resolve("dashboard/site/scripts/llms.mjs"),
+      "generate",
+      path.join(destination, "llms.txt"),
+      destination,
+    ]);
+    await execFileAsync(process.execPath, [
+      path.resolve("dashboard/site/scripts/llms.mjs"),
+      "validate",
+      destination,
+      path.resolve("."),
+    ]);
+    await validateDashboardAgentArtifacts({
+      sitePath: destination,
+      repositoryPath: path.resolve("."),
+    });
+    const llms = await readFile(path.join(destination, "llms.txt"), "utf8");
+    assert.match(llms, /Agent summary.*57 bytes/);
+    assert.doesNotMatch(llms, /(?:token|secret|password|private[-_ ]key)\s*[:=]\s*\S+/i);
+
+    await assert.rejects(
+      execFileAsync(process.execPath, [
+        path.resolve("dashboard/site/scripts/llms.mjs"),
+        "validate",
+        path.join(root, "missing"),
+        path.resolve("."),
+      ]),
+      (error) => error?.code !== 0,
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }

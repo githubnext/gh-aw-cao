@@ -4,6 +4,9 @@ description: See what is moving, what needs attention, and whether the evidence 
 agent:
   type: dashboard
   prominent: true
+  binding:
+    kind: dashboard-page
+    id: overview
 ---
 
 The dashboard is the operational view of your Central Agentic Ops control

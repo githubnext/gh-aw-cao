@@ -32,6 +32,11 @@ test("an external agent can traverse static discovery and resource metadata", as
   const landingHtml = await readFile(path.join(dist, "index.html"), "utf8");
   const scopedHref = hrefForRel(landingHtml, "describedby");
   assert.ok(scopedHref, "landing HTML must advertise scoped llms.txt");
+  const indexHref = hrefForRel(landingHtml, "index", "application/json");
+  assert.ok(indexHref, "landing HTML must advertise the machine-readable resource index");
+  const index = JSON.parse(await readFile(fileForPublicUrl(indexHref), "utf8"));
+  const dashboardSummary = index.resources.find((entry) => entry.id === "dashboard");
+  assert.deepEqual(dashboardSummary.interfaces, ["cli", "cli-mcp", "web-mcp"]);
 
   const scoped = await readFile(fileForPublicUrl(scopedHref), "utf8");
   const links = markdownLinks(scoped);
@@ -56,7 +61,27 @@ test("an external agent can traverse static discovery and resource metadata", as
     || execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim());
   assert.ok(Number.isFinite(Date.parse(resource.freshness.generatedAt)));
   assert.ok(Number.isFinite(Date.parse(resource.freshness.sourceCommittedAt)));
+  assert.equal(resource.source.path, "docs/architecture.md");
+  assert.match(resource.integrity.sourceDigest, /^[0-9a-f]{64}$/);
   assert.equal(typeof relatedResource.id, "string");
   assert.equal(typeof relatedResource.provenance.source, "string");
   assert.ok(Number.isFinite(Date.parse(relatedResource.freshness.generatedAt)));
+
+  const dashboard = JSON.parse(await readFile(path.join(dist, "dashboard", "index.json"), "utf8"));
+  assert.equal(dashboard.interfaces.cli[0].subcommand, "pages");
+  assert.deepEqual(dashboard.interfaces.cli[0].arguments, {
+    positional: ["overview"],
+    options: { "--json": true },
+  });
+  assert.deepEqual(
+    dashboard.interfaces.mcp.map((binding) => [binding.transport, binding.capability]),
+    [["cli", "cao_catalog"], ["web", "cao_overview"]],
+  );
+  assert.equal(dashboard.recommendedInterface.default, "web-mcp");
+
+  const catalog = JSON.parse(await readFile(path.join(dist, "agent-analysis", "index.json"), "utf8"));
+  assert.deepEqual(
+    catalog.interfaces.mcp.map((binding) => binding.arguments),
+    [{ kind: "pages" }, { kind: "queries" }],
+  );
 });

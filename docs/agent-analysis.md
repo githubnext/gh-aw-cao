@@ -1,6 +1,11 @@
 ---
 title: Agent analysis
 description: Give an agent the dashboard's own pages and named queries through the cao CLI or a read-only MCP server, with or without shell access.
+agent:
+  type: agent-interface
+  prominent: true
+  binding:
+    kind: dashboard-catalog
 ---
 
 Central Agentic Ops can answer questions for an agent without giving it a

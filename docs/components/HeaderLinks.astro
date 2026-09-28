@@ -1,7 +1,9 @@
 ---
 import Default from "@astrojs/starlight/components/SocialIcons.astro";
+import { Icon } from "@astrojs/starlight/components";
 
 const path = Astro.url.pathname;
+const { hasSidebar } = Astro.locals.starlightRoute;
 const links = [
   { label: "Setup", href: "/gh-aw-cao/setup/" },
   { label: "Campaigns", href: "/gh-aw-cao/catalog/" },
@@ -18,6 +20,23 @@ const links = [
     ))
   }
 </nav>
+{
+  !hasSidebar && (
+    <details class="cao-mobile-nav">
+      <summary aria-label="Open primary navigation">
+        <span class="menu-icon open-menu" aria-hidden="true"><Icon name="bars" /></span>
+        <span class="menu-icon close-menu" aria-hidden="true"><Icon name="close" /></span>
+      </summary>
+      <nav aria-label="Primary navigation menu">
+        {links.map(({ label, href }) => (
+          <a href={href} aria-current={href.startsWith("/") && path.startsWith(href) ? "page" : undefined}>
+            {label}
+          </a>
+        ))}
+      </nav>
+    </details>
+  )
+}
 <Default><slot /></Default>
 
 <style>
@@ -40,14 +59,88 @@ const links = [
   }
 
   .cao-primary-nav a:hover,
-  .cao-primary-nav a[aria-current="page"] {
+  .cao-primary-nav a[aria-current="page"],
+  .cao-mobile-nav a:hover,
+  .cao-mobile-nav a[aria-current="page"] {
     background: var(--sl-color-gray-6);
     color: var(--sl-color-white);
+  }
+
+  .cao-mobile-nav {
+    position: relative;
+    display: none;
+    order: 4;
+  }
+
+  .cao-mobile-nav summary {
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    place-items: center;
+    border-radius: 0.375rem;
+    color: var(--sl-color-gray-2);
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .cao-mobile-nav summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .cao-mobile-nav summary:hover {
+    background: var(--sl-color-gray-6);
+    color: var(--sl-color-white);
+  }
+
+  .cao-mobile-nav summary:focus-visible {
+    outline: 2px solid var(--sl-color-accent);
+    outline-offset: 2px;
+  }
+
+  .cao-mobile-nav .menu-icon {
+    display: inline-flex;
+  }
+
+  .cao-mobile-nav .close-menu,
+  .cao-mobile-nav[open] .open-menu {
+    display: none;
+  }
+
+  .cao-mobile-nav[open] .close-menu {
+    display: inline-flex;
+  }
+
+  .cao-mobile-nav nav {
+    position: fixed;
+    z-index: var(--sl-z-index-menu);
+    top: var(--sl-nav-height);
+    right: 0;
+    left: 0;
+    display: grid;
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--sl-color-hairline-shade);
+    padding: 0.75rem var(--sl-nav-pad-x) 1rem;
+    background: var(--sl-color-bg-nav);
+    box-shadow: var(--sl-shadow-md);
+  }
+
+  .cao-mobile-nav a {
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+    color: var(--sl-color-gray-2);
+    font-weight: 600;
+    text-decoration: none;
   }
 
   @media (max-width: 72rem) {
     .cao-primary-nav {
       display: none;
+    }
+  }
+
+  @media (max-width: 49.999rem) {
+    .cao-mobile-nav {
+      display: block;
     }
   }
 </style>

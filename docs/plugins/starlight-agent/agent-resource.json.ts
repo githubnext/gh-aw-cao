@@ -28,7 +28,7 @@ export const GET: APIRoute = async ({ props, site }) => {
   );
   const entry = entries.find((candidate) => candidate.id === props.id);
   if (!entry) return new Response("Resource not found", { status: 404 });
-  const provenance = resolveBuildProvenance();
+  const provenance = resolveBuildProvenance(entry.filePath);
   const resource = createAgentResource(entry, {
     site,
     base: normalizedBase(import.meta.env.BASE_URL),

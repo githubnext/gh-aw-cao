@@ -245,6 +245,18 @@ func (p Projector) refreshInventory(ctx context.Context) error {
 	return p.run(ctx, arguments)
 }
 
+// scanRepositoriesPage matches Enrollment.ScanRepositories's signature so
+// collectEnrolledRepositories's pagination loop is testable against a plain
+// function standing in for the real Redis-backed scan, without a fake
+// Enrollment or a running Redis.
+type scanRepositoriesPage func(ctx context.Context, cursor string, count int) ([]string, string, error)
+
+// enrolledRepositoriesPageSize is how many repositories enrolledRepositories
+// requests per scan cursor. It is a named constant, rather than an inline
+// literal, so collectEnrolledRepositories's tests can assert the page size
+// callers actually receive.
+const enrolledRepositoriesPageSize = 500
+
 // enrolledRepositories names every enrolled repository.
 //
 // The enumeration is deliberately unbounded by default. Truncating it would
@@ -253,18 +265,29 @@ func (p Projector) refreshInventory(ctx context.Context) error {
 // needs a bound sets InventoryRepositoryLimit, and exceeding it fails the
 // projection rather than publishing a partial inventory.
 func (p Projector) enrolledRepositories(ctx context.Context) ([]string, error) {
+	return collectEnrolledRepositories(ctx, p.InventoryRepositoryLimit, p.Enrollment.ScanRepositories)
+}
+
+// collectEnrolledRepositories drains scanPage cursor-by-cursor into a single
+// sorted, de-duplication-free repository list, failing once the running
+// total exceeds limit (a non-positive limit means unbounded). It is a pure
+// loop over an injected page function so the pagination and limit-enforcement
+// behavior is unit-testable without a live Redis-backed Enrollment.
+func collectEnrolledRepositories(ctx context.Context, limit int, scanPage scanRepositoriesPage) ([]string, error) {
 	var repositories []string
 	cursor := ""
+	pages := 0
 	for {
-		page, next, err := p.Enrollment.ScanRepositories(ctx, cursor, 500)
+		page, next, err := scanPage(ctx, cursor, enrolledRepositoriesPageSize)
 		if err != nil {
 			return nil, err
 		}
+		pages++
 		repositories = append(repositories, page...)
-		if p.InventoryRepositoryLimit > 0 && len(repositories) > p.InventoryRepositoryLimit {
+		if limit > 0 && len(repositories) > limit {
 			return nil, fmt.Errorf(
 				"enrolled repositories exceed the configured inventory limit of %d",
-				p.InventoryRepositoryLimit,
+				limit,
 			)
 		}
 		if next == "0" || next == "" {
@@ -273,6 +296,7 @@ func (p Projector) enrolledRepositories(ctx context.Context) ([]string, error) {
 		cursor = next
 	}
 	sort.Strings(repositories)
+	projectorLog.Printf("scanned enrolled repositories pages=%d count=%d", pages, len(repositories))
 	return repositories, nil
 }
 

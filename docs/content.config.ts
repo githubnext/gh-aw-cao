@@ -20,6 +20,11 @@ const docs = defineCollection({
         type: z.string().min(1).optional(),
         prominent: z.boolean().optional(),
         dataUpdatedAt: z.string().datetime().optional(),
+        binding: z.discriminatedUnion("kind", [
+          z.object({ kind: z.literal("dashboard-catalog") }),
+          z.object({ kind: z.literal("dashboard-page"), id: z.string().min(1) }),
+          z.object({ kind: z.literal("dashboard-query"), id: z.string().min(1) }),
+        ]).optional(),
         links: z.array(z.object({
           rel: z.string().min(1),
           href: z.string().min(1),

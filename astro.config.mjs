@@ -113,9 +113,19 @@ export default defineConfig({
           ],
           optionalLinks: [
             {
+              label: "Dashboard agent access guide",
+              url: "https://githubnext.github.io/gh-aw-cao/cao/llms.txt",
+              description: "Choose CAO skills, bounded Activity artifacts, targeted MCP queries, or bulk SQLite analysis without scraping the dashboard UI.",
+            },
+            {
               label: "Scoped agent resource index",
               url: "https://githubnext.github.io/gh-aw-cao/agent/llms.txt",
               description: "Compact navigation to HTML pages, JSON resource metadata, provenance, and freshness.",
+            },
+            {
+              label: "Machine-readable resource index",
+              url: "https://githubnext.github.io/gh-aw-cao/agent/resources.json",
+              description: "Deterministic index of generated JSON resources and their available operational interfaces.",
             },
             {
               label: "Architecture",

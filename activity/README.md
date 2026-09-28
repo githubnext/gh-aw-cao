@@ -61,6 +61,7 @@ Activity has two source classes:
 | Input | Authority | Canonical contribution |
 | --- | --- | --- |
 | `control-settings.json` and `inventory-sources.json` | Enrolled repository scope, campaign configuration, declared control workflows, paginated Actions workflow registries, and maintenance evidence | Campaign, Repository, declared control Workflow, and standalone repository Workflow observations |
+| `agent-summary.json` | Bounded counts and disabled-campaign identities derived from `inventory-sources.json`, with source freshness preserved | Cheap agent discovery questions without downloading the full inventory |
 | `gh-aw-logs-shards/*.jsonl` | Observed GitHub Actions execution and agentic audit evidence | Repository, Workflow, Run, Domain, Tool, Audit, and Issue observations |
 
 The SQLite database and browser IndexedDB are

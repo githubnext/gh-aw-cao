@@ -31,7 +31,10 @@ Use [`llms.txt`](/gh-aw-cao/llms.txt) to find high-value documentation,
 [`llms-small.txt`](/gh-aw-cao/llms-small.txt) for compact context, and
 [`llms-full.txt`](/gh-aw-cao/llms-full.txt) for the broad documentation corpus.
 The [scoped agent resource index](/gh-aw-cao/agent/llms.txt) links important
-HTML pages to their compact JSON metadata, provenance, and related resources.
+HTML pages to their compact JSON metadata, provenance, integrity, operational
+bindings, and related resources. The generated
+[`agent/resources.json`](/gh-aw-cao/agent/resources.json) index lists every
+resource without duplicating page bodies.
 Maintainers can read the
 [agent-readable documentation convention](/gh-aw-cao/agent-resources/) when
 adding or enriching a route.

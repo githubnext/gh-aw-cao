@@ -26,6 +26,11 @@ export default function starlightAgent(options = {}) {
                 pattern: `/${scopePath}/llms.txt`,
                 prerender: true,
               });
+              injectRoute({
+                entrypoint: new URL("./resource-index.json.ts", import.meta.url),
+                pattern: `/${scopePath}/resources.json`,
+                prerender: true,
+              });
 
               const moduleId = "virtual:starlight-agent/config";
               const resolvedModuleId = `\0${moduleId}`;

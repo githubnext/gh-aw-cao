@@ -75,7 +75,7 @@ flowchart LR
 | Azure Functions profile | `internal/server/azure.go` | Builds the same HTTP handler without starting a listener, validates Azure app settings, requires `rediss://` Redis, and trusts forwarded host/protocol headers only for configured Azure hosts. |
 | GitHub OAuth sessions | `internal/server/oauth.go` | Implements the GitHub OAuth authorization-code flow, active organization/team authorization, refresh-token rotation, server-side encrypted sessions in Redis, logout revocation, and CSRF protection for mutating requests. |
 | Shared API model | `internal/model/` | Defines logical sources, active-generation metadata, diagnostics, and query metrics. |
-| Telemetry | `internal/telemetry/` | Configures the OpenTelemetry TracerProvider from standard `OTEL_*` environment variables, exposes the server's tracer, and writes W3C trace/span id response headers. |
+| Telemetry | `internal/telemetry/` | Configures OpenTelemetry trace and metric providers from standard `OTEL_*` environment variables, exposes the server's tracer, and writes W3C trace/span id response headers. |
 | Local Redis | `docker-compose.yml` | Runs plain Redis on `127.0.0.1:6379`. |
 | Coolify container profile | `Dockerfile`, `coolify/compose.yml` | Builds the dashboard and Go service into a non-root image and runs `serve-hosted` behind an explicitly trusted Coolify TLS proxy. |
 
@@ -739,29 +739,34 @@ caches.
 ## Telemetry
 
 The server is instrumented with standard, vendor-neutral
-[OpenTelemetry](https://opentelemetry.io/) tracing (`internal/telemetry/`):
-every HTTP request is wrapped with `otelhttp`, the query engine and ingestion
-paths start dedicated `cao_dashboard.query.execute` and
-`cao_dashboard.ingest.run` spans, and span/trace attributes are limited to
-non-secret aggregate counts, revisions, and durations (no Redis URLs,
-credentials, GitHub tokens, or row contents). Identifiers follow the W3C Trace
-Context specification: the tracer provider installs `propagation.TraceContext`
-so a client-sent `traceparent` header continues an existing trace, and every
-API response echoes the active request's ids as `X-Trace-Id` /
-`X-Span-Id` headers for correlating a client-visible request with exported
-spans.
+[OpenTelemetry](https://opentelemetry.io/) tracing and metrics
+(`internal/telemetry/`). Every HTTP request is wrapped with `otelhttp`, which
+supplies OpenTelemetry HTTP semantic-convention attributes and the standard
+`http.server.request.duration`, `http.server.request.body.size`, and
+`http.server.response.body.size` metrics. The query engine and ingestion paths
+start dedicated `cao_dashboard.query.execute` and `cao_dashboard.ingest.run`
+spans. Application attributes are limited to non-secret aggregate counts,
+revisions, and durations (no Redis URLs, credentials, GitHub tokens, or row
+contents). Identifiers follow the W3C Trace Context specification: the tracer
+provider installs `propagation.TraceContext` so a client-sent `traceparent`
+header continues an existing trace, and every API response echoes the active
+request's ids as `X-Trace-Id` / `X-Span-Id` headers for correlating a
+client-visible request with exported spans.
 
-Tracing is configured entirely through the standard OpenTelemetry SDK
-environment variables; no exporter is linked unless one is configured:
+Telemetry is configured entirely through the standard OpenTelemetry SDK
+environment variables. Traces and metrics are independently optional, and no
+exporter is started for a signal unless its endpoint is configured:
 
 | Variable | Effect |
 | --- | --- |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` / `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Enables the OTLP/HTTP trace exporter and sets its destination. Spans are only created as no-ops until one of these is set. |
-| `OTEL_EXPORTER_OTLP_HEADERS` | Extra headers (for example, a collector API key) sent with each export request; read directly by the OTLP exporter. |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Enables both OTLP/HTTP exporters and sets their shared destination. |
+| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Enables the OTLP/HTTP trace exporter and sets its destination. Spans remain no-ops when neither this nor the shared endpoint is set. |
+| `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` | Enables the OTLP/HTTP metric exporter and sets its destination. |
+| `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_EXPORTER_OTLP_TRACES_HEADERS`, `OTEL_EXPORTER_OTLP_METRICS_HEADERS` | Authentication headers read directly by the corresponding OTLP exporter. Supply them through the deployment platform's secret manager; never place values in command-line arguments, checked-in configuration, or logs. |
 | `OTEL_SERVICE_NAME` | Overrides the default `cao-dashboard` `service.name` resource attribute. |
-| `OTEL_SDK_DISABLED` | Set to `true` to force the no-op tracer provider even when an endpoint is configured. |
+| `OTEL_SDK_DISABLED` | Set to `true` to keep both providers as no-ops even when endpoints are configured. |
 
-There is no Azure-specific exporter linked into the binary. To ship spans to
+There is no Azure-specific exporter linked into the binary. To ship telemetry to
 Application Insights, point `OTEL_EXPORTER_OTLP_ENDPOINT` at an OpenTelemetry
 Collector configured with the `azuremonitorexporter` and the
 `APPLICATIONINSIGHTS_CONNECTION_STRING` provisioned by `azure/main.bicep`;

@@ -4,6 +4,9 @@
 
 import { h } from '../dom.js';
 import { renderEmptyMessage } from './ui-primitives.js';
+import { createDebug } from '../debug.js';
+
+const debugRouteEmptyState = createDebug('route-empty-state');
 
 /**
  * @typedef {{
@@ -47,6 +50,11 @@ export function createRouteView(options) {
         : hasSelection ? options.notFoundMessage : options.selectMessage;
     root.replaceChildren(matched ?? renderEmptyMessage(message ?? ''));
     options.onRender?.(normalizedValue, Boolean(matched));
+    debugRouteEmptyState({
+      parameter: options.routeParameter,
+      outcome: unavailable ? 'unavailable' : matched ? 'matched' : hasSelection ? 'not-found' : 'select',
+      hasSelection
+    });
   };
 
   root.addEventListener('dashboard-route-change', (event) => {
