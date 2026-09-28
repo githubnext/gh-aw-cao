@@ -40,6 +40,38 @@ type ReplayResult struct {
 	Redelivered int `json:"redelivered"`
 }
 
+// redeliveryPlan is the pure outcome of scanning one page of deliveries
+// against the previously recorded cursor: which deliveries need redelivery,
+// how many were inspected before the cursor boundary was reached, and the
+// newest delivery GUID the cursor should advance to next.
+type redeliveryPlan struct {
+	toRedeliver []int64
+	inspected   int
+	newest      string
+}
+
+// planRedeliveries walks one page of deliveries, newest first, stopping once
+// it reaches the delivery GUID recorded by a prior pass (boundary). It is a
+// pure function, so the boundary stop condition and the non-2xx redelivery
+// selection are testable without a fake GitHub API or Redis store.
+func planRedeliveries(deliveries []githubapp.Delivery, boundary string) redeliveryPlan {
+	plan := redeliveryPlan{}
+	for _, delivery := range deliveries {
+		if plan.newest == "" {
+			plan.newest = delivery.GUID
+		}
+		if boundary != "" && delivery.GUID == boundary {
+			break
+		}
+		plan.inspected++
+		if delivery.StatusCode >= 200 && delivery.StatusCode < 300 {
+			continue
+		}
+		plan.toRedeliver = append(plan.toRedeliver, delivery.ID)
+	}
+	return plan
+}
+
 // Recover requests redelivery of failed deliveries newer than the recorded
 // cursor. Redelivered events flow through ordinary admission, including
 // signature verification and deduplication, so replay is safe to repeat.
@@ -59,28 +91,17 @@ func (r DeliveryReplayer) Recover(ctx context.Context) (ReplayResult, error) {
 	if err != nil {
 		return ReplayResult{}, err
 	}
-	boundary := string(lastSeen)
-	result := ReplayResult{}
-	var newest string
-	for _, delivery := range deliveries {
-		if newest == "" {
-			newest = delivery.GUID
-		}
-		if boundary != "" && delivery.GUID == boundary {
-			break
-		}
-		result.Inspected++
-		if delivery.StatusCode >= 200 && delivery.StatusCode < 300 {
-			continue
-		}
-		if err := r.Client.Redeliver(ctx, delivery.ID); err != nil {
-			recoveryLog.Printf("redelivery request failed delivery=%d", delivery.ID)
+	plan := planRedeliveries(deliveries, string(lastSeen))
+	result := ReplayResult{Inspected: plan.inspected}
+	for _, deliveryID := range plan.toRedeliver {
+		if err := r.Client.Redeliver(ctx, deliveryID); err != nil {
+			recoveryLog.Printf("redelivery request failed delivery=%d", deliveryID)
 			continue
 		}
 		result.Redelivered++
 	}
-	if newest != "" {
-		if err := r.Store.SetOperationalState(ctx, deliveryCursorKey, []byte(newest)); err != nil {
+	if plan.newest != "" {
+		if err := r.Store.SetOperationalState(ctx, deliveryCursorKey, []byte(plan.newest)); err != nil {
 			return result, err
 		}
 	}
