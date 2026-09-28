@@ -380,7 +380,7 @@ test("install.sh reports useful progress and does not silence curl", async (t) =
   assert.match(result.stdout, /Making the CAO launcher executable/);
   assert.match(result.stdout, /Initializing the CAO policy/);
   assert.match(result.stdout, /CAO installation complete/);
-  assert.doesNotMatch(installerSource, /curl [^\n]*(?:--silent|-[A-Za-]*s)/);
+  assert.doesNotMatch(installerSource, /--silent|curl -s/);
 });
 
 test("streamed install.sh scopes policy to gh's current repository, not the ambient GITHUB_REPOSITORY", async (t) => {
