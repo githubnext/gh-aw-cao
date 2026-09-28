@@ -155,3 +155,33 @@ func TestLoadCachedRegistryRejectsCorruptPayloads(t *testing.T) {
 		t.Fatal("expected a corrupt cache payload to be treated as a miss")
 	}
 }
+
+func TestDecodeCachedRegistryPayloadRejectsEmptyBytes(t *testing.T) {
+	if packages, ok := decodeCachedRegistryPayload(nil); ok || packages != nil {
+		t.Fatalf("expected empty bytes to decode as a miss, got packages=%#v ok=%t", packages, ok)
+	}
+}
+
+func TestDecodeCachedRegistryPayloadRejectsMalformedJSON(t *testing.T) {
+	if _, ok := decodeCachedRegistryPayload([]byte("{not valid")); ok {
+		t.Fatal("expected malformed JSON to decode as a miss")
+	}
+}
+
+func TestDecodeCachedRegistryPayloadAcceptsAWellFormedPayload(t *testing.T) {
+	packages, ok := decodeCachedRegistryPayload([]byte(`{"packages":[{"id":"a/b"}]}`))
+	if !ok {
+		t.Fatal("expected a well-formed payload to decode successfully")
+	}
+	if len(packages) != 1 || packages[0].ID != "a/b" {
+		t.Fatalf("expected the decoded package to round-trip, got: %#v", packages)
+	}
+}
+
+func TestLoadCachedRegistryTreatsACacheReadErrorAsAMiss(t *testing.T) {
+	cache := newMemoryCache()
+	cache.getErr = context.DeadlineExceeded
+	if _, hit := loadCachedRegistry(t.Context(), cache, "official", "generation-1"); hit {
+		t.Fatal("expected a cache read error to be treated as a miss")
+	}
+}

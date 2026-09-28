@@ -1,5 +1,5 @@
 import { scopedStorageKey } from './storage-scope.js';
-import { createDebug, withDebugParameter } from './debug.js';
+import { createDebug, debugParameter } from './debug.js';
 
 const debugServiceWorker = createDebug('data:ingestion:sw-client');
 
@@ -143,6 +143,16 @@ export function dashboardDataUpdateBlockedReason(connection, battery) {
   if (connection?.saveData || connection?.metered || connection?.type === 'cellular') return 'metered connection';
   if (battery && !battery.charging && battery.level <= LOW_BATTERY_LEVEL) return 'low battery';
   return null;
+}
+
+/**
+ * Returns the stable service worker script URL. It deliberately omits page
+ * query parameters such as `?debug=`: registering a different script URL for
+ * the same scope is a service worker update, and activating that update fires
+ * `controllerchange`, which reloads every already-controlled dashboard page.
+ */
+export function dashboardServiceWorkerUrl() {
+  return new URL('../service-worker.js', import.meta.url);
 }
 
 /**
@@ -373,7 +383,7 @@ export async function ensureHealthyDashboardServiceWorker(serviceWorkers, script
 export function startDashboardAppUpdates(dependencies = {}) {
   const serviceWorkers = dependencies.serviceWorkers ?? navigator.serviceWorker;
   if (!serviceWorkers) return () => {};
-  const scriptUrl = dependencies.scriptUrl ?? withDebugParameter(new URL('../service-worker.js', import.meta.url));
+  const scriptUrl = dependencies.scriptUrl ?? dashboardServiceWorkerUrl();
   const reload = dependencies.reload ?? window.location.reload.bind(window.location);
   const setTimer = dependencies.setTimer ?? window.setTimeout.bind(window);
   const clearTimer = dependencies.clearTimer ?? window.clearTimeout.bind(window);
@@ -457,7 +467,7 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
     ?? /** @type {Navigator & { getBattery?: () => Promise<BatteryState> }} */ (navigator).getBattery?.bind(navigator);
   const permissions = dependencies.permissions ?? navigator.permissions;
   const online = dependencies.online ?? (() => navigator.onLine);
-  const scriptUrl = dependencies.scriptUrl ?? withDebugParameter(new URL('../service-worker.js', import.meta.url));
+  const scriptUrl = dependencies.scriptUrl ?? dashboardServiceWorkerUrl();
   const now = dependencies.now ?? Date.now;
   const setTimer = dependencies.setTimer ?? window.setTimeout.bind(window);
   const clearTimer = dependencies.clearTimer ?? window.clearTimeout.bind(window);
@@ -584,7 +594,7 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
       debugServiceWorker('requesting data download', { urls: dataUrls });
       const response = await requestWorker(
         worker,
-        { type: 'DOWNLOAD_DATA', urls: dataUrls },
+        { type: 'DOWNLOAD_DATA', urls: dataUrls, debug: debugParameter() },
         DOWNLOAD_TIMEOUT_MS
       );
       if (!response || typeof response !== 'object'
