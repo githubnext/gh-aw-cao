@@ -410,15 +410,12 @@ The ingestion sequence is:
 2. Require and read all compacted run-information shards.
 3. Read compacted run-linked record shards.
 4. Load `inventory-sources.json` as already-logical published sources.
-5. In the collection profile, rebuild a temporary Activity projection and
-   reconstruct current and retained operational-value observations before
-   finalizing the payload manifest.
-6. Project canonical Campaign, Repository, Workflow, Run, Domain, Tool, Audit,
+5. Project canonical Campaign, Repository, Workflow, Run, Domain, Tool, Audit,
    Issue, and Operational Value records through
    `dashboard/site/src/data/queries/database.json`.
-7. Stage every logical source, its metadata, diagnostics, and row set under a
+6. Stage every logical source, its metadata, diagnostics, and row set under a
    new immutable generation.
-8. Atomically update the namespaced active pointer and increment the namespaced
+7. Atomically update the namespaced active pointer and increment the namespaced
    active revision only after the generation is complete.
 
 An ingestion with the same artifact revision reuses the active generation.
@@ -465,9 +462,13 @@ Collection separates three concerns that fail differently:
    runs, writing into the evidence lake. One repository is collected at a time,
    and GitHub budget is reserved per installation before each collection.
 3. **Projection.** Collected evidence is projected by the existing
-   `internal/ingest` package. Projection is coalesced behind a dirty flag and a
-   minimum interval, so projection cost follows the collection rate rather than
-   the event rate.
+   `internal/ingest` package. Before finalizing the payload manifest, projection
+   builds a temporary Activity database and runs the same retained
+   operational-value reconstruction as `cao-activity.yml`, using one
+   installation-scoped token per repository. Operational-value failure remains
+   best-effort and does not block newer Activity evidence. Projection is
+   coalesced behind a dirty flag and a minimum interval, so projection cost
+   follows the collection rate rather than the event rate.
 
 The evidence lake is laid out byte-compatibly with a snapshot published by the
 Activity workflow:

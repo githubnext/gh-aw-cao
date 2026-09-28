@@ -214,7 +214,9 @@ func (p Projector) refreshCompaction(ctx context.Context) error {
 	}
 	if p.Tokens != nil {
 		if err := p.refreshOperationalValues(ctx); err != nil {
-			return err
+			// Match the Actions profile: operational value is best-effort and
+			// must not prevent newer Activity evidence from being projected.
+			projectorLog.Printf("operational value reconstruction failed; continuing without refreshed values")
 		}
 		return p.refreshManifest(ctx)
 	}
@@ -278,8 +280,11 @@ func (p Projector) refreshOperationalValues(ctx context.Context) error {
 	}
 	for _, repository := range repositories {
 		installationID, err := p.Enrollment.InstallationFor(ctx, repository)
-		if err != nil || installationID <= 0 {
+		if err != nil {
 			return fmt.Errorf("resolve installation for %s: %w", repository, err)
+		}
+		if installationID <= 0 {
+			return fmt.Errorf("resolve installation for %s: no installation is enrolled", repository)
 		}
 		reserve, err := p.rateLimitReserve(ctx, installationID)
 		if err != nil {
