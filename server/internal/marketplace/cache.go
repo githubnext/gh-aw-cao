@@ -4,7 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var cacheLog = logger.New("cao:marketplace:cache")
 
 // Cache isolates registry results by registry id and by generation (the
 // dashboard's active data revision), so a cache entry from one revision or
@@ -22,6 +26,21 @@ type cachedRegistryPayload struct {
 	Packages []Package `json:"packages"`
 }
 
+// decodeCachedRegistryPayload decodes a cache entry's raw bytes into a
+// package list. It is split out from loadCachedRegistry as a pure function so
+// the "corrupt payload is a miss, not an error" rule is directly testable
+// without a Cache double.
+func decodeCachedRegistryPayload(data []byte) ([]Package, bool) {
+	if len(data) == 0 {
+		return nil, false
+	}
+	var payload cachedRegistryPayload
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return nil, false
+	}
+	return payload.Packages, true
+}
+
 // loadCachedRegistry returns a previously cached, still-safe package list. Any
 // cache error or corrupt payload is treated as a miss so a caching problem
 // never blocks resolution.
@@ -30,14 +49,22 @@ func loadCachedRegistry(ctx context.Context, cache Cache, registryID, generation
 		return nil, false
 	}
 	data, hit, err := cache.Get(ctx, registryID, generation)
-	if err != nil || !hit || len(data) == 0 {
+	if err != nil {
+		// A cache backend failure must never block resolution, but it is
+		// still worth distinguishing from an ordinary miss when diagnosing
+		// why a deployment always resolves against the live registry.
+		cacheLog.Printf("cache read failed, treating as miss")
 		return nil, false
 	}
-	var payload cachedRegistryPayload
-	if err := json.Unmarshal(data, &payload); err != nil {
+	if !hit {
 		return nil, false
 	}
-	return payload.Packages, true
+	packages, ok := decodeCachedRegistryPayload(data)
+	if !ok {
+		cacheLog.Printf("cache payload was not decodable, treating as miss")
+		return nil, false
+	}
+	return packages, true
 }
 
 // storeCachedRegistry best-effort caches a resolved registry's packages. A
@@ -51,5 +78,7 @@ func storeCachedRegistry(ctx context.Context, cache Cache, registryID, generatio
 	if err != nil {
 		return
 	}
-	_ = cache.Set(ctx, registryID, generation, data, ttl)
+	if err := cache.Set(ctx, registryID, generation, data, ttl); err != nil {
+		cacheLog.Printf("cache write failed, resolution result was not cached")
+	}
 }
