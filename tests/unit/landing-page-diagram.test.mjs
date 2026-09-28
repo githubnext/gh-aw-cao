@@ -88,18 +88,16 @@ test("landing page explains and illustrates campaign dispatch", () => {
   assert.match(illustration, /\{goalPaths\.map\(\(path\) => <path d=\{path\}><\/path>\)\}/);
   assert.match(illustration, /GitHub Actions/);
   assert.ok(
-    illustration.indexOf("<h3>GitHub Actions</h3>") < illustration.indexOf("<h3>Destinations</h3>") &&
-      illustration.indexOf("<h3>Destinations</h3>") <
+    illustration.indexOf("<h3>GitHub Actions</h3>") < illustration.indexOf("<h3>Organizations</h3>") &&
+      illustration.indexOf("<h3>Organizations</h3>") <
         illustration.indexOf("<h3>Representative repositories</h3>"),
   );
   assert.match(illustration, /const organizationNodes = \[/);
   assert.match(illustration, /const successfulJobs = jobs\.filter\(\(job\) => !job\.failed\)/);
-  assert.match(illustration, /const liveJobs = successfulJobs\.filter\(\(job\) => job\.mode === "live"\)/);
-  assert.match(illustration, /const reviewJobs = successfulJobs\.filter\(\(job\) => job\.mode === "review"\)/);
-  assert.match(illustration, /organizationJobs = liveJobs\.filter/);
+  assert.match(illustration, /organizationJobs = successfulJobs\.filter/);
   assert.match(illustration, /campaigns: new Set\(organizationJobs\.map/);
   assert.match(illustration, /repositories: new Set\(organizationJobs\.map/);
-  assert.match(illustration, /\{node\.campaigns\} live \{node\.campaigns === 1 \? "campaign" : "campaigns"\}/);
+  assert.match(illustration, /\{node\.campaigns\} \{node\.campaigns === 1 \? "campaign" : "campaigns"\}/);
   assert.match(illustration, /class="organization-node" style={`top: \$\{node\.top\}px`}/);
   assert.match(illustration, /<svg class="graph-routes" viewBox="0 0 82 488"/);
   assert.match(illustration, /<animateMotion/);
@@ -112,19 +110,20 @@ test("landing page explains and illustrates campaign dispatch", () => {
   assert.match(illustration, /path=\{job\.repositoryPath\}/);
   assert.match(illustration, /organizationPath: "M0 100 H41 V172 H82"/);
   assert.match(illustration, /organizationPath: "M0 308 H41 V172 H82"/);
+  assert.match(illustration, /organizationPath: "M0 172 H41 V344 H82"/);
   assert.match(illustration, /repositoryPath: "M0 172 H41 V100 H82"/);
   assert.match(illustration, /repositoryPath: "M0 172 H41 V308 H82"/);
+  assert.match(illustration, /repositoryPath: "M0 344 H41 V172 H82"/);
   assert.match(illustration, /class="graph-junction" cx="41" cy="172"/);
-  assert.match(illustration, /class="graph-junction graph-junction-review" cx="41" cy="276"/);
-  assert.match(illustration, /class="graph-junction" cx="41" cy="456"/);
-  assert.match(illustration, /class="organization-node review-queue-node"/);
-  assert.match(illustration, /<strong>CAO review queue<\/strong>/);
-  assert.match(illustration, /\{reviewJobs\.length\} review \{reviewJobs\.length === 1 \? "item" : "items"\}/);
+  assert.match(illustration, /class="graph-junction" cx="41" cy="344"/);
+  assert.doesNotMatch(illustration, /CAO review queue/);
   assert.match(illustration, /graph-route-dot review/);
+  assert.match(illustration, /review output · CAO control repository/);
+  assert.match(illustration, /class={`repository-card \$\{job\.timing\} \$\{job\.mode\}`}/);
   assert.match(illustration, /--review: #0969da/);
   assert.match(illustration, /--review: #58a6ff/);
   assert.match(illustration, /class={`mobile-pair-route \$\{job\.timing\} \$\{job\.mode\} \$\{job\.failed \? "failed" : ""\}`}/);
-  assert.match(illustration, /class="mobile-repository-card mobile-review-queue"/);
+  assert.match(illustration, /class={`mobile-repository-card \$\{job\.mode\}`}/);
   assert.match(illustration, /\{!job\.failed && <i><\/i>\}/);
   assert.match(illustration, /<strong>No output dispatched<\/strong>/);
   assert.match(illustration, /\.organization-icon,[\s\S]*?\.repository-icon \{[\s\S]*?width: 16px;[\s\S]*?height: 16px/);
