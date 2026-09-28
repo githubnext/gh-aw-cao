@@ -6,6 +6,7 @@ import { build } from "esbuild";
 import { bundleDashboardFiles } from "../../report/bundle-dashboards.mjs";
 import { configureSite } from "../../report/configure-site.mjs";
 import { buildDashboardPageChunkPath, splitDashboardDocument } from "../src/dashboard-chunks.js";
+import { generateDashboardLlms } from "./llms.mjs";
 
 const siteRoot = new URL("../", import.meta.url);
 
@@ -13,6 +14,7 @@ export async function buildDashboardSite({
   destination,
   controlSettings,
   commitSha,
+  activityDataPath,
   repositoryRoot = new URL("../../../", import.meta.url),
 }) {
   if (!destination) throw new Error("dashboard destination is required");
@@ -62,6 +64,10 @@ export async function buildDashboardSite({
   });
   await writeFile(dashboardPath, `${JSON.stringify(splitDashboard.core)}\n`);
   await writeDashboardPageChunks(destinationPath, splitDashboard.pageChunks);
+  await generateDashboardLlms({
+    outputPath: join(destinationPath, "llms.txt"),
+    activityDataPath,
+  });
   await bundleSiteJavascript(destinationPath);
   await rm(join(destinationPath, "dashboard-fragments"), { force: true, recursive: true });
   await cacheBustSiteImports(destinationPath);
@@ -219,7 +225,7 @@ function redirectDocument(pageId) {
 `;
 }
 
-async function main([destination, settingsPath, commitSha]) {
+async function main([destination, settingsPath, commitSha, activityDataPath]) {
   const controlSettings = settingsPath
     ? JSON.parse(await readFile(resolve(settingsPath), "utf8"))
     : {};
@@ -227,6 +233,7 @@ async function main([destination, settingsPath, commitSha]) {
     destination: destination ?? new URL("dist/", siteRoot),
     controlSettings,
     commitSha,
+    activityDataPath,
   });
 }
 

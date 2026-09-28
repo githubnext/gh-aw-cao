@@ -15,6 +15,7 @@ const cachePaths = [
   "${{ runner.temp }}/cao-activity/payload-hashes.json",
   "${{ runner.temp }}/cao-activity/control-settings.json",
   "${{ runner.temp }}/cao-activity/inventory-sources.json",
+  "${{ runner.temp }}/cao-activity/agent-summary.json",
   "${{ runner.temp }}/cao-activity/drain3_weights.json",
 ];
 
@@ -30,6 +31,7 @@ const legacyCachePaths = [
   "${{ runner.temp }}/cao-activity/payload-hashes.json",
   "${{ runner.temp }}/cao-activity/control-settings.json",
   "${{ runner.temp }}/cao-activity/inventory-sources.json",
+  "${{ runner.temp }}/cao-activity/agent-summary.json",
   "${{ runner.temp }}/cao-activity/drain3_weights.json",
 ];
 
@@ -195,6 +197,7 @@ async function zeroRunSnapshot(t) {
   await writeFile(path.join(shards, "logs-1790371204-0000-d98491943277f167.jsonl"), rateLimitRecord);
   await writeFile(path.join(root, "control-settings.json"), '{"allowed_repositories":["junco-org/control"]}\n');
   await writeFile(inventory, '{"workflows":{"rows":[]}}\n');
+  await writeFile(path.join(root, "agent-summary.json"), '{"schemaVersion":1}\n');
   await mkdir(path.join(root, "memory"), { recursive: true });
   await writeFile(path.join(root, "memory", "manifest.json"), '{"version":1,"campaigns":[]}\n');
   const phases = ["--shard-dir", shards, "--runs-dir", runs, "--records-dir", records, "--inventory", inventory];

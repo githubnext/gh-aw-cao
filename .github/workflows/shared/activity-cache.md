@@ -13,6 +13,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
+            ${{ runner.temp }}/cao-activity/agent-summary.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
           key: cao-activity-v5-lookup-${{ github.run_id }}-${{ github.run_attempt }}-activation
           restore-keys: |
@@ -31,6 +32,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
+            ${{ runner.temp }}/cao-activity/agent-summary.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
           key: cao-activity-v5-lookup-${{ github.run_id }}-${{ github.run_attempt }}-agent
           restore-keys: |

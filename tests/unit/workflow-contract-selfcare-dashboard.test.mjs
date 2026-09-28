@@ -6,6 +6,22 @@ import { root, stepBlock, workflow } from "./workflow-contract.helpers.mjs";
 
 // SelfCare workers that audit and improve the dashboard.
 
+test("SelfCare agent discoverability audits bounded access-path routing", () => {
+  const source = workflow("self-care-agent-discoverability.md");
+
+  assert.match(source, /worker: agent-discoverability/);
+  assert.match(source, /https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\//);
+  assert.match(source, /Start only at/);
+  assert.match(source, /at most 25 total HTTP fetches, 8 MCP calls, and 5 local CLI commands/);
+  assert.match(source, /`cao_catalog`, then one bounded `cao_query`/);
+  assert.match(source, /UI scraping attempted/);
+  assert.match(source, /Repository search required/);
+  assert.match(source, /create-issue:/);
+  assert.match(source, /create-pull-request:/);
+  assert.match(source, /Never create both an issue and a pull request/);
+  assert.match(source, /draft: true/);
+});
+
 test("dashboard view assessment issues are ready for agent assignment", () => {
   const source = workflow("dashboard-views.yml");
   const issueReporter = source.slice(source.indexOf("} else {", source.indexOf("if (isPullRequest)")));
