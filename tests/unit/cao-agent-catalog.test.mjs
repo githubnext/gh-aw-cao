@@ -22,10 +22,10 @@ test("materialized Go agent artifacts match the dashboard source", async () => {
     readAgentCatalog(),
     loadAgentDashboardDocument(),
     readFile(new URL("../../dashboard/site/src/agent/catalog.generated.json", import.meta.url), "utf8"),
-    readFile(new URL("../../dashboard/site/src/agent/dashboard.generated.json", import.meta.url), "utf8"),
+    readFile(new URL("../../dashboard/site/src/agent/queries.generated.json", import.meta.url), "utf8"),
   ]);
   assert.deepEqual(JSON.parse(generatedCatalog), catalog);
-  assert.deepEqual(JSON.parse(generatedDashboard), dashboard);
+  assert.deepEqual(JSON.parse(generatedDashboard), dashboard.dashboard.queries);
 });
 
 /**

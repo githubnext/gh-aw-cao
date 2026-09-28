@@ -222,7 +222,7 @@ func newMCPTestApp(t *testing.T, enabled bool) *App {
 	if err := os.WriteFile(filepath.Join(site, "index.html"), []byte("<html></html>"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	definitions, err := ParseDashboardQueries("../../../dashboard/site/src/agent/dashboard.generated.json")
+	definitions, err := ParseDashboardQueries("../../../dashboard/site/src/agent/queries.generated.json")
 	if err != nil {
 		t.Fatal(err)
 	}

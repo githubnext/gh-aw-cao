@@ -435,7 +435,7 @@ func newServeCommand() *cobra.Command {
 	accessToken := cmd.Flags().String("access-token", "", "dashboard access token (generated when omitted)")
 	source := cmd.Flags().String("source", "", "deployed dashboard directory to ingest before serving")
 	databaseQueries := cmd.Flags().String("database-queries", "../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
-	dashboardQueries := cmd.Flags().String("dashboard-queries", "../dashboard/site/src/agent/dashboard.generated.json", "materialized dashboard query document")
+	dashboardQueries := cmd.Flags().String("dashboard-queries", "../dashboard/site/src/agent/queries.generated.json", "materialized dashboard query definitions")
 	agentCatalog := cmd.Flags().String("agent-catalog", "../dashboard/site/src/agent/catalog.generated.json", "materialized read-only agent catalog")
 	mcpContract := cmd.Flags().String("mcp-contract", "../dashboard/site/src/agent/mcp-contract.json", "shared MCP tool contract")
 	mcpEnabled := cmd.Flags().Bool("mcp-enabled", false, "serve the read-only MCP endpoint at /mcp")

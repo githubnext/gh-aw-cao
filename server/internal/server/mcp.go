@@ -83,6 +83,11 @@ func (a *App) newMCPHandler() (http.Handler, error) {
 	if contract.ProtocolVersion == "" || len(contract.Tools) == 0 {
 		return nil, errors.New("contract must declare a protocol version and tools")
 	}
+	if contract.Limits.MaxRequestBytes <= 0 || contract.Limits.DefaultQueryRows <= 0 ||
+		contract.Limits.MaxQueryRows < contract.Limits.DefaultQueryRows ||
+		contract.Limits.MaxParameters <= 0 || contract.Limits.MaxParameterLength <= 0 {
+		return nil, errors.New("contract declares invalid resource limits")
+	}
 	catalog, err := readJSONFile[agentCatalog](a.config.AgentCatalogPath)
 	if err != nil {
 		return nil, fmt.Errorf("read agent catalog: %w", err)
@@ -98,11 +103,16 @@ func (a *App) newMCPHandler() (http.Handler, error) {
 		Instructions:              contract.Instructions,
 		SupportedProtocolVersions: []string{contract.ProtocolVersion},
 	})
+	registered := map[string]bool{}
 	for _, declared := range contract.Tools {
 		tool := declared
 		if tool.Name != "cao_catalog" && tool.Name != "cao_query" {
 			return nil, fmt.Errorf("contract declares unsupported tool %q", tool.Name)
 		}
+		if registered[tool.Name] {
+			return nil, fmt.Errorf("contract declares tool %q more than once", tool.Name)
+		}
+		registered[tool.Name] = true
 		server.AddTool(&mcp.Tool{
 			Name: tool.Name, Title: tool.Title, Description: tool.Description,
 			InputSchema: tool.InputSchema, OutputSchema: tool.OutputSchema,
@@ -110,6 +120,9 @@ func (a *App) newMCPHandler() (http.Handler, error) {
 		}, func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			return runtime.call(ctx, tool.Name, request.Params.Arguments), nil
 		})
+	}
+	if !registered["cao_catalog"] || !registered["cao_query"] || len(registered) != 2 {
+		return nil, errors.New("contract must declare exactly cao_catalog and cao_query")
 	}
 	handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return server }, &mcp.StreamableHTTPOptions{
 		Stateless: true, JSONResponse: true, MaxRequestBodyBytes: contract.Limits.MaxRequestBytes,
@@ -302,10 +315,13 @@ func (runtime *mcpRuntime) queryLimit(value any) (int, error) {
 		return runtime.contract.Limits.DefaultQueryRows, nil
 	}
 	number, ok := value.(float64)
-	if !ok || math.Trunc(number) != number || number < 1 {
+	if !ok || math.IsInf(number, 0) || math.IsNaN(number) || math.Trunc(number) != number || number < 1 {
 		return 0, errors.New("cao_query limit must be a positive integer")
 	}
-	return min(int(number), runtime.contract.Limits.MaxQueryRows), nil
+	if number >= float64(runtime.contract.Limits.MaxQueryRows) {
+		return runtime.contract.Limits.MaxQueryRows, nil
+	}
+	return int(number), nil
 }
 
 func (runtime *mcpRuntime) queryFilters(entry agentQuery, value any) ([]query.Predicate, map[string]string, error) {

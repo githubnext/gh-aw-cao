@@ -77,7 +77,7 @@ jobs:
       - name: Verify generated contracts
         run: |
           npm run generate:agent-catalog
-          git diff --exit-code -- dashboard/site/src/agent/catalog.generated.json dashboard/site/src/agent/dashboard.generated.json
+          git diff --exit-code -- dashboard/site/src/agent/catalog.generated.json dashboard/site/src/agent/queries.generated.json
       - name: Run contract tests
         run: |
           node --test tests/unit/cao-agent-catalog.test.mjs tests/unit/cao-mcp-server.test.mjs
