@@ -558,7 +558,7 @@
       "id": "issues",
       "title": "Issues",
       "description": "Retained GitHub issues created by agentic workflow safe outputs.",
-      "experimental": true,
+      "experimental": false,
       "parameters": [],
       "queries": [
         "issue-repository-totals",

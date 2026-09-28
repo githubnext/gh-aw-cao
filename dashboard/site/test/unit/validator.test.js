@@ -54,7 +54,7 @@ describe('dashboard document validation', () => {
     });
   });
 
-  it('marks Steering, Indexing, Issues, and Memory pages as experimental', () => {
+  it('marks Steering, Indexing, and Memory pages as experimental', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentalPageIds = document.dashboard.pages
       .filter((/** @type {{ experimental?: boolean }} */ page) => page.experimental === true)
@@ -63,10 +63,10 @@ describe('dashboard document validation', () => {
     expect(experimentalPageIds).toEqual(expect.arrayContaining([
       'steering',
       'indexing',
-      'issues',
       'memory',
       'campaign-memory',
     ]));
+    expect(experimentalPageIds).not.toContain('issues');
   });
 
   it('defines the all-campaign Memory page with an in-place repository-memory browser', () => {
