@@ -180,8 +180,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           NODE_OPTIONS: '--test-name-pattern="${{ matrix.test-pattern }}"'
         run: |
-          # shellcheck disable=SC2155
-          export CENTRAL_AGENTIC_OPS_CAMPAIGN_SOURCE="${GITHUB_REPOSITORY}@$(git rev-parse --short=12 "$GITHUB_SHA")"
+          # gh-aw only classifies a 40-character hex ref as a commit SHA; an abbreviated
+          # SHA is treated as a branch name, so `gh aw update` resolves the campaign
+          # source against a branch that does not exist. Pin the full commit SHA, as the
+          # release workflow already does.
+          export CENTRAL_AGENTIC_OPS_CAMPAIGN_SOURCE="${GITHUB_REPOSITORY}@${GITHUB_SHA}"
           set +e
           output="$(npm run test:campaign-lifecycle 2>&1)"
           status=$?
