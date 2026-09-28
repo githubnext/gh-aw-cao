@@ -78,6 +78,7 @@ flowchart LR
 | Telemetry | `internal/telemetry/` | Configures the OpenTelemetry TracerProvider from standard `OTEL_*` environment variables, exposes the server's tracer, and writes W3C trace/span id response headers. |
 | Local Redis | `docker-compose.yml` | Runs plain Redis on `127.0.0.1:6379`. |
 | Coolify container profile | `Dockerfile`, `coolify/compose.yml` | Builds the dashboard and Go service into a non-root image and runs `serve-hosted` behind an explicitly trusted Coolify TLS proxy. |
+| Railway container profile | `Dockerfile`, `../railway.json` | Builds the same image with an optional verified payload baked in through `CAO_DATA_URL` and runs one replica behind Railway's TLS edge. |
 
 ### Host capability profiles
 
@@ -289,6 +290,41 @@ the canonical session endpoint after every transition.
 The Redis command client reuses a bounded connection pool, applies operation
 deadlines, and retries read-only commands once when a pooled connection has
 gone stale. Write commands are not replayed automatically.
+
+### Railway container profile
+
+Railway is another composition of the `container` target with the `railway`
+Redis module; it adds no request, authentication, or ingestion behavior. The
+checked-in `railway.json` selects the Dockerfile builder, `server/Dockerfile`,
+one replica, and restart-on-failure. It declares no platform health check
+because Railway probes with `Host: healthcheck.railway.app` over plain HTTP,
+which the hosted proxy policy correctly refuses with `421`.
+
+Railway cannot pre-populate a volume, so the image accepts an optional
+`CAO_DATA_URL` build argument that identifies a published
+`payload-hashes.json`. The `dashboard-data` build stage downloads the manifest,
+the inventory, the SQLite snapshot, and every listed run and record shard,
+verifies each SHA-256 digest, and fails the build on any mismatch. When the
+argument is empty the stage performs no network request, so the Coolify volume
+workflow is unchanged. A payload baked this way is immutable for the life of the
+deployment: refresh data with a new build, not by writing into a running
+container.
+
+```bash
+docker build -f server/Dockerfile \
+  --build-arg CAO_DATA_URL=https://OWNER.github.io/REPOSITORY/cao/payload-hashes.json \
+  -t cao-dashboard:railway .
+```
+
+Railway terminates TLS at its edge and forwards over the project's private
+network, so `CAO_TRUSTED_PROXY_CIDRS` must contain that private prefix and
+`REDIS_URL` should reference the private `*.railway.internal` Redis service.
+Rejected forwarded requests log one fixed identifier —
+`access.proxy_rejected.peer_untrusted`, `.host_not_allowed`,
+`.host_missing`, or `.scheme_not_https` — under the `cao:server` debug
+namespace, so a misconfigured CIDR or host list is diagnosable without logging
+addresses. For the operator procedure, see [Deploying the dashboard to
+Railway](https://github.com/githubnext/gh-aw-cao/blob/main/docs/deployment-railway.md).
 
 ### Request rate limiting
 

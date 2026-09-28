@@ -14,6 +14,21 @@ RUN if echo "${REVISION}" | grep -Eq '^[0-9a-f]{40}$'; then \
       npm --prefix dashboard/site run build -- dist ../../.github/workflows/cao.json; \
     fi
 
+FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS dashboard-data
+
+# Optional build-time payload bake for platforms that cannot pre-populate a
+# volume. CAO_DATA_URL must identify a published payload-hashes.json. The
+# downloader verifies every payload file against that manifest and fails the
+# build when a hash does not match. When the argument is empty the stage makes
+# no network request and the image keeps the empty /app/source mount point.
+ARG CAO_DATA_URL=""
+WORKDIR /workspace
+COPY . .
+RUN mkdir -p /out/source \
+    && if [ -n "${CAO_DATA_URL}" ]; then \
+         node activity/cao.mjs download --url "${CAO_DATA_URL}" --output /out/source; \
+       fi
+
 FROM golang:1.27-alpine@sha256:8a5910f31396cd4d89662f56c68b3ae31d374308270a1c3bd96672ee5ed43414 AS server-build
 
 ARG VERSION=dev
@@ -50,6 +65,7 @@ COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/dist/ /app
 COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/dashboard.json /app/dashboard.json
 COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/src/data/queries/database.json /app/queries/database.json
 COPY --from=dashboard-build --chown=cao:cao /workspace/.github/workflows/cao.json /app/.github/workflows/cao.json
+COPY --from=dashboard-data --chown=cao:cao /out/source/ /app/source/
 
 WORKDIR /app
 USER 65532:65532

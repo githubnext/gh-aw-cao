@@ -300,6 +300,7 @@ If you suspect an incident, see [Incident response](operations.md#incident-respo
 - [About deployment options](deployment.md)
 - [Deploying the dashboard with GitHub Actions](deployment-actions.md)
 - [Deploying the dashboard to Coolify](deployment-coolify.md)
+- [Deploying the dashboard to Railway](deployment-railway.md)
 - [Data ingestion](dashboard-data-ingestion.md)
 - [Data model](dashboard-data-model.md)
 - [`server/README.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md)

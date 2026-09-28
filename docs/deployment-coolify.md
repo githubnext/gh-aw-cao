@@ -233,6 +233,7 @@ If you suspect an incident, see [Incident response](operations.md#incident-respo
 - [About deployment options](deployment.md)
 - [Deploying the dashboard with GitHub Actions](deployment-actions.md)
 - [Deploying the dashboard to Azure](deployment-azure.md)
+- [Deploying the dashboard to Railway](deployment-railway.md)
 - [Deploying the dashboard with Upstash Redis](deployment-upstash.md)
 - [Data ingestion](dashboard-data-ingestion.md)
 - [Data model](dashboard-data-model.md)

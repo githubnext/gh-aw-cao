@@ -357,8 +357,19 @@ func (a *App) authorized(request *http.Request) bool {
 
 func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		if !validProxyRequest(request, a.proxyPolicy()) {
-			a.logAuthBranch("access.proxy_rejected")
+		if rejection := proxyRequestRejection(request, a.proxyPolicy()); rejection != proxyRejectionNone {
+			switch rejection {
+			case proxyRejectionPeer:
+				a.logAuthBranch("access.proxy_rejected.peer_untrusted")
+			case proxyRejectionMissingHost:
+				a.logAuthBranch("access.proxy_rejected.host_missing")
+			case proxyRejectionHost:
+				a.logAuthBranch("access.proxy_rejected.host_not_allowed")
+			case proxyRejectionScheme:
+				a.logAuthBranch("access.proxy_rejected.scheme_not_https")
+			default:
+				a.logAuthBranch("access.proxy_rejected")
+			}
 			http.Error(response, "invalid forwarded request host", http.StatusMisdirectedRequest)
 			return
 		}

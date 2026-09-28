@@ -171,7 +171,8 @@ REDIS_URL=${{Redis.REDIS_URL}}
 ```
 
 Use the actual Redis service name. Prefer Railway's private URL; do not expose a
-TCP proxy solely for CAO.
+TCP proxy solely for CAO. For the full platform walkthrough, see
+[Deploying the dashboard to Railway](deployment-railway.md).
 
 ### Render
 

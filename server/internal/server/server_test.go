@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"os"
 	"strings"
 	"sync"
@@ -179,6 +180,37 @@ func TestHostedProxyHeadersAreTrustedOnlyOnLoopbackBoundary(t *testing.T) {
 	request.RemoteAddr = "203.0.113.10:12345"
 	if validProxyRequest(request, loopbackProxy) {
 		t.Fatal("hosted boundary trusted forwarded headers from an untrusted peer")
+	}
+}
+
+func TestProxyRejectionReasonsAreSpecific(t *testing.T) {
+	policy := ProxyPolicy{
+		AllowedHosts:         []string{"dashboard.example.com"},
+		RequireHTTPS:         true,
+		TrustForwarded:       true,
+		TrustedProxyPrefixes: []netip.Prefix{netip.MustParsePrefix("fd00::/8")},
+	}
+	newRequest := func(forwardedHost, forwardedProto, peer string) *http.Request {
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://internal.test/", nil)
+		request.Host = "internal.test"
+		request.RemoteAddr = peer
+		request.Header.Set("X-Forwarded-Host", forwardedHost)
+		request.Header.Set("X-Forwarded-Proto", forwardedProto)
+		return request
+	}
+	for _, test := range []struct {
+		name     string
+		request  *http.Request
+		expected proxyRejection
+	}{
+		{"trusted", newRequest("dashboard.example.com", "https", "[fd12:3456::1]:9000"), proxyRejectionNone},
+		{"peer", newRequest("dashboard.example.com", "https", "203.0.113.10:9000"), proxyRejectionPeer},
+		{"host", newRequest("healthcheck.railway.app", "https", "[fd12:3456::1]:9000"), proxyRejectionHost},
+		{"scheme", newRequest("dashboard.example.com", "http", "[fd12:3456::1]:9000"), proxyRejectionScheme},
+	} {
+		if rejection := proxyRequestRejection(test.request, policy); rejection != test.expected {
+			t.Errorf("%s: got rejection %q, want %q", test.name, rejection, test.expected)
+		}
 	}
 }
 

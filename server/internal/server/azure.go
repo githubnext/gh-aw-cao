@@ -73,12 +73,30 @@ func validateHostedMode(store *redisx.Store, config *Config) error {
 	return nil
 }
 
+// proxyRejection is a fixed identifier that explains why a forwarded request
+// was refused. It never contains request, host, peer, or credential values, so
+// operators can diagnose a trusted-proxy or allowed-host misconfiguration from
+// logs alone.
+type proxyRejection string
+
+const (
+	proxyRejectionNone        proxyRejection = ""
+	proxyRejectionPeer        proxyRejection = "peer_untrusted"
+	proxyRejectionMissingHost proxyRejection = "host_missing"
+	proxyRejectionHost        proxyRejection = "host_not_allowed"
+	proxyRejectionScheme      proxyRejection = "scheme_not_https"
+)
+
 func validProxyRequest(request *http.Request, policy ProxyPolicy) bool {
+	return proxyRequestRejection(request, policy) == proxyRejectionNone
+}
+
+func proxyRequestRejection(request *http.Request, policy ProxyPolicy) proxyRejection {
 	host := request.Host
 	secure := request.TLS != nil
 	if policy.TrustForwarded {
 		if len(policy.TrustedProxyPrefixes) > 0 && !trustedProxyPeer(request.RemoteAddr, policy.TrustedProxyPrefixes) {
-			return false
+			return proxyRejectionPeer
 		}
 		if forwarded := forwardedHeader(request, "X-Forwarded-Host"); forwarded != "" {
 			host = forwarded
@@ -88,7 +106,7 @@ func validProxyRequest(request *http.Request, policy ProxyPolicy) bool {
 	}
 	host = strings.ToLower(strings.TrimSpace(strings.Split(host, ",")[0]))
 	if host == "" {
-		return false
+		return proxyRejectionMissingHost
 	}
 	if strings.Contains(host, ":") {
 		host = strings.Split(host, ":")[0]
@@ -101,12 +119,15 @@ func validProxyRequest(request *http.Request, policy ProxyPolicy) bool {
 		}
 	}
 	if !allowed {
-		return false
+		return proxyRejectionHost
 	}
 	if !policy.RequireHTTPS {
-		return true
+		return proxyRejectionNone
 	}
-	return secure
+	if !secure {
+		return proxyRejectionScheme
+	}
+	return proxyRejectionNone
 }
 
 func trustedProxyPeer(remoteAddress string, prefixes []netip.Prefix) bool {

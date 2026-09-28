@@ -22,7 +22,17 @@
     },
     "web": {
       "experimental": true,
-      "favicon": "./favicon.svg"
+      "favicon": "./favicon.svg",
+      "host": {
+        "target": { "module": "container", "name": "railway", "replicas": 1 },
+        "redis": {
+          "module": "railway",
+          "url-env": "REDIS_URL",
+          "namespace-env": "REDIS_NAMESPACE",
+          "allow-private-plaintext": true,
+          "tls": { "mode": "disabled" }
+        }
+      }
     },
     "marketplace": {
       "cache-ttl-seconds": 300,
