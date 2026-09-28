@@ -506,6 +506,7 @@ test("Documentation Pages deploys docs with the latest dashboard artifact", () =
   assert.match(workflow, /schedule-freshness:[\s\S]*?if: github\.event_name == 'schedule'[\s\S]*?outputs:[\s\S]*?should-build: \$\{\{ steps\.freshness\.outputs\.should-build \}\}/);
   assert.match(workflow, /Check documentation and dashboard freshness[\s\S]*?actions\/github-script@[0-9a-f]{40}[\s\S]*?repos\.getBranch[\s\S]*?workflow_id: 'docs\.yml'[\s\S]*?workflow_id: 'cao-dashboard\.yml'/);
   assert.match(workflow, /listJobsForWorkflowRun[\s\S]*?job\.name === 'deploy' && job\.conclusion === 'success'/);
+  assert.match(workflow, /for \(let page = 1; !deployedDocsRun; page \+= 1\)[\s\S]*?workflow_runs\.length < 100/);
   assert.match(workflow, /const docsCurrent = deployedDocsRun\?\.head_sha === currentBranch\.data\.commit\.sha/);
   assert.match(workflow, /const dashboardCurrent = latestDashboardRun[\s\S]*?latestDashboardRun\.updated_at\) <= new Date\(deployedDocsRun\.updated_at\)/);
   assert.match(workflow, /Scheduled documentation build skipped because the deployed docs and dashboard are current/);

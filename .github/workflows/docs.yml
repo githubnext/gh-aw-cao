@@ -56,7 +56,7 @@ jobs:
               branch,
             })
             let deployedDocsRun
-            for (let page = 1; page <= 10 && !deployedDocsRun; page += 1) {
+            for (let page = 1; !deployedDocsRun; page += 1) {
               const successfulDocsRuns = await github.rest.actions.listWorkflowRuns({
                 owner,
                 repo,
@@ -78,6 +78,9 @@ jobs:
                   deployedDocsRun = run
                   break
                 }
+              }
+              if (successfulDocsRuns.data.workflow_runs.length < 100) {
+                break
               }
             }
             const dashboardRuns = await github.rest.actions.listWorkflowRuns({
