@@ -35,7 +35,8 @@ test("an external agent can traverse static discovery and resource metadata", as
   const indexHref = hrefForRel(landingHtml, "index", "application/json");
   assert.ok(indexHref, "landing HTML must advertise the machine-readable resource index");
   const index = JSON.parse(await readFile(fileForPublicUrl(indexHref), "utf8"));
-  assert.ok(index.resources.some((entry) => entry.id === "dashboard"));
+  const dashboardSummary = index.resources.find((entry) => entry.id === "dashboard");
+  assert.deepEqual(dashboardSummary.interfaces, ["cli", "cli-mcp", "web-mcp"]);
 
   const scoped = await readFile(fileForPublicUrl(scopedHref), "utf8");
   const links = markdownLinks(scoped);
@@ -77,4 +78,10 @@ test("an external agent can traverse static discovery and resource metadata", as
     [["cli", "cao_catalog"], ["web", "cao_overview"]],
   );
   assert.equal(dashboard.recommendedInterface.default, "web-mcp");
+
+  const catalog = JSON.parse(await readFile(path.join(dist, "agent-analysis", "index.json"), "utf8"));
+  assert.deepEqual(
+    catalog.interfaces.mcp.map((binding) => binding.arguments),
+    [{ kind: "pages" }, { kind: "queries" }],
+  );
 });

@@ -124,13 +124,24 @@ function interfacesFor(binding?: AgentBinding) {
           readOnly: true,
         },
       ],
-      mcp: [{
-        transport: "cli",
-        server: "cao",
-        capability: "cao_catalog",
-        purpose: "Discover dashboard pages and named queries.",
-        readOnly: true,
-      }],
+      mcp: [
+        {
+          transport: "cli",
+          server: "cao",
+          capability: "cao_catalog",
+          arguments: { kind: "pages" },
+          purpose: "Discover dashboard pages.",
+          readOnly: true,
+        },
+        {
+          transport: "cli",
+          server: "cao",
+          capability: "cao_catalog",
+          arguments: { kind: "queries" },
+          purpose: "Discover named dashboard queries.",
+          readOnly: true,
+        },
+      ],
     };
   }
 
@@ -306,16 +317,18 @@ export function createAgentResource(entry: ResourceEntry, context: ResourceConte
 
 export function createAgentResourceSummary(entry: ResourceEntry, context: Pick<ResourceContext, "site" | "base">) {
   const root = new URL(context.base, context.site);
-  const binding = entry.data.agent?.binding;
+  const interfaces = interfacesFor(entry.data.agent?.binding);
   return {
     id: entry.id,
     type: entry.data.agent?.type ?? "documentation",
     url: new URL(pagePath(entry.id), root).href,
     agent: new URL(resourcePath(entry.id), root).href,
-    ...(binding ? {
-      interfaces: binding.kind === "dashboard-page"
-        ? ["cli", "cli-mcp", "web-mcp"]
-        : ["cli", "cli-mcp"],
+    ...(interfaces ? {
+      interfaces: [
+        ...(interfaces.cli.length > 0 ? ["cli"] : []),
+        ...(interfaces.mcp.some((binding) => binding.transport === "cli") ? ["cli-mcp"] : []),
+        ...(interfaces.mcp.some((binding) => binding.transport === "web") ? ["web-mcp"] : []),
+      ],
     } : {}),
   };
 }

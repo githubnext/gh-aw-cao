@@ -94,6 +94,43 @@ async function findResourceFiles(directory) {
   return files;
 }
 
+async function findHtmlFiles(directory) {
+  const files = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const filePath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...await findHtmlFiles(filePath));
+    } else if (entry.name === "index.html") {
+      files.push(filePath);
+    }
+  }
+  return files;
+}
+
+function validateMcpArguments(tool, argumentsValue) {
+  if (!tool || !argumentsValue || typeof argumentsValue !== "object" || Array.isArray(argumentsValue)) {
+    return false;
+  }
+  const schema = tool.inputSchema ?? {};
+  const properties = schema.properties ?? {};
+  const required = Array.isArray(schema.required) ? schema.required : [];
+  if (required.some((name) => !Object.hasOwn(argumentsValue, name))) return false;
+  if (schema.additionalProperties === false
+    && Object.keys(argumentsValue).some((name) => !Object.hasOwn(properties, name))) {
+    return false;
+  }
+  return Object.entries(argumentsValue).every(([name, value]) => {
+    const property = properties[name];
+    if (!property) return schema.additionalProperties !== false;
+    if (Array.isArray(property.enum) && !property.enum.includes(value)) return false;
+    if (property.type === "string" && typeof value !== "string") return false;
+    if (property.type === "integer" && !Number.isInteger(value)) return false;
+    if (property.type === "object"
+      && (typeof value !== "object" || value === null || Array.isArray(value))) return false;
+    return true;
+  });
+}
+
 export async function validateAgentDocs({
   root,
   trackedFiles = [],
@@ -189,8 +226,9 @@ export async function validateAgentDocs({
   const generationTimes = new Set();
   const interfaceKinds = new Set();
   const resourceIds = new Set();
+  const resourceInterfaces = new Map();
   const cliCommands = new Set(commandHandlers.keys());
-  const cliMcpCapabilities = new Set(MCP_TOOLS.map((tool) => tool.name));
+  const cliMcpCapabilities = new Map(MCP_TOOLS.map((tool) => [tool.name, tool]));
   const dashboardDocument = await loadAgentDashboardDocument();
   const webMcpTools = new Map(
     webMCPManifestForDashboard(dashboardDocument).map((tool) => [tool.name, tool]),
@@ -219,8 +257,8 @@ export async function validateAgentDocs({
       if (typeof resource[field] !== "string" || !resource[field]) {
         errors.push(`${relative} is missing string field ${field}`);
       }
-      resourceIds.add(resource.id);
     }
+    resourceIds.add(resource.id);
     resourceTypes.add(resource.type);
     if (!resource.provenance || resource.provenance.repository !== "githubnext/gh-aw-cao") {
       errors.push(`${relative} is missing repository provenance`);
@@ -279,6 +317,9 @@ export async function validateAgentDocs({
       interfaceKinds.add(kind);
       if (binding.transport === "cli" && !cliMcpCapabilities.has(binding.capability)) {
         errors.push(`${relative} references an unregistered CLI MCP capability`);
+      } else if (binding.transport === "cli"
+        && !validateMcpArguments(cliMcpCapabilities.get(binding.capability), binding.arguments)) {
+        errors.push(`${relative} supplies invalid CLI MCP arguments`);
       }
       if (binding.transport === "web") {
         const tool = webMcpTools.get(binding.capability);
@@ -301,6 +342,11 @@ export async function validateAgentDocs({
         errors.push(`${relative} recommends an unavailable interface`);
       }
     }
+    resourceInterfaces.set(resource.id, [
+      ...((resource.interfaces?.cli?.length ?? 0) > 0 ? ["cli"] : []),
+      ...((resource.interfaces?.mcp ?? []).some((binding) => binding.transport === "cli") ? ["cli-mcp"] : []),
+      ...((resource.interfaces?.mcp ?? []).some((binding) => binding.transport === "web") ? ["web-mcp"] : []),
+    ]);
     for (const link of resource.links ?? []) {
       let url;
       try {
@@ -343,6 +389,36 @@ export async function validateAgentDocs({
   for (const kind of ["cli", "cli-mcp", "web-mcp"]) {
     if (!interfaceKinds.has(kind)) errors.push(`structured resources must expose ${kind} bindings`);
   }
+  const advertisedResources = new Set();
+  for (const htmlFile of await findHtmlFiles(distDirectory)) {
+    const html = await readFile(htmlFile, "utf8");
+    const alternate = html.match(/<link\b(?=[^>]*\brel="alternate")(?=[^>]*\btype="application\/json")[^>]*\bhref="([^"]+)"/)?.[1];
+    if (!alternate) continue;
+    let builtPath;
+    try {
+      builtPath = builtPathForUrl(distDirectory, new URL(alternate, "https://githubnext.github.io"));
+    } catch {
+      errors.push(`${path.relative(distDirectory, htmlFile)} advertises an invalid JSON resource`);
+      continue;
+    }
+    advertisedResources.add(path.relative(distDirectory, builtPath).replaceAll("\\", "/"));
+    if (!await isRegularNonemptyFile(builtPath)) {
+      errors.push(`${path.relative(distDirectory, htmlFile)} advertises a missing JSON resource`);
+    }
+  }
+  const generatedResources = new Set(
+    resourceFiles.map((file) => path.relative(distDirectory, file).replaceAll("\\", "/")),
+  );
+  for (const relative of generatedResources) {
+    if (!advertisedResources.has(relative)) {
+      errors.push(`${relative} has no HTML route advertising it`);
+    }
+  }
+  for (const relative of advertisedResources) {
+    if (!generatedResources.has(relative)) {
+      errors.push(`${relative} is advertised by HTML but missing from generated resources`);
+    }
+  }
   if (resourceIndex) {
     if (resourceIndex.schemaVersion !== "1" || !Array.isArray(resourceIndex.resources)) {
       errors.push(`${resourceIndexPath} must contain a versioned resource list`);
@@ -362,6 +438,9 @@ export async function validateAgentDocs({
           || !await isRegularNonemptyFile(builtPathForUrl(distDirectory, new URL(summary.agent)))) {
           errors.push(`${resourceIndexPath} contains an unresolved agent resource`);
           break;
+        }
+        if (JSON.stringify(summary.interfaces ?? []) !== JSON.stringify(resourceInterfaces.get(summary.id) ?? [])) {
+          errors.push(`${resourceIndexPath} interface summary does not match ${summary.id}`);
         }
       }
     }

@@ -60,3 +60,27 @@ when available, source document, generator, and generator version.
 Use [Agent analysis](agent-analysis.md) and its read-only CLI or MCP query
 surface for large datasets and historical analysis instead of expanding static
 JSON representations.
+
+## Keeping the surfaces synchronized
+
+There is no handwritten output registry. Synchronization is enforced at four
+boundaries:
+
+| Boundary | Source of truth | Enforcement |
+| --- | --- | --- |
+| Documentation routes | Astro content collection | The build requires every HTML-advertised JSON route and index entry to agree in both directions. |
+| CLI bindings | `activity/commands/index.mjs` | The validator rejects unknown subcommands and malformed positional/option shapes. |
+| CLI MCP bindings | `activity/mcp-server.mjs` | The validator checks capability names and arguments against each registered tool's input schema. |
+| WebMCP bindings | Dashboard Language pages through `webmcp/manifest.js` | The validator requires the generated capability and page identifier to match the current dashboard manifest. |
+
+`npm run docs:build` runs these checks on every documentation build, and
+`npm run check` includes that build. The Pages workflow uses full Git history so
+per-source timestamps are authoritative. The existing weekly SelfCare
+documentation-discoverability worker samples the deployed index and a bound
+resource; any publication drift becomes its stable tracking issue rather than a
+second maintenance workflow.
+
+When changing a CLI command, MCP schema, Dashboard Language page identifier, or
+documentation binding, update the authoritative source and its focused tests in
+the same pull request. Never patch generated JSON or compiled workflow output by
+hand.

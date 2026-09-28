@@ -66,7 +66,12 @@ async function createFixture() {
         readOnly: true,
       }],
       mcp: [
-        { transport: "cli", capability: "cao_catalog", readOnly: true },
+        {
+          transport: "cli",
+          capability: "cao_catalog",
+          arguments: { kind: "pages", id: "overview" },
+          readOnly: true,
+        },
         { transport: "web", capability: "cao_overview", resourceId: "overview", readOnly: true },
       ],
     } : undefined;
@@ -101,6 +106,7 @@ async function createFixture() {
       type: routeTypes[route],
       url: `${pagesBase}/${route}/`,
       agent: `${pagesBase}/${route}/index.json`,
+      ...(interfaces ? { interfaces: ["cli", "cli-mcp", "web-mcp"] } : {}),
     });
   }
   const indexSource = "# Central Agentic Ops\n";
@@ -249,4 +255,25 @@ test("rejects unregistered operational bindings", async () => {
   const errors = await validateAgentDocs({ root });
   assert.ok(errors.some((error) => error.includes("unregistered CLI command")));
   assert.ok(errors.some((error) => error.includes("unregistered WebMCP capability")));
+});
+
+test("rejects MCP arguments that do not satisfy the registered tool schema", async () => {
+  const root = await createFixture();
+  const resourcePath = path.join(root, "dist", "dashboard", "index.json");
+  const resource = JSON.parse(await readFile(resourcePath, "utf8"));
+  delete resource.interfaces.mcp[0].arguments.kind;
+  await writeFile(resourcePath, JSON.stringify(resource));
+  const errors = await validateAgentDocs({ root });
+  assert.ok(errors.some((error) => error.includes("invalid CLI MCP arguments")));
+});
+
+test("rejects an HTML route whose JSON resource and index entry both disappear", async () => {
+  const root = await createFixture();
+  await rm(path.join(root, "dist", "architecture", "index.json"));
+  const indexPath = path.join(root, "dist", "agent", "resources.json");
+  const index = JSON.parse(await readFile(indexPath, "utf8"));
+  index.resources = index.resources.filter((resource) => resource.id !== "architecture");
+  await writeFile(indexPath, JSON.stringify(index));
+  const errors = await validateAgentDocs({ root });
+  assert.ok(errors.some((error) => error.includes("advertises a missing JSON resource")));
 });
