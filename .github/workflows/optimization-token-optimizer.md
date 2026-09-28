@@ -118,7 +118,9 @@ Read `/tmp/gh-aw/agent/control-precompute.json` first and verify the authorized 
 
 ## Candidate evidence
 
-Use the last 7 full days ending at workflow start in UTC. Prefer the restored Activity database through `activity/cao.mjs`; validate schema, scope, freshness, window, and completeness first. Use bounded read-only fallback calls only for missing `TARGET_REPO` evidence. Never publish or mutate the shared cache.
+Use the last 7 full days ending at workflow start in UTC. Prefer the restored Activity database at `$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite` through `activity/cao.mjs` (`gh runs` and `query --collection runs|audits`); validate schema, scope, freshness, window, and completeness first. Use bounded read-only fallback calls only for missing `TARGET_REPO` evidence. Never publish or mutate the shared cache.
+
+The `agentic-workflows` `logs` and `audit` tools enforce the dispatching actor's repository role and return `permission denied: insufficient role` when this worker is dispatched by a GitHub App. Treat that denial as an unavailable fallback, not a missing tool: do not call `missing_tool` for it, do not retry it, and rely on the Activity database. When neither source provides complete evidence, report the gap with `missing_data` and then `noop`.
 
 Build a candidate set of active `.github/workflows/*.md` sources in `target/`. Exclude this Optimization campaign, workflows with fewer than three completed runs, workflows with incomplete AI Credit coverage, and workflows optimized by an open Optimization issue.
 

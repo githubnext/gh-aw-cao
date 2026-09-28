@@ -37,11 +37,20 @@ jobs:
           key: cao-activity-v5-lookup-${{ github.run_id }}-${{ github.run_attempt }}-agent
           restore-keys: |
             cao-activity-v5-
+      - name: Prepare CAO activity cache mount
+        run: mkdir -p "${{ runner.temp }}/cao-activity"
+
+sandbox:
+  agent:
+    mounts:
+      - "${{ runner.temp }}/cao-activity:${{ runner.temp }}/cao-activity:ro"
+      - "${{ runner.temp }}/cao-activity:/host${{ runner.temp }}/cao-activity:ro"
 ---
 
 <!--
 Restores the latest CAO activity snapshot for deterministic activation checks and
-agent-side reuse. Consumers must treat cache misses and incomplete coverage as
+agent-side reuse. The restored directory is mounted read-only into the agent
+sandbox at the same `$RUNNER_TEMP/cao-activity` path. Consumers must treat cache misses and incomplete coverage as
 fallback conditions and must never save or publish this shared cache.
 -->
 

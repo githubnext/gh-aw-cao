@@ -32,6 +32,17 @@ test("shared activity cache restores into activation and agent jobs", () => {
   }
 });
 
+test("shared activity cache is mounted read-only into the agent sandbox", () => {
+  const source = workflow("shared/activity-cache.md");
+  const lock = workflow("optimization-token-optimizer.lock.yml");
+
+  assert.match(source, /Prepare CAO activity cache mount\n\s+run: mkdir -p "\$\{\{ runner\.temp \}\}\/cao-activity"/);
+  assert.match(source, /sandbox:\n\s+agent:\n\s+mounts:\n\s+- "\$\{\{ runner\.temp \}\}\/cao-activity:\$\{\{ runner\.temp \}\}\/cao-activity:ro"\n\s+- "\$\{\{ runner\.temp \}\}\/cao-activity:\/host\$\{\{ runner\.temp \}\}\/cao-activity:ro"/);
+  assert.doesNotMatch(source, /cao-activity:[^"\n]*:rw/);
+  assert.match(lock, /--mount "\$\{\{ runner\.temp \}\}\/cao-activity:\$\{\{ runner\.temp \}\}\/cao-activity:ro"/);
+  assert.match(lock, /--mount "\$\{\{ runner\.temp \}\}\/cao-activity:\/host\$\{\{ runner\.temp \}\}\/cao-activity:ro"/);
+});
+
 test("dashboard authoring corpus workflow generates only validated training examples", () => {
   const source = workflow("dashboard-authoring-corpus.md");
   const dashboardIrSkill = readFileSync(
