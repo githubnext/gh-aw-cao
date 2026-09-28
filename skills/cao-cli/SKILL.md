@@ -1,350 +1,76 @@
 ---
 name: cao-cli
-description: Use the cao CLI to query Central Agentic Ops activity data, both in local development and inside agentic workflow runs.
-argument-hint: "[dashboard-data-url-or-owner/repo, or the agentic workflow you are editing]"
+description: Use or extend the cao CLI for Central Agentic Ops configuration, activity queries, diagnostics, and dashboard-query maintenance.
+argument-hint: "[command, dashboard-data-url, owner/repo, or workflow]"
 allowed-tools: bash jq
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Use the `cao` CLI
 
-Use this skill whenever you need to query Central Agentic Ops activity data (repositories,
-workflows, runs, jobs, sessions, events) with the `cao` CLI, whether you are working
-locally in this repository or writing/debugging an agentic workflow that imports
-`.github/workflows/shared/activity-cache.md`. `cao` is a thin SQLite-backed query
-surface over the canonical dashboard data model described in
-[the dashboard data model docs](../../docs/dashboard-data-model.md); this skill
-covers only how and where to invoke it.
+## Procedure
 
-## Data contract
+1. Identify the task before running a command:
+   - control-plane setup or campaign lifecycle: use the repository-local `./cao.sh`;
+   - activity analysis with shell access: use `cao` or `npm run dashboard:data --`;
+   - activity analysis without shell access: use `cao_catalog`, then `cao_query`;
+   - an agentic workflow with the Activity cache: follow
+     [workflow runtime](references/workflow-runtime.md);
+   - dashboard query cost or reuse: follow
+     [dashboard query maintenance](references/dashboard-query-maintenance.md);
+   - CLI implementation work: read [CAO Commands](../../docs/cao-cli.md) and the
+     matching module under `activity/commands/`.
+2. Run `./cao.sh --help`, `cao help`, or `npm run dashboard:data -- help` from
+   the repository root. Do not guess command syntax.
+3. Use the narrowest command that answers the task. Prefer reviewed named
+   queries, then canonical collection queries, then raw Dashboard Language.
+4. Preserve result `availability`, `completeness`, `freshness`, and `as-of`.
+   Missing, stale, partial, zero, and complete evidence are different states.
+5. Run `cao doctor` before trusting a snapshot whose health is uncertain.
+6. Report the command form, source snapshot, filters, record identifiers, and
+   evidence limitations. Keep downloaded `.cao/` data uncommitted.
 
-- Treat `cao`-queried data as derived, disposable evidence, not schema authority.
-- Preserve the distinction between missing, stale, partial, zero, and complete evidence.
-- Do not infer rollout authority, target-writing authority, operational value, or repository
-  eligibility from activity data.
-- Never print credentials, tokens, authorization headers, raw prompts, transcripts, or other
+## Common routes
+
+| Task | Route |
+| --- | --- |
+| Initialize or update a control repository | `./cao.sh init`, `add`, `update`, or `setup`; see [CAO Commands](../../docs/cao-cli.md) |
+| Download published Activity | `cao download [--url URL]` |
+| Audit source coverage | `cao audit-jsonl` |
+| Discover reviewed dashboard queries | `cao pages`, `cao queries`, `cao query-info QUERY_ID` |
+| Run a reviewed query | `cao query QUERY_ID --limit N [--param NAME=VALUE]` |
+| Query a canonical collection | `cao query --collection COLLECTION [--where FIELD=VALUE] --limit N` |
+| Query one known record | `cao query --collection COLLECTION --id ID` |
+| Diagnose the projection | `cao doctor` |
+
+Use `--database FILE` only for a non-default SQLite projection. Use `--json`
+when another tool will consume the result. For raw Dashboard Language, pipe one
+query object to `cao query --stdin`; do not combine `--stdin` with
+`--collection`, `--id`, `--where`, or `--limit`.
+
+Canonical collections are `repositories`, `workflows`, `runs`, `jobs`,
+`sessions`, `events`, and `transactions`.
+
+## Guardrails
+
+- Treat queried data as derived, disposable evidence, not schema or policy
+  authority. The authoritative model is
+  [Dashboard data](../../specs/dashboard-data.md).
+- Never infer rollout authority, target-writing authority, operational value,
+  or repository eligibility from Activity data.
+- Never print credentials, authorization headers, raw prompts, transcripts, or
   secret values.
-- Prefer `cao` over direct GitHub API or `gh` CLI calls whenever it can answer the question;
-  repeated direct GitHub queries burn API rate limits that the cached snapshot already avoids.
-
-## Two invocation contexts
-
-`cao` is the same tool in both contexts; only how you locate it and which database it
-queries differ.
-
-## Configure a control repository
-
-The latest Bash installer makes the canonical `./cao.sh` wrapper
-executable. Run configuration commands through that repository-local CLI.
-
-Create a minimal review-safe control-plane policy:
-
-```bash
-./cao.sh init
-```
-
-The command refuses to replace an existing `.github/workflows/cao.json`. The new policy's
-scope allows only the repository `gh repo view` reports for the current checkout; `init`
-fails without writing a policy when that repository cannot be determined. Install an
-operational campaign and merge its declared orchestrator and workers into that policy with:
-
-```bash
-./cao.sh add githubnext/gh-aw-cao/dependabot
-```
-
-`cao add` forwards remaining arguments to `gh aw add`, preserves operator-owned campaign
-settings, and does not copy live mode or broader rollout into the policy. If the policy is
-missing, `cao add` creates the same minimal policy as `cao init` after the campaign installs.
-Upgrade `gh-aw` to the policy minimum, update every installed campaign, and refresh CAO
-worker declarations with:
-
-```bash
-./cao.sh update
-```
-
-`cao update` forwards remaining arguments to `gh aw update`, preserves operator-owned
-campaign settings, and does not enable live mode or broaden repository scope.
-
-### 1. Local development mode
-
-Use this when a human or agent is exploring activity data from this repository's
-working copy, outside of a running agentic workflow.
-
-1. Confirm dependencies are installed. If the `cao` binary is unavailable, use
-   `npm run dashboard:data --` from the repository root instead of `cao`.
-2. Download the current published snapshot (writes `.cao/payload-hashes.json`,
-   `.cao/gh-aw-logs-shards/`, and `.cao/gh-aw-logs.sqlite` by default):
-
-   ```bash
-   cao download
-   ```
-
-   Pass `--url URL` (or set `DASHBOARD_DATA_URL`) for another deployment's
-   `payload-hashes.json`, and `--output DIRECTORY` only when the user requests a
-   non-default destination.
-3. Optionally audit source coverage before treating the snapshot as complete:
-
-   ```bash
-   cao audit-jsonl
-   ```
-4. Query the default `.cao/gh-aw-logs.sqlite` projection (see "Querying" below).
-   `--database FILE` is only needed for a non-default path.
-
-### 2. Inside an agentic workflow run
-
-Use this when a workflow imports `shared/activity-cache.md` and restores the shared
-activity cache into `${{ runner.temp }}/cao-activity/`. There is no `.cao/` download
-step here: the cache restore step already populated the database, and the CLI script
-itself is not guaranteed to be at a fixed path.
-
-1. Check whether the restore actually populated
-   `$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite`. A missing or empty file is a cache
-   miss and must be treated as a fallback condition, not an error — fall back to
-   bounded read-only GitHub or `agentic-workflows` tool calls instead.
-2. Resolve the CLI entry point from the canonical source-layout path used by both
-   the catalog and installed campaigns:
-
-   ```bash
-   cao_script=activity/cao.mjs
-   if [ ! -f "$cao_script" ]; then
-     echo "cao CLI is unavailable; fall back to unbounded evidence gathering" >&2
-     cao_script=""
-   fi
-   ```
-
-   Treat an empty `cao_script` as a hard stop: skip every `cao` command and fall back
-   instead of invoking `node` with no script path.
-3. Invoke the resolved script with `node`, always passing `--database` explicitly
-   since the default `.cao/gh-aw-logs.sqlite` path does not apply here:
-
-   ```bash
-   db="$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite"
-
-   node "$cao_script" gh runs \
-     --database "$db" \
-     --repo OWNER/REPOSITORY --workflow WORKFLOW --status failure \
-     --since YYYY-MM-DD --until YYYY-MM-DD
-   ```
-
-## Querying
-
-Decide how you reach the data first:
-
-```
-Do you have shell access?
-  YES           -> cao CLI
-  NO / MCP only -> cao_catalog, then cao_query
-```
-
-Without a shell, the workflow installs CAO, downloads the snapshot, and starts the
-read-only MCP server; call `cao_catalog` to discover pages and queries, then
-`cao_query` by query identifier. See
-[Agent analysis](../../docs/agent-analysis.md).
-
-With a shell, prefer the reviewed named queries that the dashboard itself renders,
-and fall back to canonical collections or the gh-like surface when no named query
-answers the question.
-
-### Named dashboard queries
-
-```bash
-cao pages
-cao queries
-cao query-info QUERY_ID
-cao query QUERY_ID --limit 50
-cao query QUERY_ID --param NAME=VALUE
-```
-
-Every discovery command accepts `--json` and then prints only JSON on standard
-output. Query discovery reports whether a query is locally executable, so prefer a
-query whose `execution.local` is `true`. Named-query results carry
-`availability`, `completeness`, `freshness`, and `as-of` metadata: zero rows are
-not the same as unavailable, partial, or stale evidence.
-
-### Canonical collections and the gh-like surface
-
-```bash
-cao query --collection runs --limit 20
-```
-
-Add filters with repeated exact-match `--where FIELD=VALUE` options:
-
-```bash
-cao query \
-  --collection runs \
-  --where conclusion=failure \
-  --limit 20
-```
-
-Query by ID when the user asks about one known record:
-
-```bash
-cao query --collection sessions --id SESSION_ID
-```
-
-For generated or complex queries, pass a raw Dashboard Language query object through
-standard input (do not combine `--stdin` with `--collection`, `--id`, `--where`, or
-`--limit`):
-
-```bash
-jq -n \
-  --arg conclusion failure \
-  '{
-    name: "failed-runs",
-    from: "runs",
-    filter: {predicates: [{field: "conclusion", equals: $conclusion}]},
-    limit: 20
-  }' |
-  cao query --stdin
-```
-
-The canonical query collections are `repositories`, `workflows`, `runs`, `jobs`,
-`sessions`, `events`, and `transactions`. Run `cao help` (or `cao --help`) for the
-current command syntax.
-
-### Evaluate dashboard query complexity
-
-Evaluate every generated or modified Dashboard Language query before accepting it:
-
-```bash
-cao dashboard-complexity \
-  --input dashboard/site/dashboard.json \
-  --database .cao/gh-aw-logs.sqlite
-```
-
-The command reports an upper-bound row-read estimate, database-table coefficients,
-stage-level reads, parent queries and views that consume each query, and a ranking from
-highest to lowest computation pressure. With `--database`, canonical tables are weighted by
-their deployed row counts normalized to the largest table. Pressure includes the selected
-query plus each unique transitive dependency materialized once, matching compiler reuse
-within one execution batch.
-
-Inspect one generated query directly by passing its query ID before the options:
-
-```bash
-cao dashboard-complexity QUERY_ID \
-  --input dashboard/site/dashboard.json \
-  --database .cao/gh-aw-logs.sqlite
-```
-
-Use `--format markdown` for a review-ready ranking and `--limit COUNT` to bound graph-wide
-output. When generating or revising queries, compare the targeted query and full ranking
-before and after the change. Question any massive increase in direct row reads, dependency
-row reads, source coefficients, or pressure rank. Do not accept a large increase merely
-because the query is declarative; look for an existing base query, a narrower source,
-earlier filtering, fewer joins, or reusable intermediate aggregation. If the increase is
-intentional, explain the evidence and tradeoff in the review.
-
-Without `--database`, the normalized model gives every canonical database table weight one.
-Both models assume no selectivity and exclude logical sources that are not backed by a
-canonical database table.
-
-### Prune and reuse dashboard queries
-
-Before adding generated queries or views to a Dashboard Language document, analyze it for
-reuse opportunities:
-
-```bash
-cao prune-dashboard --input dashboard.json
-```
-
-The JSON report lists exact/compatible queries that can be consolidated, similarity
-suggestions against earlier queries, shared query chains, and unreferenced queries and
-reusable views. Similarity is a weighted score from `0` to `1`: source, joins, filters,
-computes, projections, ordering, and other query stages receive explicit weights; exact
-stages receive full credit, the same structure modulo field names receives 85% credit, and
-partial structural overlap receives up to 60% credit. Suggestions include the detected field
-mapping and the stages that can form a shared chain.
-
-The report also includes a complete final query inventory. Each query lists its source,
-execution stages, direct dependencies and dependents, rendered consumers, dependency depth,
-fan-in, fan-out, and every above-threshold similarity match. Aggregate statistics compare the
-query graph before and after pruning, including stage counts, dependency edges, root and nested
-query counts, maximum and average depth, pairs compared, similarity relation counts, and score
-buckets.
-
-Write the optimized document only after reviewing that report:
-
-```bash
-cao prune-dashboard \
-  --input dashboard.json \
-  --output dashboard.pruned.json
-```
-
-The optimizer preserves public query names where possible. It merges compatible projections,
-rewrites query references, extracts repeated `from`/`union`/`time`/`joins`/`filter` prefixes
-into a named base query, and rewrites the original declarations to chain from that base:
-
-Base query names must describe the shared subject, not generation order. Prefer normalized
-concepts shared by the child query names (`failure-run-base`, `event-base`). When the child
-names share no useful concept, use the source and shared stage (`run-filter-base`,
-`audit-union-base`). Never emit numeric placeholders such as `shared-query-1-base`.
-
-```json
-[
-  {
-    "name": "failure-run-base",
-    "intent": "Reuse shared query stages for failed-run-cost",
-    "from": "runs",
-    "filter": {
-      "predicates": [{ "field": "conclusion", "equals": "failure" }]
-    }
-  },
-  {
-    "name": "failed-run-cost",
-    "from": "failure-run-base",
-    "compute": [
-      {
-        "as": "cost",
-        "function": "multiply",
-        "args": [{ "field": "tokens" }, { "value": 2 }]
-      }
-    ]
-  }
-]
-```
-
-Reusable views referenced by a page or declaring drill, view-all, or navigation behavior are
-retained. Queries are then retained transitively from pages, retained reusable views, callouts,
-sections, and other queries. Page declarations remain unchanged because application code may
-link to a page outside the dashboard document.
-
-### gh-like surface
-
-Use this when you need familiar GitHub CLI-shaped commands for runs and
-safe-output-created issues or pull requests:
-
-```bash
-cao gh runs --repo OWNER/REPOSITORY --workflow WORKFLOW --status failure --since YYYY-MM-DD --until YYYY-MM-DD
-cao gh issues --repo OWNER/REPOSITORY --since YYYY-MM-DD
-cao gh prs --repo OWNER/REPOSITORY --workflow WORKFLOW --limit 10
-```
-
-`-R`, `-w`, `-s`, and `-L` are short aliases for `--repo`, `--workflow`, `--status`,
-and `--limit`. For runs, `--status` matches either the workflow status or conclusion;
-the default limit is 30. Issue and pull request results come from canonical
-`safe_output.created` events, and their `--repo` filter refers to the output target
-repository, not the executing repository.
-
-### Diagnosing the database
-
-```bash
-cao doctor
-```
-
-Use `--ttl-days all` / `--run-ttl-days all` only for intentional historical backfills.
-Run `cao doctor --database ...` before relying on query counts from a snapshot whose
-health is in doubt.
-
-## Analysis guidance
-
-- Start broad with counts and recent records, then narrow with `--where` filters or
-  record IDs.
-- Attribute findings to the collection, record ID, workflow, run ID, and timestamp
-  whenever available.
-- Report uncertainty explicitly when evidence is unavailable, stale, partial, or
-  outside the requested scope.
-- Always validate cache scope, freshness, window, and completeness against the
-  requested evidence before treating query results as authoritative.
-- Keep downloaded `.cao/` files uncommitted.
+- Prefer the cached projection over repeated direct GitHub API calls.
+- Use `--ttl-days all` or `--run-ttl-days all` only for an intentional
+  historical backfill.
+
+## Targeted references
+
+- [Workflow runtime](references/workflow-runtime.md): cache paths, fallback
+  behavior, and CLI invocation inside a gh-aw run.
+- [Dashboard query maintenance](references/dashboard-query-maintenance.md):
+  complexity measurement and query pruning.
+- [Agent analysis](../../docs/agent-analysis.md): choosing CLI or MCP.
+- [CAO Commands](../../docs/cao-cli.md): complete operator and command reference.
+- [Dashboard Language](../../docs/dashboard-language.md): query authoring.

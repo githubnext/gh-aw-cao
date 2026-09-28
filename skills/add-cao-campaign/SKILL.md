@@ -6,6 +6,14 @@ argument-hint: "Describe the desired operational outcome or name a CAO catalog c
 
 # Add a CAO Campaign
 
+## Procedure
+
+1. Verify the control plane exists and resolve one immutable catalog commit.
+2. Discover eligible campaigns from structured manifests at that commit.
+3. Recommend at most three matches with safety tradeoffs and `None of these`.
+4. Require selection and explicit installation approval.
+5. Install through `./cao.sh add`, validate policy preservation, and report.
+
 Help the user choose and install an existing CAO operational campaign. Discover from the current catalog instead of relying on a hard-coded campaign list. Never silently select or install a campaign.
 
 ## Boundaries

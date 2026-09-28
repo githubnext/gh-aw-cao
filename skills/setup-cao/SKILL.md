@@ -6,6 +6,15 @@ argument-hint: "Optionally provide the control repository and repositories CAO s
 
 # Set Up Central Agentic Ops
 
+## Procedure
+
+1. Identify or create the control repository with explicit approval.
+2. Ask for the exact repositories CAO may read before choosing authentication.
+3. Install the runtime, then run the repository-local `./cao.sh setup`.
+4. Confirm policy contains the exact scope, compatible authentication, and an
+   empty campaign map.
+5. Validate, show the diff, and stop before campaign installation or execution.
+
 Set up one bare CAO control plane. The successful result has:
 
 - the CAO runtime and repository-local `./cao.sh`;

@@ -9,6 +9,16 @@ metadata:
 
 # Analyze CAO Data
 
+## Procedure
+
+1. Choose shell access (`cao`) or MCP-only access (`cao_catalog`, then
+   `cao_query`).
+2. Establish snapshot freshness and completeness.
+3. Prefer a reviewed named query; otherwise use a bounded canonical collection
+   query.
+4. Preserve availability and freshness metadata in the result.
+5. Report source identifiers, timestamps, filters, and uncertainty.
+
 Use this skill when a user asks to inspect, analyze, investigate, or summarize Central Agentic Ops activity data from the deployed dashboard snapshot or another published dashboard data URL.
 
 ## Data contract
@@ -19,7 +29,7 @@ Use this skill when a user asks to inspect, analyze, investigate, or summarize C
 - Do not infer rollout authority, target-writing authority, operational value, or repository eligibility from activity data.
 - Never print credentials, tokens, authorization headers, raw prompts, transcripts, or other secret values.
 
-## Procedure
+## Shell procedure
 
 Decide how you reach the data first:
 

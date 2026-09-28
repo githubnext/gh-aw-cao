@@ -12,22 +12,20 @@ const artifactNames = ["llms.txt", "llms-small.txt", "llms-full.txt"];
 const scopedIndexPath = "agent/llms.txt";
 const resourceIndexPath = "agent/resources.json";
 const dashboardAgentGuide = "https://githubnext.github.io/gh-aw-cao/cao/llms.txt";
-const requiredRoutes = [
-  "/architecture/",
-  "/cao-cli/",
-  "/author-your-first-operation/",
-  "/control-policy-specification/",
-  "/activity/",
-  "/dashboard/",
+const artifactSizeLimits = {
+  "llms.txt": 4 * 1024,
+  "llms-small.txt": 64 * 1024,
+};
+const skillSizeLimit = 12 * 1024;
+const commonTaskRoutes = [
+  ["Set up a CAO control plane", "setup-cao"],
+  ["Debug a CAO failure", "debug-cao"],
+  ["Add an existing campaign", "add-cao-campaign"],
+  ["Create a new campaign", "create-cao-campaign"],
+  ["Analyze CAO activity", "analyze-cao"],
+  ["Use or extend the CAO CLI", "cao-cli"],
 ];
-const requiredSkills = [
-  "setup-cao",
-  "debug-cao",
-  "add-cao-campaign",
-  "create-cao-campaign",
-  "analyze-cao",
-  "cao-cli",
-];
+const requiredSkills = commonTaskRoutes.map(([, skill]) => skill);
 const demotedHeadings = [
   "Activity cache compression analysis",
   "Campaign rhythm",
@@ -103,6 +101,19 @@ async function findHtmlFiles(directory) {
       files.push(...await findHtmlFiles(filePath));
     } else if (entry.name === "index.html") {
       files.push(filePath);
+    }
+
+    async function findMarkdownFiles(directory) {
+      const files = [];
+      for (const entry of await readdir(directory, { withFileTypes: true })) {
+        const filePath = path.join(directory, entry.name);
+        if (entry.isDirectory()) {
+          files.push(...await findMarkdownFiles(filePath));
+        } else if (entry.name.endsWith(".md")) {
+          files.push(filePath);
+        }
+      }
+      return files;
     }
   }
   return files;
@@ -184,16 +195,18 @@ export async function validateAgentDocs({
     if (!links.includes(dashboardAgentGuide)) {
       errors.push("llms.txt must route directly to the dashboard agent access guide");
     }
-    for (const route of requiredRoutes) {
-      if (!links.some((link) => link === `https://githubnext.github.io/gh-aw-cao${route}`)) {
-        errors.push(`llms.txt must route directly to ${route}`);
+    for (const [task, skill] of commonTaskRoutes) {
+      const expected = `https://github.com/githubnext/gh-aw-cao/blob/main/skills/${skill}/SKILL.md`;
+      const taskLine = index.split("\n").find((line) => line.includes(`[${task}]`));
+      const skillLinks = taskLine
+        ? markdownLinks(taskLine).filter((link) => /\/skills\/[^/]+\/SKILL\.md$/.test(link))
+        : [];
+      if (skillLinks.length !== 1 || skillLinks[0] !== expected) {
+        errors.push(`llms.txt task "${task}" must route to only the ${skill} skill`);
       }
     }
-    for (const skill of requiredSkills) {
-      const expected = `https://github.com/githubnext/gh-aw-cao/blob/main/skills/${skill}/SKILL.md`;
-      if (!links.includes(expected)) {
-        errors.push(`llms.txt must route directly to the ${skill} skill`);
-      }
+    if (links.some((link) => /\/(?:specs|operational-value\/reports)\//.test(link))) {
+      errors.push("llms.txt must not promote specifications or reports");
     }
 
     for (const link of links) {
@@ -216,6 +229,12 @@ export async function validateAgentDocs({
     }
   }
 
+  for (const [artifactName, limit] of Object.entries(artifactSizeLimits)) {
+    const content = artifacts[artifactName];
+    if (content && Buffer.byteLength(content) > limit) {
+      errors.push(`${artifactName} exceeds the ${limit} byte routing/context limit`);
+    }
+  }
   if (small && full && Buffer.byteLength(small) >= Buffer.byteLength(full)) {
     errors.push("llms-small.txt must be smaller than llms-full.txt");
   }
@@ -224,6 +243,34 @@ export async function validateAgentDocs({
       if (!full.includes(`# ${heading}`)) {
         errors.push(`llms-full.txt must retain demoted content: ${heading}`);
       }
+    }
+    try {
+      for (const sourceFile of await findMarkdownFiles(path.join(root, "docs"))) {
+        const source = await readFile(sourceFile, "utf8");
+        if (/^draft:\s*true\s*$/m.test(source)) continue;
+        const heading = source.match(/^#\s+(.+)$/m)?.[1]?.trim();
+        if (heading && !full.includes(`# ${heading}`)) {
+          errors.push(
+            `llms-full.txt must retain authoritative document: ${
+              path.relative(root, sourceFile).replaceAll("\\", "/")
+            }`,
+          );
+        }
+      }
+    } catch {
+      errors.push("unable to verify authoritative documentation coverage");
+    }
+  }
+
+  for (const skill of requiredSkills) {
+    const skillPath = path.join(root, "skills", skill, "SKILL.md");
+    if (!await isRegularNonemptyFile(skillPath)) {
+      errors.push(`missing routed skill: ${skill}`);
+      continue;
+    }
+    const skillBytes = (await stat(skillPath)).size;
+    if (skillBytes > skillSizeLimit) {
+      errors.push(`${skill}/SKILL.md exceeds the ${skillSizeLimit} byte entry-point limit`);
     }
   }
 

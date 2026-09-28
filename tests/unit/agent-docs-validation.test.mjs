@@ -8,21 +8,13 @@ import { validateAgentDocs } from "../../scripts/validate-agent-docs.mjs";
 
 const roots = [];
 const pagesBase = "https://githubnext.github.io/gh-aw-cao";
-const routeNames = [
-  "architecture",
-  "cao-cli",
-  "author-your-first-operation",
-  "control-policy-specification",
-  "activity",
-  "dashboard",
-];
-const skillNames = [
-  "setup-cao",
-  "debug-cao",
-  "add-cao-campaign",
-  "create-cao-campaign",
-  "analyze-cao",
-  "cao-cli",
+const taskRoutes = [
+  ["Set up a CAO control plane", "setup-cao"],
+  ["Debug a CAO failure", "debug-cao"],
+  ["Add an existing campaign", "add-cao-campaign"],
+  ["Create a new campaign", "create-cao-campaign"],
+  ["Analyze CAO activity", "analyze-cao"],
+  ["Use or extend the CAO CLI", "cao-cli"],
 ];
 const routeTypes = {
   architecture: "architecture",
@@ -47,6 +39,8 @@ async function createFixture() {
   await mkdir(dist, { recursive: true });
   const docs = path.join(root, "docs");
   await mkdir(docs, { recursive: true });
+  const skills = path.join(root, "skills");
+  await mkdir(skills, { recursive: true });
   const summaries = [];
   for (const route of Object.keys(routeTypes)) {
     const directory = path.join(dist, route);
@@ -140,10 +134,14 @@ async function createFixture() {
     url: `${pagesBase}/`,
     agent: `${pagesBase}/index.json`,
   });
-  const routeLinks = routeNames.map((route) => `- [${route}](${pagesBase}/${route}/)`);
-  const skillLinks = skillNames.map(
-    (skill) => `- [${skill}](https://github.com/githubnext/gh-aw-cao/blob/main/skills/${skill}/SKILL.md)`,
+  const skillLinks = taskRoutes.map(
+    ([task, skill]) =>
+      `- [${task}](https://github.com/githubnext/gh-aw-cao/blob/main/skills/${skill}/SKILL.md)`,
   );
+  for (const [, skill] of taskRoutes) {
+    await mkdir(path.join(skills, skill), { recursive: true });
+    await writeFile(path.join(skills, skill, "SKILL.md"), `# ${skill}\n`);
+  }
   await writeFile(path.join(dist, "llms.txt"), [
     "# Central Agentic Ops",
     `- [Abridged](${pagesBase}/llms-small.txt)`,
@@ -151,7 +149,6 @@ async function createFixture() {
     `- [Scoped resources](${pagesBase}/agent/llms.txt)`,
     `- [Machine resources](${pagesBase}/agent/resources.json)`,
     `- [Dashboard agent guide](${pagesBase}/cao/llms.txt)`,
-    ...routeLinks,
     ...skillLinks,
   ].join("\n"));
   await writeFile(path.join(dist, "llms-small.txt"), "# Compact\nUseful.");
@@ -161,6 +158,8 @@ async function createFixture() {
     "# Activity cache compression analysis",
     "# Campaign rhythm",
     "# Dashboard view catalog",
+    ...Object.keys(routeTypes).map((route) => `# ${route}`),
+    "# Central Agentic Ops",
   ].join("\n\n"));
   await mkdir(path.join(dist, "agent"), { recursive: true });
   await writeFile(path.join(dist, "agent", "resources.json"), JSON.stringify({
@@ -199,8 +198,31 @@ test("rejects a missing required route", async () => {
   const root = await createFixture();
   const indexPath = path.join(root, "dist", "llms.txt");
   const index = await import("node:fs/promises").then(({ readFile }) => readFile(indexPath, "utf8"));
-  await writeFile(indexPath, index.replace(`- [activity](${pagesBase}/activity/)\n`, ""));
-  assert.ok((await validateAgentDocs({ root })).some((error) => error.includes("/activity/")));
+  await writeFile(indexPath, index.replace(
+    "- [Analyze CAO activity](https://github.com/githubnext/gh-aw-cao/blob/main/skills/analyze-cao/SKILL.md)\n",
+    "",
+  ));
+  assert.ok((await validateAgentDocs({ root })).some((error) => error.includes("Analyze CAO activity")));
+});
+
+test("rejects an ambiguous one-hop task route", async () => {
+  const root = await createFixture();
+  const indexPath = path.join(root, "dist", "llms.txt");
+  const index = await readFile(indexPath, "utf8");
+  await writeFile(indexPath, index.replace(
+    "skills/analyze-cao/SKILL.md)",
+    "skills/analyze-cao/SKILL.md) [debug](https://github.com/githubnext/gh-aw-cao/blob/main/skills/debug-cao/SKILL.md)",
+  ));
+  assert.ok((await validateAgentDocs({ root })).some((error) => error.includes("only the analyze-cao skill")));
+});
+
+test("rejects oversized routing, context, and skill entry points", async () => {
+  const root = await createFixture();
+  await writeFile(path.join(root, "dist", "llms-small.txt"), "x".repeat(65 * 1024));
+  await writeFile(path.join(root, "skills", "cao-cli", "SKILL.md"), "x".repeat(13 * 1024));
+  const errors = await validateAgentDocs({ root });
+  assert.ok(errors.some((error) => error.includes("llms-small.txt exceeds")));
+  assert.ok(errors.some((error) => error.includes("cao-cli/SKILL.md exceeds")));
 });
 
 test("requires the separately assembled dashboard agent guide", async () => {
