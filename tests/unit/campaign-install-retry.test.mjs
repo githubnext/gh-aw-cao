@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   isTransientCampaignInstallError,
   campaignInstallRetryAttempts,
+  campaignInstallRetryDelay,
   campaignInstallRetryDelayMilliseconds,
   retryTransientCampaignInstall,
 } from "../helpers/campaign-install-retry.mjs";
@@ -25,18 +26,22 @@ test("retries a transient GitHub campaign download failure", async () => {
   assert.deepEqual(delays, [campaignInstallRetryDelayMilliseconds]);
 });
 
-test("backs off exponentially across a persistent gateway failure", async () => {
+test("backs off across repeated GitHub gateway failures before giving up", async () => {
   let attempts = 0;
   const delays = [];
   await assert.rejects(() => retryTransientCampaignInstall(() => {
     attempts += 1;
     const error = new Error("gh aw add failed");
-    error.stderr = "HTTP 502: 502 Bad Gateway (https://api.github.com/repos/o/r/contents/f)";
+    error.stderr = "HTTP 502: 502 Bad Gateway (https://api.github.com/repos/o/r/contents/activity/agents)";
     throw error;
   }, (milliseconds) => delays.push(milliseconds)), /gh aw add failed/);
 
   assert.equal(attempts, campaignInstallRetryAttempts);
-  assert.deepEqual(delays, [1_000, 2_000, 4_000]);
+  assert.deepEqual(
+    delays,
+    Array.from({ length: campaignInstallRetryAttempts - 1 }, (_unused, index) => campaignInstallRetryDelay(index + 1)),
+  );
+  assert.ok(delays.at(-1) > delays[0], "expected the retry delay to grow between attempts");
 });
 
 test("does not retry a deterministic campaign install failure", async () => {

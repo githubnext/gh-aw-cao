@@ -283,6 +283,24 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .entity-card-list-marketplace .issue-list-card-meta dt { text-transform: none; }
 .entity-card-list-marketplace .issue-list-labels { grid-row: 1; max-width: 100%; margin: 0; justify-self: end; justify-content: flex-end; }
 .entity-card-list-marketplace .entity-card-list-chevron { display: none; }
+.marketplace-detail-page .custom-view { border: 0; background: transparent; box-shadow: none; }
+.marketplace-detail-page .custom-view > header { padding-inline: 0; }
+.marketplace-detail-page .layout-section { padding: 0; border: 0; background: transparent; }
+.marketplace-detail-page .layout-section > .layout-section-header { display: none; }
+.marketplace-detail-page .entity-card-list-marketplace { display: block; }
+.marketplace-detail-page .entity-card-list-marketplace .entity-card-list-card { min-height: 0; grid-template-columns: 56px minmax(0, 1fr) auto; grid-template-rows: auto auto; align-items: center; justify-items: start; gap: 4px 16px; padding: 20px 24px; text-align: left; }
+.marketplace-detail-page .entity-card-list-marketplace .issue-list-card-icon { grid-column: 1; grid-row: 1 / span 2; }
+.marketplace-detail-page .entity-card-list-marketplace .issue-list-card-content { grid-column: 2; grid-row: 1; justify-items: start; }
+.marketplace-detail-page .entity-card-list-marketplace .issue-list-card-title { color: var(--fg); font-size: 1.5rem; font-weight: 600; }
+.marketplace-detail-page .entity-card-list-marketplace .issue-list-card-subtitle { max-width: none; }
+.marketplace-detail-page .entity-card-list-marketplace .issue-list-card-meta { justify-content: flex-start; }
+.marketplace-detail-page .entity-card-list-marketplace .issue-list-labels { grid-column: 2; grid-row: 2; justify-self: start; justify-content: flex-start; }
+.marketplace-detail-page .entity-card-list-marketplace .entity-card-list-actions { grid-column: 3; grid-row: 1 / span 2; align-self: center; margin: 0; }
+.marketplace-detail-page .entity-card-list-actions .table-cli-action-button { min-height: 36px; padding: 6px 18px; border-color: var(--accent); background: var(--accent); color: var(--canvas); font-weight: 600; }
+.marketplace-detail-page .entity-card-list-actions .table-cli-action-button:hover { filter: brightness(1.08); }
+.marketplace-detail-page .entity-card-list-actions .table-cli-action-button .cli-action-trigger-copy strong { font-size: .875rem; }
+.marketplace-detail-page .dashboard-markdown { padding: 24px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
+.marketplace-detail-page .entity-card-list-grouped { border-radius: 6px; }
 .entity-card-list-chevron { display: flex; align-items: center; color: var(--muted); }
 .entity-card-list-chevron .octicon { width: 14px; height: 14px; }
 .link-button-list-view { display: grid; gap: 12px; }
@@ -2454,6 +2472,10 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .entity-card-list-marketplace .entity-card-list-card { min-height: 0; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 12px 16px 20px; }
   .entity-card-list-marketplace .issue-list-card-icon { width: 48px; height: 48px; }
   .entity-card-list-marketplace .issue-list-card-icon .octicon { width: 24px; height: 24px; }
+  .marketplace-detail-page .entity-card-list-marketplace .entity-card-list-card { grid-template-columns: 40px minmax(0, 1fr); gap: 12px; padding: 18px 16px; }
+  .marketplace-detail-page .entity-card-list-marketplace .issue-list-card-icon { width: 40px; height: 40px; }
+  .marketplace-detail-page .entity-card-list-marketplace .entity-card-list-actions { grid-column: 2; grid-row: auto; margin-top: 12px; }
+  .marketplace-detail-page .dashboard-markdown { padding: 16px; }
   .outcome-meta { grid-template-columns: 1fr; }
   .problem-view-header { align-items: stretch; flex-direction: column; }
   .problem-view-highlights { grid-template-columns: 1fr; }

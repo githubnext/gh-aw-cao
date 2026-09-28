@@ -67,6 +67,8 @@ const inventory = {
       icon: 'workflow',
       artwork: '',
       contents: ['aw.yml'],
+      readme: '# Dependabot\n\nKeeps dependency updates moving.\n',
+      'readme-path': 'dependabot/README.md',
       source: `githubnext/gh-aw-cao/dependabot@${'a'.repeat(40)}`,
       'add-command': `./cao.sh add githubnext/gh-aw-cao/dependabot@${'a'.repeat(40)}`,
     }],
@@ -264,14 +266,28 @@ test('marketplace page renders canonical package cards after ingestion', async (
   await expect(marketplace).toContainText('Dependabot');
   await expect(packageCard).toContainText('By');
   await expect(packageCard).toContainText('githubnext');
-  await expect(packageCard.getByRole('button', { name: 'Copy add command' })).toHaveCount(0);
+  await expect(packageCard.getByRole('button', { name: 'Add' })).toHaveCount(0);
   await expect(marketplace).not.toContainText('Unable to load this page.');
 
   await packageCard.getByRole('link', { name: 'Dependabot' }).click();
-  const packageDetail = page.locator('[data-page-id="marketplace-package"]');
-  await expect(packageDetail).toBeVisible();
+  const detail = page.locator('[data-page-id="marketplace-package"]');
+  await expect(detail).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Dependabot', exact: true, level: 1 })).toBeVisible();
-  await expect(packageDetail.getByRole('button', { name: 'Copy add command' })).toBeVisible();
+  const add = detail.locator('.entity-card-list-actions .cli-action-trigger');
+  await expect(add).toBeVisible();
+  await expect(add).toHaveAccessibleName('Add');
+  await add.click();
+  await expect(page.locator('.cli-action-dialog .cli-action-command')).toHaveText(
+    `bash ./cao.sh add githubnext/gh-aw-cao/dependabot@${'a'.repeat(40)}`
+  );
+  await page.locator('.cli-action-dialog .cli-action-cancel').click();
+  await expect(detail.locator('.dashboard-markdown')).toContainText('Keeps dependency updates moving.');
+  const about = detail.locator('.entity-card-list-grouped');
+  await expect(detail.getByRole('heading', { name: 'About' })).toBeVisible();
+  await expect(about).toContainText('Official CAO catalog');
+  const readmeBox = await detail.locator('.dashboard-markdown').boundingBox();
+  const aboutBox = await about.boundingBox();
+  expect(aboutBox?.x ?? 0).toBeGreaterThan((readmeBox?.x ?? 0) + (readmeBox?.width ?? 0));
 });
 
 test('deep links and redirect routes fetch only the requested initial page chunk', async ({ page }) => {

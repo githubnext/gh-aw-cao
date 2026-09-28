@@ -108,12 +108,13 @@ Kubernetes workload, or comparable host. It defaults to
 `127.0.0.1:8080`, where a same-host or same-pod HTTPS proxy may forward requests.
 A non-loopback listener is accepted only when `--cert` and `--key` configure
 TLS at the CAO service itself. It is not coupled to a Redis provider or cloud
-SDK. Set `CAO_POLICY_PATH` only when the policy is mounted somewhere other than
+SDK. Set `CAO_POLICY_PATH` when loading a reviewed deployment-specific host
+extension or when the policy is mounted somewhere other than
 `.github/workflows/cao.json`. See
 [`docs/deployment-managed-redis.md`](../docs/deployment-managed-redis.md) for
 the generic `REDIS_URL` and TLS contract and provider modules.
 
-Every hosted process requires `control-plane.web.host` in `cao.json`. Redis
+Every hosted process requires `control-plane.web.host` in the composed policy. Redis
 provider selection, TLS behavior, environment-variable names, namespace
 selection, connection semantics, and replica count come only from that policy.
 The selected environment variables hold secret values; they do not select or

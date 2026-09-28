@@ -13,8 +13,9 @@ const transientGitHubErrors = [
   "unable to download new package",
 ];
 export const campaignInstallRetryDelayMilliseconds = 1_000;
-// GitHub contents-API gateway errors regularly outlast a single one-second
-// pause, so back off exponentially across a few attempts before failing.
+// A clean-room campaign install walks the whole catalog through the contents
+// API, so a single gateway error fails it. api.github.com gateway errors arrive
+// in clusters, so one immediate retry is not enough; back off instead.
 export const campaignInstallRetryAttempts = 4;
 
 export function isTransientCampaignInstallError(error) {
@@ -24,13 +25,17 @@ export function isTransientCampaignInstallError(error) {
 
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
+export function campaignInstallRetryDelay(attempt) {
+  return campaignInstallRetryDelayMilliseconds * 2 ** (attempt - 1);
+}
+
 export async function retryTransientCampaignInstall(install, wait = sleep) {
   for (let attempt = 1; ; attempt += 1) {
     try {
       return await install();
     } catch (error) {
       if (attempt >= campaignInstallRetryAttempts || !isTransientCampaignInstallError(error)) throw error;
-      await wait(campaignInstallRetryDelayMilliseconds * 2 ** (attempt - 1));
+      await wait(campaignInstallRetryDelay(attempt));
     }
   }
 }

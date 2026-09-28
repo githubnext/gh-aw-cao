@@ -185,29 +185,28 @@ function installedManifests(consumer) {
   return readdirSync(join(consumer, ".github", "aw", "packages"));
 }
 
-function run(command, args, cwd, input = undefined) {
+function run(command, args, cwd, input = undefined, env = process.env) {
   return execFileSync(command, args, {
     cwd,
     encoding: "utf8",
-    env: process.env,
+    env,
     input,
     maxBuffer: 16 * 1024 * 1024,
     stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
   });
 }
 
-async function updateCampaign(consumer, source) {
-  return retryTransientCampaignInstall(() => run("gh", [
-    "aw",
-    "update",
-    source,
-    "--force",
-    "--no-merge",
-    "--no-compile",
-    "--no-security-scanner",
-    "--cool-down",
-    "0",
-  ], consumer));
+// `gh aw update` reports a package whose manifest resolution failed as zero
+// successes and zero failures when the package installs no agentic workflows,
+// so the only visible symptom is "no workflows were successfully updated".
+// Enabling the gh-aw CLI debug namespaces keeps the underlying cause in the
+// captured stderr, which node:test reports when the command exits non-zero.
+// The update re-resolves the package through the contents API, so it is exposed
+// to the same transient GitHub gateway errors as the initial install.
+function runUpdate(args, cwd) {
+  return retryTransientCampaignInstall(
+    () => run("gh", args, cwd, undefined, { ...process.env, DEBUG: "cli:*" }),
+  );
 }
 
 async function installCampaign(source) {
@@ -359,7 +358,17 @@ test("root campaign bootstraps an empty CAO and preserves resources during workf
 
     const removedRuntime = controlRuntimeFiles[0];
     rmSync(join(consumer, removedRuntime));
-    await updateCampaign(consumer, campaignUpdateSource);
+    await runUpdate([
+      "aw",
+      "update",
+      campaignUpdateSource,
+      "--force",
+      "--no-merge",
+      "--no-compile",
+      "--no-security-scanner",
+      "--cool-down",
+      "0",
+    ], consumer);
 
     assert.ok(existsSync(join(consumer, removedRuntime)), "gh aw update did not restore the control runtime");
     assert.equal(existsSync(join(consumer, ".github", "aw", "cao")), false);
@@ -613,7 +622,11 @@ test("gh aw update replaces workflows and restores campaign-owned assets after c
   try {
     const orchestratorPath = join(consumer, ".github", "workflows", "dependabot.md");
     const orchestrator = readFileSync(orchestratorPath, "utf8");
-    writeFileSync(orchestratorPath, `${orchestrator}\n# local integration-test change\n`);
+    writeFileSync(orchestratorPath, `${orchestrator.replace(/^source: .*$/m, `source: ${campaignSource}`)}\n# local integration-test change\n`);
+
+    const plannerPath = join(consumer, ".github", "workflows", "dependabot-update-planner.md");
+    const planner = readFileSync(plannerPath, "utf8");
+    writeFileSync(plannerPath, planner.replace(/^source: .*$/m, `source: ${campaignSource}`));
 
     const removedFiles = [
       "dependabot/operational-value.mjs",
@@ -624,7 +637,17 @@ test("gh aw update replaces workflows and restores campaign-owned assets after c
       rmSync(join(consumer, relativePath));
     }
 
-    await updateCampaign(consumer, dependabotCampaignUpdateSource);
+    await runUpdate([
+      "aw",
+      "update",
+      dependabotCampaignUpdateSource,
+      "--force",
+      "--no-merge",
+      "--no-compile",
+      "--no-security-scanner",
+      "--cool-down",
+      "0",
+    ], consumer);
     run(process.execPath, [materializerScript, "materialize", "dependabot"], consumer);
 
     const updatedOrchestrator = readFileSync(orchestratorPath, "utf8");

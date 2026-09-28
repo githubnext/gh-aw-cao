@@ -179,3 +179,33 @@ func TestDecodeManifestBlobRejectsInvalidBase64(t *testing.T) {
 		t.Fatal("expected invalid base64 content to be rejected")
 	}
 }
+
+func TestResolveRegistryCarriesThePackageReadme(t *testing.T) {
+	server := newFakeGitHubServer(t, fakeGitHubConfig{readmePaths: []string{"demo/README.md"}})
+	registry := Registry{ID: "official", Repository: "example/packages", Ref: "main", APIURL: server.baseURL()}
+	packages, err := ResolveRegistry(t.Context(), registry, 0, Options{HTTPClient: insecureTestClient()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(packages) != 1 {
+		t.Fatalf("expected one package, got: %#v", packages)
+	}
+	if packages[0].Readme != "# Demo\n\nExample package readme.\n" {
+		t.Fatalf("expected the README content to be carried, got: %q", packages[0].Readme)
+	}
+	if packages[0].ReadmePath != "demo/README.md" {
+		t.Fatalf("expected the README path to be carried, got: %q", packages[0].ReadmePath)
+	}
+}
+
+func TestResolveRegistryLeavesPackagesResolvableWithoutAReadme(t *testing.T) {
+	server := newFakeGitHubServer(t, fakeGitHubConfig{})
+	registry := Registry{ID: "official", Repository: "example/packages", Ref: "main", APIURL: server.baseURL()}
+	packages, err := ResolveRegistry(t.Context(), registry, 0, Options{HTTPClient: insecureTestClient()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(packages) != 1 || packages[0].Readme != "" || packages[0].ReadmePath != "" {
+		t.Fatalf("expected a package without README content, got: %#v", packages)
+	}
+}

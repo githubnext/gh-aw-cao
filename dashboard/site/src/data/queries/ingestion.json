@@ -218,6 +218,8 @@
         "icon": { "field": "icon", "default": "workflow" },
         "artwork": { "field": "artwork", "default": "" },
         "contents": { "field": "contents", "default": [] },
+        "readme": { "field": "readme", "default": "" },
+        "readmePath": { "field": "readme-path", "default": "" },
         "sourceCoordinate": { "field": "source" },
         "addCommand": { "field": "add-command" }
       }
