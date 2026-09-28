@@ -72,6 +72,25 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
     await expect(page.locator(".dashboard-root")).not.toHaveAttribute("aria-busy", "true");
     await expect(page.locator(".dashboard-stale, .source-refresh-error")).toHaveCount(0);
 
+    // Overview is the landing page and has no single canonical store, so it is
+    // checked separately from populatedDashboardPages: it must finish rendering
+    // and must not get stuck showing the all-zero "no data" placeholder that a
+    // stalled or failed ingestion would otherwise leave in place indefinitely.
+    const overviewPage = page.locator('[data-page-id="overview"]');
+    await expect(overviewPage).toBeVisible({ timeout: 120_000 });
+    await page.waitForFunction(() =>
+      window.__dashboardTestEvents?.some(({ type, detail }) =>
+        type === "dashboard-render"
+        && detail?.kind === "page"
+        && detail?.pageId === "overview"
+        && detail?.status === "completed"
+      ), null, { timeout: 120_000 });
+    await expect(overviewPage.locator('[aria-busy="true"]')).toHaveCount(0);
+    await expect(
+      overviewPage.locator(".factory-station-empty"),
+      "Overview should not show empty campaign/repository stations once data has loaded"
+    ).toHaveCount(0);
+
     for (const { pageId } of populatedDashboardPages) {
       await page.evaluate((nextPageId) => {
         window.location.hash = `#page-${nextPageId}`;
