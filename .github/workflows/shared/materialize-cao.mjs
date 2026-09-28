@@ -98,6 +98,7 @@ function tarSize(buffer) {
 }
 
 function tarDestination(directory, entry) {
+  entry = entry.replace(/\/+$/, '');
   if (!entry || entry.startsWith('/') || entry.split('/').some((part) => part === '' || part === '.' || part === '..')) {
     throw new Error(`CAO archive has an unsafe entry path: ${JSON.stringify(entry)}`);
   }

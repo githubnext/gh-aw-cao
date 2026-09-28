@@ -34,12 +34,12 @@ function filesBelow(root, prefix = "") {
 
 function tarArchive(entries) {
   const blocks = [];
-  for (const { name, content = "" } of entries) {
+  for (const { name, content = "", directory = false } of entries) {
     const data = Buffer.from(content);
     const header = Buffer.alloc(512);
     header.write(name);
     header.write(data.length.toString(8).padStart(11, "0"), 124);
-    header[156] = 48;
+    header[156] = directory ? 53 : 48;
     blocks.push(header, data, Buffer.alloc((512 - data.length % 512) % 512));
   }
   return gzipSync(Buffer.concat([...blocks, Buffer.alloc(1024)]));
@@ -49,7 +49,10 @@ test("Windows CAO extraction does not invoke tar and rejects unsafe archive path
   const destination = mkdtempSync(path.join(tmpdir(), "cao-materialize-windows-"));
   const archive = path.join(destination, "cao.tar.gz");
   try {
-    writeFileSync(archive, tarArchive([{ name: "cao-root/file.txt", content: "CAO" }]));
+    writeFileSync(archive, tarArchive([
+      { name: "cao-root/", directory: true },
+      { name: "cao-root/file.txt", content: "CAO" },
+    ]));
     extractCaoArchive(archive, destination, true);
     assert.equal(readFileSync(path.join(destination, "cao-root", "file.txt"), "utf8"), "CAO");
 
