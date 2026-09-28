@@ -137,7 +137,12 @@ async function createConsumer(t, ghAwVersion, { repository = "alpha-org/control"
   await mkdir(bin);
   await mkdir(consumer);
   await writeFile(log, "");
-  for (const [name, source] of [["gh", fakeGh], ["curl", fakeCurl], ["curl.exe", fakeCurl]]) {
+  for (const [name, source] of [
+    ["gh", fakeGh],
+    ["gh.cmd", "@echo off\r\nbash \"%~dp0gh\" %*\r\n"],
+    ["curl", fakeCurl],
+    ["curl.exe", fakeCurl],
+  ]) {
     await writeFile(path.join(bin, name), source);
     await chmod(path.join(bin, name), 0o755);
   }
