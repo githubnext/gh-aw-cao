@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -93,6 +94,38 @@ func TestMCPToolCallsEmitSemanticSpansWithoutContent(t *testing.T) {
 	}
 	if got := spanAttributes(unknownSpan.Attributes)[rpcStatusCodeKey]; got != "-32602" {
 		t.Fatalf("unknown tool rpc.response.status_code = %#v, want -32602", got)
+	}
+}
+
+func TestMCPTraceContextPreservesCancellation(t *testing.T) {
+	previousPropagator := otel.GetTextMapPropagator()
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+	t.Cleanup(func() { otel.SetTextMapPropagator(previousPropagator) })
+
+	ambientTraceID, _ := trace.TraceIDFromHex("11111111111111111111111111111111")
+	ambientSpanID, _ := trace.SpanIDFromHex("1111111111111111")
+	ambientSpan := trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID: ambientTraceID, SpanID: ambientSpanID,
+	})
+	ambient, cancel := context.WithCancel(trace.ContextWithSpanContext(t.Context(), ambientSpan))
+	parent, links := mcpTraceContext(ambient, map[string]any{
+		"traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+	})
+	cancel()
+
+	select {
+	case <-parent.Done():
+	default:
+		t.Fatal("MCP context did not preserve ambient request cancellation")
+	}
+	if got := trace.SpanContextFromContext(parent); got.TraceID().String() != "4bf92f3577b34da6a3ce929d0e0e4736" ||
+		!got.IsRemote() {
+		t.Fatalf("MCP parent context = %v, want extracted remote context", got)
+	}
+	if len(links) != 1 ||
+		links[0].SpanContext.TraceID() != ambientSpan.TraceID() ||
+		links[0].SpanContext.SpanID() != ambientSpan.SpanID() {
+		t.Fatalf("MCP transport links = %#v, want ambient span", links)
 	}
 }
 

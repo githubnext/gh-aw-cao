@@ -10,6 +10,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
@@ -70,15 +71,20 @@ func mcpServerTelemetry() mcp.Middleware {
 	}
 }
 
-//nolint:contextcheck // MCP message context is independent of its HTTP transport context.
 func mcpParentContext(ambient context.Context, request mcp.Request) (context.Context, []trace.Link) {
+	return mcpTraceContext(ambient, request.GetParams().GetMeta())
+}
+
+func mcpTraceContext(ambient context.Context, metadata map[string]any) (context.Context, []trace.Link) {
 	carrier := propagation.MapCarrier{}
 	for _, key := range []string{"traceparent", "tracestate", "baggage"} {
-		if value, ok := request.GetParams().GetMeta()[key].(string); ok {
+		if value, ok := metadata[key].(string); ok {
 			carrier[key] = value
 		}
 	}
-	parent := otel.GetTextMapPropagator().Extract(context.Background(), carrier)
+	parent := trace.ContextWithSpanContext(ambient, trace.SpanContext{})
+	parent = baggage.ContextWithBaggage(parent, baggage.Baggage{})
+	parent = otel.GetTextMapPropagator().Extract(parent, carrier)
 	if spanContext := trace.SpanContextFromContext(ambient); spanContext.IsValid() {
 		return parent, []trace.Link{{SpanContext: spanContext}}
 	}
