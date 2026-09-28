@@ -452,10 +452,11 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   assert.equal((workflow.match(/pull-requests: read/g) || []).length, 4);
   assert.match(workflow, /Generate GitHub App token for activity[\s\S]*?GH_AW_GITHUB_READ_APP_ID[\s\S]*?GH_AW_GITHUB_READ_APP_PRIVATE_KEY/);
   assert.match(workflow, /actions\/create-github-app-token@[0-9a-f]{40}/);
-  assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| secrets\.GH_AW_GITHUB_READ_PAT \|\| secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token/g) || []).length, 3);
+  assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| secrets\.GH_AW_GITHUB_READ_PAT \|\| secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token/g) || []).length, 4);
   assert.equal((workflow.match(/steps\.issue-status-app-token\.outputs\.token \|\| secrets\.GH_AW_GITHUB_READ_PAT \|\| secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token/g) || []).length, 1);
   assert.equal((workflow.match(/steps\.operational-value-app-token\.outputs\.token \|\| secrets\.GH_AW_GITHUB_READ_PAT \|\| secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token/g) || []).length, 2);
   assert.doesNotMatch(workflow, /ACTIVITY_INDEXER|ACTIVITY_LOGS|ACTIVITY_RUNNER|GITHUB_TELEMETRY|cao-gh\.jsonl/);
+  assert.match(workflow, /Validate repository visibility boundary[\s\S]*?activity\/repository-visibility\.mjs[\s\S]*?Collect dashboard inventory/);
   assert.match(workflow, /Collect dashboard inventory[\s\S]*?uses: actions\/github-script@[0-9a-f]{40}[\s\S]*?core\.info\('Workflow discovery started'\)[\s\S]*?'discover-workflows'[\s\S]*?core\.info\('Workflow discovery completed'\)/);
   assert.match(workflow, /Restore activity cache[\s\S]*?Download agentic workflow logs[\s\S]*?Upload activity snapshot[\s\S]*?cache:[\s\S]*?needs: index[\s\S]*?Download activity snapshot[\s\S]*?Save activity cache/);
   assert.match(workflow, /Collect dashboard inventory[\s\S]*?path\.join\('activity', 'cao\.mjs'\)/);
