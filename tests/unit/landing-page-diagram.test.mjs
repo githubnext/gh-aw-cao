@@ -88,15 +88,17 @@ test("landing page explains and illustrates campaign dispatch", () => {
   assert.match(illustration, /\{goalPaths\.map\(\(path\) => <path d=\{path\}><\/path>\)\}/);
   assert.match(illustration, /GitHub Actions/);
   assert.ok(
-    illustration.indexOf("<h3>GitHub Actions</h3>") < illustration.indexOf("<h3>Organizations</h3>") &&
-      illustration.indexOf("<h3>Organizations</h3>") <
+    illustration.indexOf("<h3>GitHub Actions</h3>") < illustration.indexOf("<h3>Destinations</h3>") &&
+      illustration.indexOf("<h3>Destinations</h3>") <
         illustration.indexOf("<h3>Representative repositories</h3>"),
   );
   assert.match(illustration, /const organizationNodes = \[/);
-  assert.match(illustration, /organizationJobs = jobs\.filter/);
+  assert.match(illustration, /const liveJobs = jobs\.filter\(\(job\) => job\.mode === "live"\)/);
+  assert.match(illustration, /const reviewJobs = jobs\.filter\(\(job\) => job\.mode === "review"\)/);
+  assert.match(illustration, /organizationJobs = liveJobs\.filter/);
   assert.match(illustration, /campaigns: new Set\(organizationJobs\.map/);
   assert.match(illustration, /repositories: new Set\(organizationJobs\.map/);
-  assert.match(illustration, /\{node\.campaigns\} campaigns · \{node\.repositories\} repositories/);
+  assert.match(illustration, /\{node\.campaigns\} live \{node\.campaigns === 1 \? "campaign" : "campaigns"\}/);
   assert.match(illustration, /class="organization-node" style={`top: \$\{node\.top\}px`}/);
   assert.match(illustration, /<svg class="graph-routes" viewBox="0 0 82 488"/);
   assert.match(illustration, /<animateMotion/);
@@ -112,7 +114,16 @@ test("landing page explains and illustrates campaign dispatch", () => {
   assert.match(illustration, /repositoryPath: "M0 172 H41 V100 H82"/);
   assert.match(illustration, /repositoryPath: "M0 172 H41 V308 H82"/);
   assert.match(illustration, /class="graph-junction" cx="41" cy="172"/);
-  assert.match(illustration, /class="graph-junction" cx="41" cy="344"/);
+  assert.match(illustration, /class="graph-junction graph-junction-review" cx="41" cy="276"/);
+  assert.match(illustration, /class="graph-junction" cx="41" cy="456"/);
+  assert.match(illustration, /class="organization-node review-queue-node"/);
+  assert.match(illustration, /<strong>CAO review queue<\/strong>/);
+  assert.match(illustration, /\{reviewJobs\.length\} review items/);
+  assert.match(illustration, /graph-route-dot review/);
+  assert.match(illustration, /--review: #0969da/);
+  assert.match(illustration, /--review: #58a6ff/);
+  assert.match(illustration, /class={`mobile-pair-route \$\{job\.timing\} \$\{job\.mode\}`}/);
+  assert.match(illustration, /class="mobile-repository-card mobile-review-queue"/);
   assert.match(illustration, /\.organization-icon,[\s\S]*?\.repository-icon \{[\s\S]*?width: 16px;[\s\S]*?height: 16px/);
   assert.match(illustration, /class="organization-icon"/);
   assert.match(illustration, /\.organization-icon \{[\s\S]*?fill: var\(--muted\)/);
@@ -140,7 +151,7 @@ test("landing page explains and illustrates campaign dispatch", () => {
   assert.match(illustration, /class="mobile-workers"/);
   assert.match(illustration, /Parallel workers/);
   assert.match(illustration, /class="mobile-dispatch-pair"/);
-  assert.match(illustration, /class={`mobile-pair-route \$\{job\.timing\}`}/);
+  assert.match(illustration, /class={`mobile-pair-route \$\{job\.timing\} \$\{job\.mode\}`}/);
   assert.match(illustration, /@keyframes mobile-route-job-1/);
   assert.match(illustration, /@keyframes mobile-route-job-5/);
   assert.match(
@@ -172,7 +183,6 @@ test("landing page explains and illustrates campaign dispatch", () => {
   assert.match(illustration, /repository: "github\/gh-aw-firewall"/);
   assert.match(illustration, /repository: "githubnext\/gh-aw-cao"/);
   assert.match(illustration, /repository: "githubnext\/agentics"/);
-  assert.match(illustration, /failed: true/);
   assert.match(illustration, /repository: "githubnext\/gh-aw"/);
   assert.match(illustration, /organizations: \["github", "githubnext"\]/);
   assert.match(illustration, /class="mobile-campaign-organizations"/);

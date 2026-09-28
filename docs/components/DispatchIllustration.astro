@@ -13,6 +13,8 @@ const repoPath =
   "M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z";
 const organizationPath =
   "M1.75 16A1.75 1.75 0 0 1 0 14.25V1.75C0 .784.784 0 1.75 0h8.5C11.216 0 12 .784 12 1.75v12.5c0 .085-.006.168-.018.25h2.268a.25.25 0 0 0 .25-.25V8.285a.25.25 0 0 0-.111-.208l-1.055-.703a.749.749 0 1 1 .832-1.248l1.055.703c.487.325.779.871.779 1.456v5.965A1.75 1.75 0 0 1 14.25 16h-3.5a.766.766 0 0 1-.197-.026c-.099.017-.2.026-.303.026h-3a.75.75 0 0 1-.75-.75V14h-1v1.25a.75.75 0 0 1-.75.75Zm-.25-1.75c0 .138.112.25.25.25H4v-1.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 .75.75v1.25h2.25a.25.25 0 0 0 .25-.25V1.75a.25.25 0 0 0-.25-.25h-8.5a.25.25 0 0 0-.25.25ZM3.75 6h.5a.75.75 0 0 1 0 1.5h-.5a.75.75 0 0 1 0-1.5ZM3 3.75A.75.75 0 0 1 3.75 3h.5a.75.75 0 0 1 0 1.5h-.5A.75.75 0 0 1 3 3.75Zm4 3A.75.75 0 0 1 7.75 6h.5a.75.75 0 0 1 0 1.5h-.5A.75.75 0 0 1 7 6.75ZM7.75 3h.5a.75.75 0 0 1 0 1.5h-.5a.75.75 0 0 1 0-1.5ZM3 9.75A.75.75 0 0 1 3.75 9h.5a.75.75 0 0 1 0 1.5h-.5A.75.75 0 0 1 3 9.75ZM7.75 9h.5a.75.75 0 0 1 0 1.5h-.5a.75.75 0 0 1 0-1.5Z";
+const inboxPath =
+  "M2.8 2.06A1.75 1.75 0 0 1 4.41 1h7.18c.7 0 1.333.417 1.61 1.06l2.74 6.395c.04.093.06.194.06.295v4.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25v-4.5c0-.101.02-.202.06-.295Zm1.61.44a.25.25 0 0 0-.23.152L1.887 8H4.75a.75.75 0 0 1 .6.3L6.625 10h2.75l1.275-1.7a.75.75 0 0 1 .6-.3h2.863L11.82 2.652a.25.25 0 0 0-.23-.152Zm10.09 7h-2.875l-1.275 1.7a.75.75 0 0 1-.6.3h-3.5a.75.75 0 0 1-.6-.3L4.375 9.5H1.5v3.75c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25Z";
 const goalPaths = [
   "M13.637 2.363h-.001l1.676.335c.09.018.164.084.19.173a.25.25 0 0 1-.062.249l-1.373 1.374a.876.876 0 0 1-.619.256H12.31L9.45 7.611A1.5 1.5 0 1 1 6.5 8a1.501 1.501 0 0 1 1.889-1.449l2.861-2.862V2.552c0-.232.092-.455.256-.619L12.88.559a.25.25 0 0 1 .249-.062c.089.026.155.1.173.19Z",
   "M2 8a6 6 0 1 0 11.769-1.656.751.751 0 1 1 1.442-.413 7.502 7.502 0 0 1-12.513 7.371A7.501 7.501 0 0 1 10.069.789a.75.75 0 0 1-.413 1.442A6.001 6.001 0 0 0 2 8Z",
@@ -41,8 +43,7 @@ const jobs = [
     repository: "githubnext/gh-aw-cao",
     mode: "review",
     duration: "3m 41s",
-    organizationPath: "M0 172 H41 V344 H82",
-    repositoryPath: "M0 344 H41 V172 H82",
+    organizationPath: "M0 172 H41 V276 H82",
     organizationTimes: "0;0.60;0.61;0.64;0.65;1",
     repositoryTimes: "0;0.64;0.65;0.68;0.69;1",
   },
@@ -67,9 +68,7 @@ const jobs = [
     repository: "githubnext/agentics",
     mode: "review",
     duration: "4m 12s",
-    failed: true,
-    organizationPath: "M0 380 H41 V344 H82",
-    repositoryPath: "M0 344 H41 V380 H82",
+    organizationPath: "M0 380 H41 V276 H82",
     organizationTimes: "0;0.75;0.76;0.79;0.80;1",
     repositoryTimes: "0;0.79;0.80;0.83;0.84;1",
   },
@@ -81,8 +80,8 @@ const jobs = [
     repository: "githubnext/gh-aw",
     mode: "live",
     duration: "5m 07s",
-    organizationPath: "M0 456 H41 V344 H82",
-    repositoryPath: "M0 344 H41 V456 H82",
+    organizationPath: "M0 456 H82",
+    repositoryPath: "M0 456 H82",
     organizationTimes: "0;0.84;0.85;0.88;0.89;1",
     repositoryTimes: "0;0.88;0.89;0.92;0.93;1",
   },
@@ -103,11 +102,14 @@ const campaigns = [
   },
 ];
 
+const liveJobs = jobs.filter((job) => job.mode === "live");
+const reviewJobs = jobs.filter((job) => job.mode === "review");
+
 const organizationNodes = [
   { organization: "github", top: 146 },
-  { organization: "githubnext", top: 318 },
+  { organization: "githubnext", top: 430 },
 ].map((node) => {
-  const organizationJobs = jobs.filter((job) => job.repository.startsWith(`${node.organization}/`));
+  const organizationJobs = liveJobs.filter((job) => job.repository.startsWith(`${node.organization}/`));
   return {
     ...node,
     campaigns: new Set(organizationJobs.map((job) => job.workflow.split(" / ")[0])).size,
@@ -221,7 +223,10 @@ const organizationNodes = [
             {jobs.map((job) => (
               <>
                 <path d={job.organizationPath}></path>
-                <circle class={job.failed ? "graph-route-dot failed" : "graph-route-dot"} r="2.5">
+                <circle
+                  class={job.mode === "review" ? "graph-route-dot review" : job.failed ? "graph-route-dot failed" : "graph-route-dot"}
+                  r="2.5"
+                >
                   <animateMotion
                     dur="14s"
                     repeatCount="indefinite"
@@ -241,24 +246,32 @@ const organizationNodes = [
               </>
             ))}
             <circle class="graph-junction" cx="41" cy="172" r="2.5"></circle>
-            <circle class="graph-junction" cx="41" cy="344" r="2.5"></circle>
+            <circle class="graph-junction graph-junction-review" cx="41" cy="276" r="2.5"></circle>
+            <circle class="graph-junction" cx="41" cy="456" r="2.5"></circle>
           </svg>
         </div>
       </section>
 
       <section class="organizations-column">
         <div class="stage-cue-spacer" aria-hidden="true"></div>
-        <h3>Organizations</h3>
+        <h3>Destinations</h3>
         <div class="organization-stage">
           {organizationNodes.map((node) => (
             <article class="organization-node" style={`top: ${node.top}px`}>
               <svg class="organization-icon" viewBox="0 0 16 16"><path d={organizationPath}></path></svg>
               <span>
                 <strong>{node.organization}</strong>
-                <small>{node.campaigns} campaigns · {node.repositories} repositories</small>
+                <small>{node.campaigns} live {node.campaigns === 1 ? "campaign" : "campaigns"} · {node.repositories} {node.repositories === 1 ? "repository" : "repositories"}</small>
               </span>
             </article>
           ))}
+          <article class="organization-node review-queue-node" style="top: 238px">
+            <svg class="review-queue-icon" viewBox="0 0 16 16"><path d={inboxPath}></path></svg>
+            <span>
+              <strong>CAO review queue</strong>
+              <small>{reviewJobs.length} review items</small>
+            </span>
+          </article>
         </div>
         <div class="node-continuation node-continuation-no-icon">
           <b>•••</b>
@@ -271,7 +284,7 @@ const organizationNodes = [
         <h3>Repository routes</h3>
         <div class="graph-route-stage">
           <svg class="graph-routes" viewBox="0 0 82 488" preserveAspectRatio="none">
-            {jobs.map((job) => (
+            {liveJobs.map((job) => (
               <>
                 <path d={job.repositoryPath}></path>
                 <circle class={job.failed ? "graph-route-dot failed" : "graph-route-dot"} r="2.5">
@@ -294,7 +307,7 @@ const organizationNodes = [
               </>
             ))}
             <circle class="graph-junction" cx="41" cy="172" r="2.5"></circle>
-            <circle class="graph-junction" cx="41" cy="344" r="2.5"></circle>
+            <circle class="graph-junction" cx="41" cy="456" r="2.5"></circle>
           </svg>
         </div>
       </section>
@@ -303,7 +316,7 @@ const organizationNodes = [
         <div class="stage-cue-spacer" aria-hidden="true"></div>
         <h3>Representative repositories</h3>
         <div class="target-grid">
-          {jobs.map((job) => (
+          {liveJobs.map((job) => (
             <article class={`repository-card ${job.timing}`} style={`grid-row: ${job.row}`}>
               <svg class="repo-icon repository-icon" viewBox="0 0 16 16"><path d={repoPath}></path></svg>
               <span class="repository-copy">
@@ -381,14 +394,24 @@ const organizationNodes = [
                     <small>{job.operation}</small>
                   </span>
                 </article>
-                <span class={`mobile-pair-route ${job.timing}`}><i></i></span>
-                <article class="mobile-repository-card">
-                  <svg class="repo-icon repository-icon" viewBox="0 0 16 16"><path d={repoPath}></path></svg>
-                  <span>
-                    <strong>{job.repository}</strong>
-                    <small>{job.mode} rollout · {job.failed ? "failed" : job.duration}</small>
-                  </span>
-                </article>
+                <span class={`mobile-pair-route ${job.timing} ${job.mode}`}><i></i></span>
+                {job.mode === "review" ? (
+                  <article class="mobile-repository-card mobile-review-queue">
+                    <svg class="review-queue-icon" viewBox="0 0 16 16"><path d={inboxPath}></path></svg>
+                    <span>
+                      <strong>CAO review queue</strong>
+                      <small>{job.repository} · review item</small>
+                    </span>
+                  </article>
+                ) : (
+                  <article class="mobile-repository-card">
+                    <svg class="repo-icon repository-icon" viewBox="0 0 16 16"><path d={repoPath}></path></svg>
+                    <span>
+                      <strong>{job.repository}</strong>
+                      <small>live rollout · {job.failed ? "failed" : job.duration}</small>
+                    </span>
+                  </article>
+                )}
               </div>
             ))}
           </div>
@@ -414,6 +437,7 @@ const organizationNodes = [
     --panel: color-mix(in srgb, var(--sl-color-bg) 91%, var(--sl-color-gray-6));
     --card: color-mix(in srgb, var(--sl-color-bg) 96%, var(--sl-color-gray-5));
     --success: #2da44e;
+    --review: #0969da;
     --attention: #bf8700;
     --danger: #cf222e;
     width: min(100%, 1270px);
@@ -426,6 +450,7 @@ const organizationNodes = [
 
   :global([data-theme="dark"]) .dispatch-illustration {
     --success: #3fb950;
+    --review: #58a6ff;
     --attention: #d29922;
     --danger: #f85149;
   }
@@ -840,6 +865,19 @@ const organizationNodes = [
     line-height: 1.2;
   }
 
+  .review-queue-node {
+    height: 76px;
+    border-color: color-mix(in srgb, var(--review) 55%, var(--line));
+    background: color-mix(in srgb, var(--review) 10%, var(--panel));
+  }
+
+  .review-queue-icon {
+    flex: 0 0 16px;
+    width: 16px;
+    height: 16px;
+    fill: var(--review);
+  }
+
   .repository-card {
     gap: 9px;
     height: 52px;
@@ -946,11 +984,19 @@ const organizationNodes = [
     color: var(--danger);
   }
 
+  .graph-route-dot.review {
+    color: var(--review);
+  }
+
   .graph-junction {
     fill: var(--panel);
     stroke: var(--line);
     stroke-width: 1.5;
     vector-effect: non-scaling-stroke;
+  }
+
+  .graph-junction-review {
+    stroke: var(--review);
   }
   .mobile-pair-route.job-1 i { animation: mobile-route-job-1 14s linear infinite; }
   .mobile-pair-route.job-2 i { animation: mobile-route-job-2 14s linear infinite; }
@@ -960,6 +1006,10 @@ const organizationNodes = [
     animation: mobile-route-job-4 14s linear infinite;
   }
   .mobile-pair-route.job-5 i { animation: mobile-route-job-5 14s linear infinite; }
+
+  .mobile-pair-route.review i {
+    background: var(--review);
+  }
 
   @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -1175,6 +1225,11 @@ const organizationNodes = [
       border: 1px solid var(--line);
       border-radius: 8px;
       background: color-mix(in srgb, var(--sl-color-bg) 98%, var(--sl-color-gray-6));
+    }
+
+    .mobile-review-queue {
+      border-color: color-mix(in srgb, var(--review) 55%, var(--line));
+      background: color-mix(in srgb, var(--review) 10%, var(--panel));
     }
 
     .mobile-scale-cue {
