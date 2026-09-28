@@ -96,7 +96,7 @@ export function parsePackageManifest(source, coordinates) {
   const packagePath = coordinates.path.replace(/\/?aw\.yml$/, "");
   const sourceCoordinate = `${coordinates.repository}${packagePath ? `/${packagePath}` : ""}@${coordinates.resolvedCommit}`;
   return {
-    id: `${coordinates.registryId}:${sourceCoordinate}`,
+    id: `${coordinates.repository}${packagePath ? `/${packagePath}` : ""}`.toLowerCase(),
     "registry-id": coordinates.registryId,
     "registry-name": coordinates.registryName,
     "registry-precedence": coordinates.precedence,

@@ -47,7 +47,7 @@ function withoutUndefined(value) {
 /** @param {import('../model/schema.js').CanonicalObservation} observation */
 function identityFor(observation) {
   const data = observation.data;
-  if (!['run', 'issue'].includes(observation.kind)
+  if (!['run', 'issue', 'marketplace-package'].includes(observation.kind)
     && typeof data.id === 'string' && data.id.trim()) return data.id.trim();
   switch (observation.kind) {
     case 'campaign':
@@ -59,8 +59,13 @@ function identityFor(observation) {
       requiredString(data.repository, 'run.repository'),
       requiredIdentifier(data.githubRunId, 'run.githubRunId')
     );
-    case 'marketplace-package':
-      return requiredString(data.id, 'marketplacePackage.id');
+    case 'marketplace-package': {
+      const repository = requiredString(data.repository, 'marketplacePackage.repository').toLowerCase();
+      const packagePath = typeof data.path === 'string'
+        ? data.path.trim().replace(/^\/+|\/+$/g, '').toLowerCase()
+        : '';
+      return `${repository}${packagePath ? `/${packagePath}` : ''}`;
+    }
     case 'issue': {
       const coordinates = data.owner !== undefined
         && data.repository !== undefined

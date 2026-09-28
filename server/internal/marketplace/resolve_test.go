@@ -21,6 +21,9 @@ func TestParsePackageManifestNormalizesCoordinatesAndAddCommand(t *testing.T) {
 		t.Fatal(err)
 	}
 	wantSource := "example/packages/demo@" + fakeCommitSHA
+	if pkg.ID != "example/packages/demo" {
+		t.Fatalf("unexpected package id: %q", pkg.ID)
+	}
 	if pkg.Source != wantSource {
 		t.Fatalf("unexpected source coordinate: %q", pkg.Source)
 	}

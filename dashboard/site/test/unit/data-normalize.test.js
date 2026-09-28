@@ -32,11 +32,39 @@ describe('canonical normalization', () => {
 
     expect(batch.marketplacePackages).toHaveLength(1);
     expect(batch.marketplacePackages[0]).toMatchObject({
-      id: 'official:octo/packages/demo@abc',
+      id: 'octo/packages/demo',
       registryId: 'official',
       repository: 'octo/packages'
     });
     expect(JSON.stringify(batch.marketplacePackages[0])).not.toMatch(/token|secret|authorization/i);
+  });
+
+  it('keeps only the latest observed revision of a marketplace package', () => {
+    const batch = normalize([
+      observation('marketplace-package', 'older-revision', '2026-09-25T00:00:00Z', {
+        id: 'octo/packages/demo@older',
+        registryId: 'official',
+        repository: 'octo/packages',
+        path: 'demo',
+        resolvedCommit: 'older',
+        sourceCoordinate: 'octo/packages/demo@older'
+      }),
+      observation('marketplace-package', 'newer-revision', '2026-09-26T00:00:00Z', {
+        id: 'octo/packages/demo@newer',
+        registryId: 'official',
+        repository: 'octo/packages',
+        path: 'demo',
+        resolvedCommit: 'newer',
+        sourceCoordinate: 'octo/packages/demo@newer'
+      })
+    ]);
+
+    expect(batch.marketplacePackages).toHaveLength(1);
+    expect(batch.marketplacePackages[0]).toMatchObject({
+      id: 'octo/packages/demo',
+      resolvedCommit: 'newer',
+      sourceCoordinate: 'octo/packages/demo@newer'
+    });
   });
 
   it('enriches renamed entities without duplicating stable identities', () => {

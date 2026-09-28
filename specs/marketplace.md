@@ -31,6 +31,11 @@ Both backends return rows with the same safe fields:
 `version`, `icon`, `artwork`, `contents`, `readme`, `readme-path`, `source`,
 and `add-command`.
 
+The package `id` identifies the case-insensitive repository/path coordinate and
+does not change when a mutable registry ref resolves to a new commit. `source`
+and `add-command` retain the resolved commit, so the package identity stays
+stable while the reviewed install coordinate remains immutable.
+
 Metadata is read from each package's gh-aw `aw.yml`. `readme` carries the
 Markdown published in the `README.md` beside that manifest, bounded to the
 same size limit as the manifest itself; a missing, oversized, or unreadable

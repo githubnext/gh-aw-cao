@@ -91,7 +91,29 @@ const inventory = {
       'readme-path': `${path}/README.md`,
       source: `githubnext/gh-aw-cao/${path}@${'b'.repeat(40)}`,
       'add-command': `./cao.sh add githubnext/gh-aw-cao/${path}@${'b'.repeat(40)}`,
-    }))],
+      'observed-at': '2026-09-15T10:00:00Z',
+    })), {
+      id: `official:githubnext/gh-aw-cao/aw-optimization@${'c'.repeat(40)}`,
+      'registry-id': 'official',
+      'registry-name': 'Official CAO catalog',
+      'registry-precedence': 0,
+      name: 'AW Optimization',
+      description: 'Earlier package revision',
+      publisher: 'githubnext',
+      repository: 'githubnext/gh-aw-cao',
+      path: 'aw-optimization',
+      ref: 'main',
+      'resolved-commit': 'c'.repeat(40),
+      version: 'main',
+      icon: 'workflow',
+      artwork: '',
+      contents: ['aw.yml'],
+      readme: '# aw-optimization\n',
+      'readme-path': 'aw-optimization/README.md',
+      source: `githubnext/gh-aw-cao/aw-optimization@${'c'.repeat(40)}`,
+      'add-command': `./cao.sh add githubnext/gh-aw-cao/aw-optimization@${'c'.repeat(40)}`,
+      'observed-at': '2026-09-14T10:00:00Z',
+    }],
     metadata: { 'as-of': '2026-09-15T10:00:00Z', 'retrieved-at': '2026-09-15T10:00:00Z', completeness: 'complete', freshness: 'fresh', availability: 'available' },
   },
   'configuration-policy': {
@@ -291,6 +313,7 @@ test('marketplace page renders canonical package cards after ingestion', async (
   await expect(marketplace).toContainText('Dependabot');
   await expect(packageCard).toContainText('By');
   await expect(packageCard).toContainText('githubnext');
+  await expect(packageCards.filter({ hasText: 'Earlier package revision' })).toHaveCount(0);
   await expect(packageCard.getByRole('button', { name: 'Add' })).toHaveCount(0);
   await expect(marketplace).not.toContainText('Unable to load this page.');
 
