@@ -165,7 +165,7 @@ func (runtime *mcpRuntime) call(ctx context.Context, name string, arguments json
 	case "cao_query":
 		payload, err = runtime.callQuery(ctx, args)
 	default:
-		err = fmt.Errorf("Unknown tool: %s", name)
+		err = fmt.Errorf("Unknown tool: %s", name) //nolint:staticcheck // Shared MCP error contract uses sentence capitalization.
 	}
 	if err != nil {
 		return mcpErrorResult(err.Error())
@@ -205,7 +205,7 @@ func (runtime *mcpRuntime) callCatalog(args map[string]any) (any, error) {
 				return map[string]any{"command": "pages", "page": page}, nil
 			}
 		}
-		return nil, fmt.Errorf("Unknown dashboard page: %s", id)
+		return nil, fmt.Errorf("Unknown dashboard page: %s", id) //nolint:staticcheck // Shared MCP error contract uses sentence capitalization.
 	case "queries":
 		queries, _ := runtime.catalogRaw["queries"].([]any)
 		if id == "" {
@@ -217,7 +217,7 @@ func (runtime *mcpRuntime) callCatalog(args map[string]any) (any, error) {
 				return map[string]any{"command": "query-info", "query": entry}, nil
 			}
 		}
-		return nil, fmt.Errorf("Unknown dashboard query: %s", id)
+		return nil, fmt.Errorf("Unknown dashboard query: %s", id) //nolint:staticcheck // Shared MCP error contract uses sentence capitalization.
 	default:
 		return nil, errors.New(`cao_catalog requires kind to be "pages" or "queries"`)
 	}
@@ -230,11 +230,11 @@ func (runtime *mcpRuntime) callQuery(ctx context.Context, args map[string]any) (
 	id, _ := args["id"].(string)
 	id = strings.TrimSpace(id)
 	if id == "" {
-		return nil, errors.New("A dashboard query identifier is required")
+		return nil, errors.New("A dashboard query identifier is required") //nolint:staticcheck // Shared MCP error contract uses sentence capitalization.
 	}
 	catalogQuery, ok := runtime.findQuery(id)
 	if !ok {
-		return nil, fmt.Errorf("Unknown dashboard query: %s", id)
+		return nil, fmt.Errorf("Unknown dashboard query: %s", id) //nolint:staticcheck // Shared MCP error contract uses sentence capitalization.
 	}
 	limit, err := runtime.queryLimit(args["limit"])
 	if err != nil {
@@ -258,7 +258,7 @@ func (runtime *mcpRuntime) callQuery(ctx context.Context, args map[string]any) (
 	}
 	definition, ok := findDefinition(runtime.app.config.DashboardQueries, id)
 	if !ok {
-		return nil, fmt.Errorf("Unknown dashboard query: %s", id)
+		return nil, fmt.Errorf("Unknown dashboard query: %s", id) //nolint:staticcheck // Shared MCP error contract uses sentence capitalization.
 	}
 	alias := "agent:" + id
 	sourceName := alias + ":source"
@@ -305,7 +305,7 @@ func (runtime *mcpRuntime) callQuery(ctx context.Context, args map[string]any) (
 func onlyArguments(args map[string]any, names ...string) error {
 	for name := range args {
 		if !slices.Contains(names, name) {
-			return fmt.Errorf("Unknown tool argument: %s", name)
+			return fmt.Errorf("unknown tool argument: %s", name)
 		}
 	}
 	return nil
@@ -334,7 +334,7 @@ func (runtime *mcpRuntime) queryFilters(entry agentQuery, value any) ([]query.Pr
 		return nil, nil, errors.New("cao_query parameters must be an object")
 	}
 	if len(parameters) > runtime.contract.Limits.MaxParameters {
-		return nil, nil, fmt.Errorf("At most %d query parameters are accepted", runtime.contract.Limits.MaxParameters)
+		return nil, nil, fmt.Errorf("At most %d query parameters are accepted", runtime.contract.Limits.MaxParameters) //nolint:staticcheck // Shared MCP error contract uses sentence capitalization.
 	}
 	declared := make(map[string]string, len(entry.Parameters))
 	for _, parameter := range entry.Parameters {
@@ -354,7 +354,7 @@ func (runtime *mcpRuntime) queryFilters(entry agentQuery, value any) ([]query.Pr
 			if label == "" {
 				label = "none"
 			}
-			return nil, nil, fmt.Errorf("Unknown parameter %q for query %s; declared parameters: %s", name, entry.ID, label)
+			return nil, nil, fmt.Errorf("Unknown parameter %q for query %s; declared parameters: %s", name, entry.ID, label) //nolint:staticcheck // Shared MCP error contract uses sentence capitalization.
 		}
 		var text string
 		switch raw := raw.(type) {
@@ -363,10 +363,10 @@ func (runtime *mcpRuntime) queryFilters(entry agentQuery, value any) ([]query.Pr
 		case float64, bool:
 			text = fmt.Sprint(raw)
 		default:
-			return nil, nil, fmt.Errorf("Parameter %q must be a string, number, or boolean", name)
+			return nil, nil, fmt.Errorf("Parameter %q must be a string, number, or boolean", name) //nolint:staticcheck // Shared MCP error contract uses sentence capitalization.
 		}
 		if len(text) > runtime.contract.Limits.MaxParameterLength {
-			return nil, nil, fmt.Errorf("Parameter %q exceeds %d characters", name, runtime.contract.Limits.MaxParameterLength)
+			return nil, nil, fmt.Errorf("Parameter %q exceeds %d characters", name, runtime.contract.Limits.MaxParameterLength) //nolint:staticcheck // Shared MCP error contract uses sentence capitalization.
 		}
 		filters = append(filters, query.Predicate{Field: field, Equals: text})
 		resolved[name] = text
