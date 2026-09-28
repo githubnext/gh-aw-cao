@@ -463,12 +463,13 @@ Collection separates three concerns that fail differently:
    and GitHub budget is reserved per installation before each collection.
 3. **Projection.** Collected evidence is projected by the existing
    `internal/ingest` package. Before finalizing the payload manifest, projection
-   builds a temporary Activity database and runs the same retained
-   operational-value reconstruction as `cao-activity.yml`, using one
-   installation-scoped token per repository. Operational-value failure remains
-   best-effort and does not block newer Activity evidence. Projection is
-   coalesced behind a dirty flag and a minimum interval, so projection cost
-   follows the collection rate rather than the event rate.
+   builds a temporary Activity database and runs the native Go
+   operational-value orchestrator, whose output is equivalence-tested against
+   `cao operational-value`. Campaign adapters remain shared JavaScript modules,
+   invoked with one installation-scoped token per repository. Operational-value
+   failure remains best-effort and does not block newer Activity evidence.
+   Projection is coalesced behind a dirty flag and a minimum interval, so
+   projection cost follows the collection rate rather than the event rate.
 
 The evidence lake is laid out byte-compatibly with a snapshot published by the
 Activity workflow:

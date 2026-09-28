@@ -15,6 +15,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-aw-cao/server/internal/operationalvalue"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
@@ -41,6 +42,7 @@ type Projector struct {
 	Enrollment          Enrollment
 	CatalogRoot         string
 	NodeBinary          string
+	GitHubBinary        string
 	Tokens              TokenProvider
 	Budget              *githubapp.Budget
 	WindowDays          int
@@ -270,7 +272,7 @@ func (p Projector) refreshOperationalValues(ctx context.Context) error {
 	}); err != nil {
 		return err
 	}
-	observedAt := time.Now().UTC().Format(time.RFC3339)
+	observedAt := time.Now().UTC()
 	output := filepath.Join(p.Lake.ShardDirectory(), "operational-values.jsonl")
 	history := false
 	if _, err := os.Stat(filepath.Join(p.CatalogRoot, "optimization", "operational-value.mjs")); err == nil {
@@ -294,38 +296,32 @@ func (p Projector) refreshOperationalValues(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		arguments := operationalValueArguments(
-			p.CatalogRoot, database, output, observedAt, repository,
-			retentionDays, history, reserve,
-		)
-		if err := p.runWithEnvironment(ctx, arguments, []string{
+		environment := append(collectionEnvironment(), []string{
 			"CAO_OPERATIONAL_VALUE_GH_TOKEN=" + token,
 			"GH_TOKEN=" + token,
-		}); err != nil {
+			"CAO_GITHUB_API_MIN_REMAINING=" + strconv.Itoa(reserve),
+		}...)
+		historyCampaign := ""
+		if history {
+			historyCampaign = "optimization"
+		}
+		result, err := operationalvalue.Collect(ctx, operationalvalue.Config{
+			Root: p.CatalogRoot, Database: database, Output: output,
+			ObservedAt: observedAt, Repositories: []string{repository},
+			HistoryCampaign: historyCampaign,
+			Retention:       time.Duration(p.windowDays()) * 24 * time.Hour,
+			NodeBinary:      p.node(), GitHubBinary: p.GitHubBinary,
+			Environment: environment, RedactValues: []string{token},
+			RateLimitReserve: reserve,
+		})
+		if err != nil {
 			return err
+		}
+		if len(result.Warnings) > 0 {
+			projectorLog.Printf("operational value adapters failed count=%d", len(result.Warnings))
 		}
 	}
 	return nil
-}
-
-func operationalValueArguments(
-	catalogRoot, database, output, observedAt, repository, retentionDays string,
-	history bool, reserve int,
-) []string {
-	arguments := []string{
-		filepath.Join(catalogRoot, "activity", "cao.mjs"),
-		"operational-value",
-		"--database", database,
-		"--root", catalogRoot,
-		"--output", output,
-		"--timestamp", observedAt,
-		"--repository", repository,
-		"--retention-days", retentionDays,
-	}
-	if history {
-		arguments = append(arguments, "--history-campaign", "optimization")
-	}
-	return append(arguments, "--max-github-api-rate-limit", strconv.Itoa(-reserve))
 }
 
 func (p Projector) rateLimitReserve(ctx context.Context, installationID int64) (int, error) {

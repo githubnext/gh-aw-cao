@@ -3,9 +3,6 @@ package collect
 import (
 	"context"
 	"errors"
-	"os"
-	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 )
@@ -123,65 +120,5 @@ func TestCollectEnrolledRepositoriesHandlesNoRepositories(t *testing.T) {
 	}
 	if len(got) != 0 {
 		t.Fatalf("len(got) = %d, want 0", len(got))
-	}
-}
-
-func TestOperationalValueReconstructionMatchesActionsProfile(t *testing.T) {
-	root := filepath.Join("catalog", "root")
-	got := operationalValueArguments(
-		root,
-		filepath.Join("workspace", "activity.sqlite"),
-		filepath.Join("lake", "gh-aw-logs-shards", "operational-values.jsonl"),
-		"2026-09-28T16:28:53Z",
-		"githubnext/gh-aw-cao",
-		"30",
-		true,
-		2000,
-	)
-	want := []string{
-		filepath.Join(root, "activity", "cao.mjs"),
-		"operational-value",
-		"--database", filepath.Join("workspace", "activity.sqlite"),
-		"--root", root,
-		"--output", filepath.Join("lake", "gh-aw-logs-shards", "operational-values.jsonl"),
-		"--timestamp", "2026-09-28T16:28:53Z",
-		"--repository", "githubnext/gh-aw-cao",
-		"--retention-days", "30",
-		"--history-campaign", "optimization",
-		"--max-github-api-rate-limit", "-2000",
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("operational-value arguments differ from the Actions profile:\ngot  %q\nwant %q", got, want)
-	}
-	workflowPath := filepath.Join("..", "..", "..", ".github", "workflows", "cao-activity.yml")
-	workflow, err := os.ReadFile(workflowPath) // #nosec G304 -- fixed repository test fixture path.
-	if err != nil {
-		t.Fatal(err)
-	}
-	source := string(workflow)
-	for _, expected := range []string{
-		`history_args=(--history-campaign optimization)`,
-		`--retention-days 30`,
-		`--max-github-api-rate-limit -2000`,
-	} {
-		if !strings.Contains(source, expected) {
-			t.Fatalf("Actions profile no longer contains %q; update the server reconstruction contract", expected)
-		}
-	}
-}
-
-func TestOperationalValueReconstructionOmitsUnavailableHistoryCampaign(t *testing.T) {
-	arguments := operationalValueArguments(
-		"catalog", "activity.sqlite", "operational-values.jsonl",
-		"2026-09-28T16:28:53Z", "octo/api", "14", false, 500,
-	)
-	joined := strings.Join(arguments, "\n")
-	if strings.Contains(joined, "--history-campaign") {
-		t.Fatalf("unexpected history campaign in %q", arguments)
-	}
-	for _, expected := range []string{"--retention-days\n14", "--max-github-api-rate-limit\n-500"} {
-		if !strings.Contains(joined, expected) {
-			t.Fatalf("operational-value arguments are missing %q: %q", expected, arguments)
-		}
 	}
 }

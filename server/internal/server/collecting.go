@@ -199,6 +199,7 @@ func NewCollector(
 		Enrollment:               enrollment,
 		CatalogRoot:              config.CatalogRoot,
 		NodeBinary:               config.NodeBinary,
+		GitHubBinary:             config.GitHubBinary,
 		Tokens:                   client,
 		Budget:                   budget,
 		WindowDays:               config.WindowDays,
