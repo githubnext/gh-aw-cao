@@ -273,7 +273,14 @@ test('marketplace page renders canonical package cards after ingestion', async (
   const detail = page.locator('[data-page-id="marketplace-package"]');
   await expect(detail).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Dependabot', exact: true, level: 1 })).toBeVisible();
-  await expect(detail.locator('.entity-card-list-actions').getByRole('button', { name: 'Add' })).toBeVisible();
+  const add = detail.locator('.entity-card-list-actions .cli-action-trigger');
+  await expect(add).toBeVisible();
+  await expect(add).toHaveAccessibleName('Add');
+  await add.click();
+  await expect(page.locator('.cli-action-dialog .cli-action-command')).toHaveText(
+    `bash ./cao.sh add githubnext/gh-aw-cao/dependabot@${'a'.repeat(40)}`
+  );
+  await page.locator('.cli-action-dialog .cli-action-cancel').click();
   await expect(detail.locator('.dashboard-markdown')).toContainText('Keeps dependency updates moving.');
   const about = detail.locator('.entity-card-list-grouped');
   await expect(detail.getByRole('heading', { name: 'About' })).toBeVisible();
