@@ -3,6 +3,10 @@
  * worker-executed declarative queries.
  */
 
+import { createDebug } from '../../debug.js';
+
+const debugViewPayloadCompiler = createDebug('view-payload-compiler');
+
 /**
  * @typedef {{
  *   filters?: Record<string, string[]>,
@@ -94,6 +98,16 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
     });
   });
 
+  debugViewPayloadCompiler({
+    event: 'compiled',
+    pageId,
+    viewId: options.viewId ?? null,
+    viewCount: views.length,
+    aliasCount: aliases.length,
+    queryCount: queries.length,
+    replacedSourceCount: replacedSources.size
+  });
+
   return { aliases, queries, replacedSources: [...replacedSources] };
 }
 
@@ -135,10 +149,20 @@ export function resolveDashboardQueryParameters(definitions, values) {
       if (Object.keys(value).length === 1 && typeof value.parameter === 'string') {
         const type = declared.get(value.parameter);
         if (!type) {
+          debugViewPayloadCompiler({
+            event: 'parameter-resolution-failed',
+            query: String(definition.name),
+            reason: 'undeclared-parameter'
+          });
           throw new TypeError(`Query "${String(definition.name)}" references undeclared parameter "${value.parameter}".`);
         }
         const resolved = values[value.parameter];
         if (typeof resolved !== type || (type === 'number' && !Number.isFinite(resolved))) {
+          debugViewPayloadCompiler({
+            event: 'parameter-resolution-failed',
+            query: String(definition.name),
+            reason: 'missing-form-parameter'
+          });
           throw new TypeError(`Query "${String(definition.name)}" requires form parameter "${value.parameter}".`);
         }
         return containerKey === 'args' ? { value: resolved } : resolved;
