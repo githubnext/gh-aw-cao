@@ -621,7 +621,8 @@ describe('dashboard document validation', () => {
         columns: [
           { field: 'started-at', type: 'temporal', title: 'Date' },
           { field: 'repository', type: 'nominal', title: 'Repository' },
-          { field: 'failure-detail', type: 'nominal', title: 'Error', display: 'run-link' }
+          { field: 'run', type: 'nominal', title: 'Workflow run' },
+          { field: 'failure-detail', type: 'nominal', title: 'Error' }
         ]
       }
     });

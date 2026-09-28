@@ -149,7 +149,8 @@ describe('link content helpers', () => {
     expect(anchor.getAttribute('target')).toBe('_blank');
     expect(anchor.getAttribute('rel')).toBe('noopener noreferrer');
     expect(anchor.getAttribute('aria-label')).toBe('Run 4');
-    expect(anchor.textContent).toContain('Run 4');
+    expect(anchor.textContent).toBe('Run 4');
+    expect(anchor.children).toHaveLength(0);
     expect(linkedValue).toBeInstanceOf(HTMLElement);
     expect(linkedValue.textContent).toBe('Summary');
     expect(linkedValue.getAttribute('href')).toBe('https://example.com/run/4');

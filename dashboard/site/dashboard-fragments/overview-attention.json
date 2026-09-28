@@ -613,10 +613,14 @@
                 "title": "Repository"
               },
               {
+                "field": "run",
+                "type": "nominal",
+                "title": "Workflow run"
+              },
+              {
                 "field": "failure-detail",
                 "type": "nominal",
-                "title": "Error",
-                "display": "run-link"
+                "title": "Error"
               }
             ]
           }

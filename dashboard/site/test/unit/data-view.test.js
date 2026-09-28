@@ -2295,7 +2295,7 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('.table-summary-row')).toBeNull();
   });
 
-  it('renders failure detail using the row run link', () => {
+  it('renders the workflow run as a link and failure detail as plain text', () => {
     const rendered = renderDataView('table', {
       pageId: 'failed-runs',
       title: 'Failed runs',
@@ -2303,11 +2303,15 @@ describe('data view renderer', () => {
         mark: 'table',
         'column-summaries': false,
         encoding: {
-          columns: [{ field: 'failure-detail', type: 'nominal', display: 'run-link' }]
+          columns: [
+            { field: 'run', type: 'nominal' },
+            { field: 'failure-detail', type: 'nominal' }
+          ]
         }
       },
       sourceName: 'runs',
       rows: [{
+        run: '42',
         'failure-detail': 'Target authority missing',
         'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42', label: 'Run 42' }
       }],
@@ -2321,8 +2325,9 @@ describe('data view renderer', () => {
     });
 
     const link = rendered?.querySelector('tbody a');
-    expect(link?.textContent).toBe('Target authority missing');
+    expect(link?.textContent).toBe('42');
     expect(link?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/42');
+    expect(rendered?.querySelector('tbody td[data-field="failure-detail"]')?.textContent).toBe('Target authority missing');
   });
 
   it('renders repository and workflow display links to GitHub when both dashboard and external links are present', () => {

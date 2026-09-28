@@ -595,7 +595,7 @@ test('DLS-SAFE-004 DLS-SAFE-007 DLS-SAFE-008 DLS-SAFE-010 custom findings table 
 
   const externalLinkMask = await page.locator('#plain-external-link').evaluate((link) => getComputedStyle(link, '::after').maskImage);
   const repositoryLinkMask = await page.locator('.repository-link').evaluate((link) => getComputedStyle(link, '::after').maskImage);
-  expect(externalLinkMask).not.toBe('none');
+  expect(externalLinkMask).toBe('none');
   await expect(page.locator('.refresh-button')).toHaveCount(0);
   expect(repositoryLinkMask).toBe('none');
 });

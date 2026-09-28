@@ -3,7 +3,6 @@
  */
 
 import { h } from '../dom.js';
-import { octicon } from '../octicons.js';
 import { isPlainObject, isSafeHttpsUrl } from './ui-primitives.js';
 
 /**
@@ -168,7 +167,7 @@ export function renderShortenedUrl(value) {
  */
 export function renderExternalLink(link) {
   const external = isExternalLink(link);
-  return h('a', safeLinkAnchorAttrs(link, external), link.label, ...(external ? [octicon('link-external')] : []));
+  return h('a', safeLinkAnchorAttrs(link, external), link.label);
 }
 
 /**
