@@ -12,6 +12,9 @@ import { parse } from "yaml";
 import { materializeCaoFromSource } from "../../.github/workflows/shared/materialize-cao.mjs";
 
 const executeFile = promisify(execFile);
+const bashExecutable = process.platform === "win32"
+  ? (await executeFile("where.exe", ["bash.exe"])).stdout.split(/\r?\n/, 1)[0]
+  : "bash";
 const catalog = path.resolve(".");
 const installScript = path.join(catalog, "install.sh");
 const installerSource = await readFile(installScript, "utf8");
@@ -61,7 +64,7 @@ import { spawnSync } from "node:child_process";
 import { basename } from "node:path";
 
 if (process.env.FAKE_GH_SCRIPT && [process.execPath, process.argv0].some((executable) => basename(executable).toLowerCase() === "gh.exe")) {
- const result = spawnSync("bash", [process.env.FAKE_GH_SCRIPT, basename(process.argv[1]), ...process.argv.slice(2)], { stdio: "inherit" });
+ const result = spawnSync(process.env.FAKE_BASH || "bash", [process.env.FAKE_GH_SCRIPT, basename(process.argv[1]), ...process.argv.slice(2)], { stdio: "inherit" });
  process.exit(result.status ?? 1);
 }
 
@@ -135,10 +138,17 @@ printf '%s\\n' "$1" > "$FAKE_GH_AW_INSTALLED"
 EOF
 `;
 
+function toBashPath(file) {
+  return file
+    .replace(/^([A-Za-z]):\\/, (_, drive) => `/${drive.toLowerCase()}/`)
+    .replaceAll("\\", "/");
+}
+
 async function createConsumer(t, ghAwVersion, { repository = "alpha-org/control" } = {}) {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-install-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const bin = path.join(root, "bin");
+  const bashEnvironment = path.join(root, "bash-env");
   const consumer = path.join(root, "consumer");
   const log = path.join(root, "commands.log");
   const ghAwInstalled = path.join(root, "gh-aw-installed");
@@ -149,26 +159,37 @@ async function createConsumer(t, ghAwVersion, { repository = "alpha-org/control"
     ["gh", fakeGh],
     ["gh.cmd", "@echo off\r\nbash \"%~dp0gh\" %*\r\n"],
     ["curl", fakeCurl],
-    ["curl.exe", fakeCurl],
   ]) {
     await writeFile(path.join(bin, name), source);
     await chmod(path.join(bin, name), 0o755);
   }
-  if (process.platform === "win32") await copyFile(process.execPath, path.join(bin, "gh.exe"));
+  if (process.platform === "win32") {
+    await copyFile(process.execPath, path.join(bin, "gh.exe"));
+    await writeFile(bashEnvironment, `
+curl() { "$FAKE_BASH_PATH" "$FAKE_CURL_SCRIPT" "$@"; }
+gh() { "$FAKE_BASH_PATH" "$FAKE_GH_SCRIPT" "$@"; }
+`);
+  }
   if (ghAwVersion) await writeFile(ghAwInstalled, `${ghAwVersion}\n`);
   const inheritedEnv = { ...process.env };
   const inheritedPath = inheritedEnv.PATH ?? inheritedEnv.Path ?? "";
   if (process.platform === "win32") delete inheritedEnv.Path;
-  const systemPath = process.platform === "win32"
-    ? inheritedPath.split(path.delimiter).filter((directory) => path.basename(directory).toLowerCase() !== "github cli").join(path.delimiter)
-    : inheritedPath;
+  const systemPath = inheritedPath.split(path.delimiter)
+    .filter((directory) => path.basename(directory).toLowerCase() !== "github cli")
+    .join(path.delimiter);
   const env = {
     ...inheritedEnv,
     PATH: `${bin}${path.delimiter}${systemPath}`,
     ...(process.platform === "win32" ? { PATHEXT: ".CMD;.COM;.EXE;.BAT" } : {}),
     NODE_OPTIONS: [process.env.NODE_OPTIONS, `--import=${pathToFileURL(mockFetch).href}`].filter(Boolean).join(" "),
+    FAKE_BASH: bashExecutable,
+    ...(process.platform === "win32" ? {
+      BASH_ENV: toBashPath(bashEnvironment),
+      FAKE_BASH_PATH: toBashPath(bashExecutable),
+      FAKE_CURL_SCRIPT: toBashPath(path.join(bin, "curl")),
+    } : {}),
     FAKE_CATALOG: catalog,
-    FAKE_GH_SCRIPT: path.join(bin, "gh"),
+    FAKE_GH_SCRIPT: process.platform === "win32" ? toBashPath(path.join(bin, "gh")) : path.join(bin, "gh"),
     FAKE_CAO_ARCHIVE: archive,
     FAKE_COMMAND_LOG: log,
     FAKE_GH_AW_INSTALLED: ghAwInstalled,
@@ -198,7 +219,7 @@ function collect(child, resolve, reject) {
 // /dev/tty is unavailable regardless of how the test runner was launched.
 function runStreamed(cwd, env, installerArguments = []) {
   return new Promise((resolve, reject) => {
-    const child = spawn("bash", ["-s", "--", ...installerArguments], { cwd, env, timeout, detached: true });
+    const child = spawn(bashExecutable, ["-s", "--", ...installerArguments], { cwd, env, timeout, detached: true });
     collect(child, resolve, reject);
     child.stdin.end(installerSource);
   });
@@ -223,7 +244,7 @@ function runWithTerminal(cwd, env, answer) {
 }
 
 function runFile(cwd, env, installerArguments = []) {
-  return executeFile("bash", [installScript, ...installerArguments], { cwd, env, timeout, detached: true });
+  return executeFile(bashExecutable, [installScript, ...installerArguments], { cwd, env, timeout, detached: true });
 }
 
 async function exists(file) {
@@ -258,7 +279,7 @@ async function assertCompleteInstall(consumer, env, ghAwVersion, repository) {
     campaigns: {},
   });
   await assertExecutable(path.join(consumer, "cao.sh"));
-  const launcher = process.platform === "win32" ? ["bash", ["./cao.sh", "--help"]] : ["./cao.sh", ["--help"]];
+  const launcher = process.platform === "win32" ? [bashExecutable, ["./cao.sh", "--help"]] : ["./cao.sh", ["--help"]];
   await executeFile(...launcher, { cwd: consumer, env, timeout });
   for (const bundle of ["activity", "dashboard"]) {
     await executeFile(process.execPath, [materializer, "verify", bundle], { cwd: consumer, env, timeout });
