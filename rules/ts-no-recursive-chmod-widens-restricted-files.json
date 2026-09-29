@@ -72,12 +72,12 @@
   "status": "needs-work",
   "evaluation": {
     "target_repo": "github/gh-aw-firewall",
-    "target_commit": "79773001b5f05a38c4ffbe36d2ee43f9ab21d7a5",
+    "target_commit": "6dd6157b374c3a0927618ac99e211899e6d17e7e",
     "true_positive_count": 2,
     "false_positive_count": 4,
     "false_negative_count": 1,
-    "reason": "Re-confirmed on current HEAD (7977300): the HEAD commit (#9205) touched artifact-preservation.ts, artifact-permissions.ts, container-stop.ts, squid-service.ts and token-persistence.js by diff stat, but all chmod call sites and line numbers are byte-for-byte unchanged since the prior two evaluations (11aebb3, 6dd6157). Same 4 false positives and same false negative (artifact-permissions.ts:158 shell-string chmod -R a+rwX /fix) persist. Still needs directory-provenance narrowing plus a shell-string chmod matcher before adoption.",
-    "txn_id": "refiner-36629135120-1"
+    "reason": "Re-confirmed on current HEAD (6dd6157): implementation, flagged lines, and classification outcome are byte-for-byte unchanged since the prior evaluation. Same 4 false positives (sessionState, squid-preserved-dir, both diagnostics-dir sites) and same false negative (artifact-permissions.ts docker-exec shell-string 'chmod -R a+rwX /fix' on auditDir) persist. Still needs directory-provenance narrowing plus a shell-string chmod matcher before adoption.",
+    "txn_id": "refiner-36601303276-1"
   },
   "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36601303276",
   "last_updated_target_repo": "github/gh-aw-firewall"
