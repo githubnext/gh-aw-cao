@@ -503,6 +503,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect.poll(() => main.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
   await main.evaluate((element) => { element.scrollTop = element.scrollHeight; });
   await expect.poll(() => main.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await page.setViewportSize({ width: 390, height: 844 });
   await mobileBack.click();
   await expect(page).toHaveURL(/#page-campaign-detail\?campaign=ambient-context$/);
   await expect(page.locator('[data-page-id="campaign-detail"]')).toBeVisible();

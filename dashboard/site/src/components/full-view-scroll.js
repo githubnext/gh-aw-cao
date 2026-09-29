@@ -10,7 +10,7 @@
 import { createDebug } from '../debug.js';
 
 const FULL_VIEW_SELECTOR = '.custom-view[data-view-layout="full-view"]';
-const CHART_SIBLING_SELECTOR = '.chart-widget, .temporal-metric-plot';
+const CHART_SIBLING_SELECTOR = '.chart-widget';
 
 const debugFullViewScroll = createDebug('full-view-scroll');
 
@@ -31,8 +31,7 @@ export function syncFullViewMode(root, page) {
       && Boolean(view.compareDocumentPosition(fullView) & Node.DOCUMENT_POSITION_FOLLOWING)
     ))
     : [];
-  const selectedFullViewMode = Boolean(page?.querySelector('.view-mode-control, .mobile-view-mode-toggle'))
-    && ['table', 'card'].includes(page?.dataset.viewMode ?? '');
+  const selectedFullViewMode = ['table', 'card'].includes(page?.dataset.viewMode ?? '');
   const canPin = Boolean(fullView) && (
     selectedFullViewMode
     || precedingViews.every((view) => !view.querySelector(CHART_SIBLING_SELECTOR))
