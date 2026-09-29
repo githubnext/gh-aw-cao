@@ -1,5 +1,5 @@
 {
-  "source_sha": "676e927439079ba1b21330e5445a47cca34ad743",
+  "source_sha": "fc09ef162dd070f64e5f071eb1c8bcf1801e6d35",
   "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
@@ -486,6 +486,39 @@
         36522567366
       ],
       "outcome": "no-op: evaluated reusable dashboard generation across 9 successful comparable docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days, plus 4 nearby successful cao-dashboard.yml runs for source context. Evidence window 2026-09-29T06:02:53Z to 2026-09-29T08:35:39Z. Trusted metadata showed docs queue median 4.0s (p90 12.0s), workflow execution median 44.0s (p90 90.8s), build median 36.0s (p90 47.2s), and deploy median 12.0s (p90 13.8s on publishing schedule runs). Successful docs build jobs showed Restore node_modules median 5.0s, Build documentation median 12.0s, Restore cached CAO Dashboard median 1.0s, and Upload Pages artifact median 5.0s. Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on all comparable docs builds, confirming stable dashboard cache hits. Comparable successful cao-dashboard.yml runs still spent cache median 7.0s re-downloading the just-built dashboard artifact and rewriting the constant central-agentic-ops-dashboard cache key, but that exact change was already recorded under suggestion fingerprints 691cf332ab4dfe9aa28b and 576d1154f6c6fcbd0db2. Repository issues are disabled, so no issue can be opened even if a duplicate suggestion were allowed. No new non-duplicate reusable-dashboard change with evidence-backed savings of at least 60s or 15% of median docs execution time was identified in this cycle."
+    },
+    {
+      "evaluated_at": "2026-09-29T08:58:00Z",
+      "worker_run_id": 36546154391,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        36545686145,
+        36544673704,
+        36543934601,
+        36543569429,
+        36542165548,
+        36542050905,
+        36540269934,
+        36539345498,
+        36537405382,
+        36536654412,
+        36534414845,
+        36532359559,
+        36530523435,
+        36529096922,
+        36529086312,
+        36528024677,
+        36527124544,
+        36526158677,
+        36524260770,
+        36523743365,
+        36542050947,
+        36528998374,
+        36523654662,
+        36522567366
+      ],
+      "outcome": "no-op: evaluated artifact transfer and Pages packaging across the latest 20 completed docs.yml runs from the last 14 days, with 15 comparable successful docs runs and 5 successful freshness-only schedule skips excluded from build/deploy timing. Evidence window 2026-09-29T04:54:59Z to 2026-09-29T08:55:37Z. Trusted metadata showed docs workflow execution median 42.0s (p90 77.1s), build median 36.0s (p90 46.6s), deploy median 12.0s (p90 15.4s on the 7 publishing schedule runs), queue median 8.0s (p90 19.6s), and schedule-freshness median 8.0s. Trusted build-step metadata across comparable docs runs showed Upload Pages artifact median 5.0s (p90 5.0s), Restore cached CAO Dashboard median 1.0s (p90 2.0s), and Build documentation median 12.0s (p90 13.0s). Comparable successful cao-dashboard.yml runs 36542050947, 36528998374, 36523654662, and 36522567366 still show the larger repeated transfer in the separate cache job re-downloading the just-built dashboard artifact and rewriting the constant central-agentic-ops-dashboard cache key in about 7s median, but that duplicate transfer was already captured by suggestion fingerprints 691cf332ab4dfe9aa28b and 576d1154f6c6fcbd0db2. No new non-duplicate artifact-transfer or Pages-packaging change with evidence-backed savings of at least 60s or 15% of median docs execution time was identified in this cycle.",
+      "suggestion_fingerprint": null
     }
   ]
 }
