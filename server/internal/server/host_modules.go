@@ -126,28 +126,55 @@ func resolveTargetModule(policy targetPolicy) (HostProfile, bool, error) {
 	}, module.supportsSingleReplica, nil
 }
 
+// redisPolicyOverridesCapabilities reports whether policy supplies any of
+// the Redis capability fields that only a configurable ("generic") Redis
+// provider module accepts. It is the single place both branches of
+// applyRedisProviderModuleOverrides consult, so a fixed module's rejection
+// check can never drift from the configurable module's own override list.
+func redisPolicyOverridesCapabilities(policy redisPolicy) bool {
+	return policy.Session != "" || policy.IsolateProcessNamespace != nil ||
+		policy.SingleReplica != nil || policy.SupportsCollection != nil
+}
+
+// applyRedisProviderModuleOverrides merges a redisPolicy's capability
+// overrides into a copy of a Redis provider module registry entry. It is a
+// pure function, mirroring applyTargetModuleOverrides, so the merge rules
+// governing a configurable module's overrides, and a fixed module's
+// rejection of any override, are testable without constructing a
+// resolvedHostPolicy.
+func applyRedisProviderModuleOverrides(module redisProviderModule, policy redisPolicy) (redisProviderModule, error) {
+	if !module.configurable {
+		if redisPolicyOverridesCapabilities(policy) {
+			return redisProviderModule{}, fmt.Errorf("redis provider module %q has fixed capabilities", strings.TrimSpace(policy.Module))
+		}
+		return module, nil
+	}
+	if policy.Session != "" {
+		module.session = policy.Session
+	}
+	if policy.IsolateProcessNamespace != nil {
+		module.isolateProcessNamespace = *policy.IsolateProcessNamespace
+	}
+	if policy.SingleReplica != nil {
+		module.singleReplica = *policy.SingleReplica
+	}
+	if policy.SupportsCollection != nil {
+		module.supportsCollection = *policy.SupportsCollection
+	}
+	return module, nil
+}
+
 func resolveRedisProviderModule(policy redisPolicy) (redisProviderModule, error) {
 	moduleName := strings.TrimSpace(policy.Module)
 	module, ok := redisProviderModules[moduleName]
 	if !ok {
 		return redisProviderModule{}, fmt.Errorf("unsupported Redis provider module %q", moduleName)
 	}
-	if module.configurable {
-		if policy.Session != "" {
-			module.session = policy.Session
-		}
-		if policy.IsolateProcessNamespace != nil {
-			module.isolateProcessNamespace = *policy.IsolateProcessNamespace
-		}
-		if policy.SingleReplica != nil {
-			module.singleReplica = *policy.SingleReplica
-		}
-		if policy.SupportsCollection != nil {
-			module.supportsCollection = *policy.SupportsCollection
-		}
-	} else if policy.Session != "" || policy.IsolateProcessNamespace != nil ||
-		policy.SingleReplica != nil || policy.SupportsCollection != nil {
-		return redisProviderModule{}, fmt.Errorf("redis provider module %q has fixed capabilities", moduleName)
+	configurable := module.configurable
+	module, err := applyRedisProviderModuleOverrides(module, policy)
+	if err != nil {
+		hostModulesLog.Printf("redis provider module resolution rejected module=%q configurable=%t", moduleName, configurable)
+		return redisProviderModule{}, err
 	}
 	return module, nil
 }

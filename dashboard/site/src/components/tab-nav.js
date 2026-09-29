@@ -5,6 +5,9 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { renderCountBadge } from './ui-primitives.js';
+import { createDebug } from '../debug.js';
+
+const debugTabNav = createDebug('tab-nav');
 
 /**
  * @typedef {{
@@ -83,7 +86,10 @@ export function renderInteractiveTabs({ className, ariaLabel, panelId, tabs, onS
           'aria-selected': selected ? 'true' : 'false',
           tabIndex: selected ? 0 : -1,
           dataset: { tabValue: value, ...dataset },
-          onclick: () => onSelect(value)
+          onclick: () => {
+            debugTabNav({ event: 'select', value, tabCount: tabs.length, via: 'click' });
+            onSelect(value);
+          }
         },
         label
       ));
@@ -97,6 +103,7 @@ export function renderInteractiveTabs({ className, ariaLabel, panelId, tabs, onS
             ? buttons.length - 1
             : (currentIndex + ((event.key === 'ArrowRight' || event.key === 'ArrowDown') ? 1 : -1) + buttons.length) % buttons.length;
         const nextButton = buttons[nextIndex];
+        debugTabNav({ event: 'navigate', key: event.key, fromIndex: currentIndex, toIndex: nextIndex });
         nextButton?.click();
         nextButton?.focus();
       });
@@ -113,13 +120,16 @@ export function renderInteractiveTabs({ className, ariaLabel, panelId, tabs, onS
  */
 export function updateInteractiveTabSelection(root, selectedValue, attributeName = 'data-tab-value') {
   const buttons = root.querySelectorAll('[role="tab"]');
+  let matchedCount = 0;
   for (const button of buttons) {
     const element = /** @type {HTMLElement} */ (button);
     const selected = element.getAttribute(attributeName) === selectedValue
       || element.dataset.tabValue === selectedValue
       || element.dataset.campaignMode === selectedValue
       || element.dataset.reportMode === selectedValue;
+    if (selected) matchedCount += 1;
     element.setAttribute('aria-selected', String(selected));
     element.tabIndex = selected ? 0 : -1;
   }
+  debugTabNav({ event: 'sync-selection', value: selectedValue, tabCount: buttons.length, matchedCount });
 }

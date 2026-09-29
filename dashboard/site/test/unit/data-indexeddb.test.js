@@ -1292,3 +1292,89 @@ describe('daily overview aggregates', () => {
     expect(result.recordsReturned).toBe(5);
   });
 });
+
+describe('canonical database bootstrap diagnostics', () => {
+  /** @param {string} search */
+  async function importWithDebug(search) {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => search, output })
+      };
+    });
+    vi.resetModules();
+    const module = await import('../../src/data/storage/indexeddb.js');
+    return { module, events: () => output.debug.mock.calls
+      .filter((call) => call[0] === '[cao:data:indexeddb]' && call[1] && typeof call[1] === 'object')
+      .map((call) => call[1]) };
+  }
+
+  afterEach(() => {
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
+
+  it('logs open lifecycle events including upgrade and success', async () => {
+    const { module, events } = await importWithDebug('?debug=data:indexeddb');
+    const database = await module.openCanonicalDatabase(indexedDB);
+    database.close();
+
+    const names = events().map((event) => event.event);
+    expect(names).toContain('open-requested');
+    expect(names).toContain('open-upgrade-needed');
+    expect(names).toContain('open-succeeded');
+    const succeeded = events().find((event) => event.event === 'open-succeeded');
+    expect(succeeded).toMatchObject({ version: DATABASE_VERSION, missingStores: [] });
+    expect(succeeded.elapsedMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it('reports a current-version database that lost canonical stores', async () => {
+    await new Promise((resolve, reject) => {
+      const request = indexedDB.open(canonicalDatabaseName(), DATABASE_VERSION);
+      request.onupgradeneeded = () => request.result.createObjectStore('runs', { keyPath: 'id' });
+      request.onsuccess = () => { request.result.close(); resolve(undefined); };
+      request.onerror = () => reject(request.error);
+    });
+    const { module, events } = await importWithDebug('?debug=data:indexeddb');
+    const database = await module.openCanonicalDatabase(indexedDB);
+    database.close();
+
+    const mismatch = events().find((event) => event.event === 'open-schema-mismatch');
+    expect(mismatch).toBeDefined();
+    expect(mismatch.missingStores).toContain('campaigns');
+    expect(mismatch.missingStores).not.toContain('runs');
+  });
+
+  it('reports an open request that stays pending behind another connection', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    try {
+      const { module, events } = await importWithDebug('?debug=data:indexeddb');
+      const holder = await module.openCanonicalDatabase(indexedDB);
+      holder.onversionchange = null;
+      const upgrade = indexedDB.open(canonicalDatabaseName(), DATABASE_VERSION + 1);
+      upgrade.onblocked = () => {};
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      const pending = module.openCanonicalDatabase(indexedDB).catch((error) => error);
+
+      vi.advanceTimersByTime(2_000);
+      expect(events().some((event) => event.event === 'open-pending')).toBe(true);
+
+      holder.close();
+      await new Promise((resolve) => { upgrade.onsuccess = () => { upgrade.result.close(); resolve(undefined); }; });
+      await pending;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('stays silent when debug logging is disabled', async () => {
+    const { module, events } = await importWithDebug('');
+    const database = await module.openCanonicalDatabase(indexedDB);
+    database.close();
+    expect(events()).toEqual([]);
+  });
+});

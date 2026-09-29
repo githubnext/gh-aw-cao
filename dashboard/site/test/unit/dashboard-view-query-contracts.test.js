@@ -103,10 +103,10 @@ function declaredQueryReferences(value) {
 
 describe('dashboard view query contracts', () => {
   it('declares experimental evidence pages without presenting observation counts as campaign completion', () => {
-    const experimentsSection = dashboard.navigation.find(
-      (/** @type {{ label?: string }} */ section) => section.label === 'Experiments'
+    const evolutionSection = dashboard.navigation.find(
+      (/** @type {{ label?: string }} */ section) => section.label === 'Evolution'
     );
-    expect(experimentsSection?.pages).toEqual(['experiments', 'evals', 'graders']);
+    expect(evolutionSection?.pages).toEqual(['experiments', 'evals', 'graders']);
     for (const id of ['experiments', 'evals', 'graders']) {
       expect(dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === id))
         .toMatchObject({ kind: 'custom', experimental: true });

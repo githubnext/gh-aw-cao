@@ -161,6 +161,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           TARGET_REPO: ${{ inputs.target_repo }}
+          GITHUB_ACTION_TOKEN: ${{ github.token }}
         with:
           github-token: ${{ steps.cao_target_read_credential.outputs.token }}
           script: |
@@ -172,15 +173,35 @@ jobs:
               throw new Error('Dependabot alert target does not match the authorized worker target');
             }
             const [owner, repo] = target.split('/');
-            const repository = await github.request('GET /repos/{owner}/{repo}', { owner, repo });
+            const alertFile = '/tmp/gh-aw/agent/dependabot-alerts.json';
+            const markUnavailable = (reason) => {
+              fs.mkdirSync('/tmp/gh-aw/agent', { recursive: true });
+              fs.writeFileSync(alertFile, JSON.stringify({
+                target_repo: target, state: 'open', complete: false, alerts: null, unavailable_reason: reason,
+              }));
+              core.warning(`Dependabot alert evidence is unavailable (${reason}); the agent must report incomplete.`);
+            };
+            const requestAlerts = async (route, parameters) => {
+              try {
+                return await github.request(route, parameters);
+              } catch (error) {
+                const message = String(error?.message || error?.response?.data?.message || '');
+                const rateLimited = Number(error?.status) === 403 && /rate limit exceeded/i.test(message);
+                markUnavailable(rateLimited ? 'api_rate_limit' : 'api_request_failed');
+                return null;
+              }
+            };
+            const repository = await getOctokit(process.env.GITHUB_ACTION_TOKEN)
+              .request('GET /repos/{owner}/{repo}', { owner, repo });
             if (repository.data?.private !== false) {
               throw new Error('Dependabot alert prefetch requires a verified public target repository');
             }
             const alerts = [];
             for (let page = 1; page <= 100; page += 1) {
-              const response = await github.request('GET /repos/{owner}/{repo}/dependabot/alerts', {
+              const response = await requestAlerts('GET /repos/{owner}/{repo}/dependabot/alerts', {
                 owner, repo, state: 'open', per_page: 100, page,
               });
+              if (!response) return;
               if (!Array.isArray(response.data)) {
                 throw new Error('Dependabot alert response is not an alert list');
               }
@@ -202,13 +223,13 @@ jobs:
                 },
               })));
               if (response.data.length < 100) {
-                fs.writeFileSync('/tmp/gh-aw/agent/dependabot-alerts.json',
+                fs.writeFileSync(alertFile,
                   JSON.stringify({ target_repo: target, state: 'open', complete: true, alerts }));
                 core.info(`Fetched ${alerts.length} open Dependabot alerts for the authorized target.`);
                 return;
               }
             }
-            throw new Error('Dependabot alert pagination exceeded the supported limit');
+            markUnavailable('pagination_limit_exceeded');
 
 safe-outputs:
   update-issue:
@@ -360,7 +381,7 @@ Also determine the repository-declared package-manager and toolchain versions fr
 
 Build a complete snapshot without requiring Dependabot pull requests to exist. Security findings and routine version updates have separate evidence routes:
 
-1. Read `/tmp/gh-aw/agent/dependabot-alerts.json`, fetched before agent execution with the target-scoped read credential. Require `target_repo` to match the authorized `TARGET_REPO`, `state` to be `open`, `complete` to be `true`, and `alerts` to be an array. Record the vulnerable package, severity, advisory, vulnerable range, and patched version when available. Do not use `list_dependabot_alerts` as a fallback: its security-alert results can be filtered by the agent's secrecy policy even when the target-scoped credential has access.
+1. Read `/tmp/gh-aw/agent/dependabot-alerts.json`, fetched before agent execution with the target-scoped read credential. Require `target_repo` to match the authorized `TARGET_REPO`, `state` to be `open`, `complete` to be `true`, and `alerts` to be an array. If `complete` is `false` or `unavailable_reason` is present, treat alert evidence as unavailable even if `alerts` is empty or null; report incomplete with the stated reason and never describe it as zero open alerts. Record the vulnerable package, severity, advisory, vulnerable range, and patched version when available. Do not use `list_dependabot_alerts` as a fallback: its security-alert results can be filtered by the agent's secrecy policy even when the target-scoped credential has access.
    - Successfully checking out `target_repo` proves only repository contents access. It does not prove that the credential used by GitHub tools or `gh api` can read Dependabot alerts.
    - Require the complete pre-agent alert-list response using a credential with `vulnerability-alerts: read` access before treating security evidence as available.
    - Distinguish an empty result from unavailable evidence. Tool denial, DIFC filtering, missing tools, authentication failures, permission failures, or API errors mean alert evidence is unavailable; do not summarize unavailable alert evidence as "zero open alerts."

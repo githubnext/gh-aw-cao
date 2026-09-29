@@ -45,15 +45,39 @@ type Coverage struct {
 	Repositories  int64 `json:"repositories"`
 }
 
+// repositoryRejectionReason classifies why NormalizeRepository rejected an
+// "owner/name" reference. It is useful for diagnosing malformed enrollment
+// input — for example a webhook payload or GitHub App enumeration result
+// carrying an unexpected reference shape — without logging the reference
+// value itself.
+type repositoryRejectionReason string
+
+const (
+	repositoryRejectionReasonMalformed      repositoryRejectionReason = "malformed"
+	repositoryRejectionReasonInvalidSegment repositoryRejectionReason = "invalid-segment"
+)
+
+// classifyRepositoryRejection reports why an "owner/name" reference already
+// split into owner and name is not well-formed. It is a pure function
+// extracted from NormalizeRepository so the rejection reason is testable
+// independently of the caller's logging.
+func classifyRepositoryRejection(owner, name string, found bool) (repositoryRejectionReason, bool) {
+	if !found || owner == "" || name == "" || strings.Contains(name, "/") {
+		return repositoryRejectionReasonMalformed, true
+	}
+	if !validRepositorySegment(owner) || !validRepositorySegment(name) {
+		return repositoryRejectionReasonInvalidSegment, true
+	}
+	return "", false
+}
+
 // NormalizeRepository canonicalizes an "owner/name" reference, rejecting
 // anything that is not a well-formed repository.
 func NormalizeRepository(value string) (string, error) {
 	trimmed := strings.ToLower(strings.TrimSpace(value))
 	owner, name, found := strings.Cut(trimmed, "/")
-	if !found || owner == "" || name == "" || strings.Contains(name, "/") {
-		return "", fmt.Errorf("invalid repository reference %q", value)
-	}
-	if !validRepositorySegment(owner) || !validRepositorySegment(name) {
+	if reason, rejected := classifyRepositoryRejection(owner, name, found); rejected {
+		enrollmentLog.Printf("rejected repository reference reason=%s", reason)
 		return "", fmt.Errorf("invalid repository reference %q", value)
 	}
 	return owner + "/" + name, nil

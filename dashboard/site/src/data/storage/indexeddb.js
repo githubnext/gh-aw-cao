@@ -178,7 +178,21 @@ const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 function requestResult(request) {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error('IndexedDB request failed'));
+    request.onerror = () => {
+      const error = request.error ?? new Error('IndexedDB request failed');
+      debug({ event: 'request-failed', ...errorSummary(error) });
+      reject(error);
+    };
+  });
+}
+
+/** @param {IDBTransaction} transaction @param {'error' | 'abort'} outcome */
+function reportTransactionFailure(transaction, outcome) {
+  debug({
+    event: outcome === 'abort' ? 'transaction-aborted' : 'transaction-failed',
+    mode: transaction.mode,
+    stores: [...(transaction.objectStoreNames ?? [])].join('|'),
+    ...errorSummary(transaction.error)
   });
 }
 
@@ -186,8 +200,14 @@ function requestResult(request) {
 function transactionDone(transaction) {
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve(undefined);
-    transaction.onerror = () => reject(transaction.error ?? new Error('IndexedDB transaction failed'));
-    transaction.onabort = () => reject(transaction.error ?? new Error('IndexedDB transaction aborted'));
+    transaction.onerror = () => {
+      reportTransactionFailure(transaction, 'error');
+      reject(transaction.error ?? new Error('IndexedDB transaction failed'));
+    };
+    transaction.onabort = () => {
+      reportTransactionFailure(transaction, 'abort');
+      reject(transaction.error ?? new Error('IndexedDB transaction aborted'));
+    };
   });
 }
 
@@ -301,15 +321,119 @@ export function deleteCanonicalDatabase(indexedDB, options = {}) {
 }
 
 /**
+ * Milliseconds between diagnostics reports while an open request has not
+ * settled. A healthy open settles in a few milliseconds; a request that stays
+ * pending is waiting on a lock held by another connection (a stale tab, a
+ * worker that is mid-upgrade) or on a damaged backing store.
+ */
+const OPEN_PENDING_REPORT_MS = 2_000;
+let nextOpenRequestId = 0;
+let pendingOpenRequests = 0;
+
+/** @param {unknown} error */
+function errorSummary(error) {
+  return error instanceof Error || (error && typeof error === 'object' && 'name' in error)
+    ? {
+        errorName: String(/** @type {{ name?: unknown }} */ (error).name ?? 'Error'),
+        errorMessage: String(/** @type {{ message?: unknown }} */ (error).message ?? '')
+      }
+    : { errorName: 'Unknown', errorMessage: String(error) };
+}
+
+/**
+ * Reports browser storage state that explains an open request that does not
+ * settle: whether other versions of the canonical database exist, and whether
+ * the origin is close to its storage quota. Reports only names, versions, and
+ * byte counts.
+ * @param {IDBFactory} indexedDB
+ * @param {string} name
+ * @param {number} openId
+ */
+async function reportPendingOpenDiagnostics(indexedDB, name, openId) {
+  try {
+    const databases = typeof indexedDB.databases === 'function' ? await indexedDB.databases() : null;
+    debug({
+      event: 'open-pending-databases',
+      openId,
+      databasesSupported: databases !== null,
+      matching: databases?.filter((database) => database.name === name)
+        .map((database) => ({ version: database.version ?? null })) ?? [],
+      totalDatabaseCount: databases?.length ?? null
+    });
+  } catch (error) {
+    debug({ event: 'open-pending-databases-failed', openId, ...errorSummary(error) });
+  }
+  try {
+    const storage = globalThis.navigator?.storage;
+    const estimate = typeof storage?.estimate === 'function' ? await storage.estimate() : null;
+    const persisted = typeof storage?.persisted === 'function' ? await storage.persisted() : null;
+    debug({
+      event: 'open-pending-storage',
+      openId,
+      usageBytes: estimate?.usage ?? null,
+      quotaBytes: estimate?.quota ?? null,
+      persisted
+    });
+  } catch (error) {
+    debug({ event: 'open-pending-storage-failed', openId, ...errorSummary(error) });
+  }
+}
+
+/**
  * @param {IDBFactory} indexedDB
  * @returns {Promise<IDBDatabase>}
  */
 export function openCanonicalDatabase(indexedDB) {
   const name = canonicalDatabaseName();
-  const request = indexedDB.open(name, DATABASE_VERSION);
+  const openId = ++nextOpenRequestId;
+  const startedAt = monotonicNow();
+  const elapsed = () => Math.round(monotonicNow() - startedAt);
+  pendingOpenRequests += 1;
+  debug({ event: 'open-requested', openId, version: DATABASE_VERSION, pendingOpenRequests });
+  let reports = 0;
+  // Reports only while the request is unsettled; debug output is a no-op
+  // unless `?debug=` enables the `data:indexeddb` category.
+  const pendingReport = setInterval(() => {
+    reports += 1;
+    debug({ event: 'open-pending', openId, elapsedMs: elapsed(), pendingOpenRequests });
+    if (reports === 1) void reportPendingOpenDiagnostics(indexedDB, name, openId);
+  }, OPEN_PENDING_REPORT_MS);
+  let settled = false;
+  const settle = () => {
+    if (settled) return;
+    settled = true;
+    pendingOpenRequests -= 1;
+    clearInterval(pendingReport);
+  };
+  /** @type {IDBOpenDBRequest} */
+  let request;
+  try {
+    request = indexedDB.open(name, DATABASE_VERSION);
+  } catch (error) {
+    settle();
+    debug({ event: 'open-threw', openId, elapsedMs: elapsed(), ...errorSummary(error) });
+    return Promise.reject(error);
+  }
   return new Promise((resolve, reject) => {
     request.onupgradeneeded = (event) => {
       const database = request.result;
+      const upgrade = request.transaction;
+      debug({
+        event: 'open-upgrade-needed',
+        openId,
+        oldVersion: event.oldVersion,
+        newVersion: event.newVersion,
+        existingStoreCount: database.objectStoreNames.length,
+        elapsedMs: elapsed()
+      });
+      if (upgrade) {
+        upgrade.addEventListener('abort', () => debug({
+          event: 'open-upgrade-aborted', openId, elapsedMs: elapsed(), ...errorSummary(upgrade.error)
+        }));
+        upgrade.addEventListener('complete', () => debug({
+          event: 'open-upgrade-completed', openId, elapsedMs: elapsed()
+        }));
+      }
       if (event.oldVersion < DATABASE_VERSION) {
         // Canonical data is a derived cache. Rebuild incompatible identities and
         // schemas from authoritative dashboard inputs instead of migrating them.
@@ -320,25 +444,54 @@ export function openCanonicalDatabase(indexedDB) {
     };
     let blocked = false;
     request.onsuccess = () => {
+      settle();
       const database = request.result;
       if (blocked) {
         debug('closing database opened after blocked request settled', name);
         database.close();
         return;
       }
-      database.onversionchange = () => {
+      const missingStores = Object.keys(CANONICAL_DATABASE_SCHEMA)
+        .filter((storeName) => !database.objectStoreNames.contains(storeName));
+      debug({
+        event: missingStores.length > 0 ? 'open-schema-mismatch' : 'open-succeeded',
+        openId,
+        version: database.version,
+        storeCount: database.objectStoreNames.length,
+        missingStores,
+        elapsedMs: elapsed()
+      });
+      database.onversionchange = (event) => {
+        debug({
+          event: 'connection-version-change',
+          openId,
+          oldVersion: event.oldVersion,
+          newVersion: event.newVersion
+        });
         debug('closing database for version change', name);
         database.close();
       };
-      database.onclose = () => debug('database connection closed', name);
+      // `close` fires only when the browser closes the connection abnormally,
+      // for example after backing-store corruption or when site data is cleared.
+      database.onclose = () => debug({ event: 'connection-closed-abnormally', openId });
       resolve(database);
     };
     request.onerror = () => {
+      settle();
       const error = request.error ?? new Error('Unable to open canonical dashboard data');
+      debug({ event: 'open-failed', openId, elapsedMs: elapsed(), ...errorSummary(error) });
       debug('failed to open database', name, error);
       reject(error);
     };
-    request.onblocked = () => {
+    request.onblocked = (event) => {
+      settle();
+      debug({
+        event: 'open-blocked',
+        openId,
+        oldVersion: event.oldVersion,
+        newVersion: event.newVersion,
+        elapsedMs: elapsed()
+      });
       debug('open database blocked by an older connection', name);
       blocked = true;
       reject(new Error('Opening canonical dashboard data was blocked'));

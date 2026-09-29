@@ -5,6 +5,9 @@
 
 import { formatString, stringOrFallback, toNumber } from '../view-formatters.js';
 import { findLink } from './link-content.js';
+import { createDebug } from '../debug.js';
+
+const debugViewData = createDebug('view-data');
 
 /** @typedef {{ field: string, aggregate?: string, as?: string, direction?: string } & Record<string, unknown>} TableField */
 /** @typedef {{ key: string, x: string, y: number, weight?: number, category?: string, color: string | null, section?: string | null, highlighted?: boolean | null, link: { href: string, label: string } | null, source?: Record<string, unknown> }} ChartPoint */
@@ -31,7 +34,15 @@ export function prepareTableRows(rows, columns, dataConfig) {
   const limit = isPlainObject(dataConfig) && Number.isInteger(dataConfig.limit) && dataConfig.limit > 0
     ? dataConfig.limit
     : null;
-  return limit === null ? prepared : prepared.slice(0, limit);
+  const output = limit === null ? prepared : prepared.slice(0, limit);
+  debugViewData({
+    operation: 'prepare-table-rows',
+    inputRows: rows.length,
+    outputRows: output.length,
+    aggregated: aggregateColumns.length > 0,
+    limited: limit !== null && prepared.length > limit
+  });
+  return output;
 }
 
 /** @param {Array<Record<string, unknown>>} rows @param {TableField[]} columns */
@@ -135,7 +146,7 @@ export function buildChartPoints(pageId, title, rows, x, y, color, hrefField, we
     if (link) group.links.push(link);
     groups.set(key, group);
   }
-  return [...groups.values()].map((group, index) => {
+  const output = [...groups.values()].map((group, index) => {
     const numericValues = group.values.map(toNumber);
     let value = 0;
     if (aggregate === 'count') value = group.values.filter((candidate) => candidate != null && candidate !== '').length;
@@ -160,6 +171,14 @@ export function buildChartPoints(pageId, title, rows, x, y, color, hrefField, we
       source: group.source
     };
   });
+  debugViewData({
+    operation: 'build-chart-points',
+    pageId,
+    inputRows: rows.length,
+    outputPoints: output.length,
+    aggregate
+  });
+  return output;
 }
 
 /**
@@ -200,7 +219,15 @@ export function prepareChartPoints(points, x, y, color, dataConfig, section = nu
   const limit = isPlainObject(dataConfig) && Number.isInteger(dataConfig.limit) && dataConfig.limit > 0
     ? dataConfig.limit
     : null;
-  return limit === null ? prepared : prepared.slice(0, limit);
+  const output = limit === null ? prepared : prepared.slice(0, limit);
+  debugViewData({
+    operation: 'prepare-chart-points',
+    inputPoints: points.length,
+    outputPoints: output.length,
+    ordered: orderBy.length > 0,
+    limited: limit !== null && prepared.length > limit
+  });
+  return output;
 }
 
 /** @param {ChartPoint} point @param {string | undefined} field @param {Record<string, any> | null} x @param {Record<string, any> | null} y @param {Record<string, any> | null} color @param {Record<string, any> | null} section */
