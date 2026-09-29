@@ -501,7 +501,6 @@ func stressSecondaryRateLimit(t *testing.T, name string, mintFirst bool) {
 	if mintFirst {
 		from = healthyFor.String()
 	}
-	started := time.Now()
 	harness := newStressHarness(t, stressOptions{
 		scenario: simulator.Scenario{
 			Name: name, Repositories: 1,
@@ -517,6 +516,7 @@ func stressSecondaryRateLimit(t *testing.T, name string, mintFirst bool) {
 		t.Fatal(err)
 	}
 	if mintFirst {
+		started := harness.simulator.Started()
 		if _, err := harness.github.InstallationToken(t.Context(), stressInstallationID); err != nil {
 			t.Fatalf("mint installation token before the secondary-limit window: %v", err)
 		}

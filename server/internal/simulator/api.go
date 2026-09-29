@@ -36,6 +36,12 @@ type API struct {
 	metered     atomic.Uint64
 	rateLimited atomic.Uint64
 	limiter     *primaryLimiter
+	started     time.Time
+}
+
+// Started reports when scenario time began; API windows are measured from it.
+func (a *API) Started() time.Time {
+	return a.started
 }
 
 // ServeHTTP implements http.Handler.
@@ -128,7 +134,7 @@ func NewAPIHandler(scenario Scenario, timeScale float64) (*API, error) {
 		windows = append(windows, compiledWindow{start: start, end: end, spec: window})
 	}
 	started := time.Now()
-	api := &API{}
+	api := &API{started: started}
 	if scenario.RateLimit != nil {
 		window, _ := time.ParseDuration(scenario.RateLimit.Window)
 		api.limiter = &primaryLimiter{
