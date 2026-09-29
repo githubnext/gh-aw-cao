@@ -1,5 +1,5 @@
 {
-  "source_sha": "164d987ac660e3ff2665a20b4d9835772cf3c134",
+  "source_sha": "93c32c9e172c57d1ca9058e1905d55f9e6422971",
   "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
@@ -119,6 +119,27 @@
       "category": "artifact transfer and Pages packaging",
       "outcome": "incomplete: GitHub Actions workflow-read requests hit a rate limit before the run sample and open-issue duplicate check could be refreshed from trusted metadata. Existing memory shows the most recent complete evaluation for this category at 2026-09-29T13:10:00Z on source 164d987ac660e3ff2665a20b4d9835772cf3c134 with no new actionable non-duplicate change. This run stopped rather than infer new evidence from stale data.",
       "evidence_run_ids": [],
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-09-29T15:00:00Z",
+      "worker_run_id": 36586143614,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36586275655,
+        36585721902,
+        36584288555,
+        36583963027,
+        36582675524,
+        36579561390,
+        36578156001,
+        36576612150,
+        36574932995,
+        36574903405,
+        36573384924,
+        36571957252
+      ],
+      "outcome": "no-op: evaluated scheduling, concurrency, and avoidable rebuilds across the latest 20 completed docs.yml runs from the last 14 days, with 12 successful completed docs runs, 7 comparable build-bearing successes, 5 freshness-only schedule skips, and 8 excluded completed outliers/non-comparable runs (3 skipped workflow_run, 3 action_required workflow_run, 1 cancelled schedule, 1 other skipped workflow_run). Evidence window 2026-09-29T13:00:12Z to 2026-09-29T14:56:30Z. Trusted metadata showed queue median 0.0s (p90 0.0s), workflow median 44.0s overall (p90 146.5s inflated by Pages deploy wait on schedule/workflow_run publishes), comparable build-bearing workflow median 47.0s (p90 162.4s), build median 40.0s (p90 44.4s), schedule-freshness median 9.0s (p90 10.0s), and publish deploy median 46.5s (p90 70.1s, n=2). Five schedule runs were already skipped by the freshness guard in 12-15s, and the remaining build-bearing runs were mostly push-triggered or workflow_run-triggered rebuilds outside the schedule guard. Logs from publish runs 36574903405 and 36584288555 show the deploy job spending 14s and 72s polling Pages deployment state after the 23.7 MB artifact upload had already finished. That variability points to external Pages service wait, but no source-level workflow change in docs.yml or cao-dashboard.yml identified from trusted evidence would reliably save at least 60 seconds or 15% of median docs execution time without weakening freshness, correctness, or deployment safety. No new non-duplicate scheduling/concurrency/avoidable-rebuild change met the actionability threshold in this cycle.",
       "suggestion_fingerprint": null
     }
   ]
