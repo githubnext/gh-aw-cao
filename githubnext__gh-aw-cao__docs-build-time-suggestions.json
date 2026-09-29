@@ -1,6 +1,6 @@
 {
-  "source_sha": "a8db750b85bd3c040326b7fedab378829a799058",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "source_sha": "84ed0c8f9918365a078397f15e3c406c45e08c6d",
+  "next_category": "dependency installation and caching",
   "evaluations": [
     {
       "evaluated_at": "2026-09-29T20:31:00Z",
@@ -89,6 +89,30 @@
         36625420005
       ],
       "outcome": "no_actionable_improvement: docs.yml Pages upload median 6s on built runs and deploy median 10s on deploying schedule runs; packaging is below the 60s/15% threshold, while schedule-freshness API lookups add ~4s on every scheduled run but belong to scheduling/avoidable rebuilds, not this category."
+    },
+    {
+      "evaluated_at": "2026-09-29T21:41:45Z",
+      "worker_run_id": "36634494405",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36634106269,
+        36633476719,
+        36632954614,
+        36631001695,
+        36630486278,
+        36628967576,
+        36628232110,
+        36627902161,
+        36626444233,
+        36625685641,
+        36625420005,
+        36623460362,
+        36622374664,
+        36622187347,
+        36621657087
+      ],
+      "outcome": "suggested: workflow_run docs builds repeatedly rebuild immediately after successful cao-dashboard pushes on the same head SHA even though schedule-freshness skips equivalent scheduled runs; add a workflow_run freshness gate keyed to the latest successful dashboard run SHA to avoid duplicate docs rebuilds.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
     }
   ]
 }
