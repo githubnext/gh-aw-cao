@@ -253,6 +253,9 @@ test("review bundles preserve stable proposal lifecycle metadata", () => {
     assert.match(reviewBundle, new RegExp(`"${field}"`));
   }
   assert.match(reviewBundle, /proposed\|awaiting-review\|accepted\|rejected\|superseded\|expired\|incomplete/);
+  assert.match(reviewBundle, /artifacts:\s*\n\s*- \/tmp\/gh-aw\/agent\/review-bundles\//);
+  assert.match(reviewBundle, /ARTIFACT_NAME="review-\$\{SAFE_REPO\}-\$\{SAFE_NAME\}-\$\{REVIEW_STATE\}"/);
+  assert.match(workflow("cao-evolution-integrity.lock.yml"), /\/tmp\/gh-aw\/agent\/review-bundles\/\*\*\//);
 });
 
 test("workers inherit human-first progressive report disclosure", () => {

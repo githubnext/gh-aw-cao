@@ -157,6 +157,7 @@ function recordFromIssue(issue, outputRepository, reportDefinitions) {
     bodyHtml: issue.body_html || "",
     state: issue.state.toLowerCase(),
     stateReason: issue.state_reason || "",
+    mergedAt: issue.pull_request?.merged_at || "",
     url: safeUrl(issue.html_url),
     createdAt: issue.created_at,
     updatedAt: issue.updated_at,
@@ -346,6 +347,7 @@ async function collectDashboardRecordsImpl({
     const run = runByIdentity.get(`${outputRepository.toLowerCase()}:${Number(runId)}`);
     if (!run) return null;
     const bundle = bundleFor(reportDefinitions, run.name, run.display_title, artifact.name);
+    const lifecycle = artifact.name.match(/-(proposed|awaiting-review|accepted|rejected|superseded|expired|incomplete)$/)?.[1] || "proposed";
     return {
       id: `${outputRepository}-artifact-${artifact.id}`,
       bundle: bundle?.id || "",
@@ -354,6 +356,7 @@ async function collectDashboardRecordsImpl({
       title: artifact.name,
       summary: `Artifact-backed proposal from ${run.display_title || run.name}.`,
       state: artifact.expired ? "expired" : "available",
+      reviewState: artifact.expired ? "expired" : lifecycle,
       url: safeUrl(run.html_url),
       createdAt: artifact.created_at,
       updatedAt: artifact.updated_at,

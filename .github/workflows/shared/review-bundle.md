@@ -5,6 +5,8 @@ safe-outputs:
       description: "Publish one review bundle as a workflow artifact from a prepared directory"
       runs-on: ubuntu-latest
       output: "Review bundle published as a workflow artifact."
+      artifacts:
+        - /tmp/gh-aw/agent/review-bundles/
       inputs:
         bundle_name:
           description: "Short bundle name used in the artifact name"
@@ -124,7 +126,7 @@ safe-outputs:
 
             SAFE_REPO=$(printf '%s' "$TARGET_REPO" | tr '/:' '-' | tr -cs 'A-Za-z0-9._-' '-')
             SAFE_NAME=$(printf '%s' "$BUNDLE_NAME" | tr '/:' '-' | tr -cs 'A-Za-z0-9._-' '-')
-            ARTIFACT_NAME="review-${SAFE_REPO}-${SAFE_NAME}"
+            ARTIFACT_NAME="review-${SAFE_REPO}-${SAFE_NAME}-${REVIEW_STATE}"
             STAGING_DIR="$RUNNER_TEMP/review-bundle/${SAFE_REPO}/${SAFE_NAME}"
             mkdir -p "$STAGING_DIR"
             cp -R "$SOURCE_DIR"/. "$STAGING_DIR"/

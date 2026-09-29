@@ -840,7 +840,6 @@ function runRows(deployed, usage) {
   }
   return [...rows.values()];
 }
-
 function admissionRows(deployed) {
   const admissions = [];
   const checks = [];
@@ -2167,15 +2166,18 @@ function outcomeRows(records, workflowRoleFor = () => "unknown") {
       ? "create-issue"
       : record.kind === "pull-request" ? "create-pull-request" : record.kind || "unknown",
     "outcome-status": record.state || "unknown",
-    "outcome-state": record.state === "closed"
-      ? record.stateReason === "duplicate"
+    "outcome-state": record.reviewState
+      || (record.state === "closed"
+      ? record.kind === "pull-request"
+        ? record.mergedAt ? "accepted" : "rejected"
+        : record.stateReason === "duplicate"
         ? "superseded"
         : record.stateReason === "not_planned"
           ? "rejected"
           : "accepted"
       : record.state === "expired"
         ? "expired"
-      : record.kind === "noop" ? "ignored" : "pending",
+      : record.kind === "noop" ? "ignored" : "pending"),
     "evidence-strength": record.kind === "review-bundle" ? "proposal" : "durable",
     "outcome-warning": record.warning ? "Warning" : "None",
     "run-conclusion": runConclusion(record.conclusion),
@@ -2269,11 +2271,13 @@ function workItemRows(workflows, runs, outcomes, admissions = []) {
       const run = workflowRuns
         .filter((candidate) => targetParts(candidate).join("/") === target)
         .sort((a, b) => Date.parse(b["started-at"] || 0) - Date.parse(a["started-at"] || 0))[0];
+      const runtimeRepository = `${workflow.organization}/${workflow.repository}`;
       const workflowOutcomes = outcomes
-        .filter((outcome) =>
-          outcome.workflow === workflow.workflow
-          && outcome.organization === targetOrganization
-          && outcome.repository === targetRepository)
+          .filter((outcome) =>
+            outcome.workflow === workflow.workflow
+            && outcome["runtime-repository"] === runtimeRepository
+            && outcome.organization === targetOrganization
+            && outcome.repository === targetRepository)
         .sort((a, b) => Date.parse(b["observed-at"] || 0) - Date.parse(a["observed-at"] || 0));
       const runOutcomes = run ? workflowOutcomes.filter((outcome) => !outcome.run || outcome.run === run.run) : workflowOutcomes;
       const matchedOutcome = runOutcomes.find((outcome) =>
@@ -2326,7 +2330,6 @@ function workItemRows(workflows, runs, outcomes, admissions = []) {
     });
   });
 }
-
 function attentionSignalRows(workItems, generatedAt) {
   const now = Date.parse(generatedAt) || Date.now();
   return workItems
@@ -2355,7 +2358,6 @@ function attentionSignalRows(workItems, generatedAt) {
     })
     .sort((a, b) => a.priority - b.priority || b["age-seconds"] - a["age-seconds"]);
 }
-
 function agentAssignmentRows(workflows, runs, workItems) {
   const runsByWorkItem = latestByWorkItemKey(
     runs,
@@ -2443,12 +2445,11 @@ function agentAssignmentRows(workflows, runs, workItems) {
     "conflict-state": (activeCountByWorkItem.get(key) || 0) > 1 ? "contended" : "none",
   }));
 }
-
 function evidenceRecordRows(outcomes, findings, workItems) {
   const workItemsByKey = new Map(workItems.map((item) => [item["work-item-id"], item]));
   const resolveWorkItem = (organization, repository, workflow) => workItemsByKey.get(workItemKey(organization, repository, workflow));
   const outcomeRecords = outcomes.map((outcome) => {
-    const [organization, repository] = (outcome["runtime-repository"] || `${outcome.organization}/${outcome.repository}`).split("/");
+    const { organization, repository } = outcome;
     const workItem = resolveWorkItem(organization, repository, outcome.workflow);
     return {
       "evidence-id": outcome["safe-output"],
@@ -2489,7 +2490,6 @@ function evidenceRecordRows(outcomes, findings, workItems) {
   });
   return [...outcomeRecords, ...findingRecords];
 }
-
 function configurationData(controlSettings) {
   const document = controlSettings.policy_document;
   const resolution = controlSettings.policy_resolution ?? {};

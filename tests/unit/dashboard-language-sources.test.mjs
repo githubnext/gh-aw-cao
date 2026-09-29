@@ -1073,6 +1073,36 @@ test("review bundles stay out of attention until the same target has an actionab
   assert.deepEqual(actionable["attention-signals"].rows.map((row) => row["work-item-id"]), [key]);
 });
 
+test("closed pull request outcomes use merge evidence for terminal review state", () => {
+  const sources = buildDashboardLanguageSources({
+    deployed: { discovery: { complete: true }, runHealth: { complete: true }, bundles: [], workflows: [] },
+    usage: { available: true, complete: true, runs: [] },
+    operationalValues: { records: [] },
+    report: {
+      records: [{
+        id: "merged",
+        repository: "octo/example",
+        runtimeRepository: "githubnext/control",
+        workflowPath: ".github/workflows/worker.lock.yml",
+        kind: "pull-request",
+        state: "closed",
+        mergedAt: "2026-09-05T10:00:00Z",
+      }, {
+        id: "closed-unmerged",
+        repository: "octo/example",
+        runtimeRepository: "githubnext/control",
+        workflowPath: ".github/workflows/worker.lock.yml",
+        kind: "pull-request",
+        state: "closed",
+      }],
+    },
+  });
+
+  const outcomes = new Map(sources.outcomes.rows.map((row) => [row["safe-output"], row["outcome-state"]]));
+  assert.equal(outcomes.get("merged"), "accepted");
+  assert.equal(outcomes.get("closed-unmerged"), "rejected");
+});
+
 test("dashboard source bridge classifies safe-output performance and diagnostics", () => {
   const sources = buildDashboardLanguageSources({
     deployed: { discovery: { complete: true }, runHealth: {}, workflows: [], bundles: [] },
