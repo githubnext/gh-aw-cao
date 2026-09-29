@@ -3196,9 +3196,11 @@
       ],
       "used-by-pages": [],
       "execution": {
-        "local": false,
-        "requirements": [],
-        "reason": "Requires grader-observations, which the local SQLite projection does not provide."
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "grader-observations"
+        ]
       }
     },
     {
@@ -3228,9 +3230,11 @@
       ],
       "used-by-pages": [],
       "execution": {
-        "local": false,
-        "requirements": [],
-        "reason": "Requires grader-observations, which the local SQLite projection does not provide."
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "grader-observations"
+        ]
       }
     },
     {
@@ -3244,11 +3248,12 @@
       ],
       "used-by-pages": [],
       "execution": {
-        "local": false,
+        "local": true,
+        "backend": "sqlite",
         "requirements": [
+          "grader-observations",
           "overview-runs"
-        ],
-        "reason": "Requires grader-observations, which the local SQLite projection does not provide."
+        ]
       }
     },
     {
@@ -3463,11 +3468,12 @@
       ],
       "used-by-pages": [],
       "execution": {
-        "local": false,
+        "local": true,
+        "backend": "sqlite",
         "requirements": [
+          "grader-observations",
           "overview-runs"
-        ],
-        "reason": "Requires grader-observations, which the local SQLite projection does not provide."
+        ]
       }
     },
     {
@@ -3483,13 +3489,14 @@
         "overview"
       ],
       "execution": {
-        "local": false,
+        "local": true,
+        "backend": "sqlite",
         "requirements": [
           "campaigns",
+          "grader-observations",
           "overview-runs",
           "workflows"
-        ],
-        "reason": "Requires grader-observations, which the local SQLite projection does not provide."
+        ]
       }
     },
     {

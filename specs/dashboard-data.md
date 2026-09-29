@@ -291,10 +291,12 @@ browser reuses its cached ingestion instead of redownloading the shard.
 
 The local SQLite projection and browser IndexedDB projection SHALL use the same
 adapters, identities, normalization, object-store definitions, and relationship
-validation. The local SQLite file is an implementation of the IndexedDB subset
-used by the canonical storage API; it is not a separate relational canonical
-schema. It MAY use a different retention window when explicitly created as a
-historical archive.
+validation. The local SQLite file implements the IndexedDB subset used by the
+canonical storage API. It additionally mirrors the six experiment-evidence
+stores into queryable relational tables within the same write transaction;
+these mirrors are derived from canonical records, not an independent ingestion
+or acquisition path. It MAY use a different retention window when explicitly
+created as a historical archive.
 
 The `gh-aw-cao.dashboard-sql-export` contract is a separate, static source
 interchange. Its producer-owned relational tables or views SHALL be serialized
@@ -313,9 +315,9 @@ The implementation profile defined by this specification is:
 
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
-| Canonical model | 22 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, and Marketplace Package records |
-| Browser IndexedDB | 30 | Twelve canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
-| Local SQLite projection | IndexedDB 27 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records`, containing the same logical stores and JSON records as IndexedDB |
+| Canonical model | 23 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
+| Browser IndexedDB | 31 | Eighteen canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
+| Local SQLite projection | IndexedDB 31 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus six transactional relational evidence mirrors |
 | Local Redis server projection | Canonical model 14 | Immutable active generation of logical-source row sets, queried only through the loopback Go HTTP(S) server |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
@@ -354,6 +356,10 @@ store uses `id` as its key path. The implemented secondary indexes are:
 | `domains`, `tools`, `skills`, `friction`, `audits`, `issues` | `byRun -> runId` |
 | `operationalValues` | `byRepository -> repositoryId`, `byValue -> valueId` |
 | `marketplacePackages` | `byRegistry -> registryId`, `byRepository -> repository` |
+| `experiments`, `graders`, `evals` | `byWorkflow -> workflowId` |
+| `experimentAssignments` | `byRun -> runId`, `byExperiment -> experimentId` |
+| `graderObservations` | `byRun -> runId`, `byGrader -> graderId` |
+| `evalObservations` | `byRun -> runId`, `byEval -> evalId` |
 | `transactions` | `byCreatedAt -> createdAt` |
 | `dailyOverviewAggregates` | `byGenerationDay -> [generation, day]` |
 | `overviewAggregateMetadata` | none |
@@ -363,6 +369,20 @@ is disposable. The SQLite-backed implementation SHALL preserve exactly the same
 logical database version, store names, key paths, indexes, and record values.
 The metadata tables are an emulation detail and MUST NOT be presented as
 canonical domain tables.
+
+The local SQLite evidence mirrors are `experiments`,
+`experiment_assignments`, `graders`, `grader_observations`, `evals`, and
+`eval_observations`, each keyed by `(database_name, id)`. Definitions expose
+`workflow_id`, `name`, and `first_observed_at`/`last_observed_at`; assignments
+expose `run_id`, `experiment_id`, and `variant`; grader observations expose
+`run_id`, `grader_id`, `value`, `status`, and optional `experiment_id`/`variant`,
+`audit_id`, and `evaluator_digest`; eval observations expose `run_id`,
+`eval_id`, `eval_result`, `status`, and optional `experiment_id`/`variant`,
+`audit_id`, and `requested_model`/`resolved_model`. Optional inclusion and exclusion fields,
+`observed_at`, `provenance`, and `record_json` preserve the canonical record
+without requiring queries to parse Audit JSON. Relationship-key indexes follow
+the corresponding IndexedDB indexes. Store deletion and retention SHALL remove
+mirror rows in the same SQLite transaction.
 
 ## 5.2 Completeness and archives
 
@@ -1798,7 +1818,7 @@ The canonical browser database SHALL use:
 
 ```js
 const DATABASE_NAME = "gh-aw-cao-dashboard-data";
-const DATABASE_VERSION = 30;
+const DATABASE_VERSION = 31;
 ```
 
 The name MAY be scoped by deployment path to prevent unrelated dashboard
@@ -1810,7 +1830,7 @@ rows.
 
 # 27. Object Stores
 
-IndexedDB version 30 SHALL define:
+IndexedDB version 31 SHALL define:
 
 ```text
 campaigns
@@ -1825,6 +1845,12 @@ audits
 issues
 operationalValues
 marketplacePackages
+experiments
+experimentAssignments
+graders
+graderObservations
+evals
+evalObservations
 transactions
 dailyOverviewAggregates
 overviewAggregateMetadata
@@ -1868,7 +1894,7 @@ conclusion
 
 The generation-ordered runtime-computation indexes described by Section 73 are
 reserved for the physical version that implements the computation projection.
-They are not part of IndexedDB version 30. That implementation MUST increment
+They are not part of IndexedDB version 31. That implementation MUST increment
 the physical version and update Section 5.1 before relying on those indexes.
 
 ### run-linked tables
@@ -1880,6 +1906,10 @@ skills: runId
 friction: runId
 audits: runId
 issues: runId
+experimentAssignments: runId, experimentId
+graderObservations: runId, graderId
+evalObservations: runId, evalId
+experiments, graders, evals: workflowId
 ```
 
 ### operational values

@@ -133,6 +133,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     evidence.evals?.push({ id: 'eval:1', workflowId: 'workflow:1', observedAt: timestamp, provenance });
     evidence.evalObservations?.push({
       id: 'eval-observation:1', runId: 'run:1', evalId: 'eval:1', evalResult: 'YES',
+      experimentId: 'experiment:1', variant: 'candidate',
       requestedModel: 'model-requested', resolvedModel: 'model-resolved',
       auditId: 'audit:eval', observedAt: timestamp, provenance
     });
@@ -158,6 +159,23 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     expect(connection.prepare('SELECT eval_result, requested_model, resolved_model, audit_id FROM eval_observations').get())
       .toMatchObject({ eval_result: 'YES', requested_model: 'model-requested',
         resolved_model: 'model-resolved', audit_id: 'audit:eval' });
+    expect(connection.prepare(`
+      SELECT a.run_id, e.id AS experiment, a.variant, g.id AS grader,
+             go.value, go.audit_id AS grader_audit, ev.id AS eval,
+             eo.eval_result, eo.audit_id AS eval_audit
+      FROM experiment_assignments a
+      JOIN experiments e ON e.database_name = a.database_name AND e.id = a.experiment_id
+      JOIN grader_observations go ON go.database_name = a.database_name
+        AND go.run_id = a.run_id AND go.experiment_id = a.experiment_id AND go.variant = a.variant
+      JOIN graders g ON g.database_name = go.database_name AND g.id = go.grader_id
+      JOIN eval_observations eo ON eo.database_name = a.database_name
+        AND eo.run_id = a.run_id AND eo.experiment_id = a.experiment_id AND eo.variant = a.variant
+      JOIN evals ev ON ev.database_name = eo.database_name AND ev.id = eo.eval_id
+    `).all()).toEqual([{
+      run_id: 'run:1', experiment: 'experiment:1', variant: 'candidate',
+      grader: 'grader:1', value: 0.8, grader_audit: 'audit:1',
+      eval: 'eval:1', eval_result: 'YES', eval_audit: 'audit:eval'
+    }]);
     connection.close();
     evidence.graders = [{
       ...evidence.graders?.[0], observedAt: '2026-09-09T00:00:00Z', displayName: 'Older observation'
