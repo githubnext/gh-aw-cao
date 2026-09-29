@@ -213,7 +213,7 @@ function renderCampaignTree(campaigns, signal) {
     const details = /** @type {HTMLDetailsElement} */ (h(
       'details',
       { className: 'cao-memory-campaign-branch' },
-      h('summary', { className: 'cao-memory-campaign' },
+      h('summary', { className: 'cao-memory-campaign', role: 'treeitem', 'aria-expanded': 'false', tabindex: '-1' },
         octicon('file-directory-fill'),
         h('span', null, campaign.campaignName)
       ),
@@ -221,6 +221,7 @@ function renderCampaignTree(campaigns, signal) {
     ));
     const disabledRow = () => h('div', {
       className: 'cao-memory-campaign cao-memory-campaign-disabled',
+      role: 'treeitem',
       'aria-disabled': 'true',
       title: 'No repository memory files are available for this campaign',
     }, octicon('file-directory-fill'), h('span', null, campaign.campaignName));
@@ -228,7 +229,10 @@ function renderCampaignTree(campaigns, signal) {
     showManifests.push((manifest) => {
       if (signal.aborted) return;
       if (!manifest || manifest.files.length === 0) {
+        const hadFocus = details.contains(details.ownerDocument.activeElement);
         details.replaceWith(disabledRow());
+        if (hadFocus) treeNavigation.refresh(true);
+        else treeNavigation.refresh();
         return;
       }
       const warning = renderOmissionWarning(manifest.omitted);
@@ -246,6 +250,7 @@ function renderCampaignTree(campaigns, signal) {
         ...(warning ? [warning] : []),
         tree
       );
+      treeNavigation.refresh();
     });
     showErrors.push((error) => {
       files.replaceChildren(renderEmptyMessage(
@@ -253,9 +258,11 @@ function renderCampaignTree(campaigns, signal) {
         { role: 'alert' }
       ));
     });
-    return h('li', null, details);
+    return h('li', { role: 'none' }, details);
   });
 
+  const tree = h('ul', { role: 'tree', 'aria-label': 'Campaign memory files' }, ...branches);
+  const treeNavigation = enableMemoryTreeNavigation(tree, signal);
   layout = /** @type {HTMLDivElement} */ (h(
     'div',
     { className: 'cao-memory-layout', dataset: { memoryView: 'browser' } },
@@ -263,7 +270,7 @@ function renderCampaignTree(campaigns, signal) {
       'nav',
       { className: 'cao-memory-tree', 'aria-label': 'Campaign memory files' },
       h('h2', null, 'Files'),
-      h('ul', null, ...branches)
+      tree
     ),
     content
   ));
@@ -355,25 +362,119 @@ function renderFileTree(entries, select) {
   /** @param {MemoryTreeNode} node @returns {HTMLElement} */
   const renderNode = (node) => h(
     'ul',
-    null,
+    { role: 'group' },
     ...[...node.directories].map(([name, child]) => h(
       'li',
-      null,
+      { role: 'none' },
       h(
         'details',
         { className: 'campaign-memory-directory', open: true },
-        h('summary', null, octicon('file-directory'), h('span', null, name)),
+        h('summary', { role: 'treeitem', 'aria-expanded': 'true', tabindex: '-1' },
+          octicon('file-directory'), h('span', null, name)),
         renderNode(child)
       )
     )),
     ...node.files.map(({ name, entry }) => {
       /** @type {HTMLButtonElement} */
       let button;
-      button = renderMemoryFileButton(name, entry.size, { title: entry.path }, () => select(entry, button));
-      return h('li', null, button);
+      button = renderMemoryFileButton(name, entry.size,
+        { title: entry.path, role: 'treeitem', tabindex: '-1' }, () => select(entry, button));
+      return h('li', { role: 'none' }, button);
     })
   );
   return renderNode(root);
+}
+
+/**
+ * Keeps one tab stop in the file tree while arrow keys traverse only expanded
+ * branches. Native details and buttons retain their Enter/Space behavior.
+ * @param {HTMLElement} tree
+ * @param {AbortSignal} signal
+ */
+function enableMemoryTreeNavigation(tree, signal) {
+  /** @returns {HTMLElement[]} */
+  const visibleItems = () => [...tree.querySelectorAll('[role="treeitem"]:not([aria-disabled="true"])')]
+    .map((item) => /** @type {HTMLElement} */ (item))
+    .filter((item) => {
+      for (let details = item.closest('details'); details; details = details.parentElement?.closest('details') ?? null) {
+        if (!details.open && details.firstElementChild !== item) return false;
+      }
+      return true;
+    });
+  /** @param {HTMLElement} item */
+  const focusItem = (item) => {
+    tree.querySelectorAll('[role="treeitem"][tabindex="0"]').forEach((previous) => {
+      previous.setAttribute('tabindex', '-1');
+    });
+    item.setAttribute('tabindex', '0');
+    item.focus();
+  };
+  const refresh = (restoreFocus = false) => {
+    const items = visibleItems();
+    const current = tree.querySelector('[role="treeitem"][tabindex="0"]');
+    if (current && items.includes(/** @type {HTMLElement} */ (current))) return;
+    tree.querySelectorAll('[role="treeitem"][tabindex="0"]').forEach((item) => item.setAttribute('tabindex', '-1'));
+    if (items[0]) {
+      items[0].setAttribute('tabindex', '0');
+      if (restoreFocus) items[0].focus();
+    }
+  };
+  /** @param {Event} event */
+  const onFocus = (event) => {
+    const target = event.target;
+    if (target instanceof HTMLElement && target.matches('[role="treeitem"]')) focusItem(target);
+  };
+  /** @param {Event} event */
+  const onToggle = (event) => {
+    const details = event.target;
+    if (!(details instanceof HTMLDetailsElement)) return;
+    const summary = details.firstElementChild;
+    summary?.setAttribute('aria-expanded', String(details.open));
+    if (!details.open && details.contains(tree.ownerDocument.activeElement)) {
+      focusItem(/** @type {HTMLElement} */ (summary));
+    }
+    refresh();
+  };
+  /** @param {KeyboardEvent} event */
+  const onKeyDown = (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement) || !target.matches('[role="treeitem"]')) return;
+    const items = visibleItems();
+    const index = items.indexOf(target);
+    if (index < 0) return;
+    const details = target.parentElement instanceof HTMLDetailsElement ? target.parentElement : null;
+    const parent = (details ? details.parentElement : target)?.closest('details');
+    /** @type {HTMLElement | undefined | null} */
+    let next;
+    switch (event.key) {
+      case 'ArrowDown': next = items[index + 1]; break;
+      case 'ArrowUp': next = items[index - 1]; break;
+      case 'Home': next = items[0]; break;
+      case 'End': next = items.at(-1); break;
+      case 'ArrowRight':
+        if (details && !details.open) {
+          details.open = true;
+          target.setAttribute('aria-expanded', 'true');
+        }
+        else if (details && items[index + 1] && details.contains(items[index + 1])) next = items[index + 1];
+        break;
+      case 'ArrowLeft':
+        if (details?.open) {
+          details.open = false;
+          target.setAttribute('aria-expanded', 'false');
+        }
+        else next = /** @type {HTMLElement | null} */ (parent?.firstElementChild);
+        break;
+      default: return;
+    }
+    event.preventDefault();
+    if (next) focusItem(next);
+  };
+  tree.addEventListener('focusin', onFocus, { signal });
+  tree.addEventListener('keydown', onKeyDown, { signal });
+  tree.addEventListener('toggle', onToggle, { capture: true, signal });
+  refresh();
+  return { refresh };
 }
 
 /**
