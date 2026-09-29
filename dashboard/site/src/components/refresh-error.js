@@ -9,7 +9,7 @@ const debugRefreshError = createDebug('refresh-error');
  * @param {() => void} retry
  * @returns {HTMLElement}
  */
-export function renderRefreshError(retry) {
+export function renderRefreshError(retry, { hasCachedSnapshot = true } = {}) {
   const element = h(
     'section',
     { className: 'source-refresh-error', role: 'alert' },
@@ -17,7 +17,9 @@ export function renderRefreshError(retry) {
       'div',
       { className: 'source-refresh-error-message' },
       h('strong', null, 'Dashboard data could not be refreshed.'),
-      h('p', null, 'Some views may be unavailable. You are seeing the most recent cached data.')
+      h('p', null, hasCachedSnapshot
+        ? 'Some views may be unavailable. You are seeing the most recent cached data.'
+        : 'A complete dashboard snapshot is not available yet.')
     ),
     h(
       'div',
@@ -47,4 +49,25 @@ export function renderRefreshError(retry) {
   );
   debugRefreshError({ event: 'shown' });
   return element;
+}
+
+/**
+ * @param {{ createdAt: string }} snapshot
+ * @param {'refreshing'|'current'|'stale'} state
+ */
+export function renderDashboardSnapshotStatus(snapshot, state) {
+  const timestamp = Date.parse(snapshot.createdAt);
+  const date = Number.isFinite(timestamp)
+    ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(timestamp)
+    : 'an unknown time';
+  const message = state === 'refreshing'
+    ? `Refreshing dashboard data. Showing the last complete snapshot from ${date}.`
+    : state === 'stale'
+      ? `Dashboard refresh failed. Showing the last complete snapshot from ${date}.`
+      : `Dashboard data is current as of ${date}.`;
+  return h('p', {
+    className: 'dashboard-snapshot-status',
+    role: 'status',
+    'aria-live': 'polite'
+  }, message);
 }

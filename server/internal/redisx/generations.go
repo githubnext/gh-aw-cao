@@ -34,6 +34,57 @@ func (s *Store) TrackGeneration(ctx context.Context, generation string) error {
 	return nil
 }
 
+// trackedGeneration is one generation's registry entry: its name and when it
+// was recorded by TrackGeneration.
+type trackedGeneration struct {
+	name     string
+	recorded time.Time
+}
+
+// parseTrackedGenerations decodes a ZRANGE ... WITHSCORES reply, which
+// alternates member and score strings, into ordered trackedGeneration values.
+// It is a pure function so PruneGenerations's decoding of a malformed or
+// partial reply — a blank member, or a score that fails to parse — is
+// testable without a fake Redis reply.
+func parseTrackedGenerations(entries []string) []trackedGeneration {
+	var generations []trackedGeneration
+	for index := 0; index+1 < len(entries); index += 2 {
+		name := entries[index]
+		if name == "" {
+			continue
+		}
+		milliseconds, _ := strconv.ParseInt(entries[index+1], 10, 64)
+		generations = append(generations, trackedGeneration{
+			name: name, recorded: time.UnixMilli(milliseconds).UTC(),
+		})
+	}
+	return generations
+}
+
+// reclaimableGenerations applies the standard reclamation policy to
+// oldest-first tracked generations: the active generation is never a
+// candidate, the newest retain generations are kept regardless of age, and a
+// generation superseded less than grace ago is left alone so in-flight reads
+// complete. It is a pure function over now, so PruneGenerations's reclamation
+// decision is testable without a fake Redis reply or the real clock.
+func reclaimableGenerations(generations []trackedGeneration, active string, retain int, grace time.Duration, now time.Time) []string {
+	// ZRANGE returns oldest first, so everything except the newest retain
+	// entries is a reclamation candidate.
+	cutoff := len(generations) - retain
+	var candidates []string
+	for index := 0; index < cutoff; index++ {
+		candidate := generations[index]
+		if candidate.name == active {
+			continue
+		}
+		if now.Sub(candidate.recorded) < grace {
+			continue
+		}
+		candidates = append(candidates, candidate.name)
+	}
+	return candidates
+}
+
 // PruneGenerations reclaims superseded generations.
 //
 // Each projection writes a full copy of the canonical dataset. Redis is
@@ -64,37 +115,15 @@ func (s *Store) PruneGenerations(ctx context.Context, retain int) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("decode generations: %w", err)
 	}
-	type tracked struct {
-		name     string
-		recorded time.Time
-	}
-	var generations []tracked
-	for index := 0; index+1 < len(entries); index += 2 {
-		name := entries[index]
-		if name == "" {
-			continue
-		}
-		milliseconds, _ := strconv.ParseInt(entries[index+1], 10, 64)
-		generations = append(generations, tracked{
-			name: name, recorded: time.UnixMilli(milliseconds).UTC(),
-		})
-	}
-	// ZRANGE returns oldest first, so everything except the newest retain
-	// entries is a reclamation candidate.
-	cutoff := len(generations) - retain
+	generations := parseTrackedGenerations(entries)
+	candidates := reclaimableGenerations(generations, activeGeneration, retain, generationRetentionGrace, time.Now().UTC())
+	redisLog.Printf("evaluated generations tracked=%d reclaimable=%d retain=%d", len(generations), len(candidates), retain)
 	dropped := 0
-	for index := 0; index < cutoff; index++ {
-		candidate := generations[index]
-		if candidate.name == activeGeneration {
-			continue
-		}
-		if time.Since(candidate.recorded) < generationRetentionGrace {
-			continue
-		}
-		if err := s.DropGeneration(ctx, candidate.name); err != nil {
+	for _, candidate := range candidates {
+		if err := s.DropGeneration(ctx, candidate); err != nil {
 			return dropped, err
 		}
-		if _, err := s.Client.Do(ctx, "ZREM", s.generationsKey(), candidate.name); err != nil {
+		if _, err := s.Client.Do(ctx, "ZREM", s.generationsKey(), candidate); err != nil {
 			return dropped, fmt.Errorf("forget generation: %w", err)
 		}
 		dropped++

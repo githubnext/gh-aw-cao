@@ -219,29 +219,17 @@ type EventAdmitter interface {
 	Admit(ctx context.Context, event GitHubWebhook) (map[string]any, error)
 }
 
-// admitWebhook records the delivery and hands it to the admitting reconciler.
-// Admission is bounded work — enrollment bookkeeping or a queue append — so it
-// runs inline and reports its outcome instead of spawning a projection.
+// admitWebhook hands the delivery to an admitting reconciler. Implementations
+// commit deduplication with their durable admission state before returning.
 func (a *App) admitWebhook(
 	response http.ResponseWriter,
 	request *http.Request,
 	admitter EventAdmitter,
 	event GitHubWebhook,
 ) {
-	fresh, err := a.store.RememberDelivery(request.Context(), event.Delivery, deliveryTTL)
-	if err != nil {
-		writeError(response, http.StatusServiceUnavailable, "webhook deduplication is unavailable")
-		return
-	}
-	if !fresh {
-		writeJSON(response, http.StatusAccepted, map[string]any{"accepted": true, "duplicate": true})
-		return
-	}
 	result, err := admitter.Admit(request.Context(), event)
 	if err != nil {
-		// Forget the delivery so a retry of a transiently failed admission is
-		// not silently swallowed as a duplicate.
-		a.forgetDelivery(request.Context(), event.Delivery)
+		serverLog.Printf("webhook admission failed")
 		writeError(response, http.StatusServiceUnavailable, "webhook admission is unavailable")
 		return
 	}
@@ -249,13 +237,12 @@ func (a *App) admitWebhook(
 	for key, value := range result {
 		payload[key] = value
 	}
+	if duplicate, _ := result["duplicate"].(bool); duplicate {
+		serverLog.Printf("webhook delivery duplicate")
+	} else {
+		serverLog.Printf("webhook admission completed admitted_at=%s", time.Now().UTC().Format(time.RFC3339Nano))
+	}
 	writeJSON(response, http.StatusAccepted, payload)
-}
-
-func (a *App) forgetDelivery(parent context.Context, delivery string) {
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), 3*time.Second)
-	defer cancel()
-	_ = a.store.ForgetDelivery(ctx, delivery)
 }
 
 func (a *App) performReconciliation(

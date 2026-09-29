@@ -9,6 +9,10 @@
  * dashboard loads pay no cost for provenance bookkeeping.
  */
 
+import { createDebug } from './debug.js';
+
+const debugDomProvenance = createDebug('dom-provenance');
+
 /**
  * Maps every rendered element to the most specific dashboard JSON node that
  * owns it. Only the initial render performs the full structural walk;
@@ -20,6 +24,7 @@
  */
 export function enableDashboardDomProvenance(root, document, getBuiltInPagePayload) {
   annotateDashboardDom(root, document, getBuiltInPagePayload);
+  debugDomProvenance({ event: 'initial-annotation', pageCount: document.dashboard.pages.length });
   const pagesById = new Map(document.dashboard.pages.map((page, pageIndex) => [page.id, { page, pageIndex }]));
   const observer = new MutationObserver((mutations) => {
     const pagesToAnnotate = new Set();
@@ -33,6 +38,11 @@ export function enableDashboardDomProvenance(root, document, getBuiltInPagePaylo
         }
       }
     }
+    debugDomProvenance({
+      event: 'mutation-batch',
+      pagesReannotated: pagesToAnnotate.size,
+      provenanceRootsPropagated: provenanceRoots.length
+    });
     for (const renderedPage of pagesToAnnotate) {
       annotateRenderedPageDom(renderedPage, pagesById, getBuiltInPagePayload);
     }
@@ -178,6 +188,12 @@ export function annotatePageDom(renderedPage, page, pageIndex, getBuiltInPagePay
       const viewRoot = element.closest('.custom-view') ?? element;
       annotateDomTree(viewRoot, `${definitionPath}.views[${viewIndex}]`, typeof view.element === 'string' ? view.element : undefined);
     }
+  });
+  debugDomProvenance({
+    event: 'page-annotated',
+    pageId: page.id,
+    sectionCount: sections.length,
+    viewCount: views.length
   });
 }
 

@@ -190,6 +190,7 @@ func (w Worker) process(ctx context.Context, lease Lease) bool {
 	// a collection that already started.
 	if err := w.Queue.Admit(ctx, task); err != nil {
 		workerLog.Printf("debounce clear failed")
+		return false
 	}
 	if task.Erase {
 		if err := w.Runner.Lake.Forget(task.Repository); err != nil {
@@ -214,7 +215,9 @@ func (w Worker) process(ctx context.Context, lease Lease) bool {
 	}
 	if err := w.Queue.Complete(ctx, lease); err != nil {
 		workerLog.Printf("task acknowledgement failed")
+		return true
 	}
+	workerLog.Printf("collection completed repository=%s completed_at=%s", task.Repository, time.Now().UTC().Format(time.RFC3339Nano))
 	return true
 }
 

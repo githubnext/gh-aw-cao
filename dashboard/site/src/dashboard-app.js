@@ -3,7 +3,7 @@
       import { offerCancelCommand } from "./cancel-command.js";
       import { loadDashboardQuerySources, processDashboardQueries, subscribeWorkerLoadingProgress } from "./data-processor.js";
       import { startDashboardData } from "./data/startup.js";
-      import { renderRefreshError } from "./components/refresh-error.js";
+      import { renderDashboardSnapshotStatus, renderRefreshError } from "./components/refresh-error.js";
       import { collectFullDiagnostics } from "./diagnostics.js";
       import { startDashboardAppUpdates } from "./dashboard-data-updates.js";
       import { attachCliActions, setDeclaredCliActions } from "./components/cli-actions.js";
@@ -310,8 +310,9 @@
       * @param {boolean} [prepared]
       * @param {(pageId: string, options: { signal: AbortSignal, onUpdate: (sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void }) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} [loadPageSources]
       * @param {() => void} [retryRefresh]
+      * @param {{ createdAt: string } | null} [snapshot]
       */
-      const renderSources = (sources, state = "ready", prepared = false, loadPageSources, retryRefresh) => {
+      const renderSources = (sources, state = "ready", prepared = false, loadPageSources, retryRefresh, snapshot = null) => {
         const canExecuteCliActions = previewMode === "canvas";
         renderedSources = sources;
         renderedSourcesPrepared = prepared;
@@ -327,7 +328,7 @@
           sources,
           commitSha: document.querySelector('meta[name="dashboard-version"]')?.getAttribute("content"),
           prepared,
-          loading: state === "loading",
+          loading: state === "loading" || (state === "stale" && snapshot === null),
           loadPageSources,
           tableRowLimit,
         });
@@ -336,9 +337,17 @@
           dashboard.setAttribute("aria-busy", "true");
         } else if (state === "stale") {
           dashboard.classList.add("dashboard-stale");
-          if (retryRefresh) {
-            dashboard.querySelector(".report-body")?.prepend(renderRefreshError(retryRefresh));
-          }
+        }
+        if (snapshot) {
+          dashboard.prepend(renderDashboardSnapshotStatus(
+            snapshot,
+            state === "cached" ? "refreshing" : state === "stale" ? "stale" : "current"
+          ));
+        }
+        if (retryRefresh && (state === "stale" || (state === "loading" && !snapshot))) {
+          dashboard.querySelector(".report-body")?.prepend(renderRefreshError(retryRefresh, {
+            hasCachedSnapshot: snapshot !== null
+          }));
         }
         attachCliActions(dashboard, dashboardDocument.dashboard["cli-actions"] ?? [], {
           repository: dashboardDocument.dashboard.repository,
@@ -908,8 +917,8 @@
             preparePage: ensureDashboardPageLoaded,
             pageSourceNames: (pageId, viewMode) => dashboardPageSourceNames(dashboardDocument, pageId, viewMode),
             pagePaginatedSourceBindings: (pageId) => dashboardPagePaginatedSourceBindings(dashboardDocument, pageId),
-            render: (sources, state, loadPageSources, retryRefresh) =>
-              renderSources(sources, state, true, loadPageSources, retryRefresh),
+            render: (sources, state, loadPageSources, retryRefresh, snapshot) =>
+              renderSources(sources, state, true, loadPageSources, retryRefresh, snapshot),
           });
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
