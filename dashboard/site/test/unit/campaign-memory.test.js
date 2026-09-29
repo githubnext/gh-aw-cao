@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderAllCampaignMemory, renderCampaignMemory } from '../../src/components/campaign-memory.js';
+import {
+  formatMemoryFileContent,
+  renderAllCampaignMemory,
+  renderCampaignMemory,
+} from '../../src/components/campaign-memory.js';
 import { dashboardViewAliasName } from '../../src/data/queries/view-payload-compiler.js';
 import { publishSource, resetSourceStore } from '../../src/source-store.js';
 
@@ -25,6 +29,17 @@ afterEach(() => {
 });
 
 describe('campaign repository memory', () => {
+  it('pretty-prints JSON and valid JSONL records while preserving other content', () => {
+    expect(formatMemoryFileContent('notes.json', '{"answer":42,"nested":{"ok":true}}\n'))
+      .toBe('{\n  "answer": 42,\n  "nested": {\n    "ok": true\n  }\n}\n');
+    expect(formatMemoryFileContent(
+      'transactions.jsonl',
+      '{"id":1}\r\nnot-json\r\n\r\n{"id":2,"ok":true}'
+    )).toBe('{\n  "id": 1\n}\r\nnot-json\r\n\r\n{\n  "id": 2,\n  "ok": true\n}');
+    expect(formatMemoryFileContent('notes.md', '{"answer":42}')).toBe('{"answer":42}');
+    expect(formatMemoryFileContent('broken.json', '{"answer":')).toBe('{"answer":');
+  });
+
   it('browses every campaign memory in place', async () => {
     memoryApi.listAll
       .mockResolvedValueOnce([{
@@ -344,7 +359,7 @@ describe('campaign repository memory', () => {
     });
     document.body.append(rendered);
 
-    await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('{"answer":42}\n'));
+    await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('{\n  "answer": 42\n}\n'));
     expect(rendered.querySelector('.campaign-memory-layout')?.getAttribute('data-memory-view')).toBe('browser');
     expect(rendered.querySelector('.campaign-memory-branch')?.textContent).toContain('memory/ambient-context');
     expect([...rendered.querySelectorAll('.campaign-memory-file span')].map((node) => node.textContent))

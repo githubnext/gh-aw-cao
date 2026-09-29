@@ -258,7 +258,7 @@ function renderCampaignTree(campaigns, signal) {
         const activeController = fileController;
         readRepositoryMemoryFile(campaign.campaign, entry.path, activeController.signal).then((result) => {
           if (!activeController.signal.aborted) {
-            fileBody.replaceChildren(h('pre', null, h('code', null, result.content)));
+            fileBody.replaceChildren(h('pre', null, h('code', null, formatMemoryFileContent(entry.path, result.content))));
           }
         }).catch((error) => {
           if (error?.name !== 'AbortError') {
@@ -428,11 +428,33 @@ function memoryView({ campaignName, manifest, selectedPath, file, mobileView, se
           : file.status === 'error'
             ? renderEmptyMessage(`Unable to load this memory file. ${file.error}`, { role: 'alert' })
             : file.status === 'ready'
-              ? h('pre', null, h('code', null, file.content))
+              ? h('pre', null, h('code', null, formatMemoryFileContent(selected.path, file.content)))
               : null
       )
     )
   );
+}
+
+/**
+ * Pretty-prints JSON and each valid JSONL record for display without changing
+ * the underlying memory file.
+ * @param {string} path
+ * @param {string} content
+ */
+export function formatMemoryFileContent(path, content) {
+  const prettyPrint = (text) => {
+    try {
+      return JSON.stringify(JSON.parse(text), null, 2);
+    } catch {
+      return text;
+    }
+  };
+  if (/\.json$/i.test(path)) return prettyPrint(content);
+  if (!/\.jsonl$/i.test(path)) return content;
+  return content.split(/(\r\n|\n|\r)/).map((part, index) => {
+    if (index % 2 === 1 || part.trim() === '') return part;
+    return prettyPrint(part);
+  }).join('');
 }
 
 /**
