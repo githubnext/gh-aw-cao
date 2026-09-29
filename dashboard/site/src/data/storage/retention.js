@@ -1,4 +1,5 @@
 import { orderRunRecords } from '../normalize/index.js';
+import { EVIDENCE_DEFINITION_STORES, mergeEvidenceDefinition } from '../model/schema.js';
 import { createDebug } from '../../debug.js';
 
 const debugRetention = createDebug('retention');
@@ -23,7 +24,10 @@ const RETENTION_TIMESTAMPS = {
   friction: ['timestamp', 'observedAt'],
   audits: ['timestamp', 'observedAt'],
   issues: ['timestamp', 'observedAt'],
-  operationalValues: ['timestamp', 'observedAt']
+  operationalValues: ['timestamp', 'observedAt'],
+  experimentAssignments: ['timestamp', 'observedAt'],
+  graderObservations: ['timestamp', 'observedAt'],
+  evalObservations: ['timestamp', 'observedAt']
 };
 
 const STORES = /** @type {const} */ ([
@@ -38,7 +42,8 @@ const STORES = /** @type {const} */ ([
   'audits',
   'issues',
   'operationalValues',
-  'marketplacePackages'
+  'marketplacePackages',
+  'experiments', 'experimentAssignments', 'graders', 'graderObservations', 'evals', 'evalObservations'
 ]);
 const RUN_LINKED_STORES = /** @type {const} */ ([
   'domains',
@@ -46,7 +51,7 @@ const RUN_LINKED_STORES = /** @type {const} */ ([
   'skills',
   'friction',
   'audits',
-  'issues'
+  'issues', 'experimentAssignments', 'graderObservations', 'evalObservations'
 ]);
 const WORKFLOW_INVENTORY_FIELDS = /** @type {const} */ ([
   'campaignId',
@@ -148,6 +153,9 @@ export function capCanonicalBatchSize(batch, maxBytes) {
     runs: batch.runs.filter((record) => !evictedRuns.has(String(record.id))),
     operationalValues: batch.operationalValues ?? [],
     marketplacePackages: batch.marketplacePackages ?? [],
+    experiments: batch.experiments ?? [],
+    graders: batch.graders ?? [],
+    evals: batch.evals ?? [],
     ...Object.fromEntries(RUN_LINKED_STORES.map((storeName) => [
       storeName,
       (batch[storeName] ?? []).filter((record) => !evictedRuns.has(String(record.runId)))
@@ -242,7 +250,8 @@ function upsertRecords(
           continue;
         }
       }
-      records.set(id, record);
+      records.set(id, EVIDENCE_DEFINITION_STORES.has(storeName)
+        ? mergeEvidenceDefinition(records.get(id), record) : record);
     }
     merged[storeName] = records;
   }
@@ -282,6 +291,20 @@ function pruneOrphans(merged) {
       if (!runs.has(String(record.runId))) merged[storeName].delete(id);
     }
   }
+  for (const storeName of ['experiments', 'graders', 'evals']) {
+    for (const [id, record] of merged[storeName]) {
+      if (!workflows.has(String(record.workflowId))) merged[storeName].delete(id);
+    }
+  }
+  for (const [child, parent, field] of [
+    ['experimentAssignments', 'experiments', 'experimentId'],
+    ['graderObservations', 'graders', 'graderId'],
+    ['evalObservations', 'evals', 'evalId']
+  ]) {
+    for (const [id, record] of merged[child]) {
+      if (!merged[parent].has(String(record[field]))) merged[child].delete(id);
+    }
+  }
   for (const [id, record] of merged.operationalValues) {
     if (!repositories.has(String(record.repositoryId))) merged.operationalValues.delete(id);
   }
@@ -299,7 +322,11 @@ function pruneOrphans(merged) {
 function collectUnreferencedParents(merged, incoming) {
   const incomingWorkflows = new Set(incoming.workflows.map((record) => String(record.id)));
   const incomingRepositories = new Set(incoming.repositories.map((record) => String(record.id)));
-  const referencedWorkflows = new Set([...merged.runs.values()].map((run) => String(run.workflowId)));
+  const referencedWorkflows = new Set([
+    ...[...merged.runs.values()].map((run) => String(run.workflowId)),
+    ...['experiments', 'graders', 'evals'].flatMap((store) =>
+      [...merged[store].values()].map((record) => String(record.workflowId)))
+  ]);
   for (const [id] of merged.workflows) {
     if (!incomingWorkflows.has(id) && !referencedWorkflows.has(id)) merged.workflows.delete(id);
   }
@@ -365,7 +392,7 @@ export function mergeRetainedRecords(previous, incoming, options = {}) {
     ])
   ));
   for (const storeName of RUN_LINKED_STORES) {
-    batch[storeName] = orderRunRecords(batch[storeName]);
+    batch[storeName] = orderRunRecords(batch[storeName] ?? []);
   }
   debugRetention({
     event: 'merged',

@@ -17,7 +17,10 @@ const COLLECTIONS = {
   audit: 'audits',
   issue: 'issues',
   'operational-value': 'operationalValues',
-  'marketplace-package': 'marketplacePackages'
+  'marketplace-package': 'marketplacePackages',
+  experiment: 'experiments', 'experiment-assignment': 'experimentAssignments',
+  grader: 'graders', 'grader-observation': 'graderObservations',
+  eval: 'evals', 'eval-observation': 'evalObservations'
 };
 const RUN_LINKED_COLLECTIONS = /** @type {const} */ ([
   'domains',
@@ -27,6 +30,7 @@ const RUN_LINKED_COLLECTIONS = /** @type {const} */ ([
   'audits',
   'issues'
 ]);
+const EVIDENCE_DEFINITIONS = new Set(['experiments', 'graders', 'evals']);
 
 /**
  * @param {unknown} value
@@ -92,6 +96,7 @@ function identityFor(observation) {
     case 'audit':
       return sourceId(observation.kind, observation.source, observation.sourceId);
   }
+  throw new TypeError(`Unsupported observation kind: ${observation.kind}`);
 }
 
 /**
@@ -166,7 +171,9 @@ export function normalize(observations, options = {}) {
     audits: new Map(),
     issues: new Map(),
     operationalValues: new Map(),
-    marketplacePackages: new Map()
+    marketplacePackages: new Map(),
+    experiments: new Map(), experimentAssignments: new Map(),
+    graders: new Map(), graderObservations: new Map(), evals: new Map(), evalObservations: new Map()
   };
 
   const sorted = [...observations].sort((left, right) => compareObservations(left, right, sourcePrecedence));
@@ -179,9 +186,18 @@ export function normalize(observations, options = {}) {
     const observedAt = canonicalTimestamp(observation.observedAt, 'observation.observedAt');
     const id = identityFor(observation);
     const current = entities[collection].get(id) ?? {};
+    const definitionRange = EVIDENCE_DEFINITIONS.has(collection)
+      ? {
+          firstObservedAt: String(current.firstObservedAt ?? current.observedAt ?? observedAt) < observedAt
+            ? String(current.firstObservedAt ?? current.observedAt) : observedAt,
+          lastObservedAt: String(current.lastObservedAt ?? current.observedAt ?? observedAt) > observedAt
+            ? String(current.lastObservedAt ?? current.observedAt) : observedAt
+        }
+      : {};
     entities[collection].set(id, {
       ...current,
       ...withoutUndefined(observation.data),
+      ...definitionRange,
       id,
       observedAt,
       provenance: {

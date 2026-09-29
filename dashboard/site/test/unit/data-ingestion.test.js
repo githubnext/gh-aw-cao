@@ -86,7 +86,7 @@ describe('database table ingestion and queries', () => {
       {
         kind: 'metadata',
         schemaVersion: CANONICAL_SCHEMA_VERSION,
-        ingestionVersion: 3,
+        ingestionVersion: 4,
         sourceRecords: 1,
         phase: 'runs',
         records: 1
@@ -142,7 +142,7 @@ describe('database table ingestion and queries', () => {
     ]);
     expect(await readTransactions(indexedDB)).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        id: `ingest-normalized-jsonl:sha256:${options.payloadIdentity}:v3`,
+        id: `ingest-normalized-jsonl:sha256:${options.payloadIdentity}:v4`,
         kind: 'ingest-normalized-jsonl',
         payloadHash: options.payloadIdentity
       })
@@ -156,13 +156,13 @@ describe('database table ingestion and queries', () => {
       kind: 'ingest-normalized-json',
       createdAt: '2026-09-09T05:00:00Z',
       payloadHash: payloadIdentity,
-      ingestionVersion: 3
+      ingestionVersion: 4
     });
     async function* chunks() {
       yield JSON.stringify({
         kind: 'metadata',
         schemaVersion: CANONICAL_SCHEMA_VERSION,
-        ingestionVersion: 3,
+        ingestionVersion: 4,
         phase: 'runs',
         records: 0
       });
@@ -174,7 +174,7 @@ describe('database table ingestion and queries', () => {
     })).resolves.toMatchObject({ updated: true });
     expect(await readTransactions(indexedDB)).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        id: `ingest-normalized-jsonl:sha256:${payloadIdentity}:v3`,
+        id: `ingest-normalized-jsonl:sha256:${payloadIdentity}:v4`,
         kind: 'ingest-normalized-jsonl'
       })
     ]));
@@ -185,7 +185,7 @@ describe('database table ingestion and queries', () => {
       yield JSON.stringify({
         kind: 'metadata',
         schemaVersion: 12,
-        ingestionVersion: 3,
+        ingestionVersion: 4,
         phase: 'runs',
         records: 0
       });
@@ -201,7 +201,7 @@ describe('database table ingestion and queries', () => {
       yield JSON.stringify({
         kind: 'metadata',
         schemaVersion: 17,
-        ingestionVersion: 3,
+        ingestionVersion: 4,
         phase: 'runs',
         records: 0
       });
@@ -212,13 +212,89 @@ describe('database table ingestion and queries', () => {
     })).resolves.toMatchObject({ updated: true });
   });
 
+  it('replays pre-evidence normalized run and record shards without accepting newer evidence as legacy', async () => {
+    /** @param {'runs' | 'records'} phase @param {string} collection @param {Record<string, unknown>} record */
+    const legacyShard = (phase, collection, record) => async function* () {
+      yield [
+        { kind: 'metadata', schemaVersion: 22, ingestionVersion: 3, phase, records: 1 },
+        { kind: 'record', collection, record }
+      ].map((line) => JSON.stringify(line)).join('\n');
+    };
+    /** @param {string} identity @param {'runs' | 'records'} phase */
+    const options = (identity, phase) => ({
+      payloadIdentity: identity.repeat(64), payloadScope: `legacy:${phase}`, expectedPhase: phase
+    });
+    await expect(ingestNormalizedJsonl(indexedDB,
+      legacyShard('runs', 'repositories', { id: 'repository:legacy', observedAt: '2026-09-09T05:00:00Z' })(),
+      options('a', 'runs'))).resolves.toMatchObject({ updated: true, committedRecords: 1 });
+    await expect(ingestNormalizedJsonl(indexedDB,
+      legacyShard('records', 'audits', { id: 'audit:legacy', observedAt: '2026-09-09T05:00:00Z' })(),
+      options('b', 'records'))).resolves.toMatchObject({ updated: true, committedRecords: 1 });
+    expect((await readCanonicalBatch(indexedDB)).audits).toHaveLength(1);
+    await expect(ingestNormalizedJsonl(indexedDB,
+      legacyShard('runs', 'experiments', { id: 'experiment:invalid' })(),
+      options('c', 'runs'))).rejects.toThrow('must contain a canonical record');
+    await expect(ingestNormalizedJsonl(indexedDB,
+      (async function* () {
+        yield JSON.stringify({ kind: 'metadata', schemaVersion: CANONICAL_SCHEMA_VERSION,
+          ingestionVersion: 3, phase: 'runs', records: 0 });
+      })(), options('d', 'runs'))).rejects.toThrow('Unsupported normalized activity ingestion version: 3');
+  });
+
+  it('enforces experiment and grader evidence phase ownership and replays rejected shards', async () => {
+    const records = [
+      { collection: 'experiments', record: { id: 'experiment:1', workflowId: 'workflow:1' }, phase: 'runs' },
+      { collection: 'experimentAssignments', record: {
+        id: 'assignment:1', runId: 'run:1', experimentId: 'experiment:1'
+      }, phase: 'runs' },
+      { collection: 'graders', record: { id: 'grader:1', workflowId: 'workflow:1' }, phase: 'records' },
+      { collection: 'graderObservations', record: {
+        id: 'grade:1', runId: 'run:1', graderId: 'grader:1'
+      }, phase: 'records' },
+      { collection: 'evals', record: { id: 'eval:1', workflowId: 'workflow:1' }, phase: 'records' },
+      { collection: 'evalObservations', record: {
+        id: 'eval-observation:1', runId: 'run:1', evalId: 'eval:1'
+      }, phase: 'records' }
+    ];
+    const shard = (/** @type {'runs' | 'records'} */ phase, /** @type {typeof records} */ entries) =>
+      async function* () {
+        yield [
+          { kind: 'metadata', schemaVersion: CANONICAL_SCHEMA_VERSION, ingestionVersion: 4,
+            phase, records: entries.length },
+          ...entries.map(({ collection, record }) => ({ kind: 'record', collection, record }))
+        ].map((line) => JSON.stringify(line)).join('\n');
+      };
+    for (const [index, entry] of records.entries()) {
+      const phase = /** @type {'runs' | 'records'} */ (entry.phase);
+      const other = /** @type {'runs' | 'records'} */ (phase === 'runs' ? 'records' : 'runs');
+      const options = {
+        payloadIdentity: String(index).repeat(64),
+        payloadScope: `evidence:${index}`,
+        expectedPhase: other,
+        deferMaintenance: true
+      };
+      await expect(ingestNormalizedJsonl(indexedDB, shard(other, [entry])(), options))
+        .rejects.toThrow(`must not include ${entry.collection}`);
+      expect(await readTransactions(indexedDB)).not.toEqual(expect.arrayContaining([
+        expect.objectContaining({ payloadHash: options.payloadIdentity })
+      ]));
+      await expect(ingestNormalizedJsonl(indexedDB, shard(phase, [entry])(), {
+        ...options, expectedPhase: phase
+      })).resolves.toMatchObject({ updated: true });
+    }
+    const canonical = await readCanonicalBatch(indexedDB);
+    expect(canonical.experimentAssignments).toHaveLength(1);
+    expect(canonical.graderObservations).toHaveLength(1);
+    expect(canonical.evalObservations).toHaveLength(1);
+  });
+
   it('defers canonical maintenance for batched shard imports until it is finalized', async () => {
     const shard = (/** @type {{ id: string, observedAt: string }[]} */ runs) => {
       const lines = [
         {
           kind: 'metadata',
           schemaVersion: CANONICAL_SCHEMA_VERSION,
-          ingestionVersion: 3,
+          ingestionVersion: 4,
           sourceRecords: runs.length,
           phase: 'runs',
           records: runs.length
@@ -277,7 +353,7 @@ describe('database table ingestion and queries', () => {
       {
         kind: 'metadata',
         schemaVersion: CANONICAL_SCHEMA_VERSION,
-        ingestionVersion: 3,
+        ingestionVersion: 4,
         sourceRecords: records.length,
         phase: 'all',
         records: records.length
@@ -324,7 +400,7 @@ describe('database table ingestion and queries', () => {
         {
           kind: 'metadata',
           schemaVersion: CANONICAL_SCHEMA_VERSION,
-          ingestionVersion: 3,
+          ingestionVersion: 4,
           sourceRecords: records.length,
           phase: 'all',
           records: records.length
@@ -363,7 +439,7 @@ describe('database table ingestion and queries', () => {
     const metadata = {
       kind: 'metadata',
       schemaVersion: CANONICAL_SCHEMA_VERSION,
-      ingestionVersion: 3,
+      ingestionVersion: 4,
       sourceRecords: 251,
       phase: 'all',
       records: 251
@@ -741,9 +817,9 @@ describe('database table ingestion and queries', () => {
     );
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({
-        id: expect.stringMatching(/^ingest-jsonl:sha256:[a-f0-9]{64}:v4$/),
+        id: expect.stringMatching(/^ingest-jsonl:sha256:[a-f0-9]{64}:v5$/),
         kind: 'ingest-jsonl',
-        ingestionVersion: 4,
+        ingestionVersion: 5,
         records: 3,
         payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
       })

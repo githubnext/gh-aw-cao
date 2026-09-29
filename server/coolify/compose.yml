@@ -1,6 +1,6 @@
 services:
   dashboard:
-    image: ${CAO_IMAGE:?CAO_IMAGE must be an immutable GHCR image digest}
+    image: ${CAO_IMAGE:?CAO_IMAGE must be an immutable ghcr.io/OWNER/REPOSITORY/cao-server@sha256:DIGEST reference}
     command:
       - serve-hosted
       - --listen

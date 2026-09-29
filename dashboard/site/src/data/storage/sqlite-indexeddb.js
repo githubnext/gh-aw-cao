@@ -36,6 +36,107 @@ export const SQLITE_INDEXEDDB_METADATA_SCHEMA = `
   );
 `;
 
+const RELATIONAL_STORES = Object.freeze({
+  experiments: { workflowId: 'TEXT', name: 'TEXT', firstObservedAt: 'TEXT', lastObservedAt: 'TEXT' },
+  experimentAssignments: { runId: 'TEXT', experimentId: 'TEXT', variant: 'TEXT',
+    included: 'INTEGER', exclusionReason: 'TEXT', auditId: 'TEXT',
+    firstObservedAt: 'TEXT', lastObservedAt: 'TEXT' },
+  graders: { workflowId: 'TEXT', name: 'TEXT', sourceGraderId: 'TEXT',
+    direction: 'TEXT', unit: 'TEXT', threshold: 'REAL',
+    firstObservedAt: 'TEXT', lastObservedAt: 'TEXT' },
+  graderObservations: { runId: 'TEXT', graderId: 'TEXT', value: 'REAL', status: 'TEXT',
+    sourceGraderId: 'TEXT', experimentId: 'TEXT', variant: 'TEXT',
+    evaluatorDigest: 'TEXT', resultTimestamp: 'TEXT',
+    included: 'INTEGER', exclusionReason: 'TEXT', auditId: 'TEXT',
+    firstObservedAt: 'TEXT', lastObservedAt: 'TEXT' },
+  evals: { workflowId: 'TEXT', name: 'TEXT', sourceEvalId: 'TEXT',
+    firstObservedAt: 'TEXT', lastObservedAt: 'TEXT' },
+  evalObservations: { runId: 'TEXT', evalId: 'TEXT', experimentId: 'TEXT', variant: 'TEXT',
+    evalResult: 'TEXT', status: 'TEXT',
+    sourceEvalId: 'TEXT', resultTimestamp: 'TEXT',
+    included: 'INTEGER', exclusionReason: 'TEXT', auditId: 'TEXT',
+    requestedModel: 'TEXT', resolvedModel: 'TEXT',
+    firstObservedAt: 'TEXT', lastObservedAt: 'TEXT' }
+});
+
+/** @param {DatabaseSync} connection @param {string} databaseName @param {string} [store] */
+function clearRelationalEvidence(connection, databaseName, store) {
+  for (const name of store ? [store] : Object.keys(RELATIONAL_STORES)) {
+    if (!Object.hasOwn(RELATIONAL_STORES, name)) continue;
+    const table = name.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+    connection.prepare(`DELETE FROM ${table} WHERE database_name = ?`).run(databaseName);
+  }
+}
+
+/** @param {DatabaseSync} connection */
+function createRelationalEvidenceTables(connection) {
+  const sqlValue = (/** @type {string} */ field) => {
+    const observed = `json_extract(NEW.value, '$.observedAt')`;
+    return field === 'firstObservedAt' || field === 'lastObservedAt'
+      ? `coalesce(json_extract(NEW.value, '$.${field}'), ${observed})`
+      : `json_extract(NEW.value, '$.${field}')`;
+  };
+  for (const [store, definition] of Object.entries(RELATIONAL_STORES)) {
+    const fields = Object.keys(definition);
+    const table = store.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+    const columns = fields.map((field) => field.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`));
+    const indexed = columns.filter((column) => ['workflow_id', 'run_id', 'experiment_id', 'grader_id', 'eval_id'].includes(column));
+    const required = new Set(store.endsWith('Observations') || store === 'experimentAssignments'
+      ? ['run_id', store === 'experimentAssignments' ? 'experiment_id'
+        : store === 'graderObservations' ? 'grader_id' : 'eval_id']
+      : ['workflow_id']);
+    connection.exec(`
+      CREATE TABLE IF NOT EXISTS ${table} (
+        database_name TEXT NOT NULL,
+        id TEXT NOT NULL,
+        ${columns.map((column, index) => `${column} ${/** @type {Record<string, string>} */ (definition)[fields[index]]}${required.has(column) ? ' NOT NULL' : ''},`).join('\n')}
+        observed_at TEXT NOT NULL,
+        provenance TEXT NOT NULL,
+        record_json TEXT NOT NULL,
+        PRIMARY KEY (database_name, id)
+      );
+    `);
+    const existing = new Set(connection.prepare(`PRAGMA table_info(${table})`).all().map((row) => row.name));
+    let migrated = false;
+    for (const [index, column] of columns.entries()) {
+      if (existing.has(column)) continue;
+      migrated = true;
+      connection.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${/** @type {Record<string, string>} */ (definition)[fields[index]]};`);
+      connection.exec(`UPDATE ${table} SET ${column} = json_extract(record_json, '$.${fields[index]}');`);
+    }
+    connection.exec(`
+      ${indexed.map((column) => `CREATE INDEX IF NOT EXISTS ${table}_${column} ON ${table}(database_name, ${column});`).join('\n')}
+      ${migrated ? `DROP TRIGGER IF EXISTS ${table}_insert;
+      DROP TRIGGER IF EXISTS ${table}_update;
+      DROP TRIGGER IF EXISTS ${table}_delete;` : ''}
+      CREATE TRIGGER IF NOT EXISTS ${table}_insert AFTER INSERT ON __idb_records
+      WHEN NEW.store_name = '${store}'
+      BEGIN
+        INSERT INTO ${table} (database_name, id, ${columns.join(', ')}, observed_at, provenance, record_json)
+        VALUES (NEW.database_name, json_extract(NEW.value, '$.id'),
+          ${fields.map(sqlValue).join(', ')},
+          json_extract(NEW.value, '$.observedAt'),
+          json_extract(NEW.value, '$.provenance'), NEW.value);
+      END;
+      CREATE TRIGGER IF NOT EXISTS ${table}_update AFTER UPDATE OF value ON __idb_records
+      WHEN NEW.store_name = '${store}'
+      BEGIN
+        UPDATE ${table} SET
+          ${fields.map((field, index) => `${columns[index]} = ${sqlValue(field)},`).join('\n')}
+          observed_at = json_extract(NEW.value, '$.observedAt'),
+          provenance = json_extract(NEW.value, '$.provenance'),
+          record_json = NEW.value
+        WHERE database_name = NEW.database_name AND id = json_extract(NEW.value, '$.id');
+      END;
+      CREATE TRIGGER IF NOT EXISTS ${table}_delete AFTER DELETE ON __idb_records
+      WHEN OLD.store_name = '${store}'
+      BEGIN
+        DELETE FROM ${table} WHERE database_name = OLD.database_name AND id = json_extract(OLD.value, '$.id');
+      END;
+    `);
+  }
+}
+
 /** @typedef {string | string[]} KeyPath */
 
 /** @param {string} filename */
@@ -43,6 +144,7 @@ function createConnection(filename) {
   const connection = new DatabaseSync(filename);
   connection.exec('PRAGMA busy_timeout = 5000;');
   connection.exec(SQLITE_INDEXEDDB_METADATA_SCHEMA);
+  createRelationalEvidenceTables(connection);
   return connection;
 }
 
@@ -483,6 +585,7 @@ class SqliteIDBDatabase {
 
   /** @param {string} name */
   deleteObjectStore(name) {
+    clearRelationalEvidence(this.connection, this.name, String(name));
     this.connection.prepare(`
       DELETE FROM __idb_stores
       WHERE database_name = ? AND name = ?
@@ -677,7 +780,15 @@ export class SqliteIndexedDBFactory {
       let connection;
       try {
         connection = createConnection(this.filename);
-        connection.prepare('DELETE FROM __idb_databases WHERE name = ?').run(String(name));
+        connection.exec('BEGIN IMMEDIATE;');
+        try {
+          clearRelationalEvidence(connection, String(name));
+          connection.prepare('DELETE FROM __idb_databases WHERE name = ?').run(String(name));
+          connection.exec('COMMIT;');
+        } catch (error) {
+          connection.exec('ROLLBACK;');
+          throw error;
+        }
         connection.close();
         request.succeed(undefined);
       } catch (error) {

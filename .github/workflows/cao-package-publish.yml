@@ -1,0 +1,338 @@
+name: CAO server package publisher
+
+on:
+  workflow_call:
+    inputs:
+      artifact_name:
+        required: true
+        type: string
+      event_name:
+        required: true
+        type: string
+      identity:
+        required: true
+        type: string
+      revision:
+        required: true
+        type: string
+      source_branch:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish trusted sealed package
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      attestations: write
+      contents: read
+      id-token: write
+      packages: write
+    steps:
+      - id: authority
+        name: Revalidate caller and package authority
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          CALLER_EVENT: ${{ github.event_name }}
+          CALLER_REF: ${{ github.ref }}
+          CALLER_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ inputs.event_name }}
+          IDENTITY: ${{ inputs.identity }}
+          ORIGINAL_ACTOR: ${{ github.actor }}
+          REVISION: ${{ inputs.revision }}
+          SOURCE_BRANCH: ${{ inputs.source_branch }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+          VERSION: ${{ inputs.version }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            core.info('Starting trusted publisher authority validation');
+            if (context.payload.repository.fork) {
+              throw new Error('CAO server packages cannot be published from forks');
+            }
+            core.info('Repository origin check passed');
+            core.info('Checking caller event consistency');
+            if (process.env.EVENT_NAME !== process.env.CALLER_EVENT) {
+              throw new Error('Publisher event metadata does not match the caller event');
+            }
+            core.info('Caller event consistency check passed');
+            core.info('Checking source revision shape');
+            if (!/^[0-9a-f]{40}$/.test(process.env.REVISION)) {
+              throw new Error('Publisher requires an immutable source revision');
+            }
+            core.info('Source revision shape check passed');
+
+            const stableTag = /^v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/;
+            const { data: repository } = await github.rest.repos.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            const defaultRef = `refs/heads/${repository.default_branch}`;
+
+            async function peelTag(tag) {
+              core.info('Resolving release tag reference');
+              let { data: ref } = await github.rest.git.getRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `tags/${tag}`,
+              });
+              let object = ref.object;
+              for (let depth = 0; object.type === 'tag' && depth < 10; depth += 1) {
+                core.info('Resolving an annotated release tag layer');
+                const { data: annotated } = await github.rest.git.getTag({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  tag_sha: object.sha,
+                });
+                object = annotated.object;
+              }
+              if (object.type !== 'commit') {
+                throw new Error('Release tag does not resolve to a commit');
+              }
+              core.info('Release tag resolved to an immutable commit');
+              return object.sha;
+            }
+
+            if (process.env.EVENT_NAME === 'workflow_dispatch') {
+              core.info('Revalidating manual publication authority');
+              for (const actor of new Set([
+                process.env.ORIGINAL_ACTOR,
+                process.env.TRIGGERING_ACTOR,
+              ])) {
+                core.info('Checking one manual publication actor');
+                const { data: access } = await github.rest.repos.getCollaboratorPermissionLevel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  username: actor,
+                });
+                if (!['admin', 'maintain'].includes(access.role_name)) {
+                  throw new Error('Manual package publication requires maintain or admin repository permission');
+                }
+              }
+              core.info('Manual publication actor checks passed');
+              core.info('Resolving the protected default branch');
+              const { data: trustedBranch } = await github.rest.repos.getBranch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                branch: repository.default_branch,
+              });
+              if (process.env.CALLER_REF !== defaultRef ||
+                  process.env.CALLER_SHA !== trustedBranch.commit.sha) {
+                throw new Error('Privileged publication requires the current default-branch caller workflow');
+              }
+              core.info('Protected default-branch caller check passed');
+              core.info('Checking requested source branch presence');
+              if (!process.env.SOURCE_BRANCH) {
+                throw new Error('Manual publication requires a source branch');
+              }
+              core.info('Resolving the requested source branch');
+              const { data: sourceBranch } = await github.rest.repos.getBranch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                branch: process.env.SOURCE_BRANCH,
+              });
+              if (sourceBranch.commit.sha !== process.env.REVISION ||
+                  process.env.IDENTITY !== `dispatch-${process.env.REVISION}` ||
+                  process.env.VERSION !== `0.0.0-dispatch.${process.env.REVISION.slice(0, 12)}`) {
+                throw new Error('Manual package metadata does not match the requested branch head');
+              }
+              core.info('Manual package source and metadata checks passed');
+            } else if (process.env.EVENT_NAME === 'push') {
+              core.info('Revalidating protected main publication authority');
+              if (process.env.CALLER_REF !== defaultRef ||
+                  process.env.CALLER_SHA !== process.env.REVISION ||
+                  process.env.IDENTITY !== `sha-${process.env.REVISION}` ||
+                  process.env.VERSION !== `0.0.0-main.${process.env.REVISION.slice(0, 12)}`) {
+                throw new Error('Main package metadata does not match the protected push source');
+              }
+              core.info('Protected main package metadata checks passed');
+            } else if (process.env.EVENT_NAME === 'release') {
+              core.info('Revalidating stable release publication authority');
+              if (!stableTag.test(process.env.IDENTITY) ||
+                  process.env.VERSION !== process.env.IDENTITY) {
+                throw new Error('Release package identity must be an exact stable vX.Y.Z version');
+              }
+              core.info('Stable release identity policy passed');
+              core.info('Resolving the published release record');
+              const { data: release } = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: process.env.IDENTITY,
+              });
+              if (release.draft || release.prerelease || !release.published_at) {
+                throw new Error('Release package requires a published stable release');
+              }
+              core.info('Published stable release policy passed');
+              core.info('Checking release tag target');
+              if (await peelTag(process.env.IDENTITY) !== process.env.REVISION) {
+                throw new Error('Release tag no longer matches the tested package source');
+              }
+              core.info('Release tag target check passed');
+              core.info('Checking release ancestry against protected main');
+              const { data: comparison } = await github.rest.repos.compareCommitsWithBasehead({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                basehead: `${process.env.REVISION}...${repository.default_branch}`,
+              });
+              if (!['ahead', 'identical'].includes(comparison.status)) {
+                throw new Error('Release package source is not reachable from protected main');
+              }
+              core.info('Protected-main release ancestry check passed');
+            } else {
+              core.info('Rejecting unsupported publication event');
+              throw new Error('Unsupported package publication event');
+            }
+            core.info('Trusted publisher authority validation completed');
+      - id: download
+        name: Download sealed candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ runner.temp }}/candidate
+      - id: verify
+        name: Verify sealed candidate and metadata
+        env:
+          EVENT_NAME: ${{ inputs.event_name }}
+          IDENTITY: ${{ inputs.identity }}
+          REVISION: ${{ inputs.revision }}
+          SOURCE_BRANCH: ${{ inputs.source_branch }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          cd "${RUNNER_TEMP}/candidate"
+          sha256sum --check cao-server.sha256
+          jq -e \
+            --arg event_name "${EVENT_NAME}" \
+            --arg identity "${IDENTITY}" \
+            --arg revision "${REVISION}" \
+            --arg source_branch "${SOURCE_BRANCH}" \
+            --arg version "${VERSION}" \
+            '. == {
+              event_name: $event_name,
+              identity: $identity,
+              revision: $revision,
+              source_branch: $source_branch,
+              version: $version
+            }' cao-server-metadata.json >/dev/null
+          docker image load --input cao-server.tar
+          local_revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "cao-server:${REVISION}")"
+          local_version="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "cao-server:${REVISION}")"
+          if [[ "${local_revision}" != "${REVISION}" || "${local_version}" != "${VERSION}" ]]; then
+            echo "sealed candidate labels do not match the authorized package source" >&2
+            exit 1
+          fi
+      - id: registry-login
+        name: Log in to GHCR
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: publish
+        name: Publish immutable package identity
+        env:
+          IDENTITY: ${{ inputs.identity }}
+          REPOSITORY: ${{ github.repository }}
+          REVISION: ${{ inputs.revision }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          repository="ghcr.io/${REPOSITORY,,}/cao-server"
+          candidate="${repository}:candidate-${RUN_ID}-${RUN_ATTEMPT}"
+          canonical="${repository}:${IDENTITY}"
+
+          docker tag "cao-server:${REVISION}" "${candidate}"
+          docker push "${candidate}" >/dev/null
+          candidate_manifest="$(docker buildx imagetools inspect "${candidate}" --format '{{json .Manifest}}')"
+          candidate_digest="$(jq -r '.digest // empty' <<<"${candidate_manifest}")"
+          if [[ ! "${candidate_digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "package candidate did not resolve to one immutable digest" >&2
+            exit 1
+          fi
+
+          inspect_output=
+          if inspect_output="$(docker buildx imagetools inspect "${canonical}" --format '{{json .Manifest}}' 2>&1)"; then
+            canonical_digest="$(jq -r '.digest // empty' <<<"${inspect_output}")"
+            if [[ "${canonical_digest}" != "${candidate_digest}" ]]; then
+              echo "refusing to redefine an existing immutable package identity" >&2
+              exit 1
+            fi
+          else
+            if ! printf '%s\n' "${inspect_output}" | grep -Eqi '(manifest unknown|not found)'; then
+              echo "unable to verify whether the immutable package identity exists" >&2
+              exit 1
+            fi
+            docker buildx imagetools create \
+              --prefer-index=false \
+              --tag "${canonical}" \
+              "${repository}@${candidate_digest}" >/dev/null
+          fi
+
+          canonical_manifest="$(docker buildx imagetools inspect "${canonical}" --format '{{json .Manifest}}')"
+          canonical_digest="$(jq -r '.digest // empty' <<<"${canonical_manifest}")"
+          if [[ "${canonical_digest}" != "${candidate_digest}" ]]; then
+            echo "canonical package identity does not equal the scanned candidate digest" >&2
+            exit 1
+          fi
+          {
+            echo "digest=${candidate_digest}"
+            echo "subject=${repository}"
+          } >> "${GITHUB_OUTPUT}"
+      - id: provenance
+        name: Attest package provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ steps.publish.outputs.subject }}
+          subject-digest: ${{ steps.publish.outputs.digest }}
+          push-to-registry: true
+      - id: sbom-attestation
+        name: Attest package SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ steps.publish.outputs.subject }}
+          subject-digest: ${{ steps.publish.outputs.digest }}
+          sbom-path: ${{ runner.temp }}/candidate/cao-server.spdx.json
+          push-to-registry: true
+      - name: Summarize publication security checks
+        if: always()
+        env:
+          AUTHORITY_STATUS: ${{ steps.authority.outcome }}
+          DOWNLOAD_STATUS: ${{ steps.download.outcome }}
+          LOGIN_STATUS: ${{ steps.registry-login.outcome }}
+          PROVENANCE_STATUS: ${{ steps.provenance.outcome }}
+          PUBLISH_STATUS: ${{ steps.publish.outcome }}
+          SBOM_ATTESTATION_STATUS: ${{ steps.sbom-attestation.outcome }}
+          VERIFY_STATUS: ${{ steps.verify.outcome }}
+        run: |
+          {
+            echo "## Package publication security"
+            echo
+            echo "- Publisher is loaded from protected main and performs no checkout, build, or scanner execution."
+            echo "- Data exposure: stage outcomes only; registry responses, credentials, SBOM contents, and image inventory are omitted."
+            echo
+            for check in \
+              "Caller and package authority|${AUTHORITY_STATUS}" \
+              "Sealed artifact download|${DOWNLOAD_STATUS}" \
+              "Checksum, metadata, and OCI label verification|${VERIFY_STATUS}" \
+              "Registry authentication|${LOGIN_STATUS}" \
+              "Immutable digest publication|${PUBLISH_STATUS}" \
+              "SLSA provenance attestation|${PROVENANCE_STATUS}" \
+              "SPDX SBOM attestation|${SBOM_ATTESTATION_STATUS}"; do
+              name="${check%%|*}"
+              status="${check#*|}"
+              echo "<details><summary>${name}: ${status}</summary>"
+              echo
+              echo "- Data exposure: check name and outcome only"
+              echo "</details>"
+              echo
+            done
+          } >> "${GITHUB_STEP_SUMMARY}"
