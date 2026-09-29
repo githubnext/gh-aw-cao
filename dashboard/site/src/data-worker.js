@@ -26,7 +26,6 @@ import { queryDailyOverviewAggregateSources } from './data/queries/daily-aggrega
 import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
-import { deriveDataHealthCalloutSources } from './data-health.js';
 import { formatDataSize, startIngestionProgress } from './ingestion-progress.js';
 import { loadDashboardSources } from './source-loader.js';
 import { createDebug, debugEagerIngest, debugShardLimit } from './debug.js';
@@ -456,11 +455,6 @@ async function queryLiveDashboard(
       required,
       { onMetrics: (metrics) => { databaseMetrics = metrics; } }
     );
-    const healthPayload = required.some((name) => (
-      name === 'data-health-collections' || name === 'data-health-coverage'
-    ))
-      ? deriveDataHealthCalloutSources(databasePayload)
-      : {};
     const page = pageId
       ? context.pages.find((candidate) => candidate?.id === pageId)
       : null;
@@ -481,12 +475,11 @@ async function queryLiveDashboard(
     )));
     const querySources = {
       ...databasePayload,
-      ...healthPayload,
       ...nativeSources,
       ...dailyAggregateSources,
       ...executeDashboardQueries(
         context.queries,
-        { ...databasePayload, ...healthPayload, ...nativeSources },
+        { ...databasePayload, ...nativeSources },
         directRequests,
         { signal }
       )

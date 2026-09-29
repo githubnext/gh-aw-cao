@@ -41,17 +41,6 @@ const DIRECT_EVIDENCE_SOURCES = new Set([
   'grader-observations', 'evals', 'eval-observations'
 ]);
 
-const HEALTH_DATABASE_SOURCES = [
-  'repositories',
-  'workflows',
-  'runs',
-  'usage',
-  'detection-observations',
-  'firewall-observations',
-  'safe-output-performance',
-  'outcomes'
-];
-
 /**
  * @param {Record<string, unknown>} sources
  * @param {string} sourceName
@@ -422,9 +411,6 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
     throw new TypeError('Dashboard source names must be an array of strings.');
   }
   const requested = new Set(sourceNames);
-  if (requested.has('data-health-collections') || requested.has('data-health-coverage')) {
-    for (const name of HEALTH_DATABASE_SOURCES) requested.add(name);
-  }
   const databaseRequested = [...requested].filter((name) => (
     DATABASE_TABLE_SOURCES.has(name)
     || !hasUsableRows(logicalSources[name])

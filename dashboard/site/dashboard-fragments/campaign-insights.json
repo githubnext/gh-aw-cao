@@ -282,7 +282,7 @@
             "card": "audit",
             "icon": "checklist"
           },
-          "layout": "full-view",
+          "layout": "full",
           "empty-message": "No high- or medium-severity audit events were observed for this campaign in the current run window.",
           "encoding": {
             "columns": [

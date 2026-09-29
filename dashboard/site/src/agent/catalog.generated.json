@@ -3397,7 +3397,7 @@
     },
     {
       "id": "overview-rhythm",
-      "intent": "Show current-week successful runs from Monday through today and the matching previous-week count for weekdays not yet reached.",
+      "intent": "Compare successful runs for this week and last week on every weekday, layering the current week over the previous week.",
       "description": "",
       "parameters": [],
       "sources": [

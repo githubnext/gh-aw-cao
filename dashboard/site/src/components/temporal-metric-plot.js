@@ -90,6 +90,7 @@ export function renderTemporalMetricPlot(options) {
       : domainMaximum - (((domainMaximum - domainMinimum) * index) / 3)
   ));
   const ticks = selectTicks(observationTimes, MAX_TICKS);
+  const sameDay = firstObservation.slice(0, 10) === lastObservation.slice(0, 10);
   const unit = metrics.length === 1 ? (metrics[0]?.unit ?? 'value') : 'native value';
   const direction = metrics.length === 1 ? metrics[0]?.direction : undefined;
   const directionLabel = direction === 'decrease'
@@ -193,7 +194,7 @@ export function renderTemporalMetricPlot(options) {
       y: 346,
       'text-anchor': 'middle',
       className: 'temporal-plot-axis'
-    }, formatDate(time))
+    }, sameDay ? formatTime(time) : formatDate(time))
   ]),
   showAdoption ? h('line', {
     className: 'temporal-plot-adoption',
@@ -349,6 +350,16 @@ function formatDate(value) {
     day: '2-digit',
     timeZone: 'UTC'
   }).format(new Date(value));
+}
+
+/** @param {string} value */
+function formatTime(value) {
+  return `${new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'UTC'
+  }).format(new Date(value))} UTC`;
 }
 
 /** @param {number} value */

@@ -122,7 +122,7 @@ const sources = {
       days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((label, index) => ({
         label,
         date: `2026-09-${String(14 + index).padStart(2, '0')}`,
-        current: index + 1,
+        current: index < 3 ? index + 1 : 0,
         previous: 7 - index,
         reached: index < 3
       }))
@@ -210,7 +210,46 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(factory.getByRole('heading', { name: 'Your campaigns need attention.' })).toBeVisible();
     await expect(factory.locator('.factory-running')).toHaveCount(0);
     await expect(factory.locator('.factory-rhythm-day')).toHaveCount(7);
+    const yAxisLabel = factory.locator('.factory-rhythm .graph-widget-y-axis-label');
+    await expect(yAxisLabel).toHaveText('Successful runs');
+    await expect(yAxisLabel).toBeVisible();
+    const axisPlacement = await factory.locator('.factory-rhythm .graph-widget-chart').evaluate((chart) => {
+      const label = chart.querySelector('.graph-widget-y-axis-label');
+      const plot = chart.querySelector('.factory-rhythm-bars');
+      if (!label || !plot) throw new Error('The rhythm axis and bars must be present');
+      const axis = label.getBoundingClientRect();
+      const bars = plot.getBoundingClientRect();
+      const bounds = chart.getBoundingClientRect();
+      return { axisLeft: axis.left, axisRight: axis.right, axisCenter: (axis.top + axis.bottom) / 2,
+        barsLeft: bars.left, barsCenter: (bars.top + bars.bottom) / 2, chartLeft: bounds.left };
+    });
+    expect(axisPlacement.axisLeft).toBeGreaterThanOrEqual(axisPlacement.chartLeft);
+    expect(axisPlacement.axisRight).toBeLessThan(axisPlacement.barsLeft);
+    expect(axisPlacement.axisCenter).toBeCloseTo(axisPlacement.barsCenter, 0);
     const rhythmBars = factory.locator('.factory-rhythm-bar-pair i:not([hidden])');
+    await expect(rhythmBars).toHaveCount(14);
+    await expect(factory.locator('.factory-rhythm-day').nth(3))
+      .toHaveAttribute('aria-label', 'Thu 2026-09-17: 0 successful runs this week (day not yet reached); 4 successful runs last week.');
+    const layered = await factory.locator('.factory-rhythm-day').first().evaluate((day) => {
+      const previous = day.querySelector('.factory-rhythm-baseline');
+      const current = day.querySelector('.factory-rhythm-current');
+      if (!previous || !current) throw new Error('Both rhythm bars must be present');
+      const previousBounds = previous.getBoundingClientRect();
+      const currentBounds = current.getBoundingClientRect();
+      return {
+        previousBottom: previousBounds.bottom,
+        currentBottom: currentBounds.bottom,
+        previousLeft: previousBounds.left,
+        previousRight: previousBounds.right,
+        currentLeft: currentBounds.left,
+        currentRight: currentBounds.right,
+        currentLayer: getComputedStyle(current).zIndex
+      };
+    });
+    expect(layered.currentBottom).toBeCloseTo(layered.previousBottom, 0);
+    expect(layered.currentLeft).toBeGreaterThan(layered.previousLeft);
+    expect(layered.currentRight).toBeLessThan(layered.previousRight);
+    expect(layered.currentLayer).toBe('1');
     await expect(rhythmBars.first()).toHaveCSS('animation-name', 'factory-rhythm-bar-grow');
     expect(await rhythmBars.last().evaluate((element) => getComputedStyle(element).animationDelay)).toBe('0.21s');
     await expect(factory.locator('.factory-station')).toHaveCount(2);

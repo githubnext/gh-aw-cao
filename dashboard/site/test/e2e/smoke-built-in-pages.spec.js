@@ -497,6 +497,13 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   )).toHaveCount(0);
   await expect(operationalValueHistory).toContainText('campaign rollups are omitted');
   await expect(operationalValueHistory).toContainText('gh-aw-cao');
+  await page.setViewportSize({ width: 1200, height: 750 });
+  await expect(page.locator('.dashboard-root')).not.toHaveClass(/dashboard-full-view/);
+  const main = page.locator('main.dashboard-prototype');
+  await expect.poll(() => main.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+  await main.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+  await expect.poll(() => main.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await page.setViewportSize({ width: 390, height: 844 });
   await mobileBack.click();
   await expect(page).toHaveURL(/#page-campaign-detail\?campaign=ambient-context$/);
   await expect(page.locator('[data-page-id="campaign-detail"]')).toBeVisible();

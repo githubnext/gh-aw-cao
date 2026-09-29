@@ -4,7 +4,6 @@ import { DataRequestWorker } from '../data-request-worker.js';
 import { renderDashboard as renderDashboardView, disposeDashboard, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageLazySourceNames, resolveQueryDrillPageTitle } from '../../src/presenter.js';
 import { processDataRequest } from '../../src/data-worker.js';
 import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
-import { deriveDataHealthSources } from '../../src/data-health.js';
 import { TABLE_FIELDS } from '../../src/specification.js';
 import { composeDashboardDocuments } from '../../../report/compose-dashboard-documents.mjs';
 import { campaignDashboardSources } from '../campaign-dashboard-documents.js';
@@ -23,7 +22,6 @@ function renderDashboard(input) {
   const resolvedDocument = resolveBuiltInPages(input.document, authoritativeDashboardDocument);
   const sources = { ...input.sources };
   if (Object.keys(input.sources).length > 0) {
-    Object.assign(sources, deriveDataHealthSources(sources));
     sources['source-metadata'] = {
       source: 'source-metadata',
       rows: Object.keys(TABLE_FIELDS).map((source) => {
