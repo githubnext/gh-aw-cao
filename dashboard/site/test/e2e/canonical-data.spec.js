@@ -588,8 +588,8 @@ test('data worker avoids unavailable legacy boundaries on initial and navigated 
 
   for (const payload of [result.initial, result.navigated]) {
     expect(Object.keys(payload).sort()).toEqual([...result.sourceNames].sort());
-    for (const source of Object.values(payload)) {
-      expect(source.metadata.availability).not.toBe('unavailable');
+    for (const name of result.sourceNames.filter((name) => !name.startsWith('data-health-'))) {
+      expect(payload[name].metadata.availability).not.toBe('unavailable');
     }
     // `outcomes` is derived from the `issues` database table, so deleting the
     // published `outcomes` boundary still yields the issue row pushed above.
@@ -602,8 +602,8 @@ test('data worker avoids unavailable legacy boundaries on initial and navigated 
     });
     expect(payload['security-findings'].rows).toEqual([]);
     expect(payload['work-items'].rows).toEqual([]);
-    expect(payload['data-health-collections'].metadata.availability).toBe('available');
-    expect(payload['data-health-coverage'].metadata.availability).toBe('available');
+    expect(payload['data-health-collections'].metadata.availability).toBe('unavailable');
+    expect(payload['data-health-coverage'].metadata.availability).toBe('unavailable');
   }
 });
 

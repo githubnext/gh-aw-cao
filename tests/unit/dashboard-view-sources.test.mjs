@@ -26,7 +26,6 @@ test("dashboard view assessment recognizes worker-produced sources", () => {
       { data: { source: "campaign-workflows" } },
       { data: { source: "dispatches" } },
       { data: { source: "campaign-reports" } },
-      { data: { source: "data-health-coverage" } },
     ],
   };
 
@@ -43,7 +42,13 @@ test("dashboard view assessment still reports unavailable derived sources", () =
   });
 
   assert.deepEqual(
-    missingDashboardSources({ data: { source: "workflow-reports" } }, sources),
-    ["workflow-reports: missing or unavailable"],
+    missingDashboardSources({
+      data: { source: "workflow-reports" },
+      views: [{ data: { source: "data-health-coverage" } }],
+    }, sources),
+    [
+      "workflow-reports: missing or unavailable",
+      "data-health-coverage: missing or unavailable",
+    ],
   );
 });

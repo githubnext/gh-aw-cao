@@ -34,9 +34,9 @@ describe('dashboard query architecture', () => {
     const dashboard = authoritativeDashboard.dashboard;
 
     expect(worker).toContain('queryIndexedDatabaseSources(');
-    expect(worker).toMatch(/executeDashboardQueries\(\s*context\.queries,\s*\{ \.\.\.databasePayload, \.\.\.healthPayload, \.\.\.nativeSources \},\s*directRequests/);
+    expect(worker).toMatch(/executeDashboardQueries\(\s*context\.queries,\s*\{ \.\.\.databasePayload, \.\.\.nativeSources \},\s*directRequests/);
     expect(worker).toContain('const replacedSources = new Set(viewPayload.replacedSources)');
-    expect(worker).toContain('deriveDataHealthCalloutSources(databasePayload)');
+    expect(worker).not.toContain('data-health.js');
     expect(worker).not.toMatch(/deriveOverviewSources|deriveRepositorySources|deriveRuntimeSources|deriveWorkflowSources/);
     expect(worker).toContain("operation === 'subscribe-canonical-dashboard'");
     expect(worker).not.toContain('createDashboardQueryMemoization');
@@ -60,6 +60,7 @@ describe('dashboard query architecture', () => {
     expect(databaseAccess).not.toContain('tokenEfficiencySources');
     expect(databaseAccess).not.toContain('projectCanonicalViewSources');
     expect(databaseAccess).not.toContain('failedRunsSource');
+    expect(databaseAccess).not.toContain('HEALTH_DATABASE_SOURCES');
     for (const projection of [
       'campaignsSource',
       'repositoriesSource',

@@ -1,4 +1,3 @@
-import { deriveDataHealthSources } from "../../dashboard/site/src/data-health.js";
 import { processDataRequest } from "../../dashboard/site/src/data-worker.js";
 import { authoritativeDashboard } from "../helpers/authoritative-dashboard.mjs";
 
@@ -21,12 +20,8 @@ export function effectiveDashboardSources(rawSources) {
     sources: rawSources,
     sourceNames: dashboard.queries.map((query) => query.name),
   });
-  const dataHealthSources = deriveDataHealthSources(rawSources);
   return {
     ...derivedSources,
-    ...Object.fromEntries(
-      Object.entries(dataHealthSources).filter(([name]) => name.startsWith("data-health-")),
-    ),
   };
 }
 
