@@ -657,6 +657,7 @@
           {
             "field": "started-at",
             "title": "Observed",
+            "type": "temporal",
             "format": "human-friendly-timestamp",
             "icon": "clock"
           }

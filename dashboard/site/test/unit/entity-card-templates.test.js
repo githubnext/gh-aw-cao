@@ -202,6 +202,13 @@ describe('entity card templates', () => {
       title: 'Run',
       display: 'run-link'
     });
+    expect(templates.problem.timing).toContainEqual({
+      field: 'started-at',
+      title: 'Observed',
+      type: 'temporal',
+      format: 'human-friendly-timestamp',
+      icon: 'clock'
+    });
   });
 
   it('declares a firewall domain card with allowed and blocked metrics', () => {
