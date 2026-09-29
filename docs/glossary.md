@@ -42,6 +42,10 @@ The consistent entities, identities, and relationships produced by applying the 
 
 The read-only `./cao.sh validate` command that checks policy resolution against the production resolver, the installed gh-aw compiler version, strict compilation and generated-workflow drift, campaign workflow identity and enablement, `gh aw doctor`, and bounded trust-boundary security rules. It reports emitted findings (severity, category, remediation) and never rewrites a workflow artifact; exit code `0` means no errors, `1` means a finding met the requested severity threshold, and `2` means the validator itself could not complete. See [Validate the Control Plane](cao-cli.md#validate-the-control-plane).
 
+## Collection health
+
+The `collection-health` registered runtime source: a bounded, read-only snapshot of the server-side webhook and collection profile's queue depth, pending tasks, dead letters, backfill state, and recent webhook and collection outcomes. It is exposed only through the authorized Dashboard Language query boundary, never stored in browser IndexedDB, and returns no raw error messages or credentials. See the Dashboard Language Specification, Section 5.4.
+
 ## Coordinator
 
 The CAO operator-facing name for the workflow that selects and dispatches work for a campaign. The canonical gh-aw term is [Orchestrator Workflow](https://github.github.com/gh-aw/reference/glossary/#orchestrator-workflow). Workflow source, policy, campaign manifests, and other technical contracts use the role name `orchestrator`.

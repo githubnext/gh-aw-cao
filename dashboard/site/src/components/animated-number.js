@@ -1,5 +1,8 @@
 import { h } from '../dom.js';
 import { render, state } from '../reactive.js';
+import { createDebug } from '../debug.js';
+
+const debugAnimatedNumber = createDebug('animated-number');
 
 /**
  * @param {{ animate?: boolean, signal?: AbortSignal }} [options]
@@ -8,6 +11,7 @@ import { render, state } from '../reactive.js';
 export function createAnimatedNumber(options = {}) {
   const value = state(/** @type {{ text: string, target?: number, href?: string }} */ ({ text: '' }));
   const element = h('strong', {});
+  debugAnimatedNumber({ event: 'created', animateEnabled: options.animate === true });
 
   render(element, () => {
     const next = value.get();
@@ -22,6 +26,8 @@ export function createAnimatedNumber(options = {}) {
   return {
     element,
     set(next) {
+      const animated = options.animate === true && Number.isSafeInteger(next.target);
+      debugAnimatedNumber({ event: 'set', animated, hasHref: Boolean(next.href) });
       value.set(next);
     }
   };

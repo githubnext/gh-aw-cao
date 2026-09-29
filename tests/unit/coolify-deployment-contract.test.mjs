@@ -244,6 +244,10 @@ test("deployment workflow publishes no mutable channel and gates every Coolify t
   const deploy = workflow.jobs.deploy.steps.find((step) => step.name === "Request digest deployment");
   assert.equal(staleSource.if, "steps.adapter.outputs.configured == 'true'");
   assert.equal(deploy.if, staleSource.if);
+  assert.match(
+    source,
+    /runner-guard:ignore RGS-012 -- this is the intentional Coolify deployment webhook; the HTTPS endpoint and immutable image\/source inputs are validated above\./,
+  );
   assert.deepEqual(
     verifyAdapterConfiguration(adapter.run, {
       COOLIFY_DEPLOY_ENDPOINT: "https://deploy.example.test",

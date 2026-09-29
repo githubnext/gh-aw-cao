@@ -137,6 +137,45 @@ process.stderr.write("Fetched 1 run\\n");
   }
 });
 
+test("collect-logs.sh creates the drain3 weights destination directory before moving generated weights", async () => {
+  const item = await fixture();
+  const ghPath = path.join(item.bin, "gh");
+  await writeFile(ghPath, `#!/usr/bin/env node
+const fs = require("node:fs");
+const path = require("node:path");
+const args = process.argv.slice(2);
+const output = args[args.indexOf("--output") + 1];
+fs.mkdirSync(output, { recursive: true });
+fs.writeFileSync(path.join(output, "drain3_weights.json"), "{}\\n");
+process.exit(0);
+`);
+  await chmod(ghPath, 0o755);
+  await writeFile(item.controlSettingsPath, JSON.stringify({
+    allowed_repositories: ["githubnext/gh-aw-cao"],
+  }));
+  const drain3WeightsPath = path.join(item.root, "runner-temp", "cao-activity", "drain3_weights.json");
+  try {
+    await execFileAsync("bash", [path.resolve("activity/collect-logs.sh")], {
+      env: {
+        ...process.env,
+        PATH: `${item.bin}:${process.env.PATH}`,
+        GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
+        REPORT_ROOT: item.root,
+        REPORT_GH_AW_LOGS_SHARDS: item.logsPath,
+        REPORT_GH_AW_LOGS_STATE: item.statePath,
+        REPORT_GH_AW_LOGS_EXIT_CODE: path.join(item.root, "cache", "gh-aw-logs-exit-code"),
+        REPORT_AIC_CACHE: item.outputPath,
+        REPORT_CONTROL_SETTINGS: item.controlSettingsPath,
+        REPORT_DRAIN3_WEIGHTS: drain3WeightsPath,
+        GITHUB_OUTPUT: item.githubOutput,
+      },
+    });
+    assert.equal(await readFile(drain3WeightsPath, "utf8"), "{}\n");
+  } finally {
+    await rm(item.root, { recursive: true, force: true });
+  }
+});
+
 test("activity logs preserves cached runs and records collection failure", async () => {
   const item = await fixture();
   const ghPath = path.join(item.bin, "gh");

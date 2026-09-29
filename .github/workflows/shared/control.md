@@ -70,6 +70,8 @@ safe-outputs:
     client-id: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_WRITE_APP_ID || '' }}
     private-key: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY || '' }}
     ignore-if-missing: true
+    repositories:
+      - ${{ inputs.safe_output_repo || github.repository }}
   github-token: ${{ vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_WRITE_PAT_REPOSITORIES || '{}')[(inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo || github.repository]] || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_WRITE_PAT || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
   noop:
     report-as-issue: false

@@ -129,6 +129,7 @@ for index in "${!repositories[@]}"; do
   set -e
   generated_weights="$output_directory/$cache_name/drain3_weights.json"
   if [[ -n "$drain3_weights_path" && -f "$generated_weights" ]]; then
+    mkdir -p "$(dirname "$drain3_weights_path")"
     mv "$generated_weights" "$drain3_weights_path"
     drain3_args=(--drain3-weights "$drain3_weights_path")
   fi

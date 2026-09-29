@@ -149,6 +149,10 @@ test("authentication prefers an optional GitHub App and retains bounded fallback
   assert.match(control, /safe-outputs:[\s\S]*?github-token: \$\{\{ vars\.GH_AW_GITHUB_AUTH_MODE == 'pat'[\s\S]*?GH_AW_GITHUB_WRITE_PAT_REPOSITORIES/);
   assert.match(control, /ignore-if-missing: true/);
   assert.doesNotMatch(control, /repositories: \["\*"\]/);
+  assert.match(
+    control,
+    /safe-outputs:\n\s+github-app:\n\s+client-id:[\s\S]*?ignore-if-missing: true\n\s+repositories:\n\s+- \$\{\{ inputs\.safe_output_repo \|\| github\.repository \}\}/,
+  );
   assert.match(control, /jobs:\n\s+pre-activation:[\s\S]*?GH_AW_GITHUB_READ_PAT_REPOSITORIES[\s\S]*?secrets\.GH_AW_GITHUB_READ_PAT[\s\S]*?github\.token/);
   assert.match(control, /name: Resolve CAO GitHub read scope[\s\S]*?CAO_READ_REPOSITORY: \$\{\{ github\.aw\.import-inputs\.read_repository \}\}/);
   assert.match(control, /name: Generate CAO target-scoped read App token[\s\S]*?owner: \$\{\{ steps\.cao_target_read_scope\.outputs\.owner \}\}/);
@@ -335,4 +339,15 @@ test("Dependabot planner scopes its read token to the dispatched target", () => 
     /GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets\[fromJSON\(vars\.GH_AW_GITHUB_READ_PAT_REPOSITORIES \|\| '\{\}'\)\[steps\.cao_target_read_scope\.outputs\.full_name\]\]/,
   );
   assert.match(generated, /GITHUB_MCP_SERVER_TOKEN: \$\{\{ steps\.cao_target_read_credential\.outputs\.token \}\}/);
+});
+
+test("safe-output write App token scopes to the admitted safe-output repository", () => {
+  const generated = workflow("dependabot-update-planner.lock.yml");
+  const writeAppTokenStep = /\n\s+- name: Generate GitHub App token\n\s+id: safe-outputs-app-token[\s\S]*?(?=\n\s+- name: )/.exec(generated)?.[0];
+
+  assert.ok(writeAppTokenStep, "missing safe-outputs App token step");
+  assert.match(writeAppTokenStep, /owner: \$\{\{ github\.repository_owner \}\}/);
+  assert.match(writeAppTokenStep, /repositories: \$\{\{ inputs\.safe_output_repo \|\| github\.repository \}\}/);
+  assert.doesNotMatch(writeAppTokenStep, /github\.event\.repository\.name/);
+  assert.doesNotMatch(writeAppTokenStep, /repositories: \["\*"\]|repositories: \*/);
 });

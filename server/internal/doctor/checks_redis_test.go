@@ -129,6 +129,76 @@ func TestClassifyRedisNamespace(t *testing.T) {
 	}
 }
 
+func TestClassifyRedisPersistence(t *testing.T) {
+	cases := []struct {
+		name         string
+		lastSave     string
+		aofEnabled   bool
+		aofLastWrite string
+		wantStatus   Status
+		wantReason   persistenceClassificationReason
+		summaryHas   string
+		remedyEmpty  bool
+	}{
+		{
+			name:     "failed background save warns even with AOF disabled",
+			lastSave: "err", aofEnabled: false,
+			wantStatus: StatusWarn, wantReason: persistenceReasonBackgroundSaveFailed,
+			summaryHas: "background save did not succeed",
+		},
+		{
+			name:     "failed background save is checked before a failed AOF write",
+			lastSave: "err", aofEnabled: true, aofLastWrite: "err",
+			wantStatus: StatusWarn, wantReason: persistenceReasonBackgroundSaveFailed,
+			summaryHas: "background save did not succeed",
+		},
+		{
+			name:     "healthy background save with a failed AOF write warns",
+			lastSave: "ok", aofEnabled: true, aofLastWrite: "err",
+			wantStatus: StatusWarn, wantReason: persistenceReasonAOFWriteFailed,
+			summaryHas: "append-only-file write did not succeed",
+		},
+		{
+			name:     "healthy background save with AOF disabled passes",
+			lastSave: "ok", aofEnabled: false,
+			wantStatus: StatusPass, wantReason: persistenceReasonHealthy,
+			summaryHas: "reporting healthy writes", remedyEmpty: true,
+		},
+		{
+			name:     "healthy background save with a healthy AOF write passes",
+			lastSave: "ok", aofEnabled: true, aofLastWrite: "ok",
+			wantStatus: StatusPass, wantReason: persistenceReasonHealthy,
+			summaryHas: "reporting healthy writes", remedyEmpty: true,
+		},
+		{
+			name:     "blank background save status with AOF disabled passes",
+			lastSave: "", aofEnabled: false,
+			wantStatus: StatusPass, wantReason: persistenceReasonHealthy,
+			summaryHas: "reporting healthy writes", remedyEmpty: true,
+		},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			got := classifyRedisPersistence(testCase.lastSave, testCase.aofEnabled, testCase.aofLastWrite)
+			if got.status != testCase.wantStatus {
+				t.Fatalf("status = %s, want %s", got.status, testCase.wantStatus)
+			}
+			if got.reason != testCase.wantReason {
+				t.Fatalf("reason = %s, want %s", got.reason, testCase.wantReason)
+			}
+			if !strings.Contains(got.summary, testCase.summaryHas) {
+				t.Fatalf("summary = %q, want it to contain %q", got.summary, testCase.summaryHas)
+			}
+			if testCase.remedyEmpty && got.remedy != "" {
+				t.Fatalf("remedy = %q, want empty for a passing check", got.remedy)
+			}
+			if !testCase.remedyEmpty && got.remedy == "" {
+				t.Fatalf("remedy is empty, want a remedy for status %s", got.status)
+			}
+		})
+	}
+}
+
 func TestForeignNamespacesOf(t *testing.T) {
 	cases := []struct {
 		name      string
