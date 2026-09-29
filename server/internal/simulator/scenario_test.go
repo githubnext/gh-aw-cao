@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -224,9 +225,14 @@ func TestFakeGitHubAPIModes(t *testing.T) {
 				t.Fatalf("healthy response remaining = %q, want configured value 17",
 					response.Header.Get("X-RateLimit-Remaining"))
 			}
-			if test.mode == "rate-limited" || test.mode == "secondary-rate-limit" {
+			if test.mode == "rate-limited" {
 				if response.Header.Get("Retry-After") != "30" || response.Header.Get("X-RateLimit-Remaining") != "0" {
 					t.Fatalf("missing rate-limit headers: %#v", response.Header)
+				}
+			}
+			if test.mode == "secondary-rate-limit" {
+				if response.Header.Get("Retry-After") != "30" || response.Header.Get("X-RateLimit-Remaining") != "17" {
+					t.Fatalf("secondary limit must signal Retry-After and keep primary headroom: %#v", response.Header)
 				}
 			}
 		})
@@ -308,6 +314,93 @@ func TestGeneratedWebhookBodyStaysWithinServerLimit(t *testing.T) {
 	for _, delivery := range deliveries {
 		if len(delivery.Payload) > 1<<20 || len(delivery.ID) != 36 {
 			t.Fatalf("unexpected delivery size or ID: bytes=%d id=%q", len(delivery.Payload), delivery.ID)
+		}
+	}
+}
+
+func TestFakeGitHubAPIEnforcesPrimaryRateLimit(t *testing.T) {
+	api, err := NewAPIHandler(Scenario{
+		Name: "primary-limit", Repositories: 1,
+		RateLimit: &APIRateLimit{Limit: 3, Window: "1h"},
+	}, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(api)
+	defer server.Close()
+	type reply struct {
+		StatusCode int
+		Header     http.Header
+	}
+	get := func(path string) reply {
+		t.Helper()
+		request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL+path, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response, err := server.Client().Do(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = io.Copy(io.Discard, response.Body)
+		_ = response.Body.Close()
+		return reply{StatusCode: response.StatusCode, Header: response.Header}
+	}
+	for want := 2; want >= 0; want-- {
+		response := get("/repos/simulator/repo-00001")
+		if response.StatusCode != http.StatusOK {
+			t.Fatalf("metered request status = %d, want 200", response.StatusCode)
+		}
+		if got := response.Header.Get("X-RateLimit-Remaining"); got != strconv.Itoa(want) {
+			t.Fatalf("remaining = %q, want %d", got, want)
+		}
+		if response.Header.Get("X-RateLimit-Limit") != "3" {
+			t.Fatalf("limit header = %q, want 3", response.Header.Get("X-RateLimit-Limit"))
+		}
+	}
+	if response := get("/rate_limit"); response.StatusCode != http.StatusOK ||
+		response.Header.Get("X-RateLimit-Remaining") != "0" {
+		t.Fatalf("rate-limit inspection must be free and report exhaustion: %d %#v", response.StatusCode, response.Header)
+	}
+	exhausted := get("/repos/simulator/repo-00001/git/ref/heads/memory/example")
+	if exhausted.StatusCode != http.StatusForbidden || exhausted.Header.Get("X-RateLimit-Remaining") != "0" ||
+		exhausted.Header.Get("X-RateLimit-Reset") == "" {
+		t.Fatalf("exhausted request = %d %#v, want primary 403", exhausted.StatusCode, exhausted.Header)
+	}
+	if response := get("/api/v3/rate_limit"); response.StatusCode != http.StatusOK {
+		t.Fatalf("enterprise-prefixed request status = %d, want 200", response.StatusCode)
+	}
+	stats := api.Stats()
+	if stats.Requests != 6 || stats.Metered != 4 || stats.RateLimited != 1 {
+		t.Fatalf("stats = %#v", stats)
+	}
+}
+
+func TestFakeGitHubAPIPrimaryRateLimitResetsEachWindow(t *testing.T) {
+	api, err := NewAPIHandler(Scenario{
+		Name: "primary-reset", Repositories: 1,
+		RateLimit: &APIRateLimit{Limit: 1, Window: "1h"},
+	}, 1_000_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := api.limiter.started
+	if _, ok := api.limiter.take(now); !ok {
+		t.Fatal("first request in a window must be allowed")
+	}
+	if _, ok := api.limiter.take(now); ok {
+		t.Fatal("second request in a one-request window must be rejected")
+	}
+	later := now.Add(time.Duration(float64(time.Hour) / 1_000_000))
+	if headers, ok := api.limiter.take(later); !ok || headers.remaining != 0 {
+		t.Fatalf("next window must allow one request: ok=%t headers=%#v", ok, headers)
+	}
+}
+
+func TestFakeGitHubAPIRejectsInvalidRateLimit(t *testing.T) {
+	for _, limit := range []APIRateLimit{{Limit: 0, Window: "1s"}, {Limit: 1, Window: "0s"}, {Limit: 1, Window: "soon"}} {
+		if _, err := NewAPIHandler(Scenario{Name: "invalid", Repositories: 1, RateLimit: &limit}, 1); err == nil {
+			t.Fatalf("rate limit %#v must be rejected", limit)
 		}
 	}
 }

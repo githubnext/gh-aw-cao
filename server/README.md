@@ -106,6 +106,55 @@ The Redis-backed CI job runs this integration test as part of `go test ./...`.
 For manual load runs, point the normal CAO server and worker at a local Redis
 instance as well as the simulator API.
 
+## Rate-limit stress harness
+
+`internal/server/stress_test.go` drives the production HTTP handler (access
+control, inbound rate limiting, and the lazy repository-memory resolver) with
+real Redis and the simulator's fake GitHub API. It configures deliberately low
+limits so every run exhausts them:
+
+- **Inbound**: `Config.RateLimits` lowers the general policy to 50 requests per
+  second and floods one endpoint. Admission must never exceed the token bucket,
+  and every rejection must be a `429` with `Retry-After` and `RateLimit-*`
+  headers.
+- **GitHub primary limit**: the scenario `rate_limit` field (for example,
+  `{"limit": 40, "window": "3s"}`) meters the fake API with a fixed-window
+  budget and GitHub-style `X-RateLimit-*` headers. Cache-missing reads must
+  stop at the governor floor so the simulator never rejects a request, and
+  reads must resume after the window resets.
+- **GitHub secondary limit**: a `secondary-rate-limit` window rejects the
+  installation-token mint and, separately, REST calls behind a minted token.
+  The server must park the installation, answer `429` with GitHub's
+  `Retry-After`, and send no more than the in-flight requests upstream.
+
+Each scenario also enforces a p95 latency budget and a throughput floor and
+writes a JSON report. `BenchmarkStress*` benchmarks measure the throttled,
+cached, and governor-exhausted paths with `-benchmem`. The tests skip unless
+`CAO_STRESS_REDIS_URL` is set; use a disposable Redis database:
+
+```bash
+npm run dashboard:server:redis-up   # from the repository root
+cd server
+mkdir -p ../.tmp/go-stress
+CAO_STRESS_REDIS_URL=redis://127.0.0.1:6379/0 \
+CAO_STRESS_REPORT_DIR=../.tmp/go-stress \
+  go test ./internal/server -run '^TestStress' -bench '^BenchmarkStress' \
+    -benchmem -benchtime=2000x -count=1 \
+    -cpuprofile=cpu.pprof -memprofile=mem.pprof \
+    -blockprofile=block.pprof -mutexprofile=mutex.pprof -trace=trace.out \
+    -outputdir=../.tmp/go-stress
+go tool pprof -top ../.tmp/go-stress/cpu.pprof
+```
+
+`CAO_STRESS_MAX_P95_MS` (default 250) and `CAO_STRESS_MIN_RPS` (default 200)
+override the thresholds. The `Go rate-limit stress and profiles` job in
+`.github/workflows/cgo.yml` runs the harness in its own job and uploads the
+`go-server-stress-profiles` artifact: per-scenario JSON reports, raw CPU,
+allocation, block, and mutex profiles, an execution trace, `pprof -top`
+summaries, and benchstat-compatible `bench.txt`. Compare `bench.txt` files
+with `benchstat` and inspect profiles with `go tool pprof` or
+`go tool trace` when optimizing the server.
+
 ## Architecture
 
 ```mermaid

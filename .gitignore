@@ -7,6 +7,9 @@ test-results/
 .lazy-page-chunks-*/
 public/cao/
 
+# Go test binaries written by profiling runs (for example, the stress harness)
+/server/*.test
+
 # Local dashboard preview
 /_activity/
 /.cao-dashboard-preview-*/

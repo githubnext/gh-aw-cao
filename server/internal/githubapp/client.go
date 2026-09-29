@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -450,6 +451,10 @@ func apiResponse(response *github.Response, err error) APIResponse {
 			state.StatusCode = primary.Response.StatusCode
 		}
 	}
+	var tokenErr *ghinstallation.HTTPError
+	if errors.As(err, &tokenErr) && tokenErr.Response != nil {
+		state = tokenResponse(tokenErr.Response)
+	}
 	var secondary *github.AbuseRateLimitError
 	if errors.As(err, &secondary) {
 		state.Secondary = true
@@ -460,6 +465,25 @@ func apiResponse(response *github.Response, err error) APIResponse {
 			state.RetryAfter = *secondary.RetryAfter
 		}
 	}
+	return state
+}
+
+// tokenResponse reads rate-limit metadata from a failed installation-token
+// request. The token is minted inside the transport, so go-github never sees
+// the response; without this a rate-limited mint would bypass the governor.
+func tokenResponse(response *http.Response) APIResponse {
+	state := APIResponse{StatusCode: response.StatusCode}
+	if remaining, err := strconv.Atoi(response.Header.Get("X-RateLimit-Remaining")); err == nil {
+		state.Remaining = remaining
+	}
+	if reset, err := strconv.ParseInt(response.Header.Get("X-RateLimit-Reset"), 10, 64); err == nil && reset > 0 {
+		state.Reset = time.Unix(reset, 0).UTC()
+	}
+	if seconds, err := strconv.Atoi(response.Header.Get("Retry-After")); err == nil && seconds > 0 {
+		state.RetryAfter = time.Duration(seconds) * time.Second
+	}
+	state.Secondary = response.StatusCode == http.StatusForbidden &&
+		state.RetryAfter > 0 && response.Header.Get("X-RateLimit-Remaining") != "0"
 	return state
 }
 

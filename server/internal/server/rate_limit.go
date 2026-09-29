@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"strconv"
@@ -26,6 +27,59 @@ const (
 	rateLimitTimeout  = 2 * time.Second
 )
 
+// RateLimitPolicy overrides one inbound request token bucket. Zero values keep
+// the built-in default for that field.
+type RateLimitPolicy struct {
+	Capacity int
+	Window   time.Duration
+}
+
+// RateLimitConfig overrides the inbound request rate limits. The zero value
+// selects the production defaults; load tests lower them to exercise
+// throttling deterministically.
+type RateLimitConfig struct {
+	General RateLimitPolicy
+	Query   RateLimitPolicy
+	Auth    RateLimitPolicy
+	Edge    RateLimitPolicy
+}
+
+func (c RateLimitConfig) validate() error {
+	for name, policy := range map[string]RateLimitPolicy{
+		"general": c.General, "query": c.Query, "auth": c.Auth, "edge": c.Edge,
+	} {
+		if policy.Capacity < 0 {
+			return fmt.Errorf("%s rate limit capacity cannot be negative", name)
+		}
+		if policy.Window != 0 && policy.Window < time.Millisecond {
+			return fmt.Errorf("%s rate limit window must be at least one millisecond", name)
+		}
+	}
+	return nil
+}
+
+func (c RateLimitConfig) policy(name string) requestRatePolicy {
+	var override RateLimitPolicy
+	resolved := requestRatePolicy{name: name}
+	switch name {
+	case "general":
+		override, resolved.capacity, resolved.window = c.General, generalRateLimit, generalRateWindow
+	case "query":
+		override, resolved.capacity, resolved.window = c.Query, queryRateLimit, queryRateWindow
+	case "auth":
+		override, resolved.capacity, resolved.window = c.Auth, authRateLimit, authRateWindow
+	case "edge":
+		override, resolved.capacity, resolved.window = c.Edge, edgeRateLimit, edgeRateWindow
+	}
+	if override.Capacity > 0 {
+		resolved.capacity = override.Capacity
+	}
+	if override.Window > 0 {
+		resolved.window = override.Window
+	}
+	return resolved
+}
+
 type requestRatePolicy struct {
 	name     string
 	capacity int
@@ -41,7 +95,7 @@ type rateLimitReservationContextKey struct{}
 
 func (a *App) rateLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		policy, limited := ratePolicy(request)
+		policy, limited := ratePolicy(request, a.config.RateLimits)
 		if !limited {
 			next.ServeHTTP(response, request)
 			return
@@ -59,7 +113,7 @@ func (a *App) preAuthRateLimit(next http.Handler) http.Handler {
 			next.ServeHTTP(response, request)
 			return
 		}
-		policy := requestRatePolicy{name: "edge", capacity: edgeRateLimit, window: edgeRateWindow}
+		policy := a.config.RateLimits.policy("edge")
 		a.enforceRateLimit(response, request, next, policy, "client:"+a.clientIP(request))
 	})
 }
@@ -120,6 +174,7 @@ func (a *App) chargeQueryRateLimit(
 	if !ok || cost <= 1 {
 		return http.StatusOK, nil
 	}
+	cost = min(cost, reservation.policy.capacity)
 	chargeCtx, cancel := context.WithTimeout(ctx, rateLimitTimeout)
 	defer cancel()
 	result, err := a.store.TakeRateLimitTokens(
@@ -174,16 +229,16 @@ func requiresPreAuthRateLimit(path string) bool {
 		!strings.HasPrefix(path, "/auth/logged-out")
 }
 
-func ratePolicy(request *http.Request) (requestRatePolicy, bool) {
+func ratePolicy(request *http.Request, limits RateLimitConfig) (requestRatePolicy, bool) {
 	switch {
 	case publicServiceEndpoint(request.URL.Path), request.URL.Path == "/api/github/webhook":
 		return requestRatePolicy{}, false
 	case request.URL.Path == "/auth/login", request.URL.Path == "/auth/callback":
-		return requestRatePolicy{name: "auth", capacity: authRateLimit, window: authRateWindow}, true
+		return limits.policy("auth"), true
 	case request.URL.Path == "/api/v1/query", request.URL.Path == "/mcp":
-		return requestRatePolicy{name: "query", capacity: queryRateLimit, window: queryRateWindow}, true
+		return limits.policy("query"), true
 	case strings.HasPrefix(request.URL.Path, "/api/"), strings.HasPrefix(request.URL.Path, "/auth/"):
-		return requestRatePolicy{name: "general", capacity: generalRateLimit, window: generalRateWindow}, true
+		return limits.policy("general"), true
 	default:
 		return requestRatePolicy{}, false
 	}

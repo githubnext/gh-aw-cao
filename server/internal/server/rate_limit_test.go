@@ -441,3 +441,52 @@ func hostedRateLimitApp(client *serverRateLimitClient) *App {
 		}},
 	}
 }
+
+func TestRateLimitConfigOverridesPolicies(t *testing.T) {
+	limits := RateLimitConfig{
+		General: RateLimitPolicy{Capacity: 5, Window: 2 * time.Second},
+		Query:   RateLimitPolicy{Capacity: 3},
+	}
+	for path, want := range map[string]requestRatePolicy{
+		"/api/repositories": {name: "general", capacity: 5, window: 2 * time.Second},
+		"/api/v1/query":     {name: "query", capacity: 3, window: queryRateWindow},
+		"/auth/login":       {name: "auth", capacity: authRateLimit, window: authRateWindow},
+	} {
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "https://dashboard.example"+path, nil)
+		got, limited := ratePolicy(request, limits)
+		if !limited || got != want {
+			t.Errorf("ratePolicy(%s) = %#v, %t; want %#v", path, got, limited, want)
+		}
+	}
+	if got := limits.policy("edge"); got.capacity != edgeRateLimit || got.window != edgeRateWindow {
+		t.Errorf("edge policy = %#v, want defaults", got)
+	}
+}
+
+func TestRateLimitConfigRejectsInvalidPolicies(t *testing.T) {
+	for _, limits := range []RateLimitConfig{
+		{General: RateLimitPolicy{Capacity: -1}},
+		{Query: RateLimitPolicy{Window: time.Microsecond}},
+	} {
+		if err := limits.validate(); err == nil {
+			t.Errorf("limits %#v must be rejected", limits)
+		}
+	}
+	if err := (RateLimitConfig{}).validate(); err != nil {
+		t.Errorf("zero limits must select defaults: %v", err)
+	}
+}
+
+func TestQueryChargeIsCappedAtConfiguredCapacity(t *testing.T) {
+	client := &serverRateLimitClient{result: []any{int64(1), int64(0), int64(0), int64(1000)}}
+	app := &App{store: redisx.NewStore(client, "test")}
+	ctx := context.WithValue(t.Context(), rateLimitReservationContextKey{}, rateLimitReservation{
+		key: "query:subject", policy: requestRatePolicy{name: "query", capacity: 4, window: time.Second},
+	})
+	if status, err := app.chargeQueryRateLimit(ctx, httptest.NewRecorder(), 30); err != nil || status != http.StatusOK {
+		t.Fatalf("capped charge failed: status=%d err=%v", status, err)
+	}
+	if got := client.command[len(client.command)-1]; got != "3" {
+		t.Fatalf("charged cost = %q, want capacity minus the admitted token (3)", got)
+	}
+}
