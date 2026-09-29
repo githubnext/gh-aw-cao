@@ -6,7 +6,11 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var streamLog = logger.New("cao:redis:stream")
 
 // StreamMessage is one entry read from a Redis stream consumer group.
 type StreamMessage struct {
@@ -312,6 +316,24 @@ func (s *Store) StreamBacklog(ctx context.Context, stream, group string) (int64,
 	if !ok {
 		return 0, nil
 	}
+	backlog, lagKnown, found := findGroupBacklog(groups, group)
+	if found && !lagKnown {
+		// Redis reports lag as nil when it cannot be determined exactly, for
+		// example after entries were trimmed. This is worth observing because
+		// the caller silently receives the pending-count fallback instead of
+		// an exact figure.
+		streamLog.Printf("stream backlog lag unknown, using pending fallback group=%q", group)
+	}
+	return backlog, nil
+}
+
+// findGroupBacklog scans XINFO GROUPS entries for group and returns its
+// backlog count. It is a pure function so the property-parsing and the
+// lag/pending fallback decision are testable without a fake Redis reply.
+//
+// Unacknowledged entries are the fail-closed fallback for an unknown lag:
+// reporting zero would hide real work.
+func findGroupBacklog(groups []any, group string) (backlog int64, lagKnown bool, found bool) {
 	for _, entry := range groups {
 		fields, ok := entry.([]any)
 		if !ok {
@@ -332,15 +354,12 @@ func (s *Store) StreamBacklog(ctx context.Context, stream, group string) (int64,
 		if groupName(properties["name"]) != group {
 			continue
 		}
-		// Redis reports lag as nil when it cannot be determined exactly, for
-		// example after entries were trimmed. Unacknowledged entries are the
-		// fail-closed fallback: reporting zero would hide real work.
 		if properties["lag"] == nil {
-			return toInt64(properties["pending"]), nil
+			return toInt64(properties["pending"]), false, true
 		}
-		return toInt64(properties["lag"]), nil
+		return toInt64(properties["lag"]), true, true
 	}
-	return 0, nil
+	return 0, false, false
 }
 
 func groupName(value any) string {
