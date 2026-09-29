@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { renderDashboardSnapshotStatus, renderRefreshError } from '../../src/components/refresh-error.js';
+import { renderDashboardCurrentStatus, renderDashboardSnapshotStatus, renderRefreshError } from '../../src/components/refresh-error.js';
 
 describe('refresh error', () => {
   it('explains the stale state and retries the refresh', () => {
@@ -37,6 +37,17 @@ describe('refresh error', () => {
     expect(status.getAttribute('role')).toBe('status');
     expect(status.textContent).toContain('Refreshing dashboard data.');
     expect(status.textContent).toContain('Showing the last complete snapshot from');
+  });
+
+  it('shows the current snapshot time in an accessible icon tooltip', () => {
+    const status = renderDashboardCurrentStatus({ createdAt: '2026-09-28T12:00:00.000Z' });
+    const button = status.querySelector('button');
+    const tooltip = status.querySelector('[role="tooltip"]');
+
+    expect(button?.getAttribute('aria-label')).toBe('Dashboard data is current');
+    expect(button?.getAttribute('aria-describedby')).toBe(tooltip?.id);
+    expect(status.querySelector('.octicon-check-circle-fill')).not.toBeNull();
+    expect(tooltip?.textContent).toContain('Dashboard data is current as of');
   });
 
   it('does not claim cached data exists when the first refresh fails', () => {
