@@ -357,18 +357,9 @@ function renderFileTree(entries, select) {
       )
     )),
     ...node.files.map(({ name, entry }) => {
-      const button = /** @type {HTMLButtonElement} */ (h(
-        'button',
-        {
-          type: 'button',
-          className: 'campaign-memory-file',
-          title: entry.path,
-          onclick: () => select(entry, button),
-        },
-        octicon('file'),
-        h('span', { className: 'memory-file-name' }, name),
-        h('small', null, formatFileSize(entry.size))
-      ));
+      /** @type {HTMLButtonElement} */
+      let button;
+      button = renderMemoryFileButton(name, entry.size, { title: entry.path }, () => select(entry, button));
       return h('li', null, button);
     })
   );
@@ -420,15 +411,12 @@ function memoryView({ campaignName, manifest, selectedPath, file, mobileView, se
         h('ul', null, ...manifest.files.map((entry) => h(
           'li',
           null,
-          h('button', {
-            type: 'button',
-            className: 'campaign-memory-file',
-            'aria-current': entry.path === selectedPath ? 'true' : null,
-            onclick: () => select(entry.path),
-          },
-          octicon('file'),
-          h('span', { className: 'memory-file-name' }, entry.path),
-          h('small', null, formatFileSize(entry.size)))
+          renderMemoryFileButton(
+            entry.path,
+            entry.size,
+            { 'aria-current': entry.path === selectedPath ? 'true' : null },
+            () => select(entry.path)
+          )
         )))
       ),
       h(
@@ -563,4 +551,26 @@ function formatFileSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KiB`;
   return `${(bytes / 1024 ** 2).toFixed(1)} MiB`;
+}
+
+/**
+ * Renders the shared `campaign-memory-file` `<button>` markup (file icon,
+ * name label, and formatted file size) used by both the multi-campaign file
+ * tree and the single-campaign flat file list, which otherwise duplicated
+ * the same button structure with only the label, extra attributes, and
+ * click handler differing.
+ * @param {string} label
+ * @param {number} size
+ * @param {Record<string, unknown>} attributes
+ * @param {() => void} onclick
+ * @returns {HTMLButtonElement}
+ */
+function renderMemoryFileButton(label, size, attributes, onclick) {
+  return /** @type {HTMLButtonElement} */ (h(
+    'button',
+    { type: 'button', className: 'campaign-memory-file', ...attributes, onclick },
+    octicon('file'),
+    h('span', { className: 'memory-file-name' }, label),
+    h('small', null, formatFileSize(size))
+  ));
 }
