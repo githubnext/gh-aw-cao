@@ -16,7 +16,7 @@ const artifactSizeLimits = {
   "llms.txt": 4 * 1024,
   "llms-small.txt": 64 * 1024,
 };
-const skillSizeLimit = 12 * 1024;
+export const MAX_SKILL_ENTRY_BYTES = 6 * 1024;
 const commonTaskRoutes = [
   ["Set up a CAO control plane", "setup-cao"],
   ["Debug a CAO failure", "debug-cao"],
@@ -270,8 +270,19 @@ export async function validateAgentDocs({
       continue;
     }
     const skillBytes = (await stat(skillPath)).size;
-    if (skillBytes > skillSizeLimit) {
-      errors.push(`${skill}/SKILL.md exceeds the ${skillSizeLimit} byte entry-point limit`);
+    if (skillBytes > MAX_SKILL_ENTRY_BYTES) {
+      errors.push(`${skill}/SKILL.md exceeds the ${MAX_SKILL_ENTRY_BYTES} byte entry-point limit`);
+    }
+    if (skill !== "setup-cao") continue;
+    const skillSource = await readFile(skillPath, "utf8");
+    for (const link of markdownLinks(skillSource)) {
+      if (/^(?:[a-z]+:|#)/i.test(link)) continue;
+      const localPath = link.split("#", 1)[0];
+      if (!localPath) continue;
+      const resolvedPath = path.resolve(path.dirname(skillPath), localPath);
+      if (!await isRegularNonemptyFile(resolvedPath)) {
+        errors.push(`${skill}/SKILL.md references missing local file: ${link}`);
+      }
     }
   }
 

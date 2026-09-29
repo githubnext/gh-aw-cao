@@ -5,12 +5,9 @@
 import { h } from '../dom.js';
 import { resolveTitleLink } from './link-content.js';
 import { renderOutcomeDetailSection } from './outcome-detail-sections.js';
-import { createRouteView } from './route-empty-state.js';
+import { renderRouteDetailView } from './route-detail-view.js';
 import { rowsFor } from './source-rows.js';
 import { text, titleCase } from './count-formatters.js';
-import { createDebug } from '../debug.js';
-
-const debugOutcomeDetail = createDebug('outcome-detail');
 
 /**
  * @param {import('./ui-elements.js').ElementRenderContext} context
@@ -18,33 +15,21 @@ const debugOutcomeDetail = createDebug('outcome-detail');
  */
 export function renderOutcomeDetail(context) {
   const outcomes = rowsFor(context.sources, 'outcomes');
-  debugOutcomeDetail({ event: 'initialized', pageId: context.pageId, rowCount: outcomes.length });
-  const root = createRouteView({
+  return renderRouteDetailView(context, {
+    category: 'outcome-detail',
     rootClassName: 'outcome-detail',
-    routeParameter: context.routeParameter,
     datasetKey: 'outcome',
     selectMessage: 'Select an outcome to view its details.',
     notFoundMessage: 'Outcome not found.',
-    renderMatched: (routeValue) => {
-      const outcomeId = routeValue.trim();
-      const outcome = outcomes.find((row) => String(row['safe-output']) === outcomeId);
-      if (!outcome) {
-        debugOutcomeDetail({ event: 'not-found', pageId: context.pageId });
-        return null;
-      }
-      debugOutcomeDetail({ event: 'matched', pageId: context.pageId });
-      root.dispatchEvent(new CustomEvent('dashboard-route-allocation', {
-        bubbles: true,
-        detail: {
-          title: text(outcome['outcome-title']) || outcomeId,
-          description: outcomeDescription(outcome),
-          titleLink: resolveTitleLink(outcome, context.titleLink)
-        }
-      }));
-      return renderOutcome(outcome);
-    }
+    rows: outcomes,
+    match: (rows, routeValue) => rows.find((row) => String(row['safe-output']) === routeValue.trim()),
+    allocation: (outcome, routeValue) => ({
+      title: text(outcome['outcome-title']) || routeValue.trim(),
+      description: outcomeDescription(outcome),
+      titleLink: resolveTitleLink(outcome, context.titleLink)
+    }),
+    renderContent: (outcome) => renderOutcome(outcome)
   });
-  return root;
 }
 
 /**

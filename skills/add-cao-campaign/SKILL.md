@@ -14,12 +14,14 @@ argument-hint: "Describe the desired operational outcome or name a CAO catalog c
 4. Require selection and explicit installation approval.
 5. Install through `./cao.sh add`, validate policy preservation, and report.
 
-Help the user choose and install an existing CAO operational campaign. Discover from the current catalog instead of relying on a hard-coded campaign list. Never silently select or install a campaign.
+Choose and install an existing CAO operational campaign from the current
+catalog. Never rely on a hard-coded list or silently select or install one.
 
 ## Boundaries
 
-- Use this skill for adopting an existing campaign. Use the `create-cao-campaign` skill when the user wants to author a new campaign or no existing campaign fits.
-- Work in the intended CAO control repository. Require `.github/workflows/cao.json` and the executable installed CAO CLI at `./cao.sh`; hand off to the `setup-cao` skill when the control plane is not initialized.
+- Use `create-cao-campaign` to author a new campaign or when none fits.
+- Require `.github/workflows/cao.json` and executable `./cao.sh` in the intended
+  control repository; hand off to `setup-cao` when it is not initialized.
 - Keep catalog discovery read-only. Do not install anything until the user explicitly selects a campaign after seeing the recommendation and safety summary.
 - Install through `cao add`, not the underlying campaign installer directly. The CAO wrapper validates the installed declaration and merges its orchestrator and workers into policy without enabling live mode or broadening repository scope.
 - Never edit generated `.lock.yml` files or `.github/aw/campaigns/*.json` ownership records directly.
@@ -33,11 +35,12 @@ Help the user choose and install an existing CAO operational campaign. Discover 
 4. Parse each candidate's `aw.yml` as YAML and `cao.json` as JSON. Do not infer metadata with regular expressions. Exclude campaigns with `private: true`; label campaigns with `experimental: true` clearly.
 5. Read each remaining campaign's manifest description, README, CAO declaration, orchestrator source, and worker sources from the same commit. Derive outcomes and tradeoffs from those files rather than campaign names.
 
-If GitHub authentication, catalog access, structured parsing, or revision consistency fails, stop and report discovery as incomplete. Do not guess from a remembered or partial campaign list.
+If authentication, catalog access, parsing, or revision consistency fails, stop
+and report discovery as incomplete. Do not guess from partial catalog data.
 
 ## Recommend
 
-When the user has not named a campaign, ask what operational outcome they want. Recommend no more than three installable campaigns, ordered by fit. For each recommendation, summarize:
+When no campaign is named, ask for the operational outcome. Recommend no more than three installable campaigns, ordered by fit. For each, summarize:
 
 - the outcome it targets;
 - its orchestrator and worker responsibilities;
