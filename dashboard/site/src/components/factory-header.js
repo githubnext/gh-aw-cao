@@ -2,10 +2,13 @@ import { h } from '../dom.js';
 import { render } from '../reactive.js';
 import { renderFactoryElement } from './factory-elements.js';
 import { renderFactoryRhythm } from './factory-rhythm.js';
+import { createDebug } from '../debug.js';
 
 /** @typedef {{ rows: () => Record<string, unknown>[], pending: () => boolean, unavailable: () => boolean }} SourceBinding */
 /** @typedef {Record<string, SourceBinding>} SourceBindings */
 /** @typedef {{ signal: AbortSignal }} HeaderScope */
+
+const debugFactoryHeader = createDebug('factory-header');
 
 /**
  * @param {SourceBindings} sources
@@ -13,18 +16,26 @@ import { renderFactoryRhythm } from './factory-rhythm.js';
  * @param {Record<string, string>} roleNames
  */
 export function renderFactoryHeader(sources, scope, roleNames) {
+  debugFactoryHeader({
+    event: 'composed',
+    presentationSource: roleNames.presentation,
+    rhythmSource: roleNames.rhythm
+  });
   const heading = h('h2', { id: 'agent-factory-heading' });
   const summary = h('p');
 
   render(heading, () => {
     const presentation = sources[roleNames.presentation];
     const pending = presentation.pending();
+    const unavailable = presentation.unavailable();
     const candidate = presentation.rows()[0]?.heading;
+    const hasHeading = !pending && !unavailable && typeof candidate === 'string' && Boolean(candidate);
     heading.classList.toggle('factory-heading-pending', pending);
     heading.toggleAttribute('aria-busy', pending);
+    if (!pending) debugFactoryHeader({ event: 'heading-settled', unavailable, hasHeading });
     return pending
       ? ''
-      : !presentation.unavailable() && typeof candidate === 'string' && candidate
+      : hasHeading
       ? candidate
       : 'Your campaign status is unavailable.';
   }, { signal: scope.signal });
@@ -35,6 +46,7 @@ export function renderFactoryHeader(sources, scope, roleNames) {
     const candidate = presentation.rows()[0]?.summary;
     const text = typeof candidate === 'string' ? candidate : '';
     summary.hidden = pending || !text;
+    if (!pending) debugFactoryHeader({ event: 'summary-settled', hasSummary: Boolean(text) });
     return pending ? '' : text;
   }, { signal: scope.signal });
 
