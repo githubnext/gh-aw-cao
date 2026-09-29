@@ -7727,9 +7727,32 @@
     "name": "experiment-assignment-coverage",
     "intent": "Count observed run assignments for each experiment and workflow without inferring a completion target.",
     "from": "experiment-assignments",
+    "compute": [
+      {
+        "as": "workflow-coordinate",
+        "function": "concat",
+        "args": [
+          {
+            "field": "organization"
+          },
+          {
+            "value": "/"
+          },
+          {
+            "field": "repository"
+          },
+          {
+            "value": ":"
+          },
+          {
+            "field": "workflow"
+          }
+        ]
+      }
+    ],
     "aggregate": {
       "by": [
-        "workflow",
+        "workflow-coordinate",
         "experiment"
       ],
       "values": [
@@ -7737,6 +7760,22 @@
           "field": "run",
           "as": "assignments",
           "reducer": "count"
+        }
+      ]
+    }
+  },
+  {
+    "name": "eval-yes-no-status",
+    "intent": "Select explicit YES/NO eval answers while retaining unknown results only in the underlying evidence collection.",
+    "from": "eval-observations",
+    "filter": {
+      "predicates": [
+        {
+          "field": "eval-result",
+          "in": [
+            "YES",
+            "NO"
+          ]
         }
       ]
     }

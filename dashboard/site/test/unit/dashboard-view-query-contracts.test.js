@@ -116,6 +116,8 @@ describe('dashboard view query contracts', () => {
       { mark: 'chart', chart: 'horizontal-bar', data: { source: 'experiment-assignment-coverage' } },
       { mark: 'table', data: { source: 'experiments' }, 'lazy-list': true, layout: 'full-view' }
     ]);
+    expect(viewsOf(dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'evals'))[0])
+      .toMatchObject({ data: { source: 'eval-yes-no-status' } });
     for (const id of ['evals', 'graders']) {
       const page = dashboard.pages.find((/** @type {{ id?: string }} */ candidate) => candidate.id === id);
       expect(viewsOf(page)[0]).toMatchObject({
@@ -130,15 +132,23 @@ describe('dashboard view query contracts', () => {
     const results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries,
-      sourceNames: ['experiment-assignment-coverage', 'grader-status-ledger'],
+      sourceNames: ['experiment-assignment-coverage', 'grader-status-ledger', 'eval-yes-no-status'],
       sources: {
         ...databaseTables,
         'experiment-assignments': {
           source: 'experiment-assignments', metadata,
           rows: [
-            { workflow: 'worker.md', experiment: 'prompt', run: '1' },
-            { workflow: 'worker.md', experiment: 'prompt', run: '2' },
-            { workflow: 'other.md', experiment: 'prompt', run: '3' }
+            { organization: 'githubnext', repository: 'one', workflow: 'worker.md', experiment: 'prompt', run: '1' },
+            { organization: 'githubnext', repository: 'one', workflow: 'worker.md', experiment: 'prompt', run: '2' },
+            { organization: 'githubnext', repository: 'two', workflow: 'worker.md', experiment: 'prompt', run: '3' }
+          ]
+        },
+        'eval-observations': {
+          source: 'eval-observations', metadata,
+          rows: [
+            { workflow: 'worker.md', eval: 'answer', 'eval-result': 'YES' },
+            { workflow: 'worker.md', eval: 'answer', 'eval-result': 'UNKNOWN' },
+            { workflow: 'worker.md', eval: 'answer', 'eval-result': 'NO' }
           ]
         },
         'grader-observations': {
@@ -152,10 +162,11 @@ describe('dashboard view query contracts', () => {
       }
     }));
     expect(results['experiment-assignment-coverage'].rows).toEqual(expect.arrayContaining([
-      expect.objectContaining({ workflow: 'worker.md', experiment: 'prompt', assignments: 2 }),
-      expect.objectContaining({ workflow: 'other.md', experiment: 'prompt', assignments: 1 })
+      expect.objectContaining({ 'workflow-coordinate': 'githubnext/one:worker.md', experiment: 'prompt', assignments: 2 }),
+      expect.objectContaining({ 'workflow-coordinate': 'githubnext/two:worker.md', experiment: 'prompt', assignments: 1 })
     ]));
     expect(results['grader-status-ledger'].rows.map((row) => row.verdict)).toEqual(['YES', 'NO', 'unknown']);
+    expect(results['eval-yes-no-status'].rows.map((row) => row['eval-result'])).toEqual(['YES', 'NO']);
   });
 
   it('does not retain core experimental navigation sections', () => {

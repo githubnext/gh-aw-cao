@@ -1135,11 +1135,32 @@
       "name": "experiment-assignment-coverage",
       "intent": "Count observed run assignments for each experiment and workflow without inferring a completion target.",
       "from": "experiment-assignments",
+      "compute": [
+        {
+          "as": "workflow-coordinate",
+          "function": "concat",
+          "args": [
+            { "field": "organization" },
+            { "value": "/" },
+            { "field": "repository" },
+            { "value": ":" },
+            { "field": "workflow" }
+          ]
+        }
+      ],
       "aggregate": {
-        "by": ["workflow", "experiment"],
+        "by": ["workflow-coordinate", "experiment"],
         "values": [
           { "field": "run", "as": "assignments", "reducer": "count" }
         ]
+      }
+    },
+    {
+      "name": "eval-yes-no-status",
+      "intent": "Select explicit YES/NO eval answers while retaining unknown results only in the underlying evidence collection.",
+      "from": "eval-observations",
+      "filter": {
+        "predicates": [{ "field": "eval-result", "in": ["YES", "NO"] }]
       }
     },
     {
@@ -2200,7 +2221,7 @@
           "empty-message": "No experiment assignments were observed.",
           "encoding": {
             "x": { "field": "experiment", "type": "nominal", "title": "Experiment" },
-            "section": { "field": "workflow", "type": "nominal", "title": "Workflow" },
+            "section": { "field": "workflow-coordinate", "type": "nominal", "title": "Repository / Workflow" },
             "y": { "field": "assignments", "type": "quantitative", "title": "Observed assignments" }
           }
         },
@@ -2231,13 +2252,13 @@
       "title": "Evals",
       "icon": "check-circle",
       "experimental": true,
-      "description": "YES/NO results from retained eval observations, grouped by workflow and newest first. TODO: audit evidence lacks an authoritative current-result pointer per eval; older observations remain visible and must not be read as current verdicts.",
+      "description": "Explicit YES/NO results from retained eval observations, grouped by workflow and newest first. UNKNOWN answers remain in the underlying evidence but are not labelled YES/NO. TODO: audit evidence lacks an authoritative current-result pointer per eval; older observations remain visible and must not be read as current verdicts.",
       "views": [
         {
           "id": "evals-statuses",
           "title": "Observed eval answers by workflow",
           "data": {
-            "source": "eval-observations",
+            "source": "eval-yes-no-status",
             "order-by": [
               { "field": "workflow", "direction": "asc" },
               { "field": "observed-at", "direction": "desc" }

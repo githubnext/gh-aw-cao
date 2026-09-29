@@ -692,10 +692,12 @@
     {
       "id": "evals",
       "title": "Evals",
-      "description": "YES/NO results from retained eval observations, grouped by workflow and newest first. TODO: audit evidence lacks an authoritative current-result pointer per eval; older observations remain visible and must not be read as current verdicts.",
+      "description": "Explicit YES/NO results from retained eval observations, grouped by workflow and newest first. UNKNOWN answers remain in the underlying evidence but are not labelled YES/NO. TODO: audit evidence lacks an authoritative current-result pointer per eval; older observations remain visible and must not be read as current verdicts.",
       "experimental": true,
       "parameters": [],
-      "queries": []
+      "queries": [
+        "eval-yes-no-status"
+      ]
     },
     {
       "id": "graders",
@@ -3177,6 +3179,25 @@
         "backend": "sqlite",
         "requirements": [
           "experiment-assignments"
+        ]
+      }
+    },
+    {
+      "id": "eval-yes-no-status",
+      "intent": "Select explicit YES/NO eval answers while retaining unknown results only in the underlying evidence collection.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "eval-observations"
+      ],
+      "used-by-pages": [
+        "evals"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "eval-observations"
         ]
       }
     },
