@@ -2,7 +2,10 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -174,5 +177,73 @@ func TestValidateWebhookDeliveryFlagsAcceptsBoundaryConcurrency(t *testing.T) {
 		if failure != webhookDeliveryFlagFailureNone {
 			t.Fatalf("validateWebhookDeliveryFlags(concurrency=%d) failure = %q, want %q", concurrency, failure, webhookDeliveryFlagFailureNone)
 		}
+	}
+}
+
+// newTestListener opens a real loopback TCP listener on an OS-assigned port,
+// so runSimulatorAPI is exercised against an actual net.Listener rather than
+// a fake.
+func newTestListener(t *testing.T) net.Listener {
+	t.Helper()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen() error = %v", err)
+	}
+	return listener
+}
+
+func TestRunSimulatorAPIReturnsNilOnGracefulShutdown(t *testing.T) {
+	listener := newTestListener(t)
+	httpServer := &http.Server{Handler: http.NewServeMux()}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	if err := runSimulatorAPI(ctx, httpServer, listener, time.Second); err != nil {
+		t.Fatalf("runSimulatorAPI() error = %v, want nil for a graceful shutdown", err)
+	}
+}
+
+func TestRunSimulatorAPIReturnsNilWhenServerClosesCleanly(t *testing.T) {
+	listener := newTestListener(t)
+	httpServer := &http.Server{Handler: http.NewServeMux()}
+
+	// Closing the listener before serving makes Serve return
+	// http.ErrServerClosed-compatible behavior is not guaranteed, so close
+	// the server itself instead: Close makes Serve return
+	// http.ErrServerClosed immediately, exercising the "clean" branch of the
+	// select without waiting on ctx.
+	if err := httpServer.Close(); err != nil {
+		t.Fatalf("httpServer.Close() error = %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if err := runSimulatorAPI(ctx, httpServer, listener, time.Second); err != nil {
+		t.Fatalf("runSimulatorAPI() error = %v, want nil when the server closes cleanly", err)
+	}
+}
+
+func TestRunSimulatorAPIPropagatesServerError(t *testing.T) {
+	listener := newTestListener(t)
+	// Closing the listener before Serve is called makes http.Server.Serve
+	// return a real "use of closed network connection" error, exercising
+	// the propagated-error branch of the select with an authentic failure
+	// rather than an injected one.
+	if err := listener.Close(); err != nil {
+		t.Fatalf("listener.Close() error = %v", err)
+	}
+	httpServer := &http.Server{Handler: http.NewServeMux()}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err := runSimulatorAPI(ctx, httpServer, listener, time.Second)
+	if err == nil {
+		t.Fatal("runSimulatorAPI() returned nil error, want a propagated server error")
+	}
+	if errors.Is(err, http.ErrServerClosed) {
+		t.Fatalf("runSimulatorAPI() error = %v, want a non-ErrServerClosed failure", err)
 	}
 }
