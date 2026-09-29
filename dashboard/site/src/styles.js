@@ -499,7 +499,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .horizon-details-values strong { color: var(--fg); font-weight: 600; }
 .dashboard-horizon-skeleton > span { width: 28px; height: 28px; border-radius: 6px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
 .tooltip-help { position: relative; display: inline-flex; }
-.tooltip-trigger { width: 22px; height: 22px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: help; }
+.tooltip-trigger { width: 24px; height: 24px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: help; }
 .tooltip-trigger:hover { background: var(--neutral-muted); color: var(--fg); }
 .tooltip-trigger .octicon { width: 14px; height: 14px; }
 .dashboard-current-status .tooltip-trigger { color: var(--success); }
