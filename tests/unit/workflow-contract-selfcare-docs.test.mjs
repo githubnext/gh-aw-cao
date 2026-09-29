@@ -10,16 +10,24 @@ test("SVG visual audit covers every tracked SVG in both color schemes", () => {
 
   assert.match(source, /git ls-files '\*\.svg'/);
   assert.match(source, /local checkout and manifest as the complete audit scope/);
-  assert.match(source, /colorScheme: "light"/);
-  assert.match(source, /colorScheme: "dark"/);
+  assert.match(source, /set-color-scheme light/);
+  assert.match(source, /set-color-scheme dark/);
   assert.match(source, /\bid: pi\b/);
   assert.match(source, /\bmodel: copilot\/gpt-5\.4\b/);
+  assert.match(source, /cli-proxy: true/);
   assert.match(source, /playwright:/);
   assert.match(source, /version: "0\.1\.\d+"/);
+  assert.match(source, /playwright-cli -s=svg-audit set-color-scheme light/);
+  assert.match(source, /playwright-cli -s=svg-audit set-color-scheme dark/);
+  assert.match(source, /`run-code` with `page\.screenshot\(\{ path: \.\.\., fullPage: true \}\)`/);
+  assert.match(source, /Do not use Playwright MCP tool names as CLI commands/);
   assert.match(source, /4\.5:1/);
   assert.match(source, /overlap between a `<text>` element and its own descendant `<tspan>`/);
   assert.match(source, /create-check-run:/);
   assert.match(source, /upload-artifact:/);
+  assert.match(source, /safeoutputs upload_artifact/);
+  assert.match(source, /safeoutputs create_check_run/);
+  assert.doesNotMatch(source, /playwright-cli browser_run_code/);
   assert.match(source, /python3 -m http\.server 4321/);
   assert.match(source, /--bind 127\.0\.0\.1/);
   assert.match(source, /http:\/\/127\.0\.0\.1:4321\//);
