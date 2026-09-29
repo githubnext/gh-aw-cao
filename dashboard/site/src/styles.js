@@ -499,7 +499,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .horizon-details-values strong { color: var(--fg); font-weight: 600; }
 .dashboard-horizon-skeleton > span { width: 28px; height: 28px; border-radius: 6px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
 .tooltip-help { position: relative; display: inline-flex; }
-.tooltip-trigger { width: 22px; height: 22px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: help; }
+.tooltip-trigger { width: 24px; height: 24px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: help; }
 .tooltip-trigger:hover { background: var(--neutral-muted); color: var(--fg); }
 .tooltip-trigger .octicon { width: 14px; height: 14px; }
 .dashboard-current-status .tooltip-trigger { color: var(--success); }
@@ -1301,10 +1301,12 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .cao-memory-campaign-disabled > .octicon { color: var(--muted); }
 .campaign-memory-directory > ul { margin-left: 9px; padding-left: 10px; border-left: 1px solid var(--border-muted); }
 .cao-memory-tree-status > .empty-message { margin: 4px 8px 8px 16px; }
-.cao-memory-file-content { min-width: 0; padding: 20px; overflow: auto; }
+.cao-memory-file-content { min-width: 0; min-height: 0; display: flex; flex-direction: column; padding: 20px; overflow: hidden; }
+.cao-memory-file-content > .memory-file-body { min-width: 0; min-height: 0; flex: 1; overflow: auto; }
 .memory-file-header { margin: 0 0 16px; }
 .memory-file-header h2 { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
-.cao-memory-file-content pre { min-height: 20rem; margin: 0; padding: 16px; overflow: auto; border-radius: 6px; background: var(--canvas-inset); color: var(--fg); font: .75rem/1.5 var(--font-mono, ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace); white-space: pre-wrap; overflow-wrap: anywhere; }
+.cao-memory-file-content pre { width: 100%; min-width: 0; min-height: 0; margin: 0; padding: 16px; overflow: visible; border-radius: 6px; background: var(--canvas-inset); color: var(--fg); font: .75rem/1.5 var(--font-mono, ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace); white-space: pre-wrap; overflow-wrap: anywhere; }
+.cao-memory-file-content pre > code, .campaign-memory-content pre > code { display: block; min-width: 0; overflow-wrap: anywhere; }
 .campaign-memory-browser { min-width: 0; }
 .campaign-memory-warning { margin: 0 0 12px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--attention) 45%, var(--border)); border-radius: 6px; background: var(--attention-muted); color: var(--fg); }
 .campaign-memory-layout { min-height: 28rem; display: grid; grid-template-columns: minmax(14rem, 28%) minmax(0, 1fr); overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
@@ -1317,8 +1319,8 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .campaign-memory-file > .octicon { flex: 0 0 16px; color: var(--muted); }
 .campaign-memory-file .memory-file-name { min-width: 0; overflow-wrap: anywhere; }
 .campaign-memory-file small { flex: 0 0 auto; margin-left: auto; color: var(--muted); font-weight: 400; }
-.campaign-memory-content { min-width: 0; padding: 20px; overflow: auto; }
-.campaign-memory-content pre { min-height: 20rem; margin: 0; padding: 16px; overflow: auto; border-radius: 6px; background: var(--canvas-inset); color: var(--fg); font: .75rem/1.5 var(--font-mono, ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace); white-space: pre-wrap; overflow-wrap: anywhere; }
+.campaign-memory-content { min-width: 0; min-height: 0; display: flex; flex-direction: column; padding: 20px; overflow: hidden; }
+.campaign-memory-content pre { width: 100%; min-width: 0; min-height: 0; flex: 1; margin: 0; padding: 16px; overflow: auto; border-radius: 6px; background: var(--canvas-inset); color: var(--fg); font: .75rem/1.5 var(--font-mono, ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace); white-space: pre-wrap; overflow-wrap: anywhere; }
 .campaign-detail-page .custom-view-grid, .campaign-detail-page .custom-view-grid > * { min-width: 0; }
 .dashboard-markdown { min-width: 0; padding: 24px 28px 32px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
 .workflow-badge-orchestrator { border-color: var(--accent); color: var(--accent); }
@@ -2127,7 +2129,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .cao-memory-campaign-branch > summary, .cao-memory-campaign-disabled, .campaign-memory-directory > summary, .campaign-memory-file { min-height: 44px; }
   .memory-file-header { min-height: 52px; display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; position: sticky; z-index: 1; top: 0; margin: 0; padding: 6px 12px; border-bottom: 1px solid var(--border); background: var(--canvas); }
   .memory-file-header h2 { overflow: hidden; font-size: .875rem; text-overflow: ellipsis; white-space: nowrap; }
-  .cao-memory-file-content pre, .campaign-memory-content pre { min-height: calc(100% - 52px); padding: 16px; border-radius: 0; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 2; }
+  .cao-memory-file-content pre, .campaign-memory-content pre { min-height: 0; padding: 16px; border-radius: 0; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 2; }
   :root[data-navigation-direction="forward"]::view-transition-old(root) { z-index: 1; animation-name: dashboard-view-slide-out-left; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
   :root[data-navigation-direction="forward"]::view-transition-new(root) { z-index: 2; animation-name: dashboard-view-slide-in-right; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
   :root[data-navigation-direction="backward"]::view-transition-old(root) { z-index: 2; animation-name: dashboard-view-slide-out-right; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }

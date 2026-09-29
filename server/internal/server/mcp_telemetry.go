@@ -16,8 +16,11 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
+
+var mcpTelemetryLog = logger.New("cao:server:mcp-telemetry")
 
 const (
 	mcpMethodNameKey      = "mcp.method.name"
@@ -103,18 +106,45 @@ func mcpTraceContext(ambient context.Context, metadata map[string]any) (context.
 	return parent, nil
 }
 
-func recordMCPServerError(span trace.Span, err error) {
+// mcpServerErrorClassification is the pure decision recordMCPServerError acts
+// on: which span attributes to set, and whether the error is a caller error
+// (in which case the span keeps an unset/success status rather than being
+// marked as failed).
+type mcpServerErrorClassification struct {
+	StatusCodeAttribute string
+	ErrorTypeAttribute  string
+	IsCallerError       bool
+}
+
+// classifyMCPServerError derives the telemetry attributes for a failed MCP
+// request without touching the span, so the JSON-RPC error code, caller vs.
+// server error classification, and dynamic error type keep passing the same
+// decision-relevant inputs a test can assert on directly.
+func classifyMCPServerError(err error) mcpServerErrorClassification {
 	var rpcError *jsonrpc.Error
 	if errors.As(err, &rpcError) {
 		code := strconv.FormatInt(rpcError.Code, 10)
-		span.SetAttributes(attribute.String(rpcStatusCodeKey, code))
 		if isMCPCallerError(rpcError.Code) {
-			return
+			return mcpServerErrorClassification{StatusCodeAttribute: code, IsCallerError: true}
 		}
-		span.SetAttributes(attribute.String(errorTypeKey, code))
-	} else {
-		span.SetAttributes(attribute.String(errorTypeKey, fmt.Sprintf("%T", err)))
+		return mcpServerErrorClassification{StatusCodeAttribute: code, ErrorTypeAttribute: code}
 	}
+	return mcpServerErrorClassification{ErrorTypeAttribute: fmt.Sprintf("%T", err)}
+}
+
+func recordMCPServerError(span trace.Span, err error) {
+	classification := classifyMCPServerError(err)
+	if classification.StatusCodeAttribute != "" {
+		span.SetAttributes(attribute.String(rpcStatusCodeKey, classification.StatusCodeAttribute))
+	}
+	if classification.IsCallerError {
+		mcpTelemetryLog.Printf("mcp server error classified as caller_error")
+		return
+	}
+	if classification.ErrorTypeAttribute != "" {
+		span.SetAttributes(attribute.String(errorTypeKey, classification.ErrorTypeAttribute))
+	}
+	mcpTelemetryLog.Printf("mcp server error classified as server_error")
 	span.RecordError(err)
 	span.SetStatus(codes.Error, "MCP request failed")
 }

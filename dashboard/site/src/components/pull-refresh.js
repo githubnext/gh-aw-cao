@@ -11,10 +11,13 @@
 
 import { h } from '../dom.js';
 import { requestDashboardRefresh } from '../dashboard-data-updates.js';
+import { createDebug } from '../debug.js';
 
 const ARM_DISTANCE = 72;
 const MOVE_THRESHOLD = 12;
 const REFRESHING_RESET_DELAY_MS = 600;
+
+const debugPullRefresh = createDebug('pull-refresh');
 
 /**
  * @param {{
@@ -55,7 +58,9 @@ export function enablePullRefresh({ scroller, view, isActive, signal }) {
     if (!gesture || !touch || scrollTop() > 0) return reset();
     const distance = Math.max(0, touch.clientY - gesture.startY);
     if (distance < MOVE_THRESHOLD) return;
+    const wasArmed = gesture.armed;
     gesture.armed = distance >= ARM_DISTANCE;
+    if (gesture.armed && !wasArmed) debugPullRefresh({ event: 'armed' });
     indicator.hidden = false;
     indicator.classList.toggle('overview-pull-refresh-armed', gesture.armed);
     indicator.textContent = gesture.armed ? 'Release to refresh' : 'Pull down to refresh';
@@ -63,8 +68,12 @@ export function enablePullRefresh({ scroller, view, isActive, signal }) {
   scroller.addEventListener('touchend', () => {
     if (!gesture?.armed) return reset();
     indicator.textContent = 'Refreshing dashboard';
+    debugPullRefresh({ event: 'refresh-requested' });
     requestDashboardRefresh(view);
-    view.setTimeout(reset, REFRESHING_RESET_DELAY_MS);
+    view.setTimeout(() => {
+      reset();
+      debugPullRefresh({ event: 'cycle-complete' });
+    }, REFRESHING_RESET_DELAY_MS);
     gesture = null;
   }, { signal });
   scroller.addEventListener('touchcancel', reset, { signal });

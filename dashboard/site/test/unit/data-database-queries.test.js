@@ -689,6 +689,31 @@ describe('canonical view sources', () => {
     expect(collectionReads).not.toHaveBeenCalled();
   });
 
+  it('reprojects populated unavailable MCP sources before deriving top tools', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, {
+      ingest: true,
+      sourceNames: ['mcp-calls']
+    });
+    const unavailable = {
+      source: 'mcp-calls',
+      rows: [{ 'mcp-observation': 'stale-call', 'mcp-tool': 'stale_tool' }],
+      metadata: { ...metadata, availability: 'unavailable' }
+    };
+
+    const projected = await loadCanonicalViewSources(indexedDB, {
+      ...sources,
+      'mcp-calls': unavailable
+    }, {
+      sourceNames: ['mcp-tool-totals', 'mcp-top-tools'],
+      queries: dashboardQueries
+    });
+    const topTools = /** @type {import('../../src/presenter.js').LogicalSourceInput} */ (projected['mcp-top-tools']);
+
+    expect(topTools.metadata.availability).toBe('available');
+    expect(topTools.rows).toHaveLength(1);
+    expect(topTools.rows[0]['mcp-tool']).not.toBe('stale_tool');
+  });
+
   it('does not read database stores for a missing logical source', async () => {
     const collectionReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');
 
