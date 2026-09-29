@@ -139,7 +139,7 @@ components:
     responsibility: disposable generation-scoped dashboard projection using core Redis row sets
   dashboard_https_server:
     path: server/
-    responsibility: independently resolve compiled app-target and declarative Redis-provider modules from non-secret cao.json, compose and validate their capabilities, ingest deployed artifacts, execute Dashboard Language queries server-side, and serve bounded canonical results
+    responsibility: independently resolve compiled app-target and declarative Redis-provider modules from non-secret cao.json, compose and validate their capabilities, ingest deployed artifacts, execute Dashboard Language queries server-side, and serve bounded canonical or explicitly registered runtime-source results
   dashboard_coolify_deployment:
     path: server/coolify/
     responsibility: build and run the non-root serve-hosted container behind a fail-closed Coolify TLS proxy with a managed Redis connection and an atomically populated external read-only artifact volume
@@ -161,6 +161,9 @@ components:
   dashboard_server_collection:
     path: server/internal/collect/
     responsibility: optional alternative ingestion profile that collects evidence into a snapshot-compatible evidence lake from GitHub App installations and projects it through the existing ingestion pipeline
+  dashboard_collection_health:
+    path: server/internal/server/collecting.go
+    responsibility: persist allowlisted Redis-backed ingestion counters and expose a read-only health API and admin-authorized collection-health runtime source through the query boundary
   dashboard_collection_credentials:
     path: server/internal/githubapp/
     responsibility: mint short-lived installation tokens and govern per-installation GitHub rate-limit budget
@@ -171,8 +174,8 @@ components:
     path: server/internal/doctor/
     responsibility: run a read-only systematic check-up of runtime configuration, Redis safety and capacity, canonical integrity, query definitions, generation reclamation, and optional collection health, rendered as human-readable text or versioned structured JSON
   dashboard_language_queries:
-    path: dashboard/site/src/data/
-    responsibility: declarative query definitions executed by the browser data worker
+    path: dashboard/site/src/data/ and server/internal/query/
+    responsibility: execute declarative canonical-data queries in the browser worker and registered bounded runtime-source queries at the server boundary
   computations:
     path: specs/computations.md
     responsibility: define deterministic partitioned measures that transform canonical evidence into bounded actionable insights

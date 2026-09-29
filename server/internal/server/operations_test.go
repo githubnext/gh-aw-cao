@@ -8,12 +8,15 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/simulator"
 )
 
 type testReconciler struct {
@@ -74,6 +77,7 @@ func TestWebhookReconcilesThroughInjectedCanonicalUpdater(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	reconciler := &testReconciler{called: make(chan struct{})}
 	var authBranches []string
 	app := &App{
@@ -190,5 +194,59 @@ func TestHostedRebuildRequiresExplicitAdministrator(t *testing.T) {
 	}
 	if strings.Join(branches, ",") != "admin.denied,admin.allowed" {
 		t.Fatalf("unexpected administrator branch logs: %v", branches)
+	}
+}
+
+func TestSimulatorUsesProductionWebhookAdmissionAndCollectionQueue(t *testing.T) {
+	var client *redisx.Client
+	var err error
+	if endpoint := os.Getenv("CAO_SIMULATOR_REDIS_URL"); endpoint != "" {
+		client, err = redisx.New(endpoint)
+		if err == nil {
+			_, err = client.Do(t.Context(), "PING")
+		}
+		if err != nil {
+			t.Fatalf("connect to CAO_SIMULATOR_REDIS_URL: %v", err)
+		}
+	} else {
+		address, closeServer := fakeRedis(t)
+		t.Cleanup(closeServer)
+		client, err = redisx.New("redis://" + address)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	site := t.TempDir()
+	if err := os.WriteFile(site+"/index.html", []byte("<html><body></body></html>"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	const secret = "simulator-webhook-secret"
+	namespace := "simulator-test-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	app, err := New(t.Context(), redisx.NewStore(client, namespace), Config{
+		Listen:        "127.0.0.1:0",
+		SiteDirectory: site,
+		AccessToken:   strings.Repeat("x", 32),
+		WebhookSecret: secret,
+		Collector:     &CollectorConfig{AppID: 1, AdmitOnly: true},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(app.Handler())
+	defer server.Close()
+
+	result, err := (simulator.Scenario{
+		Name:                "production-webhook-path",
+		Repositories:        4,
+		EventsPerRepository: 2,
+		Seed:                3,
+		Distribution:        "uniform",
+		DuplicateEvery:      2,
+	}).Deliver(t.Context(), server.Client(), server.URL+"/api/github/webhook", secret, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Accepted != result.Attempts || result.Failed != 0 || result.Duplicates == 0 {
+		t.Fatalf("simulator did not exercise successful deduplicating admission: %#v", result)
 	}
 }

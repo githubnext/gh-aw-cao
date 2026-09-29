@@ -129,12 +129,26 @@ func TestRunnerReproducesTheActionsCollectionCommand(t *testing.T) {
 func TestRunnerDoesNotLeakAmbientCredentials(t *testing.T) {
 	t.Setenv("GITHUB_TOKEN", "ambient-secret")
 	t.Setenv("AZURE_CLIENT_SECRET", "ambient-secret")
-	environment := collectionEnvironment()
+	environment := collectionEnvironment("")
 	for _, entry := range environment {
 		if strings.Contains(entry, "ambient-secret") {
 			t.Fatalf("collection environment leaked an ambient credential: %q", entry)
 		}
 	}
+}
+
+func TestCollectionEnvironmentUsesConfiguredGitHubAPIURL(t *testing.T) {
+	t.Setenv("GITHUB_API_URL", "https://api.github.com")
+	environment := collectionEnvironment("http://127.0.0.1:8081")
+	for _, entry := range environment {
+		if strings.HasPrefix(entry, "GITHUB_API_URL=") {
+			if got := strings.TrimPrefix(entry, "GITHUB_API_URL="); got != "http://127.0.0.1:8081" {
+				t.Fatalf("collection API URL = %q, want simulator URL", got)
+			}
+			return
+		}
+	}
+	t.Fatal("collection environment omitted configured GitHub API URL")
 }
 
 func TestLakeUsesThePublishedSnapshotLayout(t *testing.T) {

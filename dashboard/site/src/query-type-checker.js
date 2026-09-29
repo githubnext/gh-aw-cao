@@ -6,8 +6,8 @@ import {
   NON_ADDITIVE_MEASURE_FIELDS,
   NUMERIC_COMPUTE_FUNCTIONS,
   QUERY_NUMERIC_REDUCER_VALUES,
-  TABLE_FIELDS,
-  TABLE_VALUES,
+  QUERY_SOURCE_FIELDS,
+  QUERY_SOURCE_VALUES,
   TEMPORAL_FIELD_NAMES,
   TEXT_COMPUTE_FUNCTIONS
 } from './specification.js';
@@ -47,11 +47,11 @@ export function compileDashboardQueryTypes(definitions) {
   // Declaration pass.
   for (const [index, value] of queries.entries()) {
     if (!isRecord(value) || typeof value.name !== 'string') continue;
-    if (TABLE_VALUES.includes(value.name) || symbols.has(value.name)) {
+    if (QUERY_SOURCE_VALUES.includes(value.name) || symbols.has(value.name)) {
       errors.push(error(
         ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        TABLE_VALUES.includes(value.name)
-          ? `query name "${value.name}" conflicts with a database table name.`
+        QUERY_SOURCE_VALUES.includes(value.name)
+          ? `query name "${value.name}" conflicts with a declared data source.`
           : `query name "${value.name}" is declared more than once.`,
         `$.dashboard.queries[${index}].name`
       ));
@@ -67,7 +67,7 @@ export function compileDashboardQueryTypes(definitions) {
     const refs = queryInputs(symbol.query, symbol.index);
     dependencies.set(name, refs);
     for (const reference of refs) {
-      if (TABLE_VALUES.includes(reference.name)) continue;
+      if (QUERY_SOURCE_VALUES.includes(reference.name)) continue;
       const target = symbols.get(reference.name);
       if (!target) {
         errors.push(error(
@@ -401,8 +401,8 @@ function compileQuery(query, index, symbols, compiled, errors) {
  */
 function resolveInput(input, symbols, compiled) {
   if (typeof input !== 'string') return undefined;
-  if (TABLE_VALUES.includes(input)) {
-    const names = TABLE_FIELDS[/** @type {keyof typeof TABLE_FIELDS} */ (input)];
+  if (QUERY_SOURCE_VALUES.includes(input)) {
+    const names = QUERY_SOURCE_FIELDS[/** @type {keyof typeof QUERY_SOURCE_FIELDS} */ (input)];
     return {
       fields: names ? new Map(names.map((name) => [name, intrinsicType(name)])) : undefined,
       tables: new Set([input]),
@@ -485,14 +485,14 @@ function validateBranchSpecificFilter(field, rowInputTables, path, errors) {
   let present = 0;
   let known = 0;
   for (const table of rowInputTables) {
-    const fields = TABLE_FIELDS[/** @type {keyof typeof TABLE_FIELDS} */ (table)];
+    const fields = QUERY_SOURCE_FIELDS[/** @type {keyof typeof QUERY_SOURCE_FIELDS} */ (table)];
     if (!Array.isArray(fields)) continue;
     known += 1;
     if (fields.includes(field)) present += 1;
   }
   if (known <= 1 || present === 0 || present === known) return;
   const missing = [...rowInputTables].filter((table) => {
-    const fields = TABLE_FIELDS[/** @type {keyof typeof TABLE_FIELDS} */ (table)];
+    const fields = QUERY_SOURCE_FIELDS[/** @type {keyof typeof QUERY_SOURCE_FIELDS} */ (table)];
     return Array.isArray(fields) && !fields.includes(field);
   }).sort();
   errors.push(error(

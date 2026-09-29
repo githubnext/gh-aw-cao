@@ -658,6 +658,33 @@ func fakeRedis(t *testing.T) (string, func()) {
 						} else {
 							_, _ = fmt.Fprint(connection, ":0\r\n")
 						}
+					case "SADD":
+						mu.Lock()
+						if sets[command[1]] == nil {
+							sets[command[1]] = map[string]bool{}
+						}
+						added := 0
+						for _, member := range command[2:] {
+							if !sets[command[1]][member] {
+								added++
+							}
+							sets[command[1]][member] = true
+						}
+						mu.Unlock()
+						_, _ = fmt.Fprintf(connection, ":%d\r\n", added)
+					case "SISMEMBER":
+						mu.Lock()
+						member := sets[command[1]][command[2]]
+						mu.Unlock()
+						if member {
+							_, _ = fmt.Fprint(connection, ":1\r\n")
+						} else {
+							_, _ = fmt.Fprint(connection, ":0\r\n")
+						}
+					case "HSET":
+						_, _ = fmt.Fprint(connection, ":1\r\n")
+					case "XADD":
+						_, _ = fmt.Fprint(connection, "$3\r\n1-0\r\n")
 					case "EVAL":
 						mu.Lock()
 						result := 1

@@ -108,8 +108,8 @@ import {
   SITE_CALLOUT_KEYS,
   SITE_CALLOUT_VISIBILITY_KEYS,
   SOURCE_ENTITY_IDENTIFIER_FIELDS,
-  TABLE_FIELDS,
-  TABLE_VALUES,
+  QUERY_SOURCE_FIELDS,
+  QUERY_SOURCE_VALUES,
   TABLE_ACTION_KEYS,
   TABLE_ACTION_PRESENTATION_VALUES,
   TABLE_ACTION_WHEN_KEYS,
@@ -1367,7 +1367,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
     validateStringField(visibility.field, `${path}.field`, true, errors);
     if (
       typeof visibility.source === 'string'
-      && (TABLE_VALUES.includes(visibility.source) || declaredQueries.has(visibility.source))
+      && (QUERY_SOURCE_VALUES.includes(visibility.source) || declaredQueries.has(visibility.source))
       && typeof visibility.field === 'string'
       && !sourceFieldNames(visibility.source)?.includes(visibility.field)
     ) {
@@ -1900,7 +1900,7 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
       }
       const seenSources = new Set();
       for (const sourceName of data.sources) {
-        if (typeof sourceName !== 'string' || (!TABLE_VALUES.includes(sourceName) && !declaredQueries.has(sourceName))) {
+        if (typeof sourceName !== 'string' || (!QUERY_SOURCE_VALUES.includes(sourceName) && !declaredQueries.has(sourceName))) {
           errors.push(createError(
             ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
             'source must name one Section 5.1 database table or one declared query.',
@@ -3105,7 +3105,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
     } else {
       validateSource(view.data.source, `${path}.data.source`, errors);
       if (typeof view.data.source === 'string'
-          && (TABLE_VALUES.includes(view.data.source) || declaredQueries.has(view.data.source))) {
+          && (QUERY_SOURCE_VALUES.includes(view.data.source) || declaredQueries.has(view.data.source))) {
         sourceName = view.data.source;
       }
       if (view.data.sources !== undefined) {
@@ -3970,7 +3970,7 @@ function validateQueries(queries, queriesNode, errors) {
       validateTime(getValueNodeByKey(queryNode, 'time'), query.time, `${path}.time`, errors);
     }
     const name = typeof query.name === 'string' ? query.name : null;
-    if (name && (TABLE_VALUES.includes(name) || declared.has(name))) {
+    if (name && (QUERY_SOURCE_VALUES.includes(name) || declared.has(name))) {
       errors.push(createError(
         ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
         'query name must be unique and must not shadow a database table name.',
@@ -3989,7 +3989,7 @@ function validateQueries(queries, queriesNode, errors) {
       const tables = new Set();
       for (const input of inputs) {
         if (typeof input !== 'string') continue;
-        if (TABLE_VALUES.includes(input)) tables.add(input);
+        if (QUERY_SOURCE_VALUES.includes(input)) tables.add(input);
         for (const table of declaredQueryTables.get(input) ?? []) tables.add(table);
       }
       declaredQueryTables.set(name, tables);
@@ -4020,15 +4020,15 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
   const inputFields = (source, sourcePath) => {
     validateStringField(source, sourcePath, true, errors);
     if (typeof source !== 'string') return undefined;
-    if (!TABLE_VALUES.includes(source) && !declared.has(source)) {
+    if (!QUERY_SOURCE_VALUES.includes(source) && !declared.has(source)) {
       errors.push(createError(
         ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        'query inputs must name one database table or one previously declared query.',
+        'query inputs must name one registered data source or one previously declared query.',
         sourcePath
       ));
       return undefined;
     }
-    return TABLE_FIELDS[/** @type {keyof typeof TABLE_FIELDS} */ (source)] ?? declared.get(source);
+    return QUERY_SOURCE_FIELDS[/** @type {keyof typeof QUERY_SOURCE_FIELDS} */ (source)] ?? declared.get(source);
   };
 
   const fromFields = inputFields(query.from, `${path}.from`);
@@ -4748,10 +4748,10 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
  */
 function validateSource(source, path, errors) {
   validateStringField(source, path, true, errors);
-  if (typeof source === 'string' && !TABLE_VALUES.includes(source) && !declaredQueries.has(source)) {
+  if (typeof source === 'string' && !QUERY_SOURCE_VALUES.includes(source) && !declaredQueries.has(source)) {
     errors.push(createError(
       ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-      'source must name one Section 5.1 database table or one declared query.',
+      'source must name one registered data source or one declared query.',
       path
     ));
   }
@@ -4778,7 +4778,7 @@ function validateViewQueryMaterialization(dashboard, errors) {
       freshness: 'fresh',
       availability: 'empty'
     };
-    const canonicalSources = Object.fromEntries(TABLE_VALUES.map((name) => [
+    const querySources = Object.fromEntries(QUERY_SOURCE_VALUES.map((name) => [
       name,
       { source: name, rows: [], metadata }
     ]));
@@ -4804,14 +4804,14 @@ function validateViewQueryMaterialization(dashboard, errors) {
         const scopedQueries = queries.filter((query) => (
           isPlainObject(query) && typeof query.name === 'string' && required.has(query.name)
         ));
-        const declared = executeDashboardQueries(scopedQueries, canonicalSources, requested);
+        const declared = executeDashboardQueries(scopedQueries, querySources, requested);
         const payload = compileDashboardViewPayloadQueries(resolvedPage, resolvedPage.id, {
           queries: scopedQueries,
           sourceNames: requested
         });
         const materialized = executeDashboardQueries(
           payload.queries,
-          { ...canonicalSources, ...declared },
+          { ...querySources, ...declared },
           payload.aliases
         );
         for (const alias of payload.aliases) {
@@ -4840,7 +4840,7 @@ function validateViewQueryMaterialization(dashboard, errors) {
  * @returns {string[] | undefined}
  */
 function sourceFieldNames(sourceName) {
-  return TABLE_FIELDS[/** @type {keyof typeof TABLE_FIELDS} */ (sourceName)]
+  return QUERY_SOURCE_FIELDS[/** @type {keyof typeof QUERY_SOURCE_FIELDS} */ (sourceName)]
     ?? declaredQueries.get(sourceName)
     ?? undefined;
 }

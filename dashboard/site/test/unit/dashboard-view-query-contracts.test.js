@@ -3,13 +3,16 @@ import { processDataRequest } from '../../src/data-worker.js';
 import { dashboardQueryDefects, executeDashboardQueries } from '../../src/data/queries/declarative.js';
 import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
 import { CAMPAIGN_ROUTE_BODY_VALUES } from '../../src/components/route-body-specification.js';
-import { TABLE_FIELDS } from '../../src/specification.js';
+import { SERVER_SOURCE_VALUES, TABLE_FIELDS } from '../../src/specification.js';
 
 import { authoritativeDashboard as document } from '../authoritative-dashboard.js';
 const dashboard = document.dashboard;
 const queries = dashboard.queries;
 const queryNames = new Set(queries.map((/** @type {{ name: string }} */ query) => query.name));
 const tableNames = new Set(Object.keys(TABLE_FIELDS));
+const dataSourceNames = new Set([...tableNames, ...SERVER_SOURCE_VALUES]);
+const queriesByName = new Map(queries.map((/** @type {{ name: string }} */ query) => [query.name, query]));
+const serverSourceNames = new Set(SERVER_SOURCE_VALUES);
 
 /** @type {import('../../src/presenter.js').SourceMetadata} */
 const metadata = {
@@ -27,6 +30,25 @@ const databaseTables = Object.fromEntries([...tableNames].map((name) => [name, {
   rows: [],
   metadata
 }]));
+
+/**
+ * @param {string} name
+ * @param {Set<string>} [visited]
+ * @returns {boolean}
+ */
+function requiresServerSource(name, visited = /** @type {Set<string>} */ (new Set())) {
+  if (serverSourceNames.has(name)) return true;
+  if (visited.has(name)) return false;
+  visited.add(name);
+  const query = queriesByName.get(name);
+  if (!query) return false;
+  const inputs = [
+    query.from,
+    ...(Array.isArray(query.union) ? query.union : []),
+    ...(Array.isArray(query.joins) ? query.joins.map((/** @type {{ source: string }} */ join) => join.source) : [])
+  ];
+  return inputs.some((input) => typeof input === 'string' && requiresServerSource(input, visited));
+}
 
 /**
  * @param {unknown} page
@@ -670,11 +692,17 @@ describe('dashboard view query contracts', () => {
   it('resolves every authored view source through canonical data or Dashboard Language', () => {
     const unresolved = dashboard.pages.flatMap((/** @type {Record<string, unknown>} */ page) => viewsOf(page).flatMap((view) => (
       sourceNamesOf(view)
-        .filter((name) => !tableNames.has(name) && !queryNames.has(name))
+        .filter((name) => !dataSourceNames.has(name) && !queryNames.has(name))
         .map((name) => `${page.id}/${view.id}: ${name}`)
     )));
 
     expect(unresolved).toEqual([]);
+  });
+
+  it('registers collection health as a server-owned query source', () => {
+    expect(SERVER_SOURCE_VALUES).toContain('collection-health');
+    expect(queries.find((/** @type {{ name: string }} */ query) => query.name === 'ingestion-health')?.from)
+      .toBe('collection-health');
   });
 
   it('does not retain queries unused by dashboard content or another retained query', () => {
@@ -697,19 +725,21 @@ describe('dashboard view query contracts', () => {
     expect([...queryNames].filter((name) => !retained.has(name))).toEqual([]);
   });
 
-  it('materializes every declared view query through the production worker handler', () => {
+  it('materializes worker-resolvable view queries through the production worker handler', () => {
     expect([...dashboardQueryDefects(queries).entries()]).toEqual([]);
     const requested = [...new Set(dashboard.pages.flatMap((/** @type {Record<string, unknown>} */ page) => viewsOf(page).flatMap(sourceNamesOf)))]
       .filter((name) => queryNames.has(name));
+    const workerRequested = requested.filter((name) => !requiresServerSource(name));
+    expect(requested.filter((name) => requiresServerSource(name))).toEqual(['ingestion-health']);
     const results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries,
       sources: databaseTables,
-      sourceNames: requested
+      sourceNames: workerRequested
     }));
 
-    expect(Object.keys(results).sort()).toEqual([...requested].sort());
-    for (const name of requested) {
+    expect(Object.keys(results).sort()).toEqual([...workerRequested].sort());
+    for (const name of workerRequested) {
       expect(results[name]?.source).toBe(name);
       expect(results[name]?.rows).toEqual(expect.any(Array));
       expect(results[name]?.metadata.availability, name).not.toBe('unavailable');

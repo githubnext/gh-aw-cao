@@ -115,12 +115,13 @@ falling back to raw Activity JSONL. Static-browser download, normalization, pers
 dedicated Web Worker. The optional Redis profile ingests the same deployed
 dashboard artifact in a Go HTTP(S) server, keeps Redis credentials server-side,
 executes Dashboard Language in Go against Redis row sets, and returns only
-canonical, bounded query payloads to the browser. It deliberately uses only
-core Redis commands, not RediSearch or other Redis modules, so the hosted cost
-floor is storage capacity rather than module support. Its local mode remains
-loopback-only. Its host-neutral mode uses GitHub OAuth and explicit organization
-or team authorization, verifies and deduplicates GitHub webhooks, and rebuilds
-through a staged generation before atomically changing the active pointer.
+canonical or explicitly registered bounded runtime-source query payloads to the
+browser. It deliberately uses only core Redis commands, not RediSearch or other
+Redis modules, so the hosted cost floor is storage capacity rather than module
+support. Its local mode remains loopback-only. Its host-neutral mode uses
+GitHub OAuth and explicit organization or team authorization, verifies and
+deduplicates GitHub webhooks, and rebuilds through a staged generation before
+atomically changing the active pointer.
 Redis remains reconstructable from GitHub / gh-aw state and never becomes an
 authority. The same server binary provides a read-only diagnostic check-up
 that inspects the runtime, Redis safety and capacity, the active canonical
@@ -175,8 +176,13 @@ commands the workflow runs, and writing into an evidence lake laid out exactly
 like a published snapshot. Because the layout is the same, one projector serves
 both profiles and a retained lake repopulates a database on cold start without
 contacting GitHub. Configuring both profiles fails at startup: a canonical
-database has one writer. The main thread receives
-only bounded view payloads in either profile. Versioned computations transform canonical evidence
+database has one writer. The collection profile also persists allowlisted
+Redis-backed operational counters and exposes a read-only health status API.
+Authorized operators receive the registered `collection-health` runtime source
+through the Dashboard Language query boundary; it is not published or stored in
+browser IndexedDB. The Ingestion page renders that bounded snapshot alongside
+the rest of the operational dashboard. The main thread receives only bounded
+view payloads in either profile. Versioned computations transform canonical evidence
 into partitioned measures and actionable insights so consumers do not repeatedly
 scan the full Activity corpus. Computation results remain derived evidence:
 they preserve source quality and provenance and grant no operational authority.

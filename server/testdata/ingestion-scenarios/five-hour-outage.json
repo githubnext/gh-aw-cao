@@ -1,0 +1,28 @@
+{
+  "name": "ten-thousand-repositories-five-hour-api-outage-and-recovery",
+  "repositories": 10000,
+  "events_per_repository": 1,
+  "seed": 14631,
+  "distribution": "hot",
+  "out_of_order": true,
+  "duplicate_every": 100,
+  "drop_every": 0,
+  "delay_every": 100,
+  "delay": "1s",
+  "replay_count": 100,
+  "api": [
+    {
+      "from": "0s",
+      "to": "5h",
+      "mode": "unavailable"
+    },
+    {
+      "from": "5h",
+      "to": "5h1m",
+      "mode": "intermittent",
+      "failure_rate": 0.25,
+      "rate_limit_remaining": 250,
+      "rate_limit_reset_after_seconds": 60
+    }
+  ]
+}

@@ -291,8 +291,11 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 
 ### 5.1 Database Tables and Grain
 
-The database table vocabulary is closed in version 0.1.0. Views continue to use
-`data.source` as the binding name for either one table or one declared query.
+The database table vocabulary is closed in version 0.1.0. A runtime provider
+may supply only an explicitly registered query source from Section 5.4; these
+sources are not persisted database tables. Views continue to use `data.source`
+as the binding name for either one registered data source or one declared
+query.
 
 | Table | One row represents | Core fields |
 |---|---|---|
@@ -376,7 +379,21 @@ A campaign groups one orchestrator and one or more workers that execute centrall
 
 ### 5.4 Normative Source Requirements
 
-- **DLS-SEM-017:** A `metric`, `table`, `list`, or `chart` view `data.source` **MUST** name exactly one Section 5.1 database table or one declared query. An `element` view `data.sources` **MUST** name one or more unique Section 5.1 database tables or declared queries. An optional `data.route-field` **MUST** name one field from `data.source`.
+The server may expose a bounded operational source through the existing
+authorized query boundary. It is not a database table and is not stored in
+browser IndexedDB. The registered source is:
+
+| Source | One row represents | Fields |
+|---|---|---|
+| `collection-health` | the current CAO webhook and collection health snapshot | `configured`, `health`, `health-revision`, `queue-depth`, `pending-tasks`, `dead-letters`, `backfill`, `last-projected`, `last-webhook-at`, `last-failure-at`, `last-failure-code`, `last-success-at`, `webhook-received`, `webhook-duplicate`, `webhook-admission-failed`, `task-queued`, `task-coalesced`, `collection-succeeded`, `collection-failed`, `collection-retried`, `collection-dead-lettered` |
+
+The provider returns exactly one row for an authorized request. Other clients
+receive an unavailable source, and the provider stores no raw error messages or
+credentials in the source. `collection-health` is consumed only through a
+declared Dashboard Language query; view code and UI elements do not fetch or
+derive this data independently.
+
+- **DLS-SEM-017:** A `metric`, `table`, `list`, or `chart` view `data.source` **MUST** name exactly one Section 5.1 database table, one registered Section 5.4 runtime source, or one declared query. An `element` view `data.sources` **MUST** name one or more unique Section 5.1 database tables, registered Section 5.4 runtime sources, or declared queries. An optional `data.route-field` **MUST** name one field from `data.source`.
 - **DLS-SEM-018:** Each database table **MUST** preserve the grain declared in Section 5.1; duplicated observations **MUST** retain distinct observation identifiers in provenance.
 - **DLS-SEM-019:** A `usage` row **MUST** represent one model invocation and **MUST NOT** repeat invocation-level AIC across token-class rows.
 - **DLS-SEM-020:** Grader values, operational-grader results, eval results, AIC, each raw-token measure, outcome states, and operational value **MUST** remain separately named throughout filtering, aggregation, and presentation.
@@ -400,7 +417,7 @@ A campaign groups one orchestrator and one or more workers that execute centrall
 
 ### 5.5 Declarative Queries
 
-`dashboard.queries`, when present, declares reusable query results. A query is a closed, structured projection over Section 5.1 database tables or earlier queries; it contains no SQL text, scripts, callbacks, templates, or general-purpose expressions.
+`dashboard.queries`, when present, declares reusable query results. A query is a closed, structured projection over Section 5.1 database tables, registered Section 5.4 runtime sources, or earlier queries; it contains no SQL text, scripts, callbacks, templates, or general-purpose expressions.
 
 Each query retains a non-empty `intent` containing the original natural-language specification that led to the query. This authoring metadata gives future dashboard modifications the requested outcome behind the current clauses; it does not affect execution or presentation.
 
@@ -572,8 +589,8 @@ The transform preserves source-row order and measure declaration or map-property
 #### 5.5.4 Normative Query Requirements
 
 - **DLS-QUERY-001:** `queries`, when present, **MUST** be a non-empty sequence of mappings. Each query **MUST** declare a `name` matching the canonical identifier pattern in **DLS-DOC-005**, a non-empty `intent` containing its original natural-language specification, and one `from` input; **MAY** declare `description`, `parameters`, `union`, `time`, `joins`, `filter`, `compute`, `temporal-series`, `aggregate`, `predict`, `select`, `order-by`, and `limit`; and **MUST NOT** declare any other key. A presenter and query execution layer **MUST** treat `intent` as inert authoring metadata.
-- **DLS-QUERY-002:** A query `name` **MUST** be unique among queries and **MUST NOT** shadow a Section 5.1 table name. A declared query name **MAY** be used wherever a view selects data.
-- **DLS-QUERY-003:** `from`, every `union[]`, and every `joins[].source` **MUST** name one Section 5.1 database table or one query declared earlier in the sequence. Forward references, self references, and cycles **MUST** be rejected. `union`, when present, **MUST** be a non-empty sequence; its rows are appended in declaration order, fields from every unioned table or query are available to later clauses, and a field absent from one row has a null value for query operations.
+- **DLS-QUERY-002:** A query `name` **MUST** be unique among queries and **MUST NOT** shadow a Section 5.1 database table or registered Section 5.4 runtime source. A declared query name **MAY** be used wherever a view selects data.
+- **DLS-QUERY-003:** `from`, every `union[]`, and every `joins[].source` **MUST** name one Section 5.1 database table, registered Section 5.4 runtime source, or query declared earlier in the sequence. Forward references, self references, and cycles **MUST** be rejected. `union`, when present, **MUST** be a non-empty sequence; its rows are appended in declaration order, fields from every unioned table, runtime source, or query are available to later clauses, and a field absent from one row has a null value for query operations.
 - **DLS-QUERY-004:** Clause execution order **MUST** be `from`, then `union` in declaration order, then `joins` in declaration order, then `filter`, `compute` in declaration order, `temporal-series`, `aggregate`, `predict` in declaration order, `select`, `order-by`, and finally `limit`.
 - **DLS-QUERY-005:** A join **MUST** declare `source`, a non-empty `on` sequence of `left`/`right` equality key pairs, and a non-empty `fields` sequence of aliased fields imported from the joined source. `type` **MUST** be `inner` or `left` and defaults to `inner`. Version 0.1.0 defines no other join type, no join expressions, and no cross joins. A query **MUST NOT** declare more than four joins.
 - **DLS-QUERY-006:** Join keys **MUST** address table or query fields, not canonical entity identities. `left` **MUST** name a field available after the preceding clauses and `right` **MUST** name a field declared by the joined table or query. Key values **MUST** be compared as trimmed text; a null, missing, empty, or structured key value **MUST NOT** match any row.

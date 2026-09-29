@@ -87,6 +87,20 @@ describe('dashboard query type checker', () => {
     expect([...result.queryTables.get('overview-consumer') ?? []]).toEqual(['overview-status']);
   });
 
+  it('type-checks the registered server-supplied collection health source', () => {
+    const result = compileDashboardQueryTypes([
+      query({
+        name: 'ingestion-health',
+        from: 'collection-health',
+        select: [{ field: 'health' }, { field: 'collection-failed' }]
+      })
+    ]);
+
+    expect(result.errors).toEqual([]);
+    expect(result.queryFields.get('ingestion-health')).toEqual(['health', 'collection-failed']);
+    expect([...result.queryTables.get('ingestion-health') ?? []]).toEqual(['collection-health']);
+  });
+
   it('rejects duplicate query symbols and canonical table shadowing', () => {
     const result = compileDashboardQueryTypes([
       query({ name: 'runs', from: 'runs' }),

@@ -318,6 +318,8 @@ func newRootCommand() *cobra.Command {
 		newCollectCommand(),
 		newBackfillCommand(),
 		newDoctorCommand(),
+		newSimulateAPICommand(),
+		newSimulateWebhooksCommand(),
 	)
 	return root
 }

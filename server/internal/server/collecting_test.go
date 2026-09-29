@@ -8,6 +8,9 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/query"
+	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
 func TestCollectionHealthSourceIsAvailableOnlyToAuthorizedReaders(t *testing.T) {
@@ -28,6 +31,42 @@ func TestCollectionHealthSourceIsAvailableOnlyToAuthorizedReaders(t *testing.T) 
 	}
 	if available.Rows[0]["configured"] != false || available.Rows[0]["health"] != "not-configured" {
 		t.Fatalf("unconfigured profile was not explicit: %+v", available.Rows[0])
+	}
+}
+
+func TestCollectionHealthQueryRunsThroughServerQueryEngine(t *testing.T) {
+	address, closeServer := fakeRedis(t)
+	defer closeServer()
+	client, err := redisx.New("redis://" + address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := &App{store: redisx.NewStore(client, "health-query-test")}
+	input := queryRequest{
+		Queries:     []query.Definition{{Name: "ingestion-health", From: collectionHealthSourceName}},
+		SourceNames: []string{"ingestion-health"},
+	}
+	for _, test := range []struct {
+		name       string
+		authorized bool
+		want       string
+	}{
+		{name: "authorized", authorized: true, want: "available"},
+		{name: "unauthorized", authorized: false, want: "unavailable"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			result, status, err := app.executeQuery(t.Context(), input, test.authorized)
+			if err != nil || status != http.StatusOK {
+				t.Fatalf("executeQuery() status=%d err=%v", status, err)
+			}
+			source, ok := result.Sources["ingestion-health"]
+			if !ok || source.Metadata["availability"] != test.want {
+				t.Fatalf("query returned unexpected health source: %+v", source)
+			}
+			if test.authorized && (len(source.Rows) != 1 || source.Rows[0]["health"] != "not-configured") {
+				t.Fatalf("authorized health query returned wrong row: %+v", source.Rows)
+			}
+		})
 	}
 }
 

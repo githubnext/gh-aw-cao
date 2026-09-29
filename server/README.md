@@ -43,6 +43,58 @@ events likewise contain fixed identifiers only.
 > profile is experimental: deploy it only after security review, staging
 > validation, and rollback planning for your Azure tenant.
 
+## Ingestion reliability simulator
+
+The `simulate-api` and `simulate-webhooks` commands exercise the actual
+collection API and webhook admission paths with synthetic repositories. The
+scenario at `testdata/ingestion-scenarios/five-hour-outage.json` models 10,000
+repositories, a five-hour GitHub API outage, recovery rate limiting, signed
+duplicate/replayed deliveries, out-of-order activity, and a delayed delivery
+batch. Scenarios are strict JSON; supported traffic distributions are uniform,
+hot-repository, long-tail, and synchronized. Repository counts are bounded at
+20,000 and generated workflow events at one million.
+
+Start the fake GitHub API in one terminal. `--time-scale 3600` advances one
+scenario hour per wall-clock second:
+
+```bash
+cd server
+go run ./cmd/cao-dashboard simulate-api \
+  --scenario testdata/ingestion-scenarios/five-hour-outage.json \
+  --listen 127.0.0.1:8081 --time-scale 3600
+```
+
+Start the CAO server and Redis using the normal collection setup, setting
+`CAO_COLLECT_GITHUB_API_URL` (and, when needed,
+`CAO_COLLECT_GITHUB_UPLOAD_URL`) to `http://127.0.0.1:8081`. Then deliver the
+webhooks to its normal `/api/github/webhook` endpoint:
+
+```bash
+go run ./cmd/cao-dashboard simulate-webhooks \
+  --scenario testdata/ingestion-scenarios/five-hour-outage.json \
+  --endpoint http://127.0.0.1:8080/api/github/webhook
+```
+
+The simulator reads the signing secret from `CAO_GITHUB_WEBHOOK_SECRET` and
+does not print it. Webhook installation and repository-add events are sent
+before workflow events so admission is correctly scoped; repository removals
+are sent after activity. The fake API implements the small REST surface needed
+for app validation, installation tokens, rate-limit inspection, repositories,
+and workflow runs, and returns GitHub-style transient errors and rate-limit
+headers for configured windows. The collection runner passes the configured
+API base URL to `gh aw logs --audit`; collection, queueing, retries, and
+projection remain on the production path.
+
+`go test ./internal/server ./internal/simulator` includes an end-to-end signed
+webhook test through the production HTTP handler and admission-only collection
+queue. It uses the server test Redis protocol fixture so it runs without an
+external service. To run that test against a local Redis instance instead,
+start Redis with `npm run dashboard:server:redis-up` from the repository root
+and set `CAO_SIMULATOR_REDIS_URL=redis://127.0.0.1:6379/0` before running
+`go test ./internal/server -run TestSimulatorUsesProductionWebhookAdmissionAndCollectionQueue`.
+For manual load runs, point the normal CAO server and worker at a local Redis
+instance as well as the simulator API.
+
 ## Architecture
 
 ```mermaid

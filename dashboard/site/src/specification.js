@@ -603,6 +603,37 @@ export const SOURCE_ENTITY_IDENTIFIER_FIELDS = {
   'evidence-records': ['evidence-id']
 };
 
+export const SERVER_SOURCE_VALUES = ['collection-health'];
+
+export const SERVER_SOURCE_FIELDS = {
+  'collection-health': [
+    'configured',
+    'health',
+    'health-revision',
+    'queue-depth',
+    'pending-tasks',
+    'dead-letters',
+    'backfill',
+    'last-projected',
+    'last-webhook-at',
+    'last-failure-at',
+    'last-failure-code',
+    'last-success-at',
+    'webhook-received',
+    'webhook-duplicate',
+    'webhook-admission-failed',
+    'task-queued',
+    'task-coalesced',
+    'collection-succeeded',
+    'collection-failed',
+    'collection-retried',
+    'collection-dead-lettered'
+  ]
+};
+
+export const QUERY_SOURCE_VALUES = [...TABLE_VALUES, ...SERVER_SOURCE_VALUES];
+export const QUERY_SOURCE_FIELDS = { ...TABLE_FIELDS, ...SERVER_SOURCE_FIELDS };
+
 export const TEMPORAL_FIELD_NAMES = [
   'observed-at',
   'started-at',

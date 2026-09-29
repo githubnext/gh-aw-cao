@@ -40,6 +40,8 @@ type Runner struct {
 	// NodeBinary and GitHubBinary are resolved from PATH when empty.
 	NodeBinary   string
 	GitHubBinary string
+	// GitHubAPIURL overrides the REST API base URL for the gh subprocess.
+	GitHubAPIURL string
 	// WindowDays bounds the retained collection window.
 	WindowDays int
 	// RunLimit bounds runs collected per repository per invocation.
@@ -250,7 +252,7 @@ func (r Runner) execute(ctx context.Context, name string, arguments []string, en
 	// configuration and a normalized repository reference.
 	command := exec.CommandContext(ctx, name, arguments...)
 	command.Dir = r.CatalogRoot
-	command.Env = append(collectionEnvironment(), environment...)
+	command.Env = append(collectionEnvironment(r.GitHubAPIURL), environment...)
 	var output bytes.Buffer
 	limit := r.MaxOutputBytes
 	if limit <= 0 {
@@ -268,7 +270,7 @@ func (r Runner) execute(ctx context.Context, name string, arguments []string, en
 // collectionEnvironment builds a minimal environment for the subprocess. The
 // process environment is not inherited wholesale so ambient credentials cannot
 // leak into a collection.
-func collectionEnvironment() []string {
+func collectionEnvironment(apiURL string) []string {
 	environment := []string{
 		"PATH=" + os.Getenv("PATH"),
 		"HOME=" + os.Getenv("HOME"),
@@ -276,6 +278,10 @@ func collectionEnvironment() []string {
 	}
 	if value := os.Getenv("GH_HOST"); value != "" {
 		environment = append(environment, "GH_HOST="+value)
+	}
+	if value := strings.TrimSpace(apiURL); value != "" {
+		environment = append(environment, "GITHUB_API_URL="+value)
+		return environment
 	}
 	if value := os.Getenv("GITHUB_API_URL"); value != "" {
 		environment = append(environment, "GITHUB_API_URL="+value)

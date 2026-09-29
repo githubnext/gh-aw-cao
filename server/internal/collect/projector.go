@@ -43,6 +43,7 @@ type Projector struct {
 	CatalogRoot         string
 	NodeBinary          string
 	GitHubBinary        string
+	GitHubAPIURL        string
 	Tokens              TokenProvider
 	Budget              *githubapp.Budget
 	WindowDays          int
@@ -296,7 +297,7 @@ func (p Projector) refreshOperationalValues(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		environment := append(collectionEnvironment(), []string{
+		environment := append(collectionEnvironment(p.GitHubAPIURL), []string{
 			"CAO_OPERATIONAL_VALUE_GH_TOKEN=" + token,
 			"GH_TOKEN=" + token,
 			"CAO_GITHUB_API_MIN_REMAINING=" + strconv.Itoa(reserve),
@@ -439,7 +440,7 @@ func (p Projector) runWithEnvironment(ctx context.Context, arguments, environmen
 	// #nosec G204 -- arguments are built from validated configuration paths.
 	command := exec.CommandContext(ctx, p.node(), arguments...)
 	command.Dir = p.CatalogRoot
-	command.Env = append(collectionEnvironment(), environment...)
+	command.Env = append(collectionEnvironment(p.GitHubAPIURL), environment...)
 	output, err := command.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("activity CLI failed: %w: %s", err, summarize(string(output)))

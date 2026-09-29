@@ -1089,6 +1089,30 @@ describe('presenter built-in and custom pages', () => {
             { day: '2026-09-02', 'workflow-runs': 8 }
           ],
           metadata
+        },
+        'ingestion-health': {
+          source: 'ingestion-health',
+          rows: [{
+            configured: true,
+            health: 'healthy',
+            'queue-depth': 12,
+            'pending-tasks': 3,
+            'dead-letters': 0,
+            'webhook-received': 90,
+            'webhook-duplicate': 2,
+            'webhook-admission-failed': 0,
+            'collection-succeeded': 34,
+            'collection-failed': 1,
+            'collection-retried': 1,
+            'collection-dead-lettered': 0,
+            'last-failure-code': 'collection',
+            'last-failure-at': '2026-09-02T11:00:00Z',
+            'last-success-at': '2026-09-02T12:00:00Z',
+            'last-webhook-at': '2026-09-02T12:00:00Z',
+            'last-projected': '2026-09-02T12:00:00Z',
+            backfill: 0
+          }],
+          metadata
         }
       }
     });
@@ -1098,11 +1122,12 @@ describe('presenter built-in and custom pages', () => {
       window.location.hash = '#page-indexing';
       await vi.waitFor(() => expect(rendered.querySelector('[data-page-id="indexing"]')?.hasAttribute('data-page-pending')).toBe(false));
       const page = rendered.querySelector('[data-page-id="indexing"]');
-      expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(4);
+      expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(5);
       expect(page?.querySelectorAll('[data-chart-widget="bar"]')).toHaveLength(2);
       expect(page?.querySelectorAll('[data-chart-widget="horizontal-bar"]')).toHaveLength(1);
       expect(page?.textContent).not.toContain('Local database');
       expect(page?.textContent).toContain('ingest-jsonl');
+      expect(page?.querySelector('[data-view-id="ingestion-health-status"]')?.textContent).toContain('healthy');
       const transactions = page?.querySelector('[data-view-id="transaction-entries"]');
       expect(transactions?.querySelector('.entity-card-list-card')).not.toBeNull();
       expect(transactions?.textContent).toContain('Committed records');
