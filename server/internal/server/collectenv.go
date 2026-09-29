@@ -8,7 +8,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var collectEnvLog = logger.New("cao:server:collect-env")
 
 // CollectorConfigFromEnv reads the optional collection profile from the
 // environment.
@@ -67,22 +71,50 @@ func CollectorConfigFromEnv() (*CollectorConfig, error) {
 	return config, nil
 }
 
+// collectorPrivateKeySource identifies which input supplied the App private
+// key material. It is useful for diagnosing a misconfigured deployment
+// without logging the file path or key contents.
+type collectorPrivateKeySource string
+
+const (
+	collectorPrivateKeySourceFile   collectorPrivateKeySource = "file"
+	collectorPrivateKeySourceInline collectorPrivateKeySource = "inline"
+)
+
+// resolveCollectorPrivateKeySource applies the standard priority for the
+// collection App's private key: a configured file reference, then an inline
+// environment value. It returns which input would supply the key so callers
+// can log the source without exposing the path or key material; it performs
+// no I/O itself, so this priority decision is testable without a real file.
+func resolveCollectorPrivateKeySource(filePath, inlineValue string) (collectorPrivateKeySource, bool) {
+	if strings.TrimSpace(filePath) != "" {
+		return collectorPrivateKeySourceFile, true
+	}
+	if strings.TrimSpace(inlineValue) != "" {
+		return collectorPrivateKeySourceInline, true
+	}
+	return "", false
+}
+
 // collectorPrivateKey reads the App private key from a file reference when one
 // is given, so deployments can mount a Key Vault secret instead of exporting
 // key material in process environment listings.
 func collectorPrivateKey() ([]byte, error) {
-	if path := strings.TrimSpace(os.Getenv("CAO_COLLECT_PRIVATE_KEY_FILE")); path != "" {
+	filePath := strings.TrimSpace(os.Getenv("CAO_COLLECT_PRIVATE_KEY_FILE"))
+	inline := strings.TrimSpace(os.Getenv("CAO_COLLECT_PRIVATE_KEY"))
+	source, found := resolveCollectorPrivateKeySource(filePath, inline)
+	if !found {
+		return nil, errors.New(
+			"collection requires CAO_COLLECT_PRIVATE_KEY or CAO_COLLECT_PRIVATE_KEY_FILE")
+	}
+	collectEnvLog.Printf("collector private key resolved source=%s", source)
+	if source == collectorPrivateKeySourceFile {
 		// #nosec G304,G703 -- the operator explicitly configures the private-key file path.
-		content, err := os.ReadFile(path)
+		content, err := os.ReadFile(filePath)
 		if err != nil {
 			return nil, fmt.Errorf("read CAO_COLLECT_PRIVATE_KEY_FILE: %w", err)
 		}
 		return content, nil
-	}
-	inline := strings.TrimSpace(os.Getenv("CAO_COLLECT_PRIVATE_KEY"))
-	if inline == "" {
-		return nil, errors.New(
-			"collection requires CAO_COLLECT_PRIVATE_KEY or CAO_COLLECT_PRIVATE_KEY_FILE")
 	}
 	return []byte(inline), nil
 }
