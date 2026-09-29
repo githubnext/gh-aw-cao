@@ -212,6 +212,35 @@ describe('database table ingestion and queries', () => {
     })).resolves.toMatchObject({ updated: true });
   });
 
+  it('replays pre-evidence normalized run and record shards without accepting newer evidence as legacy', async () => {
+    /** @param {'runs' | 'records'} phase @param {string} collection @param {Record<string, unknown>} record */
+    const legacyShard = (phase, collection, record) => async function* () {
+      yield [
+        { kind: 'metadata', schemaVersion: 22, ingestionVersion: 3, phase, records: 1 },
+        { kind: 'record', collection, record }
+      ].map((line) => JSON.stringify(line)).join('\n');
+    };
+    /** @param {string} identity @param {'runs' | 'records'} phase */
+    const options = (identity, phase) => ({
+      payloadIdentity: identity.repeat(64), payloadScope: `legacy:${phase}`, expectedPhase: phase
+    });
+    await expect(ingestNormalizedJsonl(indexedDB,
+      legacyShard('runs', 'repositories', { id: 'repository:legacy', observedAt: '2026-09-09T05:00:00Z' })(),
+      options('a', 'runs'))).resolves.toMatchObject({ updated: true, committedRecords: 1 });
+    await expect(ingestNormalizedJsonl(indexedDB,
+      legacyShard('records', 'audits', { id: 'audit:legacy', observedAt: '2026-09-09T05:00:00Z' })(),
+      options('b', 'records'))).resolves.toMatchObject({ updated: true, committedRecords: 1 });
+    expect((await readCanonicalBatch(indexedDB)).audits).toHaveLength(1);
+    await expect(ingestNormalizedJsonl(indexedDB,
+      legacyShard('runs', 'experiments', { id: 'experiment:invalid' })(),
+      options('c', 'runs'))).rejects.toThrow('must contain a canonical record');
+    await expect(ingestNormalizedJsonl(indexedDB,
+      (async function* () {
+        yield JSON.stringify({ kind: 'metadata', schemaVersion: CANONICAL_SCHEMA_VERSION,
+          ingestionVersion: 3, phase: 'runs', records: 0 });
+      })(), options('d', 'runs'))).rejects.toThrow('Unsupported normalized activity ingestion version: 3');
+  });
+
   it('enforces experiment and grader evidence phase ownership and replays rejected shards', async () => {
     const records = [
       { collection: 'experiments', record: { id: 'experiment:1', workflowId: 'workflow:1' }, phase: 'runs' },

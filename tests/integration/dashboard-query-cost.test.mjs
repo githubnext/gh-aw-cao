@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -182,6 +182,28 @@ test("benchmark rebuilds an outdated snapshot from the deployed payloads", async
     /rebuilt from the deployed JSONL payloads before measuring/,
   );
 
+  assertSnapshotIntact(database, records, outdated);
+});
+
+test("benchmark rebuilds from previously published version-three phased shards", async (t) => {
+  const { root, database } = await syntheticSnapshot();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const outdated = DATABASE_VERSION - 1;
+  const records = downgradeSnapshot(database, outdated);
+  for (const phase of ["runs", "records"]) {
+    const directory = path.join(root, `gh-aw-logs-${phase}`);
+    await mkdir(directory);
+    const fixture = await readFile(`server/testdata/deployed-subset/gh-aw-logs-${phase}/subset.jsonl`, "utf8");
+    await writeFile(path.join(directory, "subset.jsonl"),
+      fixture.replace('"schemaVersion":13', '"schemaVersion":22'));
+  }
+  const report = await benchmarkDashboardQueryCost({
+    databasePath: database,
+    document: dashboardDocument,
+    limit: 1,
+  });
+  assert.equal(report.database["rebuilt-from-payloads"], true, report.database["rebuild-error"]);
+  assert.ok(report.database["records-read"] > 0);
   assertSnapshotIntact(database, records, outdated);
 });
 

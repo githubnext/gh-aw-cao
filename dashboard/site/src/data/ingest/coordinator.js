@@ -44,6 +44,8 @@ const DASHBOARD_SOURCE_INGESTION_VERSION = 5;
 const GH_AW_JSONL_INGESTION_VERSION = 5;
 export const NORMALIZED_JSONL_INGESTION_VERSION = 4;
 const MIN_NORMALIZED_JSONL_SCHEMA_VERSION = 17;
+const PRE_EVIDENCE_INGESTION_VERSION = 3;
+const LAST_PRE_EVIDENCE_SCHEMA_VERSION = 22;
 const MAX_QUOTA_RECOVERY_ATTEMPTS = 4;
 const MAX_USAGE_RECOVERY_ATTEMPTS = 4;
 const NORMALIZED_BATCH_COLLECTIONS = /** @type {const} */ ([
@@ -578,7 +580,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
       const encoder = new TextEncoder();
       let pending = '';
       let lineNumber = 0;
-      /** @type {{ phase: 'all' | 'runs' | 'records', records: number, sourceRecords?: number } | null} */
+      /** @type {{ phase: 'all' | 'runs' | 'records', records: number, sourceRecords?: number, ingestionVersion: number } | null} */
       let header = null;
       let batch = emptyNormalizedBatch();
       let bufferedRecords = 0;
@@ -636,7 +638,9 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
                 || schemaVersion > CANONICAL_SCHEMA_VERSION) {
               throw new TypeError(`Unsupported normalized activity schema: ${String(envelope.schemaVersion)}`);
             }
-            if (envelope.ingestionVersion !== NORMALIZED_JSONL_INGESTION_VERSION) {
+            if (envelope.ingestionVersion !== NORMALIZED_JSONL_INGESTION_VERSION
+                && !(envelope.ingestionVersion === PRE_EVIDENCE_INGESTION_VERSION
+                  && schemaVersion <= LAST_PRE_EVIDENCE_SCHEMA_VERSION)) {
               throw new TypeError(`Unsupported normalized activity ingestion version: ${String(envelope.ingestionVersion)}`);
             }
             if (typeof envelope.phase !== 'string'
@@ -652,6 +656,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
             header = {
               phase: /** @type {'all' | 'runs' | 'records'} */ (envelope.phase),
               records: Number(envelope.records),
+              ingestionVersion: Number(envelope.ingestionVersion),
               sourceRecords: Number.isSafeInteger(envelope.sourceRecords)
                 ? Number(envelope.sourceRecords)
                 : undefined
@@ -664,6 +669,8 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
           if (envelope.kind !== 'record'
               || collection === null
               || !NORMALIZED_BATCH_COLLECTIONS.includes(collection)
+              || (header.ingestionVersion === PRE_EVIDENCE_INGESTION_VERSION && ['experiments', 'experimentAssignments', 'graders',
+                'graderObservations', 'evals', 'evalObservations'].includes(collection))
               || !envelope.record
               || typeof envelope.record !== 'object'
               || Array.isArray(envelope.record)) {
@@ -695,7 +702,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
         }
         pending += decoder.decode();
         if (pending) await accept(pending);
-        const metadata = /** @type {{ phase: 'all' | 'runs' | 'records', records: number, sourceRecords?: number } | null} */ (header);
+        const metadata = /** @type {{ phase: 'all' | 'runs' | 'records', records: number, sourceRecords?: number, ingestionVersion: number } | null} */ (header);
         if (!metadata) throw new TypeError('Normalized activity JSONL metadata is missing');
         await flush();
         if (committedRecords !== metadata.records) {
