@@ -98,6 +98,7 @@ test("landing page explains and illustrates campaign dispatch", () => {
   assert.match(illustration, /class="node-continuation node-continuation-no-icon">\s*<b>•••<\/b>\s*<small>more organizations<\/small>/);
   assert.match(illustration, /<small>more organizations<\/small>/);
   assert.match(illustration, /<small>more repositories<\/small>/);
+  assert.match(illustration, /class="node-continuation">[\s\S]*?<svg class="repo-icon repository-icon" viewBox="0 0 16 16">/);
   assert.match(illustration, /path=\{job\.organizationPath\}/);
   assert.match(illustration, /path=\{job\.repositoryPath\}/);
   assert.match(illustration, /\{ organization: "githubnext", top: 146 \}/);
