@@ -37,5 +37,5 @@ jobs:
       - name: Test install.sh
         shell: bash
         env:
-          CAO_SKIP_ACTIVITY_INTEGRATION: "1"
+          CAO_SKIP_WINDOWS_INTEGRATIONS: "1"
         run: node --test tests/unit/install-script.test.mjs

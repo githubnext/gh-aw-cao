@@ -502,7 +502,9 @@ for (const { name, initialVersion, answer, environment = {}, manifest, expectedL
   });
 }
 
-test("install.sh reruns restore missing policy and launcher mode without replacing consumer policy", async (t) => {
+test("install.sh reruns restore missing policy and launcher mode without replacing consumer policy", {
+  skip: process.env.CAO_SKIP_WINDOWS_INTEGRATIONS === "1",
+}, async (t) => {
   const { consumer, repository, env, log } = await createConsumer(t, supportedGhAw);
   await runFile(consumer, env);
   assert.equal(await log(), "add\n");
@@ -574,7 +576,7 @@ for (const [description, repository] of [
 }
 
 test("streamed install.sh initializes repository-only Activity without an App", {
-  skip: process.env.CAO_SKIP_ACTIVITY_INTEGRATION === "1",
+  skip: process.env.CAO_SKIP_WINDOWS_INTEGRATIONS === "1",
 }, async (t) => {
   const { root, consumer, repository, env, log } = await createConsumer(t, supportedGhAw);
   await streamInstaller(consumer, env);
