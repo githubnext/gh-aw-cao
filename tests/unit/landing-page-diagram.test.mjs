@@ -123,10 +123,11 @@ test("landing page explains and illustrates campaign dispatch", () => {
   assert.match(illustration, /style={`grid-row: \$\{job\.targetRow\}`}/);
   assert.match(illustration, /--review: #0969da/);
   assert.match(illustration, /--review: #58a6ff/);
-  assert.match(illustration, /class={`mobile-pair-route \$\{job\.timing\} \$\{job\.mode\} \$\{job\.failed \? "failed" : ""\}`}/);
+  assert.match(illustration, /class={`mobile-pair-route \$\{job\.timing\} \$\{job\.mode\}`}/);
   assert.match(illustration, /class={`mobile-repository-card \$\{job\.mode\}`}/);
-  assert.match(illustration, /\{!job\.failed && <i><\/i>\}/);
-  assert.match(illustration, /<strong>No output dispatched<\/strong>/);
+  assert.match(illustration, /\{!job\.failed && \(\s*<>\s*<span class={`mobile-pair-route/);
+  assert.match(illustration, /<i><\/i>/);
+  assert.doesNotMatch(illustration, /No output dispatched|mobile-no-output/);
   assert.match(illustration, /\.organization-icon,[\s\S]*?\.repository-icon \{[\s\S]*?width: 16px;[\s\S]*?height: 16px/);
   assert.match(illustration, /class="organization-icon"/);
   assert.match(illustration, /\.organization-icon \{[\s\S]*?fill: var\(--muted\)/);
@@ -159,7 +160,6 @@ test("landing page explains and illustrates campaign dispatch", () => {
   assert.match(illustration, /class="mobile-workers"/);
   assert.match(illustration, /Parallel workers/);
   assert.match(illustration, /class="mobile-dispatch-pair"/);
-  assert.match(illustration, /class={`mobile-pair-route \$\{job\.timing\} \$\{job\.mode\} \$\{job\.failed \? "failed" : ""\}`}/);
   assert.match(illustration, /@keyframes mobile-route-job-1/);
   assert.match(illustration, /@keyframes mobile-route-job-5/);
   assert.match(

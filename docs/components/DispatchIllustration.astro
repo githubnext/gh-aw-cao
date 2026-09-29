@@ -382,25 +382,19 @@ const organizationNodes = [
                     <small>{job.operation}</small>
                   </span>
                 </article>
-                <span class={`mobile-pair-route ${job.timing} ${job.mode} ${job.failed ? "failed" : ""}`}>
-                  {!job.failed && <i></i>}
-                </span>
-                {job.failed ? (
-                  <article class="mobile-repository-card mobile-no-output">
-                    <svg class="status-icon" viewBox="0 0 16 16"><path d={failurePath}></path></svg>
-                    <span>
-                      <strong>No output dispatched</strong>
-                      <small>{job.repository} · worker failed</small>
+                {!job.failed && (
+                  <>
+                    <span class={`mobile-pair-route ${job.timing} ${job.mode}`}>
+                      <i></i>
                     </span>
-                  </article>
-                ) : (
-                  <article class={`mobile-repository-card ${job.mode}`}>
-                    <svg class="repo-icon repository-icon" viewBox="0 0 16 16"><path d={repoPath}></path></svg>
-                    <span>
-                      <strong>{job.repository}</strong>
-                      {job.repository === controlRepository?.repository && <small>CAO control plane</small>}
-                    </span>
-                  </article>
+                    <article class={`mobile-repository-card ${job.mode}`}>
+                      <svg class="repo-icon repository-icon" viewBox="0 0 16 16"><path d={repoPath}></path></svg>
+                      <span>
+                        <strong>{job.repository}</strong>
+                        {job.repository === controlRepository?.repository && <small>CAO control plane</small>}
+                      </span>
+                    </article>
+                  </>
                 )}
               </div>
             ))}
@@ -1211,16 +1205,6 @@ const organizationNodes = [
     .mobile-repository-card.review {
       border-color: color-mix(in srgb, var(--review) 55%, var(--line));
       background: color-mix(in srgb, var(--review) 10%, var(--panel));
-    }
-
-    .mobile-no-output {
-      border-color: color-mix(in srgb, var(--danger) 45%, var(--line));
-      color: var(--muted);
-      background: color-mix(in srgb, var(--danger) 6%, var(--panel));
-    }
-
-    .mobile-no-output .status-icon {
-      fill: var(--danger);
     }
 
     .mobile-scale-cue {
