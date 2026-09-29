@@ -329,12 +329,14 @@ test("Dependabot planner scopes its read token to the dispatched target", () => 
   const generated = workflow("dependabot-update-planner.lock.yml");
   const precomputeScopeStep = /\n\s+- name: Resolve CAO precompute read scope\n\s+id: cao_precompute_read_scope[\s\S]*?(?=\n\s+- name: )/.exec(generated)?.[0];
   const precomputeTokenStep = /\n\s+- name: Generate CAO pre-activation GitHub App token\n\s+id: cao_pre_activation_app_token[\s\S]*?(?=\n\s+- name: )/.exec(generated)?.[0];
+  const precomputeAlertTokenStep = /\n\s+- name: Generate CAO precompute target alert App token\n\s+id: cao_pre_activation_alert_app_token[\s\S]*?(?=\n\s+- name: )/.exec(generated)?.[0];
   const scopeStep = /\n\s+- name: Resolve CAO GitHub read scope\n\s+id: cao_target_read_scope[\s\S]*?(?=\n\s+- name: )/.exec(generated)?.[0];
   const appTokenStep = /\n\s+- name: Generate CAO target-scoped read App token\n\s+id: cao_target_read_app_token[\s\S]*?(?=\n\s+- name: )/.exec(generated)?.[0];
   const credentialStep = /\n\s+- name: Resolve CAO target read credential\n\s+id: cao_target_read_credential[\s\S]*?(?=\n\s+- name: )/.exec(generated)?.[0];
 
   assert.ok(precomputeScopeStep, "missing precompute read scope step");
   assert.ok(precomputeTokenStep, "missing precompute target-scoped App token step");
+  assert.ok(precomputeAlertTokenStep, "missing precompute target alert App token step");
   assert.ok(scopeStep, "missing target read scope step");
   assert.ok(appTokenStep, "missing target-scoped App token step");
   assert.ok(credentialStep, "missing target-scoped credential selection step");
@@ -342,8 +344,15 @@ test("Dependabot planner scopes its read token to the dispatched target", () => 
   assert.match(precomputeScopeStep, /CAO_READ_REPOSITORY: \$\{\{ inputs\.target_repo \}\}/);
   assert.match(precomputeTokenStep, /owner: \$\{\{ steps\.cao_precompute_read_scope\.outputs\.owner \}\}/);
   assert.match(precomputeTokenStep, /repositories: \$\{\{ steps\.cao_precompute_read_scope\.outputs\.repository \}\}/);
-  assert.match(precomputeTokenStep, /permission-vulnerability-alerts: read/);
+  assert.match(precomputeAlertTokenStep, /owner: \$\{\{ steps\.cao_precompute_read_scope\.outputs\.owner \}\}/);
+  assert.match(precomputeAlertTokenStep, /repositories: \$\{\{ steps\.cao_precompute_read_scope\.outputs\.repository \}\}/);
+  assert.match(precomputeAlertTokenStep, /permission-vulnerability-alerts: read/);
   assert.doesNotMatch(precomputeTokenStep, /github\.repository_(owner|name)|github\.event\.repository\.name/);
+  assert.doesNotMatch(precomputeAlertTokenStep, /github\.repository_(owner|name)|github\.event\.repository\.name/);
+  assert.match(
+    generated,
+    /GH_TOKEN: \$\{\{ steps\.cao_pre_activation_alert_app_token\.outputs\.token \|\| steps\.cao_pre_activation_app_token\.outputs\.token/,
+  );
   assert.match(appTokenStep, /owner: \$\{\{ steps\.cao_target_read_scope\.outputs\.owner \}\}/);
   assert.match(appTokenStep, /repositories: \$\{\{ steps\.cao_target_read_scope\.outputs\.repository \}\}/);
   assert.match(scopeStep, /echo "permission_vulnerability_alerts=read"/);

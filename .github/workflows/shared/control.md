@@ -111,7 +111,7 @@ jobs:
         env:
           CAO_GITHUB_APP_ID: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_READ_APP_ID || '' }}
           CAO_GITHUB_APP_PRIVATE_KEY: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY || '' }}
-        if: ${{ env.CAO_GITHUB_APP_ID != '' && env.CAO_GITHUB_APP_PRIVATE_KEY != '' }}
+        if: ${{ env.CAO_GITHUB_APP_ID != '' && env.CAO_GITHUB_APP_PRIVATE_KEY != '' && !(env.CAO_CAMPAIGN == 'dependabot' && env.CAO_ROLE == 'worker') }}
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           client-id: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_READ_APP_ID || '' }}
@@ -119,16 +119,25 @@ jobs:
           owner: ${{ steps.cao_precompute_read_scope.outputs.owner }}
           repositories: ${{ steps.cao_precompute_read_scope.outputs.repository }}
           github-api-url: ${{ github.api_url }}
-          permission-actions: ${{ github.aw.import-inputs.read_actions }}
-          permission-checks: ${{ github.aw.import-inputs.read_checks }}
-          permission-contents: ${{ github.aw.import-inputs.read_contents }}
-          permission-issues: ${{ github.aw.import-inputs.read_issues }}
-          permission-packages: ${{ github.aw.import-inputs.read_packages }}
-          permission-pull-requests: ${{ github.aw.import-inputs.read_pull_requests }}
-          permission-secret-scanning-alerts: ${{ github.aw.import-inputs.read_secret_scanning_alerts }}
-          permission-security-events: ${{ github.aw.import-inputs.read_security_events }}
-          permission-statuses: ${{ github.aw.import-inputs.read_statuses }}
-          permission-vulnerability-alerts: ${{ github.aw.import-inputs.read_vulnerability_alerts }}
+          permission-actions: read
+          permission-contents: read
+
+      - name: Generate CAO precompute target alert App token
+        id: cao_pre_activation_alert_app_token
+        env:
+          CAO_GITHUB_APP_ID: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_READ_APP_ID || '' }}
+          CAO_GITHUB_APP_PRIVATE_KEY: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY || '' }}
+        if: ${{ env.CAO_GITHUB_APP_ID != '' && env.CAO_GITHUB_APP_PRIVATE_KEY != '' && env.CAO_CAMPAIGN == 'dependabot' && env.CAO_ROLE == 'worker' }}
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_READ_APP_ID || '' }}
+          private-key: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY || '' }}
+          owner: ${{ steps.cao_precompute_read_scope.outputs.owner }}
+          repositories: ${{ steps.cao_precompute_read_scope.outputs.repository }}
+          github-api-url: ${{ github.api_url }}
+          permission-actions: read
+          permission-contents: read
+          permission-vulnerability-alerts: read
 
       - name: Checkout CAO control modules
         id: cao_control_checkout
@@ -232,7 +241,7 @@ jobs:
         if: ${{ steps.cao_admission.outputs.authorized == 'true' }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          GH_TOKEN: ${{ steps.cao_pre_activation_app_token.outputs.token || vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[inputs.target_repo || github.repository]] || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_READ_PAT || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ steps.cao_pre_activation_alert_app_token.outputs.token || steps.cao_pre_activation_app_token.outputs.token || vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[inputs.target_repo || github.repository]] || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_READ_PAT || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_TOKEN || github.token }}
           GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
           CAO_CAMPAIGN: ${{ github.aw.import-inputs.campaign }}
           CAO_ROLE: ${{ github.aw.import-inputs.role }}
@@ -247,7 +256,7 @@ jobs:
           CAO_WORKER_CREDITS_PER_TARGET: "${{ github.aw.import-inputs.worker_credits_per_target }}"
           CAO_CONTROL_RUNTIME: ${{ steps.cao_control_source.outputs.runtime }}
         with:
-          github-token: ${{ steps.cao_pre_activation_app_token.outputs.token || vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[inputs.target_repo || github.repository]] || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_READ_PAT || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_TOKEN || github.token }}
+          github-token: ${{ steps.cao_pre_activation_alert_app_token.outputs.token || steps.cao_pre_activation_app_token.outputs.token || vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[inputs.target_repo || github.repository]] || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_READ_PAT || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_TOKEN || github.token }}
           script: |
             core.info('[cao] Loading the control runtime for precompute.');
             const control = await import(process.env.CAO_CONTROL_RUNTIME);
@@ -391,7 +400,7 @@ jobs:
         id: cao_activation_summary
         if: ${{ always() }}
         env:
-          CAO_APP_TOKEN_OUTCOME: ${{ steps.cao_pre_activation_app_token.outcome }}
+          CAO_APP_TOKEN_OUTCOME: ${{ steps.cao_pre_activation_alert_app_token.outcome == 'success' && steps.cao_pre_activation_alert_app_token.outcome || steps.cao_pre_activation_app_token.outcome }}
           CAO_CHECKOUT_OUTCOME: ${{ steps.cao_control_checkout.outcome }}
           CAO_RUNTIME_OUTCOME: ${{ steps.cao_control_source.outcome }}
           CAO_ADMISSION_OUTCOME: ${{ steps.cao_admission.outcome }}
