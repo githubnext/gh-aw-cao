@@ -161,12 +161,11 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           TARGET_REPO: ${{ inputs.target_repo }}
-          PUBLIC_REPO_TOKEN: ${{ github.token }}
+          GITHUB_ACTION_TOKEN: ${{ github.token }}
         with:
           github-token: ${{ steps.cao_target_read_credential.outputs.token }}
           script: |
             const fs = require('node:fs');
-            const { getOctokit } = require('@actions/github');
             const precompute = JSON.parse(fs.readFileSync('/tmp/gh-aw/agent/control-precompute.json', 'utf8'));
             const target = process.env.TARGET_REPO;
             if (!precompute.authorized || precompute.control_role !== 'worker'
@@ -192,7 +191,7 @@ jobs:
                 return null;
               }
             };
-            const repository = await getOctokit(process.env.PUBLIC_REPO_TOKEN)
+            const repository = await getOctokit(process.env.GITHUB_ACTION_TOKEN)
               .request('GET /repos/{owner}/{repo}', { owner, repo });
             if (repository.data?.private !== false) {
               throw new Error('Dependabot alert prefetch requires a verified public target repository');
