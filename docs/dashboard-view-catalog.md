@@ -43,6 +43,7 @@ Built-in pages carry renderer-defined semantic requirements and required source 
 | `operational-value` | Campaign-defined repository metrics. |
 | `findings` | Linked security and quality findings with status and severity. |
 | `issues` | Reusable issue entity cards bound to safe-output queries with explicit drill behavior. |
+| `review-queue` | Stable campaign proposal work items, lifecycle state, and bounded catch-up summaries. |
 | `cost` | Observed AI Credit cost across campaigns, repositories, and workflows. |
 | `memory` | Browses repository memory published by centrally managed campaigns. |
 | `skills` (experimental) | Observed skill invocations and the workflows that invoked them. |

@@ -1002,7 +1002,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   const updatesSection = page.locator('.nav-section').filter({
     has: page.locator('summary', { hasText: /^Updates$/ })
   });
-  await expect(cleanNavigation).toHaveText(['Overview']);
+  await expect(cleanNavigation).toHaveText(['Overview', 'Review queue']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
   await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Memory', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Operational Value', 'Cost', 'Friction', 'Models & Agents', 'Skills', 'Firewall', 'MCPs', 'Steering']);

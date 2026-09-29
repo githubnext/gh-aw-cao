@@ -970,7 +970,7 @@ A finding is an observation with a stable finding ID, summary, status, severity,
 
 Allowed built-in page names are:
 
-`overview`, `organizations`, `repositories`, `campaigns`, `workflows`, `runs`, `experiments`, `graders`, `evals`, `usage`, `engines-models`, `operational-value`, `findings`, and `issues`.
+`overview`, `organizations`, `repositories`, `campaigns`, `workflows`, `runs`, `experiments`, `graders`, `evals`, `usage`, `engines-models`, `operational-value`, `findings`, `issues`, and `review-queue`.
 
 The optional page `icon` is the canonical name of an Octicon supported by the presenter. It controls navigation presentation without changing page semantics and defaults to `server`. A validator **MUST** reject names outside the presenter's canonical Octicon set.
 
@@ -1006,6 +1006,7 @@ For pages that opt in to `filter-bar: true`, the presenter renders a filter bar 
 - **DLS-PAGE-016:** `experimental`, when present on a page, **MUST** be Boolean and defaults to `false`. A presenter **MUST** render an **Experimental** label in every navigation item for that page and beside the active page title.
 - **DLS-PAGE-016:** When `class-name` is present, it **MUST** be a canonical identifier and a renderer **MUST** add it to the page container without deriving additional CSS class names from `id` or `page`.
 - **DLS-PAGE-017:** The `issues` page **MUST** use the predefined built-in page configuration and the reusable `issue` entity-card definition, bind to a declared query with issue arguments, and drill to each issue's safe GitHub URL.
+- **DLS-PAGE-017:** The `review-queue` page **MUST** expose stable campaign, worker, and target work items with deterministic review state, consequence, age, next action, and bounded catch-up summaries. Presentation acknowledgement **MUST NOT** alter proposal acceptance or resolution.
 - **DLS-PAGE-017:** A presenter **MUST** render one filter bar in the view chrome only when that page declares `filter-bar: true`, toggle its tuning controls from the horizon text, and apply valid filter edits automatically. A presenter **MUST** persist time-horizon and rollout-mode settings globally in local storage and activate all rollout modes by default. Unless the page declares `view-mode-control: false`, available view-mode controls **MUST** remain in page chrome when the filter bar is omitted.
 - **DLS-PAGE-018:** A routed custom page **MAY** declare `route.title-format: title-case`. Before route-owned data resolves, a presenter **MUST** format the route value by capitalizing its hyphen- or underscore-separated words instead of exposing the raw route slug as page identity. A later route allocation **MUST** replace that provisional identity with the authoritative title.
 - **DLS-PAGE-019:** A routed custom page with declared tabs **MAY** declare a canonical `route.tabs-class-name`. A presenter **MUST** apply that class to both loading and hydrated tab sets so route chrome remains structurally and visually stable while data resolves.
