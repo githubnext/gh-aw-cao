@@ -46,7 +46,7 @@ describe('entity card templates', () => {
   });
 
   it('declares marketplace list and detail routes', () => {
-    expect(pages.marketplace.experimental).toBe(true);
+    expect(pages.marketplace.experimental).toBe(false);
     expect(pages.marketplace['class-name']).toBe('marketplace-page');
     expect(dashboard.navigation.find(
       (/** @type {Record<string, any>} */ section) => section.label === 'Updates'
@@ -78,6 +78,10 @@ describe('entity card templates', () => {
     expect(pages['marketplace-package'].sections.map(
       (/** @type {Record<string, any>} */ section) => [section.id, section.layout]
     )).toEqual([['package', 'full'], ['readme', 'wide'], ['about', 'narrow']]);
+  });
+
+  it('marks the ingestion page as non-experimental', () => {
+    expect(pages.indexing.experimental).toBe(false);
   });
 
   it('declares the marketplace action as copy-only', () => {

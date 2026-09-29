@@ -1140,7 +1140,7 @@
       "navigation-label": "Marketplace",
       "icon": "archive",
       "class-name": "marketplace-page",
-      "experimental": true,
+      "experimental": false,
       "description": "Find campaign packages to extend your agentic operations.",
       "views": [
         {
@@ -1327,7 +1327,7 @@
       "title": "Ingestion",
       "navigation-label": "Ingestion",
       "icon": "database",
-      "experimental": true,
+      "experimental": false,
       "description": "Monitor live server-side collection health, CAO Activity ingestion, and retained dashboard transactions.",
       "views": [
         {
