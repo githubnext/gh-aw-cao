@@ -158,6 +158,17 @@ test("Dependabot worker maintains a durable parent and one-PR child tasks withou
     lock,
     /GITHUB_MCP_SERVER_TOKEN: \$\{\{ steps\.cao_target_read_credential\.outputs\.token \}\}/,
   );
+  const credential = lock.indexOf("name: Resolve CAO target read credential");
+  const handoff = lock.indexOf("name: Download CAO control precompute artifact");
+  const alertFetch = lock.indexOf("name: Fetch target Dependabot alert evidence");
+  assert.ok(credential >= 0 && handoff > credential && alertFetch > handoff);
+  assert.match(lock.slice(alertFetch), /github-token: \$\{\{ steps\.cao_target_read_credential\.outputs\.token \}\}/);
+  assert.match(lock.slice(alertFetch), /precompute\.target_repo !== target/);
+  assert.match(lock.slice(alertFetch), /GET \/repos\/\{owner\}\/\{repo\}\/dependabot\/alerts/);
+  assert.match(lock.slice(alertFetch), /response\.data\.length < 100/);
+  assert.match(lock.slice(alertFetch), /complete: true, alerts/);
+  assert.match(source, /Read `\/tmp\/gh-aw\/agent\/dependabot-alerts\.json`/);
+  assert.match(source, /Do not use `list_dependabot_alerts` as a fallback/);
   assert.deepEqual(Object.keys(outputs).sort(), ["add-comment", "close-issue", "create-issue", "update-issue"]);
   assert.equal(outputs["create-issue"].max, 13);
   assert.equal(outputs["create-issue"]["deduplicate-by-title"], true);
@@ -202,7 +213,7 @@ test("Dependabot worker maintains a durable parent and one-PR child tasks withou
   assert.match(source, /`npm outdated --json`/);
   assert.match(source, /Routine package-manager results do not replace security evidence/);
   assert.match(source, /checking out `target_repo` proves only repository contents access/);
-  assert.match(source, /actual successful alert-list response/);
+  assert.match(source, /complete pre-agent alert-list response/);
   assert.match(source, /missing alert access as a blocker/);
   assert.match(source, /require `TARGET_REPO` to equal `\/tmp\/gh-aw\/agent\/control-precompute\.json\.target_repo`/);
   assert.match(source, /derive the call's `owner` and `repo` arguments from that validated `TARGET_REPO`/);
@@ -211,7 +222,7 @@ test("Dependabot worker maintains a durable parent and one-PR child tasks withou
   assert.match(source, /Their absence does not make the inventory incomplete/);
   assert.match(source, /do not run install, update, audit-fix, or lifecycle scripts/);
   assert.doesNotMatch(source, /fallback inventory/);
-  assert.match(source, /target-scoped read credential's `list_dependabot_alerts` tool, paging through all open alerts/);
+  assert.match(source, /fetched before agent execution with the target-scoped read credential/);
   assert.match(source, /Never create, update, push to, comment on, or otherwise mutate a pull request/);
 });
 
