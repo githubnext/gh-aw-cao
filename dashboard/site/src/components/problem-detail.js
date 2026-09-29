@@ -3,7 +3,7 @@
  */
 
 import { h } from '../dom.js';
-import { formatUtcDateTime } from './ui-primitives.js';
+import { formatUtcDateTime, renderDlRow } from './ui-primitives.js';
 import { renderModeBadge, renderStatusBadge } from './badge.js';
 import { text, titleCase } from './count-formatters.js';
 import { renderIntentAction } from './data-view.js';
@@ -152,7 +152,7 @@ function renderProblem(problem) {
 /** @param {string} label @param {unknown} value */
 function renderHighlight(label, value) {
   const content = value instanceof Node ? value : text(value) || 'Unavailable';
-  return h('div', null, h('dt', null, label), h('dd', null, content));
+  return renderDlRow(label, content);
 }
 
 /**
@@ -163,7 +163,7 @@ function renderDetailGroup(group, problem) {
   const fields = group.fields.map(({ label, field, fallback, linkField, missing }) => {
     const value = text(problem[field]) || (fallback ? text(problem[fallback]) : '') || missing || 'Not reported by run telemetry.';
     const link = linkField ? findLink(problem, linkField) : null;
-    return h('div', null, h('dt', null, label), h('dd', null, renderExternalLinkOrFallback(link, value, value)));
+    return renderDlRow(label, renderExternalLinkOrFallback(link, value, value));
   });
   return h(
     'section',

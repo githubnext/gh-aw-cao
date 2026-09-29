@@ -13,7 +13,7 @@ import { externalAnchorAttrs, findFirstLink, findLink, renderExternalLink, rende
 import { createEntityAwareCellRenderer } from './linked-text.js';
 import { renderTableRegion } from './table-region.js';
 import { renderPageSection, renderViewSectionChrome } from './view-chrome.js';
-import { renderCloseButton, isPlainObject, isSafeHttpsUrl, createCopyControl, createModalDialog, observeLoadMoreBoundary, renderIconSpan } from './ui-primitives.js';
+import { renderCloseButton, isPlainObject, isSafeHttpsUrl, createCopyControl, createModalDialog, observeLoadMoreBoundary, renderIconSpan, renderDlRow } from './ui-primitives.js';
 import { clearTimeWindowFilter, isTimeWindowFilterActive } from './filter-bar.js';
 import { processScatterPoints } from '../data-processor.js';
 import { MAX_RENDERED_SCATTER_POINTS } from '../scatter-clustering.js';
@@ -332,11 +332,9 @@ function renderListView(context) {
           { className: 'document-list-card-details' },
           ...columns.slice(1).map((column) => {
             const outputField = typeof column.as === 'string' ? column.as : column.field;
-            return h(
-              'div',
-              null,
-              h('dt', null, typeof column.title === 'string' ? column.title : titleCase(outputField)),
-              h('dd', null, renderValue(column, row[outputField], row))
+            return renderDlRow(
+              typeof column.title === 'string' ? column.title : titleCase(outputField),
+              renderValue(column, row[outputField], row)
             );
           })
         )
@@ -567,7 +565,7 @@ function renderEntityCardItems(rows, options) {
             const value = column.field === RUN_FIELD || column.display === 'run-link'
               ? renderWorkflowRunLink(row, toText(row[column.field]))
               : renderValue(column, row[column.field], row);
-            return h('div', null, h('dt', null, fieldTitle(column)), h('dd', null, value));
+            return renderDlRow(fieldTitle(column), value);
           })
         )
       ),
@@ -704,12 +702,7 @@ function renderIssueListView(options) {
             const value = column.field === RUN_FIELD || column.display === 'run-link'
               ? renderWorkflowRunLink(row, toText(row[outputField]))
               : renderValue(column, row[outputField], row);
-            return h(
-              'div',
-              null,
-              h('dt', null, fieldTitle(column)),
-              h('dd', null, value)
-            );
+            return renderDlRow(fieldTitle(column), value);
           })
         )
       ),
