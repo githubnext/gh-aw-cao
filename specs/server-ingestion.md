@@ -270,7 +270,7 @@ governed property and not an accident of disk usage.
   retriable non-success response without consuming the delivery identity.
 - The task queue MUST apply bounded admission backpressure and MUST NOT trim
   undelivered or pending entries. Completed entries MAY be deleted after ACK;
-  dead letters remain durably recorded.
+  dead letters remain durably recorded under the configured bounded retention.
 
 ## 12. Observability
 

@@ -362,6 +362,7 @@ func TestQueueDeadLettersAfterRepeatedFailures(t *testing.T) {
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
+
 	if _, err := queue.Enqueue(ctx, Task{Repository: "octo/api", InstallationID: 7}); err != nil {
 		t.Fatal(err)
 	}
@@ -387,6 +388,32 @@ func TestQueueDeadLettersAfterRepeatedFailures(t *testing.T) {
 	}
 }
 
+func TestDeadLetterRetentionIsBounded(t *testing.T) {
+	store, ctx := integrationStore(t)
+	queue := Queue{Store: store, MaxAttempts: 1, MaxLength: 1}
+	if err := queue.Ensure(ctx); err != nil {
+		t.Fatal(err)
+	}
+	for _, repository := range []string{"octo/first", "octo/second"} {
+		if _, err := queue.Enqueue(ctx, Task{Repository: repository}); err != nil {
+			t.Fatal(err)
+		}
+		leases, err := queue.Lease(ctx, "worker", 1, 0)
+		if err != nil || len(leases) != 1 {
+			t.Fatalf("lease = %+v, err = %v", leases, err)
+		}
+		if err := queue.Retry(ctx, leases[0], errors.New("permanent")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	dead, err := queue.DeadLetters(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dead != 1 {
+		t.Fatalf("dead letters = %d, want configured retention limit 1", dead)
+	}
+}
 func TestQueueSerializesOneRepository(t *testing.T) {
 	store, ctx := integrationStore(t)
 	queue := Queue{Store: store}

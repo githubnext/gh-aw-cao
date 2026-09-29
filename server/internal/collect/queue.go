@@ -264,7 +264,7 @@ func (q Queue) replace(ctx context.Context, messageID string, task Task) error {
 	if err != nil {
 		return err
 	}
-	return q.Store.StreamReplaceAndAck(ctx, taskStream, q.group(), messageID, taskStream, taskFields(task.Repository, payload))
+	return q.Store.StreamReplaceAndAck(ctx, taskStream, q.group(), messageID, taskStream, 0, taskFields(task.Repository, payload))
 }
 
 func (q Queue) deadLetterLease(ctx context.Context, messageID string, task Task, reason string) error {
@@ -272,7 +272,7 @@ func (q Queue) deadLetterLease(ctx context.Context, messageID string, task Task,
 	if err != nil {
 		return err
 	}
-	return q.Store.StreamReplaceAndAck(ctx, taskStream, q.group(), messageID, deadLetterStream, map[string]string{
+	return q.Store.StreamReplaceAndAck(ctx, taskStream, q.group(), messageID, deadLetterStream, q.MaxLength, map[string]string{
 		"repository": task.Repository,
 		"task":       string(payload),
 		"reason":     reason,

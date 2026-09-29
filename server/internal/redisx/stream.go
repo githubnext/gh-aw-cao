@@ -65,16 +65,15 @@ func (s *Store) StreamEnqueue(
 	  redis.call("SET", KEYS[2], "1", "PX", ARGV[3])
 	end
 	return 1`
-	arguments := []string{
+	arguments := appendStreamFields([]string{
 		"EVAL", script, "2", s.Key(stream), s.Key(debounceKey),
 		strconv.FormatInt(maxLength, 10),
 		"0",
 		strconv.FormatInt(debounceTTL.Milliseconds(), 10),
-	}
+	}, fields)
 	if debounceKey != "" {
 		arguments[6] = "1"
 	}
-	arguments = append(arguments, streamFieldArguments(fields)...)
 	value, err := s.Client.Do(ctx, arguments...)
 	if err != nil {
 		return false, err
@@ -128,13 +127,12 @@ func (s *Store) StreamEnqueueDelivery(
 	redis.call("SET", KEYS[3], "1", "PX", ARGV[2])
 	redis.call("SET", KEYS[1], "1", "PX", ARGV[1])
 	return 2`
-	arguments := []string{
+	arguments := appendStreamFields([]string{
 		"EVAL", script, "3", s.deliveryKey(delivery), s.Key(stream), s.Key(debounceKey),
 		strconv.FormatInt(deliveryTTL.Milliseconds(), 10),
 		strconv.FormatInt(debounceTTL.Milliseconds(), 10),
 		strconv.FormatInt(maxLength, 10),
-	}
-	arguments = append(arguments, streamFieldArguments(fields)...)
+	}, fields)
 	value, err := s.Client.Do(ctx, arguments...)
 	if err != nil {
 		return DeliveryDuplicate, err
@@ -160,6 +158,7 @@ func (s *Store) StreamEnqueueDelivery(
 func (s *Store) StreamReplaceAndAck(
 	ctx context.Context,
 	source, group, messageID, destination string,
+	destinationMaxLength int64,
 	fields map[string]string,
 ) error {
 	if len(fields) == 0 {
@@ -168,14 +167,18 @@ func (s *Store) StreamReplaceAndAck(
 	script := `
 	local pending = redis.call("XPENDING", KEYS[1], ARGV[1], ARGV[2], ARGV[2], 1)
 	if #pending == 0 then return 0 end
-	redis.call("XADD", KEYS[2], "*", unpack(ARGV, 3))
+	if ARGV[3] ~= "0" then
+	  redis.call("XADD", KEYS[2], "MAXLEN", ARGV[3], "*", unpack(ARGV, 4))
+	else
+	  redis.call("XADD", KEYS[2], "*", unpack(ARGV, 4))
+	end
 	local acked = redis.call("XACK", KEYS[1], ARGV[1], ARGV[2])
 	if acked == 1 then redis.call("XDEL", KEYS[1], ARGV[2]) end
 	return acked`
-	arguments := []string{
+	arguments := appendStreamFields([]string{
 		"EVAL", script, "2", s.Key(source), s.Key(destination), group, messageID,
-	}
-	arguments = append(arguments, streamFieldArguments(fields)...)
+		strconv.FormatInt(destinationMaxLength, 10),
+	}, fields)
 	_, err := s.Client.Do(ctx, arguments...)
 	return err
 }
@@ -193,12 +196,13 @@ func (s *Store) StreamAckAndDelete(ctx context.Context, stream, group, messageID
 	return err
 }
 
-func streamFieldArguments(fields map[string]string) []string {
-	var arguments []string
+func appendStreamFields(arguments []string, fields map[string]string) []string {
+	output := make([]string, len(arguments), len(arguments)+len(fields))
+	copy(output, arguments)
 	for name, value := range fields {
-		arguments = append(arguments, name, value)
+		output = append(output, name, value)
 	}
-	return arguments
+	return output
 }
 
 func (s *Store) deliveryKey(delivery string) string {

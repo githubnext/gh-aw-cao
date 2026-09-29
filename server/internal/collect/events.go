@@ -241,6 +241,7 @@ func (a Admitter) AdmitDelivery(
 		switch reservation {
 		case redisx.DeliveryAlreadyCommitted:
 			return Admission{Kind: intent.Kind, Duplicate: true}, nil
+		case redisx.DeliveryReserved:
 		case redisx.DeliveryInProgress:
 			return Admission{}, ErrDeliveryInProgress
 		}

@@ -245,12 +245,6 @@ func (a *App) admitWebhook(
 	writeJSON(response, http.StatusAccepted, payload)
 }
 
-func (a *App) forgetDelivery(parent context.Context, delivery string) {
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), 3*time.Second)
-	defer cancel()
-	_ = a.store.ForgetDelivery(ctx, delivery)
-}
-
 func (a *App) performReconciliation(
 	ctx context.Context,
 	cancel context.CancelFunc,

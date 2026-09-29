@@ -512,7 +512,8 @@ dead-letter transitions append their replacement before acknowledging the
 leased entry in one Redis operation. Completed entries are acknowledged and
 deleted atomically. The task stream is never `MAXLEN`-trimmed: its configured
 limit applies admission backpressure, returning a retriable webhook failure
-instead of discarding undelivered or pending work.
+instead of discarding undelivered or pending work. The same configured limit
+bounds the dead-letter stream by trimming its oldest diagnostic records.
 
 ### Collection roles
 

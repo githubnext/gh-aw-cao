@@ -26,7 +26,7 @@ func (c *streamCommandClient) DoMany(context.Context, [][]string) ([]any, error)
 func TestStreamReplaceAndAckUsesOneAtomicCommand(t *testing.T) {
 	client := &streamCommandClient{value: int64(1)}
 	store := NewStore(client, "test")
-	err := store.StreamReplaceAndAck(context.Background(), "tasks", "workers", "1-0", "tasks", map[string]string{"task": "{}"})
+	err := store.StreamReplaceAndAck(context.Background(), "tasks", "workers", "1-0", "tasks", 0, map[string]string{"task": "{}"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestStreamReplaceAndAckUsesOneAtomicCommand(t *testing.T) {
 func TestStreamReplaceFailureCannotIssueSeparateAck(t *testing.T) {
 	client := &streamCommandClient{err: errors.New("injected Redis failure")}
 	store := NewStore(client, "test")
-	err := store.StreamReplaceAndAck(context.Background(), "tasks", "workers", "1-0", "tasks", map[string]string{"task": "{}"})
+	err := store.StreamReplaceAndAck(context.Background(), "tasks", "workers", "1-0", "tasks", 0, map[string]string{"task": "{}"})
 	if err == nil {
 		t.Fatal("expected injected failure")
 	}
