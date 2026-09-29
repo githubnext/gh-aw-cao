@@ -43,7 +43,7 @@ test('an open shared prompt preview tracks reactive evidence until it closes', a
       import { renderPromptPreviewAction } from ${JSON.stringify('http://dashboard.test/src/components/data-view.js')};
       import { state } from ${JSON.stringify('http://dashboard.test/src/reactive.js')};
       const evidence = state('first observation');
-      const action = renderPromptPreviewAction('Inspect evidence', evidence.get);
+      const action = renderPromptPreviewAction('Inspect evidence', evidence.get, undefined, 'comment', 'semantic-prompt');
       window.refreshEvidence = () => evidence.set('updated observation');
       document.querySelector('#root').append(action);
     </script>

@@ -21,7 +21,7 @@ describe('reactive prompt preview', () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { clipboard: { writeText } });
     const evidence = state('first observation');
-    const control = renderPromptPreviewAction('Inspect evidence', evidence.get);
+    const control = renderPromptPreviewAction('Inspect evidence', evidence.get, undefined, 'comment', 'semantic-prompt');
     document.body.append(control);
     const trigger = /** @type {HTMLButtonElement} */ (control.querySelector('.table-intent-button'));
     trigger.click();

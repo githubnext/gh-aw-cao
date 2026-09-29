@@ -813,7 +813,9 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
                 sources: selectedSources
               });
             },
-            declaredAgentTaskActionId()
+            declaredAgentTaskActionId(),
+            'comment',
+            'semantic-prompt'
           );
           prompt.classList.add('semantic-prompt-action');
           const section = rendered.matches('.page-section') ? rendered : null;
@@ -825,7 +827,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
           } else {
             rendered = h('div', { className: 'semantic-prompt-view' },
               h('div', { className: 'semantic-prompt-heading' },
-                rendered.querySelector('h2, h3, h4') ? null : h(headingTag, null, getViewTitle(view, index)),
+                view.mark === 'callout' ? null : h(headingTag, null, getViewTitle(view, index)),
                 prompt),
               rendered);
           }

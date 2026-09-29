@@ -1575,7 +1575,7 @@ export function renderIntentAction(action, row) {
  * @param {string} [presentation]
  */
 export function renderPromptPreviewAction(label, getContent, actionId, icon = 'comment', presentation = 'copy-prompt') {
-  const scope = createFactoryScope();
+  const scope = presentation === 'semantic-prompt' ? createFactoryScope() : null;
   const content = state('');
   const opened = state(false);
   /** @type {HTMLButtonElement | null} */
@@ -1592,10 +1592,10 @@ export function renderPromptPreviewAction(label, getContent, actionId, icon = 'c
   const preview = h('pre', { className: 'table-intent-preview' });
   effect(() => {
     if (opened.get()) content.set(getContent());
-  }, { signal: scope.signal });
+  }, { signal: scope?.signal });
   effect(() => {
     preview.textContent = content.get();
-  }, { signal: scope.signal });
+  }, { signal: scope?.signal });
   const copyControl = createCopyControl({
     getContent: content.get,
     label: 'Copy prompt',
@@ -1638,7 +1638,7 @@ export function renderPromptPreviewAction(label, getContent, actionId, icon = 'c
       'aria-label': label,
       'data-intent-presentation': presentation,
       onClick: () => {
-        if (scope.signal.aborted) return;
+        if (scope?.signal.aborted) return;
         activeControl.reset();
         opened.set(true);
         openPreview();
@@ -1650,9 +1650,9 @@ export function renderPromptPreviewAction(label, getContent, actionId, icon = 'c
   dialog.addEventListener('close', () => {
     opened.set(false);
     triggerButton?.focus();
-  }, { signal: scope.signal });
+  }, scope ? { signal: scope.signal } : undefined);
   const root = h('span', { className: 'table-intent-control' }, triggerButton, dialog);
-  scope.bind(root);
+  scope?.bind(root);
   return root;
 }
 
