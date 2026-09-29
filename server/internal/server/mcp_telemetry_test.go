@@ -2,10 +2,12 @@ package server
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -181,4 +183,98 @@ func spanAttributes(attributes []attribute.KeyValue) map[string]any {
 		result[string(item.Key)] = item.Value.AsInterface()
 	}
 	return result
+}
+
+func TestClassifyMCPServerErrorCallerErrorReportsStatusCodeWithoutErrorType(t *testing.T) {
+	classification := classifyMCPServerError(&jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: "bad params"})
+	if !classification.IsCallerError {
+		t.Fatal("expected an invalid-params RPC error to classify as a caller error")
+	}
+	if classification.StatusCodeAttribute != "-32602" {
+		t.Fatalf("StatusCodeAttribute = %q, want %q", classification.StatusCodeAttribute, "-32602")
+	}
+	if classification.ErrorTypeAttribute != "" {
+		t.Fatalf("ErrorTypeAttribute = %q, want empty for a caller error", classification.ErrorTypeAttribute)
+	}
+}
+
+func TestClassifyMCPServerErrorServerRPCErrorReportsBothAttributes(t *testing.T) {
+	classification := classifyMCPServerError(&jsonrpc.Error{Code: -32000, Message: "internal failure"})
+	if classification.IsCallerError {
+		t.Fatal("expected a non-caller RPC code to classify as a server error")
+	}
+	if classification.StatusCodeAttribute != "-32000" {
+		t.Fatalf("StatusCodeAttribute = %q, want %q", classification.StatusCodeAttribute, "-32000")
+	}
+	if classification.ErrorTypeAttribute != "-32000" {
+		t.Fatalf("ErrorTypeAttribute = %q, want %q", classification.ErrorTypeAttribute, "-32000")
+	}
+}
+
+func TestClassifyMCPServerErrorNonRPCErrorReportsDynamicType(t *testing.T) {
+	classification := classifyMCPServerError(errors.New("boom"))
+	if classification.IsCallerError {
+		t.Fatal("expected a plain error to classify as a server error")
+	}
+	if classification.StatusCodeAttribute != "" {
+		t.Fatalf("StatusCodeAttribute = %q, want empty for a non-RPC error", classification.StatusCodeAttribute)
+	}
+	if classification.ErrorTypeAttribute != "*errors.errorString" {
+		t.Fatalf("ErrorTypeAttribute = %q, want %q", classification.ErrorTypeAttribute, "*errors.errorString")
+	}
+}
+
+// TestRecordMCPServerErrorCallerErrorLeavesSpanUnmarked verifies that a
+// caller-error RPC code sets only the status-code attribute and never marks
+// the span as failed, using a real SDK span rather than a mock.
+func TestRecordMCPServerErrorCallerErrorLeavesSpanUnmarked(t *testing.T) {
+	exporter := tracetest.NewInMemoryExporter()
+	provider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+	t.Cleanup(func() { _ = provider.Shutdown(t.Context()) })
+	ctx, span := provider.Tracer("test").Start(t.Context(), "caller-error")
+
+	recordMCPServerError(span, &jsonrpc.Error{Code: jsonrpc.CodeMethodNotFound, Message: "no such method"})
+	span.End()
+	_ = ctx
+
+	recorded := exporter.GetSpans()[0]
+	if recorded.Status.Code != codes.Unset {
+		t.Fatalf("caller-error span status = %v, want unset", recorded.Status.Code)
+	}
+	attributes := spanAttributes(recorded.Attributes)
+	if got := attributes[rpcStatusCodeKey]; got != "-32601" {
+		t.Fatalf("rpc.response.status_code = %#v, want -32601", got)
+	}
+	if _, ok := attributes[errorTypeKey]; ok {
+		t.Fatal("caller-error span must not set error.type")
+	}
+	if len(recorded.Events) != 0 {
+		t.Fatalf("caller-error span must not record an error event, got %d", len(recorded.Events))
+	}
+}
+
+// TestRecordMCPServerErrorServerErrorMarksSpanFailed verifies that a
+// non-caller error records an error event and marks the span failed, using a
+// real SDK span.
+func TestRecordMCPServerErrorServerErrorMarksSpanFailed(t *testing.T) {
+	exporter := tracetest.NewInMemoryExporter()
+	provider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+	t.Cleanup(func() { _ = provider.Shutdown(t.Context()) })
+	ctx, span := provider.Tracer("test").Start(t.Context(), "server-error")
+
+	recordMCPServerError(span, errors.New("boom"))
+	span.End()
+	_ = ctx
+
+	recorded := exporter.GetSpans()[0]
+	if recorded.Status.Code != codes.Error {
+		t.Fatalf("server-error span status = %v, want error", recorded.Status.Code)
+	}
+	attributes := spanAttributes(recorded.Attributes)
+	if got := attributes[errorTypeKey]; got != "*errors.errorString" {
+		t.Fatalf("error.type = %#v, want *errors.errorString", got)
+	}
+	if len(recorded.Events) != 1 {
+		t.Fatalf("server-error span must record one error event, got %d", len(recorded.Events))
+	}
 }

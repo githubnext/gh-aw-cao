@@ -69,6 +69,7 @@ test('Memory uses mobile master-detail file navigation', async ({ context, page 
   await expect(fileContent.getByRole('button', { name: 'Back to files' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Go back' })).toBeVisible();
   await expect(fileContent.locator('pre')).toHaveCSS('white-space', 'pre-wrap');
+  await expect(fileContent.locator('pre > code')).toHaveCSS('display', 'block');
   await expect.poll(() => fileContent.locator('pre').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 
   await page.getByRole('button', { name: 'Go back' }).click();

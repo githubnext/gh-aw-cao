@@ -1,3 +1,7 @@
+import { createDebug } from './debug.js';
+
+const debugTableSummaryData = createDebug('table-summary-data');
+
 const RUN_SUMMARY_FIELDS = new Set(['run', 'run-link']);
 const RUN_SUMMARY_LABELS = new Set(['run', 'run link', 'workflow run', 'workflow runs']);
 const SUMMARY_TYPES = new Set(['boolean', 'nominal', 'ordinal', 'quantitative', 'temporal']);
@@ -21,7 +25,11 @@ function histogramBinCountForSampleSize(sampleSize) {
  * @returns {TableColumnSummary[]}
  */
 export function summarizeTableColumns(columns) {
-  return columns.map(summarizeTableColumn);
+  debugTableSummaryData({ operation: 'summarize', columnCount: columns.length });
+  const summaries = columns.map(summarizeTableColumn);
+  const unsummarizedCount = summaries.filter((summary) => summary.kind === 'none' || summary.kind === 'empty').length;
+  debugTableSummaryData({ operation: 'summarize-complete', columnCount: summaries.length, unsummarizedCount });
+  return summaries;
 }
 
 /**
@@ -171,5 +179,6 @@ export function binHistogramValues(values, binCount) {
     const index = Math.min(Math.floor((value - minimum) / step), count - 1);
     bins[index].count += 1;
   }
+  debugTableSummaryData({ operation: 'bin-histogram', sampleSize, binCount: count });
   return bins;
 }

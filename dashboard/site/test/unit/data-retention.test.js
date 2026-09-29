@@ -7,6 +7,7 @@ import {
   mergeRetainedRecords,
   RETENTION_WINDOW_DAYS
 } from '../../src/data/storage/retention.js';
+import { relationshipErrors } from '../../src/data/model/schema.js';
 
 const NOW = Date.parse('2026-09-09T05:00:00Z');
 
@@ -121,6 +122,53 @@ describe('canonical retention merge', () => {
     const merged = mergeRetainedRecords(previous, incoming, { now: NOW });
 
     expect(merged.audits.map((event) => event.id)).toEqual(['event:current']);
+  });
+
+  it('drops retained evidence whose definition belongs to a different workflow than its run', () => {
+    const previous = batch([]);
+    const observedAt = new Date(NOW).toISOString();
+    previous.experiments ??= [];
+    previous.experimentAssignments ??= [];
+    previous.graders ??= [];
+    previous.graderObservations ??= [];
+    previous.evals ??= [];
+    previous.evalObservations ??= [];
+    previous.workflows.push({
+      id: 'workflow:2',
+      repositoryId: 'repository:1',
+      path: '.github/workflows/other.md'
+    });
+    previous.experiments.push(
+      { id: 'experiment:1', workflowId: 'workflow:1', name: 'prompt', observedAt },
+      { id: 'experiment:2', workflowId: 'workflow:2', name: 'prompt', observedAt }
+    );
+    previous.experimentAssignments.push(
+      { id: 'assignment:valid', runId: previous.runs[0].id, experimentId: 'experiment:1', timestamp: observedAt },
+      { id: 'assignment:invalid', runId: previous.runs[0].id, experimentId: 'experiment:2', timestamp: observedAt }
+    );
+    previous.graders.push(
+      { id: 'grader:1', workflowId: 'workflow:1', name: 'quality', observedAt },
+      { id: 'grader:2', workflowId: 'workflow:2', name: 'quality', observedAt }
+    );
+    previous.graderObservations.push(
+      { id: 'grade:valid', runId: previous.runs[0].id, graderId: 'grader:1', timestamp: observedAt },
+      { id: 'grade:invalid', runId: previous.runs[0].id, graderId: 'grader:2', timestamp: observedAt }
+    );
+    previous.evals.push(
+      { id: 'eval:1', workflowId: 'workflow:1', name: 'correctness', observedAt },
+      { id: 'eval:2', workflowId: 'workflow:2', name: 'correctness', observedAt }
+    );
+    previous.evalObservations.push(
+      { id: 'eval-observation:valid', runId: previous.runs[0].id, evalId: 'eval:1', timestamp: observedAt },
+      { id: 'eval-observation:invalid', runId: previous.runs[0].id, evalId: 'eval:2', timestamp: observedAt }
+    );
+
+    const merged = mergeRetainedRecords(previous, normalize([]), { now: NOW });
+
+    expect((merged.experimentAssignments ?? []).map((record) => record.id)).toEqual(['assignment:valid']);
+    expect((merged.graderObservations ?? []).map((record) => record.id)).toEqual(['grade:valid']);
+    expect((merged.evalObservations ?? []).map((record) => record.id)).toEqual(['eval-observation:valid']);
+    expect(relationshipErrors(merged)).toEqual([]);
   });
 
   it('expires retained records that carry no usable observation time', () => {
