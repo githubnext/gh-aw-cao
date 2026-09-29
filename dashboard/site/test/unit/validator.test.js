@@ -32,6 +32,32 @@ dashboard:
 `;
 
 describe('dashboard document validation', () => {
+  it('declares one bounded Firewall Fix It action on the primary chart', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const page = document.dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'firewall');
+    const view = page.views.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'security-firewall-most-blocked-domains');
+    const query = document.dashboard.queries.find((/** @type {{ name: string }} */ candidate) => candidate.name === view.data.source);
+    expect(query).toMatchObject({ from: 'firewall-domain-totals', limit: 10 });
+    expect(view.encoding.actions).toMatchObject([{
+      action: 'create-agent-task',
+      presentation: 'copy-prompt',
+      label: 'Fix It',
+      context: ['domain', 'blocked', 'run', 'accepted']
+    }]);
+    expect(view.encoding.actions).toHaveLength(1);
+    expect(view.encoding.actions[0].intent).toContain('Blocked traffic may be correct');
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
+    view.encoding.actions[0].context.push('raw-log');
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+    view.encoding.actions[0].context.pop();
+    view.encoding.actions[0].presentation = 'cli-action';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+    view.encoding.actions[0].presentation = 'copy-prompt';
+    view.encoding.actions[0].when = { field: 'domain', equals: 'example.com' };
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+  });
+
   it('accepts the authoritative built-in overview view definition', () => {
     const accepted = validateDashboardDocument(authoritativeDashboardSource);
     expect(accepted.ok).toBe(true);

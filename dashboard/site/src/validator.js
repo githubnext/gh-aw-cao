@@ -3429,8 +3429,8 @@ function validateListViewAll(viewAll, viewAllNode, listPath, style, errors) {
  */
 function validateTableActions(encoding, encodingNode, mark, sourceName, path, errors) {
   if (!isPlainObject(encoding) || encoding.actions === undefined) return;
-  if (!['list', 'table'].includes(String(mark))) {
-    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'actions is allowed only when mark is "list" or "table".', path));
+  if (!['chart', 'list', 'table'].includes(String(mark))) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'actions is allowed only when mark is "chart", "list", or "table".', path));
     return;
   }
   if (!Array.isArray(encoding.actions) || encoding.actions.length === 0) {
@@ -3448,6 +3448,9 @@ function validateTableActions(encoding, encodingNode, mark, sourceName, path, er
     validateStringField(action.presentation, `${actionPath}.presentation`, true, errors);
     if (typeof action.presentation === 'string' && !TABLE_ACTION_PRESENTATION_VALUES.includes(action.presentation)) {
       errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'action presentation must be copy-prompt, cli-action, or external-link.', `${actionPath}.presentation`));
+    }
+    if (mark === 'chart' && action.presentation !== 'copy-prompt') {
+      errors.push(createError(ERROR_CODES.incompatibleMarkChannelTypeOrTimeUnit, 'chart actions must use copy-prompt presentation.', `${actionPath}.presentation`));
     }
     if (action.presentation === 'cli-action') {
       validateRequiredIdentifier(action.action, `${actionPath}.action`, 'CLI action reference', errors);
@@ -3526,6 +3529,9 @@ function validateTableActions(encoding, encodingNode, mark, sourceName, path, er
       }
     }
     if (action.when === undefined) return;
+    if (mark === 'chart') {
+      errors.push(createError(ERROR_CODES.incompatibleMarkChannelTypeOrTimeUnit, 'chart actions cannot declare row conditions.', `${actionPath}.when`));
+    }
     if (!isPlainObject(action.when)) {
       errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'action when must be a mapping.', `${actionPath}.when`));
       return;

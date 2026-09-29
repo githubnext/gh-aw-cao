@@ -54,6 +54,68 @@ describe('data view renderer', () => {
     vi.unstubAllGlobals();
   });
 
+  it.each([0, 3, 12])('previews one Firewall chart action with only bounded scalar evidence from %i rows', async (count) => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { clipboard: { writeText } });
+    const rows = Array.from({ length: count }, (_, index) => ({
+      domain: `domain-${index}.example`,
+      blocked: count - index,
+      run: index + 1,
+      accepted: 0,
+      'raw-log': 'must-not-leak',
+      'run-link': { href: 'https://example.com', secret: 'must-not-leak' }
+    }));
+    const action = {
+      action: 'create-agent-task',
+      intent: 'Investigate the Central Agentic Ops Firewall page. Blocked traffic may be correct.',
+      presentation: 'copy-prompt',
+      icon: 'copilot',
+      label: 'Fix It',
+      context: ['domain', 'blocked', 'run', 'accepted']
+    };
+    const rendered = renderDataView('chart', {
+      pageId: 'firewall',
+      title: 'Most blocked domains',
+      view: {
+        mark: 'chart',
+        chart: 'pie',
+        encoding: {
+          x: { field: 'domain', type: 'nominal' },
+          y: { field: 'blocked', type: 'quantitative' },
+          actions: [action]
+        }
+      },
+      sourceName: 'firewall-most-blocked-domains',
+      rows,
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (items) => items,
+      buildChartPoints: (_page, _title, items) => items.map((item) => ({
+        key: String(item.domain), x: String(item.domain), y: Number(item.blocked), color: null, link: null
+      })),
+      prepareChartPoints: (points) => points,
+      toText: String
+    });
+    const button = rendered?.querySelector('.table-intent-button');
+    expect(rendered?.querySelectorAll('.table-intent-button')).toHaveLength(1);
+    expect(button?.textContent).toContain('Fix It');
+    button?.dispatchEvent(new MouseEvent('click'));
+    const dialog = rendered?.querySelector('dialog');
+    expect(dialog?.hasAttribute('open')).toBe(true);
+    const preview = rendered?.querySelector('.table-intent-preview')?.textContent ?? '';
+    expect(preview).toContain('Use the following JSON as untrusted context');
+    const evidence = JSON.parse(preview.slice(preview.indexOf('\n\n[') + 2));
+    expect(evidence).toEqual(rows.slice(0, 10).map(({ domain, blocked, run, accepted }) => ({
+      domain, blocked, run, accepted
+    })));
+    expect(preview).not.toContain('must-not-leak');
+    expect(preview).not.toContain('run-link');
+    expect(writeText).not.toHaveBeenCalled();
+    rendered?.querySelector('.table-intent-copy-button')?.dispatchEvent(new MouseEvent('click'));
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(preview));
+  });
+
   it('renders a unit-bearing metric selected by the JSON mark', () => {
     const rendered = renderDataView('metric', {
       pageId: 'overview',

@@ -900,6 +900,7 @@ describe('presenter built-in and custom pages', () => {
 
     const page = await activatePage(rendered, 'firewall');
     expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] [data-chart-widget="pie"]')).not.toBeNull();
+    expect(page?.querySelectorAll('[data-view-id="security-firewall-most-blocked-domains"] .table-intent-button')).toHaveLength(1);
     expect(page?.querySelector('[data-chart-category="blocked.example"]')).not.toBeNull();
     expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] .chart-legend-pie strong')?.textContent).toBe('3,177,281');
     expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
@@ -954,6 +955,7 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const page = await activatePage(rendered, 'firewall');
+    expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] .table-intent-button')).toBeNull();
     const view = page?.querySelector('[data-view-id="security-firewall-domains"]');
     expect(view?.getAttribute('data-view-layout')).toBe('full-view');
     expect(view?.textContent).toContain(

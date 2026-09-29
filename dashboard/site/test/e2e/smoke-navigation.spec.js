@@ -429,6 +429,47 @@ test('production chart and table pages expose consistent desktop and mobile view
   }
 });
 
+test('Firewall chart Fix It previews bounded query evidence without executing', async ({ page }) => {
+  const presenterModuleUrl = buildPresenterModuleUrl();
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      window.location.hash = '#page-firewall';
+      document.querySelector('#root').append(renderDashboard({
+        document: ${JSON.stringify(authoritativeDashboard)},
+        sources: {
+          'firewall-most-blocked-domains': {
+            source: 'firewall-most-blocked-domains',
+            rows: [{ domain: 'blocked.example', blocked: 42, run: 2, accepted: 0, 'raw-log': 'private' }],
+            metadata: {
+              'source-id': 'firewall-fixture',
+              'source-kind': 'fixture',
+              'as-of': '2026-09-05T11:00:00Z',
+              'retrieved-at': '2026-09-05T11:05:00Z',
+              completeness: 'complete',
+              freshness: 'fresh',
+              availability: 'available'
+            }
+          }
+        }
+      }));
+    </script>
+  `);
+  const chart = page.locator('[data-view-id="security-firewall-most-blocked-domains"]');
+  await expect(chart).toBeVisible();
+  const button = chart.getByRole('button', { name: 'Fix It' });
+  await expect(button).toHaveCount(1);
+  await button.click();
+  const preview = chart.getByRole('dialog', { name: 'Fix It prompt preview' });
+  await expect(preview).toBeVisible();
+  await expect(preview).toContainText('Central Agentic Ops Firewall page');
+  await expect(preview).toContainText('"domain": "blocked.example"');
+  await expect(preview).toContainText('"blocked": 42');
+  await expect(preview).not.toContainText('private');
+  await expect(preview.getByRole('button', { name: 'Copy prompt' })).toBeVisible();
+});
+
 test('phone full-view lazy tables switch between table and card-list modes', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   await page.setViewportSize({ width: 390, height: 844 });
