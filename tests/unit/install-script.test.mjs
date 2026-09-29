@@ -151,9 +151,12 @@ async function createConsumer(t, ghAwVersion, { repository = "alpha-org/control"
   const inheritedEnv = { ...process.env };
   const inheritedPath = inheritedEnv.PATH ?? inheritedEnv.Path ?? "";
   if (process.platform === "win32") delete inheritedEnv.Path;
+  const systemPath = process.platform === "win32"
+    ? inheritedPath.split(path.delimiter).filter((directory) => path.basename(directory).toLowerCase() !== "github cli").join(path.delimiter)
+    : inheritedPath;
   const env = {
     ...inheritedEnv,
-    PATH: `${bin}${path.delimiter}${inheritedPath}`,
+    PATH: `${bin}${path.delimiter}${systemPath}`,
     ...(process.platform === "win32" ? { PATHEXT: ".CMD;.COM;.EXE;.BAT" } : {}),
     NODE_OPTIONS: [process.env.NODE_OPTIONS, `--import=${pathToFileURL(mockFetch).href}`].filter(Boolean).join(" "),
     FAKE_CATALOG: catalog,
