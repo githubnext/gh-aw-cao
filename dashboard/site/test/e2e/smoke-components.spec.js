@@ -78,7 +78,26 @@ test('campaign problem detail renders a responsive full view without a table', a
   await expect(problemDetail.getByRole('heading', { name: 'Failure' })).toBeVisible();
   await expect(problemDetail.getByRole('heading', { name: 'Scope' })).toBeVisible();
   await expect(problemDetail.getByRole('heading', { name: 'Runtime environment' })).toBeVisible();
-  await expect(problemDetail.getByRole('button', { name: 'Fix It' })).toBeVisible();
+  const fixItButton = problemDetail.getByRole('button', { name: 'Fix It' });
+  await expect(fixItButton).toBeVisible();
+  const buttonColors = await fixItButton.evaluate((button) => {
+    const tokenProbe = document.createElement('span');
+    tokenProbe.style.backgroundColor = 'var(--accent)';
+    tokenProbe.style.color = 'var(--canvas)';
+    document.body.append(tokenProbe);
+    const tokenStyles = getComputedStyle(tokenProbe);
+    const buttonStyles = getComputedStyle(button);
+    const colors = {
+      background: buttonStyles.backgroundColor,
+      accent: tokenStyles.backgroundColor,
+      foreground: buttonStyles.color,
+      canvas: tokenStyles.color
+    };
+    tokenProbe.remove();
+    return colors;
+  });
+  expect(buttonColors.background).toBe(buttonColors.accent);
+  expect(buttonColors.foreground).toBe(buttonColors.canvas);
   const runLink = problemDetail.getByRole('link', { name: 'https://github.com/github/gh-aw/actions/runs/1' });
   await expect(runLink).toHaveAttribute('href', 'https://github.com/github/gh-aw/actions/runs/1');
   await expect(runLink).toHaveAttribute('rel', 'noopener noreferrer');

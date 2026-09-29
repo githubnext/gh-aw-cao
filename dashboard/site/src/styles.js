@@ -1057,6 +1057,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .table-intent-control { display: inline-grid; place-items: center; }
 .table-intent-button { min-height: 32px; display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; border: 1px solid var(--accent); border-radius: 6px; background: var(--accent-muted); color: var(--accent); font: inherit; font-size: .75rem; font-weight: 600; white-space: nowrap; cursor: pointer; }
 .table-intent-button:hover { background: var(--accent); color: var(--canvas); }
+.problem-view-header .table-intent-button { border-color: var(--accent); background: var(--accent); color: var(--canvas); }
 .table-intent-button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .table-intent-button .octicon { width: 14px; height: 14px; }
 .table-cli-action-control { display: inline-grid; place-items: center; }
