@@ -339,13 +339,12 @@
         } else if (state === "stale") {
           dashboard.classList.add("dashboard-stale");
         }
-        if (snapshot && state !== "ready") {
-          dashboard.prepend(renderDashboardSnapshotStatus(
-            snapshot,
-            state === "cached" ? "refreshing" : "stale"
-          ));
+        if (snapshot && state === "stale") {
+          dashboard.prepend(renderDashboardSnapshotStatus(snapshot));
         } else if (snapshot) {
-          dashboard.querySelector(".dashboard-horizon")?.after(renderDashboardCurrentStatus(snapshot));
+          dashboard.querySelector(".dashboard-horizon")?.after(renderDashboardCurrentStatus(snapshot, {
+            refreshing: state === "cached"
+          }));
         }
         if (retryRefresh && (state === "stale" || (state === "loading" && !snapshot))) {
           dashboard.querySelector(".report-body")?.prepend(renderRefreshError(retryRefresh, {
