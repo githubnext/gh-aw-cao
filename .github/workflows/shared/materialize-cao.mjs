@@ -305,6 +305,8 @@ export function verifyCaoRuntime(bundle, repositoryRoot = process.cwd()) {
   const required = {
     activity: [
       'activity/cao.mjs',
+      'activity/cli-usage.mjs',
+      'activity/normalized-phase.mjs',
       'activity/commands/index.mjs',
       'activity/setup.mjs',
       'activity/upgrade-gh-aw.mjs',

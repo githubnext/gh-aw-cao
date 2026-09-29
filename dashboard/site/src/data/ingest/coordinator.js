@@ -41,8 +41,8 @@ import { createDebug } from '../../debug.js';
 const debug = createDebug('data:ingestion');
 
 const DASHBOARD_SOURCE_INGESTION_VERSION = 5;
-const GH_AW_JSONL_INGESTION_VERSION = 4;
-export const NORMALIZED_JSONL_INGESTION_VERSION = 3;
+const GH_AW_JSONL_INGESTION_VERSION = 5;
+export const NORMALIZED_JSONL_INGESTION_VERSION = 4;
 const MIN_NORMALIZED_JSONL_SCHEMA_VERSION = 17;
 const MAX_QUOTA_RECOVERY_ATTEMPTS = 4;
 const MAX_USAGE_RECOVERY_ATTEMPTS = 4;
@@ -58,7 +58,8 @@ const NORMALIZED_BATCH_COLLECTIONS = /** @type {const} */ ([
   'audits',
   'issues',
   'operationalValues',
-  'marketplacePackages'
+  'marketplacePackages',
+  'experiments', 'experimentAssignments', 'graders', 'graderObservations', 'evals', 'evalObservations'
 ]);
 const NORMALIZED_JSONL_WRITE_BATCH_SIZE = 250;
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
@@ -669,15 +670,16 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
             throw new TypeError(`Normalized activity JSONL line ${lineNumber} must contain a canonical record`);
           }
           const excluded = header.phase === 'runs'
-            ? ['domains', 'tools', 'skills', 'friction', 'audits', 'issues', 'operationalValues']
+            ? ['domains', 'tools', 'skills', 'friction', 'audits', 'issues', 'operationalValues',
+              'graders', 'graderObservations', 'evals', 'evalObservations']
             : header.phase === 'records'
-              ? ['campaigns', 'repositories', 'workflows', 'runs']
+            ? ['campaigns', 'repositories', 'workflows', 'runs', 'experiments', 'experimentAssignments']
               : [];
           if (excluded.includes(collection)) {
             throw new TypeError(`Normalized ${header.phase} payload must not include ${collection}`);
           }
           if (collection === 'runs') rawRuns += 1;
-          batch[collection].push(/** @type {never} */ (envelope.record));
+          batch[collection]?.push(/** @type {never} */ (envelope.record));
           bufferedRecords += 1;
           if (bufferedRecords >= NORMALIZED_JSONL_WRITE_BATCH_SIZE) await flush();
         };

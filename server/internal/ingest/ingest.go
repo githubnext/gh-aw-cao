@@ -31,6 +31,7 @@ var collections = []string{
 	"campaigns", "repositories", "workflows", "runs",
 	"jobs", "sessions", "events",
 	"domains", "tools", "skills", "friction", "audits", "issues", "operationalValues",
+	"experiments", "experimentAssignments", "graders", "graderObservations", "evals", "evalObservations",
 }
 
 const projectionBatchSize = 25_000
@@ -416,6 +417,19 @@ func projectSources(canonical map[string][]model.Row, inventory map[string]model
 			sources[name] = mergeLogical(sources[name], result)
 		}
 	}
+	for _, name := range []string{
+		"experiments", "experiment-assignments", "graders", "grader-observations", "evals", "eval-observations",
+	} {
+		definition, ok := index[name]
+		if !ok {
+			return nil, fmt.Errorf("missing canonical evidence query %q", name)
+		}
+		result, err := execute(definition, mergeSourceMaps(inputs, sources))
+		if err != nil {
+			return nil, fmt.Errorf("project %s: %w", name, err)
+		}
+		sources[name] = result
+	}
 	for _, name := range []string{"jobs", "sessions", "events"} {
 		if len(canonical[name]) == 0 {
 			continue
@@ -645,7 +659,7 @@ func buildDiagnostics(canonical map[string][]model.Row) model.Diagnostics {
 func relationshipErrors(canonical map[string][]model.Row) []string {
 	ids := map[string]map[string]bool{}
 	records := map[string]map[string]model.Row{}
-	for _, collection := range []string{"repositories", "campaigns", "workflows", "runs"} {
+	for _, collection := range []string{"repositories", "campaigns", "workflows", "runs", "experiments", "graders", "evals"} {
 		ids[collection] = map[string]bool{}
 		records[collection] = map[string]model.Row{}
 		for _, row := range canonical[collection] {
@@ -680,7 +694,7 @@ func relationshipErrors(canonical map[string][]model.Row) []string {
 			result = append(result, fmt.Sprintf("%s.workflowId references a workflow from another repository", row["id"]))
 		}
 	}
-	for _, collection := range []string{"jobs", "sessions", "domains", "tools", "skills", "friction", "audits", "issues"} {
+	for _, collection := range []string{"jobs", "sessions", "domains", "tools", "skills", "friction", "audits", "issues", "experimentAssignments", "graderObservations", "evalObservations"} {
 		for _, row := range canonical[collection] {
 			require(row, "runId", "runs", "run")
 		}
@@ -690,6 +704,26 @@ func relationshipErrors(canonical map[string][]model.Row) []string {
 	}
 	for _, row := range canonical["operationalValues"] {
 		require(row, "repositoryId", "repositories", "repository")
+	}
+	for _, collection := range []string{"experiments", "graders", "evals"} {
+		for _, row := range canonical[collection] {
+			require(row, "workflowId", "workflows", "workflow")
+		}
+	}
+	for _, pair := range []struct{ child, parent, field string }{
+		{"experimentAssignments", "experiments", "experimentId"},
+		{"graderObservations", "graders", "graderId"},
+		{"evalObservations", "evals", "evalId"},
+	} {
+		for _, row := range canonical[pair.child] {
+			require(row, pair.field, pair.parent, "definition")
+			if run := records["runs"][fmt.Sprint(row["runId"])]; run != nil {
+				if definition := records[pair.parent][fmt.Sprint(row[pair.field])]; definition != nil &&
+					fmt.Sprint(run["workflowId"]) != fmt.Sprint(definition["workflowId"]) {
+					result = append(result, fmt.Sprintf("%s.%s references a different workflow", row["id"], pair.field))
+				}
+			}
+		}
 	}
 	sort.Strings(result)
 	return result

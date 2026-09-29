@@ -1,5 +1,132 @@
 [
   {
+    "name": "experiments",
+    "stores": ["experiments", "workflows", "repositories"],
+    "from": "$experiments",
+    "joins": [
+      { "source": "$workflows", "type": "left", "on": [{ "left": "workflowId", "right": "id" }],
+        "fields": [{ "field": "path", "as": "workflow" }, { "field": "repositoryId", "as": "_repository-id" }] },
+      { "source": "$repositories", "type": "left", "on": [{ "left": "_repository-id", "right": "id" }],
+        "fields": [{ "field": "owner", "as": "organization" }, { "field": "name", "as": "repository" }] }
+    ],
+    "select": [
+      { "field": "id" }, { "field": "workflowId", "as": "workflow-id" }, { "field": "workflow" },
+      { "field": "organization" }, { "field": "repository" },
+      { "field": "name", "as": "experiment" }, { "field": "name", "as": "experiment-name" },
+      { "field": "firstObservedAt", "as": "first-observation" },
+      { "field": "lastObservedAt", "as": "last-observation" },
+      { "field": "timestamp", "as": "observed-at" }, { "field": "provenance" }
+    ]
+  },
+  {
+    "name": "experiment-assignments",
+    "stores": ["experimentAssignments", "experiments", "runs"],
+    "from": "$experimentAssignments",
+    "joins": [
+      { "source": "$experiments", "type": "left", "on": [{ "left": "experimentId", "right": "id" }],
+        "fields": [{ "field": "name", "as": "experiment" }] },
+      { "source": "$runs", "type": "left", "on": [{ "left": "runId", "right": "id" }],
+        "fields": [{ "field": "owner", "as": "organization" }, { "field": "repository" },
+          { "field": "workflowPath", "as": "workflow" }, { "field": "githubRunId", "as": "run" },
+          { "field": "runLink", "as": "assignment-link" }] }
+    ],
+    "select": [
+      { "field": "id" }, { "field": "experimentId", "as": "experiment-id" },
+      { "field": "runId", "as": "run-id" }, { "field": "variant" }, { "field": "experiment" },
+      { "field": "organization" }, { "field": "repository" }, { "field": "workflow" },
+      { "field": "run" }, { "field": "assignment-link" },
+      { "field": "timestamp", "as": "assignment-at" },
+      { "field": "timestamp", "as": "observed-at" }, { "field": "provenance" }
+    ]
+  },
+  {
+    "name": "graders",
+    "stores": ["graders", "workflows"],
+    "from": "$graders",
+    "joins": [
+      { "source": "$workflows", "type": "left", "on": [{ "left": "workflowId", "right": "id" }],
+        "fields": [{ "field": "path", "as": "workflow" }] }
+    ],
+    "select": [
+      { "field": "id" }, { "field": "workflowId", "as": "workflow-id" }, { "field": "workflow" },
+      { "field": "name", "as": "grader" }, { "field": "sourceGraderId", "as": "source-grader-id" },
+      { "field": "displayName", "as": "grader-name" },
+      { "field": "direction" }, { "field": "unit" }, { "field": "threshold" },
+      { "field": "firstObservedAt", "as": "first-observation" },
+      { "field": "lastObservedAt", "as": "last-observation" },
+      { "field": "timestamp", "as": "observed-at" }, { "field": "provenance" }
+    ]
+  },
+  {
+    "name": "grader-observations",
+    "stores": ["graderObservations", "graders", "runs"],
+    "from": "$graderObservations",
+    "joins": [
+      { "source": "$graders", "type": "left", "on": [{ "left": "graderId", "right": "id" }],
+        "fields": [{ "field": "name", "as": "grader" }, { "field": "direction" }, { "field": "unit" },
+          { "field": "threshold" }] },
+      { "source": "$runs", "type": "left", "on": [{ "left": "runId", "right": "id" }],
+        "fields": [{ "field": "owner", "as": "organization" }, { "field": "repository" },
+          { "field": "workflowPath", "as": "workflow" }, { "field": "githubRunId", "as": "run" },
+          { "field": "runLink", "as": "run-link" }, { "field": "rolloutMode", "as": "rollout-mode" }] }
+    ],
+    "select": [
+      { "field": "id" }, { "field": "runId", "as": "run-id" },
+      { "field": "graderId", "as": "grader-id" }, { "field": "sourceGraderId", "as": "source-grader-id" },
+      { "field": "experimentId", "as": "experiment-id" }, { "field": "variant" },
+      { "field": "grader" },
+      { "field": "organization" }, { "field": "repository" }, { "field": "workflow" }, { "field": "run" },
+      { "field": "run-link" }, { "field": "rollout-mode" },
+      { "field": "direction" }, { "field": "unit" }, { "field": "threshold" },
+      { "field": "value" }, { "field": "status" },
+      { "field": "evaluatorDigest", "as": "evaluator-digest" },
+      { "field": "resultTimestamp", "as": "result-timestamp" },
+      { "field": "auditId", "as": "audit-id" },
+      { "field": "timestamp", "as": "observed-at" }, { "field": "provenance" }
+    ]
+  },
+  {
+    "name": "evals",
+    "stores": ["evals", "workflows"],
+    "from": "$evals",
+    "joins": [
+      { "source": "$workflows", "type": "left", "on": [{ "left": "workflowId", "right": "id" }],
+        "fields": [{ "field": "path", "as": "workflow" }] }
+    ],
+    "select": [
+      { "field": "id" }, { "field": "workflowId", "as": "workflow-id" }, { "field": "workflow" },
+      { "field": "name", "as": "eval" }, { "field": "sourceEvalId", "as": "source-eval-id" },
+      { "field": "firstObservedAt", "as": "first-observation" },
+      { "field": "lastObservedAt", "as": "last-observation" },
+      { "field": "timestamp", "as": "observed-at" }, { "field": "provenance" }
+    ]
+  },
+  {
+    "name": "eval-observations",
+    "stores": ["evalObservations", "evals", "runs"],
+    "from": "$evalObservations",
+    "joins": [
+      { "source": "$evals", "type": "left", "on": [{ "left": "evalId", "right": "id" }],
+        "fields": [{ "field": "name", "as": "eval" }] },
+      { "source": "$runs", "type": "left", "on": [{ "left": "runId", "right": "id" }],
+        "fields": [{ "field": "owner", "as": "organization" }, { "field": "repository" },
+          { "field": "workflowPath", "as": "workflow" }, { "field": "githubRunId", "as": "run" },
+          { "field": "runLink", "as": "evidence-link" },
+          { "field": "requestedModel", "as": "requested-model" },
+          { "field": "resolvedModel", "as": "resolved-model" }] }
+    ],
+    "select": [
+      { "field": "id" }, { "field": "runId", "as": "run-id" },
+      { "field": "evalId", "as": "eval-id" }, { "field": "sourceEvalId", "as": "source-eval-id" },
+      { "field": "eval" },
+      { "field": "organization" }, { "field": "repository" }, { "field": "workflow" }, { "field": "run" },
+      { "field": "evidence-link" }, { "field": "requested-model" }, { "field": "resolved-model" },
+      { "field": "evalResult", "as": "eval-result" },
+      { "field": "resultTimestamp", "as": "result-timestamp" },
+      { "field": "status" }, { "field": "timestamp", "as": "observed-at" }, { "field": "provenance" }
+    ]
+  },
+  {
     "name": "marketplace-packages",
     "stores": ["marketplacePackages"],
     "from": "$marketplacePackages",

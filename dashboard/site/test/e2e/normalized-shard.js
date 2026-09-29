@@ -12,13 +12,13 @@ export function normalizedActivityShards(jsonl) {
    */
   const encode = (phase, collections) => {
     const records = collections.flatMap((collection) =>
-      batch[collection].map((record) => ({ kind: 'record', collection, record }))
+      (batch[collection] ?? []).map((record) => ({ kind: 'record', collection, record }))
     );
     return [
       {
         kind: 'metadata',
         schemaVersion: CANONICAL_SCHEMA_VERSION,
-        ingestionVersion: 3,
+        ingestionVersion: 4,
         sourceRecords,
         phase,
         records: records.length
@@ -27,8 +27,9 @@ export function normalizedActivityShards(jsonl) {
     ].map((line) => JSON.stringify(line)).join('\n') + '\n';
   };
   return {
-    runs: encode('runs', ['campaigns', 'repositories', 'workflows', 'runs']),
-    records: encode('records', ['domains', 'tools', 'skills', 'friction', 'audits', 'issues', 'operationalValues'])
+    runs: encode('runs', ['campaigns', 'repositories', 'workflows', 'runs', 'experiments', 'experimentAssignments']),
+    records: encode('records', ['domains', 'tools', 'skills', 'friction', 'audits', 'issues',
+      'operationalValues', 'graders', 'graderObservations', 'evals', 'evalObservations'])
   };
 }
 

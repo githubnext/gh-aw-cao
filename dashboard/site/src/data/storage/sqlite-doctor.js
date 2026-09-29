@@ -220,7 +220,7 @@ function scanRecordsFromConnection(connection) {
     } else if (store === 'transactions') {
       transactions.push(/** @type {DoctorTransaction} */ (value));
     } else {
-      batch[/** @type {keyof import('../model/schema.js').CanonicalBatch} */ (store)].push(value);
+      batch[/** @type {keyof import('../model/schema.js').CanonicalBatch} */ (store)]?.push(value);
     }
   }
   return { batch, transactions, invalid, error: null };

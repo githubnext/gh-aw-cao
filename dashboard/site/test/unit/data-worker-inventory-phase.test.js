@@ -60,7 +60,7 @@ it('publishes inventory-only sources before historical shards finish ingesting',
       {
         kind: 'metadata',
         schemaVersion: CANONICAL_SCHEMA_VERSION,
-        ingestionVersion: 3,
+        ingestionVersion: 4,
         sourceRecords: 1,
         phase,
         records: records.length

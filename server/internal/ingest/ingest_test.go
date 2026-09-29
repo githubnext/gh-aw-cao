@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
 
 func TestValidateManifestVerifiesHashesAndRunShard(t *testing.T) {
@@ -185,6 +186,65 @@ func TestOperationalValuesProjectionReplacesInventoryRows(t *testing.T) {
 
 	if rows := sources["operational-values"].Rows; len(rows) != 0 {
 		t.Fatalf("expected canonical operational-values projection to replace inventory rows, got %#v", rows)
+	}
+}
+
+func TestProjectsRelationalExperimentEvidenceWithoutInventoryFallback(t *testing.T) {
+	canonical := map[string][]model.Row{}
+	for _, collection := range collections {
+		canonical[collection] = []model.Row{}
+	}
+	canonical["repositories"] = []model.Row{{"id": "repository:1", "owner": "example", "name": "project"}}
+	canonical["workflows"] = []model.Row{{"id": "workflow:1", "repositoryId": "repository:1", "path": "worker.md"}}
+	canonical["runs"] = []model.Row{{"id": "run:1", "repositoryId": "repository:1", "workflowId": "workflow:1",
+		"owner": "example", "repository": "project", "githubRunId": "42"}}
+	canonical["experiments"] = []model.Row{{"id": "experiment:1", "workflowId": "workflow:1", "name": "prompt"}}
+	canonical["experimentAssignments"] = []model.Row{{"id": "assignment:1", "runId": "run:1",
+		"experimentId": "experiment:1", "variant": "candidate"}}
+	canonical["graders"] = []model.Row{{"id": "grader:1", "workflowId": "workflow:1", "name": "quality"}}
+	canonical["graderObservations"] = []model.Row{{"id": "grade:1", "runId": "run:1",
+		"graderId": "grader:1", "value": 0.9}}
+	canonical["evals"] = []model.Row{{"id": "eval:1", "workflowId": "workflow:1", "name": "correctness"}}
+	canonical["evalObservations"] = []model.Row{{"id": "eval-observation:1", "runId": "run:1",
+		"evalId": "eval:1", "answer": "YES"}}
+
+	if errors := relationshipErrors(canonical); len(errors) != 0 {
+		t.Fatalf("unexpected relationship errors: %v", errors)
+	}
+	definitions, err := loadDefinitions("../../../dashboard/site/src/data/queries/database.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	withoutEval := make([]query.Definition, 0, len(definitions)-1)
+	for _, definition := range definitions {
+		if definition.Name != "eval-observations" {
+			withoutEval = append(withoutEval, definition)
+		}
+	}
+	if _, err := projectSources(canonical, nil, withoutEval); err == nil ||
+		!strings.Contains(err.Error(), `missing canonical evidence query "eval-observations"`) {
+		t.Fatalf("expected missing evidence query to fail closed, got %v", err)
+	}
+	inventory := map[string]model.Source{
+		"evals": {Rows: []model.Row{{"eval": "stale-inventory"}}},
+	}
+	sources, err := projectSources(canonical, inventory, definitions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{
+		"experiments", "experiment-assignments", "graders",
+		"grader-observations", "evals", "eval-observations",
+	} {
+		if len(sources[name].Rows) != 1 {
+			t.Errorf("expected one canonical row in %s, got %#v", name, sources[name].Rows)
+		}
+	}
+	if got := sources["experiment-assignments"].Rows[0]["variant"]; got != "candidate" {
+		t.Errorf("assignment variant = %v", got)
+	}
+	if got := sources["evals"].Rows[0]["eval"]; got != "correctness" {
+		t.Errorf("stale inventory row took precedence: %v", got)
 	}
 }
 

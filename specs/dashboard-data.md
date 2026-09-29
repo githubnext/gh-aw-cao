@@ -1142,6 +1142,51 @@ Audit — lifecycle, agent, policy, grader, and other audit observations
 Issue — issue and pull-request safe outputs
 ```
 
+The canonical browser database and the SQLite-backed IndexedDB interchange
+also retain six separate experiment-evidence collections: `experiments`,
+`experimentAssignments`, `graders`, `graderObservations`, `evals`, and
+`evalObservations`. Definitions reference a Workflow; observations and
+assignments reference both a definition and the producing Run. Every row has
+a stable ID and original source provenance. These collections are published
+through run-information (experiment definitions and assignments) and record
+(grader and eval definitions and observations) shards and
+resolved directly by Dashboard Language queries. The SQLite adapter mirrors
+them into six transactional relational tables with the corresponding
+snake-case names, without requiring another API. These tables expose typed
+relationship keys and observed values (variant, grader value/status, eval
+result, requested/resolved model, first/last observation times, and optional
+inclusion, exclusion reason, and audit identity); absent evidence stays NULL
+rather than being inferred from a successful run.
+Explicit grader and eval IDs remain available as `sourceGraderId` and
+`sourceEvalId`; canonical definition keys also include the owning Workflow
+to avoid collisions when two workflows reuse an ID. A grader result links
+to an experiment variant only when its explicit experiment identity matches
+an assignment for the same Run.
+Repeated definitions keep the earliest and latest observed timestamps across
+runs and normalized shards; later collection of an older run cannot erase the
+latest definition. Browser shard ingestion writes bounded batches before its
+versioned receipt, so a failed shard is replayed idempotently on retry, but
+the entire shard is not an atomic transaction.
+The hosted dashboard ingester admits the same six canonical collections and
+projects those query definitions from the verified shards rather than trusting
+inventory or report-derived rows.
+
+Only explicit `run.experiments.assignments` and `run.graders.results` evidence
+can populate their respective entities; cumulative experiment counts alone do
+not establish an assignment. A supplied `run.evals[]` entry is accepted only with
+an explicit ID, `YES`/`NO`/`UNKNOWN` answer, valid optional timestamp and
+matching optional run identity. This explicit shape is supported by the legacy
+report contract, but no retained gh-aw fixture currently establishes its
+presence in collected audit data. `evals.jsonl` is read by a separate
+reporting path, not by the normalized Activity shard input. Until trustworthy
+eval evidence appears in that existing input, populating Eval observations
+from actual gh-aw audit remains blocked; the projection stays empty rather
+than introducing a second acquisition path. Tests of the explicit eval shape
+use synthetic inputs and do not establish that gh-aw emits it. Invalid eval
+candidates remain run-linked Audit observations without an inferred answer
+or score; valid entries also produce a run-linked Audit observation and their
+canonical Eval observation references that Audit's stable identity.
+
 Records MUST remain independently addressable and MUST NOT be stored as one
 ever-growing array inside the Run record. Issues and pull requests share the
 Issue table; pull requests set `isPullRequest=true`.

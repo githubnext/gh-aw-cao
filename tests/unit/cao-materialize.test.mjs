@@ -93,6 +93,7 @@ test("CAO materialization preserves canonical source paths", () => {
     assert.equal(existsSync(staleRootFile), false);
     assert.equal(existsSync(staleCampaignFile), false);
     assert.ok(existsSync(path.join(destination, "activity", "cao.mjs")));
+    assert.ok(existsSync(path.join(destination, "activity", "normalized-phase.mjs")));
     assert.ok(existsSync(path.join(destination, "dashboard", "site", "package.json")));
     assert.ok(existsSync(path.join(destination, "skills", "setup-cao", "SKILL.md")));
     assert.ok(existsSync(path.join(destination, "dependabot", "cao.json")));
