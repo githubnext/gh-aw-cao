@@ -197,7 +197,7 @@ func (s *Store) StreamAckAndDelete(ctx context.Context, stream, group, messageID
 }
 
 func appendStreamFields(arguments []string, fields map[string]string) []string {
-	output := make([]string, len(arguments), len(arguments)+len(fields))
+	output := make([]string, len(arguments)) //nolint:prealloc // Field counts are untrusted; avoid capacity arithmetic overflow.
 	copy(output, arguments)
 	for name, value := range fields {
 		output = append(output, name, value)
