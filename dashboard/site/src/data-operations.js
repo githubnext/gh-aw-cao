@@ -330,11 +330,6 @@ export function computeValue(row, definition) {
     if (timestamp === null || reference === null) return null;
     return JSON.stringify([timestamp, reference, values[2] === 'success']);
   }
-  if (definition.function === 'link') {
-    const href = textValue(values[0]);
-    const label = textValue(values[1]).trim();
-    return href && label ? { href, label } : null;
-  }
   if (definition.function === 'dashboard-link') {
     const existing = isPlainObject(values[0]) ? values[0] : {};
     const href = textValue(values[1]);
@@ -377,6 +372,11 @@ export function computeValue(row, definition) {
     const value = numericValue(values[0]);
     const fallback = numericValue(values[1]);
     return value !== null && Number.isInteger(value) && value > 0 ? value : fallback;
+  }
+  if (definition.function === 'link') {
+    const href = textValue(values[0]);
+    const label = textValue(values[1]).trim();
+    return href && label ? { href, label } : null;
   }
   const numbers = values.map(numericValue);
   if (numbers.some((value) => value === null)) return null;
