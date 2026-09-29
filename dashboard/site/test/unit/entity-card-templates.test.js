@@ -49,7 +49,7 @@ describe('entity card templates', () => {
     expect(pages.marketplace.experimental).toBe(false);
     expect(pages.marketplace['class-name']).toBe('marketplace-page');
     expect(dashboard.navigation.find(
-      (/** @type {Record<string, any>} */ section) => section.label === 'Updates'
+      (/** @type {Record<string, any>} */ section) => section.label === 'Maintenance'
     )?.pages).toContain('marketplace');
     expect(pages.marketplace.views[0]).toMatchObject({
       data: { source: 'marketplace-packages' },

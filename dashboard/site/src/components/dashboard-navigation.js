@@ -132,6 +132,7 @@ export function renderDashboardNavigation(pages, title, navigation, accountContr
               'details',
               {
                 className: `nav-section${section.placement === 'bottom' ? ' nav-section-bottom' : ''}`,
+                'aria-label': section.label,
                 dataset: { navSection: section.label },
                 open: section.placement === 'bottom' || sectionIndex === mainSectionIndex || ['investigate', 'insights'].includes(section.label?.toLowerCase() ?? '')
               },
