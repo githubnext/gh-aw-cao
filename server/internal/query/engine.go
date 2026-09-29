@@ -508,7 +508,7 @@ func ExecuteDefinition(definition Definition, sources map[string]model.Source, r
 		return model.Source{}, 0, nil, fmt.Errorf("input source %q is unavailable", definition.From)
 	}
 	if sourceUnavailable(base) {
-		return unavailableResult(definition), 0, nil, nil
+		return unavailableResult(definition, definition.From), 0, nil, nil
 	}
 	rows := cloneRows(base.Rows)
 	for _, union := range definition.Union {
@@ -517,7 +517,7 @@ func ExecuteDefinition(definition Definition, sources map[string]model.Source, r
 			return model.Source{}, 0, nil, fmt.Errorf("union source %q is unavailable", union)
 		}
 		if sourceUnavailable(source) {
-			return unavailableResult(definition), 0, nil, nil
+			return unavailableResult(definition, union), 0, nil, nil
 		}
 		rows = append(rows, cloneRows(source.Rows)...)
 	}
@@ -636,11 +636,15 @@ func sourceUnavailable(source model.Source) bool {
 	return source.Metadata["availability"] == "unavailable"
 }
 
-func unavailableResult(definition Definition) model.Source {
+func unavailableResult(definition Definition, input string) model.Source {
 	return model.Source{
-		Source:   definition.Name,
-		Rows:     []model.Row{},
-		Metadata: model.Metadata{"availability": "unavailable", "row-count": 0},
+		Source: definition.Name,
+		Rows:   []model.Row{},
+		Metadata: model.Metadata{
+			"availability": "unavailable",
+			"row-count":    0,
+			"query-error":  map[string]string{"code": "input-unavailable", "source": input},
+		},
 	}
 }
 

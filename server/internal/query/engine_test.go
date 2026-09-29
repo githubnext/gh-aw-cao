@@ -3,6 +3,7 @@ package query
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -383,6 +384,25 @@ func TestUnavailableUnionFailsClosed(t *testing.T) {
 	}
 	if len(result.Rows) != 0 || result.Metadata["availability"] != "unavailable" {
 		t.Fatalf("unavailable union input did not fail closed: %#v", result)
+	}
+	if got := result.Metadata["query-error"]; !reflect.DeepEqual(got, map[string]string{
+		"code": "input-unavailable", "source": "unavailable",
+	}) {
+		t.Fatalf("unavailable union input error = %#v", got)
+	}
+}
+
+func TestUnavailablePrimaryInputIdentifiesDependency(t *testing.T) {
+	result, _, _, err := ExecuteDefinition(Definition{Name: "mcp-top-tools", From: "mcp-tool-totals"}, map[string]model.Source{
+		"mcp-tool-totals": {Metadata: model.Metadata{"availability": "unavailable"}},
+	}, MaxOperations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := result.Metadata["query-error"]; !reflect.DeepEqual(got, map[string]string{
+		"code": "input-unavailable", "source": "mcp-tool-totals",
+	}) {
+		t.Fatalf("unavailable primary input error = %#v", got)
 	}
 }
 

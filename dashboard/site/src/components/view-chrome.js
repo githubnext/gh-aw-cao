@@ -163,16 +163,21 @@ export function customViewAvailabilityMessage(availability) {
 /**
  * @param {string | null} sourceName
  * @param {string[]} contextDetails
- * @param {unknown} [queryDiagnostic]
+ * @param {unknown} [queryError]
  * @returns {HTMLElement[]}
  */
-export function renderCustomViewStateDetails(sourceName, contextDetails, queryDiagnostic) {
+export function renderCustomViewStateDetails(sourceName, contextDetails, queryError) {
   const details = [];
   if (sourceName) {
     details.push(h('p', { className: 'view-source' }, `Affected source: ${sourceName}`));
   }
-  const dependency = typeof queryDiagnostic === 'string'
-    ? /^\$\.dashboard\.queries\[[\w:-]+\]: input source "([\w:-]+)" is unavailable\.$/.exec(queryDiagnostic)?.[1]
+  const error = queryError && typeof queryError === 'object' && !Array.isArray(queryError)
+    ? /** @type {{ code?: unknown, source?: unknown }} */ (queryError)
+    : null;
+  const dependency = error?.code === 'input-unavailable' && typeof error.source === 'string'
+    && error.source.length <= 256
+    && /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?::[a-z][a-z0-9]*(?:-[a-z0-9]+)*)*$/.test(error.source)
+    ? error.source
     : null;
   if (dependency && dependency !== sourceName) {
     details.push(h('p', { className: 'view-source' }, `Unavailable query dependency: ${dependency}`));
