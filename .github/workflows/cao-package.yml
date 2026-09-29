@@ -1,0 +1,604 @@
+name: CAO server package
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cao-server-package-${{ github.event_name }}-${{ github.event.release.tag_name || github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  source:
+    name: Resolve immutable package source
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      identity: ${{ steps.source.outputs.identity }}
+      revision: ${{ steps.source.outputs.revision }}
+      version: ${{ steps.source.outputs.version }}
+    steps:
+      - id: release-source
+        name: Resolve published release source
+        if: github.event_name == 'release'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            if (context.payload.repository.fork) {
+              throw new Error('CAO server packages cannot be published from forks');
+            }
+            const tag = process.env.RELEASE_TAG;
+            const stable = /^v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/;
+            const identifier = '(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)';
+            const prerelease = new RegExp(
+              `^v(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)-${identifier}(?:\\.${identifier})*$`,
+            );
+            if (!(stable.test(tag) || prerelease.test(tag))) {
+              throw new Error('Published release tag must be Docker-safe semantic version vX.Y.Z or vX.Y.Z-prerelease');
+            }
+
+            let { data: ref } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `tags/${tag}`,
+            });
+            let object = ref.object;
+            for (let depth = 0; object.type === 'tag' && depth < 10; depth += 1) {
+              const { data: annotated } = await github.rest.git.getTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_sha: object.sha,
+              });
+              object = annotated.object;
+            }
+            if (object.type !== 'commit' || !/^[0-9a-f]{40}$/.test(object.sha)) {
+              throw new Error('Published release tag does not resolve to an immutable commit SHA');
+            }
+            core.setOutput('revision', object.sha);
+      - id: source
+        name: Classify package identity
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_REVISION: ${{ steps.release-source.outputs.revision }}
+          REPOSITORY_FORK: ${{ github.event.repository.fork }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "${REPOSITORY_FORK}" != "false" ]]; then
+            echo "CAO server packages cannot be published from forks" >&2
+            exit 1
+          fi
+          case "${EVENT_NAME}" in
+            push)
+              if [[ "${REF}" != "refs/heads/main" || ! "${SHA}" =~ ^[0-9a-f]{40}$ ]]; then
+                echo "main package publication requires an exact main commit" >&2
+                exit 1
+              fi
+              revision="${SHA}"
+              version="0.0.0-main.${SHA:0:12}"
+              identity="sha-${SHA}"
+              ;;
+            release)
+              if [[ ! "${RELEASE_REVISION}" =~ ^[0-9a-f]{40}$ || -z "${RELEASE_TAG}" ]]; then
+                echo "release package publication requires an immutable release source" >&2
+                exit 1
+              fi
+              revision="${RELEASE_REVISION}"
+              version="${RELEASE_TAG}"
+              identity="${RELEASE_TAG}"
+              ;;
+            *)
+              echo "unsupported package publication event" >&2
+              exit 1
+              ;;
+          esac
+          {
+            echo "identity=${identity}"
+            echo "revision=${revision}"
+            echo "version=${version}"
+          } >> "${GITHUB_OUTPUT}"
+      - name: Summarize source checks
+        if: always()
+        env:
+          CLASSIFICATION_STATUS: ${{ steps.source.outcome }}
+          RELEASE_RESOLUTION_STATUS: ${{ steps.release-source.outcome }}
+        run: |
+          {
+            echo "## CAO server package checks"
+            echo
+            echo "<details>"
+            echo "<summary>Immutable source validation</summary>"
+            echo
+            echo "<details>"
+            echo "<summary>Release source resolution: ${RELEASE_RESOLUTION_STATUS}</summary>"
+            echo
+            echo "- Check: Docker-safe release identity and immutable commit resolution"
+            echo "- Data exposure: status only"
+            echo "</details>"
+            echo
+            echo "<details>"
+            echo "<summary>Package identity classification: ${CLASSIFICATION_STATUS}</summary>"
+            echo
+            echo "- Check: supported event, protected branch, and immutable identity shape"
+            echo "- Data exposure: status only"
+            echo "</details>"
+            echo
+            echo "</details>"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  static-security:
+    name: Lint container and workflow sources
+    needs: source
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.source.outputs.revision }}
+          fetch-depth: 1
+          persist-credentials: false
+      - id: ancestry
+        name: Require release source on protected main history
+        if: github.event_name == 'release'
+        env:
+          REVISION: ${{ needs.source.outputs.revision }}
+        run: |
+          set -euo pipefail
+          git fetch --force --no-tags origin \
+            refs/heads/main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "${REVISION}" refs/remotes/origin/main; then
+            echo "release package source is not reachable from protected main" >&2
+            exit 1
+          fi
+      - id: hadolint
+        name: Lint Dockerfile with Hadolint
+        run: |
+          docker run --rm --network none \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --volume "$PWD:/repo:ro" \
+            hadolint/hadolint:v2.15.1-alpine@sha256:a1d49ae1a4e83c1dbad26b8c1ad7588c8bd1e04f4866b34ad3cac50335198552 \
+            /repo/server/Dockerfile
+      - id: actionlint
+        name: Lint workflows with actionlint
+        run: |
+          set -euo pipefail
+          mapfile -d '' workflow_files < <(
+            find .github/workflows -type f \
+              \( -name '*.yml' -o -name '*.yaml' \) \
+              ! -name '*.lock.yml' -print0 | sort -z
+          )
+          docker run --rm --network none \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --volume "$PWD:/repo:ro" --workdir /repo \
+            rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 \
+            -ignore 'unknown permission scope "vulnerability-alerts"' \
+            "${workflow_files[@]}"
+      - id: zizmor
+        name: Audit workflows with zizmor
+        run: |
+          set -euo pipefail
+          mapfile -d '' workflow_files < <(
+            find .github/workflows -type f \
+              \( -name '*.yml' -o -name '*.yaml' \) \
+              ! -name '*.lock.yml' -print0 | sort -z
+          )
+          docker run --rm --network none \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --volume "$PWD:/repo:ro" --workdir /repo \
+            ghcr.io/zizmorcore/zizmor:1.30.1@sha256:a2eb396d886c053073405c7a980f2139ba2248ec172243cfa3841e57196e8101 \
+            --format plain "${workflow_files[@]}"
+      - name: Summarize static security checks
+        if: always()
+        env:
+          ACTIONLINT_STATUS: ${{ steps.actionlint.outcome }}
+          ANCESTRY_STATUS: ${{ steps.ancestry.outcome }}
+          HADOLINT_STATUS: ${{ steps.hadolint.outcome }}
+          ZIZMOR_STATUS: ${{ steps.zizmor.outcome }}
+        run: |
+          {
+            echo "## Static package security"
+            echo
+            echo "<details>"
+            echo "<summary>Source and policy checks</summary>"
+            echo
+            echo "<details><summary>Protected-main ancestry: ${ANCESTRY_STATUS}</summary>"
+            echo
+            echo "- Scope: release source relationship only"
+            echo "- Data exposure: outcome only"
+            echo "</details>"
+            echo
+            echo "<details><summary>Hadolint: ${HADOLINT_STATUS}</summary>"
+            echo
+            echo "- Scope: server/Dockerfile"
+            echo "- Data exposure: tool name, scope, and outcome only"
+            echo "</details>"
+            echo
+            echo "<details><summary>actionlint: ${ACTIONLINT_STATUS}</summary>"
+            echo
+            echo "- Scope: checked-in non-generated GitHub Actions workflows"
+            echo "- Data exposure: tool name, scope, and outcome only"
+            echo "</details>"
+            echo
+            echo "<details><summary>zizmor: ${ZIZMOR_STATUS}</summary>"
+            echo
+            echo "- Scope: checked-in non-generated GitHub Actions workflows"
+            echo "- Data exposure: tool name, scope, and outcome only"
+            echo "</details>"
+            echo
+            echo "</details>"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  build:
+    name: Build, scan, and seal candidate
+    needs: [source, static-security]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.source.outputs.revision }}
+          fetch-depth: 1
+          persist-credentials: false
+      - id: source-check
+        name: Verify exact package source and main ancestry
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REVISION: ${{ needs.source.outputs.revision }}
+        run: |
+          set -euo pipefail
+          source_sha="$(git rev-parse --verify 'HEAD^{commit}')"
+          if [[ "${source_sha}" != "${REVISION}" ]]; then
+            echo "package checkout does not match the resolved source commit" >&2
+            exit 1
+          fi
+          if [[ "${EVENT_NAME}" == "release" ]]; then
+            git fetch --force --no-tags origin \
+              refs/heads/main:refs/remotes/origin/main
+            if ! git merge-base --is-ancestor "${REVISION}" refs/remotes/origin/main; then
+              echo "release package source is not reachable from protected main" >&2
+              exit 1
+            fi
+          fi
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version: 1.27.1
+          cache: false
+      - id: tests
+        name: Test package sources
+        run: |
+          set -euo pipefail
+          npm ci
+          node --test tests/unit/cao-package-contract.test.mjs
+          go -C server test ./...
+          npm --prefix dashboard/site ci
+          npm run dashboard:server:build
+      - id: image-build
+        name: Build package candidate
+        env:
+          VERSION: ${{ needs.source.outputs.version }}
+          REVISION: ${{ needs.source.outputs.revision }}
+        run: |
+          set -euo pipefail
+          created="$(git show -s --format=%cI "${REVISION}")"
+          docker build \
+            --file server/Dockerfile \
+            --build-arg "CAO_PROFILE=cao.json" \
+            --build-arg "VERSION=${VERSION}" \
+            --build-arg "REVISION=${REVISION}" \
+            --build-arg "CREATED=${created}" \
+            --tag "cao-server:${REVISION}" \
+            .
+      - id: trivy
+        name: Scan candidate CVEs with Trivy
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          image-ref: cao-server:${{ needs.source.outputs.revision }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+      - id: grype
+        name: Scan candidate CVEs with Grype
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
+        with:
+          image: cao-server:${{ needs.source.outputs.revision }}
+          fail-build: true
+          severity-cutoff: high
+          output-format: table
+      - id: dockle
+        name: Check candidate against container best practices
+        env:
+          REVISION: ${{ needs.source.outputs.revision }}
+        run: |
+          docker run --rm --network none \
+            --volume /var/run/docker.sock:/var/run/docker.sock \
+            goodwithtech/dockle:v0.4.15@sha256:eade932f793742de0aa8755406c7677cd7696f8675b6180926f7eeffa7abe6b9 \
+            --exit-code 1 \
+            --exit-level WARN \
+            "cao-server:${REVISION}"
+      - id: syft
+        name: Generate SPDX SBOM with Syft
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        with:
+          image: cao-server:${{ needs.source.outputs.revision }}
+          format: spdx-json
+          output-file: ${{ runner.temp }}/cao-server.spdx.json
+          upload-artifact: false
+      - id: release-identity
+        name: Revalidate release identity
+        if: github.event_name == 'release'
+        env:
+          RELEASE_TAG: ${{ needs.source.outputs.identity }}
+          REVISION: ${{ needs.source.outputs.revision }}
+        run: |
+          set -euo pipefail
+          git fetch --force --no-tags origin \
+            "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
+          tag_sha="$(git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")"
+          if [[ "${tag_sha}" != "${REVISION}" ]]; then
+            echo "published release tag no longer matches the tested package source" >&2
+            exit 1
+          fi
+      - id: seal
+        name: Seal scanned candidate
+        env:
+          REVISION: ${{ needs.source.outputs.revision }}
+        run: |
+          set -euo pipefail
+          docker image save --output "${RUNNER_TEMP}/cao-server.tar" "cao-server:${REVISION}"
+          (
+            cd "${RUNNER_TEMP}"
+            sha256sum cao-server.tar cao-server.spdx.json > cao-server.sha256
+          )
+      - id: upload
+        name: Upload sealed candidate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cao-server-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/cao-server.tar
+            ${{ runner.temp }}/cao-server.spdx.json
+            ${{ runner.temp }}/cao-server.sha256
+          retention-days: 1
+          compression-level: 0
+      - name: Summarize build security checks
+        if: always()
+        env:
+          BUILD_STATUS: ${{ steps.image-build.outcome }}
+          DOCKLE_STATUS: ${{ steps.dockle.outcome }}
+          GRYPE_STATUS: ${{ steps.grype.outcome }}
+          RELEASE_IDENTITY_STATUS: ${{ steps.release-identity.outcome }}
+          SBOM_STATUS: ${{ steps.syft.outcome }}
+          SEAL_STATUS: ${{ steps.seal.outcome }}
+          SOURCE_STATUS: ${{ steps.source-check.outcome }}
+          TEST_STATUS: ${{ steps.tests.outcome }}
+          TRIVY_STATUS: ${{ steps.trivy.outcome }}
+          UPLOAD_STATUS: ${{ steps.upload.outcome }}
+        run: |
+          {
+            echo "## Candidate image security"
+            echo
+            echo "<details>"
+            echo "<summary>Build and verification checks</summary>"
+            echo
+            for check in \
+              "Exact source and ancestry|${SOURCE_STATUS}" \
+              "Source tests|${TEST_STATUS}" \
+              "Container build|${BUILD_STATUS}" \
+              "Release identity freshness|${RELEASE_IDENTITY_STATUS}" \
+              "Sealed artifact checksum|${SEAL_STATUS}" \
+              "Sealed artifact upload|${UPLOAD_STATUS}"; do
+              name="${check%%|*}"
+              status="${check#*|}"
+              echo "<details><summary>${name}: ${status}</summary>"
+              echo
+              echo "- Data exposure: check name and outcome only"
+              echo "</details>"
+              echo
+            done
+            echo "</details>"
+            echo
+            echo "<details>"
+            echo "<summary>Container security tools</summary>"
+            echo
+            for check in \
+              "Trivy CVE scan|${TRIVY_STATUS}|HIGH and CRITICAL fixed vulnerabilities" \
+              "Grype CVE scan|${GRYPE_STATUS}|HIGH and CRITICAL vulnerabilities" \
+              "Dockle best-practice scan|${DOCKLE_STATUS}|WARN and FATAL findings" \
+              "Syft SPDX SBOM|${SBOM_STATUS}|SBOM generation"; do
+              name="${check%%|*}"
+              remainder="${check#*|}"
+              status="${remainder%%|*}"
+              policy="${remainder#*|}"
+              echo "<details><summary>${name}: ${status}</summary>"
+              echo
+              echo "- Gate: ${policy}"
+              echo "- Data exposure: aggregate policy and outcome only; findings and inventory are not copied to the summary"
+              echo "</details>"
+              echo
+            done
+            echo "</details>"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  publish:
+    name: Publish and attest sealed package
+    needs: [source, static-security, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      attestations: write
+      contents: read
+      id-token: write
+      packages: write
+    outputs:
+      digest: ${{ steps.publish.outputs.digest }}
+      image: ${{ steps.publish.outputs.image }}
+    steps:
+      - id: download
+        name: Download sealed candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: cao-server-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/candidate
+      - id: verify
+        name: Verify sealed candidate
+        env:
+          VERSION: ${{ needs.source.outputs.version }}
+          REVISION: ${{ needs.source.outputs.revision }}
+        run: |
+          set -euo pipefail
+          cd "${RUNNER_TEMP}/candidate"
+          sha256sum --check cao-server.sha256
+          docker image load --input cao-server.tar
+          local_revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "cao-server:${REVISION}")"
+          local_version="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "cao-server:${REVISION}")"
+          if [[ "${local_revision}" != "${REVISION}" || "${local_version}" != "${VERSION}" ]]; then
+            echo "sealed candidate labels do not match the resolved package source" >&2
+            exit 1
+          fi
+      - id: ancestry
+        name: Revalidate protected release ancestry
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVISION: ${{ needs.source.outputs.revision }}
+        run: |
+          set -euo pipefail
+          status="$(gh api "repos/${GITHUB_REPOSITORY}/compare/${REVISION}...main" --jq .status)"
+          if [[ "${status}" != "ahead" && "${status}" != "identical" ]]; then
+            echo "release package source is no longer reachable from protected main" >&2
+            exit 1
+          fi
+      - id: registry-login
+        name: Log in to GHCR
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: publish
+        name: Publish immutable package identity
+        env:
+          IDENTITY: ${{ needs.source.outputs.identity }}
+          REPOSITORY: ${{ github.repository }}
+          REVISION: ${{ needs.source.outputs.revision }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          repository="ghcr.io/${REPOSITORY,,}/cao-server"
+          candidate="${repository}:candidate-${RUN_ID}-${RUN_ATTEMPT}"
+          canonical="${repository}:${IDENTITY}"
+
+          docker tag "cao-server:${REVISION}" "${candidate}"
+          docker push "${candidate}" >/dev/null
+          candidate_manifest="$(docker buildx imagetools inspect "${candidate}" --format '{{json .Manifest}}')"
+          candidate_digest="$(jq -r '.digest // empty' <<<"${candidate_manifest}")"
+          if [[ ! "${candidate_digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "package candidate did not resolve to one immutable digest" >&2
+            exit 1
+          fi
+
+          inspect_output=
+          if inspect_output="$(docker buildx imagetools inspect "${canonical}" --format '{{json .Manifest}}' 2>&1)"; then
+            canonical_digest="$(jq -r '.digest // empty' <<<"${inspect_output}")"
+            if [[ "${canonical_digest}" != "${candidate_digest}" ]]; then
+              echo "refusing to redefine an existing immutable package identity" >&2
+              exit 1
+            fi
+          else
+            if ! printf '%s\n' "${inspect_output}" | grep -Eqi '(manifest unknown|not found)'; then
+              echo "unable to verify whether the immutable package identity exists" >&2
+              exit 1
+            fi
+            docker buildx imagetools create \
+              --prefer-index=false \
+              --tag "${canonical}" \
+              "${repository}@${candidate_digest}" >/dev/null
+          fi
+
+          canonical_manifest="$(docker buildx imagetools inspect "${canonical}" --format '{{json .Manifest}}')"
+          canonical_digest="$(jq -r '.digest // empty' <<<"${canonical_manifest}")"
+          if [[ "${canonical_digest}" != "${candidate_digest}" ]]; then
+            echo "canonical package identity does not equal the scanned candidate digest" >&2
+            exit 1
+          fi
+          {
+            echo "digest=${candidate_digest}"
+            echo "image=${repository}@${candidate_digest}"
+            echo "subject=${repository}"
+          } >> "${GITHUB_OUTPUT}"
+      - id: provenance
+        name: Attest package provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ steps.publish.outputs.subject }}
+          subject-digest: ${{ steps.publish.outputs.digest }}
+          push-to-registry: true
+      - id: sbom-attestation
+        name: Attest package SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ steps.publish.outputs.subject }}
+          subject-digest: ${{ steps.publish.outputs.digest }}
+          sbom-path: ${{ runner.temp }}/candidate/cao-server.spdx.json
+          push-to-registry: true
+      - name: Summarize publication security checks
+        if: always()
+        env:
+          ANCESTRY_STATUS: ${{ steps.ancestry.outcome }}
+          DOWNLOAD_STATUS: ${{ steps.download.outcome }}
+          LOGIN_STATUS: ${{ steps.registry-login.outcome }}
+          PROVENANCE_STATUS: ${{ steps.provenance.outcome }}
+          PUBLISH_STATUS: ${{ steps.publish.outcome }}
+          SBOM_ATTESTATION_STATUS: ${{ steps.sbom-attestation.outcome }}
+          VERIFY_STATUS: ${{ steps.verify.outcome }}
+        run: |
+          {
+            echo "## Package publication security"
+            echo
+            echo "<details>"
+            echo "<summary>Privileged publication boundary</summary>"
+            echo
+            echo "- Publisher checks out no repository code and performs no build or scanner execution."
+            echo "- Data exposure: stage outcomes only; registry responses, credentials, SBOM contents, and image inventory are omitted."
+            echo
+            for check in \
+              "Sealed artifact download|${DOWNLOAD_STATUS}" \
+              "Checksum and OCI label verification|${VERIFY_STATUS}" \
+              "Protected-main ancestry revalidation|${ANCESTRY_STATUS}" \
+              "Registry authentication|${LOGIN_STATUS}" \
+              "Immutable digest publication|${PUBLISH_STATUS}" \
+              "SLSA provenance attestation|${PROVENANCE_STATUS}" \
+              "SPDX SBOM attestation|${SBOM_ATTESTATION_STATUS}"; do
+              name="${check%%|*}"
+              status="${check#*|}"
+              echo "<details><summary>${name}: ${status}</summary>"
+              echo
+              echo "- Data exposure: check name and outcome only"
+              echo "</details>"
+              echo
+            done
+            echo "</details>"
+          } >> "${GITHUB_STEP_SUMMARY}"

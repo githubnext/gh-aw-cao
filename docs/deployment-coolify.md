@@ -22,7 +22,7 @@ The Coolify deployment is an alternative to the Azure deployment. It doesn't rep
 | --- | --- |
 | Coolify | A self-hosted Coolify instance that can run Docker Compose resources. Its proxy must terminate TLS for a public host name that you control. |
 | Container runtime | Docker on the Coolify server, with access to pull images from GitHub Container Registry (GHCR). |
-| Container image | `ghcr.io/OWNER/REPOSITORY/cao-dashboard@sha256:DIGEST`, built from `server/Dockerfile`. Always refer to the image by its digest. |
+| Container image | `ghcr.io/OWNER/REPOSITORY/cao-server@sha256:DIGEST`, published by `.github/workflows/cao-package.yml` from `server/Dockerfile`. Always refer to the image by its digest. |
 | Redis | A Redis service on the Coolify private network, or an external Redis service that uses TLS, such as [Upstash Redis](deployment-upstash.md). No Redis modules are required. Set the eviction policy to `noeviction`, and size memory for the number of data generations that you keep. |
 | Artifact volume | A named Docker volume, managed by Coolify, that contains a complete and verified dashboard payload. |
 | GitHub OAuth app | An OAuth app with the callback URL `https://PUBLIC-HOST/auth/callback`. |
@@ -48,7 +48,7 @@ In the following steps, replace `PUBLIC-HOST` with the public host name of your 
        -t cao-dashboard:test .
      ```
 
-   - **For hosted use,** choose an image that `coolify-deploy.yml` published. Always refer to it as `NAME@sha256:DIGEST`.
+   - **For hosted use,** choose a `cao-server` image that `cao-package.yml` published. Always refer to it as `NAME@sha256:DIGEST`.
 
 1. Register a GitHub OAuth app. Set its **Authorization callback URL** to `https://PUBLIC-HOST/auth/callback`. For more information, see [Creating an OAuth app](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app) in the GitHub documentation.
 1. Create a Redis service in Coolify on the same private network as the dashboard, or use an external `rediss://` endpoint. To use Upstash, follow [Deploying the dashboard with Upstash Redis](deployment-upstash.md), select the `upstash` Redis module with `target.replicas: 1`, and keep the Coolify resource at exactly one replica.
@@ -91,7 +91,7 @@ For a test deployment of the `githubnext/gh-aw-cao` dashboard:
    remain available. A pasted Compose file cannot resolve those profiles.
 1. Configure the variables in `.env.example`, including one non-preview
    `CAO_IMAGE` variable that is not marked **Shown Once**. Use an immutable
-   `ghcr.io/githubnext/gh-aw-cao/cao-dashboard@sha256:...` value. If the GHCR
+   `ghcr.io/githubnext/gh-aw-cao/cao-server@sha256:...` value. If the GHCR
    package isn't public, configure registry credentials that can pull it.
 1. Enable the Coolify API and create a token with `read`, `read:sensitive`,
    `write`, and `deploy` abilities. `read:sensitive` lets rollback read the
@@ -120,14 +120,14 @@ For a test deployment of the `githubnext/gh-aw-cao` dashboard:
 
 The workflow fails closed unless both the original actor and, for a rerun, the
 triggering actor have the `maintain` or `admin` repository role. It also requires
-the current default-branch commit. Every job that can publish or deploy repeats
-these checks, including when an individual job is rerun. The workflow builds
-`server/Dockerfile`, scans the image for critical and high vulnerabilities,
-publishes it to GHCR with a unique run identity, updates the application's
-`CAO_IMAGE`, starts a Coolify deployment, polls it to completion, and verifies
-`/api/readiness`. Image publication cannot access the deployment environment or
-its secrets. If deployment or readiness fails, the workflow restores and
-redeploys the previous image before reporting failure.
+the current default-branch commit. Every job that can resolve or deploy the
+package repeats these checks, including when an individual job is rerun. The
+workflow resolves the matching immutable `cao-server:sha-COMMIT` package,
+verifies its source labels, updates the application's `CAO_IMAGE`, starts a
+Coolify deployment, polls it to completion, and verifies `/api/readiness`.
+Package resolution cannot access the deployment environment or its secrets. If
+deployment or readiness fails, the workflow restores and redeploys the previous
+image before reporting failure.
 
 This native API client is specific to the manual sample workflow. The separate
 channel-based `coolify-deploy.yml` workflow continues to use the adapter
@@ -139,16 +139,65 @@ To update the data, prepare a new volume in the same way, set `CAO_ARTIFACT_VOLU
 
 ### Automating delivery
 
-The `.github/workflows/coolify-deploy.yml` workflow builds, scans, publishes, and deploys container images. Trivy scans each image, and the workflow fails on critical or high findings. Every image is identified by its digest.
+The deployment-neutral `.github/workflows/cao-package.yml` workflow tests,
+builds, scans, and publishes `ghcr.io/githubnext/gh-aw-cao/cao-server` on every
+push to `main` and every published release. Release sources must be reachable
+from protected `main`. Hadolint checks the Dockerfile; actionlint and zizmor
+audit workflow sources; Trivy and Grype independently fail publication on high
+or critical CVEs; Dockle checks container hardening; and Syft generates an SPDX
+SBOM. The image contains the multi-role `cao-dashboard` binary, so
+downstream Docker Compose deployments can run separate `serve-hosted`,
+`collect`, `backfill`, or `doctor` services from the same digest by selecting a
+different command.
+
+The `.github/workflows/coolify-deploy.yml` workflow does not rebuild the image.
+It resolves the matching immutable `cao-server` identity, verifies its version
+and revision labels, verifies GitHub artifact provenance from
+`cao-package.yml` for the expected source commit, and sends its digest to the
+protected deployment adapter. The package workflow keeps build and scanner
+execution in an unprivileged job, transfers a checksummed image archive to a
+minimal package-write job, and attaches both SLSA provenance and the SPDX SBOM
+to the published OCI digest.
+
+Every package and delivery job writes a privacy-preserving step summary using
+nested `<details>` sections. Summaries contain check names, gate policies, and
+outcomes only. They omit vulnerability records, SBOM contents, image inventory,
+credentials, deployment endpoints and payloads, and registry or adapter
+responses.
+
+A downstream Compose project can reuse one digest for multiple CAO roles:
+
+```yaml
+x-cao-image: &cao-image ghcr.io/githubnext/gh-aw-cao/cao-server@sha256:DIGEST
+
+services:
+  dashboard:
+    image: *cao-image
+    command: [serve-hosted, --listen, 0.0.0.0:8080]
+  collector:
+    image: *cao-image
+    command: [collect]
+```
+
+Each service still needs the role-specific environment, secrets, volumes, and
+network restrictions documented for that command. The package supplies the
+server executable and dashboard assets; it does not grant credentials,
+deployment authority, or rollout policy.
 
 | Trigger | Image | Environment |
 | --- | --- | --- |
-| A published `vX.Y.Z` release that isn't a prerelease | `vX.Y.Z`, built from the release commit | `coolify-stable` |
-| A published SemVer prerelease | `vX.Y.Z-PRERELEASE`, built from the release commit | `coolify-beta` |
-| A push to `main` that changes server or dashboard sources | `sha-COMMIT` | `coolify-alpha` |
+| A published `vX.Y.Z` release that isn't a prerelease | `cao-server:vX.Y.Z`, built from the release commit | `coolify-stable` |
+| A published SemVer prerelease | `cao-server:vX.Y.Z-PRERELEASE`, built from the release commit | `coolify-beta` |
+| A push to `main` | `cao-server:sha-COMMIT` | `coolify-alpha` |
 | A manual run for `alpha`, `beta`, or `stable`, from `main` or `release` | The current `main`, or the latest eligible release for the channel | The matching environment |
 
-The workflow refuses payloads from forks. Before it calls the adapter, it checks that the source is still current for its channel. Pushes build, scan, and publish the alpha image but enter the deployment environment only when the repository variable `COOLIFY_DEPLOY_ENABLED` is `true`. Release and manual runs always enter the matching deployment environment. Every deployment fails closed when either adapter secret is absent. To require approvals, use environment protection rules.
+Both workflows refuse payloads from forks. Before delivery calls the adapter,
+it checks that the source is still current for its channel and that the official
+package labels match that source. Pushes enter the alpha deployment environment
+only when the repository variable `COOLIFY_DEPLOY_ENABLED` is `true`. Release
+and manual runs always enter the matching deployment environment. Every
+deployment fails closed when either adapter secret is absent. To require
+approvals, use environment protection rules.
 
 The repository doesn't include a deployment adapter. Your adapter must do the following:
 

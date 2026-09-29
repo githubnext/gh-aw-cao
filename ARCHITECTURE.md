@@ -364,19 +364,34 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   transient-error windows to the normal collection subprocess. The simulator is
   a local reliability exercise, not a complete GitHub API emulator or a
   production-capacity guarantee.
-- The Coolify image builds the dashboard and Go server together, runs as a
-  non-root user, and mounts the authoritative artifact read-only from an
-  externally populated named volume whose complete payload is hash-verified and
-  atomically installed. Conventional GitHub Actions refuses fork repository
-  payloads. A push to `main` maps to alpha, while
+- The deployment-neutral CAO server package builds the dashboard and Go server
+  together, runs as a non-root user, and mounts the authoritative artifact
+  read-only from an externally populated named volume whose complete payload is
+  hash-verified and atomically installed. Its workflow publishes
+  `ghcr.io/githubnext/gh-aw-cao/cao-server` on pushes to `main` and published
+  releases after protected-main ancestry validation, source tests, Dockerfile
+  and workflow security linting, independent Trivy and Grype high/critical CVE
+  gates, a Dockle hardening check, and Syft SPDX SBOM generation. Build and
+  scanner execution has no package-write authority. A separate minimal
+  publisher verifies the checksummed image archive, publishes the exact digest,
+  and attaches GitHub SLSA provenance and SBOM attestations. Privacy-preserving
+  nested step summaries report only check scope, policy, and outcome. The
+  single image exposes the multi-role server binary so downstream Docker
+  Compose deployments select `serve-hosted`, `collect`, `backfill`, or `doctor`
+  per service without rebuilding the package. Canonical identities are
+  immutable commit or release identities, never mutable channel tags.
+  Conventional Coolify delivery refuses fork repository payloads and consumes
+  only this package by verified digest, matching OCI source labels, and a
+  GitHub attestation bound to the expected signer workflow and source commit. A push
+  to `main` maps to alpha, while
   published prerelease and non-prerelease events map to beta and stable.
   Manual alpha runs resolve the current `main` commit; manual beta and stable
   runs resolve the exact commit of the latest eligible published release for
   their channel, regardless of whether `main` or `release` is selected. Every
-  locally scanned image is pushed under a
-  unique run candidate, then a canonical source identity is created or accepted
-  only at the same digest without trusting registry labels. Immediately before
-  a protected deployment, the workflow revalidates channel freshness. Its
+  package candidate is pushed under a unique run identity, then a canonical
+  source identity is created or accepted only at the same digest. Immediately
+  before a protected deployment, the delivery workflow revalidates channel
+  freshness. Its
   synchronous adapter reports ready only after Coolify completes and
   `/api/readiness` passes, rolling back to the recorded prior digest on failure.
   Tiers never promote artifacts implicitly and deployments never consume

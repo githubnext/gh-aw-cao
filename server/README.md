@@ -245,9 +245,21 @@ docker build -f server/Dockerfile \
   -t cao-dashboard:test .
 ```
 
+The official `.github/workflows/cao-package.yml` workflow publishes the same
+image as `ghcr.io/githubnext/gh-aw-cao/cao-server`. Pushes to `main` receive an
+immutable `sha-<full-commit>` identity; published releases receive their exact
+Docker-safe semantic version tag. Use the resulting digest in downstream
+Compose files. Multiple services can share that digest and select
+`serve-hosted`, `collect`, `backfill`, or `doctor` through `command`.
+Publication is gated by Hadolint, actionlint, zizmor, Trivy, Grype, Dockle,
+source tests, and protected-main ancestry. Syft produces an SPDX SBOM, and the
+minimal package-write job attests both build provenance and the SBOM for the
+exact OCI digest. Downstream delivery verifies the signer workflow and source
+commit before admitting the image.
+
 `server/coolify/compose.yml` expects:
 
-- `CAO_IMAGE` as a full `ghcr.io/.../cao-dashboard@sha256:...` reference;
+- `CAO_IMAGE` as a full `ghcr.io/.../cao-server@sha256:...` reference;
 - `CAO_ARTIFACT_VOLUME` as the name of an existing Coolify-managed volume;
 - the public host and the exact private CIDR of Coolify's proxy network;
 - OAuth, session, webhook, and Redis credentials supplied as Coolify secrets.
@@ -275,12 +287,14 @@ and the endpoint uses a private service hostname or IP. This policy does not
 affect Azure: Azure Functions continues to require `rediss://`.
 
 The conventional `.github/workflows/coolify-deploy.yml` resolves published
-release tags to exact commits and checks out the exact event source. It refuses
+release tags to exact commits and consumes the matching official `cao-server`
+package without rebuilding it. It refuses
 every fork repository payload. Manual runs accept a required `alpha`, `beta`,
 or `stable` channel only when `main` or `release` is selected. Alpha additionally
 requires `main` and its current commit. Beta and stable resolve the latest
-eligible published prerelease or non-prerelease tag, respectively, and always
-build that tag's exact commit rather than branch HEAD.
+eligible published prerelease or non-prerelease tag, respectively. The package
+workflow builds and scans that tag's exact commit rather than branch HEAD, and
+delivery verifies the selected package's OCI version and revision labels.
 
 | Event | Immutable GHCR identity | GitHub environment |
 | --- | --- | --- |
