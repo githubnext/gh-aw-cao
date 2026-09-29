@@ -999,8 +999,8 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
   const data = page.locator('.nav-section').filter({ hasText: 'Data' });
-  const experimentsSection = page.locator('.nav-section').filter({
-    has: page.locator('summary', { hasText: /^Experiments$/ })
+  const evolutionSection = page.locator('.nav-section').filter({
+    has: page.locator('summary', { hasText: /^Evolution$/ })
   });
   const maintenanceSection = page.locator('.nav-section').filter({
     has: page.locator('summary', { hasText: /^Maintenance$/ })
@@ -1009,11 +1009,11 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
   await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Memory', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Cost', 'Models & Agents', 'Firewall', 'MCPs']);
-  await expect(experimentsSection.locator('summary')).toHaveText('Experiments');
-  await experimentsSection.locator('summary').click();
-  await expect(experimentsSection.getByRole('link')).toHaveText(['Experiments', 'Evals', 'Graders']);
+  await expect(evolutionSection.locator('summary')).toHaveText('Evolution');
+  await evolutionSection.locator('summary').click();
+  await expect(evolutionSection.getByRole('link')).toHaveText(['Experiments', 'Evals', 'Graders']);
   for (const label of ['Experiments', 'Evals', 'Graders']) {
-    await expect(experimentsSection.getByRole('link', { name: `${label}, Experimental` })).toHaveCount(1);
+    await expect(evolutionSection.getByRole('link', { name: `${label}, Experimental` })).toHaveCount(1);
   }
   await data.getByRole('link', { name: /Memory/ }).click();
   await expect(page).toHaveURL(/#page-memory$/);
@@ -1160,7 +1160,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
   await expect(overviewPage.locator('.factory-station')).toHaveCount(2);
   await page.locator('.mobile-nav-menu > summary').click();
-  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Experiments', 'Experimental', 'Maintenance']);
+  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Evolution', 'Experimental', 'Maintenance']);
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toHaveCount(0);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(overviewPage.locator('.factory-intro')).toBeInViewport();

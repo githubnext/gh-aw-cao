@@ -2,6 +2,96 @@ package collect
 
 import "testing"
 
+func TestNormalizeRepositoryCanonicalizesValidReference(t *testing.T) {
+	cases := []struct {
+		name  string
+		value string
+		want  string
+	}{
+		{name: "already canonical", value: "octo/repo", want: "octo/repo"},
+		{name: "mixed case", value: "Octo/Repo", want: "octo/repo"},
+		{name: "surrounding whitespace", value: "  octo/repo  ", want: "octo/repo"},
+		{name: "dots underscores hyphens", value: "octo-org/repo_name.go", want: "octo-org/repo_name.go"},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			got, err := NormalizeRepository(testCase.value)
+			if err != nil {
+				t.Fatalf("NormalizeRepository(%q) returned error: %v", testCase.value, err)
+			}
+			if got != testCase.want {
+				t.Fatalf("NormalizeRepository(%q) = %q, want %q", testCase.value, got, testCase.want)
+			}
+		})
+	}
+}
+
+func TestNormalizeRepositoryRejectsMalformedReferences(t *testing.T) {
+	cases := []string{
+		"",
+		"no-slash",
+		"owner/",
+		"/name",
+		"owner/name/extra",
+	}
+	for _, value := range cases {
+		t.Run(value, func(t *testing.T) {
+			if _, err := NormalizeRepository(value); err == nil {
+				t.Fatalf("NormalizeRepository(%q) succeeded, want error", value)
+			}
+		})
+	}
+}
+
+func TestNormalizeRepositoryRejectsInvalidSegments(t *testing.T) {
+	cases := []string{
+		"./owner/name",
+		"owner/.",
+		"owner/..",
+		"-owner/name",
+		"owner/.name",
+		"owner/na me",
+		"ow!ner/name",
+	}
+	for _, value := range cases {
+		t.Run(value, func(t *testing.T) {
+			if _, err := NormalizeRepository(value); err == nil {
+				t.Fatalf("NormalizeRepository(%q) succeeded, want error", value)
+			}
+		})
+	}
+}
+
+func TestClassifyRepositoryRejectionDistinguishesReasons(t *testing.T) {
+	cases := []struct {
+		name       string
+		owner      string
+		nameField  string
+		found      bool
+		wantReason repositoryRejectionReason
+		wantReject bool
+	}{
+		{name: "no slash found", owner: "octo", nameField: "", found: false, wantReason: repositoryRejectionReasonMalformed, wantReject: true},
+		{name: "empty owner", owner: "", nameField: "repo", found: true, wantReason: repositoryRejectionReasonMalformed, wantReject: true},
+		{name: "empty name", owner: "octo", nameField: "", found: true, wantReason: repositoryRejectionReasonMalformed, wantReject: true},
+		{name: "extra slash in name", owner: "octo", nameField: "repo/extra", found: true, wantReason: repositoryRejectionReasonMalformed, wantReject: true},
+		{name: "invalid owner segment", owner: "-octo", nameField: "repo", found: true, wantReason: repositoryRejectionReasonInvalidSegment, wantReject: true},
+		{name: "invalid name segment", owner: "octo", nameField: "re po", found: true, wantReason: repositoryRejectionReasonInvalidSegment, wantReject: true},
+		{name: "well-formed reference", owner: "octo", nameField: "repo", found: true, wantReject: false},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			reason, rejected := classifyRepositoryRejection(testCase.owner, testCase.nameField, testCase.found)
+			if rejected != testCase.wantReject {
+				t.Fatalf("rejected = %v, want %v", rejected, testCase.wantReject)
+			}
+			if rejected && reason != testCase.wantReason {
+				t.Fatalf("reason = %q, want %q", reason, testCase.wantReason)
+			}
+		})
+	}
+}
+
 func TestRepositoryTransferDetectsOwnershipChange(t *testing.T) {
 	cases := []struct {
 		name           string
