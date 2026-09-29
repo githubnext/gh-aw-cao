@@ -1,6 +1,6 @@
 {
-  "source_sha": "30f90f7e3fab00843cdd2c66abf74a9e46d50ced",
-  "next_category": "Astro documentation generation",
+  "source_sha": "a0017d5ce8edfbc9403213c3d75c11906497c151",
+  "next_category": "reusable dashboard generation",
   "evaluations": [
     {
       "evaluated_at": "2026-09-29T11:56:48Z",
@@ -159,6 +159,29 @@
         36574787716
       ],
       "outcome": "no-op: evaluated dependency installation and caching across the latest 20 completed docs.yml runs from the last 14 days, with 8 comparable successful runs in the current sample and 7 excluded completed outliers/non-comparable runs (5 action_required workflow_run, 2 skipped workflow_run). Evidence window 2026-09-29T14:55:46Z to 2026-09-29T15:51:06Z. Trusted metadata showed docs queue median 0.0s (p90 0.0s), workflow execution median 79.5s (p90 120.0s), build median 42.0s (p90 46.3s), and deploy median 4.5s overall (p90 45.5s; schedule publishes only). Trusted docs build-step metadata showed Set up Node.js median 6.0s (p90 7.6s), Restore node_modules median 6.0s (p90 7.3s), Build documentation median 11.0s (p90 13.0s), Restore cached CAO Dashboard median 1.5s (p90 2.0s), and Upload Pages artifact median 5.0s (p90 5.0s). Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on all 8 comparable successful docs builds. Trusted logs from run 36593169545 confirmed cache hits for setup-node npm metadata, the explicit node_modules cache, and the central-agentic-ops-dashboard cache, with no npm ci execution. Because dependency installation is already fully avoided on successful docs builds, no dependency-installation or cache-layout change in docs.yml or cao-dashboard.yml is evidenced to save at least 60 seconds or 15 percent of median docs execution time without weakening correctness or freshness. No new non-duplicate dependency-installation or caching change met the actionability threshold in this cycle.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-09-29T16:34:00Z",
+      "worker_run_id": 36597904835,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        36598062583,
+        36595457780,
+        36593169545,
+        36591962530,
+        36591730055,
+        36590181538,
+        36589573146,
+        36587098766,
+        36586887677,
+        36586275655,
+        36585721902,
+        36584288555,
+        36595298339,
+        36591807190
+      ],
+      "outcome": "no-op: evaluated Astro documentation generation across the latest 20 completed docs.yml runs from the last 14 days, with 14 comparable successful build-bearing docs runs, 4 successful freshness-only schedule skips, and 6 excluded completed outliers/non-comparable runs (5 action_required workflow_run, 1 skipped workflow_run). Evidence window 2026-09-29T14:50:51Z to 2026-09-29T16:30:48Z. Trusted metadata showed docs workflow duration median 82.0s (p90 163.9s), build-job execution median 41.0s (p90 47.7s), schedule publish workflow duration median 94.0s (p90 158.8s), schedule publish build median 46.0s (p90 50.4s), queue-before-build median 14.5s (p90 51.1s), and deploy-job duration median 19.0s (p90 87.6s; outliers were Pages service wait). Within successful build jobs, Build documentation (npm run docs:build) had median 11.0s (p90 13.0s), versus Set up Node.js median 6.0s, Restore node_modules median 6.0s, Restore cached CAO Dashboard median 2.0s, and Upload Pages artifact median 5.0s. Trusted logs from run 36598062583 showed the final github-pages artifact uploaded in about 5.3s at 26,086,274 bytes after Build documentation completed in 13s; trusted deploy logs from publish outlier 36591730055 showed 101s of external Pages deployment_queued polling after artifact creation, not Astro generation. The current workflow already avoids npm ci and dashboard regeneration on these runs, and no source-level Astro-only change in docs.yml or cao-dashboard.yml is evidenced to save at least 60 seconds or 15 percent of median docs workflow time without weakening correctness, freshness, or deployment safety. No new non-duplicate Astro-generation change met the actionability threshold in this cycle.",
       "suggestion_fingerprint": null
     }
   ]
