@@ -45,6 +45,8 @@ test("CAO server package workflow publishes immutable Compose-ready images", asy
   assert.equal(workflow.jobs.test.name, "Test package sources");
   assert.equal(workflow.jobs.build.name, "Build, scan, and seal candidate");
   assert.deepEqual(workflow.jobs.test.permissions, { contents: "read" });
+  assert.equal(workflow.jobs.source.steps[0].id, "repository-origin");
+  assert.equal(workflow.jobs.source.steps[0].name, "Reject fork package sources");
   assert.doesNotMatch(
     workflow.jobs.build.steps.map((step) => step.run ?? "").join("\n"),
     /npm ci|go -C server test|dashboard:server:build/,
@@ -58,7 +60,9 @@ test("CAO server package workflow publishes immutable Compose-ready images", asy
   assert.match(source, /Manual package publication requires maintain or admin repository permission/);
   assert.match(source, /Manual package publication must select a branch/);
   assert.match(source, /Selected branch source is not its current head commit/);
-  assert.ok((source.match(/core\.info\(/g) ?? []).length >= 15);
+  assert.match(source, /CAO server packages cannot be published from forks/);
+  assert.doesNotMatch(source, /context\.payload\.repository\.fork/);
+  assert.ok((source.match(/core\.info\(/g) ?? []).length >= 12);
   assert.match(source, /Manual package authorization completed/);
   assert.match(source, /Stable release source resolution completed/);
   assert.match(source, /Published release tag must be an exact stable version vX\.Y\.Z/);

@@ -24,6 +24,16 @@ jobs:
       revision: ${{ steps.source.outputs.revision }}
       version: ${{ steps.source.outputs.version }}
     steps:
+      - id: repository-origin
+        name: Reject fork package sources
+        env:
+          REPOSITORY_FORK: ${{ github.event.repository.fork }}
+        run: |
+          set -euo pipefail
+          if [[ "${REPOSITORY_FORK}" != "false" ]]; then
+            echo "CAO server packages cannot be published from forks" >&2
+            exit 1
+          fi
       - id: dispatch-authorization
         name: Authorize selected branch dispatch
         if: github.event_name == 'workflow_dispatch'
@@ -37,10 +47,6 @@ jobs:
           github-token: ${{ github.token }}
           script: |
             core.info('Starting manual package authorization');
-            if (context.payload.repository.fork) {
-              throw new Error('CAO server packages cannot be published from forks');
-            }
-            core.info('Repository origin check passed');
             core.info('Checking original and rerun actor permissions');
             for (const actor of new Set([
               process.env.ORIGINAL_ACTOR,
@@ -83,10 +89,6 @@ jobs:
           github-token: ${{ github.token }}
           script: |
             core.info('Starting stable release source resolution');
-            if (context.payload.repository.fork) {
-              throw new Error('CAO server packages cannot be published from forks');
-            }
-            core.info('Repository origin check passed');
             const tag = process.env.RELEASE_TAG;
             const stable = /^v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/;
             if (!stable.test(tag) || context.payload.release.prerelease) {
@@ -122,15 +124,10 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           RELEASE_REVISION: ${{ steps.release-source.outputs.revision }}
-          REPOSITORY_FORK: ${{ github.event.repository.fork }}
           REF: ${{ github.ref }}
           SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          if [[ "${REPOSITORY_FORK}" != "false" ]]; then
-            echo "CAO server packages cannot be published from forks" >&2
-            exit 1
-          fi
           case "${EVENT_NAME}" in
             workflow_dispatch)
               if [[ "${REF}" != refs/heads/* || ! "${SHA}" =~ ^[0-9a-f]{40}$ ]]; then
