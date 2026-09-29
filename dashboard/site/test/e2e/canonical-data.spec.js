@@ -825,11 +825,14 @@ test('data worker returns the Models & agents run distribution on initial and na
 test('data worker returns MCP tool totals without safe outputs calls on initial and navigated requests', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
+    const compilerUrl = `${location.origin}/src/data/queries/view-payload-compiler.js`;
     const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
+    const { dashboardViewAliasName } = await import(compilerUrl);
     const dashboard = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
     const context = {
       githubUrlBase: 'https://github.com',
       pages: dashboard.dashboard.pages,
+      views: dashboard.dashboard.views,
       queries: dashboard.dashboard.queries
     };
     const initial = await loadCanonicalDashboardSources(
@@ -837,11 +840,24 @@ test('data worker returns MCP tool totals without safe outputs calls on initial 
       ['mcp-tool-totals', 'mcp-top-tools'],
       context
     );
-    const navigated = await loadCanonicalDashboardPage(['mcp-tool-totals', 'mcp-top-tools'], context);
+    const navigated = await loadCanonicalDashboardPage(
+      ['mcp-tool-totals', 'mcp-top-tools'],
+      context,
+      undefined,
+      { pageId: 'mcps' }
+    );
+    const pageDefinition = context.pages.find((/** @type {any} */ candidate) => candidate.id === 'mcps');
+    const topToolsView = pageDefinition.views.find((/** @type {any} */ view) => view.id === 'mcp-top-tools');
+    const topToolsAlias = dashboardViewAliasName(
+      pageDefinition.id,
+      topToolsView,
+      pageDefinition.views.indexOf(topToolsView),
+      'mcp-top-tools'
+    );
     const base = await loadCanonicalDashboardPage(['mcp-calls'], context);
     const { executeDashboardQueries } = await import(`${location.origin}/src/data/queries/declarative.js`);
     const direct = executeDashboardQueries(dashboard.dashboard.queries, base, ['mcp-tool-calls', 'mcp-tool-totals']);
-    return { initial, navigated, base, direct };
+    return { initial, navigated, topToolsAlias, base, direct };
   });
 
   expect(result.base['mcp-calls'].rows).toHaveLength(3);
@@ -851,7 +867,7 @@ test('data worker returns MCP tool totals without safe outputs calls on initial 
   });
   expect(result.direct['mcp-tool-calls'].rows).toHaveLength(3);
   expect(result.direct['mcp-tool-totals'].rows).toHaveLength(1);
-  for (const payload of [result.initial, result.navigated]) {
+  for (const payload of [result.initial]) {
     expect(Object.keys(payload)).toEqual(['mcp-tool-totals', 'mcp-top-tools']);
     expect(payload['mcp-tool-totals']).toMatchObject({
       source: 'mcp-tool-totals',
@@ -870,6 +886,14 @@ test('data worker returns MCP tool totals without safe outputs calls on initial 
       metadata: { 'source-kind': 'derived', 'query-name': 'mcp-top-tools' }
     });
   }
+  expect(result.navigated[result.topToolsAlias]).toMatchObject({
+    rows: [{
+      'mcp-tool-label': 'github/search_issues',
+      'mcp-tool': 'search_issues',
+      calls: 2
+    }],
+    metadata: { availability: 'available', 'source-kind': 'derived' }
+  });
 });
 
 test('data worker returns skill invocation rankings on initial and navigated requests', async ({ page }) => {
