@@ -29,9 +29,12 @@ jobs:
         with:
           github-token: ${{ github.token }}
           script: |
+            core.info('Starting sample deployment authorization');
             if (`${context.repo.owner}/${context.repo.repo}` !== 'githubnext/gh-aw-cao') {
               throw new Error('Sample deployment is restricted to githubnext/gh-aw-cao');
             }
+            core.info('Repository identity check passed');
+            core.info('Checking original and rerun actor permissions');
             for (const actor of new Set([
               process.env.ORIGINAL_ACTOR,
               process.env.TRIGGERING_ACTOR,
@@ -45,6 +48,8 @@ jobs:
                 throw new Error('Sample deployment requires maintain or admin repository permission');
               }
             }
+            core.info('Required repository permissions verified');
+            core.info('Resolving the current default branch head');
             const { data: repository } = await github.rest.repos.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -58,6 +63,8 @@ jobs:
                 process.env.WORKFLOW_SHA !== branch.commit.sha) {
               throw new Error('Sample deployment source is not the current default-branch commit');
             }
+            core.info('Sample deployment source matches the current default branch head');
+            core.info('Sample deployment authorization completed');
       - name: Summarize sample authorization
         if: always()
         env:
@@ -98,9 +105,12 @@ jobs:
         with:
           github-token: ${{ github.token }}
           script: |
+            core.info('Starting package-stage reauthorization');
             if (`${context.repo.owner}/${context.repo.repo}` !== 'githubnext/gh-aw-cao') {
               throw new Error('Sample deployment is restricted to githubnext/gh-aw-cao');
             }
+            core.info('Repository identity check passed');
+            core.info('Rechecking original and rerun actor permissions');
             for (const actor of new Set([
               process.env.ORIGINAL_ACTOR,
               process.env.TRIGGERING_ACTOR,
@@ -114,6 +124,8 @@ jobs:
                 throw new Error('Sample deployment requires maintain or admin repository permission');
               }
             }
+            core.info('Required repository permissions verified');
+            core.info('Resolving the current default branch head');
             const { data: branch } = await github.rest.repos.getBranch({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -123,6 +135,8 @@ jobs:
                 process.env.WORKFLOW_SHA !== branch.commit.sha) {
               throw new Error('Sample deployment source is not the current default-branch commit');
             }
+            core.info('Package source matches the current default branch head');
+            core.info('Package-stage reauthorization completed');
       - name: Log in to GHCR
         uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
         with:
@@ -167,9 +181,6 @@ jobs:
           {
             echo "## Sample package checks"
             echo
-            echo "<details>"
-            echo "<summary>Official package admission: ${PACKAGE_STATUS}</summary>"
-            echo
             echo "<details><summary>Maintainer and protected-main reauthorization: ${AUTHORIZATION_STATUS}</summary>"
             echo
             echo "- Data exposure: outcome only"
@@ -184,6 +195,8 @@ jobs:
             echo
             echo "- Check: expected signer workflow and source digest"
             echo "</details>"
+            echo
+            echo "<details><summary>Official package admission: ${PACKAGE_STATUS}</summary>"
             echo
             echo "- Data exposure: outcomes only; package and attestation contents are omitted"
             echo "</details>"
@@ -212,9 +225,12 @@ jobs:
         with:
           github-token: ${{ github.token }}
           script: |
+            core.info('Starting deployment-stage reauthorization');
             if (`${context.repo.owner}/${context.repo.repo}` !== 'githubnext/gh-aw-cao') {
               throw new Error('Sample deployment is restricted to githubnext/gh-aw-cao');
             }
+            core.info('Repository identity check passed');
+            core.info('Rechecking original and rerun actor permissions');
             for (const actor of new Set([
               process.env.ORIGINAL_ACTOR,
               process.env.TRIGGERING_ACTOR,
@@ -228,6 +244,8 @@ jobs:
                 throw new Error('Sample deployment requires maintain or admin repository permission');
               }
             }
+            core.info('Required repository permissions verified');
+            core.info('Resolving the current default branch head');
             const { data: branch } = await github.rest.repos.getBranch({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -237,6 +255,8 @@ jobs:
                 process.env.WORKFLOW_SHA !== branch.commit.sha) {
               throw new Error('Sample deployment source is not the current default-branch commit');
             }
+            core.info('Deployment source matches the current default branch head');
+            core.info('Deployment-stage reauthorization completed');
       - name: Checkout deployment client
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -261,13 +281,12 @@ jobs:
           {
             echo "## Sample deployment checks"
             echo
-            echo "<details>"
-            echo "<summary>Exact digest deployment and readiness: ${DEPLOYMENT_STATUS}</summary>"
-            echo
             echo "<details><summary>Maintainer and protected-main reauthorization: ${AUTHORIZATION_STATUS}</summary>"
             echo
             echo "- Data exposure: outcome only"
             echo "</details>"
+            echo
+            echo "<details><summary>Exact digest deployment and readiness: ${DEPLOYMENT_STATUS}</summary>"
             echo
             echo "- Data exposure: outcome only; endpoint, credentials, image identity, and response details are omitted"
             echo "</details>"

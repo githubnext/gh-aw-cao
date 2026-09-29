@@ -9,7 +9,6 @@ on:
         type: choice
         options:
           - alpha
-          - beta
           - stable
   push:
     branches: [main]
@@ -22,7 +21,7 @@ on:
       - server/coolify/**
       - tests/unit/coolify-deployment-contract.test.mjs
   release:
-    types: [published]
+    types: [released]
 
 permissions:
   contents: read
@@ -51,23 +50,21 @@ jobs:
           CHANNEL: ${{ inputs.channel }}
           EVENT_NAME: ${{ github.event_name }}
           REF: ${{ github.ref }}
-          RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           SHA: ${{ github.sha }}
         with:
           github-token: ${{ github.token }}
           script: |
+            core.info('Starting immutable deployment source classification');
             if (context.payload.repository.fork) {
               throw new Error('Coolify delivery is refused for a fork repository payload');
             }
+            core.info('Repository origin check passed');
 
             const stableTag = /^v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/;
-            const identifier = '(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)';
-            const prereleaseTag = new RegExp(
-              `^v(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)-${identifier}(?:\\.${identifier})*$`,
-            );
 
             async function peelTag(tag) {
+              core.info('Resolving a stable release tag to its commit');
               let { data: ref } = await github.rest.git.getRef({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -75,6 +72,7 @@ jobs:
               });
               let object = ref.object;
               for (let depth = 0; object.type === 'tag' && depth < 10; depth += 1) {
+                core.info('Resolving an annotated release tag layer');
                 const { data: annotated } = await github.rest.git.getTag({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -85,28 +83,30 @@ jobs:
               if (object.type !== 'commit' || !/^[0-9a-f]{40}$/.test(object.sha)) {
                 throw new Error('Deployment release tag does not resolve to an immutable commit SHA');
               }
+              core.info('Stable release tag resolved to an immutable commit');
               return object.sha;
             }
 
-            async function latestRelease(prerelease) {
+            async function latestRelease() {
+              core.info('Querying published releases for the latest stable vX.Y.Z version');
               const releases = await github.paginate(github.rest.repos.listReleases, {
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 per_page: 100,
               });
-              const pattern = prerelease ? prereleaseTag : stableTag;
               const release = releases
                 .filter((candidate) =>
                   !candidate.draft &&
-                  candidate.prerelease === prerelease &&
+                  !candidate.prerelease &&
                   candidate.published_at &&
-                  pattern.test(candidate.tag_name))
+                  stableTag.test(candidate.tag_name))
                 .sort((left, right) =>
                   Date.parse(right.published_at) - Date.parse(left.published_at) ||
                   right.id - left.id)[0];
               if (!release) {
-                throw new Error(`No published eligible ${prerelease ? 'beta' : 'stable'} release exists`);
+                throw new Error('No published eligible stable vX.Y.Z release exists');
               }
+              core.info('Latest eligible stable release selected');
               return release;
             }
 
@@ -117,6 +117,7 @@ jobs:
             let expectedSha;
 
             if (process.env.EVENT_NAME === 'push') {
+              core.info('Classifying a protected main push');
               if (process.env.REF !== 'refs/heads/main' || !/^[0-9a-f]{40}$/.test(process.env.SHA)) {
                 throw new Error('Alpha delivery requires an exact main commit');
               }
@@ -126,26 +127,28 @@ jobs:
               identity = `sha-${process.env.SHA}`;
               expectedSha = process.env.SHA;
             } else if (process.env.EVENT_NAME === 'release') {
-              const prerelease = process.env.RELEASE_PRERELEASE === 'true';
+              core.info('Classifying a stable release event');
               const tag = process.env.RELEASE_TAG;
-              if (!(prerelease ? prereleaseTag : stableTag).test(tag)) {
-                throw new Error('Published release tag does not match its Docker-safe semantic version channel');
+              if (!stableTag.test(tag) || context.payload.release.prerelease) {
+                throw new Error('Published release tag must be an exact stable version vX.Y.Z');
               }
-              tier = prerelease ? 'beta' : 'stable';
-              environment = `coolify-${tier}`;
+              tier = 'stable';
+              environment = 'coolify-stable';
               version = tag;
               identity = tag;
               expectedSha = await peelTag(tag);
             } else if (process.env.EVENT_NAME === 'workflow_dispatch') {
+              core.info('Classifying a manually selected deployment channel');
               if (!['refs/heads/main', 'refs/heads/release'].includes(process.env.REF)) {
                 throw new Error('Manual delivery must select the main or release branch');
               }
               tier = process.env.CHANNEL;
-              if (!['alpha', 'beta', 'stable'].includes(tier)) {
+              if (!['alpha', 'stable'].includes(tier)) {
                 throw new Error('Manual deployment channel is invalid');
               }
               environment = `coolify-${tier}`;
               if (tier === 'alpha') {
+                core.info('Resolving the current protected main source');
                 if (process.env.REF !== 'refs/heads/main') {
                   throw new Error('Manual alpha delivery must select main');
                 }
@@ -158,10 +161,12 @@ jobs:
                 if (process.env.SHA !== expectedSha) {
                   throw new Error('Manual alpha source is not the current main commit');
                 }
+                core.info('Manual alpha source matches the current main commit');
                 version = `0.0.0-main.${expectedSha.slice(0, 12)}`;
                 identity = `sha-${expectedSha}`;
               } else {
-                const release = await latestRelease(tier === 'beta');
+                core.info('Resolving the latest stable release source');
+                const release = await latestRelease();
                 identity = release.tag_name;
                 version = release.tag_name;
                 expectedSha = await peelTag(release.tag_name);
@@ -176,6 +181,7 @@ jobs:
             core.setOutput('version', version);
             core.setOutput('identity', identity);
             core.setOutput('expected_sha', expectedSha);
+            core.info('Immutable deployment source classification completed');
       - name: Summarize deployment classification
         if: always()
         env:
@@ -272,9 +278,6 @@ jobs:
           {
             echo "## Official package admission"
             echo
-            echo "<details>"
-            echo "<summary>Immutable package verification: ${PACKAGE_STATUS}</summary>"
-            echo
             echo "<details><summary>Digest and OCI labels</summary>"
             echo
             echo "- Check: one immutable digest with expected version and source revision"
@@ -284,6 +287,8 @@ jobs:
             echo
             echo "- Check: signer workflow and source digest"
             echo "</details>"
+            echo
+            echo "<details><summary>Package admission outcome: ${PACKAGE_STATUS}</summary>"
             echo
             echo "- Data exposure: outcome and check classes only; package metadata and attestation bodies are omitted"
             echo "</details>"
@@ -326,12 +331,15 @@ jobs:
         with:
           github-token: ${{ github.token }}
           script: |
+            core.info('Starting deployment source freshness validation');
             const expected = process.env.EXPECTED_SHA;
             const tier = process.env.TIER;
             if (!/^[0-9a-f]{40}$/.test(expected)) {
               throw new Error('Deployment source is not an immutable commit SHA');
             }
+            core.info('Immutable source shape verified');
             if (tier === 'alpha') {
+              core.info('Rechecking the protected main branch head');
               const { data: branch } = await github.rest.repos.getBranch({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -340,37 +348,36 @@ jobs:
               if (branch.commit.sha !== expected) {
                 throw new Error('Alpha source is no longer the main branch HEAD');
               }
+              core.info('Alpha source remains current');
+              core.info('Deployment source freshness validation completed');
               return;
             }
 
-            const prerelease = tier === 'beta';
-            if (!prerelease && tier !== 'stable') {
+            if (tier !== 'stable') {
               throw new Error(`Unknown deployment tier: ${tier}`);
             }
+            core.info('Rechecking the latest stable vX.Y.Z release');
             const stableTag = /^v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/;
-            const identifier = '(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)';
-            const prereleaseTag = new RegExp(
-              `^v(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)-${identifier}(?:\\.${identifier})*$`,
-            );
             const releases = await github.paginate(github.rest.repos.listReleases, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               per_page: 100,
             });
-            const pattern = prerelease ? prereleaseTag : stableTag;
             const latest = releases
               .filter((release) =>
                 !release.draft &&
-                release.prerelease === prerelease &&
+                !release.prerelease &&
                 release.published_at &&
-                pattern.test(release.tag_name))
+                stableTag.test(release.tag_name))
               .sort((left, right) =>
                 Date.parse(right.published_at) - Date.parse(left.published_at) ||
                 right.id - left.id)[0];
             if (!latest || latest.tag_name !== process.env.RELEASE_TAG) {
-              throw new Error(`${tier} source is no longer the latest published release for its channel`);
+              throw new Error('stable source is no longer the latest published vX.Y.Z release');
             }
+            core.info('Stable release remains the latest eligible version');
 
+            core.info('Re-resolving the stable release tag object');
             let { data: ref } = await github.rest.git.getRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -378,6 +385,7 @@ jobs:
             });
             let object = ref.object;
             for (let depth = 0; object.type === 'tag' && depth < 10; depth += 1) {
+              core.info('Resolving an annotated release tag layer');
               const { data: tag } = await github.rest.git.getTag({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -388,6 +396,8 @@ jobs:
             if (object.type !== 'commit' || object.sha !== expected) {
               throw new Error('Published release tag no longer peels to its classified commit SHA');
             }
+            core.info('Stable release tag still resolves to the classified source');
+            core.info('Deployment source freshness validation completed');
       - id: deployment
         name: Request digest deployment
         if: steps.adapter.outputs.configured == 'true'
@@ -463,9 +473,6 @@ jobs:
           {
             echo "## Protected Coolify deployment"
             echo
-            echo "<details>"
-            echo "<summary>Deployment security boundary</summary>"
-            echo
             for check in \
               "Protected adapter configuration|${ADAPTER_STATUS}" \
               "Channel freshness revalidation|${FRESHNESS_STATUS}" \
@@ -478,6 +485,5 @@ jobs:
               echo "</details>"
               echo
             done
-            echo "- Deployment endpoint, token, payload, response body, image identity, and source metadata are omitted."
-            echo "</details>"
+            echo "Deployment endpoint, token, payload, response body, image identity, and source metadata are omitted."
           } >> "${GITHUB_STEP_SUMMARY}"

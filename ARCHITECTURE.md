@@ -371,11 +371,17 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   `ghcr.io/githubnext/gh-aw-cao/cao-server` on pushes to `main` and published
   releases after protected-main ancestry validation, source tests, Dockerfile
   and workflow security linting, independent Trivy and Grype high/critical CVE
-  gates, a Dockle hardening check, and Syft SPDX SBOM generation. Build and
-  scanner execution has no package-write authority. A separate minimal
+  gates, a Dockle hardening check, and Syft SPDX SBOM generation. Lint, test,
+  and image build/scanning run as separate jobs with no package-write
+  authority. Raw static-check outputs are retained in a short-lived artifact
+  even when a lint gate fails. A separate minimal
   publisher verifies the checksummed image archive, publishes the exact digest,
   and attaches GitHub SLSA provenance and SBOM attestations. Privacy-preserving
-  nested step summaries report only check scope, policy, and outcome. The
+  non-nested step summaries report only check scope, policy, and outcome. The
+  workflow also admits manual branch builds only when both original and rerun
+  actors have maintain or admin permission and the selected ref is the branch's
+  current head. Those packages use a separate immutable dispatch identity and
+  cannot redefine main or release identities. The
   single image exposes the multi-role server binary so downstream Docker
   Compose deployments select `serve-hosted`, `collect`, `backfill`, or `doctor`
   per service without rebuilding the package. Canonical identities are
@@ -384,10 +390,10 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   only this package by verified digest, matching OCI source labels, and a
   GitHub attestation bound to the expected signer workflow and source commit. A push
   to `main` maps to alpha, while
-  published prerelease and non-prerelease events map to beta and stable.
-  Manual alpha runs resolve the current `main` commit; manual beta and stable
-  runs resolve the exact commit of the latest eligible published release for
-  their channel, regardless of whether `main` or `release` is selected. Every
+  published stable `vX.Y.Z` release events map to stable.
+  Manual alpha runs resolve the current `main` commit; manual stable runs
+  resolve the exact commit of the latest eligible published stable `vX.Y.Z`
+  release, regardless of whether `main` or `release` is selected. Every
   package candidate is pushed under a unique run identity, then a canonical
   source identity is created or accepted only at the same digest. Immediately
   before a protected deployment, the delivery workflow revalidates channel

@@ -27,7 +27,7 @@ The Coolify deployment is an alternative to the Azure deployment. It doesn't rep
 | Artifact volume | A named Docker volume, managed by Coolify, that contains a complete and verified dashboard payload. |
 | GitHub OAuth app | An OAuth app with the callback URL `https://PUBLIC-HOST/auth/callback`. |
 | Webhook secret | A secret of at least 32 characters. The server requires one even if you don't use webhooks. |
-| Deployment automation (optional) | To use `.github/workflows/coolify-deploy.yml`, set the repository variable `COOLIFY_DEPLOY_ENABLED` to `true` for push deployments. You also need the GitHub environments `coolify-alpha`, `coolify-beta`, and `coolify-stable`, each with the `COOLIFY_DEPLOY_ENDPOINT` and `COOLIFY_DEPLOY_TOKEN` secrets, plus a deployment adapter for your Coolify resource. For more information, see [Automating delivery](#automating-delivery). |
+| Deployment automation (optional) | To use `.github/workflows/coolify-deploy.yml`, set the repository variable `COOLIFY_DEPLOY_ENABLED` to `true` for push deployments. You also need the GitHub environments `coolify-alpha` and `coolify-stable`, each with the `COOLIFY_DEPLOY_ENDPOINT` and `COOLIFY_DEPLOY_TOKEN` secrets, plus a deployment adapter for your Coolify resource. For more information, see [Automating delivery](#automating-delivery). |
 
 The running container needs outbound access only to Redis and to the GitHub OAuth and API endpoints.
 
@@ -142,13 +142,22 @@ To update the data, prepare a new volume in the same way, set `CAO_ARTIFACT_VOLU
 The deployment-neutral `.github/workflows/cao-package.yml` workflow tests,
 builds, scans, and publishes `ghcr.io/githubnext/gh-aw-cao/cao-server` on every
 push to `main` and every published release. Release sources must be reachable
-from protected `main`. Hadolint checks the Dockerfile; actionlint and zizmor
-audit workflow sources; Trivy and Grype independently fail publication on high
+from protected `main`. A dedicated lint job runs Hadolint on the Dockerfile and
+actionlint and zizmor on workflow sources, then stores their raw output and the
+release ancestry result in a seven-day artifact. A separate test job runs
+package contracts, server tests, and the dashboard production build before the
+image build begins. Trivy and Grype independently fail publication on high
 or critical CVEs; Dockle checks container hardening; and Syft generates an SPDX
 SBOM. The image contains the multi-role `cao-dashboard` binary, so
 downstream Docker Compose deployments can run separate `serve-hosted`,
 `collect`, `backfill`, or `doctor` services from the same digest by selecting a
 different command.
+
+Maintainers and administrators can also manually dispatch the package workflow
+from a specific branch selected in the Actions UI. The workflow rejects tags,
+stale branch selections, forks, and unauthorized original or rerun actors.
+Manual packages use the separate immutable `dispatch-<full-commit>` identity,
+so they cannot redefine automatic `main` or release identities.
 
 The `.github/workflows/coolify-deploy.yml` workflow does not rebuild the image.
 It resolves the matching immutable `cao-server` identity, verifies its version
@@ -160,7 +169,7 @@ minimal package-write job, and attaches both SLSA provenance and the SPDX SBOM
 to the published OCI digest.
 
 Every package and delivery job writes a privacy-preserving step summary using
-nested `<details>` sections. Summaries contain check names, gate policies, and
+non-nested `<details>` sections. Summaries contain check names, gate policies, and
 outcomes only. They omit vulnerability records, SBOM contents, image inventory,
 credentials, deployment endpoints and payloads, and registry or adapter
 responses.
@@ -186,10 +195,9 @@ deployment authority, or rollout policy.
 
 | Trigger | Image | Environment |
 | --- | --- | --- |
-| A published `vX.Y.Z` release that isn't a prerelease | `cao-server:vX.Y.Z`, built from the release commit | `coolify-stable` |
-| A published SemVer prerelease | `cao-server:vX.Y.Z-PRERELEASE`, built from the release commit | `coolify-beta` |
+| A published stable `vX.Y.Z` release | `cao-server:vX.Y.Z`, built from the release commit | `coolify-stable` |
 | A push to `main` | `cao-server:sha-COMMIT` | `coolify-alpha` |
-| A manual run for `alpha`, `beta`, or `stable`, from `main` or `release` | The current `main`, or the latest eligible release for the channel | The matching environment |
+| A manual run for `alpha` or `stable`, from `main` or `release` | The current `main`, or the latest eligible stable `vX.Y.Z` release | The matching environment |
 
 Both workflows refuse payloads from forks. Before delivery calls the adapter,
 it checks that the source is still current for its channel and that the official

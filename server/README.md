@@ -251,6 +251,9 @@ immutable `sha-<full-commit>` identity; published releases receive their exact
 Docker-safe semantic version tag. Use the resulting digest in downstream
 Compose files. Multiple services can share that digest and select
 `serve-hosted`, `collect`, `backfill`, or `doctor` through `command`.
+Maintainers and administrators may also dispatch the workflow from an exact
+selected branch head; these builds use a non-colliding
+`dispatch-<full-commit>` identity.
 Publication is gated by Hadolint, actionlint, zizmor, Trivy, Grype, Dockle,
 source tests, and protected-main ancestry. Syft produces an SPDX SBOM, and the
 minimal package-write job attests both build provenance and the SBOM for the
@@ -289,21 +292,19 @@ affect Azure: Azure Functions continues to require `rediss://`.
 The conventional `.github/workflows/coolify-deploy.yml` resolves published
 release tags to exact commits and consumes the matching official `cao-server`
 package without rebuilding it. It refuses
-every fork repository payload. Manual runs accept a required `alpha`, `beta`,
-or `stable` channel only when `main` or `release` is selected. Alpha additionally
-requires `main` and its current commit. Beta and stable resolve the latest
-eligible published prerelease or non-prerelease tag, respectively. The package
+every fork repository payload. Manual runs accept a required `alpha` or
+`stable` channel only when `main` or `release` is selected. Alpha additionally
+requires `main` and its current commit. Stable resolves the latest eligible
+published stable `vX.Y.Z` tag. The package
 workflow builds and scans that tag's exact commit rather than branch HEAD, and
 delivery verifies the selected package's OCI version and revision labels.
 
 | Event | Immutable GHCR identity | GitHub environment |
 | --- | --- | --- |
-| Published non-prerelease `vX.Y.Z` release | tag resolved and repeatedly verified at its exact commit (`vX.Y.Z`) | `coolify-stable` |
-| Published SemVer prerelease | tag resolved and repeatedly verified at its exact commit (`vX.Y.Z-<prerelease>`) | `coolify-beta` |
+| Published stable `vX.Y.Z` release | tag resolved and repeatedly verified at its exact commit (`vX.Y.Z`) | `coolify-stable` |
 | Push to `main` | `sha-<full-main-commit>` | `coolify-alpha` |
 | Manual alpha from `main` | current `sha-<full-main-commit>` | `coolify-alpha` |
-| Manual beta from `main` or `release` | latest eligible published prerelease tag at its exact commit | `coolify-beta` |
-| Manual stable from `main` or `release` | latest eligible published non-prerelease tag at its exact commit | `coolify-stable` |
+| Manual stable from `main` or `release` | latest eligible published stable `vX.Y.Z` tag at its exact commit | `coolify-stable` |
 
 Configure `COOLIFY_DEPLOY_ENDPOINT` and `COOLIFY_DEPLOY_TOKEN` as secrets on each
 environment. The HTTPS endpoint is the deployment adapter for that Coolify
@@ -317,13 +318,13 @@ containing exactly the requested identity as
 accepted/queued Coolify response is not success.
 
 Before invoking the adapter, the workflow rechecks that alpha is still `main`
-HEAD and stable or beta is still the latest published release in its channel
+HEAD and stable is still the latest published `vX.Y.Z` release
 with an unchanged tag target. Environment protection rules provide approvals. The scanned local
 image is first pushed under a run/attempt candidate tag. A canonical source
 identity is created from that candidate digest only when absent; if it already
 exists, exact digest equality is mandatory. Labels on existing registry
 objects are never trusted. No tier reads another tier's image, no release
-promotes an alpha/beta artifact, and deployment always uses the verified digest,
+promotes an alpha artifact, and deployment always uses the verified digest,
 never a candidate or channel tag. Release tags must satisfy the channel's
 SemVer form and build metadata is rejected because `+` cannot be preserved in
 a Docker tag.
@@ -333,7 +334,7 @@ a Docker tag.
 Record the last known-good `name@sha256:...` from the GitHub deployment history
 before every rollout. To roll back, use the same protected environment's
 Coolify deployment adapter to set `CAO_IMAGE` to that exact prior digest and
-redeploy; do not retag it as `stable`, `beta`, `alpha`, or `latest`. Confirm
+redeploy; do not retag it as `stable`, `alpha`, or `latest`. Confirm
 `/api/readiness`, OAuth login and authorization, a bounded query, webhook
 signature handling, and rate-limit behavior. Redis is disposable: if the new
 binary wrote an unusable projection, clear only that deployment namespace and

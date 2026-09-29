@@ -1,10 +1,11 @@
 name: CAO server package
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   release:
-    types: [published]
+    types: [released]
 
 permissions:
   contents: read
@@ -23,6 +24,55 @@ jobs:
       revision: ${{ steps.source.outputs.revision }}
       version: ${{ steps.source.outputs.version }}
     steps:
+      - id: dispatch-authorization
+        name: Authorize selected branch dispatch
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          ORIGINAL_ACTOR: ${{ github.actor }}
+          SELECTED_REF: ${{ github.ref }}
+          SELECTED_SHA: ${{ github.sha }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            core.info('Starting manual package authorization');
+            if (context.payload.repository.fork) {
+              throw new Error('CAO server packages cannot be published from forks');
+            }
+            core.info('Repository origin check passed');
+            core.info('Checking original and rerun actor permissions');
+            for (const actor of new Set([
+              process.env.ORIGINAL_ACTOR,
+              process.env.TRIGGERING_ACTOR,
+            ])) {
+              const { data: access } = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                username: actor,
+              });
+              if (!['admin', 'maintain'].includes(access.role_name)) {
+                throw new Error('Manual package publication requires maintain or admin repository permission');
+              }
+            }
+            core.info('Required repository permissions verified');
+            const prefix = 'refs/heads/';
+            if (!process.env.SELECTED_REF.startsWith(prefix)) {
+              throw new Error('Manual package publication must select a branch');
+            }
+            core.info('Selected ref is a branch');
+            const branchName = process.env.SELECTED_REF.slice(prefix.length);
+            core.info('Resolving the selected branch head');
+            const { data: branch } = await github.rest.repos.getBranch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: branchName,
+            });
+            if (branch.commit.sha !== process.env.SELECTED_SHA) {
+              throw new Error('Selected branch source is not its current head commit');
+            }
+            core.info('Selected source matches the current branch head');
+            core.info('Manual package authorization completed');
       - id: release-source
         name: Resolve published release source
         if: github.event_name == 'release'
@@ -32,19 +82,19 @@ jobs:
         with:
           github-token: ${{ github.token }}
           script: |
+            core.info('Starting stable release source resolution');
             if (context.payload.repository.fork) {
               throw new Error('CAO server packages cannot be published from forks');
             }
+            core.info('Repository origin check passed');
             const tag = process.env.RELEASE_TAG;
             const stable = /^v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/;
-            const identifier = '(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)';
-            const prerelease = new RegExp(
-              `^v(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)-${identifier}(?:\\.${identifier})*$`,
-            );
-            if (!(stable.test(tag) || prerelease.test(tag))) {
-              throw new Error('Published release tag must be Docker-safe semantic version vX.Y.Z or vX.Y.Z-prerelease');
+            if (!stable.test(tag) || context.payload.release.prerelease) {
+              throw new Error('Published release tag must be an exact stable version vX.Y.Z');
             }
+            core.info('Stable release version policy passed');
 
+            core.info('Resolving the release tag object');
             let { data: ref } = await github.rest.git.getRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -52,6 +102,7 @@ jobs:
             });
             let object = ref.object;
             for (let depth = 0; object.type === 'tag' && depth < 10; depth += 1) {
+              core.info('Resolving an annotated release tag layer');
               const { data: annotated } = await github.rest.git.getTag({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -62,7 +113,9 @@ jobs:
             if (object.type !== 'commit' || !/^[0-9a-f]{40}$/.test(object.sha)) {
               throw new Error('Published release tag does not resolve to an immutable commit SHA');
             }
+            core.info('Release tag resolved to an immutable commit');
             core.setOutput('revision', object.sha);
+            core.info('Stable release source resolution completed');
       - id: source
         name: Classify package identity
         env:
@@ -79,6 +132,15 @@ jobs:
             exit 1
           fi
           case "${EVENT_NAME}" in
+            workflow_dispatch)
+              if [[ "${REF}" != refs/heads/* || ! "${SHA}" =~ ^[0-9a-f]{40}$ ]]; then
+                echo "manual package publication requires an exact branch commit" >&2
+                exit 1
+              fi
+              revision="${SHA}"
+              version="0.0.0-dispatch.${SHA:0:12}"
+              identity="dispatch-${SHA}"
+              ;;
             push)
               if [[ "${REF}" != "refs/heads/main" || ! "${SHA}" =~ ^[0-9a-f]{40}$ ]]; then
                 echo "main package publication requires an exact main commit" >&2
@@ -111,18 +173,23 @@ jobs:
         if: always()
         env:
           CLASSIFICATION_STATUS: ${{ steps.source.outcome }}
+          DISPATCH_AUTHORIZATION_STATUS: ${{ steps.dispatch-authorization.outcome }}
           RELEASE_RESOLUTION_STATUS: ${{ steps.release-source.outcome }}
         run: |
           {
             echo "## CAO server package checks"
             echo
             echo "<details>"
-            echo "<summary>Immutable source validation</summary>"
+            echo "<summary>Manual branch authorization: ${DISPATCH_AUTHORIZATION_STATUS}</summary>"
+            echo
+            echo "- Check: maintainer or administrator, branch ref, and current branch head"
+            echo "- Data exposure: status only; actor and branch identities are omitted"
+            echo "</details>"
             echo
             echo "<details>"
             echo "<summary>Release source resolution: ${RELEASE_RESOLUTION_STATUS}</summary>"
             echo
-            echo "- Check: Docker-safe release identity and immutable commit resolution"
+            echo "- Check: exact stable vX.Y.Z identity and immutable commit resolution"
             echo "- Data exposure: status only"
             echo "</details>"
             echo
@@ -132,11 +199,9 @@ jobs:
             echo "- Check: supported event, protected branch, and immutable identity shape"
             echo "- Data exposure: status only"
             echo "</details>"
-            echo
-            echo "</details>"
           } >> "${GITHUB_STEP_SUMMARY}"
 
-  static-security:
+  lint:
     name: Lint container and workflow sources
     needs: source
     runs-on: ubuntu-latest
@@ -156,25 +221,35 @@ jobs:
           REVISION: ${{ needs.source.outputs.revision }}
         run: |
           set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/static-check-results"
           git fetch --force --no-tags origin \
             refs/heads/main:refs/remotes/origin/main
           if ! git merge-base --is-ancestor "${REVISION}" refs/remotes/origin/main; then
-            echo "release package source is not reachable from protected main" >&2
+            echo "release package source is not reachable from protected main" \
+              | tee "${RUNNER_TEMP}/static-check-results/protected-main-ancestry.txt" >&2
             exit 1
           fi
+          echo "release source is reachable from protected main" \
+            > "${RUNNER_TEMP}/static-check-results/protected-main-ancestry.txt"
       - id: hadolint
         name: Lint Dockerfile with Hadolint
+        if: always()
         run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/static-check-results"
           docker run --rm --network none \
             --cap-drop ALL \
             --security-opt no-new-privileges \
             --volume "$PWD:/repo:ro" \
             hadolint/hadolint:v2.15.1-alpine@sha256:a1d49ae1a4e83c1dbad26b8c1ad7588c8bd1e04f4866b34ad3cac50335198552 \
-            /repo/server/Dockerfile
+            /repo/server/Dockerfile 2>&1 \
+            | tee "${RUNNER_TEMP}/static-check-results/hadolint.txt"
       - id: actionlint
         name: Lint workflows with actionlint
+        if: always()
         run: |
           set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/static-check-results"
           mapfile -d '' workflow_files < <(
             find .github/workflows -type f \
               \( -name '*.yml' -o -name '*.yaml' \) \
@@ -186,11 +261,14 @@ jobs:
             --volume "$PWD:/repo:ro" --workdir /repo \
             rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 \
             -ignore 'unknown permission scope "vulnerability-alerts"' \
-            "${workflow_files[@]}"
+            "${workflow_files[@]}" 2>&1 \
+            | tee "${RUNNER_TEMP}/static-check-results/actionlint.txt"
       - id: zizmor
         name: Audit workflows with zizmor
+        if: always()
         run: |
           set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/static-check-results"
           mapfile -d '' workflow_files < <(
             find .github/workflows -type f \
               \( -name '*.yml' -o -name '*.yaml' \) \
@@ -201,20 +279,28 @@ jobs:
             --security-opt no-new-privileges \
             --volume "$PWD:/repo:ro" --workdir /repo \
             ghcr.io/zizmorcore/zizmor:1.30.1@sha256:a2eb396d886c053073405c7a980f2139ba2248ec172243cfa3841e57196e8101 \
-            --format plain "${workflow_files[@]}"
+            --format plain "${workflow_files[@]}" 2>&1 \
+            | tee "${RUNNER_TEMP}/static-check-results/zizmor.txt"
+      - id: upload-results
+        name: Upload static check results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cao-server-static-checks-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/static-check-results
+          if-no-files-found: error
+          retention-days: 7
       - name: Summarize static security checks
         if: always()
         env:
           ACTIONLINT_STATUS: ${{ steps.actionlint.outcome }}
           ANCESTRY_STATUS: ${{ steps.ancestry.outcome }}
           HADOLINT_STATUS: ${{ steps.hadolint.outcome }}
+          RESULTS_STATUS: ${{ steps.upload-results.outcome }}
           ZIZMOR_STATUS: ${{ steps.zizmor.outcome }}
         run: |
           {
             echo "## Static package security"
-            echo
-            echo "<details>"
-            echo "<summary>Source and policy checks</summary>"
             echo
             echo "<details><summary>Protected-main ancestry: ${ANCESTRY_STATUS}</summary>"
             echo
@@ -240,12 +326,90 @@ jobs:
             echo "- Data exposure: tool name, scope, and outcome only"
             echo "</details>"
             echo
+            echo "<details><summary>Static check artifact: ${RESULTS_STATUS}</summary>"
+            echo
+            echo "- Contents: raw ancestry, Hadolint, actionlint, and zizmor outputs"
+            echo "- Retention: 7 days"
             echo "</details>"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  test:
+    name: Test package sources
+    needs: source
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.source.outputs.revision }}
+          fetch-depth: 1
+          persist-credentials: false
+      - id: source-check
+        name: Verify exact test source
+        env:
+          REVISION: ${{ needs.source.outputs.revision }}
+        run: |
+          set -euo pipefail
+          if [[ "$(git rev-parse --verify 'HEAD^{commit}')" != "${REVISION}" ]]; then
+            echo "test checkout does not match the resolved source commit" >&2
+            exit 1
+          fi
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version: 1.27.1
+          cache: false
+      - id: root-tests
+        name: Test package workflow contracts
+        run: |
+          set -euo pipefail
+          npm ci
+          node --test \
+            tests/unit/cao-package-contract.test.mjs \
+            tests/unit/coolify-deployment-contract.test.mjs
+      - id: server-tests
+        name: Test CAO server
+        run: go -C server test ./...
+      - id: dashboard-build
+        name: Build dashboard assets
+        run: |
+          set -euo pipefail
+          npm --prefix dashboard/site ci
+          npm run dashboard:server:build
+      - name: Summarize package tests
+        if: always()
+        env:
+          DASHBOARD_STATUS: ${{ steps.dashboard-build.outcome }}
+          ROOT_TEST_STATUS: ${{ steps.root-tests.outcome }}
+          SERVER_TEST_STATUS: ${{ steps.server-tests.outcome }}
+          SOURCE_STATUS: ${{ steps.source-check.outcome }}
+        run: |
+          {
+            echo "## Package test gates"
+            echo
+            for check in \
+              "Exact test source|${SOURCE_STATUS}" \
+              "Workflow contracts|${ROOT_TEST_STATUS}" \
+              "CAO server tests|${SERVER_TEST_STATUS}" \
+              "Dashboard production build|${DASHBOARD_STATUS}"; do
+              name="${check%%|*}"
+              status="${check#*|}"
+              echo "<details><summary>${name}: ${status}</summary>"
+              echo
+              echo "- Data exposure: check name and outcome only"
+              echo "</details>"
+              echo
+            done
           } >> "${GITHUB_STEP_SUMMARY}"
 
   build:
     name: Build, scan, and seal candidate
-    needs: [source, static-security]
+    needs: [source, lint, test]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -276,23 +440,6 @@ jobs:
               exit 1
             fi
           fi
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 24
-          package-manager-cache: false
-      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
-        with:
-          go-version: 1.27.1
-          cache: false
-      - id: tests
-        name: Test package sources
-        run: |
-          set -euo pipefail
-          npm ci
-          node --test tests/unit/cao-package-contract.test.mjs
-          go -C server test ./...
-          npm --prefix dashboard/site ci
-          npm run dashboard:server:build
       - id: image-build
         name: Build package candidate
         env:
@@ -392,19 +539,14 @@ jobs:
           SBOM_STATUS: ${{ steps.syft.outcome }}
           SEAL_STATUS: ${{ steps.seal.outcome }}
           SOURCE_STATUS: ${{ steps.source-check.outcome }}
-          TEST_STATUS: ${{ steps.tests.outcome }}
           TRIVY_STATUS: ${{ steps.trivy.outcome }}
           UPLOAD_STATUS: ${{ steps.upload.outcome }}
         run: |
           {
             echo "## Candidate image security"
             echo
-            echo "<details>"
-            echo "<summary>Build and verification checks</summary>"
-            echo
             for check in \
               "Exact source and ancestry|${SOURCE_STATUS}" \
-              "Source tests|${TEST_STATUS}" \
               "Container build|${BUILD_STATUS}" \
               "Release identity freshness|${RELEASE_IDENTITY_STATUS}" \
               "Sealed artifact checksum|${SEAL_STATUS}" \
@@ -417,11 +559,6 @@ jobs:
               echo "</details>"
               echo
             done
-            echo "</details>"
-            echo
-            echo "<details>"
-            echo "<summary>Container security tools</summary>"
-            echo
             for check in \
               "Trivy CVE scan|${TRIVY_STATUS}|HIGH and CRITICAL fixed vulnerabilities" \
               "Grype CVE scan|${GRYPE_STATUS}|HIGH and CRITICAL vulnerabilities" \
@@ -438,12 +575,11 @@ jobs:
               echo "</details>"
               echo
             done
-            echo "</details>"
           } >> "${GITHUB_STEP_SUMMARY}"
 
   publish:
     name: Publish and attest sealed package
-    needs: [source, static-security, build]
+    needs: [source, lint, test, build]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -578,9 +714,6 @@ jobs:
           {
             echo "## Package publication security"
             echo
-            echo "<details>"
-            echo "<summary>Privileged publication boundary</summary>"
-            echo
             echo "- Publisher checks out no repository code and performs no build or scanner execution."
             echo "- Data exposure: stage outcomes only; registry responses, credentials, SBOM contents, and image inventory are omitted."
             echo
@@ -600,5 +733,4 @@ jobs:
               echo "</details>"
               echo
             done
-            echo "</details>"
           } >> "${GITHUB_STEP_SUMMARY}"

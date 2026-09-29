@@ -9,6 +9,23 @@ async function text(path) {
   return readFile(new URL(path, root), "utf8");
 }
 
+function maxEchoedDetailsDepth(source) {
+  let depth = 0;
+  let maximum = 0;
+  for (const line of source.split(/\r?\n/)) {
+    if (line.includes('echo "<details')) {
+      depth += 1;
+      maximum = Math.max(maximum, depth);
+    }
+    if (line.includes('echo "</details>"')) {
+      depth -= 1;
+      assert.ok(depth >= 0, "summary details are unbalanced");
+    }
+  }
+  assert.equal(depth, 0, "summary details are unbalanced");
+  return maximum;
+}
+
 test("Coolify image is multi-stage, non-root, versioned, and health checked", async () => {
   const dockerfile = await text("server/Dockerfile");
 
@@ -66,10 +83,14 @@ test("sample Coolify workflow consumes the official main package", async () => {
   assert.match(source, /official sample package metadata does not match the current main commit/);
   assert.match(source, /gh attestation verify "oci:\/\/\$\{image\}"/);
   assert.match(source, /Data exposure: outcomes only/);
+  assert.ok((source.match(/core\.info\(/g) ?? []).length >= 20);
+  assert.match(source, /Sample deployment authorization completed/);
+  assert.match(source, /Deployment-stage reauthorization completed/);
   assert.doesNotMatch(source, /docker build\s/);
   assert.doesNotMatch(source, /docker push\s/);
   assert.equal(deploy.needs, "package");
   assert.match(source, /node scripts\/deploy-coolify\.mjs/);
+  assert.equal(maxEchoedDetailsDepth(source), 1);
 });
 
 test("Coolify delivery consumes the official immutable CAO server package", async () => {
@@ -80,9 +101,9 @@ test("Coolify delivery consumes the official immutable CAO server package", asyn
   const resolve = packageJob.steps.find((step) => step.id === "package");
   const request = deploy.steps.find((step) => step.name === "Request digest deployment");
 
-  assert.deepEqual(workflow.on.workflow_dispatch.inputs.channel.options, ["alpha", "beta", "stable"]);
+  assert.deepEqual(workflow.on.workflow_dispatch.inputs.channel.options, ["alpha", "stable"]);
   assert.deepEqual(workflow.on.push.branches, ["main"]);
-  assert.deepEqual(workflow.on.release.types, ["published"]);
+  assert.deepEqual(workflow.on.release.types, ["released"]);
   assert.equal(workflow.on.pull_request, undefined);
   assert.equal(packageJob.needs, "classify");
   assert.deepEqual(packageJob.permissions, {
@@ -106,12 +127,16 @@ test("Coolify delivery consumes the official immutable CAO server package", asyn
   assert.match(resolve.run, /gh attestation verify "oci:\/\/\$\{image\}"/);
   assert.match(resolve.run, /--signer-workflow "\$\{GITHUB_REPOSITORY\}\/\.github\/workflows\/cao-package\.yml"/);
   assert.match(resolve.run, /--source-digest "\$\{REVISION\}"/);
-  assert.match(source, /<summary>Immutable package verification: \$\{PACKAGE_STATUS\}<\/summary>/);
+  assert.match(source, /<summary>Package admission outcome: \$\{PACKAGE_STATUS\}<\/summary>/);
   assert.match(source, /package metadata and attestation bodies are omitted/);
+  assert.ok((source.match(/core\.info\(/g) ?? []).length >= 20);
+  assert.match(source, /Immutable deployment source classification completed/);
+  assert.match(source, /Deployment source freshness validation completed/);
   assert.doesNotMatch(source, /docker build\s/);
   assert.doesNotMatch(source, /docker push\s/);
   assert.doesNotMatch(source, /aquasecurity\/trivy-action/);
   assert.doesNotMatch(source, /packages:\s*write/);
+  assert.equal(maxEchoedDetailsDepth(source), 1);
 
   assert.equal(request.env.IMAGE, "${{ needs.package.outputs.image }}");
   assert.equal(request.env.DIGEST, "${{ needs.package.outputs.digest }}");
@@ -124,7 +149,7 @@ test("Coolify delivery consumes the official immutable CAO server package", asyn
   assert.match(request.run, /--max-filesize 65536/);
 });
 
-test("Coolify delivery classifies immutable alpha, beta, and stable sources", async () => {
+test("Coolify delivery classifies immutable alpha and stable sources", async () => {
   const source = await text(".github/workflows/coolify-deploy.yml");
   const workflow = parse(source);
   const classify = workflow.jobs.classify.steps.find((step) => step.id === "classify");
@@ -138,10 +163,12 @@ test("Coolify delivery classifies immutable alpha, beta, and stable sources", as
   assert.match(classify.with.script, /0\.0\.0-main\.\$\{process\.env\.SHA\.slice\(0, 12\)\}/);
   assert.match(classify.with.script, /process\.env\.EVENT_NAME === 'release'/);
   assert.match(classify.with.script, /await peelTag\(tag\)/);
-  assert.match(classify.with.script, /await latestRelease\(tier === 'beta'\)/);
+  assert.match(classify.with.script, /await latestRelease\(\)/);
+  assert.match(classify.with.script, /exact stable version vX\.Y\.Z/);
+  assert.doesNotMatch(classify.with.script, /prereleaseTag|tier === 'beta'/);
   assert.match(classify.with.script, /Manual alpha source is not the current main commit/);
   assert.match(freshness.with.script, /Alpha source is no longer the main branch HEAD/);
-  assert.match(freshness.with.script, /latest published release for its channel/);
+  assert.match(freshness.with.script, /latest published vX\.Y\.Z release/);
   assert.match(freshness.with.script, /no longer peels to its classified commit SHA/);
 });
 
