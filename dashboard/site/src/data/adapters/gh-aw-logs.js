@@ -382,6 +382,25 @@ function timestamp(value) {
   return new Date(value).toISOString();
 }
 
+/** @param {unknown} candidate @param {string} githubRunId @param {string} canonicalRunId @param {string} observedAt */
+function classifiedEval(candidate, githubRunId, canonicalRunId, observedAt) {
+  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return null;
+  const record = /** @type {Record<string, unknown>} */ (candidate);
+  const name = optionalString(record.id);
+  const answer = optionalString(record.answer)?.toUpperCase();
+  const reportedRunId = optionalString(record.runId ?? record.run_id ?? record.runid);
+  const eventAt = record.timestamp === undefined ? observedAt : timestamp(record.timestamp);
+  if (!name || !['YES', 'NO', 'UNKNOWN'].includes(answer ?? '') || !eventAt
+    || (reportedRunId && reportedRunId !== githubRunId && reportedRunId !== canonicalRunId)) return null;
+  return { name, answer, eventAt };
+}
+
+/** @param {string} runKey @param {number} index @param {string} name */
+function evalAuditId(runKey, index, name) {
+  return sourceId('audit', OBSERVATION_SOURCE,
+    `${runKey}:agentic:workflow_run_eval:${stableDigest({ type: 'eval', index, name })}`);
+}
+
 /** @param {unknown} value */
 function text(value) {
   return value === undefined || value === null ? '' : String(value);
@@ -1374,6 +1393,114 @@ function createCachedGhAwJsonlAccumulator(options) {
         auditPath: optionalString(enrichedValue.audit_path)
       })
     });
+    if (enriched) {
+      const runKey = runId(structural.owner, structural.name, githubRunId);
+      const experimentData = enrichedValue.experiments && typeof enrichedValue.experiments === 'object'
+        && !Array.isArray(enrichedValue.experiments)
+        ? /** @type {Record<string, unknown>} */ (enrichedValue.experiments)
+        : {};
+      const assignments = experimentData.assignments && typeof experimentData.assignments === 'object'
+        && !Array.isArray(experimentData.assignments)
+        ? /** @type {Record<string, unknown>} */ (experimentData.assignments)
+        : {};
+      for (const [name, variant] of Object.entries(assignments).sort(([a], [b]) => a.localeCompare(b))) {
+        if (!name.trim() || typeof variant !== 'string' || !variant.trim()) continue;
+        const experimentId = sourceId('experiment', OBSERVATION_SOURCE, `${workflow}:${name}`);
+        observations.push({
+          kind: 'experiment', source: OBSERVATION_SOURCE,
+          sourceId: `${workflow}:experiment:${name}`, observedAt: enriched.observedAt,
+          data: { id: experimentId, workflowId: workflow, name, timestamp: enriched.observedAt }
+        }, {
+          kind: 'experiment-assignment', source: OBSERVATION_SOURCE,
+          sourceId: `${runKey}:experiment:${name}`, observedAt: enriched.observedAt,
+          data: {
+            id: sourceId('experiment-assignment', OBSERVATION_SOURCE, `${runKey}:${name}`),
+            runId: runKey, experimentId, variant, timestamp: enriched.observedAt
+          }
+        });
+      }
+      const graderData = enrichedValue.graders && typeof enrichedValue.graders === 'object'
+        && !Array.isArray(enrichedValue.graders)
+        ? /** @type {Record<string, unknown>} */ (enrichedValue.graders)
+        : {};
+      for (const [index, result] of (Array.isArray(graderData.results) ? graderData.results : []).entries()) {
+        if (!result || typeof result !== 'object' || Array.isArray(result)) continue;
+        const record = /** @type {Record<string, unknown>} */ (result);
+        const name = optionalString(record.id);
+        if (!name) continue;
+        const resultAt = record.timestamp === undefined
+          ? enriched.observedAt : timestamp(record.timestamp);
+        if (!resultAt) continue;
+        const graderId = sourceId('grader', OBSERVATION_SOURCE, `${workflow}:${name}`);
+        const experimentName = optionalString(record.experimentId ?? record.experiment_id);
+        const assignedVariant = experimentName ? optionalString(assignments[experimentName]) : undefined;
+        const explicitVariant = optionalString(record.variant);
+        const linkedExperiment = experimentName && assignedVariant
+          && (!explicitVariant || explicitVariant === assignedVariant)
+          ? sourceId('experiment', OBSERVATION_SOURCE, `${workflow}:${experimentName}`)
+          : undefined;
+        observations.push({
+          kind: 'grader', source: OBSERVATION_SOURCE,
+          sourceId: `${workflow}:grader:${name}`, observedAt: resultAt,
+          data: {
+            id: graderId, workflowId: workflow, name, sourceGraderId: name,
+            displayName: optionalString(record.name) ?? name,
+            direction: optionalString(record.direction),
+            unit: optionalString(record.unit),
+            threshold: finiteNumber(record.threshold),
+            timestamp: resultAt
+          }
+        }, {
+          kind: 'grader-observation', source: OBSERVATION_SOURCE,
+          sourceId: `${runKey}:grader:${name}:${index}`, observedAt: resultAt,
+          data: {
+            id: sourceId('grader-observation', OBSERVATION_SOURCE, `${runKey}:${name}:${index}`),
+            runId: runKey, graderId, sourceGraderId: name,
+            experimentId: linkedExperiment,
+            variant: linkedExperiment ? assignedVariant : undefined,
+            value: finiteNumber(record.value),
+            status: optionalString(record.status)
+              ?? (record.passed === true ? 'passed' : record.passed === false ? 'failed' : 'unavailable'),
+            included: typeof record.included === 'boolean' ? record.included : undefined,
+            exclusionReason: optionalString(record.exclusionReason ?? record.exclusion_reason),
+            evaluatorDigest: optionalString(record.evaluatorDigest ?? record.evaluator_digest),
+            graderSource: optionalString(record.source),
+            metrics: Array.isArray(record.metrics) ? record.metrics : undefined,
+            auditId: sourceId('audit', OBSERVATION_SOURCE,
+              `${runKey}:agentic:workflow_run_grader:${stableDigest({ type: 'grader', index, record })}`),
+            resultTimestamp: resultAt,
+            timestamp: resultAt
+          }
+        });
+      }
+      for (const [index, candidate] of (Array.isArray(enrichedValue.evals) ? enrichedValue.evals : []).entries()) {
+        const result = classifiedEval(candidate, String(githubRunId), runKey, enriched.observedAt);
+        if (!result) continue;
+        const evalId = sourceId('eval', OBSERVATION_SOURCE, `${workflow}:${result.name}`);
+        observations.push({
+          kind: 'eval', source: OBSERVATION_SOURCE,
+          sourceId: `${workflow}:eval:${result.name}`, observedAt: result.eventAt,
+          data: {
+            id: evalId, workflowId: workflow, name: result.name, sourceEvalId: result.name,
+            timestamp: result.eventAt
+          }
+        }, {
+          kind: 'eval-observation', source: OBSERVATION_SOURCE,
+          sourceId: `${runKey}:eval:${result.name}:${index}`, observedAt: result.eventAt,
+          data: {
+            id: sourceId('eval-observation', OBSERVATION_SOURCE, `${runKey}:${result.name}:${index}`),
+            runId: runKey, evalId, sourceEvalId: result.name, answer: result.answer,
+            evalResult: result.answer,
+            status: result.answer === 'YES' ? 'pass' : result.answer === 'NO' ? 'fail' : 'unavailable',
+            requestedModel: metadata.requestedModel,
+            resolvedModel: metadata.resolvedModel,
+            auditId: evalAuditId(runKey, index, result.name),
+            resultTimestamp: result.eventAt,
+            timestamp: result.eventAt
+          }
+        });
+      }
+    }
   }
 
   observations.unshift(...repositories.values(), ...workflows.values());
@@ -1547,6 +1674,23 @@ function createCachedGhAwJsonlAccumulator(options) {
         }
       );
     });
+    if (Array.isArray(run.evals)) {
+      run.evals.forEach((candidate, index) => {
+        const result = classifiedEval(candidate, String(run.run_id), id, enriched.observedAt);
+        emitEvent(
+          result ? 'workflow_run_eval' : 'workflow_run_eval_unclassified',
+          result?.eventAt ?? completedAt ?? enriched.observedAt,
+          result ? `Evaluation ${result.name}` : 'Evaluation evidence is not classified',
+          result ? (result.answer === 'YES' ? 'pass' : result.answer === 'NO' ? 'fail' : 'unavailable')
+            : 'unavailable',
+          result ? { type: 'eval', index, name: result.name } : { type: 'unclassified-eval', index },
+          {
+            source: 'audit', evidenceState: result ? 'classified' : 'unclassified',
+            evalId: result?.name, answer: result?.answer
+          }
+        );
+      });
+    }
     const audit = run.audit && typeof run.audit === 'object' && !Array.isArray(run.audit)
       ? /** @type {Record<string, unknown>} */ (run.audit)
       : {};

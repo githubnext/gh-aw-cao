@@ -65,6 +65,9 @@ type Config struct {
 	WebhookSecret          string
 	AdminUsers             []string
 	Logger                 *log.Logger
+	// RateLimits overrides inbound request rate limits; the zero value keeps
+	// the production defaults.
+	RateLimits RateLimitConfig
 }
 
 type App struct {
@@ -84,6 +87,9 @@ type App struct {
 
 func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) {
 	if err := validateHostProfile(store, &config); err != nil {
+		return nil, err
+	}
+	if err := config.RateLimits.validate(); err != nil {
 		return nil, err
 	}
 	profile := config.HostProfile

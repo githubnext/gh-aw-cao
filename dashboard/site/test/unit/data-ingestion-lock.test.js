@@ -36,13 +36,13 @@ function normalizedRunPhase(runId) {
   /** @type {(keyof import('../../src/data/model/schema.js').CanonicalBatch)[]} */
   const runCollections = ['campaigns', 'repositories', 'workflows', 'runs'];
   const records = runCollections.flatMap((collection) =>
-    batch[collection].map((record) => ({ kind: 'record', collection, record }))
+    (batch[collection] ?? []).map((record) => ({ kind: 'record', collection, record }))
   );
   return [
     {
       kind: 'metadata',
       schemaVersion: CANONICAL_SCHEMA_VERSION,
-      ingestionVersion: 3,
+      ingestionVersion: 4,
       sourceRecords: 1,
       phase: 'runs',
       records: records.length

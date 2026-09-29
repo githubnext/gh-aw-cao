@@ -48,6 +48,81 @@ jobs:
       - name: Unit tests
         run: go -C server test ./...
 
+  server-stress:
+    name: Go rate-limit stress and profiles
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 30
+    env:
+      CAO_STRESS_REDIS_URL: redis://127.0.0.1:6379/0
+      CAO_STRESS_REPORT_DIR: ${{ github.workspace }}/.tmp/go-stress
+      CAO_STRESS_MAX_P95_MS: "250"
+      CAO_STRESS_MIN_RPS: "200"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version: 1.27.1
+          cache: false
+      - name: Run rate-limit stress harness with profiling
+        working-directory: server
+        run: |
+          set -o pipefail
+          mkdir -p "$CAO_STRESS_REPORT_DIR"
+          go test ./internal/server \
+            -run '^TestStress' -bench '^BenchmarkStress' -benchmem -benchtime=2000x \
+            -count=1 -timeout=10m -v \
+            -cpuprofile=cpu.pprof -memprofile=mem.pprof \
+            -blockprofile=block.pprof -mutexprofile=mutex.pprof -trace=trace.out \
+            -outputdir="$CAO_STRESS_REPORT_DIR" 2>&1 | tee "$CAO_STRESS_REPORT_DIR/go-test.txt"
+      - name: Summarize profiles and thresholds
+        if: always()
+        working-directory: server
+        run: |
+          dir="$CAO_STRESS_REPORT_DIR"
+          [ -f "$dir/go-test.txt" ] && grep -E '^(goos|goarch|pkg|cpu|Benchmark)' "$dir/go-test.txt" > "$dir/bench.txt" || true
+          [ -f "$dir/cpu.pprof" ] && go tool pprof -top -nodecount=60 "$dir/cpu.pprof" > "$dir/cpu-top.txt" 2>&1 || true
+          [ -f "$dir/mem.pprof" ] && go tool pprof -top -nodecount=60 -sample_index=alloc_space "$dir/mem.pprof" > "$dir/mem-alloc-top.txt" 2>&1 || true
+          [ -f "$dir/block.pprof" ] && go tool pprof -top -nodecount=40 "$dir/block.pprof" > "$dir/block-top.txt" 2>&1 || true
+          [ -f "$dir/mutex.pprof" ] && go tool pprof -top -nodecount=40 "$dir/mutex.pprof" > "$dir/mutex-top.txt" 2>&1 || true
+          {
+            echo "## Go server rate-limit stress"
+            echo
+            echo "| Scenario | Requests | req/s | p50 ms | p95 ms | p99 ms | Statuses | Upstream (requests/metered/rate-limited) |"
+            echo "|---|---:|---:|---:|---:|---:|---|---|"
+            for report in "$dir"/*.json; do
+              [ -f "$report" ] || continue
+              jq -r '"| \(.scenario) | \(.requests) | \(.requestsPerSecond | floor) | \(.latencyMs.p50) | \(.latencyMs.p95) | \(.latencyMs.p99) | \(.statuses | to_entries | map("\(.key): \(.value)") | join(", ")) | \(.upstream.requests)/\(.upstream.metered)/\(.upstream.rateLimited) |"' "$report"
+            done
+            echo
+            echo "Thresholds: p95 <= ${CAO_STRESS_MAX_P95_MS} ms, throughput >= ${CAO_STRESS_MIN_RPS} req/s."
+            if [ -s "$dir/bench.txt" ]; then
+              echo
+              echo '```'
+              cat "$dir/bench.txt"
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload stress reports and profiles
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: go-server-stress-profiles
+          path: .tmp/go-stress/
+          if-no-files-found: warn
+          retention-days: 14
+
   redis-dashboard-integration:
     name: Redis dashboard integration
     runs-on: ubuntu-latest

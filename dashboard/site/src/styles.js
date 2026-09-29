@@ -358,6 +358,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .nav-section-items { display: flex; flex-direction: column; gap: 2px; }
 .nav-section:not([open]) > .nav-section-items { display: none; }
 .primary-nav > .nav-section-bottom { margin-top: auto; padding-top: 8px; border-top: 1px solid var(--border-muted); }
+.sidebar-collapsed .nav-section-bottom::before { content: attr(data-nav-section); display: block; overflow-wrap: anywhere; padding: 4px 0; color: var(--muted); font-size: .5625rem; font-weight: 700; line-height: 1.1; text-align: center; text-transform: uppercase; }
 .primary-nav a, .nav-parent { min-height: 32px; display: flex; align-items: center; gap: 10px; position: relative; padding: 6px 8px; border-radius: 6px; color: var(--fg); font-weight: 500; text-decoration: none; transition: background-color 120ms ease, color 120ms ease; }
 .primary-nav :is(a, .nav-parent) > .octicon { color: var(--muted); }
 .primary-nav a:hover { background: var(--neutral-muted); }
@@ -1907,7 +1908,7 @@ th[aria-sort="descending"] .table-sort::after { content: "↓"; opacity: 1; }
 .table-filter-result { flex: none; color: var(--muted); font-size: .75rem; }
 .table-filter-heading { padding-block: 6px; white-space: nowrap; }
 .table-filter-heading .table-sort-icon { margin-left: 4px; vertical-align: middle; }
-.filter-select-control { min-width: 0; max-width: 100%; display: inline-grid; grid-template-areas: "control"; align-items: center; border: 1px solid var(--border); border-radius: 999px; background: var(--canvas); box-shadow: 0 1px 0 color-mix(in srgb, var(--fg) 5%, transparent); color: var(--muted); }
+.filter-select-control { min-width: 0; max-width: 100%; display: inline-grid; grid-template-areas: "control"; align-items: center; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); box-shadow: 0 1px 0 color-mix(in srgb, var(--fg) 5%, transparent); color: var(--muted); }
 .filter-select-control::after { width: 5px; height: 5px; grid-area: control; justify-self: end; margin: 0 10px 3px 0; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; content: ""; pointer-events: none; transform: rotate(45deg); }
 .filter-select-control:hover { border-color: color-mix(in srgb, var(--fg) 30%, var(--border)); background: var(--canvas-subtle); color: var(--fg); }
 .filter-select-control:focus-within { outline: 2px solid var(--focus); outline-offset: 1px; }

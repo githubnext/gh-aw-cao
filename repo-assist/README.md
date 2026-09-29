@@ -22,7 +22,7 @@ Workers are independently dispatchable and handle exactly one authorized target 
 Install from a reviewed catalog release into a Central Agentic Ops control repository:
 
 ```bash
-gh aw add githubnext/gh-aw-cao/repo-assist@<catalog-release>
+gh aw add githubnext/gh-aw-cao/repo-assist
 ```
 
 Configure the campaign in `.github/workflows/cao.json`:

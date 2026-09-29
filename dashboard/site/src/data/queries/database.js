@@ -28,7 +28,17 @@ const DATABASE_TABLE_SOURCES = new Set([
   ...RUN_RECORD_STORES,
   'operational-values',
   'marketplace-packages',
+  'experiments',
+  'experiment-assignments',
+  'graders',
+  'grader-observations',
+  'evals',
+  'eval-observations',
   'transactions'
+]);
+const DIRECT_EVIDENCE_SOURCES = new Set([
+  'experiments', 'experiment-assignments', 'graders',
+  'grader-observations', 'evals', 'eval-observations'
 ]);
 
 const HEALTH_DATABASE_SOURCES = [
@@ -110,7 +120,7 @@ function executeDatabaseQuery(queryName, inputs, sources, metadataSource) {
     metadata: unavailable
       ? result.metadata
       : {
-          ...queryMetadata(sources, metadataSource, queryName, true),
+          ...queryMetadata(DIRECT_EVIDENCE_SOURCES.has(queryName) ? {} : sources, metadataSource, queryName, true),
           availability: result.rows.length > 0 ? 'available' : 'empty'
         }
   });
@@ -415,7 +425,7 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
   ));
   const stores = [...new Set(databaseRequested.flatMap(queryStores))];
   const transactionRequested = stores.includes('transactions');
-  const collectionStores = /** @type {Array<'campaigns'|'repositories'|'workflows'|'runs'|'domains'|'tools'|'skills'|'friction'|'audits'|'issues'|'operationalValues'|'marketplacePackages'>} */ (
+  const collectionStores = /** @type {Array<typeof import('../storage/indexeddb.js').ENTITY_STORES[number]>} */ (
     stores.filter((name) => name !== 'transactions')
   );
   const databaseStartedAt = monotonicNow();

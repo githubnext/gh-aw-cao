@@ -41,6 +41,16 @@ type Scenario struct {
 	ReplayCount         int         `json:"replay_count"`
 	RemoveRepositories  bool        `json:"remove_repositories"`
 	API                 []APIWindow `json:"api"`
+	// RateLimit optionally meters GitHub API traffic with a fixed-window
+	// primary rate limit, so load tests can exhaust a deliberately low budget.
+	RateLimit *APIRateLimit `json:"rate_limit,omitempty"`
+}
+
+// APIRateLimit is a fixed-window primary rate limit. Window is measured in
+// scenario time, so it is compressed by the simulator time scale.
+type APIRateLimit struct {
+	Limit  int    `json:"limit"`
+	Window string `json:"window"`
 }
 
 // APIWindow selects a GitHub API behavior for a duration range.
@@ -128,6 +138,15 @@ func (s Scenario) Validate() error {
 	}
 	if s.ReplayCount < 0 || s.ReplayCount > s.Repositories*s.EventsPerRepository {
 		return errors.New("simulator replay_count exceeds generated workflow events")
+	}
+	if s.RateLimit != nil {
+		if s.RateLimit.Limit < 1 || s.RateLimit.Limit > 1_000_000 {
+			return errors.New("simulator rate_limit.limit must be between 1 and 1000000")
+		}
+		window, err := time.ParseDuration(s.RateLimit.Window)
+		if err != nil || window < time.Millisecond {
+			return errors.New("simulator rate_limit.window must be a duration of at least 1ms")
+		}
 	}
 	if len(s.API) > 100 {
 		return errors.New("simulator cannot have more than 100 API windows")

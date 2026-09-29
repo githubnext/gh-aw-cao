@@ -15,7 +15,13 @@ export const ENTITY_COLLECTIONS = [
   'friction',
   'audits',
   'issues',
-  'operationalValues'
+  'operationalValues',
+  'experiments',
+  'experimentAssignments',
+  'graders',
+  'graderObservations',
+  'evals',
+  'evalObservations'
 ];
 export const NORMALIZED_COLLECTIONS = ['campaigns', ...ENTITY_COLLECTIONS];
 export const QUERY_COLLECTIONS = [...ENTITY_COLLECTIONS, 'transactions'];

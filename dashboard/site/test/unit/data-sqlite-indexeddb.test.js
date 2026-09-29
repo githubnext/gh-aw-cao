@@ -111,6 +111,144 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     expect(readFileSync(filename, 'utf8').slice(0, 15)).toBe('SQLite format 3');
   });
 
+  it('upgrades existing eval mirrors with experiment linkage', async () => {
+    const filename = temporaryDatabase();
+    const connection = new DatabaseSync(filename);
+    connection.exec(`
+      CREATE TABLE eval_observations (
+        database_name TEXT NOT NULL, id TEXT NOT NULL, run_id TEXT, eval_id TEXT,
+        observed_at TEXT NOT NULL, provenance TEXT NOT NULL, record_json TEXT NOT NULL,
+        PRIMARY KEY (database_name, id)
+      );
+    `);
+    const record = {
+      id: 'eval-observation:1', runId: 'run:1', evalId: 'eval:1',
+      experimentId: 'experiment:1', variant: 'candidate',
+      observedAt: '2026-09-10T00:00:00Z', provenance: { source: 'gh-aw-logs' }
+    };
+    connection.prepare(`
+      INSERT INTO eval_observations
+        (database_name, id, run_id, eval_id, observed_at, provenance, record_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(DATABASE_NAME, record.id, record.runId, record.evalId,
+      record.observedAt, JSON.stringify(record.provenance), JSON.stringify(record));
+    connection.close();
+
+    const indexedDB = installSqliteIndexedDB(filename);
+    (await openCanonicalDatabase(indexedDB)).close();
+    const upgraded = new DatabaseSync(filename);
+    expect(upgraded.prepare('SELECT experiment_id, variant FROM eval_observations').get())
+      .toMatchObject({ experiment_id: 'experiment:1', variant: 'candidate' });
+    upgraded.close();
+  });
+
+  it('projects the six evidence collections into transactional relational SQLite tables', async () => {
+    const filename = temporaryDatabase();
+    const indexedDB = installSqliteIndexedDB(filename);
+    const evidence = batch();
+    const timestamp = '2026-09-10T00:00:00Z';
+    const provenance = { source: 'gh-aw-logs', sourceId: 'run:1', observedAt: timestamp };
+    evidence.experiments?.push({ id: 'experiment:1', workflowId: 'workflow:1', observedAt: timestamp, provenance });
+    evidence.experimentAssignments?.push({
+      id: 'assignment:1', runId: 'run:1', experimentId: 'experiment:1', variant: 'candidate',
+      included: false, exclusionReason: 'insufficient-evidence', observedAt: timestamp, provenance
+    });
+    evidence.graders?.push({ id: 'grader:1', workflowId: 'workflow:1', observedAt: timestamp, provenance });
+    evidence.graderObservations?.push({
+      id: 'grade:1', runId: 'run:1', graderId: 'grader:1', value: 0.8,
+      status: 'pass', auditId: 'audit:1', sourceGraderId: 'quality',
+      experimentId: 'experiment:1', variant: 'candidate',
+      evaluatorDigest: 'evaluator:v1', resultTimestamp: timestamp,
+      observedAt: timestamp, provenance
+    });
+    evidence.evals?.push({ id: 'eval:1', workflowId: 'workflow:1', observedAt: timestamp, provenance });
+    evidence.evalObservations?.push({
+      id: 'eval-observation:1', runId: 'run:1', evalId: 'eval:1', evalResult: 'YES',
+      experimentId: 'experiment:1', variant: 'candidate',
+      requestedModel: 'model-requested', resolvedModel: 'model-resolved',
+      auditId: 'audit:eval', observedAt: timestamp, provenance
+    });
+    await upsertCanonicalBatch(indexedDB, evidence);
+    const connection = new DatabaseSync(filename);
+    for (const table of [
+      'experiments', 'experiment_assignments', 'graders',
+      'grader_observations', 'evals', 'eval_observations'
+    ]) {
+      expect(connection.prepare(`SELECT count(*) AS count FROM ${table}`).get()).toMatchObject({ count: 1 });
+    }
+    expect(connection.prepare('SELECT run_id, experiment_id, variant, included, exclusion_reason FROM experiment_assignments').get())
+      .toMatchObject({ run_id: 'run:1', experiment_id: 'experiment:1',
+        variant: 'candidate', included: 0, exclusion_reason: 'insufficient-evidence' });
+    expect(connection.prepare(`
+      SELECT grader_id, value, status, audit_id, experiment_id, variant,
+             evaluator_digest, result_timestamp FROM grader_observations
+    `).get()).toMatchObject({
+      grader_id: 'grader:1', value: 0.8, status: 'pass', audit_id: 'audit:1',
+      experiment_id: 'experiment:1', variant: 'candidate',
+      evaluator_digest: 'evaluator:v1', result_timestamp: timestamp
+    });
+    expect(connection.prepare('SELECT eval_result, requested_model, resolved_model, audit_id FROM eval_observations').get())
+      .toMatchObject({ eval_result: 'YES', requested_model: 'model-requested',
+        resolved_model: 'model-resolved', audit_id: 'audit:eval' });
+    expect(connection.prepare(`
+      SELECT a.run_id, e.id AS experiment, a.variant, g.id AS grader,
+             go.value, go.audit_id AS grader_audit, ev.id AS eval,
+             eo.eval_result, eo.audit_id AS eval_audit
+      FROM experiment_assignments a
+      JOIN experiments e ON e.database_name = a.database_name AND e.id = a.experiment_id
+      JOIN grader_observations go ON go.database_name = a.database_name
+        AND go.run_id = a.run_id AND go.experiment_id = a.experiment_id AND go.variant = a.variant
+      JOIN graders g ON g.database_name = go.database_name AND g.id = go.grader_id
+      JOIN eval_observations eo ON eo.database_name = a.database_name
+        AND eo.run_id = a.run_id AND eo.experiment_id = a.experiment_id AND eo.variant = a.variant
+      JOIN evals ev ON ev.database_name = eo.database_name AND ev.id = eo.eval_id
+    `).all()).toEqual([{
+      run_id: 'run:1', experiment: 'experiment:1', variant: 'candidate',
+      grader: 'grader:1', value: 0.8, grader_audit: 'audit:1',
+      eval: 'eval:1', eval_result: 'YES', eval_audit: 'audit:eval'
+    }]);
+    connection.close();
+    evidence.graders = [{
+      ...evidence.graders?.[0], observedAt: '2026-09-09T00:00:00Z', displayName: 'Older observation'
+    }];
+    await upsertCanonicalBatch(indexedDB, evidence);
+    const replayed = await readCollection(indexedDB, 'graders');
+    expect(replayed[0]).toMatchObject({
+      observedAt: timestamp,
+      firstObservedAt: '2026-09-09T00:00:00Z',
+      lastObservedAt: timestamp
+    });
+    const range = new DatabaseSync(filename);
+    expect(range.prepare('SELECT first_observed_at, last_observed_at FROM graders').get())
+      .toMatchObject({ first_observed_at: '2026-09-09T00:00:00Z', last_observed_at: timestamp });
+    range.close();
+    await replaceCanonicalBatch(indexedDB, batch());
+    const after = new DatabaseSync(filename);
+    expect(after.prepare('SELECT count(*) AS count FROM experiment_assignments').get()).toMatchObject({ count: 0 });
+    after.close();
+    await upsertCanonicalBatch(indexedDB, evidence);
+    const upgraded = indexedDB.open(DATABASE_NAME, DATABASE_VERSION + 1);
+    upgraded.onupgradeneeded = () => {
+      for (const store of [
+        'experiments', 'experimentAssignments', 'graders',
+        'graderObservations', 'evals', 'evalObservations'
+      ]) upgraded.result.deleteObjectStore(store);
+    };
+    const versioned = await /** @type {Promise<IDBDatabase>} */ (new Promise((resolve, reject) => {
+      upgraded.onsuccess = () => resolve(upgraded.result);
+      upgraded.onerror = () => reject(upgraded.error);
+    }));
+    versioned.close();
+    const afterUpgrade = new DatabaseSync(filename);
+    for (const table of [
+      'experiments', 'experiment_assignments', 'graders',
+      'grader_observations', 'evals', 'eval_observations'
+    ]) {
+      expect(afterUpgrade.prepare(`SELECT count(*) AS count FROM ${table}`).get()).toMatchObject({ count: 0 });
+    }
+    afterUpgrade.close();
+  });
+
   it('cascades retention eviction through SQLite indexes', async () => {
     const indexedDB = installSqliteIndexedDB(temporaryDatabase());
     const canonical = batch();
@@ -292,7 +430,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     expect(normalizedMetadata).toMatchObject({
       kind: 'metadata',
       schemaVersion: CANONICAL_SCHEMA_VERSION,
-      ingestionVersion: 3,
+      ingestionVersion: 4,
       sourceRecords: 3,
       phase: 'all',
       records: normalizedRecords.length
@@ -470,7 +608,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       kind: 'ingest-normalized-jsonl',
       createdAt: '2020-01-01T00:00:00Z',
       payloadHash: 'stable',
-      ingestionVersion: 3
+      ingestionVersion: 4
     }));
     const malformed = connection.prepare(`
       SELECT record_key FROM __idb_records

@@ -713,12 +713,6 @@ function renderPageLoadingSkeleton(page) {
   const routeTabs = routeParameter ? declaredRouteTabs(payload.route) : null;
   placeholder.removeAttribute('data-page-pending');
   placeholder.setAttribute('aria-busy', 'true');
-  placeholder.setAttribute('aria-label', 'Loading dashboard data');
-  placeholder.append(h('p', {
-    className: 'dashboard-loading-status',
-    role: 'status',
-    'aria-live': 'polite'
-  }, 'Loading dashboard data…'));
   if (routeTabs && routeParameter) {
     placeholder.append(renderDeclaredRouteTabs({
       routeParameter,

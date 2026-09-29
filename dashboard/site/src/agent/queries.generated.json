@@ -7724,6 +7724,130 @@
     ]
   },
   {
+    "name": "experiment-assignment-coverage",
+    "intent": "Count observed run assignments for each experiment and workflow without inferring a completion target.",
+    "from": "experiment-assignments",
+    "compute": [
+      {
+        "as": "workflow-coordinate",
+        "function": "concat",
+        "args": [
+          {
+            "field": "organization"
+          },
+          {
+            "value": "/"
+          },
+          {
+            "field": "repository"
+          },
+          {
+            "value": ":"
+          },
+          {
+            "field": "workflow"
+          }
+        ]
+      }
+    ],
+    "aggregate": {
+      "by": [
+        "workflow-coordinate",
+        "experiment"
+      ],
+      "values": [
+        {
+          "field": "run",
+          "as": "assignments",
+          "reducer": "count"
+        }
+      ]
+    }
+  },
+  {
+    "name": "eval-yes-no-status",
+    "intent": "Select explicit YES/NO eval answers while retaining unknown results only in the underlying evidence collection.",
+    "from": "eval-observations",
+    "filter": {
+      "predicates": [
+        {
+          "field": "eval-result",
+          "in": [
+            "YES",
+            "NO"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "grader-status-ledger",
+    "intent": "Report explicit grader pass/fail observations without inferring current state from prior runs.",
+    "from": "grader-observations",
+    "compute": [
+      {
+        "as": "is-pass",
+        "function": "equals-any",
+        "args": [
+          {
+            "field": "status"
+          },
+          {
+            "value": "pass"
+          },
+          {
+            "value": "passed"
+          }
+        ]
+      },
+      {
+        "as": "is-fail",
+        "function": "equals-any",
+        "args": [
+          {
+            "field": "status"
+          },
+          {
+            "value": "fail"
+          },
+          {
+            "value": "failed"
+          }
+        ]
+      },
+      {
+        "as": "non-pass-verdict",
+        "function": "if",
+        "args": [
+          {
+            "field": "is-fail"
+          },
+          {
+            "value": "NO"
+          },
+          {
+            "value": "unknown"
+          }
+        ]
+      },
+      {
+        "as": "verdict",
+        "function": "if",
+        "args": [
+          {
+            "field": "is-pass"
+          },
+          {
+            "value": "YES"
+          },
+          {
+            "field": "non-pass-verdict"
+          }
+        ]
+      }
+    ]
+  },
+  {
     "name": "database-campaign-count",
     "intent": "Count campaigns in the dashboard database.",
     "from": "campaigns",

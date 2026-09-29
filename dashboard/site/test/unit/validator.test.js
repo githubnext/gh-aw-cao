@@ -54,7 +54,7 @@ describe('dashboard document validation', () => {
     });
   });
 
-  it('marks Steering, Indexing, and Campaign Memory pages as experimental', () => {
+  it('marks Steering and Campaign Memory pages as experimental', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentalPageIds = document.dashboard.pages
       .filter((/** @type {{ experimental?: boolean }} */ page) => page.experimental === true)
@@ -62,9 +62,10 @@ describe('dashboard document validation', () => {
 
     expect(experimentalPageIds).toEqual(expect.arrayContaining([
       'steering',
-      'indexing',
       'campaign-memory',
     ]));
+    expect(experimentalPageIds).not.toContain('indexing');
+    expect(experimentalPageIds).not.toContain('marketplace');
     expect(experimentalPageIds).not.toContain('memory');
     expect(experimentalPageIds).not.toContain('issues');
   });
@@ -826,7 +827,7 @@ describe('dashboard document validation', () => {
     const skills = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'skills');
 
     expect(document.dashboard.navigation.find(
-      (/** @type {{ label: string }} */ section) => section.label === 'Data'
+      (/** @type {{ experimental?: boolean }} */ section) => section.experimental === true
     ).pages).toContain('skills');
     expect(skills).toMatchObject({
       kind: 'custom',

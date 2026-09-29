@@ -20,7 +20,7 @@ The orchestrator dispatches at most 20 workers per run. Each worker reviews one 
 ## Install and Configure
 
 ```bash
-gh aw add githubnext/gh-aw-cao/software-development-practices@<catalog-release>
+gh aw add githubnext/gh-aw-cao/software-development-practices
 ```
 
 Configure the shared GitHub App or PAT described in the [authentication guide](../docs/authentication.md), then declare the campaign in the control repository's `.github/workflows/cao.json`:
