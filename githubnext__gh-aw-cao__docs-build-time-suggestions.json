@@ -1,6 +1,6 @@
 {
-  "source_sha": "834fb0547d32bfe1a94b08e616111fce70bd85bc",
-  "next_category": "artifact transfer and Pages packaging",
+  "source_sha": "95ec53c109f05a921f6b161d14225819e9811085",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
       "evaluated_at": "2026-09-28T12:05:00Z",
@@ -142,6 +142,36 @@
       ],
       "outcome": "suggestion: evaluated reusable dashboard generation across 8 successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days. Evidence window 2026-09-29T00:00:56Z to 2026-09-29T01:03:45Z. docs.yml queue median was 0.0s (p90 0.0s), workflow execution median 56.5s (p90 86.0s), build median 37.0s (p90 47.0s), and deploy median 17.0s (p90 23.0s) on the two publishing schedule runs. Trusted docs build logs showed Restore node_modules and Restore cached CAO Dashboard hit on all 8 successful runs, while Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped every time. Comparable successful cao-dashboard.yml runs 36500864494, 36501299297, 36501690490, 36503370020 showed workflow median 58.5s, build median 45.0s, and cache-job median 7.0s (p90 10.0s). Trusted cache-job logs showed each successful CAO Dashboard run downloaded the newly built dashboard artifact, deleted the previous cache entry for the constant central-agentic-ops-dashboard key, and re-saved a ~15.5 MB cache tarball before docs.yml later restored that same cache key. Because docs.yml already has a trusted fallback path that finds the latest successful CAO Dashboard run and mounts its artifact when the cache is absent, removing the separate cache rewrite job and restoring directly from the latest successful dashboard artifact would eliminate about 7s from every successful CAO Dashboard run, roughly 16% of the current 45.0s median dashboard build-job time, without weakening docs freshness or Pages deployment safety.",
       "suggestion_fingerprint": "576d1154f6c6fcbd0db2"
+    },
+    {
+      "evaluated_at": "2026-09-29T02:00:00Z",
+      "worker_run_id": 36508994681,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        36508905376,
+        36507489525,
+        36505994926,
+        36505144593,
+        36503462216,
+        36503370158,
+        36501786612,
+        36501386105,
+        36501291609,
+        36500957898,
+        36499726274,
+        36498621255,
+        36497706349,
+        36496814464,
+        36496051788,
+        36495934799,
+        36495750672,
+        36507417688,
+        36503370020,
+        36501690490,
+        36501299297
+      ],
+      "outcome": "no-op: evaluated artifact transfer and Pages packaging across 17 successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days, plus 4 comparable successful cao-dashboard.yml runs on matching source revisions. Evidence window 2026-09-28T23:01:35Z to 2026-09-29T01:40:11Z. Trusted metadata showed docs queue median 0.0s (p90 0.0s), workflow execution median 49.0s (p90 78.8s), build median 41.0s (p90 45.2s), and deploy median 11.0s (p90 29.0s) across comparable docs runs; for the 5 publishing schedule runs, workflow median was 71.0s, build median 42.0s, and deploy median 11.0s. Trusted step metadata showed Upload Pages artifact median 4.0s (p90 5.0s), while logs from docs run 36507489525 showed the Pages artifact finalized at 21.99 MB after about 4.4s of upload time. Comparable successful dashboard runs 36507417688, 36503370020, 36501690490, and 36501299297 showed cache-job median 6.5s (p90 9.1s) to download the 18.8 MB dashboard artifact and rewrite the constant central-agentic-ops-dashboard cache, but that improvement was already suggested previously under reusable dashboard generation fingerprints 691cf332ab4dfe9aa28b and 576d1154f6c6fcbd0db2. No new non-duplicate artifact-transfer or Pages-packaging change with evidence-backed savings of at least 60s or 15% of median docs execution time was identified in this cycle.",
+      "suggestion_fingerprint": null
     }
   ]
 }
