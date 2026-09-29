@@ -9,7 +9,7 @@ agent:
   type: overview
   prominent: true
 hero:
-  title: Hyperscale Agentic Campaigns.<br />Centralized Control Planes.
+  title: Agentic Campaigns.<br />Centralized Control.
   tagline: CAO coordinates Agentic Campaigns, each across its explicitly enrolled repositories—shared policy, staged rollout, bounded execution, cross-campaign evidence, and human decisions about what scales next.
   actions:
     - text: Explore CAO

@@ -18,7 +18,7 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(landingPage, /text: Dashboard[\s\S]*?link: https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao/);
   assert.doesNotMatch(headerLinks, /label: "Dashboard"/);
   assert.match(landingPage, /title: Central Agentic Ops \(CAO\)/);
-  assert.match(landingPage, /Hyperscale Agentic Campaigns\.<br \/>Centralized Control Planes\./);
+  assert.match(landingPage, /Agentic Campaigns\.<br \/>Centralized Control\./);
   assert.match(hero, /cao-dashboard-mobile-overview\.png/);
   assert.match(hero, /cao-dashboard-mobile-overview-light\.png/);
   assert.match(hero, /cao-dashboard-run-history-mobile\.png/);
