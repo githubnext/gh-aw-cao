@@ -442,6 +442,16 @@ jobs:
           echo "owner=$owner" >> "$GITHUB_OUTPUT"
           echo "repository=$repository" >> "$GITHUB_OUTPUT"
           echo "full_name=$owner/$repository" >> "$GITHUB_OUTPUT"
+          echo "permission_actions=${{ github.aw.import-inputs.read_actions }}" >> "$GITHUB_OUTPUT"
+          echo "permission_checks=${{ github.aw.import-inputs.read_checks }}" >> "$GITHUB_OUTPUT"
+          echo "permission_contents=${{ github.aw.import-inputs.read_contents }}" >> "$GITHUB_OUTPUT"
+          echo "permission_issues=${{ github.aw.import-inputs.read_issues }}" >> "$GITHUB_OUTPUT"
+          echo "permission_packages=${{ github.aw.import-inputs.read_packages }}" >> "$GITHUB_OUTPUT"
+          echo "permission_pull_requests=${{ github.aw.import-inputs.read_pull_requests }}" >> "$GITHUB_OUTPUT"
+          echo "permission_secret_scanning_alerts=${{ github.aw.import-inputs.read_secret_scanning_alerts }}" >> "$GITHUB_OUTPUT"
+          echo "permission_security_events=${{ github.aw.import-inputs.read_security_events }}" >> "$GITHUB_OUTPUT"
+          echo "permission_statuses=${{ github.aw.import-inputs.read_statuses }}" >> "$GITHUB_OUTPUT"
+          echo "permission_vulnerability_alerts=${{ github.aw.import-inputs.read_vulnerability_alerts }}" >> "$GITHUB_OUTPUT"
 
       - name: Generate CAO target-scoped read App token
         id: cao_target_read_app_token
@@ -457,16 +467,16 @@ jobs:
           owner: ${{ steps.cao_target_read_scope.outputs.owner }}
           repositories: ${{ steps.cao_target_read_scope.outputs.repository }}
           github-api-url: ${{ github.api_url }}
-          permission-actions: ${{ github.aw.import-inputs.read_actions }}
-          permission-checks: ${{ github.aw.import-inputs.read_checks }}
-          permission-contents: ${{ github.aw.import-inputs.read_contents }}
-          permission-issues: ${{ github.aw.import-inputs.read_issues }}
-          permission-packages: ${{ github.aw.import-inputs.read_packages }}
-          permission-pull-requests: ${{ github.aw.import-inputs.read_pull_requests }}
-          permission-secret-scanning-alerts: ${{ github.aw.import-inputs.read_secret_scanning_alerts }}
-          permission-security-events: ${{ github.aw.import-inputs.read_security_events }}
-          permission-statuses: ${{ github.aw.import-inputs.read_statuses }}
-          permission-vulnerability-alerts: ${{ github.aw.import-inputs.read_vulnerability_alerts }}
+          permission-actions: ${{ steps.cao_target_read_scope.outputs.permission_actions }}
+          permission-checks: ${{ steps.cao_target_read_scope.outputs.permission_checks }}
+          permission-contents: ${{ steps.cao_target_read_scope.outputs.permission_contents }}
+          permission-issues: ${{ steps.cao_target_read_scope.outputs.permission_issues }}
+          permission-packages: ${{ steps.cao_target_read_scope.outputs.permission_packages }}
+          permission-pull-requests: ${{ steps.cao_target_read_scope.outputs.permission_pull_requests }}
+          permission-secret-scanning-alerts: ${{ steps.cao_target_read_scope.outputs.permission_secret_scanning_alerts }}
+          permission-security-events: ${{ steps.cao_target_read_scope.outputs.permission_security_events }}
+          permission-statuses: ${{ steps.cao_target_read_scope.outputs.permission_statuses }}
+          permission-vulnerability-alerts: ${{ steps.cao_target_read_scope.outputs.permission_vulnerability_alerts }}
 
       - name: Resolve CAO target read credential
         id: cao_target_read_credential

@@ -149,7 +149,11 @@ test("Dependabot worker maintains a durable parent and one-PR child tasks withou
   assert.equal(controlImport.with.read_statuses, "read");
   assert.equal(controlImport.with.read_vulnerability_alerts, "read");
   const lock = workflow("dependabot-update-planner.lock.yml");
-  assert.match(lock, /permission-vulnerability-alerts: read/);
+  assert.match(lock, /echo "permission_vulnerability_alerts=read"/);
+  assert.match(
+    lock,
+    /permission-vulnerability-alerts: \$\{\{ steps\.cao_target_read_scope\.outputs\.permission_vulnerability_alerts \}\}/,
+  );
   assert.match(
     lock,
     /GITHUB_MCP_SERVER_TOKEN: \$\{\{ steps\.cao_target_read_credential\.outputs\.token \}\}/,
