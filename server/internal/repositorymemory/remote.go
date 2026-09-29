@@ -14,7 +14,10 @@ import (
 	"unicode/utf8"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var remoteLog = logger.New("cao:repositorymemory:remote")
 
 const (
 	remoteCampaignTTL  = 5 * time.Minute
@@ -125,6 +128,8 @@ func (r *RemoteResolver) Campaign(ctx context.Context, campaignID string) (*Camp
 		return nil, err
 	}
 	campaign := buildRemoteCampaign(campaignID, commit, entries, response.Truncated)
+	remoteLog.Printf("built remote campaign entries=%d admitted=%d omitted=%d",
+		len(entries), len(campaign.Files), totalOmitted(campaign.Omitted))
 	if err := r.cacheCampaign(ctx, campaignID, campaign); err != nil {
 		return nil, err
 	}
@@ -281,6 +286,13 @@ func (r *RemoteResolver) observe(
 		}
 	}
 	return requestErr
+}
+
+// totalOmitted sums every Omissions counter, so a caller can report how many
+// tree entries were dropped for any reason without listing each category.
+func totalOmitted(omitted Omissions) int {
+	return omitted.FileLimit + omitted.FileSize + omitted.TotalSize + omitted.Extension +
+		omitted.Nesting + omitted.UnsafePath + omitted.InvalidContent + omitted.UnsupportedType
 }
 
 func buildRemoteCampaign(
