@@ -152,13 +152,15 @@ func NewCollector(
 	if config.AdmitOnly {
 		// Erasure is enqueued rather than performed, because this process has
 		// no evidence lake to erase from.
+		backfill := collect.Backfill{Store: store}
 		return &Collector{
 			config:     config,
 			enrollment: enrollment,
 			queue:      queue,
+			backfill:   backfill,
 			admitter:   collect.Admitter{Enrollment: enrollment, Queue: queue},
 			reporter: collect.Reporter{
-				Enrollment: enrollment, Queue: queue, Store: store,
+				Enrollment: enrollment, Queue: queue, Backfill: backfill, Store: store,
 			},
 		}, nil
 	}

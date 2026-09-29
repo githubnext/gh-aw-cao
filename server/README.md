@@ -92,6 +92,17 @@ external service. To run that test against a local Redis instance instead,
 start Redis with `npm run dashboard:server:redis-up` from the repository root
 and set `CAO_SIMULATOR_REDIS_URL=redis://127.0.0.1:6379/0` before running
 `go test ./internal/server -run TestSimulatorUsesProductionWebhookAdmissionAndCollectionQueue`.
+`TestSimulatorExercisesGoServerWithRedis` sends a deterministic recovery-burst
+scenario through the same Go server webhook handler and checks its authorized
+ingestion-health response, queue depth, and persisted counters. It requires a
+real Redis instance; run it with:
+
+```bash
+CAO_SIMULATOR_REDIS_URL=redis://127.0.0.1:6379/0 \
+  go test ./internal/server -run TestSimulatorExercisesGoServerWithRedis
+```
+
+The Redis-backed CI job runs this integration test as part of `go test ./...`.
 For manual load runs, point the normal CAO server and worker at a local Redis
 instance as well as the simulator API.
 

@@ -65,6 +65,7 @@ jobs:
     env:
       DASHBOARD_SERVER_ACCESS_TOKEN: 0123456789abcdef0123456789abcdef
       REDIS_URL: redis://127.0.0.1:6379/0
+      CAO_SIMULATOR_REDIS_URL: redis://127.0.0.1:6379/0
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

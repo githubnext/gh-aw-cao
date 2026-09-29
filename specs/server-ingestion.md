@@ -393,6 +393,12 @@ outside the exercised scenario; operators SHOULD measure queue depth, pending
 work, dead letters, processing lag, and the collection-health status surface
 during and after each run.
 
+The Go server integration test MUST deliver signed scenario traffic through the
+production webhook handler with a real Redis instance, then verify the health
+API reports persisted webhook counters and queued recovery work. This test MUST
+run in the Redis-backed server integration job; unit tests without Redis MAY
+skip it.
+
 ## 14. Conformance checklist
 
 A conforming implementation:
