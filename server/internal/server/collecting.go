@@ -227,7 +227,7 @@ func NewCollector(
 		projector:  projector,
 		admitter: collect.Admitter{
 			Enrollment: enrollment, Queue: queue,
-			Lake: &lake, Projection: projector,
+			Projection: projector,
 		},
 		backfill: backfill,
 		reporter: collect.Reporter{
@@ -314,6 +314,7 @@ func (c *Collector) Start(ctx context.Context, onProjection func(revision int64)
 			Queue:        c.queue,
 			Runner:       c.runner,
 			Projector:    c.projector,
+			Enrollment:   c.enrollment,
 			Consumer:     fmt.Sprintf("%s-%d", c.consumer(), index),
 			Project:      true,
 			OnProjection: onProjection,
@@ -361,7 +362,7 @@ var ErrAdmitOnly = errors.New(
 func (c *Collector) Worker(consumer string) collect.Worker {
 	return collect.Worker{
 		Queue: c.queue, Runner: c.runner, Projector: c.projector,
-		Consumer: consumer, Project: true,
+		Enrollment: c.enrollment, Consumer: consumer, Project: true,
 	}
 }
 

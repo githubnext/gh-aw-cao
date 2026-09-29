@@ -16,9 +16,10 @@ var workerLog = logger.New("cao:collect:worker")
 // Worker leases collection tasks, collects one repository at a time, and
 // requests a coalesced projection.
 type Worker struct {
-	Queue     Queue
-	Runner    Runner
-	Projector Projector
+	Queue      Queue
+	Runner     Runner
+	Projector  Projector
+	Enrollment Enrollment
 	// Consumer identifies this worker within the consumer group.
 	Consumer string
 	// BatchSize bounds how many tasks are leased at once.
@@ -161,10 +162,15 @@ func (w Worker) Run(ctx context.Context) error {
 func (w Worker) process(ctx context.Context, lease Lease) bool {
 	task := lease.Task
 	if !task.NotBefore.IsZero() && task.NotBefore.After(time.Now().UTC()) {
-		if err := w.Queue.Defer(ctx, lease); err != nil {
-			workerLog.Printf("task defer failed")
+		sleep(ctx, time.Until(task.NotBefore))
+		if ctx.Err() != nil {
+			deferCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
+			defer cancel()
+			if err := w.Queue.Defer(deferCtx, lease); err != nil {
+				workerLog.Printf("cancelled task defer failed")
+			}
+			return false
 		}
-		return false
 	}
 	token, err := operationToken()
 	if err != nil {
@@ -172,6 +178,7 @@ func (w Worker) process(ctx context.Context, lease Lease) bool {
 	}
 	if err := w.Queue.LockRepository(ctx, task.Repository, token, w.repositoryLockTTL()); err != nil {
 		if errors.Is(err, ErrRepositoryBusy) {
+			lease.Task.NotBefore = time.Now().UTC().Add(backoff(max(task.Attempt, 1)))
 			if err := w.Queue.RequeueBlocked(ctx, lease); err != nil {
 				workerLog.Printf("blocked task requeue failed")
 			}
@@ -191,6 +198,47 @@ func (w Worker) process(ctx context.Context, lease Lease) bool {
 	if err := w.Queue.Admit(ctx, task); err != nil {
 		workerLog.Printf("debounce clear failed")
 		return false
+	}
+	if w.Enrollment.Store != nil {
+		installationID, err := w.Enrollment.InstallationFor(ctx, task.Repository)
+		if err != nil {
+			workerLog.Printf("repository enrollment check failed")
+			if retryErr := w.Queue.Retry(ctx, lease, err); retryErr != nil {
+				workerLog.Printf("task retry failed")
+			}
+			return false
+		}
+		switch {
+		case task.Erase:
+			if installationID > 0 {
+				if task.InstallationID > 0 && installationID != task.InstallationID {
+					if err := w.Queue.Complete(ctx, lease); err != nil {
+						workerLog.Printf("stale erasure acknowledgement failed")
+					}
+					return false
+				}
+				lease.Task.NotBefore = time.Now().UTC().Add(backoff(max(task.Attempt, 1)))
+				if err := w.Queue.Defer(ctx, lease); err != nil {
+					workerLog.Printf("pending erasure defer failed")
+				}
+				return false
+			}
+		case installationID == 0:
+			if err := w.Runner.Lake.Forget(task.Repository); err != nil {
+				workerLog.Printf("evidence erasure failed repository=%s", task.Repository)
+				if retryErr := w.Queue.Retry(ctx, lease, err); retryErr != nil {
+					workerLog.Printf("task retry failed repository=%s", task.Repository)
+				}
+				return false
+			}
+			if err := w.Queue.Complete(ctx, lease); err != nil {
+				workerLog.Printf("task acknowledgement failed repository=%s", task.Repository)
+			}
+			return true
+		default:
+			lease.Task.InstallationID = installationID
+			task = lease.Task
+		}
 	}
 	if task.Erase {
 		if err := w.Runner.Lake.Forget(task.Repository); err != nil {

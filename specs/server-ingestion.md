@@ -133,6 +133,10 @@ A collection task acquires evidence for exactly one repository.
 - On failure a worker MUST retry with bounded attempts and jittered backoff, and
   MUST dead-letter a task that exhausts them. A failed task MUST NOT corrupt or
   partially replace a repository's existing evidence.
+- A task whose retry time has not arrived MUST NOT be immediately reinserted and
+  reclaimed in a hot loop. Workers MUST honor its not-before time or use an
+  equivalent delayed-work mechanism; repository-lock contention MUST also be
+  retried without consuming the collection attempt budget.
 
 ## 6. The evidence lake
 
@@ -204,6 +208,10 @@ routine correctness backstop.
 - After downtime or dead-lettered work, the implementation MUST recover missing
   events by listing App webhook deliveries from the last processed delivery and
   requesting redelivery of missing or failed deliveries.
+- Recovery MUST persist pagination progress when a bounded pass cannot reach the
+  prior delivery boundary, and MUST resume from that page before advancing its
+  high-water mark. A failed redelivery request MUST NOT advance the mark beyond
+  that delivery.
 - Per-repository enumeration MUST remain available for cold start and for
   operator-triggered repair.
 - When a gap cannot be recovered, the implementation MUST record the gap in
@@ -260,14 +268,30 @@ governed property and not an accident of disk usage.
   its evidence when a later removal or deletion event arrives for the
   installation that no longer covers it; that event MUST clear only its own
   installation membership.
-- An erasure failure MUST fail the delivery rather than report it complete, so
-  the delivery is retried instead of silently retaining evidence.
+- The implementation MUST durably enqueue erasure work before removing
+  enrollment, so a queue failure cannot make a withdrawal unrecoverable on
+  delivery replay. Erasure work MUST be serialized with collection by the
+  repository lease and MUST wait until the repository is no longer covered by
+  the installation that requested removal. A worker MUST recheck current
+  enrollment after acquiring the lease and MUST erase, rather than collect, an
+  already-queued task for a repository that has left scope. Enrollment additions
+  and removals MUST be serialized so the membership snapshot used to queue
+  erasure is the same snapshot that is removed.
+- A synchronous erasure failure MUST fail the delivery. A durably queued
+  erasure MAY be acknowledged before completion, but MUST remain visible and
+  recoverable until deletion and projection succeed; it MUST NOT be treated as
+  completed merely because it was queued.
 - Collection MUST be at-least-once. Retry, deferral, blocked-repository requeue,
   malformed-entry handling, and dead-letter transitions MUST persist the
   replacement before acknowledging the original in one atomic Redis operation.
 - A successful collection-webhook response MUST mean delivery deduplication and
   durable admission were committed atomically. Redis failures MUST return a
   retriable non-success response without consuming the delivery identity.
+- A scope-withdrawal response MUST be sent only after each affected repository
+  has either been erased or has a durable erasure task committed before its
+  enrollment is removed. In the queued case the response confirms durable
+  admission, not completed erasure; worker failures MUST remain retryable or
+  durably dead-lettered and visible in health status.
 - The task queue MUST apply bounded admission backpressure and MUST NOT trim
   undelivered or pending entries. Completed entries MAY be deleted after ACK;
   dead letters remain durably recorded under the configured bounded retention.
@@ -300,7 +324,72 @@ count.
 - Expensive checks that read the full active generation MUST be explicit and
   MUST use the production source-loading path and its fail-closed row bounds.
 
-## 13. Conformance checklist
+## 13. Reliability simulator
+
+The repository's `simulate-api` and `simulate-webhooks` commands are a local
+validation tool for the collector profile. They MUST exercise the same GitHub
+webhook endpoint, signature verification, delivery deduplication, durable queue
+admission, worker coordination, collection runner, and projection code used in
+production. The simulator MUST NOT add a bypass path to production handlers or
+substitute an in-memory queue for Redis.
+
+### 13.1 Scenario contract
+
+Scenarios are strict JSON documents. Unknown fields MUST be rejected before
+simulation starts. A scenario MUST have a name, a repository count between 1
+and 20,000, and no more than 1,000,000 generated workflow events. API windows
+MUST have valid, increasing, non-overlapping `from` and `to` durations.
+
+The supported scenario controls are:
+
+- `seed` for repeatable event IDs, payloads, ordering, and distribution;
+- `distribution`: `uniform`, `hot`, `long-tail`, or `synchronized`;
+- `out_of_order`, `duplicate_every`, `drop_every`, `delay_every`, and `delay`
+  for webhook delivery faults;
+- `replay_count` to redeliver the most recent generated window using its
+  original delivery IDs; and
+- `remove_repositories` to emit a repository-removal event after workflow
+  traffic.
+
+API windows select a behavior for elapsed scenario time. Supported modes are
+`healthy`, `latency`, `timeout`, `connection-failure`, `rate-limited`,
+`secondary-rate-limit`, `internal-error`, `bad-gateway`,
+`service-unavailable`, `unavailable`, and `intermittent`. Intermittent windows
+MAY set `failure_rate` or `fail_every`; rate-limit windows MAY set
+`rate_limit_remaining` and `rate_limit_reset_after_seconds`. Outside a declared
+window, the fake API MUST return healthy responses. `--time-scale` maps scenario
+time to wall-clock time and MUST be positive and bounded.
+
+`simulate-webhooks` MUST sign each request with the configured
+`CAO_GITHUB_WEBHOOK_SECRET` and send it to the normal CAO webhook endpoint.
+Installation and repository-add events MUST precede workflow events so the
+normal enrollment checks apply. Duplicate and replay requests MUST reuse the
+original delivery ID; explicitly dropped events MUST NOT be sent. Concurrent
+request count and per-request timeout MUST be bounded.
+
+### 13.2 API surface and operating limits
+
+The fake GitHub API implements only the REST interactions needed by the
+collector, including App validation, installation-token creation, rate-limit
+inspection, repository lookup, and workflow-run/log requests. It MUST return
+GitHub-shaped status codes and rate-limit headers for configured fault windows.
+It is not a general GitHub API emulator, and passing a simulator scenario MUST
+NOT be treated as proof of correctness against every GitHub API response.
+
+The API URL MUST be routed through the normal collection runner into collection
+subprocesses. A simulator run MUST use synthetic repositories, isolated test
+credentials, and a test Redis instance; operators MUST NOT point it at live
+repositories or expose the fake API listener to an untrusted network. The
+simulator MUST NOT log webhook secrets, App credentials, or payload contents.
+
+The simulator validates bounded-load admission, duplicate handling, selected
+API fault responses, and recovery behavior through the real server path. It
+does not establish production capacity or guarantee losslessness for failures
+outside the exercised scenario; operators SHOULD measure queue depth, pending
+work, dead letters, processing lag, and the collection-health status surface
+during and after each run.
+
+## 14. Conformance checklist
 
 A conforming implementation:
 

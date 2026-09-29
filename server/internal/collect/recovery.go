@@ -2,6 +2,9 @@ package collect
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -13,6 +16,7 @@ import (
 var recoveryLog = logger.New("cao:collect:recovery")
 
 const deliveryCursorKey = "collect:delivery-cursor"
+const deliveryProgressKey = "collect:delivery-progress"
 
 // DeliveryReplayer recovers missed events by asking GitHub to redeliver App
 // webhook deliveries.
@@ -46,9 +50,10 @@ type ReplayResult struct {
 // how many were inspected before the cursor boundary was reached, and the
 // newest delivery GUID the cursor should advance to next.
 type redeliveryPlan struct {
-	toRedeliver []int64
-	inspected   int
-	newest      string
+	toRedeliver   []int64
+	inspected     int
+	newest        string
+	foundBoundary bool
 }
 
 // planRedeliveries walks one page of deliveries, newest first, stopping once
@@ -62,6 +67,7 @@ func planRedeliveries(deliveries []githubapp.Delivery, boundary string) redelive
 			plan.newest = delivery.GUID
 		}
 		if boundary != "" && delivery.GUID == boundary {
+			plan.foundBoundary = true
 			break
 		}
 		plan.inspected++
@@ -71,6 +77,12 @@ func planRedeliveries(deliveries []githubapp.Delivery, boundary string) redelive
 		plan.toRedeliver = append(plan.toRedeliver, delivery.ID)
 	}
 	return plan
+}
+
+type deliveryProgress struct {
+	Boundary string `json:"boundary"`
+	Newest   string `json:"newest"`
+	Cursor   string `json:"cursor"`
 }
 
 // Recover requests redelivery of failed deliveries newer than the recorded
@@ -84,27 +96,57 @@ func (r DeliveryReplayer) Recover(ctx context.Context) (ReplayResult, error) {
 	if limit <= 0 {
 		limit = 200
 	}
-	deliveries, _, err := r.Client.ListDeliveries(ctx, "", limit)
-	if err != nil {
-		return ReplayResult{}, err
-	}
 	lastSeen, err := r.Store.OperationalState(ctx, deliveryCursorKey)
 	if err != nil {
 		return ReplayResult{}, err
 	}
-	plan := planRedeliveries(deliveries, string(lastSeen))
+	progress := deliveryProgress{Boundary: string(lastSeen)}
+	rawProgress, err := r.Store.OperationalState(ctx, deliveryProgressKey)
+	if err != nil {
+		return ReplayResult{}, err
+	}
+	if len(rawProgress) > 0 {
+		if err := json.Unmarshal(rawProgress, &progress); err != nil {
+			return ReplayResult{}, errors.New("stored delivery recovery progress is invalid")
+		}
+	}
+	deliveries, next, err := r.Client.ListDeliveries(ctx, progress.Cursor, limit)
+	if err != nil {
+		return ReplayResult{}, err
+	}
+	plan := planRedeliveries(deliveries, progress.Boundary)
+	if progress.Newest == "" {
+		progress.Newest = plan.newest
+	}
 	result := ReplayResult{Inspected: plan.inspected}
 	for _, deliveryID := range plan.toRedeliver {
 		if err := r.Client.Redeliver(ctx, deliveryID); err != nil {
-			recoveryLog.Printf("redelivery request failed delivery=%d", deliveryID)
-			continue
+			return result, fmt.Errorf("redeliver App webhook delivery %d: %w", deliveryID, err)
 		}
 		result.Redelivered++
 	}
-	if plan.newest != "" {
-		if err := r.Store.SetOperationalState(ctx, deliveryCursorKey, []byte(plan.newest)); err != nil {
+	if !plan.foundBoundary && next != "" {
+		if next == progress.Cursor {
+			return result, errors.New("GitHub delivery recovery cursor did not advance")
+		}
+		progress.Cursor = next
+		encoded, err := json.Marshal(progress)
+		if err != nil {
 			return result, err
 		}
+		if err := r.Store.SetOperationalState(ctx, deliveryProgressKey, encoded); err != nil {
+			return result, err
+		}
+		recoveryLog.Printf("delivery recovery inspected=%d redelivered=%d more=true", result.Inspected, result.Redelivered)
+		return result, nil
+	}
+	if progress.Newest != "" {
+		if err := r.Store.SetOperationalState(ctx, deliveryCursorKey, []byte(progress.Newest)); err != nil {
+			return result, err
+		}
+	}
+	if err := r.Store.Clear(ctx, "state:"+deliveryProgressKey); err != nil {
+		return result, err
 	}
 	recoveryLog.Printf("delivery recovery inspected=%d redelivered=%d", result.Inspected, result.Redelivered)
 	return result, nil

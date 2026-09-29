@@ -11,8 +11,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
@@ -24,7 +26,11 @@ const (
 	installationsKey        = "collect:installations"
 	repositoriesKey         = "collect:repositories"
 	repositoryInstallations = "collect:repository-installation"
+	enrollmentMutationLock  = "collect:enrollment-mutation"
+	enrollmentLockTTL       = 30 * time.Second
 )
+
+var ErrEnrollmentMutationBusy = errors.New("enrollment mutation is already in progress")
 
 // Enrollment is the durable set of installations and repositories the App
 // covers. In this profile enrollment is ingestion scope; it is never authority
@@ -75,6 +81,83 @@ func validRepositorySegment(value string) bool {
 	return true
 }
 
+func (e Enrollment) withMutationLock(
+	ctx context.Context, mutate func(context.Context) error,
+) error {
+	token, err := operationToken()
+	if err != nil {
+		return err
+	}
+	acquired, err := e.Store.TryLock(ctx, enrollmentMutationLock, token, enrollmentLockTTL)
+	if err != nil {
+		return err
+	}
+	if !acquired {
+		return ErrEnrollmentMutationBusy
+	}
+
+	operationCtx, cancelOperation := context.WithCancel(ctx)
+	stopRenewal := make(chan struct{})
+	renewalDone := make(chan struct{})
+	lockLost := make(chan error, 1)
+	go func() {
+		defer close(renewalDone)
+		ticker := time.NewTicker(enrollmentLockTTL / 3)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stopRenewal:
+				return
+			case <-operationCtx.Done():
+				return
+			case <-ticker.C:
+				renewalCtx, cancel := context.WithTimeout(operationCtx, 5*time.Second)
+				renewed, renewErr := e.renewMutationLock(renewalCtx, token)
+				cancel()
+				if renewErr != nil || !renewed {
+					if renewErr == nil {
+						renewErr = ErrEnrollmentMutationBusy
+					}
+					select {
+					case lockLost <- renewErr:
+					default:
+					}
+					cancelOperation()
+					return
+				}
+			}
+		}
+	}()
+
+	mutationErr := mutate(operationCtx)
+	close(stopRenewal)
+	<-renewalDone
+	cancelOperation()
+	if mutationErr == nil {
+		select {
+		case mutationErr = <-lockLost:
+		default:
+		}
+	}
+	unlockCtx, cancelUnlock := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
+	defer cancelUnlock()
+	if err := e.Store.Unlock(unlockCtx, enrollmentMutationLock, token); mutationErr == nil {
+		mutationErr = err
+	}
+	return mutationErr
+}
+
+func (e Enrollment) renewMutationLock(ctx context.Context, token string) (bool, error) {
+	script := `if redis.call("GET", KEYS[1]) ~= ARGV[1] then return 0 end; return redis.call("PEXPIRE", KEYS[1], ARGV[2])`
+	value, err := e.Store.Client.Do(ctx, "EVAL", script, "1",
+		e.Store.Key("lock:"+enrollmentMutationLock), token,
+		strconv.FormatInt(enrollmentLockTTL.Milliseconds(), 10))
+	if err != nil {
+		return false, err
+	}
+	return fmt.Sprint(value) == "1", nil
+}
+
 // AddRepositories records repositories covered by one installation.
 func (e Enrollment) AddRepositories(ctx context.Context, installationID int64, repositories []string) error {
 	if installationID <= 0 {
@@ -83,6 +166,12 @@ func (e Enrollment) AddRepositories(ctx context.Context, installationID int64, r
 	if len(repositories) == 0 {
 		return nil
 	}
+	return e.withMutationLock(ctx, func(ctx context.Context) error {
+		return e.addRepositories(ctx, installationID, repositories)
+	})
+}
+
+func (e Enrollment) addRepositories(ctx context.Context, installationID int64, repositories []string) error {
 	normalized := make([]string, 0, len(repositories))
 	for _, repository := range repositories {
 		name, err := NormalizeRepository(repository)
@@ -152,13 +241,46 @@ func repositoryTransfer(previous string, installationID int64) (previousInstalla
 // installation keeps its enrollment and its evidence.
 func (e Enrollment) RemoveRepositories(
 	ctx context.Context, installationID int64, repositories []string) ([]string, error) {
+	return e.RemoveRepositoriesBefore(ctx, installationID, repositories, nil)
+}
+
+// RemoveRepositoriesBefore runs prepare with the normalized removal set while
+// enrollment mutations are serialized, before changing membership.
+func (e Enrollment) RemoveRepositoriesBefore(
+	ctx context.Context,
+	installationID int64,
+	repositories []string,
+	prepare func(context.Context, []string) error,
+) ([]string, error) {
+	removed := make([]string, 0, len(repositories))
+	err := e.withMutationLock(ctx, func(ctx context.Context) error {
+		normalized := make([]string, 0, len(repositories))
+		for _, repository := range repositories {
+			name, err := NormalizeRepository(repository)
+			if err != nil {
+				return err
+			}
+			normalized = append(normalized, name)
+		}
+		if prepare != nil {
+			if err := prepare(ctx, normalized); err != nil {
+				return err
+			}
+		}
+		var err error
+		removed, err = e.removeRepositories(ctx, installationID, normalized)
+		return err
+	})
+	return removed, err
+}
+
+func (e Enrollment) removeRepositories(
+	ctx context.Context, installationID int64, repositories []string,
+) ([]string, error) {
 	removed := make([]string, 0, len(repositories))
 	stale := 0
 	for _, repository := range repositories {
-		name, err := NormalizeRepository(repository)
-		if err != nil {
-			return removed, err
-		}
+		name := repository
 		if installationID > 0 {
 			if err := e.Store.SetRemove(ctx, installationRepositoriesKey(installationID), name); err != nil {
 				return removed, err
@@ -201,28 +323,56 @@ func staleRemoval(owner string, installationID int64) bool {
 // RemoveInstallation drops an installation and every repository it covered,
 // reporting those repositories so their retained evidence can be erased.
 func (e Enrollment) RemoveInstallation(ctx context.Context, installationID int64) ([]string, error) {
+	return e.RemoveInstallationBefore(ctx, installationID, nil)
+}
+
+// RemoveInstallationBefore prepares durable follow-up work from the exact
+// membership snapshot that is removed, while enrollment mutations are locked.
+func (e Enrollment) RemoveInstallationBefore(
+	ctx context.Context, installationID int64, prepare func(context.Context, []string) error,
+) ([]string, error) {
 	var removed []string
+	err := e.withMutationLock(ctx, func(ctx context.Context) error {
+		repositories, err := e.RepositoriesForInstallation(ctx, installationID)
+		if err != nil {
+			return err
+		}
+		if prepare != nil {
+			if err := prepare(ctx, repositories); err != nil {
+				return err
+			}
+		}
+		removed, err = e.removeRepositories(ctx, installationID, repositories)
+		if err != nil {
+			return err
+		}
+		if err := e.Store.Clear(ctx, installationRepositoriesKey(installationID)); err != nil {
+			return err
+		}
+		enrollmentLog.Printf("removed installation=%d repositories=%d", installationID, len(removed))
+		return e.Store.SetRemove(ctx, installationsKey, strconv.FormatInt(installationID, 10))
+	})
+	return removed, err
+}
+
+// RepositoriesForInstallation returns the current repository membership without
+// changing it, so erasure work can be durably queued before membership removal.
+func (e Enrollment) RepositoriesForInstallation(ctx context.Context, installationID int64) ([]string, error) {
+	var names []string
 	cursor := ""
 	for {
 		repositories, next, err := e.Store.SetScan(ctx, installationRepositoriesKey(installationID), cursor, 500)
 		if err != nil {
-			return removed, err
+			return nil, err
 		}
-		names, err := e.RemoveRepositories(ctx, installationID, repositories)
-		removed = append(removed, names...)
-		if err != nil {
-			return removed, err
-		}
+		names = append(names, repositories...)
 		if next == "0" || next == "" {
 			break
 		}
 		cursor = next
 	}
-	if err := e.Store.Clear(ctx, installationRepositoriesKey(installationID)); err != nil {
-		return removed, err
-	}
-	enrollmentLog.Printf("removed installation=%d repositories=%d", installationID, len(removed))
-	return removed, e.Store.SetRemove(ctx, installationsKey, strconv.FormatInt(installationID, 10))
+	sort.Strings(names)
+	return names, nil
 }
 
 // Enrolled reports whether a repository is in scope. Admission fails closed:

@@ -1,12 +1,78 @@
 package collect
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
+	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
+
+type recoveryStateClient struct {
+	mu     sync.Mutex
+	values map[string]string
+}
+
+func (c *recoveryStateClient) Do(_ context.Context, command ...string) (any, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	switch command[0] {
+	case "GET":
+		return c.values[command[1]], nil
+	case "SET":
+		c.values[command[1]] = command[2]
+		return "OK", nil
+	case "DEL":
+		delete(c.values, command[1])
+		return int64(1), nil
+	default:
+		return nil, errors.New("unsupported recovery test command")
+	}
+}
+
+func (*recoveryStateClient) DoMany(context.Context, [][]string) ([]any, error) {
+	return nil, nil
+}
+
+type recoveryDeliveryPage struct {
+	deliveries []githubapp.Delivery
+	next       string
+}
+
+type recoveryDeliveryClient struct {
+	pages       map[string]recoveryDeliveryPage
+	cursors     []string
+	failID      int64
+	redelivered []int64
+}
+
+func (c *recoveryDeliveryClient) ListDeliveries(
+	_ context.Context, cursor string, _ int,
+) ([]githubapp.Delivery, string, error) {
+	c.cursors = append(c.cursors, cursor)
+	page, ok := c.pages[cursor]
+	if !ok {
+		return nil, "", errors.New("unexpected recovery cursor")
+	}
+	return page.deliveries, page.next, nil
+}
+
+func (c *recoveryDeliveryClient) Redeliver(_ context.Context, id int64) error {
+	if id == c.failID {
+		return errors.New("injected redelivery failure")
+	}
+	c.redelivered = append(c.redelivered, id)
+	return nil
+}
+
+func newRecoveryStore() *redisx.Store {
+	return redisx.NewStore(&recoveryStateClient{values: make(map[string]string)}, "recovery-test")
+}
 
 func TestPlanRedeliveriesSelectsOnlyNonSuccessStatuses(t *testing.T) {
 	deliveries := []githubapp.Delivery{
@@ -73,6 +139,97 @@ func TestPlanRedeliveriesBoundaryAsFirstEntryInspectsNothing(t *testing.T) {
 	// deliveries.
 	if plan.newest != "guid-1" {
 		t.Fatalf("newest = %q, want %q", plan.newest, "guid-1")
+	}
+	if !plan.foundBoundary {
+		t.Fatal("boundary was not marked as found")
+	}
+}
+
+func TestDeliveryRecoveryResumesPaginationBeforeAdvancingCursor(t *testing.T) {
+	store := newRecoveryStore()
+	if err := store.SetOperationalState(t.Context(), deliveryCursorKey, []byte("guid-1")); err != nil {
+		t.Fatal(err)
+	}
+	client := &recoveryDeliveryClient{pages: map[string]recoveryDeliveryPage{
+		"": {
+			deliveries: []githubapp.Delivery{
+				{ID: 3, GUID: "guid-3", StatusCode: 500},
+				{ID: 2, GUID: "guid-2", StatusCode: 200},
+			},
+			next: "page-2",
+		},
+		"page-2": {deliveries: []githubapp.Delivery{
+			{ID: 1, GUID: "guid-1", StatusCode: 500},
+		}},
+	}}
+	replayer := DeliveryReplayer{Store: store, Client: client, Enabled: true, Limit: 2}
+
+	first, err := replayer.Recover(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Inspected != 2 || first.Redelivered != 1 {
+		t.Fatalf("first pass = %#v, want two inspected and one redelivery", first)
+	}
+	progress, err := store.OperationalState(t.Context(), deliveryProgressKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var saved deliveryProgress
+	if err := json.Unmarshal(progress, &saved); err != nil {
+		t.Fatal(err)
+	}
+	if saved.Cursor != "page-2" || saved.Boundary != "guid-1" || saved.Newest != "guid-3" {
+		t.Fatalf("saved progress = %#v", saved)
+	}
+
+	second, err := replayer.Recover(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Inspected != 0 || second.Redelivered != 0 {
+		t.Fatalf("second pass = %#v, boundary entry should not be inspected", second)
+	}
+	lastSeen, err := store.OperationalState(t.Context(), deliveryCursorKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(lastSeen) != "guid-3" {
+		t.Fatalf("delivery cursor = %q, want guid-3", lastSeen)
+	}
+	progress, err = store.OperationalState(t.Context(), deliveryProgressKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(progress) != 0 {
+		t.Fatalf("recovery progress was not cleared: %s", progress)
+	}
+	if !reflect.DeepEqual(client.cursors, []string{"", "page-2"}) {
+		t.Fatalf("requested cursors = %v", client.cursors)
+	}
+}
+
+func TestDeliveryRecoveryDoesNotAdvanceAfterRedeliveryFailure(t *testing.T) {
+	store := newRecoveryStore()
+	if err := store.SetOperationalState(t.Context(), deliveryCursorKey, []byte("old-guid")); err != nil {
+		t.Fatal(err)
+	}
+	client := &recoveryDeliveryClient{
+		pages: map[string]recoveryDeliveryPage{"": {
+			deliveries: []githubapp.Delivery{{ID: 2, GUID: "new-guid", StatusCode: 500}},
+		}},
+		failID: 2,
+	}
+	replayer := DeliveryReplayer{Store: store, Client: client, Enabled: true}
+	if _, err := replayer.Recover(t.Context()); err == nil {
+		t.Fatal("expected redelivery failure")
+	}
+	lastSeen, err := store.OperationalState(t.Context(), deliveryCursorKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(lastSeen) != "old-guid" {
+		t.Fatalf("delivery cursor advanced to %q despite failure", lastSeen)
 	}
 }
 

@@ -187,10 +187,6 @@ var ErrDeliveryInProgress = errors.New("webhook delivery admission is already in
 type Admitter struct {
 	Enrollment Enrollment
 	Queue      Queue
-	// Lake, when set, has un-enrolled repositories' retained evidence erased
-	// from it. Leaving it unset keeps evidence after consent is withdrawn, so
-	// deployments that retain evidence must do so deliberately.
-	Lake *Lake
 	// Projection requests a projection after erasure, so the canonical
 	// database stops reporting repositories that left ingestion scope.
 	Projection ProjectionRequester
@@ -206,9 +202,9 @@ type Admission struct {
 	Kind      IntentKind `json:"kind"`
 	Enqueued  bool       `json:"enqueued"`
 	Duplicate bool       `json:"duplicate,omitempty"`
-	// Erased counts repositories whose retained evidence was deleted because
-	// they left ingestion scope.
-	Erased int `json:"erased,omitempty"`
+	// ErasureQueued counts repositories with durable erasure work because they
+	// left ingestion scope.
+	ErasureQueued int `json:"erasureQueued,omitempty"`
 }
 
 // Admit applies one verified delivery.
@@ -289,6 +285,20 @@ func (a Admitter) AdmitDelivery(
 	return Admission{Kind: IntentCollect, Enqueued: enqueued, Duplicate: duplicate}, nil
 }
 
+func (a Admitter) queueErasures(ctx context.Context, installationID int64, repositories []string) error {
+	for _, repository := range repositories {
+		if _, err := a.Queue.Enqueue(ctx, Task{
+			Repository:     repository,
+			InstallationID: installationID,
+			Reason:         "scope-withdrawn",
+			Erase:          true,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (a Admitter) admitIntent(ctx context.Context, intent Intent) (Admission, error) {
 	switch intent.Kind {
 	case IntentIgnore:
@@ -299,7 +309,12 @@ func (a Admitter) admitIntent(ctx context.Context, intent Intent) (Admission, er
 		}
 		return Admission{Kind: IntentEnroll}, nil
 	case IntentUnenroll:
-		removed, err := a.Enrollment.RemoveRepositories(ctx, intent.InstallationID, intent.Repositories)
+		removed, err := a.Enrollment.RemoveRepositoriesBefore(
+			ctx, intent.InstallationID, intent.Repositories,
+			func(ctx context.Context, repositories []string) error {
+				return a.queueErasures(ctx, intent.InstallationID, repositories)
+			},
+		)
 		if err != nil {
 			return Admission{}, err
 		}
@@ -307,9 +322,14 @@ func (a Admitter) admitIntent(ctx context.Context, intent Intent) (Admission, er
 		if err != nil {
 			return Admission{}, err
 		}
-		return Admission{Kind: IntentUnenroll, Erased: erased}, nil
+		return Admission{Kind: IntentUnenroll, ErasureQueued: erased}, nil
 	case IntentRemoveInstallation:
-		removed, err := a.Enrollment.RemoveInstallation(ctx, intent.InstallationID)
+		removed, err := a.Enrollment.RemoveInstallationBefore(
+			ctx, intent.InstallationID,
+			func(ctx context.Context, repositories []string) error {
+				return a.queueErasures(ctx, intent.InstallationID, repositories)
+			},
+		)
 		if err != nil {
 			return Admission{}, err
 		}
@@ -317,7 +337,7 @@ func (a Admitter) admitIntent(ctx context.Context, intent Intent) (Admission, er
 		if err != nil {
 			return Admission{}, err
 		}
-		return Admission{Kind: IntentRemoveInstallation, Erased: erased}, nil
+		return Admission{Kind: IntentRemoveInstallation, ErasureQueued: erased}, nil
 	case IntentCollect:
 		enrolled, err := a.Enrollment.Enrolled(ctx, intent.Repository)
 		if err != nil {
@@ -350,39 +370,15 @@ func (a Admitter) admitIntent(ctx context.Context, intent Intent) (Admission, er
 	}
 }
 
-// erase deletes retained evidence for repositories that left ingestion scope
-// and requests a projection so the canonical database drops their rows.
-//
-// Erasure is best-effort per repository but never silent: the first failure is
-// returned so the delivery is retried rather than reported as complete.
+// erase requests projection after durable erasure work has been queued.
 func (a Admitter) erase(ctx context.Context, repositories []string) (int, error) {
 	if len(repositories) == 0 {
 		return 0, nil
 	}
-	erased := 0
-	for _, repository := range repositories {
-		if a.Lake == nil {
-			// An admission-only process holds no evidence lake, so erasure is
-			// queued for a worker that does rather than skipped.
-			if _, err := a.Queue.Enqueue(ctx, Task{
-				Repository: repository,
-				Reason:     "scope-withdrawn",
-				Erase:      true,
-			}); err != nil {
-				return erased, err
-			}
-			erased++
-			continue
-		}
-		if err := a.Lake.Forget(repository); err != nil {
-			return erased, err
-		}
-		erased++
-	}
 	if a.Projection != nil {
 		if err := a.Projection.RequestProjection(ctx); err != nil {
-			return erased, err
+			return 0, err
 		}
 	}
-	return erased, nil
+	return len(repositories), nil
 }

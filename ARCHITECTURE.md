@@ -181,10 +181,16 @@ Redis-backed operational counters and exposes a read-only health status API.
 Authorized operators receive the registered `collection-health` runtime source
 through the Dashboard Language query boundary; it is not published or stored in
 browser IndexedDB. The Ingestion page renders that bounded snapshot alongside
-the rest of the operational dashboard. The main thread receives only bounded
-view payloads in either profile. Versioned computations transform canonical evidence
-into partitioned measures and actionable insights so consumers do not repeatedly
-scan the full Activity corpus. Computation results remain derived evidence:
+the rest of the operational dashboard. Delivery-recovery pagination checkpoints
+are durable and separate from the processed-delivery high-water mark; a failed
+redelivery request cannot advance that mark. Enrollment mutations are
+serialized; withdrawal enqueues durable repository erasure before removing the
+same enrollment snapshot, and workers serialize deletion with collection under
+the repository lease, rechecking scope before collection.
+The main thread receives only bounded view payloads in either profile.
+Versioned computations transform canonical evidence into partitioned measures
+and actionable insights so consumers do not repeatedly scan the full Activity
+corpus. Computation results remain derived evidence:
 they preserve source quality and provenance and grant no operational authority.
 The `cao computation runtime-health` command executes the first production
 measure through declarative canonical queries. Future CLI measures extend the
@@ -342,7 +348,20 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   entries are ACKed and deleted atomically. The task stream applies backpressure
   at its configured capacity and never trims recoverable work, so worker crashes
   and ambiguous client failures may repeat collection but cannot silently lose
-  admitted work.
+  admitted work. Delivery recovery preserves both its delivery boundary and
+  pagination progress, and advances the boundary only after redelivery requests
+  succeed. Enrollment changes are serialized while withdrawal persists erasure
+  for the exact membership snapshot before removing it; workers serialize
+  erasure with collection and reject or erase stale queued collection tasks.
+  Workers honor retry not-before times, preserve leased work on shutdown, and
+  back off on repository-lock contention without consuming collection attempts.
+- The ingestion reliability simulator uses strict, seeded JSON scenarios to
+  generate up to 20,000 synthetic repositories and 1,000,000 workflow events.
+  Signed webhook traffic uses the production endpoint and queue admission path;
+  a bounded fake GitHub REST API supplies timed latency, outage, rate-limit, and
+  transient-error windows to the normal collection subprocess. The simulator is
+  a local reliability exercise, not a complete GitHub API emulator or a
+  production-capacity guarantee.
 - The Coolify image builds the dashboard and Go server together, runs as a
   non-root user, and mounts the authoritative artifact read-only from an
   externally populated named volume whose complete payload is hash-verified and

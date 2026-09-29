@@ -432,6 +432,41 @@ func TestQueueSerializesOneRepository(t *testing.T) {
 	}
 }
 
+func TestWorkerCancellationPreservesNotBeforeTask(t *testing.T) {
+	store, ctx := integrationStore(t)
+	queue := Queue{Store: store}
+	if err := queue.Ensure(ctx); err != nil {
+		t.Fatal(err)
+	}
+	notBefore := time.Now().UTC().Add(time.Hour)
+	if _, err := queue.Enqueue(ctx, Task{
+		Repository: "octo/api", InstallationID: 7, NotBefore: notBefore,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	leases, err := queue.Lease(ctx, "worker", 1, 0)
+	if err != nil || len(leases) != 1 {
+		t.Fatalf("lease = %+v, err = %v; want delayed task", leases, err)
+	}
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	worker := Worker{Queue: queue}
+	if worker.process(cancelled, leases[0]) {
+		t.Fatal("cancelled delayed task should not be processed")
+	}
+	pending, err := queue.Pending(ctx)
+	if err != nil || pending != 0 {
+		t.Fatalf("pending = %d, err = %v; expected the original lease to be replaced", pending, err)
+	}
+	requeued, err := queue.Lease(ctx, "replacement-worker", 1, 0)
+	if err != nil || len(requeued) != 1 {
+		t.Fatalf("requeued task = %+v, err = %v", requeued, err)
+	}
+	if !requeued[0].Task.NotBefore.Equal(notBefore) {
+		t.Fatalf("notBefore = %s, want %s", requeued[0].Task.NotBefore, notBefore)
+	}
+}
+
 func TestAdmitterRefusesRepositoriesOutsideScope(t *testing.T) {
 	store, ctx := integrationStore(t)
 	enrollment := Enrollment{Store: store}
@@ -481,11 +516,17 @@ func TestAdmitterErasesEvidenceWhenScopeIsWithdrawn(t *testing.T) {
 		t.Fatal(err)
 	}
 	projector := Projector{Store: store, Lake: lake, Enrollment: enrollment}
+	queue := Queue{Store: store}
+	if err := queue.Ensure(ctx); err != nil {
+		t.Fatal(err)
+	}
 	admitter := Admitter{
 		Enrollment: enrollment,
-		Queue:      Queue{Store: store},
-		Lake:       &lake,
+		Queue:      queue,
 		Projection: projector,
+	}
+	if _, err := queue.Enqueue(ctx, Task{Repository: "acme/withdrawn", InstallationID: 11}); err != nil {
+		t.Fatal(err)
 	}
 	shards := map[string]string{
 		lake.ShardDirectory(): "raw",
@@ -505,8 +546,18 @@ func TestAdmitterErasesEvidenceWhenScopeIsWithdrawn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if admission.Erased != 1 {
-		t.Fatalf("erased %d repositories, want 1", admission.Erased)
+	if admission.ErasureQueued != 1 {
+		t.Fatalf("queued erasure for %d repositories, want 1", admission.ErasureQueued)
+	}
+	leases, err := queue.Lease(ctx, "erasure-test", 1, 0)
+	if err != nil || len(leases) != 1 {
+		t.Fatalf("lease = %+v, err = %v; want queued collection task", leases, err)
+	}
+	worker := Worker{
+		Queue: queue, Runner: Runner{Lake: lake}, Enrollment: enrollment,
+	}
+	if !worker.process(ctx, leases[0]) {
+		t.Fatal("withdrawn collection task did not erase its retained evidence")
 	}
 	for directory := range shards {
 		withdrawn := directory + "/" + lake.ShardPrefix("acme/withdrawn") + "0001.jsonl"
@@ -595,6 +646,48 @@ func TestTransferredRepositoryIgnoresStaleInstallationRemoval(t *testing.T) {
 	}
 	if len(removed) != 1 || removed[0] != "octo/api" {
 		t.Fatalf("removed = %v, want the repository erased by its current installation", removed)
+	}
+}
+
+func TestStaleRemovalErasureDoesNotDeleteTransferredEvidence(t *testing.T) {
+	store, ctx := integrationStore(t)
+	enrollment := Enrollment{Store: store}
+	queue := Queue{Store: store}
+	if err := queue.Ensure(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := enrollment.AddRepositories(ctx, 11, []string{"octo/api"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := enrollment.AddRepositories(ctx, 12, []string{"octo/api"}); err != nil {
+		t.Fatal(err)
+	}
+	lake := Lake{Directory: t.TempDir()}
+	if err := lake.Prepare(); err != nil {
+		t.Fatal(err)
+	}
+	shard := lake.ShardDirectory() + "/" + lake.ShardPrefix("octo/api") + "0001.jsonl"
+	if err := WriteFileAtomic(shard, []byte("{}\n")); err != nil {
+		t.Fatal(err)
+	}
+	admitter := Admitter{Enrollment: enrollment, Queue: queue}
+	payload := []byte(`{"action":"removed","installation":{"id":11},` +
+		`"repositories_removed":[{"full_name":"octo/api"}]}`)
+	if _, err := admitter.Admit(ctx, "installation_repositories", payload); err != nil {
+		t.Fatal(err)
+	}
+	leases, err := queue.Lease(ctx, "stale-erasure-test", 1, 0)
+	if err != nil || len(leases) != 1 {
+		t.Fatalf("lease = %+v, err = %v; want stale erasure task", leases, err)
+	}
+	worker := Worker{
+		Queue: queue, Runner: Runner{Lake: lake}, Enrollment: enrollment,
+	}
+	if worker.process(ctx, leases[0]) {
+		t.Fatal("stale erasure should not report evidence changed")
+	}
+	if _, err := os.Stat(shard); err != nil {
+		t.Fatalf("transferred repository evidence was erased: %v", err)
 	}
 }
 
