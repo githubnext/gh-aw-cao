@@ -1,4 +1,5 @@
 import { parseAllDocuments } from 'yaml';
+import { createDebug } from './debug.js';
 import {
   ADDITIVE_MEASURE_FIELDS,
   AGGREGATE_VALUES,
@@ -163,6 +164,8 @@ import { findDeadDashboardQueries } from './query-usage.js';
 import { executeDashboardQueries, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
 
+const debugValidator = createDebug('validator');
+
 /**
  * @param {string} command
  * @returns {string[] | null}
@@ -304,14 +307,20 @@ export function validateDashboardDocument(source) {
   /** @type {ValidationError[]} */
   const errors = [];
 
+  /** @param {ValidationResult} result */
+  const finish = (result) => {
+    debugValidator({ operation: 'validate-dashboard-document', status: result.ok ? 'ok' : 'invalid', errorCount: result.errors.length });
+    return result;
+  };
+
   const documents = parseDocuments(source, errors);
   if (!documents) {
-    return { ok: false, errors };
+    return finish({ ok: false, errors });
   }
 
   const [document] = documents;
   if (!document) {
-    return { ok: false, errors };
+    return finish({ ok: false, errors });
   }
 
   const root = document.toJS({ mapAsMap: false });
@@ -321,7 +330,7 @@ export function validateDashboardDocument(source) {
       'Dashboard document must contain exactly one YAML document whose root is a mapping.',
       '$'
     ));
-    return { ok: false, errors };
+    return finish({ ok: false, errors });
   }
 
   validateObjectKeys(document.contents, ROOT_KEYS, '$', errors);
@@ -334,7 +343,7 @@ export function validateDashboardDocument(source) {
       'dashboard must be a mapping.',
       '$.dashboard'
     ));
-    return { ok: false, errors };
+    return finish({ ok: false, errors });
   }
 
   try {
@@ -348,17 +357,17 @@ export function validateDashboardDocument(source) {
   }
 
   if (errors.length > 0) {
-    return { ok: false, errors };
+    return finish({ ok: false, errors });
   }
 
-  return {
+  return finish({
     ok: true,
     value: {
       languageVersion: /** @type {string} */ (root['language-version']),
       dashboard: /** @type {DashboardConfig} */ (dashboard)
     },
     errors: []
-  };
+  });
 }
 
 /**
@@ -456,7 +465,11 @@ export function validateLogicalSources(sources) {
     }
   }
 
-  return errors.length > 0 ? { ok: false, errors } : { ok: true, errors: [] };
+  const result = errors.length > 0
+    ? /** @type {{ ok: false, errors: ValidationError[] }} */ ({ ok: false, errors })
+    : /** @type {{ ok: true, errors: [] }} */ ({ ok: true, errors: [] });
+  debugValidator({ operation: 'validate-logical-sources', status: result.ok ? 'ok' : 'invalid', errorCount: result.errors.length });
+  return result;
 }
 
 /**
