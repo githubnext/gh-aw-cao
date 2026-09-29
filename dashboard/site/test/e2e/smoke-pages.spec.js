@@ -160,7 +160,7 @@ test('Ingestion shows CAO Activity status, size trend, and retained transactions
   const updatesNavigation = page.locator('.nav-section').filter({
     has: page.locator('summary', { hasText: /^Updates$/ })
   });
-  await updatesNavigation.getByRole('link', { name: 'Ingestion' }).click();
+  await updatesNavigation.getByRole('link', { name: 'Ingestion', exact: true }).click();
 
   const root = page.locator('.dashboard-root');
   const transactionsPage = page.locator('[data-page-id="indexing"]');
