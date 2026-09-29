@@ -533,6 +533,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   const readme = readFileSync(join(root, "README.md"), "utf8");
   const setupSkillPath = join(root, "skills", "setup-cao", "SKILL.md");
   const setupSkill = readFileSync(setupSkillPath, "utf8");
+  const setupQuickstart = readFileSync(join(root, "docs", "setup-quickstarts.md"), "utf8");
   const setupReferences = Object.fromEntries([
     "authentication",
     "implementation-details",
@@ -567,6 +568,8 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /setup quickstart/);
   assert.match(setupSkill, /\.\/cao\.sh setup/);
   assert.match(setupSkill, /offers authentication choices\s+based on that scope/);
+  assert.match(setupSkill, /setup fails after approved mutations[\s\S]*credential configuration metadata/);
+  assert.match(setupQuickstart, /offers authentication choices based on that scope[\s\S]*profile's\s+prerequisites/);
   assert.doesNotMatch(setupSkill, /workflow-token/);
   assert.match(setupSkill, /raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/install\.sh/);
   assert.doesNotMatch(setupSkill, /gh release view|cao_release=|cao-ref|cao-release/);

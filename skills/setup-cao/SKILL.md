@@ -117,6 +117,8 @@ Stop without weakening boundaries for:
 - a non-empty pre-existing campaign map;
 - a public control repository that could expose non-public evidence;
 - no compatible authentication, or declined/incomplete credentials;
+- setup fails after approved mutations, until you inspect policy, Pages, and
+  credential configuration metadata; never expose secret values;
 - installation or validation failure;
 - conflicting pre-existing files without approval; or
 - unexpected campaign, live, credential, generated-lock, campaign-owned, or
