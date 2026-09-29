@@ -23,6 +23,18 @@ describe('DLS-CONF-004 scaffold gates', () => {
     expect(favicon).toBe(agenticWorkflowsFavicon);
   });
 
+  it('keeps docs and dashboard branding on the same Agentic Workflows mark', () => {
+    const favicon = readFileSync(resolve('favicon.svg'), 'utf8');
+    const day = readFileSync(resolve('../../docs/assets/logo-day.svg'), 'utf8');
+    const night = readFileSync(resolve('../../docs/assets/logo-night.svg'), 'utf8');
+    const mark = /M1 3a2 2 0 0 1 2-2[^"]+/;
+
+    for (const logo of [favicon, day, night]) {
+      expect(logo).toContain('<title>GitHub Agentic Workflows</title>');
+      expect(logo.match(mark)?.[0]).toBe(favicon.match(mark)?.[0]);
+    }
+  });
+
   it('declares an installable web app manifest and iOS icon', () => {
     const preview = readFileSync(resolve('index.html'), 'utf8');
     const manifest = JSON.parse(readFileSync(resolve('manifest.webmanifest'), 'utf8'));

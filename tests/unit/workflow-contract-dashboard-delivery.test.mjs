@@ -97,14 +97,13 @@ test("dashboard CI runs the campaign quality gates", () => {
   const lighthouseComment = jobs.get("lighthouse-comment");
 
   assert.match(source, /dashboard\/site\/\*\*/);
-  // The deployed favicon is a copy of the canonical logo, so canonical logo
-  // changes must run the scaffold gate that keeps the two in sync.
+  // Changes to the shared favicon or docs logos must run the branding scaffold gate.
   const triggers = parse(source).on;
   for (const event of ["pull_request", "push"]) {
-    for (const path of ["docs/assets/logo.svg", "public/favicon.svg"]) {
+    for (const path of ["docs/assets/logo-day.svg", "docs/assets/logo-night.svg", "public/favicon.svg"]) {
       assert.ok(
         triggers[event].paths.includes(path),
-        `${event}.paths must include ${path} so the favicon scaffold gate runs on canonical logo changes`
+        `${event}.paths must include ${path} so the branding scaffold gate runs on logo changes`
       );
     }
   }

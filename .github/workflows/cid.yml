@@ -8,7 +8,8 @@ on:
       - activity/commands/**
       - activity/dashboard-complexity.mjs
       - dashboard/site/**
-      - docs/assets/logo.svg
+      - docs/assets/logo-day.svg
+      - docs/assets/logo-night.svg
       - public/favicon.svg
       - tests/unit/cao-dashboard-complexity.test.mjs
       - tests/playwright/configs/dashboard-ingestion.config.mjs
@@ -22,7 +23,8 @@ on:
       - activity/commands/**
       - activity/dashboard-complexity.mjs
       - dashboard/site/**
-      - docs/assets/logo.svg
+      - docs/assets/logo-day.svg
+      - docs/assets/logo-night.svg
       - public/favicon.svg
       - tests/unit/cao-dashboard-complexity.test.mjs
       - tests/playwright/configs/dashboard-ingestion.config.mjs
