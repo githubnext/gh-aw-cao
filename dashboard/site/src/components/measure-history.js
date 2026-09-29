@@ -114,7 +114,7 @@ function renderOperationalValueHistory(context, rows) {
       })), 'line')
       : null));
 
-  return h('section', { className: 'measure-history', 'aria-label': context.title },
+  return h('section', { className: 'measure-history measure-history-operational-value', 'aria-label': context.title },
     h('div', { className: 'insights-section-heading' },
       h('div', null,
         h('div', { className: 'insights-measure-heading' },

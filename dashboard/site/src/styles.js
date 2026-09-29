@@ -824,6 +824,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .line-chart-temporal-marker text { fill: var(--purple); font-size: 1.8px; font-weight: 600; }
 .insights-temporal-plot-panel, .operational-value-native-plots { min-width: 0; width: 100%; }
 .insights-temporal-plot-panel { overflow: hidden; }
+.measure-history-operational-value { display: grid; gap: 16px; padding-bottom: 16px; }
 .operational-value-native-plots { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 12px; }
 .temporal-metric-plot { min-width: 0; width: 100%; overflow: hidden; padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); }
 .temporal-plot-heading { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 12px; margin-bottom: 4px; }
@@ -859,6 +860,10 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .temporal-plot-run-outcome-legend-label { fill: var(--muted); }
 .temporal-plot-run-outcome-legend-success { fill: var(--success); }
 .temporal-plot-run-outcome-legend-failure { fill: var(--danger); }
+@media (min-width: 1440px) {
+  .temporal-plot-axis { font-size: 10px; }
+  .temporal-plot-run-outcome-legend { font-size: 10px; }
+}
 .temporal-metric-plot .chart-series-1 { fill: var(--accent); stroke: var(--accent); }
 .temporal-metric-plot .chart-series-2 { fill: var(--success); stroke: var(--success); }
 .temporal-metric-plot .chart-series-3 { fill: var(--attention); stroke: var(--attention); }
