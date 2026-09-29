@@ -1,5 +1,5 @@
 /**
- * Deterministic evidence-confidence diagnostics for the dashboard.
+ * Bounded schema previews for the offline dashboard data-schema report.
  */
 
 /**

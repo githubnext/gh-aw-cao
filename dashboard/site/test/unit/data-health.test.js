@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { deriveDataHealthSources } from '../../src/data-health.js';
 
-const sourceMetadata = {
+const sourceMetadata = /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
   'source-id': 'fixture',
   'source-kind': 'fixture',
   'as-of': '2026-09-03T12:00:00Z',
@@ -9,7 +9,7 @@ const sourceMetadata = {
   completeness: 'complete',
   freshness: 'fresh',
   availability: 'available'
-};
+});
 
 describe('offline data shape preview', () => {
   it('infers a recursive schema merged across sampled rows', () => {
@@ -18,7 +18,7 @@ describe('offline data shape preview', () => {
       { attempts: '2', labels: [], extra: true }
     ];
     const result = deriveDataHealthSources({
-      runs: { rows, metadata: sourceMetadata }
+      runs: { source: 'runs', rows, metadata: sourceMetadata }
     });
     const schema = result['data-health-schema'].rows[0];
 
@@ -35,7 +35,7 @@ describe('offline data shape preview', () => {
     const row = /** @type {Record<string, unknown>} */ ({});
     row.self = row;
     const result = deriveDataHealthSources({
-      runs: { rows: [row], metadata: sourceMetadata }
+      runs: { source: 'runs', rows: [row], metadata: sourceMetadata }
     });
 
     expect(result['data-health-schema'].rows[0].schema).toContain('self: (circular)');
@@ -43,7 +43,7 @@ describe('offline data shape preview', () => {
 
   it('reports an empty-object shape when a source has no cached rows', () => {
     const result = deriveDataHealthSources({
-      runs: { rows: [], metadata: sourceMetadata }
+      runs: { source: 'runs', rows: [], metadata: sourceMetadata }
     });
 
     expect(result['data-health-schema'].rows[0].schema).toBe('{}');
