@@ -338,10 +338,10 @@
         } else if (state === "stale") {
           dashboard.classList.add("dashboard-stale");
         }
-        if (snapshot) {
+        if (snapshot && state !== "ready") {
           dashboard.prepend(renderDashboardSnapshotStatus(
             snapshot,
-            state === "cached" ? "refreshing" : state === "stale" ? "stale" : "current"
+            state === "cached" ? "refreshing" : "stale"
           ));
         }
         if (retryRefresh && (state === "stale" || (state === "loading" && !snapshot))) {

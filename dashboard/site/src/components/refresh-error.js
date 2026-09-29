@@ -53,7 +53,7 @@ export function renderRefreshError(retry, { hasCachedSnapshot = true } = {}) {
 
 /**
  * @param {{ createdAt: string }} snapshot
- * @param {'refreshing'|'current'|'stale'} state
+ * @param {'refreshing'|'stale'} state
  */
 export function renderDashboardSnapshotStatus(snapshot, state) {
   const timestamp = Date.parse(snapshot.createdAt);
@@ -62,9 +62,7 @@ export function renderDashboardSnapshotStatus(snapshot, state) {
     : 'an unknown time';
   const message = state === 'refreshing'
     ? `Refreshing dashboard data. Showing the last complete snapshot from ${date}.`
-    : state === 'stale'
-      ? `Dashboard refresh failed. Showing the last complete snapshot from ${date}.`
-      : `Dashboard data is current as of ${date}.`;
+    : `Dashboard refresh failed. Showing the last complete snapshot from ${date}.`;
   return h('p', {
     className: 'dashboard-snapshot-status',
     role: 'status',
