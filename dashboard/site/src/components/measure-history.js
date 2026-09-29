@@ -4,6 +4,7 @@
 
 import { h } from '../dom.js';
 import { createDebug } from '../debug.js';
+import { effect, state } from '../reactive.js';
 import { formatNumber } from '../view-formatters.js';
 import { renderStatusBadge } from './badge.js';
 import { listChartSeries, renderChartLegend, renderChartWidget } from './chart-elements.js';
@@ -282,35 +283,41 @@ function attachPointSelection(chart, points, readout) {
   const unmatched = [...points];
   for (const mark of marks) {
     mark.setAttribute('role', 'button');
-    mark.setAttribute('aria-pressed', 'false');
     const key = mark.getAttribute('data-chart-point-key');
     const seriesName = mark.getAttribute('data-chart-point-series');
     const index = unmatched.findIndex((point) => point.key === key && point.color === seriesName);
     if (index >= 0) pointsByMark.set(mark, unmatched.splice(index, 1)[0]);
   }
-  /** @type {Element | null} */
-  let selectedMark = null;
-  /** @param {Element} mark */
-  const select = (mark) => {
-    selectedMark = selectedMark === mark ? null : mark;
+  /** @type {import('../reactive.js').State<Element | null>} */
+  const selectedMark = state(/** @type {Element | null} */ (null));
+
+  // The smallest DOM update needed from selection state: toggle each mark's
+  // pressed/selected attributes and resync the shared readout text.
+  effect(() => {
+    const selected = selectedMark.get();
     for (const candidate of marks) {
-      const pressed = candidate === selectedMark;
+      const pressed = candidate === selected;
       candidate.setAttribute('aria-pressed', pressed ? 'true' : 'false');
       if (pressed) candidate.setAttribute('data-selected', 'true');
       else candidate.removeAttribute('data-selected');
     }
-    const point = selectedMark ? pointsByMark.get(selectedMark) : undefined;
+    const point = selected ? pointsByMark.get(selected) : undefined;
     debugMeasureHistory({ event: 'point-selection', selected: Boolean(point) });
     if (!point) {
       readout.replaceChildren(SELECT_POINT_MESSAGE);
       return;
     }
-    const seriesLabel = String(selectedMark?.getAttribute('data-chart-point-series') || '');
+    const seriesLabel = String(selected?.getAttribute('data-chart-point-series') || '');
     readout.replaceChildren(
       h('strong', null, formatNumber(point.y)),
       h('span', null, formatInstant(point.x)),
       ...(seriesLabel ? [h('span', null, seriesLabel)] : [])
     );
+  });
+
+  /** @param {Element} mark */
+  const select = (mark) => {
+    selectedMark.set((current) => (current === mark ? null : mark));
   };
   chart.addEventListener('click', (event) => {
     const mark = /** @type {Element | null} */ (event.target instanceof Element ? event.target.closest('.chart-point[data-chart-point-key]') : null);

@@ -266,4 +266,55 @@ describe('Measure history', () => {
     expect(rendered.textContent).toContain('14.75AIC/run');
     expect(rendered.textContent).toContain('3.5%');
   });
+
+  it('toggles an operational-grader chart point selection and its readout on repeated activation', () => {
+    const rendered = renderMeasureHistory({
+      title: 'Package operational grader',
+      sourceNames: ['value-series'],
+      sources: {
+        'value-series': {
+          source: 'value-series',
+          metadata,
+          rows: [{
+            metric: 'sample-grader.primary',
+            'metric-name': 'sample-grader.primary',
+            'metric-kind': 'primary',
+            points: [
+              { x: '2026-09-23T00:00:00Z', y: 12, color: 'gh-aw', key: 'primary:0' },
+              { x: '2026-09-24T00:00:00Z', y: 18, color: 'gh-aw', key: 'primary:1' }
+            ]
+          }]
+        }
+      },
+      pageId: 'test-page',
+      contextDetails: [],
+      headingTag: 'h3'
+    });
+
+    const readout = rendered.querySelector('.insights-point-readout');
+    expect(readout?.textContent).toBe('Select a point to inspect that observation.');
+
+    const marks = [...rendered.querySelectorAll('.chart-point[data-chart-point-key]')];
+    expect(marks.length).toBeGreaterThan(0);
+    const [firstMark, secondMark] = marks;
+
+    firstMark.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(firstMark.getAttribute('aria-pressed')).toBe('true');
+    expect(firstMark.getAttribute('data-selected')).toBe('true');
+    expect(readout?.textContent).toContain('12');
+
+    if (secondMark) {
+      secondMark.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      expect(firstMark.getAttribute('aria-pressed')).toBe('false');
+      expect(firstMark.hasAttribute('data-selected')).toBe(false);
+      expect(secondMark.getAttribute('aria-pressed')).toBe('true');
+      expect(readout?.textContent).toContain('18');
+    }
+
+    // Re-activating the pressed mark clears the selection back to the prompt.
+    const pressedMark = secondMark ?? firstMark;
+    pressedMark.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(pressedMark.getAttribute('aria-pressed')).toBe('false');
+    expect(readout?.textContent).toBe('Select a point to inspect that observation.');
+  });
 });

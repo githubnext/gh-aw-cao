@@ -35,7 +35,7 @@ export default defineConfig({
   integrations: [
     mermaid(),
     starlight({
-      title: "CAO",
+      title: "Central Agentic Ops",
       description: "Enterprise control planes for GitHub Agentic Workflows.",
       logo: {
         light: "./docs/assets/logo-day.svg",
