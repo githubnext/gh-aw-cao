@@ -249,6 +249,55 @@ func (d Doctor) checkRedisStats(ctx context.Context) Check {
 	}
 }
 
+// persistenceClassificationReason names why checkRedisPersistence reached its
+// status, stable across summary wording changes so it is useful to log
+// without exposing the raw Redis persistence status strings.
+type persistenceClassificationReason string
+
+const (
+	persistenceReasonBackgroundSaveFailed persistenceClassificationReason = "background-save-failed"
+	persistenceReasonAOFWriteFailed       persistenceClassificationReason = "aof-write-failed"
+	persistenceReasonHealthy              persistenceClassificationReason = "healthy"
+)
+
+// persistenceClassification is the status, summary, and remedy
+// classifyRedisPersistence derives from Redis's reported persistence fields.
+type persistenceClassification struct {
+	status  Status
+	summary string
+	remedy  string
+	reason  persistenceClassificationReason
+}
+
+// classifyRedisPersistence decides the redis.persistence check's outcome
+// from Redis's reported persistence fields alone. It is a pure function so
+// each failure path -- a failed background save and a failed append-only-file
+// write -- is testable without a fake Redis INFO reply. A background-save
+// failure is checked first, matching the prior inline behavior.
+func classifyRedisPersistence(lastSave string, aofEnabled bool, aofLastWrite string) persistenceClassification {
+	if lastSave != "" && lastSave != "ok" {
+		return persistenceClassification{
+			status:  StatusWarn,
+			summary: "the last background save did not succeed",
+			remedy:  "inspect the Redis log; a restart would lose the canonical database and require a rebuild",
+			reason:  persistenceReasonBackgroundSaveFailed,
+		}
+	}
+	if aofEnabled && aofLastWrite != "" && aofLastWrite != "ok" {
+		return persistenceClassification{
+			status:  StatusWarn,
+			summary: "the last append-only-file write did not succeed",
+			remedy:  "inspect the Redis log; persistence is not keeping up with writes",
+			reason:  persistenceReasonAOFWriteFailed,
+		}
+	}
+	return persistenceClassification{
+		status:  StatusPass,
+		summary: "persistence is reporting healthy writes",
+		reason:  persistenceReasonHealthy,
+	}
+}
+
 // checkRedisPersistence reports whether a restart would lose the canonical
 // database. Losing it is recoverable -- the evidence lake or a published
 // snapshot can repopulate it -- but only if the operator knows to do that.
@@ -263,36 +312,20 @@ func (d Doctor) checkRedisPersistence(ctx context.Context) Check {
 	}
 	aofEnabled := infoInt(fields, "aof_enabled") == 1
 	lastSave := strings.TrimSpace(fields["rdb_last_bgsave_status"])
+	aofLastWrite := strings.TrimSpace(fields["aof_last_write_status"])
 	details := []Detail{
 		detail("aofEnabled", fmt.Sprint(aofEnabled)),
 		detail("lastBackgroundSave", lastSave),
 		detail("changesSinceSave", fields["rdb_changes_since_last_save"]),
 	}
 	if aofEnabled {
-		details = append(details, detail("aofLastWrite", fields["aof_last_write_status"]))
+		details = append(details, detail("aofLastWrite", aofLastWrite))
 	}
-	if lastSave != "" && lastSave != "ok" {
-		return Check{
-			ID: id, Area: areaRedis, Title: title, Status: StatusWarn,
-			Summary: "the last background save did not succeed",
-			Details: details,
-			Remedy:  "inspect the Redis log; a restart would lose the canonical database and require a rebuild",
-		}
-	}
-	if aofEnabled {
-		if status := strings.TrimSpace(fields["aof_last_write_status"]); status != "" && status != "ok" {
-			return Check{
-				ID: id, Area: areaRedis, Title: title, Status: StatusWarn,
-				Summary: "the last append-only-file write did not succeed",
-				Details: details,
-				Remedy:  "inspect the Redis log; persistence is not keeping up with writes",
-			}
-		}
-	}
+	classification := classifyRedisPersistence(lastSave, aofEnabled, aofLastWrite)
+	doctorLog.Printf("redis persistence classified status=%s reason=%s", classification.status, classification.reason)
 	return Check{
-		ID: id, Area: areaRedis, Title: title, Status: StatusPass,
-		Summary: "persistence is reporting healthy writes",
-		Details: details,
+		ID: id, Area: areaRedis, Title: title, Status: classification.status,
+		Summary: classification.summary, Details: details, Remedy: classification.remedy,
 	}
 }
 

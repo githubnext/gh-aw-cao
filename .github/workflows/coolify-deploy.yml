@@ -937,6 +937,7 @@ jobs:
           echo "Image: ${IMAGE}"
           echo "Digest: ${DIGEST}"
           request_started="${SECONDS}"
+          # runner-guard:ignore RGS-012 -- this is the intentional Coolify deployment webhook; the HTTPS endpoint and immutable image/source inputs are validated above.
           if ! curl_metrics="$(curl --fail --silent \
               --connect-timeout 10 \
               --max-time 300 \

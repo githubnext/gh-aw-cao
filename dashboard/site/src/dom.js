@@ -1,3 +1,5 @@
+import { createDebug } from './debug.js';
+
 /**
  * @template T
  * @typedef {{ __keyedList: true, items: Array<T>, renderItem: (item: T, index: number) => Node, key: (item: T, index: number) => string, render: () => void, _attach: (parent: Node) => void }} KeyedListDescriptor
@@ -5,6 +7,8 @@
 
 /** @type {WeakMap<Element, Map<string, unknown>>} */
 const appliedProps = new WeakMap();
+
+const debugDom = createDebug('dom');
 
 /**
  * @template T
@@ -296,9 +300,13 @@ function kebabToCamelCase(value) {
  * @param {string} css
  */
 export function injectStyleOnce(document, marker, css) {
-  if (document.querySelector(`style[data-${marker}]`)) return;
+  if (document.querySelector(`style[data-${marker}]`)) {
+    debugDom({ event: 'inject-style-once', marker, outcome: 'skipped-duplicate' });
+    return;
+  }
   const style = document.createElement('style');
   style.dataset[kebabToCamelCase(marker)] = '';
   style.textContent = css;
   document.head.append(style);
+  debugDom({ event: 'inject-style-once', marker, outcome: 'inserted', length: css.length });
 }
