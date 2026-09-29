@@ -1,4 +1,7 @@
 import { reconcileChildren } from './dom-reconciler.js';
+import { createDebug } from './debug.js';
+
+const debugReactive = createDebug('reactive');
 
 /**
  * @template T
@@ -20,6 +23,13 @@ const pendingComputations = new Set();
 
 function flushEffects() {
   if (batchDepth > 0 || flushing) return;
+  if (pendingComputations.size > 0 || pendingEffects.size > 0) {
+    debugReactive({
+      event: 'flush-start',
+      computedCount: pendingComputations.size,
+      effectCount: pendingEffects.size
+    });
+  }
   flushing = true;
   try {
     while (pendingComputations.size > 0 || pendingEffects.size > 0) {
@@ -124,6 +134,7 @@ export function effect(fn, options = {}) {
       options.signal?.removeEventListener('abort', stopFromSignal);
       pendingEffects.delete(handle);
       pendingComputations.delete(handle);
+      debugReactive({ event: 'effect-stopped', computed: handle._computed, cleanupCount: cleanups.size });
       for (const cleanup of cleanups) {
         cleanup();
       }
@@ -138,6 +149,7 @@ export function effect(fn, options = {}) {
   if (options.signal?.aborted) {
     stopped = true;
     handle._stopped = true;
+    debugReactive({ event: 'effect-aborted-before-start', computed: handle._computed });
   } else {
     options.signal?.addEventListener('abort', stopFromSignal, { once: true });
     handle.run();
