@@ -130,6 +130,12 @@ test("catalog campaigns declare their current experimental maturity", () => {
   }
 });
 
+test("optimization package includes its README", () => {
+  const manifest = parse(readFileSync(join(root, "optimization", "aw.yml"), "utf8"));
+
+  assert.ok(manifest.includes.includes("README.md"));
+});
+
 test("operational workflows use the transitive CAO campaign bundle", () => {
   const control = workflow("shared/control.md");
   const policyCampaigns = JSON.parse(
@@ -148,6 +154,7 @@ test("operational workflows use the transitive CAO campaign bundle", () => {
       .sort();
     const includedWorkflowPaths = manifest.includes
       .filter((include) => typeof include === "string")
+      .filter((include) => include.startsWith(".github/workflows/"))
       .filter((include) => include.endsWith(".md"))
       .sort();
 
