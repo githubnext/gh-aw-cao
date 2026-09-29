@@ -229,6 +229,8 @@ test("SelfCare dashboard reviewer checks deployments through stakeholder persona
   assert.match(source, /central-agentic-ops-dashboard/);
   assert.match(source, /view-grader\.mjs/);
   assert.match(source, /dashboard-artifact/);
+  assert.doesNotMatch(dashboardArtifact, /sources\.json/);
+  assert.match(dashboardArtifact, /must contain exactly one dashboard\.json/);
   assert.match(source, /successful trusted default-branch build/);
   assert.match(source, /normalized Shannon entropy/);
   assert.match(source, /Reject major page, navigation, information-architecture, or view redesigns/);
