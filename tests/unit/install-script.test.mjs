@@ -148,9 +148,12 @@ async function createConsumer(t, ghAwVersion, { repository = "alpha-org/control"
     await chmod(path.join(bin, name), 0o755);
   }
   if (ghAwVersion) await writeFile(ghAwInstalled, `${ghAwVersion}\n`);
+  const inheritedEnv = { ...process.env };
+  const inheritedPath = inheritedEnv.PATH ?? inheritedEnv.Path ?? "";
+  if (process.platform === "win32") delete inheritedEnv.Path;
   const env = {
-    ...process.env,
-    PATH: `${bin}${path.delimiter}${process.env.PATH}`,
+    ...inheritedEnv,
+    PATH: `${bin}${path.delimiter}${inheritedPath}`,
     ...(process.platform === "win32" ? { PATHEXT: ".CMD;.COM;.EXE;.BAT" } : {}),
     NODE_OPTIONS: [process.env.NODE_OPTIONS, `--import=${pathToFileURL(mockFetch).href}`].filter(Boolean).join(" "),
     FAKE_CATALOG: catalog,
@@ -370,9 +373,7 @@ for (const [state, initialVersion, expectedVersion, expectedLog] of [
   [`gh-aw ${supportedGhAw}`, supportedGhAw, supportedGhAw, "add\n"],
   [`gh-aw ${newerGhAw}`, newerGhAw, newerGhAw, "add\n"],
 ]) {
-  test(`streamed install.sh with ${state} materializes the runtime and initializes policy`, {
-    skip: initialVersion && process.env.CAO_SKIP_WINDOWS_INTEGRATIONS === "1",
-  }, async (t) => {
+  test(`streamed install.sh with ${state} materializes the runtime and initializes policy`, async (t) => {
     const { consumer, repository, env, log } = await createConsumer(t, initialVersion);
     await streamInstaller(consumer, env);
     assert.equal(await log(), expectedLog);
@@ -393,9 +394,7 @@ test("install.sh reports useful progress and does not silence curl", async (t) =
   assert.doesNotMatch(installerSource, /--silent|curl -s/);
 });
 
-test("streamed install.sh scopes policy to gh's current repository, not the ambient GITHUB_REPOSITORY", {
-  skip: process.env.CAO_SKIP_WINDOWS_INTEGRATIONS === "1",
-}, async (t) => {
+test("streamed install.sh scopes policy to gh's current repository, not the ambient GITHUB_REPOSITORY", async (t) => {
   const { consumer, repository, env, log } = await createConsumer(t, supportedGhAw, { repository: "beta-org/ops.tools" });
   await streamInstaller(consumer, { ...env, GITHUB_REPOSITORY: "catalog-org/ambient" });
   assert.equal(await log(), "add\n");
@@ -506,9 +505,7 @@ for (const { name, initialVersion, answer, environment = {}, manifest, expectedL
   });
 }
 
-test("install.sh reruns restore missing policy and launcher mode without replacing consumer policy", {
-  skip: process.env.CAO_SKIP_WINDOWS_INTEGRATIONS === "1",
-}, async (t) => {
+test("install.sh reruns restore missing policy and launcher mode without replacing consumer policy", async (t) => {
   const { consumer, repository, env, log } = await createConsumer(t, supportedGhAw);
   await runFile(consumer, env);
   assert.equal(await log(), "add\n");
@@ -579,9 +576,7 @@ for (const [description, repository] of [
   });
 }
 
-test("streamed install.sh initializes repository-only Activity without an App", {
-  skip: process.env.CAO_SKIP_WINDOWS_INTEGRATIONS === "1",
-}, async (t) => {
+test("streamed install.sh initializes repository-only Activity without an App", async (t) => {
   const { root, consumer, repository, env, log } = await createConsumer(t, supportedGhAw);
   await streamInstaller(consumer, env);
   assert.equal(await log(), "add\n");
