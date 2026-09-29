@@ -163,10 +163,16 @@ test("Dependabot worker maintains a durable parent and one-PR child tasks withou
   const alertFetch = lock.indexOf("name: Fetch target Dependabot alert evidence");
   assert.ok(credential >= 0 && handoff > credential && alertFetch > handoff);
   assert.match(lock.slice(alertFetch), /github-token: \$\{\{ steps\.cao_target_read_credential\.outputs\.token \}\}/);
+  assert.match(lock.slice(alertFetch), /PUBLIC_REPO_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.match(lock.slice(alertFetch), /getOctokit\(process\.env\.PUBLIC_REPO_TOKEN\)/);
   assert.match(lock.slice(alertFetch), /precompute\.target_repo !== target/);
   assert.match(lock.slice(alertFetch), /GET \/repos\/\{owner\}\/\{repo\}\/dependabot\/alerts/);
   assert.match(lock.slice(alertFetch), /response\.data\.length < 100/);
+  assert.match(lock.slice(alertFetch), /complete: false, alerts: null, unavailable_reason: reason/);
+  assert.match(lock.slice(alertFetch), /markUnavailable\(rateLimited \? 'api_rate_limit' : 'api_request_failed'\)/);
+  assert.match(lock.slice(alertFetch), /markUnavailable\('pagination_limit_exceeded'\)/);
   assert.match(lock.slice(alertFetch), /complete: true, alerts/);
+  assert.match(source, /If `complete` is `false` or `unavailable_reason` is present, treat alert evidence as unavailable/);
   assert.match(source, /Read `\/tmp\/gh-aw\/agent\/dependabot-alerts\.json`/);
   assert.match(source, /Do not use `list_dependabot_alerts` as a fallback/);
   assert.deepEqual(Object.keys(outputs).sort(), ["add-comment", "close-issue", "create-issue", "update-issue"]);
