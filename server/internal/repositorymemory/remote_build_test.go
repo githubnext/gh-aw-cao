@@ -1,6 +1,7 @@
 package repositorymemory
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
@@ -99,8 +100,7 @@ func TestBuildRemoteCampaignEnforcesTotalSizeLimit(t *testing.T) {
 }
 
 func pathFor(i int) string {
-	const letters = "abcdefghijklmnopqrstuvwxyz"
-	return string(letters[i%len(letters)]) + string(rune('0'+i/len(letters))) + ".md"
+	return fmt.Sprintf("file-%d.md", i)
 }
 
 func TestClassifyRemotePathRejectsEmptyAbsoluteAndBackslashPaths(t *testing.T) {
