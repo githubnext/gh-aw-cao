@@ -44,6 +44,17 @@ const overviewSourceNames = dashboardPageAllSourceNames(
   "overview",
 );
 const deployedShardSources = new Map();
+// A single settled Overview request sits close to its budget on the current
+// deployed dataset, so one GC pause or runner stall can decide the outcome.
+// Assert the median of several sequential requests instead of one sample.
+const overviewRequestSamples = numberSetting("DASHBOARD_OVERVIEW_REQUEST_SAMPLES", 5);
+const maximumOverviewRequestMs = numberSetting("DASHBOARD_OVERVIEW_MAX_REQUEST_MS", 500);
+
+function numberSetting(name, fallback) {
+  const value = Number(process.env[name] ?? fallback);
+  if (!Number.isSafeInteger(value) || value < 1) throw new Error(`${name} must be a positive integer.`);
+  return value;
+}
 
 async function serveDashboard(request, response) {
   const requestUrl = new URL(request.url || "/", "http://127.0.0.1");
@@ -132,12 +143,8 @@ test(`benchmarks every dashboard query against settled deployed data (shard ${sh
   const browserErrors = [];
   const failedRequests = [];
   const succeededRequests = new WeakSet();
-  let resolveOverviewWorkerMetrics;
-  let rejectOverviewWorkerMetrics;
-  const overviewWorkerMetrics = new Promise((resolvePromise, rejectPromise) => {
-    resolveOverviewWorkerMetrics = resolvePromise;
-    rejectOverviewWorkerMetrics = rejectPromise;
-  });
+  const overviewWorkerMetrics = [];
+  let overviewWorkerMetricsError = null;
   page.on("console", (message) => {
     if (message.type() === "error") browserErrors.push(message.text());
     if (message.type() !== "debug") return;
@@ -146,10 +153,12 @@ test(`benchmarks every dashboard query against settled deployed data (shard ${sh
         if (prefix === "[cao:data:performance]"
             && label === "page query"
             && detail?.viewId === "overview-performance") {
-          resolveOverviewWorkerMetrics(detail);
+          overviewWorkerMetrics.push(detail);
         }
       })
-      .catch(rejectOverviewWorkerMetrics);
+      .catch((error) => {
+        overviewWorkerMetricsError ??= error;
+      });
   });
   page.on("pageerror", (error) => browserErrors.push(error.message));
   page.on("requestfailed", (request) => {
@@ -270,29 +279,41 @@ test(`benchmarks every dashboard query against settled deployed data (shard ${sh
       }
       return timings;
     }, { context: dashboardContext, chunkSize: QUERY_CHUNK_SIZE, queries: shardQueries });
-    const overviewRequest = await page.evaluate(async ({ context, sourceNames }) => {
+    const overviewSamples = await page.evaluate(async ({ context, sourceNames, samples }) => {
       const { loadCanonicalDashboardPage } = await import("./src/data-processor.js");
-      const startedAt = performance.now();
-      const sources = await loadCanonicalDashboardPage(
-        sourceNames,
-        context,
-        undefined,
-        { pageId: "overview", viewId: "overview-performance" },
-      );
-      return {
-        requestMs: Math.round((performance.now() - startedAt) * 100) / 100,
-        returnedRows: Object.fromEntries(
-          Object.entries(sources).map(([name, source]) => [name, source.rows.length]),
-        ),
-      };
-    }, { context: dashboardContext, sourceNames: overviewSourceNames });
-    expect(overviewRequest.requestMs).toBeLessThan(500);
-    const worker = await Promise.race([
-      overviewWorkerMetrics,
-      new Promise((_, rejectPromise) => {
-        setTimeout(() => rejectPromise(new Error("Overview worker metrics were not emitted.")), 5_000);
-      }),
-    ]);
+      const measured = [];
+      for (let sample = 0; sample < samples; sample += 1) {
+        const startedAt = performance.now();
+        const sources = await loadCanonicalDashboardPage(
+          sourceNames,
+          context,
+          undefined,
+          { pageId: "overview", viewId: "overview-performance" },
+        );
+        measured.push({
+          requestMs: Math.round((performance.now() - startedAt) * 100) / 100,
+          returnedRows: Object.fromEntries(
+            Object.entries(sources).map(([name, source]) => [name, source.rows.length]),
+          ),
+        });
+      }
+      return measured;
+    }, { context: dashboardContext, sourceNames: overviewSourceNames, samples: overviewRequestSamples });
+    const medianSampleIndex = overviewSamples
+      .map(({ requestMs }, index) => ({ requestMs, index }))
+      .sort((left, right) => left.requestMs - right.requestMs)[Math.floor(overviewSamples.length / 2)]
+      .index;
+    const overviewRequest = overviewSamples[medianSampleIndex];
+    expect(overviewRequest.requestMs).toBeLessThan(maximumOverviewRequestMs);
+    await expect.poll(() => {
+      if (overviewWorkerMetricsError) throw overviewWorkerMetricsError;
+      return overviewWorkerMetrics.length;
+    }, { message: "Overview worker metrics were not emitted.", timeout: 5_000 })
+      .toBeGreaterThanOrEqual(overviewSamples.length);
+    // Console arguments resolve asynchronously, so pair the median request with
+    // the median worker sample by duration rather than by arrival order.
+    const worker = overviewWorkerMetrics
+      .toSorted((left, right) => left.totalMs - right.totalMs)[Math.floor(overviewWorkerMetrics.length / 2)];
     const slowestSources = results
       .filter(({ query }) => overviewSourceNames.includes(query))
       .sort((left, right) => right.firstChunkMs - left.firstChunkMs)
@@ -301,7 +322,7 @@ test(`benchmarks every dashboard query against settled deployed data (shard ${sh
     const report = {
       generatedAt: new Date().toISOString(),
       dashboardUrl: deployedDashboardUrl,
-      methodology: "Fresh Chromium profile running the checkout's dashboard and query worker; proxy current deployed data; measure native IndexedDB count() across all canonical entity stores, initial Overview readiness, and the settled Overview request by worker phase; then measure a 25-row first chunk, one continuation chunk when present, and one unpaginated fill iteration.",
+      methodology: "Fresh Chromium profile running the checkout's dashboard and query worker; proxy current deployed data; measure native IndexedDB count() across all canonical entity stores, initial Overview readiness, and the median of several settled Overview requests by worker phase; then measure a 25-row first chunk, one continuation chunk when present, and one unpaginated fill iteration.",
       chunkSize: QUERY_CHUNK_SIZE,
       shard: { index: shard.index, total: shard.total },
       populateMs: Math.round(populateMs * 100) / 100,
@@ -309,6 +330,7 @@ test(`benchmarks every dashboard query against settled deployed data (shard ${sh
       overview: {
         initialReadyMs: Math.round(initialOverviewReadyMs * 100) / 100,
         requestMs: overviewRequest.requestMs,
+        requestSamplesMs: overviewSamples.map(({ requestMs }) => requestMs),
         worker,
         returnedRows: overviewRequest.returnedRows,
         slowestSources,
