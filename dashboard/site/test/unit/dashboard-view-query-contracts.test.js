@@ -102,10 +102,21 @@ function declaredQueryReferences(value) {
 }
 
 describe('dashboard view query contracts', () => {
-  it('does not retain core experimental navigation sections', () => {
+  it('groups navigable experimental pages in one experimental section', () => {
     expect(dashboard.navigation.filter(
       (/** @type {{ experimental?: boolean }} */ section) => section.experimental === true
-    )).toEqual([]);
+    )).toEqual([{
+      label: 'Experimental',
+      experimental: true,
+      pages: [
+        'operational-value',
+        'friction',
+        'skills',
+        'steering',
+        'marketplace',
+        'indexing'
+      ]
+    }]);
   });
 
   it('renders the Cost page with concise titles and a workflow bar chart in the Data section', () => {

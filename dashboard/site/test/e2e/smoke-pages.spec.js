@@ -1005,8 +1005,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
-  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Memory', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Operational Value', 'Cost', 'Friction', 'Models & Agents', 'Skills', 'Firewall', 'MCPs', 'Steering']);
-  await expect(data.getByRole('link', { name: 'Operational Value, Experimental' })).toHaveCount(1);
+  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Memory', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Cost', 'Models & Agents', 'Firewall', 'MCPs']);
   await data.getByRole('link', { name: /Memory/ }).click();
   await expect(page).toHaveURL(/#page-memory$/);
   await expect(page.getByRole('heading', { name: 'Memory', exact: true, level: 1 })).toBeVisible();
@@ -1022,7 +1021,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(page).toHaveURL(/#page-memory$/);
   await expect(memoryView.getByRole('link')).toHaveCount(0);
   await expect(updatesSection.locator('summary')).toHaveText('Updates');
-  await expect(updatesSection.getByRole('link')).toHaveText(['Updates', 'Marketplace', 'Ingestion', 'Settings']);
+  await expect(updatesSection.getByRole('link')).toHaveText(['Updates', 'Settings']);
   await expect(updatesSection).toHaveClass(/nav-section-bottom/);
   await expect.poll(async () => {
     const [navBox, manageBox] = await Promise.all([
@@ -1033,7 +1032,19 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
       ? Math.round(navBox.y + navBox.height - (manageBox.y + manageBox.height))
       : null;
   }).toBeLessThanOrEqual(1);
-  await expect(page.locator('.nav-section-label', { hasText: /^Experimental$/ })).toHaveCount(0);
+  const experimentalSection = page.locator('.nav-section').filter({
+    has: page.locator('summary', { hasText: /^Experimental$/ })
+  });
+  await expect(experimentalSection).not.toHaveAttribute('open', '');
+  await experimentalSection.locator('summary').click();
+  await expect(experimentalSection.getByRole('link')).toHaveText([
+    'Operational Value',
+    'Friction',
+    'Skills',
+    'Steering',
+    'Marketplace',
+    'Ingestion'
+  ]);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   await expect(page.locator('.account-menu')).toHaveCount(0);
   await expect(page.locator('.refresh-button')).toHaveCount(0);
