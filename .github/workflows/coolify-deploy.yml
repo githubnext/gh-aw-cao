@@ -14,6 +14,7 @@ on:
     branches: [main]
     paths:
       - .github/workflows/cao-package.yml
+      - .github/workflows/cao-package-publish.yml
       - .github/workflows/coolify-deploy.yml
       - .dockerignore
       - dashboard/site/**
@@ -31,8 +32,85 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  authorize:
+    name: Authorize delivery trigger
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - id: authorization
+        name: Require trusted manual or rerun authority
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          ORIGINAL_ACTOR: ${{ github.actor }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+          WORKFLOW_REF: ${{ github.ref }}
+          WORKFLOW_SHA: ${{ github.sha }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            core.info('Starting delivery trigger authorization');
+            if (context.payload.repository.fork) {
+              throw new Error('Coolify delivery is refused for a fork repository payload');
+            }
+            const requiresActorAuthorization =
+              process.env.EVENT_NAME === 'workflow_dispatch' ||
+              Number(process.env.RUN_ATTEMPT) > 1;
+            if (requiresActorAuthorization) {
+              core.info('Checking original and rerun actor permissions');
+              for (const actor of new Set([
+                process.env.ORIGINAL_ACTOR,
+                process.env.TRIGGERING_ACTOR,
+              ])) {
+                const { data: access } = await github.rest.repos.getCollaboratorPermissionLevel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  username: actor,
+                });
+                if (!['admin', 'maintain'].includes(access.role_name)) {
+                  throw new Error('Manual and rerun delivery requires maintain or admin repository permission');
+                }
+              }
+              core.info('Required repository permissions verified');
+            }
+            if (process.env.EVENT_NAME === 'workflow_dispatch') {
+              const { data: repository } = await github.rest.repos.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+              });
+              const { data: branch } = await github.rest.repos.getBranch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                branch: repository.default_branch,
+              });
+              if (process.env.WORKFLOW_REF !== `refs/heads/${repository.default_branch}` ||
+                  process.env.WORKFLOW_SHA !== branch.commit.sha) {
+                throw new Error('Manual delivery must use the current default-branch workflow');
+              }
+              core.info('Current default-branch workflow verified');
+            }
+            core.info('Delivery trigger authorization completed');
+      - name: Summarize delivery authorization
+        if: always()
+        env:
+          AUTHORIZATION_STATUS: ${{ steps.authorization.outcome }}
+        run: |
+          {
+            echo "## Coolify delivery authorization"
+            echo
+            echo "<details><summary>Trigger authority: ${AUTHORIZATION_STATUS}</summary>"
+            echo
+            echo "- Check: repository origin, manual/rerun actor permissions, and trusted workflow source"
+            echo "- Data exposure: outcome only; actor and repository details are omitted"
+            echo "</details>"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
   classify:
     name: Select explicit deployment tier
+    needs: authorize
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -139,8 +217,8 @@ jobs:
               expectedSha = await peelTag(tag);
             } else if (process.env.EVENT_NAME === 'workflow_dispatch') {
               core.info('Classifying a manually selected deployment channel');
-              if (!['refs/heads/main', 'refs/heads/release'].includes(process.env.REF)) {
-                throw new Error('Manual delivery must select the main or release branch');
+              if (process.env.REF !== 'refs/heads/main') {
+                throw new Error('Manual delivery must select the current main branch');
               }
               tier = process.env.CHANNEL;
               if (!['alpha', 'stable'].includes(tier)) {
@@ -264,7 +342,7 @@ jobs:
           fi
           GH_TOKEN="${GITHUB_TOKEN}" gh attestation verify "oci://${image}" \
             --repo "${GITHUB_REPOSITORY}" \
-            --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/cao-package.yml" \
+            --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/cao-package-publish.yml" \
             --source-digest "${REVISION}" >/dev/null
           {
             echo "image=${image}"

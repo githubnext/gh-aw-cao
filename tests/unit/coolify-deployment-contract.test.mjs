@@ -96,6 +96,7 @@ test("sample Coolify workflow consumes the official main package", async () => {
 test("Coolify delivery consumes the official immutable CAO server package", async () => {
   const source = await text(".github/workflows/coolify-deploy.yml");
   const workflow = parse(source);
+  const authorize = workflow.jobs.authorize;
   const packageJob = workflow.jobs.package;
   const deploy = workflow.jobs.deploy;
   const resolve = packageJob.steps.find((step) => step.id === "package");
@@ -105,6 +106,12 @@ test("Coolify delivery consumes the official immutable CAO server package", asyn
   assert.deepEqual(workflow.on.push.branches, ["main"]);
   assert.deepEqual(workflow.on.release.types, ["released"]);
   assert.equal(workflow.on.pull_request, undefined);
+  assert.equal(workflow.jobs.classify.needs, "authorize");
+  assert.deepEqual(authorize.permissions, { contents: "read" });
+  const authorization = authorize.steps.find((step) => step.id === "authorization");
+  assert.match(authorization.with.script, /Manual and rerun delivery requires maintain or admin repository permission/);
+  assert.match(authorization.with.script, /Manual delivery must use the current default-branch workflow/);
+  assert.match(authorization.with.script, /process\.env\.TRIGGERING_ACTOR/);
   assert.equal(packageJob.needs, "classify");
   assert.deepEqual(packageJob.permissions, {
     attestations: "read",
@@ -125,7 +132,7 @@ test("Coolify delivery consumes the official immutable CAO server package", asyn
   assert.match(resolve.run, /org\.opencontainers\.image\.version/);
   assert.match(resolve.run, /metadata does not match the classified source/);
   assert.match(resolve.run, /gh attestation verify "oci:\/\/\$\{image\}"/);
-  assert.match(resolve.run, /--signer-workflow "\$\{GITHUB_REPOSITORY\}\/\.github\/workflows\/cao-package\.yml"/);
+  assert.match(resolve.run, /--signer-workflow "\$\{GITHUB_REPOSITORY\}\/\.github\/workflows\/cao-package-publish\.yml"/);
   assert.match(resolve.run, /--source-digest "\$\{REVISION\}"/);
   assert.match(source, /<summary>Package admission outcome: \$\{PACKAGE_STATUS\}<\/summary>/);
   assert.match(source, /package metadata and attestation bodies are omitted/);
@@ -167,6 +174,7 @@ test("Coolify delivery classifies immutable alpha and stable sources", async () 
   assert.match(classify.with.script, /exact stable version vX\.Y\.Z/);
   assert.doesNotMatch(classify.with.script, /prereleaseTag|tier === 'beta'/);
   assert.match(classify.with.script, /Manual alpha source is not the current main commit/);
+  assert.match(classify.with.script, /Manual delivery must select the current main branch/);
   assert.match(freshness.with.script, /Alpha source is no longer the main branch HEAD/);
   assert.match(freshness.with.script, /latest published vX\.Y\.Z release/);
   assert.match(freshness.with.script, /no longer peels to its classified commit SHA/);

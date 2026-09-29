@@ -169,7 +169,7 @@ jobs:
           fi
           GH_TOKEN="${GITHUB_TOKEN}" gh attestation verify "oci://${image}" \
             --repo "${GITHUB_REPOSITORY}" \
-            --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/cao-package.yml" \
+            --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/cao-package-publish.yml" \
             --source-digest "${REVISION}" >/dev/null
           echo "image=${image}" >> "${GITHUB_OUTPUT}"
       - name: Summarize sample package admission

@@ -251,14 +251,16 @@ immutable `sha-<full-commit>` identity; published releases receive their exact
 Docker-safe semantic version tag. Use the resulting digest in downstream
 Compose files. Multiple services can share that digest and select
 `serve-hosted`, `collect`, `backfill`, or `doctor` through `command`.
-Maintainers and administrators may also dispatch the workflow from an exact
-selected branch head; these builds use a non-colliding
-`dispatch-<full-commit>` identity.
+Maintainers and administrators may also dispatch the workflow from current
+protected `main` and provide an exact source branch through the required input;
+these builds use a non-colliding `dispatch-<full-commit>` identity.
 Publication is gated by Hadolint, actionlint, zizmor, Trivy, Grype, Dockle,
 source tests, and protected-main ancestry. Syft produces an SPDX SBOM, and the
-minimal package-write job attests both build provenance and the SBOM for the
-exact OCI digest. Downstream delivery verifies the signer workflow and source
-commit before admitting the image.
+protected-main `.github/workflows/cao-package-publish.yml` reusable workflow
+revalidates caller authority, source metadata, checksums, and OCI labels before
+attesting both build provenance and the SBOM for the exact OCI digest.
+Downstream delivery verifies that signer workflow and source commit before
+admitting the image.
 
 `server/coolify/compose.yml` expects:
 
@@ -292,9 +294,10 @@ affect Azure: Azure Functions continues to require `rediss://`.
 The conventional `.github/workflows/coolify-deploy.yml` resolves published
 release tags to exact commits and consumes the matching official `cao-server`
 package without rebuilding it. It refuses
-every fork repository payload. Manual runs accept a required `alpha` or
-`stable` channel only when `main` or `release` is selected. Alpha additionally
-requires `main` and its current commit. Stable resolves the latest eligible
+every fork repository payload. Manual runs require current maintain/admin
+permission for both the original and rerun actors and must use the current
+default-branch workflow. They accept a required `alpha` or `stable` channel.
+Alpha resolves current `main`; stable resolves the latest eligible
 published stable `vX.Y.Z` tag. The package
 workflow builds and scans that tag's exact commit rather than branch HEAD, and
 delivery verifies the selected package's OCI version and revision labels.

@@ -22,7 +22,7 @@ The Coolify deployment is an alternative to the Azure deployment. It doesn't rep
 | --- | --- |
 | Coolify | A self-hosted Coolify instance that can run Docker Compose resources. Its proxy must terminate TLS for a public host name that you control. |
 | Container runtime | Docker on the Coolify server, with access to pull images from GitHub Container Registry (GHCR). |
-| Container image | `ghcr.io/OWNER/REPOSITORY/cao-server@sha256:DIGEST`, published by `.github/workflows/cao-package.yml` from `server/Dockerfile`. Always refer to the image by its digest. |
+| Container image | `ghcr.io/OWNER/REPOSITORY/cao-server@sha256:DIGEST`, built by `.github/workflows/cao-package.yml` and published by the protected-main `.github/workflows/cao-package-publish.yml` reusable workflow from `server/Dockerfile`. Always refer to the image by its digest. |
 | Redis | A Redis service on the Coolify private network, or an external Redis service that uses TLS, such as [Upstash Redis](deployment-upstash.md). No Redis modules are required. Set the eviction policy to `noeviction`, and size memory for the number of data generations that you keep. |
 | Artifact volume | A named Docker volume, managed by Coolify, that contains a complete and verified dashboard payload. |
 | GitHub OAuth app | An OAuth app with the callback URL `https://PUBLIC-HOST/auth/callback`. |
@@ -154,19 +154,20 @@ downstream Docker Compose deployments can run separate `serve-hosted`,
 different command.
 
 Maintainers and administrators can also manually dispatch the package workflow
-from a specific branch selected in the Actions UI. The workflow rejects tags,
-stale branch selections, forks, and unauthorized original or rerun actors.
+from the current default branch and provide the branch to package through the
+required `source_branch` input. The workflow rejects non-default workflow
+sources, stale source branches, forks, and unauthorized original or rerun actors.
 Manual packages use the separate immutable `dispatch-<full-commit>` identity,
 so they cannot redefine automatic `main` or release identities.
 
 The `.github/workflows/coolify-deploy.yml` workflow does not rebuild the image.
 It resolves the matching immutable `cao-server` identity, verifies its version
-and revision labels, verifies GitHub artifact provenance from
-`cao-package.yml` for the expected source commit, and sends its digest to the
-protected deployment adapter. The package workflow keeps build and scanner
-execution in an unprivileged job, transfers a checksummed image archive to a
-minimal package-write job, and attaches both SLSA provenance and the SPDX SBOM
-to the published OCI digest.
+and revision labels, verifies GitHub artifact provenance from the protected-main
+`cao-package-publish.yml` signer for the expected source commit, and sends its
+digest to the protected deployment adapter. The package workflow keeps build
+and scanner execution without package-write authority, transfers a checksummed
+image archive plus exact source metadata to the protected reusable publisher,
+and attaches both SLSA provenance and the SPDX SBOM to the published OCI digest.
 
 Every package and delivery job writes a privacy-preserving step summary using
 non-nested `<details>` sections. Summaries contain check names, gate policies, and

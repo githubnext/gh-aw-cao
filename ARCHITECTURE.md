@@ -374,14 +374,17 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   gates, a Dockle hardening check, and Syft SPDX SBOM generation. Lint, test,
   and image build/scanning run as separate jobs with no package-write
   authority. Raw static-check outputs are retained in a short-lived artifact
-  even when a lint gate fails. A separate minimal
-  publisher verifies the checksummed image archive, publishes the exact digest,
-  and attaches GitHub SLSA provenance and SBOM attestations. Privacy-preserving
+  even when a lint gate fails. The protected-main
+  `.github/workflows/cao-package-publish.yml` reusable publisher revalidates
+  caller authority, exact source metadata, the checksummed image archive, and
+  OCI labels before publishing the exact digest and attaching GitHub SLSA
+  provenance and SBOM attestations. Privacy-preserving
   non-nested step summaries report only check scope, policy, and outcome. The
   workflow also admits manual branch builds only when both original and rerun
-  actors have maintain or admin permission and the selected ref is the branch's
-  current head. Those packages use a separate immutable dispatch identity and
-  cannot redefine main or release identities. The
+  actors have maintain or admin permission, the executing workflow is current
+  protected `main`, and the requested source branch resolves to its current
+  head. Those packages use a separate immutable dispatch identity and cannot
+  redefine main or release identities. The
   single image exposes the multi-role server binary so downstream Docker
   Compose deployments select `serve-hosted`, `collect`, `backfill`, or `doctor`
   per service without rebuilding the package. Canonical identities are
@@ -390,7 +393,10 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   only this package by verified digest, matching OCI source labels, and a
   GitHub attestation bound to the expected signer workflow and source commit. A push
   to `main` maps to alpha, while
-  published stable `vX.Y.Z` release events map to stable.
+  published stable `vX.Y.Z` release events map to stable. Manual and rerun
+  delivery requires current maintain/admin permission for both the original and
+  triggering actors, and manual delivery executes only from current protected
+  `main`.
   Manual alpha runs resolve the current `main` commit; manual stable runs
   resolve the exact commit of the latest eligible published stable `vX.Y.Z`
   release, regardless of whether `main` or `release` is selected. Every
