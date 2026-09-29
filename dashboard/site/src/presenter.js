@@ -1980,7 +1980,8 @@ function renderCustomView(pageId, view, index, sources, units, cardTemplates, he
       state,
       contextDetails,
       headingTag,
-      state === 'empty' ? emptyMessage : undefined
+      state === 'empty' ? emptyMessage : undefined,
+      state === 'unavailable' ? metadata?.['query-diagnostic'] : undefined
     );
   }
 
@@ -2205,9 +2206,10 @@ function renderPageTitleLink(target, candidate) {
  * @param {string[]} contextDetails
  * @param {'h3'|'h4'} [headingTag]
  * @param {string} [message]
+ * @param {unknown} [queryDiagnostic]
  * @returns {HTMLElement}
  */
-function renderCustomViewState(pageId, title, sourceName, availability, contextDetails, headingTag = 'h3', message) {
+function renderCustomViewState(pageId, title, sourceName, availability, contextDetails, headingTag = 'h3', message, queryDiagnostic) {
   return renderPageSection(pageId, title, [
     h(
       'div',
@@ -2221,7 +2223,7 @@ function renderCustomViewState(pageId, title, sourceName, availability, contextD
         'div',
         { className: 'view-state-card-body' },
         h('p', { className: 'view-state-message', 'data-view-availability': availability }, message ?? customViewAvailabilityMessage(availability)),
-        ...renderCustomViewStateDetails(sourceName, contextDetails)
+        ...renderCustomViewStateDetails(sourceName, contextDetails, queryDiagnostic)
       )
     )
   ], headingTag);

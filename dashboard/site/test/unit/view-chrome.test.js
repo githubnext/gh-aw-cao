@@ -101,6 +101,17 @@ describe('view chrome component helpers', () => {
     expect(withoutSource).toHaveLength(0);
   });
 
+  it('identifies unavailable query dependencies without displaying arbitrary diagnostics', () => {
+    const diagnostic = '$.dashboard.queries[mcp-top-tools]: input source "mcp-tool-totals" is unavailable.';
+    const details = renderCustomViewStateDetails('mcp-top-tools', [], diagnostic);
+    expect(details.map((item) => item.textContent)).toEqual([
+      'Affected source: mcp-top-tools',
+      'Unavailable query dependency: mcp-tool-totals'
+    ]);
+    expect(renderCustomViewStateDetails('mcp-top-tools', [], 'private payload: secret')).toHaveLength(1);
+    expect(renderCustomViewStateDetails('mcp-top-tools', [], '$.dashboard.queries[mcp-top-tools]: input source "<secret>" is unavailable.')).toHaveLength(1);
+  });
+
   it('wraps a rendered supplemental view in the shared view-disclosure summary toggle', () => {
     const rendered = document.createElement('div');
     rendered.textContent = 'body content';

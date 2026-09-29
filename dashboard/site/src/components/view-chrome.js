@@ -163,12 +163,19 @@ export function customViewAvailabilityMessage(availability) {
 /**
  * @param {string | null} sourceName
  * @param {string[]} contextDetails
+ * @param {unknown} queryDiagnostic
  * @returns {HTMLElement[]}
  */
-export function renderCustomViewStateDetails(sourceName, contextDetails) {
+export function renderCustomViewStateDetails(sourceName, contextDetails, queryDiagnostic) {
   const details = [];
   if (sourceName) {
     details.push(h('p', { className: 'view-source' }, `Affected source: ${sourceName}`));
+  }
+  const dependency = typeof queryDiagnostic === 'string'
+    ? /^\$\.dashboard\.queries\[[\w:-]+\]: input source "([\w:-]+)" is unavailable\.$/.exec(queryDiagnostic)?.[1]
+    : null;
+  if (dependency && dependency !== sourceName) {
+    details.push(h('p', { className: 'view-source' }, `Unavailable query dependency: ${dependency}`));
   }
   details.push(...renderContextChrome(contextDetails));
   return details;
