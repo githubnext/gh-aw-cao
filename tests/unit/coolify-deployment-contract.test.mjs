@@ -91,6 +91,12 @@ test("sample Coolify workflow consumes the official main package", async () => {
   assert.equal(deploy.needs, "package");
   assert.match(source, /node scripts\/deploy-coolify\.mjs/);
   assert.equal(maxEchoedDetailsDepth(source), 1);
+
+  const deploymentClient = await text("scripts/deploy-coolify.mjs");
+  assert.match(
+    deploymentClient,
+    /ghcr\\\.io\\\/githubnext\\\/gh-aw-cao\\\/cao-server@sha256:/,
+  );
 });
 
 test("Coolify delivery consumes the official immutable CAO server package", async () => {
@@ -122,6 +128,9 @@ test("Coolify delivery consumes the official immutable CAO server package", asyn
   });
   assert.deepEqual(deploy.needs, ["classify", "package"]);
   assert.equal(deploy.environment.name, "${{ needs.classify.outputs.environment }}");
+  assert.match(classify.with.script, /environment = 'coolify-alpha'/);
+  assert.match(classify.with.script, /environment = 'coolify-stable'/);
+  assert.match(classify.with.script, /environment = `coolify-\$\{tier\}`/);
   assert.equal(
     deploy.if,
     "needs.classify.outputs.eligible == 'true' && (github.event_name != 'push' || vars.COOLIFY_DEPLOY_ENABLED == 'true')",
