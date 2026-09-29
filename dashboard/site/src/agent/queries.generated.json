@@ -6553,6 +6553,73 @@
     }
   },
   {
+    "name": "ingestion-health",
+    "intent": "Show the current Redis-backed webhook and collection health snapshot.",
+    "from": "collection-health",
+    "select": [
+      {
+        "field": "configured"
+      },
+      {
+        "field": "health"
+      },
+      {
+        "field": "queue-depth"
+      },
+      {
+        "field": "pending-tasks"
+      },
+      {
+        "field": "dead-letters"
+      },
+      {
+        "field": "backfill"
+      },
+      {
+        "field": "last-projected"
+      },
+      {
+        "field": "last-webhook-at"
+      },
+      {
+        "field": "last-failure-at"
+      },
+      {
+        "field": "last-failure-code"
+      },
+      {
+        "field": "last-success-at"
+      },
+      {
+        "field": "webhook-received"
+      },
+      {
+        "field": "webhook-duplicate"
+      },
+      {
+        "field": "webhook-admission-failed"
+      },
+      {
+        "field": "task-queued"
+      },
+      {
+        "field": "task-coalesced"
+      },
+      {
+        "field": "collection-succeeded"
+      },
+      {
+        "field": "collection-failed"
+      },
+      {
+        "field": "collection-retried"
+      },
+      {
+        "field": "collection-dead-lettered"
+      }
+    ]
+  },
+  {
     "name": "marketplace-package-detail",
     "intent": "Select one normalized marketplace package by its resolver-produced source coordinate.",
     "from": "marketplace-packages"

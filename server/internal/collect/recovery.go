@@ -120,6 +120,7 @@ type Status struct {
 	Coverage        Coverage         `json:"coverage"`
 	QueueDepth      int64            `json:"queueDepth"`
 	PendingTasks    int64            `json:"pendingTasks"`
+	OldestPending   string           `json:"oldestPendingAge,omitempty"`
 	DeadLetters     int64            `json:"deadLetters"`
 	Backfill        string           `json:"backfill"`
 	LastProjected   string           `json:"lastProjected,omitempty"`
@@ -162,6 +163,11 @@ func (r Reporter) Snapshot(ctx context.Context) (Status, error) {
 	}
 	if status.PendingTasks, err = r.Queue.Pending(ctx); err != nil {
 		return status, err
+	}
+	if oldest, pendingErr := r.Queue.OldestPendingAge(ctx); pendingErr != nil {
+		return status, pendingErr
+	} else if oldest > 0 {
+		status.OldestPending = oldest.String()
 	}
 	if status.DeadLetters, err = r.Queue.DeadLetters(ctx); err != nil {
 		return status, err

@@ -409,6 +409,19 @@ export function loadCanonicalDashboardPage(sourceNames, context, pagination, opt
 }
 
 /**
+ * Reads the timestamp of the last fully committed browser snapshot.
+ * @returns {Promise<{ createdAt: string } | null>}
+ */
+export function loadDashboardSnapshotMetadata() {
+  if (usesRemoteDataBackend()) return Promise.resolve(null);
+  return /** @type {Promise<{ createdAt: string } | null>} */ (processRequest(
+    { operation: 'read-dashboard-snapshot' },
+    () => null,
+    false
+  ));
+}
+
+/**
  * Subscribes UI code to the latest rows for one dashboard view. Multiple
  * listeners for the same view share one worker subscription, and rapid worker
  * updates collapse into one notification containing the newest tables.

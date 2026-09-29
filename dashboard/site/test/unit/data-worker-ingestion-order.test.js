@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { adaptCachedGhAwJsonl } from '../../src/data/adapters/gh-aw-logs.js';
 import { CANONICAL_SCHEMA_VERSION } from '../../src/data/model/schema.js';
 import { normalize } from '../../src/data/normalize/index.js';
-import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
+import { DATABASE_NAME, readTransaction } from '../../src/data/storage/indexeddb.js';
 
 vi.mock('../../src/retry.js', async (importOriginal) => {
   const retry = /** @type {typeof import('../../src/retry.js')} */ (await importOriginal());
@@ -131,6 +131,10 @@ describe('canonical dashboard worker ingestion order', () => {
     }
 
     expect(posted.find((message) => message.id === 1)?.error).toBeUndefined();
+    await expect(readTransaction(indexedDB, 'dashboard-snapshot:complete')).resolves.toMatchObject({
+      kind: 'dashboard-snapshot',
+      createdAt: expect.any(String)
+    });
     expect(requestedUrls.slice(0, 4)).toEqual([
       'https://dashboard.example/inventory-sources.json',
       'https://dashboard.example/inventory-sources.json',

@@ -336,6 +336,13 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   rotation can retain the previous key until sessions and revocations drain.
   Refreshed sessions use an atomic compare-and-swap so logout cannot be undone
   by a concurrent OAuth refresh.
+- In the server-collection profile, delivery deduplication, repository debounce,
+  and task append are one durable Redis admission. Queue transitions append
+  replacements or dead letters before ACK in one Redis operation; completed
+  entries are ACKed and deleted atomically. The task stream applies backpressure
+  at its configured capacity and never trims recoverable work, so worker crashes
+  and ambiguous client failures may repeat collection but cannot silently lose
+  admitted work.
 - The Coolify image builds the dashboard and Go server together, runs as a
   non-root user, and mounts the authoritative artifact read-only from an
   externally populated named volume whose complete payload is hash-verified and

@@ -872,7 +872,8 @@ describe('canonical IndexedDB', () => {
       id: `transaction:${String(index).padStart(4, '0')}`,
       kind: 'fixture',
       createdAt: new Date(index).toISOString(),
-      ...(index === 0 ? { kind: 'ingest-normalized-jsonl', payloadHash: 'stable' } : {})
+      ...(index === 0 ? { kind: 'ingest-normalized-jsonl', payloadHash: 'stable' } : {}),
+      ...(index === 2 ? { kind: 'dashboard-snapshot' } : {})
     }));
     await writeRecords('transactions', existing);
 
@@ -886,6 +887,7 @@ describe('canonical IndexedDB', () => {
     expect(transactions).toHaveLength(1_000);
     expect(transactions.some(({ id }) => id === 'transaction:0000')).toBe(true);
     expect(transactions.some(({ id }) => id === 'transaction:0001')).toBe(false);
+    expect(transactions.some(({ id }) => id === 'transaction:0002')).toBe(true);
     expect(transactions.some(({ id }) => id === 'transaction:latest')).toBe(true);
   });
 

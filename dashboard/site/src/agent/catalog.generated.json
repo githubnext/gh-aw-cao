@@ -616,15 +616,16 @@
     },
     {
       "id": "indexing",
-      "title": "Indexing",
-      "description": "Monitor CAO Activity ingestion and inspect retained dashboard transactions.",
+      "title": "Ingestion",
+      "description": "Monitor live server-side collection health, CAO Activity ingestion, and retained dashboard transactions.",
       "experimental": true,
       "parameters": [],
       "queries": [
         "indexing-daily-records",
         "indexing-daily-workflow-runs",
         "indexing-database-table-counts",
-        "indexing-transactions"
+        "indexing-transactions",
+        "ingestion-health"
       ]
     },
     {
@@ -2675,6 +2676,23 @@
           "tools",
           "workflows"
         ]
+      }
+    },
+    {
+      "id": "ingestion-health",
+      "intent": "Show the current Redis-backed webhook and collection health snapshot.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "collection-health"
+      ],
+      "used-by-pages": [
+        "indexing"
+      ],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires collection-health, which the local SQLite projection does not provide."
       }
     },
     {

@@ -269,6 +269,10 @@ func (d Doctor) checkQueue(ctx context.Context) Check {
 	if err != nil {
 		return failed(id, areaCollect, title, err)
 	}
+	oldestPending, err := queue.OldestPendingAge(ctx)
+	if err != nil {
+		return failed(id, areaCollect, title, err)
+	}
 	deadLetters, err := queue.DeadLetters(ctx)
 	if err != nil {
 		return failed(id, areaCollect, title, err)
@@ -277,6 +281,7 @@ func (d Doctor) checkQueue(ctx context.Context) Check {
 	details := []Detail{
 		detail("backlog", fmt.Sprint(depth)),
 		detail("pending", fmt.Sprint(pending)),
+		detail("oldestPendingAge", oldestPending.String()),
 		detail("deadLetters", fmt.Sprint(deadLetters)),
 		detail("maxLength", fmt.Sprint(maximum)),
 	}
@@ -322,13 +327,13 @@ func classifyQueueBacklog(depth, pending, deadLetters int64, maximum int) queueB
 			reason:  queueBacklogReasonDeadLetters,
 		}
 	}
-	// The stream is trimmed at MaxLength, so a backlog approaching it means
-	// work is about to be discarded rather than merely delayed.
+	// Admission fails closed at MaxLength, so a backlog approaching it means
+	// GitHub will need to retry deliveries until workers catch up.
 	if maximum > 0 && depth >= int64(maximum*8/10) {
 		return queueBacklogClassification{
 			status:  StatusWarn,
 			summary: fmt.Sprintf("the backlog of %d is within twenty percent of the %d bound", depth, maximum),
-			remedy:  "workers are not keeping up and trimming will start discarding tasks; scale collection workers",
+			remedy:  "workers are not keeping up and webhook admission will apply backpressure; scale collection workers",
 			reason:  queueBacklogReasonNearMaxLength,
 		}
 	}

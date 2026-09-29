@@ -17,7 +17,10 @@ import { relationshipErrors } from './data/model/schema.js';
 import {
   DATABASE_VERSION,
   ENTITY_STORES,
-  readCollections
+  readCollections,
+  readTransaction,
+  readTransactions,
+  recordTransaction
 } from './data/storage/indexeddb.js';
 import { queryDailyOverviewAggregateSources } from './data/queries/daily-aggregate-fast-path.js';
 import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
@@ -31,6 +34,27 @@ import { withRetries } from './retry.js';
 
 const debugIngestion = createDebug('data:ingestion');
 const debugPerformance = createDebug('data:performance');
+const DASHBOARD_SNAPSHOT_TRANSACTION_ID = 'dashboard-snapshot:complete';
+
+async function readDashboardSnapshotMetadata() {
+  const snapshot = await readTransaction(indexedDB, DASHBOARD_SNAPSHOT_TRANSACTION_ID);
+  if (typeof snapshot?.createdAt === 'string') return { createdAt: snapshot.createdAt };
+
+  const legacySnapshot = (await readTransactions(indexedDB))
+    .filter((transaction) => transaction.kind === 'ingest-dashboard-sources'
+      && typeof transaction.createdAt === 'string'
+      && !String(transaction.payloadScope ?? '').endsWith('#inventory-phase'))
+    .toSorted((left, right) => String(left.createdAt).localeCompare(String(right.createdAt)))
+    .at(-1);
+  if (typeof legacySnapshot?.createdAt !== 'string') return null;
+  const migratedSnapshot = {
+    id: DASHBOARD_SNAPSHOT_TRANSACTION_ID,
+    kind: 'dashboard-snapshot',
+    createdAt: legacySnapshot.createdAt
+  };
+  await recordTransaction(indexedDB, migratedSnapshot).catch(() => undefined);
+  return { createdAt: migratedSnapshot.createdAt };
+}
 /**
  * Forces every published activity shard to be ingested before results are
  * published, so diagnostics and measurement runs observe a fully ingested
@@ -77,6 +101,7 @@ async function* responseChunks(body) {
 
 /** @type {{ logicalSources: Record<string, import('./presenter.js').LogicalSourceInput>, revision: number } | null} */
 let liveDashboard = null;
+let hasCompleteDashboardSnapshot = false;
 /**
  * The narrowest phase whose canonical data is currently published. While a
  * partial phase is published, only subscriptions fully satisfied by that
@@ -608,6 +633,10 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
  * @returns {Promise<void>}
  */
 function refreshDashboardSubscriptions(logicalSources, phase) {
+  if (phase !== 'complete' && hasCompleteDashboardSnapshot && !eagerIngest) {
+    debugIngestion('preserving complete dashboard snapshot during refresh', { phase });
+    return Promise.resolve();
+  }
   // Phases are published in widening order within one ingestion, which always
   // ends at 'complete', so a narrower phase never supersedes a wider one.
   const publication = phase !== 'complete' && eagerIngest ? 'complete' : phase;
@@ -695,6 +724,12 @@ export function publishedPhasedActivityShards(hashes) {
  * @returns {unknown}
  */
 export function processDataRequest(request, signal) {
+  if (request?.operation === 'read-dashboard-snapshot') {
+    return readDashboardSnapshotMetadata().then((snapshot) => {
+      hasCompleteDashboardSnapshot = snapshot !== null;
+      return snapshot;
+    });
+  }
   if (request?.operation === 'query-repository-memory') {
     return queryRepositoryMemory(/** @type {Record<string, unknown>} */ (request), signal);
   }
@@ -729,6 +764,8 @@ export function processDataRequest(request, signal) {
     const requested = requestedSourceNames(request.sourceNames);
     const context = dashboardContext(request.context);
     return (async () => {
+      const previousSnapshot = await readDashboardSnapshotMetadata();
+      hasCompleteDashboardSnapshot = previousSnapshot !== null;
       dashboardIngestionCount += 1;
       const progress = startIngestionProgress(
         undefined,
@@ -992,6 +1029,12 @@ export function processDataRequest(request, signal) {
         }
         if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
         progress.log('Refreshing active dashboard queries.');
+        await recordTransaction(indexedDB, {
+          id: DASHBOARD_SNAPSHOT_TRANSACTION_ID,
+          kind: 'dashboard-snapshot',
+          createdAt: new Date().toISOString()
+        });
+        hasCompleteDashboardSnapshot = true;
         // A different tab may have committed the current payload to IndexedDB,
         // leaving this worker's in-memory query results stale even when this
         // ingestion reports no local writes.
