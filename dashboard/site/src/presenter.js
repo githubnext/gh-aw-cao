@@ -818,12 +818,16 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
             'comment',
             'semantic-prompt'
           );
-          prompt.classList.add('semantic-prompt-action');
+          prompt.classList.add(view.mark === 'chart' ? 'chart-prompt-action' : 'semantic-prompt-action');
           const section = rendered.matches('.page-section') ? rendered : null;
           if (section) {
             section.classList.add('semantic-prompt-view');
             const heading = section.querySelector('h3, h4');
-            if (heading) heading.after(prompt);
+            if (heading && view.mark === 'chart') {
+              const titleRow = h('div', { className: 'chart-prompt-heading' });
+              heading.before(titleRow);
+              titleRow.append(heading, prompt);
+            } else if (heading) heading.after(prompt);
             else section.prepend(prompt);
           } else {
             rendered = h('div', { className: 'semantic-prompt-view' },

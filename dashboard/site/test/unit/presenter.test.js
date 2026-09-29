@@ -147,6 +147,10 @@ describe('semantic view prompt action', () => {
     });
     const button = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('[data-view-id="health-chart"] .table-intent-button'));
     expect(button?.getAttribute('aria-label')).toBe('Fix it: Health chart');
+    const heading = rendered.querySelector('[data-view-id="health-chart"] .chart-prompt-heading');
+    expect(heading?.querySelector('h3, h4')?.textContent).toBe('Health chart');
+    expect(heading?.querySelector('.chart-prompt-action .table-intent-button')).toBe(button);
+    expect(button?.querySelector('.octicon')).not.toBeNull();
     button?.click();
     const preview = rendered.querySelector('.table-intent-preview')?.textContent ?? '';
     expect(preview).toContain('Show health\n\nCompare workflow health');
@@ -182,7 +186,10 @@ describe('semantic view prompt action', () => {
         const rendered = renderDashboardView({ document, sources: {} });
         const button = rendered.querySelector('[data-view-id="test-chart"] .table-intent-button');
         expect(Boolean(button), `${chart} ${prompt ?? 'default'} annotated=${annotated}`).toBe(expected);
-        if (expected) expect(button?.getAttribute('aria-label')).toBe('Fix it: Test chart');
+        if (expected) {
+          expect(button?.getAttribute('aria-label')).toBe('Fix it: Test chart');
+          expect(rendered.querySelector('[data-view-id="test-chart"] .chart-prompt-heading > .chart-prompt-action .table-intent-button')).toBe(button);
+        }
         if (prompt === 'always') {
           button?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
           expect(rendered.querySelector('.table-intent-preview')?.textContent).toContain('View: test-chart');
@@ -1006,6 +1013,7 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] [data-chart-widget="pie"]')).not.toBeNull();
     const prompt = page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] .table-intent-button');
     expect(prompt?.getAttribute('aria-label')).toBe('Fix it: Most blocked domains');
+    expect(page?.querySelector('.pie-chart-card > .chart-prompt-heading > .chart-prompt-action .table-intent-button')).toBe(prompt);
     prompt?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Each investigated block has a documented disposition');
     expect(page?.querySelector('[data-chart-category="blocked.example"]')).not.toBeNull();
