@@ -1,3 +1,7 @@
+import { createDebug } from '../../debug.js';
+
+const debugSchema = createDebug('schema');
+
 export const CANONICAL_SCHEMA_VERSION = 22;
 
 export const ENTITY_KINDS = /** @type {const} */ ([
@@ -85,6 +89,11 @@ export function canonicalTimestamp(value, field) {
  * @returns {string[]}
  */
 export function relationshipErrors(batch) {
+  debugSchema({
+    event: 'validation-start',
+    workflowCount: batch.workflows.length,
+    runCount: batch.runs.length
+  });
   const campaignRecords = batch.campaigns ?? [];
   const campaignsById = new Map(campaignRecords.map((record) => [record.id, record]));
   const workflowsById = new Map(batch.workflows.map((record) => [record.id, record]));
@@ -141,6 +150,12 @@ export function relationshipErrors(batch) {
   }
   for (const record of batch.operationalValues ?? []) {
     requireReference(record, 'repositoryId', 'repositories');
+  }
+
+  if (errors.length > 0) {
+    debugSchema({ event: 'validation-failed', errorCount: errors.length });
+  } else {
+    debugSchema({ event: 'validation-passed' });
   }
 
   return errors;

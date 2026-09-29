@@ -14,9 +14,9 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
-// defaultQueueMaxLength bounds the task and dead-letter streams. Acked stream
-// entries persist until trimmed, so an untrimmed queue grows monotonically
-// with event volume rather than with outstanding work.
+// defaultQueueMaxLength bounds admitted outstanding work. Completed entries
+// are deleted after ACK; reaching the bound rejects admission for retry rather
+// than trimming work that a consumer may still need to recover.
 const defaultQueueMaxLength = 200_000
 
 // CollectorConfig configures the optional server collection profile.
@@ -64,8 +64,7 @@ type CollectorConfig struct {
 	Consumer string
 	// RecoverDeliveries enables webhook delivery replay for gap recovery.
 	RecoverDeliveries bool
-	// QueueMaxLength bounds the task and dead-letter streams so an unattended
-	// queue cannot grow Redis without bound.
+	// QueueMaxLength applies backpressure to the outstanding task stream.
 	QueueMaxLength int
 	// AdmitOnly runs the admission half of the profile alone: the process
 	// verifies deliveries and enqueues work, and never collects or projects.
@@ -276,7 +275,7 @@ func (c *Collector) Reconcile(ctx context.Context, event GitHubWebhook) (ingest.
 // Admit queues collection for one verified delivery without taking the global
 // projection lease, so concurrent deliveries never contend.
 func (c *Collector) Admit(ctx context.Context, event GitHubWebhook) (map[string]any, error) {
-	admission, err := c.admitter.Admit(ctx, event.Event, event.Payload)
+	admission, err := c.admitter.AdmitDelivery(ctx, event.Event, event.Payload, event.Delivery, deliveryTTL)
 	if err != nil {
 		if errors.Is(err, collect.ErrNotEnrolled) {
 			// Out-of-scope repositories are acknowledged, not retried.
@@ -284,7 +283,11 @@ func (c *Collector) Admit(ctx context.Context, event GitHubWebhook) (map[string]
 		}
 		return nil, err
 	}
-	return map[string]any{"kind": string(admission.Kind), "queued": admission.Enqueued}, nil
+	return map[string]any{
+		"kind":      string(admission.Kind),
+		"queued":    admission.Enqueued,
+		"duplicate": admission.Duplicate,
+	}, nil
 }
 
 // Start launches cold start, in-process workers, and delivery recovery.
