@@ -74,7 +74,7 @@ test("issue-creating workers use campaign and worker title prefixes and labels",
 
 test("shared control puts worker provenance in a linked footer instead of a section", () => {
   const control = workflow("shared/control.md");
-  assert.ok(control.includes("When `correlation_id` is present, append one final blockquote line to safe-output issues, pull requests, or comments: `> cao: <central_repo>, correlation: <correlation_id>, run: [view run](<control_plane_run_url>)`"));
+  assert.ok(control.includes('When `correlation_id` is present, append one final blockquote line to safe-output issues, pull requests, or comments: `> cao: <central_repo>, correlation: <a href="<control_plane_run_url>"><correlation_id></a>`'));
   assert.ok(control.includes("Replace any importing workflow's `### Control Plane` section requirement with this footer; do not include both."));
 });
 
