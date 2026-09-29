@@ -90,7 +90,7 @@ func (q Queue) Ensure(ctx context.Context) error {
 // It reports whether a new task was appended; a collapsed event is not an
 // error, it is the debounce working.
 func (q Queue) Enqueue(ctx context.Context, task Task) (bool, error) {
-	return q.enqueue(ctx, task, "")
+	return q.enqueue(ctx, task)
 }
 
 // EnqueueDelivery atomically deduplicates a GitHub delivery and durably
@@ -110,7 +110,7 @@ func (q Queue) EnqueueDelivery(ctx context.Context, task Task, delivery string, 
 	return result == redisx.DeliveryEnqueued, result == redisx.DeliveryDuplicate, nil
 }
 
-func (q Queue) enqueue(ctx context.Context, task Task, delivery string) (bool, error) {
+func (q Queue) enqueue(ctx context.Context, task Task) (bool, error) {
 	repository, payload, err := q.prepareTask(task)
 	if err != nil {
 		return false, err

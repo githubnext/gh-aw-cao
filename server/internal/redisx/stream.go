@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
@@ -49,12 +50,15 @@ func (s *Store) StreamEnqueue(
 	maxLength int64,
 	fields map[string]string,
 ) (bool, error) {
+	if len(fields) == 0 {
+		return false, errors.New("stream entries require at least one field")
+	}
 	script := `
-	if ARGV[1] ~= "0" and redis.call("XLEN", KEYS[1]) >= tonumber(ARGV[1]) then
-	  return -1
-	end
 	if ARGV[2] == "1" and redis.call("EXISTS", KEYS[2]) == 1 then
 	  return 0
+	end
+	if ARGV[1] ~= "0" and redis.call("XLEN", KEYS[1]) >= tonumber(ARGV[1]) then
+	  return -1
 	end
 	redis.call("XADD", KEYS[1], "*", unpack(ARGV, 4))
 	if ARGV[2] == "1" then
@@ -106,6 +110,9 @@ func (s *Store) StreamEnqueueDelivery(
 	maxLength int64,
 	fields map[string]string,
 ) (DeliveryAdmission, error) {
+	if len(fields) == 0 {
+		return DeliveryDuplicate, errors.New("stream entries require at least one field")
+	}
 	script := `
 	if redis.call("EXISTS", KEYS[1]) == 1 then
 	  return 0
@@ -146,7 +153,12 @@ func (s *Store) StreamReplaceAndAck(
 	source, group, messageID, destination string,
 	fields map[string]string,
 ) error {
+	if len(fields) == 0 {
+		return errors.New("stream entries require at least one field")
+	}
 	script := `
+	local pending = redis.call("XPENDING", KEYS[1], ARGV[1], ARGV[2], ARGV[2], 1)
+	if #pending == 0 then return 0 end
 	redis.call("XADD", KEYS[2], "*", unpack(ARGV, 3))
 	local acked = redis.call("XACK", KEYS[1], ARGV[1], ARGV[2])
 	if acked == 1 then redis.call("XDEL", KEYS[1], ARGV[2]) end
@@ -160,16 +172,15 @@ func (s *Store) StreamReplaceAndAck(
 }
 
 // StreamAckAndDelete removes completed work only after consumer-group ACK.
-func (s *Store) StreamAckAndDelete(ctx context.Context, stream, group string, ids ...string) error {
-	if len(ids) == 0 {
+func (s *Store) StreamAckAndDelete(ctx context.Context, stream, group, messageID string) error {
+	if messageID == "" {
 		return nil
 	}
 	script := `
-	local acked = redis.call("XACK", KEYS[1], ARGV[1], unpack(ARGV, 2))
-	if acked > 0 then redis.call("XDEL", KEYS[1], unpack(ARGV, 2)) end
+	local acked = redis.call("XACK", KEYS[1], ARGV[1], ARGV[2])
+	if acked == 1 then redis.call("XDEL", KEYS[1], ARGV[2]) end
 	return acked`
-	arguments := append([]string{"EVAL", script, "1", s.Key(stream), group}, ids...)
-	_, err := s.Client.Do(ctx, arguments...)
+	_, err := s.Client.Do(ctx, "EVAL", script, "1", s.Key(stream), group, messageID)
 	return err
 }
 
@@ -313,7 +324,20 @@ func (s *Store) StreamOldestPendingAge(ctx context.Context, stream, group string
 	if !ok || len(entry) < 3 {
 		return 0, errors.New("unexpected XPENDING response")
 	}
-	return time.Duration(toInt64(entry[2])) * time.Millisecond, nil
+	id := fmt.Sprint(entry[0])
+	milliseconds, _, found := strings.Cut(id, "-")
+	if !found {
+		return 0, errors.New("unexpected pending message ID")
+	}
+	enqueuedAt, err := strconv.ParseInt(milliseconds, 10, 64)
+	if err != nil {
+		return 0, errors.New("unexpected pending message ID")
+	}
+	age := time.Since(time.UnixMilli(enqueuedAt))
+	if age < 0 {
+		return 0, nil
+	}
+	return age, nil
 }
 
 // SetAdd adds members to a set and reports how many were new.
