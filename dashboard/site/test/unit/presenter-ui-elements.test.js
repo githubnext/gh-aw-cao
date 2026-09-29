@@ -108,6 +108,9 @@ describe('dashboard sidebar', () => {
 
     const labels = [...sidebar.querySelectorAll('.nav-section-label')].map((element) => element.textContent);
     expect(labels).toEqual(['Main', 'Experimental']);
+    const experimentalSection = sidebar.querySelector('[data-nav-section="Experimental"]');
+    expect(experimentalSection).toBeInstanceOf(HTMLDetailsElement);
+    expect(/** @type {HTMLDetailsElement} */ (experimentalSection).open).toBe(false);
   });
 
   it('labels experimental pages in desktop and mobile navigation', () => {

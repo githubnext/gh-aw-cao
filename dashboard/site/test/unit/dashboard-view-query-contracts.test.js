@@ -102,10 +102,19 @@ function declaredQueryReferences(value) {
 }
 
 describe('dashboard view query contracts', () => {
-  it('does not retain core experimental navigation sections', () => {
+  it('groups navigable experimental pages in one experimental section', () => {
     expect(dashboard.navigation.filter(
       (/** @type {{ experimental?: boolean }} */ section) => section.experimental === true
-    )).toEqual([]);
+    )).toEqual([{
+      label: 'Experimental',
+      experimental: true,
+      pages: [
+        'operational-value',
+        'friction',
+        'skills',
+        'steering'
+      ]
+    }]);
   });
 
   it('renders the Cost page with concise titles and a workflow bar chart in the Data section', () => {
@@ -172,11 +181,11 @@ describe('dashboard view query contracts', () => {
     const page = dashboard.pages.find(
       (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'operational-value'
     );
-    const dataSection = dashboard.navigation.find(
-      (/** @type {Record<string, unknown>} */ section) => section.label === 'Data'
+    const experimentalSection = dashboard.navigation.find(
+      (/** @type {Record<string, unknown>} */ section) => section.experimental === true
     );
 
-    expect(/** @type {Record<string, unknown> | undefined} */ (dataSection)?.pages)
+    expect(/** @type {Record<string, unknown> | undefined} */ (experimentalSection)?.pages)
       .toContain('operational-value');
     expect(page).toMatchObject({
       kind: 'built-in',

@@ -53,7 +53,7 @@ The rebuild validates the transaction schema and version of every line, orders r
 Install the campaign into a Central Agentic Ops control repository:
 
 ```bash
-gh aw add githubnext/gh-aw-cao/eslint-rules@<catalog-release>
+gh aw add githubnext/gh-aw-cao/eslint-rules
 ```
 
 The campaign is runnable after credentials, when needed, and checked-in policy are configured.

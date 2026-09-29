@@ -827,7 +827,7 @@ describe('dashboard document validation', () => {
     const skills = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'skills');
 
     expect(document.dashboard.navigation.find(
-      (/** @type {{ label: string }} */ section) => section.label === 'Data'
+      (/** @type {{ experimental?: boolean }} */ section) => section.experimental === true
     ).pages).toContain('skills');
     expect(skills).toMatchObject({
       kind: 'custom',
