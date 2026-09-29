@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { enablePullRefresh } from '../../src/components/pull-refresh.js';
 
-/** @param {string} type @param {number} clientY */
+/** @param {HTMLElement} scroller @param {string} type @param {number} clientY */
 function touch(scroller, type, clientY) {
   const event = new Event(type, { bubbles: true });
   Object.defineProperty(event, 'touches', {
@@ -19,6 +19,7 @@ describe('pull refresh component', () => {
 
     enablePullRefresh({ scroller, view: window, isActive: () => true, signal: controller.signal });
 
+    /** @type {HTMLDivElement | null} */
     const indicator = scroller.querySelector('.overview-pull-refresh');
     expect(indicator?.hidden).toBe(true);
     expect(indicator?.textContent).toBe('Pull down to refresh');
@@ -36,7 +37,7 @@ describe('pull refresh component', () => {
     enablePullRefresh({ scroller, view: window, isActive: () => false, signal: controller.signal });
     touch(scroller, 'touchstart', 100);
     touch(scroller, 'touchmove', 180);
-    expect(scroller.querySelector('.overview-pull-refresh')?.hidden).toBe(true);
+    expect(/** @type {HTMLDivElement} */ (scroller.querySelector('.overview-pull-refresh'))?.hidden).toBe(true);
     touch(scroller, 'touchend', 180);
 
     expect(onRefresh).not.toHaveBeenCalled();
