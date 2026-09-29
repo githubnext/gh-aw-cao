@@ -350,6 +350,7 @@ func writeTestFile(t *testing.T, path string, content []byte) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		t.Fatal(err)
 	}
+	// #nosec G703 -- callers provide only paths within their test-owned scratch directory.
 	if err := os.WriteFile(path, content, 0o600); err != nil {
 		t.Fatal(err)
 	}

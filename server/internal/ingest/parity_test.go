@@ -24,7 +24,6 @@ func TestEvidenceShardPipelineParity(t *testing.T) {
 	} else if err != nil {
 		t.Fatal(err)
 	}
-	const deployed = "../../testdata/deployed-subset"
 	directory := scratchDirectory(t)
 	evidence, err := os.ReadFile("testdata/evidence.jsonl")
 	if err != nil {
@@ -49,20 +48,25 @@ func TestEvidenceShardPipelineParity(t *testing.T) {
 		t.Fatalf("expected two run-phase and four record-phase evidence records, got %d and %d", len(runEvidence), len(recordEvidence))
 	}
 
+	runFixture, err := os.ReadFile("../../testdata/deployed-subset/gh-aw-logs-runs/subset.jsonl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	recordFixture, err := os.ReadFile("../../testdata/deployed-subset/gh-aw-logs-records/subset.jsonl")
+	if err != nil {
+		t.Fatal(err)
+	}
 	manifest := Manifest{}
 	paths := map[string]string{}
 	for _, phase := range []struct {
 		name     string
 		evidence []json.RawMessage
+		fixture  []byte
 	}{
-		{"runs", runEvidence}, {"records", recordEvidence},
+		{"runs", runEvidence, runFixture},
+		{"records", recordEvidence, recordFixture},
 	} {
-		source := filepath.Join(deployed, "gh-aw-logs-"+phase.name, "subset.jsonl")
-		original, err := os.ReadFile(source)
-		if err != nil {
-			t.Fatal(err)
-		}
-		lines := bytes.Split(bytes.TrimSpace(original), []byte("\n"))
+		lines := bytes.Split(bytes.TrimSpace(phase.fixture), []byte("\n"))
 		var header map[string]any
 		if err := json.Unmarshal(lines[0], &header); err != nil {
 			t.Fatal(err)
@@ -117,7 +121,8 @@ func TestEvidenceShardPipelineParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	command := exec.Command("node", "testdata/compare.mjs", paths["runs"], paths["records"])
+	// #nosec G204 -- arguments are shard files created in this test's scratch directory.
+	command := exec.CommandContext(t.Context(), "node", "testdata/compare.mjs", paths["runs"], paths["records"])
 	output, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("JS canonical ingestion/query failed: %v\n%s", err, output)
