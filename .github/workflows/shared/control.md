@@ -92,6 +92,20 @@ tools:
 jobs:
   pre-activation:
     pre-steps:
+      - name: Resolve CAO precompute read scope
+        id: cao_precompute_read_scope
+        env:
+          CAO_READ_REPOSITORY: ${{ github.aw.import-inputs.read_repository }}
+        run: |
+          set -euo pipefail
+          IFS=/ read -r owner repository extra <<< "$CAO_READ_REPOSITORY"
+          if [[ -z "$owner" || -z "$repository" || -n "$extra" ]]; then
+            echo "Invalid CAO precompute read repository: $CAO_READ_REPOSITORY" >&2
+            exit 1
+          fi
+          echo "owner=$owner" >> "$GITHUB_OUTPUT"
+          echo "repository=$repository" >> "$GITHUB_OUTPUT"
+
       - name: Generate CAO pre-activation GitHub App token
         id: cao_pre_activation_app_token
         env:
@@ -102,11 +116,19 @@ jobs:
         with:
           client-id: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_READ_APP_ID || '' }}
           private-key: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY || '' }}
-          owner: ${{ github.repository_owner }}
-          repositories: ${{ github.event.repository.name }}
+          owner: ${{ steps.cao_precompute_read_scope.outputs.owner }}
+          repositories: ${{ steps.cao_precompute_read_scope.outputs.repository }}
           github-api-url: ${{ github.api_url }}
-          permission-actions: read
-          permission-contents: read
+          permission-actions: ${{ github.aw.import-inputs.read_actions }}
+          permission-checks: ${{ github.aw.import-inputs.read_checks }}
+          permission-contents: ${{ github.aw.import-inputs.read_contents }}
+          permission-issues: ${{ github.aw.import-inputs.read_issues }}
+          permission-packages: ${{ github.aw.import-inputs.read_packages }}
+          permission-pull-requests: ${{ github.aw.import-inputs.read_pull_requests }}
+          permission-secret-scanning-alerts: ${{ github.aw.import-inputs.read_secret_scanning_alerts }}
+          permission-security-events: ${{ github.aw.import-inputs.read_security_events }}
+          permission-statuses: ${{ github.aw.import-inputs.read_statuses }}
+          permission-vulnerability-alerts: ${{ github.aw.import-inputs.read_vulnerability_alerts }}
 
       - name: Checkout CAO control modules
         id: cao_control_checkout

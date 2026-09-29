@@ -163,8 +163,9 @@ test("Dependabot worker maintains a durable parent and one-PR child tasks withou
   const alertFetch = lock.indexOf("name: Fetch target Dependabot alert evidence");
   assert.ok(credential >= 0 && handoff > credential && alertFetch > handoff);
   assert.match(lock.slice(alertFetch), /github-token: \$\{\{ steps\.cao_target_read_credential\.outputs\.token \}\}/);
-  assert.match(lock.slice(alertFetch), /GITHUB_ACTION_TOKEN: \$\{\{ github\.token \}\}/);
-  assert.match(lock.slice(alertFetch), /getOctokit\(process\.env\.GITHUB_ACTION_TOKEN\)/);
+  assert.doesNotMatch(lock.slice(alertFetch), /GITHUB_ACTION_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.match(lock.slice(alertFetch), /requestAlerts\('GET \/repos\/\{owner\}\/\{repo\}'/);
+  assert.match(lock.slice(alertFetch), /if \(!repository\) return/);
   assert.doesNotMatch(lock.slice(alertFetch), /require\('@actions\/github'\)/);
   assert.match(lock.slice(alertFetch), /precompute\.target_repo !== target/);
   assert.match(lock.slice(alertFetch), /GET \/repos\/\{owner\}\/\{repo\}\/dependabot\/alerts/);

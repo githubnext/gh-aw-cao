@@ -161,7 +161,6 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           TARGET_REPO: ${{ inputs.target_repo }}
-          GITHUB_ACTION_TOKEN: ${{ github.token }}
         with:
           github-token: ${{ steps.cao_target_read_credential.outputs.token }}
           script: |
@@ -191,8 +190,8 @@ jobs:
                 return null;
               }
             };
-            const repository = await getOctokit(process.env.GITHUB_ACTION_TOKEN)
-              .request('GET /repos/{owner}/{repo}', { owner, repo });
+            const repository = await requestAlerts('GET /repos/{owner}/{repo}', { owner, repo });
+            if (!repository) return;
             if (repository.data?.private !== false) {
               throw new Error('Dependabot alert prefetch requires a verified public target repository');
             }
