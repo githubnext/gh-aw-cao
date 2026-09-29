@@ -319,7 +319,7 @@ func scheduledTaskMember(id string, fields map[string]string) (string, error) {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	orderedFields := make([]string, 0, len(fields)*2)
+	orderedFields := make([]string, 0, len(fields))
 	for _, name := range names {
 		orderedFields = append(orderedFields, name, fields[name])
 	}
