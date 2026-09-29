@@ -42,6 +42,18 @@ function browserStorage() {
 }
 
 /**
+ * Resets local dashboard data using the current browser's storage, as the
+ * reset control does. Used for recovery when startup data preparation stalls.
+ * @param {{ onBlocked?: () => void }} [options]
+ */
+export async function resetBrowserDashboardData(options = {}) {
+  const storage = browserStorage();
+  const indexedDB = globalThis.window?.indexedDB;
+  if (!storage || !indexedDB) throw new Error('Local browser storage is unavailable.');
+  await resetLocalDashboardData(storage, indexedDB, options);
+}
+
+/**
  * @param {{ storage?: Storage, indexedDB?: IDBFactory, reload?: () => void }} [options]
  * @returns {HTMLElement}
  */

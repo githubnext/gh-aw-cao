@@ -1,6 +1,7 @@
       import { dashboardPagePaginatedSourceBindings, dashboardPageSourceNames, disposeDashboard, renderDashboard, updateWithViewTransition } from "./presenter.js";
       import { setLoadingProgressState } from "./loading-progress.js";
-      import { offerCancelCommand } from "./cancel-command.js";
+      import { isDataProcessingCancellation, offerCancelCommand, offerStartupRecovery } from "./cancel-command.js";
+      import { resetBrowserDashboardData } from "./components/reset-dashboard-control.js";
       import { loadDashboardQuerySources, processDashboardQueries, subscribeWorkerLoadingProgress } from "./data-processor.js";
       import { startDashboardData } from "./data/startup.js";
       import { renderDashboardCurrentStatus, renderDashboardSnapshotStatus, renderRefreshError } from "./components/refresh-error.js";
@@ -923,10 +924,20 @@
               renderSources(sources, state, true, loadPageSources, retryRefresh, snapshot),
           });
         } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          const failure = new Error(`Unable to load live dashboard data: ${message}`, { cause: error });
-          root.textContent = failure.message;
-          throw failure;
+          if (isDataProcessingCancellation(error)) {
+            // A user-requested cancel is not a fatal failure: keep the rendered
+            // dashboard shell and offer recovery instead of replacing the page.
+            debugDashboardApp({ event: "startup-cancelled" });
+            offerStartupRecovery(document, {
+              reload: () => window.location.reload(),
+              reset: () => resetBrowserDashboardData(),
+            });
+          } else {
+            const message = error instanceof Error ? error.message : String(error);
+            const failure = new Error(`Unable to load live dashboard data: ${message}`, { cause: error });
+            root.textContent = failure.message;
+            throw failure;
+          }
         } finally {
           cancelCommand.complete();
         }

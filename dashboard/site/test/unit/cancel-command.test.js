@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { offerCancelCommand } from '../../src/cancel-command.js';
+import { isDataProcessingCancellation, offerCancelCommand, offerStartupRecovery } from '../../src/cancel-command.js';
 
 describe('dashboard cancel command', () => {
   beforeEach(() => {
@@ -136,5 +136,46 @@ describe('dashboard cancel command', () => {
 
     vi.doUnmock('../../src/debug.js');
     vi.resetModules();
+  });
+
+  it('recognizes user cancellation through wrapped causes only', () => {
+    const cancelled = new Error('Data processing was cancelled.');
+    cancelled.name = 'DataProcessingCancelledError';
+    expect(isDataProcessingCancellation(cancelled)).toBe(true);
+    expect(isDataProcessingCancellation(new Error('wrapped', { cause: cancelled }))).toBe(true);
+    expect(isDataProcessingCancellation(new Error('Opening canonical dashboard data was blocked'))).toBe(false);
+    expect(isDataProcessingCancellation('DataProcessingCancelledError')).toBe(false);
+  });
+
+  it('offers reload and local data reset after startup is cancelled', async () => {
+    const reload = vi.fn();
+    const reset = vi.fn(() => Promise.resolve());
+    offerStartupRecovery(document, { reload, reset });
+
+    const notification = /** @type {HTMLElement} */ (document.querySelector('.dashboard-notification'));
+    expect(notification.textContent).toContain('Dashboard data loading was cancelled.');
+    const actions = /** @type {HTMLButtonElement[]} */ ([...notification.querySelectorAll('.dashboard-notification-action')]);
+    expect(actions.map((action) => action.textContent)).toEqual(['Reload', 'Reset local data']);
+
+    actions[1].click();
+    expect(reset).toHaveBeenCalledTimes(1);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports a blocked reset without reloading', async () => {
+    const reload = vi.fn();
+    const blocked = new Error('blocked');
+    blocked.name = 'IndexedDBDeleteBlockedError';
+    offerStartupRecovery(document, { reload, reset: () => Promise.reject(blocked) });
+
+    const notification = /** @type {HTMLElement} */ (document.querySelector('.dashboard-notification'));
+    /** @type {HTMLButtonElement[]} */ ([...notification.querySelectorAll('.dashboard-notification-action')])[1].click();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(reload).not.toHaveBeenCalled();
+    expect(notification.textContent).toContain('other open dashboard tabs');
   });
 });
