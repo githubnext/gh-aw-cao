@@ -533,6 +533,16 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   const readme = readFileSync(join(root, "README.md"), "utf8");
   const setupSkillPath = join(root, "skills", "setup-cao", "SKILL.md");
   const setupSkill = readFileSync(setupSkillPath, "utf8");
+  const setupReferences = Object.fromEntries([
+    "authentication",
+    "implementation-details",
+    "non-interactive",
+    "public-control-repositories",
+    "topology",
+  ].map((name) => [
+    name,
+    readFileSync(join(root, "skills", "setup-cao", "references", `${name}.md`), "utf8"),
+  ]));
   const addCampaignSkillPath = join(root, "skills", "add-cao-campaign", "SKILL.md");
   const readmeEntry = "skills/setup-cao/SKILL.md";
 
@@ -540,35 +550,38 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.ok(existsSync(setupSkillPath));
   assert.ok(existsSync(addCampaignSkillPath));
   assert.match(setupSkill, /^---\r?\nname: setup-cao\r?\n/);
-  assert.match(setupSkill, /Support a source-managed control topology/);
-  assert.match(setupSkill, /Public and private control repositories are supported/);
-  assert.match(setupSkill, /Keep one canonical copy of `control\.md`/);
-  assert.match(setupSkill, /Treat installed campaign package sources as immutable/);
-  assert.match(setupSkill, /\{\{#runtime-import\? \.github\/cao\/<campaign-slug>\.md\}\}/);
-  assert.match(setupSkill, /the CAO runtime and repository-local `\.\/cao\.sh`/);
-  assert.match(setupSkill, /Campaign discovery, installation, enablement, and execution belong to the separate `add-cao-campaign` skill/);
-  assert.match(setupSkill, /Access is capability, not consent/);
-  assert.match(setupSkill, /Ask for exact repositories before asking about authentication/);
-  assert.match(setupSkill, /Install no user-facing campaign, enable nothing, configure no live mode, and dispatch no workflow/);
-  assert.match(setupSkill, /Preferred Human Flow/);
+  assert.match(setupSkill, /control-plane\.campaigns.*empty object/);
+  assert.match(setupSkill, /no campaign installed or enabled, no live rollout, and no workflow dispatch/);
+  assert.match(setupSkill, /Capability\s+is not consent/);
+  assert.match(setupSkill, /Ask before repository creation or reuse, runtime installation, credential\s+configuration, commit, or push/);
+  assert.match(setupSkill, /credential reach never widens policy/);
+  assert.match(setupSkill, /rollout authority only in `\.github\/workflows\/cao\.json`/);
+  assert.match(setupSkill, /Never edit generated `\.lock\.yml` files directly/);
+  assert.match(setupSkill, /Preserve root `AGENTS\.md`/);
+  assert.match(setupSkill, /references\/topology\.md/);
+  assert.match(setupSkill, /references\/authentication\.md/);
+  assert.match(setupSkill, /references\/non-interactive\.md/);
+  assert.match(setupSkill, /references\/public-control-repositories\.md/);
+  assert.match(setupSkill, /references\/implementation-details\.md/);
+  assert.match(setupSkill, /Preferred human flow/i);
   assert.match(setupSkill, /\.\/cao\.sh setup/);
-  assert.match(setupSkill, /Do not replace this with a questionnaire in documentation/);
   assert.doesNotMatch(setupSkill, /workflow-token/);
-  assert.match(setupSkill, /github-app/);
-  assert.match(setupSkill, /enterprise-app/);
-  assert.match(setupSkill, /Fine-grained PATs are valid/);
-  assert.match(setupSkill, /Never use a classic PAT/);
-  assert.match(setupSkill, /^1\. Verify prerequisites/m);
   assert.match(setupSkill, /raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/install\.sh/);
-  assert.match(setupSkill, /installer materializes the CAO runtime and invokes `\.\/cao\.sh init` when policy is absent/);
-  assert.match(setupSkill, /use the matching `\.\/cao\.sh setup-auth \.\.\.` command/);
   assert.doesNotMatch(setupSkill, /gh release view|cao_release=|cao-ref|cao-release/);
   assert.doesNotMatch(setupSkill, /commits\/main|githubnext\/gh-aw-cao@main|full commit SHA/);
   assert.doesNotMatch(setupSkill, /cao_checkout|sparse-checkout/);
   assert.match(setupSkill, /gh aw doctor --repo OWNER\/CONTROL_REPOSITORY --dir \./);
-  assert.match(setupSkill, /if \(\/<\[\^>\]\+>\/\.test\(source\)\) throw new Error\('unresolved policy placeholder'\)/);
-  assert.match(setupSkill, /initial setup must not declare a user-facing campaign/);
   assert.doesNotMatch(setupSkill, /\.\/cao\.sh add|gh aw run|safe_output_mode=review/);
+
+  assert.match(setupReferences.authentication, /`github-app`/);
+  assert.match(setupReferences.authentication, /`enterprise-app`/);
+  assert.match(setupReferences.authentication, /Never use a classic PAT/);
+  assert.match(setupReferences["implementation-details"], /second runtime copy/);
+  assert.match(setupReferences["implementation-details"], /campaign-owned/);
+  assert.match(setupReferences["implementation-details"], /\.github\/cao\/<campaign-slug>\.md/);
+  assert.match(setupReferences["non-interactive"], /\.\/cao\.sh setup-auth/);
+  assert.match(setupReferences["public-control-repositories"], /Fail closed/);
+  assert.match(setupReferences.topology, /source-managed control repository/);
 });
 
 test("README routes CAO failures to the debug skill", () => {

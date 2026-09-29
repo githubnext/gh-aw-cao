@@ -26,4 +26,3 @@ for custom prompting, so setup must not create it.
 
 Use [CAO Commands](../../../docs/cao-cli.md) for current command behavior and
 the installed `./cao.sh --help` output for exact syntax.
-

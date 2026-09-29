@@ -39,4 +39,3 @@ control-plane authority.
 For the normative role definitions and safety boundaries, consult root
 `AGENTS.md`, `CODEBASE.yml`, and the control architecture and policy
 specifications rather than duplicating them here.
-

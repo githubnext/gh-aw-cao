@@ -17,4 +17,3 @@ continues.
 Never place confidential target names, evidence, prompts, payloads, credentials,
 or review output in a public repository. Visibility does not grant target
 consent or expand `.github/workflows/cao.json`.
-

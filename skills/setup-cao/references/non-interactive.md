@@ -33,9 +33,8 @@ terminal. This is a constrained fallback, not a second setup flow.
    another safe-output destination. Ask before opening credential pages or
    storing variables and secrets.
 8. Run `./cao.sh validate`, `gh aw doctor --repo
-   OWNER/CONTROL-REPOSITORY --dir .`, and `git diff --check`; inspect the policy
+   OWNER/CONTROL_REPOSITORY --dir .`, and `git diff --check`; inspect the policy
    and diff before asking to commit or push.
 
 Do not manually copy runtime files, invent a new credential profile, install a
 campaign, enable a workflow, or dispatch work.
-

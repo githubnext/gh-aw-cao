@@ -27,8 +27,8 @@ Campaign discovery and installation are a separate task for `add-cao-campaign`.
   out of files, chat, command arguments, workflow inputs, and commits.
 - Fail closed when scope, authority, access, credentials, installation, or
   validation is incomplete.
-- Never edit generated `.lock.yml` files directly. Preserve consumer-owned root
-  `AGENTS.md`; do not modify campaign-owned files during setup.
+- Never edit generated `.lock.yml` files directly. Preserve root `AGENTS.md`
+  (consumer-owned); do not modify campaign-owned files during setup.
 - Install, enable, and execute no campaign during setup.
 
 ## Choose the repository role
@@ -83,7 +83,7 @@ independent questionnaire or ad hoc runtime copying.
 
    ```bash
    ./cao.sh validate
-   gh aw doctor --repo OWNER/CONTROL-REPOSITORY --dir .
+   gh aw doctor --repo OWNER/CONTROL_REPOSITORY --dir .
    git diff --check
    ```
 
@@ -112,4 +112,3 @@ Stop without weakening boundaries for:
 - conflicting pre-existing files without approval; or
 - unexpected campaign, live, credential, generated-lock, campaign-owned, or
   unrelated changes.
-
