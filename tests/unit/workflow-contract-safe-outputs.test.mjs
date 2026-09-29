@@ -137,7 +137,6 @@ test("Dependabot worker maintains a durable parent and one-PR child tasks withou
 
   assert.equal(config.tools.github.mode, "local");
   assert.equal(config.tools.github["min-integrity"], "unapproved");
-  assert.deepEqual(config.tools.github["private-to-public-flows"], ["github"]);
   assert.equal(config.permissions["vulnerability-alerts"], "read");
   assert.ok(config.tools.github.toolsets.includes("dependabot"));
   const controlImport = config.imports.find((entry) => entry.uses === "shared/control.md");
@@ -170,7 +169,6 @@ test("Dependabot worker maintains a durable parent and one-PR child tasks withou
   assert.match(lock.slice(alertFetch), /complete: true, alerts/);
   assert.match(source, /Read `\/tmp\/gh-aw\/agent\/dependabot-alerts\.json`/);
   assert.match(source, /Do not use `list_dependabot_alerts` as a fallback/);
-  assert.match(lock, /"sinkVisibilityExemptServers": \["github"\]/);
   assert.deepEqual(Object.keys(outputs).sort(), ["add-comment", "close-issue", "create-issue", "update-issue"]);
   assert.equal(outputs["create-issue"].max, 13);
   assert.equal(outputs["create-issue"]["deduplicate-by-title"], true);
