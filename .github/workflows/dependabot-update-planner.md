@@ -145,6 +145,7 @@ tools:
   github:
     mode: local
     min-integrity: unapproved
+    private-to-public-flows: [github]
     toolsets: [default, repos, issues, pull_requests, actions, dependabot, code_security, security_advisories]
   repo-memory:
     branch-name: "memory/dependabot"
