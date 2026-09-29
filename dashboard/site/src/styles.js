@@ -647,7 +647,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .layout-section-header-summary h3 { font-size: 1.25rem; }
 .layout-section-header p { margin: 3px 0 0; color: var(--muted); font-size: .8125rem; }
 .layout-section .page-section { min-width: 0; }
-.layout-section .page-section > h4 { margin: 12px 0 8px; font-size: .875rem; font-weight: 600; }
+.layout-section .page-section > h4, .layout-section .page-section > .chart-prompt-heading > h4 { margin: 12px 0 8px; font-size: .875rem; font-weight: 600; }
 .view-description-section { position: relative; }
 .semantic-prompt-view { position: relative; }
 .semantic-prompt-action { display: block; width: fit-content; margin: 0 0 12px auto; }
@@ -1386,6 +1386,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 :is(.readiness-page, .runtime-page, .security-page, .firewall-page, .value-page, .cost-page, .github-api-page) .layout-section-header h3 { margin: 2px 0 0; font-size: 1.25rem; }
 :is(.readiness-page, .runtime-page, .security-page, .firewall-page, .value-page, .cost-page, .github-api-page) .layout-section-header > strong { flex: none; color: var(--muted); font-size: .75rem; }
 :is(.runtime-page, .security-page, .firewall-page, .value-page) .layout-section .page-section > h4,
+:is(.runtime-page, .security-page, .firewall-page, .value-page) .layout-section .page-section > .chart-prompt-heading > h4,
 :is(.runtime-page, .security-page, .firewall-page, .value-page) .layout-section .view-source,
 :is(.runtime-page, .security-page, .firewall-page, .value-page) .layout-section .view-metadata { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 :is(.runtime-page, .security-page, .firewall-page, .value-page) .layout-section .table-region { margin-top: 0; }
