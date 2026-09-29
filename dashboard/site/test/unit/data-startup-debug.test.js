@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const dataProcessor = vi.hoisted(() => ({
+  loadDashboardSnapshotMetadata: vi.fn(),
   loadCanonicalDashboardPage: vi.fn(),
   loadCanonicalDashboardSources: vi.fn(),
   refreshCanonicalDashboardSources: vi.fn(),
@@ -94,6 +95,9 @@ describe("dashboard data startup debug logging", () => {
     dataProcessor.loadCanonicalDashboardPage.mockImplementation(async (sourceNames = []) =>
       sourceNames.length === 0 ? {} : { runs: { source: "runs", rows: [] } }
     );
+    dataProcessor.loadDashboardSnapshotMetadata.mockResolvedValue({
+      createdAt: "2026-09-28T12:00:00.000Z",
+    });
     dataProcessor.refreshCanonicalDashboardSources.mockImplementation(() => new Promise(() => {}));
     updates.startAutomaticDashboardDataUpdates.mockImplementation(() => () => {});
 
@@ -114,7 +118,7 @@ describe("dashboard data startup debug logging", () => {
       pagePaginatedSourceBindings: () => ({}),
       render: (
         /** @type {Record<string, unknown>} */ _sources,
-        /** @type {'ready' | 'cached' | 'stale'} */ _state,
+        /** @type {'ready' | 'loading' | 'cached' | 'stale'} */ _state,
         /** @type {(pageId: string, options: { signal: AbortSignal, onUpdate: () => void }) => Promise<unknown>} */ loadPageSources,
       ) => {
         void loadPageSources("overview", { signal: new AbortController().signal, onUpdate: () => {} }).catch(() => {});

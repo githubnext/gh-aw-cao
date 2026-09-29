@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 /** @type {string[]} */
 const calls = [];
 const dataProcessor = vi.hoisted(() => ({
+  loadDashboardSnapshotMetadata: vi.fn(),
   loadCanonicalDashboardPage: vi.fn(),
   loadCanonicalDashboardSources: vi.fn(),
   refreshCanonicalDashboardSources: vi.fn(),
@@ -26,8 +27,9 @@ const cachedSources = {
 /** @param {Record<string, unknown>} [overrides] */
 function options(overrides = {}) {
   let renderedPage = false;
+  const browserWindow = new EventTarget();
   return {
-    browserWindow: window,
+    browserWindow: /** @type {Window} */ (/** @type {unknown} */ (browserWindow)),
     document,
     sourceUrl: "https://example.test/dashboard/payload-hashes.json",
     dashboardContext: { pages: [], queries: [] },
@@ -35,11 +37,11 @@ function options(overrides = {}) {
     pagePaginatedSourceBindings: () => ({}),
     render: (
       /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ _sources,
-      /** @type {'ready' | 'cached' | 'stale'} */ state,
+      /** @type {'ready' | 'loading' | 'cached' | 'stale'} */ state,
       /** @type {(pageId: string, options: { signal: AbortSignal, onUpdate: () => void }) => Promise<unknown>} */ loadPageSources,
     ) => {
       calls.push(`render:${state}`);
-      if (!renderedPage) {
+      if (!renderedPage && state !== "loading") {
         renderedPage = true;
         void loadPageSources("overview", {
           signal: new AbortController().signal,
@@ -64,6 +66,9 @@ describe("dashboard data startup", () => {
       if (sourceNames.length === 0) return {};
       calls.push("cache");
       return cachedSources;
+    });
+    dataProcessor.loadDashboardSnapshotMetadata.mockResolvedValue({
+      createdAt: "2026-09-28T12:00:00.000Z",
     });
 
     dataProcessor.subscribeCanonicalDashboardView.mockImplementation(
@@ -167,6 +172,65 @@ describe("dashboard data startup", () => {
     ]);
   });
 
+  it("keeps a cold start in an accessible loading state until the first complete snapshot", async () => {
+    dataProcessor.loadDashboardSnapshotMetadata
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ createdAt: "2026-09-28T12:00:00.000Z" });
+    dataProcessor.refreshCanonicalDashboardSources.mockResolvedValue({ changed: false });
+
+    await startDashboardData(options());
+    await vi.waitFor(() => expect(calls).toContain("render:ready"));
+
+    expect(calls).toContain("render:loading");
+    expect(dataProcessor.loadDashboardSnapshotMetadata).toHaveBeenCalledTimes(2);
+  });
+
+  it("treats a successfully completed empty snapshot as ready", async () => {
+    dataProcessor.loadDashboardSnapshotMetadata
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ createdAt: "2026-09-28T12:00:00.000Z" });
+    dataProcessor.refreshCanonicalDashboardSources.mockResolvedValue({ changed: false });
+    /** @type {Array<{ state: string, snapshot?: { createdAt: string } | null }>} */
+    const renders = [];
+
+    await startDashboardData(options({
+      render: (
+        /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ _sources,
+        /** @type {'ready' | 'loading' | 'cached' | 'stale'} */ state,
+        /** @type {(pageId: string, options: { signal: AbortSignal, onUpdate: () => void }) => Promise<unknown>} */ _loadPageSources,
+        /** @type {(() => void) | undefined} */ _retryRefresh,
+        /** @type {{ createdAt: string } | null | undefined} */ snapshot,
+      ) => renders.push({ state, snapshot }),
+    }));
+    await vi.waitFor(() => expect(renders.some(({ state }) => state === "ready")).toBe(true));
+
+    expect(renders[0]?.state).toBe("loading");
+    expect(renders.at(-1)).toEqual({
+      state: "ready",
+      snapshot: { createdAt: "2026-09-28T12:00:00.000Z" },
+    });
+  });
+
+  it("keeps the last complete snapshot visible and dated during refresh", async () => {
+    /** @type {Array<{ state: string, snapshot?: { createdAt: string } | null }>} */
+    const renders = [];
+    await startDashboardData(options({
+      render: (
+        /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ _sources,
+        /** @type {'ready' | 'loading' | 'cached' | 'stale'} */ state,
+        /** @type {(pageId: string, options: { signal: AbortSignal, onUpdate: () => void }) => Promise<unknown>} */ _loadPageSources,
+        /** @type {(() => void) | undefined} */ _retryRefresh,
+        /** @type {{ createdAt: string } | null | undefined} */ snapshot,
+      ) => renders.push({ state, snapshot }),
+    }));
+
+    expect(renders).toEqual([{
+      state: "cached",
+      snapshot: { createdAt: "2026-09-28T12:00:00.000Z" },
+    }]);
+    expect(calls).toContain("refresh");
+  });
+
   it("releases background queries only after UI-bound startup work is registered", async () => {
     /** @type {() => void} */
     let settle = () => {};
@@ -227,10 +291,11 @@ describe("dashboard data startup", () => {
 
   it("downloads current deployed data when a refresh is requested", async () => {
     dataProcessor.refreshCanonicalDashboardSources.mockResolvedValue({ changed: false });
-    await startDashboardData(options());
+    const startupOptions = options();
+    await startDashboardData(startupOptions);
     dataProcessor.refreshCanonicalDashboardSources.mockClear();
 
-    window.dispatchEvent(new Event("dashboard-refresh-request"));
+    startupOptions.browserWindow.dispatchEvent(new Event("dashboard-refresh-request"));
 
     expect(dataProcessor.refreshCanonicalDashboardSources).toHaveBeenCalledOnce();
   });
@@ -252,7 +317,7 @@ describe("dashboard data startup", () => {
     await startDashboardData(options({
       render: (
         /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ _sources,
-        /** @type {'ready' | 'cached' | 'stale'} */ state,
+        /** @type {'ready' | 'loading' | 'cached' | 'stale'} */ state,
       ) => calls.push(`render:${state}`),
     }));
     await vi.waitFor(() => expect(dataProcessor.refreshCanonicalDashboardSources).toHaveBeenCalled());
@@ -295,7 +360,7 @@ describe("dashboard data startup", () => {
       }),
       render: (
         /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ _sources,
-        /** @type {'ready' | 'cached' | 'stale'} */ state,
+        /** @type {'ready' | 'loading' | 'cached' | 'stale'} */ state,
         /** @type {(pageId: string, options: { signal: AbortSignal, onUpdate: () => void }) => Promise<Record<string, import('../../src/presenter.js').LogicalSourceInput>>} */ loader,
       ) => {
         calls.push(`render:${state}`);

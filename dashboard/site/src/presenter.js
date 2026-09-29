@@ -291,7 +291,7 @@ export function renderDashboard(input) {
           const page = resolvedPage();
           if (!page) throw new Error(`Dashboard page "${pageId}" is not available.`);
           updateHorizon(pageSources);
-          const rendered = showInitialLoadingSkeleton && !rendersBeforePageSources
+          const rendered = showInitialLoadingSkeleton
             ? renderPageLoadingSkeleton(page)
             : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, effectiveQueryContext);
           debugPerformance('page render', {
@@ -709,7 +709,12 @@ function renderPageLoadingSkeleton(page) {
   const routeTabs = routeParameter ? declaredRouteTabs(payload.route) : null;
   placeholder.removeAttribute('data-page-pending');
   placeholder.setAttribute('aria-busy', 'true');
-  placeholder.setAttribute('aria-label', 'Loading view');
+  placeholder.setAttribute('aria-label', 'Loading dashboard data');
+  placeholder.append(h('p', {
+    className: 'dashboard-loading-status',
+    role: 'status',
+    'aria-live': 'polite'
+  }, 'Loading dashboard data…'));
   if (routeTabs && routeParameter) {
     placeholder.append(renderDeclaredRouteTabs({
       routeParameter,

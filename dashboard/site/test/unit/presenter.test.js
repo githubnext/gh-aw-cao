@@ -694,10 +694,27 @@ describe('dashboard DOM provenance', () => {
 
     const page = rendered.querySelector('[data-page-id="repositories"]');
     expect(page?.getAttribute('aria-busy')).toBe('true');
-    expect(page?.getAttribute('aria-label')).toBe('Loading view');
+    expect(page?.getAttribute('aria-label')).toBe('Loading dashboard data');
+    expect(page?.querySelector('[role="status"]')?.textContent).toBe('Loading dashboard data…');
     expect(page?.querySelector('.dashboard-view-skeleton')).not.toBeNull();
     expect(page?.querySelector('.agentic-loader')).toBeNull();
     expect(page?.textContent).not.toContain('This view cannot be shown because its data source is unavailable.');
+  });
+
+  it('keeps Overview metrics and empty inventory hidden until initial loading completes', async () => {
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {},
+      loading: true
+    });
+    document.body.append(rendered);
+    const page = await activatePage(rendered, 'overview');
+
+    expect(page?.querySelector('.dashboard-view-skeleton')).not.toBeNull();
+    expect(page?.querySelector('.factory-station')).toBeNull();
+    expect(page?.querySelector('.link-button-list-empty')).toBeNull();
+    expect(page?.textContent).toContain('Loading dashboard data…');
+    rendered.remove();
   });
 
 });
@@ -1666,6 +1683,8 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(3);
     expect(page?.querySelectorAll('.factory-station')).toHaveLength(2);
     expect(page?.querySelector('.factory-intro h2')?.textContent).toBe('Your campaigns are idle.');
+    expect(page?.querySelector('.factory-station')?.textContent).toContain('0/0 healthy campaigns');
+    expect(page?.querySelector('.link-button-list-empty')?.textContent).toBe('No campaigns are registered.');
     expect(page?.querySelector('.notifications-inbox')).toBeNull();
     expect(page?.querySelector('.factory-status')).toBeNull();
     expect(page?.querySelector('.factory-all-clear')).toBeNull();
