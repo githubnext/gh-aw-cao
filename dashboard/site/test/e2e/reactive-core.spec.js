@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 
+/** @param {string} source */
 function toDataUrl(source) {
   return `data:text/javascript;charset=utf-8,${encodeURIComponent(source)}`;
 }
