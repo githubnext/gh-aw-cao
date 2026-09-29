@@ -112,4 +112,27 @@ describe('indexing dashboard', () => {
     expect(card.details.map(/** @param {any} detail */ (detail) => detail.field))
       .toEqual(['created-at', 'committed-records', 'payload-hash']);
   });
+
+  it('declares a live collection-health table on the Ingestion page', () => {
+    const page = dashboard.pages.find(/** @param {any} page */ (page) => page.id === 'indexing');
+    const query = dashboard.queries.find(/** @param {any} query */ (query) => query.name === 'ingestion-health');
+    const view = page.views.find(/** @param {any} view */ (view) => view.id === 'ingestion-health-status');
+
+    expect(page).toMatchObject({ title: 'Ingestion', 'navigation-label': 'Ingestion' });
+    expect(query).toMatchObject({
+      from: 'collection-health',
+      select: expect.arrayContaining([
+        { field: 'health' },
+        { field: 'queue-depth' },
+        { field: 'webhook-received' },
+        { field: 'collection-retried' },
+        { field: 'last-failure-code' }
+      ])
+    });
+    expect(view).toMatchObject({
+      mark: 'table',
+      data: { source: 'ingestion-health' },
+      'empty-message': expect.stringContaining('server-side collection profile')
+    });
+  });
 });

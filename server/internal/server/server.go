@@ -288,6 +288,7 @@ func (a *App) Handler() http.Handler {
 	register("POST /api/admin/rebuild", a.rebuild)
 	register("GET /api/admin/rebuild/status", a.rebuildStatus)
 	register("GET /api/admin/collection/status", a.collectionStatus)
+	register("GET /api/v1/ingestion/health", a.collectionStatus)
 	mux.HandleFunc("/", a.static)
 	instrumented := otelhttp.NewHandler(withResponseTraceHeaders(mux), telemetry.SpanHTTPServer,
 		otelhttp.WithSpanNameFormatter(func(_ string, request *http.Request) string {
@@ -614,9 +615,12 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "text/event-stream")
 	response.Header().Set("Connection", "keep-alive")
 	active, _ := a.store.Active(request.Context())
-	writeEvent(response, active.Revision)
+	allowHealth := a.adminAuthorized(request)
+	healthRevision, _ := a.ingestionHealthRevision(request.Context(), allowHealth)
+	writeEvent(response, active.Revision, healthRevision)
 	flusher.Flush()
 	lastRevision := active.Revision
+	lastHealthRevision := healthRevision
 	channel := a.hub.Subscribe()
 	serverLog.Printf("event stream subscribed")
 	defer a.hub.Unsubscribe(channel)
@@ -627,17 +631,22 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 	for {
 		select {
 		case revision := <-channel:
-			if revision != lastRevision {
-				writeEvent(response, revision)
+			healthRevision, _ := a.ingestionHealthRevision(request.Context(), allowHealth)
+			if revision != lastRevision || healthRevision != lastHealthRevision {
+				writeEvent(response, revision, healthRevision)
 				flusher.Flush()
 				lastRevision = revision
+				lastHealthRevision = healthRevision
 			}
 		case <-poll.C:
 			active, err := a.store.Active(request.Context())
-			if err == nil && active.Revision != lastRevision {
-				writeEvent(response, active.Revision)
+			healthRevision, healthErr := a.ingestionHealthRevision(request.Context(), allowHealth)
+			if err == nil && healthErr == nil &&
+				(active.Revision != lastRevision || healthRevision != lastHealthRevision) {
+				writeEvent(response, active.Revision, healthRevision)
 				flusher.Flush()
 				lastRevision = active.Revision
+				lastHealthRevision = healthRevision
 			}
 		case <-heartbeat.C:
 			_, _ = io.WriteString(response, ": keepalive\n\n")
@@ -649,8 +658,25 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 	}
 }
 
-func writeEvent(writer io.Writer, revision int64) {
-	payload, _ := json.Marshal(map[string]int64{"revision": revision})
+func (a *App) ingestionHealthRevision(ctx context.Context, allowed bool) (int64, error) {
+	if !allowed {
+		return 0, nil
+	}
+	_, events, err := a.store.IngestionHealth(ctx)
+	if err != nil {
+		return 0, err
+	}
+	revision, err := strconv.ParseInt(events["healthRevision"], 10, 64)
+	if err != nil && events["healthRevision"] == "" {
+		return 0, nil
+	}
+	return revision, err
+}
+
+func writeEvent(writer io.Writer, revision, healthRevision int64) {
+	payload, _ := json.Marshal(map[string]int64{
+		"revision": revision, "healthRevision": healthRevision,
+	})
 	_, _ = fmt.Fprintf(writer, "data: %s\n\n", payload)
 }
 
@@ -704,7 +730,7 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 			return
 		}
 	}
-	result, status, err := a.executeQuery(ctx, input)
+	result, status, err := a.executeQuery(ctx, input, a.adminAuthorized(request))
 	if err != nil {
 		fail(status, err.Error())
 		return
@@ -720,21 +746,29 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 }
 
 type queryResponse struct {
-	Revision    int64                   `json:"revision"`
-	EvaluatedAt string                  `json:"evaluatedAt"`
-	Sources     map[string]model.Source `json:"sources"`
-	Metrics     model.Metrics           `json:"metrics"`
+	Revision       int64                   `json:"revision"`
+	HealthRevision int64                   `json:"healthRevision,omitempty"`
+	EvaluatedAt    string                  `json:"evaluatedAt"`
+	Sources        map[string]model.Source `json:"sources"`
+	Metrics        model.Metrics           `json:"metrics"`
 }
 
-func (a *App) executeQuery(ctx context.Context, input queryRequest) (queryResponse, int, error) {
+func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollectionHealth bool) (queryResponse, int, error) {
 	active, err := a.store.Active(ctx)
 	if err != nil || active.Generation == "" {
 		return queryResponse{}, http.StatusServiceUnavailable, errors.New("dashboard data is unavailable")
 	}
 	evaluatedAt := evaluationTime(active)
+	healthRevision := int64(0)
+	if allowCollectionHealth {
+		_, events, healthErr := a.store.IngestionHealth(ctx)
+		if healthErr == nil {
+			healthRevision, _ = strconv.ParseInt(events["healthRevision"], 10, 64)
+		}
+	}
 	if len(input.SourceNames) == 0 && len(input.Aliases) == 0 {
 		return queryResponse{
-			Revision: active.Revision, EvaluatedAt: evaluatedAt,
+			Revision: active.Revision, HealthRevision: healthRevision, EvaluatedAt: evaluatedAt,
 			Sources: map[string]model.Source{},
 			Metrics: model.Metrics{PushedDown: []string{}, FallbackOperations: []string{}},
 		}, http.StatusOK, nil
@@ -756,7 +790,10 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest) (queryRespon
 		}
 	}
 	started := time.Now()
-	loader := &generationLoader{ctx: ctx, store: a.store, generation: active.Generation}
+	loader := &generationLoader{
+		ctx: ctx, store: a.store, generation: active.Generation,
+		app: a, allowCollectionHealth: allowCollectionHealth,
+	}
 	engine := query.New(loader)
 	sources, metrics, err := engine.Execute(definitions, requested)
 	if err != nil {
@@ -777,17 +814,24 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest) (queryRespon
 	metrics.DurationMS = time.Since(started).Milliseconds()
 	serverLog.Printf("query completed sources=%d duration_ms=%d redis_commands=%d redis_rows=%d", len(sources), metrics.DurationMS, metrics.RedisCommands, metrics.RedisRows)
 	return queryResponse{
-		Revision: active.Revision, EvaluatedAt: evaluatedAt, Sources: sources, Metrics: metrics,
+		Revision: active.Revision, HealthRevision: healthRevision,
+		EvaluatedAt: evaluatedAt, Sources: sources, Metrics: metrics,
 	}, http.StatusOK, nil
 }
 
 type generationLoader struct {
-	ctx        context.Context
-	store      *redisx.Store
-	generation string
+	ctx                   context.Context
+	store                 *redisx.Store
+	generation            string
+	app                   *App
+	allowCollectionHealth bool
 }
 
 func (loader *generationLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
+	if name == collectionHealthSourceName {
+		source, err := loader.app.collectionHealthSource(loader.ctx, loader.allowCollectionHealth)
+		return source, model.Metrics{}, err
+	}
 	if name == marketplace.SourceName {
 		// The marketplace catalog is never stored as an ingested Redis source:
 		// it is resolved (and cached) transparently here so every query-engine

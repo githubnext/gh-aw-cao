@@ -45,7 +45,8 @@ const pending = new Map();
  *   emitCurrent: boolean,
  *   remoteStop?: () => void,
  *   remoteQueryRunning?: boolean,
- *   remoteRevision?: number | null
+ *   remoteRevision?: number | null,
+ *   remoteHealthRevision?: number | null
  * }} ViewSubscription
  */
 /** @type {Map<string, ViewSubscription>} */
@@ -508,8 +509,9 @@ export function subscribeCanonicalDashboardView(viewId, sourceNames, context, li
 function registerRemoteSubscription(subscription) {
   if (subscription.remoteStop) return;
   let active = true;
-  /** @type {number | null} */
-  let queuedRevision = null;
+  const controller = new AbortController();
+  /** @type {{ revision: number, healthRevision: number | null } | null} */
+  let queuedUpdate = null;
   const query = async () => {
     if (!active || subscription.remoteQueryRunning) return;
     subscription.remoteQueryRunning = true;
@@ -519,6 +521,7 @@ function registerRemoteSubscription(subscription) {
         subscription.context,
         subscription.pagination,
         {
+          signal: controller.signal,
           pageId: subscription.pageId,
           routeParameters: subscription.routeParameters,
           queryContext: subscription.queryContext
@@ -526,6 +529,7 @@ function registerRemoteSubscription(subscription) {
       );
       if (!active || subscriptions.get(subscription.id) !== subscription) return;
       subscription.remoteRevision = result.revision;
+      subscription.remoteHealthRevision = result.healthRevision;
       enqueueSubscriptionUpdate(subscription, result.sources, result.revision);
     } catch (error) {
       if (!active) return;
@@ -537,15 +541,19 @@ function registerRemoteSubscription(subscription) {
       }
     } finally {
       subscription.remoteQueryRunning = false;
-      if (queuedRevision !== null && queuedRevision !== subscription.remoteRevision) {
-        queuedRevision = null;
+      if (queuedUpdate && (
+        queuedUpdate.revision !== subscription.remoteRevision
+        || queuedUpdate.healthRevision !== subscription.remoteHealthRevision
+      )) {
+        queuedUpdate = null;
         void query();
       }
     }
   };
-  const stopEvents = subscribeRemoteRevision((revision) => {
-    if (revision === subscription.remoteRevision) return;
-    queuedRevision = revision;
+  const stopEvents = subscribeRemoteRevision((revision, healthRevision) => {
+    if (revision === subscription.remoteRevision
+        && healthRevision === subscription.remoteHealthRevision) return;
+    queuedUpdate = { revision, healthRevision };
     void query();
   }, (error) => {
     if (!active) return;
@@ -558,6 +566,7 @@ function registerRemoteSubscription(subscription) {
   subscription.remoteStop = () => {
     active = false;
     stopEvents();
+    controller.abort();
   };
   if (subscription.emitCurrent) void query();
 }

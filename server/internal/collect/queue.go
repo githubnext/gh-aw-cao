@@ -106,6 +106,7 @@ func (q Queue) Enqueue(ctx context.Context, task Task) (bool, error) {
 			return false, err
 		}
 		if !fresh {
+			_ = q.Store.IncrementIngestionCounter(ctx, "taskCoalesced")
 			queueLog.Printf("collapsed duplicate task repository=%s", repository)
 			return false, nil
 		}
@@ -120,6 +121,7 @@ func (q Queue) Enqueue(ctx context.Context, task Task) (bool, error) {
 	}); err != nil {
 		return false, err
 	}
+	_ = q.Store.IncrementIngestionCounter(ctx, "taskQueued")
 	queueLog.Printf("enqueued task repository=%s attempt=%d", repository, task.Attempt)
 	return true, nil
 }
@@ -179,7 +181,12 @@ func (q Queue) Defer(ctx context.Context, lease Lease) error {
 
 // Complete acknowledges a finished task.
 func (q Queue) Complete(ctx context.Context, lease Lease) error {
-	return q.Store.StreamAck(ctx, taskStream, q.group(), lease.MessageID)
+	if err := q.Store.StreamAck(ctx, taskStream, q.group(), lease.MessageID); err != nil {
+		return err
+	}
+	_ = q.Store.IncrementIngestionCounter(ctx, "collectionSucceeded")
+	_ = q.Store.RecordIngestionHealthEvent(ctx, "success", "", time.Now().UTC())
+	return nil
 }
 
 // retryDecision is the pure outcome of applying bounded retry counting to one
@@ -215,11 +222,16 @@ func (q Queue) Retry(ctx context.Context, lease Lease, cause error) error {
 	if err := q.Store.StreamAck(ctx, taskStream, q.group(), lease.MessageID); err != nil {
 		return err
 	}
-	decision := decideRetry(lease.Task, cause, q.maxAttempts(), time.Now().UTC(), backoff)
+	now := time.Now().UTC()
+	_ = q.Store.IncrementIngestionCounter(ctx, "collectionFailed")
+	_ = q.Store.RecordIngestionHealthEvent(ctx, "failure", "collection", now)
+	decision := decideRetry(lease.Task, cause, q.maxAttempts(), now, backoff)
 	if decision.deadLetter {
+		_ = q.Store.IncrementIngestionCounter(ctx, "collectionDeadLettered")
 		queueLog.Printf("dead-lettering task repository=%s attempts=%d", decision.task.Repository, decision.task.Attempt)
 		return q.deadLetter(ctx, decision.task, decision.reason)
 	}
+	_ = q.Store.IncrementIngestionCounter(ctx, "collectionRetried")
 	queueLog.Printf("rescheduling task repository=%s attempt=%d", decision.task.Repository, decision.task.Attempt)
 	_, err := q.Enqueue(ctx, decision.task)
 	return err

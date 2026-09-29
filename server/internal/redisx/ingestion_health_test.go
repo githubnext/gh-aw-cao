@@ -36,7 +36,9 @@ func TestIngestionHealthCountersAreBoundedAndNamespaced(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(client.command, []string{
-		"HINCRBY", store.Key(ingestionHealthKey), "webhookReceived", "1",
+		"EVAL",
+		`local count = redis.call("HINCRBY", KEYS[1], ARGV[1], 1); redis.call("HINCRBY", KEYS[1], "healthRevision", 1); return count`,
+		"1", store.Key(ingestionHealthKey), "webhookReceived",
 	}) {
 		t.Fatalf("unexpected counter command: %#v", client.command)
 	}
@@ -67,7 +69,9 @@ func TestRecordIngestionHealthEventUsesFixedCodesAndUTC(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(client.command, []string{
-		"HSET", store.Key(ingestionHealthKey), "lastFailureAt", "2026-09-28T23:00:00Z",
+		"EVAL",
+		`redis.call("HINCRBY", KEYS[1], "healthRevision", 1); redis.call("HSET", KEYS[1], ARGV[1], ARGV[2], ARGV[3], ARGV[4]); return 1`,
+		"1", store.Key(ingestionHealthKey), "lastFailureAt", "2026-09-28T23:00:00Z",
 		"lastFailureCode", "collection",
 	}) {
 		t.Fatalf("unexpected failure event command: %#v", client.command)

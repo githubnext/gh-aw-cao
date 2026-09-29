@@ -167,6 +167,8 @@ func (a *App) githubWebhook(response http.ResponseWriter, request *http.Request)
 		writeError(response, http.StatusBadRequest, "GitHub delivery and event headers are required")
 		return
 	}
+	a.recordIngestionCounter(request.Context(), "webhookReceived")
+	a.recordIngestionEvent(request.Context(), "webhook", "")
 	if admitter, ok := a.reconciler.(EventAdmitter); ok {
 		a.admitWebhook(response, request, admitter, GitHubWebhook{
 			Delivery: delivery,
@@ -191,11 +193,14 @@ func (a *App) githubWebhook(response http.ResponseWriter, request *http.Request)
 	}
 	fresh, err := a.store.RememberDelivery(request.Context(), delivery, deliveryTTL)
 	if err != nil {
+		a.recordIngestionCounter(request.Context(), "webhookAdmissionFailed")
+		a.recordIngestionFailure(request.Context(), "redis")
 		a.releaseProjectionLock(request.Context(), token)
 		writeError(response, http.StatusServiceUnavailable, "webhook deduplication is unavailable")
 		return
 	}
 	if !fresh {
+		a.recordIngestionCounter(request.Context(), "webhookDuplicate")
 		a.releaseProjectionLock(request.Context(), token)
 		writeJSON(response, http.StatusAccepted, map[string]any{"accepted": true, "duplicate": true})
 		return
@@ -230,15 +235,20 @@ func (a *App) admitWebhook(
 ) {
 	fresh, err := a.store.RememberDelivery(request.Context(), event.Delivery, deliveryTTL)
 	if err != nil {
+		a.recordIngestionCounter(request.Context(), "webhookAdmissionFailed")
+		a.recordIngestionFailure(request.Context(), "redis")
 		writeError(response, http.StatusServiceUnavailable, "webhook deduplication is unavailable")
 		return
 	}
 	if !fresh {
+		a.recordIngestionCounter(request.Context(), "webhookDuplicate")
 		writeJSON(response, http.StatusAccepted, map[string]any{"accepted": true, "duplicate": true})
 		return
 	}
 	result, err := admitter.Admit(request.Context(), event)
 	if err != nil {
+		a.recordIngestionCounter(request.Context(), "webhookAdmissionFailed")
+		a.recordIngestionFailure(request.Context(), "admission")
 		// Forget the delivery so a retry of a transiently failed admission is
 		// not silently swallowed as a duplicate.
 		a.forgetDelivery(request.Context(), event.Delivery)
@@ -250,6 +260,22 @@ func (a *App) admitWebhook(
 		payload[key] = value
 	}
 	writeJSON(response, http.StatusAccepted, payload)
+}
+
+func (a *App) recordIngestionCounter(ctx context.Context, name string) {
+	if err := a.store.IncrementIngestionCounter(ctx, name); err != nil {
+		serverLog.Printf("ingestion counter update failed")
+	}
+}
+
+func (a *App) recordIngestionFailure(ctx context.Context, code string) {
+	a.recordIngestionEvent(ctx, "failure", code)
+}
+
+func (a *App) recordIngestionEvent(ctx context.Context, event, code string) {
+	if err := a.store.RecordIngestionHealthEvent(ctx, event, code, time.Now().UTC()); err != nil {
+		serverLog.Printf("ingestion health update failed")
+	}
 }
 
 func (a *App) forgetDelivery(parent context.Context, delivery string) {

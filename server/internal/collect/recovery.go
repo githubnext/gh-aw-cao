@@ -2,6 +2,7 @@ package collect
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
@@ -114,14 +115,21 @@ func (r DeliveryReplayer) Recover(ctx context.Context) (ReplayResult, error) {
 // In the Actions profile the same surface reports that collection is not
 // configured and never fails.
 type Status struct {
-	Configured    bool       `json:"configured"`
-	Coverage      Coverage   `json:"coverage"`
-	QueueDepth    int64      `json:"queueDepth"`
-	PendingTasks  int64      `json:"pendingTasks"`
-	DeadLetters   int64      `json:"deadLetters"`
-	Backfill      string     `json:"backfill"`
-	LastProjected string     `json:"lastProjected,omitempty"`
-	RateLimits    []Headroom `json:"rateLimits,omitempty"`
+	Configured      bool             `json:"configured"`
+	Health          string           `json:"health"`
+	Coverage        Coverage         `json:"coverage"`
+	QueueDepth      int64            `json:"queueDepth"`
+	PendingTasks    int64            `json:"pendingTasks"`
+	DeadLetters     int64            `json:"deadLetters"`
+	Backfill        string           `json:"backfill"`
+	LastProjected   string           `json:"lastProjected,omitempty"`
+	Counters        map[string]int64 `json:"counters"`
+	HealthRevision  int64            `json:"healthRevision"`
+	LastWebhookAt   string           `json:"lastWebhookAt,omitempty"`
+	LastFailureAt   string           `json:"lastFailureAt,omitempty"`
+	LastFailureCode string           `json:"lastFailureCode,omitempty"`
+	LastSuccessAt   string           `json:"lastSuccessAt,omitempty"`
+	RateLimits      []Headroom       `json:"rateLimits,omitempty"`
 }
 
 // Headroom is one installation's remaining GitHub budget.
@@ -158,6 +166,17 @@ func (r Reporter) Snapshot(ctx context.Context) (Status, error) {
 	if status.DeadLetters, err = r.Queue.DeadLetters(ctx); err != nil {
 		return status, err
 	}
+	counters, events, err := r.Store.IngestionHealth(ctx)
+	if err != nil {
+		return status, err
+	}
+	status.Counters = counters
+	status.HealthRevision, _ = strconv.ParseInt(events["healthRevision"], 10, 64)
+	status.LastWebhookAt = events["lastWebhookAt"]
+	status.LastFailureAt = events["lastFailureAt"]
+	status.LastFailureCode = events["lastFailureCode"]
+	status.LastSuccessAt = events["lastSuccessAt"]
+	status.Health = ingestionHealthState(status, events)
 	state, err := r.Backfill.State(ctx)
 	if err != nil {
 		return status, err
@@ -185,4 +204,28 @@ func (r Reporter) Snapshot(ctx context.Context) (Status, error) {
 		}
 	}
 	return status, nil
+}
+
+func ingestionHealthState(status Status, events map[string]string) string {
+	failureAt, hasFailure := parseHealthTime(events["lastFailureAt"])
+	successAt, hasSuccess := parseHealthTime(events["lastSuccessAt"])
+	if status.DeadLetters > 0 || (hasFailure && (!hasSuccess || failureAt.After(successAt))) {
+		return "degraded"
+	}
+	if (events["lastFailureAt"] != "" && !hasFailure) ||
+		(events["lastSuccessAt"] != "" && !hasSuccess) {
+		return "degraded"
+	}
+	if status.QueueDepth > 0 || status.PendingTasks > 0 {
+		return "recovering"
+	}
+	return "healthy"
+}
+
+func parseHealthTime(value string) (time.Time, bool) {
+	if value == "" {
+		return time.Time{}, false
+	}
+	parsed, err := time.Parse(time.RFC3339Nano, value)
+	return parsed, err == nil
 }

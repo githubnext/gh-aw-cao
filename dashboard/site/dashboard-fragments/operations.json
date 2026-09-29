@@ -1,6 +1,33 @@
 {
   "queries": [
     {
+      "name": "ingestion-health",
+      "intent": "Show the current Redis-backed webhook and collection health snapshot.",
+      "from": "collection-health",
+      "select": [
+        { "field": "configured" },
+        { "field": "health" },
+        { "field": "queue-depth" },
+        { "field": "pending-tasks" },
+        { "field": "dead-letters" },
+        { "field": "backfill" },
+        { "field": "last-projected" },
+        { "field": "last-webhook-at" },
+        { "field": "last-failure-at" },
+        { "field": "last-failure-code" },
+        { "field": "last-success-at" },
+        { "field": "webhook-received" },
+        { "field": "webhook-duplicate" },
+        { "field": "webhook-admission-failed" },
+        { "field": "task-queued" },
+        { "field": "task-coalesced" },
+        { "field": "collection-succeeded" },
+        { "field": "collection-failed" },
+        { "field": "collection-retried" },
+        { "field": "collection-dead-lettered" }
+      ]
+    },
+    {
       "name": "marketplace-package-detail",
       "intent": "Select one normalized marketplace package by its resolver-produced source coordinate.",
       "from": "marketplace-packages"
@@ -1297,11 +1324,11 @@
     {
       "id": "indexing",
       "kind": "custom",
-      "title": "Indexing",
-      "navigation-label": "Indexing",
+      "title": "Ingestion",
+      "navigation-label": "Ingestion",
       "icon": "database",
       "experimental": true,
-      "description": "Monitor CAO Activity ingestion and inspect retained dashboard transactions.",
+      "description": "Monitor live server-side collection health, CAO Activity ingestion, and retained dashboard transactions.",
       "views": [
         {
           "id": "indexing-database-table-counts",
@@ -1326,6 +1353,38 @@
               "type": "quantitative",
               "title": "Rows"
             }
+          }
+        },
+        {
+          "id": "ingestion-health-status",
+          "title": "Collection health",
+          "description": "Live webhook admission, queue, retry, and collection health from the server-side collection profile.",
+          "data": {
+            "source": "ingestion-health"
+          },
+          "mark": "table",
+          "layout": "full",
+          "empty-message": "Live collection health is available when connected to a server-side collection profile.",
+          "encoding": {
+            "columns": [
+              { "field": "health", "type": "nominal", "title": "Health", "display": "status" },
+              { "field": "queue-depth", "type": "quantitative", "title": "Queued" },
+              { "field": "pending-tasks", "type": "quantitative", "title": "In flight" },
+              { "field": "dead-letters", "type": "quantitative", "title": "Dead letters" },
+              { "field": "webhook-received", "type": "quantitative", "title": "Deliveries" },
+              { "field": "webhook-duplicate", "type": "quantitative", "title": "Duplicates" },
+              { "field": "webhook-admission-failed", "type": "quantitative", "title": "Admission failures" },
+              { "field": "collection-succeeded", "type": "quantitative", "title": "Succeeded" },
+              { "field": "collection-failed", "type": "quantitative", "title": "Failed" },
+              { "field": "collection-retried", "type": "quantitative", "title": "Retried" },
+              { "field": "collection-dead-lettered", "type": "quantitative", "title": "Dead-lettered" },
+              { "field": "last-failure-code", "type": "nominal", "title": "Latest failure" },
+              { "field": "last-failure-at", "type": "temporal", "title": "Failure time", "format": "human-friendly-timestamp" },
+              { "field": "last-success-at", "type": "temporal", "title": "Success time", "format": "human-friendly-timestamp" },
+              { "field": "last-webhook-at", "type": "temporal", "title": "Last delivery", "format": "human-friendly-timestamp" },
+              { "field": "last-projected", "type": "temporal", "title": "Last projection", "format": "human-friendly-timestamp" },
+              { "field": "backfill", "type": "nominal", "title": "Backfill" }
+            ]
           }
         },
         {

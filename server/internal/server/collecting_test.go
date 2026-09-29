@@ -1,10 +1,68 @@
 package server
 
 import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
 )
+
+func TestCollectionHealthSourceIsAvailableOnlyToAuthorizedReaders(t *testing.T) {
+	app := &App{}
+	unavailable, err := app.collectionHealthSource(t.Context(), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if unavailable.Metadata["availability"] != "unavailable" || len(unavailable.Rows) != 0 {
+		t.Fatalf("unauthorized health source exposed data: %+v", unavailable)
+	}
+	available, err := app.collectionHealthSource(t.Context(), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if available.Metadata["availability"] != "available" || len(available.Rows) != 1 {
+		t.Fatalf("health source was not produced by the server query boundary: %+v", available)
+	}
+	if available.Rows[0]["configured"] != false || available.Rows[0]["health"] != "not-configured" {
+		t.Fatalf("unconfigured profile was not explicit: %+v", available.Rows[0])
+	}
+}
+
+func TestCollectionStatusRequiresHostedAdministrator(t *testing.T) {
+	app := &App{
+		oauth:  &githubOAuth{},
+		config: Config{AdminUsers: []string{"operator"}},
+	}
+	request := httptest.NewRequestWithContext(
+		context.WithValue(t.Context(), oauthSessionContextKey{}, oauthSession{Login: "reader"}),
+		http.MethodGet, "/api/v1/ingestion/health", nil,
+	)
+	response := httptest.NewRecorder()
+	app.collectionStatus(response, request)
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("non-admin status request returned %d", response.Code)
+	}
+
+	request = httptest.NewRequestWithContext(
+		context.WithValue(t.Context(), oauthSessionContextKey{}, oauthSession{Login: "operator"}),
+		http.MethodGet, "/api/v1/ingestion/health", nil,
+	)
+	response = httptest.NewRecorder()
+	app.collectionStatus(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("administrator status request returned %d: %s", response.Code, response.Body.String())
+	}
+	var status map[string]any
+	if err := json.Unmarshal(response.Body.Bytes(), &status); err != nil {
+		t.Fatal(err)
+	}
+	if status["configured"] != false || status["health"] != "not-configured" {
+		t.Fatalf("unexpected unconfigured collection response: %#v", status)
+	}
+}
 
 func TestProfilesAreMutuallyExclusive(t *testing.T) {
 	collector := &CollectorConfig{

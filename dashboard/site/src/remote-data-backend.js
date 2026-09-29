@@ -12,6 +12,8 @@ const REMOTE_BACKEND = "redis-http";
 const ACCESS_TOKEN_STORAGE_KEY = "cao-dashboard-access-token";
 /** @type {number | null} */
 let observedRevision = null;
+/** @type {number | null} */
+let observedHealthRevision = null;
 /** @type {string | undefined} */
 let observedEvaluatedAt;
 
@@ -160,9 +162,11 @@ export async function queryRemoteDashboard(sourceNames, context, pagination, opt
     throw new Error("Dashboard data server returned an invalid query response.");
   }
   if (Number.isSafeInteger(payload.revision)) observedRevision = payload.revision;
+  if (Number.isSafeInteger(payload.healthRevision)) observedHealthRevision = payload.healthRevision;
   if (typeof payload.evaluatedAt === "string") observedEvaluatedAt = payload.evaluatedAt;
   return {
     revision: Number.isSafeInteger(payload.revision) ? payload.revision : null,
+    healthRevision: Number.isSafeInteger(payload.healthRevision) ? payload.healthRevision : null,
     sources: payload.sources,
   };
 }
@@ -200,7 +204,7 @@ export function queryRemoteRepositoryMemory(campaign, path, signal) {
 }
 
 /**
- * @param {(revision: number) => void} onRevision
+ * @param {(revision: number, healthRevision: number | null) => void} onRevision
  * @param {(error: Error) => void} [onError]
  */
 export function subscribeRemoteRevision(onRevision, onError) {
@@ -215,8 +219,15 @@ export function subscribeRemoteRevision(onRevision, onError) {
     try {
       const payload = JSON.parse(data);
       if (Number.isSafeInteger(payload?.revision)) {
+        const healthRevision = Number.isSafeInteger(payload.healthRevision)
+          ? payload.healthRevision
+          : observedHealthRevision;
+        const changed = payload.revision !== observedRevision
+          || (healthRevision !== null && healthRevision !== observedHealthRevision);
         if (payload.revision !== observedRevision) observedEvaluatedAt = undefined;
-        onRevision(payload.revision);
+        observedRevision = payload.revision;
+        if (healthRevision !== null) observedHealthRevision = healthRevision;
+        if (changed) onRevision(payload.revision, healthRevision);
       }
     } catch (error) {
       onError?.(error instanceof Error ? error : new Error(String(error)));

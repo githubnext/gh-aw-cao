@@ -11,6 +11,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/collect"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
+	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
@@ -134,6 +135,8 @@ type Collector struct {
 
 var _ Reconciler = (*Collector)(nil)
 var _ EventAdmitter = (*Collector)(nil)
+
+const collectionHealthSourceName = "collection-health"
 
 // NewCollector assembles the collection profile from configuration.
 func NewCollector(
@@ -399,7 +402,9 @@ func (a *App) collectionStatus(response http.ResponseWriter, request *http.Reque
 	}
 	collector, ok := a.reconciler.(*Collector)
 	if !ok {
-		writeJSON(response, http.StatusOK, collect.Status{Configured: false})
+		writeJSON(response, http.StatusOK, collect.Status{
+			Configured: false, Health: "not-configured", Counters: map[string]int64{},
+		})
 		return
 	}
 	status, err := collector.reporter.Snapshot(request.Context())
@@ -408,4 +413,60 @@ func (a *App) collectionStatus(response http.ResponseWriter, request *http.Reque
 		return
 	}
 	writeJSON(response, http.StatusOK, status)
+}
+
+func (a *App) collectionHealthSource(ctx context.Context, allowed bool) (model.Source, error) {
+	if !allowed {
+		return unavailableSource(collectionHealthSourceName), nil
+	}
+	collector, ok := a.reconciler.(*Collector)
+	if !ok {
+		return collectionHealthSource(collect.Status{
+			Health: "not-configured", Counters: map[string]int64{},
+		}), nil
+	}
+	status, err := collector.reporter.Snapshot(ctx)
+	if err != nil {
+		return model.Source{}, err
+	}
+	return collectionHealthSource(status), nil
+}
+
+func collectionHealthSource(status collect.Status) model.Source {
+	counters := status.Counters
+	if counters == nil {
+		counters = map[string]int64{}
+	}
+	return model.Source{
+		Source: collectionHealthSourceName,
+		Rows: []model.Row{{
+			"configured":               status.Configured,
+			"health":                   status.Health,
+			"queue-depth":              status.QueueDepth,
+			"pending-tasks":            status.PendingTasks,
+			"dead-letters":             status.DeadLetters,
+			"backfill":                 status.Backfill,
+			"last-projected":           status.LastProjected,
+			"health-revision":          status.HealthRevision,
+			"last-webhook-at":          status.LastWebhookAt,
+			"last-failure-at":          status.LastFailureAt,
+			"last-failure-code":        status.LastFailureCode,
+			"last-success-at":          status.LastSuccessAt,
+			"webhook-received":         counters["webhookReceived"],
+			"webhook-duplicate":        counters["webhookDuplicate"],
+			"webhook-admission-failed": counters["webhookAdmissionFailed"],
+			"task-queued":              counters["taskQueued"],
+			"task-coalesced":           counters["taskCoalesced"],
+			"collection-succeeded":     counters["collectionSucceeded"],
+			"collection-failed":        counters["collectionFailed"],
+			"collection-retried":       counters["collectionRetried"],
+			"collection-dead-lettered": counters["collectionDeadLettered"],
+		}},
+		Metadata: model.Metadata{
+			"source-id":    collectionHealthSourceName,
+			"availability": "available",
+			"completeness": "complete",
+			"freshness":    "current",
+		},
+	}
 }

@@ -237,7 +237,8 @@ func (s *Store) IncrementIngestionCounter(ctx context.Context, name string) erro
 	if _, ok := ingestionCounterNames[name]; !ok {
 		return errors.New("unknown ingestion counter")
 	}
-	_, err := s.Client.Do(ctx, "HINCRBY", s.Key(ingestionHealthKey), name, "1")
+	script := `local count = redis.call("HINCRBY", KEYS[1], ARGV[1], 1); redis.call("HINCRBY", KEYS[1], "healthRevision", 1); return count`
+	_, err := s.Client.Do(ctx, "EVAL", script, "1", s.Key(ingestionHealthKey), name)
 	return err
 }
 
@@ -256,16 +257,23 @@ func (s *Store) RecordIngestionHealthEvent(ctx context.Context, event, code stri
 			return errors.New("success events must not include a code")
 		}
 		field = "lastSuccess"
+	case "webhook":
+		if code != "" {
+			return errors.New("webhook events must not include a code")
+		}
+		field = "lastWebhook"
 	default:
 		return errors.New("unknown ingestion health event")
 	}
 	timestamp := at.UTC().Format(time.RFC3339Nano)
+	script := `redis.call("HINCRBY", KEYS[1], "healthRevision", 1); redis.call("HSET", KEYS[1], ARGV[1], ARGV[2]); return 1`
 	if event == "failure" {
-		_, err := s.Client.Do(ctx, "HSET", s.Key(ingestionHealthKey),
+		script = `redis.call("HINCRBY", KEYS[1], "healthRevision", 1); redis.call("HSET", KEYS[1], ARGV[1], ARGV[2], ARGV[3], ARGV[4]); return 1`
+		_, err := s.Client.Do(ctx, "EVAL", script, "1", s.Key(ingestionHealthKey),
 			field+"At", timestamp, field+"Code", code)
 		return err
 	}
-	_, err := s.Client.Do(ctx, "HSET", s.Key(ingestionHealthKey), field+"At", timestamp)
+	_, err := s.Client.Do(ctx, "EVAL", script, "1", s.Key(ingestionHealthKey), field+"At", timestamp)
 	return err
 }
 
@@ -281,7 +289,7 @@ func (s *Store) IngestionHealth(ctx context.Context) (map[string]int64, map[stri
 		return nil, nil, err
 	}
 	counters := make(map[string]int64, len(ingestionCounterNames))
-	events := make(map[string]string, 3)
+	events := make(map[string]string, 5)
 	for index := 0; index+1 < len(fields); index += 2 {
 		name, value := fields[index], fields[index+1]
 		if _, ok := ingestionCounterNames[name]; ok {
@@ -293,7 +301,7 @@ func (s *Store) IngestionHealth(ctx context.Context) (map[string]int64, map[stri
 			continue
 		}
 		switch name {
-		case "lastFailureAt", "lastFailureCode", "lastSuccessAt":
+		case "lastFailureAt", "lastFailureCode", "lastSuccessAt", "lastWebhookAt", "healthRevision":
 			events[name] = value
 		}
 	}

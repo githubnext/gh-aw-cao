@@ -3,6 +3,7 @@ package collect
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 )
@@ -72,5 +73,57 @@ func TestPlanRedeliveriesBoundaryAsFirstEntryInspectsNothing(t *testing.T) {
 	// deliveries.
 	if plan.newest != "guid-1" {
 		t.Fatalf("newest = %q, want %q", plan.newest, "guid-1")
+	}
+}
+
+func TestIngestionHealthStateExplainsDegradationAndRecovery(t *testing.T) {
+	cases := []struct {
+		name   string
+		status Status
+		events map[string]string
+		want   string
+	}{
+		{name: "idle", status: Status{}, want: "healthy"},
+		{name: "backlog", status: Status{QueueDepth: 2}, want: "recovering"},
+		{name: "in-flight", status: Status{PendingTasks: 1}, want: "recovering"},
+		{
+			name: "failure newer than success",
+			events: map[string]string{
+				"lastFailureAt": "2026-09-29T02:00:00Z",
+				"lastSuccessAt": "2026-09-29T01:00:00Z",
+			},
+			want: "degraded",
+		},
+		{
+			name:   "success after failure with backlog",
+			status: Status{QueueDepth: 2},
+			events: map[string]string{
+				"lastFailureAt": "2026-09-29T01:00:00Z",
+				"lastSuccessAt": "2026-09-29T02:00:00Z",
+			},
+			want: "recovering",
+		},
+		{name: "dead letter", status: Status{DeadLetters: 1}, want: "degraded"},
+		{
+			name:   "invalid persisted timestamp",
+			events: map[string]string{"lastFailureAt": "not-a-time"},
+			want:   "degraded",
+		},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			if got := ingestionHealthState(test.status, test.events); got != test.want {
+				t.Fatalf("ingestionHealthState() = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestParseHealthTimeRejectsMissingAndInvalidValues(t *testing.T) {
+	if _, ok := parseHealthTime(""); ok {
+		t.Fatal("empty timestamp was accepted")
+	}
+	if _, ok := parseHealthTime(time.Now().Format(time.RFC822)); ok {
+		t.Fatal("non-RFC3339 timestamp was accepted")
 	}
 }

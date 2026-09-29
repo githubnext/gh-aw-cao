@@ -278,7 +278,7 @@ func (runtime *mcpRuntime) callQuery(ctx context.Context, args map[string]any) (
 	}
 	queryCtx, span := telemetry.Tracer().Start(ctx, telemetry.SpanQueryExecute)
 	defer span.End()
-	result, _, err := runtime.app.executeQuery(queryCtx, input)
+	result, _, err := runtime.app.executeQuery(queryCtx, input, true)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "query execution failed")
