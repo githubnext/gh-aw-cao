@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile, spawn } from "node:child_process";
 import fs from "node:fs";
-import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, copyFile, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -57,6 +57,13 @@ await executeFile("tar", [
 ], { cwd: fixtureRoot });
 await writeFile(mockFetch, `
 import { appendFileSync, readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { basename } from "node:path";
+
+if (process.env.FAKE_GH_SCRIPT && [process.execPath, process.argv0].some((executable) => basename(executable).toLowerCase() === "gh.exe")) {
+ const result = spawnSync("bash", [process.env.FAKE_GH_SCRIPT, ...process.argv.slice(2)], { stdio: "inherit" });
+ process.exit(result.status ?? 1);
+}
 
 const expected = "https://codeload.github.com/githubnext/gh-aw-cao/tar.gz/${revision}";
 const responses = process.env.FAKE_GITHUB_RESPONSES ? JSON.parse(process.env.FAKE_GITHUB_RESPONSES) : {};
@@ -147,6 +154,7 @@ async function createConsumer(t, ghAwVersion, { repository = "alpha-org/control"
     await writeFile(path.join(bin, name), source);
     await chmod(path.join(bin, name), 0o755);
   }
+  if (process.platform === "win32") await copyFile(process.execPath, path.join(bin, "gh.exe"));
   if (ghAwVersion) await writeFile(ghAwInstalled, `${ghAwVersion}\n`);
   const inheritedEnv = { ...process.env };
   const inheritedPath = inheritedEnv.PATH ?? inheritedEnv.Path ?? "";
@@ -160,6 +168,7 @@ async function createConsumer(t, ghAwVersion, { repository = "alpha-org/control"
     ...(process.platform === "win32" ? { PATHEXT: ".CMD;.COM;.EXE;.BAT" } : {}),
     NODE_OPTIONS: [process.env.NODE_OPTIONS, `--import=${pathToFileURL(mockFetch).href}`].filter(Boolean).join(" "),
     FAKE_CATALOG: catalog,
+    FAKE_GH_SCRIPT: path.join(bin, "gh"),
     FAKE_CAO_ARCHIVE: archive,
     FAKE_COMMAND_LOG: log,
     FAKE_GH_AW_INSTALLED: ghAwInstalled,
