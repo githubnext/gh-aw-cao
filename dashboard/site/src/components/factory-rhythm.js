@@ -18,7 +18,7 @@ export function renderFactoryRhythm(source, scope) {
     legendClassName: 'factory-rhythm-legend',
     plotClassName: 'factory-rhythm-bars',
     title: 'Campaign rhythm',
-    ariaLabel: 'Successful Actions runs from Monday through Sunday',
+    ariaLabel: 'Successful Actions runs this week and last week from Monday through Sunday',
     legendLabel: 'Campaign rhythm legend',
     legend: [
       { label: 'This week', className: 'factory-rhythm-legend-current' },
@@ -29,7 +29,8 @@ export function renderFactoryRhythm(source, scope) {
       const maximum = Math.max(...days.flatMap((day) => [day.count, day.previous]), 1);
       return days.map((day) => ({
         ...day,
-        height: Math.max(5, (day.reached ? day.count : day.previous) / maximum * 100)
+        currentHeight: Math.max(5, day.count / maximum * 100),
+        previousHeight: Math.max(5, day.previous / maximum * 100)
       }));
     },
     key: (day) => day.label,
@@ -41,13 +42,11 @@ export function renderFactoryRhythm(source, scope) {
       element.title = description;
       const current = element.querySelector('.factory-rhythm-current');
       if (current instanceof HTMLElement) {
-        current.hidden = !day.reached;
-        current.style.height = `${day.height}%`;
+        current.style.height = `${day.currentHeight}%`;
       }
       const baseline = element.querySelector('.factory-rhythm-baseline');
       if (baseline instanceof HTMLElement) {
-        baseline.hidden = day.reached;
-        baseline.style.height = `${day.height}%`;
+        baseline.style.height = `${day.previousHeight}%`;
       }
       const label = element.querySelector('small');
       if (label) label.textContent = day.label;
@@ -64,9 +63,9 @@ export function renderFactoryRhythm(source, scope) {
 
 /** @param {RhythmDay} day */
 function rhythmDayDescription(day) {
-  const count = day.reached ? day.count : day.previous;
-  const period = day.reached ? 'this week' : 'last week';
-  return `${day.label} ${day.date}: ${formatCount(count)} successful ${count === 1 ? 'run' : 'runs'} ${period}.`;
+  const current = `${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'} this week`;
+  const previous = `${formatCount(day.previous)} successful ${day.previous === 1 ? 'run' : 'runs'} last week`;
+  return `${day.label}${day.date ? ` ${day.date}` : ''}: ${current}${day.reached ? '' : ' (day not yet reached)'}; ${previous}.`;
 }
 
 /** @param {RhythmSource} source @returns {{ days: RhythmDay[] }} */

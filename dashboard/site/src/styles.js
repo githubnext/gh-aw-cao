@@ -1592,9 +1592,8 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .overview-campaigns-view-all { display: inline-flex; justify-self: start; margin-top: 12px; color: var(--accent); font-size: .8125rem; font-weight: 600; text-decoration: none; }
 .overview-campaigns-view-all:hover { text-decoration: underline; }
 .factory-rhythm-bars > .factory-rhythm-day { height: 100%; position: relative; display: grid; grid-template-rows: 1fr auto; align-items: end; gap: 5px; border: 0; border-radius: 3px; background: transparent; text-align: center; cursor: default; }
-.factory-rhythm-bar-pair { height: 100%; display: flex; align-items: end; justify-content: center; gap: 2px; }
-.factory-rhythm-bar-pair i { min-width: 4px; min-height: 5px; display: block; border-radius: 3px 3px 1px 1px; transform-origin: center bottom; animation: factory-rhythm-bar-grow 360ms cubic-bezier(.2, .7, .2, 1) both; animation-delay: calc((var(--factory-rhythm-day, 1) - 1) * 35ms); }
-.factory-rhythm-bar-pair i[hidden] { display: none; }
+.factory-rhythm-bar-pair { height: 100%; position: relative; display: block; }
+.factory-rhythm-bar-pair i { position: absolute; bottom: 0; left: 50%; min-width: 4px; min-height: 5px; display: block; border-radius: 3px 3px 1px 1px; transform: translateX(-50%); transform-origin: center bottom; animation: factory-rhythm-bar-grow 360ms cubic-bezier(.2, .7, .2, 1) both; animation-delay: calc((var(--factory-rhythm-day, 1) - 1) * 35ms); }
 .factory-rhythm-day:nth-child(2) { --factory-rhythm-day: 2; }
 .factory-rhythm-day:nth-child(3) { --factory-rhythm-day: 3; }
 .factory-rhythm-day:nth-child(4) { --factory-rhythm-day: 4; }
@@ -1603,10 +1602,10 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .factory-rhythm-day:nth-child(7) { --factory-rhythm-day: 7; }
 .factory-rhythm-pending .factory-rhythm-bar-pair i { animation-play-state: paused; }
 @keyframes factory-rhythm-bar-grow {
-  from { opacity: .4; transform: scaleY(0); }
+  from { opacity: .4; transform: translateX(-50%) scaleY(0); }
 }
 .factory-rhythm-baseline { width: 82%; border: 1px solid var(--border); background: var(--canvas-subtle); }
-.factory-rhythm-current { width: 82%; background: color-mix(in srgb, var(--success) 72%, var(--accent)); }
+.factory-rhythm-current { z-index: 1; width: 58%; background: color-mix(in srgb, var(--success) 72%, var(--accent)); }
 .factory-rhythm-bars small { color: var(--muted); font-size: .625rem; font-style: normal; }
 .factory-rhythm-pending .factory-rhythm-bars { border-radius: 6px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
 .factory-rhythm-pending .factory-rhythm-bars > * { visibility: hidden; }
