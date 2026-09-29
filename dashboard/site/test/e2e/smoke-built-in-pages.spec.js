@@ -1746,7 +1746,7 @@ test('declarative tables expose report-style facets and progressive catalog disc
   const modeFilter = page.getByRole('combobox', { name: 'Filter by Mode' });
   await expect(modeFilter).toHaveValue('');
   await expect(modeFilter).toHaveCSS('appearance', 'none');
-  await expect(modeFilter.locator('..')).toHaveCSS('border-radius', '999px');
+  await expect(modeFilter.locator('..')).toHaveCSS('border-radius', '6px');
 
   await page.getByRole('button', { name: 'Show all rows' }).click();
   await expect(visibleRows).toHaveCount(30);
