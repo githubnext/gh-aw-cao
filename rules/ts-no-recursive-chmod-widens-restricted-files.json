@@ -72,13 +72,13 @@
   "status": "needs-work",
   "evaluation": {
     "target_repo": "github/gh-aw-firewall",
-    "target_commit": "42cf8f65ee3a3cc6387cd23c2ac20dcc84f458b0",
+    "target_commit": "11aebb34b3aa28725d227b2bd45491c64350ecee",
     "true_positive_count": 2,
     "false_positive_count": 4,
     "false_negative_count": 1,
-    "reason": "Confirmed false positives on real repository code (agent-session-state, squid preserved-dir, and both diagnostics-dir chmod sites in src/artifact-preservation.ts) alongside a confirmed false negative (the docker-exec shell-string 'chmod -R a+rwX /fix' in src/artifact-permissions.ts, which touches the same 0o600-bearing auditDir but isn't matched by the current execa-array-argument-only AST pattern). Needs directory-provenance narrowing plus a shell-string chmod matcher before adoption.",
-    "txn_id": "refiner-35042552901-1"
+    "reason": "Re-confirmed on current HEAD: same directory-provenance false positives (agent-session-state, squid preserved-dir, both diagnostics-dir chmod sites in src/artifact-preservation.ts) alongside the same confirmed false negative (docker-exec shell-string 'chmod -R a+rwX /fix' in src/artifact-permissions.ts touching the same 0o600-bearing auditDir, still not matched by the execa-array-argument-only AST pattern). No change since the prior evaluation; still needs directory-provenance narrowing plus a shell-string chmod matcher before adoption.",
+    "txn_id": "refiner-36539358500-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/35147540393",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36539358500",
   "last_updated_target_repo": "github/gh-aw-firewall"
 }
