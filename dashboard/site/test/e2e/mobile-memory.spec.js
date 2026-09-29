@@ -20,7 +20,6 @@ test('Memory uses mobile master-detail file navigation', async ({ context, page 
           }],
         }),
       });
-
       return;
     }
     if (path === '/memory/ambient-context/notes/mobile.md') {
@@ -29,7 +28,6 @@ test('Memory uses mobile master-detail file navigation', async ({ context, page 
     }
     await route.fulfill({ status: 404 });
   });
-
   await page.setViewportSize({ width: 390, height: 844 });
   await page.setContent(`
     <button id="chrome-back" aria-label="Go back" hidden>Back</button>
