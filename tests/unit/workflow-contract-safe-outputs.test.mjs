@@ -139,11 +139,26 @@ test("Dependabot worker maintains a durable parent and one-PR child tasks withou
   assert.equal(config.tools.github["min-integrity"], "unapproved");
   assert.equal(config.permissions["vulnerability-alerts"], "read");
   assert.ok(config.tools.github.toolsets.includes("dependabot"));
-  assert.equal(config.tools.github["github-app"].owner, "${{ steps.target_github_app_scope.outputs.owner }}");
-  assert.deepEqual(config.tools.github["github-app"].repositories, ["${{ steps.target_github_app_scope.outputs.repository }}"]);
+  assert.equal(config.tools.github["github-token"], "${{ steps.target-read-credential.outputs.token }}");
+  const agentPreSteps = config.jobs.agent["pre-steps"];
+  const targetReadAppToken = agentPreSteps.find((step) => step.id === "target-read-app-token");
+  assert.ok(targetReadAppToken);
+  assert.equal(targetReadAppToken.with.owner, "${{ steps.target_github_app_scope.outputs.owner }}");
+  assert.equal(targetReadAppToken.with.repositories, "${{ steps.target_github_app_scope.outputs.repository }}");
+  assert.equal(targetReadAppToken.with["permission-vulnerability-alerts"], "read");
+  const targetReadCredential = agentPreSteps.find((step) => step.id === "target-read-credential");
+  assert.ok(targetReadCredential);
+  assert.equal(
+    targetReadCredential.env.TARGET_READ_TOKEN,
+    "${{ steps.target-read-app-token.outputs.token || vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[inputs.target_repo || github.repository]] || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_READ_PAT || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}",
+  );
+  assert.match(targetReadCredential.run, /No read credential is configured/);
   const lock = workflow("dependabot-update-planner.lock.yml");
   assert.match(lock, /permission-vulnerability-alerts: read/);
-  assert.match(lock, /GITHUB_MCP_SERVER_TOKEN: \$\{\{ steps\.github-mcp-app-token\.outputs\.token/);
+  assert.match(
+    lock,
+    /GITHUB_MCP_SERVER_TOKEN: \$\{\{ steps\.target-read-credential\.outputs\.token \}\}/,
+  );
   assert.deepEqual(Object.keys(outputs).sort(), ["add-comment", "close-issue", "create-issue", "update-issue"]);
   assert.equal(outputs["create-issue"].max, 13);
   assert.equal(outputs["create-issue"]["deduplicate-by-title"], true);
@@ -197,7 +212,7 @@ test("Dependabot worker maintains a durable parent and one-PR child tasks withou
   assert.match(source, /Their absence does not make the inventory incomplete/);
   assert.match(source, /do not run install, update, audit-fix, or lifecycle scripts/);
   assert.doesNotMatch(source, /fallback inventory/);
-  assert.match(source, /target-scoped read App's `list_dependabot_alerts` tool, paging through all open alerts/);
+  assert.match(source, /target-scoped read credential's `list_dependabot_alerts` tool, paging through all open alerts/);
   assert.match(source, /Never create, update, push to, comment on, or otherwise mutate a pull request/);
 });
 

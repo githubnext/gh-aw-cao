@@ -84,6 +84,38 @@ jobs:
           fi
           echo "owner=$owner" >> "$GITHUB_OUTPUT"
           echo "repository=$repository" >> "$GITHUB_OUTPUT"
+      - name: Generate target-scoped read App token
+        id: target-read-app-token
+        env:
+          GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_AUTH_MODE != 'workflow-token' && secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY || '' }}
+        if: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_AUTH_MODE != 'workflow-token' && vars.GH_AW_GITHUB_READ_APP_ID || '' != '' && env.GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY != '' }}
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_AUTH_MODE != 'workflow-token' && vars.GH_AW_GITHUB_READ_APP_ID || '' }}
+          private-key: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_AUTH_MODE != 'workflow-token' && secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY || '' }}
+          owner: ${{ steps.target_github_app_scope.outputs.owner }}
+          repositories: ${{ steps.target_github_app_scope.outputs.repository }}
+          github-api-url: ${{ github.api_url }}
+          permission-actions: read
+          permission-checks: read
+          permission-contents: read
+          permission-issues: read
+          permission-pull-requests: read
+          permission-security-events: read
+          permission-statuses: read
+          permission-vulnerability-alerts: read
+      - name: Resolve target-scoped read credential
+        id: target-read-credential
+        env:
+          TARGET_READ_TOKEN: ${{ steps.target-read-app-token.outputs.token || vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[inputs.target_repo || github.repository]] || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_READ_PAT || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$TARGET_READ_TOKEN" ]]; then
+            echo "No read credential is configured for ${TARGET_REPO:-the dispatched target}" >&2
+            exit 1
+          fi
+          echo "::add-mask::$TARGET_READ_TOKEN"
+          echo "token=$TARGET_READ_TOKEN" >> "$GITHUB_OUTPUT"
 
 if: needs.pre_activation.outputs.cao_authorized == 'true'
 
@@ -153,12 +185,7 @@ tools:
     mode: local
     min-integrity: unapproved
     toolsets: [default, repos, issues, pull_requests, actions, dependabot, code_security, security_advisories]
-    github-app:
-      client-id: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_AUTH_MODE != 'workflow-token' && vars.GH_AW_GITHUB_READ_APP_ID || '' }}
-      private-key: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_AUTH_MODE != 'workflow-token' && secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY || '' }}
-      ignore-if-missing: true
-      owner: ${{ steps.target_github_app_scope.outputs.owner }}
-      repositories: ["${{ steps.target_github_app_scope.outputs.repository }}"]
+    github-token: ${{ steps.target-read-credential.outputs.token }}
   repo-memory:
     branch-name: "memory/dependabot"
     description: "Stable Dependabot plan issue numbers for each safe-output and target repository pair"
@@ -319,7 +346,7 @@ Also determine the repository-declared package-manager and toolchain versions fr
 
 Build a complete snapshot without requiring Dependabot pull requests to exist. Security findings and routine version updates have separate evidence routes:
 
-1. Find every open Dependabot security alert visible to this workflow with the target-scoped read App's `list_dependabot_alerts` tool, paging through all open alerts. Record the vulnerable package, severity, advisory, vulnerable range, and patched version when available.
+1. Find every open Dependabot security alert visible to this workflow with the target-scoped read credential's `list_dependabot_alerts` tool, paging through all open alerts. Record the vulnerable package, severity, advisory, vulnerable range, and patched version when available.
    - Successfully checking out `target_repo` proves only repository contents access. It does not prove that the credential used by GitHub tools or `gh api` can read Dependabot alerts.
    - Require an actual successful alert-list response using a credential with `vulnerability-alerts: read` access before treating security evidence as available.
    - Distinguish an empty result from unavailable evidence. Tool denial, DIFC filtering, missing tools, authentication failures, permission failures, or API errors mean alert evidence is unavailable; do not summarize unavailable alert evidence as "zero open alerts."

@@ -256,15 +256,21 @@ test("CAO Activity App mode creates independent organization scopes", () => {
 test("Dependabot planner scopes its read token to the dispatched target", () => {
   const source = workflow("dependabot-update-planner.md");
   const generated = workflow("dependabot-update-planner.lock.yml");
-  const tokenStep = /\n\s+- name: Generate GitHub App token\n\s+id: github-mcp-app-token[\s\S]*?(?=\n\s+- name: )/.exec(generated)?.[0];
+  const appTokenStep = /\n\s+- name: Generate target-scoped read App token\n\s+id: target-read-app-token[\s\S]*?(?=\n\s+- name: )/.exec(generated)?.[0];
+  const credentialStep = /\n\s+- name: Resolve target-scoped read credential\n\s+id: target-read-credential[\s\S]*?(?=\n\s+- name: )/.exec(generated)?.[0];
 
-  assert.ok(tokenStep, "missing GitHub MCP App token step");
+  assert.ok(appTokenStep, "missing target-scoped App token step");
+  assert.ok(credentialStep, "missing target-scoped credential selection step");
   assert.match(source, /name: Derive target GitHub App scope[\s\S]*?TARGET_REPOSITORY: \$\{\{ inputs\.target_repo \}\}/);
   assert.match(source, /echo "owner=\$owner" >> "\$GITHUB_OUTPUT"/);
   assert.match(source, /echo "repository=\$repository" >> "\$GITHUB_OUTPUT"/);
-  assert.match(source, /github-app:[\s\S]*?owner: \$\{\{ steps\.target_github_app_scope\.outputs\.owner \}\}/);
-  assert.match(source, /repositories: \["\$\{\{ steps\.target_github_app_scope\.outputs\.repository \}\}"\]/);
-  assert.match(tokenStep, /owner: \$\{\{ steps\.target_github_app_scope\.outputs\.owner \}\}/);
-  assert.match(tokenStep, /repositories: \$\{\{ steps\.target_github_app_scope\.outputs\.repository \}\}/);
-  assert.doesNotMatch(tokenStep, /github\.repository_(owner|name)|github\.event\.repository\.name/);
+  assert.match(appTokenStep, /owner: \$\{\{ steps\.target_github_app_scope\.outputs\.owner \}\}/);
+  assert.match(appTokenStep, /repositories: \$\{\{ steps\.target_github_app_scope\.outputs\.repository \}\}/);
+  assert.match(appTokenStep, /permission-vulnerability-alerts: read/);
+  assert.doesNotMatch(appTokenStep, /github\.repository_(owner|name)|github\.event\.repository\.name/);
+  assert.match(
+    credentialStep,
+    /GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets\[fromJSON\(vars\.GH_AW_GITHUB_READ_PAT_REPOSITORIES \|\| '\{\}'\)\[inputs\.target_repo \|\| github\.repository\]\]/,
+  );
+  assert.match(generated, /GITHUB_MCP_SERVER_TOKEN: \$\{\{ steps\.target-read-credential\.outputs\.token \}\}/);
 });
