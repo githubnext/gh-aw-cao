@@ -150,3 +150,60 @@ func TestClassifyGenerationRetentionHandlesEmptyGenerationSets(t *testing.T) {
 		t.Fatalf("reason = %v, want %v", classification.reason, generationReasonHealthy)
 	}
 }
+
+func TestClassifyIntegrityDiagnosticsFailsOnRelationshipErrorsBeforeDuplicates(t *testing.T) {
+	classification := classifyIntegrityDiagnostics(
+		[]string{"run missing repository"},
+		map[string][]string{"runs": {"id-1", "id-2"}},
+	)
+	if classification.status != StatusFail {
+		t.Fatalf("status = %v, want %v", classification.status, StatusFail)
+	}
+	if classification.reason != integrityReasonRelationshipErrors {
+		t.Fatalf("reason = %v, want %v", classification.reason, integrityReasonRelationshipErrors)
+	}
+	if classification.duplicates != 2 {
+		t.Fatalf("duplicates = %d, want 2 (duplicates are still counted alongside a relationship failure)", classification.duplicates)
+	}
+	if got, want := classification.sample, []string{"run missing repository"}; len(got) != 1 || got[0] != want[0] {
+		t.Fatalf("sample = %v, want %v", got, want)
+	}
+}
+
+func TestClassifyIntegrityDiagnosticsBoundsRelationshipErrorSampleToThree(t *testing.T) {
+	classification := classifyIntegrityDiagnostics(
+		[]string{"error-1", "error-2", "error-3", "error-4"}, nil)
+	if len(classification.sample) != 3 {
+		t.Fatalf("sample = %v, want 3 entries (bounded)", classification.sample)
+	}
+}
+
+func TestClassifyIntegrityDiagnosticsWarnsOnDuplicatesWithoutRelationshipErrors(t *testing.T) {
+	classification := classifyIntegrityDiagnostics(
+		nil, map[string][]string{"runs": {"id-1"}, "repositories": {"id-2", "id-3"}})
+	if classification.status != StatusWarn {
+		t.Fatalf("status = %v, want %v", classification.status, StatusWarn)
+	}
+	if classification.reason != integrityReasonDuplicateRecords {
+		t.Fatalf("reason = %v, want %v", classification.reason, integrityReasonDuplicateRecords)
+	}
+	if classification.duplicates != 3 {
+		t.Fatalf("duplicates = %d, want 3 (summed across collections)", classification.duplicates)
+	}
+	if len(classification.sample) != 0 {
+		t.Fatalf("sample = %v, want none (only relationship errors are sampled)", classification.sample)
+	}
+}
+
+func TestClassifyIntegrityDiagnosticsPassesWhenClean(t *testing.T) {
+	classification := classifyIntegrityDiagnostics(nil, nil)
+	if classification.status != StatusPass {
+		t.Fatalf("status = %v, want %v", classification.status, StatusPass)
+	}
+	if classification.reason != integrityReasonHealthy {
+		t.Fatalf("reason = %v, want %v", classification.reason, integrityReasonHealthy)
+	}
+	if classification.duplicates != 0 {
+		t.Fatalf("duplicates = %d, want 0", classification.duplicates)
+	}
+}

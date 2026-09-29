@@ -122,42 +122,85 @@ func (d Doctor) checkIntegrity(ctx context.Context) Check {
 	if err != nil {
 		return skipped(id, areaData, title, "the active generation carries no diagnostics")
 	}
-	duplicates := 0
-	for _, identifiers := range diagnostics.DuplicateRecordIDs {
-		duplicates += len(identifiers)
-	}
+	classification := classifyIntegrityDiagnostics(diagnostics.RelationshipErrors, diagnostics.DuplicateRecordIDs)
+	doctorLog.Printf("canonical integrity classified status=%s reason=%s", classification.status, classification.reason)
 	details := []Detail{
 		detail("relationshipErrors", fmt.Sprint(len(diagnostics.RelationshipErrors))),
-		detail("duplicateRecordIds", fmt.Sprint(duplicates)),
+		detail("duplicateRecordIds", fmt.Sprint(classification.duplicates)),
 	}
-	if len(diagnostics.RelationshipErrors) > 0 {
+	if len(classification.sample) > 0 {
+		details = append(details, detail("sample", strings.Join(classification.sample, "; ")))
+	}
+	return Check{
+		ID: id, Area: areaData, Title: title, Status: classification.status,
+		Summary: classification.summary, Details: details, Remedy: classification.remedy,
+	}
+}
+
+// integrityReason names why classifyIntegrityDiagnostics reached its status,
+// stable across summary wording changes so it is useful to log without
+// exposing relationship-error or record-identifier samples.
+type integrityReason string
+
+const (
+	integrityReasonRelationshipErrors integrityReason = "relationship-errors"
+	integrityReasonDuplicateRecords   integrityReason = "duplicate-records"
+	integrityReasonHealthy            integrityReason = "healthy"
+)
+
+// integrityClassification is the status, summary, remedy, reason, duplicate
+// count, and bounded relationship-error sample classifyIntegrityDiagnostics
+// derives from one generation's stored diagnostics.
+type integrityClassification struct {
+	status     Status
+	summary    string
+	remedy     string
+	reason     integrityReason
+	duplicates int
+	sample     []string
+}
+
+// classifyIntegrityDiagnostics decides the data.integrity check's outcome
+// from a generation's recorded relationship errors and duplicate record
+// identifiers alone. It is a pure function so both failure modes — dangling
+// relationships and duplicated identifiers — and the bounded three-item
+// sample are testable without a fake Redis-backed diagnostics read.
+func classifyIntegrityDiagnostics(relationshipErrors []string, duplicateRecordIDs map[string][]string) integrityClassification {
+	duplicates := 0
+	for _, identifiers := range duplicateRecordIDs {
+		duplicates += len(identifiers)
+	}
+	if len(relationshipErrors) > 0 {
 		// Report a bounded sample: the full list can be large and the first
 		// few are enough to identify the pattern.
-		sample := diagnostics.RelationshipErrors
+		sample := relationshipErrors
 		if len(sample) > 3 {
 			sample = sample[:3]
 		}
-		details = append(details, detail("sample", strings.Join(sample, "; ")))
-		return Check{
-			ID: id, Area: areaData, Title: title, Status: StatusFail,
-			Summary: fmt.Sprintf("%d relationship errors in the active generation", len(diagnostics.RelationshipErrors)),
-			Details: details,
-			Remedy:  "the projection published records that reference missing records; reproject from a complete source",
+		return integrityClassification{
+			status:     StatusFail,
+			summary:    fmt.Sprintf("%d relationship errors in the active generation", len(relationshipErrors)),
+			remedy:     "the projection published records that reference missing records; reproject from a complete source",
+			reason:     integrityReasonRelationshipErrors,
+			duplicates: duplicates,
+			sample:     sample,
 		}
 	}
 	if duplicates > 0 {
-		return Check{
-			ID: id, Area: areaData, Title: title, Status: StatusWarn,
-			Summary: fmt.Sprintf("%d duplicate record identifiers across %d collections",
-				duplicates, len(diagnostics.DuplicateRecordIDs)),
-			Details: details,
-			Remedy:  "duplicated identifiers inflate counts; check the source shards for repeated payloads",
+		return integrityClassification{
+			status: StatusWarn,
+			summary: fmt.Sprintf("%d duplicate record identifiers across %d collections",
+				duplicates, len(duplicateRecordIDs)),
+			remedy:     "duplicated identifiers inflate counts; check the source shards for repeated payloads",
+			reason:     integrityReasonDuplicateRecords,
+			duplicates: duplicates,
 		}
 	}
-	return Check{
-		ID: id, Area: areaData, Title: title, Status: StatusPass,
-		Summary: "no relationship errors or duplicate identifiers",
-		Details: details,
+	return integrityClassification{
+		status:     StatusPass,
+		summary:    "no relationship errors or duplicate identifiers",
+		reason:     integrityReasonHealthy,
+		duplicates: duplicates,
 	}
 }
 
