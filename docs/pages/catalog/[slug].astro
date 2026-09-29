@@ -17,7 +17,7 @@ const manifestUrl = `${repositoryBase}/blob/main/${entry.manifestPath}`;
 const editUrl = entry.readmePath
   ? `${repositoryBase}/edit/main/${entry.readmePath}`
   : `${repositoryBase}/edit/main/${entry.manifestPath}`;
-const installCommand = `gh aw add githubnext/gh-aw-cao/${entry.slug}@<catalog-release>`;
+const installCommand = `gh aw add githubnext/gh-aw-cao/${entry.slug}`;
 const ReadmeContent = entry.ReadmeContent;
 ---
 
@@ -64,13 +64,11 @@ const ReadmeContent = entry.ReadmeContent;
   <section class="install-campaign" aria-labelledby="install-campaign">
     <h2 id="install-campaign">Add this campaign</h2>
     <p>
-      From your control repository, install a published release tag:
+      From your control repository, run this command to install the latest published release:
     </p>
     <pre><code>{installCommand}</code></pre>
     <p>
-      Replace <code>&lt;catalog-release&gt;</code> with the latest published tag shown in
-      <a href={`${repositoryBase}/releases/latest`}> GitHub Releases</a>.
-      Follow the <a href={`${basePath}/setup-quickstarts/`}>setup guide</a> for prerequisites, or
+      No release version is needed. Follow the <a href={`${basePath}/setup-quickstarts/`}>setup guide</a> for prerequisites, or
       <a href={campaignUrl}> view the campaign source on GitHub</a>.
     </p>
   </section>

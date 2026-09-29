@@ -164,12 +164,11 @@ This section covers the GitHub Actions only dashboard. For a step-by-step proced
 
 ### Install the dashboard campaign
 
-The root Central Agentic Ops campaign installs the deterministic activity index and dashboard by default. To install the dashboard without the operational workflows, install both focused deterministic campaigns from the same published release tag:
+The root Central Agentic Ops campaign installs the deterministic activity index and dashboard by default. To install the dashboard without the operational workflows, install both focused deterministic campaigns. Unpinned package coordinates resolve the latest release automatically:
 
 ```bash
-CAO_RELEASE=$(gh release view --repo githubnext/gh-aw-cao --json tagName --jq '.tagName')
-gh aw add "githubnext/gh-aw-cao/activity@${CAO_RELEASE}"
-gh aw add "githubnext/gh-aw-cao/dashboard@${CAO_RELEASE}"
+gh aw add githubnext/gh-aw-cao/activity
+gh aw add githubnext/gh-aw-cao/dashboard
 ```
 
 Both installation paths add an independently dispatchable dashboard builder, a manual standalone Pages publisher, and their deterministic report modules. There is no additional dashboard enable variable, and installation does not deploy or enable Pages.

@@ -51,12 +51,11 @@ For more information, see [Configure authentication](authentication.md).
 
 ## Deploying the dashboard
 
-1. Install the dashboard. You can install the root campaign, which includes the dashboard, or install only the Activity and dashboard campaigns from the same release.
+1. Install the dashboard. You can install the root campaign, which includes the dashboard, or install only the Activity and dashboard campaigns. Unpinned package coordinates resolve the latest release automatically.
 
    ```bash
-   CAO_RELEASE=$(gh release view --repo githubnext/gh-aw-cao --json tagName --jq '.tagName')
-   gh aw add "githubnext/gh-aw-cao/activity@${CAO_RELEASE}"
-   gh aw add "githubnext/gh-aw-cao/dashboard@${CAO_RELEASE}"
+   gh aw add githubnext/gh-aw-cao/activity
+   gh aw add githubnext/gh-aw-cao/dashboard
    ```
 
 1. Review, commit, and push the installed files. These include `.github/workflows/cao-activity.yml`, `.github/workflows/cao-dashboard.yml`, and the `activity/` and `dashboard/` directories.
