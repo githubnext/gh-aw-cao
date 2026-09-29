@@ -111,6 +111,37 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     expect(readFileSync(filename, 'utf8').slice(0, 15)).toBe('SQLite format 3');
   });
 
+  it('upgrades existing eval mirrors with experiment linkage', async () => {
+    const filename = temporaryDatabase();
+    const connection = new DatabaseSync(filename);
+    connection.exec(`
+      CREATE TABLE eval_observations (
+        database_name TEXT NOT NULL, id TEXT NOT NULL, run_id TEXT, eval_id TEXT,
+        observed_at TEXT NOT NULL, provenance TEXT NOT NULL, record_json TEXT NOT NULL,
+        PRIMARY KEY (database_name, id)
+      );
+    `);
+    const record = {
+      id: 'eval-observation:1', runId: 'run:1', evalId: 'eval:1',
+      experimentId: 'experiment:1', variant: 'candidate',
+      observedAt: '2026-09-10T00:00:00Z', provenance: { source: 'gh-aw-logs' }
+    };
+    connection.prepare(`
+      INSERT INTO eval_observations
+        (database_name, id, run_id, eval_id, observed_at, provenance, record_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(DATABASE_NAME, record.id, record.runId, record.evalId,
+      record.observedAt, JSON.stringify(record.provenance), JSON.stringify(record));
+    connection.close();
+
+    const indexedDB = installSqliteIndexedDB(filename);
+    (await openCanonicalDatabase(indexedDB)).close();
+    const upgraded = new DatabaseSync(filename);
+    expect(upgraded.prepare('SELECT experiment_id, variant FROM eval_observations').get())
+      .toMatchObject({ experiment_id: 'experiment:1', variant: 'candidate' });
+    upgraded.close();
+  });
+
   it('projects the six evidence collections into transactional relational SQLite tables', async () => {
     const filename = temporaryDatabase();
     const indexedDB = installSqliteIndexedDB(filename);

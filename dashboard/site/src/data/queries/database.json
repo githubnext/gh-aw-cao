@@ -139,6 +139,7 @@
         "fields": [{ "field": "owner", "as": "organization" }, { "field": "repository", "as": "repository" },
           { "field": "workflowPath", "as": "workflow" }, { "field": "githubRunId", "as": "run" },
           { "field": "runLink", "as": "evidence-link" },
+          { "field": "rolloutMode", "as": "rollout-mode" },
           { "field": "requestedModel", "as": "requested-model" },
           { "field": "resolvedModel", "as": "resolved-model" }] }
     ],
@@ -149,7 +150,7 @@
       { "field": "variant" }, { "field": "included" },
       { "field": "exclusionReason", "as": "exclusion-reason" },
       { "field": "role" }, { "field": "direction" },
-      { "field": "rolloutMode", "as": "rollout-mode" },
+      { "field": "rollout-mode" },
       { "field": "evalLink", "as": "eval-link" },
       { "field": "organization" }, { "field": "repository" }, { "field": "workflow" }, { "field": "run" },
       { "field": "evidence-link" }, { "field": "requested-model" }, { "field": "resolved-model" },

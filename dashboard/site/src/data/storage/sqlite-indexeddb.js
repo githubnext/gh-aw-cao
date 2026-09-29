@@ -95,7 +95,20 @@ function createRelationalEvidenceTables(connection) {
         record_json TEXT NOT NULL,
         PRIMARY KEY (database_name, id)
       );
+    `);
+    const existing = new Set(connection.prepare(`PRAGMA table_info(${table})`).all().map((row) => row.name));
+    let migrated = false;
+    for (const [index, column] of columns.entries()) {
+      if (existing.has(column)) continue;
+      migrated = true;
+      connection.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${/** @type {Record<string, string>} */ (definition)[fields[index]]};`);
+      connection.exec(`UPDATE ${table} SET ${column} = json_extract(record_json, '$.${fields[index]}');`);
+    }
+    connection.exec(`
       ${indexed.map((column) => `CREATE INDEX IF NOT EXISTS ${table}_${column} ON ${table}(database_name, ${column});`).join('\n')}
+      ${migrated ? `DROP TRIGGER IF EXISTS ${table}_insert;
+      DROP TRIGGER IF EXISTS ${table}_update;
+      DROP TRIGGER IF EXISTS ${table}_delete;` : ''}
       CREATE TRIGGER IF NOT EXISTS ${table}_insert AFTER INSERT ON __idb_records
       WHEN NEW.store_name = '${store}'
       BEGIN
