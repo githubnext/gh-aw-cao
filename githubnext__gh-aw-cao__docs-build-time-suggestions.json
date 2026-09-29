@@ -1,6 +1,6 @@
 {
-  "source_sha": "84ed0c8f9918365a078397f15e3c406c45e08c6d",
-  "next_category": "dependency installation and caching",
+  "source_sha": "b9b7c6f5dd96643d2ff1f48b62b3e4096551a16e",
+  "next_category": "Astro documentation generation",
   "evaluations": [
     {
       "evaluated_at": "2026-09-29T20:31:00Z",
@@ -113,6 +113,23 @@
       ],
       "outcome": "suggested: workflow_run docs builds repeatedly rebuild immediately after successful cao-dashboard pushes on the same head SHA even though schedule-freshness skips equivalent scheduled runs; add a workflow_run freshness gate keyed to the latest successful dashboard run SHA to avoid duplicate docs rebuilds.",
       "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-29T22:29:09Z",
+      "worker_run_id": "36639365028",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36639375613,
+        36639055495,
+        36637066632,
+        36635651609,
+        36635486569,
+        36634885197,
+        36634106269,
+        36633476719,
+        36632954614
+      ],
+      "outcome": "no_actionable_improvement: dependency restore cache hit in all 9 comparable successful docs.yml runs; install/save never ran, build median 43s and workflow median 66s, so dependency installation and caching are below the 60s/15% threshold."
     }
   ]
 }
