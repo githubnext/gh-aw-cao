@@ -143,7 +143,16 @@ func (s *Store) StreamEnqueueDelivery(
 	if result == -1 {
 		return DeliveryDuplicate, ErrStreamCapacity
 	}
-	return DeliveryAdmission(result), nil
+	switch result {
+	case 0:
+		return DeliveryDuplicate, nil
+	case 1:
+		return DeliveryCoalesced, nil
+	case 2:
+		return DeliveryEnqueued, nil
+	default:
+		return DeliveryDuplicate, errors.New("unexpected delivery admission response")
+	}
 }
 
 // StreamReplaceAndAck atomically persists a replacement entry before
@@ -185,7 +194,7 @@ func (s *Store) StreamAckAndDelete(ctx context.Context, stream, group, messageID
 }
 
 func streamFieldArguments(fields map[string]string) []string {
-	arguments := make([]string, 0, len(fields)*2)
+	var arguments []string
 	for name, value := range fields {
 		arguments = append(arguments, name, value)
 	}

@@ -224,7 +224,16 @@ return 2`
 	if err != nil {
 		return DeliveryAlreadyCommitted, err
 	}
-	return DeliveryReservation(toInt64(value)), nil
+	switch toInt64(value) {
+	case 0:
+		return DeliveryAlreadyCommitted, nil
+	case 1:
+		return DeliveryReserved, nil
+	case 2:
+		return DeliveryInProgress, nil
+	default:
+		return DeliveryAlreadyCommitted, errors.New("unexpected delivery reservation response")
+	}
 }
 
 func (s *Store) ReleaseDeliveryReservation(ctx context.Context, delivery string) error {
