@@ -7,10 +7,26 @@ description: Create one control repository, install CAO, and follow the interact
 
 Use a private repository unless every target and all future operational data may be public.
 
-Create one when needed:
+You need GitHub CLI (`gh`), Git, Bash, `curl`, and Node.js 24 or newer. Use a
+GitHub CLI account that can access the control repository and the repositories
+you plan to enroll. If you are not signed in, run `gh auth login` (add
+`--hostname HOST` for a non-default GitHub host), then confirm your session:
 
 ```bash
 gh auth status
+```
+
+If you already have a local control-repository checkout, open a terminal at its
+root. Otherwise, clone an existing repository:
+
+```bash
+gh repo clone OWNER/CONTROL_REPOSITORY
+cd CONTROL_REPOSITORY
+```
+
+Create one when needed:
+
+```bash
 gh repo create OWNER/CONTROL_REPOSITORY --private --clone
 cd CONTROL_REPOSITORY
 ```
@@ -38,14 +54,22 @@ The setup command:
 5. configures the control repository's Pages source as GitHub Actions and, for a private repository, restricts the site to repository readers (requires Pages access control support and permission to manage Pages settings);
 6. installs no campaign and runs no workflow.
 
-## 3. Review and Save
+## 3. Validate, Review, and Save
 
 ```bash
+./cao.sh validate
 git diff --check
 git status --short
 ```
 
-After reviewing the generated control plane:
+Validation checks the installed control plane; the expected result is a valid
+policy with the exact repository scope you selected. Setup installs no
+user-facing campaign and runs no workflow.
+
+Review the complete status and diff before committing. The following command
+stages every change under these paths, so use it only in a clean checkout. If
+you are reusing a repository with other work, stage only the setup files you
+reviewed.
 
 ```bash
 git add .github activity dashboard cao.sh
@@ -62,5 +86,6 @@ Choose and install the first operation as a separate change:
 ```
 
 Replace `CAMPAIGN` with a campaign slug from [Browse campaigns](catalog.md).
-For manual or non-interactive authentication, use the detailed
-[authentication guide](authentication.md).
+Read the campaign guide before installing it. Adding a campaign installs its
+workflows but does not run them. For manual or non-interactive authentication,
+use the detailed [authentication guide](authentication.md).
