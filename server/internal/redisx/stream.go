@@ -2,6 +2,8 @@ package redisx
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strconv"
@@ -18,16 +20,15 @@ type StreamMessage struct {
 	Fields map[string]string
 }
 
-// StreamAdd appends an entry to a stream, trimming it to an approximate
-// maximum length so an unattended queue cannot grow without bound.
+var ErrStreamCapacity = errors.New("stream capacity reached")
+
+// StreamAdd appends an entry to a stream. Task streams must not use MAXLEN:
+// Redis may trim pending entries, making consumer-group recovery impossible.
 func (s *Store) StreamAdd(ctx context.Context, stream string, maxLength int64, fields map[string]string) (string, error) {
 	if len(fields) == 0 {
 		return "", errors.New("stream entries require at least one field")
 	}
 	arguments := []string{"XADD", s.Key(stream)}
-	if maxLength > 0 {
-		arguments = append(arguments, "MAXLEN", "~", strconv.FormatInt(maxLength, 10))
-	}
 	arguments = append(arguments, "*")
 	for name, value := range fields {
 		arguments = append(arguments, name, value)
@@ -37,6 +38,152 @@ func (s *Store) StreamAdd(ctx context.Context, stream string, maxLength int64, f
 		return "", err
 	}
 	return fmt.Sprint(value), nil
+}
+
+// StreamEnqueue atomically reserves debounce state and appends one task. The
+// capacity check applies backpressure rather than trimming recoverable work.
+func (s *Store) StreamEnqueue(
+	ctx context.Context,
+	stream, debounceKey string,
+	debounceTTL time.Duration,
+	maxLength int64,
+	fields map[string]string,
+) (bool, error) {
+	script := `
+	if ARGV[1] ~= "0" and redis.call("XLEN", KEYS[1]) >= tonumber(ARGV[1]) then
+	  return -1
+	end
+	if ARGV[2] == "1" and redis.call("EXISTS", KEYS[2]) == 1 then
+	  return 0
+	end
+	redis.call("XADD", KEYS[1], "*", unpack(ARGV, 4))
+	if ARGV[2] == "1" then
+	  redis.call("SET", KEYS[2], "1", "PX", ARGV[3])
+	end
+	return 1`
+	arguments := []string{
+		"EVAL", script, "2", s.Key(stream), s.Key(debounceKey),
+		strconv.FormatInt(maxLength, 10),
+		"0",
+		strconv.FormatInt(debounceTTL.Milliseconds(), 10),
+	}
+	if debounceKey != "" {
+		arguments[6] = "1"
+	}
+	arguments = append(arguments, streamFieldArguments(fields)...)
+	value, err := s.Client.Do(ctx, arguments...)
+	if err != nil {
+		return false, err
+	}
+	switch toInt64(value) {
+	case -1:
+		return false, ErrStreamCapacity
+	case 0:
+		return false, nil
+	default:
+		return true, nil
+	}
+}
+
+// DeliveryAdmission reports the durable outcome of an idempotent webhook
+// admission.
+type DeliveryAdmission int
+
+const (
+	DeliveryDuplicate DeliveryAdmission = iota
+	DeliveryCoalesced
+	DeliveryEnqueued
+)
+
+// StreamEnqueueDelivery atomically deduplicates a GitHub delivery, applies
+// repository debounce, and appends collection work.
+func (s *Store) StreamEnqueueDelivery(
+	ctx context.Context,
+	delivery string,
+	deliveryTTL time.Duration,
+	stream, debounceKey string,
+	debounceTTL time.Duration,
+	maxLength int64,
+	fields map[string]string,
+) (DeliveryAdmission, error) {
+	script := `
+	if redis.call("EXISTS", KEYS[1]) == 1 then
+	  return 0
+	end
+	if redis.call("EXISTS", KEYS[3]) == 1 then
+	  redis.call("SET", KEYS[1], "1", "PX", ARGV[1])
+	  return 1
+	end
+	if ARGV[3] ~= "0" and redis.call("XLEN", KEYS[2]) >= tonumber(ARGV[3]) then
+	  return -1
+	end
+	redis.call("XADD", KEYS[2], "*", unpack(ARGV, 4))
+	redis.call("SET", KEYS[3], "1", "PX", ARGV[2])
+	redis.call("SET", KEYS[1], "1", "PX", ARGV[1])
+	return 2`
+	arguments := []string{
+		"EVAL", script, "3", s.deliveryKey(delivery), s.Key(stream), s.Key(debounceKey),
+		strconv.FormatInt(deliveryTTL.Milliseconds(), 10),
+		strconv.FormatInt(debounceTTL.Milliseconds(), 10),
+		strconv.FormatInt(maxLength, 10),
+	}
+	arguments = append(arguments, streamFieldArguments(fields)...)
+	value, err := s.Client.Do(ctx, arguments...)
+	if err != nil {
+		return DeliveryDuplicate, err
+	}
+	result := toInt64(value)
+	if result == -1 {
+		return DeliveryDuplicate, ErrStreamCapacity
+	}
+	return DeliveryAdmission(result), nil
+}
+
+// StreamReplaceAndAck atomically persists a replacement entry before
+// acknowledging and deleting the original.
+func (s *Store) StreamReplaceAndAck(
+	ctx context.Context,
+	source, group, messageID, destination string,
+	fields map[string]string,
+) error {
+	script := `
+	redis.call("XADD", KEYS[2], "*", unpack(ARGV, 3))
+	local acked = redis.call("XACK", KEYS[1], ARGV[1], ARGV[2])
+	if acked == 1 then redis.call("XDEL", KEYS[1], ARGV[2]) end
+	return acked`
+	arguments := []string{
+		"EVAL", script, "2", s.Key(source), s.Key(destination), group, messageID,
+	}
+	arguments = append(arguments, streamFieldArguments(fields)...)
+	_, err := s.Client.Do(ctx, arguments...)
+	return err
+}
+
+// StreamAckAndDelete removes completed work only after consumer-group ACK.
+func (s *Store) StreamAckAndDelete(ctx context.Context, stream, group string, ids ...string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	script := `
+	local acked = redis.call("XACK", KEYS[1], ARGV[1], unpack(ARGV, 2))
+	if acked > 0 then redis.call("XDEL", KEYS[1], unpack(ARGV, 2)) end
+	return acked`
+	arguments := append([]string{"EVAL", script, "1", s.Key(stream), group}, ids...)
+	_, err := s.Client.Do(ctx, arguments...)
+	return err
+}
+
+func streamFieldArguments(fields map[string]string) []string {
+	arguments := make([]string, 0, len(fields)*2)
+	for name, value := range fields {
+		arguments = append(arguments, name, value)
+	}
+	return arguments
+}
+
+func (s *Store) deliveryKey(delivery string) string {
+	sum := sha256.Sum256([]byte(delivery))
+	return s.Key("github-delivery:" + hex.EncodeToString(sum[:]))
 }
 
 // StreamEnsureGroup creates a consumer group, tolerating an existing one.
@@ -146,6 +293,27 @@ func (s *Store) StreamPending(ctx context.Context, stream, group string) (int64,
 		return 0, nil
 	}
 	return toInt64(summary[0]), nil
+}
+
+// StreamOldestPendingAge reports how long the oldest leased entry has remained
+// unacknowledged.
+func (s *Store) StreamOldestPendingAge(ctx context.Context, stream, group string) (time.Duration, error) {
+	value, err := s.Client.Do(ctx, "XPENDING", s.Key(stream), group, "-", "+", "1")
+	if err != nil {
+		if isNoGroup(err) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	entries, ok := value.([]any)
+	if !ok || len(entries) == 0 {
+		return 0, nil
+	}
+	entry, ok := entries[0].([]any)
+	if !ok || len(entry) < 3 {
+		return 0, errors.New("unexpected XPENDING response")
+	}
+	return time.Duration(toInt64(entry[2])) * time.Millisecond, nil
 }
 
 // SetAdd adds members to a set and reports how many were new.

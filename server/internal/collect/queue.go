@@ -53,8 +53,8 @@ type Queue struct {
 	Group string
 	// Debounce collapses repeated events for one repository into one task.
 	Debounce time.Duration
-	// MaxLength bounds the stream so an unattended queue cannot grow without
-	// bound.
+	// MaxLength applies admission backpressure. Outstanding work is never
+	// trimmed to satisfy this limit.
 	MaxLength int64
 	// MaxAttempts bounds retries before a task is dead-lettered.
 	MaxAttempts int
@@ -90,38 +90,68 @@ func (q Queue) Ensure(ctx context.Context) error {
 // It reports whether a new task was appended; a collapsed event is not an
 // error, it is the debounce working.
 func (q Queue) Enqueue(ctx context.Context, task Task) (bool, error) {
-	repository, err := NormalizeRepository(task.Repository)
+	return q.enqueue(ctx, task, "")
+}
+
+// EnqueueDelivery atomically deduplicates a GitHub delivery and durably
+// admits its collection task.
+func (q Queue) EnqueueDelivery(ctx context.Context, task Task, delivery string, deliveryTTL time.Duration) (bool, bool, error) {
+	repository, payload, err := q.prepareTask(task)
+	if err != nil {
+		return false, false, err
+	}
+	result, err := q.Store.StreamEnqueueDelivery(
+		ctx, delivery, deliveryTTL, taskStream, debounceKey(repository),
+		q.debounce(), q.MaxLength, taskFields(repository, payload),
+	)
+	if err != nil {
+		return false, false, err
+	}
+	return result == redisx.DeliveryEnqueued, result == redisx.DeliveryDuplicate, nil
+}
+
+func (q Queue) enqueue(ctx context.Context, task Task, delivery string) (bool, error) {
+	repository, payload, err := q.prepareTask(task)
 	if err != nil {
 		return false, err
+	}
+	debounce := ""
+	if task.Attempt == 0 && !task.Erase {
+		debounce = debounceKey(repository)
+	}
+	enqueued, err := q.Store.StreamEnqueue(
+		ctx, taskStream, debounce, q.debounce(), q.MaxLength,
+		taskFields(repository, payload),
+	)
+	if err != nil {
+		return false, err
+	}
+	if !enqueued {
+		queueLog.Printf("collapsed duplicate task repository=%s", repository)
+		return false, nil
+	}
+	queueLog.Printf("enqueued task repository=%s attempt=%d", repository, task.Attempt)
+	return true, nil
+}
+
+func (q Queue) prepareTask(task Task) (string, []byte, error) {
+	repository, err := NormalizeRepository(task.Repository)
+	if err != nil {
+		return "", nil, err
 	}
 	task.Repository = repository
 	if task.EnqueuedAt.IsZero() {
 		task.EnqueuedAt = time.Now().UTC()
 	}
-	// Erasure is never debounced: collapsing it into a nearby collection would
-	// silently retain evidence after consent was withdrawn.
-	if task.Attempt == 0 && !task.Erase {
-		fresh, err := q.Store.MarkOnce(ctx, debounceKey(repository), q.debounce())
-		if err != nil {
-			return false, err
-		}
-		if !fresh {
-			queueLog.Printf("collapsed duplicate task repository=%s", repository)
-			return false, nil
-		}
-	}
 	payload, err := json.Marshal(task)
 	if err != nil {
-		return false, err
+		return "", nil, err
 	}
-	if _, err := q.Store.StreamAdd(ctx, taskStream, q.MaxLength, map[string]string{
-		"repository": repository,
-		"task":       string(payload),
-	}); err != nil {
-		return false, err
-	}
-	queueLog.Printf("enqueued task repository=%s attempt=%d", repository, task.Attempt)
-	return true, nil
+	return repository, payload, nil
+}
+
+func taskFields(repository string, payload []byte) map[string]string {
+	return map[string]string{"repository": repository, "task": string(payload)}
 }
 
 // Lease reads undelivered tasks for one consumer.
@@ -130,7 +160,7 @@ func (q Queue) Lease(ctx context.Context, consumer string, count int, block time
 	if err != nil {
 		return nil, err
 	}
-	return q.leases(ctx, messages), nil
+	return q.leases(ctx, messages)
 }
 
 // Reclaim takes over tasks abandoned by a consumer that stopped, so a worker
@@ -140,23 +170,26 @@ func (q Queue) Reclaim(ctx context.Context, consumer string, minIdle time.Durati
 	if err != nil {
 		return nil, err
 	}
-	return q.leases(ctx, messages), nil
+	leases, err := q.leases(ctx, messages)
+	if len(leases) > 0 {
+		queueLog.Printf("reclaimed tasks count=%d", len(leases))
+	}
+	return leases, err
 }
 
-func (q Queue) leases(ctx context.Context, messages []redisx.StreamMessage) []Lease {
+func (q Queue) leases(ctx context.Context, messages []redisx.StreamMessage) ([]Lease, error) {
 	leases := make([]Lease, 0, len(messages))
 	for _, message := range messages {
 		var task Task
 		if err := json.Unmarshal([]byte(message.Fields["task"]), &task); err != nil {
-			// An unparseable entry can never succeed; acknowledge it so it does
-			// not block the group, and record it as a dead letter.
-			_ = q.Store.StreamAck(ctx, taskStream, q.group(), message.ID)
-			_ = q.deadLetter(ctx, Task{Repository: message.Fields["repository"]}, "unparseable task entry")
+			if err := q.deadLetterLease(ctx, message.ID, Task{Repository: message.Fields["repository"]}, "unparseable task entry"); err != nil {
+				return leases, err
+			}
 			continue
 		}
 		leases = append(leases, Lease{Task: task, MessageID: message.ID})
 	}
-	return leases
+	return leases, nil
 }
 
 // Admit clears the debounce marker so events arriving during collection
@@ -168,18 +201,14 @@ func (q Queue) Admit(ctx context.Context, task Task) error {
 
 // Defer returns a task that is not yet due, without counting an attempt.
 func (q Queue) Defer(ctx context.Context, lease Lease) error {
-	if err := q.Store.StreamAck(ctx, taskStream, q.group(), lease.MessageID); err != nil {
-		return err
-	}
 	task := lease.Task
 	task.Attempt = max(task.Attempt, 1)
-	_, err := q.Enqueue(ctx, task)
-	return err
+	return q.replace(ctx, lease.MessageID, task)
 }
 
 // Complete acknowledges a finished task.
 func (q Queue) Complete(ctx context.Context, lease Lease) error {
-	return q.Store.StreamAck(ctx, taskStream, q.group(), lease.MessageID)
+	return q.Store.StreamAckAndDelete(ctx, taskStream, q.group(), lease.MessageID)
 }
 
 // retryDecision is the pure outcome of applying bounded retry counting to one
@@ -212,44 +241,43 @@ func decideRetry(task Task, cause error, maxAttempts int, now time.Time, backoff
 // and jittered backoff, dead-lettering it when the attempts are exhausted. A
 // failed task never partially replaces a repository's existing evidence.
 func (q Queue) Retry(ctx context.Context, lease Lease, cause error) error {
-	if err := q.Store.StreamAck(ctx, taskStream, q.group(), lease.MessageID); err != nil {
-		return err
-	}
 	decision := decideRetry(lease.Task, cause, q.maxAttempts(), time.Now().UTC(), backoff)
 	if decision.deadLetter {
 		queueLog.Printf("dead-lettering task repository=%s attempts=%d", decision.task.Repository, decision.task.Attempt)
-		return q.deadLetter(ctx, decision.task, decision.reason)
+		return q.deadLetterLease(ctx, lease.MessageID, decision.task, decision.reason)
 	}
 	queueLog.Printf("rescheduling task repository=%s attempt=%d", decision.task.Repository, decision.task.Attempt)
-	_, err := q.Enqueue(ctx, decision.task)
-	return err
+	return q.replace(ctx, lease.MessageID, decision.task)
 }
 
 // RequeueBlocked returns a task to the queue without counting an attempt. It
 // is used when another worker holds the repository lease, so per-repository
 // exclusion never consumes the retry budget.
 func (q Queue) RequeueBlocked(ctx context.Context, lease Lease) error {
-	if err := q.Store.StreamAck(ctx, taskStream, q.group(), lease.MessageID); err != nil {
-		return err
-	}
 	task := lease.Task
 	task.Attempt = max(task.Attempt, 1)
-	_, err := q.Enqueue(ctx, task)
-	return err
+	return q.replace(ctx, lease.MessageID, task)
 }
 
-func (q Queue) deadLetter(ctx context.Context, task Task, reason string) error {
+func (q Queue) replace(ctx context.Context, messageID string, task Task) error {
 	payload, err := json.Marshal(task)
 	if err != nil {
 		return err
 	}
-	_, err = q.Store.StreamAdd(ctx, deadLetterStream, q.MaxLength, map[string]string{
+	return q.Store.StreamReplaceAndAck(ctx, taskStream, q.group(), messageID, taskStream, taskFields(task.Repository, payload))
+}
+
+func (q Queue) deadLetterLease(ctx context.Context, messageID string, task Task, reason string) error {
+	payload, err := json.Marshal(task)
+	if err != nil {
+		return err
+	}
+	return q.Store.StreamReplaceAndAck(ctx, taskStream, q.group(), messageID, deadLetterStream, map[string]string{
 		"repository": task.Repository,
 		"task":       string(payload),
 		"reason":     reason,
 		"recordedAt": time.Now().UTC().Format(time.RFC3339Nano),
 	})
-	return err
 }
 
 // Depth reports stream depth, the direct scaling signal for workers.
@@ -260,6 +288,10 @@ func (q Queue) Depth(ctx context.Context) (int64, error) {
 // Pending reports delivered but unacknowledged tasks, which is processing lag.
 func (q Queue) Pending(ctx context.Context) (int64, error) {
 	return q.Store.StreamPending(ctx, taskStream, q.group())
+}
+
+func (q Queue) OldestPendingAge(ctx context.Context) (time.Duration, error) {
+	return q.Store.StreamOldestPendingAge(ctx, taskStream, q.group())
 }
 
 // DeadLetters reports how many tasks exhausted their retries.

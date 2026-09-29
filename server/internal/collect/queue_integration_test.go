@@ -5,11 +5,33 @@ import (
 	"errors"
 	"os"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
+
+type failingCommandClient struct {
+	delegate redisx.CommandClient
+	mu       sync.Mutex
+	failEval bool
+}
+
+func (c *failingCommandClient) Do(ctx context.Context, command ...string) (any, error) {
+	c.mu.Lock()
+	if c.failEval && len(command) > 0 && command[0] == "EVAL" {
+		c.failEval = false
+		c.mu.Unlock()
+		return nil, errors.New("injected Redis failure")
+	}
+	c.mu.Unlock()
+	return c.delegate.Do(ctx, command...)
+}
+
+func (c *failingCommandClient) DoMany(ctx context.Context, commands [][]string) ([]any, error) {
+	return c.delegate.DoMany(ctx, commands)
+}
 
 func integrationStore(t *testing.T) (*redisx.Store, context.Context) {
 	t.Helper()
@@ -160,6 +182,154 @@ func TestQueueReclaimsAbandonedWork(t *testing.T) {
 	}
 	if len(reclaimed) != 1 || reclaimed[0].Task.Repository != "octo/api" {
 		t.Fatalf("expected the abandoned task to be reclaimed, got %+v", reclaimed)
+	}
+}
+
+func TestRetryTransitionFailureLeavesOriginalPending(t *testing.T) {
+	store, ctx := integrationStore(t)
+	queue := Queue{Store: store}
+	if err := queue.Ensure(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := queue.Enqueue(ctx, Task{Repository: "octo/api"}); err != nil {
+		t.Fatal(err)
+	}
+	leases, err := queue.Lease(ctx, "worker-a", 1, 0)
+	if err != nil || len(leases) != 1 {
+		t.Fatalf("lease = %+v, err = %v", leases, err)
+	}
+	original := store.Client
+	store.Client = &failingCommandClient{delegate: original, failEval: true}
+	if err := queue.Retry(ctx, leases[0], errors.New("collect failed")); err == nil {
+		t.Fatal("expected injected transition failure")
+	}
+	store.Client = original
+	pending, err := queue.Pending(ctx)
+	if err != nil || pending != 1 {
+		t.Fatalf("pending = %d, err = %v; want original pending", pending, err)
+	}
+	reclaimed, err := queue.Reclaim(ctx, "worker-b", 0, 1)
+	if err != nil || len(reclaimed) != 1 {
+		t.Fatalf("reclaimed = %+v, err = %v", reclaimed, err)
+	}
+}
+
+func TestDeadLetterFailureLeavesOriginalPending(t *testing.T) {
+	store, ctx := integrationStore(t)
+	queue := Queue{Store: store, MaxAttempts: 1}
+	if err := queue.Ensure(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := queue.Enqueue(ctx, Task{Repository: "octo/api"}); err != nil {
+		t.Fatal(err)
+	}
+	leases, err := queue.Lease(ctx, "worker-a", 1, 0)
+	if err != nil || len(leases) != 1 {
+		t.Fatalf("lease = %+v, err = %v", leases, err)
+	}
+	original := store.Client
+	store.Client = &failingCommandClient{delegate: original, failEval: true}
+	if err := queue.Retry(ctx, leases[0], errors.New("permanent")); err == nil {
+		t.Fatal("expected injected dead-letter failure")
+	}
+	store.Client = original
+	pending, err := queue.Pending(ctx)
+	if err != nil || pending != 1 {
+		t.Fatalf("pending = %d, err = %v; want original pending", pending, err)
+	}
+	dead, err := queue.DeadLetters(ctx)
+	if err != nil || dead != 0 {
+		t.Fatalf("dead letters = %d, err = %v; want none", dead, err)
+	}
+}
+
+func TestMalformedTaskMovesToDeadLetterBeforeAck(t *testing.T) {
+	store, ctx := integrationStore(t)
+	queue := Queue{Store: store}
+	if err := queue.Ensure(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.StreamAdd(ctx, taskStream, 0, map[string]string{
+		"repository": "octo/api", "task": "{",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	leases, err := queue.Lease(ctx, "worker", 1, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(leases) != 0 {
+		t.Fatalf("leases = %+v, want malformed entry withheld", leases)
+	}
+	pending, err := queue.Pending(ctx)
+	if err != nil || pending != 0 {
+		t.Fatalf("pending = %d, err = %v", pending, err)
+	}
+	dead, err := queue.DeadLetters(ctx)
+	if err != nil || dead != 1 {
+		t.Fatalf("dead letters = %d, err = %v", dead, err)
+	}
+}
+
+func TestConcurrentDeliveryAdmissionEnqueuesOnce(t *testing.T) {
+	store, ctx := integrationStore(t)
+	queue := Queue{Store: store}
+	if err := queue.Ensure(ctx); err != nil {
+		t.Fatal(err)
+	}
+	const callers = 12
+	results := make(chan error, callers)
+	var wait sync.WaitGroup
+	enqueued := 0
+	var resultMu sync.Mutex
+	for range callers {
+		wait.Add(1)
+		go func() {
+			defer wait.Done()
+			added, _, err := queue.EnqueueDelivery(ctx, Task{Repository: "octo/api"}, "same-delivery", time.Hour)
+			if added {
+				resultMu.Lock()
+				enqueued++
+				resultMu.Unlock()
+			}
+			results <- err
+		}()
+	}
+	wait.Wait()
+	close(results)
+	for err := range results {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if enqueued != 1 {
+		t.Fatalf("enqueued = %d, want exactly one", enqueued)
+	}
+	depth, err := queue.Depth(ctx)
+	if err != nil || depth != 1 {
+		t.Fatalf("depth = %d, err = %v", depth, err)
+	}
+}
+
+func TestQueueCapacityBackpressuresWithoutTrimmingPendingWork(t *testing.T) {
+	store, ctx := integrationStore(t)
+	queue := Queue{Store: store, MaxLength: 1}
+	if err := queue.Ensure(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := queue.Enqueue(ctx, Task{Repository: "octo/first"}); err != nil {
+		t.Fatal(err)
+	}
+	leases, err := queue.Lease(ctx, "crashed", 1, 0)
+	if err != nil || len(leases) != 1 {
+		t.Fatalf("lease = %+v, err = %v", leases, err)
+	}
+	if _, err := queue.Enqueue(ctx, Task{Repository: "octo/second"}); !errors.Is(err, redisx.ErrStreamCapacity) {
+		t.Fatalf("enqueue error = %v, want capacity backpressure", err)
+	}
+	reclaimed, err := queue.Reclaim(ctx, "healthy", 0, 1)
+	if err != nil || len(reclaimed) != 1 || reclaimed[0].Task.Repository != "octo/first" {
+		t.Fatalf("reclaimed = %+v, err = %v", reclaimed, err)
 	}
 }
 

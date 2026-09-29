@@ -262,9 +262,15 @@ governed property and not an accident of disk usage.
   installation membership.
 - An erasure failure MUST fail the delivery rather than report it complete, so
   the delivery is retried instead of silently retaining evidence.
-- The task and dead-letter queues MUST be bounded. Acknowledged entries persist
-  until trimmed, so an unbounded queue grows with total event volume rather than
-  with outstanding work.
+- Collection MUST be at-least-once. Retry, deferral, blocked-repository requeue,
+  malformed-entry handling, and dead-letter transitions MUST persist the
+  replacement before acknowledging the original in one atomic Redis operation.
+- A successful collection-webhook response MUST mean delivery deduplication and
+  durable admission were committed atomically. Redis failures MUST return a
+  retriable non-success response without consuming the delivery identity.
+- The task queue MUST apply bounded admission backpressure and MUST NOT trim
+  undelivered or pending entries. Completed entries MAY be deleted after ACK;
+  dead letters remain durably recorded.
 
 ## 12. Observability
 

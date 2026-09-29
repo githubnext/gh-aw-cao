@@ -461,9 +461,10 @@ from whichever evidence the selected profile retains.
 Collection separates three concerns that fail differently:
 
 1. **Admission.** The existing `POST /api/github/webhook` endpoint verifies the
-   signature, deduplicates the delivery, and appends one task to a Redis
-   stream. Admission is constant-time and takes no projection lease, so a
-   delivery burst cannot block the endpoint.
+   signature and atomically deduplicates the delivery, applies repository
+   debounce, and appends one task to a Redis stream. A successful response
+   therefore means durable admission. Admission is constant-time and takes no
+   projection lease, so a delivery burst cannot block the endpoint.
 2. **Collection.** Workers lease tasks and run the same
    `gh aw logs --audit` and `activity/cao.mjs` commands the Activity workflow
    runs, writing into the evidence lake. One repository is collected at a time,
@@ -505,6 +506,13 @@ running.
 Failed collections are retried with backoff and moved to a dead-letter stream
 after the attempt limit, where they remain visible in collection status rather
 than disappearing.
+
+Collection is at-least-once. Retry, deferral, blocked-repository requeue, and
+dead-letter transitions append their replacement before acknowledging the
+leased entry in one Redis operation. Completed entries are acknowledged and
+deleted atomically. The task stream is never `MAXLEN`-trimmed: its configured
+limit applies admission backpressure, returning a retriable webhook failure
+instead of discarding undelivered or pending work.
 
 ### Collection roles
 
@@ -589,7 +597,7 @@ private-key file rather than reading it.
 | `CAO_COLLECT_RETAIN_GENERATIONS` | superseded canonical generations kept for rollback (default 3) |
 | `CAO_COLLECT_INVENTORY_LIMIT` | optional cap on enrolled repositories; exceeding it fails the projection |
 | `CAO_COLLECT_RECOVER_DELIVERIES` | replay failed webhook deliveries to close gaps |
-| `CAO_COLLECT_QUEUE_MAX_LENGTH` | bound on the task and dead-letter streams (default 200 000) |
+| `CAO_COLLECT_QUEUE_MAX_LENGTH` | admission backpressure limit for outstanding collection tasks (default 200 000); tasks are never trimmed |
 | `CAO_COLLECT_ADMIT_ONLY` | admit deliveries without collecting; requires no private key |
 
 ### Admission-only front ends

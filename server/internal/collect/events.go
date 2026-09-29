@@ -6,8 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
 var eventsLog = logger.New("cao:collect:events")
@@ -177,6 +179,8 @@ func names(entries []struct {
 // ErrNotEnrolled reports a delivery for a repository outside ingestion scope.
 var ErrNotEnrolled = errors.New("repository is not enrolled")
 
+var ErrDeliveryInProgress = errors.New("webhook delivery admission is already in progress")
+
 // Admitter applies an intent: it updates enrollment or enqueues collection.
 // It performs no projection, takes no global lease, and never blocks one
 // repository behind another.
@@ -199,8 +203,9 @@ type ProjectionRequester interface {
 
 // Admission describes what a delivery did, for the webhook response.
 type Admission struct {
-	Kind     IntentKind `json:"kind"`
-	Enqueued bool       `json:"enqueued"`
+	Kind      IntentKind `json:"kind"`
+	Enqueued  bool       `json:"enqueued"`
+	Duplicate bool       `json:"duplicate,omitempty"`
 	// Erased counts repositories whose retained evidence was deleted because
 	// they left ingestion scope.
 	Erased int `json:"erased,omitempty"`
@@ -212,6 +217,78 @@ func (a Admitter) Admit(ctx context.Context, event string, payload []byte) (Admi
 	if err != nil {
 		return Admission{}, err
 	}
+	return a.admitIntent(ctx, intent)
+}
+
+// AdmitDelivery commits delivery deduplication with durable admission. Queue
+// append, repository debounce, and delivery identity are one Redis operation.
+func (a Admitter) AdmitDelivery(
+	ctx context.Context,
+	event string,
+	payload []byte,
+	delivery string,
+	deliveryTTL time.Duration,
+) (Admission, error) {
+	intent, err := ParseEvent(event, payload)
+	if err != nil {
+		return Admission{}, err
+	}
+	if intent.Kind != IntentCollect {
+		reservation, err := a.Queue.Store.ReserveDelivery(ctx, delivery, 30*time.Second)
+		if err != nil {
+			return Admission{}, err
+		}
+		switch reservation {
+		case redisx.DeliveryAlreadyCommitted:
+			return Admission{Kind: intent.Kind, Duplicate: true}, nil
+		case redisx.DeliveryInProgress:
+			return Admission{}, ErrDeliveryInProgress
+		}
+		defer func() {
+			release, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
+			defer cancel()
+			_ = a.Queue.Store.ReleaseDeliveryReservation(release, delivery)
+		}()
+		admission, err := a.admitIntent(ctx, intent)
+		if err != nil {
+			return Admission{}, err
+		}
+		fresh, err := a.Queue.Store.RememberDelivery(ctx, delivery, deliveryTTL)
+		if err != nil {
+			return Admission{}, err
+		}
+		admission.Duplicate = !fresh
+		return admission, nil
+	}
+	enrolled, err := a.Enrollment.Enrolled(ctx, intent.Repository)
+	if err != nil {
+		return Admission{}, err
+	}
+	if !enrolled {
+		return Admission{}, ErrNotEnrolled
+	}
+	installationID := intent.InstallationID
+	if installationID == 0 {
+		installationID, err = a.Enrollment.InstallationFor(ctx, intent.Repository)
+		if err != nil {
+			return Admission{}, err
+		}
+	}
+	if installationID == 0 {
+		return Admission{}, ErrNotEnrolled
+	}
+	enqueued, duplicate, err := a.Queue.EnqueueDelivery(ctx, Task{
+		Repository:     intent.Repository,
+		InstallationID: installationID,
+		Reason:         intent.Reason,
+	}, delivery, deliveryTTL)
+	if err != nil {
+		return Admission{}, err
+	}
+	return Admission{Kind: IntentCollect, Enqueued: enqueued, Duplicate: duplicate}, nil
+}
+
+func (a Admitter) admitIntent(ctx context.Context, intent Intent) (Admission, error) {
 	switch intent.Kind {
 	case IntentIgnore:
 		return Admission{Kind: IntentIgnore}, nil

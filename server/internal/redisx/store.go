@@ -190,9 +190,7 @@ return 0`
 }
 
 func (s *Store) RememberDelivery(ctx context.Context, delivery string, ttl time.Duration) (bool, error) {
-	sum := sha256.Sum256([]byte(delivery))
-	key := s.Key("github-delivery:" + hex.EncodeToString(sum[:]))
-	value, err := s.Client.Do(ctx, "SET", key, "1", "NX", "PX", strconv.FormatInt(ttl.Milliseconds(), 10))
+	value, err := s.Client.Do(ctx, "SET", s.deliveryKey(delivery), "1", "NX", "PX", strconv.FormatInt(ttl.Milliseconds(), 10))
 	if err != nil {
 		return false, err
 	}
@@ -200,9 +198,43 @@ func (s *Store) RememberDelivery(ctx context.Context, delivery string, ttl time.
 }
 
 func (s *Store) ForgetDelivery(ctx context.Context, delivery string) error {
-	sum := sha256.Sum256([]byte(delivery))
-	_, err := s.Client.Do(ctx, "DEL", s.Key("github-delivery:"+hex.EncodeToString(sum[:])))
+	_, err := s.Client.Do(ctx, "DEL", s.deliveryKey(delivery))
 	return err
+}
+
+type DeliveryReservation int
+
+const (
+	DeliveryAlreadyCommitted DeliveryReservation = iota
+	DeliveryReserved
+	DeliveryInProgress
+)
+
+// ReserveDelivery serializes non-queue admission without consuming the
+// durable delivery marker before its state changes succeed.
+func (s *Store) ReserveDelivery(ctx context.Context, delivery string, ttl time.Duration) (DeliveryReservation, error) {
+	script := `
+if redis.call("EXISTS", KEYS[1]) == 1 then return 0 end
+if redis.call("SET", KEYS[2], "1", "NX", "PX", ARGV[1]) then return 1 end
+return 2`
+	value, err := s.Client.Do(
+		ctx, "EVAL", script, "2", s.deliveryKey(delivery), s.deliveryReservationKey(delivery),
+		strconv.FormatInt(ttl.Milliseconds(), 10),
+	)
+	if err != nil {
+		return DeliveryAlreadyCommitted, err
+	}
+	return DeliveryReservation(toInt64(value)), nil
+}
+
+func (s *Store) ReleaseDeliveryReservation(ctx context.Context, delivery string) error {
+	_, err := s.Client.Do(ctx, "DEL", s.deliveryReservationKey(delivery))
+	return err
+}
+
+func (s *Store) deliveryReservationKey(delivery string) string {
+	sum := sha256.Sum256([]byte(delivery))
+	return s.Key("github-delivery-reservation:" + hex.EncodeToString(sum[:]))
 }
 
 func (s *Store) SetOperationalState(ctx context.Context, name string, value []byte) error {
