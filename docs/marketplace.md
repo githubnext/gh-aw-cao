@@ -3,11 +3,11 @@ title: Browse Campaign Packages
 description: Configure registries and browse campaign packages without granting the dashboard installation authority.
 ---
 
-The experimental **Marketplace** page appears under **Updates** in the CAO
-dashboard. It provides a read-only view of campaign packages from an ordered
-set of registries. Selecting a package shows its published README beside an
-**About** panel carrying its normalized metadata, provenance, contents, and
-immutable source coordinate, with an **Add** button above both.
+The **Marketplace** page appears under **Updates** in the CAO dashboard. It
+provides a read-only view of campaign packages from an ordered set of registries.
+Selecting a package shows its published README beside an **About** panel
+carrying its normalized metadata, provenance, contents, and immutable source
+coordinate, with an **Add** button above both.
 
 A package README is the `README.md` published beside its `aw.yml` manifest. A
 package without one simply shows no README preview.

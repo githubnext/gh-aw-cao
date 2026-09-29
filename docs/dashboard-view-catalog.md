@@ -46,7 +46,8 @@ Built-in pages carry renderer-defined semantic requirements and required source 
 | `cost` | Observed AI Credit cost across campaigns, repositories, and workflows. |
 | `memory` | Browses repository memory published by centrally managed campaigns. |
 | `skills` (experimental) | Observed skill invocations and the workflows that invoked them. |
-| `marketplace` (experimental) | Read-only CAO campaign packages from the configured registries. See [Browse campaign packages](marketplace.md). |
+| `marketplace` | Read-only CAO campaign packages from the configured registries. See [Browse campaign packages](marketplace.md). |
+| `indexing` | Dashboard and server-side collection health, Activity ingestion, and retained database transactions. |
 
 ## Declarative marks
 

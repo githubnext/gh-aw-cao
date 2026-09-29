@@ -1008,7 +1008,7 @@
         ]
       },
       {
-        "label": "Updates",
+        "label": "Maintenance",
         "placement": "bottom",
         "pages": [
           "maintenance",

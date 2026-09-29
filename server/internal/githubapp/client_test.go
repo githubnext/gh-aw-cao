@@ -2,11 +2,14 @@ package githubapp
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/google/go-github/v66/github"
 )
 
@@ -121,5 +124,36 @@ func TestValidateRepositoryVisibility(t *testing.T) {
 				t.Fatalf("error disclosed a private repository name: %v", err)
 			}
 		})
+	}
+}
+
+func TestAPIResponseReadsRateLimitedInstallationTokenMint(t *testing.T) {
+	header := http.Header{}
+	header.Set("Retry-After", "30")
+	header.Set("X-RateLimit-Remaining", "4000")
+	err := fmt.Errorf("read repository ref: %w", &ghinstallation.HTTPError{
+		Message:  "received non 2xx response status",
+		Response: &http.Response{StatusCode: http.StatusForbidden, Header: header},
+	})
+
+	response := apiResponse(nil, err)
+	if response.StatusCode != http.StatusForbidden || response.RetryAfter != 30*time.Second ||
+		!response.Secondary || response.Remaining != 4000 {
+		t.Fatalf("unexpected response: %#v", response)
+	}
+}
+
+func TestAPIResponseReadsPrimaryLimitedInstallationTokenMint(t *testing.T) {
+	reset := time.Now().Add(time.Minute).Unix()
+	header := http.Header{}
+	header.Set("X-RateLimit-Remaining", "0")
+	header.Set("X-RateLimit-Reset", strconv.FormatInt(reset, 10))
+	err := &ghinstallation.HTTPError{
+		Response: &http.Response{StatusCode: http.StatusForbidden, Header: header},
+	}
+
+	response := apiResponse(nil, err)
+	if response.Remaining != 0 || response.Reset.Unix() != reset || response.Secondary {
+		t.Fatalf("unexpected response: %#v", response)
 	}
 }

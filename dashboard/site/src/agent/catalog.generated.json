@@ -588,7 +588,7 @@
       "id": "marketplace",
       "title": "Marketplace",
       "description": "Find campaign packages to extend your agentic operations.",
-      "experimental": true,
+      "experimental": false,
       "parameters": [],
       "queries": [
         "marketplace-package-detail"
@@ -618,7 +618,7 @@
       "id": "indexing",
       "title": "Ingestion",
       "description": "Monitor live server-side collection health, CAO Activity ingestion, and retained dashboard transactions.",
-      "experimental": true,
+      "experimental": false,
       "parameters": [],
       "queries": [
         "indexing-daily-records",
