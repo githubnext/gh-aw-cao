@@ -510,24 +510,56 @@ func (s *Store) Active(ctx context.Context) (model.ActiveGeneration, error) {
 	if len(fields) == 0 {
 		return model.ActiveGeneration{Counts: map[string]int{}}, nil
 	}
+	result, malformed := parseActiveGeneration(fields)
+	if malformed > 0 {
+		redisLog.Printf("active generation fields malformed=%d", malformed)
+	}
+	return result, nil
+}
+
+// parseActiveGeneration decodes an HGETALL ... reply, which alternates field
+// and value strings, into an ActiveGeneration. It is a pure function so
+// Active's decoding of a malformed revision, evaluatedAt, counts, or
+// activatedAt field is testable without a fake Redis reply. A field that
+// fails to parse is left at its zero value, matching the prior inline
+// decoding, and counted in the returned malformed total.
+func parseActiveGeneration(fields []string) (model.ActiveGeneration, int) {
 	result := model.ActiveGeneration{Counts: map[string]int{}}
+	malformed := 0
 	for i := 0; i+1 < len(fields); i += 2 {
 		switch fields[i] {
 		case "generation":
 			result.Generation = fields[i+1]
 		case "revision":
-			result.Revision, _ = strconv.ParseInt(fields[i+1], 10, 64)
+			revision, err := strconv.ParseInt(fields[i+1], 10, 64)
+			if err != nil {
+				malformed++
+				continue
+			}
+			result.Revision = revision
 		case "dataRevision":
 			result.DataRevision = fields[i+1]
 		case "evaluatedAt":
-			result.EvaluatedAt, _ = time.Parse(time.RFC3339Nano, fields[i+1])
+			evaluatedAt, err := time.Parse(time.RFC3339Nano, fields[i+1])
+			if err != nil {
+				malformed++
+				continue
+			}
+			result.EvaluatedAt = evaluatedAt
 		case "counts":
-			_ = json.Unmarshal([]byte(fields[i+1]), &result.Counts)
+			if err := json.Unmarshal([]byte(fields[i+1]), &result.Counts); err != nil {
+				malformed++
+			}
 		case "activatedAt":
-			result.Activated, _ = time.Parse(time.RFC3339Nano, fields[i+1])
+			activated, err := time.Parse(time.RFC3339Nano, fields[i+1])
+			if err != nil {
+				malformed++
+				continue
+			}
+			result.Activated = activated
 		}
 	}
-	return result, nil
+	return result, malformed
 }
 
 func (s *Store) Activate(ctx context.Context, generation, dataRevision string, evaluatedAt time.Time, counts map[string]int) (int64, error) {
