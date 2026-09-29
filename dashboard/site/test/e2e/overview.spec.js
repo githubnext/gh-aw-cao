@@ -210,6 +210,22 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(factory.getByRole('heading', { name: 'Your campaigns need attention.' })).toBeVisible();
     await expect(factory.locator('.factory-running')).toHaveCount(0);
     await expect(factory.locator('.factory-rhythm-day')).toHaveCount(7);
+    const yAxisLabel = factory.locator('.factory-rhythm .graph-widget-y-axis-label');
+    await expect(yAxisLabel).toHaveText('Successful runs');
+    await expect(yAxisLabel).toBeVisible();
+    const axisPlacement = await factory.locator('.factory-rhythm .graph-widget-chart').evaluate((chart) => {
+      const label = chart.querySelector('.graph-widget-y-axis-label');
+      const plot = chart.querySelector('.factory-rhythm-bars');
+      if (!label || !plot) throw new Error('The rhythm axis and bars must be present');
+      const axis = label.getBoundingClientRect();
+      const bars = plot.getBoundingClientRect();
+      const bounds = chart.getBoundingClientRect();
+      return { axisLeft: axis.left, axisRight: axis.right, axisCenter: (axis.top + axis.bottom) / 2,
+        barsLeft: bars.left, barsCenter: (bars.top + bars.bottom) / 2, chartLeft: bounds.left };
+    });
+    expect(axisPlacement.axisLeft).toBeGreaterThanOrEqual(axisPlacement.chartLeft);
+    expect(axisPlacement.axisRight).toBeLessThan(axisPlacement.barsLeft);
+    expect(axisPlacement.axisCenter).toBeCloseTo(axisPlacement.barsCenter, 0);
     const rhythmBars = factory.locator('.factory-rhythm-bar-pair i:not([hidden])');
     await expect(rhythmBars).toHaveCount(14);
     await expect(factory.locator('.factory-rhythm-day').nth(3))

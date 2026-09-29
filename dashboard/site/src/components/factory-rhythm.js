@@ -18,6 +18,7 @@ export function renderFactoryRhythm(source, scope) {
     legendClassName: 'factory-rhythm-legend',
     plotClassName: 'factory-rhythm-bars',
     title: 'Campaign rhythm',
+    yAxisLabel: 'Successful runs',
     ariaLabel: 'Successful Actions runs this week and last week from Monday through Sunday',
     legendLabel: 'Campaign rhythm legend',
     legend: [

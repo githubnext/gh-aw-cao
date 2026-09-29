@@ -1588,6 +1588,8 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .factory-rhythm-legend-previous { border: 1px solid var(--border); background: var(--canvas-subtle); }
 .factory-rhythm-summary { margin: 0; color: var(--muted); font-size: .75rem; }
 .factory-rhythm-heading strong { font-size: .875rem; }
+.factory-rhythm .graph-widget-chart { min-width: 0; display: grid; grid-template-columns: min-content minmax(0, 1fr); align-items: center; gap: 6px; }
+.factory-rhythm .graph-widget-y-axis-label { color: var(--muted); font-size: .625rem; font-weight: 600; white-space: nowrap; writing-mode: vertical-rl; transform: rotate(180deg); }
 .factory-rhythm-bars { height: 74px; position: relative; display: grid; grid-template-columns: repeat(7, minmax(18px, 1fr)); align-items: end; gap: 9px; }
 .overview-campaigns-view-all { display: inline-flex; justify-self: start; margin-top: 12px; color: var(--accent); font-size: .8125rem; font-weight: 600; text-decoration: none; }
 .overview-campaigns-view-all:hover { text-decoration: underline; }

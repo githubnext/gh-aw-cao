@@ -84,6 +84,8 @@ describe('Overview component boundaries', () => {
 
     expect(days).toHaveLength(7);
     expect(rendered.getAttribute('aria-label')).toContain('this week and last week');
+    expect(rendered.querySelector('.graph-widget-y-axis-label')?.textContent).toBe('Successful runs');
+    expect(rendered.querySelector('.graph-widget-chart > .factory-rhythm-bars')).not.toBeNull();
     expect(days[0]?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 1 successful run this week; 7 successful runs last week.');
     expect(days[3]?.getAttribute('aria-label')).toBe('Thu 2026-09-10: 0 successful runs this week (day not yet reached); 4 successful runs last week.');
     expect(rendered.querySelectorAll('.factory-rhythm-day-future')).toHaveLength(4);
@@ -110,6 +112,7 @@ describe('Overview component boundaries', () => {
     const controller = new AbortController();
     const rendered = renderFactoryRhythm(binding(), { signal: controller.signal });
     expect(rendered.querySelectorAll('.factory-rhythm-day')).toHaveLength(7);
+    expect(rendered.querySelector('.graph-widget-y-axis-label')?.textContent).toBe('Successful runs');
     expect(rendered.querySelectorAll('.factory-rhythm-bar-pair i')).toHaveLength(14);
     expect(rendered.querySelector('.factory-rhythm-day')?.getAttribute('aria-label'))
       .toBe('Mon: 0 successful runs this week (day not yet reached); 0 successful runs last week.');

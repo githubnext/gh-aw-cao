@@ -9,6 +9,7 @@ import { effect } from '../reactive.js';
  *   headingClassName?: string,
  *   legendClassName?: string,
  *   plotClassName?: string,
+ *   yAxisLabel?: string,
  *   title: string,
  *   ariaLabel: string,
  *   legendLabel: string,
@@ -62,7 +63,11 @@ export function renderReactiveGraphWidget(options) {
         ))
       )
     ),
-    plot
+    options.yAxisLabel
+      ? h('div', { className: 'graph-widget-chart' },
+          h('span', { className: 'graph-widget-y-axis-label' }, options.yAxisLabel),
+          plot)
+      : plot
   );
 
   effect(() => {
