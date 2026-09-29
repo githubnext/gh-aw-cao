@@ -374,17 +374,25 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   gates, a Dockle hardening check, and Syft SPDX SBOM generation. Lint, test,
   and image build/scanning run as separate jobs with no package-write
   authority. Raw static-check outputs are retained in a short-lived artifact
-  even when a lint gate fails. The protected-main
-  `.github/workflows/cao-package-publish.yml` reusable publisher revalidates
-  caller authority, exact source metadata, the checksummed image archive, and
-  OCI labels before publishing the exact digest and attaching GitHub SLSA
-  provenance and SBOM attestations. Privacy-preserving
+  even when a lint gate fails. Automatic `main` and stable-release runs call the
+  protected-main `.github/workflows/cao-package-publish.yml` reusable publisher,
+  which revalidates caller authority, exact source metadata, the checksummed
+  image archive, and OCI labels before publishing the exact digest and attaching
+  source-digest-verifiable GitHub SLSA provenance and an SBOM attestation.
+  Privacy-preserving
   non-nested step summaries report only check scope, policy, and outcome. The
-  workflow also admits manual branch builds only when both original and rerun
-  actors have maintain or admin permission, the executing workflow is current
+  unprivileged `.github/workflows/cao-package-request.yml` manual entry point has
+  only read authority. It admits branch builds only when both original and rerun
+  actors have maintain or admin permission, the request workflow is current
   protected `main`, and the requested source branch resolves to its current
-  head. Those packages use a separate immutable dispatch identity and cannot
-  redefine main or release identities. The
+  head. A protected-default-branch `workflow_run` publisher independently
+  revalidates the completed run, workflow identity and ref, actors, source
+  freshness, exact artifact set, checksums, metadata, and OCI labels behind the
+  static `cao-server-publication` environment. Manual packages use a separate
+  immutable dispatch identity and a custom signed predicate containing the exact
+  repository, source branch, and packaged revision; they are not represented as
+  default-branch SLSA source provenance and cannot redefine main or release
+  identities. The
   single image exposes the multi-role server binary so downstream Docker
   Compose deployments select `serve-hosted`, `collect`, `backfill`, or `doctor`
   per service without rebuilding the package. Canonical identities are

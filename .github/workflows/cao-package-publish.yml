@@ -46,10 +46,8 @@ jobs:
           CALLER_SHA: ${{ github.sha }}
           EVENT_NAME: ${{ inputs.event_name }}
           IDENTITY: ${{ inputs.identity }}
-          ORIGINAL_ACTOR: ${{ github.actor }}
           REVISION: ${{ inputs.revision }}
           SOURCE_BRANCH: ${{ inputs.source_branch }}
-          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
           VERSION: ${{ inputs.version }}
         with:
           github-token: ${{ github.token }}
@@ -101,51 +99,7 @@ jobs:
               return object.sha;
             }
 
-            if (process.env.EVENT_NAME === 'workflow_dispatch') {
-              core.info('Revalidating manual publication authority');
-              for (const actor of new Set([
-                process.env.ORIGINAL_ACTOR,
-                process.env.TRIGGERING_ACTOR,
-              ])) {
-                core.info('Checking one manual publication actor');
-                const { data: access } = await github.rest.repos.getCollaboratorPermissionLevel({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  username: actor,
-                });
-                if (!['admin', 'maintain'].includes(access.role_name)) {
-                  throw new Error('Manual package publication requires maintain or admin repository permission');
-                }
-              }
-              core.info('Manual publication actor checks passed');
-              core.info('Resolving the protected default branch');
-              const { data: trustedBranch } = await github.rest.repos.getBranch({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                branch: repository.default_branch,
-              });
-              if (process.env.CALLER_REF !== defaultRef ||
-                  process.env.CALLER_SHA !== trustedBranch.commit.sha) {
-                throw new Error('Privileged publication requires the current default-branch caller workflow');
-              }
-              core.info('Protected default-branch caller check passed');
-              core.info('Checking requested source branch presence');
-              if (!process.env.SOURCE_BRANCH) {
-                throw new Error('Manual publication requires a source branch');
-              }
-              core.info('Resolving the requested source branch');
-              const { data: sourceBranch } = await github.rest.repos.getBranch({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                branch: process.env.SOURCE_BRANCH,
-              });
-              if (sourceBranch.commit.sha !== process.env.REVISION ||
-                  process.env.IDENTITY !== `dispatch-${process.env.REVISION}` ||
-                  process.env.VERSION !== `0.0.0-dispatch.${process.env.REVISION.slice(0, 12)}`) {
-                throw new Error('Manual package metadata does not match the requested branch head');
-              }
-              core.info('Manual package source and metadata checks passed');
-            } else if (process.env.EVENT_NAME === 'push') {
+            if (process.env.EVENT_NAME === 'push') {
               core.info('Revalidating protected main publication authority');
               if (process.env.CALLER_REF !== defaultRef ||
                   process.env.CALLER_SHA !== process.env.REVISION ||
@@ -202,9 +156,14 @@ jobs:
         env:
           EVENT_NAME: ${{ inputs.event_name }}
           IDENTITY: ${{ inputs.identity }}
+          REPOSITORY: ${{ github.repository }}
           REVISION: ${{ inputs.revision }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          RUN_ID: ${{ github.run_id }}
           SOURCE_BRANCH: ${{ inputs.source_branch }}
           VERSION: ${{ inputs.version }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
         run: |
           set -euo pipefail
           cd "${RUNNER_TEMP}/candidate"
@@ -212,15 +171,26 @@ jobs:
           jq -e \
             --arg event_name "${EVENT_NAME}" \
             --arg identity "${IDENTITY}" \
+            --arg repository "${REPOSITORY}" \
             --arg revision "${REVISION}" \
+            --argjson run_attempt "${RUN_ATTEMPT}" \
+            --argjson run_id "${RUN_ID}" \
             --arg source_branch "${SOURCE_BRANCH}" \
             --arg version "${VERSION}" \
+            --arg workflow_ref "${WORKFLOW_REF}" \
+            --arg workflow_sha "${WORKFLOW_SHA}" \
             '. == {
+              schema_version: 1,
+              repository: $repository,
               event_name: $event_name,
               identity: $identity,
               revision: $revision,
+              run_id: $run_id,
+              run_attempt: $run_attempt,
               source_branch: $source_branch,
-              version: $version
+              version: $version,
+              workflow_ref: $workflow_ref,
+              workflow_sha: $workflow_sha
             }' cao-server-metadata.json >/dev/null
           docker image load --input cao-server.tar
           local_revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "cao-server:${REVISION}")"

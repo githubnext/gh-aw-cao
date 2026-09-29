@@ -103,6 +103,8 @@ test("Coolify delivery consumes the official immutable CAO server package", asyn
   const source = await text(".github/workflows/coolify-deploy.yml");
   const workflow = parse(source);
   const authorize = workflow.jobs.authorize;
+  const classify = workflow.jobs.classify;
+  const classification = classify.steps.find((step) => step.id === "classify");
   const packageJob = workflow.jobs.package;
   const deploy = workflow.jobs.deploy;
   const resolve = packageJob.steps.find((step) => step.id === "package");
@@ -128,9 +130,9 @@ test("Coolify delivery consumes the official immutable CAO server package", asyn
   });
   assert.deepEqual(deploy.needs, ["classify", "package"]);
   assert.equal(deploy.environment.name, "${{ needs.classify.outputs.environment }}");
-  assert.match(classify.with.script, /environment = 'coolify-alpha'/);
-  assert.match(classify.with.script, /environment = 'coolify-stable'/);
-  assert.match(classify.with.script, /environment = `coolify-\$\{tier\}`/);
+  assert.match(classification.with.script, /environment = 'coolify-alpha'/);
+  assert.match(classification.with.script, /environment = 'coolify-stable'/);
+  assert.match(classification.with.script, /environment = `coolify-\$\{tier\}`/);
   assert.equal(
     deploy.if,
     "needs.classify.outputs.eligible == 'true' && (github.event_name != 'push' || vars.COOLIFY_DEPLOY_ENABLED == 'true')",

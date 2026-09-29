@@ -1,0 +1,22 @@
+name: CAO server package request
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_branch:
+        description: Branch head to package
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and seal requested package source
+    permissions:
+      contents: read
+    uses: ./.github/workflows/cao-package-build.yml # zizmor: ignore[self-repository] - Local reusable workflow syntax accepted by GitHub Actions and actionlint.
+    with:
+      event_name: workflow_dispatch
+      source_branch: ${{ inputs.source_branch }}

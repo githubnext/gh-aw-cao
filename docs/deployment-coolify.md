@@ -139,10 +139,11 @@ To update the data, prepare a new volume in the same way, set `CAO_ARTIFACT_VOLU
 
 ### Automating delivery
 
-The deployment-neutral `.github/workflows/cao-package.yml` workflow tests,
-builds, scans, and publishes `ghcr.io/githubnext/gh-aw-cao/cao-server` on every
-push to `main` and every published release. Release sources must be reachable
-from protected `main`. A dedicated lint job runs Hadolint on the Dockerfile and
+The deployment-neutral `.github/workflows/cao-package.yml` automatic workflow
+calls the read-only `.github/workflows/cao-package-build.yml` pipeline to test,
+build, and scan `ghcr.io/githubnext/gh-aw-cao/cao-server` on every push to
+`main` and every published release. Release sources must be reachable from
+protected `main`. A dedicated lint job runs Hadolint on the Dockerfile and
 actionlint and zizmor on workflow sources, then stores their raw output and the
 release ancestry result in a seven-day artifact. A separate test job runs
 package contracts, server tests, and the dashboard production build before the
@@ -153,12 +154,23 @@ downstream Docker Compose deployments can run separate `serve-hosted`,
 `collect`, `backfill`, or `doctor` services from the same digest by selecting a
 different command.
 
-Maintainers and administrators can also manually dispatch the package workflow
-from the current default branch and provide the branch to package through the
-required `source_branch` input. The workflow rejects non-default workflow
-sources, stale source branches, forks, and unauthorized original or rerun actors.
-Manual packages use the separate immutable `dispatch-<full-commit>` identity,
-so they cannot redefine automatic `main` or release identities.
+Maintainers and administrators manually dispatch
+`.github/workflows/cao-package-request.yml` from the current default branch and
+provide the branch to package through the required `source_branch` input. This
+request workflow and its reusable build jobs have only `contents: read`; they
+have no package-write, attestation-write, or OIDC authority. The workflow
+rejects non-default workflow sources, stale source branches, forks, and
+unauthorized original or rerun actors.
+
+After a successful request, the default-branch
+`.github/workflows/cao-package-request-publish.yml` `workflow_run` publisher
+independently verifies the triggering run and conclusion, active workflow
+identity and protected-default-branch ref, original and rerun actor permissions,
+the exact artifact set, checksums, metadata, requested branch head, and OCI
+labels. It runs only in the statically named `cao-server-publication`
+environment. Manual packages use the separate immutable
+`dispatch-<full-commit>` identity, so they cannot redefine automatic `main` or
+release identities.
 
 The `.github/workflows/coolify-deploy.yml` workflow does not rebuild the image.
 It resolves the matching immutable `cao-server` identity, verifies its version
@@ -167,7 +179,29 @@ and revision labels, verifies GitHub artifact provenance from the protected-main
 digest to the protected deployment adapter. The package workflow keeps build
 and scanner execution without package-write authority, transfers a checksummed
 image archive plus exact source metadata to the protected reusable publisher,
-and attaches both SLSA provenance and the SPDX SBOM to the published OCI digest.
+and attaches both SLSA provenance and the SPDX SBOM to automatic package
+digests. Manual request packages instead receive an SPDX SBOM attestation and a
+custom
+`https://github.com/githubnext/gh-aw-cao/attestations/cao-manual-source/v1`
+predicate containing the exact repository, source branch, source revision, and
+request run identity. That predicate is the manual source contract; do not
+present the publisher workflow's default-branch commit as source provenance.
+
+Configure the repository's default `GITHUB_TOKEN` permission as read-only.
+Create the `cao-server-publication` environment before enabling manual
+publication, restrict its deployment branches to protected `main`, require the
+appropriate reviewers, prevent self-review and administrator bypass where your
+governance requires it, and store no package or cloud credentials in the
+environment. Keep Actions OIDC trust policies restricted to this repository,
+the exact publisher workflow, and the `cao-server-publication` environment.
+These repository and environment protections cannot be committed in Git.
+
+Downstream consumers of a manual package must verify the exact signer and
+custom predicate type, then compare `repository`, `sourceBranch`, and
+`sourceRevision` in the verified predicate with the expected request. They must
+not use `--source-digest` against the manual package as if it carried automatic
+SLSA source provenance. Automatic `sha-<commit>` and stable `vX.Y.Z` packages
+continue to require `--source-digest` verification against the packaged commit.
 
 Every package and delivery job writes a privacy-preserving step summary using
 non-nested `<details>` sections. Summaries contain check names, gate policies, and

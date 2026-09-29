@@ -1,0 +1,390 @@
+name: CAO server package request publisher
+
+on:
+  workflow_run: # zizmor: ignore[dangerous-triggers] - Privileged publisher validates the default-branch request run and consumes only checksummed sealed artifacts without executing request code.
+    workflows: [CAO server package request]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cao-server-package-request-publish-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish trusted manual package request
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: cao-server-publication
+    permissions:
+      actions: read
+      attestations: write
+      contents: read
+      id-token: write
+      packages: write
+    steps:
+      - id: run-authority
+        name: Validate triggering run and publication authority
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PUBLISHER_REF: ${{ github.ref }}
+          PUBLISHER_SHA: ${{ github.sha }}
+          SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            core.info('Starting manual request run authority validation');
+            if (context.payload.repository.fork) {
+              throw new Error('CAO server packages cannot be published from forks');
+            }
+            core.info('Repository origin check passed');
+
+            const { data: repository } = await github.rest.repos.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            const defaultRef = `refs/heads/${repository.default_branch}`;
+            core.info('Resolving the protected default branch');
+            const { data: trustedBranch } = await github.rest.repos.getBranch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: repository.default_branch,
+            });
+            if (process.env.PUBLISHER_REF !== defaultRef ||
+                process.env.PUBLISHER_SHA !== trustedBranch.commit.sha) {
+              throw new Error('Privileged request publisher must execute from current protected default branch');
+            }
+            core.info('Protected default-branch publisher check passed');
+
+            core.info('Loading the triggering workflow run');
+            const { data: run } = await github.rest.actions.getWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: Number(process.env.SOURCE_RUN_ID),
+            });
+            if (run.status !== 'completed' || run.conclusion !== 'success') {
+              throw new Error('Manual package request must complete successfully');
+            }
+            core.info('Triggering run conclusion check passed');
+            if (run.event !== 'workflow_dispatch' ||
+                run.path !== '.github/workflows/cao-package-request.yml' ||
+                run.head_repository?.full_name !== context.payload.repository.full_name) {
+              throw new Error('Triggering run does not have the authorized manual request identity');
+            }
+            core.info('Triggering workflow identity check passed');
+            if (run.head_branch !== repository.default_branch ||
+                run.head_sha !== trustedBranch.commit.sha) {
+              throw new Error('Manual package request must use the current protected default-branch workflow');
+            }
+            core.info('Triggering workflow ref check passed');
+
+            core.info('Resolving the registered request workflow');
+            const { data: workflow } = await github.rest.actions.getWorkflow({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: run.workflow_id,
+            });
+            if (workflow.path !== '.github/workflows/cao-package-request.yml' ||
+                workflow.state !== 'active') {
+              throw new Error('Triggering workflow registration is not the active manual request workflow');
+            }
+            core.info('Registered workflow identity check passed');
+
+            core.info('Checking original and rerun actor permissions');
+            for (const actor of new Set([
+              run.actor?.login,
+              run.triggering_actor?.login,
+            ])) {
+              if (!actor) {
+                throw new Error('Manual package request actor identity is missing');
+              }
+              core.info('Checking one manual package request actor');
+              const { data: access } = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                username: actor,
+              });
+              if (!['admin', 'maintain'].includes(access.role_name)) {
+                throw new Error('Manual package publication requires maintain or admin repository permission');
+              }
+            }
+            core.info('Original and rerun actor checks passed');
+
+            core.info('Enumerating triggering run artifacts');
+            const artifacts = await github.paginate(
+              github.rest.actions.listWorkflowRunArtifacts,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: run.id,
+                per_page: 100,
+              },
+            );
+            const candidateName = `cao-server-${run.id}-${run.run_attempt}`;
+            const staticName = `cao-server-static-checks-${run.id}-${run.run_attempt}`;
+            const expectedNames = new Set([candidateName, staticName]);
+            const currentArtifacts = artifacts.filter((artifact) =>
+              expectedNames.has(artifact.name));
+            const artifactNamePattern = new RegExp(
+              `^cao-server(?:-static-checks)?-${run.id}-([1-9][0-9]*)$`,
+            );
+            if (currentArtifacts.length !== expectedNames.size ||
+                currentArtifacts.some((artifact) =>
+                  artifact.expired ||
+                  artifact.size_in_bytes <= 0
+                ) ||
+                artifacts.some((artifact) => {
+                  const match = artifactNamePattern.exec(artifact.name);
+                  return !match || Number(match[1]) > run.run_attempt;
+                })) {
+              throw new Error('Manual package request artifacts do not match the sealed publication contract');
+            }
+            core.info('Triggering run artifact set check passed');
+            core.setOutput('artifact_name', candidateName);
+            core.setOutput('run_attempt', String(run.run_attempt));
+            core.setOutput('run_id', String(run.id));
+            core.setOutput('workflow_ref',
+              `${context.repo.owner}/${context.repo.repo}/.github/workflows/cao-package-request.yml@${defaultRef}`);
+            core.setOutput('workflow_sha', run.head_sha);
+            core.info('Manual request run authority validation completed');
+      - id: download
+        name: Download sealed request candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.run-authority.outputs.run_id }}
+          name: ${{ steps.run-authority.outputs.artifact_name }}
+          path: ${{ runner.temp }}/candidate
+      - id: checksum
+        name: Verify sealed request checksums
+        run: |
+          set -euo pipefail
+          cd "${RUNNER_TEMP}/candidate"
+          sha256sum --check cao-server.sha256
+      - id: source-authority
+        name: Validate requested source and sealed metadata
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          METADATA_PATH: ${{ runner.temp }}/candidate/cao-server-metadata.json
+          SOURCE_RUN_ATTEMPT: ${{ steps.run-authority.outputs.run_attempt }}
+          SOURCE_RUN_ID: ${{ steps.run-authority.outputs.run_id }}
+          SOURCE_WORKFLOW_REF: ${{ steps.run-authority.outputs.workflow_ref }}
+          SOURCE_WORKFLOW_SHA: ${{ steps.run-authority.outputs.workflow_sha }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const fs = require('fs');
+            core.info('Starting sealed request metadata validation');
+            let metadata;
+            try {
+              metadata = JSON.parse(fs.readFileSync(process.env.METADATA_PATH, 'utf8'));
+            } catch {
+              throw new Error('Sealed request metadata is not valid JSON');
+            }
+            const keys = Object.keys(metadata).sort();
+            const expectedKeys = [
+              'event_name',
+              'identity',
+              'repository',
+              'revision',
+              'run_attempt',
+              'run_id',
+              'schema_version',
+              'source_branch',
+              'version',
+              'workflow_ref',
+              'workflow_sha',
+            ].sort();
+            if (JSON.stringify(keys) !== JSON.stringify(expectedKeys)) {
+              throw new Error('Sealed request metadata has an unexpected shape');
+            }
+            core.info('Sealed request metadata shape check passed');
+            const runId = Number(process.env.SOURCE_RUN_ID);
+            const runAttempt = Number(process.env.SOURCE_RUN_ATTEMPT);
+            if (metadata.schema_version !== 1 ||
+                metadata.repository !== context.payload.repository.full_name ||
+                metadata.event_name !== 'workflow_dispatch' ||
+                metadata.run_id !== runId ||
+                metadata.run_attempt !== runAttempt ||
+                metadata.workflow_ref !== process.env.SOURCE_WORKFLOW_REF ||
+                metadata.workflow_sha !== process.env.SOURCE_WORKFLOW_SHA) {
+              throw new Error('Sealed request metadata does not match the authorized triggering run');
+            }
+            core.info('Triggering run metadata binding check passed');
+            if (!metadata.source_branch ||
+                !/^[0-9a-f]{40}$/.test(metadata.revision) ||
+                metadata.identity !== `dispatch-${metadata.revision}` ||
+                metadata.version !== `0.0.0-dispatch.${metadata.revision.slice(0, 12)}`) {
+              throw new Error('Sealed request source identity is invalid');
+            }
+            core.info('Requested source identity check passed');
+            const { data: sourceBranch } = await github.rest.repos.getBranch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: metadata.source_branch,
+            });
+            if (sourceBranch.commit.sha !== metadata.revision) {
+              throw new Error('Manual package metadata does not match the requested branch head');
+            }
+            core.info('Requested source branch freshness check passed');
+            core.setOutput('identity', metadata.identity);
+            core.setOutput('revision', metadata.revision);
+            core.setOutput('source_branch', metadata.source_branch);
+            core.setOutput('version', metadata.version);
+            core.info('Sealed request metadata validation completed');
+      - id: image
+        name: Verify sealed request OCI labels
+        env:
+          REVISION: ${{ steps.source-authority.outputs.revision }}
+          VERSION: ${{ steps.source-authority.outputs.version }}
+        run: |
+          set -euo pipefail
+          docker image load --input "${RUNNER_TEMP}/candidate/cao-server.tar"
+          local_revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "cao-server:${REVISION}")"
+          local_version="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "cao-server:${REVISION}")"
+          if [[ "${local_revision}" != "${REVISION}" || "${local_version}" != "${VERSION}" ]]; then
+            echo "sealed candidate labels do not match the authorized package source" >&2
+            exit 1
+          fi
+      - id: registry-login
+        name: Log in to GHCR
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: publish
+        name: Publish immutable manual package identity
+        env:
+          IDENTITY: ${{ steps.source-authority.outputs.identity }}
+          REPOSITORY: ${{ github.repository }}
+          REVISION: ${{ steps.source-authority.outputs.revision }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          repository="ghcr.io/${REPOSITORY,,}/cao-server"
+          candidate="${repository}:candidate-${RUN_ID}-${RUN_ATTEMPT}"
+          canonical="${repository}:${IDENTITY}"
+
+          docker tag "cao-server:${REVISION}" "${candidate}"
+          docker push "${candidate}" >/dev/null
+          candidate_manifest="$(docker buildx imagetools inspect "${candidate}" --format '{{json .Manifest}}')"
+          candidate_digest="$(jq -r '.digest // empty' <<<"${candidate_manifest}")"
+          if [[ ! "${candidate_digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "package candidate did not resolve to one immutable digest" >&2
+            exit 1
+          fi
+
+          inspect_output=
+          if inspect_output="$(docker buildx imagetools inspect "${canonical}" --format '{{json .Manifest}}' 2>&1)"; then
+            canonical_digest="$(jq -r '.digest // empty' <<<"${inspect_output}")"
+            if [[ "${canonical_digest}" != "${candidate_digest}" ]]; then
+              echo "refusing to redefine an existing immutable package identity" >&2
+              exit 1
+            fi
+          else
+            if ! printf '%s\n' "${inspect_output}" | grep -Eqi '(manifest unknown|not found)'; then
+              echo "unable to verify whether the immutable package identity exists" >&2
+              exit 1
+            fi
+            docker buildx imagetools create \
+              --prefer-index=false \
+              --tag "${canonical}" \
+              "${repository}@${candidate_digest}" >/dev/null
+          fi
+
+          canonical_manifest="$(docker buildx imagetools inspect "${canonical}" --format '{{json .Manifest}}')"
+          canonical_digest="$(jq -r '.digest // empty' <<<"${canonical_manifest}")"
+          if [[ "${canonical_digest}" != "${candidate_digest}" ]]; then
+            echo "canonical package identity does not equal the scanned candidate digest" >&2
+            exit 1
+          fi
+          {
+            echo "digest=${candidate_digest}"
+            echo "subject=${repository}"
+          } >> "${GITHUB_OUTPUT}"
+      - id: predicate
+        name: Create exact manual source predicate
+        env:
+          REPOSITORY: ${{ github.repository }}
+          REVISION: ${{ steps.source-authority.outputs.revision }}
+          SOURCE_BRANCH: ${{ steps.source-authority.outputs.source_branch }}
+          SOURCE_RUN_ATTEMPT: ${{ steps.run-authority.outputs.run_attempt }}
+          SOURCE_RUN_ID: ${{ steps.run-authority.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          jq -cn \
+            --arg repository "${REPOSITORY}" \
+            --arg revision "${REVISION}" \
+            --arg source_branch "${SOURCE_BRANCH}" \
+            --argjson run_attempt "${SOURCE_RUN_ATTEMPT}" \
+            --argjson run_id "${SOURCE_RUN_ID}" \
+            '{
+              repository: $repository,
+              sourceBranch: $source_branch,
+              sourceRevision: $revision,
+              request: {
+                workflow: ".github/workflows/cao-package-request.yml",
+                runId: $run_id,
+                runAttempt: $run_attempt
+              }
+            }' > "${RUNNER_TEMP}/cao-manual-source-predicate.json"
+      - id: source-attestation
+        name: Attest exact manual package source
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ steps.publish.outputs.subject }}
+          subject-digest: ${{ steps.publish.outputs.digest }}
+          predicate-type: https://github.com/githubnext/gh-aw-cao/attestations/cao-manual-source/v1
+          predicate-path: ${{ runner.temp }}/cao-manual-source-predicate.json
+          push-to-registry: true
+      - id: sbom-attestation
+        name: Attest package SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ steps.publish.outputs.subject }}
+          subject-digest: ${{ steps.publish.outputs.digest }}
+          sbom-path: ${{ runner.temp }}/candidate/cao-server.spdx.json
+          push-to-registry: true
+      - name: Summarize manual publication security checks
+        if: always()
+        env:
+          ARTIFACT_STATUS: ${{ steps.download.outcome }}
+          CHECKSUM_STATUS: ${{ steps.checksum.outcome }}
+          IMAGE_STATUS: ${{ steps.image.outcome }}
+          LOGIN_STATUS: ${{ steps.registry-login.outcome }}
+          METADATA_STATUS: ${{ steps.source-authority.outcome }}
+          PUBLISH_STATUS: ${{ steps.publish.outcome }}
+          RUN_AUTHORITY_STATUS: ${{ steps.run-authority.outcome }}
+          SBOM_ATTESTATION_STATUS: ${{ steps.sbom-attestation.outcome }}
+          SOURCE_ATTESTATION_STATUS: ${{ steps.source-attestation.outcome }}
+        run: |
+          {
+            echo "## Manual package publication security"
+            echo
+            echo "- Publisher is loaded from protected default branch and gated by the cao-server-publication environment."
+            echo "- Manual packages carry an exact custom source predicate, not default-branch SLSA source provenance."
+            echo "- Data exposure: stage outcomes only; actors, branches, registry responses, credentials, SBOM contents, and image inventory are omitted."
+            echo
+            for check in \
+              "Triggering run, workflow, actor, and artifact authority|${RUN_AUTHORITY_STATUS}" \
+              "Sealed artifact download|${ARTIFACT_STATUS}" \
+              "Checksummed candidate transfer|${CHECKSUM_STATUS}" \
+              "Source branch and metadata freshness|${METADATA_STATUS}" \
+              "OCI label verification|${IMAGE_STATUS}" \
+              "Registry authentication|${LOGIN_STATUS}" \
+              "Immutable digest publication|${PUBLISH_STATUS}" \
+              "Exact manual source predicate attestation|${SOURCE_ATTESTATION_STATUS}" \
+              "SPDX SBOM attestation|${SBOM_ATTESTATION_STATUS}"; do
+              name="${check%%|*}"
+              status="${check#*|}"
+              echo "<details><summary>${name}: ${status}</summary>"
+              echo
+              echo "- Data exposure: check name and outcome only"
+              echo "</details>"
+              echo
+            done
+          } >> "${GITHUB_STEP_SUMMARY}"

@@ -300,16 +300,31 @@ immutable `sha-<full-commit>` identity; published releases receive their exact
 Docker-safe semantic version tag. Use the resulting digest in downstream
 Compose files. Multiple services can share that digest and select
 `serve-hosted`, `collect`, `backfill`, or `doctor` through `command`.
-Maintainers and administrators may also dispatch the workflow from current
-protected `main` and provide an exact source branch through the required input;
-these builds use a non-colliding `dispatch-<full-commit>` identity.
+Maintainers and administrators instead dispatch the read-only
+`.github/workflows/cao-package-request.yml` workflow from current protected
+`main` and provide an exact source branch through the required input; these
+builds use a non-colliding `dispatch-<full-commit>` identity.
 Publication is gated by Hadolint, actionlint, zizmor, Trivy, Grype, Dockle,
 source tests, and protected-main ancestry. Syft produces an SPDX SBOM, and the
 protected-main `.github/workflows/cao-package-publish.yml` reusable workflow
 revalidates caller authority, source metadata, checksums, and OCI labels before
-attesting both build provenance and the SBOM for the exact OCI digest.
-Downstream delivery verifies that signer workflow and source commit before
-admitting the image.
+attesting automatic package provenance and the SBOM for the exact OCI digest.
+The protected-default-branch
+`.github/workflows/cao-package-request-publish.yml` `workflow_run` publisher is
+gated by the `cao-server-publication` environment and independently validates
+manual run, actor, workflow, artifact, source, checksum, metadata, and label
+authority. It attaches a custom exact-source predicate and SBOM, not
+default-branch source provenance. Downstream automatic delivery verifies the
+automatic signer workflow and source commit before admitting the image.
+
+Repository operators must keep the default `GITHUB_TOKEN` read-only, protect
+the `cao-server-publication` environment for `main` with required reviewers,
+and restrict any Actions OIDC trust to this repository, the exact manual
+publisher workflow, and that environment. Manual consumers verify the
+`https://github.com/githubnext/gh-aw-cao/attestations/cao-manual-source/v1`
+predicate and compare its repository, source branch, and source revision with
+the expected request; `--source-digest` remains the automatic main/release
+verification contract only.
 
 `server/coolify/compose.yml` expects:
 

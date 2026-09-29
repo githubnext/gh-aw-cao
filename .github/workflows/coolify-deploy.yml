@@ -14,6 +14,7 @@ on:
     branches: [main]
     paths:
       - .github/workflows/cao-package.yml
+      - .github/workflows/cao-package-build.yml
       - .github/workflows/cao-package-publish.yml
       - .github/workflows/coolify-deploy.yml
       - .dockerignore
