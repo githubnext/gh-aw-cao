@@ -284,6 +284,10 @@ governed property and not an accident of disk usage.
 - Collection MUST be at-least-once. Retry, deferral, blocked-repository requeue,
   malformed-entry handling, and dead-letter transitions MUST persist the
   replacement before acknowledging the original in one atomic Redis operation.
+- Future retry and deferral work MUST be durably scheduled outside the ready
+  stream, promoted only when due, and included in queue capacity and depth.
+  Workers MUST NOT wait synchronously on a future task while ready work remains
+  available.
 - A successful collection-webhook response MUST mean delivery deduplication and
   durable admission were committed atomically. Redis failures MUST return a
   retriable non-success response without consuming the delivery identity.

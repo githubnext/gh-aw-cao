@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"math/rand/v2"
+	"sort"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
@@ -15,6 +16,7 @@ var queueLog = logger.New("cao:collect:queue")
 
 const (
 	taskStream       = "collect:tasks"
+	delayedTaskSet   = "collect:delayed-tasks"
 	deadLetterStream = "collect:dead-letters"
 	defaultGroup     = "collectors"
 )
@@ -27,8 +29,7 @@ type Task struct {
 	Reason         string    `json:"reason"`
 	EnqueuedAt     time.Time `json:"enqueuedAt"`
 	Attempt        int       `json:"attempt"`
-	// NotBefore delays a retried task. Redis streams have no delayed
-	// delivery, so a worker that leases an early task returns it unchanged.
+	// NotBefore delays a retried task in the durable delayed-task set.
 	NotBefore time.Time `json:"notBefore,omitempty"`
 	// Erase requests deletion of the repository's retained evidence instead of
 	// collection. An admission-only process has no evidence lake, so
@@ -44,9 +45,9 @@ type Lease struct {
 
 // Queue is the durable, debounced collection queue.
 //
-// Admission enqueues; it never projects. Stream depth is the worker scaling
-// signal, and consumer-group claim semantics recover work from a worker that
-// stopped mid-task.
+// Admission enqueues; it never projects. Queue depth reports ready and
+// scheduled work, while consumer-group claims recover work from a stopped
+// worker.
 type Queue struct {
 	Store *redisx.Store
 	// Group is the consumer group name; empty selects the default.
@@ -101,7 +102,7 @@ func (q Queue) EnqueueDelivery(ctx context.Context, task Task, delivery string, 
 		return false, false, err
 	}
 	result, err := q.Store.StreamEnqueueDelivery(
-		ctx, delivery, deliveryTTL, taskStream, debounceKey(repository),
+		ctx, delivery, deliveryTTL, taskStream, delayedTaskSet, debounceKey(repository),
 		q.debounce(), q.MaxLength, taskFields(repository, payload),
 	)
 	if err != nil {
@@ -127,7 +128,7 @@ func (q Queue) enqueue(ctx context.Context, task Task) (bool, error) {
 		debounce = debounceKey(repository)
 	}
 	enqueued, err := q.Store.StreamEnqueue(
-		ctx, taskStream, debounce, q.debounce(), q.MaxLength,
+		ctx, taskStream, delayedTaskSet, debounce, q.debounce(), q.MaxLength,
 		taskFields(repository, payload),
 	)
 	if err != nil {
@@ -165,6 +166,9 @@ func taskFields(repository string, payload []byte) map[string]string {
 
 // Lease reads undelivered tasks for one consumer.
 func (q Queue) Lease(ctx context.Context, consumer string, count int, block time.Duration) ([]Lease, error) {
+	if _, err := q.promoteDue(ctx, time.Now().UTC(), count); err != nil {
+		return nil, err
+	}
 	messages, err := q.Store.StreamRead(ctx, taskStream, q.group(), consumer, count, block)
 	if err != nil {
 		return nil, err
@@ -291,7 +295,48 @@ func (q Queue) replace(ctx context.Context, messageID string, task Task) error {
 	if err != nil {
 		return err
 	}
+	if task.NotBefore.After(time.Now().UTC()) {
+		fields := taskFields(task.Repository, payload)
+		member, err := scheduledTaskMember(messageID, fields)
+		if err != nil {
+			return err
+		}
+		return q.Store.StreamScheduleAndAck(
+			ctx, taskStream, q.group(), messageID, delayedTaskSet, dueAtMillis(task.NotBefore), member,
+		)
+	}
 	return q.Store.StreamReplaceAndAck(ctx, taskStream, q.group(), messageID, taskStream, 0, taskFields(task.Repository, payload))
+}
+
+type scheduledTask struct {
+	ID     string   `json:"id"`
+	Fields []string `json:"fields"`
+}
+
+func scheduledTaskMember(id string, fields map[string]string) (string, error) {
+	names := make([]string, 0, len(fields))
+	for name := range fields {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	orderedFields := make([]string, 0, len(fields)*2)
+	for _, name := range names {
+		orderedFields = append(orderedFields, name, fields[name])
+	}
+	payload, err := json.Marshal(scheduledTask{ID: id, Fields: orderedFields})
+	return string(payload), err
+}
+
+func (q Queue) promoteDue(ctx context.Context, now time.Time, count int) (int64, error) {
+	return q.Store.StreamPromoteDue(ctx, delayedTaskSet, taskStream, now.UnixMilli(), count)
+}
+
+func dueAtMillis(value time.Time) int64 {
+	millis := value.UnixMilli()
+	if value.Nanosecond()%int(time.Millisecond) != 0 {
+		millis++
+	}
+	return millis
 }
 
 func (q Queue) deadLetterLease(ctx context.Context, messageID string, task Task, reason string) error {
@@ -307,9 +352,17 @@ func (q Queue) deadLetterLease(ctx context.Context, messageID string, task Task,
 	})
 }
 
-// Depth reports stream depth, the direct scaling signal for workers.
+// Depth reports ready and scheduled work, excluding already leased tasks.
 func (q Queue) Depth(ctx context.Context) (int64, error) {
-	return q.Store.StreamBacklog(ctx, taskStream, q.group())
+	backlog, err := q.Store.StreamBacklog(ctx, taskStream, q.group())
+	if err != nil {
+		return 0, err
+	}
+	delayed, err := q.Store.SortedSetLength(ctx, delayedTaskSet)
+	if err != nil {
+		return 0, err
+	}
+	return backlog + delayed, nil
 }
 
 // Pending reports delivered but unacknowledged tasks, which is processing lag.

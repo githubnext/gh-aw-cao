@@ -356,6 +356,31 @@ func TestQueueCapacityBackpressuresWithoutTrimmingPendingWork(t *testing.T) {
 	}
 }
 
+func TestQueueCapacityCountsScheduledRetries(t *testing.T) {
+	store, ctx := integrationStore(t)
+	queue := Queue{Store: store, MaxLength: 1}
+	if err := queue.Ensure(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := queue.Enqueue(ctx, Task{Repository: "octo/retry"}); err != nil {
+		t.Fatal(err)
+	}
+	leases, err := queue.Lease(ctx, "worker", 1, 0)
+	if err != nil || len(leases) != 1 {
+		t.Fatalf("lease = %+v, err = %v", leases, err)
+	}
+	leases[0].Task.NotBefore = time.Now().UTC().Add(time.Hour)
+	if err := queue.Defer(ctx, leases[0]); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := queue.Enqueue(ctx, Task{Repository: "octo/overflow"}); !errors.Is(err, redisx.ErrStreamCapacity) {
+		t.Fatalf("enqueue error = %v, want capacity backpressure for scheduled task", err)
+	}
+	if depth, err := queue.Depth(ctx); err != nil || depth != 1 {
+		t.Fatalf("depth = %d, err = %v; want delayed task counted in queue depth", depth, err)
+	}
+}
+
 func TestQueueDeadLettersAfterRepeatedFailures(t *testing.T) {
 	store, ctx := integrationStore(t)
 	queue := Queue{Store: store, MaxAttempts: 2}
@@ -368,6 +393,11 @@ func TestQueueDeadLettersAfterRepeatedFailures(t *testing.T) {
 	}
 	failure := errors.New("collection failed")
 	for attempt := 0; attempt < 3; attempt++ {
+		if attempt > 0 {
+			if _, err := queue.promoteDue(ctx, time.Now().UTC().Add(time.Hour), 10); err != nil {
+				t.Fatal(err)
+			}
+		}
 		leases, err := queue.Lease(ctx, "worker", 10, 50*time.Millisecond)
 		if err != nil {
 			t.Fatal(err)
@@ -456,7 +486,14 @@ func TestWorkerCancellationPreservesNotBeforeTask(t *testing.T) {
 	}
 	pending, err := queue.Pending(ctx)
 	if err != nil || pending != 0 {
-		t.Fatalf("pending = %d, err = %v; expected the original lease to be replaced", pending, err)
+		t.Fatalf("pending = %d, err = %v; expected the original lease to be scheduled", pending, err)
+	}
+	if depth, err := queue.Depth(ctx); err != nil || depth != 1 {
+		t.Fatalf("depth = %d, err = %v; want one durably scheduled task", depth, err)
+	}
+	promoted, err := queue.promoteDue(ctx, notBefore.Add(time.Millisecond), 1)
+	if err != nil || promoted != 1 {
+		t.Fatalf("promoted = %d, err = %v; want delayed task to become ready", promoted, err)
 	}
 	requeued, err := queue.Lease(ctx, "replacement-worker", 1, 0)
 	if err != nil || len(requeued) != 1 {
@@ -464,6 +501,45 @@ func TestWorkerCancellationPreservesNotBeforeTask(t *testing.T) {
 	}
 	if !requeued[0].Task.NotBefore.Equal(notBefore) {
 		t.Fatalf("notBefore = %s, want %s", requeued[0].Task.NotBefore, notBefore)
+	}
+}
+
+func TestDelayedTaskDoesNotBlockReadyQueueWork(t *testing.T) {
+	store, ctx := integrationStore(t)
+	queue := Queue{Store: store}
+	if err := queue.Ensure(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := queue.Enqueue(ctx, Task{
+		Repository: "octo/delayed", NotBefore: time.Now().UTC().Add(time.Hour),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := queue.Enqueue(ctx, Task{Repository: "octo/ready"}); err != nil {
+		t.Fatal(err)
+	}
+	leases, err := queue.Lease(ctx, "worker", 1, 0)
+	if err != nil || len(leases) != 1 || leases[0].Task.Repository != "octo/delayed" {
+		t.Fatalf("first lease = %+v, err = %v; want delayed task", leases, err)
+	}
+	worker := Worker{Queue: queue}
+	processingCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	done := make(chan struct{})
+	go func() {
+		worker.process(processingCtx, leases[0])
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		cancel()
+		<-done
+		t.Fatal("scheduling a delayed task blocked the worker")
+	}
+	ready, err := queue.Lease(ctx, "ready-worker", 1, 0)
+	if err != nil || len(ready) != 1 || ready[0].Task.Repository != "octo/ready" {
+		t.Fatalf("ready lease = %+v, err = %v; delayed task blocked ready work", ready, err)
 	}
 }
 
@@ -742,6 +818,9 @@ func TestReplacementPersistsWhenAckCannotComplete(t *testing.T) {
 	pending, err := queue.Pending(ctx)
 	if err != nil || pending != 0 {
 		t.Fatalf("pending = %d, err = %v; want original acknowledged", pending, err)
+	}
+	if _, err := queue.promoteDue(ctx, time.Now().UTC().Add(time.Hour), 1); err != nil {
+		t.Fatal(err)
 	}
 	replacement, err := queue.Lease(ctx, "worker-b", 1, 0)
 	if err != nil || len(replacement) != 1 {

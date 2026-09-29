@@ -45,7 +45,7 @@ func (s *Store) StreamAdd(ctx context.Context, stream string, maxLength int64, f
 // capacity check applies backpressure rather than trimming recoverable work.
 func (s *Store) StreamEnqueue(
 	ctx context.Context,
-	stream, debounceKey string,
+	stream, delayedKey, debounceKey string,
 	debounceTTL time.Duration,
 	maxLength int64,
 	fields map[string]string,
@@ -54,25 +54,25 @@ func (s *Store) StreamEnqueue(
 		return false, errors.New("stream entries require at least one field")
 	}
 	script := `
-	if ARGV[2] == "1" and redis.call("EXISTS", KEYS[2]) == 1 then
+	if ARGV[2] == "1" and redis.call("EXISTS", KEYS[3]) == 1 then
 	  return 0
 	end
-	if ARGV[1] ~= "0" and redis.call("XLEN", KEYS[1]) >= tonumber(ARGV[1]) then
+	if ARGV[1] ~= "0" and redis.call("XLEN", KEYS[1]) + redis.call("ZCARD", KEYS[2]) >= tonumber(ARGV[1]) then
 	  return -1
 	end
 	redis.call("XADD", KEYS[1], "*", unpack(ARGV, 4))
 	if ARGV[2] == "1" then
-	  redis.call("SET", KEYS[2], "1", "PX", ARGV[3])
+	  redis.call("SET", KEYS[3], "1", "PX", ARGV[3])
 	end
 	return 1`
 	arguments := appendStreamFields([]string{
-		"EVAL", script, "2", s.Key(stream), s.Key(debounceKey),
+		"EVAL", script, "3", s.Key(stream), s.Key(delayedKey), s.Key(debounceKey),
 		strconv.FormatInt(maxLength, 10),
 		"0",
 		strconv.FormatInt(debounceTTL.Milliseconds(), 10),
 	}, fields)
 	if debounceKey != "" {
-		arguments[6] = "1"
+		arguments[7] = "1"
 	}
 	value, err := s.Client.Do(ctx, arguments...)
 	if err != nil {
@@ -104,7 +104,7 @@ func (s *Store) StreamEnqueueDelivery(
 	ctx context.Context,
 	delivery string,
 	deliveryTTL time.Duration,
-	stream, debounceKey string,
+	stream, delayedKey, debounceKey string,
 	debounceTTL time.Duration,
 	maxLength int64,
 	fields map[string]string,
@@ -120,7 +120,7 @@ func (s *Store) StreamEnqueueDelivery(
 	  redis.call("SET", KEYS[1], "1", "PX", ARGV[1])
 	  return 1
 	end
-	if ARGV[3] ~= "0" and redis.call("XLEN", KEYS[2]) >= tonumber(ARGV[3]) then
+	if ARGV[3] ~= "0" and redis.call("XLEN", KEYS[2]) + redis.call("ZCARD", KEYS[4]) >= tonumber(ARGV[3]) then
 	  return -1
 	end
 	redis.call("XADD", KEYS[2], "*", unpack(ARGV, 4))
@@ -128,7 +128,7 @@ func (s *Store) StreamEnqueueDelivery(
 	redis.call("SET", KEYS[1], "1", "PX", ARGV[1])
 	return 2`
 	arguments := appendStreamFields([]string{
-		"EVAL", script, "3", s.deliveryKey(delivery), s.Key(stream), s.Key(debounceKey),
+		"EVAL", script, "4", s.deliveryKey(delivery), s.Key(stream), s.Key(debounceKey), s.Key(delayedKey),
 		strconv.FormatInt(deliveryTTL.Milliseconds(), 10),
 		strconv.FormatInt(debounceTTL.Milliseconds(), 10),
 		strconv.FormatInt(maxLength, 10),
@@ -151,6 +151,62 @@ func (s *Store) StreamEnqueueDelivery(
 	default:
 		return DeliveryDuplicate, errors.New("unexpected delivery admission response")
 	}
+}
+
+// StreamScheduleAndAck durably parks a task before acknowledging its stream
+// entry, so delayed work does not occupy a worker or block ready stream work.
+func (s *Store) StreamScheduleAndAck(
+	ctx context.Context,
+	source, group, messageID, delayedKey string,
+	dueAtMillis int64,
+	member string,
+) error {
+	script := `
+	local pending = redis.call("XPENDING", KEYS[1], ARGV[1], ARGV[2], ARGV[2], 1)
+	if #pending == 0 then return 0 end
+	redis.call("ZADD", KEYS[2], ARGV[3], ARGV[4])
+	local acked = redis.call("XACK", KEYS[1], ARGV[1], ARGV[2])
+	if acked == 1 then redis.call("XDEL", KEYS[1], ARGV[2]) end
+	return acked`
+	_, err := s.Client.Do(ctx, "EVAL", script, "2", s.Key(source), s.Key(delayedKey),
+		group, messageID, strconv.FormatInt(dueAtMillis, 10), member)
+	return err
+}
+
+// StreamPromoteDue moves scheduled entries into the ready stream atomically.
+func (s *Store) StreamPromoteDue(
+	ctx context.Context, delayedKey, stream string, nowMillis int64, count int,
+) (int64, error) {
+	if count <= 0 {
+		return 0, nil
+	}
+	script := `
+	local members = redis.call("ZRANGEBYSCORE", KEYS[1], "-inf", ARGV[1], "LIMIT", 0, ARGV[2])
+	for _, member in ipairs(members) do
+	  local entry = cjson.decode(member)
+	  local fields = {KEYS[2], "*"}
+	  for _, field in ipairs(entry.fields) do
+	    table.insert(fields, field)
+	  end
+	  redis.call("XADD", unpack(fields))
+	  redis.call("ZREM", KEYS[1], member)
+	end
+	return #members`
+	value, err := s.Client.Do(ctx, "EVAL", script, "2", s.Key(delayedKey), s.Key(stream),
+		strconv.FormatInt(nowMillis, 10), strconv.Itoa(count))
+	if err != nil {
+		return 0, err
+	}
+	return toInt64(value), nil
+}
+
+// SortedSetLength reports the number of durable scheduled members.
+func (s *Store) SortedSetLength(ctx context.Context, key string) (int64, error) {
+	value, err := s.Client.Do(ctx, "ZCARD", s.Key(key))
+	if err != nil {
+		return 0, err
+	}
+	return toInt64(value), nil
 }
 
 // StreamReplaceAndAck atomically persists a replacement entry before

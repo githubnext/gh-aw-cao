@@ -58,7 +58,7 @@ func TestStreamEnqueueDeliveryCombinesDedupDebounceAndAppend(t *testing.T) {
 	store := NewStore(client, "test")
 	result, err := store.StreamEnqueueDelivery(
 		context.Background(), "delivery-1", time.Hour,
-		"tasks", "debounce:octo/api", time.Minute, 100,
+		"tasks", "delayed", "debounce:octo/api", time.Minute, 100,
 		map[string]string{"task": "{}"},
 	)
 	if err != nil {

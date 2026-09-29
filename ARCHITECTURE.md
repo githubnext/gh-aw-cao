@@ -353,8 +353,10 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   succeed. Enrollment changes are serialized while withdrawal persists erasure
   for the exact membership snapshot before removing it; workers serialize
   erasure with collection and reject or erase stale queued collection tasks.
-  Workers honor retry not-before times, preserve leased work on shutdown, and
-  back off on repository-lock contention without consuming collection attempts.
+  Workers persist not-before retries in a separate due-time set and promote
+  ready tasks without sleeping on delayed work; scheduled tasks count toward
+  backpressure and queue depth. Shutdown preserves leased work, and
+  repository-lock contention backs off without consuming collection attempts.
 - The ingestion reliability simulator uses strict, seeded JSON scenarios to
   generate up to 20,000 synthetic repositories and 1,000,000 workflow events.
   Signed webhook traffic uses the production endpoint and queue admission path;

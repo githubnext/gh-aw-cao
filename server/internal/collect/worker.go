@@ -162,15 +162,12 @@ func (w Worker) Run(ctx context.Context) error {
 func (w Worker) process(ctx context.Context, lease Lease) bool {
 	task := lease.Task
 	if !task.NotBefore.IsZero() && task.NotBefore.After(time.Now().UTC()) {
-		sleep(ctx, time.Until(task.NotBefore))
-		if ctx.Err() != nil {
-			deferCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
-			defer cancel()
-			if err := w.Queue.Defer(deferCtx, lease); err != nil {
-				workerLog.Printf("cancelled task defer failed")
-			}
-			return false
+		deferCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
+		defer cancel()
+		if err := w.Queue.Defer(deferCtx, lease); err != nil {
+			workerLog.Printf("delayed task schedule failed")
 		}
+		return false
 	}
 	token, err := operationToken()
 	if err != nil {
