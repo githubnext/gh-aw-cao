@@ -79,26 +79,62 @@ type Argument struct {
 	Context string  `json:"context,omitempty"`
 }
 
+// argumentKind identifies which of the mutually exclusive shapes a compute
+// argument's raw JSON object took. It is useful for diagnosing a malformed
+// dashboard query document without logging its field names or values.
+type argumentKind string
+
+const (
+	argumentKindField   argumentKind = "field"
+	argumentKindValue   argumentKind = "value"
+	argumentKindContext argumentKind = "context"
+	argumentKindInvalid argumentKind = "invalid"
+)
+
+// classifyArgumentKind inspects a decoded compute-argument object and reports
+// which shape it took, checking "field", "value", then "context" in priority
+// order. It is a pure function extracted from UnmarshalJSON so the priority
+// and rejection logic is testable directly against a raw key set, without
+// constructing JSON bytes for every case.
+func classifyArgumentKind(raw map[string]json.RawMessage) argumentKind {
+	switch {
+	case has(raw, "field"):
+		return argumentKindField
+	case has(raw, "value"):
+		return argumentKindValue
+	case has(raw, "context"):
+		return argumentKindContext
+	default:
+		return argumentKindInvalid
+	}
+}
+
+func has(raw map[string]json.RawMessage, key string) bool {
+	_, ok := raw[key]
+	return ok
+}
+
 func (a *Argument) UnmarshalJSON(data []byte) error {
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
-	if field, ok := raw["field"]; ok {
+	switch classifyArgumentKind(raw) {
+	case argumentKindField:
 		var value string
-		if err := json.Unmarshal(field, &value); err != nil {
+		if err := json.Unmarshal(raw["field"], &value); err != nil {
 			return err
 		}
 		a.Field = &value
 		return nil
+	case argumentKindValue:
+		return json.Unmarshal(raw["value"], &a.Value)
+	case argumentKindContext:
+		return json.Unmarshal(raw["context"], &a.Context)
+	default:
+		queryLog.Printf("compute argument decode rejected reason=missing-field-value-context")
+		return fmt.Errorf("compute argument must contain field, value, or context")
 	}
-	if value, ok := raw["value"]; ok {
-		return json.Unmarshal(value, &a.Value)
-	}
-	if contextValue, ok := raw["context"]; ok {
-		return json.Unmarshal(contextValue, &a.Context)
-	}
-	return fmt.Errorf("compute argument must contain field, value, or context")
 }
 
 type ComputedField struct {
