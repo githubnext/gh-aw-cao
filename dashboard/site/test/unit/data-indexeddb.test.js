@@ -448,6 +448,22 @@ describe('canonical IndexedDB', () => {
     commits.mockRestore();
   });
 
+  it('explicitly commits evidence definitions after queuing their merged writes', async () => {
+    const evidence = normalize([]);
+    evidence.experiments?.push({
+      id: 'experiment:1', workflowId: 'workflow:1', name: 'prompt',
+      observedAt: '2026-09-09T05:00:00Z'
+    });
+    const commits = vi.spyOn(IDBTransaction.prototype, 'commit');
+
+    await upsertCanonicalBatch(indexedDB, evidence, { validateRelationships: false });
+
+    expect(commits).toHaveBeenCalledOnce();
+    expect(await readCollection(indexedDB, 'experiments')).toEqual([
+      expect.objectContaining({ id: 'experiment:1', name: 'prompt' })
+    ]);
+  });
+
   it('falls back when transaction durability options are unsupported', async () => {
     const originalTransaction = IDBDatabase.prototype.transaction;
     /** @type {number[]} */

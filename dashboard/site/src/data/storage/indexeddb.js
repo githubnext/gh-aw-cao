@@ -386,12 +386,14 @@ export async function upsertCanonicalBatchWithConnection(database, batch, option
       const done = transactionDone(transaction);
       const store = transaction.objectStore(storeName);
       if (EVIDENCE_DEFINITION_STORES.has(storeName)) {
+        let pendingLookups = boundedRecords.length;
         for (const record of boundedRecords) {
           const lookup = store.get(/** @type {IDBValidKey} */ (record.id));
           lookup.onsuccess = () => {
             store.put(mergeEvidenceDefinition(
               /** @type {Record<string, unknown> | undefined} */ (lookup.result), record
             ));
+            if (--pendingLookups === 0) commitTransaction(transaction);
           };
         }
       } else {

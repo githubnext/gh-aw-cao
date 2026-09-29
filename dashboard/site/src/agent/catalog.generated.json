@@ -680,6 +680,34 @@
       ]
     },
     {
+      "id": "experiments",
+      "title": "Experiments",
+      "description": "Observed run assignments by workflow and experiment. TODO: audit evidence does not establish campaign milestones or target assignments, so these counts are not completion percentages.",
+      "experimental": true,
+      "parameters": [],
+      "queries": [
+        "experiment-assignment-coverage"
+      ]
+    },
+    {
+      "id": "evals",
+      "title": "Evals",
+      "description": "YES/NO results from retained eval observations, grouped by workflow and newest first. TODO: audit evidence lacks an authoritative current-result pointer per eval; older observations remain visible and must not be read as current verdicts.",
+      "experimental": true,
+      "parameters": [],
+      "queries": []
+    },
+    {
+      "id": "graders",
+      "title": "Graders",
+      "description": "YES/NO pass/fail results from retained grader observations, grouped by workflow and newest first. Other results are unknown. TODO: audit evidence lacks an authoritative current-result pointer per grader; older observations remain visible.",
+      "experimental": true,
+      "parameters": [],
+      "queries": [
+        "grader-status-ledger"
+      ]
+    },
+    {
       "id": "configuration",
       "title": "Settings",
       "description": "Review and edit the entries in the checked-in .github/workflows/cao.json policy.",
@@ -3131,6 +3159,44 @@
         "local": false,
         "requirements": [],
         "reason": "Requires skills, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "experiment-assignment-coverage",
+      "intent": "Count observed run assignments for each experiment and workflow without inferring a completion target.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "experiment-assignments"
+      ],
+      "used-by-pages": [
+        "experiments"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "experiment-assignments"
+        ]
+      }
+    },
+    {
+      "id": "grader-status-ledger",
+      "intent": "Report explicit grader pass/fail observations without inferring current state from prior runs.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "grader-observations"
+      ],
+      "used-by-pages": [
+        "graders"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "grader-observations"
+        ]
       }
     },
     {

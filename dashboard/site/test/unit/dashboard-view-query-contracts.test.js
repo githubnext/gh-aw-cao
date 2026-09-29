@@ -102,6 +102,62 @@ function declaredQueryReferences(value) {
 }
 
 describe('dashboard view query contracts', () => {
+  it('declares experimental evidence pages without presenting observation counts as campaign completion', () => {
+    const navigation = dashboard.navigation.flatMap(
+      (/** @type {{ pages?: string[] }} */ section) => section.pages ?? []
+    );
+    for (const id of ['experiments', 'evals', 'graders']) {
+      expect(navigation).toContain(id);
+      expect(dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === id))
+        .toMatchObject({ kind: 'custom', experimental: true });
+    }
+    const experiments = dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'experiments');
+    expect(viewsOf(experiments)).toMatchObject([
+      { mark: 'chart', chart: 'horizontal-bar', data: { source: 'experiment-assignment-coverage' } },
+      { mark: 'table', data: { source: 'experiments' }, 'lazy-list': true, layout: 'full-view' }
+    ]);
+    for (const id of ['evals', 'graders']) {
+      const page = dashboard.pages.find((/** @type {{ id?: string }} */ candidate) => candidate.id === id);
+      expect(viewsOf(page)[0]).toMatchObject({
+        mark: 'table', 'lazy-list': true, layout: 'full-view',
+        data: { 'order-by': [{ field: 'workflow', direction: 'asc' }, { field: 'observed-at', direction: 'desc' }] }
+      });
+      expect(page.description).toContain('TODO:');
+    }
+  });
+
+  it('computes assignment coverage and explicit YES/NO grader verdicts from declared evidence sources', () => {
+    const results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries',
+      queries,
+      sourceNames: ['experiment-assignment-coverage', 'grader-status-ledger'],
+      sources: {
+        ...databaseTables,
+        'experiment-assignments': {
+          source: 'experiment-assignments', metadata,
+          rows: [
+            { workflow: 'worker.md', experiment: 'prompt', run: '1' },
+            { workflow: 'worker.md', experiment: 'prompt', run: '2' },
+            { workflow: 'other.md', experiment: 'prompt', run: '3' }
+          ]
+        },
+        'grader-observations': {
+          source: 'grader-observations', metadata,
+          rows: [
+            { workflow: 'worker.md', grader: 'quality', status: 'pass' },
+            { workflow: 'worker.md', grader: 'quality', status: 'failed' },
+            { workflow: 'worker.md', grader: 'quality', status: 'unavailable' }
+          ]
+        }
+      }
+    }));
+    expect(results['experiment-assignment-coverage'].rows).toEqual(expect.arrayContaining([
+      expect.objectContaining({ workflow: 'worker.md', experiment: 'prompt', assignments: 2 }),
+      expect.objectContaining({ workflow: 'other.md', experiment: 'prompt', assignments: 1 })
+    ]));
+    expect(results['grader-status-ledger'].rows.map((row) => row.verdict)).toEqual(['YES', 'NO', 'unknown']);
+  });
+
   it('does not retain core experimental navigation sections', () => {
     expect(dashboard.navigation.filter(
       (/** @type {{ experimental?: boolean }} */ section) => section.experimental === true
