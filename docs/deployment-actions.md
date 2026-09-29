@@ -22,8 +22,8 @@ Queries run in each viewer's browser, in a web worker over a local IndexedDB dat
 | --- | --- |
 | Control repository | A private repository that runs CAO. GitHub Enterprise is not required. |
 | GitHub Actions | Enabled for the repository. You need GitHub-hosted `ubuntu-latest` runners or compatible self-hosted runners, and enough minutes for an Activity run about every 15 minutes. |
-| Actions cache | Stores the Activity snapshot (`cao-activity-v5-*`) and the built dashboard (`central-agentic-ops-dashboard`). If the cache is evicted, the dashboard uses the latest successful Activity artifact instead. For more information, see [Cache contract](activity.md#cache-contract). |
-| Actions artifacts | Stores the `cao-activity-index` and `central-agentic-ops-dashboard` artifacts. The dashboard artifact is kept for one day. |
+| Actions cache | Stores the Activity snapshot (`cao-activity-v5-*`). If the cache is evicted, the dashboard uses the latest successful Activity artifact instead. For more information, see [Cache contract](activity.md#cache-contract). |
+| Actions artifacts | Stores the `cao-activity-index` and `central-agentic-ops-dashboard` artifacts. The dashboard artifact is kept for one day; consumers download it directly from the latest successful `cao-dashboard.yml` run instead of a cache. |
 | GitHub Pages | The publishing source must be **GitHub Actions**. To make the site private, you need a plan that supports access control for Pages, such as GitHub Enterprise Cloud. Otherwise, the site is public. |
 | `github-pages` environment | Created automatically by GitHub Pages. You can protect it with required reviewers. |
 | Browser | A current browser that supports web workers, IndexedDB, and JavaScript modules. The browser downloads and indexes the data on first load. |
