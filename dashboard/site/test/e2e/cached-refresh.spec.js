@@ -168,6 +168,8 @@ test("cached view is populated before background ingestion updates it", async ({
 
   await page.goto(`${origin}/`);
   await expect(page.getByRole("cell", { name: "Cached dashboard run" })).toBeVisible();
+  await expect(page.locator(".dashboard-snapshot-status"))
+    .toContainText("Refreshing dashboard data. Showing the last complete snapshot from");
   await expect(page.locator(".dashboard-view-skeleton")).toHaveCount(0);
   await expect(page.getByRole("cell", { name: "gh-aw-cao" })).toHaveCount(0);
 
@@ -180,6 +182,8 @@ test("cached view is populated before background ingestion updates it", async ({
   await expect(page.getByRole("cell", { name: "Cached dashboard run" })).toBeVisible();
   await expect(page.locator(".dashboard-view-skeleton")).toHaveCount(0);
   await expect(page.locator(".loading-progress")).toHaveCount(1);
+  await expect(page.locator(".dashboard-snapshot-status"))
+    .toContainText("Refreshing dashboard data. Showing the last complete snapshot from");
 
   releaseFreshData();
 

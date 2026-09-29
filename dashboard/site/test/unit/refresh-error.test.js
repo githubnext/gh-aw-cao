@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { renderRefreshError } from '../../src/components/refresh-error.js';
+import { renderDashboardSnapshotStatus, renderRefreshError } from '../../src/components/refresh-error.js';
 
 describe('refresh error', () => {
   it('explains the stale state and retries the refresh', () => {
@@ -29,5 +29,20 @@ describe('refresh error', () => {
     dismissButton?.click();
 
     expect(document.body.contains(error)).toBe(false);
+  });
+
+  it('announces refresh progress with the last complete snapshot time', () => {
+    const status = renderDashboardSnapshotStatus({ createdAt: '2026-09-28T12:00:00.000Z' }, 'refreshing');
+
+    expect(status.getAttribute('role')).toBe('status');
+    expect(status.textContent).toContain('Refreshing dashboard data.');
+    expect(status.textContent).toContain('Showing the last complete snapshot from');
+  });
+
+  it('does not claim cached data exists when the first refresh fails', () => {
+    const error = renderRefreshError(vi.fn(), { hasCachedSnapshot: false });
+
+    expect(error.textContent).toContain('A complete dashboard snapshot is not available yet.');
+    expect(error.textContent).not.toContain('most recent cached data');
   });
 });

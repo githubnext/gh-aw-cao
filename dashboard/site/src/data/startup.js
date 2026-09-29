@@ -1,4 +1,5 @@
 import {
+  loadDashboardSnapshotMetadata,
   loadCanonicalDashboardPage,
   refreshCanonicalDashboardSources,
   subscribeCanonicalDashboardView,
@@ -134,7 +135,7 @@ export function waitForDashboardUi(browserWindow) {
  *   preparePage?: (pageId: string) => Promise<void>,
  *   pageSourceNames: (pageId: string, viewMode?: 'chart'|'table'|'card') => string[],
  *   pagePaginatedSourceBindings: (pageId: string) => Record<string, { sourceName: string, viewId: string }>,
- *   render: (sources: DashboardSources, state: 'ready' | 'cached' | 'stale', loadPageSources: PageSourceLoader, retryRefresh?: () => void) => void,
+ *   render: (sources: DashboardSources, state: 'ready' | 'loading' | 'cached' | 'stale', loadPageSources: PageSourceLoader, retryRefresh?: () => void, snapshot?: { createdAt: string } | null) => void,
  *   settleUi?: () => Promise<void>,
  * }} options
  * @returns {Promise<() => void>}
@@ -292,7 +293,10 @@ export async function startDashboardData(options) {
   };
 
   await loadCanonicalDashboardPage([], dashboardContext);
-  render({}, "cached", loadPageSources);
+  let snapshot = await loadDashboardSnapshotMetadata();
+  const remoteDataBackend = usesRemoteDataBackend(document);
+  let hasCompleteSnapshot = remoteDataBackend || snapshot !== null;
+  render({}, hasCompleteSnapshot ? "cached" : "loading", loadPageSources, undefined, snapshot);
   let refreshFailed = false;
   let refreshPending = false;
   /** @param {unknown} error */
@@ -312,7 +316,7 @@ export async function startDashboardData(options) {
       status: "failed",
       message,
     });
-    render({}, "stale", loadPageSources, refreshSources);
+    render({}, hasCompleteSnapshot ? "stale" : "loading", loadPageSources, refreshSources, snapshot);
   };
   const refreshSources = (showRefreshing = true) => {
     if (refreshPending || cleanup.signal.aborted) return;
@@ -323,15 +327,17 @@ export async function startDashboardData(options) {
       status: "started",
     });
     if (showRefreshing) {
-      render({}, "cached", loadPageSources);
+      render({}, hasCompleteSnapshot ? "cached" : "loading", loadPageSources, undefined, snapshot);
     }
     void refreshCanonicalDashboardSources(
       sourceUrl,
       [],
       dashboardContext,
     ).then(
-      ({ changed }) => {
+      async ({ changed }) => {
         refreshPending = false;
+        snapshot = await loadDashboardSnapshotMetadata().catch(() => null) ?? snapshot;
+        hasCompleteSnapshot = remoteDataBackend || snapshot !== null;
         emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
           kind: "refresh",
           status: "completed",
@@ -343,7 +349,7 @@ export async function startDashboardData(options) {
           dashboard?.classList.remove("dashboard-refreshing");
           dashboard?.removeAttribute("aria-busy");
         } else {
-          render({}, "ready", loadPageSources);
+          render({}, "ready", loadPageSources, undefined, snapshot);
         }
       },
       showStaleSources,
