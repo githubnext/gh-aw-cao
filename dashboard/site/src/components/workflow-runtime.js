@@ -10,6 +10,9 @@ import { coverageWindowHours, renderVitalStat } from './ui-primitives.js';
 import { finiteNumber, formatCount, text } from './count-formatters.js';
 import { renderWorkflowRoutePage } from './workflow-route-page.js';
 import { rowsFor } from './source-rows.js';
+import { createDebug } from '../debug.js';
+
+const debugWorkflowRuntime = createDebug('workflow-runtime');
 
 /**
  * @param {import('./ui-elements.js').ElementRenderContext} context
@@ -31,6 +34,7 @@ export function renderWorkflowRuntimeBody(context, workflow) {
   const workflowPath = text(workflow.workflow);
   const runs = matchingRows(context, 'runs', repository, workflowPath);
   const usage = matchingRows(context, 'usage', repository, workflowPath);
+  debugWorkflowRuntime({ event: 'body-resolved', runCount: runs.length, usageCount: usage.length });
 
   return h(
     'div',
@@ -56,6 +60,13 @@ function renderRuntimeMetrics(context, workflow, runs, usage) {
   const registration = text(workflow['workflow-active']) === 'true'
     ? 'active'
     : text(workflow['workflow-active']) === 'false' ? 'disabled' : 'unknown';
+  debugWorkflowRuntime({
+    event: 'metrics-computed',
+    healthAvailable,
+    usageAvailable,
+    usageMeasured,
+    failed: health.failed
+  });
 
   return h(
     'section',
@@ -84,6 +95,7 @@ function renderRuntimeMetrics(context, workflow, runs, usage) {
  */
 function renderRunHealthMetric(health, available, coverage, label) {
   if (!available) {
+    debugWorkflowRuntime({ event: 'run-health-unavailable' });
     return h(
       'div',
       { className: 'workflow-run-health' },
