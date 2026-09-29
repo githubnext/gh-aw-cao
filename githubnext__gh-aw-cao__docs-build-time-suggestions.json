@@ -1,6 +1,6 @@
 {
-  "source_sha": "d8219358ffd30aaeca974b0b1abf8a02a2c9411c",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "source_sha": "fcf0478f65c07a186de514896c84bff1a86a24bd",
+  "next_category": "dependency installation and caching",
   "evaluations": [
     {
       "evaluated_at": "2026-09-29T11:56:48Z",
@@ -272,6 +272,21 @@
         36612578738
       ],
       "outcome": "no-op: evaluated artifact transfer and Pages packaging across the latest 20 completed docs.yml runs from the last 14 days, but only 5 successful completed runs were present in that bounded sample because the recent window was dominated by skipped, action_required, and cancelled docs runs around failing CAO Dashboard triggers. Evidence window 2026-09-29T18:30:47Z to 2026-09-29T18:55:09Z. Trusted metadata from those 5 successes showed docs workflow median 46.0s (p90 63.4s), build median 42.0s (p90 43.8s), deploy median 18.0s on the single publishing run, queue median 1.0s (p90 3.2s), and build-step medians of 5.0s for Restore node_modules, 12.0s for Build documentation, 1.0s for Restore cached CAO Dashboard, and 5.0s for Upload Pages artifact. Cache-hit metadata remained stable: Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on all comparable successful builds. However, the protocol requires broader like-for-like evidence, and this narrowed sample did not materially change earlier transfer-packaging findings or justify a new non-duplicate recommendation above the 60s / 15% threshold.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-09-29T19:32:30Z",
+      "worker_run_id": 36618944308,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36618851571,
+        36616250620,
+        36616178759,
+        36615392351,
+        36615102477,
+        36614520763
+      ],
+      "outcome": "no-op: evaluated scheduling, concurrency, and avoidable rebuilds across the latest 20 completed docs.yml runs from the last 14 days, with 6 successful completed docs runs and 14 excluded completed non-comparable runs (8 action_required workflow_run placeholders, 5 skipped workflow_run runs, and 1 skipped workflow_run after a newer build). Evidence window 2026-09-29T18:47:01Z to 2026-09-29T19:24:20Z. Trusted metadata showed queue median 0.0s, workflow execution median 59.5s (p90 107.5s), build median 35.5s (p90 42.5s), schedule-freshness median 8.0s on the 3 scheduled runs, and deploy median 19.0s (p90 62.2s) on the 3 scheduled publishes. All 6 successful docs builds restored the setup-node npm cache, the explicit node_modules cache, and the constant central-agentic-ops-dashboard cache; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on every successful build. Bounded log reads confirmed Upload Pages artifact consistently transferred about 26.9 MB in roughly 4-5s, while the only notable outlier was schedule run 36616250620 where Deploy Pages spent 69s polling deployment_queued after artifact upload completed. Within the requested scheduling/concurrency/avoidable-rebuild category, docs.yml already skips stale scheduled rebuilds quickly via schedule-freshness and the refreshed evidence did not identify a new source-level change in docs.yml or cao-dashboard.yml that would save at least 60 seconds or 15 percent of median docs execution time without weakening freshness, correctness, or deployment safety.",
       "suggestion_fingerprint": null
     }
   ]
