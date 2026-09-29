@@ -44,6 +44,15 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci --ignore-scripts
-      - name: Test install.sh
-        shell: ${{ matrix.shell }}
+      - name: Test install.sh (cmd)
+        if: matrix.shell == 'cmd'
+        shell: cmd
+        run: node --test tests/unit/install-script.test.mjs
+      - name: Test install.sh (pwsh)
+        if: matrix.shell == 'pwsh'
+        shell: pwsh
+        run: node --test tests/unit/install-script.test.mjs
+      - name: Test install.sh (bash)
+        if: matrix.shell == 'bash'
+        shell: bash
         run: node --test tests/unit/install-script.test.mjs
