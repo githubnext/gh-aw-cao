@@ -40,8 +40,7 @@ and report discovery as incomplete. Do not guess from partial catalog data.
 
 ## Recommend
 
-When no campaign is named, ask for the operational outcome. Recommend at most
-three installable campaigns, ordered by fit. For each, summarize:
+When no campaign is named, ask for the operational outcome. Recommend no more than three installable campaigns, ordered by fit. For each, summarize:
 
 - the outcome it targets;
 - its orchestrator and worker responsibilities;
