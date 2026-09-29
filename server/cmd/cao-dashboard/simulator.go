@@ -186,7 +186,7 @@ func runSimulatorAPI(ctx context.Context, httpServer *http.Server, listener net.
 	}()
 	select {
 	case <-ctx.Done():
-		shutdownContext, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		shutdownContext, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)
 		defer cancel()
 		err := httpServer.Shutdown(shutdownContext)
 		simulatorLog.Printf("simulator API stopped reason=%s", simulatorAPIStopReasonShutdown)

@@ -185,16 +185,16 @@ func TestValidateWebhookDeliveryFlagsAcceptsBoundaryConcurrency(t *testing.T) {
 // a fake.
 func newTestListener(t *testing.T) net.Listener {
 	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
-		t.Fatalf("net.Listen() error = %v", err)
+		t.Fatalf("ListenConfig.Listen() error = %v", err)
 	}
 	return listener
 }
 
 func TestRunSimulatorAPIReturnsNilOnGracefulShutdown(t *testing.T) {
 	listener := newTestListener(t)
-	httpServer := &http.Server{Handler: http.NewServeMux()}
+	httpServer := &http.Server{Handler: http.NewServeMux(), ReadHeaderTimeout: time.Second}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -206,7 +206,7 @@ func TestRunSimulatorAPIReturnsNilOnGracefulShutdown(t *testing.T) {
 
 func TestRunSimulatorAPIReturnsNilWhenServerClosesCleanly(t *testing.T) {
 	listener := newTestListener(t)
-	httpServer := &http.Server{Handler: http.NewServeMux()}
+	httpServer := &http.Server{Handler: http.NewServeMux(), ReadHeaderTimeout: time.Second}
 
 	// Closing the listener before serving makes Serve return
 	// http.ErrServerClosed-compatible behavior is not guaranteed, so close
@@ -234,7 +234,7 @@ func TestRunSimulatorAPIPropagatesServerError(t *testing.T) {
 	if err := listener.Close(); err != nil {
 		t.Fatalf("listener.Close() error = %v", err)
 	}
-	httpServer := &http.Server{Handler: http.NewServeMux()}
+	httpServer := &http.Server{Handler: http.NewServeMux(), ReadHeaderTimeout: time.Second}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
