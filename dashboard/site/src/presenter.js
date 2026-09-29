@@ -825,7 +825,8 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
           } else {
             rendered = h('div', { className: 'semantic-prompt-view' },
               h('div', { className: 'semantic-prompt-heading' },
-                h(headingTag, null, getViewTitle(view, index)), prompt),
+                rendered.querySelector('h2, h3, h4') ? null : h(headingTag, null, getViewTitle(view, index)),
+                prompt),
               rendered);
           }
         }

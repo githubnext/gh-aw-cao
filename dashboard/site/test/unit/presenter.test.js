@@ -156,6 +156,30 @@ describe('semantic view prompt action', () => {
     expect(preview).toContain('"workflow": "daily"');
     disposeDashboard(rendered);
   });
+
+  it('preserves the existing heading of an annotated callout', () => {
+    const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ ({
+      languageVersion: '0.1.0',
+      dashboard: {
+        id: 'semantic-callout',
+        title: 'Semantic callout',
+        pages: [{
+          id: 'overview', kind: 'custom', title: 'Overview',
+          views: [{
+            id: 'alert', title: 'Review required', description: 'Investigate the alert.',
+            intent: 'Show an alert.', objective: 'Investigate it.', acceptance: 'Alert resolved.',
+            data: { source: 'runs' }, mark: 'callout', callout: { label: 'Alert' }
+          }]
+        }]
+      }
+    });
+    const rendered = renderDashboardView({ document, sources: {} });
+    const callout = rendered.querySelector('[data-view-id="alert"]');
+    expect(callout?.querySelectorAll('h3, h4')).toHaveLength(1);
+    expect(callout?.querySelector('aside')?.getAttribute('aria-labelledby')).toBe('overview-alert-callout-heading');
+    expect(callout?.querySelector('.table-intent-button')?.getAttribute('aria-label')).toBe('Create prompt for Review required');
+    disposeDashboard(rendered);
+  });
 });
 
 describe('dashboard DOM provenance', () => {

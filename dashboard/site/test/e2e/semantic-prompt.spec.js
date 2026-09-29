@@ -35,3 +35,24 @@ test('a chart with composed semantics offers a prompt preview and returns focus'
   await dialog.getByRole('button', { name: 'Close prompt preview' }).click();
   await expect(action).toBeFocused();
 });
+
+test('an open shared prompt preview tracks reactive evidence until it closes', async ({ page }) => {
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderPromptPreviewAction } from ${JSON.stringify('http://dashboard.test/src/components/data-view.js')};
+      import { state } from ${JSON.stringify('http://dashboard.test/src/reactive.js')};
+      const evidence = state('first observation');
+      const action = renderPromptPreviewAction('Inspect evidence', evidence.get);
+      window.refreshEvidence = () => evidence.set('updated observation');
+      document.querySelector('#root').append(action);
+    </script>
+  `);
+  await page.getByRole('button', { name: 'Inspect evidence' }).click();
+  const preview = page.locator('.table-intent-preview');
+  await expect(preview).toHaveText('first observation');
+  await page.evaluate(() => Reflect.get(window, 'refreshEvidence')());
+  await expect(preview).toHaveText('updated observation');
+  await page.getByRole('button', { name: 'Close prompt preview' }).click();
+  await expect(page.getByRole('button', { name: 'Inspect evidence' })).toBeFocused();
+});
