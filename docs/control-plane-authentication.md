@@ -162,12 +162,30 @@ secret mapped to the exact output repository. The legacy
 `GH_AW_GITHUB_TOKEN` names remain compatibility fallbacks only when the
 explicit authentication mode is not `pat`.
 
+CAO Activity requires the explicit mode and does not use those compatibility
+fallbacks. In PAT mode, every exact allowed repository, including the control
+repository, must be present in `GH_AW_GITHUB_READ_PAT_REPOSITORIES` and must map
+to `GH_AW_GITHUB_READ_PAT_<OWNER>`. Activity fails before collection when the
+map is invalid or incomplete, and each owner-scoped matrix job fails if its
+mapped secret is empty. Owner-wide discovery is App-only because a PAT map
+cannot safely represent repositories that were not explicitly selected.
+
+In App mode, Activity creates a separate installation token per resource owner.
+The same runtime supports a private organization-owned App for a single
+organization and a private enterprise-owned App installed separately in every
+enrolled organization. Each token is limited to that owner's exact configured
+repositories, or to that owner's installation when owner-wide discovery is
+explicitly configured. No App job can fall through to a PAT.
+
 For scheduled multi-owner orchestration, the agent receives only the
 control-repository owner's token. Public repositories owned elsewhere remain
 discoverable, and dispatched workers receive their target owner's token.
 Campaigns that require privileged discovery against private repositories in
 several owners still require enterprise Apps or separately scheduled
 owner-scoped control planes; CAO never exposes every owner token to one agent.
+CAO Activity is not an agent orchestrator: it uses isolated owner-scoped jobs
+and merges only non-secret collection artifacts, so multiple PATs are never
+bundled into one job or one secret.
 
 ## Validate before activation
 

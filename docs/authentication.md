@@ -47,11 +47,10 @@ The supported control-plane credentials are:
 `GH_AW_GITHUB_AUTH_MODE` explicitly selects `app` or `pat`; setup writes it only
 after the selected profile is complete. In `pat` mode, read operations and safe
 outputs select the owner-scoped secret mapped to their exact repository and do
-not fall through to legacy PAT secrets. A missing map entry therefore falls
-back only to the repository-provided `GITHUB_TOKEN` and remains bounded by its
-normal repository scope. When the mode is unset for backward compatibility,
-`ignore-if-missing: true` makes each App optional and the legacy split or
-combined PAT names remain available before `GITHUB_TOKEN`.
+not fall through to App credentials, legacy PAT secrets, or `GITHUB_TOKEN`.
+Missing map entries and missing mapped secrets fail closed. In `app` mode,
+missing App IDs, private keys, installations, or repository grants likewise
+fail closed instead of borrowing PAT credentials.
 
 The committed root `aw.yml` intentionally has no `config` block so normal installation remains compatible with non-interactive `gh aw add`. See [Control Plane Authentication Profiles](control-plane-authentication.md) for private organization Apps, private enterprise Apps, and the fine-grained token fallback; follow Automated App setup below to configure both credential pairs.
 
@@ -156,6 +155,19 @@ owner-scoped write secret. The legacy split or combined PAT names are consulted
 only when no explicit authentication mode is configured. Missing, incomplete,
 or invalid credentials must not be copied into dispatch inputs or persisted in
 artifacts.
+
+CAO Activity applies the same separation independently from agentic workflow
+authentication. It creates one collection job per resource owner. App mode
+mints a fresh installation token for that owner and its exact repository
+selection, which supports both organization-owned Apps and enterprise-owned
+Apps installed in each enrolled organization. PAT mode requires a non-empty
+exact `allowed-repositories` scope, validates every
+`GH_AW_GITHUB_READ_PAT_REPOSITORIES` entry against the expected
+`GH_AW_GITHUB_READ_PAT_<OWNER>` name, and exposes only that owner's token to its
+collection job. Logs, inventory, issue status, and operational-value evidence
+are collected in owner-scoped fragments and merged before the unchanged
+snapshot and cache publication stages. `GITHUB_TOKEN` is used only for trusted
+control-repository checkout and notification operations.
 
 ## API Capacity Admission
 

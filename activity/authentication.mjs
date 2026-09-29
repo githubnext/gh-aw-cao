@@ -158,6 +158,100 @@ export function ownerScopedPatSecret(profile, owner) {
   return `${profile.secret}_${suffix}`;
 }
 
+function repositoryCoordinate(value) {
+  return /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/.test(String(value || ""));
+}
+
+function parseRepositoryMap(value) {
+  if (!value) return {};
+  let parsed;
+  try {
+    parsed = JSON.parse(value);
+  } catch (error) {
+    throw new Error(`GH_AW_GITHUB_READ_PAT_REPOSITORIES contains invalid JSON: ${error.message}`);
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("GH_AW_GITHUB_READ_PAT_REPOSITORIES must be a repository-to-secret-name object");
+  }
+  return parsed;
+}
+
+export function activityCollectionPlan(controlSettings, {
+  authMode,
+  controlRepository,
+  patRepositoryMap = "",
+} = {}) {
+  if (!repositoryCoordinate(controlRepository)) {
+    throw new Error("GITHUB_REPOSITORY must use OWNER/REPOSITORY form");
+  }
+  if (!["app", "pat"].includes(authMode)) {
+    throw new Error("GH_AW_GITHUB_AUTH_MODE must explicitly select app or pat for CAO Activity");
+  }
+
+  const configuredRepositories = controlSettings?.allowed_repositories ?? [];
+  const configuredOwners = controlSettings?.allowed_owners ?? [];
+  const repositories = [...new Map(
+    [controlRepository, ...configuredRepositories].map((repository) => [
+      String(repository).toLowerCase(),
+      String(repository),
+    ]),
+  ).values()];
+  if (repositories.some((repository) => !repositoryCoordinate(repository))) {
+    throw new Error("Activity repository scope must contain exact OWNER/REPOSITORY values");
+  }
+
+  if (authMode === "pat") {
+    if (configuredRepositories.length === 0) {
+      throw new Error("PAT-mode CAO Activity requires an exact allowed-repositories scope");
+    }
+    const repositoryMap = parseRepositoryMap(patRepositoryMap);
+    const byOwner = new Map();
+    for (const repository of repositories) {
+      const [owner] = repository.split("/");
+      const expectedSecret = ownerScopedPatSecret(FINE_GRAINED_PAT_PROFILES[0], owner);
+      const mappedSecret = repositoryMap[repository];
+      if (!mappedSecret) {
+        throw new Error(`GH_AW_GITHUB_READ_PAT_REPOSITORIES has no mapping for ${repository}`);
+      }
+      if (mappedSecret !== expectedSecret) {
+        throw new Error(`${repository} must map to owner-scoped secret ${expectedSecret}`);
+      }
+      const key = owner.toLowerCase();
+      if (!byOwner.has(key)) byOwner.set(key, { owner, repositories: [], secret: mappedSecret });
+      byOwner.get(key).repositories.push(repository);
+    }
+    return [...byOwner.values()].map((entry) => ({
+      ...entry,
+      repositories: entry.repositories.sort(),
+      credentialRepository: entry.repositories[0],
+      artifact: entry.owner.toLowerCase().replaceAll(/[^a-z0-9-]/g, "-"),
+    }));
+  }
+
+  const owners = configuredRepositories.length > 0
+    ? repositories.map((repository) => repository.split("/", 1)[0])
+    : [controlRepository.split("/", 1)[0], ...configuredOwners];
+  const byOwner = new Map();
+  for (const owner of owners) {
+    const key = String(owner).toLowerCase();
+    if (!key || byOwner.has(key)) continue;
+    byOwner.set(key, {
+      owner,
+      repositories: configuredRepositories.length > 0
+        ? repositories.filter((repository) => repository.split("/", 1)[0].toLowerCase() === key)
+        : [],
+      credentialRepository: "",
+      artifact: key.replaceAll(/[^a-z0-9-]/g, "-"),
+    });
+  }
+  const plan = [...byOwner.values()];
+  const oversized = plan.find((entry) => entry.repositories.length > 500);
+  if (oversized) {
+    throw new Error(`GitHub App Activity scope for ${oversized.owner} exceeds the 500-repository token limit`);
+  }
+  return plan;
+}
+
 export function configureEnterpriseApps({
   repo,
   readClientId,

@@ -54,6 +54,7 @@ function assertCachePathSets(workflow, expectedCount, expectedPaths = cachePaths
 test("activity workflow caches gh-aw logs and their SQLite projection", async () => {
   const workflow = await readFile(".github/workflows/cao-activity.yml", "utf8");
   const collector = await readFile("activity/collect-logs.sh", "utf8");
+  const collectJob = workflow.match(/\n  collect:\n([\s\S]*?)\n  index:\n/)?.[1];
   const indexJob = workflow.match(/\n  index:\n([\s\S]*?)\n  cache:\n/)?.[1];
   const cacheJob = workflow.match(/\n  cache:\n([\s\S]*?)\n  notify-failure:\n/)?.[1];
   const notifyFailureJob = workflow.match(/\n  notify-failure:\n([\s\S]*)/)?.[1];
@@ -61,10 +62,11 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   assert.ok(indexJob);
   assert.ok(cacheJob);
   assert.ok(notifyFailureJob);
-  assert.match(indexJob, /permissions:\n\s+actions: read\n\s+contents: read\n\s+issues: read/);
+  assert.ok(collectJob);
+  assert.match(collectJob, /permissions:\n\s+actions: read\n\s+contents: read\n\s+issues: read/);
   assert.match(
-    indexJob,
-    /Generate GitHub App token for activity[\s\S]*?permission-actions: read[\s\S]*?permission-contents: read[\s\S]*?permission-issues: read/,
+    collectJob,
+    /Generate owner-scoped GitHub App token[\s\S]*?permission-actions: read[\s\S]*?permission-contents: read[\s\S]*?permission-issues: read/,
   );
   assert.doesNotMatch(indexJob, /actions\/cache\/save@/);
   assert.match(
@@ -77,31 +79,31 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
     cacheJob,
     /Download activity snapshot[\s\S]*?actions\/download-artifact@[0-9a-f]{40}[\s\S]*?name: cao-activity-index[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity[\s\S]*?Verify activity snapshot[\s\S]*?Save activity cache/,
   );
-  assert.match(notifyFailureJob, /needs: \[index, cache\]/);
+  assert.match(notifyFailureJob, /needs: \[plan, collect, index, cache\]/);
   assert.match(notifyFailureJob, /permissions:\n\s+issues: write/);
-  assert.match(notifyFailureJob, /CAO_ACTIVITY_INDEX_FAILED[\s\S]*?CAO_ACTIVITY_CACHE_FAILED/);
+  assert.match(notifyFailureJob, /CAO_ACTIVITY_PLAN_FAILED[\s\S]*?CAO_ACTIVITY_COLLECTION_FAILED[\s\S]*?CAO_ACTIVITY_INDEX_FAILED[\s\S]*?CAO_ACTIVITY_CACHE_FAILED/);
   assert.match(notifyFailureJob, /Assign this issue to an agent/);
   assert.match(notifyFailureJob, /GITHUB_WORKFLOW_SHA[\s\S]*?githubnext\/gh-aw-cao\/blob\/main\/skills\/debug-cao\/SKILL\.md/);
   assert.doesNotMatch(cacheJob, /actions\/checkout@|activity-app-token|gh aw logs|ingest-jsonl/);
   assert.match(
     workflow,
-    /Collect dashboard inventory[\s\S]*?REPORT_INVENTORY_SOURCES: \$\{\{ runner\.temp \}\}\/cao-activity\/inventory-sources\.json[\s\S]*?core\.info\('Workflow discovery started'\)[\s\S]*?'discover-workflows'[\s\S]*?core\.info\('Workflow discovery completed'\)[\s\S]*?Download agentic workflow logs/,
-  );
-  assert.match(
-    indexJob,
-    /Download agentic workflow logs[\s\S]*?Ingest activity database/,
+    /Collect owner-scoped dashboard inventory[\s\S]*?REPORT_INVENTORY_SOURCES: \$\{\{ runner\.temp \}\}\/cao-activity-partial\/\$\{\{ matrix\.artifact \}\}\/inventory-sources\.json[\s\S]*?discover-workflows[\s\S]*?Download owner-scoped agentic workflow logs/,
   );
   assert.match(
     workflow,
-    /Download agentic workflow logs[\s\S]*?REPORT_CONTROL_SETTINGS:[\s\S]*?bash activity\/collect-logs\.sh/,
+    /Download owner-scoped agentic workflow logs[\s\S]*?Ingest activity database/,
   );
   assert.match(
     workflow,
-    /Download agentic workflow logs[\s\S]*?REPORT_DEFER_ISSUE_STATUS: "1"[\s\S]*?Refresh GitHub App token for issue status[\s\S]*?Enrich issue statuses[\s\S]*?cao\.mjs issue-status[\s\S]*?Generate phased activity shards/,
+    /Download owner-scoped agentic workflow logs[\s\S]*?REPORT_CONTROL_SETTINGS:[\s\S]*?bash activity\/collect-logs\.sh/,
   );
   assert.match(
     workflow,
-    /Enrich issue statuses[\s\S]*?GH_TOKEN: \$\{\{ steps\.issue-status-app-token\.outputs\.token \|\| secrets\.GH_AW_GITHUB_READ_PAT \|\| secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token \}\}/,
+    /Download owner-scoped agentic workflow logs[\s\S]*?REPORT_DEFER_ISSUE_STATUS: "1"[\s\S]*?Enrich owner-scoped issue statuses[\s\S]*?cao\.mjs issue-status[\s\S]*?Generate phased activity shards/,
+  );
+  assert.match(
+    workflow,
+    /Select independent activity credential[\s\S]*?case "\$ACTIVITY_AUTH_MODE"[\s\S]*?app\) token="\$ACTIVITY_APP_TOKEN"[\s\S]*?pat\) token="\$ACTIVITY_PAT_TOKEN"[\s\S]*?The selected \$ACTIVITY_AUTH_MODE credential is unavailable/,
   );
   assert.match(collector, /jq -r '\.allowed_repositories\[\]\?'/);
   assert.match(collector, /--repo "\$target_repository"/);
@@ -131,7 +133,7 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   );
   assert.match(
     workflow,
-    /Restore legacy activity cache layout[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/drain3_weights\.json[\s\S]*?Download agentic workflow logs[\s\S]*?REPORT_DRAIN3_WEIGHTS: \$\{\{ runner\.temp \}\}\/cao-activity\/drain3_weights\.json[\s\S]*?bash activity\/collect-logs\.sh/,
+    /Restore activity cache[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/drain3_weights\.json[\s\S]*?Download owner-scoped agentic workflow logs[\s\S]*?REPORT_DRAIN3_WEIGHTS: \$\{\{ runner\.temp \}\}\/cao-activity\/drain3_weights\.json[\s\S]*?bash activity\/collect-logs\.sh/,
   );
   assert.match(workflow, /Restore legacy activity cache layout\n\s+if: steps\.activity-cache\.outputs\.cache-matched-key == ''/);
   assert.match(collector, /if \[\[ -n "\$drain3_weights_path" && -f "\$drain3_weights_path" \]\]/);
@@ -150,7 +152,16 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
     workflow,
     /run-activity\.mjs|REPORT_GH_AW_LOGS_STATE|REPORT_DEPLOYED_WORKFLOWS|REPORT_RECORDS/,
   );
-  assertCachePathSets(workflow, 3, [repositoryMemoryCachePaths, legacyCachePaths, repositoryMemoryCachePaths]);
+  assertCachePathSets(workflow, 4, [
+    [
+      "${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite",
+      "${{ runner.temp }}/cao-activity/gh-aw-logs-shards",
+      "${{ runner.temp }}/cao-activity/drain3_weights.json",
+    ],
+    repositoryMemoryCachePaths,
+    legacyCachePaths,
+    repositoryMemoryCachePaths,
+  ]);
   const legacyPathBlock = workflow.match(
     /Restore legacy activity cache layout[\s\S]*?path: \|\n((?:\s+\$\{\{ runner\.temp \}\}\/[^\n]+\n)+)/,
   )?.[1];

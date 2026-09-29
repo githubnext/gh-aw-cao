@@ -518,7 +518,7 @@ for (const { name, initialVersion, answer, environment = {}, manifest, expectedL
 }
 
 test("install.sh reruns restore missing policy and launcher mode without replacing consumer policy", async (t) => {
-  const { consumer, repository, env, log } = await createConsumer(t, supportedGhAw);
+  const { root, consumer, repository, env, log } = await createConsumer(t, supportedGhAw);
   await runFile(consumer, env);
   assert.equal(await log(), "add\n");
   await assertCompleteInstall(consumer, env, supportedGhAw, repository);
@@ -588,7 +588,7 @@ for (const [description, repository] of [
   });
 }
 
-test("streamed install.sh initializes repository-only Activity without an App", async (t) => {
+test("streamed install.sh requires an explicit Activity authentication profile", async (t) => {
   const { root, consumer, repository, env, log } = await createConsumer(t, supportedGhAw);
   await streamInstaller(consumer, env);
   assert.equal(await log(), "add\n");
@@ -596,32 +596,17 @@ test("streamed install.sh initializes repository-only Activity without an App", 
   const activityEnv = activityEnvironment(root, consumer, env, repository);
   const settings = await resolveActivitySettings(consumer, activityEnv);
   assert.equal(settings.policy_resolution.status, "available", settings.policy_resolution.reason);
-  const { spawned } = await runInventoryStep(consumer, activityEnv);
-
   assert.deepEqual(settings.allowed_owners, [repository.split("/")[0]]);
   assert.deepEqual(settings.allowed_repositories, [repository]);
   assert.deepEqual(settings.campaigns, {});
-  assert.equal(spawned.length, 1);
-  const sources = JSON.parse(await readFile(activityEnv.REPORT_INVENTORY_SOURCES, "utf8"));
-  const [owner, name] = repository.split("/");
-  assert.deepEqual(sources.campaigns.rows, []);
-  assert.deepEqual(
-    sources.repositories.rows.map((row) => [row.organization, row.repository, row.visibility]),
-    [[owner, name, "private"]],
+  const authentication = await import(pathToFileURL(path.join(consumer, "activity", "authentication.mjs")).href);
+  assert.throws(
+    () => authentication.activityCollectionPlan(settings, { controlRepository: repository }),
+    /GH_AW_GITHUB_AUTH_MODE must explicitly select app or pat/,
   );
-  assert.equal(sources.repositories.metadata.completeness, "complete");
-  assert.deepEqual(
-    sources.workflows.rows.map((row) => [row.organization, row.repository, row.workflow, row["workflow-registry-state"]]),
-    deterministicWorkflows.map((file) => [owner, name, file, "active"]),
-  );
-  assert.equal(sources.workflows.metadata.completeness, "complete");
-  assert.deepEqual((await githubRequests(activityEnv)).sort(), [
-    ...Object.keys(githubFixture(repository)),
-    "https://api.github.com/repos/githubnext/gh-aw-cao/commits/main",
-  ].sort());
 });
 
-test("installed Activity still requires the App for an owner-wide policy", async (t) => {
+test("installed Activity reserves owner-wide discovery for App mode", async (t) => {
   const { root, consumer, repository, env } = await createConsumer(t, supportedGhAw);
   materializeCaoFromSource("root", catalog, consumer);
   for (const { source, destination } of addedFiles) {
@@ -639,8 +624,20 @@ test("installed Activity still requires the App for an owner-wide policy", async
   const settings = await resolveActivitySettings(consumer, activityEnv);
   assert.equal(settings.policy_resolution.status, "available", settings.policy_resolution.reason);
   assert.deepEqual(settings.allowed_repositories, []);
-  const spawned = [];
-  await assert.rejects(runInventoryStep(consumer, activityEnv, spawned), /Owner-wide repository discovery requires the read-only GitHub App/);
-  assert.deepEqual(spawned, []);
-  assert.deepEqual(await githubRequests(activityEnv), []);
+  const authentication = await import(pathToFileURL(path.join(consumer, "activity", "authentication.mjs")).href);
+  assert.throws(
+    () => authentication.activityCollectionPlan(settings, {
+      authMode: "pat",
+      controlRepository: repository,
+      patRepositoryMap: "{}",
+    }),
+    /PAT-mode CAO Activity requires an exact allowed-repositories scope/,
+  );
+  assert.deepEqual(
+    authentication.activityCollectionPlan(settings, {
+      authMode: "app",
+      controlRepository: repository,
+    }).map(({ owner, repositories }) => ({ owner, repositories })),
+    [{ owner: repository.split("/")[0], repositories: [] }],
+  );
 });

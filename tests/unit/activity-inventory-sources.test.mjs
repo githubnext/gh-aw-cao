@@ -7,6 +7,7 @@ import {
   discoverRepositories,
   discoverWorkflowRegistries,
   discoverWorkflowVersions,
+  mergeInventoryDashboardSources,
 } from "../../activity/inventory-sources.mjs";
 import { queryDashboardSourceObservations } from "../../dashboard/site/src/data/queries/ingestion.js";
 import { adaptGhAwLogs } from "../../dashboard/site/src/data/adapters/gh-aw-logs.js";
@@ -24,6 +25,61 @@ function workflow(id, path, overrides = {}) {
     ...overrides,
   };
 }
+
+test("merges independently authenticated inventory fragments without losing health", () => {
+  const metadata = {
+    "source-id": "central-agentic-ops-repositories",
+    "source-kind": "github",
+    "as-of": "2026-09-29T00:00:00Z",
+    "retrieved-at": "2026-09-29T00:00:00Z",
+    completeness: "complete",
+    freshness: "fresh",
+    availability: "available",
+    "coverage-expected": 1,
+    "coverage-observed": 1,
+  };
+  const fragment = (owner) => ({
+    repositories: {
+      rows: [{ organization: owner, repository: "service" }],
+      metadata,
+    },
+    workflows: {
+      rows: [{ organization: owner, repository: "service", workflow: ".github/workflows/agent.md" }],
+      metadata,
+    },
+    campaigns: { rows: [{ campaign: "catalog" }], metadata },
+    "marketplace-packages": { rows: [], metadata },
+    "marketplace-registries": { rows: [], metadata },
+    "configuration-policy": { rows: [{ version: 1 }], metadata },
+  });
+
+  test("owner-wide discovery accepts an App token scoped to a different control-repository owner", async () => {
+    const repositories = await discoverRepositories({
+      policy_document: { "control-plane": { inventory: { "max-scan-repositories": 10 } } },
+      allowed_repositories: [],
+      allowed_owners: ["octo"],
+    }, {
+      token: "enterprise-installation-token",
+      controlRepository: "acme/control",
+      credentialOwner: "octo",
+      fetchImplementation: async (url) => {
+        assert.match(String(url), /orgs\/octo\/repos\?per_page=100&type=all&page=1$/);
+        return new Response(JSON.stringify([{ full_name: "octo/service", visibility: "private" }]));
+      },
+    });
+
+    assert.deepEqual(repositories, [{ full_name: "octo/service", visibility: "private" }]);
+  });
+
+  const merged = mergeInventoryDashboardSources([fragment("acme"), fragment("octo")]);
+  assert.deepEqual(
+    merged.repositories.rows.map(({ organization }) => organization),
+    ["acme", "octo"],
+  );
+  assert.equal(merged.repositories.metadata["coverage-expected"], 2);
+  assert.equal(merged.workflows.rows.length, 2);
+  assert.equal(merged.campaigns.rows.length, 1);
+});
 
 test("discovers public workflow registry metadata and disabled state", async () => {
   const registries = await discoverWorkflowRegistries([{ full_name: "acme/app" }], {

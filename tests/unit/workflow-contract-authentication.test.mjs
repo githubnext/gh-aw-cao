@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import {
+  activityCollectionPlan,
+} from "../../activity/authentication.mjs";
 import { controlPrecompute, root, workflow } from "./workflow-contract.helpers.mjs";
 
 // Authentication, credential, and action pinning contracts.
@@ -152,6 +155,102 @@ test("authentication prefers an optional GitHub App and retains bounded fallback
   assert.match(authentication, /most user tokens cannot read organization billing/);
   assert.match(authentication, /Customers may author workflows with another gh-aw-supported engine\/provider/);
   assert.match(authentication, /does not support `COPILOT_GITHUB_TOKEN` inference fallback/);
+});
+
+test("CAO Activity PAT mode groups exact repositories by owner-scoped secret", () => {
+  const plan = activityCollectionPlan({
+    allowed_repositories: ["acme/service", "octo/library"],
+    allowed_owners: ["acme", "octo"],
+  }, {
+    authMode: "pat",
+    controlRepository: "acme/control",
+    patRepositoryMap: JSON.stringify({
+      "acme/control": "GH_AW_GITHUB_READ_PAT_ACME",
+      "acme/service": "GH_AW_GITHUB_READ_PAT_ACME",
+      "octo/library": "GH_AW_GITHUB_READ_PAT_OCTO",
+    }),
+  });
+
+  assert.deepEqual(plan, [
+    {
+      owner: "acme",
+      repositories: ["acme/control", "acme/service"],
+      secret: "GH_AW_GITHUB_READ_PAT_ACME",
+      credentialRepository: "acme/control",
+      artifact: "acme",
+    },
+    {
+      owner: "octo",
+      repositories: ["octo/library"],
+      secret: "GH_AW_GITHUB_READ_PAT_OCTO",
+      credentialRepository: "octo/library",
+      artifact: "octo",
+    },
+  ]);
+});
+
+test("CAO Activity PAT mode fails closed for missing or cross-owner mappings", () => {
+  const settings = { allowed_repositories: ["octo/library"] };
+  assert.throws(
+    () => activityCollectionPlan(settings, {
+      authMode: "pat",
+      controlRepository: "acme/control",
+      patRepositoryMap: '{"acme/control":"GH_AW_GITHUB_READ_PAT_ACME"}',
+    }),
+    /no mapping for octo\/library/,
+  );
+  assert.throws(
+    () => activityCollectionPlan(settings, {
+      authMode: "pat",
+      controlRepository: "acme/control",
+      patRepositoryMap: JSON.stringify({
+        "acme/control": "GH_AW_GITHUB_READ_PAT_ACME",
+        "octo/library": "GH_AW_GITHUB_READ_PAT_ACME",
+      }),
+    }),
+    /octo\/library must map to owner-scoped secret GH_AW_GITHUB_READ_PAT_OCTO/,
+  );
+  assert.throws(
+    () => activityCollectionPlan({ allowed_repositories: [] }, {
+      authMode: "pat",
+      controlRepository: "acme/control",
+      patRepositoryMap: "{}",
+    }),
+    /requires an exact allowed-repositories scope/,
+  );
+});
+
+test("CAO Activity App mode creates independent organization scopes", () => {
+  assert.deepEqual(activityCollectionPlan({
+    allowed_repositories: ["acme/service", "octo/library"],
+    allowed_owners: ["acme", "octo"],
+  }, {
+    authMode: "app",
+    controlRepository: "acme/control",
+  }), [
+    {
+      owner: "acme",
+      repositories: ["acme/control", "acme/service"],
+      credentialRepository: "",
+      artifact: "acme",
+    },
+    {
+      owner: "octo",
+      repositories: ["octo/library"],
+      credentialRepository: "",
+      artifact: "octo",
+    },
+  ]);
+  assert.deepEqual(activityCollectionPlan({
+    allowed_repositories: [],
+    allowed_owners: ["acme", "octo"],
+  }, {
+    authMode: "app",
+    controlRepository: "acme/control",
+  }).map(({ owner, repositories }) => ({ owner, repositories })), [
+    { owner: "acme", repositories: [] },
+    { owner: "octo", repositories: [] },
+  ]);
 });
 
 test("Dependabot planner scopes its read token to the dispatched target", () => {

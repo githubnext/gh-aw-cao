@@ -84,7 +84,7 @@ export async function main(actions = {}, args) {
   log.group`Validate repository visibility boundary`;
   try {
     await validateRepositoryVisibility({
-      controlRepository: process.env.GITHUB_REPOSITORY || "",
+      controlRepository: process.env.ACTIVITY_VISIBILITY_REPOSITORY || process.env.GITHUB_REPOSITORY || "",
       allowedRepositories: settings.allowed_repositories || [],
       request: actions.github.request,
       paginate: actions.github.paginate,

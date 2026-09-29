@@ -161,6 +161,7 @@ export async function discoverRepositories(controlSettings, {
   token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "",
   apiUrl = process.env.GITHUB_API_URL || "https://api.github.com",
   controlRepository = process.env.GITHUB_REPOSITORY || "",
+  credentialOwner = process.env.ACTIVITY_CREDENTIAL_OWNER || controlRepository.split("/", 1)[0],
 } = {}) {
   if (!token) throw new Error("GH_TOKEN or GITHUB_TOKEN is required to discover repositories");
   const maximum = Number(controlSettings.policy_document?.["control-plane"]?.inventory?.["max-scan-repositories"] ?? 1000);
@@ -205,8 +206,8 @@ export async function discoverRepositories(controlSettings, {
 
   const repositories = [];
   for (const owner of controlSettings.allowed_owners ?? []) {
-    if (String(owner).toLowerCase() !== controlRepository.split("/", 1)[0]?.toLowerCase()) {
-      throw new Error(`Cannot completely discover repositories for ${owner} with the control repository installation`);
+    if (String(owner).toLowerCase() !== String(credentialOwner).toLowerCase()) {
+      throw new Error(`Cannot completely discover repositories for ${owner} with the ${credentialOwner} credential`);
     }
     let endpoint = `orgs/${owner}/repos`;
     let installation = false;
@@ -267,6 +268,76 @@ export async function discoverRepositories(controlSettings, {
     if (repositories.length >= maximum) break;
   }
   return repositories;
+}
+
+function mergedSource(documents, name, key) {
+  const candidates = documents.map((document) => document?.[name]).filter(Boolean);
+  if (candidates.length === 0) return source(name, [], new Date().toISOString(), {
+    available: false,
+    complete: false,
+    state: "failed",
+    reason: `No ${name} source fragments were produced`,
+  });
+  const rows = new Map();
+  for (const candidate of candidates) {
+    for (const row of candidate.rows ?? []) rows.set(key(row), row);
+  }
+  const failures = candidates.flatMap((candidate) => candidate.metadata?.["repository-failures"] ?? []);
+  const generatedAt = candidates
+    .map((candidate) => candidate.metadata?.["as-of"])
+    .filter(Boolean)
+    .sort()
+    .at(-1) ?? new Date().toISOString();
+  return source(name, [...rows.values()], generatedAt, {
+    available: candidates.some((candidate) => candidate.metadata?.availability !== "unavailable"),
+    complete: candidates.every((candidate) => candidate.metadata?.completeness === "complete"),
+    expected: candidates.reduce((total, candidate) => total + Number(candidate.metadata?.["coverage-expected"] ?? 0), 0),
+    observed: candidates.reduce((total, candidate) => total + Number(candidate.metadata?.["coverage-observed"] ?? 0), 0),
+    operation: candidates[0].metadata?.["collection-operation"],
+    state: failures.length === 0 ? "complete" : rows.size > 0 ? "partial" : "failed",
+    failureClass: failures.some((failure) => failure["failure-class"] === "permission") ? "permission"
+      : failures.length > 0 ? "request" : "",
+    reason: failures.length > 0 ? `${failures.length} repositories could not be inspected` : "",
+    failures,
+  });
+}
+
+export function mergeInventoryDashboardSources(documents) {
+  if (!Array.isArray(documents) || documents.length === 0) {
+    throw new Error("At least one inventory source fragment is required");
+  }
+  const result = {
+    repositories: mergedSource(
+      documents,
+      "repositories",
+      (row) => `${row.organization}/${row.repository}`.toLowerCase(),
+    ),
+    workflows: mergedSource(
+      documents,
+      "workflows",
+      (row) => `${row.organization}/${row.repository}/${row.workflow}`.toLowerCase(),
+    ),
+  };
+  for (const name of [
+    "campaigns",
+    "marketplace-packages",
+    "marketplace-registries",
+    "configuration-policy",
+  ]) {
+    result[name] = documents
+      .map((document) => document?.[name])
+      .filter(Boolean)
+      .sort((left, right) => (
+        Number(right.metadata?.completeness === "complete") - Number(left.metadata?.completeness === "complete")
+        || (right.rows?.length ?? 0) - (left.rows?.length ?? 0)
+      ))[0] ?? source(name, [], new Date().toISOString(), {
+      available: false,
+      complete: false,
+      state: "failed",
+      reason: `No ${name} source fragments were produced`,
+    });
+  }
+  return result;
 }
 
 export async function discoverLatestCampaignCommits(inventory = {}, {

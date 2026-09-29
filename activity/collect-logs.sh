@@ -16,6 +16,7 @@ activity_database="${REPORT_ACTIVITY_DATABASE:-}"
 issue_status_cost_budget="${REPORT_ISSUE_STATUS_GRAPHQL_COST_BUDGET:-25}"
 issue_status_min_remaining="${REPORT_ISSUE_STATUS_GRAPHQL_MIN_REMAINING:-500}"
 max_storage="${REPORT_MAX_STORAGE:-1200}"
+seed_shard_directory="${REPORT_GH_AW_LOGS_SEED_SHARDS:-}"
 
 mkdir -p "$output_directory" "$shard_directory" "$(dirname "$exit_code_path")"
 
@@ -34,12 +35,36 @@ add_repository() {
   repositories+=("$candidate")
 }
 
-if [[ -n "$control_settings_path" && -f "$control_settings_path" ]]; then
+if [[ -n "${REPORT_TARGET_REPOSITORIES_JSON:-}" ]]; then
+  while IFS= read -r target_repository; do
+    add_repository "$target_repository"
+  done < <(jq -r '.[]' <<< "$REPORT_TARGET_REPOSITORIES_JSON")
+elif [[ -n "${REPORT_TARGET_REPOSITORIES:-}" ]]; then
+  while IFS= read -r target_repository; do
+    add_repository "$target_repository"
+  done <<< "$REPORT_TARGET_REPOSITORIES"
+elif [[ -n "${REPORT_INVENTORY_SOURCES:-}" && -f "$REPORT_INVENTORY_SOURCES" ]]; then
+  while IFS= read -r discovered_repository; do
+    add_repository "$discovered_repository"
+  done < <(jq -r --arg owner "${REPORT_TARGET_OWNER:-}" \
+    '.repositories.rows[]?
+      | select($owner == "" or (.organization | ascii_downcase) == ($owner | ascii_downcase))
+      | "\(.organization)/\(.repository)"' \
+    "$REPORT_INVENTORY_SOURCES")
+elif [[ -n "$control_settings_path" && -f "$control_settings_path" ]]; then
   while IFS= read -r allowed_repository; do
     add_repository "$allowed_repository"
   done < <(jq -r '.allowed_repositories[]?' "$control_settings_path")
 fi
-add_repository "$repository"
+if [[ "${REPORT_INCLUDE_CONTROL_REPOSITORY:-1}" == "1" ]]; then
+  add_repository "$repository"
+fi
+
+if [[ ${#repositories[@]} -eq 0 ]]; then
+  echo "CAO Activity repository scope is empty" >&2
+  printf '1\n' > "$exit_code_path"
+  exit 1
+fi
 
 exit_code=0
 drain3_args=()
@@ -55,6 +80,12 @@ for target_repository in "${repositories[@]}"; do
   fi
   shard_prefixes+=("$shard_prefix")
   shard_groups+=("$target_repository=$(basename "$shard_prefix")")
+  if [[ -n "$seed_shard_directory" && -d "$seed_shard_directory" ]]; then
+    for seed_shard in "$seed_shard_directory/$(basename "$shard_prefix")"*.jsonl; do
+      [[ -f "$seed_shard" ]] || continue
+      cp "$seed_shard" "$shard_directory/"
+    done
+  fi
 done
 
 cao_script=activity/cao.mjs
