@@ -5,6 +5,9 @@
 import { h } from '../dom.js';
 import { renderRouteTabSet } from './route-tab-set.js';
 import { bindRouteChangeListener } from './route-composition.js';
+import { createDebug } from '../debug.js';
+
+const debugRouteTabs = createDebug('route-tabs');
 
 /**
  * @typedef {{ id: string, label: string, icon: string, page: string }} DeclaredRouteTab
@@ -30,6 +33,7 @@ export function renderDeclaredRouteTabs(options) {
     root.dataset.routeValue = value;
     if (!value) {
       root.replaceChildren();
+      debugRouteTabs({ event: 'cleared', parameter: options.routeParameter });
       return;
     }
     const query = `?${encodeURIComponent(options.routeParameter)}=${encodeURIComponent(value)}`;
@@ -44,6 +48,7 @@ export function renderDeclaredRouteTabs(options) {
         href: `#page-${encodeURIComponent(tab.page)}${query}`
       }))
     }));
+    debugRouteTabs({ event: 'rendered', parameter: options.routeParameter, tabCount: options.tabs.length, currentTab: options.currentTab });
   };
 
   bindRouteChangeListener(root, options.routeParameter, render);
@@ -65,7 +70,11 @@ export function declaredRouteTabs(route) {
       && ['id', 'label', 'icon', 'page'].every((key) => typeof (/** @type {Record<string, unknown>} */ (tab))[key] === 'string')
     ))
     : [];
-  if (tabs.length === 0) return null;
+  if (tabs.length === 0) {
+    debugRouteTabs({ event: 'declared-tabs-empty' });
+    return null;
+  }
+  debugRouteTabs({ event: 'declared-tabs-parsed', tabCount: tabs.length });
   return {
     tabs: /** @type {DeclaredRouteTab[]} */ (tabs),
     currentTab: typeof definition.tab === 'string' ? definition.tab : '',
