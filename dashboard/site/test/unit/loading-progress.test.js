@@ -139,4 +139,31 @@ describe('loading progress', () => {
       vi.resetModules();
     });
   });
+
+  it('starts a new reactive session after the previous one finishes and removed its bar', () => {
+    vi.useFakeTimers();
+
+    setLoadingProgressState(document, { id: 'ingestion-1', phase: 'start' });
+    setLoadingProgressState(document, { id: 'ingestion-1', phase: 'complete' });
+    vi.advanceTimersByTime(240);
+    expect(document.querySelectorAll('.loading-progress')).toHaveLength(0);
+
+    setLoadingProgressState(document, { id: 'ingestion-2', phase: 'start' });
+    const bar = document.querySelector('.loading-progress');
+    expect(bar).not.toBeNull();
+    expect(bar?.classList.contains('loading-progress-complete')).toBe(false);
+  });
+
+  it('cancels a pending completion when a new operation starts before it removes the bar', () => {
+    vi.useFakeTimers();
+
+    setLoadingProgressState(document, { id: 'ingestion-1', phase: 'start' });
+    setLoadingProgressState(document, { id: 'ingestion-1', phase: 'complete' });
+    setLoadingProgressState(document, { id: 'ingestion-2', phase: 'start' });
+    vi.advanceTimersByTime(240);
+
+    expect(document.querySelectorAll('.loading-progress')).toHaveLength(1);
+    const bar = document.querySelector('.loading-progress');
+    expect(bar?.classList.contains('loading-progress-complete')).toBe(false);
+  });
 });
