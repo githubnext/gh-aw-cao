@@ -17,6 +17,21 @@ afterEach(() => {
 });
 
 describe('full-view-scroll debug logging', () => {
+  it('keeps operational-value plots on the normal page scroll surface before an audit list', async () => {
+    const { syncFullViewMode } = await import('../../src/components/full-view-scroll.js');
+    const root = document.createElement('div');
+    root.innerHTML = '<div class="page" data-view-mode="table"><div class="custom-view"><article class="temporal-metric-plot"></article></div><div class="custom-view" data-view-layout="full-view"></div></div>';
+    const page = /** @type {HTMLElement} */ (root.firstElementChild);
+    document.body.append(root);
+
+    syncFullViewMode(root, page);
+
+    expect(root.classList.contains('dashboard-full-view')).toBe(false);
+    root.classList.add('dashboard-full-view-scrolled');
+    syncFullViewMode(root, page);
+    expect(root.classList.contains('dashboard-full-view-scrolled')).toBe(false);
+  });
+
   it('is disabled by default (no debug output) when the debug query is absent', async () => {
     const output = { debug: vi.fn() };
     vi.doMock('../../src/debug.js', async () => {

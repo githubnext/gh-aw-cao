@@ -66,6 +66,26 @@ describe('Temporal metric plot', () => {
     expect(points[0]?.getAttribute('aria-label')).toContain('12.5 aic-per-run');
   });
 
+  it('labels intraday observations with UTC times instead of repeating the date', () => {
+    const rendered = renderTemporalMetricPlot({
+      title: 'Security alerts',
+      mode: 'attainment-only',
+      adoptionAt: '',
+      metrics: [{
+        id: 'alerts',
+        label: 'Alerts',
+        points: [
+          { x: '2026-09-29T08:15:00Z', y: 6 },
+          { x: '2026-09-29T17:45:00Z', y: 6 }
+        ]
+      }]
+    });
+
+    expect([...rendered.querySelectorAll('.temporal-plot-axis')]
+      .map((axis) => axis.textContent).filter((label) => label?.endsWith(' UTC')))
+      .toEqual(['08:15 UTC', '17:45 UTC']);
+  });
+
   it('renders attainment-only history without a pre-adoption band', () => {
     const rendered = renderTemporalMetricPlot({
       title: 'Optimizer',
