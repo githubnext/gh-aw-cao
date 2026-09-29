@@ -982,9 +982,6 @@
           "repositories",
           "workflows",
           "runs",
-          "experiments",
-          "evals",
-          "graders",
           "issues",
           "operational-value",
           "cost",
@@ -994,6 +991,14 @@
           "firewall",
           "mcps",
           "steering"
+        ]
+      },
+      {
+        "label": "Experiments",
+        "pages": [
+          "experiments",
+          "evals",
+          "graders"
         ]
       },
       {
