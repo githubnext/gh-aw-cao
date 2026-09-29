@@ -30,15 +30,14 @@ If authoritative control policy resolution fails, the build remains fail-closed 
 ## Install
 
 The root Central Agentic Ops campaign installs Activity, Dashboard, the trusted
-materializer, and the local runtime verification action together. Install a
-reviewed release tag or full commit SHA through the CAO installer so the
-canonical runtime files are materialized after gh-aw records the exact campaign
-revision:
+materializer, and the local runtime verification action together. The installer
+resolves the latest campaign release automatically, then materializes the
+canonical runtime files from the exact revision recorded by gh-aw:
 
 ```bash
 curl --fail --silent --show-error --location \
-  https://raw.githubusercontent.com/githubnext/gh-aw-cao/<catalog-release>/install.sh |
-  bash -s -- githubnext/gh-aw-cao@<catalog-release>
+  https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
+  bash -s -- githubnext/gh-aw-cao
 ```
 
 Direct `gh aw add` of the component `activity/` or `dashboard/` manifests is not
@@ -50,13 +49,13 @@ configure Pages for GitHub Actions with repository-restricted access for a
 private control repository. The standalone publisher remains manual-only and
 cannot enable Pages for the repository.
 
-To refresh or restore campaign-owned files, rerun the installer with the same
-reviewed campaign revision:
+To refresh or restore campaign-owned files, rerun the installer. It resolves the
+latest campaign release automatically:
 
 ```bash
 curl --fail --silent --show-error --location \
-  https://raw.githubusercontent.com/githubnext/gh-aw-cao/<catalog-release>/install.sh |
-  bash -s -- githubnext/gh-aw-cao@<catalog-release>
+  https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
+  bash -s -- githubnext/gh-aw-cao
 ```
 
 Use `./cao.sh update` to move installed campaigns to a newer reviewed
