@@ -105,6 +105,7 @@ test("Coolify delivery consumes the official immutable CAO server package", asyn
   const authorize = workflow.jobs.authorize;
   const packageJob = workflow.jobs.package;
   const deploy = workflow.jobs.deploy;
+  const classify = workflow.jobs.classify.steps.find((step) => step.id === "classify");
   const resolve = packageJob.steps.find((step) => step.id === "package");
   const request = deploy.steps.find((step) => step.name === "Request digest deployment");
 
