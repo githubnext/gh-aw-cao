@@ -61,7 +61,7 @@ import { spawnSync } from "node:child_process";
 import { basename } from "node:path";
 
 if (process.env.FAKE_GH_SCRIPT && [process.execPath, process.argv0].some((executable) => basename(executable).toLowerCase() === "gh.exe")) {
- const result = spawnSync("bash", [process.env.FAKE_GH_SCRIPT, ...process.argv.slice(2)], { stdio: "inherit" });
+ const result = spawnSync("bash", [process.env.FAKE_GH_SCRIPT, basename(process.argv[1]), ...process.argv.slice(2)], { stdio: "inherit" });
  process.exit(result.status ?? 1);
 }
 
