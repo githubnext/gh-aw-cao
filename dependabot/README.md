@@ -36,7 +36,7 @@ The orchestrator workflow can dispatch no more than 50 worker workflows in one r
 Install the campaign into a new private control repository owned by an organization:
 
 ```bash
-gh aw add githubnext/gh-aw-cao/dependabot@<catalog-release>
+gh aw add githubnext/gh-aw-cao/dependabot
 ```
 
 The campaign is runnable after credentials, when needed, and checked-in policy are configured.
