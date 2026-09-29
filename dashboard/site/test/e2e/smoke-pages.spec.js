@@ -67,7 +67,7 @@ test('mobile shell keeps Overview navigation in the hamburger menu', async ({ pa
 
 
 
-test('Indexing shows CAO Activity status, size trend, and retained transactions', async ({ page }) => {
+test('Ingestion shows CAO Activity status, size trend, and retained transactions', async ({ page }) => {
   const documentModel = authoritativeDashboard;
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -160,12 +160,12 @@ test('Indexing shows CAO Activity status, size trend, and retained transactions'
   const updatesNavigation = page.locator('.nav-section').filter({
     has: page.locator('summary', { hasText: /^Updates$/ })
   });
-  await updatesNavigation.getByRole('link', { name: 'Indexing' }).click();
+  await updatesNavigation.getByRole('link', { name: 'Ingestion' }).click();
 
   const root = page.locator('.dashboard-root');
   const transactionsPage = page.locator('[data-page-id="indexing"]');
   const view = transactionsPage.locator('[data-view-id="transaction-entries"]');
-  await expect(transactionsPage.locator('[data-view-id]')).toHaveCount(4);
+  await expect(transactionsPage.locator('[data-view-id]')).toHaveCount(5);
   await expect(transactionsPage.getByRole('heading', { name: 'Local database' })).toHaveCount(0);
   await expect(transactionsPage.locator('[data-chart-widget="bar"]')).toHaveCount(2);
   await expect(transactionsPage.locator('[data-chart-widget="horizontal-bar"]')).toHaveCount(1);
@@ -1022,7 +1022,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(page).toHaveURL(/#page-memory$/);
   await expect(memoryView.getByRole('link')).toHaveCount(0);
   await expect(updatesSection.locator('summary')).toHaveText('Updates');
-  await expect(updatesSection.getByRole('link')).toHaveText(['Updates', 'Marketplace', 'Indexing', 'Settings']);
+  await expect(updatesSection.getByRole('link')).toHaveText(['Updates', 'Marketplace', 'Ingestion', 'Settings']);
   await expect(updatesSection).toHaveClass(/nav-section-bottom/);
   await expect.poll(async () => {
     const [navBox, manageBox] = await Promise.all([

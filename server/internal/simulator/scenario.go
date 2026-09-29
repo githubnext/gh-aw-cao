@@ -174,6 +174,7 @@ func (s Scenario) Generate() ([]Delivery, error) {
 	if err := s.Validate(); err != nil {
 		return nil, err
 	}
+	// #nosec G404 -- deterministic weak randomness is required for repeatable scenarios.
 	rng := rand.New(rand.NewSource(s.Seed))
 	repositories := make([]string, s.Repositories)
 	for i := range repositories {

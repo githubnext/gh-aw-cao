@@ -1,6 +1,7 @@
 package simulator
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -99,31 +100,28 @@ func applyFailure(writer http.ResponseWriter, request *http.Request, window APIW
 			rate = 0.25
 		}
 		if window.FailEvery > 0 && requestNumber%uint64(window.FailEvery) == 0 {
-			return writeFailure(writer, request, window)
+			return writeFailure(writer, window)
 		}
 		if float64(requestNumber%10000)/10000 < rate {
-			return writeFailure(writer, request, window)
+			return writeFailure(writer, window)
 		}
 		return false
 	default:
-		return writeFailure(writer, request, window)
+		return writeFailure(writer, window)
 	}
 }
 
-func writeFailure(writer http.ResponseWriter, request *http.Request, window APIWindow) bool {
-	status := http.StatusServiceUnavailable
-	switch window.Mode {
-	case "rate-limited":
-		status = http.StatusTooManyRequests
-	case "secondary-rate-limit":
-		status = http.StatusForbidden
-	case "internal-error":
-		status = http.StatusInternalServerError
-	case "bad-gateway":
-		status = http.StatusBadGateway
-	case "service-unavailable", "unavailable", "intermittent":
-		status = http.StatusServiceUnavailable
-	default:
+func writeFailure(writer http.ResponseWriter, window APIWindow) bool {
+	status, supported := map[string]int{
+		"rate-limited":         http.StatusTooManyRequests,
+		"secondary-rate-limit": http.StatusForbidden,
+		"internal-error":       http.StatusInternalServerError,
+		"bad-gateway":          http.StatusBadGateway,
+		"service-unavailable":  http.StatusServiceUnavailable,
+		"unavailable":          http.StatusServiceUnavailable,
+		"intermittent":         http.StatusServiceUnavailable,
+	}[window.Mode]
+	if !supported {
 		return false
 	}
 	if status == http.StatusTooManyRequests || status == http.StatusForbidden {
@@ -149,9 +147,10 @@ func writeFailure(writer http.ResponseWriter, request *http.Request, window APIW
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(status)
 	message := "simulated GitHub API failure"
-	if status == http.StatusTooManyRequests {
+	switch status {
+	case http.StatusTooManyRequests:
 		message = "API rate limit exceeded"
-	} else if status == http.StatusForbidden {
+	case http.StatusForbidden:
 		message = "You have exceeded a secondary rate limit"
 	}
 	_ = json.NewEncoder(writer).Encode(map[string]string{
@@ -223,8 +222,8 @@ func writeNotFound(writer http.ResponseWriter) {
 }
 
 // Listen starts the fake API listener and reports only its address on failure.
-func Listen(address string, handler http.Handler) (*http.Server, net.Listener, error) {
-	listener, err := net.Listen("tcp", address)
+func Listen(ctx context.Context, address string, handler http.Handler) (*http.Server, net.Listener, error) {
+	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", address)
 	if err != nil {
 		return nil, nil, fmt.Errorf("listen for simulator API: %w", err)
 	}

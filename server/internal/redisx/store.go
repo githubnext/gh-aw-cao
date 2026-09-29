@@ -286,7 +286,7 @@ func (s *Store) IncrementIngestionCounter(ctx context.Context, name string) erro
 // RecordIngestionHealthEvent stores only fixed event codes and timestamps, not
 // error messages, request data, or credentials.
 func (s *Store) RecordIngestionHealthEvent(ctx context.Context, event, code string, at time.Time) error {
-	field := ""
+	var field string
 	switch event {
 	case "failure":
 		if code != "admission" && code != "collection" && code != "redis" {

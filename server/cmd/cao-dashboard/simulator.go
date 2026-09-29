@@ -20,11 +20,14 @@ import (
 const maxScenarioBytes = 1 << 20
 
 func loadSimulatorScenario(path string) (simulator.Scenario, error) {
+	// #nosec G304 -- the operator explicitly supplies the local scenario path.
 	file, err := os.Open(path)
 	if err != nil {
 		return simulator.Scenario{}, fmt.Errorf("open simulator scenario: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 	data, err := io.ReadAll(io.LimitReader(file, maxScenarioBytes+1))
 	if err != nil {
 		return simulator.Scenario{}, fmt.Errorf("read simulator scenario: %w", err)
@@ -93,7 +96,7 @@ func newSimulateAPICommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		server, listener, err := simulator.Listen(*listen, handler)
+		server, listener, err := simulator.Listen(cmd.Context(), *listen, handler)
 		if err != nil {
 			return err
 		}

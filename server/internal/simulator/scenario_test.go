@@ -206,11 +206,17 @@ func TestFakeGitHubAPIModes(t *testing.T) {
 			}
 			server := httptest.NewServer(handler)
 			defer server.Close()
-			response, err := server.Client().Get(server.URL + "/repos/simulator/repo")
+			request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL+"/repos/simulator/repo", nil)
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer response.Body.Close()
+			response, err := server.Client().Do(request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				_ = response.Body.Close()
+			}()
 			if response.StatusCode != test.want {
 				t.Fatalf("status = %d, want %d", response.StatusCode, test.want)
 			}
@@ -240,7 +246,12 @@ func TestFakeGitHubAPITimesOutOnClientCancellation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 	defer cancel()
 	request, _ := http.NewRequestWithContext(ctx, http.MethodGet, server.URL+"/rate_limit", nil)
-	_, err = server.Client().Do(request)
+	response, err := server.Client().Do(request)
+	if response != nil {
+		defer func() {
+			_ = response.Body.Close()
+		}()
+	}
 	if err == nil {
 		t.Fatal("expected the simulated request to time out")
 	}
@@ -262,18 +273,25 @@ func TestFakeGitHubAPIInterruptedConnectionAndLatency(t *testing.T) {
 			server := httptest.NewServer(handler)
 			defer server.Close()
 			started := time.Now()
-			response, err := server.Client().Get(server.URL + "/rate_limit")
+			request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL+"/rate_limit", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			response, err := server.Client().Do(request)
 			if test.name == "connection" {
 				if err == nil {
-					response.Body.Close()
+					_ = response.Body.Close()
 					t.Fatal("expected simulated connection failure")
+				}
+				if response != nil {
+					_ = response.Body.Close()
 				}
 				return
 			}
 			if err != nil {
 				t.Fatal(err)
 			}
-			response.Body.Close()
+			_ = response.Body.Close()
 			if elapsed := time.Since(started); elapsed < 40*time.Millisecond {
 				t.Fatalf("latency mode returned after %s", elapsed)
 			}

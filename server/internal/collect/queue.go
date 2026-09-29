@@ -108,6 +108,7 @@ func (q Queue) EnqueueDelivery(ctx context.Context, task Task, delivery string, 
 		return false, false, err
 	}
 	switch result {
+	case redisx.DeliveryDuplicate:
 	case redisx.DeliveryEnqueued:
 		_ = q.Store.IncrementIngestionCounter(ctx, "taskQueued")
 	case redisx.DeliveryCoalesced:
