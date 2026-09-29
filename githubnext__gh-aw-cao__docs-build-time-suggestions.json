@@ -1,6 +1,6 @@
 {
-  "source_sha": "a0017d5ce8edfbc9403213c3d75c11906497c151",
-  "next_category": "reusable dashboard generation",
+  "source_sha": "259fe120a167fb2bab54134ef049f0374084dfc5",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
       "evaluated_at": "2026-09-29T11:56:48Z",
@@ -182,6 +182,25 @@
         36591807190
       ],
       "outcome": "no-op: evaluated Astro documentation generation across the latest 20 completed docs.yml runs from the last 14 days, with 14 comparable successful build-bearing docs runs, 4 successful freshness-only schedule skips, and 6 excluded completed outliers/non-comparable runs (5 action_required workflow_run, 1 skipped workflow_run). Evidence window 2026-09-29T14:50:51Z to 2026-09-29T16:30:48Z. Trusted metadata showed docs workflow duration median 82.0s (p90 163.9s), build-job execution median 41.0s (p90 47.7s), schedule publish workflow duration median 94.0s (p90 158.8s), schedule publish build median 46.0s (p90 50.4s), queue-before-build median 14.5s (p90 51.1s), and deploy-job duration median 19.0s (p90 87.6s; outliers were Pages service wait). Within successful build jobs, Build documentation (npm run docs:build) had median 11.0s (p90 13.0s), versus Set up Node.js median 6.0s, Restore node_modules median 6.0s, Restore cached CAO Dashboard median 2.0s, and Upload Pages artifact median 5.0s. Trusted logs from run 36598062583 showed the final github-pages artifact uploaded in about 5.3s at 26,086,274 bytes after Build documentation completed in 13s; trusted deploy logs from publish outlier 36591730055 showed 101s of external Pages deployment_queued polling after artifact creation, not Astro generation. The current workflow already avoids npm ci and dashboard regeneration on these runs, and no source-level Astro-only change in docs.yml or cao-dashboard.yml is evidenced to save at least 60 seconds or 15 percent of median docs workflow time without weakening correctness, freshness, or deployment safety. No new non-duplicate Astro-generation change met the actionability threshold in this cycle.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-09-29T16:59:23Z",
+      "worker_run_id": 36601222116,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        36600101229,
+        36598062583,
+        36595457780,
+        36594717250,
+        36593169545,
+        36591962530,
+        36591730055,
+        36590181538,
+        36589573146,
+        36587098766
+      ],
+      "outcome": "no-op: evaluated reusable dashboard generation across the latest 20 completed docs.yml runs from the last 14 days, with 10 successful completed docs runs, 9 comparable build-bearing successes, and 1 successful freshness-only schedule skip. Evidence window 2026-09-29T15:02:14Z to 2026-09-29T16:45:56Z. Trusted metadata showed docs queue median 0.0s, workflow execution median 82.0s (p90 106.0s), build median 40.0s (p90 48.4s), and deploy median 19.5s (p90 68.5s on the 6 publishing runs). Trusted docs build-step metadata showed Build documentation at 10-13s, Restore cached CAO Dashboard at 1-2s, and Upload Pages artifact at 4-6s; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on every comparable successful build, confirming stable dashboard cache hits in docs.yml. Push and workflow_run executions that bypass deployment finished in 41-45s and 45-99s respectively, while the only large outlier was schedule run 36591730055 where Deploy Pages alone took 105s waiting on external Pages state after the artifact was already uploaded. Comparable successful cao-dashboard.yml evidence from workflow source still indicates a separate dashboard build plus cache rewrite path, but existing memory already records that reusable-dashboard duplication under prior suggestion fingerprints 691cf332ab4dfe9aa28b and 576d1154f6c6fcbd0db2, and the source/timing evidence has not materially changed in this cycle. No new non-duplicate reusable-dashboard change with evidence-backed savings of at least 60 seconds or 15 percent of median docs execution time was identified.",
       "suggestion_fingerprint": null
     }
   ]
