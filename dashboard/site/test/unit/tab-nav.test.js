@@ -23,6 +23,39 @@ describe('tab-nav', () => {
     expect(rendered.querySelector('.tab-trailing-icon')?.classList).toContain('octicon-chevron-right');
   });
 
+  it('moves focus among route links without changing the current page until activation', () => {
+    const rendered = renderLinkTabs({
+      className: 'repository-tabs',
+      ariaLabel: 'Workflow views',
+      tabs: [
+        { label: 'Overview', icon: 'home', href: '#page-overview', current: true },
+        { label: 'Runs', icon: 'play', href: '#page-runs' },
+        { label: 'Issues', icon: 'issue', href: '#page-issues' }
+      ]
+    });
+    document.body.append(rendered);
+    const links = [...rendered.querySelectorAll('a')];
+    /** @param {string} key */
+    const press = (key) => document.activeElement?.dispatchEvent(
+      new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
+    );
+    links[0].focus();
+    press('ArrowRight');
+    expect(document.activeElement).toBe(links[1]);
+    press('End');
+    expect(document.activeElement).toBe(links[2]);
+    press('ArrowRight');
+    expect(document.activeElement).toBe(links[0]);
+    press('ArrowLeft');
+    expect(document.activeElement).toBe(links[2]);
+    press('Home');
+    expect(document.activeElement).toBe(links[0]);
+    expect(links.map((link) => link.tabIndex)).toEqual([0, 0, 0]);
+    expect(links[0].getAttribute('aria-current')).toBe('page');
+    expect(window.location.hash).not.toBe('#page-runs');
+    rendered.remove();
+  });
+
   it('renders interactive tabs and supports roving selection with keyboard navigation', () => {
     const onSelect = vi.fn();
     const rendered = renderInteractiveTabs({
