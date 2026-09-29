@@ -50,12 +50,16 @@ describe('campaign repository memory', () => {
       }, {
         branch: 'memory/security-review',
         commit: 'c'.repeat(40),
-        files: [{ path: 'security.md', oid: 'd'.repeat(40), size: 10 }],
+        files: [
+          { path: 'security.md', oid: 'd'.repeat(40), size: 10 },
+          { path: 'transactions.jsonl', oid: 'e'.repeat(40), size: 22 },
+        ],
         omitted: {},
       }]);
     memoryApi.read
       .mockResolvedValueOnce({ content: '# Ambient' })
-      .mockResolvedValueOnce({ content: '# Security' });
+      .mockResolvedValueOnce({ content: '# Security' })
+      .mockResolvedValueOnce({ content: '{"id":1}\n{"id":2,"ok":true}\n' });
 
     const rendered = renderAllCampaignMemory({
       pageId: 'memory',
@@ -116,6 +120,9 @@ describe('campaign repository memory', () => {
     await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Security'));
     expect(rendered.querySelector('.cao-memory-layout')?.getAttribute('data-memory-view')).toBe('file');
     expect(document.activeElement).toBe(rendered.querySelector('.cao-memory-file-content'));
+    /** @type {HTMLButtonElement} */ (secondCampaign.querySelectorAll('.campaign-memory-file')[1]).click();
+    await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent)
+      .toBe('{\n  "id": 1\n}\n{\n  "id": 2,\n  "ok": true\n}\n'));
     expect(rendered.querySelector('.memory-mobile-back')).toBeNull();
     publishSource('campaign-memory-campaigns', {
       source: 'campaign-memory-campaigns',
@@ -133,12 +140,14 @@ describe('campaign repository memory', () => {
         availability: 'available',
       },
     }, dashboardViewAliasName('memory', { id: 'campaign-memory-browser' }, 0, 'campaign-memory-campaigns', 0));
-    await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Security'));
+    await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent)
+      .toBe('{\n  "id": 1\n}\n{\n  "id": 2,\n  "ok": true\n}\n'));
     expect(location.hash).toBe('');
     expect(memoryApi.listAll.mock.calls[0][0]).toEqual(['ambient-context', 'security-review']);
     expect(memoryApi.read.mock.calls.map(([campaign, path]) => [campaign, path])).toEqual([
       ['ambient-context', 'notes/ambient.md'],
       ['security-review', 'security.md'],
+      ['security-review', 'transactions.jsonl'],
     ]);
   });
 
@@ -610,7 +619,7 @@ describe('campaign repository memory', () => {
 
     const rendered = renderCampaignMemoryWithoutDebug({ campaignId: 'ambient-context', campaignName: 'Ambient Context' });
     document.body.append(rendered);
-    await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('{"answer":42}\n'));
+    await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('{\n  "answer": 42\n}\n'));
 
     expect(output.debug).not.toHaveBeenCalled();
 

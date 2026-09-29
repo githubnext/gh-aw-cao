@@ -1305,7 +1305,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .cao-memory-file-content > .memory-file-body { min-width: 0; min-height: 0; flex: 1; overflow: auto; }
 .memory-file-header { margin: 0 0 16px; }
 .memory-file-header h2 { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
-.cao-memory-file-content pre { min-width: 0; min-height: 0; flex: 1; margin: 0; padding: 16px; overflow: auto; border-radius: 6px; background: var(--canvas-inset); color: var(--fg); font: .75rem/1.5 var(--font-mono, ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace); white-space: pre-wrap; overflow-wrap: anywhere; }
+.cao-memory-file-content pre { width: 100%; min-width: 0; min-height: 0; margin: 0; padding: 16px; overflow: visible; border-radius: 6px; background: var(--canvas-inset); color: var(--fg); font: .75rem/1.5 var(--font-mono, ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace); white-space: pre-wrap; overflow-wrap: anywhere; }
 .cao-memory-file-content pre > code, .campaign-memory-content pre > code { display: block; min-width: 0; overflow-wrap: anywhere; }
 .campaign-memory-browser { min-width: 0; }
 .campaign-memory-warning { margin: 0 0 12px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--attention) 45%, var(--border)); border-radius: 6px; background: var(--attention-muted); color: var(--fg); }
@@ -1320,7 +1320,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .campaign-memory-file .memory-file-name { min-width: 0; overflow-wrap: anywhere; }
 .campaign-memory-file small { flex: 0 0 auto; margin-left: auto; color: var(--muted); font-weight: 400; }
 .campaign-memory-content { min-width: 0; min-height: 0; display: flex; flex-direction: column; padding: 20px; overflow: hidden; }
-.campaign-memory-content pre { min-height: 20rem; margin: 0; padding: 16px; overflow: auto; border-radius: 6px; background: var(--canvas-inset); color: var(--fg); font: .75rem/1.5 var(--font-mono, ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace); white-space: pre-wrap; overflow-wrap: anywhere; }
+.campaign-memory-content pre { width: 100%; min-width: 0; min-height: 0; flex: 1; margin: 0; padding: 16px; overflow: auto; border-radius: 6px; background: var(--canvas-inset); color: var(--fg); font: .75rem/1.5 var(--font-mono, ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace); white-space: pre-wrap; overflow-wrap: anywhere; }
 .campaign-detail-page .custom-view-grid, .campaign-detail-page .custom-view-grid > * { min-width: 0; }
 .dashboard-markdown { min-width: 0; padding: 24px 28px 32px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
 .workflow-badge-orchestrator { border-color: var(--accent); color: var(--accent); }
@@ -2129,7 +2129,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .cao-memory-campaign-branch > summary, .cao-memory-campaign-disabled, .campaign-memory-directory > summary, .campaign-memory-file { min-height: 44px; }
   .memory-file-header { min-height: 52px; display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; position: sticky; z-index: 1; top: 0; margin: 0; padding: 6px 12px; border-bottom: 1px solid var(--border); background: var(--canvas); }
   .memory-file-header h2 { overflow: hidden; font-size: .875rem; text-overflow: ellipsis; white-space: nowrap; }
-  .cao-memory-file-content pre, .campaign-memory-content pre { min-height: calc(100% - 52px); padding: 16px; border-radius: 0; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 2; }
+  .cao-memory-file-content pre, .campaign-memory-content pre { min-height: 0; padding: 16px; border-radius: 0; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 2; }
   :root[data-navigation-direction="forward"]::view-transition-old(root) { z-index: 1; animation-name: dashboard-view-slide-out-left; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
   :root[data-navigation-direction="forward"]::view-transition-new(root) { z-index: 2; animation-name: dashboard-view-slide-in-right; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
   :root[data-navigation-direction="backward"]::view-transition-old(root) { z-index: 2; animation-name: dashboard-view-slide-out-right; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }

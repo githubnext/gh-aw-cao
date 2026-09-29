@@ -443,8 +443,10 @@ function memoryView({ campaignName, manifest, selectedPath, file, mobileView, se
  */
 export function formatMemoryFileContent(path, content) {
   const prettyPrint = (text) => {
+    const trailingWhitespace = text.match(/\s*$/u)?.[0] ?? '';
+    const json = text.slice(0, text.length - trailingWhitespace.length);
     try {
-      return JSON.stringify(JSON.parse(text), null, 2);
+      return `${JSON.stringify(JSON.parse(json), null, 2) ?? text}${trailingWhitespace}`;
     } catch {
       return text;
     }
