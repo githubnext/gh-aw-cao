@@ -8,11 +8,8 @@ import { renderModeBadge, renderStatusBadge } from './badge.js';
 import { text, titleCase } from './count-formatters.js';
 import { renderIntentAction } from './data-view.js';
 import { findLink, renderExternalLinkOrFallback } from './link-content.js';
-import { createRouteView } from './route-empty-state.js';
+import { renderRouteDetailView } from './route-detail-view.js';
 import { rowsFor } from './source-rows.js';
-import { createDebug } from '../debug.js';
-
-const debugProblemDetail = createDebug('problem-detail');
 
 const REPAIR_ACTION = {
   action: 'create-agent-task',
@@ -85,31 +82,20 @@ const DETAIL_GROUPS = [
  */
 export function renderProblemDetail(context) {
   const problems = rowsFor(context.sources, 'campaign-problem-items');
-  debugProblemDetail({ event: 'initialized', problemCount: problems.length });
-  const root = createRouteView({
+  return renderRouteDetailView(context, {
+    category: 'problem-detail',
     rootClassName: 'problem-detail',
-    routeParameter: context.routeParameter,
     datasetKey: 'targetRepository',
     selectMessage: 'Select a runtime problem to view its details.',
     notFoundMessage: 'This runtime problem is no longer present in the selected horizon.',
-    renderMatched: () => {
-      const problem = problems[0];
-      if (!problem) {
-        debugProblemDetail({ event: 'not-found' });
-        return null;
-      }
-      root.dispatchEvent(new CustomEvent('dashboard-route-allocation', {
-        bubbles: true,
-        detail: {
-          title: text(problem['problem-title']) || 'Runtime problem',
-          description: problemDescription(problem)
-        }
-      }));
-      debugProblemDetail({ event: 'matched', problemKind: text(problem['problem-kind']) });
-      return renderProblem(problem);
-    }
+    rows: problems,
+    match: (rows) => rows[0],
+    allocation: (problem) => ({
+      title: text(problem['problem-title']) || 'Runtime problem',
+      description: problemDescription(problem)
+    }),
+    renderContent: (problem) => renderProblem(problem)
   });
-  return root;
 }
 
 /** @param {Record<string, unknown>} problem */

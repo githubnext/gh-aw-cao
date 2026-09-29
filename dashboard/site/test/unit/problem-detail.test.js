@@ -179,18 +179,18 @@ describe('problem detail debug logging', () => {
     const { renderProblemDetail: renderProblemDetailWithDebug } = await import('../../src/components/problem-detail.js');
 
     const rendered = renderProblemDetailWithDebug(context());
-    expect(output.debug).toHaveBeenCalledWith('[cao:problem-detail]', { event: 'initialized', problemCount: 1 });
+    expect(output.debug).toHaveBeenCalledWith('[cao:problem-detail]', { event: 'initialized', pageId: 'campaign-problem-detail', rowCount: 1 });
 
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
       detail: { parameter: 'target-repository', value: 'github/gh-aw' }
     }));
-    expect(output.debug).toHaveBeenCalledWith('[cao:problem-detail]', { event: 'matched', problemKind: 'failure' });
+    expect(output.debug).toHaveBeenCalledWith('[cao:problem-detail]', { event: 'matched', pageId: 'campaign-problem-detail' });
 
     const emptyRendered = renderProblemDetailWithDebug(context([]));
     emptyRendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
       detail: { parameter: 'target-repository', value: 'github/gh-aw' }
     }));
-    expect(output.debug).toHaveBeenCalledWith('[cao:problem-detail]', { event: 'not-found' });
+    expect(output.debug).toHaveBeenCalledWith('[cao:problem-detail]', { event: 'not-found', pageId: 'campaign-problem-detail' });
 
     for (const call of output.debug.mock.calls) {
       const metadata = call[1];
