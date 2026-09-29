@@ -11,6 +11,9 @@ import { formatMediumUtcDateTime, renderLegendList, renderSkeletonBars, renderTa
 import { formatClockDuration, formatPercent } from '../view-formatters.js';
 import { chartSeriesClassName, renderChartWidget } from './chart-elements.js';
 import { octicon } from '../octicons.js';
+import { createDebug } from '../debug.js';
+
+const debugTableSummary = createDebug('table-summary');
 
 /**
  * @typedef {import('../table-summary-data.js').TableColumnSummary & { label: string, compact?: boolean }} RenderableTableColumnSummary
@@ -43,7 +46,15 @@ export function renderReactiveTableSummaryRow(columns, pendingSummaries) {
     ...columns.map((column, index) => renderReactiveTableSummaryCell(column, index, summaries))
   ));
   addTableSummaryToggle(row);
-  pendingSummaries.then((value) => summaries.set(value)).catch(() => summaries.set([]));
+  pendingSummaries
+    .then((value) => {
+      debugTableSummary({ event: 'summaries-resolved', outcome: 'ok', columnCount: value.length });
+      summaries.set(value);
+    })
+    .catch((error) => {
+      debugTableSummary({ event: 'summaries-resolved', outcome: 'failed', errorName: error?.name });
+      summaries.set([]);
+    });
   return row;
 }
 
@@ -133,6 +144,7 @@ function addTableSummaryToggle(row) {
     row.classList.toggle('table-summary-collapsed', !expanded);
     for (const content of row.querySelectorAll('.table-summary-expanded')) content.toggleAttribute('hidden', !expanded);
     for (const content of row.querySelectorAll('.table-summary-compact')) content.toggleAttribute('hidden', expanded);
+    debugTableSummary({ event: 'toggle-changed', expanded });
   });
   firstCell.append(toggle);
 }
