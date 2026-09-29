@@ -200,10 +200,10 @@ describe('Configuration dashboard view', () => {
     rendered.remove();
   });
 
-  it('exposes Settings in the bottom management navigation without a chart', () => {
+  it('exposes Settings in the bottom Maintenance navigation without a chart', () => {
     const dashboard = authoritativeDashboard.dashboard;
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'configuration');
-    const manageNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => candidate.label === 'Updates');
+    const manageNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => candidate.label === 'Maintenance');
 
     expect(page.title).toBe('Settings');
     expect(page.icon).toBe('gear');
@@ -221,7 +221,7 @@ describe('Configuration dashboard view', () => {
   it('separates CAO package and compiler maintenance inventory', () => {
     const dashboard = authoritativeDashboard.dashboard;
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'maintenance');
-    const manageNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => candidate.label === 'Updates');
+    const manageNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => candidate.label === 'Maintenance');
 
     expect(page.title).toBe('Updates');
     expect(page.description).toContain('Active describes registration only');

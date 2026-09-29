@@ -154,7 +154,7 @@ describe('dashboard DOM provenance', () => {
         ],
         navigation: [
           { pages: ['overview'] },
-          { label: 'Updates', placement: 'bottom', pages: ['maintenance'] }
+          { label: 'Maintenance', placement: 'bottom', pages: ['maintenance'] }
         ]
       }
     }));

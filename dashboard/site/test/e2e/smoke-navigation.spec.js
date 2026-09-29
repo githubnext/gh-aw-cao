@@ -94,7 +94,14 @@ test('desktop navigation collapses to an icon rail and expands back to text', as
             title: 'Sidebar Toggle',
             pages: [
               { id: 'overview', kind: 'custom', title: 'Overview', icon: 'home', views: [] },
-              { id: 'runs', kind: 'custom', title: 'Runs', icon: 'play', views: [] }
+              { id: 'runs', kind: 'custom', title: 'Runs', icon: 'play', views: [] },
+              { id: 'maintenance', kind: 'custom', title: 'Updates', icon: 'tools', views: [] },
+              { id: 'configuration', kind: 'custom', title: 'Settings', icon: 'gear', views: [] }
+            ],
+            navigation: [
+              { label: 'Main', pages: ['overview'] },
+              { label: 'Data', pages: ['runs'] },
+              { label: 'Maintenance', placement: 'bottom', pages: ['maintenance', 'configuration'] }
             ]
           }
         },
@@ -113,6 +120,9 @@ test('desktop navigation collapses to an icon rail and expands back to text', as
   await expect(page.getByRole('button', { name: 'Expand navigation' })).toHaveAttribute('aria-expanded', 'false');
   await expect(page.locator('.nav-label').first()).toBeHidden();
   await expect(page.locator('.sidebar-brand')).toBeHidden();
+  await expect(page.locator('.nav-section-bottom')).toBeVisible();
+  await expect(page.locator('[data-nav-page-id="maintenance"]')).toBeVisible();
+  await expect(page.locator('[data-nav-page-id="configuration"]')).toBeVisible();
 
   await page.reload();
   await page.setContent(dashboardContent);

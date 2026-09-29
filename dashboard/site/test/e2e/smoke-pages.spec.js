@@ -158,7 +158,7 @@ test('Ingestion shows CAO Activity status, size trend, and retained transactions
   `);
 
   const updatesNavigation = page.locator('.nav-section').filter({
-    has: page.locator('summary', { hasText: /^Updates$/ })
+    has: page.locator('summary', { hasText: /^Maintenance$/ })
   });
   await updatesNavigation.getByRole('link', { name: 'Ingestion, Experimental' }).click();
 
@@ -1000,7 +1000,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
   const data = page.locator('.nav-section').filter({ hasText: 'Data' });
   const updatesSection = page.locator('.nav-section').filter({
-    has: page.locator('summary', { hasText: /^Updates$/ })
+    has: page.locator('summary', { hasText: /^Maintenance$/ })
   });
   await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(data.locator('summary')).toHaveText('Data');
@@ -1020,7 +1020,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(campaignBranches.first()).toHaveAttribute('open', '');
   await expect(page).toHaveURL(/#page-memory$/);
   await expect(memoryView.getByRole('link')).toHaveCount(0);
-  await expect(updatesSection.locator('summary')).toHaveText('Updates');
+  await expect(updatesSection.locator('summary')).toHaveText('Maintenance');
   await expect(updatesSection.getByRole('link')).toHaveText(['Updates', 'Marketplace', 'Ingestion', 'Settings']);
   await expect(updatesSection).toHaveClass(/nav-section-bottom/);
   await expect.poll(async () => {
@@ -1140,7 +1140,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
   await expect(overviewPage.locator('.factory-station')).toHaveCount(2);
   await page.locator('.mobile-nav-menu > summary').click();
-  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Experimental', 'Updates']);
+  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Experimental', 'Maintenance']);
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toHaveCount(0);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(overviewPage.locator('.factory-intro')).toBeInViewport();

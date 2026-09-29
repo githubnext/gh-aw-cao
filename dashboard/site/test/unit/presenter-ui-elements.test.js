@@ -138,13 +138,13 @@ describe('dashboard sidebar', () => {
     ], 'Example', [
       { label: 'Main', pages: ['overview'] },
       { label: 'Data', pages: ['runs'] },
-      { label: 'Manage', placement: 'bottom', pages: ['maintenance', 'configuration'] }
+      { label: 'Maintenance', placement: 'bottom', pages: ['maintenance', 'configuration'] }
     ]);
 
     const sectionLabels = [...sidebar.querySelectorAll('.nav-section-label')].map((element) => element.textContent);
-    expect(sectionLabels).toEqual(['Main', 'Data', 'Manage']);
+    expect(sectionLabels).toEqual(['Main', 'Data', 'Maintenance']);
     const bottomSection = sidebar.querySelector('.nav-section-bottom');
-    expect(bottomSection?.querySelector('.nav-section-label')?.textContent).toBe('Manage');
+    expect(bottomSection?.querySelector('.nav-section-label')?.textContent).toBe('Maintenance');
     expect([...bottomSection?.querySelectorAll('[data-nav-page-id]') ?? []].map((element) => element.textContent))
       .toEqual(['Updates', 'Settings']);
     expect(bottomSection?.hasAttribute('open')).toBe(true);
@@ -177,7 +177,7 @@ describe('dashboard sidebar', () => {
     ];
     const sidebar = renderDashboardNavigation(pages, 'Example', [
       { label: 'Main', pages: ['overview'] },
-      { label: 'Updates', placement: 'bottom', pages: ['maintenance', 'reports'] }
+      { label: 'Maintenance', placement: 'bottom', pages: ['maintenance', 'reports'] }
     ]);
 
     const updatesLink = sidebar.querySelector('[data-nav-page-id="maintenance"]');
