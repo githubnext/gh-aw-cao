@@ -255,8 +255,7 @@ Then configure the profile:
 ```bash
 ./cao.sh setup-auth token \
   --repo acme/central-agentic-ops \
-  --write-repository acme/approved-output-repository \
-  --acknowledge-token-risks
+  --write-repository acme/approved-output-repository
 ```
 
 The command prompts for every owner/role token without echoing it, stores
@@ -265,6 +264,13 @@ owner-scoped secrets, writes repository-to-secret-name variables, and sets
 command. `GH_AW_GITHUB_READ_PAT`, `GH_AW_GITHUB_WRITE_PAT`, and
 `GH_AW_GITHUB_TOKEN` remain deprecated compatibility fallbacks for existing
 installations whose authentication mode is unset.
+
+If setup is interrupted after storing one or more tokens, rerun the same
+command. The helper verifies existing repository secret names and asks whether
+to keep each one without reading its value. It prompts for missing or replaced
+owner/role tokens, then writes the complete maps and selects PAT mode. Use
+`--keep-existing` for an unattended resume or `--replace-existing` when
+intentionally rotating every configured token.
 
 ### Migrate from the legacy PAT
 
@@ -292,8 +298,7 @@ Explain that the PAT is user-bound, longer-lived than an App token, API-limited,
 
 ```bash
 ./cao.sh setup-auth token \
-  --repo acme/central-agentic-ops \
-  --acknowledge-token-risks
+  --repo acme/central-agentic-ops
 ```
 
 For PATs:

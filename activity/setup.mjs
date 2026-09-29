@@ -259,7 +259,7 @@ export async function setupCaoControlPlane({
       );
     }
     if (profile === 'token') {
-      authenticationArguments.push('--expires-in', '30', '--acknowledge-token-risks');
+      authenticationArguments.push('--expires-in', '30');
     }
 
     interactive.note('\nSetup plan');

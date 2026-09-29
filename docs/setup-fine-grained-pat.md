@@ -52,8 +52,7 @@ In `.github/workflows/cao.json`, add only the required owners and exact reposito
 ./cao.sh setup-auth token \
   --repo "$CONTROL_REPO" \
   --write-repository "$CONTROL_REPO" \
-  --expires-in 30 \
-  --acknowledge-token-risks
+  --expires-in 30
 ```
 
 For every browser form:

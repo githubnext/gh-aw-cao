@@ -30,7 +30,7 @@ terminal. This is a constrained fallback, not a second setup flow.
    ```bash
    ./cao.sh setup-auth github-app --repo OWNER/CONTROL-REPOSITORY --dry-run
    ./cao.sh setup-auth enterprise-app --repo OWNER/CONTROL-REPOSITORY --read-client-id READ_APP_CLIENT_ID --write-client-id WRITE_APP_CLIENT_ID --policy .github/workflows/cao.json --dry-run
-   ./cao.sh setup-auth token --repo OWNER/CONTROL-REPOSITORY --policy .github/workflows/cao.json --dry-run --acknowledge-token-risks
+   ./cao.sh setup-auth token --repo OWNER/CONTROL-REPOSITORY --policy .github/workflows/cao.json --dry-run
    ```
 
    These commands preview the selected profile; they do not configure

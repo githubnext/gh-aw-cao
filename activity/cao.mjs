@@ -39,12 +39,17 @@ import { discoverInventory } from './inventory.mjs';
 import { discoverInventoryDashboardSources } from './inventory-sources.mjs';
 import { hasComputation, queryComputation } from './computations/index.mjs';
 import {
+  confirmExistingPatSecret,
   configureEnterpriseApps,
   FINE_GRAINED_PAT_PROFILES,
+  fineGrainedPatSetupResult,
+  formatSetupAuthenticationSummary,
   GITHUB_AUTH_MODE_VARIABLE,
   githubServerUrl,
   openBrowser,
   ownerScopedPatSecret,
+  repositorySecretNames,
+  writeFineGrainedPatInstructions,
 } from './authentication.mjs';
 import {
   analyzeDashboardComplexity,
@@ -72,6 +77,7 @@ import { setupCaoControlPlane } from './setup.mjs';
 import { upgradeGhAwVersion } from './upgrade-gh-aw.mjs';
 
 export { setupCaoControlPlane } from './setup.mjs';
+export { formatSetupAuthenticationSummary } from './authentication.mjs';
 
 const debug = createDebug('ingest');
 const debugHash = createDebug('hash-payloads');
@@ -313,6 +319,7 @@ export function setupCaoAuthentication(method, arguments_ = [], {
   execute = spawnSync,
   launchBrowser = (url) => openBrowser(url, execute),
   writeInstruction = (message) => console.error(message),
+  confirmExistingSecret = (secret) => confirmExistingPatSecret(secret, { UsageError }),
 } = {}) {
   if (method === 'github-app') {
     const script = path.join('.github', 'workflows', 'shared', 'setup-github-apps.mjs');
@@ -378,8 +385,12 @@ export function setupCaoAuthentication(method, arguments_ = [], {
       'expires-in',
       'no-open',
       'dry-run',
-      'acknowledge-token-risks',
+      'keep-existing',
+      'replace-existing',
     ]);
+    if (options['keep-existing'] && options['replace-existing']) {
+      throw new UsageError('--keep-existing and --replace-existing cannot be used together');
+    }
     const repo = option(options, 'repo');
     const writeRepositories = options['write-repository'] === undefined
       ? []
@@ -392,41 +403,31 @@ export function setupCaoAuthentication(method, arguments_ = [], {
       expiresIn: option(options, 'expires-in', false) || '30',
       writeRepositories,
     });
-    const repositoryMaps = Object.fromEntries(FINE_GRAINED_PAT_PROFILES.map((profile) => [
-      profile.role,
-      Object.fromEntries(setups
-        .filter((setup) => setup.role === profile.role)
-        .flatMap((setup) => setup.repositories.map((repository) => [repository, setup.secret]))),
-    ]));
-    if (options['dry-run']) {
-      return {
-        command: 'setup-auth',
-        profile: 'fine-grained-token',
-        secrets: setups.map(({ owner, role, secret }) => ({ owner, role, secret })),
-        repo,
-        repositories: repositoryMaps,
-      };
-    }
-    if (!options['acknowledge-token-risks']) {
-      throw new UsageError('token setup requires --acknowledge-token-risks');
-    }
+    const setupResult = fineGrainedPatSetupResult(repo, setups);
+    const repositoryMaps = setupResult.repositories;
+    if (options['dry-run']) return setupResult;
     const auth = execute('gh', ['auth', 'status'], { encoding: 'utf8' });
     if (auth.error || auth.status !== 0) {
       throw new Error(`GitHub CLI authentication check failed: ${commandFailureMessage(auth, 'gh auth status failed')}`);
     }
+    let existingSecrets = new Set();
+    if (!options['replace-existing']) {
+      existingSecrets = repositorySecretNames(repo, {
+        execute,
+        failureMessage: commandFailureMessage,
+      });
+    }
     for (const setup of setups) {
-      writeInstruction(`Create the ${setup.role} fine-grained PAT for ${setup.owner}:`);
-      writeInstruction(`- expiration: ${setup.expiresIn} days`);
-      writeInstruction('- repository access: Only select repositories');
-      for (const repository of setup.repositories) writeInstruction(`  - ${repository}`);
-      writeInstruction('- repository permissions:');
-      for (const [permission, level] of Object.entries(setup.permissions)) {
-        writeInstruction(`  - ${permission}: ${level}`);
+      if (existingSecrets.has(setup.secret)
+        && (options['keep-existing'] || confirmExistingSecret(setup.secret))) {
+        writeInstruction(`Skipping existing repository secret ${setup.secret}.`);
+        continue;
       }
-      if (options['no-open'] || !launchBrowser(setup.url)) {
-        writeInstruction(`Open this URL to continue: ${setup.url}`);
-      }
-      writeInstruction(`Generate the token, then paste it only into the secure prompt for ${setup.secret}.`);
+      writeFineGrainedPatInstructions(setup, {
+        launchBrowser,
+        noOpen: options['no-open'],
+        writeInstruction,
+      });
       const result = execute('gh', [
         'secret', 'set', setup.secret, '--repo', repo,
       ], { stdio: 'inherit' });
@@ -454,13 +455,7 @@ export function setupCaoAuthentication(method, arguments_ = [], {
     if (modeResult.error || modeResult.status !== 0) {
       throw new Error(`authentication mode setup failed: ${commandFailureMessage(modeResult, `exit ${modeResult.status}`)}`);
     }
-    return {
-      command: 'setup-auth',
-      profile: 'fine-grained-token',
-      secrets: setups.map(({ owner, role, secret }) => ({ owner, role, secret })),
-      repo,
-      repositories: repositoryMaps,
-    };
+    return setupResult;
   }
   throw new UsageError('cao setup-auth requires github-app, enterprise-app, or token');
 }
@@ -1028,7 +1023,7 @@ function parseOptions(arguments_) {
     if (!argument.startsWith('--') && !aliases[argument]) throw new UsageError(`Unexpected argument: ${argument}`);
     const name = aliases[argument] ?? argument.slice(2);
     if (name === 'help' || name === 'stdin' || name === 'json' || name === 'keep' || name === 'diagnose'
-      || name === 'dry-run' || name === 'no-open' || name === 'acknowledge-token-risks'
+      || name === 'dry-run' || name === 'no-open' || name === 'keep-existing' || name === 'replace-existing'
       || name === 'strict-warnings') {
       options[name] = 'true';
       continue;
@@ -2964,6 +2959,12 @@ async function main() {
     if (typeof output === 'object' && output?.command === 'validate') {
       process.stdout.write(`${output.output}\n`);
       process.exitCode = output.exitCode;
+      return;
+    }
+    if (typeof output === 'object'
+      && output?.command === 'setup-auth'
+      && !arguments_.includes('--dry-run')) {
+      process.stdout.write(`${formatSetupAuthenticationSummary(output)}\n`);
       return;
     }
     process.stdout.write(`${typeof output === 'string' ? output : JSON.stringify(output, null, 2)}\n`);

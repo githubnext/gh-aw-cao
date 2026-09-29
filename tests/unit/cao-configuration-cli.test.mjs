@@ -8,6 +8,7 @@ import {
   addCaoCampaign,
   ensureGhAwMinimumVersion,
   fineGrainedTokenSetups,
+  formatSetupAuthenticationSummary,
   initializeCaoPolicy,
   setCaoCampaignMode,
   setCaoCampaignWorkflowsEnabled,
@@ -16,6 +17,7 @@ import {
   updateCaoCampaigns,
   upgradeGhAw,
 } from "../../activity/cao.mjs";
+import { confirmExistingPatSecret } from "../../activity/authentication.mjs";
 import { configureDashboardPages } from "../../activity/setup.mjs";
 
 // gh-aw writes `gh aw version` output to stderr.
@@ -291,9 +293,7 @@ test("cao setup offers owner-scoped PATs for a multi-owner repository scope", as
     assert.equal(authenticationCalls[0][0], "token");
     assert.deepEqual(authenticationCalls[0][1].slice(0, 2), ["--repo", "acme/control"]);
     assert.equal(authenticationCalls[0][1][2], "--policy");
-    assert.deepEqual(authenticationCalls[0][1].slice(-3), [
-      "--expires-in", "30", "--acknowledge-token-risks",
-    ]);
+    assert.deepEqual(authenticationCalls[0][1].slice(-2), ["--expires-in", "30"]);
     assert.deepEqual(policy["control-plane"].scope, {
       "allowed-owners": ["acme", "octo"],
       "allowed-repositories": ["acme/control", "acme/service", "octo/library"],
@@ -501,7 +501,6 @@ test("cao setup-auth configures separate read and write fine-grained tokens thro
       "--repo", "acme/control",
       "--policy", policyPath,
       "--write-repository", "acme/output",
-      "--acknowledge-token-risks",
     ], {
       execute(command, arguments_, options) {
         calls.push([command, arguments_, options]);
@@ -518,6 +517,7 @@ test("cao setup-auth configures separate read and write fine-grained tokens thro
 
     assert.deepEqual(calls, [
       ["gh", ["auth", "status"], { encoding: "utf8" }],
+      ["gh", ["secret", "list", "--repo", "acme/control", "--json", "name"], { encoding: "utf8" }],
       ["gh", ["secret", "set", "GH_AW_GITHUB_READ_PAT_ACME", "--repo", "acme/control"], { stdio: "inherit" }],
       ["gh", ["secret", "set", "GH_AW_GITHUB_WRITE_PAT_ACME", "--repo", "acme/control"], { stdio: "inherit" }],
       ["gh", ["variable", "set", "GH_AW_GITHUB_READ_PAT_REPOSITORIES", "--repo", "acme/control", "--body", "{\"acme/control\":\"GH_AW_GITHUB_READ_PAT_ACME\",\"acme/target\":\"GH_AW_GITHUB_READ_PAT_ACME\"}"], { encoding: "utf8" }],
@@ -559,6 +559,35 @@ test("cao setup-auth configures separate read and write fine-grained tokens thro
   }
 });
 
+test("fine-grained token setup formats a concise completion summary", () => {
+  const summary = formatSetupAuthenticationSummary({
+    command: "setup-auth",
+    profile: "fine-grained-token",
+    secrets: [
+      { owner: "githubnext", role: "read", secret: "GH_AW_GITHUB_READ_PAT_GITHUBNEXT" },
+      { owner: "github", role: "read", secret: "GH_AW_GITHUB_READ_PAT_GITHUB" },
+      { owner: "githubnext", role: "write", secret: "GH_AW_GITHUB_WRITE_PAT_GITHUBNEXT" },
+    ],
+    repo: "githubnext/gh-aw-cao",
+    repositories: {
+      read: {
+        "githubnext/gh-aw-cao": "GH_AW_GITHUB_READ_PAT_GITHUBNEXT",
+        "github/gh-aw": "GH_AW_GITHUB_READ_PAT_GITHUB",
+      },
+      write: {
+        "githubnext/gh-aw-cao": "GH_AW_GITHUB_WRITE_PAT_GITHUBNEXT",
+      },
+    },
+  });
+
+  assert.match(summary, /^✓ Fine-grained PAT authentication configured for githubnext\/gh-aw-cao\./);
+  assert.match(summary, /Read scope: 2 repositories across githubnext, github/);
+  assert.match(summary, /Write scope: githubnext\/gh-aw-cao/);
+  assert.match(summary, /Authentication mode: pat/);
+  assert.match(summary, /run \.\/cao\.sh validate/);
+  assert.doesNotMatch(summary, /^\{/);
+});
+
 test("fine-grained token setup creates separate owner-scoped profiles", () => {
   const root = mkdtempSync(path.join(os.tmpdir(), "cao-token-owners-"));
   const policyPath = path.join(root, "cao.json");
@@ -596,22 +625,159 @@ test("fine-grained token setup creates separate owner-scoped profiles", () => {
   }
 });
 
-test("fine-grained token setup requires explicit risk acknowledgement before GitHub calls", () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), "cao-token-consent-"));
+test("fine-grained token setup prompts before keeping existing repository secrets", () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "cao-token-resume-"));
+  const policyPath = path.join(root, "cao.json");
+  writeFileSync(policyPath, JSON.stringify({
+    version: 1,
+    "control-plane": {
+      scope: {
+        "allowed-repositories": ["acme/target", "octo/service"],
+      },
+    },
+  }));
+  const calls = [];
+  const instructions = [];
+  const confirmations = [];
+  try {
+    setupCaoAuthentication("token", [
+      "--repo", "acme/control",
+      "--policy", policyPath,
+    ], {
+      execute(command, arguments_, options) {
+        calls.push([command, arguments_, options]);
+        if (arguments_[0] === "secret" && arguments_[1] === "list") {
+          return {
+            status: 0,
+            stdout: JSON.stringify([{ name: "GH_AW_GITHUB_READ_PAT_ACME" }]),
+            stderr: "",
+          };
+        }
+        return { status: 0, stdout: "", stderr: "" };
+      },
+      launchBrowser() {
+        return true;
+      },
+      writeInstruction(message) {
+        instructions.push(message);
+      },
+      confirmExistingSecret(secret) {
+        confirmations.push(secret);
+        return true;
+      },
+    });
+
+    assert.deepEqual(calls.slice(0, 5), [
+      ["gh", ["auth", "status"], { encoding: "utf8" }],
+      ["gh", ["secret", "list", "--repo", "acme/control", "--json", "name"], { encoding: "utf8" }],
+      ["gh", ["secret", "set", "GH_AW_GITHUB_READ_PAT_OCTO", "--repo", "acme/control"], { stdio: "inherit" }],
+      ["gh", ["secret", "set", "GH_AW_GITHUB_WRITE_PAT_ACME", "--repo", "acme/control"], { stdio: "inherit" }],
+      ["gh", ["variable", "set", "GH_AW_GITHUB_READ_PAT_REPOSITORIES", "--repo", "acme/control", "--body", "{\"acme/control\":\"GH_AW_GITHUB_READ_PAT_ACME\",\"acme/target\":\"GH_AW_GITHUB_READ_PAT_ACME\",\"octo/service\":\"GH_AW_GITHUB_READ_PAT_OCTO\"}"], { encoding: "utf8" }],
+    ]);
+    assert.doesNotMatch(
+      JSON.stringify(calls),
+      /secret","set","GH_AW_GITHUB_READ_PAT_ACME"/,
+    );
+    assert.match(instructions.join("\n"), /Skipping existing repository secret GH_AW_GITHUB_READ_PAT_ACME/);
+    assert.deepEqual(confirmations, ["GH_AW_GITHUB_READ_PAT_ACME"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("fine-grained token setup retries nonblocking terminal reads", () => {
+  let reads = 0;
+  const waits = [];
+  const kept = confirmExistingPatSecret("GH_AW_GITHUB_READ_PAT_ACME", {
+    UsageError: Error,
+    input: { isTTY: true, fd: 0 },
+    output: { isTTY: true, write() {} },
+    readTerminal(_fd, buffer) {
+      reads += 1;
+      if (reads === 1) {
+        const error = new Error("resource temporarily unavailable");
+        error.code = "EAGAIN";
+        throw error;
+      }
+      return buffer.write("y\n");
+    },
+    waitForTerminal(milliseconds) {
+      waits.push(milliseconds);
+    },
+  });
+
+  assert.equal(kept, true);
+  assert.equal(reads, 2);
+  assert.deepEqual(waits, [25]);
+});
+
+test("fine-grained token setup can explicitly replace existing repository secrets", () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "cao-token-replace-"));
   const policyPath = path.join(root, "cao.json");
   writeFileSync(policyPath, JSON.stringify({
     version: 1,
     "control-plane": { scope: { "allowed-repositories": ["acme/target"] } },
   }));
+  const calls = [];
   try {
-    assert.throws(() => setupCaoAuthentication("token", [
+    setupCaoAuthentication("token", [
       "--repo", "acme/control",
       "--policy", policyPath,
+      "--replace-existing",
     ], {
-      execute() {
-        assert.fail("setup must fail before GitHub calls");
+      execute(command, arguments_, options) {
+        calls.push([command, arguments_, options]);
+        return { status: 0, stdout: "", stderr: "" };
       },
-    }), /--acknowledge-token-risks/);
+      launchBrowser() {
+        return true;
+      },
+      writeInstruction() {},
+    });
+
+    assert.doesNotMatch(JSON.stringify(calls), /secret","list"/);
+    assert.match(JSON.stringify(calls), /secret","set","GH_AW_GITHUB_READ_PAT_ACME"/);
+    assert.match(JSON.stringify(calls), /secret","set","GH_AW_GITHUB_WRITE_PAT_ACME"/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("fine-grained token setup can keep existing repository secrets non-interactively", () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "cao-token-keep-"));
+  const policyPath = path.join(root, "cao.json");
+  writeFileSync(policyPath, JSON.stringify({
+    version: 1,
+    "control-plane": { scope: { "allowed-repositories": ["acme/target"] } },
+  }));
+  const calls = [];
+  try {
+    setupCaoAuthentication("token", [
+      "--repo", "acme/control",
+      "--policy", policyPath,
+      "--keep-existing",
+    ], {
+      execute(command, arguments_, options) {
+        calls.push([command, arguments_, options]);
+        if (arguments_[0] === "secret" && arguments_[1] === "list") {
+          return {
+            status: 0,
+            stdout: JSON.stringify([
+              { name: "GH_AW_GITHUB_READ_PAT_ACME" },
+              { name: "GH_AW_GITHUB_WRITE_PAT_ACME" },
+            ]),
+            stderr: "",
+          };
+        }
+        return { status: 0, stdout: "", stderr: "" };
+      },
+      confirmExistingSecret() {
+        assert.fail("--keep-existing must not prompt");
+      },
+      writeInstruction() {},
+    });
+
+    assert.doesNotMatch(JSON.stringify(calls), /secret","set"/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

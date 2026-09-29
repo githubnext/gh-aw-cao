@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { readSync } from 'node:fs';
 
 export const FINE_GRAINED_PAT_PROFILES = [
   {
@@ -31,6 +32,110 @@ export const FINE_GRAINED_PAT_PROFILES = [
 ];
 
 export const GITHUB_AUTH_MODE_VARIABLE = 'GH_AW_GITHUB_AUTH_MODE';
+
+export function fineGrainedPatSetupResult(repo, setups) {
+  const repositories = Object.fromEntries(FINE_GRAINED_PAT_PROFILES.map((profile) => [
+    profile.role,
+    Object.fromEntries(setups
+      .filter((setup) => setup.role === profile.role)
+      .flatMap((setup) => setup.repositories.map((repository) => [repository, setup.secret]))),
+  ]));
+  return {
+    command: 'setup-auth',
+    profile: 'fine-grained-token',
+    secrets: setups.map(({ owner, role, secret }) => ({ owner, role, secret })),
+    repo,
+    repositories,
+  };
+}
+
+export function confirmExistingPatSecret(secret, {
+  UsageError,
+  input = process.stdin,
+  output = process.stderr,
+  readTerminal = readSync,
+  waitForTerminal = (milliseconds) => {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+  },
+} = {}) {
+  if (!input.isTTY || !output.isTTY) {
+    throw new UsageError(
+      `${secret} already exists; rerun with --keep-existing or --replace-existing in a non-interactive environment`,
+    );
+  }
+  output.write(`Repository secret ${secret} already exists. Keep it? [Y/n]: `);
+  const chunks = [];
+  while (true) {
+    const buffer = Buffer.alloc(1024);
+    let bytesRead;
+    try {
+      bytesRead = readTerminal(input.fd, buffer, 0, buffer.length, null);
+    } catch (error) {
+      if (error?.code === 'EAGAIN' || error?.code === 'EWOULDBLOCK' || error?.code === 'EINTR') {
+        waitForTerminal(25);
+        continue;
+      }
+      throw error;
+    }
+    if (bytesRead === 0) break;
+    const chunk = buffer.subarray(0, bytesRead);
+    chunks.push(chunk);
+    if (chunk.includes(10) || chunk.includes(13)) break;
+  }
+  const answer = Buffer.concat(chunks).toString('utf8').trim().toLowerCase();
+  return answer === '' || answer === 'y' || answer === 'yes';
+}
+
+export function formatSetupAuthenticationSummary(result) {
+  if (result?.command !== 'setup-auth' || result?.profile !== 'fine-grained-token') {
+    return JSON.stringify(result, null, 2);
+  }
+  const readRepositories = Object.keys(result.repositories?.read ?? {});
+  const writeRepositories = Object.keys(result.repositories?.write ?? {});
+  const readOwners = [...new Set(result.secrets
+    .filter(({ role }) => role === 'read')
+    .map(({ owner }) => owner))];
+  return [
+    `✓ Fine-grained PAT authentication configured for ${result.repo}.`,
+    `  Read scope: ${readRepositories.length} ${readRepositories.length === 1 ? 'repository' : 'repositories'} across ${readOwners.join(', ')}`,
+    `  Write scope: ${writeRepositories.join(', ') || 'none'}`,
+    '  Authentication mode: pat',
+    '',
+    'Existing GitHub App credentials, if present, are inactive while PAT mode is selected.',
+    'Next: run ./cao.sh validate, then validate a bounded review workflow before removing App credentials.',
+  ].join('\n');
+}
+
+export function repositorySecretNames(repo, { execute, failureMessage }) {
+  const result = execute('gh', [
+    'secret', 'list', '--repo', repo, '--json', 'name',
+  ], { encoding: 'utf8' });
+  if (result.error || result.status !== 0) {
+    throw new Error(`existing token lookup failed: ${failureMessage(result, `exit ${result.status}`)}`);
+  }
+  try {
+    return new Set(JSON.parse(result.stdout || '[]').map(({ name }) => name));
+  } catch (error) {
+    throw new Error(`existing token lookup returned invalid JSON: ${error.message}`);
+  }
+}
+
+export function writeFineGrainedPatInstructions(setup, {
+  launchBrowser,
+  noOpen,
+  writeInstruction,
+}) {
+  writeInstruction(`Create the ${setup.role} fine-grained PAT for ${setup.owner}:`);
+  writeInstruction(`- expiration: ${setup.expiresIn} days`);
+  writeInstruction('- repository access: Only select repositories');
+  for (const repository of setup.repositories) writeInstruction(`  - ${repository}`);
+  writeInstruction('- repository permissions:');
+  for (const [permission, level] of Object.entries(setup.permissions)) {
+    writeInstruction(`  - ${permission}: ${level}`);
+  }
+  if (noOpen || !launchBrowser(setup.url)) writeInstruction(`Open this URL to continue: ${setup.url}`);
+  writeInstruction(`Generate the token, then paste it only into the secure prompt for ${setup.secret}.`);
+}
 
 export function githubServerUrl(environment = process.env) {
   const configured = environment.GH_HOST?.trim()

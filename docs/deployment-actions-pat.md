@@ -54,8 +54,7 @@ You need everything in the [prerequisites for the GitHub Actions only deployment
    ```bash
    ./cao.sh setup-auth token \
      --repo OWNER/CONTROL-REPOSITORY \
-     --write-repository OWNER/OUTPUT-REPOSITORY \
-     --acknowledge-token-risks
+     --write-repository OWNER/OUTPUT-REPOSITORY
    ```
 
    The helper reads `.github/workflows/cao.json`, groups repositories by resource owner, and opens one token form for each required owner and role. Each form has the resource owner, a 30-day expiration, and the right permissions already filled in. The helper also lists the repositories to select for that token.

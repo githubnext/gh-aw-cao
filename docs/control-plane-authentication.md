@@ -111,8 +111,7 @@ Run:
 ```bash
 ./cao.sh setup-auth token \
   --repo acme/central-agentic-ops \
-  --write-repository acme/approved-output-repository \
-  --acknowledge-token-risks
+  --write-repository acme/approved-output-repository
 ```
 
 The command groups the exact repositories by resource owner and creates one
@@ -137,8 +136,13 @@ command arguments.
 Use `--write-repository OWNER/REPO` one or more times to replace the default
 write scope of the control repository. Use `--dry-run` to review every owner,
 secret name, and repository selection before prompting; `--no-open` to print
-URLs without opening a browser; `--expires-in DAYS` for a shorter approved
-lifetime; or `--policy PATH` for a non-default policy path.
+URLs without opening a browser; `--keep-existing` to retain all existing
+repository secrets non-interactively; `--replace-existing` to rotate and
+replace them; `--expires-in DAYS` for a shorter approved lifetime; or `--policy
+PATH` for a non-default policy path. By default, setup asks whether to keep
+each existing secret before continuing. It still writes both repository maps
+and selects PAT mode only after every missing or replaced secret has been
+configured.
 
 The two tokens intentionally have different repository selections:
 
