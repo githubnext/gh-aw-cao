@@ -4,6 +4,9 @@
 
 import { h } from '../dom.js';
 import { renderVisualizationEmptyMessage } from './ui-primitives.js';
+import { createDebug } from '../debug.js';
+
+const debugTemporalMetricPlot = createDebug('temporal-metric-plot');
 
 const LEFT = 92;
 const RIGHT = 1180;
@@ -56,6 +59,7 @@ export function renderTemporalMetricPlot(options) {
   const observationTimes = [...new Set(metrics.flatMap((metric) => metric.points.map((point) => point.x)))]
     .toSorted((left, right) => Date.parse(left) - Date.parse(right));
   if (observationTimes.length === 0) {
+    debugTemporalMetricPlot({ event: 'render-skipped', reason: 'no-observations', metricCount: options.metrics.length });
     return renderVisualizationEmptyMessage('No data is available for this visualization.');
   }
 
@@ -115,6 +119,11 @@ export function renderTemporalMetricPlot(options) {
     && Number.isFinite(outcome.successRate)
     && Number.isFinite(outcome.concludedRuns)
   )).toSorted((left, right) => Date.parse(left.date) - Date.parse(right.date));
+  debugTemporalMetricPlot({
+    event: 'outcomes-filtered',
+    providedCount: options.outcomes?.length ?? 0,
+    keptCount: outcomes.length
+  });
   const outcomeHalfWidth = Math.min(
     70,
     Math.max(14, (WIDTH * 86_400_000) / span / 2)
@@ -126,6 +135,14 @@ export function renderTemporalMetricPlot(options) {
     if (matchingObservation) return x(matchingObservation);
     return Math.max(LEFT, Math.min(RIGHT, x(`${date}T12:00:00Z`)));
   };
+
+  debugTemporalMetricPlot({
+    event: 'render-completed',
+    mode: options.mode,
+    metricCount: metrics.length,
+    observationCount: observationTimes.length,
+    provisional: Boolean(options.provisional)
+  });
 
   return h('article', {
     className: `temporal-metric-plot${options.provisional ? ' temporal-metric-plot-provisional' : ''}`,
