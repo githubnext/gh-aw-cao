@@ -496,6 +496,24 @@ jobs:
             ${{ runner.temp }}/cao-activity/drain3_weights.json
             ${{ runner.temp }}/cao-activity/memory
 
+  reconcile-dispatch:
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout trusted reconciliation source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+
+      - name: Reconcile CAO Evolution dispatches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node activity/dispatch-reconciliation.mjs
+
   cache:
     needs: index
     runs-on: ubuntu-latest
@@ -545,8 +563,8 @@ jobs:
           key: ${{ needs.index.outputs.cache-key }}
 
   notify-failure:
-    needs: [plan, collect, index, cache]
-    if: ${{ always() && (needs.plan.result == 'failure' || needs.collect.result == 'failure' || needs.index.result == 'failure' || needs.cache.result == 'failure') }}
+    needs: [plan, collect, index, cache, reconcile-dispatch]
+    if: ${{ always() && (needs.plan.result == 'failure' || needs.collect.result == 'failure' || needs.index.result == 'failure' || needs.cache.result == 'failure' || needs.reconcile-dispatch.result == 'failure') }}
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -562,6 +580,7 @@ jobs:
               CAO_ACTIVITY_COLLECTION_FAILED: ['${{ needs.collect.result }}', 'One or more independently authenticated collection jobs failed.'],
               CAO_ACTIVITY_INDEX_FAILED: ['${{ needs.index.result }}', 'The activity indexing job failed.'],
               CAO_ACTIVITY_CACHE_FAILED: ['${{ needs.cache.result }}', 'The activity cache publication job failed.'],
+              CAO_DISPATCH_RECONCILIATION_FAILED: ['${{ needs.reconcile-dispatch.result }}', 'The last two CAO Evolution dispatch cycles were not verified against worker workflow_dispatch runs; inspect the reconcile-dispatch job for the affected workers and correlation IDs.'],
             }
             const failures = Object.entries(jobs)
               .filter(([, [result]]) => result === 'failure')

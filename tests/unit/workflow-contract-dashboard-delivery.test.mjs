@@ -298,10 +298,10 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(activityCacheJob, /needs: index[\s\S]*?actions: write[\s\S]*?contents: none/);
   assert.match(activityCacheJob, /Download activity snapshot[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity[\s\S]*?Save activity cache/);
   assert.doesNotMatch(activityCacheJob, /GH_AW_GITHUB_READ_APP_PRIVATE_KEY|gh aw logs/);
-  assert.match(activityNotifyFailureJob, /needs: \[plan, collect, index, cache\]/);
+  assert.match(activityNotifyFailureJob, /needs: \[plan, collect, index, cache, reconcile-dispatch\]/);
   assert.match(activityNotifyFailureJob, /permissions:\n\s+issues: write/);
   assert.doesNotMatch(activityIndexJob, /issues: write/);
-  assert.match(activityNotifyFailureJob, /CAO_ACTIVITY_PLAN_FAILED[\s\S]*?CAO_ACTIVITY_COLLECTION_FAILED[\s\S]*?CAO_ACTIVITY_INDEX_FAILED[\s\S]*?CAO_ACTIVITY_CACHE_FAILED/);
+  assert.match(activityNotifyFailureJob, /CAO_ACTIVITY_PLAN_FAILED[\s\S]*?CAO_ACTIVITY_COLLECTION_FAILED[\s\S]*?CAO_ACTIVITY_INDEX_FAILED[\s\S]*?CAO_ACTIVITY_CACHE_FAILED[\s\S]*?CAO_DISPATCH_RECONCILIATION_FAILED/);
   assert.match(activityNotifyFailureJob, /Assign this issue to an agent/);
   assert.match(activityNotifyFailureJob, /GITHUB_WORKFLOW_SHA[\s\S]*?githubnext\/gh-aw-cao\/blob\/main\/skills\/debug-cao\/SKILL\.md/);
   assert.doesNotMatch(activityNotifyFailureJob, /cancelled/);
