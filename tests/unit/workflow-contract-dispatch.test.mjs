@@ -105,6 +105,7 @@ test("orchestrators emit dedicated bounded dispatcher telemetry", () => {
 test("orchestrators dispatch workers only through safe-output tools", () => {
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
+  const campaignSkill = portableSkill("create-cao-campaign");
 
   assert.match(control, /call the configured `dispatch-workflow` tool from `<safe-output-tools>`/);
   assert.match(control, /do not use `gh workflow run` or the Actions workflow-dispatch API/);
@@ -112,6 +113,8 @@ test("orchestrators dispatch workers only through safe-output tools", () => {
   assert.match(control, /never invoke `<tool_name>`, `noop`, or `report_incomplete` as a bare shell command/);
   assert.match(precompute, /const inline = inDispatch/);
   assert.match(precompute, /const item = inWorkflows/);
+  assert.match(campaignSkill, /Declare `safe_output_mode` as a required `workflow_dispatch` string input/);
+  assert.match(campaignSkill, /omission must fail dispatch validation rather than silently downgrade a live target to review/);
 });
 
 test("Optimization emits a no-op safe output when no workers are dispatched", () => {
@@ -183,6 +186,11 @@ test("every worker uses the standard dispatch envelope and safe mode vocabulary"
     ]) {
       assert.match(source, new RegExp(`^      ${input}:`, "m"), `${name} is missing ${input}`);
     }
+    assert.match(
+      source,
+      /^      safe_output_mode:\n        required: true\n        type: string$/m,
+      `${name} must require an explicit safe_output_mode`,
+    );
 
     assert.doesNotMatch(source, /^      preview_only:/m);
     assert.doesNotMatch(source, /^\s+staged:/m);

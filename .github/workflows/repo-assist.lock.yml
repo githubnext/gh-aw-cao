@@ -683,6 +683,7 @@ jobs:
                       }
                     },
                     "required": [
+                      "safe_output_mode",
                       "safe_output_repo",
                       "target_repo"
                     ],
@@ -743,6 +744,7 @@ jobs:
                       }
                     },
                     "required": [
+                      "safe_output_mode",
                       "safe_output_repo",
                       "target_repo"
                     ],
@@ -803,6 +805,7 @@ jobs:
                       }
                     },
                     "required": [
+                      "safe_output_mode",
                       "safe_output_repo",
                       "target_repo"
                     ],
@@ -863,6 +866,7 @@ jobs:
                       }
                     },
                     "required": [
+                      "safe_output_mode",
                       "safe_output_repo",
                       "target_repo"
                     ],

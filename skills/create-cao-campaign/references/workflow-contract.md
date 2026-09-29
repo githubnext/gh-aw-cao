@@ -33,6 +33,10 @@ Use this checklist after the campaign outcome and worker split are stable.
 - Accept the complete control envelope: `target_repo`, `safe_output_repo`,
   `safe_output_mode`, `correlation_id`, `central_repo`,
   `control_plane_run_url`, and `batch_label`.
+- Declare `safe_output_mode` as a required `workflow_dispatch` string input.
+  Never give workers a default mode: the orchestrator must pass the
+  policy-resolved effective mode explicitly, and omission must fail dispatch
+  validation rather than silently downgrade a live target to review.
 - Import shared control with static campaign, worker, and `role: worker`.
 - Use repository-scoped concurrency, least privilege, explicit tools and
   network, strict mode, bounded credits and timeout, and mission-specific safe

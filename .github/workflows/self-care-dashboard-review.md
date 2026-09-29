@@ -16,6 +16,7 @@ on:
       rollout_percent:
         type: number
       safe_output_mode:
+        required: true
         type: string
       correlation_id:
         type: string
