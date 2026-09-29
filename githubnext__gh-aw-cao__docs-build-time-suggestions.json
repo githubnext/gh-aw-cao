@@ -1,6 +1,6 @@
 {
-  "source_sha": "78f1755e4777f624c079291892a3d3288422eec0",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "source_sha": "b5e17f5919dba5830e1390fc7becd1fe0f5f4296",
+  "next_category": "dependency installation and caching",
   "evaluations": [
     {
       "evaluated_at": "2026-09-29T11:56:48Z",
@@ -80,6 +80,14 @@
       "category": "artifact transfer and Pages packaging",
       "evidence_run_ids": [36604524724, 36604253625, 36603653834, 36603047076, 36601977784, 36601722455, 36601678984, 36600101229, 36598062583, 36595457780],
       "outcome": "incomplete: began artifact transfer and Pages packaging review on source 78f1755e4777f624c079291892a3d3288422eec0 using 10 successful docs.yml runs from 2026-09-29T16:07:55Z to 2026-09-29T17:24:16Z. Trusted job metadata gathered before the limit showed queue median 0.0s, workflow median about 51s, build median about 38.5s, deploy median about 18.5s on 4 schedule publishes, Upload Pages artifact typically 4-6s, Restore cached CAO Dashboard 1-3s, and all comparable builds skipping Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact. However, additional GitHub Actions reads needed for the full 20-run sample, open-issue duplicate check, and bounded supporting log verification then hit API rate limiting (HTTP 403), so the evaluation stopped rather than infer a terminal recommendation from partial refreshed evidence. No safe-output issue was created.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-09-29T17:59:00Z",
+      "worker_run_id": 36607956524,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [36607531070, 36607481039, 36607327670, 36605966463, 36604524724, 36604253625, 36603653834, 36607327396, 36604113383, 36603512269],
+      "outcome": "no-op: evaluated scheduling, concurrency, and avoidable rebuilds across the latest 20 completed docs.yml runs from the last 14 days, with 7 successful docs.yml runs and 13 excluded completed non-comparable runs (8 action_required workflow_run trigger fan-out placeholders and 5 skipped workflow_run runs). Evidence window 2026-09-29T17:15:28Z to 2026-09-29T17:49:59Z. Trusted metadata showed docs queue median 0.0s (p90 0.0s), workflow execution median 51.0s (p90 89.0s), build median 38.0s (p90 44.0s), publish deploy median 20.0s (p90 20.8s, n=3), and schedule-freshness median 8.0s (p90 8.0s). Successful docs build steps remained stable with Set up Node.js median 4.0s, Restore node_modules median 5.0s, Build documentation median 12.0s, Restore cached CAO Dashboard median 1.0s, and Upload Pages artifact median 5.0s; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on every successful docs build, confirming cache hits. Matching successful cao-dashboard.yml push runs on the same source revisions still spent median 53.0s in build and 7.0s in the separate cache job, but that repeated dashboard-cache rewrite was already captured by prior reusable-dashboard suggestion fingerprints 691cf332ab4dfe9aa28b and 576d1154f6c6fcbd0db2. Within the current scheduling category, the fresh evidence shows docs.yml already suppresses many scheduled rebuilds via the freshness guard, while push and workflow_run builds remain intentional trigger paths; no new source-level scheduling or concurrency change in docs.yml or cao-dashboard.yml is evidenced to save at least 60 seconds or 15 percent of median docs execution time without weakening freshness, correctness, or deployment safety.",
       "suggestion_fingerprint": null
     }
   ]
