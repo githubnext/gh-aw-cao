@@ -4010,6 +4010,37 @@ dashboard:
     }
   });
 
+  it('DLS-VIEW-034 accepts only declarative prompt modes for charts', () => {
+    const chartDocument = `language-version: "0.1.0"
+dashboard:
+  id: chart-prompt
+  title: Chart Prompt
+  pages:
+    - id: operations
+      kind: custom
+      views:
+        - id: summary
+          data:
+            source: runs
+          mark: chart
+          chart: pie
+          prompt: auto
+          encoding:
+            x: { field: run-conclusion, type: nominal }
+            y: { field: duration, type: quantitative }
+`;
+    for (const mode of ['auto', 'none', 'always']) {
+      expect(validateDashboardDocument(chartDocument.replace('prompt: auto', `prompt: ${mode}`)).ok).toBe(true);
+    }
+    for (const mode of ['sometimes', 'true', '42']) {
+      const result = validateDashboardDocument(chartDocument.replace('prompt: auto', `prompt: ${mode}`));
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.errors).toContainEqual(expect.objectContaining({
+        path: '$.dashboard.pages[0].views[0].prompt'
+      }));
+    }
+  });
+
   it('DLS-VIEW-035 accepts Boolean view-lock hints and rejects non-Boolean values', () => {
     const lockedDocument = `language-version: "0.1.0"
 dashboard:

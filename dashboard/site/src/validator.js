@@ -2524,7 +2524,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
   }
   if (view.objective !== undefined) validateStringField(view.objective, `${path}.objective`, true, errors);
   if (view.acceptance !== undefined) validateStringField(view.acceptance, `${path}.acceptance`, true, errors);
-  if (view.prompt !== undefined && !['auto', 'none', 'always'].includes(view.prompt)) {
+  if (view.prompt !== undefined && (typeof view.prompt !== 'string' || !['auto', 'none', 'always'].includes(view.prompt))) {
     errors.push(createError(
       ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
       'prompt must be auto, none, or always.',

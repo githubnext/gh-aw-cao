@@ -157,6 +157,40 @@ describe('semantic view prompt action', () => {
     disposeDashboard(rendered);
   });
 
+  it('applies prompt modes to chart types without changing the composed prompt', () => {
+    for (const chart of ['bar', 'pie']) {
+      for (const [prompt, annotated, expected] of [
+        [undefined, true, true],
+        ['auto', false, false],
+        ['none', true, false],
+        ['always', false, true]
+      ]) {
+        const view = {
+          id: 'test-chart', title: 'Test chart', mark: 'chart', chart,
+          data: { source: 'runs' },
+          encoding: { x: { field: 'workflow', type: 'nominal' }, y: { field: 'count', type: 'quantitative' } },
+          ...(prompt === undefined ? {} : { prompt })
+        };
+        const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ ({
+          languageVersion: '0.1.0',
+          dashboard: {
+            id: 'prompt-modes', title: 'Prompt modes',
+            queries: annotated ? [{ name: 'runs', intent: 'Show runs', objective: 'Investigate', acceptance: 'Verified' }] : [],
+            pages: [{ id: 'overview', kind: 'custom', title: 'Overview', views: [view] }]
+          }
+        });
+        const rendered = renderDashboardView({ document, sources: {} });
+        const button = rendered.querySelector('[data-view-id="test-chart"] .table-intent-button');
+        expect(Boolean(button), `${chart} ${prompt ?? 'default'} annotated=${annotated}`).toBe(expected);
+        if (prompt === 'always') {
+          button?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+          expect(rendered.querySelector('.table-intent-preview')?.textContent).toContain('View: test-chart');
+        }
+        disposeDashboard(rendered);
+      }
+    }
+  });
+
   it('preserves the existing heading of an annotated callout', () => {
     const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ ({
       languageVersion: '0.1.0',
@@ -969,6 +1003,10 @@ describe('presenter built-in and custom pages', () => {
 
     const page = await activatePage(rendered, 'firewall');
     expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] [data-chart-widget="pie"]')).not.toBeNull();
+    const prompt = page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] .table-intent-button');
+    expect(prompt?.getAttribute('aria-label')).toBe('Create prompt for Most blocked domains');
+    prompt?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Each investigated block has a documented disposition');
     expect(page?.querySelector('[data-chart-category="blocked.example"]')).not.toBeNull();
     expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] .chart-legend-pie strong')?.textContent).toBe('3,177,281');
     expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
