@@ -54,7 +54,7 @@ describe('dashboard document validation', () => {
     });
   });
 
-  it('marks Steering, Indexing, Issues, and Memory pages as experimental', () => {
+  it('marks Steering, Indexing, Issues, and Campaign Memory pages as experimental', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentalPageIds = document.dashboard.pages
       .filter((/** @type {{ experimental?: boolean }} */ page) => page.experimental === true)
@@ -64,9 +64,9 @@ describe('dashboard document validation', () => {
       'steering',
       'indexing',
       'issues',
-      'memory',
       'campaign-memory',
     ]));
+    expect(experimentalPageIds).not.toContain('memory');
   });
 
   it('defines the all-campaign Memory page with an in-place repository-memory browser', () => {
@@ -81,7 +81,6 @@ describe('dashboard document validation', () => {
     expect(page).toMatchObject({
       kind: 'custom',
       title: 'Memory',
-      experimental: true,
       views: [{
         id: 'campaign-memory-browser',
         data: { sources: ['campaign-memory-campaigns'] },
@@ -90,6 +89,7 @@ describe('dashboard document validation', () => {
         layout: 'full-view'
       }]
     });
+    expect(page.experimental).not.toBe(true);
     expect(query).toMatchObject({
       from: 'campaigns',
       select: expect.arrayContaining([
