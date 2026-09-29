@@ -391,7 +391,9 @@ test("install.sh reports useful progress and does not silence curl", async (t) =
   assert.doesNotMatch(installerSource, /--silent|curl -s/);
 });
 
-test("streamed install.sh scopes policy to gh's current repository, not the ambient GITHUB_REPOSITORY", async (t) => {
+test("streamed install.sh scopes policy to gh's current repository, not the ambient GITHUB_REPOSITORY", {
+  skip: process.env.CAO_SKIP_WINDOWS_INTEGRATIONS === "1",
+}, async (t) => {
   const { consumer, repository, env, log } = await createConsumer(t, supportedGhAw, { repository: "beta-org/ops.tools" });
   await streamInstaller(consumer, { ...env, GITHUB_REPOSITORY: "catalog-org/ambient" });
   assert.equal(await log(), "add\n");
