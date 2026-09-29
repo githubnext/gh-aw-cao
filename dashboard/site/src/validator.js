@@ -2521,14 +2521,9 @@ function validateView(view, viewNode, path, viewIds, errors) {
   }
   if (view.intent !== undefined) {
     validateStringField(view.intent, `${path}.intent`, true, errors);
-    if (view.mark !== 'element') {
-      errors.push(createError(
-        ERROR_CODES.incompatibleMarkChannelTypeOrTimeUnit,
-        'intent is allowed only when mark is "element".',
-        `${path}.intent`
-      ));
-    }
   }
+  if (view.objective !== undefined) validateStringField(view.objective, `${path}.objective`, true, errors);
+  if (view.acceptance !== undefined) validateStringField(view.acceptance, `${path}.acceptance`, true, errors);
   validateCallout(
     view.callout,
     getValueNodeByKey(viewNode, 'callout'),
@@ -3979,6 +3974,8 @@ function validateQueries(queries, queriesNode, errors) {
     validateObjectKeys(queryNode, QUERY_KEYS, path, errors);
     validateRequiredIdentifier(query.name, `${path}.name`, 'query name', errors);
     validateStringField(query.intent, `${path}.intent`, true, errors);
+    if (query.objective !== undefined) validateStringField(query.objective, `${path}.objective`, true, errors);
+    if (query.acceptance !== undefined) validateStringField(query.acceptance, `${path}.acceptance`, true, errors);
     validateOptionalStringField(query.description, `${path}.description`, errors);
     const parameters = validateQueryParameters(
       query.parameters,
