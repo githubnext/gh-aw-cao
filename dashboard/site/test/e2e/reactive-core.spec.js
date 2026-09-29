@@ -1,8 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 
+function domModuleSource() {
+  const debugSource = readFileSync(new URL('../../src/debug.js', import.meta.url), 'utf8');
+  const debugModuleUrl = `data:text/javascript;charset=utf-8,${encodeURIComponent(debugSource)}`;
+  return readFileSync(new URL('../../src/dom.js', import.meta.url), 'utf8')
+    .replace("'./debug.js'", JSON.stringify(debugModuleUrl));
+}
+
 test('DLS-CONF-004 reactive DOM nodes render stable keyed output in browser', async ({ page }) => {
-  const domSource = readFileSync(new URL('../../src/dom.js', import.meta.url), 'utf8');
+  const domSource = domModuleSource();
   const domModuleUrl = `data:text/javascript;charset=utf-8,${encodeURIComponent(domSource)}`;
 
   await page.setContent(`
@@ -26,7 +33,7 @@ test('DLS-CONF-004 reactive DOM nodes render stable keyed output in browser', as
 });
 
 test('reactive shadow-tree updates preserve focused keyed nodes in browser', async ({ page }) => {
-  const domSource = readFileSync(new URL('../../src/dom.js', import.meta.url), 'utf8');
+  const domSource = domModuleSource();
   const reconcilerSource = readFileSync(new URL('../../src/dom-reconciler.js', import.meta.url), 'utf8')
     .replace("'./dom.js'", JSON.stringify(`data:text/javascript;charset=utf-8,${encodeURIComponent(domSource)}`));
   const reconcilerModuleUrl = `data:text/javascript;charset=utf-8,${encodeURIComponent(reconcilerSource)}`;
