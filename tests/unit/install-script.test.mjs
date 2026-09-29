@@ -370,7 +370,9 @@ for (const [state, initialVersion, expectedVersion, expectedLog] of [
   [`gh-aw ${supportedGhAw}`, supportedGhAw, supportedGhAw, "add\n"],
   [`gh-aw ${newerGhAw}`, newerGhAw, newerGhAw, "add\n"],
 ]) {
-  test(`streamed install.sh with ${state} materializes the runtime and initializes policy`, async (t) => {
+  test(`streamed install.sh with ${state} materializes the runtime and initializes policy`, {
+    skip: initialVersion && process.env.CAO_SKIP_WINDOWS_INTEGRATIONS === "1",
+  }, async (t) => {
     const { consumer, repository, env, log } = await createConsumer(t, initialVersion);
     await streamInstaller(consumer, env);
     assert.equal(await log(), expectedLog);
