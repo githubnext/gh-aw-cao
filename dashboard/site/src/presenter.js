@@ -291,7 +291,11 @@ export function renderDashboard(input) {
           const page = resolvedPage();
           if (!page) throw new Error(`Dashboard page "${pageId}" is not available.`);
           updateHorizon(pageSources);
+          const pageHasData = Object.values(pageSources).some(
+            (source) => Array.isArray(source?.rows) && source.rows.length > 0
+          );
           const rendered = showInitialLoadingSkeleton
+              && (page.id === 'overview' || !pageHasData)
             ? renderPageLoadingSkeleton(page)
             : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, effectiveQueryContext);
           debugPerformance('page render', {

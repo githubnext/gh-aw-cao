@@ -701,6 +701,63 @@ describe('dashboard DOM provenance', () => {
     expect(page?.textContent).not.toContain('This view cannot be shown because its data source is unavailable.');
   });
 
+  it('renders page data that arrives before the initial dashboard snapshot completes', async () => {
+    const rendered = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'partial-load-dashboard',
+          title: 'Partial Load',
+          pages: [{
+            id: 'repositories',
+            kind: 'custom',
+            title: 'Repositories',
+            views: [{
+              id: 'repository-activity',
+              title: 'Repository Activity',
+              mark: 'table',
+              data: { source: 'repository-activity' },
+              encoding: {
+                columns: [{ field: 'repository', type: 'nominal', title: 'Repository' }]
+              }
+            }],
+            sections: [{
+              id: 'main',
+              title: 'Main',
+              layout: 'full',
+              views: ['repository-activity']
+            }]
+          }]
+        }
+      },
+      sources: {},
+      loading: true,
+      loadPageSources: async () => ({
+        'repository-activity': {
+          source: 'repository-activity',
+          rows: [{ repository: 'githubnext/gh-aw-cao' }],
+          metadata: {
+            'source-id': 'repository-activity',
+            'source-kind': 'fixture',
+            'as-of': '',
+            'retrieved-at': '',
+            completeness: 'partial',
+            freshness: 'fresh',
+            availability: 'available'
+          }
+        }
+      })
+    });
+    document.body.append(rendered);
+    const page = await activatePage(rendered, 'repositories');
+
+    await vi.waitFor(() => {
+      expect(page?.querySelector('td[data-field="repository"]')?.textContent).toBe('githubnext/gh-aw-cao');
+    });
+    expect(page?.querySelector('.dashboard-view-skeleton')).toBeNull();
+    rendered.remove();
+  });
+
   it('keeps Overview metrics and empty inventory hidden until initial loading completes', async () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
