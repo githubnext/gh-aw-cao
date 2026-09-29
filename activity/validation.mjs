@@ -336,7 +336,12 @@ export async function validateSecurity(root, policySource, installed = []) {
         remediation: "Replace pull_request_target with a least-privilege pull_request design",
       }));
     }
-    for (const match of source.matchAll(/^\s*(?:-\s*)?uses:\s*([^/\s]+\/[^@\s]+)@([^\s#]+)/gm)) {
+    for (const match of source.matchAll(/^\s*(?:-\s*)?uses:\s*([^/\s]+\/[^@\s]+)@([^\s#]+)([^\r\n]*)/gm)) {
+      if (match[1] === "githubnext/gh-aw-cao/.github/workflows/cao-package-publish.yml"
+        && match[2] === "main"
+        && match[3].trim() === "# zizmor: ignore[unpinned-uses] protected default-branch publisher") {
+        continue;
+      }
       if (!/^[0-9a-f]{40}$/i.test(match[2])) {
         findings.push(finding("unpinned-third-party-action", "error", "security", "Workflow uses an unpinned third-party Action", {
           files: [relativePath],

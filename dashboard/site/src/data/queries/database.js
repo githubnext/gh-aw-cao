@@ -100,6 +100,12 @@ function hasRows(source) {
   );
 }
 
+/** @param {unknown} source */
+function hasUsableRows(source) {
+  if (!hasRows(source)) return false;
+  return /** @type {{ metadata?: { availability?: unknown } }} */ (source).metadata?.availability !== 'unavailable';
+}
+
 /**
  * @param {string} queryName
  * @param {Record<string, import('../../presenter.js').LogicalSourceInput>} inputs
@@ -421,7 +427,7 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
   }
   const databaseRequested = [...requested].filter((name) => (
     DATABASE_TABLE_SOURCES.has(name)
-    || !hasRows(logicalSources[name])
+    || !hasUsableRows(logicalSources[name])
   ));
   const stores = [...new Set(databaseRequested.flatMap(queryStores))];
   const transactionRequested = stores.includes('transactions');
@@ -441,7 +447,7 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
     const logical = /** @type {import('../../presenter.js').LogicalSourceInput | undefined} */ (sources[name]);
     if (logical
         && !DATABASE_TABLE_SOURCES.has(name)
-        && (!databaseQueryIndex.has(name) || logical.rows.length > 0)) {
+        && (!databaseQueryIndex.has(name) || hasUsableRows(logical))) {
       result[name] = logical;
       continue;
     }
