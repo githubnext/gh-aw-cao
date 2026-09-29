@@ -24,12 +24,17 @@ function rhythmRows(currentOffset = 0) {
       days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((label, index) => ({
         label,
         date: `2026-09-${String(7 + index).padStart(2, '0')}`,
-        current: index + 1 + currentOffset,
+        current: index < 3 ? index + 1 + currentOffset : 0,
         previous: 7 - index,
         reached: index < 3
       }))
     }
   }];
+}
+
+/** @param {Element | null | undefined} bar */
+function barHeight(bar) {
+  return bar instanceof HTMLElement ? Number.parseFloat(bar.style.height) : undefined;
 }
 
 describe('Overview component boundaries', () => {
@@ -71,23 +76,48 @@ describe('Overview component boundaries', () => {
     expect(station.element.querySelector('strong')?.textContent).toBe('1');
   });
 
-  it('rhythm owns the seven-day chart, period selection, and accessible descriptions', () => {
+  it('rhythm layers both weeks on every day with independent heights and accessible descriptions', () => {
     const controller = new AbortController();
     const rows = state(rhythmRows());
     const rendered = renderFactoryRhythm({ rows: rows.get }, { signal: controller.signal });
     const days = [...rendered.querySelectorAll('.factory-rhythm-day')];
 
     expect(days).toHaveLength(7);
-    expect(days[0]?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 1 successful run this week.');
-    expect(days[3]?.getAttribute('aria-label')).toBe('Thu 2026-09-10: 4 successful runs last week.');
+    expect(rendered.getAttribute('aria-label')).toContain('this week and last week');
+    expect(rendered.querySelector('.graph-widget-y-axis-label')?.textContent).toBe('Successful runs');
+    expect(rendered.querySelector('.graph-widget-chart > .factory-rhythm-bars')).not.toBeNull();
+    expect(days[0]?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 1 successful run this week; 7 successful runs last week.');
+    expect(days[3]?.getAttribute('aria-label')).toBe('Thu 2026-09-10: 0 successful runs this week (day not yet reached); 4 successful runs last week.');
     expect(rendered.querySelectorAll('.factory-rhythm-day-future')).toHaveLength(4);
+    expect(rendered.querySelectorAll('.factory-rhythm-current')).toHaveLength(7);
+    expect(rendered.querySelectorAll('.factory-rhythm-baseline')).toHaveLength(7);
+    expect(barHeight(days[0]?.querySelector('.factory-rhythm-current'))).toBeCloseTo(100 / 7);
+    expect(barHeight(days[0]?.querySelector('.factory-rhythm-baseline'))).toBe(100);
+    expect(barHeight(days[3]?.querySelector('.factory-rhythm-current'))).toBe(5);
+    expect(barHeight(days[3]?.querySelector('.factory-rhythm-baseline'))).toBeCloseTo(400 / 7);
 
     rows.set(rhythmRows(10));
-    expect(days[0]?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 11 successful runs this week.');
+    expect(days[0]?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 11 successful runs this week; 7 successful runs last week.');
+    expect(barHeight(days[0]?.querySelector('.factory-rhythm-current'))).toBeCloseTo(1100 / 13);
+    expect(barHeight(days[0]?.querySelector('.factory-rhythm-baseline'))).toBeCloseTo(700 / 13);
+    expect(days[3]?.getAttribute('aria-label')).toContain('day not yet reached');
+    expect(barHeight(days[3]?.querySelector('.factory-rhythm-baseline'))).toBeCloseTo(400 / 13);
 
     controller.abort();
     rows.set([]);
-    expect(days[0]?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 11 successful runs this week.');
+    expect(days[0]?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 11 successful runs this week; 7 successful runs last week.');
+  });
+
+  it('rhythm retains both week indicators when the source has no data', () => {
+    const controller = new AbortController();
+    const rendered = renderFactoryRhythm(binding(), { signal: controller.signal });
+    expect(rendered.querySelectorAll('.factory-rhythm-day')).toHaveLength(7);
+    expect(rendered.querySelector('.graph-widget-y-axis-label')?.textContent).toBe('Successful runs');
+    expect(rendered.querySelectorAll('.factory-rhythm-bar-pair i')).toHaveLength(14);
+    expect(rendered.querySelector('.factory-rhythm-day')?.getAttribute('aria-label'))
+      .toBe('Mon: 0 successful runs this week (day not yet reached); 0 successful runs last week.');
+    expect(barHeight(rendered.querySelector('.factory-rhythm-current'))).toBe(5);
+    controller.abort();
   });
 
   it('floor composes selected stations and owns their aggregate accessible summary', () => {
