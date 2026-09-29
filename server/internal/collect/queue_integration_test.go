@@ -610,6 +610,34 @@ func TestAdmitterQueuesErasureWithoutALake(t *testing.T) {
 	}
 }
 
+func TestInstallationRemovalSerializesMembershipSnapshot(t *testing.T) {
+	store, ctx := integrationStore(t)
+	enrollment := Enrollment{Store: store}
+	if err := enrollment.AddRepositories(ctx, 17, []string{"Acme/first", "acme/second"}); err != nil {
+		t.Fatal(err)
+	}
+	var snapshot []string
+	removed, err := enrollment.RemoveInstallationBefore(ctx, 17, func(ctx context.Context, repositories []string) error {
+		snapshot = append([]string(nil), repositories...)
+		if err := enrollment.AddRepositories(ctx, 18, []string{"acme/racing"}); !errors.Is(err, ErrEnrollmentMutationBusy) {
+			t.Fatalf("concurrent enrollment mutation error = %v, want busy", err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snapshot) != 2 || snapshot[0] != "acme/first" || snapshot[1] != "acme/second" {
+		t.Fatalf("prepared erasure snapshot = %v", snapshot)
+	}
+	if len(removed) != len(snapshot) || removed[0] != snapshot[0] || removed[1] != snapshot[1] {
+		t.Fatalf("removed repositories = %v, want prepared snapshot %v", removed, snapshot)
+	}
+	if enrolled, err := enrollment.Enrolled(ctx, "acme/racing"); err != nil || enrolled {
+		t.Fatalf("repository from blocked mutation enrolled=%t, err=%v", enrolled, err)
+	}
+}
+
 func TestTransferredRepositoryIgnoresStaleInstallationRemoval(t *testing.T) {
 	store, ctx := integrationStore(t)
 	enrollment := Enrollment{Store: store}
