@@ -249,58 +249,99 @@ func (d Doctor) checkGenerations(ctx context.Context) Check {
 		return failed(id, areaData, title, err)
 	}
 	retention := d.retainGenerations()
-	trackedSet := map[string]struct{}{}
-	for _, name := range tracked {
-		trackedSet[name] = struct{}{}
-	}
-	var orphans []string
-	for _, name := range stored {
-		if _, ok := trackedSet[name]; !ok && name != active.Generation {
-			orphans = append(orphans, name)
-		}
-	}
-	sort.Strings(orphans)
+	classification := classifyGenerationRetention(tracked, stored, active.Generation, retention)
+	doctorLog.Printf("generation retention classified status=%s reason=%s", classification.status, classification.reason)
 	details := []Detail{
 		detail("tracked", fmt.Sprint(len(tracked))),
 		detail("storedGenerations", storedLabel(len(stored), complete)),
 		detail("retention", fmt.Sprint(retention)),
 		detail("activeTracked", fmt.Sprint(contains(tracked, active.Generation))),
 	}
-	if len(orphans) > 0 {
-		sample := orphans
+	if len(classification.orphans) > 0 {
+		sample := classification.orphans
 		if len(sample) > 3 {
 			sample = sample[:3]
 		}
 		details = append(details, detail("untrackedSample", strings.Join(sample, ", ")))
-		return Check{
-			ID: id, Area: areaData, Title: title, Status: StatusFail,
-			Summary: fmt.Sprintf("%d generations hold keys but are not in the reclamation registry", len(orphans)),
-			Details: details,
-			Remedy:  "these generations will never be reclaimed and will grow Redis without bound; drop them and reproject with a build that tracks generations",
+	}
+	return Check{
+		ID: id, Area: areaData, Title: title, Status: classification.status,
+		Summary: classification.summary, Details: details, Remedy: classification.remedy,
+	}
+}
+
+// generationRetentionReason names why classifyGenerationRetention reached its
+// status, stable across summary wording changes so it is useful to log
+// without exposing generation identifiers.
+type generationRetentionReason string
+
+const (
+	generationReasonOrphans         generationRetentionReason = "orphans"
+	generationReasonOverRetention   generationRetentionReason = "over-retention"
+	generationReasonActiveUntracked generationRetentionReason = "active-untracked"
+	generationReasonHealthy         generationRetentionReason = "healthy"
+)
+
+// generationRetentionClassification is the status, summary, remedy, and
+// orphan sample classifyGenerationRetention derives from the tracked and
+// stored generation sets.
+type generationRetentionClassification struct {
+	status  Status
+	summary string
+	remedy  string
+	reason  generationRetentionReason
+	orphans []string
+}
+
+// classifyGenerationRetention decides the data.generations check's outcome
+// from the reclamation registry (tracked), the generations that actually
+// hold keys (stored), the active generation, and the configured retention.
+// It is a pure function so every threshold — orphaned generations, retention
+// overrun, and an untracked active generation — is testable without a fake
+// Redis SCAN reply.
+func classifyGenerationRetention(tracked, stored []string, activeGeneration string, retention int) generationRetentionClassification {
+	trackedSet := map[string]struct{}{}
+	for _, name := range tracked {
+		trackedSet[name] = struct{}{}
+	}
+	var orphans []string
+	for _, name := range stored {
+		if _, ok := trackedSet[name]; !ok && name != activeGeneration {
+			orphans = append(orphans, name)
+		}
+	}
+	sort.Strings(orphans)
+	if len(orphans) > 0 {
+		return generationRetentionClassification{
+			status:  StatusFail,
+			summary: fmt.Sprintf("%d generations hold keys but are not in the reclamation registry", len(orphans)),
+			remedy:  "these generations will never be reclaimed and will grow Redis without bound; drop them and reproject with a build that tracks generations",
+			reason:  generationReasonOrphans,
+			orphans: orphans,
 		}
 	}
 	// Retention plus a small allowance: reclamation also honours a grace
 	// period, so being one or two over the configured retention is normal.
 	if len(tracked) > retention+2 {
-		return Check{
-			ID: id, Area: areaData, Title: title, Status: StatusWarn,
-			Summary: fmt.Sprintf("%d generations are retained against a retention of %d", len(tracked), retention),
-			Details: details,
-			Remedy:  "reclamation is not keeping up; confirm projections are completing and consider lowering CAO_COLLECT_RETAIN_GENERATIONS",
+		return generationRetentionClassification{
+			status:  StatusWarn,
+			summary: fmt.Sprintf("%d generations are retained against a retention of %d", len(tracked), retention),
+			remedy:  "reclamation is not keeping up; confirm projections are completing and consider lowering CAO_COLLECT_RETAIN_GENERATIONS",
+			reason:  generationReasonOverRetention,
 		}
 	}
-	if active.Generation != "" && !contains(tracked, active.Generation) {
-		return Check{
-			ID: id, Area: areaData, Title: title, Status: StatusWarn,
-			Summary: "the active generation is not in the reclamation registry",
-			Details: details,
-			Remedy:  "it is safe now, because reclamation never drops the active generation, but it will not be reclaimed after it is superseded",
+	if activeGeneration != "" && !contains(tracked, activeGeneration) {
+		return generationRetentionClassification{
+			status:  StatusWarn,
+			summary: "the active generation is not in the reclamation registry",
+			remedy:  "it is safe now, because reclamation never drops the active generation, but it will not be reclaimed after it is superseded",
+			reason:  generationReasonActiveUntracked,
 		}
 	}
-	return Check{
-		ID: id, Area: areaData, Title: title, Status: StatusPass,
-		Summary: fmt.Sprintf("%d generations retained against a retention of %d", len(tracked), retention),
-		Details: details,
+	return generationRetentionClassification{
+		status:  StatusPass,
+		summary: fmt.Sprintf("%d generations retained against a retention of %d", len(tracked), retention),
+		reason:  generationReasonHealthy,
 	}
 }
 
