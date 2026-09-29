@@ -3,7 +3,10 @@
  */
 
 import { h } from '../dom.js';
+import { createDebug } from '../debug.js';
 import { octicon } from '../octicons.js';
+
+const debugUiPrimitives = createDebug('ui-primitives');
 
 /**
  * @typedef {{
@@ -887,11 +890,16 @@ export function renderCheckbox({
  * @returns {Promise<boolean>}
  */
 export async function copyTextToClipboard(content) {
-  if (typeof navigator?.clipboard?.writeText !== 'function') return false;
+  if (typeof navigator?.clipboard?.writeText !== 'function') {
+    debugUiPrimitives({ operation: 'copy-to-clipboard', outcome: 'unavailable' });
+    return false;
+  }
   try {
     await navigator.clipboard.writeText(content);
+    debugUiPrimitives({ operation: 'copy-to-clipboard', outcome: 'succeeded', length: content.length });
     return true;
-  } catch {
+  } catch (error) {
+    debugUiPrimitives({ operation: 'copy-to-clipboard', outcome: 'failed', errorName: error instanceof Error ? error.name : 'unknown' });
     return false;
   }
 }
