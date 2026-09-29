@@ -157,11 +157,10 @@ test('Ingestion shows CAO Activity status, size trend, and retained transactions
     </script>
   `);
 
-  const experimentalNavigation = page.locator('.nav-section').filter({
-    has: page.locator('summary', { hasText: /^Experimental$/ })
+  const updatesNavigation = page.locator('.nav-section').filter({
+    has: page.locator('summary', { hasText: /^Updates$/ })
   });
-  await experimentalNavigation.locator('summary').click();
-  await experimentalNavigation.getByRole('link', { name: 'Ingestion, Experimental' }).click();
+  await updatesNavigation.getByRole('link', { name: 'Ingestion, Experimental' }).click();
 
   const root = page.locator('.dashboard-root');
   const transactionsPage = page.locator('[data-page-id="indexing"]');
@@ -1022,7 +1021,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(page).toHaveURL(/#page-memory$/);
   await expect(memoryView.getByRole('link')).toHaveCount(0);
   await expect(updatesSection.locator('summary')).toHaveText('Updates');
-  await expect(updatesSection.getByRole('link')).toHaveText(['Updates', 'Settings']);
+  await expect(updatesSection.getByRole('link')).toHaveText(['Updates', 'Marketplace', 'Ingestion', 'Settings']);
   await expect(updatesSection).toHaveClass(/nav-section-bottom/);
   await expect.poll(async () => {
     const [navBox, manageBox] = await Promise.all([
@@ -1042,9 +1041,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     'Operational Value',
     'Friction',
     'Skills',
-    'Steering',
-    'Marketplace',
-    'Ingestion'
+    'Steering'
   ]);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   await expect(page.locator('.account-menu')).toHaveCount(0);

@@ -996,9 +996,7 @@
           "operational-value",
           "friction",
           "skills",
-          "steering",
-          "marketplace",
-          "indexing"
+          "steering"
         ]
       },
       {
@@ -1006,6 +1004,8 @@
         "placement": "bottom",
         "pages": [
           "maintenance",
+          "marketplace",
+          "indexing",
           "configuration"
         ]
       }
