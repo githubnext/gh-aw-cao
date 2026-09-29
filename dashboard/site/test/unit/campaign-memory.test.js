@@ -200,6 +200,67 @@ describe('campaign repository memory', () => {
     expect(document.activeElement).toBe(content);
   });
 
+  it('cancels an in-flight all-campaign file fetch when another file is selected', async () => {
+    memoryApi.listAll.mockResolvedValue([{
+      branch: 'memory/ambient-context',
+      commit: 'a'.repeat(40),
+      files: [
+        { path: 'notes/first.md', oid: 'b'.repeat(40), size: 9 },
+        { path: 'notes/second.md', oid: 'c'.repeat(40), size: 9 },
+      ],
+      omitted: {},
+    }]);
+    /** @type {(value: { content: string }) => void} */
+    let finishFirstRead = () => {};
+    memoryApi.read
+      .mockImplementationOnce((_campaign, _path, signal) => new Promise((resolve, reject) => {
+        finishFirstRead = resolve;
+        signal.addEventListener('abort', () => reject(Object.assign(new Error('Aborted'), { name: 'AbortError' })));
+      }))
+      .mockResolvedValueOnce({ content: '# Second' });
+
+    const rendered = renderAllCampaignMemory({
+      pageId: 'memory',
+      title: 'Campaign memory',
+      sourceNames: ['campaign-memory-campaigns'],
+      sources: {
+        'campaign-memory-campaigns': {
+          source: 'campaign-memory-campaigns',
+          rows: [{ campaign: 'ambient-context', 'campaign-name': 'Ambient Context' }],
+          metadata: {
+            'source-id': 'campaign-memory-test',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-26T00:00:00Z',
+            'retrieved-at': '2026-09-26T00:00:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available',
+          },
+        },
+      },
+      contextDetails: [],
+      headingTag: 'h3',
+    });
+    document.body.append(rendered);
+    await vi.waitFor(() => expect(rendered.querySelectorAll('.campaign-memory-file')).toHaveLength(2));
+
+    /** @type {HTMLDetailsElement} */ (rendered.querySelector('.cao-memory-campaign-branch')).open = true;
+    const [firstButton, secondButton] = [...rendered.querySelectorAll('.campaign-memory-file')];
+    /** @type {HTMLButtonElement} */ (firstButton).click();
+    await vi.waitFor(() => expect(memoryApi.read).toHaveBeenCalledTimes(1));
+    expect(firstButton.getAttribute('aria-current')).toBe('true');
+
+    /** @type {HTMLButtonElement} */ (secondButton).click();
+    await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Second'));
+    expect(firstButton.hasAttribute('aria-current')).toBe(false);
+    expect(secondButton.getAttribute('aria-current')).toBe('true');
+
+    // The superseded fetch resolving afterwards must not overwrite the newer content.
+    finishFirstRead({ content: '# First' });
+    await Promise.resolve();
+    expect(rendered.querySelector('pre')?.textContent).toBe('# Second');
+  });
+
   it('shows campaigns without memory entries as non-interactive disabled rows', async () => {
     memoryApi.listAll.mockResolvedValue([null,
       { branch: 'memory/empty', commit: 'a'.repeat(40), files: [], omitted: {} },
