@@ -662,8 +662,10 @@ function compareBackends(results, queries) {
   const mismatches = [];
   for (const [backend, rowsByName] of Object.entries(results)) {
     if (backend === baselineName) continue;
-    for (const [name, baselineRows] of Object.entries(results[baselineName])) {
-      const query = queryIndex.get(name);
+    for (const query of queries) {
+      const { name } = query;
+      if (!Object.hasOwn(results[baselineName], name)) continue;
+      const baselineRows = results[baselineName][name];
       if (backend === "redis" && query?.from === "transactions") continue;
       const ordered = (query?.["order-by"]?.length ?? 0) > 0;
       const expected = normalizedParityRows(query, baselineRows, ordered);
