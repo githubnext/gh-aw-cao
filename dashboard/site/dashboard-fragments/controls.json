@@ -935,6 +935,9 @@
           "id": "security-firewall-most-blocked-domains",
           "title": "Most blocked domains",
           "description": "The ten domains with the highest observed blocked request totals.",
+          "objective": "Investigate blocked firewall domains and determine whether the affected workflows need an approved egress configuration change.",
+          "acceptance": "Each investigated block has a documented disposition; any needed configuration change is reviewed and verified against fresh firewall evidence.",
+          "prompt": "auto",
           "data": {
             "source": "firewall-most-blocked-domains"
           },

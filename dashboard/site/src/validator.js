@@ -2524,6 +2524,13 @@ function validateView(view, viewNode, path, viewIds, errors) {
   }
   if (view.objective !== undefined) validateStringField(view.objective, `${path}.objective`, true, errors);
   if (view.acceptance !== undefined) validateStringField(view.acceptance, `${path}.acceptance`, true, errors);
+  if (view.prompt !== undefined && !['auto', 'none', 'always'].includes(view.prompt)) {
+    errors.push(createError(
+      ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+      'prompt must be auto, none, or always.',
+      `${path}.prompt`
+    ));
+  }
   validateCallout(
     view.callout,
     getValueNodeByKey(viewNode, 'callout'),
