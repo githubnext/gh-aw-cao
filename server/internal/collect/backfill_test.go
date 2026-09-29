@@ -1,6 +1,7 @@
 package collect
 
 import (
+	"errors"
 	"slices"
 	"testing"
 	"time"
@@ -88,5 +89,37 @@ func TestSortByRecencyHandlesEmptyAndSingleton(t *testing.T) {
 	sortByRecency(single)
 	if len(single) != 1 || single[0].name != "octo/api" {
 		t.Fatalf("single = %+v", single)
+	}
+}
+
+func TestFailedBackfillStateSetsPhaseErrorAndCompletedAt(t *testing.T) {
+	state := BackfillState{
+		Phase:         "enumerating",
+		StartedAt:     "2026-01-01T00:00:00Z",
+		Installations: 3,
+	}
+	cause := errors.New("enumeration failed")
+	completedAt := "2026-01-01T00:05:00Z"
+	failed := failedBackfillState(state, cause, completedAt)
+	if failed.Phase != "failed" {
+		t.Fatalf("Phase = %q, want %q", failed.Phase, "failed")
+	}
+	if failed.Error != cause.Error() {
+		t.Fatalf("Error = %q, want %q", failed.Error, cause.Error())
+	}
+	if failed.CompletedAt != completedAt {
+		t.Fatalf("CompletedAt = %q, want %q", failed.CompletedAt, completedAt)
+	}
+	// Fields unrelated to the failure transition must survive untouched.
+	if failed.StartedAt != state.StartedAt || failed.Installations != state.Installations {
+		t.Fatalf("failed = %+v, want StartedAt/Installations preserved from %+v", failed, state)
+	}
+}
+
+func TestFailedBackfillStateOverwritesPriorTerminalFields(t *testing.T) {
+	state := BackfillState{Phase: "seeding", Error: "", CompletedAt: ""}
+	failed := failedBackfillState(state, errors.New("queue unavailable"), "2026-02-02T00:00:00Z")
+	if failed.Phase != "failed" || failed.Error != "queue unavailable" || failed.CompletedAt != "2026-02-02T00:00:00Z" {
+		t.Fatalf("failed = %+v", failed)
 	}
 }

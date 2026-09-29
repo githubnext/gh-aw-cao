@@ -214,12 +214,24 @@ func (b Backfill) seed(ctx context.Context, repositories []enrolledRepository) (
 	return queued, nil
 }
 
-func (b Backfill) fail(ctx context.Context, state BackfillState, cause error) (BackfillState, error) {
+// failedBackfillState transitions state into its terminal failed phase:
+// phase becomes "failed", cause's message is recorded as the error, and
+// completedAt marks when the failure was observed. It is a pure function
+// extracted from Backfill.fail so the terminal-state transition is testable
+// without a store or a real clock.
+func failedBackfillState(state BackfillState, cause error, completedAt string) BackfillState {
 	state.Phase = "failed"
 	state.Error = cause.Error()
-	state.CompletedAt = time.Now().UTC().Format(time.RFC3339Nano)
-	b.publish(ctx, state)
-	return state, cause
+	state.CompletedAt = completedAt
+	return state
+}
+
+func (b Backfill) fail(ctx context.Context, state BackfillState, cause error) (BackfillState, error) {
+	previousPhase := state.Phase
+	failed := failedBackfillState(state, cause, time.Now().UTC().Format(time.RFC3339Nano))
+	backfillLog.Printf("backfill aborted phase=%s", previousPhase)
+	b.publish(ctx, failed)
+	return failed, cause
 }
 
 func (b Backfill) publish(ctx context.Context, state BackfillState) {
