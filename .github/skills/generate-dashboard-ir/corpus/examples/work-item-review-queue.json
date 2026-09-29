@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "id": "work-item-review-queue",
+  "task": {
+    "actor": "Repository operator",
+    "subject": "A delegated work-item review workflow for repositories managed through githubnext/gh-aw-cao",
+    "intent": "Let an operator see whether a delegated work-item review workflow is activating on stable work items that require operator review, producing bounded review outputs, and attaining its intended value of resolving review-eligible work items with accepted evidence.",
+    "activationConditions": [
+      "A repository operator enables a standalone delegated work-item review workflow on githubnext/gh-aw-cao.",
+      "A stable delegated work item enters a lifecycle state and next action that requires operator review within the selected horizon.",
+      "A workflow run associated with that review queue is observed in the dashboard horizon."
+    ],
+    "requiredEffects": [
+      "For each review-eligible work item opportunity, the workflow evaluates the delegated work item and emits at most one bounded safe review output tied to that same repository and workflow scope.",
+      "Accepted repository evidence must remain limited to the delegated work item state, any linked outcome for the same repository and workflow, and the workflow run provenance for that review opportunity.",
+      "The workflow must leave work items that are already resolved, waiting on another actor, or lack sufficient evidence without a new durable output."
+    ],
+    "noopConditions": [
+      "The work item is already verified or ended before the workflow evaluates it.",
+      "The work item is waiting on another actor or has no next action for the repository operator.",
+      "A prior accepted workflow output already covers the same review opportunity."
+    ],
+    "successConditions": [
+      "The workflow activates for review-eligible work items within the selected horizon.",
+      "Observed outcomes for eligible review opportunities are accepted or intentionally no-op with matching evidence strength and repository scope.",
+      "Operational-value observations preserve the ordered metrics published by gh-aw for each workflow run."
+    ],
+    "uncertainties": [
+      "A successful run does not by itself prove the durable review output was accepted.",
+      "Pending or ignored safe outputs do not establish attained work-item resolution.",
+      "A null operational-value metric must remain distinct from a numeric zero."
+    ]
+  },
+  "operationalValue": {
+    "upstream": "gh-aw",
+    "orderedMetrics": [
+      {
+        "id": "work-item-review-attainment",
+        "unit": "ratio",
+        "direction": "higher_is_better"
+      }
+    ],
+    "preservation": "Preserve metric IDs, order, native finite values or null, units, and directions exactly as published by gh-aw. Use an attainment-only baseline with null value and null cutoff because this synthetic task has no immutable pre-adoption evidence. Mature attainment only when accepted repository evidence is present for the bound review opportunity; use zero when a completed review opportunity produces explicit rejected evidence; keep missing evidence null rather than inferring attainment."
+  },
+  "logicalSources": {
+    "workflows": {
+      "rows": [
+        {
+          "organization": "githubnext",
+          "repository": "gh-aw-cao",
+          "workflow": ".github/workflows/work-item-review.yml",
+          "workflow-name": "Work item review",
+          "workflow-role": "standalone",
+          "workflow-active": "true",
+          "rollout-mode": "review",
+          "observed-at": "2026-09-01T00:00:00Z",
+          "repository-link": {
+            "relation": "repository",
+            "href": "https://github.com/githubnext/gh-aw-cao",
+            "label": "githubnext/gh-aw-cao"
+          },
+          "workflow-link": {
+            "relation": "workflow",
+            "href": "https://github.com/githubnext/gh-aw-cao/actions/workflows/work-item-review.yml",
+            "label": "Work item review"
+          }
+        }
+      ]
+    }
+  },
+  "dashboard": "work-item-review-queue.dashboard.yml"
+}

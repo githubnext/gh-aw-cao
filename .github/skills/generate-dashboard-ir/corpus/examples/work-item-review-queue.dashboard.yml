@@ -1,0 +1,136 @@
+language-version: "0.1.0"
+dashboard:
+  id: work-item-review-queue
+  title: Work item review queue
+  defaults:
+    scope:
+      repositories:
+        - githubnext/gh-aw-cao
+      workflows:
+        - .github/workflows/work-item-review.yml
+    time:
+      range: 30d
+  pages:
+    - id: work-item-review-queue
+      kind: custom
+      title: Work item review queue
+      description: Shows whether the delegated work-item review workflow is activating on review-eligible work items, producing accepted outputs, and attaining its native work-item review metric.
+      sections:
+        - id: review-summary
+          title: Review summary
+          description: Executive summary of work-item review activation, exceptions, and attainment for this workflow.
+          layout: full
+          views:
+            - review-queue-disposition
+            - review-activation-trend
+            - review-exceptions
+            - review-attainment-trend
+      views:
+        - id: review-queue-disposition
+          title: Review-eligible work-item states
+          description: Current distribution of review-eligible delegated work items by lifecycle state in the selected horizon.
+          data:
+            source: work-items
+            filters:
+              lifecycle-state: in-review
+          mark: chart
+          chart: pie
+          layout: full
+          disclosure: essential
+          encoding:
+            x:
+              field: lifecycle-state
+              type: ordinal
+              title: Lifecycle state
+            y:
+              field: work-item-id
+              type: quantitative
+              aggregate: distinct-count
+              title: Work items
+        - id: review-activation-trend
+          title: Review workflow activation trend
+          description: Daily workflow runs show whether the work-item review workflow is activating on delegated review opportunities.
+          data:
+            source: runs
+          mark: chart
+          chart: line
+          layout: half
+          disclosure: essential
+          encoding:
+            x:
+              field: started-at
+              type: temporal
+              time-unit: day
+              title: Started
+            y:
+              field: run
+              type: quantitative
+              aggregate: distinct-count
+              title: Runs
+        - id: review-exceptions
+          title: Review exceptions needing operator attention
+          description: Review-eligible work items not yet verified so an operator can inspect actionable exceptions.
+          data:
+            source: work-items
+            filters:
+              lifecycle-state: in-review
+            order-by:
+              - field: waiting-since
+                direction: desc
+              - field: work-item-id
+                direction: asc
+            limit: 20
+          mark: table
+          controls: interactive
+          layout: full
+          disclosure: essential
+          empty-message: No review-eligible work-item exceptions match the selected horizon.
+          encoding:
+            href:
+              field: evidence-link
+              type: nominal
+            columns:
+              - field: name
+                type: nominal
+                title: Work item
+              - field: repository
+                type: nominal
+                title: Repository
+              - field: lifecycle-state
+                type: ordinal
+                title: Lifecycle
+                display: status
+              - field: reason
+                type: nominal
+                title: Reason
+              - field: next-action
+                type: nominal
+                title: Next action
+              - field: waiting-since
+                type: temporal
+                title: Waiting since
+              - field: owner
+                type: nominal
+                title: Owner
+        - id: review-attainment-trend
+          title: Work-item review attainment
+          description: Operational-value observations show the native work-item review metric published by gh-aw over time.
+          data:
+            source: operational-values
+            filters:
+              operational-value-definition: work-item-review-attainment
+          mark: chart
+          chart: line
+          layout: half
+          disclosure: essential
+          encoding:
+            x:
+              field: observed-at
+              type: temporal
+              time-unit: day
+              title: Observed
+            y:
+              field: operational-value
+              type: quantitative
+              aggregate: mean
+              title: Mean attainment
