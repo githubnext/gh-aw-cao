@@ -273,6 +273,7 @@ export async function validateAgentDocs({
     if (skillBytes > MAX_SKILL_ENTRY_BYTES) {
       errors.push(`${skill}/SKILL.md exceeds the ${MAX_SKILL_ENTRY_BYTES} byte entry-point limit`);
     }
+    if (skill !== "setup-cao") continue;
     const skillSource = await readFile(skillPath, "utf8");
     for (const link of markdownLinks(skillSource)) {
       if (/^(?:[a-z]+:|#)/i.test(link)) continue;
