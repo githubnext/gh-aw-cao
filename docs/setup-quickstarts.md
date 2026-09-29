@@ -16,7 +16,7 @@ you plan to enroll. If you are not signed in, run `gh auth login` (add
 gh auth status
 ```
 
-If you already have a local control-repository checkout, open a terminal at its
+If you already have a **empty** local control-repository checkout, open a terminal at its
 root. Otherwise, clone an existing repository:
 
 ```bash
