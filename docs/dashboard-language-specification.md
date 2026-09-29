@@ -226,7 +226,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Tooltip | `label`, `description`, `icon` |
 | `defaults` | `scope`, `time`, `filters` |
 | Unit definition | `name`, `symbol`, `significant`, `format` |
-| Query definition | `name`, `intent`, `description`, `parameters`, `from`, `union`, `time`, `joins`, `filter`, `compute`, `temporal-series`, `aggregate`, `predict`, `select`, `order-by`, `limit` |
+| Query definition | `name`, `intent`, `objective`, `acceptance`, `description`, `parameters`, `from`, `union`, `time`, `joins`, `filter`, `compute`, `temporal-series`, `aggregate`, `predict`, `select`, `order-by`, `limit` |
 | Query parameter | `name`, `type` |
 | Query `joins` entry | `source`, `type`, `on`, `fields` |
 | Query join key | `left`, `right` |
@@ -251,7 +251,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Navigation section | `label`, `pages`, `experimental`, `placement` |
 | Page section | `id`, `title`, `description`, `layout`, `views`, `count-source`, `count-sources`, `count-field`, `count-label` |
 | Custom page `route` | `hash-query-parameter`, `navigation-page`, `title-format`, `tabs-class-name`, `tab`, `tabs` |
-| View | `id`, `title`, `description`, `intent`, `locked`, `data`, `mark`, `element`, `config`, `callout`, `chart`, `metric`, `list`, `tree`, `layout`, `disclosure`, `controls`, `lazy-list`, `column-summaries`, `empty-message`, `title-link`, `encoding` |
+| View | `id`, `title`, `description`, `intent`, `objective`, `acceptance`, `locked`, `data`, `mark`, `element`, `config`, `callout`, `chart`, `metric`, `list`, `tree`, `layout`, `disclosure`, `controls`, `lazy-list`, `column-summaries`, `empty-message`, `title-link`, `encoding` |
 | View `data` | `source` or `sources`, `scope`, `time`, `filters`, `arguments`, `limit`, `order-by` |
 | View data argument | `name`, `field` |
 | View `config` | `body`, `sections`, `labels`, `measure-source`, `empty-message` |

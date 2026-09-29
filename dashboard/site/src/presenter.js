@@ -11,7 +11,9 @@ import { formatMediumUtcDateTime, renderDashboardViewSkeleton, renderEmptyMessag
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection, renderViewDisclosure } from './components/view-chrome.js';
 import { externalAnchorAttrs, findLink } from './components/link-content.js';
 import { elementHandlesEmptyRows, elementHandlesUnavailableSource, elementLoadsSourcesAsync, renderUiElement } from './components/ui-elements.js';
-import { renderDataView, supportsIncrementalChartContinuation } from './components/data-view.js';
+import { renderDataView, renderPromptPreviewAction, supportsIncrementalChartContinuation } from './components/data-view.js';
+import { declaredAgentTaskActionId } from './components/cli-actions.js';
+import { effectiveViewSemantics, semanticViewPrompt } from './view-semantics.js';
 import { enableHorizonOutsideClickDismissal, renderFilterBar, renderViewModeControl, setTimeWindowFilter, setTimeWindowRange } from './components/filter-bar.js';
 import { renderDashboardForm } from './components/dashboard-form.js';
 import { renderSiteCallouts } from './components/site-callout.js';
@@ -297,7 +299,7 @@ export function renderDashboard(input) {
           const rendered = showInitialLoadingSkeleton
               && (page.id === 'overview' || !pageHasData)
             ? renderPageLoadingSkeleton(page)
-            : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, effectiveQueryContext);
+            : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, effectiveQueryContext, document.dashboard.queries ?? []);
           debugPerformance('page render', {
             pageId,
             phase: renderCount++ === 0 ? 'initial' : 'update',
@@ -707,12 +709,13 @@ function renderPageSkeleton() {
  * @param {Record<string, { id: string, icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[] }>} cardTemplates
  * @param {Array<Record<string, unknown>>} reusableViews
  * @param {PageSourceLoadOptions['queryContext']} [queryContext]
+ * @param {Array<Record<string, unknown>>} [queries]
  * @returns {HTMLElement}
  */
-function renderPage(page, sources, units, dashboardDefaults, cardTemplates, reusableViews, queryContext) {
+function renderPage(page, sources, units, dashboardDefaults, cardTemplates, reusableViews, queryContext, queries = []) {
   const title = getPageTitle(page);
   const payload = getBuiltInPagePayload(page, reusableViews);
-  return renderCustomPage(payload, title, sources, units, dashboardDefaults, cardTemplates, true, queryContext);
+  return renderCustomPage(payload, title, sources, units, dashboardDefaults, cardTemplates, true, queryContext, queries);
 }
 
 /**
@@ -724,9 +727,10 @@ function renderPage(page, sources, units, dashboardDefaults, cardTemplates, reus
  * @param {Record<string, { id: string, icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[] }>} cardTemplates
  * @param {boolean} [withFilterBar]
  * @param {PageSourceLoadOptions['queryContext']} [queryContext]
+ * @param {Array<Record<string, unknown>>} [queries]
  * @returns {HTMLElement}
  */
-function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTemplates, withFilterBar = true, queryContext) {
+function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTemplates, withFilterBar = true, queryContext, queries = []) {
   const effectiveDashboardDefaults = inventoryPage(page.id)
     ? { ...dashboardDefaults, time: undefined }
     : dashboardDefaults;
@@ -778,7 +782,43 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
     );
     const isNavigationCompositeView = isPlainObject(view) && view.mark === 'element';
     const render = () => {
-      const rendered = renderCustomView(page.id, view, index, sources, units, cardTemplates, headingTag, routeParameter, queryContext);
+      let rendered = renderCustomView(page.id, view, index, sources, units, cardTemplates, headingTag, routeParameter, queryContext);
+      if (isPlainObject(view)) {
+        const semantics = effectiveViewSemantics(view, queries);
+        if (semantics.intent && semantics.objective && semantics.acceptance) {
+          const selectedSources = Object.fromEntries(getViewSources(view).flatMap((sourceName, sourceIndex) => {
+            const source = sources[resolveViewSourceName(sources, page.id, view, index, sourceName, sourceIndex)];
+            return source ? [[sourceName, source]] : [];
+          }));
+          const prompt = renderPromptPreviewAction(
+            `Create prompt for ${getViewTitle(view, index)}`,
+            () => semanticViewPrompt({
+              pageId: page.id,
+              viewId: view.id ?? `view-${index + 1}`,
+              title: getViewTitle(view, index),
+              semantics,
+              queryParameters: {
+                ...(isPlainObject(queryContext?.formValues) ? queryContext.formValues : {}),
+                ...(routeParameter ? { [routeParameter]: new URLSearchParams(globalThis.location?.hash.split('?')[1] ?? '').get(routeParameter) } : {})
+              },
+              filters: queryContext?.filters ?? {},
+              scope: view.data?.scope ?? dashboardDefaults.scope ?? {},
+              sources: selectedSources
+            }),
+            declaredAgentTaskActionId()
+          );
+          const section = rendered.matches('.page-section') ? rendered : null;
+          if (section) {
+            section.classList.add('semantic-prompt-view');
+            section.querySelector(':scope > h3, :scope > h4')?.after(prompt);
+          } else {
+            rendered = h('div', { className: 'semantic-prompt-view' },
+              h('div', { className: 'semantic-prompt-heading' },
+                h(headingTag, null, getViewTitle(view, index)), prompt),
+              rendered);
+          }
+        }
+      }
       suppressSupplementalTableHeading(rendered, view, index);
       if (disclosure === 'essential') {
         rendered.classList.add('custom-view');

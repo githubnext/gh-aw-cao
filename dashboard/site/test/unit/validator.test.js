@@ -3947,7 +3947,7 @@ dashboard:
     expect(result.ok).toBe(true);
   });
 
-  it('DLS-VIEW-034 accepts inert element intent and rejects empty or non-element intent', () => {
+  it('DLS-VIEW-034 accepts semantic annotations on all marks and rejects empty values', () => {
     const elementDocument = `language-version: "0.1.0"
 dashboard:
   id: element-intent
@@ -3993,11 +3993,19 @@ dashboard:
               - field: run-conclusion`
       )
     );
-    expect(nonElementIntent.ok).toBe(false);
-    if (!nonElementIntent.ok) {
-      expect(nonElementIntent.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E007',
-        path: '$.dashboard.pages[0].views[0].intent'
+    expect(nonElementIntent.ok).toBe(true);
+    const withSemantics = elementDocument.replace(
+      '          intent: Help operators identify workflow states that require attention.',
+      '          intent: Help operators identify workflow states that require attention.\n          objective: Resolve failing workflows.\n          acceptance: No failing workflows remain.'
+    );
+    expect(validateDashboardDocument(withSemantics).ok).toBe(true);
+    for (const field of ['objective', 'acceptance']) {
+      const invalid = validateDashboardDocument(withSemantics.replace(
+        new RegExp(`${field}: [^\\n]+`), `${field}: ""`
+      ));
+      expect(invalid.ok).toBe(false);
+      if (!invalid.ok) expect(invalid.errors).toContainEqual(expect.objectContaining({
+        path: `$.dashboard.pages[0].views[0].${field}`
       }));
     }
   });
