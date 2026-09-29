@@ -56,6 +56,7 @@ jobs:
             if (context.payload.repository.fork) {
               throw new Error('Coolify delivery is refused for a fork repository payload');
             }
+            core.info('Repository origin check passed');
             const requiresActorAuthorization =
               process.env.EVENT_NAME === 'workflow_dispatch' ||
               Number(process.env.RUN_ATTEMPT) > 1;
@@ -65,6 +66,7 @@ jobs:
                 process.env.ORIGINAL_ACTOR,
                 process.env.TRIGGERING_ACTOR,
               ])) {
+                core.info('Checking one delivery actor');
                 const { data: access } = await github.rest.repos.getCollaboratorPermissionLevel({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -75,8 +77,11 @@ jobs:
                 }
               }
               core.info('Required repository permissions verified');
+            } else {
+              core.info('Automatic first-attempt trigger does not require actor elevation');
             }
             if (process.env.EVENT_NAME === 'workflow_dispatch') {
+              core.info('Resolving the current default branch for manual delivery');
               const { data: repository } = await github.rest.repos.get({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -91,6 +96,8 @@ jobs:
                 throw new Error('Manual delivery must use the current default-branch workflow');
               }
               core.info('Current default-branch workflow verified');
+            } else {
+              core.info('Manual workflow-source validation is not required for this event');
             }
             core.info('Delivery trigger authorization completed');
       - name: Summarize delivery authorization

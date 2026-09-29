@@ -112,6 +112,8 @@ test("Coolify delivery consumes the official immutable CAO server package", asyn
   assert.match(authorization.with.script, /Manual and rerun delivery requires maintain or admin repository permission/);
   assert.match(authorization.with.script, /Manual delivery must use the current default-branch workflow/);
   assert.match(authorization.with.script, /process\.env\.TRIGGERING_ACTOR/);
+  assert.match(authorization.with.script, /Automatic first-attempt trigger does not require actor elevation/);
+  assert.match(authorization.with.script, /Manual workflow-source validation is not required for this event/);
   assert.equal(packageJob.needs, "classify");
   assert.deepEqual(packageJob.permissions, {
     attestations: "read",

@@ -107,6 +107,8 @@ test("CAO server package workflow publishes immutable Compose-ready images", asy
   assert.match(publisherSource, /push-to-registry: true/);
   assert.match(publisherSource, /Privileged publication requires the current default-branch caller workflow/);
   assert.match(publisherSource, /Manual package metadata does not match the requested branch head/);
+  assert.ok((publisherSource.match(/core\.info\(/g) ?? []).length >= 25);
+  assert.match(publisherSource, /Protected-main release ancestry check passed/);
   assert.match(source, /<details>/);
   assert.match(source, /Trivy CVE scan\|\$\{TRIVY_STATUS\}/);
   assert.match(source, /findings and inventory are not copied to the summary/);

@@ -58,6 +58,7 @@ jobs:
               process.env.ORIGINAL_ACTOR,
               process.env.TRIGGERING_ACTOR,
             ])) {
+              core.info('Checking one manual package actor');
               const { data: access } = await github.rest.repos.getCollaboratorPermissionLevel({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -68,6 +69,7 @@ jobs:
               }
             }
             core.info('Required repository permissions verified');
+            core.info('Resolving the protected default branch');
             const { data: repository } = await github.rest.repos.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -82,6 +84,7 @@ jobs:
               throw new Error('Manual package publication must run from the current default-branch workflow');
             }
             core.info('Trusted default-branch workflow verified');
+            core.info('Checking requested source branch input');
             if (!process.env.SOURCE_BRANCH) {
               throw new Error('Manual package publication requires a source branch');
             }

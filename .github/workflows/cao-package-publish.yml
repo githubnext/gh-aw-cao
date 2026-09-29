@@ -58,12 +58,17 @@ jobs:
             if (context.payload.repository.fork) {
               throw new Error('CAO server packages cannot be published from forks');
             }
+            core.info('Repository origin check passed');
+            core.info('Checking caller event consistency');
             if (process.env.EVENT_NAME !== process.env.CALLER_EVENT) {
               throw new Error('Publisher event metadata does not match the caller event');
             }
+            core.info('Caller event consistency check passed');
+            core.info('Checking source revision shape');
             if (!/^[0-9a-f]{40}$/.test(process.env.REVISION)) {
               throw new Error('Publisher requires an immutable source revision');
             }
+            core.info('Source revision shape check passed');
 
             const stableTag = /^v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/;
             const { data: repository } = await github.rest.repos.get({
@@ -73,6 +78,7 @@ jobs:
             const defaultRef = `refs/heads/${repository.default_branch}`;
 
             async function peelTag(tag) {
+              core.info('Resolving release tag reference');
               let { data: ref } = await github.rest.git.getRef({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -80,6 +86,7 @@ jobs:
               });
               let object = ref.object;
               for (let depth = 0; object.type === 'tag' && depth < 10; depth += 1) {
+                core.info('Resolving an annotated release tag layer');
                 const { data: annotated } = await github.rest.git.getTag({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -90,6 +97,7 @@ jobs:
               if (object.type !== 'commit') {
                 throw new Error('Release tag does not resolve to a commit');
               }
+              core.info('Release tag resolved to an immutable commit');
               return object.sha;
             }
 
@@ -99,6 +107,7 @@ jobs:
                 process.env.ORIGINAL_ACTOR,
                 process.env.TRIGGERING_ACTOR,
               ])) {
+                core.info('Checking one manual publication actor');
                 const { data: access } = await github.rest.repos.getCollaboratorPermissionLevel({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -108,6 +117,8 @@ jobs:
                   throw new Error('Manual package publication requires maintain or admin repository permission');
                 }
               }
+              core.info('Manual publication actor checks passed');
+              core.info('Resolving the protected default branch');
               const { data: trustedBranch } = await github.rest.repos.getBranch({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -117,9 +128,12 @@ jobs:
                   process.env.CALLER_SHA !== trustedBranch.commit.sha) {
                 throw new Error('Privileged publication requires the current default-branch caller workflow');
               }
+              core.info('Protected default-branch caller check passed');
+              core.info('Checking requested source branch presence');
               if (!process.env.SOURCE_BRANCH) {
                 throw new Error('Manual publication requires a source branch');
               }
+              core.info('Resolving the requested source branch');
               const { data: sourceBranch } = await github.rest.repos.getBranch({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -130,6 +144,7 @@ jobs:
                   process.env.VERSION !== `0.0.0-dispatch.${process.env.REVISION.slice(0, 12)}`) {
                 throw new Error('Manual package metadata does not match the requested branch head');
               }
+              core.info('Manual package source and metadata checks passed');
             } else if (process.env.EVENT_NAME === 'push') {
               core.info('Revalidating protected main publication authority');
               if (process.env.CALLER_REF !== defaultRef ||
@@ -138,12 +153,15 @@ jobs:
                   process.env.VERSION !== `0.0.0-main.${process.env.REVISION.slice(0, 12)}`) {
                 throw new Error('Main package metadata does not match the protected push source');
               }
+              core.info('Protected main package metadata checks passed');
             } else if (process.env.EVENT_NAME === 'release') {
               core.info('Revalidating stable release publication authority');
               if (!stableTag.test(process.env.IDENTITY) ||
                   process.env.VERSION !== process.env.IDENTITY) {
                 throw new Error('Release package identity must be an exact stable vX.Y.Z version');
               }
+              core.info('Stable release identity policy passed');
+              core.info('Resolving the published release record');
               const { data: release } = await github.rest.repos.getReleaseByTag({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -152,9 +170,13 @@ jobs:
               if (release.draft || release.prerelease || !release.published_at) {
                 throw new Error('Release package requires a published stable release');
               }
+              core.info('Published stable release policy passed');
+              core.info('Checking release tag target');
               if (await peelTag(process.env.IDENTITY) !== process.env.REVISION) {
                 throw new Error('Release tag no longer matches the tested package source');
               }
+              core.info('Release tag target check passed');
+              core.info('Checking release ancestry against protected main');
               const { data: comparison } = await github.rest.repos.compareCommitsWithBasehead({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -163,7 +185,9 @@ jobs:
               if (!['ahead', 'identical'].includes(comparison.status)) {
                 throw new Error('Release package source is not reachable from protected main');
               }
+              core.info('Protected-main release ancestry check passed');
             } else {
+              core.info('Rejecting unsupported publication event');
               throw new Error('Unsupported package publication event');
             }
             core.info('Trusted publisher authority validation completed');
