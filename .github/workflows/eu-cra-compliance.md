@@ -61,9 +61,16 @@ imports:
     with:
       campaign: eu-cra-compliance
       role: orchestrator
+      read_repository: ${{ github.repository }}
       dispatch_max: 48
       orchestrator_credits: 200
       worker_credits_per_target: 600
+      read_actions: read
+      read_contents: read
+      read_issues: read
+      read_pull_requests: read
+      read_security_events: read
+      read_vulnerability_alerts: read
 
 permissions:
   contents: read

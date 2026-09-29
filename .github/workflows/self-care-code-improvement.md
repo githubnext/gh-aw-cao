@@ -58,6 +58,10 @@ imports:
       campaign: self-care
       role: worker
       worker: code-improvement
+      read_repository: ${{ inputs.target_repo }}
+      read_actions: read
+      read_contents: read
+      read_pull_requests: read
 
 permissions:
   contents: read

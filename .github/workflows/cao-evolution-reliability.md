@@ -62,6 +62,13 @@ imports:
       campaign: cao-evolution
       role: worker
       worker: reliability
+      read_repository: ${{ inputs.target_repo }}
+      read_actions: read
+      read_checks: read
+      read_contents: read
+      read_issues: read
+      read_pull_requests: read
+      read_statuses: read
   - uses: shared/activity-cache.md
 
 permissions:

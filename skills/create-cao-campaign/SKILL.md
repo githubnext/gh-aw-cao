@@ -43,6 +43,10 @@ argument-hint: "Describe the operational outcome, target repositories, and desir
   workflow executes. Neither authority substitutes for the other.
 - Orchestrators discover and dispatch. Each worker handles one dispatched
   repository and cannot discover targets, dispatch work, or widen mode.
+- Pass every workflow `read` permission to the `shared/control.md` import using
+  its matching `read_<permission>` input. Shared control must bind GitHub MCP
+  and CLI tools to the exact App or owner-scoped PAT selected for that
+  repository; checkout authentication alone is not sufficient.
 - Keep credentials in Actions secrets and out of policy, prompts, inputs,
   steering, memory, logs, and commits.
 - Use GitHub tools read-only. Repository writes use declared safe outputs.

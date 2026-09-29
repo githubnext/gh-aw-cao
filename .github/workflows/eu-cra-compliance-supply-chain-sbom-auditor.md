@@ -64,6 +64,14 @@ imports:
       campaign: eu-cra-compliance
       role: worker
       worker: supply-chain-sbom-auditor
+      read_repository: ${{ inputs.target_repo }}
+      read_actions: read
+      read_contents: read
+      read_issues: read
+      read_packages: read
+      read_pull_requests: read
+      read_security_events: read
+      read_vulnerability_alerts: read
 
 permissions:
   contents: read

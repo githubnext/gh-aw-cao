@@ -64,9 +64,13 @@ imports:
     with:
       campaign: eslint-rules
       role: orchestrator
+      read_repository: ${{ github.repository }}
       dispatch_max: 5
       orchestrator_credits: 250
       worker_credits_per_target: 1750
+      read_actions: read
+      read_contents: read
+      read_issues: read
 
 permissions:
   contents: read

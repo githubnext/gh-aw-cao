@@ -68,54 +68,6 @@ jobs:
     outputs:
       cao_authorized: ${{ steps.cao_admission.outputs.authorized == 'true' && steps.cao_precompute.outputs.authorized != 'false' }}
       cao_reason: ${{ steps.cao_precompute.outputs.reason || steps.cao_admission.outputs.reason }}
-  agent:
-    pre-steps:
-      - name: Derive target GitHub App scope
-        id: target_github_app_scope
-        env:
-          TARGET_REPOSITORY: ${{ inputs.target_repo }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          IFS=/ read -r owner repository extra <<< "$TARGET_REPOSITORY"
-          if [[ -z "$owner" || -z "$repository" || -n "$extra" ]]; then
-            echo "Invalid target repository: $TARGET_REPOSITORY" >&2
-            exit 1
-          fi
-          echo "owner=$owner" >> "$GITHUB_OUTPUT"
-          echo "repository=$repository" >> "$GITHUB_OUTPUT"
-      - name: Generate target-scoped read App token
-        id: target-read-app-token
-        env:
-          GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_AUTH_MODE != 'workflow-token' && secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY || '' }}
-        if: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_AUTH_MODE != 'workflow-token' && vars.GH_AW_GITHUB_READ_APP_ID || '' != '' && env.GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY != '' }}
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        with:
-          client-id: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_AUTH_MODE != 'workflow-token' && vars.GH_AW_GITHUB_READ_APP_ID || '' }}
-          private-key: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_AUTH_MODE != 'workflow-token' && secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY || '' }}
-          owner: ${{ steps.target_github_app_scope.outputs.owner }}
-          repositories: ${{ steps.target_github_app_scope.outputs.repository }}
-          github-api-url: ${{ github.api_url }}
-          permission-actions: read
-          permission-checks: read
-          permission-contents: read
-          permission-issues: read
-          permission-pull-requests: read
-          permission-security-events: read
-          permission-statuses: read
-          permission-vulnerability-alerts: read
-      - name: Resolve target-scoped read credential
-        id: target-read-credential
-        env:
-          TARGET_READ_TOKEN: ${{ steps.target-read-app-token.outputs.token || vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[inputs.target_repo || github.repository]] || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_READ_PAT || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [[ -z "$TARGET_READ_TOKEN" ]]; then
-            echo "No read credential is configured for ${TARGET_REPO:-the dispatched target}" >&2
-            exit 1
-          fi
-          echo "::add-mask::$TARGET_READ_TOKEN"
-          echo "token=$TARGET_READ_TOKEN" >> "$GITHUB_OUTPUT"
 
 if: needs.pre_activation.outputs.cao_authorized == 'true'
 
@@ -125,6 +77,15 @@ imports:
       campaign: dependabot
       role: worker
       worker: update-planner
+      read_repository: ${{ inputs.target_repo }}
+      read_actions: read
+      read_checks: read
+      read_contents: read
+      read_issues: read
+      read_pull_requests: read
+      read_security_events: read
+      read_statuses: read
+      read_vulnerability_alerts: read
 
 permissions:
   contents: read
@@ -185,7 +146,6 @@ tools:
     mode: local
     min-integrity: unapproved
     toolsets: [default, repos, issues, pull_requests, actions, dependabot, code_security, security_advisories]
-    github-token: ${{ steps.target-read-credential.outputs.token }}
   repo-memory:
     branch-name: "memory/dependabot"
     description: "Stable Dependabot plan issue numbers for each safe-output and target repository pair"

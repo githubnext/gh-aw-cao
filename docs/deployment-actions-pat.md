@@ -78,7 +78,7 @@ You need everything in the [prerequisites for the GitHub Actions only deployment
 | `GH_AW_GITHUB_AUTH_MODE` | Actions variable | Explicit profile selector; `pat` enables owner-scoped routing |
 | `GH_AW_GITHUB_TOKEN` | Actions secret (deprecated) | Legacy combined token. Don't configure it for new installations. |
 
-In PAT mode, CAO resolves the exact repository in the corresponding map and uses only the named owner-scoped secret. Missing entries fail closed to the repository-provided token rather than exposing another owner's PAT. In App mode, owner-scoped PATs are inactive. Legacy split or combined PAT names are considered only when no explicit authentication mode has been configured.
+In PAT mode, CAO resolves the exact repository in the corresponding map and uses only the named owner-scoped secret. Missing entries or missing mapped secrets fail before agent execution; CAO does not substitute the repository-provided token or another owner's PAT. In App mode, owner-scoped PATs are inactive. Legacy split or combined PAT names are considered only when no explicit authentication mode has been configured.
 
 Keep the write PAT narrower than the read PAT. Don't add a repository to the write PAT only because the read PAT covers it.
 

@@ -139,25 +139,20 @@ test("Dependabot worker maintains a durable parent and one-PR child tasks withou
   assert.equal(config.tools.github["min-integrity"], "unapproved");
   assert.equal(config.permissions["vulnerability-alerts"], "read");
   assert.ok(config.tools.github.toolsets.includes("dependabot"));
-  assert.equal(config.tools.github["github-token"], "${{ steps.target-read-credential.outputs.token }}");
-  const agentPreSteps = config.jobs.agent["pre-steps"];
-  const targetReadAppToken = agentPreSteps.find((step) => step.id === "target-read-app-token");
-  assert.ok(targetReadAppToken);
-  assert.equal(targetReadAppToken.with.owner, "${{ steps.target_github_app_scope.outputs.owner }}");
-  assert.equal(targetReadAppToken.with.repositories, "${{ steps.target_github_app_scope.outputs.repository }}");
-  assert.equal(targetReadAppToken.with["permission-vulnerability-alerts"], "read");
-  const targetReadCredential = agentPreSteps.find((step) => step.id === "target-read-credential");
-  assert.ok(targetReadCredential);
-  assert.equal(
-    targetReadCredential.env.TARGET_READ_TOKEN,
-    "${{ steps.target-read-app-token.outputs.token || vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[inputs.target_repo || github.repository]] || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_READ_PAT || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}",
-  );
-  assert.match(targetReadCredential.run, /No read credential is configured/);
+  const controlImport = config.imports.find((entry) => entry.uses === "shared/control.md");
+  assert.equal(controlImport.with.read_actions, "read");
+  assert.equal(controlImport.with.read_checks, "read");
+  assert.equal(controlImport.with.read_contents, "read");
+  assert.equal(controlImport.with.read_issues, "read");
+  assert.equal(controlImport.with.read_pull_requests, "read");
+  assert.equal(controlImport.with.read_security_events, "read");
+  assert.equal(controlImport.with.read_statuses, "read");
+  assert.equal(controlImport.with.read_vulnerability_alerts, "read");
   const lock = workflow("dependabot-update-planner.lock.yml");
   assert.match(lock, /permission-vulnerability-alerts: read/);
   assert.match(
     lock,
-    /GITHUB_MCP_SERVER_TOKEN: \$\{\{ steps\.target-read-credential\.outputs\.token \}\}/,
+    /GITHUB_MCP_SERVER_TOKEN: \$\{\{ steps\.cao_target_read_credential\.outputs\.token \}\}/,
   );
   assert.deepEqual(Object.keys(outputs).sort(), ["add-comment", "close-issue", "create-issue", "update-issue"]);
   assert.equal(outputs["create-issue"].max, 13);

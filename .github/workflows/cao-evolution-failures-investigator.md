@@ -69,6 +69,10 @@ imports:
       campaign: cao-evolution
       role: worker
       worker: failures-investigator
+      read_repository: ${{ inputs.target_repo }}
+      read_actions: read
+      read_contents: read
+      read_issues: read
   - uses: shared/activity-cache.md
 
 permissions:

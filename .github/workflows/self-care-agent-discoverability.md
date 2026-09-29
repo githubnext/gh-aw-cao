@@ -57,6 +57,9 @@ imports:
       campaign: self-care
       role: worker
       worker: agent-discoverability
+      read_repository: ${{ inputs.target_repo }}
+      read_actions: read
+      read_contents: read
   - uses: shared/activity-cache.md
 
 permissions:

@@ -19,6 +19,42 @@ import-schema:
   worker_credits_per_target:
     type: number
     default: "0"
+  github_tools:
+    type: boolean
+    default: true
+  read_repository:
+    type: string
+    required: true
+  read_actions:
+    type: string
+    default: ""
+  read_checks:
+    type: string
+    default: ""
+  read_contents:
+    type: string
+    default: ""
+  read_issues:
+    type: string
+    default: ""
+  read_packages:
+    type: string
+    default: ""
+  read_pull_requests:
+    type: string
+    default: ""
+  read_secret_scanning_alerts:
+    type: string
+    default: ""
+  read_security_events:
+    type: string
+    default: ""
+  read_statuses:
+    type: string
+    default: ""
+  read_vulnerability_alerts:
+    type: string
+    default: ""
 
 max-daily-ai-credits: -1
 
@@ -49,6 +85,7 @@ tools:
   github:
     mode: remote
     toolsets: [repos, actions]
+    github-token: ${{ steps.cao_target_read_credential.outputs.token }}
 
 jobs:
   pre-activation:
@@ -390,6 +427,62 @@ jobs:
 
   agent:
     pre-steps:
+      - name: Resolve CAO GitHub read scope
+        id: cao_target_read_scope
+        if: ${{ github.aw.import-inputs.github_tools }}
+        env:
+          CAO_READ_REPOSITORY: ${{ github.aw.import-inputs.read_repository }}
+        run: |
+          set -euo pipefail
+          IFS=/ read -r owner repository extra <<< "$CAO_READ_REPOSITORY"
+          if [[ -z "$owner" || -z "$repository" || -n "$extra" ]]; then
+            echo "Invalid CAO read repository: $CAO_READ_REPOSITORY" >&2
+            exit 1
+          fi
+          echo "owner=$owner" >> "$GITHUB_OUTPUT"
+          echo "repository=$repository" >> "$GITHUB_OUTPUT"
+          echo "full_name=$owner/$repository" >> "$GITHUB_OUTPUT"
+
+      - name: Generate CAO target-scoped read App token
+        id: cao_target_read_app_token
+        env:
+          CAO_GITHUB_TOOLS: ${{ github.aw.import-inputs.github_tools }}
+          CAO_GITHUB_APP_ID: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_AUTH_MODE != 'workflow-token' && vars.GH_AW_GITHUB_READ_APP_ID || '' }}
+          CAO_GITHUB_APP_PRIVATE_KEY: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_AUTH_MODE != 'workflow-token' && secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY || '' }}
+        if: ${{ env.CAO_GITHUB_TOOLS == 'true' && env.CAO_GITHUB_APP_ID != '' && env.CAO_GITHUB_APP_PRIVATE_KEY != '' }}
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_AUTH_MODE != 'workflow-token' && vars.GH_AW_GITHUB_READ_APP_ID || '' }}
+          private-key: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_AUTH_MODE != 'workflow-token' && secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY || '' }}
+          owner: ${{ steps.cao_target_read_scope.outputs.owner }}
+          repositories: ${{ steps.cao_target_read_scope.outputs.repository }}
+          github-api-url: ${{ github.api_url }}
+          permission-actions: ${{ github.aw.import-inputs.read_actions }}
+          permission-checks: ${{ github.aw.import-inputs.read_checks }}
+          permission-contents: ${{ github.aw.import-inputs.read_contents }}
+          permission-issues: ${{ github.aw.import-inputs.read_issues }}
+          permission-packages: ${{ github.aw.import-inputs.read_packages }}
+          permission-pull-requests: ${{ github.aw.import-inputs.read_pull_requests }}
+          permission-secret-scanning-alerts: ${{ github.aw.import-inputs.read_secret_scanning_alerts }}
+          permission-security-events: ${{ github.aw.import-inputs.read_security_events }}
+          permission-statuses: ${{ github.aw.import-inputs.read_statuses }}
+          permission-vulnerability-alerts: ${{ github.aw.import-inputs.read_vulnerability_alerts }}
+
+      - name: Resolve CAO target read credential
+        id: cao_target_read_credential
+        if: ${{ github.aw.import-inputs.github_tools }}
+        env:
+          CAO_AUTH_MODE: ${{ vars.GH_AW_GITHUB_AUTH_MODE }}
+          CAO_TARGET_READ_TOKEN: ${{ steps.cao_target_read_app_token.outputs.token || vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[steps.cao_target_read_scope.outputs.full_name]] || vars.GH_AW_GITHUB_AUTH_MODE == '' && secrets.GH_AW_GITHUB_READ_PAT || vars.GH_AW_GITHUB_AUTH_MODE == '' && secrets.GH_AW_GITHUB_TOKEN || (vars.GH_AW_GITHUB_AUTH_MODE == '' || vars.GH_AW_GITHUB_AUTH_MODE == 'workflow-token') && secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$CAO_TARGET_READ_TOKEN" ]]; then
+            echo "No $CAO_AUTH_MODE read credential is configured for ${TARGET_REPO:-the CAO read scope}" >&2
+            exit 1
+          fi
+          echo "::add-mask::$CAO_TARGET_READ_TOKEN"
+          echo "token=$CAO_TARGET_READ_TOKEN" >> "$GITHUB_OUTPUT"
+
       - name: Download CAO control precompute artifact
         id: cao_precompute_download
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1

@@ -64,9 +64,13 @@ imports:
     with:
       campaign: cao-evolution
       role: orchestrator
+      read_repository: ${{ github.repository }}
       dispatch_max: 6
       orchestrator_credits: 250
       worker_credits_per_target: 2700
+      read_actions: read
+      read_contents: read
+      read_issues: read
 
 permissions:
   contents: read

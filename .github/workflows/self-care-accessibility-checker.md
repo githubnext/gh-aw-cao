@@ -61,6 +61,10 @@ imports:
       campaign: self-care
       role: worker
       worker: accessibility-checker
+      read_repository: ${{ inputs.target_repo }}
+      read_actions: read
+      read_contents: read
+      read_issues: read
 
 permissions:
   contents: read

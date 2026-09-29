@@ -64,9 +64,14 @@ imports:
     with:
       campaign: optimization
       role: orchestrator
+      read_repository: ${{ github.repository }}
       dispatch_max: 12
       orchestrator_credits: 250
       worker_credits_per_target: 900
+      read_actions: read
+      read_contents: read
+      read_issues: read
+      read_pull_requests: read
   - uses: shared/activity-cache.md
 
 permissions:

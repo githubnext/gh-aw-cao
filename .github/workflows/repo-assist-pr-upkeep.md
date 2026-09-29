@@ -67,6 +67,12 @@ imports:
       campaign: repo-assist
       role: worker
       worker: pr-upkeep
+      read_repository: ${{ inputs.target_repo }}
+      read_actions: read
+      read_checks: read
+      read_contents: read
+      read_issues: read
+      read_pull_requests: read
   - uses: shared/review-bundle.md
 
 permissions:

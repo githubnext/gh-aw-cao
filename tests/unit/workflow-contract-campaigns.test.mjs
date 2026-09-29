@@ -500,6 +500,9 @@ test("Agent customizations preserve deterministic core campaign boundaries", () 
   assert.match(campaignSkill, /unified builder and publisher/);
   assert.match(campaignSkill, /complete workflow `name` at 32 characters or fewer/);
   assert.match(campaignSkill, /omitting redundant role words/);
+  assert.match(campaignSkill, /Pass every workflow `read` permission to the `shared\/control\.md` import/);
+  assert.match(campaignSkill, /checkout authentication alone is not sufficient/);
+  assert.match(campaignSkill, /Do not add workflow-local read App\/PAT selection/);
   assert.match(repositoryInstructions, /Keep `\.github\/workflows\/cao-dashboard\.yml` as the single dashboard builder and optional Pages publisher/);
   assert.match(repositoryInstructions, /upload the reusable dashboard artifact/);
   assert.match(repositoryInstructions, /must not add a schedule or another enable variable/);

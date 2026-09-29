@@ -61,9 +61,12 @@ imports:
     with:
       campaign: self-care
       role: orchestrator
+      read_repository: ${{ github.repository }}
       dispatch_max: 19
       orchestrator_credits: 200
       worker_credits_per_target: 5000
+      read_actions: read
+      read_contents: read
 
 permissions:
   contents: read

@@ -58,6 +58,10 @@ imports:
       campaign: self-care
       role: worker
       worker: dashboard-debug-logging
+      read_repository: ${{ inputs.target_repo }}
+      read_actions: read
+      read_contents: read
+      read_pull_requests: read
 
 permissions:
   contents: read

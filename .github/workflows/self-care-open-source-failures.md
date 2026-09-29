@@ -52,6 +52,10 @@ imports:
       campaign: self-care
       role: worker
       worker: open-source-failures
+      read_repository: ${{ inputs.target_repo }}
+      read_actions: read
+      read_contents: read
+      read_issues: read
   - uses: shared/activity-cache.md
 
 permissions:

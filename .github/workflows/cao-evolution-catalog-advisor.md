@@ -62,6 +62,11 @@ imports:
       campaign: cao-evolution
       role: worker
       worker: catalog-advisor
+      read_repository: ${{ inputs.target_repo }}
+      read_actions: read
+      read_contents: read
+      read_issues: read
+      read_pull_requests: read
   - uses: shared/activity-cache.md
 
 permissions:

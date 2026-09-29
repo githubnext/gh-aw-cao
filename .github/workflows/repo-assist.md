@@ -64,9 +64,14 @@ imports:
     with:
       campaign: repo-assist
       role: orchestrator
+      read_repository: ${{ github.repository }}
       dispatch_max: 3
       orchestrator_credits: 250
       worker_credits_per_target: 500
+      read_actions: read
+      read_contents: read
+      read_issues: read
+      read_pull_requests: read
 
 permissions:
   contents: read

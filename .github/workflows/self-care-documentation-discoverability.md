@@ -57,6 +57,10 @@ imports:
       campaign: self-care
       role: worker
       worker: documentation-discoverability
+      read_repository: ${{ inputs.target_repo }}
+      read_actions: read
+      read_contents: read
+      read_issues: read
 
 permissions:
   actions: read

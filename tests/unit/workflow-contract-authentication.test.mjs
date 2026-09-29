@@ -1,11 +1,17 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { parse } from "yaml";
 import {
   activityCollectionPlan,
 } from "../../activity/authentication.mjs";
-import { controlPrecompute, root, workflow } from "./workflow-contract.helpers.mjs";
+import {
+  controlPrecompute,
+  root,
+  workflow,
+  workflowsDirectory,
+} from "./workflow-contract.helpers.mjs";
 
 // Authentication, credential, and action pinning contracts.
 
@@ -144,6 +150,11 @@ test("authentication prefers an optional GitHub App and retains bounded fallback
   assert.match(control, /ignore-if-missing: true/);
   assert.doesNotMatch(control, /repositories: \["\*"\]/);
   assert.match(control, /jobs:\n\s+pre-activation:[\s\S]*?GH_AW_GITHUB_READ_PAT_REPOSITORIES[\s\S]*?secrets\.GH_AW_GITHUB_READ_PAT[\s\S]*?github\.token/);
+  assert.match(control, /name: Resolve CAO GitHub read scope[\s\S]*?CAO_READ_REPOSITORY: \$\{\{ github\.aw\.import-inputs\.read_repository \}\}/);
+  assert.match(control, /name: Generate CAO target-scoped read App token[\s\S]*?owner: \$\{\{ steps\.cao_target_read_scope\.outputs\.owner \}\}/);
+  assert.match(control, /permission-vulnerability-alerts: \$\{\{ github\.aw\.import-inputs\.read_vulnerability_alerts \}\}/);
+  assert.match(control, /name: Resolve CAO target read credential[\s\S]*?GH_AW_GITHUB_READ_PAT_REPOSITORIES[\s\S]*?cao_target_read_scope\.outputs\.full_name/);
+  assert.match(control, /tools:\n\s+github:[\s\S]*?github-token: \$\{\{ steps\.cao_target_read_credential\.outputs\.token \}\}/);
   assert.match(authentication, /runtime availability precedence, not permission to choose a PAT silently/);
   assert.match(authentication, /A PAT is not a substitute for repository or organization access/);
   assert.match(authentication, /Each token covers repositories from exactly one resource owner/);
@@ -155,6 +166,54 @@ test("authentication prefers an optional GitHub App and retains bounded fallback
   assert.match(authentication, /most user tokens cannot read organization billing/);
   assert.match(authentication, /Customers may author workflows with another gh-aw-supported engine\/provider/);
   assert.match(authentication, /does not support `COPILOT_GITHUB_TOKEN` inference fallback/);
+});
+
+test("CAO workflows bind GitHub tools to exact declared read permissions", () => {
+  const permissionInputs = new Map([
+    ["actions", "read_actions"],
+    ["checks", "read_checks"],
+    ["contents", "read_contents"],
+    ["issues", "read_issues"],
+    ["packages", "read_packages"],
+    ["pull-requests", "read_pull_requests"],
+    ["secret-scanning-alerts", "read_secret_scanning_alerts"],
+    ["security-events", "read_security_events"],
+    ["statuses", "read_statuses"],
+    ["vulnerability-alerts", "read_vulnerability_alerts"],
+  ]);
+
+  for (const name of readdirSync(workflowsDirectory).filter((entry) => entry.endsWith(".md"))) {
+    const source = workflow(name);
+    if (!/uses: shared\/control\.md/.test(source)) continue;
+
+    const frontmatter = /^---\n([\s\S]*?)\n---/.exec(source)?.[1];
+    assert.ok(frontmatter, `${name} must have frontmatter`);
+    const config = parse(frontmatter);
+    const controlImport = config.imports.find((entry) => entry?.uses === "shared/control.md");
+    assert.ok(controlImport, `${name} must import shared control`);
+
+    const expected = [...permissionInputs]
+      .filter(([permission]) => config.permissions?.[permission] === "read")
+      .map(([, input]) => input)
+      .sort();
+    const actual = Object.entries(controlImport.with)
+      .filter(([input, value]) => input.startsWith("read_") && value === "read")
+      .map(([input]) => input)
+      .sort();
+    assert.deepEqual(actual, expected, `${name} must pass its exact read permission set`);
+
+    const lock = workflow(name.replace(/\.md$/, ".lock.yml"));
+    assert.match(lock, /name: Resolve CAO target read credential/, `${name} must resolve shared target authentication`);
+    if (config.tools?.github === false) {
+      assert.equal(controlImport.with.github_tools, false, `${name} must disable unused shared GitHub authentication`);
+      continue;
+    }
+    assert.match(
+      lock,
+      /(?:GH_TOKEN|GITHUB_MCP_SERVER_TOKEN): \$\{\{ steps\.cao_target_read_credential\.outputs\.token \}\}/,
+      `${name} GitHub tools must use shared target authentication`,
+    );
+  }
 });
 
 test("CAO Activity PAT mode groups exact repositories by owner-scoped secret", () => {
@@ -256,21 +315,19 @@ test("CAO Activity App mode creates independent organization scopes", () => {
 test("Dependabot planner scopes its read token to the dispatched target", () => {
   const source = workflow("dependabot-update-planner.md");
   const generated = workflow("dependabot-update-planner.lock.yml");
-  const appTokenStep = /\n\s+- name: Generate target-scoped read App token\n\s+id: target-read-app-token[\s\S]*?(?=\n\s+- name: )/.exec(generated)?.[0];
-  const credentialStep = /\n\s+- name: Resolve target-scoped read credential\n\s+id: target-read-credential[\s\S]*?(?=\n\s+- name: )/.exec(generated)?.[0];
+  const appTokenStep = /\n\s+- name: Generate CAO target-scoped read App token\n\s+id: cao_target_read_app_token[\s\S]*?(?=\n\s+- name: )/.exec(generated)?.[0];
+  const credentialStep = /\n\s+- name: Resolve CAO target read credential\n\s+id: cao_target_read_credential[\s\S]*?(?=\n\s+- name: )/.exec(generated)?.[0];
 
   assert.ok(appTokenStep, "missing target-scoped App token step");
   assert.ok(credentialStep, "missing target-scoped credential selection step");
-  assert.match(source, /name: Derive target GitHub App scope[\s\S]*?TARGET_REPOSITORY: \$\{\{ inputs\.target_repo \}\}/);
-  assert.match(source, /echo "owner=\$owner" >> "\$GITHUB_OUTPUT"/);
-  assert.match(source, /echo "repository=\$repository" >> "\$GITHUB_OUTPUT"/);
-  assert.match(appTokenStep, /owner: \$\{\{ steps\.target_github_app_scope\.outputs\.owner \}\}/);
-  assert.match(appTokenStep, /repositories: \$\{\{ steps\.target_github_app_scope\.outputs\.repository \}\}/);
+  assert.match(source, /read_vulnerability_alerts: read/);
+  assert.match(appTokenStep, /owner: \$\{\{ steps\.cao_target_read_scope\.outputs\.owner \}\}/);
+  assert.match(appTokenStep, /repositories: \$\{\{ steps\.cao_target_read_scope\.outputs\.repository \}\}/);
   assert.match(appTokenStep, /permission-vulnerability-alerts: read/);
   assert.doesNotMatch(appTokenStep, /github\.repository_(owner|name)|github\.event\.repository\.name/);
   assert.match(
     credentialStep,
-    /GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets\[fromJSON\(vars\.GH_AW_GITHUB_READ_PAT_REPOSITORIES \|\| '\{\}'\)\[inputs\.target_repo \|\| github\.repository\]\]/,
+    /GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets\[fromJSON\(vars\.GH_AW_GITHUB_READ_PAT_REPOSITORIES \|\| '\{\}'\)\[steps\.cao_target_read_scope\.outputs\.full_name\]\]/,
   );
-  assert.match(generated, /GITHUB_MCP_SERVER_TOKEN: \$\{\{ steps\.target-read-credential\.outputs\.token \}\}/);
+  assert.match(generated, /GITHUB_MCP_SERVER_TOKEN: \$\{\{ steps\.cao_target_read_credential\.outputs\.token \}\}/);
 });

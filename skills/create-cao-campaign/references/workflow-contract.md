@@ -38,6 +38,12 @@ Use this checklist after the campaign outcome and worker split are stable.
   policy-resolved effective mode explicitly, and omission must fail dispatch
   validation rather than silently downgrade a live target to review.
 - Import shared control with static campaign, worker, and `role: worker`.
+- Pass each declared GitHub `read` permission to the matching
+  `shared/control.md` `read_<permission>` input. The shared control import
+  resolves the dispatched repository's App installation or exact
+  owner-scoped PAT and binds GitHub MCP or CLI tools to that credential.
+  A target checkout using the correct credential does not prove that the
+  agent's GitHub tools use it.
 - Use repository-scoped concurrency, least privilege, explicit tools and
   network, strict mode, bounded credits and timeout, and mission-specific safe
   outputs.
@@ -76,5 +82,8 @@ repo-memory:
   policy, target authority, credential storage, or current evidence.
 - For Copilot-backed workflows, declare `copilot-requests: write` and rely on
   the built-in workflow token. Do not configure `COPILOT_GITHUB_TOKEN`.
+- Do not add workflow-local read App/PAT selection. Keep target read credential
+  resolution in `shared/control.md`, preserve exact repository scope, and fail
+  closed when the explicitly selected profile cannot produce a credential.
 - Configure provider credentials as Actions secrets. Do not infer a provider
   from available secrets or silently change an installed workflow's engine.
