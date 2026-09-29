@@ -491,8 +491,9 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   assert.match(workflow, /Compute owner-scoped operational value[\s\S]*?--history-campaign optimization/);
   assert.match(workflow, /paths:[\s\S]*?- "activity\/\*\*"/);
   assert.match(workflow, /paths:[\s\S]*?- "\*\/operational-value\/\*\*"/);
-  assert.match(workflow, /Compute owner-scoped operational value[\s\S]*?CAO_OPERATIONAL_VALUE_GH_TOKEN: \$\{\{ steps\.activity-app-token\.outputs\.token \|\| secrets\[fromJSON\(vars\.GH_AW_GITHUB_READ_PAT_REPOSITORIES \|\| '\{\}'\)\[matrix\.credentialRepository\]\] \}\}/);
-  assert.match(workflow, /if ! node activity\/cao\.mjs operational-value[\s\S]*?Operational value collection failed for \$\{\{ matrix\.owner \}\}/);
+  assert.match(workflow, /Select independent activity credential[\s\S]*?id: activity-credential[\s\S]*?echo "token=\$token" >> "\$GITHUB_OUTPUT"/);
+  assert.match(workflow, /Compute owner-scoped operational value[\s\S]*?CAO_OPERATIONAL_VALUE_GH_TOKEN: \$\{\{ steps\.activity-credential\.outputs\.token \}\}/);
+  assert.match(workflow, /if ! node activity\/cao\.mjs operational-value[\s\S]*?Operational value collection failed for \$ACTIVITY_OWNER/);
   assert.equal((workflow.match(/path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/gm) || []).length, 1);
   assert.match(workflow, /cao-activity-v5-\$\{\{ github\.run_id \}\}-/);
   assert.equal(campaignDocument.scripts["activity:local"], undefined);

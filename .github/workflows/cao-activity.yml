@@ -148,10 +148,12 @@ jobs:
           permission-vulnerability-alerts: read
 
       - name: Select independent activity credential
+        id: activity-credential
         env:
           ACTIVITY_AUTH_MODE: ${{ vars.GH_AW_GITHUB_AUTH_MODE }}
           ACTIVITY_APP_TOKEN: ${{ steps.activity-app-token.outputs.token }}
-          ACTIVITY_PAT_TOKEN: ${{ vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[matrix.credentialRepository]] || '' }}
+          ACTIVITY_OWNER: ${{ matrix.owner }}
+          ACTIVITY_PAT_TOKEN: ${{ vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[matrix.credentialRepository]] || '' }} # zizmor: ignore[overprovisioned-secrets] - the validated repository map selects exactly one owner-scoped secret for this matrix group.
         run: |
           set -euo pipefail
           case "$ACTIVITY_AUTH_MODE" in
@@ -160,10 +162,11 @@ jobs:
             *) echo "GH_AW_GITHUB_AUTH_MODE must explicitly select app or pat" >&2; exit 1 ;;
           esac
           if [[ -z "$token" ]]; then
-            echo "The selected $ACTIVITY_AUTH_MODE credential is unavailable for ${{ matrix.owner }}" >&2
+            echo "The selected $ACTIVITY_AUTH_MODE credential is unavailable for $ACTIVITY_OWNER" >&2
             exit 1
           fi
           echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
           echo "GH_TOKEN=$token" >> "$GITHUB_ENV"
 
       - name: Resolve owner-scoped control settings
@@ -217,7 +220,7 @@ jobs:
           REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity-partial/${{ matrix.artifact }}/control-settings.json
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
-          github-token: ${{ steps.activity-app-token.outputs.token || secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[matrix.credentialRepository]] }}
+          github-token: ${{ steps.activity-credential.outputs.token }}
           script: |
             const path = require('path')
             const { pathToFileURL } = require('url')
@@ -264,15 +267,17 @@ jobs:
 
       - name: Compute owner-scoped operational value
         env:
+          ACTIVITY_ARTIFACT: ${{ matrix.artifact }}
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
-          CAO_OPERATIONAL_VALUE_GH_TOKEN: ${{ steps.activity-app-token.outputs.token || secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[matrix.credentialRepository]] }}
+          ACTIVITY_OWNER: ${{ matrix.owner }}
+          CAO_OPERATIONAL_VALUE_GH_TOKEN: ${{ steps.activity-credential.outputs.token }}
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity-partial/${{ matrix.artifact }}/gh-aw-logs-shards
           REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity-partial/${{ matrix.artifact }}/inventory-sources.json
         run: |
           repository_args=()
           while IFS= read -r target_repository; do
             repository_args+=(--repository "$target_repository")
-          done < <(jq -r --arg owner "${{ matrix.owner }}" \
+          done < <(jq -r --arg owner "$ACTIVITY_OWNER" \
             '.repositories.rows[]
               | select((.organization | ascii_downcase) == ($owner | ascii_downcase))
               | "\(.organization)/\(.repository)"' \
@@ -284,12 +289,12 @@ jobs:
           if ! node activity/cao.mjs operational-value \
               --database "$ACTIVITY_DATABASE" \
               --root . \
-              --output "$REPORT_GH_AW_LOGS_SHARDS/operational-values-${{ matrix.artifact }}.jsonl" \
+              --output "$REPORT_GH_AW_LOGS_SHARDS/operational-values-$ACTIVITY_ARTIFACT.jsonl" \
               --retention-days 30 \
               "${repository_args[@]}" \
               "${history_args[@]}" \
               --max-github-api-rate-limit -2000; then
-            echo "::warning::Operational value collection failed for ${{ matrix.owner }}; continuing activity indexing."
+            echo "::warning::Operational value collection failed for $ACTIVITY_OWNER; continuing activity indexing."
           fi
 
       - name: Upload owner-scoped activity fragment
