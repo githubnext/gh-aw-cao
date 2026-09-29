@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestReadBoundedFileReturnsContentsWithinLimit(t *testing.T) {
@@ -114,5 +115,64 @@ func TestLoadSimulatorScenarioPropagatesInvalidJSON(t *testing.T) {
 	_, err := loadSimulatorScenario(path)
 	if err == nil {
 		t.Fatal("loadSimulatorScenario returned nil error for invalid JSON")
+	}
+}
+
+func TestValidateWebhookDeliveryFlagsAcceptsValidInput(t *testing.T) {
+	failure, err := validateWebhookDeliveryFlags("scenario.json", 30*time.Second, 64)
+	if err != nil {
+		t.Fatalf("validateWebhookDeliveryFlags returned error: %v", err)
+	}
+	if failure != webhookDeliveryFlagFailureNone {
+		t.Fatalf("validateWebhookDeliveryFlags() failure = %q, want %q", failure, webhookDeliveryFlagFailureNone)
+	}
+}
+
+func TestValidateWebhookDeliveryFlagsRejectsEmptyScenario(t *testing.T) {
+	failure, err := validateWebhookDeliveryFlags("", 30*time.Second, 64)
+	if err == nil {
+		t.Fatal("validateWebhookDeliveryFlags returned nil error for an empty scenario path")
+	}
+	if failure != webhookDeliveryFlagFailureScenario {
+		t.Fatalf("validateWebhookDeliveryFlags() failure = %q, want %q", failure, webhookDeliveryFlagFailureScenario)
+	}
+}
+
+func TestValidateWebhookDeliveryFlagsRejectsNonPositiveTimeout(t *testing.T) {
+	tests := []time.Duration{0, -time.Second}
+	for _, timeout := range tests {
+		failure, err := validateWebhookDeliveryFlags("scenario.json", timeout, 64)
+		if err == nil {
+			t.Fatalf("validateWebhookDeliveryFlags(timeout=%s) returned nil error, want an error", timeout)
+		}
+		if failure != webhookDeliveryFlagFailureTimeout {
+			t.Fatalf("validateWebhookDeliveryFlags(timeout=%s) failure = %q, want %q", timeout, failure, webhookDeliveryFlagFailureTimeout)
+		}
+	}
+}
+
+func TestValidateWebhookDeliveryFlagsRejectsOutOfRangeConcurrency(t *testing.T) {
+	tests := []int{0, -1, 513}
+	for _, concurrency := range tests {
+		failure, err := validateWebhookDeliveryFlags("scenario.json", 30*time.Second, concurrency)
+		if err == nil {
+			t.Fatalf("validateWebhookDeliveryFlags(concurrency=%d) returned nil error, want an error", concurrency)
+		}
+		if failure != webhookDeliveryFlagFailureConcurrency {
+			t.Fatalf("validateWebhookDeliveryFlags(concurrency=%d) failure = %q, want %q", concurrency, failure, webhookDeliveryFlagFailureConcurrency)
+		}
+	}
+}
+
+func TestValidateWebhookDeliveryFlagsAcceptsBoundaryConcurrency(t *testing.T) {
+	tests := []int{1, 512}
+	for _, concurrency := range tests {
+		failure, err := validateWebhookDeliveryFlags("scenario.json", 30*time.Second, concurrency)
+		if err != nil {
+			t.Fatalf("validateWebhookDeliveryFlags(concurrency=%d) returned error: %v", concurrency, err)
+		}
+		if failure != webhookDeliveryFlagFailureNone {
+			t.Fatalf("validateWebhookDeliveryFlags(concurrency=%d) failure = %q, want %q", concurrency, failure, webhookDeliveryFlagFailureNone)
+		}
 	}
 }

@@ -95,6 +95,37 @@ func loadSimulatorScenario(path string) (simulator.Scenario, error) {
 	return scenario, nil
 }
 
+// webhookDeliveryFlagFailure identifies which simulate-webhooks flag failed
+// validation, so a failure is diagnosable without logging the flag values
+// themselves (the scenario path, endpoint, and numeric settings an operator
+// supplied).
+type webhookDeliveryFlagFailure string
+
+const (
+	webhookDeliveryFlagFailureNone        webhookDeliveryFlagFailure = "none"
+	webhookDeliveryFlagFailureScenario    webhookDeliveryFlagFailure = "scenario"
+	webhookDeliveryFlagFailureTimeout     webhookDeliveryFlagFailure = "request-timeout"
+	webhookDeliveryFlagFailureConcurrency webhookDeliveryFlagFailure = "concurrency"
+)
+
+// validateWebhookDeliveryFlags applies simulate-webhooks' flag preconditions:
+// a non-empty scenario path, a positive request timeout, and a concurrency
+// within [1, 512]. It is a pure function extracted from the command's RunE
+// so each precondition is independently testable without building a cobra
+// command or delivering real webhook traffic.
+func validateWebhookDeliveryFlags(scenarioPath string, timeout time.Duration, concurrency int) (webhookDeliveryFlagFailure, error) {
+	if scenarioPath == "" {
+		return webhookDeliveryFlagFailureScenario, errors.New("--scenario is required")
+	}
+	if timeout <= 0 {
+		return webhookDeliveryFlagFailureTimeout, errors.New("--request-timeout must be positive")
+	}
+	if concurrency < 1 || concurrency > 512 {
+		return webhookDeliveryFlagFailureConcurrency, errors.New("--concurrency must be between 1 and 512")
+	}
+	return webhookDeliveryFlagFailureNone, nil
+}
+
 func newSimulateWebhooksCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "simulate-webhooks",
@@ -105,14 +136,9 @@ func newSimulateWebhooksCommand() *cobra.Command {
 	concurrency := cmd.Flags().Int("concurrency", 64, "maximum concurrent webhook requests (1-512)")
 	timeout := cmd.Flags().Duration("request-timeout", 30*time.Second, "timeout for each webhook request")
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
-		if *scenarioPath == "" {
-			return errors.New("--scenario is required")
-		}
-		if *timeout <= 0 {
-			return errors.New("--request-timeout must be positive")
-		}
-		if *concurrency < 1 || *concurrency > 512 {
-			return errors.New("--concurrency must be between 1 and 512")
+		if failure, err := validateWebhookDeliveryFlags(*scenarioPath, *timeout, *concurrency); err != nil {
+			simulatorLog.Printf("simulate-webhooks flag validation failed flag=%s", failure)
+			return err
 		}
 		scenario, err := loadSimulatorScenario(*scenarioPath)
 		if err != nil {
