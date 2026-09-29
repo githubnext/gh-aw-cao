@@ -296,11 +296,16 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .marketplace-detail-page .entity-card-list-marketplace .issue-list-card-meta { justify-content: flex-start; }
 .marketplace-detail-page .entity-card-list-marketplace .issue-list-labels { grid-column: 2; grid-row: 2; justify-self: start; justify-content: flex-start; }
 .marketplace-detail-page .entity-card-list-marketplace .entity-card-list-actions { grid-column: 3; grid-row: 1 / span 2; align-self: center; margin: 0; }
-.marketplace-detail-page .entity-card-list-actions .table-cli-action-button { min-height: 36px; padding: 6px 18px; border-color: var(--accent); background: var(--accent); color: var(--on-emphasis); font-weight: 600; }
+.marketplace-detail-page .entity-card-list-actions .table-cli-action-button { min-height: 36px; padding: 6px 18px; border-color: var(--accent); background: var(--accent); color: var(--canvas); font-weight: 600; }
 .marketplace-detail-page .entity-card-list-actions .table-cli-action-button:hover { filter: brightness(1.08); }
+.marketplace-detail-page .entity-card-list-actions .table-cli-action-button > .octicon { color: inherit; }
 .marketplace-detail-page .entity-card-list-actions .table-cli-action-button .cli-action-trigger-copy strong { font-size: .875rem; }
 .marketplace-detail-page .dashboard-markdown { padding: 24px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
-.marketplace-detail-page .entity-card-list-grouped { border-radius: 6px; }
+.marketplace-detail-page .link-button-list { overflow: visible; border: 0; border-radius: 0; background: transparent; }
+.marketplace-detail-page .link-button-list-view > header { padding: 0; }
+.marketplace-detail-page .link-button-list-item > a { display: inline-flex; min-height: 36px; gap: 8px; padding: 6px 0; }
+.marketplace-detail-page .link-button-list-item > a::after { display: none; }
+.marketplace-detail-page .link-button-list-icon { width: 20px; height: 20px; background: transparent; }
 .entity-card-list-chevron { display: flex; align-items: center; color: var(--muted); }
 .entity-card-list-chevron .octicon { width: 14px; height: 14px; }
 .link-button-list-view { display: grid; gap: 12px; }

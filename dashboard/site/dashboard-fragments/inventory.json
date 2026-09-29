@@ -552,7 +552,6 @@
       "page": "issues",
       "title": "Issues",
       "icon": "issue-opened",
-      "experimental": true,
       "description": "Retained GitHub issues created by agentic workflow safe outputs.",
       "definition": {
         "data-state": {

@@ -495,6 +495,76 @@ func TestClassifyWorkerStop(t *testing.T) {
 	}
 }
 
+func TestResolveActionsEnvironment(t *testing.T) {
+	values := map[string]string{
+		"GITHUB_TOKEN":      "a-token",
+		"GITHUB_ACTOR":      "an-actor",
+		"GITHUB_REPOSITORY": "owner/repo",
+		"GITHUB_API_URL":    "https://api.example.com",
+	}
+	getenv := func(name string) string { return values[name] }
+
+	got := resolveActionsEnvironment(getenv)
+
+	want := actionsEnvironment{
+		Token:      "a-token",
+		Actor:      "an-actor",
+		Repository: "owner/repo",
+		APIURL:     "https://api.example.com",
+	}
+	if got != want {
+		t.Fatalf("resolveActionsEnvironment() = %+v, want %+v", got, want)
+	}
+}
+
+func TestResolveActionsEnvironmentLeavesMissingVariablesEmpty(t *testing.T) {
+	getenv := func(string) string { return "" }
+
+	got := resolveActionsEnvironment(getenv)
+
+	if got != (actionsEnvironment{}) {
+		t.Fatalf("resolveActionsEnvironment() = %+v, want zero value", got)
+	}
+}
+
+func TestActionsEnvironmentPresentReportsPresenceNotValues(t *testing.T) {
+	tests := []struct {
+		name string
+		env  actionsEnvironment
+		want string
+	}{
+		{
+			name: "all set",
+			env: actionsEnvironment{
+				Token: "secret-token", Actor: "octocat",
+				Repository: "owner/repo", APIURL: "https://api.example.com",
+			},
+			want: "token=true actor=true repository=true api_url=true",
+		},
+		{
+			name: "none set",
+			env:  actionsEnvironment{},
+			want: "token=false actor=false repository=false api_url=false",
+		},
+		{
+			name: "partially set",
+			env:  actionsEnvironment{Token: "secret-token"},
+			want: "token=true actor=false repository=false api_url=false",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.env.present()
+			if got != tt.want {
+				t.Errorf("present() = %q, want %q", got, tt.want)
+			}
+			if strings.Contains(got, "secret-token") {
+				t.Errorf("present() = %q, must not include the token value", got)
+			}
+		})
+	}
+}
+
 func TestRootCommandRegistersEverySubcommand(t *testing.T) {
 	want := []string{"backfill", "collect", "doctor", "ingest", "serve", "serve-hosted"}
 	root := newRootCommand()

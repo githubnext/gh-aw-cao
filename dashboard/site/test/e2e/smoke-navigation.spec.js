@@ -409,7 +409,11 @@ test('production chart and table pages expose consistent desktop and mobile view
     await expect(modes).toHaveText(['Chart', 'Cards', 'Table']);
     await expect(modes.first()).toHaveAttribute('aria-pressed', 'true');
     if (pageId === 'firewall') {
-      await expect(dashboardPage.locator('summary').filter({ hasText: 'All observed domains' })).toBeVisible();
+      const domains = dashboardPage.locator('[data-view-id="security-firewall-domains"]');
+      await expect(domains).toBeHidden();
+      await modes.last().click();
+      await expect(domains).toBeVisible();
+      await modes.first().click();
     }
   }
 

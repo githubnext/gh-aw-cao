@@ -72,7 +72,26 @@ test("package manifests normalize immutable coordinates and the canonical add co
   assert.equal(normalized.id, "example/packages/demo");
   assert.equal(normalized.source, `example/packages/demo@${SHA}`);
   assert.equal(normalized["add-command"], `./cao.sh add example/packages/demo@${SHA}`);
+  assert.deepEqual(normalized["repository-link"], {
+    relation: "repository",
+    href: "https://github.com/example/packages",
+    label: "Open example/packages on GitHub",
+  });
   assert.deepEqual(normalized.contents, ["workflow.md"]);
+});
+
+test("marketplace repository links use the configured GitHub Enterprise host", () => {
+  const normalized = parsePackageManifest("name: Demo\n", {
+    registryId: "enterprise",
+    registryName: "Enterprise",
+    precedence: 0,
+    repository: "example/packages",
+    apiUrl: "https://github.example/api/v3",
+    path: "demo/aw.yml",
+    ref: "main",
+    resolvedCommit: SHA,
+  });
+  assert.equal(normalized["repository-link"].href, "https://github.example/example/packages");
 });
 
 test("packages carry the README preview published beside their manifest", async () => {

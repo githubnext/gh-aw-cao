@@ -4,6 +4,9 @@
 
 import { h } from '../dom.js';
 import { renderCloseButton, renderIconSpan } from './ui-primitives.js';
+import { createDebug } from '../debug.js';
+
+const debugSiteCallout = createDebug('site-callout');
 
 const dismissedCalloutIds = new Set();
 
@@ -25,6 +28,11 @@ export function renderSiteCallouts(callouts, sources) {
   const visibleCallouts = callouts.filter((callout) => (
     !dismissedCalloutIds.has(callout.id) && matchesVisibility(callout['visible-when'], sources)
   ));
+  debugSiteCallout({
+    event: 'rendered',
+    declaredCount: callouts.length,
+    visibleCount: visibleCallouts.length
+  });
   if (visibleCallouts.length === 0) return null;
   return h(
     'section',
@@ -69,6 +77,7 @@ export function renderSiteCallout(callout) {
       label: `Dismiss ${callout.title}`,
       onClick: () => {
         dismissedCalloutIds.add(callout.id);
+        debugSiteCallout({ event: 'dismissed', id: callout.id });
         element.remove();
       }
     })

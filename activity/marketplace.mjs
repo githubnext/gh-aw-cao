@@ -33,6 +33,29 @@ function apiBase(registry) {
   return String(registry["api-url"] ?? "https://api.github.com").replace(/\/+$/, "");
 }
 
+function repositoryLink(repository, apiUrl) {
+  try {
+    const api = new URL(apiUrl);
+    if (api.protocol !== "https:" || api.username || api.password) return undefined;
+    let webBase;
+    if (api.hostname === "api.github.com" && api.pathname === "/") {
+      webBase = "https://github.com";
+    } else if (/\/api\/v3\/?$/.test(api.pathname)) {
+      webBase = `${api.origin}${api.pathname.replace(/\/api\/v3\/?$/, "")}`;
+    } else {
+      return undefined;
+    }
+    const path = repository.split("/").map(encodeURIComponent).join("/");
+    return {
+      relation: "repository",
+      href: `${webBase.replace(/\/$/, "")}/${path}`,
+      label: `Open ${repository} on GitHub`,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 async function githubRequest(fetchImpl, url, token, init = {}) {
   const response = await fetchImpl(url, {
     ...init,
@@ -104,6 +127,7 @@ export function parsePackageManifest(source, coordinates) {
     description: scalar(source, "description"),
     publisher: coordinates.repository.split("/")[0],
     repository: coordinates.repository,
+    "repository-link": repositoryLink(coordinates.repository, coordinates.apiUrl ?? "https://api.github.com"),
     path: packagePath,
     ref: coordinates.ref,
     "resolved-commit": coordinates.resolvedCommit,
@@ -215,6 +239,7 @@ async function resolveRegistry(registry, precedence, options) {
       registryName: registry.name,
       precedence,
       repository: registry.repository,
+      apiUrl: base,
       path: entry.path,
       ref: registry.ref,
       resolvedCommit: commit,

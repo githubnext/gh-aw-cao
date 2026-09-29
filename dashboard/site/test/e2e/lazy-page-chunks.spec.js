@@ -61,6 +61,11 @@ const inventory = {
       description: 'Dependabot automation',
       publisher: 'githubnext',
       repository: 'githubnext/gh-aw-cao',
+      'repository-link': {
+        relation: 'repository',
+        href: 'https://github.com/githubnext/gh-aw-cao',
+        label: 'Open githubnext/gh-aw-cao on GitHub',
+      },
       path: 'dependabot',
       ref: 'main',
       'resolved-commit': 'a'.repeat(40),
@@ -344,15 +349,23 @@ test('marketplace page renders canonical package cards after ingestion', async (
   const add = detail.locator('.entity-card-list-actions .cli-action-trigger');
   await expect(add).toBeVisible();
   await expect(add).toHaveAccessibleName('Add');
+  await expect(add.locator(':scope > .octicon')).toHaveCSS('color', 'rgb(255, 255, 255)');
+  const dashboardRoot = page.locator('.dashboard-root');
+  await dashboardRoot.evaluate((root) => root.setAttribute('data-theme', 'dark'));
+  await expect(add).toHaveCSS('color', 'rgb(13, 17, 23)');
+  await expect(add.locator(':scope > .octicon')).toHaveCSS('color', 'rgb(13, 17, 23)');
+  await dashboardRoot.evaluate((root) => root.setAttribute('data-theme', 'light'));
   await add.click();
   await expect(page.locator('.cli-action-dialog .cli-action-command')).toHaveText(
     `bash ./cao.sh add githubnext/gh-aw-cao/dependabot@${'a'.repeat(40)}`
   );
   await page.locator('.cli-action-dialog .cli-action-cancel').click();
   await expect(detail.locator('.dashboard-markdown')).toContainText('Keeps dependency updates moving.');
-  const about = detail.locator('.entity-card-list-grouped');
-  await expect(detail.getByRole('heading', { name: 'About' })).toBeVisible();
-  await expect(about).toContainText('Official CAO catalog');
+  const about = detail.locator('.link-button-list-view');
+  await expect(about.getByRole('heading', { name: 'About' })).toBeVisible();
+  const repositoryLink = about.getByRole('link', { name: 'Open githubnext/gh-aw-cao on GitHub' });
+  await expect(repositoryLink).toHaveAttribute('href', 'https://github.com/githubnext/gh-aw-cao');
+  await expect(about.locator('.link-button-list')).toHaveCSS('border-width', '0px');
   const readmeBox = await detail.locator('.dashboard-markdown').boundingBox();
   const aboutBox = await about.boundingBox();
   expect(aboutBox?.x ?? 0).toBeGreaterThan((readmeBox?.x ?? 0) + (readmeBox?.width ?? 0));

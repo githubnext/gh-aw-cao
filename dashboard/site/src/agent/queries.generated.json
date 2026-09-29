@@ -2978,23 +2978,6 @@
     "limit": 10
   },
   {
-    "name": "firewall-least-used-domains",
-    "intent": "Highlight uncommon firewall domains observed in the fewest runs.",
-    "description": "The ten domains observed in the fewest distinct runs.",
-    "from": "firewall-domain-totals",
-    "order-by": [
-      {
-        "field": "run",
-        "direction": "asc"
-      },
-      {
-        "field": "domain",
-        "direction": "asc"
-      }
-    ],
-    "limit": 10
-  },
-  {
     "name": "firewall-domain-workflows",
     "intent": "Show workflows that allowed or blocked requests to each observed firewall domain.",
     "description": "Workflow-level accepted and blocked request totals by firewall domain.",
@@ -9291,6 +9274,168 @@
     "order-by": [
       {
         "field": "aic",
+        "direction": "desc"
+      }
+    ]
+  },
+  {
+    "name": "cost-per-workflow-run",
+    "intent": "Present the average observed AI Credit cost of a single run for each repository-owned workflow.",
+    "description": "Observed AI Credit totals divided by observed run attempts for each declared workflow.",
+    "from": "workflow-aic-totals",
+    "joins": [
+      {
+        "source": "workflow-run-totals",
+        "type": "left",
+        "on": [
+          {
+            "left": "organization",
+            "right": "organization"
+          },
+          {
+            "left": "repository",
+            "right": "repository"
+          },
+          {
+            "left": "workflow",
+            "right": "workflow"
+          }
+        ],
+        "fields": [
+          {
+            "field": "runs",
+            "as": "observed-runs"
+          }
+        ]
+      }
+    ],
+    "compute": [
+      {
+        "as": "aic-per-run",
+        "function": "quotient",
+        "args": [
+          {
+            "field": "aic"
+          },
+          {
+            "field": "observed-runs"
+          }
+        ]
+      },
+      {
+        "as": "repository-coordinate",
+        "function": "concat",
+        "args": [
+          {
+            "field": "organization"
+          },
+          {
+            "value": "/"
+          },
+          {
+            "field": "repository"
+          }
+        ]
+      },
+      {
+        "as": "workflow-coordinate",
+        "function": "concat",
+        "args": [
+          {
+            "field": "organization"
+          },
+          {
+            "value": "/"
+          },
+          {
+            "field": "repository"
+          },
+          {
+            "value": ":"
+          },
+          {
+            "field": "workflow"
+          }
+        ]
+      },
+      {
+        "as": "encoded-workflow",
+        "function": "url-encode",
+        "args": [
+          {
+            "field": "workflow-coordinate"
+          }
+        ]
+      },
+      {
+        "as": "workflow-dashboard-href",
+        "function": "concat",
+        "args": [
+          {
+            "value": "#page-workflow-runtime?workflow="
+          },
+          {
+            "field": "encoded-workflow"
+          }
+        ]
+      },
+      {
+        "as": "workflow-dashboard-label",
+        "function": "concat",
+        "args": [
+          {
+            "value": "View "
+          },
+          {
+            "field": "workflow-coordinate"
+          },
+          {
+            "value": " workflow dashboard"
+          }
+        ]
+      },
+      {
+        "as": "workflow-dashboard-link",
+        "function": "dashboard-link",
+        "args": [
+          {
+            "value": ""
+          },
+          {
+            "field": "workflow-dashboard-href"
+          },
+          {
+            "field": "workflow-dashboard-label"
+          },
+          {
+            "field": "workflow-coordinate"
+          }
+        ]
+      }
+    ],
+    "select": [
+      {
+        "field": "repository-coordinate"
+      },
+      {
+        "field": "workflow"
+      },
+      {
+        "field": "workflow-coordinate"
+      },
+      {
+        "field": "workflow-dashboard-link"
+      },
+      {
+        "field": "observed-runs"
+      },
+      {
+        "field": "aic-per-run"
+      }
+    ],
+    "order-by": [
+      {
+        "field": "aic-per-run",
         "direction": "desc"
       }
     ]

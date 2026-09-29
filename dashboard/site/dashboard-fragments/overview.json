@@ -1621,6 +1621,168 @@
           "direction": "desc"
         }
       ]
+    },
+    {
+      "name": "cost-per-workflow-run",
+      "intent": "Present the average observed AI Credit cost of a single run for each repository-owned workflow.",
+      "description": "Observed AI Credit totals divided by observed run attempts for each declared workflow.",
+      "from": "workflow-aic-totals",
+      "joins": [
+        {
+          "source": "workflow-run-totals",
+          "type": "left",
+          "on": [
+            {
+              "left": "organization",
+              "right": "organization"
+            },
+            {
+              "left": "repository",
+              "right": "repository"
+            },
+            {
+              "left": "workflow",
+              "right": "workflow"
+            }
+          ],
+          "fields": [
+            {
+              "field": "runs",
+              "as": "observed-runs"
+            }
+          ]
+        }
+      ],
+      "compute": [
+        {
+          "as": "aic-per-run",
+          "function": "quotient",
+          "args": [
+            {
+              "field": "aic"
+            },
+            {
+              "field": "observed-runs"
+            }
+          ]
+        },
+        {
+          "as": "repository-coordinate",
+          "function": "concat",
+          "args": [
+            {
+              "field": "organization"
+            },
+            {
+              "value": "/"
+            },
+            {
+              "field": "repository"
+            }
+          ]
+        },
+        {
+          "as": "workflow-coordinate",
+          "function": "concat",
+          "args": [
+            {
+              "field": "organization"
+            },
+            {
+              "value": "/"
+            },
+            {
+              "field": "repository"
+            },
+            {
+              "value": ":"
+            },
+            {
+              "field": "workflow"
+            }
+          ]
+        },
+        {
+          "as": "encoded-workflow",
+          "function": "url-encode",
+          "args": [
+            {
+              "field": "workflow-coordinate"
+            }
+          ]
+        },
+        {
+          "as": "workflow-dashboard-href",
+          "function": "concat",
+          "args": [
+            {
+              "value": "#page-workflow-runtime?workflow="
+            },
+            {
+              "field": "encoded-workflow"
+            }
+          ]
+        },
+        {
+          "as": "workflow-dashboard-label",
+          "function": "concat",
+          "args": [
+            {
+              "value": "View "
+            },
+            {
+              "field": "workflow-coordinate"
+            },
+            {
+              "value": " workflow dashboard"
+            }
+          ]
+        },
+        {
+          "as": "workflow-dashboard-link",
+          "function": "dashboard-link",
+          "args": [
+            {
+              "value": ""
+            },
+            {
+              "field": "workflow-dashboard-href"
+            },
+            {
+              "field": "workflow-dashboard-label"
+            },
+            {
+              "field": "workflow-coordinate"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "repository-coordinate"
+        },
+        {
+          "field": "workflow"
+        },
+        {
+          "field": "workflow-coordinate"
+        },
+        {
+          "field": "workflow-dashboard-link"
+        },
+        {
+          "field": "observed-runs"
+        },
+        {
+          "field": "aic-per-run"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "aic-per-run",
+          "direction": "desc"
+        }
+      ]
     }
   ],
   "pages": [
@@ -1791,6 +1953,47 @@
               "type": "quantitative",
               "title": "AIC cost",
               "unit": "aic"
+            },
+            "href": {
+              "field": "workflow-dashboard-link"
+            }
+          }
+        },
+        {
+          "id": "cost-per-workflow-run",
+          "title": "Cost per workflow run",
+          "description": "Observed AI Credit cost divided by observed run attempts for each workflow.",
+          "data": {
+            "source": "cost-per-workflow-run",
+            "order-by": [
+              {
+                "field": "aic-per-run",
+                "direction": "desc"
+              }
+            ],
+            "limit": 100
+          },
+          "mark": "chart",
+          "chart": "horizontal-bar",
+          "layout": "full",
+          "empty-message": "No workflow AI Credit cost per run was observed.",
+          "encoding": {
+            "x": {
+              "field": "workflow",
+              "type": "nominal",
+              "title": "Workflow",
+              "format": "workflow-relative-path"
+            },
+            "section": {
+              "field": "repository-coordinate",
+              "type": "nominal",
+              "title": "Repository"
+            },
+            "y": {
+              "field": "aic-per-run",
+              "type": "quantitative",
+              "title": "Average AIC per run",
+              "unit": "aic-per-run"
             },
             "href": {
               "field": "workflow-dashboard-link"

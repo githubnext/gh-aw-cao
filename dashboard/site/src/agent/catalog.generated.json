@@ -24,7 +24,6 @@
       "parameters": [],
       "queries": [
         "firewall-domain-totals",
-        "firewall-least-used-domains",
         "firewall-most-blocked-domains"
       ]
     },
@@ -558,7 +557,7 @@
       "id": "issues",
       "title": "Issues",
       "description": "Retained GitHub issues created by agentic workflow safe outputs.",
-      "experimental": true,
+      "experimental": false,
       "parameters": [],
       "queries": [
         "issue-repository-totals",
@@ -710,7 +709,8 @@
       "queries": [
         "cost-by-campaign",
         "cost-by-repository",
-        "cost-by-workflow"
+        "cost-by-workflow",
+        "cost-per-workflow-run"
       ]
     },
     {
@@ -1471,25 +1471,6 @@
       "id": "firewall-most-blocked-domains",
       "intent": "Highlight the domains with the most blocked firewall requests.",
       "description": "The ten domains with the highest observed blocked request totals.",
-      "parameters": [],
-      "sources": [
-        "firewall-domain-totals"
-      ],
-      "used-by-pages": [
-        "firewall"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "firewall-observations"
-        ]
-      }
-    },
-    {
-      "id": "firewall-least-used-domains",
-      "intent": "Highlight uncommon firewall domains observed in the fewest runs.",
-      "description": "The ten domains observed in the fewest distinct runs.",
       "parameters": [],
       "sources": [
         "firewall-domain-totals"
@@ -3672,6 +3653,30 @@
         "backend": "sqlite",
         "requirements": [
           "runs"
+        ]
+      }
+    },
+    {
+      "id": "cost-per-workflow-run",
+      "intent": "Present the average observed AI Credit cost of a single run for each repository-owned workflow.",
+      "description": "Observed AI Credit totals divided by observed run attempts for each declared workflow.",
+      "parameters": [],
+      "sources": [
+        "workflow-aic-totals",
+        "workflow-run-totals"
+      ],
+      "used-by-pages": [
+        "cost"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "domains",
+          "issues",
+          "runs",
+          "tools"
         ]
       }
     },
