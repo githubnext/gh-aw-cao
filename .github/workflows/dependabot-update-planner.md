@@ -150,7 +150,7 @@ tracker-id: dependabot-update-planner
 
 tools:
   github:
-    mode: gh-proxy
+    mode: local
     min-integrity: unapproved
     toolsets: [default, repos, issues, pull_requests, actions, dependabot, code_security, security_advisories]
     github-app:
@@ -319,7 +319,7 @@ Also determine the repository-declared package-manager and toolchain versions fr
 
 Build a complete snapshot without requiring Dependabot pull requests to exist. Security findings and routine version updates have separate evidence routes:
 
-1. Find every open Dependabot security alert visible to this workflow with `list_dependabot_alerts` or authenticated read-only `gh api -X GET /repos/{owner}/{repo}/dependabot/alerts?state=open`. Record the vulnerable package, severity, advisory, vulnerable range, and patched version when available.
+1. Find every open Dependabot security alert visible to this workflow with the target-scoped read App's `list_dependabot_alerts` tool, paging through all open alerts. Record the vulnerable package, severity, advisory, vulnerable range, and patched version when available.
    - Successfully checking out `target_repo` proves only repository contents access. It does not prove that the credential used by GitHub tools or `gh api` can read Dependabot alerts.
    - Require an actual successful alert-list response using a credential with `vulnerability-alerts: read` access before treating security evidence as available.
    - Distinguish an empty result from unavailable evidence. Tool denial, DIFC filtering, missing tools, authentication failures, permission failures, or API errors mean alert evidence is unavailable; do not summarize unavailable alert evidence as "zero open alerts."

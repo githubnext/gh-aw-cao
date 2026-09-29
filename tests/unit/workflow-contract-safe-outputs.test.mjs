@@ -135,9 +135,15 @@ test("Dependabot worker maintains a durable parent and one-PR child tasks withou
   const config = parse(frontmatter);
   const outputs = config["safe-outputs"];
 
-  assert.equal(config.tools.github.mode, "gh-proxy");
+  assert.equal(config.tools.github.mode, "local");
   assert.equal(config.tools.github["min-integrity"], "unapproved");
   assert.equal(config.permissions["vulnerability-alerts"], "read");
+  assert.ok(config.tools.github.toolsets.includes("dependabot"));
+  assert.equal(config.tools.github["github-app"].owner, "${{ steps.target_github_app_scope.outputs.owner }}");
+  assert.deepEqual(config.tools.github["github-app"].repositories, ["${{ steps.target_github_app_scope.outputs.repository }}"]);
+  const lock = workflow("dependabot-update-planner.lock.yml");
+  assert.match(lock, /permission-vulnerability-alerts: read/);
+  assert.match(lock, /GITHUB_MCP_SERVER_TOKEN: \$\{\{ steps\.github-mcp-app-token\.outputs\.token/);
   assert.deepEqual(Object.keys(outputs).sort(), ["add-comment", "close-issue", "create-issue", "update-issue"]);
   assert.equal(outputs["create-issue"].max, 13);
   assert.equal(outputs["create-issue"]["deduplicate-by-title"], true);
@@ -191,7 +197,7 @@ test("Dependabot worker maintains a durable parent and one-PR child tasks withou
   assert.match(source, /Their absence does not make the inventory incomplete/);
   assert.match(source, /do not run install, update, audit-fix, or lifecycle scripts/);
   assert.doesNotMatch(source, /fallback inventory/);
-  assert.match(source, /authenticated read-only `gh api/);
+  assert.match(source, /target-scoped read App's `list_dependabot_alerts` tool, paging through all open alerts/);
   assert.match(source, /Never create, update, push to, comment on, or otherwise mutate a pull request/);
 });
 
