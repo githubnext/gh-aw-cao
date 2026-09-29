@@ -130,6 +130,23 @@
         36632954614
       ],
       "outcome": "no_actionable_improvement: dependency restore cache hit in all 9 comparable successful docs.yml runs; install/save never ran, build median 43s and workflow median 66s, so dependency installation and caching are below the 60s/15% threshold."
+    },
+    {
+      "evaluated_at": "2026-09-29T22:43:21Z",
+      "worker_run_id": "36640753803",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36639375613,
+        36639055495,
+        36637066632,
+        36635651609,
+        36635486569,
+        36634885197,
+        36634106269,
+        36633476719,
+        36632954614
+      ],
+      "outcome": "no_actionable_improvement: dependency restore cache hit in all 9 comparable successful docs.yml runs; install/save never ran, build median 43s and workflow median 66s, so dependency installation and caching remain below the 60s/15% threshold and no material evidence change justifies a new recommendation."
     }
   ]
 }
