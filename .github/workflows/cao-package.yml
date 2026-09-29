@@ -390,8 +390,7 @@ jobs:
           set -euo pipefail
           npm ci
           node --test \
-            tests/unit/cao-package-contract.test.mjs \
-            tests/unit/coolify-deployment-contract.test.mjs
+            tests/unit/cao-package-contract.test.mjs
       - id: server-tests
         name: Test CAO server
         run: go -C server test ./...

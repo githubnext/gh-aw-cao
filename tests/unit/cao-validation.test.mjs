@@ -191,6 +191,33 @@ test("detects bounded static security findings", async () => {
   }
 });
 
+test("allows only the reviewed protected-main publisher exception", async () => {
+  const root = await fixture({ declaration: false });
+  try {
+    await writeFile(path.join(root, ".github", "workflows", "package.yml"), [
+      "jobs:",
+      "  publish:",
+      "    uses: githubnext/gh-aw-cao/.github/workflows/cao-package-publish.yml@main # zizmor: ignore[unpinned-uses] protected default-branch publisher",
+      "  unreviewed:",
+      "    uses: githubnext/gh-aw-cao/.github/workflows/cao-package-publish.yml@main",
+      "  other:",
+      "    uses: githubnext/gh-aw-cao/.github/workflows/other.yml@main",
+      "  external:",
+      "    steps:",
+      "      - uses: someone/action@main",
+      "",
+    ].join("\n"));
+    const findings = await validateSecurity(root, "{}");
+    assert.deepEqual(findings.map(({ observed }) => observed), [
+      "githubnext/gh-aw-cao/.github/workflows/cao-package-publish.yml@main",
+      "githubnext/gh-aw-cao/.github/workflows/other.yml@main",
+      "someone/action@main",
+    ]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("detects worker dispatch and orchestrator mutation capabilities", async () => {
   const root = await fixture();
   try {
