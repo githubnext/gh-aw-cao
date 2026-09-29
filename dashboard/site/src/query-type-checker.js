@@ -542,6 +542,7 @@ function computeArgumentUsage(functionName, argumentIndex) {
 function inferComputeType(computed, fields, parameters = new Map()) {
   const functionName = computed.function;
   if (functionName === 'dashboard-link') return 'link';
+  if (functionName === 'link') return 'link';
   if (typeof functionName === 'string' && NUMERIC_COMPUTE_FUNCTIONS.includes(functionName)) return 'numeric';
   if (typeof functionName === 'string' && TEXT_COMPUTE_FUNCTIONS.includes(functionName)) return 'text';
   if (functionName === 'equals-any' || functionName === 'greater-than') return 'boolean';

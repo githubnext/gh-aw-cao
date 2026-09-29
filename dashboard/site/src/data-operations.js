@@ -49,6 +49,7 @@ export const COMPUTE_FUNCTION_ARITY = {
   'date-day': [1, 1],
   'calendar-week-point': [3, 3],
   'dashboard-link': [3, 4],
+  link: [2, 2],
   'link-href': [1, 1],
   'equals-any': [2, 8],
   'greater-than': [2, 2],
@@ -329,6 +330,11 @@ export function computeValue(row, definition) {
     if (timestamp === null || reference === null) return null;
     return JSON.stringify([timestamp, reference, values[2] === 'success']);
   }
+  if (definition.function === 'link') {
+    const href = textValue(values[0]);
+    const label = textValue(values[1]).trim();
+    return href && label ? { href, label } : null;
+  }
   if (definition.function === 'dashboard-link') {
     const existing = isPlainObject(values[0]) ? values[0] : {};
     const href = textValue(values[1]);
@@ -345,7 +351,11 @@ export function computeValue(row, definition) {
   if (definition.function === 'equals-any') {
     return values.slice(1).some((value) => sameValue(values[0], value));
   }
-  if (definition.function === 'if') return scalarValue(values[0] === true ? values[1] : values[2]);
+  if (definition.function === 'if') {
+    return /** @type {string|number|boolean|Record<string, unknown>|null} */ (
+      values[0] === true ? values[1] : values[2]
+    );
+  }
   if (definition.function === 'format-count') {
     const value = numericValue(values[0]);
     return value === null ? null : formatCount(value);

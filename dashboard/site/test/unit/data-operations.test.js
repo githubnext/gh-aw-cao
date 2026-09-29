@@ -53,6 +53,47 @@ describe('dashboard data operations', () => {
     ]);
   });
 
+  it('builds and conditionally selects declarative links', () => {
+    expect(tidy([
+      { href: 'https://github.com/example/repo/issues/1', isPullRequest: false },
+      { href: 'https://github.com/example/repo/pull/2', isPullRequest: true },
+      { href: '', isPullRequest: false }
+    ], [{
+      op: 'compute',
+      values: [
+        { as: 'issue', function: 'link', args: [{ field: 'href' }, { value: 'View issue' }] },
+        { as: 'pull-request', function: 'link', args: [{ field: 'href' }, { value: 'View pull request' }] },
+        { as: 'issue-link', function: 'if', args: [{ field: 'isPullRequest' }, { value: null }, { field: 'issue' }] },
+        { as: 'pull-request-link', function: 'if', args: [{ field: 'isPullRequest' }, { field: 'pull-request' }, { value: null }] }
+      ]
+    }])).toEqual([
+      {
+        href: 'https://github.com/example/repo/issues/1',
+        isPullRequest: false,
+        issue: { href: 'https://github.com/example/repo/issues/1', label: 'View issue' },
+        'pull-request': { href: 'https://github.com/example/repo/issues/1', label: 'View pull request' },
+        'issue-link': { href: 'https://github.com/example/repo/issues/1', label: 'View issue' },
+        'pull-request-link': null
+      },
+      {
+        href: 'https://github.com/example/repo/pull/2',
+        isPullRequest: true,
+        issue: { href: 'https://github.com/example/repo/pull/2', label: 'View issue' },
+        'pull-request': { href: 'https://github.com/example/repo/pull/2', label: 'View pull request' },
+        'issue-link': null,
+        'pull-request-link': { href: 'https://github.com/example/repo/pull/2', label: 'View pull request' }
+      },
+      {
+        href: '',
+        isPullRequest: false,
+        issue: null,
+        'pull-request': null,
+        'issue-link': null,
+        'pull-request-link': null
+      }
+    ]);
+  });
+
   it('summarizes groups and computes means without mutating its input', () => {
     expect(tidy(rows, [{
       op: 'summarize',

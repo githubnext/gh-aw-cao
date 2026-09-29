@@ -20,6 +20,10 @@ const debugDatabase = createDebug('database');
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 const databaseQueryIndex = dashboardQueryIndex(databaseQueries);
 const RUN_RECORD_STORES = new Set(['domains', 'tools', 'skills', 'friction', 'audits', 'issues']);
+const DIRECT_EVIDENCE_SOURCES = new Set([
+  'experiments', 'experiment-assignments', 'graders',
+  'grader-observations', 'evals', 'eval-observations'
+]);
 const DATABASE_TABLE_SOURCES = new Set([
   'campaigns',
   'repositories',
@@ -36,11 +40,6 @@ const DATABASE_TABLE_SOURCES = new Set([
   'eval-observations',
   'transactions'
 ]);
-const DIRECT_EVIDENCE_SOURCES = new Set([
-  'experiments', 'experiment-assignments', 'graders',
-  'grader-observations', 'evals', 'eval-observations'
-]);
-
 /**
  * @param {Record<string, unknown>} sources
  * @param {string} sourceName
@@ -474,22 +473,8 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
           metadata: queryMetadata(sources, 'repositories', 'repositories', true)
         }
       }, sources, 'workflows');
-      const linkedRecords = {
-        ...records,
-        rows: records.rows.map((row) => {
-          const correlationId = typeof row['correlation-id'] === 'string' ? row['correlation-id'] : '';
-          const isPullRequest = row['is-pull-request'] === true;
-          const link = correlationId ? { href: correlationId, label: isPullRequest ? 'View pull request' : 'View issue' } : null;
-          return {
-            ...row,
-            'issue-link': !isPullRequest ? link : null,
-            'pull-request-link': isPullRequest ? link : null,
-            'external-link': link
-          };
-        })
-      };
       result[name] = executeDatabaseQuery(name, {
-        'run-records': linkedRecords,
+        'run-records': records,
         workflows: workflowRows
       }, sources, 'issues');
       continue;
