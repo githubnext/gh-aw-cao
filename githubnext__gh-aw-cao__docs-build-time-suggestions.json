@@ -1,6 +1,6 @@
 {
   "source_sha": "9ba3addf3f94a1180cd0eadb44c25452bd3f6404",
-  "next_category": "Astro documentation generation",
+  "next_category": "reusable dashboard generation",
   "evaluations": [
     {
       "evaluated_at": "2026-09-28T12:05:00Z",
@@ -629,6 +629,35 @@
         36523654662
       ],
       "outcome": "no-op: evaluated dependency installation and caching across 5 comparable successful docs.yml runs from the latest 20 completed docs.yml runs in the last 14 days, plus 5 nearby successful cao-dashboard.yml runs for source context. Evidence window 2026-09-29T10:03:22Z to 2026-09-29T11:24:50Z. Trusted metadata showed docs queue median 0.0s (p90 0.0s), workflow execution median 59.0s (p90 73.2s), build median 37.0s (p90 41.4s), and deploy median 10.5s (p90 10.9s on the two publishing runs). Successful docs build jobs showed Restore node_modules median 4.0s (p90 6.2s), Build documentation median 12.0s (p90 13.0s), Restore cached CAO Dashboard median 1.0s (p90 1.6s), and Upload Pages artifact median 5.0s (p90 5.0s); Install dependencies and Save node_modules were skipped on all 5 sampled builds, confirming stable node_modules cache hits. Trusted docs logs from run 36561462365 also showed a setup-node package-manager cache hit in post-job cleanup. Comparable successful cao-dashboard.yml runs still spent cache median 7.0s (p90 9.4s) re-downloading the just-built dashboard artifact and rewriting the constant central-agentic-ops-dashboard cache key, but that reusable-dashboard duplication was already captured by prior suggestion fingerprints 691cf332ab4dfe9aa28b and 576d1154f6c6fcbd0db2. No new non-duplicate dependency-installation or caching change with evidence-backed savings of at least 60s or 15% of median docs execution time was identified in this cycle.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-09-29T12:00:00Z",
+      "worker_run_id": 36562861510,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        36562595986,
+        36561462365,
+        36560442579,
+        36560313511,
+        36559202661,
+        36558015932,
+        36556998464,
+        36555636853,
+        36553145516,
+        36552978032,
+        36551297039,
+        36549481666,
+        36546561753,
+        36545686145,
+        36560234299,
+        36553054091,
+        36542050947,
+        36528998374,
+        36523654662,
+        36522567366
+      ],
+      "outcome": "no-op: evaluated Astro documentation generation across the latest 20 completed docs.yml runs from the last 14 days, with 14 successful completed docs runs, 7 comparable build-bearing successes, 7 successful freshness-only schedule skips, and 6 excluded completed runs (4 push/workflow_run source changes outside the comparable same-purpose slice, 1 skipped workflow_run, 1 action_required workflow_run). Evidence window 2026-09-29T08:54:22Z to 2026-09-29T11:34:43Z. Trusted metadata showed comparable docs workflow execution median 69.0s (p90 102.0s), build median 39.0s (p90 47.2s), deploy median 11.0s (p90 53.0s on the 4 publishing runs), and queue median 0.0s. Trusted build-step metadata showed Build documentation median 13.0s (p90 13.0s), Restore node_modules median 5.0s, Restore cached CAO Dashboard median 1.0s, and Upload Pages artifact median 5.0s; Install dependencies and Save node_modules were skipped on all comparable successful builds. Representative docs logs from run 36561462365 confirmed the Pages artifact finalized at 23,729,080 bytes and uploaded in about 3.9s. Comparable successful cao-dashboard.yml runs still spent median 45.0s in the dashboard build job and median 7.0s in the separate cache rewrite job, but Astro generation is not the dominant docs bottleneck and the larger reusable-dashboard cache rewrite was already recorded under suggestion fingerprints 691cf332ab4dfe9aa28b and 576d1154f6c6fcbd0db2. No new non-duplicate Astro documentation generation change with evidence-backed savings of at least 60s or 15% of median docs execution time was identified in this cycle.",
       "suggestion_fingerprint": null
     }
   ]
