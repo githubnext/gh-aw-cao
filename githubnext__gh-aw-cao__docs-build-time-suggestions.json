@@ -1,6 +1,6 @@
 {
-  "source_sha": "fc09ef162dd070f64e5f071eb1c8bcf1801e6d35",
-  "next_category": "artifact transfer and Pages packaging",
+  "source_sha": "150983889be72f1bb1e2271b0e8777806c6b0e82",
+  "next_category": "dependency installation and caching",
   "evaluations": [
     {
       "evaluated_at": "2026-09-28T12:05:00Z",
@@ -518,6 +518,37 @@
         36522567366
       ],
       "outcome": "no-op: evaluated artifact transfer and Pages packaging across the latest 20 completed docs.yml runs from the last 14 days, with 15 comparable successful docs runs and 5 successful freshness-only schedule skips excluded from build/deploy timing. Evidence window 2026-09-29T04:54:59Z to 2026-09-29T08:55:37Z. Trusted metadata showed docs workflow execution median 42.0s (p90 77.1s), build median 36.0s (p90 46.6s), deploy median 12.0s (p90 15.4s on the 7 publishing schedule runs), queue median 8.0s (p90 19.6s), and schedule-freshness median 8.0s. Trusted build-step metadata across comparable docs runs showed Upload Pages artifact median 5.0s (p90 5.0s), Restore cached CAO Dashboard median 1.0s (p90 2.0s), and Build documentation median 12.0s (p90 13.0s). Comparable successful cao-dashboard.yml runs 36542050947, 36528998374, 36523654662, and 36522567366 still show the larger repeated transfer in the separate cache job re-downloading the just-built dashboard artifact and rewriting the constant central-agentic-ops-dashboard cache key in about 7s median, but that duplicate transfer was already captured by suggestion fingerprints 691cf332ab4dfe9aa28b and 576d1154f6c6fcbd0db2. No new non-duplicate artifact-transfer or Pages-packaging change with evidence-backed savings of at least 60s or 15% of median docs execution time was identified in this cycle.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-09-29T09:58:14Z",
+      "worker_run_id": 36552196528,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36551297039,
+        36549481666,
+        36548016728,
+        36546561753,
+        36545686145,
+        36544673704,
+        36543934601,
+        36543569429,
+        36542165548,
+        36542050905,
+        36540269934,
+        36539345498,
+        36537405382,
+        36536654412,
+        36534414845,
+        36532359559,
+        36530523435,
+        36542050947,
+        36528998374,
+        36523654662,
+        36522567366,
+        36520875319
+      ],
+      "outcome": "no-op: evaluated scheduling, concurrency, and avoidable rebuilds across the latest 20 completed docs.yml runs from the last 14 days, with 14 successful docs runs, 3 successful freshness-only schedule skips, and 3 excluded completed docs runs (2 skipped workflow_run and 1 action_required workflow_run). Evidence window 2026-09-29T06:20:00Z to 2026-09-29T09:46:23Z. Trusted metadata showed comparable docs workflow execution median 49.0s (p90 81.0s), build median 42.0s (p90 48.0s), deploy median 12.0s (p90 47.4s on publishing schedule runs), and freshness-job median 8.0s (p90 9.2s), while same-SHA scheduled skips completed in median 8.0s. The freshness gate already skipped three same-SHA scheduled runs (36534414845, 36539345498, 36540269934) and reduced them to about 8s. Remaining successful docs executions in this sample were push or workflow_run-triggered builds on new revisions plus first scheduled publishes after a source change, so no additional avoidable rebuild pattern met the threshold. Comparable successful cao-dashboard.yml runs still spent cache median 7.0s (p90 8.2s) re-downloading the just-built dashboard artifact and rewriting the constant central-agentic-ops-dashboard cache key, but that reusable-dashboard duplication was already captured by suggestion fingerprints 691cf332ab4dfe9aa28b and 576d1154f6c6fcbd0db2. No new non-duplicate scheduling, concurrency, or avoidable-rebuild change with evidence-backed savings of at least 60s or 15% of median docs execution time was identified in this cycle.",
       "suggestion_fingerprint": null
     }
   ]
