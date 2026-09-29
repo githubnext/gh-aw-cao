@@ -157,10 +157,10 @@ test('Ingestion shows CAO Activity status, size trend, and retained transactions
     </script>
   `);
 
-  const updatesNavigation = page.locator('.nav-section').filter({
-    has: page.locator('summary', { hasText: /^Updates$/ })
+  const maintenanceNavigation = page.locator('.nav-section').filter({
+    has: page.locator('summary', { hasText: /^Maintenance$/ })
   });
-  await updatesNavigation.getByRole('link', { name: 'Ingestion, Experimental' }).click();
+  await maintenanceNavigation.getByRole('link', { name: 'Ingestion', exact: true }).click();
 
   const root = page.locator('.dashboard-root');
   const transactionsPage = page.locator('[data-page-id="indexing"]');
@@ -999,13 +999,22 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
   const data = page.locator('.nav-section').filter({ hasText: 'Data' });
-  const updatesSection = page.locator('.nav-section').filter({
-    has: page.locator('summary', { hasText: /^Updates$/ })
+  const experimentsSection = page.locator('.nav-section').filter({
+    has: page.locator('summary', { hasText: /^Experiments$/ })
+  });
+  const maintenanceSection = page.locator('.nav-section').filter({
+    has: page.locator('summary', { hasText: /^Maintenance$/ })
   });
   await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
   await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Memory', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Cost', 'Models & Agents', 'Firewall', 'MCPs']);
+  await expect(experimentsSection.locator('summary')).toHaveText('Experiments');
+  await experimentsSection.locator('summary').click();
+  await expect(experimentsSection.getByRole('link')).toHaveText(['Experiments', 'Evals', 'Graders']);
+  for (const label of ['Experiments', 'Evals', 'Graders']) {
+    await expect(experimentsSection.getByRole('link', { name: `${label}, Experimental` })).toHaveCount(1);
+  }
   await data.getByRole('link', { name: /Memory/ }).click();
   await expect(page).toHaveURL(/#page-memory$/);
   await expect(page.getByRole('heading', { name: 'Memory', exact: true, level: 1 })).toBeVisible();
@@ -1020,18 +1029,29 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(campaignBranches.first()).toHaveAttribute('open', '');
   await expect(page).toHaveURL(/#page-memory$/);
   await expect(memoryView.getByRole('link')).toHaveCount(0);
-  await expect(updatesSection.locator('summary')).toHaveText('Updates');
-  await expect(updatesSection.getByRole('link')).toHaveText(['Updates', 'Marketplace', 'Ingestion', 'Settings']);
-  await expect(updatesSection).toHaveClass(/nav-section-bottom/);
+  await expect(maintenanceSection.locator('summary')).toHaveText('Maintenance');
+  await expect(maintenanceSection.getByRole('link')).toHaveText(['Updates', 'Marketplace', 'Ingestion', 'Settings']);
+  await expect(maintenanceSection).toHaveClass(/nav-section-bottom/);
   await expect.poll(async () => {
     const [navBox, manageBox] = await Promise.all([
       page.locator('.primary-nav').boundingBox(),
-      updatesSection.boundingBox()
+      maintenanceSection.boundingBox()
     ]);
     return navBox !== null && manageBox !== null
       ? Math.round(navBox.y + navBox.height - (manageBox.y + manageBox.height))
       : null;
   }).toBeLessThanOrEqual(1);
+  await page.getByRole('button', { name: 'Collapse navigation' }).click();
+  await expect(page.locator('.app-shell')).toHaveClass(/sidebar-collapsed/);
+  await expect(maintenanceSection).toBeVisible();
+  await expect(maintenanceSection).toHaveAttribute('aria-label', 'Maintenance');
+  expect(await maintenanceSection.evaluate((element) => getComputedStyle(element, '::before').content))
+    .toBe('"Maintenance"');
+  await maintenanceSection.getByRole('link', { name: 'Settings' }).click();
+  await expect(page).toHaveURL(/#page-configuration$/);
+  await expect(page.getByRole('heading', { name: 'Settings', exact: true, level: 1 })).toBeVisible();
+  await page.getByRole('button', { name: 'Expand navigation' }).click();
+  await expect(page.locator('.app-shell')).not.toHaveClass(/sidebar-collapsed/);
   const experimentalSection = page.locator('.nav-section').filter({
     has: page.locator('summary', { hasText: /^Experimental$/ })
   });
@@ -1140,7 +1160,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
   await expect(overviewPage.locator('.factory-station')).toHaveCount(2);
   await page.locator('.mobile-nav-menu > summary').click();
-  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Experimental', 'Updates']);
+  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Experiments', 'Experimental', 'Maintenance']);
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toHaveCount(0);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(overviewPage.locator('.factory-intro')).toBeInViewport();

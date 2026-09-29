@@ -239,7 +239,8 @@ describe('canonical view sources', () => {
 
     expect(Object.keys(native)).toEqual(requested);
     for (const name of requested) {
-      expect(native[name].rows).toEqual(declarative[name].rows);
+      expect(native[name].rows).toEqual(declarative[name].rows.length
+        ? declarative[name].rows : [{ count: 0 }]);
     }
     expect(nativeCounts).toHaveBeenCalledTimes(tableNames.length);
     expect(collectionReads).not.toHaveBeenCalled();
@@ -868,7 +869,7 @@ describe('canonical view sources', () => {
     ]);
   });
 
-  it('does not synthesize undeclared grader sources in JavaScript', async () => {
+  it('resolves retained experiment and grader evidence directly from canonical tables', async () => {
     const content = JSON.stringify({
       schema_version: 2,
       kind: 'run',
@@ -884,6 +885,7 @@ describe('canonical view sources', () => {
         created_at: '2026-09-09T04:00:00Z',
         started_at: '2026-09-09T04:00:00Z',
         updated_at: '2026-09-09T04:02:00Z',
+        experiments: { assignments: { prompt: 'candidate' }, counts: { ignored: 3 } },
         graders: {
           results: [{
             id: 'operational-value',
@@ -907,12 +909,54 @@ describe('canonical view sources', () => {
 
     const projected = await queryCanonicalViewSources(
       indexedDB,
-      {},
-      ['grader-observations', 'operational-values']
+      { evals: { source: 'evals', rows: [{ eval: 'unsupported' }], metadata: { completeness: 'complete' } } },
+      ['experiments', 'experiment-assignments', 'graders', 'grader-observations',
+        'evals', 'eval-observations', 'operational-values']
     );
 
-    expect(projected['grader-observations'].rows).toEqual([]);
+    expect(projected.experiments.rows).toEqual([
+      expect.objectContaining({ experiment: 'prompt', workflow: '.github/workflows/value-worker.md' })
+    ]);
+    expect(projected['experiment-assignments'].rows).toEqual([
+      expect.objectContaining({ experiment: 'prompt', variant: 'candidate', run: '84' })
+    ]);
+    expect(projected.graders.rows).toEqual([
+      expect.objectContaining({ grader: 'operational-value', unit: 'count' })
+    ]);
+    expect(projected['grader-observations'].rows).toEqual([
+      expect.objectContaining({ grader: 'operational-value', value: 0, status: 'pass' })
+    ]);
+    expect(projected.evals.rows).toEqual([]);
+    expect(projected.evals.metadata.completeness).toBe('unknown');
+    expect(projected['eval-observations'].rows).toEqual([]);
     expect(projected['operational-values'].rows).toEqual([]);
+  });
+
+  it('projects only explicit eval answers from canonical run-linked records', async () => {
+    const content = JSON.stringify({
+      schema_version: 2,
+      kind: 'run',
+      run: {
+        run_id: 85, run_attempt: 1,
+        organization: 'githubnext', repository: 'githubnext/gh-aw-cao',
+        workflow_name: 'Eval worker', workflow_path: '.github/workflows/eval-worker.md',
+        created_at: '2026-09-09T04:00:00Z',
+        evals: [
+          { id: 'correctness', answer: 'NO', runId: '85' },
+          { id: 'unverified', answer: 'MAYBE' }
+        ]
+      }
+    });
+    await ingestCachedGhAwJsonl(indexedDB, `${content}\n`, {
+      now: Date.parse('2026-09-09T05:00:00Z')
+    });
+    const projected = await queryCanonicalViewSources(indexedDB, {}, ['evals', 'eval-observations', 'audits']);
+    expect(projected.evals.rows).toEqual([expect.objectContaining({ eval: 'correctness' })]);
+    expect(projected['eval-observations'].rows).toEqual([
+      expect.objectContaining({ eval: 'correctness', 'eval-result': 'NO', status: 'fail', run: '85' })
+    ]);
+    expect(projected.audits.rows.map((row) => row['event-type'])).toContain('workflow_run_eval');
+    expect(projected.audits.rows.map((row) => row['event-type'])).toContain('workflow_run_eval_unclassified');
   });
 
   it.skip('projects token optimizer interventions without parsing issue display text', async () => {

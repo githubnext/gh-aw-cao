@@ -1,5 +1,7 @@
 FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS dashboard-build
 
+SHELL ["/bin/ash", "-o", "pipefail", "-c"]
+
 ARG REVISION
 ARG CAO_PROFILE=cao.json
 WORKDIR /workspace
@@ -42,6 +44,8 @@ LABEL org.opencontainers.image.title="Central Agentic Ops dashboard server" \
       org.opencontainers.image.created="${CREATED}" \
       org.opencontainers.image.source="https://github.com/githubnext/gh-aw-cao"
 
+# Keep CA roots current on rebuilds instead of pinning a package version.
+# hadolint ignore=DL3018
 RUN apk add --no-cache ca-certificates \
     && addgroup -S -g 65532 cao \
     && adduser -S -D -H -u 65532 -G cao cao \
@@ -62,12 +66,7 @@ USER 65532:65532
 EXPOSE 8080
 VOLUME ["/app/source"]
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD host="${CAO_ALLOWED_HOSTS%%,*}"; \
-      test -n "${host}" && \
-      wget -q -T 4 -O /dev/null \
-        --header="X-Forwarded-Host: ${host}" \
-        --header="X-Forwarded-Proto: https" \
-        http://127.0.0.1:8080/api/readiness
+  CMD ["CMD-SHELL", "host=\"${CAO_ALLOWED_HOSTS%%,*}\"; test -n \"${host}\" && wget -q -T 4 -O /dev/null --header=\"X-Forwarded-Host: ${host}\" --header=\"X-Forwarded-Proto: https\" http://127.0.0.1:8080/api/readiness"]
 
 ENTRYPOINT ["/app/cao-dashboard"]
 CMD ["serve-hosted", "--listen", "0.0.0.0:8080", "--site", "/app/site", "--dashboard-queries", "/app/dashboard.json", "--database-queries", "/app/queries/database.json"]

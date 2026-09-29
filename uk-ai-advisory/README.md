@@ -22,7 +22,7 @@ The campaign maintainer runs independently of repository dispatch. It updates th
 ## Install and Configure
 
 ```bash
-gh aw add githubnext/gh-aw-cao/uk-ai-advisory@<catalog-release>
+gh aw add githubnext/gh-aw-cao/uk-ai-advisory
 ```
 
 Configure the shared GitHub App or PAT described in the [authentication guide](../docs/authentication.md), then declare the campaign in the control repository's `.github/workflows/cao.json`:

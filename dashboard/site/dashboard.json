@@ -1000,7 +1000,15 @@
         ]
       },
       {
-        "label": "Updates",
+        "label": "Experiments",
+        "pages": [
+          "experiments",
+          "evals",
+          "graders"
+        ]
+      },
+      {
+        "label": "Maintenance",
         "placement": "bottom",
         "pages": [
           "maintenance",

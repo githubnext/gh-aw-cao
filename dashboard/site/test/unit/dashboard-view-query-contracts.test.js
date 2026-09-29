@@ -102,6 +102,73 @@ function declaredQueryReferences(value) {
 }
 
 describe('dashboard view query contracts', () => {
+  it('declares experimental evidence pages without presenting observation counts as campaign completion', () => {
+    const experimentsSection = dashboard.navigation.find(
+      (/** @type {{ label?: string }} */ section) => section.label === 'Experiments'
+    );
+    expect(experimentsSection?.pages).toEqual(['experiments', 'evals', 'graders']);
+    for (const id of ['experiments', 'evals', 'graders']) {
+      expect(dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === id))
+        .toMatchObject({ kind: 'custom', experimental: true });
+    }
+    const experiments = dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'experiments');
+    expect(viewsOf(experiments)).toMatchObject([
+      { mark: 'chart', chart: 'horizontal-bar', data: { source: 'experiment-assignment-coverage' } },
+      { mark: 'table', data: { source: 'experiments' }, 'lazy-list': true, layout: 'full-view' }
+    ]);
+    expect(viewsOf(dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'evals'))[0])
+      .toMatchObject({ data: { source: 'eval-yes-no-status' } });
+    for (const id of ['evals', 'graders']) {
+      const page = dashboard.pages.find((/** @type {{ id?: string }} */ candidate) => candidate.id === id);
+      expect(viewsOf(page)[0]).toMatchObject({
+        mark: 'table', 'lazy-list': true, layout: 'full-view',
+        data: { 'order-by': [{ field: 'workflow', direction: 'asc' }, { field: 'observed-at', direction: 'desc' }] }
+      });
+      expect(page.description).toContain('TODO:');
+    }
+  });
+
+  it('computes assignment coverage and explicit YES/NO grader verdicts from declared evidence sources', () => {
+    const results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries',
+      queries,
+      sourceNames: ['experiment-assignment-coverage', 'grader-status-ledger', 'eval-yes-no-status'],
+      sources: {
+        ...databaseTables,
+        'experiment-assignments': {
+          source: 'experiment-assignments', metadata,
+          rows: [
+            { organization: 'githubnext', repository: 'one', workflow: 'worker.md', experiment: 'prompt', run: '1' },
+            { organization: 'githubnext', repository: 'one', workflow: 'worker.md', experiment: 'prompt', run: '2' },
+            { organization: 'githubnext', repository: 'two', workflow: 'worker.md', experiment: 'prompt', run: '3' }
+          ]
+        },
+        'eval-observations': {
+          source: 'eval-observations', metadata,
+          rows: [
+            { workflow: 'worker.md', eval: 'answer', 'eval-result': 'YES' },
+            { workflow: 'worker.md', eval: 'answer', 'eval-result': 'UNKNOWN' },
+            { workflow: 'worker.md', eval: 'answer', 'eval-result': 'NO' }
+          ]
+        },
+        'grader-observations': {
+          source: 'grader-observations', metadata,
+          rows: [
+            { workflow: 'worker.md', grader: 'quality', status: 'pass' },
+            { workflow: 'worker.md', grader: 'quality', status: 'failed' },
+            { workflow: 'worker.md', grader: 'quality', status: 'unavailable' }
+          ]
+        }
+      }
+    }));
+    expect(results['experiment-assignment-coverage'].rows).toEqual(expect.arrayContaining([
+      expect.objectContaining({ 'workflow-coordinate': 'githubnext/one:worker.md', experiment: 'prompt', assignments: 2 }),
+      expect.objectContaining({ 'workflow-coordinate': 'githubnext/two:worker.md', experiment: 'prompt', assignments: 1 })
+    ]));
+    expect(results['grader-status-ledger'].rows.map((row) => row.verdict)).toEqual(['YES', 'NO', 'unknown']);
+    expect(results['eval-yes-no-status'].rows.map((row) => row['eval-result'])).toEqual(['YES', 'NO']);
+  });
+
   it('groups navigable experimental pages in one experimental section', () => {
     expect(dashboard.navigation.filter(
       (/** @type {{ experimental?: boolean }} */ section) => section.experimental === true

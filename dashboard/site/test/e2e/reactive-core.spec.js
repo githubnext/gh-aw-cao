@@ -39,11 +39,13 @@ test('DLS-CONF-004 reactive DOM nodes render stable keyed output in browser', as
 
 test('reactive shadow-tree updates preserve focused keyed nodes in browser', async ({ page }) => {
   const domModuleUrl = createDomModuleUrl();
+  const debugModuleUrl = toDataUrl(readFileSync(new URL('../../src/debug.js', import.meta.url), 'utf8'));
   const reconcilerSource = readFileSync(new URL('../../src/dom-reconciler.js', import.meta.url), 'utf8')
     .replace("'./dom.js'", JSON.stringify(domModuleUrl));
   const reconcilerModuleUrl = `data:text/javascript;charset=utf-8,${encodeURIComponent(reconcilerSource)}`;
   const reactiveSource = readFileSync(new URL('../../src/reactive.js', import.meta.url), 'utf8')
-    .replace("'./dom-reconciler.js'", JSON.stringify(reconcilerModuleUrl));
+    .replace("'./dom-reconciler.js'", JSON.stringify(reconcilerModuleUrl))
+    .replace("'./debug.js'", JSON.stringify(debugModuleUrl));
   const reactiveModuleUrl = `data:text/javascript;charset=utf-8,${encodeURIComponent(reactiveSource)}`;
   await page.setContent(`
     <main id="app"></main>

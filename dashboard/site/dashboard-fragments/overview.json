@@ -1852,7 +1852,8 @@
           },
           "layout": "full"
         }
-      ]
+      ],
+      "pull-refresh": true
     },
     {
       "id": "cost",

@@ -1,5 +1,5 @@
 const terminalStatuses = new Set(["finished", "failed", "cancelled-by-user"]);
-const immutableImagePattern = /^ghcr\.io\/githubnext\/gh-aw-cao\/cao-dashboard@sha256:[0-9a-f]{64}$/;
+const immutableImagePattern = /^ghcr\.io\/githubnext\/gh-aw-cao\/cao-server@sha256:[0-9a-f]{64}$/;
 
 function required(value, name) {
   if (!value) throw new Error(`${name} is required`);
@@ -42,7 +42,7 @@ export async function deployCoolify({
   const application = encodeURIComponent(required(applicationUuid, "COOLIFY_APPLICATION_UUID"));
   const requestedImage = required(image, "CAO_IMAGE");
   if (!immutableImagePattern.test(requestedImage)) {
-    throw new Error("CAO_IMAGE must be an immutable githubnext/gh-aw-cao dashboard digest");
+    throw new Error("CAO_IMAGE must be an immutable githubnext/gh-aw-cao cao-server digest");
   }
 
   async function api(path, options = {}) {
@@ -141,7 +141,7 @@ export async function deployCoolify({
 
   const previousImage = await imageVariable();
   if (!immutableImagePattern.test(previousImage)) {
-    throw new Error("existing CAO_IMAGE must be an immutable githubnext/gh-aw-cao dashboard digest");
+    throw new Error("existing CAO_IMAGE must be an immutable githubnext/gh-aw-cao cao-server digest");
   }
   let imageUpdated = false;
   try {

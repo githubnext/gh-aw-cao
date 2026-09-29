@@ -4,6 +4,7 @@ min-version: v0.89.22
 experimental: true
 includes:
   - ../aw.yml
+  - README.md
   - .github/workflows/optimization-token-auditor.md
   - .github/workflows/optimization-token-optimizer.md
   - .github/workflows/optimization.md

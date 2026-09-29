@@ -673,6 +673,63 @@ describe('gh-aw logs adapter', () => {
     }
   });
 
+  it('keeps unsupported eval evidence as Audit without inventing a comparable Eval', () => {
+    const content = `${JSON.stringify({
+      schema_version: 2,
+      kind: 'run',
+      run: {
+        run_id: 607, run_attempt: 1,
+        organization: 'githubnext', repository: 'gh-aw-cao',
+        workflow_name: 'Worker', workflow_path: '.github/workflows/worker.md',
+        created_at: '2026-09-17T00:00:00Z',
+        evals: [{ id: 'unverified', answer: 'MAYBE' }],
+        graders: { results: [{ status: 'unavailable', value: 'not-a-number' }] },
+        experiments: { assignments: { prompt: null }, counts: { prompt: 10 } }
+      }
+    })}\n`;
+    const batch = normalize(adaptCachedGhAwJsonl(content).observations);
+    expect(batch.experiments).toEqual([]);
+    expect(batch.experimentAssignments).toEqual([]);
+    expect(batch.graders).toEqual([]);
+    expect(batch.graderObservations).toEqual([]);
+    expect(batch.evals).toEqual([]);
+    expect(batch.evalObservations).toEqual([]);
+    expect(batch.audits.map((record) => record.type)).toContain('workflow_run_eval_unclassified');
+    expect(batch.audits.map((record) => record.type)).toContain('workflow_run_grader');
+    expect(relationshipErrors(batch)).toEqual([]);
+  });
+
+  it('normalizes only explicitly shaped eval answers tied to the producing run', () => {
+    const content = `${JSON.stringify({
+      schema_version: 2,
+      kind: 'run',
+      run: {
+        run_id: 608, run_attempt: 1,
+        organization: 'githubnext', repository: 'gh-aw-cao',
+        workflow_name: 'Worker', workflow_path: '.github/workflows/worker.md',
+        created_at: '2026-09-17T00:00:00Z',
+        evals: [
+          { id: 'correctness', answer: 'YES', runId: '608', timestamp: '2026-09-17T00:01:00Z' },
+          { id: 'uncertain', answer: 'UNKNOWN' },
+          { id: 'mismatch', answer: 'NO', runId: '999' },
+          { id: 'bad-timestamp', answer: 'YES', timestamp: 'not-a-date' }
+        ]
+      }
+    })}\n`;
+    const batch = normalize(adaptCachedGhAwJsonl(content).observations);
+    expect(batch.evals?.map((record) => record.name)).toEqual(['correctness', 'uncertain']);
+    expect(batch.evalObservations?.map((record) => [record.answer, record.status])).toEqual([
+      ['YES', 'pass'], ['UNKNOWN', 'unavailable']
+    ]);
+    expect(batch.evalObservations?.every((record) => record.runId === batch.runs[0].id)).toBe(true);
+    expect(batch.audits.filter((record) => record.type === 'workflow_run_eval')).toHaveLength(2);
+    expect(batch.evalObservations?.every((record) =>
+      batch.audits.some((audit) => audit.id === record.auditId && audit.runId === record.runId)
+    )).toBe(true);
+    expect(batch.audits.filter((record) => record.type === 'workflow_run_eval_unclassified')).toHaveLength(2);
+    expect(relationshipErrors(batch)).toEqual([]);
+  });
+
   it('precomputes immutable run aggregates and gives every detail record a run identity', () => {
     const content = `${JSON.stringify({
       schema_version: 2,
@@ -691,7 +748,13 @@ describe('gh-aw logs adapter', () => {
         completed_at: '2026-09-17T00:00:06Z',
         agent_id: 'copilot',
         model_id: 'gpt-5.4',
-        graders: { results: [{ id: 'operational-value', value: 0.8, metrics: [{ id: 'accepted-outcomes', value: 8 }] }] },
+        experiments: { assignments: { prompt: 'candidate' }, counts: { prompt: 100 } },
+        graders: { results: [{
+          id: 'operational-value', value: 0.8,
+          experimentId: 'prompt', variant: 'candidate',
+          timestamp: '2026-09-17T00:00:09Z', evaluatorDigest: 'evaluator:v1',
+          metrics: [{ id: 'accepted-outcomes', value: 8 }]
+        }] },
         audit: {
           firewall_analysis: { requests_by_domain: { 'api.github.com:443': { allowed: 4, blocked: 2 } } },
           mcp_tool_usage: { tool_calls: [{ output_size: 128 }, { output_size: 64 }] },
@@ -717,6 +780,24 @@ describe('gh-aw logs adapter', () => {
     const records = [...batch.domains, ...batch.tools, ...batch.audits, ...batch.issues];
     expect(records.length).toBeGreaterThan(0);
     expect(records.every((record) => record.runId === batch.runs[0].id)).toBe(true);
+    expect(relationshipErrors(batch)).toEqual([]);
+    expect(batch.experiments).toHaveLength(1);
+    expect(batch.experimentAssignments).toEqual([
+      expect.objectContaining({ experimentId: batch.experiments?.[0].id, variant: 'candidate', runId: batch.runs[0].id })
+    ]);
+    expect(batch.graders).toHaveLength(1);
+    expect(batch.graderObservations).toEqual([
+      expect.objectContaining({
+        graderId: batch.graders?.[0].id, sourceGraderId: 'operational-value',
+        experimentId: batch.experiments?.[0].id, variant: 'candidate',
+        evaluatorDigest: 'evaluator:v1', resultTimestamp: '2026-09-17T00:00:09.000Z',
+        metrics: [{ id: 'accepted-outcomes', value: 8 }],
+        value: 0.8, runId: batch.runs[0].id
+      })
+    ]);
+    expect(batch.audits.some((record) => record.id === batch.graderObservations?.[0].auditId)).toBe(true);
+    expect(batch.evals).toEqual([]);
+    expect(batch.evalObservations).toEqual([]);
   });
 
   it('keeps null aggregate evidence unavailable', () => {

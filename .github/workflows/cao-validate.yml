@@ -41,6 +41,8 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      api_available: ${{ steps.rate_limit.outputs.available }}
     permissions:
       contents: read
       actions: read
@@ -56,8 +58,25 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Install policy-pinned gh-aw
         uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
+      - name: Check GitHub API capacity
+        id: rate_limit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          remaining="$(gh api rate_limit --jq '.resources.core.remaining')"
+          if [[ ! "$remaining" =~ ^[0-9]+$ ]]; then
+            echo "::error::GitHub API returned an invalid core rate limit"
+            exit 1
+          fi
+          if (( remaining == 0 )); then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Skipping CAO validation because the GitHub API core rate limit is exhausted"
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Validate CAO
         id: validation
+        if: steps.rate_limit.outputs.available == 'true'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
@@ -68,7 +87,7 @@ jobs:
           echo "exit-code=$status" >> "$GITHUB_OUTPUT"
           exit "$status"
       - name: Upload validation report
-        if: always()
+        if: always() && steps.rate_limit.outputs.available == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: cao-validation
@@ -86,6 +105,7 @@ jobs:
     if: >-
       always() &&
       needs.validate.result != 'cancelled' &&
+      needs.validate.outputs.api_available == 'true' &&
       (github.event_name != 'pull_request' ||
        github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
@@ -117,6 +137,15 @@ jobs:
               .replaceAll('@', '@\u200b')
               .replaceAll('#', '#\u200b')
               .slice(0, 2000)
+            const ignoreForbidden = async (operation, callback) => {
+              try {
+                return await callback()
+              } catch (error) {
+                if (error.status !== 403) throw error
+                core.warning(`Skipping validation issue ${operation}: GitHub API returned 403`)
+                return undefined
+              }
+            }
             let report
             if (process.env.DOWNLOAD_OUTCOME === 'success' && fs.existsSync(reportPath)) {
               const stats = fs.statSync(reportPath)
@@ -154,20 +183,23 @@ jobs:
                   finding.files.some((file) => typeof file !== 'string' || file.length > 500))) {
               throw new Error('Invalid CAO validation artifact schema')
             }
-            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
-              ...context.repo, state: 'open', per_page: 100,
-            })
+            const openIssues = await ignoreForbidden('search', () =>
+              github.paginate(github.rest.issues.listForRepo, {
+                ...context.repo, state: 'open', per_page: 100,
+              }))
+            if (!openIssues) return
             const existing = openIssues.find((issue) =>
               !issue.pull_request && [title, legacyTitle].includes(issue.title) && issue.body?.includes(marker)
             )
             if (report.summary.errors === 0 && report.summary.warnings === 0) {
               if (existing) {
-                await github.rest.issues.update({
-                  ...context.repo,
-                  issue_number: existing.number,
-                  state: 'closed',
-                  state_reason: 'completed',
-                })
+                await ignoreForbidden('publication', () =>
+                  github.rest.issues.update({
+                    ...context.repo,
+                    issue_number: existing.number,
+                    state: 'closed',
+                    state_reason: 'completed',
+                  }))
               }
               return
             }
@@ -206,16 +238,18 @@ jobs:
               footer,
             ].join('\n\n')
             if (existing) {
-              await github.rest.issues.update({
-                ...context.repo,
-                issue_number: existing.number,
-                title,
-                body,
-              })
+              await ignoreForbidden('publication', () =>
+                github.rest.issues.update({
+                  ...context.repo,
+                  issue_number: existing.number,
+                  title,
+                  body,
+                }))
             } else {
-              await github.rest.issues.create({
-                ...context.repo,
-                title,
-                body,
-              })
+              await ignoreForbidden('publication', () =>
+                github.rest.issues.create({
+                  ...context.repo,
+                  title,
+                  body,
+                }))
             }

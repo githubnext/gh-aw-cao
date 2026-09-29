@@ -15,7 +15,7 @@ CAO Evolution operates on verified Central Agentic Ops control repositories. It 
 ## Install
 
 ```bash
-gh aw add githubnext/gh-aw-cao/cao-evolution@main
+gh aw add githubnext/gh-aw-cao/cao-evolution
 ```
 
 Declare the campaign and its workers in `.github/workflows/cao.json`. Begin in `review` mode with one control repository per run. Promote only through a reviewed policy change after validating the rolling reports.

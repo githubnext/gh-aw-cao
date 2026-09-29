@@ -148,6 +148,7 @@ describe('dashboard sidebar', () => {
     expect([...bottomSection?.querySelectorAll('[data-nav-page-id]') ?? []].map((element) => element.textContent))
       .toEqual(['Updates', 'Settings']);
     expect(bottomSection?.hasAttribute('open')).toBe(true);
+    expect(bottomSection?.classList.contains('nav-section-bottom')).toBe(true);
   });
 
   it('marks navigation items when their declared indicator source matches', () => {

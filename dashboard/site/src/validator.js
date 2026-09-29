@@ -1690,6 +1690,13 @@ function validatePage(page, pageNode, path, pageIds, errors) {
       `${path}.view-mode-control`
     ));
   }
+  if (page['pull-refresh'] !== undefined && typeof page['pull-refresh'] !== 'boolean') {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'pull-refresh must be a Boolean when present.',
+      `${path}.pull-refresh`
+    ));
+  }
   validatePageForm(page.form, getValueNodeByKey(pageNode, 'form'), `${path}.form`, errors);
   if (page.icon !== undefined) {
     validateStringField(page.icon, `${path}.icon`, true, errors);

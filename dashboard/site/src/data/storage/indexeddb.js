@@ -1,4 +1,4 @@
-import { relationshipErrors } from '../model/schema.js';
+import { EVIDENCE_DEFINITION_STORES, mergeEvidenceDefinition, relationshipErrors } from '../model/schema.js';
 import { recordTimestamp } from './retention.js';
 import { scopedStorageKey } from '../../storage-scope.js';
 import { createDebug } from '../../debug.js';
@@ -7,7 +7,7 @@ import { tidy } from '../../data-operations.js';
 const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 30;
+export const DATABASE_VERSION = 31;
 
 /** @param {string} [pathname] */
 export function canonicalDatabaseName(pathname) {
@@ -26,7 +26,8 @@ export const ENTITY_STORES = /** @type {const} */ ([
   'audits',
   'issues',
   'operationalValues',
-  'marketplacePackages'
+  'marketplacePackages',
+  'experiments', 'experimentAssignments', 'graders', 'graderObservations', 'evals', 'evalObservations'
 ]);
 export const TRANSACTION_STORE = 'transactions';
 export const DATABASE_STORES = /** @type {const} */ ([...ENTITY_STORES, TRANSACTION_STORE]);
@@ -111,6 +112,12 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
       byRepository: 'repository'
     }
   },
+  experiments: { keyPath: 'id', indexes: { byWorkflow: 'workflowId' } },
+  experimentAssignments: { keyPath: 'id', indexes: { byRun: 'runId', byExperiment: 'experimentId' } },
+  graders: { keyPath: 'id', indexes: { byWorkflow: 'workflowId' } },
+  graderObservations: { keyPath: 'id', indexes: { byRun: 'runId', byGrader: 'graderId' } },
+  evals: { keyPath: 'id', indexes: { byWorkflow: 'workflowId' } },
+  evalObservations: { keyPath: 'id', indexes: { byRun: 'runId', byEval: 'evalId' } },
   transactions: {
     keyPath: 'id',
     indexes: { byCreatedAt: 'createdAt' }
@@ -141,7 +148,8 @@ const RETENTION_TIMESTAMPS = new Set([
   'friction',
   'audits',
   'issues',
-  'operationalValues'
+  'operationalValues',
+  'experimentAssignments', 'graderObservations', 'evalObservations'
 ]);
 const RUN_LINKED_STORES = /** @type {const} */ ([
   'domains',
@@ -149,7 +157,7 @@ const RUN_LINKED_STORES = /** @type {const} */ ([
   'skills',
   'friction',
   'audits',
-  'issues'
+  'issues', 'experimentAssignments', 'graderObservations', 'evalObservations'
 ]);
 const QUERYABLE_STRING_KEY_PATHS = new Set([
   'slug',
@@ -377,10 +385,21 @@ export async function upsertCanonicalBatchWithConnection(database, batch, option
       const transaction = readwriteTransaction(database, storeName);
       const done = transactionDone(transaction);
       const store = transaction.objectStore(storeName);
-      for (const record of boundedRecords) {
-        store.put(record);
+      if (EVIDENCE_DEFINITION_STORES.has(storeName)) {
+        let pendingLookups = boundedRecords.length;
+        for (const record of boundedRecords) {
+          const lookup = store.get(/** @type {IDBValidKey} */ (record.id));
+          lookup.onsuccess = () => {
+            store.put(mergeEvidenceDefinition(
+              /** @type {Record<string, unknown> | undefined} */ (lookup.result), record
+            ));
+            if (--pendingLookups === 0) commitTransaction(transaction);
+          };
+        }
+      } else {
+        for (const record of boundedRecords) store.put(record);
+        commitTransaction(transaction);
       }
-      commitTransaction(transaction);
       await done;
       committedRecords += boundedRecords.length;
       committedBatches += 1;
@@ -481,6 +500,11 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
               validRunIds.add(id);
               referencedWorkflowIds.add(workflowId);
               referencedRepositoryIds.add(repositoryId);
+            } else if (['experiments', 'graders', 'evals'].includes(storeName)
+              && !workflowRepositories.has(String(record.workflowId))) {
+              remove();
+              deletedRecords += 1;
+              return;
             } else if (RUN_LINKED_STORES.includes(
               /** @type {typeof RUN_LINKED_STORES[number]} */ (storeName)
             ) && !validRunIds.has(String(record.runId))) {

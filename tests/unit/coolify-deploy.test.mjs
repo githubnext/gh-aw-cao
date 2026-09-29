@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { deployCoolify } from "../../scripts/deploy-coolify.mjs";
 
-const oldImage = `ghcr.io/githubnext/gh-aw-cao/cao-dashboard@sha256:${"a".repeat(64)}`;
-const newImage = `ghcr.io/githubnext/gh-aw-cao/cao-dashboard@sha256:${"b".repeat(64)}`;
+const oldImage = `ghcr.io/githubnext/gh-aw-cao/cao-server@sha256:${"a".repeat(64)}`;
+const newImage = `ghcr.io/githubnext/gh-aw-cao/cao-server@sha256:${"b".repeat(64)}`;
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -130,12 +130,25 @@ test("retries transient readiness request failures", async () => {
 test("rejects a mutable previous image before changing the application", async () => {
   const coolify = fakeCoolify({
     deploymentStatuses: [],
-    initialImage: "ghcr.io/githubnext/gh-aw-cao/cao-dashboard:latest",
+    initialImage: "ghcr.io/githubnext/gh-aw-cao/cao-server:latest",
   });
 
   await assert.rejects(
     deployCoolify({ ...configuration, fetchImpl: coolify.fetchImpl }),
     /existing CAO_IMAGE must be an immutable/,
+  );
+  assert.equal(coolify.deployments(), 0);
+});
+
+test("rejects a different package name before changing the application", async () => {
+  const coolify = fakeCoolify({
+    deploymentStatuses: [],
+    initialImage: `ghcr.io/githubnext/gh-aw-cao/other-server@sha256:${"a".repeat(64)}`,
+  });
+
+  await assert.rejects(
+    deployCoolify({ ...configuration, fetchImpl: coolify.fetchImpl }),
+    /existing CAO_IMAGE must be an immutable githubnext\/gh-aw-cao cao-server digest/,
   );
   assert.equal(coolify.deployments(), 0);
 });

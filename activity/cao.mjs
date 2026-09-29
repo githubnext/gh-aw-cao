@@ -72,6 +72,8 @@ import {
   USAGE
 } from './cli-usage.mjs';
 import { NamedQueryError } from './agent-catalog.mjs';
+import { normalizedPhaseBatch } from './normalized-phase.mjs';
+import { mergeEvidenceDefinition } from '../dashboard/site/src/data/model/schema.js';
 import { commandHandlers } from './commands/index.mjs';
 import { setupCaoControlPlane } from './setup.mjs';
 import { upgradeGhAwVersion } from './upgrade-gh-aw.mjs';
@@ -94,7 +96,7 @@ const DEFAULT_COMPACTED_JSONL_SHARD_BYTES = 4 * 1024 * 1024;
 const PAYLOAD_CACHE_DIRECTORY = '.payloads';
 // Structural collections are owned by inventory discovery rather than by any single
 // run, so they are consolidated into one leading bucket that sorts before day buckets.
-const STRUCTURAL_CONSOLIDATION_COLLECTIONS = new Set(['campaigns', 'repositories', 'workflows']);
+const STRUCTURAL_CONSOLIDATION_COLLECTIONS = new Set(['campaigns', 'repositories', 'workflows', 'experiments', 'graders', 'evals']);
 const STRUCTURAL_CONSOLIDATION_BUCKET = '0000-00-00';
 const CONSOLIDATION_TIMESTAMP_FIELDS = [
   'startedAt',
@@ -1877,6 +1879,10 @@ async function consolidatePhasePayloads(phase, cachePaths, outputDirectory, maxB
         records.set(id, mergeActivityStructuralRecord(entry.collection, existing, record));
         continue;
       }
+      if (existing && ['experiments', 'graders', 'evals'].includes(entry.collection)) {
+        records.set(id, mergeEvidenceDefinition(existing, record));
+        continue;
+      }
       records.set(id, record);
     }
   }
@@ -2053,38 +2059,12 @@ async function hashActivityPayloads({
           runs: {
             ...metadata,
             phase: 'runs',
-            batch: {
-              campaigns: batch.campaigns,
-              repositories: batch.repositories,
-              workflows: batch.workflows,
-              runs: batch.runs,
-              domains: [],
-              tools: [],
-              skills: [],
-              friction: [],
-              audits: [],
-              issues: [],
-              operationalValues: []
-            }
+            batch: normalizedPhaseBatch(batch, 'runs')
           },
           records: {
             ...metadata,
             phase: 'records',
-            batch: {
-              campaigns: [],
-              repositories: [],
-              workflows: [],
-              runs: [],
-              domains: batch.domains,
-              tools: batch.tools,
-              skills: batch.skills,
-              friction: batch.friction,
-              audits: batch.audits.filter((audit) =>
-                String(audit.status ?? '').trim().toLowerCase() !== 'info'
-              ),
-              issues: batch.issues,
-              operationalValues: batch.operationalValues
-            }
+            batch: normalizedPhaseBatch(batch, 'records')
           }
         };
         await Promise.all(missing.map(async ([phase, outputPath]) => {

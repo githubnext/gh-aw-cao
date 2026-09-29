@@ -242,8 +242,8 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Query `temporal-series.measures[]` | `field`, `key`, `kind` |
 | Query `temporal-series.maps[]` | `field`, `definitions`, `group`, `kind` |
 | Query `select` entry | `field`, `as` |
-| Built-in page | `id`, `kind`, `page`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `experimental`, `filter-bar`, `view-mode-control`, `form`, `definition` |
-| Custom page | `id`, `kind`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `experimental`, `filter-bar`, `view-mode-control`, `form`, `route`, `views`, `sections` |
+| Built-in page | `id`, `kind`, `page`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `experimental`, `filter-bar`, `view-mode-control`, `pull-refresh`, `form`, `definition` |
+| Custom page | `id`, `kind`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `experimental`, `filter-bar`, `view-mode-control`, `pull-refresh`, `form`, `route`, `views`, `sections` |
 | Page `form` | `title`, `description`, `update`, `fields` |
 | Form `update` | `strategy`, `delay-ms` |
 | Form field | `id`, `label`, `description`, `control`, `default`, `min`, `max`, `step`, `options` |
@@ -982,7 +982,7 @@ A page may declare `navigation-indicator` with a non-empty `label` and an `any` 
 
 A navigation section may set `experimental: true`. Presenters combine pages from all experimental sections into one visible **Experimental** navigation section that is collapsed by default. Activating a direct deep link to an experimental page expands that section. This metadata changes navigation presentation only and does not grant authorization or access to data.
 
-The optional page `class-name` is a canonical identifier that a renderer adds to the page container. It lets a document opt into page-specific presentation without requiring the renderer to infer styling from a page ID or built-in page name. The optional Boolean page `filter-bar` defaults to `false`; `true` adds the shared filter bar while retaining view-mode controls in the page chrome. The optional Boolean `view-mode-control` defaults to `true`; `false` fixes the page to its default presentation and omits desktop and mobile presentation-mode controls.
+The optional page `class-name` is a canonical identifier that a renderer adds to the page container. It lets a document opt into page-specific presentation without requiring the renderer to infer styling from a page ID or built-in page name. The optional Boolean page `filter-bar` defaults to `false`; `true` adds the shared filter bar while retaining view-mode controls in the page chrome. The optional Boolean `view-mode-control` defaults to `true`; `false` fixes the page to its default presentation and omits desktop and mobile presentation-mode controls. The optional Boolean page `pull-refresh` defaults to `false`; `true` enables a mobile pull-down-to-refresh gesture while that page is active and already scrolled to its top.
 
 For pages that opt in to `filter-bar: true`, the presenter renders a filter bar in the view chrome. Activating the horizon control toggles its free-form filters, time-horizon controls, and rollout-mode controls. The presenter applies edits automatically to matching source fields, treating values for one field as alternatives and filters for different fields as conjunctive. Time-horizon and rollout-mode selections are global client-side settings persisted in local storage. All rollout modes are active by default.
 
@@ -1011,6 +1011,7 @@ For pages that opt in to `filter-bar: true`, the presenter renders a filter bar 
 - **DLS-PAGE-019:** A routed custom page with declared tabs **MAY** declare a canonical `route.tabs-class-name`. A presenter **MUST** apply that class to both loading and hydrated tab sets so route chrome remains structurally and visually stable while data resolves.
 - **DLS-PAGE-020:** `view-mode-control`, when present, **MUST** be Boolean. When `false`, a presenter **MUST** use the page's default presentation and **MUST NOT** expose desktop or mobile controls for switching among chart, card, and table presentations.
 - **DLS-PAGE-021:** Unless `view-mode-control` is `false`, a presenter **MUST** expose every presentation mode represented by the page's essential views, add a card presentation for every table, and order available controls as **Chart**, **Cards**, **Table**. It **MUST** expose the same modes through keyboard-operable desktop and mobile controls when two or more modes are available, and **MUST NOT** expose a mode control when only one mode is available. Supplemental views remain discoverable through their disclosure controls and **MUST NOT** add presentation modes.
+- **DLS-PAGE-022:** `pull-refresh`, when present, **MUST** be Boolean and defaults to `false`. When `true`, a presenter **MUST** enable a mobile pull-down gesture that requests a dashboard refresh only while that page is active and its scroller is already at its top; the presenter **MUST NOT** wire the gesture to any other page or infer eligibility from a page `id` or built-in page name.
 
 ---
 

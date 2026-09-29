@@ -2,7 +2,7 @@ import { createDebug } from '../../debug.js';
 
 const debugSchema = createDebug('schema');
 
-export const CANONICAL_SCHEMA_VERSION = 22;
+export const CANONICAL_SCHEMA_VERSION = 23;
 
 export const ENTITY_KINDS = /** @type {const} */ ([
   'campaign',
@@ -16,8 +16,24 @@ export const ENTITY_KINDS = /** @type {const} */ ([
   'audit',
   'issue',
   'operational-value',
-  'marketplace-package'
+  'marketplace-package',
+  'experiment', 'experiment-assignment', 'grader', 'grader-observation', 'eval', 'eval-observation'
 ]);
+export const EVIDENCE_DEFINITION_STORES = new Set(['experiments', 'graders', 'evals']);
+
+/** @param {Record<string, unknown> | undefined} previous @param {Record<string, unknown>} incoming */
+export function mergeEvidenceDefinition(previous, incoming) {
+  if (!previous) return incoming;
+  const before = String(previous.firstObservedAt ?? previous.observedAt ?? '');
+  const after = String(incoming.firstObservedAt ?? incoming.observedAt ?? '');
+  const previousLast = String(previous.lastObservedAt ?? previous.observedAt ?? '');
+  const incomingLast = String(incoming.lastObservedAt ?? incoming.observedAt ?? '');
+  return {
+    ...(previousLast > incomingLast ? previous : incoming),
+    firstObservedAt: [before, after].filter(Boolean).sort()[0],
+    lastObservedAt: [previousLast, incomingLast].filter(Boolean).sort().at(-1)
+  };
+}
 const RUN_LINKED_COLLECTIONS = /** @type {const} */ ([
   'domains',
   'tools',
@@ -55,6 +71,12 @@ const RUN_LINKED_COLLECTIONS = /** @type {const} */ ([
  * @property {Record<string, unknown>[]} issues
  * @property {Record<string, unknown>[]} operationalValues
  * @property {Record<string, unknown>[]} marketplacePackages
+ * @property {Record<string, unknown>[]} [experiments]
+ * @property {Record<string, unknown>[]} [experimentAssignments]
+ * @property {Record<string, unknown>[]} [graders]
+ * @property {Record<string, unknown>[]} [graderObservations]
+ * @property {Record<string, unknown>[]} [evals]
+ * @property {Record<string, unknown>[]} [evalObservations]
  */
 
 /**
@@ -150,6 +172,28 @@ export function relationshipErrors(batch) {
   }
   for (const record of batch.operationalValues ?? []) {
     requireReference(record, 'repositoryId', 'repositories');
+  }
+  const experiments = new Map((batch.experiments ?? []).map((record) => [record.id, record]));
+  const graders = new Map((batch.graders ?? []).map((record) => [record.id, record]));
+  const evals = new Map((batch.evals ?? []).map((record) => [record.id, record]));
+  const runsById = new Map(batch.runs.map((record) => [record.id, record]));
+  for (const record of batch.experiments ?? []) requireReference(record, 'workflowId', 'workflows');
+  for (const record of batch.graders ?? []) requireReference(record, 'workflowId', 'workflows');
+  for (const record of batch.evals ?? []) requireReference(record, 'workflowId', 'workflows');
+  for (const [collection, parentField, parents] of /** @type {[Record<string, unknown>[] | undefined, string, Map<unknown, Record<string, unknown>>][]} */ ([
+    [batch.experimentAssignments, 'experimentId', experiments],
+    [batch.graderObservations, 'graderId', graders],
+    [batch.evalObservations, 'evalId', evals]
+  ])) {
+    for (const record of collection ?? []) {
+      requireReference(record, 'runId', 'runs');
+      if (!parents.has(record[parentField])) errors.push(`${String(record.id)}.${parentField} does not reference a definition`);
+      const parent = parents.get(record[parentField]);
+      const run = runsById.get(record.runId);
+      if (parent && run && parent.workflowId !== run.workflowId) {
+        errors.push(`${String(record.id)}.${parentField} references a different workflow`);
+      }
+    }
   }
 
   if (errors.length > 0) {

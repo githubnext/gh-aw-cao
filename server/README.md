@@ -106,6 +106,55 @@ The Redis-backed CI job runs this integration test as part of `go test ./...`.
 For manual load runs, point the normal CAO server and worker at a local Redis
 instance as well as the simulator API.
 
+## Rate-limit stress harness
+
+`internal/server/stress_test.go` drives the production HTTP handler (access
+control, inbound rate limiting, and the lazy repository-memory resolver) with
+real Redis and the simulator's fake GitHub API. It configures deliberately low
+limits so every run exhausts them:
+
+- **Inbound**: `Config.RateLimits` lowers the general policy to 50 requests per
+  second and floods one endpoint. Admission must never exceed the token bucket,
+  and every rejection must be a `429` with `Retry-After` and `RateLimit-*`
+  headers.
+- **GitHub primary limit**: the scenario `rate_limit` field (for example,
+  `{"limit": 40, "window": "3s"}`) meters the fake API with a fixed-window
+  budget and GitHub-style `X-RateLimit-*` headers. Cache-missing reads must
+  stop at the governor floor so the simulator never rejects a request, and
+  reads must resume after the window resets.
+- **GitHub secondary limit**: a `secondary-rate-limit` window rejects the
+  installation-token mint and, separately, REST calls behind a minted token.
+  The server must park the installation, answer `429` with GitHub's
+  `Retry-After`, and send no more than the in-flight requests upstream.
+
+Each scenario also enforces a p95 latency budget and a throughput floor and
+writes a JSON report. `BenchmarkStress*` benchmarks measure the throttled,
+cached, and governor-exhausted paths with `-benchmem`. The tests skip unless
+`CAO_STRESS_REDIS_URL` is set; use a disposable Redis database:
+
+```bash
+npm run dashboard:server:redis-up   # from the repository root
+cd server
+mkdir -p ../.tmp/go-stress
+CAO_STRESS_REDIS_URL=redis://127.0.0.1:6379/0 \
+CAO_STRESS_REPORT_DIR=../.tmp/go-stress \
+  go test ./internal/server -run '^TestStress' -bench '^BenchmarkStress' \
+    -benchmem -benchtime=2000x -count=1 \
+    -cpuprofile=cpu.pprof -memprofile=mem.pprof \
+    -blockprofile=block.pprof -mutexprofile=mutex.pprof -trace=trace.out \
+    -outputdir=../.tmp/go-stress
+go tool pprof -top ../.tmp/go-stress/cpu.pprof
+```
+
+`CAO_STRESS_MAX_P95_MS` (default 250) and `CAO_STRESS_MIN_RPS` (default 200)
+override the thresholds. The `Go rate-limit stress and profiles` job in
+`.github/workflows/cgo.yml` runs the harness in its own job and uploads the
+`go-server-stress-profiles` artifact: per-scenario JSON reports, raw CPU,
+allocation, block, and mutex profiles, an execution trace, `pprof -top`
+summaries, and benchstat-compatible `bench.txt`. Compare `bench.txt` files
+with `benchstat` and inspect profiles with `go tool pprof` or
+`go tool trace` when optimizing the server.
+
 ## Architecture
 
 ```mermaid
@@ -245,9 +294,26 @@ docker build -f server/Dockerfile \
   -t cao-dashboard:test .
 ```
 
+The official `.github/workflows/cao-package.yml` workflow publishes the same
+image as `ghcr.io/githubnext/gh-aw-cao/cao-server`. Pushes to `main` receive an
+immutable `sha-<full-commit>` identity; published releases receive their exact
+Docker-safe semantic version tag. Use the resulting digest in downstream
+Compose files. Multiple services can share that digest and select
+`serve-hosted`, `collect`, `backfill`, or `doctor` through `command`.
+Maintainers and administrators may also dispatch the workflow from current
+protected `main` and provide an exact source branch through the required input;
+these builds use a non-colliding `dispatch-<full-commit>` identity.
+Publication is gated by Hadolint, actionlint, zizmor, Trivy, Grype, Dockle,
+source tests, and protected-main ancestry. Syft produces an SPDX SBOM, and the
+protected-main `.github/workflows/cao-package-publish.yml` reusable workflow
+revalidates caller authority, source metadata, checksums, and OCI labels before
+attesting both build provenance and the SBOM for the exact OCI digest.
+Downstream delivery verifies that signer workflow and source commit before
+admitting the image.
+
 `server/coolify/compose.yml` expects:
 
-- `CAO_IMAGE` as a full `ghcr.io/.../cao-dashboard@sha256:...` reference;
+- `CAO_IMAGE` as a full `ghcr.io/.../cao-server@sha256:...` reference;
 - `CAO_ARTIFACT_VOLUME` as the name of an existing Coolify-managed volume;
 - the public host and the exact private CIDR of Coolify's proxy network;
 - OAuth, session, webhook, and Redis credentials supplied as Coolify secrets.
@@ -275,21 +341,22 @@ and the endpoint uses a private service hostname or IP. This policy does not
 affect Azure: Azure Functions continues to require `rediss://`.
 
 The conventional `.github/workflows/coolify-deploy.yml` resolves published
-release tags to exact commits and checks out the exact event source. It refuses
-every fork repository payload. Manual runs accept a required `alpha`, `beta`,
-or `stable` channel only when `main` or `release` is selected. Alpha additionally
-requires `main` and its current commit. Beta and stable resolve the latest
-eligible published prerelease or non-prerelease tag, respectively, and always
-build that tag's exact commit rather than branch HEAD.
+release tags to exact commits and consumes the matching official `cao-server`
+package without rebuilding it. It refuses
+every fork repository payload. Manual runs require current maintain/admin
+permission for both the original and rerun actors and must use the current
+default-branch workflow. They accept a required `alpha` or `stable` channel.
+Alpha resolves current `main`; stable resolves the latest eligible
+published stable `vX.Y.Z` tag. The package
+workflow builds and scans that tag's exact commit rather than branch HEAD, and
+delivery verifies the selected package's OCI version and revision labels.
 
 | Event | Immutable GHCR identity | GitHub environment |
 | --- | --- | --- |
-| Published non-prerelease `vX.Y.Z` release | tag resolved and repeatedly verified at its exact commit (`vX.Y.Z`) | `coolify-stable` |
-| Published SemVer prerelease | tag resolved and repeatedly verified at its exact commit (`vX.Y.Z-<prerelease>`) | `coolify-beta` |
+| Published stable `vX.Y.Z` release | tag resolved and repeatedly verified at its exact commit (`vX.Y.Z`) | `coolify-stable` |
 | Push to `main` | `sha-<full-main-commit>` | `coolify-alpha` |
 | Manual alpha from `main` | current `sha-<full-main-commit>` | `coolify-alpha` |
-| Manual beta from `main` or `release` | latest eligible published prerelease tag at its exact commit | `coolify-beta` |
-| Manual stable from `main` or `release` | latest eligible published non-prerelease tag at its exact commit | `coolify-stable` |
+| Manual stable from `main` or `release` | latest eligible published stable `vX.Y.Z` tag at its exact commit | `coolify-stable` |
 
 Configure `COOLIFY_DEPLOY_ENDPOINT` and `COOLIFY_DEPLOY_TOKEN` as secrets on each
 environment. The HTTPS endpoint is the deployment adapter for that Coolify
@@ -303,13 +370,13 @@ containing exactly the requested identity as
 accepted/queued Coolify response is not success.
 
 Before invoking the adapter, the workflow rechecks that alpha is still `main`
-HEAD and stable or beta is still the latest published release in its channel
+HEAD and stable is still the latest published `vX.Y.Z` release
 with an unchanged tag target. Environment protection rules provide approvals. The scanned local
 image is first pushed under a run/attempt candidate tag. A canonical source
 identity is created from that candidate digest only when absent; if it already
 exists, exact digest equality is mandatory. Labels on existing registry
 objects are never trusted. No tier reads another tier's image, no release
-promotes an alpha/beta artifact, and deployment always uses the verified digest,
+promotes an alpha artifact, and deployment always uses the verified digest,
 never a candidate or channel tag. Release tags must satisfy the channel's
 SemVer form and build metadata is rejected because `+` cannot be preserved in
 a Docker tag.
@@ -319,7 +386,7 @@ a Docker tag.
 Record the last known-good `name@sha256:...` from the GitHub deployment history
 before every rollout. To roll back, use the same protected environment's
 Coolify deployment adapter to set `CAO_IMAGE` to that exact prior digest and
-redeploy; do not retag it as `stable`, `beta`, `alpha`, or `latest`. Confirm
+redeploy; do not retag it as `stable`, `alpha`, or `latest`. Confirm
 `/api/readiness`, OAuth login and authorization, a bounded query, webhook
 signature handling, and rate-limit behavior. Redis is disposable: if the new
 binary wrote an unusable projection, clear only that deployment namespace and

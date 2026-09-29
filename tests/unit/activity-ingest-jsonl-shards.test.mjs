@@ -5,14 +5,33 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { promisify } from 'node:util';
+import { normalizedPhaseBatch } from '../../activity/normalized-phase.mjs';
+import { NORMALIZED_COLLECTIONS } from '../../activity/cli-usage.mjs';
 
 const execFileAsync = promisify(execFile);
+
+test('normalized phase partition emits every relational experiment collection exactly once', () => {
+  const batch = Object.fromEntries(NORMALIZED_COLLECTIONS.map((collection) =>
+    [collection, [{ id: collection, status: 'observed' }]]));
+  const runs = normalizedPhaseBatch(batch, 'runs');
+  const records = normalizedPhaseBatch(batch, 'records');
+  for (const collection of NORMALIZED_COLLECTIONS) {
+    assert.equal(runs[collection].length + records[collection].length, 1, collection);
+  }
+  for (const collection of ['experiments', 'experimentAssignments']) {
+    assert.equal(runs[collection].length, 1, collection);
+  }
+  for (const collection of ['graders', 'graderObservations', 'evals', 'evalObservations']) {
+    assert.equal(records[collection].length, 1, collection);
+  }
+});
 
 async function readNormalizedJsonl(filePath) {
   const lines = (await readFile(filePath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
   const [metadata, ...records] = lines;
   const batch = Object.fromEntries(
-    ['campaigns', 'repositories', 'workflows', 'runs', 'domains', 'tools', 'skills', 'friction', 'audits', 'issues', 'operationalValues']
+    ['campaigns', 'repositories', 'workflows', 'runs', 'domains', 'tools', 'skills', 'friction', 'audits', 'issues', 'operationalValues',
+      'experiments', 'experimentAssignments', 'graders', 'graderObservations', 'evals', 'evalObservations']
       .map((collection) => [collection, []])
   );
   for (const envelope of records) batch[envelope.collection].push(envelope.record);
@@ -31,7 +50,8 @@ async function readPhasePayload(directory) {
   const names = await readShardNames(directory);
   const payloads = await Promise.all(names.map((name) => readNormalizedJsonl(path.join(directory, name))));
   const batch = Object.fromEntries(
-    ['campaigns', 'repositories', 'workflows', 'runs', 'domains', 'tools', 'skills', 'friction', 'audits', 'issues', 'operationalValues']
+    ['campaigns', 'repositories', 'workflows', 'runs', 'domains', 'tools', 'skills', 'friction', 'audits', 'issues', 'operationalValues',
+      'experiments', 'experimentAssignments', 'graders', 'graderObservations', 'evals', 'evalObservations']
       .map((collection) => [collection, []])
   );
   for (const payload of payloads) {

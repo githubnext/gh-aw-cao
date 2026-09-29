@@ -1130,6 +1130,69 @@
           "direction": "asc"
         }
       ]
+    },
+    {
+      "name": "experiment-assignment-coverage",
+      "intent": "Count observed run assignments for each experiment and workflow without inferring a completion target.",
+      "from": "experiment-assignments",
+      "compute": [
+        {
+          "as": "workflow-coordinate",
+          "function": "concat",
+          "args": [
+            { "field": "organization" },
+            { "value": "/" },
+            { "field": "repository" },
+            { "value": ":" },
+            { "field": "workflow" }
+          ]
+        }
+      ],
+      "aggregate": {
+        "by": ["workflow-coordinate", "experiment"],
+        "values": [
+          { "field": "run", "as": "assignments", "reducer": "count" }
+        ]
+      }
+    },
+    {
+      "name": "eval-yes-no-status",
+      "intent": "Select explicit YES/NO eval answers while retaining unknown results only in the underlying evidence collection.",
+      "from": "eval-observations",
+      "filter": {
+        "predicates": [{ "field": "eval-result", "in": ["YES", "NO"] }]
+      }
+    },
+    {
+      "name": "grader-status-ledger",
+      "intent": "Report explicit grader pass/fail observations without inferring current state from prior runs.",
+      "from": "grader-observations",
+      "compute": [
+        {
+          "as": "is-pass",
+          "function": "equals-any",
+          "args": [{ "field": "status" }, { "value": "pass" }, { "value": "passed" }]
+        },
+        {
+          "as": "is-fail",
+          "function": "equals-any",
+          "args": [{ "field": "status" }, { "value": "fail" }, { "value": "failed" }]
+        },
+        {
+          "as": "non-pass-verdict",
+          "function": "if",
+          "args": [{ "field": "is-fail" }, { "value": "NO" }, { "value": "unknown" }]
+        },
+        {
+          "as": "verdict",
+          "function": "if",
+          "args": [
+            { "field": "is-pass" },
+            { "value": "YES" },
+            { "field": "non-pass-verdict" }
+          ]
+        }
+      ]
     }
   ],
   "pages": [
@@ -1140,7 +1203,7 @@
       "navigation-label": "Marketplace",
       "icon": "archive",
       "class-name": "marketplace-page",
-      "experimental": true,
+      "experimental": false,
       "description": "Find campaign packages to extend your agentic operations.",
       "views": [
         {
@@ -1327,7 +1390,7 @@
       "title": "Ingestion",
       "navigation-label": "Ingestion",
       "icon": "database",
-      "experimental": true,
+      "experimental": false,
       "description": "Monitor live server-side collection health, CAO Activity ingestion, and retained dashboard transactions.",
       "views": [
         {
@@ -2132,6 +2195,123 @@
             "card": "maintenance-repository",
             "icon": "repo",
             "action": "upgrade-repository"
+          }
+        }
+      ]
+    },
+    {
+      "id": "experiments",
+      "kind": "custom",
+      "title": "Experiments",
+      "icon": "beaker",
+      "experimental": true,
+      "description": "Observed run assignments by workflow and experiment. TODO: audit evidence does not establish campaign milestones or target assignments, so these counts are not completion percentages.",
+      "views": [
+        {
+          "id": "experiments-assignment-chart",
+          "title": "Observed assignments by workflow and experiment",
+          "data": {
+            "source": "experiment-assignment-coverage",
+            "order-by": [{ "field": "assignments", "direction": "desc" }],
+            "limit": 100
+          },
+          "mark": "chart",
+          "chart": "horizontal-bar",
+          "layout": "full",
+          "empty-message": "No experiment assignments were observed.",
+          "encoding": {
+            "x": { "field": "experiment", "type": "nominal", "title": "Experiment" },
+            "section": { "field": "workflow-coordinate", "type": "nominal", "title": "Repository / Workflow" },
+            "y": { "field": "assignments", "type": "quantitative", "title": "Observed assignments" }
+          }
+        },
+        {
+          "id": "experiments-definitions",
+          "title": "Experiments",
+          "description": "Experiment definitions discovered in run-level audit evidence. Missing campaign progress targets are not inferred.",
+          "data": { "source": "experiments" },
+          "mark": "table",
+          "controls": "interactive",
+          "lazy-list": true,
+          "layout": "full-view",
+          "empty-message": "No experiment definitions were observed.",
+          "encoding": {
+            "columns": [
+              { "field": "experiment-name", "type": "nominal", "title": "Experiment" },
+              { "field": "workflow", "type": "nominal", "title": "Workflow" },
+              { "field": "repository", "type": "nominal", "title": "Repository" },
+              { "field": "last-observation", "type": "temporal", "title": "Last observed", "format": "human-friendly-timestamp" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "evals",
+      "kind": "custom",
+      "title": "Evals",
+      "icon": "check-circle",
+      "experimental": true,
+      "description": "Explicit YES/NO results from retained eval observations, grouped by workflow and newest first. UNKNOWN answers remain in the underlying evidence but are not labelled YES/NO. TODO: audit evidence lacks an authoritative current-result pointer per eval; older observations remain visible and must not be read as current verdicts.",
+      "views": [
+        {
+          "id": "evals-statuses",
+          "title": "Observed eval answers by workflow",
+          "data": {
+            "source": "eval-yes-no-status",
+            "order-by": [
+              { "field": "workflow", "direction": "asc" },
+              { "field": "observed-at", "direction": "desc" }
+            ]
+          },
+          "mark": "table",
+          "controls": "interactive",
+          "lazy-list": true,
+          "layout": "full-view",
+          "empty-message": "No classified YES/NO eval observations were retained.",
+          "encoding": {
+            "columns": [
+              { "field": "workflow", "type": "nominal", "title": "Workflow" },
+              { "field": "eval", "type": "nominal", "title": "Eval" },
+              { "field": "eval-result", "type": "nominal", "title": "YES / NO" },
+              { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
+              { "field": "run", "type": "nominal", "title": "Run", "display": "evidence-link" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "graders",
+      "kind": "custom",
+      "title": "Graders",
+      "icon": "checklist",
+      "experimental": true,
+      "description": "YES/NO pass/fail results from retained grader observations, grouped by workflow and newest first. Other results are unknown. TODO: audit evidence lacks an authoritative current-result pointer per grader; older observations remain visible.",
+      "views": [
+        {
+          "id": "graders-statuses",
+          "title": "Observed grader results by workflow",
+          "data": {
+            "source": "grader-status-ledger",
+            "order-by": [
+              { "field": "workflow", "direction": "asc" },
+              { "field": "observed-at", "direction": "desc" }
+            ]
+          },
+          "mark": "table",
+          "controls": "interactive",
+          "lazy-list": true,
+          "layout": "full-view",
+          "empty-message": "No grader observations were retained.",
+          "encoding": {
+            "columns": [
+              { "field": "workflow", "type": "nominal", "title": "Workflow" },
+              { "field": "grader", "type": "nominal", "title": "Grader" },
+              { "field": "verdict", "type": "nominal", "title": "YES / NO" },
+              { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
+              { "field": "run", "type": "nominal", "title": "Run", "display": "run-link" }
+            ]
           }
         }
       ]
