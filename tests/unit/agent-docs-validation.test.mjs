@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, test } from "node:test";
-import { validateAgentDocs } from "../../scripts/validate-agent-docs.mjs";
+import {
+  MAX_SKILL_ENTRY_BYTES,
+  validateAgentDocs,
+} from "../../scripts/validate-agent-docs.mjs";
 
 const roots = [];
 const pagesBase = "https://githubnext.github.io/gh-aw-cao";
@@ -221,10 +224,43 @@ test("rejects an ambiguous one-hop task route", async () => {
 test("rejects oversized routing, context, and skill entry points", async () => {
   const root = await createFixture();
   await writeFile(path.join(root, "dist", "llms-small.txt"), "x".repeat(65 * 1024));
-  await writeFile(path.join(root, "skills", "cao-cli", "SKILL.md"), "x".repeat(13 * 1024));
+  await writeFile(
+    path.join(root, "skills", "cao-cli", "SKILL.md"),
+    "x".repeat(MAX_SKILL_ENTRY_BYTES + 1),
+  );
   const errors = await validateAgentDocs({ root });
   assert.ok(errors.some((error) => error.includes("llms-small.txt exceeds")));
   assert.ok(errors.some((error) => error.includes("cao-cli/SKILL.md exceeds")));
+});
+
+test("accepts compact routed skills and rejects missing local references", async () => {
+  const root = await createFixture();
+  const setupSkill = path.join(root, "skills", "setup-cao", "SKILL.md");
+  await writeFile(setupSkill, "# setup-cao\n\n[Details](references/details.md)\n");
+  let errors = await validateAgentDocs({ root });
+  assert.ok(errors.some((error) =>
+    error.includes("setup-cao/SKILL.md references missing local file: references/details.md")
+  ));
+
+  await mkdir(path.join(root, "skills", "setup-cao", "references"));
+  await writeFile(path.join(root, "skills", "setup-cao", "references", "details.md"), "# Details\n");
+  errors = await validateAgentDocs({ root });
+  assert.deepEqual(errors, []);
+});
+
+test("setup-cao entry point honors its budget and links existing local references", async () => {
+  const repositoryRoot = path.resolve(import.meta.dirname, "../..");
+  const skillPath = path.join(repositoryRoot, "skills", "setup-cao", "SKILL.md");
+  assert.ok((await stat(skillPath)).size <= MAX_SKILL_ENTRY_BYTES);
+
+  const source = await readFile(skillPath, "utf8");
+  const links = [...source.matchAll(/\[[^\]]+\]\(([^)#]+\.md)(?:#[^)]+)?\)/g)]
+    .map((match) => match[1])
+    .filter((link) => !/^[a-z]+:/i.test(link));
+  assert.ok(links.length > 0);
+  for (const link of links) {
+    assert.equal((await stat(path.resolve(path.dirname(skillPath), link))).isFile(), true, link);
+  }
 });
 
 test("requires the separately assembled dashboard agent guide", async () => {
