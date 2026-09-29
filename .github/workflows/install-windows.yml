@@ -36,4 +36,6 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Test install.sh
         shell: bash
+        env:
+          CAO_SKIP_ACTIVITY_INTEGRATION: "1"
         run: node --test tests/unit/install-script.test.mjs

@@ -573,7 +573,9 @@ for (const [description, repository] of [
   });
 }
 
-test("streamed install.sh initializes repository-only Activity without an App", async (t) => {
+test("streamed install.sh initializes repository-only Activity without an App", {
+  skip: process.env.CAO_SKIP_ACTIVITY_INTEGRATION === "1",
+}, async (t) => {
   const { root, consumer, repository, env, log } = await createConsumer(t, supportedGhAw);
   await streamInstaller(consumer, env);
   assert.equal(await log(), "add\n");
