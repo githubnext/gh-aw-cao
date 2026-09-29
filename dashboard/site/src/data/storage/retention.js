@@ -302,7 +302,9 @@ function pruneOrphans(merged) {
     ['evalObservations', 'evals', 'evalId']
   ]) {
     for (const [id, record] of merged[child]) {
-      if (!merged[parent].has(String(record[field]))) merged[child].delete(id);
+      const definition = merged[parent].get(String(record[field]));
+      const run = runs.get(String(record.runId));
+      if (!definition || !run || definition.workflowId !== run.workflowId) merged[child].delete(id);
     }
   }
   for (const [id, record] of merged.operationalValues) {
