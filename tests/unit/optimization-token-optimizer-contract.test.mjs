@@ -76,3 +76,12 @@ test("Optimization orchestrator dispatches exactly the two campaign workers", ()
   assert.match(source, /group: "\$\{\{ github\.workflow \}\}"/);
   assert.match(source, /\{\{#runtime-import\? \.github\/cao\/optimization\.md\}\}/);
 });
+
+test("Optimization token optimizer follows canonical gh-aw optimization guidance", () => {
+  const source = workflow("optimization-token-optimizer.md");
+
+  assert.match(source, /github\/gh-aw\/blob\/main\/\.github\/aw\/optimize-agentic-workflow\.md/);
+  assert.match(source, /github\/gh-aw\/blob\/main\/\.github\/aw\/token-optimization\.md/);
+  assert.match(source, /experiments:[\s\S]*metric: "aic"/);
+  assert.match(source, /every applicable upstream optimization has been exhausted/);
+});

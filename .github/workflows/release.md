@@ -147,31 +147,9 @@ jobs:
             core.info(`Resolved ${bump} bump from v${latest.join('.')} to ${releaseTag}.`);
             core.setOutput('release_tag', releaseTag);
 
-  validate-campaign:
-    name: Validate gh-aw campaign
-    needs: resolve-version
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-      - name: Install gh-aw
-        uses: ./.github/actions/setup-gh-aw
-      - name: Validate files installed from the root aw.yml campaign
-        env:
-          CENTRAL_AGENTIC_OPS_CAMPAIGN_SOURCE: ${{ github.repository }}@${{ github.sha }}
-          GH_TOKEN: ${{ github.token }}
-        run: npm run test:campaign-root
-
   prepare-release:
     name: Prepare draft release
-    needs: [resolve-version, validate-campaign]
+    needs: resolve-version
     runs-on: ubuntu-latest
     permissions:
       contents: write

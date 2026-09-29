@@ -4,6 +4,9 @@
 
 import { h } from './dom.js';
 import { OCTICON_SPRITE } from './octicon-sprite.js';
+import { createDebug } from './debug.js';
+
+const debugOcticons = createDebug('octicons');
 
 /** @type {Map<string, Element> | undefined} */
 let symbols;
@@ -15,6 +18,7 @@ function octiconSymbols() {
     symbol.id.replace(/^octicon-/, ''),
     symbol
   ]));
+  debugOcticons({ event: 'sprite-parsed', symbolCount: symbols.size });
   return symbols;
 }
 
@@ -30,8 +34,10 @@ export function octicon(name, className = '') {
       d: 'M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 12.5a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11Zm-.75-9.25a.75.75 0 0 1 1.5 0v3a.75.75 0 0 1-1.5 0ZM8 9.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z'
     })];
   } else {
-    const symbol = octiconSymbols().get(name) ?? octiconSymbols().get('question');
+    const resolved = octiconSymbols().get(name);
+    const symbol = resolved ?? octiconSymbols().get('question');
     if (!symbol) throw new Error('The fallback Octicon is missing.');
+    if (!resolved) debugOcticons({ event: 'fallback-used', requestedName: name });
     glyphs = [...symbol.childNodes].map((node) => document.importNode(node, true));
   }
   return /** @type {SVGElement} */ (/** @type {unknown} */ (h(

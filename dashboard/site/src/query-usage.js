@@ -1,4 +1,7 @@
 import { navigationIndicatorSourceNamesForPage } from './navigation-indicator.js';
+import { createDebug } from './debug.js';
+
+const debugQueryUsage = createDebug('query-usage');
 
 /**
  * Builds the dependency graph connecting rendered dashboard content to
@@ -106,6 +109,7 @@ export function buildDashboardQueryUsageGraph(dashboard) {
     });
   }
 
+  debugQueryUsage({ event: 'graph-built', queryCount: queryNames.size, nodeCount: graph.size, rootCount: roots.size });
   return { graph, roots, queryPaths, labels };
 }
 
@@ -137,6 +141,7 @@ export function renderDashboardQueryUsageGraph(dashboard) {
     lines.push('  classDef dead fill:#ffebe9,stroke:#cf222e,color:#82071e');
     lines.push(`  class ${deadQueryIds.join(',')} dead`);
   }
+  debugQueryUsage({ event: 'graph-rendered', nodeCount: nodes.length, deadQueryCount: deadQueryIds.length });
   return lines.join('\n');
 }
 
@@ -148,9 +153,11 @@ export function findDeadDashboardQueries(dashboard) {
   const { graph, roots, queryPaths } = buildDashboardQueryUsageGraph(dashboard);
   const reachable = reachableNodes(graph, roots);
 
-  return [...queryPaths].flatMap(([name, path]) => (
+  const dead = [...queryPaths].flatMap(([name, path]) => (
     reachable.has(`query:${name}`) ? [] : [{ name, path }]
   ));
+  debugQueryUsage({ event: 'dead-queries-found', totalQueries: queryPaths.size, deadCount: dead.length });
+  return dead;
 }
 
 /** @param {Map<string, Set<string>>} graph @param {Set<string>} roots */

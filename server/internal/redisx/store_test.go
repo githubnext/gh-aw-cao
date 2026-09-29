@@ -119,3 +119,73 @@ func TestMarketplaceCacheKeyIsolatesByRegistryAndGeneration(t *testing.T) {
 		t.Fatal("identical inputs produced different cache keys")
 	}
 }
+
+func TestParseActiveGenerationDecodesAllFields(t *testing.T) {
+	evaluatedAt := "2024-05-01T12:00:00Z"
+	activatedAt := "2024-05-01T12:00:05Z"
+	fields := []string{
+		"generation", "gen-1",
+		"revision", "7",
+		"dataRevision", "rev-abc",
+		"evaluatedAt", evaluatedAt,
+		"counts", `{"events":3}`,
+		"activatedAt", activatedAt,
+	}
+	result, malformed := parseActiveGeneration(fields)
+	if malformed != 0 {
+		t.Fatalf("expected no malformed fields, got %d", malformed)
+	}
+	if result.Generation != "gen-1" || result.Revision != 7 || result.DataRevision != "rev-abc" {
+		t.Fatalf("unexpected scalar fields: %+v", result)
+	}
+	if result.Counts["events"] != 3 {
+		t.Fatalf("unexpected counts: %+v", result.Counts)
+	}
+	if !result.EvaluatedAt.Equal(mustParseRFC3339Nano(t, evaluatedAt)) {
+		t.Fatalf("unexpected evaluatedAt: %v", result.EvaluatedAt)
+	}
+	if !result.Activated.Equal(mustParseRFC3339Nano(t, activatedAt)) {
+		t.Fatalf("unexpected activatedAt: %v", result.Activated)
+	}
+}
+
+func TestParseActiveGenerationCountsMalformedFieldsAndKeepsValidOnes(t *testing.T) {
+	fields := []string{
+		"generation", "gen-2",
+		"revision", "not-a-number",
+		"evaluatedAt", "not-a-time",
+		"counts", "not-json",
+		"activatedAt", "also-not-a-time",
+	}
+	result, malformed := parseActiveGeneration(fields)
+	if malformed != 4 {
+		t.Fatalf("expected 4 malformed fields, got %d", malformed)
+	}
+	if result.Generation != "gen-2" {
+		t.Fatalf("unexpected generation: %q", result.Generation)
+	}
+	if result.Revision != 0 || !result.EvaluatedAt.IsZero() || !result.Activated.IsZero() {
+		t.Fatalf("expected zero values for malformed fields, got %+v", result)
+	}
+	if len(result.Counts) != 0 {
+		t.Fatalf("expected empty counts for malformed JSON, got %+v", result.Counts)
+	}
+}
+
+func TestParseActiveGenerationHandlesEmptyAndOddLengthInput(t *testing.T) {
+	if result, malformed := parseActiveGeneration(nil); malformed != 0 || result.Generation != "" {
+		t.Fatalf("expected zero-value result for nil input, got %+v malformed=%d", result, malformed)
+	}
+	if result, malformed := parseActiveGeneration([]string{"generation"}); malformed != 0 || result.Generation != "" {
+		t.Fatalf("expected trailing unpaired field to be ignored, got %+v malformed=%d", result, malformed)
+	}
+}
+
+func mustParseRFC3339Nano(t *testing.T, value string) time.Time {
+	t.Helper()
+	parsed, err := time.Parse(time.RFC3339Nano, value)
+	if err != nil {
+		t.Fatalf("parse test timestamp %q: %v", value, err)
+	}
+	return parsed
+}

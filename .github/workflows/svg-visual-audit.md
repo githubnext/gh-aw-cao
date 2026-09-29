@@ -24,6 +24,7 @@ permissions:
   copilot-requests: write
 strict: true
 tools:
+  cli-proxy: true
   playwright:
     version: "0.1.18"
 network:
@@ -79,16 +80,17 @@ Use the local checkout and manifest as the complete audit scope; do not query Gi
    ```
 
    If readiness fails, inspect only the relevant tail of `server.log` and report the audit incomplete.
-2. Open one Playwright browser session. For every manifest path, URL-encode each path segment and navigate to its repository-relative URL twice:
-   - emulate `colorScheme: "light"`, then capture a full-page screenshot;
-   - emulate `colorScheme: "dark"`, then capture a full-page screenshot.
+2. Open one named Playwright CLI browser session with `playwright-cli -s=svg-audit open --browser=chromium about:blank`. For every manifest path, URL-encode each path segment and navigate to its repository-relative URL twice:
+   - run `playwright-cli -s=svg-audit set-color-scheme light`, then navigate and capture a full-page screenshot;
+   - run `playwright-cli -s=svg-audit set-color-scheme dark`, then navigate and capture a full-page screenshot.
+   Use `playwright-cli -s=svg-audit goto` for navigation, `eval` to inspect the rendered DOM and computed styles, and `run-code` with `page.screenshot({ path: ..., fullPage: true })` to save each screenshot. Do not use Playwright MCP tool names as CLI commands.
 3. Save screenshots under `/tmp/gh-aw/agent/svg-audit/screenshots/` with filesystem-safe names ending in `-light.png` and `-dark.png`.
 4. Inspect the rendered DOM and screenshot in each mode. Do not infer rendered colors or geometry from SVG source alone.
 5. Close the browser and stop the server using the PID in `/tmp/gh-aw/agent/svg-audit/server.pid`.
-6. Request one `upload_artifact` safe output containing the screenshot directory.
-7. Request exactly one `create_check_run` safe output with the audit result.
+6. Upload the screenshot directory once with `safeoutputs upload_artifact --name "svg-visual-audit-${{ github.run_id }}" --path "/tmp/gh-aw/agent/svg-audit/screenshots"`.
+7. Submit exactly one check run with `safeoutputs create_check_run`, including its `conclusion`, `title`, and `summary`.
 
-Use `playwright-cli browser_run_code` when browser evaluation or `page.emulateMedia()` is needed. Reuse the same page instead of launching a browser per file.
+Use the `playwright-cli` binary provided by the `playwright` workflow tool. Reuse the same session instead of launching a browser per file. Invoke safe outputs through the `safeoutputs` CLI.
 
 ## Contrast checks
 
