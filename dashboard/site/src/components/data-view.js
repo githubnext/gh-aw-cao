@@ -1582,8 +1582,9 @@ export function renderPromptPreviewAction(label, getContent, actionId, icon = 'c
     ariaLabel: `${label} prompt preview`,
     onFallbackClose: () => triggerButton?.focus()
   });
+  const preview = h('pre', { className: 'table-intent-preview' });
   const copyControl = createCopyControl({
-    getContent,
+    getContent: () => preview.textContent ?? '',
     label: 'Copy prompt',
     buttonClassName: 'table-intent-copy-button',
     statusClassName: 'table-intent-copy-status',
@@ -1592,7 +1593,7 @@ export function renderPromptPreviewAction(label, getContent, actionId, icon = 'c
     trackState: true
   });
   const promptCliAction = typeof actionId === 'string'
-    ? createPromptCliActionControl(actionId, getContent)
+    ? createPromptCliActionControl(actionId, () => preview.textContent ?? '')
     : null;
   const activeControl = promptCliAction ?? copyControl;
   dialog.append(
@@ -1606,7 +1607,7 @@ export function renderPromptPreviewAction(label, getContent, actionId, icon = 'c
         onClick: closePreview
       })
     ),
-    h('pre', { className: 'table-intent-preview' }),
+    preview,
     ...(promptCliAction ? [promptCliAction.output] : []),
     h(
       'footer',
@@ -1624,8 +1625,7 @@ export function renderPromptPreviewAction(label, getContent, actionId, icon = 'c
       'aria-label': label,
       'data-intent-presentation': presentation,
       onClick: () => {
-        const preview = dialog.querySelector('.table-intent-preview');
-        if (preview) preview.textContent = getContent();
+        preview.textContent = getContent();
         activeControl.reset();
         openPreview();
       }

@@ -22,7 +22,7 @@ import { enableThemeControl, renderThemeControl, restoreDashboardTheme } from '.
 import { disconnectLazyViews, enableLazyViews, renderLazyView } from './components/lazy-view.js';
 import { enableFullViewScrollForwarding, syncFullViewMode as syncFullViewModeForPage } from './components/full-view-scroll.js';
 import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from './debug-events.js';
-import { dashboardViewAliasName } from './data/queries/view-payload-compiler.js';
+import { dashboardFormDefaultValues, dashboardViewAliasName } from './data/queries/view-payload-compiler.js';
 import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 import { sourceContinuation } from './data/continuation.js';
 import { renderDashboardNavigation, enableDashboardNavigation, syncDashboardNavigationIndicators, syncMobileViewModeToggle } from './components/dashboard-navigation.js';
@@ -792,25 +792,36 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
           }));
           const prompt = renderPromptPreviewAction(
             `Create prompt for ${getViewTitle(view, index)}`,
-            () => semanticViewPrompt({
-              pageId: page.id,
-              viewId: view.id ?? `view-${index + 1}`,
-              title: getViewTitle(view, index),
-              semantics,
-              queryParameters: {
-                ...(isPlainObject(queryContext?.formValues) ? queryContext.formValues : {}),
-                ...(routeParameter ? { [routeParameter]: new URLSearchParams(globalThis.location?.hash.split('?')[1] ?? '').get(routeParameter) } : {})
-              },
-              filters: queryContext?.filters ?? {},
-              scope: view.data?.scope ?? dashboardDefaults.scope ?? {},
-              sources: selectedSources
-            }),
+            () => {
+              const routeValues = Object.fromEntries(new URLSearchParams(globalThis.location?.hash.split('?')[1] ?? ''));
+              return semanticViewPrompt({
+                pageId: page.id,
+                viewId: view.id ?? `view-${index + 1}`,
+                title: getViewTitle(view, index),
+                semantics,
+                queryParameters: {
+                  ...dashboardFormDefaultValues(page.form),
+                  ...(queryContext?.formValues ?? {}),
+                  ...Object.fromEntries((Array.isArray(view.data?.arguments) ? view.data.arguments : [])
+                    .flatMap((/** @type {{ name?: string, field?: string }} */ argument) => typeof argument?.name === 'string' && typeof argument.field === 'string'
+                      && routeValues[argument.name] !== undefined
+                      ? [[argument.name, routeValues[argument.name]]] : [])),
+                  ...(routeParameter && routeValues[routeParameter] ? { [routeParameter]: routeValues[routeParameter] } : {})
+                },
+                filters: { ...queryContext, viewFilters: view.data?.filters ?? {} },
+                scope: view.data?.scope ?? dashboardDefaults.scope ?? {},
+                sources: selectedSources
+              });
+            },
             declaredAgentTaskActionId()
           );
+          prompt.classList.add('semantic-prompt-action');
           const section = rendered.matches('.page-section') ? rendered : null;
           if (section) {
             section.classList.add('semantic-prompt-view');
-            section.querySelector(':scope > h3, :scope > h4')?.after(prompt);
+            const heading = section.querySelector('h3, h4');
+            if (heading) heading.after(prompt);
+            else section.prepend(prompt);
           } else {
             rendered = h('div', { className: 'semantic-prompt-view' },
               h('div', { className: 'semantic-prompt-heading' },

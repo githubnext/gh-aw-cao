@@ -1019,7 +1019,7 @@ For pages that opt in to `filter-bar: true`, the presenter renders a filter bar 
 
 ### 11.1 Syntax and View Classes
 
-A custom page contains a non-empty `views` sequence. Each view has one `data` mapping and one mark. Data marks use an `encoding`; named UI elements use `element`. A named UI element may include a non-empty `intent` that records the operator outcome the element is designed to support. This authoring metadata is retained as a hint for future agentic mutation and is not rendered as visible or accessible content.
+A custom page contains a non-empty `views` sequence. Each view has one `data` mapping and one mark. Data marks use an `encoding`; named UI elements use `element`. Any view may declare `intent`, `objective`, and `acceptance` semantic metadata. These annotations compose with those of its named query dependencies; they are not rendered verbatim as visible or accessible content. Complete effective semantics enable the shared prompt action, without per-view action configuration.
 
 Any view may include the optional Boolean `locked` authoring hint. When `true`, an agent evolving the dashboard should preserve the view and modify it only to correct bugs. `locked` does not affect presentation, accessibility, data processing, or validation of the view's other fields.
 

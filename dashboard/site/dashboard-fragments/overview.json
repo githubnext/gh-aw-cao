@@ -1390,6 +1390,7 @@
     {
       "name": "cost-by-campaign",
       "intent": "Present observed AI Credit cost grouped by centrally managed campaign.",
+      "objective": "Identify campaigns whose observed AI Credit use needs investigation.",
       "from": "campaign-inventory",
       "select": [
         {
@@ -1867,6 +1868,8 @@
           "id": "cost-by-campaign",
           "title": "Cost per campaign",
           "description": "The share of observed AI Credit cost attributed to each centrally managed campaign.",
+          "intent": "Compare the campaign shares in the selected scope and time window.",
+          "acceptance": "Any unusual campaign cost is explained using fresh observations.",
           "data": {
             "source": "cost-by-campaign"
           },

@@ -650,7 +650,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .layout-section .page-section > h4 { margin: 12px 0 8px; font-size: .875rem; font-weight: 600; }
 .view-description-section { position: relative; }
 .semantic-prompt-view { position: relative; }
-.semantic-prompt-view.page-section > .table-intent-control { display: block; width: fit-content; margin: 0 0 12px auto; }
+.semantic-prompt-action { display: block; width: fit-content; margin: 0 0 12px auto; }
 .semantic-prompt-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .semantic-prompt-heading > :is(h3, h4) { margin: 0; }
 .view-description-tooltip { position: absolute; top: 4px; right: 0; }

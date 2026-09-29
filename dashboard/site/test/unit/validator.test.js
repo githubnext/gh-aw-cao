@@ -5215,6 +5215,20 @@ describe('declarative query validation', () => {
     expect(validateDashboardDocument(queryDocument([aicQuery, validQuery])).ok).toBe(true);
   });
 
+  it('accepts optional query objective and acceptance only as non-empty text', () => {
+    const semanticQuery = { ...validQuery, objective: 'Investigate costs.', acceptance: 'Costs explained.' };
+    expect(validateDashboardDocument(queryDocument([aicQuery, semanticQuery])).ok).toBe(true);
+    for (const field of ['objective', 'acceptance']) {
+      const invalid = validateDashboardDocument(queryDocument([
+        aicQuery, { ...semanticQuery, [field]: '' }
+      ]));
+      expect(invalid.ok).toBe(false);
+      if (!invalid.ok) expect(invalid.errors).toContainEqual(expect.objectContaining({
+        path: `$.dashboard.queries[1].${field}`
+      }));
+    }
+  });
+
   it('validates reusable temporal-series projections', () => {
     const query = {
       name: 'workflow-costs',

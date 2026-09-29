@@ -32,6 +32,8 @@ const document = {
       {
         name: "usage-by-workflow",
         intent: "Show observed AI Credit usage by workflow.",
+        objective: "Investigate unusual usage.",
+        acceptance: "Usage is explained.",
         description: "Usage grouped by workflow.",
         from: "usage-base",
       },
@@ -88,9 +90,11 @@ describe("agent catalog", () => {
     ]);
   });
 
-  it("preserves query intent and description", () => {
+  it("preserves query semantics and description for query-info", () => {
     const query = describeQuery(document, "usage-by-workflow");
     expect(query?.intent).toBe("Show observed AI Credit usage by workflow.");
+    expect(query?.objective).toBe("Investigate unusual usage.");
+    expect(query?.acceptance).toBe("Usage is explained.");
     expect(query?.description).toBe("Usage grouped by workflow.");
     expect(query?.["used-by-pages"]).toEqual(["insights"]);
   });

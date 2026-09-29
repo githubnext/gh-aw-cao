@@ -73,6 +73,8 @@ function formatQuery(query) {
   return [
     `  ${query.id}${query.execution.local ? '' : '  (not locally executable)'}`,
     indent(query.intent || query.description),
+    indent(query.objective ? `objective: ${query.objective}` : ''),
+    indent(query.acceptance ? `acceptance: ${query.acceptance}` : ''),
     indent(query.parameters.length > 0
       ? `parameters: ${query.parameters.map((parameter) => parameter.name).join(', ')}`
       : ''),
