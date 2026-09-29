@@ -31,7 +31,7 @@ import { renderDashboardFrame } from './components/dashboard-frame.js';
 import { declaredRouteTabs, renderDeclaredRouteTabs } from './components/route-tabs.js';
 import { buildChartPoints, prepareChartPoints, prepareTableRows, toViewText } from './components/view-data.js';
 import { enableDashboardKeyboardNavigation, updateWithViewTransition } from './components/dashboard-interactions.js';
-import { requestDashboardRefresh } from './dashboard-data-updates.js';
+import { enablePullRefresh } from './components/pull-refresh.js';
 import { createDebug } from './debug.js';
 import { navigationIndicatorSourceNames } from './navigation-indicator.js';
 
@@ -67,11 +67,11 @@ import {
  */
 
 /**
- * @typedef {{ id: string, kind: 'built-in', page: string, title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, experimental?: boolean, ['filter-bar']?: boolean, ['view-mode-control']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], definition?: { views?: Array<unknown>, sections?: PresentablePageSection[], ['data-state']?: Record<string, boolean> } }} PresentableBuiltInPage
+ * @typedef {{ id: string, kind: 'built-in', page: string, title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, experimental?: boolean, ['filter-bar']?: boolean, ['view-mode-control']?: boolean, ['pull-refresh']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], definition?: { views?: Array<unknown>, sections?: PresentablePageSection[], ['data-state']?: Record<string, boolean> } }} PresentableBuiltInPage
  */
 
 /**
- * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, experimental?: boolean, ['filter-bar']?: boolean, ['view-mode-control']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string, ['title-format']?: 'title-case' }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
+ * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, experimental?: boolean, ['filter-bar']?: boolean, ['view-mode-control']?: boolean, ['pull-refresh']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string, ['title-format']?: 'title-case' }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
  */
 
 /**
@@ -258,7 +258,7 @@ export function renderDashboard(input) {
     setTimeWindowRange(event.detail?.range, root);
   }, { signal: dashboardOwner.signal });
   enableResponsiveReportActions(root, dashboardOwner.signal);
-  enableOverviewPullRefresh(root, dashboardOwner.signal);
+  enableDeclaredPullRefresh(root, pages, dashboardOwner.signal);
   const disposeNavigation = enableDashboardPageNavigation(
     root,
     document.dashboard.title,
@@ -376,61 +376,28 @@ function enableNavigationIndicatorUpdates(root, pages, loadPageSources, signal) 
 }
 
 /**
- * Enables the mobile pull-down gesture only while Overview is active and the
- * page is already scrolled to its top.
+ * Enables the mobile pull-down gesture while any page declaring
+ * `pull-refresh: true` is active and already scrolled to its top.
  * @param {HTMLElement} root
+ * @param {Array<PresentableBuiltInPage | PresentableCustomPage>} pages
  * @param {AbortSignal} signal
  */
-function enableOverviewPullRefresh(root, signal) {
+function enableDeclaredPullRefresh(root, pages, signal) {
+  const pullRefreshPageIds = new Set(
+    pages.filter((page) => page['pull-refresh'] === true).map((page) => page.id)
+  );
+  if (pullRefreshPageIds.size === 0) return;
   const scroller = root.querySelector('main.dashboard-prototype');
   const view = root.ownerDocument.defaultView;
   if (!(scroller instanceof HTMLElement) || !view) return;
-  const indicator = h('div', {
-    className: 'overview-pull-refresh',
-    role: 'status',
-    'aria-live': 'polite',
-    hidden: true
-  }, 'Pull down to refresh');
-  scroller.prepend(indicator);
-  /** @type {{ startY: number, armed: boolean } | null} */
-  let gesture = null;
-  const scrollTop = () => Math.max(
-    scroller.scrollTop,
-    root.ownerDocument.scrollingElement?.scrollTop ?? 0
-  );
-  const overviewIsActive = () => {
-    const overview = root.querySelector('[data-page-id="overview"]');
-    return overview instanceof HTMLElement && !overview.hidden;
-  };
-  const reset = () => {
-    gesture = null;
-    indicator.hidden = true;
-    indicator.classList.remove('overview-pull-refresh-armed');
-  };
-  scroller.addEventListener('touchstart', (event) => {
-    const touch = event.touches[0];
-    gesture = touch && event.touches.length === 1 && overviewIsActive() && scrollTop() <= 0
-      ? { startY: touch.clientY, armed: false }
-      : null;
-  }, { passive: true, signal });
-  scroller.addEventListener('touchmove', (event) => {
-    const touch = event.touches[0];
-    if (!gesture || !touch || scrollTop() > 0) return reset();
-    const distance = Math.max(0, touch.clientY - gesture.startY);
-    if (distance < 12) return;
-    gesture.armed = distance >= 72;
-    indicator.hidden = false;
-    indicator.classList.toggle('overview-pull-refresh-armed', gesture.armed);
-    indicator.textContent = gesture.armed ? 'Release to refresh' : 'Pull down to refresh';
-  }, { passive: true, signal });
-  scroller.addEventListener('touchend', () => {
-    if (!gesture?.armed) return reset();
-    indicator.textContent = 'Refreshing dashboard';
-    requestDashboardRefresh(view);
-    view.setTimeout(reset, 600);
-    gesture = null;
-  }, { signal });
-  scroller.addEventListener('touchcancel', reset, { signal });
+  enablePullRefresh({
+    scroller,
+    view,
+    isActive: () => [...root.querySelectorAll('.dashboard-page')].some(
+      (page) => page instanceof HTMLElement && pullRefreshPageIds.has(page.dataset.pageId ?? '') && !page.hidden
+    ),
+    signal
+  });
 }
 
 /** @param {HTMLElement} root */

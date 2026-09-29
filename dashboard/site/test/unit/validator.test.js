@@ -54,6 +54,23 @@ describe('dashboard document validation', () => {
     });
   });
 
+  it('validates the optional page pull-refresh flag', () => {
+    const accepted = JSON.parse(authoritativeDashboardSource);
+    const overview = accepted.dashboard.pages.find(
+      (/** @type {{ id?: string }} */ page) => page.id === 'overview'
+    );
+    overview['pull-refresh'] = true;
+    expect(validateDashboardDocument(JSON.stringify(accepted)).ok).toBe(true);
+
+    overview['pull-refresh'] = 'always';
+    expect(validateDashboardDocument(JSON.stringify(accepted))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([expect.objectContaining({
+        message: 'pull-refresh must be a Boolean when present.'
+      })])
+    });
+  });
+
   it('marks Steering and Campaign Memory pages as experimental', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentalPageIds = document.dashboard.pages
