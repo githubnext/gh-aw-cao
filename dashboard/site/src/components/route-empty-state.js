@@ -4,6 +4,7 @@
 
 import { h } from '../dom.js';
 import { renderEmptyMessage } from './ui-primitives.js';
+import { bindRouteChangeListener } from './route-composition.js';
 import { createDebug } from '../debug.js';
 
 const debugRouteEmptyState = createDebug('route-empty-state');
@@ -30,11 +31,7 @@ const debugRouteEmptyState = createDebug('route-empty-state');
  * @returns {HTMLElement}
  */
 export function createRouteView(options) {
-  const root = h('div', {
-    className: options.rootClassName,
-    'data-route-view': '',
-    'data-route-parameter': options.routeParameter
-  });
+  const root = h('div', { className: options.rootClassName });
 
   /** @param {unknown} routeValue */
   const render = (routeValue) => {
@@ -57,10 +54,6 @@ export function createRouteView(options) {
     });
   };
 
-  root.addEventListener('dashboard-route-change', (event) => {
-    if (!(event instanceof CustomEvent) || event.detail?.parameter !== options.routeParameter) return;
-    render(event.detail.value);
-  });
-  render('');
+  bindRouteChangeListener(root, options.routeParameter, render);
   return root;
 }

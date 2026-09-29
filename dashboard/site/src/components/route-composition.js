@@ -16,3 +16,24 @@ export function selectNamedComposition(compositions, selected, fallback) {
     : fallback;
   return compositions[key];
 }
+
+/**
+ * Marks `root` as a route-bound view for `routeParameter`, wires the shared
+ * `dashboard-route-change` listener that re-renders it whenever that
+ * parameter's value changes, and performs the initial render with an empty
+ * route value. Shared by {@link import('./route-empty-state.js').createRouteView}
+ * and {@link import('./route-tabs.js').renderDeclaredRouteTabs}, which both
+ * duplicated this route-value binding around otherwise different rendering.
+ * @param {HTMLElement} root
+ * @param {string | undefined} routeParameter
+ * @param {(routeValue: string) => void} render
+ */
+export function bindRouteChangeListener(root, routeParameter, render) {
+  root.dataset.routeView = '';
+  if (routeParameter !== undefined) root.dataset.routeParameter = routeParameter;
+  root.addEventListener('dashboard-route-change', (event) => {
+    if (!(event instanceof CustomEvent) || event.detail?.parameter !== routeParameter) return;
+    render(event.detail.value);
+  });
+  render('');
+}

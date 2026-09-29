@@ -4,6 +4,7 @@
 
 import { h } from '../dom.js';
 import { renderRouteTabSet } from './route-tab-set.js';
+import { bindRouteChangeListener } from './route-composition.js';
 
 /**
  * @typedef {{ id: string, label: string, icon: string, page: string }} DeclaredRouteTab
@@ -21,11 +22,7 @@ import { renderRouteTabSet } from './route-tab-set.js';
  * @returns {HTMLElement}
  */
 export function renderDeclaredRouteTabs(options) {
-  const root = h('div', {
-    className: 'route-tab-navigation',
-    'data-route-view': '',
-    'data-route-parameter': options.routeParameter
-  });
+  const root = h('div', { className: 'route-tab-navigation' });
 
   /** @param {unknown} routeValue */
   const render = (routeValue) => {
@@ -49,11 +46,7 @@ export function renderDeclaredRouteTabs(options) {
     }));
   };
 
-  root.addEventListener('dashboard-route-change', (event) => {
-    if (!(event instanceof CustomEvent) || event.detail?.parameter !== options.routeParameter) return;
-    render(event.detail.value);
-  });
-  render('');
+  bindRouteChangeListener(root, options.routeParameter, render);
   return root;
 }
 
