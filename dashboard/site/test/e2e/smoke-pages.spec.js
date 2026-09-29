@@ -157,10 +157,11 @@ test('Ingestion shows CAO Activity status, size trend, and retained transactions
     </script>
   `);
 
-  const updatesNavigation = page.locator('.nav-section').filter({
-    has: page.locator('summary', { hasText: /^Updates$/ })
+  const experimentalNavigation = page.locator('.nav-section').filter({
+    has: page.locator('summary', { hasText: /^Experimental$/ })
   });
-  await updatesNavigation.getByRole('link', { name: 'Ingestion' }).click();
+  await experimentalNavigation.locator('summary').click();
+  await experimentalNavigation.getByRole('link', { name: 'Ingestion, Experimental' }).click();
 
   const root = page.locator('.dashboard-root');
   const transactionsPage = page.locator('[data-page-id="indexing"]');
@@ -1142,7 +1143,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
   await expect(overviewPage.locator('.factory-station')).toHaveCount(2);
   await page.locator('.mobile-nav-menu > summary').click();
-  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Updates']);
+  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Experimental', 'Updates']);
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toHaveCount(0);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(overviewPage.locator('.factory-intro')).toBeInViewport();

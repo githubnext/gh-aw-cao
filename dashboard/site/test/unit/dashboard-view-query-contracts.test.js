@@ -183,11 +183,11 @@ describe('dashboard view query contracts', () => {
     const page = dashboard.pages.find(
       (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'operational-value'
     );
-    const dataSection = dashboard.navigation.find(
-      (/** @type {Record<string, unknown>} */ section) => section.label === 'Data'
+    const experimentalSection = dashboard.navigation.find(
+      (/** @type {Record<string, unknown>} */ section) => section.experimental === true
     );
 
-    expect(/** @type {Record<string, unknown> | undefined} */ (dataSection)?.pages)
+    expect(/** @type {Record<string, unknown> | undefined} */ (experimentalSection)?.pages)
       .toContain('operational-value');
     expect(page).toMatchObject({
       kind: 'built-in',
