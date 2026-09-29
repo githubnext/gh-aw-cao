@@ -192,6 +192,14 @@ describe('entity card templates', () => {
     expect(entityFields).toEqual(expect.arrayContaining(['runs', 'successful-runs', 'failed-runs', 'aic-per-run']));
   });
 
+  it('links failure cards to their representative workflow run', () => {
+    expect(templates.problem.details).toContainEqual({
+      field: 'run',
+      title: 'Run',
+      display: 'run-link'
+    });
+  });
+
   it('declares a firewall domain card with allowed and blocked metrics', () => {
     expect(templates['firewall-domain']).toEqual({
       id: 'firewall-domain',

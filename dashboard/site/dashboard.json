@@ -673,6 +673,11 @@
           {
             "field": "failure-count",
             "title": "Failures"
+          },
+          {
+            "field": "run",
+            "title": "Run",
+            "display": "run-link"
           }
         ]
       },
