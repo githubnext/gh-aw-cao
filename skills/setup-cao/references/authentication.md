@@ -6,13 +6,16 @@ profile after exact repository scope is known.
 | Verified scope | Compatible profile |
 | --- | --- |
 | Private or privileged repositories under one organization | `github-app` |
-| Repositories across organizations in one enterprise | `enterprise-app` |
-| Approved owner-scoped credentials where Apps are unavailable | `token` |
+| Repositories across organizations in one GitHub Enterprise Cloud enterprise | `enterprise-app` |
+| Approved owner-scoped credentials where Apps are unavailable | `token` (one pair per resource owner) |
 
-Every profile must cover the full selected read scope. Prefer private GitHub
-Apps for durable automation. An organization App cannot cover another owner;
-enterprise Apps require the selected organizations to belong to one enterprise.
-Use independent control planes for unrelated organizations or enterprises.
+The selected profile must cover the full read scope; a multi-owner token setup
+does this with a separate pair for each owner. Prefer private GitHub Apps for
+durable automation. An organization App cannot cover another owner, and
+enterprise Apps require every selected organization to belong to the same
+enterprise. Verify that condition before choosing `enterprise-app`. Use
+independent control planes only when no approved profile can cover the full
+scope.
 
 Use owner-scoped fine-grained PAT pairs only when organization policy permits
 them, the required APIs support them, and Apps are unavailable. The operator

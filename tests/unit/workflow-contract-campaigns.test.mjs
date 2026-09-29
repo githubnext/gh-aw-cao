@@ -551,7 +551,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.ok(existsSync(addCampaignSkillPath));
   assert.match(setupSkill, /^---\r?\nname: setup-cao\r?\n/);
   assert.match(setupSkill, /control-plane\.campaigns.*empty object/);
-  assert.match(setupSkill, /no campaign installed or enabled, no live rollout, and no workflow dispatch/);
+  assert.match(setupSkill, /no user-facing campaign installed or enabled, no live rollout, and no workflow\s+dispatch/);
   assert.match(setupSkill, /Capability\s+is not consent/);
   assert.match(setupSkill, /Ask before repository creation or reuse, runtime installation, credential\s+configuration, commit, or push/);
   assert.match(setupSkill, /credential reach never widens policy/);
@@ -564,7 +564,9 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /references\/public-control-repositories\.md/);
   assert.match(setupSkill, /references\/implementation-details\.md/);
   assert.match(setupSkill, /Preferred human flow/i);
+  assert.match(setupSkill, /setup quickstart/);
   assert.match(setupSkill, /\.\/cao\.sh setup/);
+  assert.match(setupSkill, /offers authentication choices\s+based on that scope/);
   assert.doesNotMatch(setupSkill, /workflow-token/);
   assert.match(setupSkill, /raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/install\.sh/);
   assert.doesNotMatch(setupSkill, /gh release view|cao_release=|cao-ref|cao-release/);
@@ -576,10 +578,16 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupReferences.authentication, /`github-app`/);
   assert.match(setupReferences.authentication, /`enterprise-app`/);
   assert.match(setupReferences.authentication, /Never use a classic PAT/);
+  assert.match(setupReferences.authentication, /separate pair for each owner/);
+  assert.match(setupReferences.authentication, /independent control planes only when no approved profile can cover the full\s+scope/);
   assert.match(setupReferences["implementation-details"], /second runtime copy/);
   assert.match(setupReferences["implementation-details"], /campaign-owned/);
   assert.match(setupReferences["implementation-details"], /\.github\/cao\/<campaign-slug>\.md/);
   assert.match(setupReferences["non-interactive"], /\.\/cao\.sh setup-auth/);
+  assert.match(setupReferences["non-interactive"], /--read-client-id READ_APP_CLIENT_ID --write-client-id WRITE_APP_CLIENT_ID/);
+  assert.match(setupReferences["non-interactive"], /rerun only the selected command without `--dry-run`/);
+  assert.match(setupReferences["non-interactive"], /Configure Pages.*GitHub Actions/);
+  assert.doesNotMatch(setupReferences["non-interactive"], /\.\/cao\.sh setup-auth --help/);
   assert.match(setupReferences["public-control-repositories"], /Fail closed/);
   assert.match(setupReferences.topology, /source-managed control repository/);
 });

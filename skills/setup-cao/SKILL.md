@@ -13,7 +13,8 @@ Create or reuse one bare CAO control plane. Successful setup leaves:
 - exact repository scope in `.github/workflows/cao.json` and authentication
   compatible with that scope;
 - `control-plane.campaigns` present as an empty object;
-- no campaign installed or enabled, no live rollout, and no workflow dispatch.
+- no user-facing campaign installed or enabled, no live rollout, and no workflow
+  dispatch.
 
 Campaign discovery and installation are a separate task for `add-cao-campaign`.
 
@@ -51,6 +52,10 @@ using a public control repository or when any selected target is non-public.
 For a separate control repository, prefer the repository-local interactive
 setup:
 
+If creating a new repository, follow the approved creation steps in the
+[setup quickstart](../../docs/setup-quickstarts.md), then run setup from its
+root.
+
 ```bash
 curl --fail --silent --show-error --location \
   https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
@@ -59,9 +64,12 @@ curl --fail --silent --show-error --location \
 ```
 
 The interactive setup discovers the control repository, obtains exact scope,
-verifies repository ownership and visibility, presents only compatible
-authentication, and shows its plan before mutation. Do not replace it with an
-independent questionnaire or ad hoc runtime copying.
+verifies repository ownership and visibility, offers authentication choices
+based on that scope, and shows its plan before mutation. Verify profile
+prerequisites in the authentication reference before approving; in particular,
+the prompt does not establish whether selected organizations share an
+enterprise. Do not replace setup with an independent questionnaire or ad hoc
+runtime copying.
 
 ## Agent procedure
 
@@ -106,6 +114,7 @@ must be inspected.
 Stop without weakening boundaries for:
 
 - missing or malformed scope, or a repository that cannot be inspected;
+- a non-empty pre-existing campaign map;
 - a public control repository that could expose non-public evidence;
 - no compatible authentication, or declined/incomplete credentials;
 - installation or validation failure;
