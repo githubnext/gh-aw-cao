@@ -1008,6 +1008,44 @@ func (hub *eventHub) Broadcast(revision int64) {
 	}
 }
 
+// dashboardQueriesShape identifies which JSON shape decodeDashboardQueries
+// found the query definitions in. It is useful for diagnosing a
+// misconfigured or newly wrapped queries file without logging the file's
+// path or contents.
+type dashboardQueriesShape string
+
+const (
+	dashboardQueriesShapeArray     dashboardQueriesShape = "array"
+	dashboardQueriesShapeQueries   dashboardQueriesShape = "queries"
+	dashboardQueriesShapeDashboard dashboardQueriesShape = "dashboard.queries"
+)
+
+// decodeDashboardQueries parses the raw bytes of a dashboard query file into
+// its definitions and which JSON shape supplied them. It accepts a bare
+// top-level array of query.Definition, or a wrapped document exposing them
+// under "queries" or, failing that, "dashboard.queries". It is a pure
+// function over already-read bytes, so every shape ParseDashboardQueries
+// accepts is testable without a file on disk.
+func decodeDashboardQueries(content []byte) ([]query.Definition, dashboardQueriesShape, error) {
+	var definitions []query.Definition
+	if json.Unmarshal(content, &definitions) == nil {
+		return definitions, dashboardQueriesShapeArray, nil
+	}
+	var document struct {
+		Queries   []query.Definition `json:"queries"`
+		Dashboard struct {
+			Queries []query.Definition `json:"queries"`
+		} `json:"dashboard"`
+	}
+	if err := json.Unmarshal(content, &document); err != nil {
+		return nil, "", fmt.Errorf("parse dashboard query file: %w", err)
+	}
+	if len(document.Queries) > 0 {
+		return document.Queries, dashboardQueriesShapeQueries, nil
+	}
+	return document.Dashboard.Queries, dashboardQueriesShapeDashboard, nil
+}
+
 func ParseDashboardQueries(path string) ([]query.Definition, error) {
 	if path == "" {
 		return nil, nil
@@ -1017,23 +1055,12 @@ func ParseDashboardQueries(path string) ([]query.Definition, error) {
 	if err != nil {
 		return nil, err
 	}
-	var definitions []query.Definition
-	if json.Unmarshal(content, &definitions) == nil {
-		return definitions, nil
+	definitions, shape, err := decodeDashboardQueries(content)
+	if err != nil {
+		return nil, err
 	}
-	var document struct {
-		Queries   []query.Definition `json:"queries"`
-		Dashboard struct {
-			Queries []query.Definition `json:"queries"`
-		} `json:"dashboard"`
-	}
-	if err := json.Unmarshal(content, &document); err != nil {
-		return nil, fmt.Errorf("parse dashboard query file: %w", err)
-	}
-	if len(document.Queries) == 0 {
-		document.Queries = document.Dashboard.Queries
-	}
-	return document.Queries, nil
+	serverLog.Printf("dashboard queries parsed shape=%s count=%d", shape, len(definitions))
+	return definitions, nil
 }
 
 func ParsePort(address string) int {
