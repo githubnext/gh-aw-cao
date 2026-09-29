@@ -2254,6 +2254,8 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .dashboard-overview-page { margin: calc(-1 * var(--dashboard-mobile-page-padding-top)) calc(-1 * var(--dashboard-page-padding-inline)) 0; }
   .dashboard-full-view .custom-view-grid > .custom-view { padding-inline: var(--dashboard-page-padding-inline); }
   .dashboard-full-view .custom-view-grid > .chart-view-swimlane { padding-bottom: 12px; }
+  .dashboard-page:is([data-view-mode="table"], [data-view-mode="card"]) > .custom-view-grid { margin-inline: calc(-1 * var(--dashboard-page-padding-inline)); }
+  .dashboard-page:is([data-view-mode="table"], [data-view-mode="card"]) > .custom-view-grid > .custom-view { padding-inline: 0; }
   .data-state-summary, .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .layout-section[data-section-layout="wide"], .layout-section[data-section-layout="narrow"] { grid-column: span 12; }
   .custom-view[data-view-layout="half"], .custom-view[data-view-layout="third"] { grid-column: span 12; }
