@@ -1,6 +1,6 @@
 {
-  "source_sha": "f8812d2c273183ae3cd9af69967ce29eef789246",
-  "next_category": "artifact transfer and Pages packaging",
+  "source_sha": "a8db750b85bd3c040326b7fedab378829a799058",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
       "evaluated_at": "2026-09-29T20:31:00Z",
@@ -73,6 +73,22 @@
         36622187347
       ],
       "outcome": "no_actionable_improvement: reusable dashboard generation cache hit in all 8 comparable successful runs; dashboard restore median 2s, docs build median 41.5s, workflow median 55.5s, so no uncached dashboard-generation cost above the 60s/15% threshold in docs.yml."
+    },
+    {
+      "evaluated_at": "2026-09-29T21:30:00Z",
+      "worker_run_id": "36632856508",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        36631001695,
+        36630486278,
+        36628967576,
+        36628232110,
+        36627902161,
+        36626444233,
+        36625685641,
+        36625420005
+      ],
+      "outcome": "no_actionable_improvement: docs.yml Pages upload median 6s on built runs and deploy median 10s on deploying schedule runs; packaging is below the 60s/15% threshold, while schedule-freshness API lookups add ~4s on every scheduled run but belong to scheduling/avoidable rebuilds, not this category."
     }
   ]
 }
