@@ -14,28 +14,85 @@ import (
 
 	"github.com/spf13/cobra"
 
+	debuglogger "github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/simulator"
 )
 
 const maxScenarioBytes = 1 << 20
 
-func loadSimulatorScenario(path string) (simulator.Scenario, error) {
+var simulatorLog = debuglogger.New("cao:simulator")
+
+// errScenarioTooLarge is returned by readBoundedFile when the scenario file
+// exceeds its byte limit. It is a sentinel so callers can classify this
+// specific failure with errors.Is instead of matching message text.
+var errScenarioTooLarge = errors.New("file exceeds the byte limit")
+
+// scenarioLoadStage identifies which step of loading a simulator scenario
+// file failed. It is useful for diagnosing a misconfigured --scenario flag
+// without logging the file path or its contents.
+type scenarioLoadStage string
+
+const (
+	scenarioLoadStageOpen      scenarioLoadStage = "open"
+	scenarioLoadStageRead      scenarioLoadStage = "read"
+	scenarioLoadStageOverLimit scenarioLoadStage = "over-limit"
+	scenarioLoadStageDecode    scenarioLoadStage = "decode"
+)
+
+// readBoundedFile reads the file at path, rejecting it with
+// errScenarioTooLarge once more than limit bytes are available. It is a
+// small, pure-I/O boundary extracted from loadSimulatorScenario so the size
+// limit is testable against a real temporary file rather than a mocked file
+// system.
+func readBoundedFile(path string, limit int64) ([]byte, error) {
 	// #nosec G304 -- the operator explicitly supplies the local scenario path.
 	file, err := os.Open(path)
 	if err != nil {
-		return simulator.Scenario{}, fmt.Errorf("open simulator scenario: %w", err)
+		return nil, fmt.Errorf("open file: %w", err)
 	}
 	defer func() {
 		_ = file.Close()
 	}()
-	data, err := io.ReadAll(io.LimitReader(file, maxScenarioBytes+1))
+	data, err := io.ReadAll(io.LimitReader(file, limit+1))
 	if err != nil {
-		return simulator.Scenario{}, fmt.Errorf("read simulator scenario: %w", err)
+		return nil, fmt.Errorf("read file: %w", err)
 	}
-	if len(data) > maxScenarioBytes {
-		return simulator.Scenario{}, errors.New("simulator scenario exceeds the 1 MiB limit")
+	if int64(len(data)) > limit {
+		return nil, fmt.Errorf("%w: %d bytes", errScenarioTooLarge, limit)
 	}
-	return simulator.LoadScenario(data)
+	return data, nil
+}
+
+// classifyScenarioLoadFailure maps an error from readBoundedFile or
+// simulator.LoadScenario to the stage that produced it, so
+// loadSimulatorScenario can log which step failed without exposing the
+// underlying file path, contents, or error text.
+func classifyScenarioLoadFailure(err error, decoding bool) scenarioLoadStage {
+	switch {
+	case decoding:
+		return scenarioLoadStageDecode
+	case errors.Is(err, errScenarioTooLarge):
+		return scenarioLoadStageOverLimit
+	case errors.Is(err, os.ErrNotExist), errors.Is(err, os.ErrPermission):
+		return scenarioLoadStageOpen
+	default:
+		return scenarioLoadStageRead
+	}
+}
+
+func loadSimulatorScenario(path string) (simulator.Scenario, error) {
+	data, err := readBoundedFile(path, maxScenarioBytes)
+	if err != nil {
+		simulatorLog.Printf("simulator scenario load failed stage=%s", classifyScenarioLoadFailure(err, false))
+		return simulator.Scenario{}, fmt.Errorf("load simulator scenario: %w", err)
+	}
+	scenario, err := simulator.LoadScenario(data)
+	if err != nil {
+		simulatorLog.Printf("simulator scenario load failed stage=%s", classifyScenarioLoadFailure(err, true))
+		return simulator.Scenario{}, err
+	}
+	simulatorLog.Printf("simulator scenario loaded bytes=%d repositories=%d", len(data), scenario.Repositories)
+	return scenario, nil
 }
 
 func newSimulateWebhooksCommand() *cobra.Command {
