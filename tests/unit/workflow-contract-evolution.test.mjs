@@ -26,6 +26,7 @@ test("Optimization installs its bounded token workers", () => {
     .filter((include) => typeof include === "string")
     .filter((include) => include.endsWith(".md"))
     .map((include) => include.split("/").at(-1).replace(/\.md$/, ""))
+    .filter((includeName) => includeName !== "README")
     .sort();
   const dispatchWorkflows = orchestratorConfig["safe-outputs"]["dispatch-workflow"].workflows;
   const controlImport = orchestratorConfig.imports.find((entry) => entry.uses === "shared/control.md");

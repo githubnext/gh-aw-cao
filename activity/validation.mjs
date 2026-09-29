@@ -336,8 +336,8 @@ export async function validateSecurity(root, policySource, installed = []) {
         remediation: "Replace pull_request_target with a least-privilege pull_request design",
       }));
     }
-    for (const match of source.matchAll(/^\s*(?:-\s*)?uses:\s*([^/\s]+\/[^@\s]+)@([^\s#]+)/gm)) {
-      if (!/^[0-9a-f]{40}$/i.test(match[2])) {
+    for (const match of source.matchAll(/^\s*(?:-\s*)?uses:\s*([^/\s]+\/[^@\s]+)@([^\s#]+)(?:\s*#\s*(.*))?/gm)) {
+      if (!/^[0-9a-f]{40}$/i.test(match[2]) && !/\bzizmor:\s*ignore\[unpinned-uses\]/.test(match[3] ?? "")) {
         findings.push(finding("unpinned-third-party-action", "error", "security", "Workflow uses an unpinned third-party Action", {
           files: [relativePath],
           expected: "Third-party Actions are pinned to a full commit SHA",

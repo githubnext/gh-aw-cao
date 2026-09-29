@@ -191,6 +191,22 @@ test("detects bounded static security findings", async () => {
   }
 });
 
+test("does not flag an unpinned reusable workflow call annotated with zizmor: ignore[unpinned-uses]", async () => {
+  const root = await fixture({ declaration: false });
+  try {
+    await writeFile(path.join(root, ".github", "workflows", "publish.yml"), [
+      "jobs:",
+      "  publish:",
+      "    uses: owner/repo/.github/workflows/publish.yml@main # zizmor: ignore[unpinned-uses] protected default-branch publisher",
+      "",
+    ].join("\n"));
+    const findings = await validateSecurity(root, "{}");
+    assert.deepEqual(findings.map(({ id }) => id), []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("detects worker dispatch and orchestrator mutation capabilities", async () => {
   const root = await fixture();
   try {
