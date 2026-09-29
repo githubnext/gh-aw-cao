@@ -1001,6 +1001,78 @@ test("dashboard source bridge derives work-oriented sources from run, admission,
   assert.ok(sources["evidence-records"].rows.every((row) => row["verification-state"] === "accepted" || row["verification-state"] === "pending"));
 });
 
+test("review bundles stay out of attention until the same target has an actionable review item", () => {
+  const build = (records) => buildDashboardLanguageSources({
+    deployed: {
+      generatedAt: "2026-09-05T12:00:00Z",
+      discovery: { complete: true },
+      runHealth: { available: true, complete: true },
+      bundles: [],
+      workflows: [{
+        repository: "githubnext/control",
+        path: ".github/workflows/optimization-token-auditor.lock.yml",
+        name: "Optimization / Token Auditor",
+        role: "worker",
+        state: "active",
+        runHealth: { runRecords: [{
+          runId: 300,
+          status: "completed",
+          conclusion: "success",
+          startedAt: "2026-09-05T10:00:00Z",
+          updatedAt: "2026-09-05T10:05:00Z",
+          admission: {
+            authorized: true,
+            reason: "authorized",
+            campaign: "optimization",
+            role: "worker",
+            worker: "token-auditor",
+            targetRepository: "octo/example",
+          },
+        }] },
+      }],
+    },
+    usage: { available: true, complete: true, runs: [] },
+    operationalValues: { records: [] },
+    report: {
+      generatedAt: "2026-09-05T12:00:00Z",
+      records,
+    },
+  });
+  const bundle = {
+    id: "review-bundle",
+    repository: "octo/example",
+    runtimeRepository: "githubnext/control",
+    workflowPath: ".github/workflows/optimization-token-auditor.lock.yml",
+    runUrl: "https://github.com/githubnext/control/actions/runs/300",
+    conclusion: "success",
+    mode: "review",
+    state: "available",
+    kind: "review-bundle",
+    title: "review-octo-example-optimization-token-auditor",
+    updatedAt: "2026-09-05T10:05:00Z",
+  };
+
+  const routine = build([bundle]);
+  const key = "octo/example:.github/workflows/optimization-token-auditor.md";
+  assert.equal(routine["work-items"].rows[0]["work-item-id"], key);
+  assert.equal(routine["work-items"].rows[0]["lifecycle-state"], "proposed");
+  assert.equal(routine["work-items"].rows[0]["review-state"], "proposed");
+  assert.deepEqual(routine["attention-signals"].rows, []);
+
+  const actionable = build([bundle, {
+    ...bundle,
+    id: "action-issue",
+    kind: "issue",
+    state: "open",
+    title: "Token usage audit requires attention",
+    updatedAt: "2026-09-05T10:06:00Z",
+  }]);
+  assert.equal(actionable["work-items"].rows[0]["work-item-id"], key);
+  assert.equal(actionable["work-items"].rows[0]["lifecycle-state"], "review");
+  assert.equal(actionable["work-items"].rows[0]["review-state"], "awaiting-review");
+  assert.deepEqual(actionable["attention-signals"].rows.map((row) => row["work-item-id"]), [key]);
+});
+
 test("dashboard source bridge classifies safe-output performance and diagnostics", () => {
   const sources = buildDashboardLanguageSources({
     deployed: { discovery: { complete: true }, runHealth: {}, workflows: [], bundles: [] },

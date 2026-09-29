@@ -10068,6 +10068,60 @@
     ]
   },
   {
+    "name": "review-queue-items",
+    "intent": "Project one stable review proposal per campaign worker and target, keeping routine proposals separate from actionable review.",
+    "from": "work-items",
+    "filter": {
+      "predicates": [
+        {
+          "field": "review-state",
+          "in": [
+            "proposed",
+            "awaiting-review",
+            "accepted",
+            "rejected",
+            "superseded",
+            "expired",
+            "incomplete"
+          ]
+        }
+      ]
+    },
+    "order-by": [
+      {
+        "field": "waiting-since",
+        "direction": "asc"
+      },
+      {
+        "field": "work-item-id",
+        "direction": "asc"
+      }
+    ]
+  },
+  {
+    "name": "review-queue-catch-up",
+    "intent": "Summarize bounded review proposal changes in the selected dashboard horizon without changing their source lifecycle.",
+    "from": "review-queue-items",
+    "aggregate": {
+      "by": [
+        "review-state"
+      ],
+      "values": [
+        {
+          "field": "work-item-id",
+          "as": "proposals",
+          "reducer": "distinct-count"
+        }
+      ]
+    },
+    "order-by": [
+      {
+        "field": "review-state",
+        "direction": "asc"
+      }
+    ]
+  },
+  {
     "name": "domain-entity-insights",
     "intent": "Summarize one domain entity for its dedicated Insights view.",
     "from": "domains",

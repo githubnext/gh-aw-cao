@@ -62,6 +62,7 @@ imports:
       read_issues: read
       read_pull_requests: read
   - uses: shared/activity-cache.md
+  - uses: shared/review-bundle.md
 
 permissions:
   contents: read
@@ -153,7 +154,9 @@ Provide only that unprefixed subject to the safe-output tool. The configured `ti
 
 Search every open issue in `SAFE_OUTPUT_REPO` with both Optimization labels or the configured title prefix. If the canonical issue exists, refresh its body with `update_issue`; otherwise create it. Never create an equivalent issue under a different title.
 
-Call `noop` only when complete cached run coverage or fallback Actions discovery confirms that the window has no completed agentic-workflow runs. When completed runs are discovered but cost coverage is incomplete, publish an audit only if the report clearly marks affected metrics as unavailable and the available activity evidence still supports a bounded maintainer decision; otherwise call `noop` with an explicit incomplete-evidence explanation. Incomplete coverage must never be reported as zero spend or silently treated as a healthy no-op.
+Always preserve the bounded audit before choosing the visible result. Write `summary.md` and `proposal.json` under `/tmp/gh-aw/agent/review-bundles/optimization-token-auditor/current/`. The JSON must contain campaign `optimization`, worker `token-auditor`, exact target, run ID, the exact current workflow revision from the run metadata, exact evidence-window identity, measured coverage, proposed effect, and one of `proposed` or `incomplete`. Call `publish_review_bundle` once with bundle name `optimization-token-auditor`, requested output `create-issue`, proposal ID `optimization:token-auditor:TARGET_REPO:token-usage-audit`, the same campaign, worker, policy revision and evidence identity, and the matching review state.
+
+Create or update the canonical issue only when the audit requests explicit maintainer approval, investigation, remediation, or resolution of missing evidence. Otherwise call `noop` after publishing the bundle, including when complete evidence shows routine or healthy operation. When completed runs are discovered but cost coverage is incomplete, create or update the issue only if the missing evidence requires a maintainer action or the available evidence supports another bounded maintainer decision; otherwise call `noop` with an explicit incomplete-evidence explanation. Incomplete coverage must never be reported as zero spend or silently treated as a healthy no-op. Publishing the bundle does not imply acceptance.
 
 ## Report
 

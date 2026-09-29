@@ -2110,7 +2110,6 @@ function recordLink(record, relation) {
   const expectedKind = relation === "issue" ? "issue" : "pull-request";
   return record.kind === expectedKind ? link(relation, record.url, `View ${relation.replaceAll("-", " ")}`) : undefined;
 }
-
 function recordWorkflowRoleResolver(workflows) {
   const roleByRuntimeWorkflow = new Map(workflows.map((row) => [
     `${row.organization}/${row.repository}:${row.workflow}`.toLowerCase(),
@@ -2122,7 +2121,6 @@ function recordWorkflowRoleResolver(workflows) {
     return roleByRuntimeWorkflow.get(scoped) || "unknown";
   };
 }
-
 function findingRows(records, workflowRoleFor = () => "unknown") {
   return records.map((record) => ({
     ...repositoryParts(record.repository),
@@ -2150,7 +2148,6 @@ function findingRows(records, workflowRoleFor = () => "unknown") {
     },
   }));
 }
-
 function outcomeRows(records, workflowRoleFor = () => "unknown") {
   return records.map((record) => ({
     ...repositoryParts(record.repository),
@@ -2171,7 +2168,13 @@ function outcomeRows(records, workflowRoleFor = () => "unknown") {
       : record.kind === "pull-request" ? "create-pull-request" : record.kind || "unknown",
     "outcome-status": record.state || "unknown",
     "outcome-state": record.state === "closed"
-      ? "lifecycle-close"
+      ? record.stateReason === "duplicate"
+        ? "superseded"
+        : record.stateReason === "not_planned"
+          ? "rejected"
+          : "accepted"
+      : record.state === "expired"
+        ? "expired"
       : record.kind === "noop" ? "ignored" : "pending",
     "evidence-strength": record.kind === "review-bundle" ? "proposal" : "durable",
     "outcome-warning": record.warning ? "Warning" : "None",
@@ -2190,58 +2193,45 @@ function outcomeRows(records, workflowRoleFor = () => "unknown") {
   }));
 }
 
-function workItemKey(organization, repository, workflow) {
-  return `${organization}/${repository}:${workflow}`.toLowerCase();
+function workItemKey(organization, repository, workflow) { return `${organization}/${repository}:${workflow}`.toLowerCase(); }
+function targetParts(row) {
+  const coordinate = row?.["target-repository"] || (row?.organization && row?.repository ? `${row.organization}/${row.repository}` : "");
+  const [organization = "", repository = ""] = coordinate.split("/");
+  return [organization, repository];
 }
-
+function reviewState(latestRun, latestOutcome) {
+  if (["failure", "timed-out", "startup-failure", "action-required"].includes(latestRun?.["run-conclusion"])) return "incomplete";
+  if (!latestOutcome) return "incomplete";
+  if (["accepted", "rejected", "superseded", "expired"].includes(latestOutcome["outcome-state"])) return latestOutcome["outcome-state"];
+  if (latestOutcome["outcome-category"] === "review-bundle") return "proposed";
+  if (latestOutcome["outcome-state"] === "pending") return "awaiting-review";
+  return "incomplete";
+}
 function workItemLifecycle(latestRun, latestOutcome) {
   if (latestRun?.["admission-status"] === "denied" || latestRun?.["admission-status"] === "blocked") return "blocked";
   if (["failure", "timed-out", "startup-failure", "action-required"].includes(latestRun?.["run-conclusion"])) return "blocked";
   if (latestRun?.["run-status"] === "queued") return "waiting";
   if (latestRun?.["run-status"] === "in-progress") return "active";
+  if (latestOutcome?.["outcome-category"] === "review-bundle" && latestOutcome?.["outcome-state"] === "pending") return "proposed";
   if (latestOutcome?.["outcome-state"] === "pending") return "review";
   if (!latestRun) return "unknown";
   if (["success", "cancelled", "skipped", "neutral", "stale"].includes(latestRun["run-conclusion"])) return "completed";
   return "unknown";
 }
-
-function workItemNextAction(lifecycleState) {
-  return {
-    blocked: "Resolve the admission or run failure blocking this work",
-    waiting: "Await the next scheduled run",
-    active: "Monitor the in-progress run",
-    review: "Review the produced outcome",
-    completed: "Review the produced outcome",
-  }[lifecycleState] || "Investigate missing run telemetry";
-}
-
-function workItemNextActor(lifecycleState) {
-  return {
-    blocked: "maintainer",
-    waiting: "scheduler",
-    active: "agent",
-    review: "reviewer",
-    completed: "reviewer",
-  }[lifecycleState] || "unknown";
-}
-
+const WORK_ITEM_NEXT_ACTION = { blocked: "Resolve the admission or run failure blocking this work", waiting: "Await the next scheduled run", active: "Monitor the in-progress run", proposed: "Review the proposal bundle when useful", review: "Review the produced outcome", completed: "Review the produced outcome" };
+const WORK_ITEM_NEXT_ACTOR = { blocked: "maintainer", waiting: "scheduler", active: "agent", proposed: "reviewer", review: "reviewer", completed: "reviewer" };
+function workItemNextAction(lifecycleState) { return WORK_ITEM_NEXT_ACTION[lifecycleState] || "Investigate missing run telemetry"; }
+function workItemNextActor(lifecycleState) { return WORK_ITEM_NEXT_ACTOR[lifecycleState] || "unknown"; }
 function workItemSafeOutputKind(outcome) {
   const kind = outcome?.["outcome-category"];
   return typeof kind === "string" && kind ? kind : "workflow-output";
 }
-
 function workItemConsequenceTier(workflowRole) {
-  if (workflowRole === "orchestrator") return "high";
-  if (workflowRole === "worker") return "medium";
-  return "low";
+  return workflowRole === "orchestrator" ? "high" : workflowRole === "worker" ? "medium" : "low";
 }
-
 function outcomeVerificationState(outcomeState) {
-  if (outcomeState === "accepted" || outcomeState === "lifecycle-close") return "accepted";
-  if (outcomeState === "rejected") return "rejected";
-  return "pending";
+  return outcomeState === "accepted" ? "accepted" : outcomeState === "rejected" ? "rejected" : "pending";
 }
-
 function latestByWorkItemKey(rows, keyFor, sortField) {
   const grouped = new Map();
   for (const row of rows) {
@@ -2256,42 +2246,51 @@ function latestByWorkItemKey(rows, keyFor, sortField) {
   }
   return grouped;
 }
-
-function workItemRows(workflows, runs, outcomes) {
-  const runsByWorkItem = latestByWorkItemKey(
-    runs,
-    (run) => workItemKey(run.organization, run.repository, run.workflow),
-    "started-at",
-  );
-  const outcomesByWorkItem = latestByWorkItemKey(
-    outcomes,
-    (outcome) => workItemKey(
-      ...((outcome["runtime-repository"] || `${outcome.organization}/${outcome.repository}`).split("/")),
-      outcome.workflow,
-    ),
-    "observed-at",
-  );
+function workItemRows(workflows, runs, outcomes, admissions = []) {
   return workflows.flatMap((workflow) => {
-    const key = workItemKey(workflow.organization, workflow.repository, workflow.workflow);
-    const workflowRuns = runsByWorkItem.get(key) || [];
-    const selectedRuns = workflowRuns.slice(0, 1);
-    const runCandidates = selectedRuns.length > 0 ? selectedRuns : [undefined];
-    const workflowOutcomes = outcomesByWorkItem.get(key) || [];
-    return runCandidates.map((run, index) => {
-      const matchedOutcome = run
-        ? workflowOutcomes.find((outcome) => outcome.run && outcome.run === run.run)
-          || (index === 0 ? workflowOutcomes[0] : undefined)
-        : workflowOutcomes[0];
+    const workflowAdmissions = admissions.filter((admission) =>
+      admission.organization === workflow.organization
+      && admission.repository === workflow.repository
+      && admission.workflow === workflow.workflow);
+    const admissionsByRun = new Map(workflowAdmissions.map((admission) => [admission.run, admission]));
+    const workflowRuns = runs.filter((run) =>
+      run.organization === workflow.organization
+      && run.repository === workflow.repository
+      && run.workflow === workflow.workflow)
+      .map((run) => ({ ...run, ...(admissionsByRun.get(run.run) || {}) }));
+    const targets = new Set(workflowRuns.map((run) => targetParts(run).join("/")).filter(Boolean));
+    for (const outcome of outcomes.filter((candidate) => candidate.workflow === workflow.workflow)) {
+      targets.add(`${outcome.organization}/${outcome.repository}`);
+    }
+    if (targets.size === 0) targets.add(`${workflow.organization}/${workflow.repository}`);
+    return [...targets].map((target) => {
+      const [targetOrganization, targetRepository] = target.split("/");
+      const key = workItemKey(targetOrganization, targetRepository, workflow.workflow);
+      const run = workflowRuns
+        .filter((candidate) => targetParts(candidate).join("/") === target)
+        .sort((a, b) => Date.parse(b["started-at"] || 0) - Date.parse(a["started-at"] || 0))[0];
+      const workflowOutcomes = outcomes
+        .filter((outcome) =>
+          outcome.workflow === workflow.workflow
+          && outcome.organization === targetOrganization
+          && outcome.repository === targetRepository)
+        .sort((a, b) => Date.parse(b["observed-at"] || 0) - Date.parse(a["observed-at"] || 0));
+      const runOutcomes = run ? workflowOutcomes.filter((outcome) => !outcome.run || outcome.run === run.run) : workflowOutcomes;
+      const matchedOutcome = runOutcomes.find((outcome) =>
+        outcome["outcome-state"] === "pending" && outcome["outcome-category"] !== "review-bundle")
+        || runOutcomes[0];
       const lifecycleState = workItemLifecycle(run, matchedOutcome);
+      const proposalReviewState = reviewState(run, matchedOutcome);
       return {
         "work-item-id": key,
         name: run
           ? `${workflow["workflow-name"] || workflow.workflow} · ${run["run-title"]}`
           : workflow["workflow-name"] || workflow.workflow,
         objective: workflow["workflow-name"] || workflow.workflow,
-        organization: workflow.organization,
-        repository: workflow.repository,
+        organization: targetOrganization,
+        repository: targetRepository,
         workflow: workflow.workflow,
+        worker: workflow.workflow.split("/").at(-1)?.replace(/\.md$/, "") || workflow.workflow,
         run: run?.run || "",
         "workflow-name": workflow["workflow-name"] || workflow.workflow,
         "workflow-icon": workflow["campaign-icon"] || "workflow",
@@ -2300,6 +2299,7 @@ function workItemRows(workflows, runs, outcomes) {
         domain: workflow["campaign-name"] || "standalone",
         "work-type": workflow["workflow-role"] || "unknown",
         "lifecycle-state": lifecycleState,
+        "review-state": proposalReviewState,
         phase: run?.["run-status"] || "unknown",
         reason: run?.["admission-reason"] || run?.["failure-message"]
           || (lifecycleState === "review" ? "Produced outcome awaits review or user consent" : "No blocking condition observed"),
@@ -2330,7 +2330,7 @@ function workItemRows(workflows, runs, outcomes) {
 function attentionSignalRows(workItems, generatedAt) {
   const now = Date.parse(generatedAt) || Date.now();
   return workItems
-    .filter((item) => ["blocked", "waiting", "review"].includes(item["lifecycle-state"]))
+    .filter((item) => ["blocked", "review"].includes(item["lifecycle-state"]))
     .map((item) => {
       const since = Date.parse(item["waiting-since"]);
       const ageSeconds = Number.isFinite(since) ? Math.max(0, Math.round((now - since) / 1000)) : 0;
@@ -2635,7 +2635,7 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
   const runComplete = deployed.runHealth?.complete === true;
   const workItemsAvailable = workflows.length > 0;
   const workItemsComplete = workItemsAvailable && runComplete;
-  const workItems = workItemRows(workflows, runs, outcomes);
+  const workItems = workItemRows(workflows, runs, outcomes, admission.admissions);
   const attentionSignals = attentionSignalRows(workItems, generatedAt);
   const agentAssignments = agentAssignmentRows(workflows, runs, workItems);
   const evidenceAvailable = workItemsAvailable || outcomes.length > 0 || findings.length > 0;

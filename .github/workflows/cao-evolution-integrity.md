@@ -67,6 +67,7 @@ imports:
       read_contents: read
       read_issues: read
       read_pull_requests: read
+  - uses: shared/review-bundle.md
 
 permissions:
   contents: read
@@ -138,9 +139,12 @@ Do not duplicate the agentic-workflow health workers: ignore general gh-aw relea
 
 Search all open issues in `SAFE_OUTPUT_REPO` for the exact configured prefix and labels before writing. The canonical unprefixed issue subject is exactly `Control-plane integrity requires attention`; never add a date, run ID, count, severity, target name, or other volatile text.
 
+- Always preserve the bounded review evidence first. Write `summary.md` and `proposal.json` under `/tmp/gh-aw/agent/review-bundles/cao-evolution-integrity/current/`. The JSON must contain the stable campaign `cao-evolution`, worker `integrity`, exact target, run ID, the exact current workflow revision from the run metadata, evidence identities, proposed effect, and one of `proposed` or `incomplete`. Call `publish_review_bundle` once with bundle name `cao-evolution-integrity`, requested output `create-issue`, proposal ID `cao-evolution:integrity:TARGET_REPO:control-plane-integrity`, the same campaign, worker, policy revision and evidence identity, and the matching review state.
 - If no open matching issue exists and one or more actionable integrity defects are supported by file paths and observed values, create one issue.
 - If a matching issue exists, add one comment only when the current actionable defect set or required maintainer decision materially changed.
 - If the control plane is consistent, the same defects are already represented, or evidence is insufficient for an actionable claim, call `noop` with a concise reason. Do not create a healthy-status issue or repetitive comment.
+
+The review bundle is the routine proposal record. Reserve the issue for explicit maintainer investigation, remediation, approval, or a missing-evidence condition that only a maintainer can resolve. Publishing the bundle does not imply acceptance and does not replace the final `create_issue`, `add_comment`, or `noop` result.
 
 Begin every issue or comment directly with a concise executive summary without a heading. Immediately include one `**Action:**` sentence naming who should do what and the acceptance check. Keep only critical findings visible. Put file-by-file evidence, expected versus observed values, and lower-priority details in clearly named `<details>` sections.
 

@@ -81,6 +81,8 @@ Review mode is the installation default. It resolves its destination from the ma
 
 In review mode, the review repository is not treated as a clone of the target. When a target-bound mutation cannot be represented natively against the review repository, the worker should publish an artifact-backed review bundle describing the target, intended output primitive, base branch, and supporting evidence.
 
+Routine campaign proposals should use `review-*` run artifacts as their evidence destination. A review bundle carries stable campaign, worker, target, proposal, policy-revision, run, and evidence identities plus a deterministic lifecycle state. Create or update a GitHub issue only when explicit approval, investigation, remediation, or a maintainer-resolvable evidence gap requires human action. Repeated attempts for the same campaign, worker, target, and concern retain one stable proposal identity; the dashboard presents the latest attempt without treating acknowledgement as acceptance.
+
 ## Pages Report Routing
 
 Pages report routing follows the control-plane modes. Deployment is still conventional deterministic GitHub Actions automation, but the effective mode selects an access-controlled review site update or a production site update.

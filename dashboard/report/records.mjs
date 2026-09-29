@@ -156,6 +156,7 @@ function recordFromIssue(issue, outputRepository, reportDefinitions) {
     summary: summarize(issue.body),
     bodyHtml: issue.body_html || "",
     state: issue.state.toLowerCase(),
+    stateReason: issue.state_reason || "",
     url: safeUrl(issue.html_url),
     createdAt: issue.created_at,
     updatedAt: issue.updated_at,
@@ -339,7 +340,7 @@ async function collectDashboardRecordsImpl({
   }
 
   async function recordFromArtifact(artifact, outputRepository) {
-    if (artifact.expired || !artifact.name.startsWith("review-")) return null;
+    if (!artifact.name.startsWith("review-")) return null;
     const runId = artifact.workflow_run?.id;
     if (!runId) return null;
     const run = runByIdentity.get(`${outputRepository.toLowerCase()}:${Number(runId)}`);
@@ -352,7 +353,7 @@ async function collectDashboardRecordsImpl({
       mode: "review",
       title: artifact.name,
       summary: `Artifact-backed proposal from ${run.display_title || run.name}.`,
-      state: "available",
+      state: artifact.expired ? "expired" : "available",
       url: safeUrl(run.html_url),
       createdAt: artifact.created_at,
       updatedAt: artifact.updated_at,

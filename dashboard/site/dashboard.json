@@ -971,7 +971,8 @@
     "navigation": [
       {
         "pages": [
-          "overview"
+          "overview",
+          "review-queue"
         ]
       },
       {
@@ -1020,6 +1021,7 @@
     "dashboard-fragments/operations.json",
     "dashboard-fragments/overview.json",
     "dashboard-fragments/overview-attention.json",
+    "dashboard-fragments/review-queue.json",
     "dashboard-fragments/entities.json"
   ]
 }

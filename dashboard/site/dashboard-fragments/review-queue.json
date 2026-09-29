@@ -1,0 +1,163 @@
+{
+  "queries": [
+    {
+      "name": "review-queue-items",
+      "intent": "Project one stable review proposal per campaign worker and target, keeping routine proposals separate from actionable review.",
+      "from": "work-items",
+      "filter": {
+        "predicates": [
+          {
+            "field": "review-state",
+            "in": [
+              "proposed",
+              "awaiting-review",
+              "accepted",
+              "rejected",
+              "superseded",
+              "expired",
+              "incomplete"
+            ]
+          }
+        ]
+      },
+      "order-by": [
+        {
+          "field": "waiting-since",
+          "direction": "asc"
+        },
+        {
+          "field": "work-item-id",
+          "direction": "asc"
+        }
+      ]
+    },
+    {
+      "name": "review-queue-catch-up",
+      "intent": "Summarize bounded review proposal changes in the selected dashboard horizon without changing their source lifecycle.",
+      "from": "review-queue-items",
+      "aggregate": {
+        "by": [
+          "review-state"
+        ],
+        "values": [
+          {
+            "field": "work-item-id",
+            "as": "proposals",
+            "reducer": "distinct-count"
+          }
+        ]
+      },
+      "order-by": [
+        {
+          "field": "review-state",
+          "direction": "asc"
+        }
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "id": "review-queue",
+      "kind": "built-in",
+      "page": "review-queue",
+      "title": "Review queue",
+      "icon": "eye",
+      "description": "Review artifact-backed campaign proposals without turning routine evidence into issue noise.",
+      "definition": {
+        "data-state": {
+          "availability": true
+        },
+        "views": [
+          {
+            "id": "review-queue-catch-up-summary",
+            "title": "Catch up",
+            "description": "Proposal changes retained in the selected horizon. Changing or acknowledging the horizon affects presentation only.",
+            "data": {
+              "source": "review-queue-catch-up"
+            },
+            "mark": "chart",
+            "chart": "bar",
+            "layout": "full",
+            "empty-message": "No review proposal changes were retained in the selected horizon.",
+            "encoding": {
+              "x": {
+                "field": "review-state",
+                "type": "nominal",
+                "title": "Review state"
+              },
+              "y": {
+                "field": "proposals",
+                "type": "quantitative",
+                "title": "Proposals"
+              }
+            }
+          },
+          {
+            "id": "review-queue-items",
+            "title": "Campaign proposals",
+            "description": "One stable row per campaign worker and target. Only explicit human-action outputs enter Needs review.",
+            "data": {
+              "source": "review-queue-items",
+              "limit": 100,
+              "order-by": [
+                {
+                  "field": "waiting-since",
+                  "direction": "asc"
+                }
+              ]
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "column-summaries": true,
+            "layout": "full-view",
+            "empty-message": "No campaign proposals were retained in the selected horizon.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "campaign",
+                  "type": "nominal",
+                  "title": "Campaign"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Target"
+                },
+                {
+                  "field": "worker",
+                  "type": "nominal",
+                  "title": "Worker"
+                },
+                {
+                  "field": "review-state",
+                  "type": "nominal",
+                  "title": "Review state",
+                  "display": "status"
+                },
+                {
+                  "field": "consequence-tier",
+                  "type": "nominal",
+                  "title": "Consequence",
+                  "display": "label"
+                },
+                {
+                  "field": "waiting-since",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Age"
+                },
+                {
+                  "field": "next-action",
+                  "type": "nominal",
+                  "title": "Next action",
+                  "display": "evidence-link"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

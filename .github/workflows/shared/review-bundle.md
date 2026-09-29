@@ -34,6 +34,30 @@ safe-outputs:
           description: "One-line human summary of the review bundle"
           required: false
           type: string
+        campaign:
+          description: "Stable CAO campaign slug"
+          required: false
+          type: string
+        worker:
+          description: "Stable CAO worker slug"
+          required: false
+          type: string
+        proposal_id:
+          description: "Stable campaign, worker, target, and concern identity"
+          required: false
+          type: string
+        policy_revision:
+          description: "Reviewed workflow or policy revision used for this proposal"
+          required: false
+          type: string
+        evidence_id:
+          description: "Stable identity of the evidence set supporting the proposal"
+          required: false
+          type: string
+        review_state:
+          description: "Proposal lifecycle state"
+          required: false
+          type: string
       steps:
         - id: prepare
           shell: bash
@@ -60,6 +84,17 @@ safe-outputs:
             BASE_BRANCH=$(printf '%s' "$ITEM_JSON" | jq -r '.base_branch // ""')
             BASE_SHA=$(printf '%s' "$ITEM_JSON" | jq -r '.base_sha // ""')
             SUMMARY=$(printf '%s' "$ITEM_JSON" | jq -r '.summary // ""')
+            CAMPAIGN=$(printf '%s' "$ITEM_JSON" | jq -r '.campaign // ""')
+            WORKER=$(printf '%s' "$ITEM_JSON" | jq -r '.worker // ""')
+            PROPOSAL_ID=$(printf '%s' "$ITEM_JSON" | jq -r '.proposal_id // ""')
+            POLICY_REVISION=$(printf '%s' "$ITEM_JSON" | jq -r '.policy_revision // ""')
+            EVIDENCE_ID=$(printf '%s' "$ITEM_JSON" | jq -r '.evidence_id // ""')
+            REVIEW_STATE=$(printf '%s' "$ITEM_JSON" | jq -r '.review_state // "proposed"')
+
+            if [[ ! "$REVIEW_STATE" =~ ^(proposed|awaiting-review|accepted|rejected|superseded|expired|incomplete)$ ]]; then
+              echo "Invalid review_state: $REVIEW_STATE" >&2
+              exit 1
+            fi
 
             if [ -z "$BUNDLE_NAME" ] || [ -z "$SOURCE_DIR_RAW" ] || [ -z "$TARGET_REPO" ] || [ -z "$REQUESTED_OUTPUT" ]; then
               echo "Missing required review bundle fields." >&2
@@ -101,6 +136,12 @@ safe-outputs:
               "base_branch": $(printf '%s' "$BASE_BRANCH" | jq -Rs .),
               "base_sha": $(printf '%s' "$BASE_SHA" | jq -Rs .),
               "summary": $(printf '%s' "$SUMMARY" | jq -Rs .),
+              "campaign": $(printf '%s' "$CAMPAIGN" | jq -Rs .),
+              "worker": $(printf '%s' "$WORKER" | jq -Rs .),
+              "proposal_id": $(printf '%s' "$PROPOSAL_ID" | jq -Rs .),
+              "policy_revision": $(printf '%s' "$POLICY_REVISION" | jq -Rs .),
+              "evidence_id": $(printf '%s' "$EVIDENCE_ID" | jq -Rs .),
+              "review_state": $(printf '%s' "$REVIEW_STATE" | jq -Rs .),
               "workflow": $(printf '%s' "$GITHUB_WORKFLOW" | jq -Rs .),
               "run_id": $(printf '%s' "$GITHUB_RUN_ID" | jq -Rs .),
               "run_attempt": $(printf '%s' "$GITHUB_RUN_ATTEMPT" | jq -Rs .)

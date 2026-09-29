@@ -264,7 +264,8 @@ export const BUILT_IN_PAGE_VALUES = [
   'engines-models',
   'operational-value',
   'findings',
-  'issues'
+  'issues',
+  'review-queue'
 ];
 
 export const BUILT_IN_PAGE_DEFINITION_KEYS = ['views', 'sections', 'data-state'];
@@ -288,7 +289,8 @@ export const BUILT_IN_PAGE_REQUIRED_SOURCES = {
   'engines-models': ['model-usage-summary', 'engine-usage-summary', 'run-aggregate-summary'],
   'operational-value': ['operational-values'],
   findings: ['findings'],
-  issues: ['issues']
+  issues: ['issues'],
+  'review-queue': ['work-items']
 };
 
 export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
@@ -348,6 +350,9 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
   },
   issues: {
     issues: ['github-entity-type', 'safe-output-type', 'event-summary', 'entity-url', 'repository', 'workflow', 'run', 'run-link', 'observed-at']
+  },
+  'review-queue': {
+    'work-items': ['campaign', 'repository', 'worker', 'review-state', 'consequence-tier', 'waiting-since', 'next-action']
   }
 };
 
@@ -522,7 +527,7 @@ export const TABLE_FIELDS = {
   'workflow-topology-summary': ['label', 'value'],
   'campaign-workflows': ['campaign', 'campaign-name', 'repository', 'workflow', 'workflow-name', 'workflow-role', 'rollout-mode', 'workflow-active', 'runs', 'aic', 'campaign-link', 'repository-link', 'workflow-link', 'external-link'],
   'standalone-workflows': ['repository', 'workflow', 'workflow-name', 'rollout-mode', 'workflow-active', 'runs', 'aic', 'repository-link', 'workflow-link'],
-  'work-items': ['work-item-id', 'name', 'objective', 'organization', 'repository', 'workflow', 'workflow-name', 'workflow-icon', 'workflow-role', 'scope', 'domain', 'campaign', 'campaign-name', 'campaign-icon', 'work-type', 'lifecycle-state', 'phase', 'reason', 'reason-evidence-class', 'next-action', 'next-actor', 'safe-output-kind', 'waiting-on', 'waiting-since', 'owner', 'consequence-tier', 'verification-state', 'outcome-state', 'started-at', 'ended-at', 'observed-at', 'evidence-link', 'repository-link', 'run-link'],
+  'work-items': ['work-item-id', 'name', 'objective', 'organization', 'repository', 'workflow', 'worker', 'workflow-name', 'workflow-icon', 'workflow-role', 'scope', 'domain', 'campaign', 'campaign-name', 'campaign-icon', 'work-type', 'lifecycle-state', 'review-state', 'phase', 'reason', 'reason-evidence-class', 'next-action', 'next-actor', 'safe-output-kind', 'waiting-on', 'waiting-since', 'owner', 'consequence-tier', 'verification-state', 'outcome-state', 'started-at', 'ended-at', 'observed-at', 'evidence-link', 'repository-link', 'run-link'],
   'attention-signals': ['attention-signal-id', 'signal-type', 'work-item-id', 'objective', 'scope', 'reason', 'action', 'expected-actor', 'age-seconds', 'consequence-tier', 'priority', 'observed-at', 'evidence-link', 'repository-link', 'run-link'],
   'agent-assignments': ['assignment-id', 'agent-id', 'agent-name', 'agent-icon', 'agent-description', 'permissions', 'agent-state', 'work-item-id', 'objective', 'assignment-state', 'handoff-state', 'dependency-state', 'conflict-state', 'run-count', 'total-runtime-seconds', 'last-observed-at', 'long-running', 'stale', 'observed-at', 'evidence-link', 'repository-link', 'run-link'],
   'agent-smells': ['smell-observation-id', 'smell-id', 'smell-name', 'smell-category', 'smell-severity', 'smell-summary', 'smell-evidence', 'smell-recommendation', 'organization', 'repository', 'workflow', 'run', 'observed-at', 'evidence-link', 'repository-link', 'workflow-link', 'run-link'],

@@ -76,3 +76,12 @@ test("Optimization orchestrator dispatches exactly the two campaign workers", ()
   assert.match(source, /group: "\$\{\{ github\.workflow \}\}"/);
   assert.match(source, /\{\{#runtime-import\? \.github\/cao\/optimization\.md\}\}/);
 });
+
+test("Token Auditor pilots artifact-first review with issues reserved for human action", () => {
+  const source = workflow("optimization-token-auditor.md");
+
+  assert.match(source, /uses: shared\/review-bundle\.md/);
+  assert.match(source, /Call `publish_review_bundle` once/);
+  assert.match(source, /Create or update the canonical issue only when the audit requests explicit maintainer/);
+  assert.match(source, /Otherwise call `noop` after publishing the bundle/);
+});

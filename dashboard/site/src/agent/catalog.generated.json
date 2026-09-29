@@ -715,6 +715,17 @@
       ]
     },
     {
+      "id": "review-queue",
+      "title": "Review queue",
+      "description": "Review artifact-backed campaign proposals without turning routine evidence into issue noise.",
+      "experimental": false,
+      "parameters": [],
+      "queries": [
+        "review-queue-catch-up",
+        "review-queue-items"
+      ]
+    },
+    {
       "id": "domain-insights",
       "title": "Domain",
       "description": "Insights for the selected domain entity.",
@@ -3850,6 +3861,40 @@
         "requirements": [
           "runs"
         ],
+        "reason": "Requires work-items, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "review-queue-items",
+      "intent": "Project one stable review proposal per campaign worker and target, keeping routine proposals separate from actionable review.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "work-items"
+      ],
+      "used-by-pages": [
+        "review-queue"
+      ],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires work-items, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "review-queue-catch-up",
+      "intent": "Summarize bounded review proposal changes in the selected dashboard horizon without changing their source lifecycle.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "review-queue-items"
+      ],
+      "used-by-pages": [
+        "review-queue"
+      ],
+      "execution": {
+        "local": false,
+        "requirements": [],
         "reason": "Requires work-items, which the local SQLite projection does not provide."
       }
     },

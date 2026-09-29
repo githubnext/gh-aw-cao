@@ -239,6 +239,22 @@ test("review bundles skip safely when the agent artifact omits their prepared di
   assert.match(uploadStep, /if: steps\.prepare\.outputs\.skip_upload != 'true'/);
 });
 
+test("review bundles preserve stable proposal lifecycle metadata", () => {
+  const reviewBundle = workflow("shared/review-bundle.md");
+
+  for (const field of [
+    "campaign",
+    "worker",
+    "proposal_id",
+    "policy_revision",
+    "evidence_id",
+    "review_state",
+  ]) {
+    assert.match(reviewBundle, new RegExp(`"${field}"`));
+  }
+  assert.match(reviewBundle, /proposed\|awaiting-review\|accepted\|rejected\|superseded\|expired\|incomplete/);
+});
+
 test("workers inherit human-first progressive report disclosure", () => {
   const campaignSkill = portableSkill("create-cao-campaign");
   const sharedControl = workflow("shared/control.md");
