@@ -318,10 +318,12 @@ test('marketplace page renders canonical package cards after ingestion', async (
   ]);
   const packageCard = packageCards.filter({ hasText: 'Dependabot' });
   await expect(marketplace.locator('.entity-card-list-marketplace')).toHaveCSS('display', 'grid');
-  const cardBoxes = await packageCards.evaluateAll((cards) => cards.map((card) => card.getBoundingClientRect().toJSON()));
-  expect(cardBoxes).toHaveLength(3);
-  expect(cardBoxes[1].y).toBe(cardBoxes[0].y);
-  expect(cardBoxes[1].x).toBeGreaterThanOrEqual(cardBoxes[0].x + cardBoxes[0].width + 12);
+  await expect.poll(async () => {
+    const cardBoxes = await packageCards.evaluateAll((cards) => cards.map((card) => card.getBoundingClientRect().toJSON()));
+    return cardBoxes.length === 3
+      && cardBoxes[1].y === cardBoxes[0].y
+      && cardBoxes[1].x >= cardBoxes[0].x + cardBoxes[0].width + 12;
+  }).toBe(true);
   await expect(marketplace).toContainText('Dependabot');
   await expect(packageCard).toContainText('By');
   await expect(packageCard).toContainText('githubnext');
