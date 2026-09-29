@@ -684,14 +684,18 @@ function materializeDashboardQuery(definition, sources, defect, budget) {
       failure = rejected;
       return unavailableResult(definition, composedMetadata(definition.name, inputs, 0), rejected);
     }
+    // Union branches are additive: an unavailable branch must not hide the
+    // rows produced by the remaining branches. This keeps aggregate views,
+    // such as indexing table counts, usable while one optional collection is
+    // unavailable.
     const requiredInputs = new Set([
       definition.from,
-      ...(definition.union ?? []),
       ...(definition.joins ?? []).filter((join) => join.type !== 'left').map((join) => join.source)
     ]);
     const optionalInputs = new Set((definition.joins ?? [])
       .filter((join) => join.type === 'left' && !requiredInputs.has(join.source))
       .map((join) => join.source));
+    for (const source of definition.union ?? []) optionalInputs.add(source);
     const unavailable = inputs.find((input) => (
       requiredInputs.has(input.name)
       && (!input.source || !Array.isArray(input.source.rows) || input.source.metadata?.availability === 'unavailable')

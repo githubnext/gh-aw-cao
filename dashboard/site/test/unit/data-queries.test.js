@@ -106,6 +106,33 @@ describe('declarative dashboard queries', () => {
     expect(result.rows).toEqual([{ event: '1' }, { event: '2' }, { event: '3' }, { event: '4' }]);
   });
 
+  it('keeps available union branches when one branch is unavailable', () => {
+    const result = executeDashboardQuery(
+      {
+        name: 'indexing-table-counts',
+        from: 'campaigns',
+        union: ['operational-values'],
+        select: [{ field: 'table' }, { field: 'records' }]
+      },
+      {
+        campaigns: {
+          source: 'campaigns',
+          rows: [{ table: 'campaigns', records: 3 }],
+          metadata: metadata('campaigns')
+        },
+        'operational-values': {
+          source: 'operational-values',
+          rows: [],
+          metadata: metadata('operational-values', { availability: 'unavailable' })
+        }
+      }
+    );
+
+    expect(result.rows).toEqual([{ table: 'campaigns', records: 3 }]);
+    expect(result.metadata.availability).toBe('available');
+    expect(result.metadata.completeness).toBe('partial');
+  });
+
   it('counts every specialized record kind when identifying imported runs', () => {
     const run = (/** @type {string} */ id) => ({
       organization: 'githubnext',
