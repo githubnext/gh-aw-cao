@@ -1,6 +1,6 @@
 {
-  "source_sha": "93c32c9e172c57d1ca9058e1905d55f9e6422971",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "source_sha": "30f90f7e3fab00843cdd2c66abf74a9e46d50ced",
+  "next_category": "Astro documentation generation",
   "evaluations": [
     {
       "evaluated_at": "2026-09-29T11:56:48Z",
@@ -140,6 +140,25 @@
         36571957252
       ],
       "outcome": "no-op: evaluated scheduling, concurrency, and avoidable rebuilds across the latest 20 completed docs.yml runs from the last 14 days, with 12 successful completed docs runs, 7 comparable build-bearing successes, 5 freshness-only schedule skips, and 8 excluded completed outliers/non-comparable runs (3 skipped workflow_run, 3 action_required workflow_run, 1 cancelled schedule, 1 other skipped workflow_run). Evidence window 2026-09-29T13:00:12Z to 2026-09-29T14:56:30Z. Trusted metadata showed queue median 0.0s (p90 0.0s), workflow median 44.0s overall (p90 146.5s inflated by Pages deploy wait on schedule/workflow_run publishes), comparable build-bearing workflow median 47.0s (p90 162.4s), build median 40.0s (p90 44.4s), schedule-freshness median 9.0s (p90 10.0s), and publish deploy median 46.5s (p90 70.1s, n=2). Five schedule runs were already skipped by the freshness guard in 12-15s, and the remaining build-bearing runs were mostly push-triggered or workflow_run-triggered rebuilds outside the schedule guard. Logs from publish runs 36574903405 and 36584288555 show the deploy job spending 14s and 72s polling Pages deployment state after the 23.7 MB artifact upload had already finished. That variability points to external Pages service wait, but no source-level workflow change in docs.yml or cao-dashboard.yml identified from trusted evidence would reliably save at least 60 seconds or 15% of median docs execution time without weakening freshness, correctness, or deployment safety. No new non-duplicate scheduling/concurrency/avoidable-rebuild change met the actionability threshold in this cycle.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-09-29T15:59:06Z",
+      "worker_run_id": 36593791414,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36593169545,
+        36591962530,
+        36591730055,
+        36590181538,
+        36589573146,
+        36587098766,
+        36586887677,
+        36586275655,
+        36591807190,
+        36574787716
+      ],
+      "outcome": "no-op: evaluated dependency installation and caching across the latest 20 completed docs.yml runs from the last 14 days, with 8 comparable successful runs in the current sample and 7 excluded completed outliers/non-comparable runs (5 action_required workflow_run, 2 skipped workflow_run). Evidence window 2026-09-29T14:55:46Z to 2026-09-29T15:51:06Z. Trusted metadata showed docs queue median 0.0s (p90 0.0s), workflow execution median 79.5s (p90 120.0s), build median 42.0s (p90 46.3s), and deploy median 4.5s overall (p90 45.5s; schedule publishes only). Trusted docs build-step metadata showed Set up Node.js median 6.0s (p90 7.6s), Restore node_modules median 6.0s (p90 7.3s), Build documentation median 11.0s (p90 13.0s), Restore cached CAO Dashboard median 1.5s (p90 2.0s), and Upload Pages artifact median 5.0s (p90 5.0s). Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on all 8 comparable successful docs builds. Trusted logs from run 36593169545 confirmed cache hits for setup-node npm metadata, the explicit node_modules cache, and the central-agentic-ops-dashboard cache, with no npm ci execution. Because dependency installation is already fully avoided on successful docs builds, no dependency-installation or cache-layout change in docs.yml or cao-dashboard.yml is evidenced to save at least 60 seconds or 15 percent of median docs execution time without weakening correctness or freshness. No new non-duplicate dependency-installation or caching change met the actionability threshold in this cycle.",
       "suggestion_fingerprint": null
     }
   ]
