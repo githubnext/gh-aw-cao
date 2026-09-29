@@ -427,7 +427,7 @@ function memoryView({ campaignName, manifest, selectedPath, file, mobileView, se
           ? renderLoadingMessage('Loading file...')
           : file.status === 'error'
             ? renderEmptyMessage(`Unable to load this memory file. ${file.error}`, { role: 'alert' })
-            : file.status === 'ready'
+            : file.status === 'ready' && selected
               ? h('pre', null, h('code', null, formatMemoryFileContent(selected.path, file.content)))
               : null
       )
@@ -442,6 +442,7 @@ function memoryView({ campaignName, manifest, selectedPath, file, mobileView, se
  * @param {string} content
  */
 export function formatMemoryFileContent(path, content) {
+  /** @param {string} text */
   const prettyPrint = (text) => {
     const trailingWhitespace = text.match(/\s*$/u)?.[0] ?? '';
     const json = text.slice(0, text.length - trailingWhitespace.length);
