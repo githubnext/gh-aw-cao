@@ -211,7 +211,7 @@ Configure a GitHub App or fine-grained PAT profile for every cross-repository sc
 | `GH_AW_GITHUB_TOKEN` | Deprecated PAT fallback | Legacy combined token retained for backward compatibility. |
 | `GH_AW_CI_TOKEN` | Optional Dependabot path | Additional token used only when an empty CI commit is required. |
 
-The root campaign manifest remains free of interactive setup so `gh aw add` works non-interactively. Follow [Automated App setup](authentication.md#automated-app-setup) to create both Apps and install them for the accounts represented in the exact repository allowlist, or configure the four values manually. Shared control uses the read-only App for GitHub tools and admission. It exposes the write-capable App to safe outputs and, with only `Actions: write`, to best-effort API-gate persistence after a fresh capacity denial. Each path uses only its documented credential fallback when that credential's reach is sufficient.
+The root campaign manifest remains free of interactive setup so `gh aw add` works non-interactively. Follow [Automated App setup](authentication.md#automated-app-setup) to create both Apps and install them for the accounts represented in the exact repository allowlist, or configure the four values manually. Shared control uses the read-only App for GitHub tools and admission. It exposes the write-capable App to safe outputs and, with only `Actions: write`, to best-effort API-gate persistence after a fresh capacity denial. Orchestrator safe outputs to the control repository use the permission-scoped workflow token when no App token is active; cross-repository outputs retain their configured credential. Each path uses only its documented credential fallback when that credential's reach is sufficient.
 
 ## Manual Inputs
 

@@ -45,12 +45,14 @@ The supported control-plane credentials are:
 | 4 | Runtime fallback | Repository-provided `GITHUB_TOKEN` for control-repository operations it can authorize |
 
 `GH_AW_GITHUB_AUTH_MODE` explicitly selects `app` or `pat`; setup writes it only
-after the selected profile is complete. In `pat` mode, read operations and safe
-outputs select the owner-scoped secret mapped to their exact repository and do
-not fall through to App credentials, legacy PAT secrets, or `GITHUB_TOKEN`.
-Missing map entries and missing mapped secrets fail closed. In `app` mode,
-missing App IDs, private keys, installations, or repository grants likewise
-fail closed instead of borrowing PAT credentials.
+after the selected profile is complete. In `pat` mode, read operations and
+cross-repository safe outputs select the owner-scoped secret mapped to their
+exact repository and do not fall through to App credentials or legacy PAT
+secrets. Orchestrator safe outputs targeting the control repository use its
+permission-scoped `GITHUB_TOKEN` to avoid consuming a user's PAT rate limit.
+Missing cross-repository map entries and mapped secrets fail closed. In
+`app` mode, missing App IDs, private keys, installations, or repository grants
+likewise fail closed instead of borrowing PAT credentials.
 
 The committed root `aw.yml` intentionally has no `config` block so normal installation remains compatible with non-interactive `gh aw add`. See [Control Plane Authentication Profiles](control-plane-authentication.md) for private organization Apps, private enterprise Apps, and the fine-grained token fallback; follow Automated App setup below to configure both credential pairs.
 

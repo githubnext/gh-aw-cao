@@ -146,7 +146,10 @@ test("authentication prefers an optional GitHub App and retains bounded fallback
   assert.match(control, /safe-outputs:\n\s+github-app:\n\s+client-id: \$\{\{ vars\.GH_AW_GITHUB_AUTH_MODE != 'pat'[\s\S]*?vars\.GH_AW_GITHUB_WRITE_APP_ID/);
   assert.match(control, /private-key: \$\{\{ vars\.GH_AW_GITHUB_AUTH_MODE != 'pat'[\s\S]*?secrets\.GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY/);
   assert.match(control, /github-token: \$\{\{ vars\.GH_AW_GITHUB_AUTH_MODE == 'pat'[\s\S]*?GH_AW_GITHUB_READ_PAT_REPOSITORIES/);
-  assert.match(control, /safe-outputs:[\s\S]*?github-token: \$\{\{ vars\.GH_AW_GITHUB_AUTH_MODE == 'pat'[\s\S]*?GH_AW_GITHUB_WRITE_PAT_REPOSITORIES/);
+  assert.match(
+    control,
+    /safe-outputs:[\s\S]*?github-token: \$\{\{ env\.CAO_ROLE == 'orchestrator' && \(\(inputs\.safe_output_mode[\s\S]*?== github\.repository && github\.token \|\| vars\.GH_AW_GITHUB_AUTH_MODE == 'pat'[\s\S]*?GH_AW_GITHUB_WRITE_PAT_REPOSITORIES/,
+  );
   assert.match(control, /ignore-if-missing: true/);
   assert.doesNotMatch(control, /repositories: \["\*"\]/);
   assert.match(
