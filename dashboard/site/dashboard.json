@@ -983,13 +983,19 @@
           "workflows",
           "runs",
           "issues",
-          "operational-value",
           "cost",
-          "friction",
           "engines-models",
-          "skills",
           "firewall",
-          "mcps",
+          "mcps"
+        ]
+      },
+      {
+        "label": "Experimental",
+        "experimental": true,
+        "pages": [
+          "operational-value",
+          "friction",
+          "skills",
           "steering"
         ]
       },

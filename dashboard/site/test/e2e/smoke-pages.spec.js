@@ -160,7 +160,7 @@ test('Ingestion shows CAO Activity status, size trend, and retained transactions
   const updatesNavigation = page.locator('.nav-section').filter({
     has: page.locator('summary', { hasText: /^Updates$/ })
   });
-  await updatesNavigation.getByRole('link', { name: 'Ingestion' }).click();
+  await updatesNavigation.getByRole('link', { name: 'Ingestion, Experimental' }).click();
 
   const root = page.locator('.dashboard-root');
   const transactionsPage = page.locator('[data-page-id="indexing"]');
@@ -1008,8 +1008,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
-  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Memory', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Operational Value', 'Cost', 'Friction', 'Models & Agents', 'Skills', 'Firewall', 'MCPs', 'Steering']);
-  await expect(data.getByRole('link', { name: 'Operational Value, Experimental' })).toHaveCount(1);
+  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Memory', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Cost', 'Models & Agents', 'Firewall', 'MCPs']);
   await expect(experimentsSection.locator('summary')).toHaveText('Experiments');
   await experimentsSection.locator('summary').click();
   await expect(experimentsSection.getByRole('link')).toHaveText(['Experiments', 'Evals', 'Graders']);
@@ -1042,7 +1041,17 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
       ? Math.round(navBox.y + navBox.height - (manageBox.y + manageBox.height))
       : null;
   }).toBeLessThanOrEqual(1);
-  await expect(page.locator('.nav-section-label', { hasText: /^Experimental$/ })).toHaveCount(0);
+  const experimentalSection = page.locator('.nav-section').filter({
+    has: page.locator('summary', { hasText: /^Experimental$/ })
+  });
+  await expect(experimentalSection).not.toHaveAttribute('open', '');
+  await experimentalSection.locator('summary').click();
+  await expect(experimentalSection.getByRole('link')).toHaveText([
+    'Operational Value',
+    'Friction',
+    'Skills',
+    'Steering'
+  ]);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   await expect(page.locator('.account-menu')).toHaveCount(0);
   await expect(page.locator('.refresh-button')).toHaveCount(0);
@@ -1140,7 +1149,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
   await expect(overviewPage.locator('.factory-station')).toHaveCount(2);
   await page.locator('.mobile-nav-menu > summary').click();
-  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Experiments', 'Updates']);
+  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Experiments', 'Experimental', 'Updates']);
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toHaveCount(0);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(overviewPage.locator('.factory-intro')).toBeInViewport();

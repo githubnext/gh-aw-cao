@@ -694,8 +694,8 @@ describe('dashboard DOM provenance', () => {
 
     const page = rendered.querySelector('[data-page-id="repositories"]');
     expect(page?.getAttribute('aria-busy')).toBe('true');
-    expect(page?.getAttribute('aria-label')).toBe('Loading dashboard data');
-    expect(page?.querySelector('[role="status"]')?.textContent).toBe('Loading dashboard data…');
+    expect(page?.getAttribute('aria-label')).toBeNull();
+    expect(page?.querySelector('[role="status"]')).toBeNull();
     expect(page?.querySelector('.dashboard-view-skeleton')).not.toBeNull();
     expect(page?.querySelector('.agentic-loader')).toBeNull();
     expect(page?.textContent).not.toContain('This view cannot be shown because its data source is unavailable.');
@@ -770,7 +770,7 @@ describe('dashboard DOM provenance', () => {
     expect(page?.querySelector('.dashboard-view-skeleton')).not.toBeNull();
     expect(page?.querySelector('.factory-station')).toBeNull();
     expect(page?.querySelector('.link-button-list-empty')).toBeNull();
-    expect(page?.textContent).toContain('Loading dashboard data…');
+    expect(page?.textContent).not.toContain('Loading dashboard data…');
     rendered.remove();
   });
 
