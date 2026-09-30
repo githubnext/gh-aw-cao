@@ -215,6 +215,9 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     }
     await expect(page.locator('.app-main > .report-footer')).toBeVisible();
     await expect(page.locator('[data-view-id="overview-header"] > :is(h3, h4)')).toHaveCount(0);
+    await expect(factory.locator(':scope > [data-view-id="overview-header"] .semantic-prompt-heading')).toHaveCount(0);
+    await expect(factory.locator(':scope > [data-view-id="overview-header"] .view-description-tooltip')).toHaveCount(0);
+    await expect(factory.locator(':scope > [data-view-id="overview-header"] .table-intent-button')).toHaveCount(0);
     for (const heading of await page.locator('.custom-view.page-section > :is(h3, h4)').all()) {
       await expect(heading).toHaveCSS('position', 'absolute');
       await expect(heading).toHaveCSS('clip', 'rect(0px, 0px, 0px, 0px)');

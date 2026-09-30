@@ -912,7 +912,11 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
             if (region === rendered && rendered.matches('.semantic-prompt-view')) rendered.setAttribute('role', 'group');
             region.setAttribute('aria-label', getViewTitle(view, index));
           }
-          heading.remove();
+          const header = heading.closest('.dashboard-callout-heading, .chart-prompt-heading, .semantic-prompt-heading');
+          if (header?.classList.contains('dashboard-callout-heading')
+            || header?.classList.contains('chart-prompt-heading')
+            || header?.classList.contains('semantic-prompt-heading')) header.remove();
+          else heading.remove();
         }
         if (rendered.matches('.page-section')) {
           rendered.querySelector(':scope > .view-description-tooltip')?.remove();

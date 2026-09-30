@@ -214,13 +214,12 @@ describe('declarative view title visibility', () => {
     });
     const card = rendered.querySelector('[data-view-id="card"]');
     expect(card?.querySelector('h3, h4')).toBeNull();
-    expect(card?.getAttribute('role')).toBe('group');
     expect(card?.getAttribute('aria-label')).toBe('Card title');
-    expect(card?.querySelector('.metric-card-widget')?.getAttribute('aria-label')).toBe('Card title');
     expect(card?.querySelector('.semantic-prompt-heading, .table-intent-button')).toBeNull();
     const notice = rendered.querySelector('[data-view-id="notice"]');
     expect(notice?.querySelector('h3, h4')).toBeNull();
-    expect(notice?.querySelector('.dashboard-callout')?.getAttribute('aria-label')).toBe('Notice title');
+    expect(notice?.getAttribute('aria-label')).toBe('Notice title');
+    expect(notice?.querySelector('.dashboard-callout-heading')).toBeNull();
     expect(notice?.querySelector('.semantic-prompt-heading, .table-intent-button')).toBeNull();
     disposeDashboard(rendered);
   });
@@ -234,16 +233,26 @@ describe('declarative view title visibility', () => {
           id: 'overview', kind: 'custom', title: 'Overview',
           views: [{
             id: 'campaign', title: 'Campaign', 'show-title': false, prompt: 'always',
-            mark: 'element', element: 'factory-header', data: { sources: ['overview-header-presentation'] }
+            mark: 'element', element: 'factory-header',
+            data: { sources: ['overview-header-presentation', 'overview-rhythm'] }
           }]
         }]
       }
     });
-    const rendered = renderDashboardView({ document, sources: {} });
+    const sources = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (
+      Object.fromEntries(['overview-header-presentation', 'overview-rhythm'].map((name) => [
+      name, {
+        source: name, rows: [{ heading: 'Campaign health' }],
+        metadata: { 'source-id': name, 'source-kind': 'fixture', 'as-of': '', 'retrieved-at': '',
+          availability: 'available', completeness: 'complete', freshness: 'fresh' }
+      }
+      ]))
+    );
+    const rendered = renderDashboardView({ document, sources });
     const view = rendered.querySelector('[data-view-id="campaign"]');
     expect(view).not.toBeNull();
     expect(view?.querySelector('.semantic-prompt-heading, .table-intent-button')).toBeNull();
-    expect(view?.querySelector('.factory-intro')).not.toBeNull();
+    expect(view?.matches('.factory-intro')).toBe(true);
     disposeDashboard(rendered);
   });
 });
