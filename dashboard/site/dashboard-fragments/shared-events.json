@@ -3,6 +3,8 @@
     {
       "name": "event-base",
       "intent": "Reuse shared query stages for entity-events, event-runs",
+      "objective": "Establish the retained run-owned event evidence available for downstream import-coverage analysis.",
+      "acceptance": "The result unions retained audit, domain, tool, and issue records with their available run identity; an empty or unavailable preview cannot establish zero source activity or complete import coverage.",
       "from": "audits",
       "union": [
         "domains",
@@ -13,6 +15,8 @@
     {
       "name": "event-runs",
       "intent": "Identify each workflow run that has one or more imported run-owned records.",
+      "objective": "Identify run attempts with retained imported records so their presence can be compared with observed runs.",
+      "acceptance": "One row per organization, repository, workflow, run, and attempt contains events, the count of matching retained records; no row in an available result does not prove that no event was produced.",
       "description": "Distinct workflow runs represented by imported domain, tool, audit, or issue records.",
       "from": "event-base",
       "aggregate": {
@@ -35,6 +39,8 @@
     {
       "name": "run-import-status",
       "intent": "Identify observed runs that have one or more imported run-owned records.",
+      "objective": "Compare observed run attempts with retained run-owned event evidence to locate import-coverage gaps for investigation.",
+      "acceptance": "Keep each observed run and its run-attempt identity; imported-event-count is zero and imported is false without a matching retained event, but missing events alone do not establish an ingestion failure.",
       "description": "Observed runs enriched with imported-record status.",
       "from": "runs",
       "joins": [
@@ -101,6 +107,8 @@
     {
       "name": "workflow-run-totals",
       "intent": "Summarize observed run counts and imported runs by declared workflow.",
+      "objective": "Compare observed run attempts, conclusions, and imported-record coverage for each workflow.",
+      "acceptance": "Group by organization, repository, and workflow; report distinct run-attempt totals, successful and failed conclusion counts, and imported-run totals only from retained evidence. Missing run records cannot establish zero execution.",
       "description": "Observed run and imported-run totals for each declared workflow.",
       "from": "run-import-status",
       "compute": [
@@ -174,6 +182,8 @@
     {
       "name": "workflow-aic-totals",
       "intent": "Summarize observed AI Credit usage by declared workflow.",
+      "objective": "Expose retained AI Credit consumption per workflow for bounded cost review alongside observed execution.",
+      "acceptance": "Return the sum of recorded aic-total by organization, repository, and workflow; missing usage or runs is not evidence of zero actual cost.",
       "description": "Observed AI Credit totals for each declared workflow.",
       "from": "runs",
       "aggregate": {
@@ -193,7 +203,9 @@
     },
     {
       "name": "mcp-tool-calls",
-      "intent": "Prepare MCP tool calls for aggregation while excluding calls to the safe outputs server.",
+      "intent": "Prepare MCP tool calls for aggregation with safe-output-server calls identified for downstream exclusion.",
+      "objective": "Identify retained MCP call labels and safe-output-server classification for downstream tool-use investigation.",
+      "acceptance": "Preserve each retained call with its workflow key and tool label and mark safe-output-server calls explicitly; downstream exclusion must not be mistaken for absence of those calls or complete tool telemetry.",
       "description": "Observed MCP tool calls labeled with whether they belong to the internal safe outputs server.",
       "from": "mcp-calls",
       "compute": [

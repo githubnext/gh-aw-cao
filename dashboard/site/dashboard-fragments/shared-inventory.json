@@ -3,6 +3,8 @@
     {
       "name": "issue-safe-outputs",
       "intent": "List retained GitHub issue safe outputs.",
+      "objective": "Inspect retained issue safe outputs and their observed closure state before deciding which items need follow-up.",
+      "acceptance": "Include only safe_output.created issue records, not pull requests; preserve issue and run links, timestamps, state, and status detail. Unknown or unobserved closure state must not be presented as closed.",
       "description": "Issue-only projection of retained safe-output items.",
       "from": "issues",
       "filter": {
@@ -240,6 +242,8 @@
     {
       "name": "issue-repository-totals",
       "intent": "Rank the ten repositories with the most retained GitHub issue safe outputs.",
+      "objective": "Locate repositories with the largest observed issue-safe-output volume for a bounded review of linked records.",
+      "acceptance": "Return at most ten repository coordinates ordered by retained issue-record count; ties or missing issue evidence must not imply a complete fleet ranking or unique issue count.",
       "description": "Top repositories by retained issue safe-output count.",
       "from": "issue-safe-outputs",
       "compute": [
@@ -286,6 +290,8 @@
     {
       "name": "workflow-inventory",
       "intent": "List declared workflows with their campaign, repository, configuration, and observed execution totals.",
+      "objective": "Compare declared workflow configuration with retained run, import-coverage, and AI Credit evidence to select a workflow for closer inspection.",
+      "acceptance": "Keep one row per declared workflow with identity, role, mode, registration, links, observed totals, and ingestion indicator; zero joined totals and missing evidence must not be treated as proof of no execution or complete ingestion.",
       "description": "Central campaign and repository-owned workflow inventory with observed execution totals.",
       "from": "workflows",
       "joins": [
@@ -811,6 +817,8 @@
     {
       "name": "repository-aic-totals",
       "intent": "Summarize observed AI Credit usage by repository.",
+      "objective": "Provide repository-level retained AI Credit totals for comparing observed usage with run activity.",
+      "acceptance": "Sum recorded aic-total by organization and repository; an absent or partial run history does not support a claim of zero actual consumption.",
       "description": "Observed AI Credit totals for each repository.",
       "from": "runs",
       "aggregate": {
@@ -830,6 +838,8 @@
     {
       "name": "maintenance-repository-versions",
       "intent": "Group installed and current gh-aw compiler versions and upgrade evidence by repository.",
+      "objective": "Identify repositories with declared Markdown workflows whose retained compiler-version evidence warrants upgrade review.",
+      "acceptance": "Group Markdown workflow declarations by repository coordinate and return distinct recorded installed/current version lists plus upgrade-required and unknown flags; inspect absent or mixed version evidence rather than inferring a repository-wide installed version.",
       "from": "workflows",
       "filter": {
         "predicates": [
@@ -940,7 +950,9 @@
     },
     {
       "name": "maintenance-repositories",
-      "intent": "List each repository with compiler versions and an explicit upgrade recommendation.",
+      "intent": "List each repository with recorded compiler versions and computed upgrade state.",
+      "objective": "Expose recorded compiler versions and computed upgrade state per repository so an operator can inspect update signals and gaps.",
+      "acceptance": "Return repository, recorded version lists, upgrade-required flag, and computed upgrade-state; mixed or absent version evidence requires inspection before any decision, and an upgrade label does not authorize a rollout or policy change.",
       "from": "maintenance-repository-versions",
       "compute": [
         {
@@ -1026,6 +1038,8 @@
     {
       "name": "maintenance-campaign-updates",
       "intent": "Expose at most one CAO package update row for the Updates navigation indicator.",
+      "objective": "Determine whether retained campaign metadata contains an update-available signal for the Updates indicator.",
+      "acceptance": "Return zero or one campaign-update-state row only when it equals update-available; an empty result means no matching retained signal, not that every campaign is current.",
       "from": "campaigns",
       "filter": {
         "predicates": [
@@ -1045,6 +1059,8 @@
     {
       "name": "maintenance-repository-upgrades",
       "intent": "Expose at most one gh-aw compiler upgrade row for the Updates navigation indicator.",
+      "objective": "Determine whether repository compiler metadata contains an upgrade-required signal for the Updates indicator.",
+      "acceptance": "Return zero or one upgrade-required row only when the retained value is 1; no row does not establish that all repositories are current when version data is missing.",
       "from": "maintenance-repositories",
       "filter": {
         "predicates": [

@@ -12,7 +12,13 @@ export async function runPrompt({ options, positional, indexedDB, rejectUnknownO
   if (!query) throw new UsageError(`Unknown dashboard query: ${positional}`);
   const queryParameters = parseNamedQueryParameters(options.param);
   resolveNamedQueryParameters(document, positional, queryParameters);
-  const semantics = effectiveViewSemantics({ data: { source: positional } }, document.dashboard.queries);
+  const dependencies = effectiveViewSemantics({ data: { source: positional } }, document.dashboard.queries);
+  const semantics = {
+    queryIds: dependencies.queryIds,
+    intent: query.intent,
+    objective: query.objective ?? "",
+    acceptance: query.acceptance ?? ""
+  };
   const result = indexedDB
     ? await runNamedDashboardQuery({
         indexedDB, dashboardPath: options.dashboard, queryId: positional,

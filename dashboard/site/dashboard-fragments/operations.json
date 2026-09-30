@@ -3,6 +3,8 @@
     {
       "name": "ingestion-health",
       "intent": "Show the current Redis-backed webhook and collection health snapshot.",
+      "objective": "Determine whether the reported collection, webhook, queue, and backfill state warrants inspecting ingestion diagnostics.",
+      "acceptance": "Report the observed health, queue, failure, success, and projection timestamps together; verify freshness and configuration before calling collection healthy, and treat missing state as unknown rather than zero.",
       "from": "collection-health",
       "select": [
         { "field": "configured" },
@@ -29,12 +31,16 @@
     },
     {
       "name": "marketplace-package-detail",
-      "intent": "Select one normalized marketplace package by its resolver-produced source coordinate.",
+      "intent": "Expose normalized marketplace package records for source-coordinate lookup by the detail view.",
+      "objective": "Locate the resolver-produced package record for a source coordinate supplied by the consuming view.",
+      "acceptance": "Use the returned package-source, registry, ref, and resolved-commit fields when inspecting a matching record; the query itself does not filter by coordinate, and an absent match is not proof of package nonexistence or approval.",
       "from": "marketplace-packages"
     },
     {
       "name": "friction-by-workflow",
-      "intent": "Identify workflows with the greatest measured avoidable AI Credit cost.",
+      "intent": "Rank workflows by observed gh-aw audit friction AI Credit totals for investigation.",
+      "objective": "Identify which repository and workflow combinations have the largest measured friction totals in retained observations.",
+      "acceptance": "Compare friction-aic and distinct runs with the underlying measurement states and attribution evidence; do not equate a ranking with avoidable cost or a validated saving.",
       "description": "Total gh-aw audit friction cost grouped by repository and workflow.",
       "from": "friction",
       "compute": [
@@ -108,6 +114,8 @@
     {
       "name": "friction-observations",
       "intent": "List retained gh-aw audit friction measurements with their run context and attribution totals.",
+      "objective": "Trace each reported friction measurement to a run and distinguish counted, suppressed, and unattributed occurrences.",
+      "acceptance": "Preserve native AIC, total-run AIC, measurement state, timestamps, links, and occurrence counts; missing or unattributed evidence remains uncertain, not a verified opportunity for savings.",
       "description": "Newest friction measurements first, preserving the native audit values and uncertainty state.",
       "from": "friction",
       "compute": [
@@ -189,6 +197,8 @@
     {
       "name": "indexing-daily-records",
       "intent": "Aggregate records committed from CAO Activity by ingestion UTC day.",
+      "objective": "Expose the observed daily committed-record totals for ingestion diagnostics.",
+      "acceptance": "Each returned UTC day sums committedRecords from the selected ingestion transaction kinds; absent days or low totals alone do not establish missing source records.",
       "from": "transactions",
       "filter": {
         "predicates": [
@@ -234,6 +244,8 @@
     {
       "name": "indexing-daily-workflow-runs",
       "intent": "Aggregate workflow runs ingested from CAO Activity by UTC day.",
+      "objective": "Expose the observed daily raw-run totals from ingestion transactions.",
+      "acceptance": "Each returned UTC day sums rawRuns from the selected ingestion transaction kinds; transaction volume is not a count of distinct retained runs or proof of source coverage.",
       "from": "transactions",
       "filter": {
         "predicates": [
@@ -279,6 +291,8 @@
     {
       "name": "indexing-campaigns-table-count",
       "intent": "Count retained campaigns rows in the dashboard database.",
+      "objective": "Provide the retained campaigns row count for the table-count diagnostic.",
+      "acceptance": "Label the result campaigns and count campaign rows in the current database; absence or zero does not establish completeness or expected campaign coverage.",
       "from": "campaigns",
       "compute": [
         {
@@ -307,6 +321,8 @@
     {
       "name": "indexing-repositories-table-count",
       "intent": "Count retained repositories rows in the dashboard database.",
+      "objective": "Provide the retained repositories row count for the table-count diagnostic.",
+      "acceptance": "Label the result repositories and count repository rows in the current database; absence or zero does not establish completeness or expected repository coverage.",
       "from": "repositories",
       "compute": [
         {
@@ -335,6 +351,8 @@
     {
       "name": "indexing-workflows-table-count",
       "intent": "Count retained workflows rows in the dashboard database.",
+      "objective": "Provide the retained workflows row count for the table-count diagnostic.",
+      "acceptance": "Label the result workflows and count workflow rows in the current database; absence or zero does not establish completeness or expected workflow coverage.",
       "from": "workflows",
       "compute": [
         {
@@ -363,6 +381,8 @@
     {
       "name": "indexing-runs-table-count",
       "intent": "Count retained workflow runs rows in the dashboard database.",
+      "objective": "Provide the retained workflow runs row count for the table-count diagnostic.",
+      "acceptance": "Label the result workflow runs and count run rows in the current database; absence or zero does not establish completeness or expected execution volume.",
       "from": "runs",
       "compute": [
         {
@@ -391,6 +411,8 @@
     {
       "name": "indexing-domains-table-count",
       "intent": "Count retained network domains rows in the dashboard database.",
+      "objective": "Provide the retained network domains row count for the table-count diagnostic.",
+      "acceptance": "Label the result network domains and count domain event rows in the current database; absence or zero does not prove no network activity.",
       "from": "domains",
       "compute": [
         {
@@ -419,6 +441,8 @@
     {
       "name": "indexing-tools-table-count",
       "intent": "Count retained tool events rows in the dashboard database.",
+      "objective": "Provide the retained tool events row count for the table-count diagnostic.",
+      "acceptance": "Label the result tool events and count tool event rows in the current database; absence or zero does not prove no tool use.",
       "from": "tools",
       "compute": [
         {
@@ -447,6 +471,8 @@
     {
       "name": "indexing-audits-table-count",
       "intent": "Count retained audit events rows in the dashboard database.",
+      "objective": "Provide the retained audit events row count for the table-count diagnostic.",
+      "acceptance": "Label the result audit events and count audit event rows in the current database; absence or zero does not prove no audit findings.",
       "from": "audits",
       "compute": [
         {
@@ -475,6 +501,8 @@
     {
       "name": "indexing-issues-table-count",
       "intent": "Count retained issue events rows in the dashboard database.",
+      "objective": "Provide the retained issue events row count for the table-count diagnostic.",
+      "acceptance": "Label the result issue events and count issue event rows in the current database; absence or zero does not prove no issues exist.",
       "from": "issues",
       "compute": [
         {
@@ -503,6 +531,8 @@
     {
       "name": "indexing-operational-values-table-count",
       "intent": "Count retained operational values rows in the dashboard database.",
+      "objective": "Provide the retained operational values row count for the table-count diagnostic.",
+      "acceptance": "Label the result operational values and count operational-value rows in the current database; absence or zero does not imply zero value or an evaluated outcome.",
       "from": "operational-values",
       "compute": [
         {
@@ -531,6 +561,8 @@
     {
       "name": "indexing-transactions-table-count",
       "intent": "Count retained ingestion transactions rows in the dashboard database.",
+      "objective": "Provide the retained ingestion transactions row count for the table-count diagnostic.",
+      "acceptance": "Label the result ingestion transactions and count transaction IDs in the current database; absence or zero does not establish whether upstream ingestion ran.",
       "from": "transactions",
       "compute": [
         {
@@ -559,6 +591,8 @@
     {
       "name": "indexing-database-table-counts",
       "intent": "Count retained canonical dashboard database rows by table.",
+      "objective": "Compare the retained table row counts to identify tables needing further ingestion or coverage investigation.",
+      "acceptance": "Union the named table-count projections and report their table labels and counts; check source availability, retention, and separate transaction evidence before interpreting an empty or small table as an ingestion defect.",
       "from": "indexing-campaigns-table-count",
       "union": [
         "indexing-repositories-table-count",
@@ -585,6 +619,8 @@
     {
       "name": "indexing-transactions",
       "intent": "Prepare retained ingestion transactions for card presentation.",
+      "objective": "Expose transaction identity, kind, timestamp, committed-record count, and payload hash for ingestion traceability.",
+      "acceptance": "Projected fields match retained transactions without implying successful upstream coverage from a committed count or hash alone; missing transactions require a freshness and availability check.",
       "from": "transactions",
       "select": [
         {
@@ -610,6 +646,8 @@
     {
       "name": "engines-models-usage",
       "intent": "Summarize run-level AIC and token usage by agent and model identifiers without treating unavailable telemetry as zero.",
+      "objective": "Locate agent and model combinations whose observed per-run AIC or token usage merits checking against individual runs.",
+      "acceptance": "Report run counts and native minimum, mean, and maximum values only for reported metrics; inspect underlying runs for per-metric telemetry coverage and context before comparing combinations, and infer neither efficiency nor outcome value from usage alone.",
       "description": "Observed workflow runs grouped by agent ID and model ID. Each AIC and token statistic uses only runs that reported that metric.",
       "from": "runs",
       "compute": [
@@ -807,6 +845,8 @@
     {
       "name": "skill-invocations",
       "intent": "Select observed skill invocations for skill usage analytics.",
+      "objective": "Expose skill event identity, scope, invocation counts, and failed counts for downstream usage analysis.",
+      "acceptance": "Keep each observed event and its repository/workflow attribution with native counts; missing records or failed counts alone do not establish whether a skill was useful or available.",
       "from": "skills",
       "select": [
         {
@@ -837,6 +877,8 @@
     {
       "name": "skill-invocations-by-skill",
       "intent": "Rank skills by their observed invocation count.",
+      "objective": "Identify skills with the highest observed invocation totals for follow-up inspection.",
+      "acceptance": "Sum observed invocation counts by skill and retain the rank as a usage description; do not equate popularity with effectiveness or infer unobserved invocations.",
       "from": "skill-invocations",
       "aggregate": {
         "by": [
@@ -864,6 +906,8 @@
     {
       "name": "skill-invocations-by-workflow-totals",
       "intent": "Rank workflows by their observed skill invocation count.",
+      "objective": "Produce repository-scoped workflow invocation totals for downstream skill-usage comparison.",
+      "acceptance": "Sum observed invocation counts by organization, repository, and workflow; totals describe recorded usage only, not success or expected adoption.",
       "from": "skill-invocations",
       "aggregate": {
         "by": [
@@ -883,6 +927,8 @@
     {
       "name": "skill-invocations-by-workflow",
       "intent": "Present workflow skill invocation totals with drill-through navigation to the workflow dashboard.",
+      "objective": "Expose observed workflow skill invocation totals with a link to inspect each workflow.",
+      "acceptance": "Each projected workflow coordinate, link, and invocation total traces to the grouped source; using a link to investigate does not establish that usage caused an outcome.",
       "from": "skill-invocations-by-workflow-totals",
       "compute": [
         {
@@ -986,6 +1032,8 @@
     {
       "name": "skill-workflow-totals",
       "intent": "Count observed invocations for each skill and workflow.",
+      "objective": "Produce skill-by-workflow invocation totals for the downstream inventory.",
+      "acceptance": "Sum observed invocation counts by skill, organization, repository, and workflow; missing combinations are not evidence that a skill could not run.",
       "from": "skill-invocations",
       "aggregate": {
         "by": [
@@ -1006,6 +1054,8 @@
     {
       "name": "skill-workflow-inventory",
       "intent": "List observed skills by workflow with drill-through navigation to the workflow dashboard.",
+      "objective": "Identify observed skill/workflow combinations and provide a workflow link for inspecting their runs.",
+      "acceptance": "Show the repository, workflow, skill, link, and observed invocation total from the grouped evidence; an absent row does not prove non-use, and a high count does not prove effectiveness.",
       "from": "skill-workflow-totals",
       "compute": [
         {
@@ -1134,6 +1184,8 @@
     {
       "name": "experiment-assignment-coverage",
       "intent": "Count observed run assignments for each experiment and workflow without inferring a completion target.",
+      "objective": "Expose assignment counts by experiment and workflow for investigating observed experiment coverage.",
+      "acceptance": "Count retained assignment rows in each experiment/workflow group, not distinct runs; do not invent a target, infer missing assignments from absent groups, or treat assignments as eval or grader outcomes.",
       "from": "experiment-assignments",
       "compute": [
         {
@@ -1158,6 +1210,8 @@
     {
       "name": "eval-yes-no-status",
       "intent": "Select explicit YES/NO eval answers while retaining unknown results only in the underlying evidence collection.",
+      "objective": "Expose explicitly answered eval observations for comparison with their underlying run evidence.",
+      "acceptance": "Return only recorded YES and NO answers; excluded unknowns must not be interpreted as NO, absent evals as YES, or an eval answer as a validated operational outcome.",
       "from": "eval-observations",
       "filter": {
         "predicates": [{ "field": "eval-result", "in": ["YES", "NO"] }]
@@ -1166,6 +1220,8 @@
     {
       "name": "grader-status-ledger",
       "intent": "Report explicit grader pass/fail observations without inferring current state from prior runs.",
+      "objective": "Distinguish explicit per-observation grader pass and fail verdicts from unknown statuses.",
+      "acceptance": "Map only pass/passed to YES and fail/failed to NO, leaving all other statuses unknown; preserve run-level evidence and do not infer current success, causation, or policy authority from a prior verdict.",
       "from": "grader-observations",
       "compute": [
         {

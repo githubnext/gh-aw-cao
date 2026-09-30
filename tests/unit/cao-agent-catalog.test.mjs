@@ -53,6 +53,15 @@ test("cao queries lists named dashboard queries as JSON", async () => {
   assert.ok(query.intent.length > 0);
 });
 
+test("every named query defines its own objective and verifiable acceptance", async () => {
+  const { dashboard } = await loadAgentDashboardDocument();
+  for (const query of dashboard.queries) {
+    for (const field of ["intent", "objective", "acceptance"]) {
+      assert.ok(typeof query[field] === "string" && query[field].trim(), `${query.name} needs ${field}`);
+    }
+  }
+});
+
 test("cao queries prints a human readable catalog by default", async () => {
   const output = await runCao(["queries"]);
   assert.match(output, /campaign-runs/);
@@ -79,8 +88,13 @@ test("cao.sh prompt renders a named query using the dashboard prompt template wi
     const { stdout } = await executeFile(caoShell, ["prompt", "cost-by-campaign"], { cwd });
     assert.match(stdout, /^Improve CAO by increasing ROI/);
     assert.match(stdout, /Query: cost-by-campaign/);
+    assert.match(stdout, /Focus on this query's objective and acceptance/);
+    assert.match(stdout, /report a no-op or incomplete investigation/);
+    assert.match(stdout, /Intent:\nPresent observed AI Credit cost grouped by centrally managed campaign\./);
+    assert.doesNotMatch(stdout, /Intent:\nReuse shared query stages/);
     assert.match(stdout, /Named CAO query IDs: .*cost-by-campaign/);
     assert.match(stdout, /\/analyze-cao/);
+    assert.match(stdout, /No data preview was supplied/);
     assert.match(stdout, /"evidence": \{\}/);
     assert.doesNotMatch(stdout, /Page: undefined|View: undefined/);
     assert.match(stdout, /Create a PR with the changes\.\n$/);
