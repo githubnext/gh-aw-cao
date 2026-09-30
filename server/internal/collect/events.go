@@ -92,7 +92,7 @@ func ParseEvent(event string, payload []byte) (Intent, error) {
 	case "workflow_run":
 		intent, err = parseWorkflowRunEvent(envelope)
 	case "issues":
-		intent, err = parseIssueEvent(envelope)
+		intent = parseIssueEvent(envelope)
 	case "installation":
 		intent = parseInstallationEvent(envelope)
 	case "installation_repositories":
@@ -111,37 +111,37 @@ func ParseEvent(event string, payload []byte) (Intent, error) {
 	return intent, nil
 }
 
-func parseIssueEvent(envelope webhookEnvelope) (Intent, error) {
+func parseIssueEvent(envelope webhookEnvelope) Intent {
 	switch envelope.Action {
 	case "opened", "reopened", "closed", "edited", "assigned", "unassigned",
 		"labeled", "unlabeled", "milestoned", "demilestoned", "locked", "unlocked":
 	default:
-		return Intent{Kind: IntentIgnore}, nil
+		return Intent{Kind: IntentIgnore}
 	}
 	issue := envelope.Issue
 	if envelope.Repository.FullName == "" || issue.Number <= 0 || issue.UpdatedAt == "" ||
 		len(issue.PullRequest) != 0 || envelope.Installation.ID <= 0 {
-		return Intent{Kind: IntentIgnore}, nil
+		return Intent{Kind: IntentIgnore}
 	}
 	repository, err := NormalizeRepository(envelope.Repository.FullName)
 	if err != nil {
-		return Intent{Kind: IntentIgnore}, nil
+		return Intent{Kind: IntentIgnore}
 	}
 	link, err := url.Parse(issue.HTMLURL)
 	if err != nil || link.Scheme != "https" || link.Hostname() == "" ||
 		!strings.EqualFold(link.Path, fmt.Sprintf("/%s/issues/%d", repository, issue.Number)) ||
 		link.RawQuery != "" || link.Fragment != "" || link.User != nil {
-		return Intent{Kind: IntentIgnore}, nil
+		return Intent{Kind: IntentIgnore}
 	}
 	observed, err := time.Parse(time.RFC3339Nano, issue.UpdatedAt)
 	if err != nil {
-		return Intent{Kind: IntentIgnore}, nil
+		return Intent{Kind: IntentIgnore}
 	}
 	state := strings.ToUpper(issue.State)
 	if state != "OPEN" && state != "CLOSED" ||
 		(envelope.Action == "closed" && state != "CLOSED") ||
 		((envelope.Action == "opened" || envelope.Action == "reopened") && state != "OPEN") {
-		return Intent{Kind: IntentIgnore}, nil
+		return Intent{Kind: IntentIgnore}
 	}
 	update := redisx.IssueUpdate{
 		Repository: repository, InstallationID: envelope.Installation.ID,
@@ -155,13 +155,13 @@ func parseIssueEvent(envelope webhookEnvelope) (Intent, error) {
 		if issue.ClosedAt != nil {
 			closed, err := time.Parse(time.RFC3339Nano, *issue.ClosedAt)
 			if err != nil {
-				return Intent{Kind: IntentIgnore}, nil
+				return Intent{Kind: IntentIgnore}
 			}
 			update.ClosedAt = closed.UTC().Format(time.RFC3339Nano)
 		}
 	}
 	return Intent{Kind: IntentIssueStatus, Repository: repository,
-		InstallationID: envelope.Installation.ID, Issue: update}, nil
+		InstallationID: envelope.Installation.ID, Issue: update}
 }
 
 // parseWorkflowRunEvent maps a "workflow_run" delivery to a collection intent.

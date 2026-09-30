@@ -202,8 +202,11 @@ return {1, 0, revision}`
 		return false, false, 0, fmt.Errorf("apply issue status: %w", err)
 	}
 	values, err := Strings(value)
-	if err != nil || len(values) != 3 {
-		return false, false, 0, fmt.Errorf("decode issue status result: %v", err)
+	if err != nil {
+		return false, false, 0, fmt.Errorf("decode issue status result: %w", err)
+	}
+	if len(values) != 3 {
+		return false, false, 0, errors.New("decode issue status result: invalid response length")
 	}
 	revision, err = strconv.ParseInt(values[2], 10, 64)
 	if err == nil && values[1] == "2" {
