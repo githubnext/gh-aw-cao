@@ -38,6 +38,8 @@ model CollectionStatus {
   backfillQueuedRunTasks: int32;
   lastProjected?: string;
   counters: Record<int64>;
+  /** Half-life 60 seconds: each event contributes one unit, decaying by half every minute. Keys are webhook, collection, and failure. */
+  load?: Record<float64>;
   healthRevision: int64;
   lastWebhookAt?: string;
   lastFailureAt?: string;

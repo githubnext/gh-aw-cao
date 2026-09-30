@@ -106,6 +106,33 @@
       ]
     },
     {
+      "name": "ingestion-queued",
+      "from": "collection-health",
+      "compute": [{ "as": "queue", "function": "coalesce", "args": [{ "value": "Webhook queue" }] }],
+      "select": [{ "field": "queue" }, { "field": "queue-depth", "as": "tasks" }]
+    },
+    {
+      "name": "ingestion-inflight",
+      "from": "collection-health",
+      "compute": [{ "as": "queue", "function": "coalesce", "args": [{ "value": "In flight" }] }],
+      "select": [{ "field": "queue" }, { "field": "pending-tasks", "as": "tasks" }]
+    },
+    {
+      "name": "ingestion-backfill",
+      "from": "collection-health",
+      "compute": [{ "as": "queue", "function": "coalesce", "args": [{ "value": "Backfill run tasks" }] }],
+      "select": [{ "field": "queue" }, { "field": "backfill-queued-run-tasks", "as": "tasks" }]
+    },
+    {
+      "name": "ingestion-queue-sizes",
+      "intent": "Compare pending webhook and historical backfill work from the administrator-only server snapshot.",
+      "objective": "Spot a growing backlog without confusing in-flight tasks with unprocessed work.",
+      "acceptance": "Queue sizes come only from an authorized collection-health snapshot; unavailable state is not zero.",
+      "from": "ingestion-queued",
+      "union": ["ingestion-inflight", "ingestion-backfill"],
+      "select": [{ "field": "queue" }, { "field": "tasks" }]
+    },
+    {
       "name": "ingestion-health",
       "intent": "Show the current Redis-backed webhook and collection health snapshot.",
       "objective": "Determine whether the reported collection, webhook, queue, and backfill state warrants inspecting ingestion diagnostics.",
@@ -117,7 +144,13 @@
         { "field": "queue-depth" },
         { "field": "pending-tasks" },
         { "field": "dead-letters" },
+        { "field": "oldest-pending-age" },
         { "field": "backfill" },
+        { "field": "backfill-failures" },
+        { "field": "backfill-queued-run-tasks" },
+        { "field": "webhook-load" },
+        { "field": "collection-load" },
+        { "field": "failure-load" },
         { "field": "last-projected" },
         { "field": "last-webhook-at" },
         { "field": "last-failure-at" },
@@ -1581,6 +1614,20 @@
       "description": "Monitor live server-side collection health, GitHub API usage, CAO Activity ingestion, and retained dashboard transactions.",
       "views": [
         {
+          "id": "ingestion-queue-sizes",
+          "title": "Server collection queues (administrators)",
+          "description": "Current queued webhook work, in-flight tasks, and queued historical backfill runs. Available only to authorized server administrators.",
+          "data": { "source": "ingestion-queue-sizes" },
+          "mark": "chart",
+          "chart": "horizontal-bar",
+          "layout": "full",
+          "empty-message": "Collection queue sizes are available only to server administrators when collection is configured.",
+          "encoding": {
+            "x": { "field": "queue", "type": "nominal", "title": "Queue" },
+            "y": { "field": "tasks", "type": "quantitative", "title": "Tasks" }
+          }
+        },
+        {
           "id": "indexing-database-table-counts",
           "title": "Database table counts",
           "intent": "Compare retained row counts across dashboard database tables.",
@@ -1624,6 +1671,12 @@
               { "field": "queue-depth", "type": "quantitative", "title": "Queued" },
               { "field": "pending-tasks", "type": "quantitative", "title": "In flight" },
               { "field": "dead-letters", "type": "quantitative", "title": "Dead letters" },
+              { "field": "backfill-queued-run-tasks", "type": "quantitative", "title": "Backfill queued" },
+              { "field": "backfill-failures", "type": "quantitative", "title": "Backfill failures" },
+              { "field": "oldest-pending-age", "type": "nominal", "title": "Oldest in flight" },
+              { "field": "webhook-load", "type": "quantitative", "title": "Webhook load (60s half-life)" },
+              { "field": "collection-load", "type": "quantitative", "title": "Collection load (60s half-life)" },
+              { "field": "failure-load", "type": "quantitative", "title": "Failure load (60s half-life)" },
               { "field": "webhook-received", "type": "quantitative", "title": "Deliveries" },
               { "field": "webhook-duplicate", "type": "quantitative", "title": "Duplicates" },
               { "field": "webhook-admission-failed", "type": "quantitative", "title": "Admission failures" },

@@ -33,6 +33,14 @@ var ingestionCounterNames = map[string]struct{}{
 	"collectionDeadLettered": {},
 }
 
+var ingestionLoadNames = map[string]string{
+	"webhookReceived":     "webhook",
+	"collectionSucceeded": "collection",
+	"collectionFailed":    "failure",
+}
+
+const ingestionLoadHalfLife = time.Minute
+
 var ErrSourceUnavailable = errors.New("redis source is unavailable")
 
 type Store struct {
@@ -277,6 +285,12 @@ func (s *Store) OperationalState(ctx context.Context, name string) ([]byte, erro
 func (s *Store) IncrementIngestionCounter(ctx context.Context, name string) error {
 	if _, ok := ingestionCounterNames[name]; !ok {
 		return errors.New("unknown ingestion counter")
+	}
+	if metric, ok := ingestionLoadNames[name]; ok {
+		script := `redis.call("HINCRBY", KEYS[1], ARGV[4], 1); redis.call("HINCRBY", KEYS[1], "healthRevision", 1); ` + loadStep
+		_, err := s.Client.Do(ctx, "EVAL", script, "2", s.Key(ingestionHealthKey),
+			s.Key("load:"+metric), "1", "60", "480", name)
+		return err
 	}
 	script := `local count = redis.call("HINCRBY", KEYS[1], ARGV[1], 1); redis.call("HINCRBY", KEYS[1], "healthRevision", 1); return count`
 	_, err := s.Client.Do(ctx, "EVAL", script, "1", s.Key(ingestionHealthKey), name)

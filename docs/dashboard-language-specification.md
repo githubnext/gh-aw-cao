@@ -385,7 +385,7 @@ browser IndexedDB. The registered sources are:
 
 | Source | One row represents | Fields |
 |---|---|---|
-| `collection-health` | the current CAO webhook and collection health snapshot | `configured`, `health`, `health-revision`, `queue-depth`, `pending-tasks`, `dead-letters`, `backfill`, `last-projected`, `last-webhook-at`, `last-failure-at`, `last-failure-code`, `last-success-at`, `webhook-received`, `webhook-duplicate`, `webhook-admission-failed`, `task-queued`, `task-coalesced`, `collection-succeeded`, `collection-failed`, `collection-retried`, `collection-dead-lettered` |
+| `collection-health` | the current administrator-only CAO webhook and collection health snapshot | `configured`, `health`, `health-revision`, `queue-depth`, `pending-tasks`, `oldest-pending-age`, `dead-letters`, `backfill`, `backfill-failures`, `backfill-queued-run-tasks`, `webhook-load`, `collection-load`, `failure-load`, `last-projected`, `last-webhook-at`, `last-failure-at`, `last-failure-code`, `last-success-at`, `webhook-received`, `webhook-duplicate`, `webhook-admission-failed`, `task-queued`, `task-coalesced`, `collection-succeeded`, `collection-failed`, `collection-retried`, `collection-dead-lettered` |
 | `github-quota-usage` | the peak GitHub API quota usage of one bucket, or the limit-weighted aggregate of every bucket, during one 15-minute slot of the last 24 hours | `observed-at`, `scope`, `bucket`, `app`, `installation`, `resource`, `buckets`, `limit`, `used`, `reserved`, `usage-percent` |
 
 The `collection-health` provider returns exactly one row for an authorized
