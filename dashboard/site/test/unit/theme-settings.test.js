@@ -28,6 +28,22 @@ describe('dashboard theme settings reactive state', () => {
     expect(dashboardRoot.dataset.theme).toBe('light');
     expect(control.querySelector('[data-theme-value="light"]')?.getAttribute('aria-pressed')).toBe('true');
     expect(control.querySelector('[data-theme-value="dark"]')?.getAttribute('aria-pressed')).toBe('false');
+    /** @type {HTMLButtonElement} */ (control.querySelector('[data-theme-value="system"]')).click();
+    expect(dashboardRoot.dataset.theme).toBeUndefined();
+    expect(control.querySelector('[data-theme-value="system"]')?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('restores the saved preference when the Settings control is opened', async () => {
+    localStorage.setItem('central-agentic-ops.dashboard.theme', 'dark');
+    const { renderThemeControl, restoreDashboardTheme } = await import('../../src/components/theme-settings.js');
+    const dashboardRoot = Object.assign(document.createElement('div'), { className: 'dashboard-root' });
+    document.body.replaceChildren(dashboardRoot);
+    restoreDashboardTheme(dashboardRoot);
+    const control = renderThemeControl();
+    dashboardRoot.append(control);
+
+    expect(dashboardRoot.dataset.theme).toBe('dark');
+    expect(control.querySelector('[data-theme-value="dark"]')?.getAttribute('aria-pressed')).toBe('true');
   });
 
   it('stops reacting to theme changes once the control detaches from the document', async () => {

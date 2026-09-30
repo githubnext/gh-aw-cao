@@ -325,7 +325,7 @@ test('production Settings view loads without an unsupported-view warning', async
   const settingsPage = page.locator('[data-page-id="configuration"]');
   await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
   await expect(settingsPage.locator('.configuration-view')).toBeVisible();
-  await expect(settingsPage.locator('[data-theme-value]')).toHaveCount(0);
+  await expect(settingsPage.getByRole('group', { name: 'Theme' })).toBeVisible();
   await expect(settingsPage.getByRole('button', { name: 'Copy updated JSON' })).toBeVisible();
   await expect(settingsPage).not.toContainText('Unsupported view mark.');
   await expect(settingsPage).not.toContainText('Unsupported UI element.');

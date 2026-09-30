@@ -1721,30 +1721,19 @@ describe('presenter built-in and custom pages', () => {
       }
     };
 
+    localStorage.setItem('central-agentic-ops.dashboard.theme', 'dark');
     const rendered = renderDashboard({ document, sources: {} });
     globalThis.document.body.append(rendered);
 
     expect(rendered.querySelector('.refresh-button')).toBeNull();
     expect(rendered.querySelector('.account-menu')).toBeNull();
+    expect(rendered.querySelector('.report-actions [data-theme-value]')).toBeNull();
+    expect(rendered.dataset.theme).toBe('dark');
     const repositoryLink = rendered.querySelector('.repository-link');
     expect(repositoryLink).not.toBeNull();
     expect(repositoryLink?.getAttribute('href')).toBe('https://github.example.com/octo-org/agentic-operations');
     expect(repositoryLink?.getAttribute('aria-label')).toBe('View octo-org/agentic-operations on GitHub');
     expect(repositoryLink?.getAttribute('title')).toBe('View octo-org/agentic-operations on GitHub');
-    const themeControl = rendered.querySelector('.theme-control');
-    if (!(themeControl instanceof HTMLDetailsElement)) throw new Error('appearance control did not render');
-    expect(themeControl.nextElementSibling).toBe(repositoryLink);
-    expect(themeControl.querySelector('summary')?.getAttribute('aria-label')).toBe('Appearance');
-    expect([...themeControl.querySelectorAll('[data-theme-value]')].map((node) => node.textContent)).toEqual(['System', 'Light', 'Dark']);
-    themeControl.open = true;
-    /** @type {HTMLButtonElement} */ (themeControl.querySelector('[data-theme-value="dark"]')).click();
-    expect(themeControl.open).toBe(false);
-    expect(rendered.dataset.theme).toBe('dark');
-    expect(localStorage.getItem('central-agentic-ops.dashboard.theme')).toBe('dark');
-    themeControl.open = true;
-    themeControl.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    expect(themeControl.open).toBe(false);
-    expect(globalThis.document.activeElement).toBe(themeControl.querySelector('summary'));
     localStorage.clear();
     expect(rendered.querySelector('.sidebar-brand > span')?.textContent).toBe('agentic-operations');
     expect(rendered.querySelector('.mobile-page-header .mobile-brand-name')?.textContent).toBe('agentic-operations');

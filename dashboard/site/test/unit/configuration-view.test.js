@@ -87,7 +87,11 @@ describe('Configuration dashboard view', () => {
 
     if (!rendered) throw new Error('configuration view did not render');
 
-    expect(rendered.querySelector('[data-theme-value]')).toBeNull();
+    const theme = rendered.querySelector('.theme-control-options');
+    expect(theme?.getAttribute('role')).toBe('group');
+    expect(theme?.getAttribute('aria-label')).toBe('Theme');
+    expect([...rendered.querySelectorAll('[data-theme-value]')].map((button) => button.textContent))
+      .toEqual(['System', 'Light', 'Dark']);
     expect(rendered.querySelector('.configuration-database-counts')).toBeNull();
     expect(rendered.querySelector('.reset-dashboard-trigger')).not.toBeNull();
     expect(rendered.querySelector('a[href="#page-indexing"]')).toBeNull();
