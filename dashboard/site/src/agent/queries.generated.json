@@ -7041,6 +7041,48 @@
   ]
  },
  {
+  "name": "github-api-usage",
+  "intent": "Show retained GitHub API quota usage per bucket and in aggregate over the last 24 hours.",
+  "objective": "Determine whether any GitHub App installation or the CAO fleet as a whole is approaching its GitHub API rate limit.",
+  "acceptance": "Report peak usage percentages with their limits, used, and reserved counts; treat a slot without observations as unknown rather than idle, and never infer credentials from bucket identity.",
+  "from": "github-quota-usage",
+  "select": [
+   {
+    "field": "observed-at"
+   },
+   {
+    "field": "scope"
+   },
+   {
+    "field": "bucket"
+   },
+   {
+    "field": "app"
+   },
+   {
+    "field": "installation"
+   },
+   {
+    "field": "resource"
+   },
+   {
+    "field": "buckets"
+   },
+   {
+    "field": "limit"
+   },
+   {
+    "field": "used"
+   },
+   {
+    "field": "reserved"
+   },
+   {
+    "field": "usage-percent"
+   }
+  ]
+ },
+ {
   "name": "marketplace-package-detail",
   "intent": "Expose normalized marketplace package records for source-coordinate lookup by the detail view.",
   "objective": "Locate the resolver-produced package record for a source coordinate supplied by the consuming view.",

@@ -27,6 +27,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
+	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/marketplace"
@@ -84,6 +85,7 @@ type App struct {
 	mcp           http.Handler
 	actionsToken  string
 	actionsActor  string
+	quota         *githubquota.Service
 }
 
 func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) {
@@ -167,6 +169,13 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 		store: store, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
 		canonical: canonicalService{store: store}, reconciler: reconciler, memory: memoryResolver,
 		webhookSecret: []byte(config.WebhookSecret), actionsToken: actionsToken, actionsActor: actionsActor,
+	}
+	if store != nil {
+		quota, err := githubquota.New(store, githubquota.Options{})
+		if err != nil {
+			return nil, fmt.Errorf("configure github quota: %w", err)
+		}
+		app.quota = quota
 	}
 	if config.MCPEnabled {
 		handler, err := app.newMCPHandler()
@@ -296,6 +305,7 @@ func (a *App) Handler() http.Handler {
 	register("GET /api/admin/rebuild/status", a.rebuildStatus)
 	register("GET /api/admin/collection/status", a.collectionStatus)
 	register("GET /api/v1/ingestion/health", a.collectionStatus)
+	register("GET /api/v1/github-quota/usage", a.gitHubQuotaUsage)
 	mux.HandleFunc("/", a.static)
 	tracedMux := withResponseTraceHeaders(mux)
 	instrumented := otelhttp.NewHandler(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
@@ -873,6 +883,10 @@ type generationLoader struct {
 func (loader *generationLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
 	if name == collectionHealthSourceName {
 		source, err := loader.app.collectionHealthSource(loader.ctx, loader.allowCollectionHealth)
+		return source, model.Metrics{}, err
+	}
+	if name == gitHubQuotaUsageSourceName {
+		source, err := loader.app.gitHubQuotaUsageSource(loader.ctx, loader.allowCollectionHealth)
 		return source, model.Metrics{}, err
 	}
 	if name == marketplace.SourceName {

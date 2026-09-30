@@ -365,8 +365,12 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   or above the requested floor. Same-window observations never raise remaining
   quota, and parking never discards the primary quota state. A non-secret
   provider registry lists the candidate buckets for a workload, and selection
-  prefers the unparked, known bucket with the most headroom. Existing
-  collection budgets do not use this service yet.
+  prefers the unparked, known bucket with the most headroom. Each accepted
+  observation also merges the bucket's peak usage into a 15-minute Redis slot
+  retained for 24 hours; administrators read it through
+  `GET /api/v1/github-quota/usage` and the `github-quota-usage` runtime source
+  that the Ingestion page charts. Existing collection budgets do not use this
+  service yet.
 - The ingestion reliability simulator uses strict, seeded JSON scenarios to
   generate up to 20,000 synthetic repositories and 1,000,000 workflow events.
   Signed webhook traffic uses the production endpoint and queue admission path;

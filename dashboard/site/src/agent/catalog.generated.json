@@ -620,10 +620,11 @@
     {
       "id": "indexing",
       "title": "Ingestion",
-      "description": "Monitor live server-side collection health, CAO Activity ingestion, and retained dashboard transactions.",
+      "description": "Monitor live server-side collection health, GitHub API usage, CAO Activity ingestion, and retained dashboard transactions.",
       "experimental": false,
       "parameters": [],
       "queries": [
+        "github-api-usage",
         "indexing-daily-records",
         "indexing-daily-workflow-runs",
         "indexing-database-table-counts",
@@ -2957,6 +2958,25 @@
         "local": false,
         "requirements": [],
         "reason": "Requires collection-health, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "github-api-usage",
+      "intent": "Show retained GitHub API quota usage per bucket and in aggregate over the last 24 hours.",
+      "objective": "Determine whether any GitHub App installation or the CAO fleet as a whole is approaching its GitHub API rate limit.",
+      "acceptance": "Report peak usage percentages with their limits, used, and reserved counts; treat a slot without observations as unknown rather than idle, and never infer credentials from bucket identity.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "github-quota-usage"
+      ],
+      "used-by-pages": [
+        "indexing"
+      ],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires github-quota-usage, which the local SQLite projection does not provide."
       }
     },
     {

@@ -438,4 +438,15 @@ func TestServiceCoordinatesReplicasThroughRedis(t *testing.T) {
 		states[1].Remaining != 800 || states[1].CheckedAt.IsZero() {
 		t.Fatalf("unexpected replica states %#v", states)
 	}
+	usage, err := replicas[1].Usage(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	peaks := map[BucketID]int{}
+	for _, point := range usage.Buckets {
+		peaks[point.Bucket] = max(peaks[point.Bucket], point.Used)
+	}
+	if len(usage.Aggregate) == 0 || peaks[primary] != 4550 || peaks[secondary] != 4200 {
+		t.Fatalf("unexpected shared usage history %+v", usage)
+	}
 }

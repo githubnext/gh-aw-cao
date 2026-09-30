@@ -14,6 +14,9 @@ type memoryStore struct {
 	mu      sync.Mutex
 	now     time.Time
 	buckets map[string]*memoryBucket
+	usage   map[time.Time]map[string]redisx.GitHubQuotaUsageSample
+	// usageErr makes usage history operations fail.
+	usageErr error
 }
 
 type memoryBucket struct {
@@ -33,7 +36,10 @@ type memoryReservation struct {
 }
 
 func newMemoryStore(now time.Time) *memoryStore {
-	return &memoryStore{now: now, buckets: map[string]*memoryBucket{}}
+	return &memoryStore{
+		now: now, buckets: map[string]*memoryBucket{},
+		usage: map[time.Time]map[string]redisx.GitHubQuotaUsageSample{},
+	}
 }
 
 func (m *memoryStore) advance(duration time.Duration) {
@@ -156,4 +162,51 @@ func (m *memoryStore) UnparkGitHubQuota(_ context.Context, key string) (redisx.G
 	bucket := m.bucket(key)
 	bucket.parked, bucket.parkReason = time.Time{}, ""
 	return m.state(bucket), nil
+}
+
+func (m *memoryStore) RecordGitHubQuotaUsage(
+	_ context.Context, key string, at time.Time, limit, used, reserved int64,
+) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.usageErr != nil {
+		return false, m.usageErr
+	}
+	slot := redisx.GitHubQuotaUsageSlot(at)
+	if !slot.Add(redisx.GitHubQuotaUsageInterval).After(m.now.Add(-redisx.GitHubQuotaUsageRetention)) ||
+		slot.After(m.now.Add(redisx.GitHubQuotaUsageInterval)) {
+		return false, nil
+	}
+	samples, ok := m.usage[slot]
+	if !ok {
+		samples = map[string]redisx.GitHubQuotaUsageSample{}
+		m.usage[slot] = samples
+	}
+	sample := redisx.GitHubQuotaUsageSample{Bucket: key, Slot: slot, Limit: limit, Used: used, Reserved: reserved}
+	if current, ok := samples[key]; ok {
+		if current.Used*limit > used*current.Limit || (current.Used*limit == used*current.Limit && current.Used > used) {
+			sample.Limit, sample.Used = current.Limit, current.Used
+		}
+		sample.Reserved = max(sample.Reserved, current.Reserved)
+	}
+	samples[key] = sample
+	return true, nil
+}
+
+func (m *memoryStore) GitHubQuotaUsage(context.Context) ([]redisx.GitHubQuotaUsageSample, time.Time, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.usageErr != nil {
+		return nil, time.Time{}, m.usageErr
+	}
+	samples := []redisx.GitHubQuotaUsageSample{}
+	for slot, bucketSamples := range m.usage {
+		if !slot.Add(redisx.GitHubQuotaUsageInterval).After(m.now.Add(-redisx.GitHubQuotaUsageRetention)) {
+			continue
+		}
+		for _, sample := range bucketSamples {
+			samples = append(samples, sample)
+		}
+	}
+	return samples, m.now, nil
 }

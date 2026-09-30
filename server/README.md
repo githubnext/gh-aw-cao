@@ -885,6 +885,7 @@ IndexedDB ingestion:
 | `POST /api/v1/refresh` | Return the current revision and authoritative evaluation time without ingesting data. |
 | `GET /api/v1/events` | Server-Sent Events stream that notifies active views when the Redis revision changes. |
 | `GET /api/v1/diagnostics` | Canonical schema counts, relationship errors, and duplicate IDs for the active generation. |
+| `GET /api/v1/github-quota/usage` | Administrator-only GitHub API quota usage for the last 24 hours: the peak observed usage of each bucket (App, installation, resource) and the limit-weighted aggregate per 15-minute slot. The same data is the `github-quota-usage` runtime source behind the Ingestion page chart. No credentials are included. |
 | `GET /api/repositories` and `GET /api/repositories/:id` | Return canonical repository objects. |
 | `GET /api/repositories/:id/runs` and `GET /api/workflows/:id/runs` | Return related canonical runs. |
 | `GET /api/runs/:id/jobs`, `GET /api/runs/:id/sessions`, `GET /api/sessions/:id/events` | Return related canonical execution records when published. |
@@ -967,7 +968,7 @@ added to its telemetry. The query engine and ingestion paths
 start dedicated `cao_dashboard.query.execute` and `cao_dashboard.ingest.run`
 spans. The GitHub API quota service (`internal/githubquota/`) starts
 `cao_githubquota.<operation>` spans (`observe`, `commit`, `reserve`, `release`,
-`park`, `unpark`, `state`, `select`) and records
+`park`, `unpark`, `state`, `select`, `usage`) and records
 `cao_githubquota.operation.count` and `cao_githubquota.operation.duration`
 by operation, bucket App and resource, and a fixed `cao_githubquota.outcome`.
 Per-bucket `cao_githubquota.bucket.remaining`, `.reserved`, `.available`, and

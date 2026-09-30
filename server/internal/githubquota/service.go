@@ -133,6 +133,8 @@ type Store interface {
 	ReleaseGitHubQuota(ctx context.Context, bucket, id string) (bool, redisx.GitHubQuotaState, error)
 	ParkGitHubQuota(ctx context.Context, bucket string, until time.Time, reason string) (bool, redisx.GitHubQuotaState, error)
 	UnparkGitHubQuota(ctx context.Context, bucket string) (redisx.GitHubQuotaState, error)
+	RecordGitHubQuotaUsage(ctx context.Context, bucket string, at time.Time, limit, used, reserved int64) (bool, error)
+	GitHubQuotaUsage(ctx context.Context) ([]redisx.GitHubQuotaUsageSample, time.Time, error)
 }
 
 // Options configures a Service.
@@ -228,6 +230,9 @@ func (s *Service) observe(
 	}
 	described := s.describe(bucket, state)
 	recordBucketState(ctx, described)
+	if outcome != redisx.GitHubQuotaObservationStale {
+		s.recordUsage(ctx, bucket, state)
+	}
 	switch outcome {
 	case redisx.GitHubQuotaObservationStale:
 		op.outcome = outcomeStale
