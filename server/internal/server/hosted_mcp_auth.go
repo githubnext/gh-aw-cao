@@ -19,7 +19,6 @@ const (
 	actionsOIDCIssuer  = "https://token.actions.githubusercontent.com"
 	actionsOIDCJWKS    = actionsOIDCIssuer + "/.well-known/jwks"
 	actionsMCPAudience = "https://cao.githubnext.com/mcp"
-	actionsMCPWorkflow = "githubnext/gh-aw-cao/.github/workflows/cao-remote-mcp-explorer.lock.yml@refs/heads/main"
 )
 
 func (a *App) authorizeHostedMCP(request *http.Request) bool {
@@ -37,7 +36,7 @@ func (a *App) authorizeHostedMCP(request *http.Request) bool {
 		!claims.VerifyAudience(actionsMCPAudience, true) ||
 		claims["repository"] != a.config.ActionsRepository ||
 		claims["repository_id"] != a.config.HostedMCPRepositoryID ||
-		claims["workflow_ref"] != actionsMCPWorkflow ||
+		claims["workflow_ref"] != a.config.ActionsRepository+"/.github/workflows/cao-remote-mcp-explorer.lock.yml@refs/heads/main" ||
 		!nonemptyOIDCClaim(claims, "event_name") ||
 		!nonemptyOIDCClaim(claims, "run_id") ||
 		!claims.VerifyIssuedAt(time.Now().Unix(), true) ||
@@ -45,11 +44,12 @@ func (a *App) authorizeHostedMCP(request *http.Request) bool {
 		return false
 	}
 
-	func nonemptyOIDCClaim(claims jwt.MapClaims, name string) bool {
-		value, ok := claims[name].(string)
-		return ok && value != ""
-	}
 	return verifyGitHubActionsPermissions(request.Context(), a.config, token) == nil
+}
+
+func nonemptyOIDCClaim(claims jwt.MapClaims, name string) bool {
+	value, ok := claims[name].(string)
+	return ok && value != ""
 }
 
 func verifyActionsOIDC(ctx context.Context, raw string, client *http.Client) (jwt.MapClaims, error) {
@@ -60,7 +60,7 @@ func verifyActionsOIDC(ctx context.Context, raw string, client *http.Client) (jw
 		client = &http.Client{Timeout: 10 * time.Second}
 	}
 	claims := jwt.MapClaims{}
-	parsed, err := (&jwt.Parser{ValidMethods: []string{jwt.SigningMethodRS256.Alg()}}).ParseWithClaims(raw, claims, func(token *jwt.Token) (any, error) {
+	parsed, err := jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Alg()})).ParseWithClaims(raw, claims, func(token *jwt.Token) (any, error) {
 		kid, ok := token.Header["kid"].(string)
 		if !ok || kid == "" {
 			return nil, errors.New("OIDC key ID is missing")
@@ -73,7 +73,7 @@ func verifyActionsOIDC(ctx context.Context, raw string, client *http.Client) (jw
 		if err != nil {
 			return nil, err
 		}
-		defer res.Body.Close()
+		defer func() { _ = res.Body.Close() }()
 		if res.StatusCode != http.StatusOK || res.Request.URL.String() != actionsOIDCJWKS {
 			return nil, errors.New("OIDC key set is unavailable")
 		}

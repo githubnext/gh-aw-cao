@@ -9,9 +9,9 @@ services:
         REVISION: ${SOURCE_COMMIT:-unknown}
     command:
       - serve-hosted
-      - --mcp-enabled
       - --listen
       - 0.0.0.0:8080
+      - --mcp-enabled
       - --site
       - /app/site
       - --dashboard-queries

@@ -53,11 +53,12 @@ func TestHostedMCPAuthentication(t *testing.T) {
 		HostedMCPRepositoryID: "1302952722",
 		ActionsRepository:     "githubnext/gh-aw-cao",
 		ActionsHTTPClient:     client,
+		Proxy:                 ProxyPolicy{AllowedHosts: []string{"localhost"}},
 	}}
 	baseClaims := jwt.MapClaims{
 		"iss": actionsOIDCIssuer, "aud": actionsMCPAudience,
 		"repository": "githubnext/gh-aw-cao", "repository_id": "1302952722",
-		"workflow_ref": actionsMCPWorkflow, "event_name": "schedule", "run_id": "123",
+		"workflow_ref": "githubnext/gh-aw-cao/.github/workflows/cao-remote-mcp-explorer.lock.yml@refs/heads/main", "event_name": "schedule", "run_id": "123",
 		"iat": time.Now().Add(-time.Minute).Unix(), "exp": time.Now().Add(time.Minute).Unix(),
 	}
 	sign := func(claims jwt.MapClaims, signingKey *rsa.PrivateKey) string {
@@ -86,6 +87,24 @@ func TestHostedMCPAuthentication(t *testing.T) {
 	}
 	if !check(copyClaims(), key, "job-token") {
 		t.Fatal("authorized workflow was rejected")
+	}
+	app.mcp = http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "http://localhost/mcp", nil)
+	request.Header.Set("Authorization", "Bearer "+sign(copyClaims(), key))
+	request.Header.Set("X-GitHub-Actions-Token", "job-token")
+	route := app.requireGitHubAccess(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.WriteHeader(http.StatusNoContent)
+	}))
+	response := httptest.NewRecorder()
+	route.ServeHTTP(response, request)
+	if response.Code != http.StatusNoContent {
+		t.Fatalf("authorized MCP route returned %d", response.Code)
+	}
+	request.Header.Del("Authorization")
+	response = httptest.NewRecorder()
+	route.ServeHTTP(response, request)
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("unsigned MCP route returned %d", response.Code)
 	}
 	for _, change := range []struct {
 		name  string
