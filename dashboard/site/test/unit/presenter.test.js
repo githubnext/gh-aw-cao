@@ -680,15 +680,60 @@ describe('dashboard DOM provenance', () => {
       });
       await vi.waitFor(() => expect(section?.querySelector('.layout-section-header')?.textContent).toContain('2 runs'));
       expect(disclosure?.querySelector(':scope > :not(summary)')).toBe(failuresContent);
+      const sectionHeader = section?.querySelector('.layout-section-header');
 
       requests.get('successes').options.onUpdate({
         'view:overview:successes:runs': source('runs', [{ name: 'successful run' }])
       });
       await vi.waitFor(() => expect(section?.querySelector('[data-view-id="successes"]')?.textContent).toContain('successful run'));
+      expect(section?.querySelector('.layout-section-header')).toBe(sectionHeader);
       expect(section?.querySelector('.view-disclosure')).toBe(disclosure);
       expect(disclosure?.querySelector(':scope > :not(summary)')).toBe(failuresContent);
       expect(section?.querySelectorAll('.view-disclosure')).toHaveLength(1);
       expect(section?.querySelector('[data-view-id="successes"]')?.textContent).not.toContain('failed run');
+    } finally {
+      disposeDashboard(rendered);
+      rendered.remove();
+    }
+  });
+
+  it('keeps a source-bound callout as the section root while its source loads', async () => {
+    let update = () => {};
+    const loadPageSources = /** @type {NonNullable<Parameters<typeof renderDashboardView>[0]['loadPageSources']>} */ (
+      () => new Promise(() => {})
+    );
+    loadPageSources.subscribeViewSources = (_pageId, _viewId, _names, options) => {
+      update = () => options.onUpdate({
+        runs: {
+          source: 'runs', rows: [{ name: 'A run' }],
+          metadata: { 'source-id': 'runs', 'source-kind': 'fixture', 'as-of': '', 'retrieved-at': '', availability: 'available', completeness: 'complete', freshness: 'fresh' }
+        }
+      });
+      return new Promise(() => {});
+    };
+    const rendered = renderDashboardView({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'callout-query-bindings', title: 'Callout query bindings',
+          pages: [{
+            id: 'overview', kind: 'custom', title: 'Overview',
+            views: [{ id: 'notice', title: 'Notice', mark: 'callout', data: { source: 'runs' }, callout: { label: 'Note' } }],
+            sections: [{ id: 'notice-section', title: 'Notice', layout: 'full', views: ['notice'] }]
+          }]
+        }
+      },
+      sources: {},
+      loadPageSources
+    });
+    document.body.append(rendered);
+    try {
+      await vi.waitFor(() => expect(rendered.querySelector('[data-section-id="notice-section"]')).not.toBeNull());
+      expect(rendered.querySelector('[data-section-id="notice-section"]')?.classList.contains('dashboard-callout')).toBe(true);
+      expect(rendered.querySelector('[data-section-id="notice-section"] .dashboard-view-skeleton')).toBeNull();
+      update();
+      await vi.waitFor(() => expect(rendered.querySelector('[data-section-id="notice-section"]')?.classList.contains('dashboard-callout')).toBe(true));
+      expect(rendered.querySelector('[data-section-id="notice-section"]')?.classList.contains('layout-section')).toBe(false);
     } finally {
       disposeDashboard(rendered);
       rendered.remove();

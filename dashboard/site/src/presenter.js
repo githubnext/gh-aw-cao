@@ -817,7 +817,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       const readySources = isSelfBound && binding?.loading.get()
         ? Object.fromEntries(Object.entries(viewSources).filter(([, source]) => source.metadata?.availability !== 'unavailable'))
         : viewSources;
-      let rendered = pending && viewSourceNames.length > 0 && !isSelfBound
+      let rendered = pending && viewSourceNames.length > 0 && !isSelfBound && (!isPlainObject(view) || view.mark !== 'callout')
         ? renderPageSection(page.id, getViewTitle(view, index), [
             renderDashboardViewSkeleton(),
             h('span', { className: 'sr-only' }, `Loading ${getViewTitle(view, index)}`)
@@ -931,7 +931,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
           : rendered;
         if (!(target instanceof HTMLElement) || !changed || target.hasAttribute('data-lazy-view')) return;
         const replacement = render(current, pending);
-        for (const attribute of ['data-view-id', 'data-view-layout', 'data-disclosure', 'data-view-mode-content', 'data-view-lazy-list']) {
+        for (const attribute of ['data-view-id', 'data-view-layout', 'data-disclosure', 'data-view-mode-content', 'data-view-lazy-list', 'data-section-id', 'data-section-layout']) {
           if (target.hasAttribute(attribute)) replacement.setAttribute(attribute, target.getAttribute(attribute) ?? '');
         }
         if (target.classList.contains('custom-view')) replacement.classList.add('custom-view');
@@ -984,9 +984,14 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
         .find((element) => element.getAttribute('data-section-id') === section.id);
       if (!(sectionRoot instanceof HTMLElement) || !sectionRoot.classList.contains('layout-section')) continue;
       let initial = true;
+      const countNames = (section['count-sources'] ?? [section['count-source']]).filter((name) => typeof name === 'string');
+      let previous = binding.sources.get();
       effect(() => {
         const current = binding.sources.get();
         if (initial) { initial = false; return; }
+        const changed = countNames.some((name) => current[name] !== previous[name]);
+        previous = current;
+        if (!changed) return;
         const oldChrome = sectionRoot.querySelector(':scope > :first-child');
         if (oldChrome) oldChrome.replaceWith(renderLayoutSectionChrome(page.id, section, layoutSectionCount(section, current)));
       }, { signal: binding.signal });
