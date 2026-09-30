@@ -1,4 +1,4 @@
-name: Deploy dashboard to Coolify
+name: Deploy production dashboard to Coolify
 
 on:
   workflow_dispatch:
