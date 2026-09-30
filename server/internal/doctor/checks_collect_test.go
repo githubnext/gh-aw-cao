@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/collect"
@@ -207,6 +208,55 @@ func (fakeDirInfo) IsDir() bool { return true }
 type fakeRegularFileInfo struct{ os.FileInfo }
 
 func (fakeRegularFileInfo) IsDir() bool { return false }
+
+func TestClassifyCollectionSettingsFailsWithoutWebhookSecretWhenAdmitOnly(t *testing.T) {
+	classification := classifyCollectionSettings(false, true, 12345)
+	if classification.status != StatusFail {
+		t.Fatalf("status = %v, want %v", classification.status, StatusFail)
+	}
+	if classification.reason != collectionSettingsReasonNoSecretAdmitOnly {
+		t.Fatalf("reason = %v, want %v", classification.reason, collectionSettingsReasonNoSecretAdmitOnly)
+	}
+	if classification.remedy == "" {
+		t.Fatal("expected a non-empty remedy")
+	}
+}
+
+func TestClassifyCollectionSettingsWarnsWithoutWebhookSecretWhenNotAdmitOnly(t *testing.T) {
+	classification := classifyCollectionSettings(false, false, 12345)
+	if classification.status != StatusWarn {
+		t.Fatalf("status = %v, want %v", classification.status, StatusWarn)
+	}
+	if classification.reason != collectionSettingsReasonNoSecretWorker {
+		t.Fatalf("reason = %v, want %v", classification.reason, collectionSettingsReasonNoSecretWorker)
+	}
+}
+
+func TestClassifyCollectionSettingsPassesAdmitOnlyWithWebhookSecret(t *testing.T) {
+	classification := classifyCollectionSettings(true, true, 12345)
+	if classification.status != StatusPass {
+		t.Fatalf("status = %v, want %v", classification.status, StatusPass)
+	}
+	if classification.reason != collectionSettingsReasonAdmitOnly {
+		t.Fatalf("reason = %v, want %v", classification.reason, collectionSettingsReasonAdmitOnly)
+	}
+	if classification.remedy != "" {
+		t.Fatalf("remedy = %q, want empty", classification.remedy)
+	}
+}
+
+func TestClassifyCollectionSettingsPassesFullCollectionWithWebhookSecret(t *testing.T) {
+	classification := classifyCollectionSettings(true, false, 12345)
+	if classification.status != StatusPass {
+		t.Fatalf("status = %v, want %v", classification.status, StatusPass)
+	}
+	if classification.reason != collectionSettingsReasonConfigured {
+		t.Fatalf("reason = %v, want %v", classification.reason, collectionSettingsReasonConfigured)
+	}
+	if !strings.Contains(classification.summary, "12345") {
+		t.Fatalf("summary = %q, want it to mention the App ID", classification.summary)
+	}
+}
 
 func TestClassifyBackfillStateReportsErrorBeforeAnythingElse(t *testing.T) {
 	// An idle phase alongside a reported error must not mask the error
