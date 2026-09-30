@@ -64,14 +64,12 @@ imports:
       read_repository: ${{ inputs.target_repo }}
       read_actions: read
       read_contents: read
-      read_issues: read
       read_pull_requests: read
 
 permissions:
   contents: read
   actions: read
   copilot-requests: write
-  issues: read
   pull-requests: read
 
 tracker-id: self-care-accessibility-checker
