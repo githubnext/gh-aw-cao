@@ -869,8 +869,8 @@
   "queries": [
     {
       "id": "event-base",
-      "intent": "Unify retained run-owned records for entity-events.",
-      "objective": "Establish the retained run-owned event evidence available for event inspection.",
+      "subject": "Project shared event fields before combining run-owned records.",
+      "objective": "Provide the narrow retained event evidence needed for inspection and run import-coverage analysis.",
       "acceptance": "The result unions retained audit, domain, tool, and issue records with their available run identity; an empty or unavailable preview cannot establish zero source activity or complete import coverage.",
       "description": "",
       "parameters": [],
@@ -894,7 +894,7 @@
     },
     {
       "id": "audit-event-runs",
-      "intent": "Count imported audit records per run before combining event sources.",
+      "subject": "Count imported audit records per run before combining event sources.",
       "objective": "Bound audit evidence for run import-coverage analysis.",
       "acceptance": "Count only retained audit records with event identity by run attempt; missing evidence does not establish zero activity.",
       "description": "",
@@ -913,7 +913,7 @@
     },
     {
       "id": "domain-event-runs",
-      "intent": "Count imported domain records per run before combining event sources.",
+      "subject": "Count imported domain records per run before combining event sources.",
       "objective": "Bound domain evidence for run import-coverage analysis.",
       "acceptance": "Count only retained domain records with event identity by run attempt; missing evidence does not establish zero activity.",
       "description": "",
@@ -932,7 +932,7 @@
     },
     {
       "id": "tool-event-runs",
-      "intent": "Count imported tool records per run before combining event sources.",
+      "subject": "Count imported tool records per run before combining event sources.",
       "objective": "Bound tool evidence for run import-coverage analysis.",
       "acceptance": "Count only retained tool records with event identity by run attempt; missing evidence does not establish zero activity.",
       "description": "",
@@ -951,7 +951,7 @@
     },
     {
       "id": "issue-event-runs",
-      "intent": "Count imported issue records per run before combining event sources.",
+      "subject": "Count imported issue records per run before combining event sources.",
       "objective": "Bound issue evidence for run import-coverage analysis.",
       "acceptance": "Count only retained issue records with event identity by run attempt; missing evidence does not establish zero activity.",
       "description": "",
@@ -970,7 +970,7 @@
     },
     {
       "id": "event-runs",
-      "intent": "Identify each workflow run that has one or more imported run-owned records.",
+      "subject": "Identify each workflow run that has one or more imported run-owned records.",
       "objective": "Identify run attempts with retained imported records so their presence can be compared with observed runs.",
       "acceptance": "One row per organization, repository, workflow, run, and attempt contains events, the count of matching retained records; no row in an available result does not prove that no event was produced.",
       "description": "Distinct workflow runs represented by imported domain, tool, audit, or issue records.",
@@ -995,7 +995,7 @@
     },
     {
       "id": "run-import-status",
-      "intent": "Identify observed runs that have one or more imported run-owned records.",
+      "subject": "Identify observed runs that have one or more imported run-owned records.",
       "objective": "Compare observed run attempts with retained run-owned event evidence to locate import-coverage gaps for investigation.",
       "acceptance": "Keep each observed run and its run-attempt identity; imported-event-count is zero and imported is false without a matching retained event, but missing events alone do not establish an ingestion failure.",
       "description": "Observed runs enriched with imported-record status.",
@@ -1019,7 +1019,7 @@
     },
     {
       "id": "workflow-run-totals",
-      "intent": "Summarize observed run counts and imported runs by declared workflow.",
+      "subject": "Summarize observed run counts and imported runs by declared workflow.",
       "objective": "Compare observed run attempts, conclusions, and imported-record coverage for each workflow.",
       "acceptance": "Group by organization, repository, and workflow; report distinct run-attempt totals, successful and failed conclusion counts, and imported-run totals only from retained evidence. Missing run records cannot establish zero execution.",
       "description": "Observed run and imported-run totals for each declared workflow.",
@@ -1042,7 +1042,7 @@
     },
     {
       "id": "workflow-aic-totals",
-      "intent": "Summarize observed AI Credit usage by declared workflow.",
+      "subject": "Summarize observed AI Credit usage by declared workflow.",
       "objective": "Expose retained AI Credit consumption per workflow for bounded cost review alongside observed execution.",
       "acceptance": "Return the sum of recorded aic-total by organization, repository, and workflow; missing usage or runs is not evidence of zero actual cost.",
       "description": "Observed AI Credit totals for each declared workflow.",
@@ -1061,7 +1061,7 @@
     },
     {
       "id": "mcp-tool-calls",
-      "intent": "Prepare MCP tool calls for aggregation with safe-output-server calls identified for downstream exclusion.",
+      "subject": "Prepare MCP tool calls for aggregation with safe-output-server calls identified for downstream exclusion.",
       "objective": "Identify retained MCP call labels and safe-output-server classification for downstream tool-use investigation.",
       "acceptance": "Preserve each retained call with its workflow key and tool label and mark safe-output-server calls explicitly; downstream exclusion must not be mistaken for absence of those calls or complete tool telemetry.",
       "description": "Observed MCP tool calls labeled with whether they belong to the internal safe outputs server.",
@@ -1088,7 +1088,7 @@
     },
     {
       "id": "issue-safe-outputs",
-      "intent": "List retained GitHub issue safe outputs.",
+      "subject": "List retained GitHub issue safe outputs.",
       "objective": "Inspect retained issue safe outputs and their observed closure state before deciding which items need follow-up.",
       "acceptance": "Include only safe_output.created issue records, not pull requests; preserve issue and run links, timestamps, state, and status detail. Unknown or unobserved closure state must not be presented as closed.",
       "description": "Issue-only projection of retained safe-output items.",
@@ -1111,7 +1111,7 @@
     },
     {
       "id": "issue-repository-totals",
-      "intent": "Rank the ten repositories with the most retained GitHub issue safe outputs.",
+      "subject": "Rank the ten repositories with the most retained GitHub issue safe outputs.",
       "objective": "Locate repositories with the largest observed issue-safe-output volume for a bounded review of linked records.",
       "acceptance": "Return at most ten repository coordinates ordered by retained issue-record count; ties or missing issue evidence must not imply a complete fleet ranking or unique issue count.",
       "description": "Top repositories by retained issue safe-output count.",
@@ -1134,7 +1134,7 @@
     },
     {
       "id": "workflow-inventory",
-      "intent": "List declared workflows with their campaign, repository, configuration, and observed execution totals.",
+      "subject": "List declared workflows with their campaign, repository, configuration, and observed execution totals.",
       "objective": "Compare declared workflow configuration with retained run, import-coverage, and AI Credit evidence to select a workflow for closer inspection.",
       "acceptance": "Keep one row per declared workflow with identity, role, mode, registration, links, observed totals, and ingestion indicator; zero joined totals and missing evidence must not be treated as proof of no execution or complete ingestion.",
       "description": "Central campaign and repository-owned workflow inventory with observed execution totals.",
@@ -1168,7 +1168,7 @@
     },
     {
       "id": "repository-aic-totals",
-      "intent": "Summarize observed AI Credit usage by repository.",
+      "subject": "Summarize observed AI Credit usage by repository.",
       "objective": "Provide repository-level retained AI Credit totals for comparing observed usage with run activity.",
       "acceptance": "Sum recorded aic-total by organization and repository; an absent or partial run history does not support a claim of zero actual consumption.",
       "description": "Observed AI Credit totals for each repository.",
@@ -1187,7 +1187,7 @@
     },
     {
       "id": "maintenance-repository-versions",
-      "intent": "Group installed and current gh-aw compiler versions and upgrade evidence by repository.",
+      "subject": "Group installed and current gh-aw compiler versions and upgrade evidence by repository.",
       "objective": "Identify repositories with declared Markdown workflows whose retained compiler-version evidence warrants upgrade review.",
       "acceptance": "Group Markdown workflow declarations by repository coordinate and return distinct recorded installed/current version lists plus upgrade-required and unknown flags; inspect absent or mixed version evidence rather than inferring a repository-wide installed version.",
       "description": "",
@@ -1206,7 +1206,7 @@
     },
     {
       "id": "maintenance-repositories",
-      "intent": "List each repository with recorded compiler versions and computed upgrade state.",
+      "subject": "List each repository with recorded compiler versions and computed upgrade state.",
       "objective": "Expose recorded compiler versions and computed upgrade state per repository so an operator can inspect update signals and gaps.",
       "acceptance": "Return repository, recorded version lists, upgrade-required flag, and computed upgrade-state; mixed or absent version evidence requires inspection before any decision, and an upgrade label does not authorize a rollout or policy change.",
       "description": "",
@@ -1233,7 +1233,7 @@
     },
     {
       "id": "maintenance-campaign-updates",
-      "intent": "Expose at most one CAO package update row for the Updates navigation indicator.",
+      "subject": "Expose at most one CAO package update row for the Updates navigation indicator.",
       "objective": "Determine whether retained campaign metadata contains an update-available signal for the Updates indicator.",
       "acceptance": "Return zero or one campaign-update-state row only when it equals update-available; an empty result means no matching retained signal, not that every campaign is current.",
       "description": "",
@@ -1252,7 +1252,7 @@
     },
     {
       "id": "maintenance-repository-upgrades",
-      "intent": "Expose at most one gh-aw compiler upgrade row for the Updates navigation indicator.",
+      "subject": "Expose at most one gh-aw compiler upgrade row for the Updates navigation indicator.",
       "objective": "Determine whether repository compiler metadata contains an upgrade-required signal for the Updates indicator.",
       "acceptance": "Return zero or one upgrade-required row only when the retained value is 1; no row does not establish that all repositories are current when version data is missing.",
       "description": "",
@@ -1271,7 +1271,7 @@
     },
     {
       "id": "run-incomplete-outcomes",
-      "intent": "Project retained report-incomplete terminal outcomes as concise run diagnoses.",
+      "subject": "Project retained report-incomplete terminal outcomes as concise run diagnoses.",
       "objective": "Find retained report_incomplete safe outputs that can explain a specific run's incomplete reporting.",
       "acceptance": "Include only matching audit safe_output.created records with run-attempt identity, outcome kind, and recorded diagnosis; absence is not proof that reporting completed.",
       "description": "One retained incomplete-evidence diagnosis per workflow Run when the agent explicitly reported that required evidence or access was unavailable.",
@@ -1290,7 +1290,7 @@
     },
     {
       "id": "campaign-runs",
-      "intent": "Project workflow runs with campaign attribution and retained failure evidence.",
+      "subject": "Project workflow runs with campaign attribution and retained failure evidence.",
       "objective": "Connect retained run status and failure details to declared campaign/workflow identity for run-level diagnosis.",
       "acceptance": "Expose run and attempt identity, declared attribution, runtime and target repositories, status, failure and incomplete-outcome evidence, timestamps, and drill-down links; do not infer an outcome from runtime success or missing details.",
       "description": "Canonical workflow runs joined to their declared campaign and workflow identity.",
@@ -1320,7 +1320,7 @@
     },
     {
       "id": "campaign-runtime-health-runs",
-      "intent": "Project only the run and workflow fields required to classify current campaign runtime health.",
+      "subject": "Project only the run and workflow fields required to classify current campaign runtime health.",
       "objective": "Provide the retained run identity, timing, role, dispatch type, repository, and status needed to assess campaign runtime-health groups.",
       "acceptance": "Project the selected fields from overview-runs without converting missing statuses or unattributed workflows into failures; unavailable run history leaves health assessment incomplete.",
       "description": "A bounded runtime-health input that excludes audit outcomes and presentation-only campaign run fields.",
@@ -1339,7 +1339,7 @@
     },
     {
       "id": "campaign-runtime-health-groups",
-      "intent": "Compute each campaign workflow and runtime repository's latest consecutive failure streak in the selected horizon.",
+      "subject": "Compute each campaign workflow and runtime repository's latest consecutive failure streak in the selected horizon.",
       "objective": "Locate campaign workflow/runtime-repository groups whose most recent retained completed runs have consecutive runtime failures.",
       "acceptance": "Group completed runs by campaign, workflow, role, dispatch type, and runtime repository; failure-count is the latest retained failure streak, not a rate or a claim about runs outside the available horizon.",
       "description": "Current retained failure streaks grouped by campaign workflow and runtime repository, considering only concluded Runs so an in-flight retry cannot mask an active failure streak.",
@@ -1358,7 +1358,7 @@
     },
     {
       "id": "campaign-runtime-problem-candidates",
-      "intent": "Mark campaign workflow and runtime repository partitions whose latest retained run streak is failing.",
+      "subject": "Mark campaign workflow and runtime repository partitions whose latest retained run streak is failing.",
       "objective": "Flag runtime-health groups with a nonzero latest retained failure streak for focused investigation.",
       "acceptance": "Preserve the group identity and failure-count; has-current-failure reflects only failure-count greater than zero, while absent or incomplete run evidence cannot establish health.",
       "description": "Campaign runtime partitions annotated with whether their current retained streak contains failures.",
@@ -1377,7 +1377,7 @@
     },
     {
       "id": "campaign-current-runtime-failures",
-      "intent": "Show only campaign workflow and runtime repository partitions whose latest retained run streak is failing.",
+      "subject": "Show only campaign workflow and runtime repository partitions whose latest retained run streak is failing.",
       "objective": "Select failing retained runtime-health partitions for review of their underlying runs.",
       "acceptance": "Return only groups flagged has-current-failure with their identity and streak count in declared order; no rows mean no matching observed streak, not verified healthy operation.",
       "description": "Campaign runtime partitions with one or more consecutive failures after their latest retained success.",
@@ -1396,7 +1396,7 @@
     },
     {
       "id": "workflow-run-observation-counts",
-      "intent": "Count retained Runs for each workflow identity in the selected horizon.",
+      "subject": "Count retained Runs for each workflow identity in the selected horizon.",
       "objective": "Measure retained run presence by workflow identity to compare with active orchestrator declarations.",
       "acceptance": "Count overview-runs by organization, repository, and workflow; a missing group indicates no retained matching run in the available horizon, not proof of no executions.",
       "description": "One row per organization, repository, and workflow with retained Run counts, safe to join without row multiplication.",
@@ -1415,7 +1415,7 @@
     },
     {
       "id": "campaign-active-orchestrator-run-presence",
-      "intent": "Count retained Runs for each active campaign orchestrator in the selected horizon.",
+      "subject": "Count retained Runs for each active campaign orchestrator in the selected horizon.",
       "objective": "Compare active orchestrator declarations with retained run observations to identify missing visibility.",
       "acceptance": "Keep only workflows declared active with orchestrator role and expose their identity, runtime repository, and observed-run-count; a zero joined count means no retained match, not necessarily a stopped schedule.",
       "description": "Active campaign orchestrators annotated with retained Run presence.",
@@ -1436,7 +1436,7 @@
     },
     {
       "id": "campaign-unobserved-orchestrator-candidates",
-      "intent": "Mark active campaign orchestrators with no retained Runs in the selected horizon.",
+      "subject": "Mark active campaign orchestrators with no retained Runs in the selected horizon.",
       "objective": "Mark active orchestrators lacking retained run evidence for bounded telemetry or schedule review.",
       "acceptance": "Preserve active orchestrator identity and observed-run-count; is-unobserved marks zero retained matches and must not be interpreted as a runtime failure or evidence that dispatch was expected.",
       "description": "Active orchestrators annotated with whether runtime evidence is absent.",
@@ -1456,7 +1456,7 @@
     },
     {
       "id": "campaign-unobserved-orchestrators",
-      "intent": "Show active campaign orchestrators with no retained Runs in the selected horizon.",
+      "subject": "Show active campaign orchestrators with no retained Runs in the selected horizon.",
       "objective": "List active orchestrator declarations with no retained run observations for follow-up on evidence availability.",
       "acceptance": "Return only is-unobserved candidates with their workflow and repository identity; an empty result does not certify run completeness or scheduler health.",
       "description": "Active campaign orchestrators whose runtime state cannot be established from retained evidence.",
@@ -1476,7 +1476,7 @@
     },
     {
       "id": "campaign-runtime-problems",
-      "intent": "Combine current runtime failures with active orchestrators that have no retained Run evidence.",
+      "subject": "Combine current runtime failures with active orchestrators that have no retained Run evidence.",
       "objective": "Present observed failing streaks and unobserved active orchestrators together, without conflating the two conditions.",
       "acceptance": "Union the two candidate sets with their problem kind and identifying context; missing run evidence remains an observation gap rather than a confirmed runtime failure.",
       "description": "Current campaign runtime problems requiring investigation.",
@@ -1497,7 +1497,7 @@
     },
     {
       "id": "dispatches",
-      "intent": "Select workflow-dispatch runs from campaign-attributed workflow run evidence.",
+      "subject": "Select workflow-dispatch runs from campaign-attributed workflow run evidence.",
       "objective": "Inspect retained workflow_dispatch runs attributed to campaigns before comparing campaign dispatch activity.",
       "acceptance": "Include only campaign-runs with event workflow_dispatch and preserve run, attempt, attribution, status, and time; absence does not establish that no dispatch occurred beyond retained evidence.",
       "description": "Canonical workflow runs whose authoritative trigger is workflow_dispatch.",
@@ -1525,7 +1525,7 @@
     },
     {
       "id": "campaign-dispatch-totals",
-      "intent": "Summarize observed workflow dispatches for each centrally managed campaign.",
+      "subject": "Summarize observed workflow dispatches for each centrally managed campaign.",
       "objective": "Compare retained workflow_dispatch run counts across attributed campaigns.",
       "acceptance": "Count distinct run identifiers per campaign from dispatches; do not treat missing campaign attribution or unretained dispatches as zero actual activity.",
       "description": "Observed workflow-dispatch run totals grouped by campaign.",
@@ -1546,7 +1546,7 @@
     },
     {
       "id": "campaign-workflow-totals",
-      "intent": "Summarize observed workflow and execution totals for each centrally managed campaign.",
+      "subject": "Summarize observed workflow and execution totals for each centrally managed campaign.",
       "objective": "Compare declared orchestrator/worker composition, rollout registration, observed runs, and AI Credit usage by campaign.",
       "acceptance": "Group only orchestrator and worker workflow-inventory rows by campaign; retain workflow count, distinct roles/modes/registration and summed observed runs and AIC, without inferring successful outcomes.",
       "description": "Observed workflow, rollout, run, and AI Credit totals grouped by campaign.",
@@ -1570,7 +1570,7 @@
     },
     {
       "id": "campaign-repository-coverage",
-      "intent": "Count distinct registered target repositories reached by successful worker dispatches for each campaign.",
+      "subject": "Count distinct registered target repositories reached by successful worker dispatches for each campaign.",
       "objective": "Estimate observed campaign target reach from successful worker workflow_dispatch runs joined to registered repositories.",
       "acceptance": "Count distinct matched target-repository values per campaign only for successful worker dispatches; this is observed reach, not verified target outcomes or complete fleet coverage.",
       "description": "Campaign repository coverage derived from successful worker dispatch runs in the selected horizon.",
@@ -1593,7 +1593,7 @@
     },
     {
       "id": "campaign-inventory",
-      "intent": "List centrally managed campaigns with their observed workflow and execution totals.",
+      "subject": "List centrally managed campaigns with their observed workflow and execution totals.",
       "objective": "Compare declared campaigns with retained workflow composition, dispatches, target reach, runs, and AIC to choose an evidence-backed drill-down.",
       "acceptance": "Keep declared campaigns with campaign identity and link plus joined totals; defaulted zero values mean no matching retained evidence and cannot certify no activity, complete coverage, or successful outcomes.",
       "description": "Canonical campaign inventory enriched with observed workflow, rollout, run, repository coverage, and AI Credit totals.",
@@ -1624,7 +1624,7 @@
     },
     {
       "id": "firewall-domain-totals",
-      "intent": "Show each observed firewall domain with the number of runs and total accepted and blocked requests.",
+      "subject": "Show each observed firewall domain with the number of runs and total accepted and blocked requests.",
       "objective": "Identify domains with observed denied requests for a closer review of firewall evidence.",
       "acceptance": "Report distinct observed runs and native accepted and blocked request totals by domain; a denied request alone does not justify allowing egress, and no row does not prove no requests occurred.",
       "description": "Distinct runs and accepted and blocked request totals by firewall domain.",
@@ -1645,7 +1645,7 @@
     },
     {
       "id": "firewall-most-blocked-domains",
-      "intent": "Highlight the domains with the most blocked firewall requests.",
+      "subject": "Highlight the domains with the most blocked firewall requests.",
       "objective": "Prioritize up to ten observed domains by blocked request total for investigation.",
       "acceptance": "Rank by observed blocked totals and inspect underlying domain/workflow evidence before deciding whether a block needs attention; the ranking is not a policy authorization or an incidence rate.",
       "description": "The ten domains with the highest observed blocked request totals.",
@@ -1666,7 +1666,7 @@
     },
     {
       "id": "firewall-domain-workflows",
-      "intent": "Show workflows that allowed or blocked requests to each observed firewall domain.",
+      "subject": "Show workflows that allowed or blocked requests to each observed firewall domain.",
       "objective": "Locate which observed workflows contributed accepted or denied requests for a domain.",
       "acceptance": "Preserve workflow scope, source link, distinct runs, and native accepted and blocked totals; investigate the run and egress context rather than assuming a denied request is a failure or grounds for wider access.",
       "description": "Workflow-level accepted and blocked request totals by firewall domain.",
@@ -1692,7 +1692,7 @@
     },
     {
       "id": "mcp-tool-totals",
-      "intent": "Group observed MCP activity by tool and count calls and calling workflows, excluding the internal safe outputs server.",
+      "subject": "Group observed MCP activity by tool and count calls and calling workflows, excluding the internal safe outputs server.",
       "objective": "Expose tool-level call, workflow, and byte totals to investigate observed MCP usage.",
       "acceptance": "Group only observed non-safe-output-server calls by server and tool, preserving counts and byte totals; lack of calls does not establish no access, and call volume does not establish value or permission.",
       "description": "Observed MCP tool-call totals grouped by MCP server and tool, with the number of distinct calling workflows.",
@@ -1713,7 +1713,7 @@
     },
     {
       "id": "mcp-top-tools",
-      "intent": "Show the ten most frequently called MCP tools.",
+      "subject": "Show the ten most frequently called MCP tools.",
       "objective": "Identify up to ten tools with the highest observed non-safe-output-server call counts for inspection.",
       "acceptance": "Rank observed calls by tool label and inspect grouped tool evidence before drawing conclusions; do not treat popularity as effectiveness or authority to add tools.",
       "description": "The ten MCP tools with the most observed calls, excluding the internal safe outputs server.",
@@ -1734,7 +1734,7 @@
     },
     {
       "id": "steering-events",
-      "intent": "Prepare observed gateway steering warnings for aggregation by steering type and workflow.",
+      "subject": "Prepare observed gateway steering warnings for aggregation by steering type and workflow.",
       "objective": "Expose warning identity, run context, type, and timestamp for downstream steering diagnostics.",
       "acceptance": "Project recorded gateway steering events with workflow and run attribution where available; a warning is not a completed budget overrun, failure, or reason to increase limits.",
       "description": "Gateway steering warnings emitted when a run approaches its AI Credit budget, time limit, or another declared limit, labelled with a readable steering type.",
@@ -1755,7 +1755,7 @@
     },
     {
       "id": "steering-type-totals",
-      "intent": "Show how often each kind of steering warning occurred.",
+      "subject": "Show how often each kind of steering warning occurred.",
       "objective": "Identify steering warning categories to inspect in their run context.",
       "acceptance": "Report observed event totals and distinct runs and workflows by type; confirm underlying warnings before interpreting frequency, and do not infer actual limit breaches.",
       "description": "Observed gateway steering warnings grouped by steering type with the number of affected runs and workflows.",
@@ -1777,7 +1777,7 @@
     },
     {
       "id": "steering-workflow-totals",
-      "intent": "Count steering warnings for each workflow.",
+      "subject": "Count steering warnings for each workflow.",
       "objective": "Expose workflow-level warning totals and token/time warning breakdowns for downstream review.",
       "acceptance": "Count recorded events and distinct runs by workflow, retaining the declared token/time categories; other types remain in total events and no warning alone establishes a failure.",
       "description": "Gateway steering warnings grouped by workflow, split into token-budget and time-limit warnings.",
@@ -1797,7 +1797,7 @@
     },
     {
       "id": "steering-workflows",
-      "intent": "Present workflow steering totals with a link to each workflow dashboard.",
+      "subject": "Present workflow steering totals with a link to each workflow dashboard.",
       "objective": "Show observed workflow steering totals with navigation to the affected run context.",
       "acceptance": "Keep workflow identity, link, events, runs, and warning breakdowns tied to their grouped evidence; use drill-through before recommending changes, not warning counts as a basis to widen budgets.",
       "description": "Workflow steering totals labelled with a link to the workflow runtime page.",
@@ -1819,7 +1819,7 @@
     },
     {
       "id": "steering-top-workflows",
-      "intent": "Highlight the workflows with the most steering warnings.",
+      "subject": "Highlight the workflows with the most steering warnings.",
       "objective": "Prioritize up to ten workflows by observed warning count for investigation.",
       "acceptance": "Rank recorded warning totals with workflow context, checking underlying events and telemetry coverage; a high rank neither proves overrun nor justifies a limit change.",
       "description": "The ten workflows with the highest observed gateway steering warning totals.",
@@ -1841,7 +1841,7 @@
     },
     {
       "id": "entity-workflow-run-totals",
-      "intent": "Summarize run outcomes and AI Credit consumption for reusable workflow cards.",
+      "subject": "Summarize run outcomes and AI Credit consumption for reusable workflow cards.",
       "objective": "Compare retained run-attempt activity, recorded conclusions, and AI Credit usage per workflow card.",
       "acceptance": "Group by organization, repository, and workflow; expose distinct run-attempt count, success/failure conclusion counts, and sum of recorded AIC, without treating missing run history as zero actual activity.",
       "description": "",
@@ -1860,7 +1860,7 @@
     },
     {
       "id": "entity-workflows",
-      "intent": "Project workflow entities for reusable workflow cards and repository drill-down.",
+      "subject": "Project workflow entities for reusable workflow cards and repository drill-down.",
       "objective": "Relate declared workflows to observed run and AIC totals for workflow-level drill-down.",
       "acceptance": "Keep declared workflow identity, role, registration, campaign, link, and joined totals; a missing run match defaults to displayed zeros but does not establish no executions or outcomes.",
       "description": "",
@@ -1892,7 +1892,7 @@
     },
     {
       "id": "repository-runs",
-      "intent": "Project canonical runs into repository-addressable run evidence.",
+      "subject": "Project canonical runs into repository-addressable run evidence.",
       "objective": "Expose retained run chronology and status for a selected repository's drill-down.",
       "acceptance": "Retain repository coordinate, workflow, run identity, title, event, start time, conclusion, mode, AIC, and run link; absent details or runs do not establish a healthy or idle repository.",
       "description": "Workflow runs with a stable repository route key.",
@@ -1919,7 +1919,7 @@
     },
     {
       "id": "repository-workflow-totals",
-      "intent": "Summarize declared and disabled workflow counts by repository.",
+      "subject": "Summarize declared and disabled workflow counts by repository.",
       "objective": "Compare declared and disabled workflow counts for each repository in the retained workflow inventory.",
       "acceptance": "Count declared workflows and workflow-active=false entries by organization and repository; missing declarations must not be interpreted as a complete zero-workflow inventory.",
       "description": "Declared and disabled workflow totals for each repository.",
@@ -1938,7 +1938,7 @@
     },
     {
       "id": "repository-report-totals",
-      "intent": "Summarize published outcome report counts by repository.",
+      "subject": "Summarize published outcome report counts by repository.",
       "objective": "Show retained outcome-report volume per repository for comparison with observed execution.",
       "acceptance": "Count retained outcome rows by organization and repository; a missing aggregate does not prove no reports were published or that reported outcomes succeeded.",
       "description": "Published report totals for each repository.",
@@ -1957,7 +1957,7 @@
     },
     {
       "id": "repository-run-totals",
-      "intent": "Summarize distinct runs, failures, and approval-required runs by repository.",
+      "subject": "Summarize distinct runs, failures, and approval-required runs by repository.",
       "objective": "Compare retained run volume, selected failure and action-required conclusions, and imported-record presence per repository.",
       "acceptance": "Group by organization and repository; preserve distinct run IDs, configured failure/action-required conclusion counts, and imported-run sums. Missing enrichment or run history must not be treated as complete coverage.",
       "description": "Distinct run and conclusion totals for each repository.",
@@ -1980,7 +1980,7 @@
     },
     {
       "id": "repository-activity-core",
-      "intent": "Join each repository with its workflow, report, and run totals.",
+      "subject": "Join each repository with its workflow, report, and run totals.",
       "objective": "Attach retained workflow, report, and run aggregates to each repository for bounded inventory review.",
       "acceptance": "Preserve each repository and the available joined aggregates by organization and repository; unmatched metrics remain missing evidence, not confirmed zero activity or evaluated outcomes.",
       "description": "Repository inventory joined with workflow, report, evaluation, and run totals.",
@@ -2009,7 +2009,7 @@
     },
     {
       "id": "repository-activity",
-      "intent": "Show repository-level execution health, outcome activity, and AI Credit usage in an actionable inventory.",
+      "subject": "Show repository-level execution health, outcome activity, and AI Credit usage in an actionable inventory.",
       "objective": "Prioritize repository drill-down using declared workflows, observed runs, reports, failures, import coverage, and AIC.",
       "acceptance": "Return repository identity and link with retained counts, ingestion indicator, failure summary, AIC, and computed status; statuses describe retained evidence only, and an empty or unavailable preview cannot verify health, outcomes, or zero activity.",
       "description": "Repository-local execution health and attributed outcome totals.",
@@ -2044,7 +2044,7 @@
     },
     {
       "id": "entity-runs",
-      "intent": "Project run entities for reusable run cards and workflow drill-down.",
+      "subject": "Project run entities for reusable run cards and workflow drill-down.",
       "objective": "Expose retained run-attempt identity, execution timing, conclusion, and link for a bounded workflow-run inspection.",
       "acceptance": "Keep organization, repository, workflow, run and attempt with status, conclusion, event, branch, duration, timestamps, and run link; missing timing or conclusion remains unknown rather than inferred success.",
       "description": "",
@@ -2079,7 +2079,7 @@
     },
     {
       "id": "workflow-runs",
-      "intent": "Project canonical runs into route-addressable workflow run evidence.",
+      "subject": "Project canonical runs into route-addressable workflow run evidence.",
       "objective": "Trace retained runs and recorded failure evidence for a selected workflow route.",
       "acceptance": "Preserve workflow route, run identity, start/end, status, conclusion, failure fields, mode, engine/model metadata, and run link; missing failure details do not prove success or rule out incomplete import.",
       "description": "Workflow runs with a stable repository and workflow route key.",
@@ -2106,7 +2106,7 @@
     },
     {
       "id": "workflow-reports",
-      "intent": "Project retained outcomes into route-addressable workflow reports.",
+      "subject": "Project retained outcomes into route-addressable workflow reports.",
       "objective": "Review retained workflow outcome reports separately from execution status before interpreting operational results.",
       "acceptance": "Keep route, safe output, report title and summary, recorded status, category, observation time, metadata, and external link; missing reports or status do not imply success or no work.",
       "description": "Workflow outcome reports with stable route keys and disposition fields.",
@@ -2132,7 +2132,7 @@
     },
     {
       "id": "audit-event-summary-buckets",
-      "intent": "Aggregate high- and medium-severity audit events with the same severity and summary by workflow.",
+      "subject": "Aggregate high- and medium-severity audit events with the same severity and summary by workflow.",
       "objective": "Select recurring high- or medium-severity audit summaries for run-level investigation.",
       "acceptance": "Each bucket's event count is traceable to retained audit or tool observations with the same campaign, severity, workflow, and summary; missing workflow attribution stays unknown, and a count alone does not verify impact.",
       "description": "High- and medium-severity audit event counts grouped by severity, workflow, and shared summary.",
@@ -2162,7 +2162,7 @@
     },
     {
       "id": "campaign-workflows",
-      "intent": "List campaign-owned orchestrator and worker workflows with database-backed execution totals.",
+      "subject": "List campaign-owned orchestrator and worker workflows with database-backed execution totals.",
       "objective": "Choose an active campaign workflow whose observed execution warrants inspection.",
       "acceptance": "Listed workflows match active declared orchestrator or worker inventory entries; runs and AI Credits agree with the selected-horizon inventory, and absence is not evidence of disabled authority or no executions. Rollout mode is context, not permission to change policy.",
       "description": "Campaign workflows projected from the canonical workflow inventory.",
@@ -2194,7 +2194,7 @@
     },
     {
       "id": "campaign-reports",
-      "intent": "Project retained outcomes into campaign-addressable report evidence.",
+      "subject": "Project retained outcomes into campaign-addressable report evidence.",
       "objective": "Identify a campaign report whose durable outcome record needs follow-up.",
       "acceptance": "Each report's campaign, title, source link, observation time, and disposition match its retained outcome; missing status is labeled unknown rather than accepted or resolved, and report production is not verified impact.",
       "description": "Campaign outcome reports with database-backed disposition fields.",
@@ -2220,7 +2220,7 @@
     },
     {
       "id": "campaign-worker-issues",
-      "intent": "Project issue outcomes created by campaign worker workflows.",
+      "subject": "Project issue outcomes created by campaign worker workflows.",
       "objective": "Choose a campaign worker issue whose current recorded disposition needs review.",
       "acceptance": "Every included issue outcome joins a declared worker on organization, repository, and workflow and retains its issue, run, and status evidence; missing closing details remain unknown and closure is not proof of resolution.",
       "description": "Campaign-addressable issue outcomes restricted to declared worker workflows.",
@@ -2248,7 +2248,7 @@
     },
     {
       "id": "campaign-issue-tab-counts",
-      "intent": "Count the retained worker issues available for each campaign Reports tab.",
+      "subject": "Count the retained worker issues available for each campaign Reports tab.",
       "objective": "Decide whether a campaign has retained worker issue reports to inspect.",
       "acceptance": "For each returned campaign, items equals the number of rows in campaign-worker-issues for that campaign in the same horizon; missing campaigns are not treated as zero issues or verified resolution.",
       "description": "One campaign row with the number of retained issue outcomes produced by campaign workers.",
@@ -2280,7 +2280,7 @@
     },
     {
       "id": "campaign-readme-orchestrators",
-      "intent": "Resolve one repository link for each campaign README from its declared orchestrator workflow.",
+      "subject": "Resolve one repository link for each campaign README from its declared orchestrator workflow.",
       "objective": "Locate the declared orchestrator repository to contextualize a campaign README.",
       "acceptance": "Each returned campaign and repository link traces to a declared orchestrator workflow; missing or multiple declarations are reported as uncertain rather than inventing a canonical repository.",
       "description": "",
@@ -2299,7 +2299,7 @@
     },
     {
       "id": "campaign-readme-details",
-      "intent": "Present retained campaign README content with its repository-relative link context.",
+      "subject": "Present retained campaign README content with its repository-relative link context.",
       "objective": "Open the campaign's retained README in its declared repository context before relying on its guidance.",
       "acceptance": "The README text and path match the campaign record and any repository link resolves through a declared orchestrator; absent content or repository linkage remains unavailable, not inferred.",
       "description": "",
@@ -2327,7 +2327,7 @@
     },
     {
       "id": "campaign-memory-campaigns",
-      "intent": "Provide the registered campaigns whose repository memory can be browsed together.",
+      "subject": "Provide the registered campaigns whose repository memory can be browsed together.",
       "objective": "Choose a registered campaign for repository-memory inspection.",
       "acceptance": "Each campaign identity and display name matches the retained campaign registry in the selected scope; listing a campaign does not establish that memory observations exist or are complete.",
       "description": "Registered campaigns ordered for the all-campaign repository-memory browser.",
@@ -2348,7 +2348,7 @@
     },
     {
       "id": "campaign-operational-value-repository-run-day-totals",
-      "intent": "Summarize concluded campaign run outcomes by repository and UTC day as aligned context for operational-value history.",
+      "subject": "Summarize concluded campaign run outcomes by repository and UTC day as aligned context for operational-value history.",
       "objective": "Identify repository-days with failed or missing concluded run activity to inspect beside operational-value observations.",
       "acceptance": "For each campaign, repository, and UTC started-at day, distinct concluded, successful, and failed attempt counts reconcile to retained completed campaign runs under their declared statuses; other conclusions remain separate, and temporal alignment is not causal evidence.",
       "description": "Daily repository success, failure, and other concluded-run counts for visual association only; these observations do not establish causation.",
@@ -2369,7 +2369,7 @@
     },
     {
       "id": "campaign-operational-value-repository-run-days",
-      "intent": "Provide daily repository run outcomes as nearby context for operational-value observations.",
+      "subject": "Provide daily repository run outcomes as nearby context for operational-value observations.",
       "objective": "Spot repository-day reliability changes worth checking against the underlying run attempts.",
       "acceptance": "The percent equals 100 times successful-runs divided by concluded-runs for the same repository-day when the denominator exists; zero or missing denominators remain undefined, and the rate is not operational value.",
       "description": "Repository success and failure counts for temporal proximity only, without converting run outcomes into operational value or implying causation.",
@@ -2390,7 +2390,7 @@
     },
     {
       "id": "campaign-operational-value-run-day-totals",
-      "intent": "Summarize concluded campaign run outcomes by UTC day as aligned context for weighted campaign operational-value history.",
+      "subject": "Summarize concluded campaign run outcomes by UTC day as aligned context for weighted campaign operational-value history.",
       "objective": "Identify campaign-days with changed run-outcome counts for follow-up at repository level.",
       "acceptance": "Each campaign-day's concluded, successful, and failed counts equal sums of its retained repository-day counts; absent repository days are not assumed to be zero, and aggregate run success does not establish operational impact.",
       "description": "Daily campaign-wide success context aggregated from repository run-day counts without implying a causal relationship.",
@@ -2411,7 +2411,7 @@
     },
     {
       "id": "campaign-operational-value-run-days",
-      "intent": "Provide daily campaign-wide run outcomes as nearby context for weighted operational-value observations.",
+      "subject": "Provide daily campaign-wide run outcomes as nearby context for weighted operational-value observations.",
       "objective": "Compare campaign-day runtime reliability with nearby value observations before selecting days to investigate.",
       "acceptance": "Success rate is successful-runs divided by concluded-runs, expressed as a percent only where the denominator exists; the numerator and denominator remain inspectable, and co-occurrence does not establish causality or operational value.",
       "description": "Campaign success and failure counts for temporal proximity only, without implying a causal relationship.",
@@ -2439,7 +2439,7 @@
     },
     {
       "id": "campaign-performance-baseline-totals",
-      "intent": "Establish a selected-horizon campaign baseline from concluded run attempts while keeping reliability, unverified production, and efficiency as separate facts.",
+      "subject": "Establish a selected-horizon campaign baseline from concluded run attempts while keeping reliability, unverified production, and efficiency as separate facts.",
       "objective": "Select campaigns whose retained run reliability, output production, or AI Credit efficiency merits closer examination.",
       "acceptance": "Concluded and successful attempts, outputs, and mean AI Credits reconcile to filtered retained runs; absent denominators or costs stay unknown. Produced outputs are unverified, not operational value.",
       "description": "Canonical campaign run attempts aggregated into bounded selected-horizon baseline totals without treating runtime success or produced outputs as operational value.",
@@ -2460,7 +2460,7 @@
     },
     {
       "id": "campaign-performance-baseline",
-      "intent": "Turn each campaign's selected-horizon baseline totals into deterministic reliability and production signals with an explicit successful-run efficiency fact.",
+      "subject": "Turn each campaign's selected-horizon baseline totals into deterministic reliability and production signals with an explicit successful-run efficiency fact.",
       "objective": "Decide which campaign baseline signal needs run- or output-level verification next.",
       "acceptance": "Success-rate and signal labels follow the retained totals and their explicit denominators; no concluded attempts or output evidence is distinguished from zero verified impact, and AI Credits per successful run remain a separate cost fact rather than a value score.",
       "description": "A bounded, explainable baseline that distinguishes runtime reliability, unverified output production, and AI Credit efficiency.",
@@ -2488,7 +2488,7 @@
     },
     {
       "id": "campaign-problem-runs",
-      "intent": "List retained failed runs for campaign problem investigation.",
+      "subject": "List retained failed runs for campaign problem investigation.",
       "objective": "Choose a recent failed campaign run to investigate with its diagnostic evidence.",
       "acceptance": "Each row corresponds to a retained campaign run with a declared failure, startup-failure, stale, or timed-out status and is ordered newest first; absence is not proof of healthy execution or complete ingestion.",
       "description": "Failed campaign runs ordered from newest to oldest with retained diagnostic metadata.",
@@ -2509,7 +2509,7 @@
     },
     {
       "id": "campaign-problem-run-evidence",
-      "intent": "Attach the current campaign runtime problem summary to each retained failed Run for that partition.",
+      "subject": "Attach the current campaign runtime problem summary to each retained failed Run for that partition.",
       "objective": "Inspect the failure count and problem kind alongside a failed run without inferring its root cause.",
       "acceptance": "Each returned row joins a retained failed run to a runtime problem on campaign, workflow, and runtime repository; the inner join drops unmatched runs, so compare with campaign-problem-runs before interpreting absence as no problem.",
       "description": "Failed campaign runs annotated with the failure-count and problem-kind of their active runtime problem, one row per retained failed Run.",
@@ -2532,7 +2532,7 @@
     },
     {
       "id": "campaign-problem-latest-target-runs",
-      "intent": "Identify the most recent retained failed Run for each campaign workflow target repository.",
+      "subject": "Identify the most recent retained failed Run for each campaign workflow target repository.",
       "objective": "Select the latest retained failed run identity for each campaign workflow and target partition.",
       "acceptance": "For every returned campaign, workflow, runtime repository, and target repository, latest-target-run agrees with the maximum retained failed run identity in that partition; a missing partition is not a healthy target.",
       "description": "One row per campaign workflow and target repository with its most recent retained failed Run identity.",
@@ -2554,7 +2554,7 @@
     },
     {
       "id": "campaign-problem-error-groups",
-      "intent": "Cluster retained failed Run evidence by workflow, runtime repository, target repository, and error signature so repeated identical failures for one target collapse into one diagnosable group.",
+      "subject": "Cluster retained failed Run evidence by workflow, runtime repository, target repository, and error signature so repeated identical failures for one target collapse into one diagnosable group.",
       "objective": "Rank repeated target-specific error signatures for investigation without merging unrelated failures.",
       "acceptance": "Occurrence-count and latest-run match retained failed runs grouped by campaign, workflow, repositories, problem kind, and signature; unknown signatures may group together. Counts do not prove a root cause.",
       "description": "One row per distinct target repository and error signature within a campaign runtime problem partition, with an occurrence count and the most recent matching Run identity for follow-up.",
@@ -2576,7 +2576,7 @@
     },
     {
       "id": "campaign-current-problem-error-groups",
-      "intent": "Keep only the newest error signature for each campaign workflow target repository.",
+      "subject": "Keep only the newest error signature for each campaign workflow target repository.",
       "objective": "Focus investigation on the signature associated with the latest retained failed run per target.",
       "acceptance": "Each returned group joins campaign-problem-latest-target-runs on campaign, workflow, runtime repository, and latest run ID; target repository is not a join key, so verify target identity against underlying runs before claiming one current signature per target.",
       "description": "Current target-specific error groups whose representative Run is the target repository's most recent retained failed Run.",
@@ -2599,7 +2599,7 @@
     },
     {
       "id": "campaign-problem-items",
-      "intent": "Attach the most recent representative Run evidence to each distinct campaign runtime problem error signature.",
+      "subject": "Attach the most recent representative Run evidence to each distinct campaign runtime problem error signature.",
       "objective": "Open the representative failed run and target for each current campaign problem group.",
       "acceptance": "Check joined run-link, run ID, campaign, workflow, and runtime repository; verify target against run evidence (not a join key). Unobserved orchestrators need inventory review. Missing evidence remains unknown; rollout mode does not authorize policy changes.",
       "description": "Current campaign runtime problems represented by the newest error signature for each target repository, with its effective rollout mode, an occurrence count, the most recent matching failed Run, and a repair prompt.",
@@ -2643,7 +2643,7 @@
     },
     {
       "id": "campaign-problem-tab-counts",
-      "intent": "Count the current runtime problem items available for each campaign Problems tab.",
+      "subject": "Count the current runtime problem items available for each campaign Problems tab.",
       "objective": "Determine whether the campaign has current retained failure groups requiring review.",
       "acceptance": "For every returned campaign, items equals the number of campaign-problem-items rows in the same horizon; a missing count does not establish zero failures or healthy execution.",
       "description": "One campaign row with the number of current runtime problem groups.",
@@ -2677,7 +2677,7 @@
     },
     {
       "id": "campaign-operational-value-primary-series",
-      "intent": "Project numeric repository-level campaign operational-value observations into temporal series with native units and direction.",
+      "subject": "Project numeric repository-level campaign operational-value observations into temporal series with native units and direction.",
       "objective": "Choose a repository and native operational-value measure whose observed trend needs evidence review.",
       "acceptance": "Each point has time, repository, definition, native unit and direction; null and nonnumeric values are omitted, not zero. Requery operational-values and campaign-operational-value-evidence-state for point maturity before interpreting trends; do not infer causality.",
       "description": "Repository operational-value numeric series; point-level maturity and missing values require source observation review.",
@@ -2703,7 +2703,7 @@
     },
     {
       "id": "campaign-operational-value-evidence-state-totals",
-      "intent": "Summarize whether selected-horizon repository operational-value observations include matured evidence or only interim evidence.",
+      "subject": "Summarize whether selected-horizon repository operational-value observations include matured evidence or only interim evidence.",
       "objective": "Determine whether the campaign has matured value observations available for inspection.",
       "acceptance": "Observation-count matches retained timestamped observations and matured-observation-count counts only non-null native values with matured status for the same campaign and horizon; missing campaigns do not imply zero value or no evidence.",
       "description": "Campaign-level maturity counts used to distinguish interim from matured operational-value evidence.",
@@ -2722,7 +2722,7 @@
     },
     {
       "id": "campaign-operational-value-evidence-state",
-      "intent": "Classify selected-horizon repository operational-value evidence by maturity without changing native values.",
+      "subject": "Classify selected-horizon repository operational-value evidence by maturity without changing native values.",
       "objective": "Decide whether to inspect matured observations or label the campaign's value evidence interim.",
       "acceptance": "Evidence-state is observed-value only when matured-observation-count is positive, otherwise interim-evidence for a returned campaign; this classification neither changes native measure values nor upgrades missing or interim evidence to a verified outcome.",
       "description": "Campaign-level evidence state consumed by the repository operational-value history presenter.",
@@ -2748,7 +2748,7 @@
     },
     {
       "id": "campaign-operational-value-plot-inventory",
-      "intent": "Describe each repository operational-value plot rendered on campaign Insights.",
+      "subject": "Describe each repository operational-value plot rendered on campaign Insights.",
       "objective": "Identify which repository operational-value plots are backed by available series evidence.",
       "acceptance": "Every plot entry derives from a primary-series group with its repository, native measure definition, unit, and direction; neither null-only observations nor point-level maturity are represented, so requery operational-values before treating an empty inventory as zero value or a plot as matured evidence.",
       "description": "Plot inventory derived from numeric repository operational-value series; maturity must be checked separately.",
@@ -2767,7 +2767,7 @@
     },
     {
       "id": "campaign-audit-summary-plot-inventory",
-      "intent": "Describe the rendered audit-summary chart using the shared campaign Insights plot contract.",
+      "subject": "Describe the rendered audit-summary chart using the shared campaign Insights plot contract.",
       "objective": "Find campaigns with retained high- or medium-severity audit summaries worth reviewing.",
       "acceptance": "Each campaign's bucket count equals its retained audit-event-summary-buckets rows; the count describes displayed groups, not distinct incidents or confirmed harm, and missing buckets are not proof of safety.",
       "description": "One plot-inventory row per campaign when its high- and medium-severity audit summary chart has data.",
@@ -2788,7 +2788,7 @@
     },
     {
       "id": "campaign-insight-plot-inventory",
-      "intent": "Inventory every plot rendered on each campaign Insights page through one reusable plot contract.",
+      "subject": "Inventory every plot rendered on each campaign Insights page through one reusable plot contract.",
       "objective": "Choose an available campaign Insights plot to inspect its underlying evidence.",
       "acceptance": "Each plot entry is supplied by the repository value or audit summary plot inventory for the same campaign; no plot count is treated as outcome quality, and unavailable evidence is not synthesized into a plot.",
       "description": "One campaign row per rendered Insights plot, independent of the plot's data source or renderer.",
@@ -2811,7 +2811,7 @@
     },
     {
       "id": "campaign-insight-tab-counts",
-      "intent": "Count the plots declared by the shared campaign Insights plot inventory.",
+      "subject": "Count the plots declared by the shared campaign Insights plot inventory.",
       "objective": "Determine whether a campaign has evidence-backed Insights plots to inspect.",
       "acceptance": "For every returned campaign, items equals its rows in campaign-insight-plot-inventory for the same horizon; absent rows do not establish absent value, and plot counts do not measure impact.",
       "description": "One campaign row with the number of rendered Insights plots, independent of plot type.",
@@ -2845,7 +2845,7 @@
     },
     {
       "id": "runs-daily-conclusions",
-      "intent": "Aggregate workflow run conclusions by UTC day for the Runs stacked area graph.",
+      "subject": "Aggregate workflow run conclusions by UTC day for the Runs stacked area graph.",
       "objective": "Expose changes in observed run conclusions by day for investigation.",
       "acceptance": "Count retained runs by started-at UTC day and recorded conclusion; an empty day or missing conclusion is not evidence of healthy execution or absence of activity.",
       "description": "",
@@ -2866,7 +2866,7 @@
     },
     {
       "id": "entity-events",
-      "intent": "Project all run-owned records for reusable cards and run drill-down.",
+      "subject": "Project all run-owned records for reusable cards and run drill-down.",
       "objective": "Expose run-owned event identity, status, provenance, timestamp, and available navigation links for inspection.",
       "acceptance": "Projected event fields and fallback URL trace to the source record; a missing link or event is not proof of no output, and event status alone does not verify downstream impact.",
       "description": "",
@@ -2912,7 +2912,7 @@
     },
     {
       "id": "runs-table",
-      "intent": "Show observed workflow runs in a table with execution, repository, workflow, engine, model, and navigation details.",
+      "subject": "Show observed workflow runs in a table with execution, repository, workflow, engine, model, and navigation details.",
       "objective": "Locate observed runs whose recorded status or conclusion needs closer inspection.",
       "acceptance": "Show recorded run identity, status, conclusion, scope, execution metadata, and source links in newest-first order; absent runs require a freshness and coverage check, and a successful run is not proof of accepted outcomes.",
       "description": "Observed workflow runs ordered from newest to oldest.",
@@ -2933,7 +2933,7 @@
     },
     {
       "id": "workflow-aic-per-run",
-      "intent": "List declared workflows with observed runs and their average AI Credit cost per run.",
+      "subject": "List declared workflows with observed runs and their average AI Credit cost per run.",
       "objective": "Identify workflows with observed run AIC averages worth investigating alongside run evidence.",
       "acceptance": "Include only workflow inventory rows marked as having observed runs, retaining their reported averages and missing telemetry; inspect underlying runs and separate outcome evidence before inferring waste or benefit.",
       "description": "Workflow AI Credit averages limited to workflows with at least one observed run.",
@@ -2959,7 +2959,7 @@
     },
     {
       "id": "marketplace-registry-options",
-      "intent": "Provide distinct authorized registry choices from resolved package records.",
+      "subject": "Provide distinct authorized registry choices from resolved package records.",
       "objective": "List the registry choices available in the current authorized marketplace package projection.",
       "acceptance": "Return distinct registry IDs and names with package counts from resolved records; missing or inaccessible registries must not be inferred from absent rows.",
       "description": "",
@@ -2980,7 +2980,7 @@
     },
     {
       "id": "marketplace-publisher-options",
-      "intent": "Provide distinct publisher choices from resolved package records.",
+      "subject": "Provide distinct publisher choices from resolved package records.",
       "objective": "List the publisher choices available in the current authorized marketplace package projection.",
       "acceptance": "Return distinct publishers with package counts from resolved records; an absent publisher is not proof that its packages do not exist.",
       "description": "",
@@ -3001,7 +3001,7 @@
     },
     {
       "id": "marketplace-ranked",
-      "intent": "Order keyword-matched campaign packages by reviewed publisher attestation, public maintenance evidence, local adoption evidence, and public popularity, without treating missing evidence as zero.",
+      "subject": "Order keyword-matched campaign packages by reviewed publisher attestation, public maintenance evidence, local adoption evidence, and public popularity, without treating missing evidence as zero.",
       "objective": "Present authorized campaign packages in deterministic discovery order using only observable, governed signals.",
       "acceptance": "Rank verified provenance and known maintenance before observed adoption and public stars, break ties by name and ID, and preserve unknown evidence rather than treating it as zero or verified.",
       "description": "",
@@ -3022,7 +3022,7 @@
     },
     {
       "id": "ingestion-health",
-      "intent": "Show the current Redis-backed webhook and collection health snapshot.",
+      "subject": "Show the current Redis-backed webhook and collection health snapshot.",
       "objective": "Determine whether the reported collection, webhook, queue, and backfill state warrants inspecting ingestion diagnostics.",
       "acceptance": "Report the observed health, queue, failure, success, and projection timestamps together; verify freshness and configuration before calling collection healthy, and treat missing state as unknown rather than zero.",
       "description": "",
@@ -3041,7 +3041,7 @@
     },
     {
       "id": "github-api-usage",
-      "intent": "Show retained GitHub API quota usage per bucket and in aggregate over the last 24 hours.",
+      "subject": "Show retained GitHub API quota usage per bucket and in aggregate over the last 24 hours.",
       "objective": "Determine whether any GitHub App installation or the CAO fleet as a whole is approaching its GitHub API rate limit.",
       "acceptance": "Report peak usage percentages with their limits, used, and reserved counts; treat a slot without observations as unknown rather than idle, and never infer credentials from bucket identity.",
       "description": "",
@@ -3060,7 +3060,7 @@
     },
     {
       "id": "marketplace-package-detail",
-      "intent": "Expose normalized marketplace package records for source-coordinate lookup by the detail view.",
+      "subject": "Expose normalized marketplace package records for source-coordinate lookup by the detail view.",
       "objective": "Locate the resolver-produced package record for a source coordinate supplied by the consuming view.",
       "acceptance": "Use the returned package-source, registry, ref, and resolved-commit fields when inspecting a matching record; the query itself does not filter by coordinate, and an absent match is not proof of package nonexistence or approval.",
       "description": "",
@@ -3087,7 +3087,7 @@
     },
     {
       "id": "friction-by-workflow",
-      "intent": "Rank workflows by observed gh-aw audit friction AI Credit totals for investigation.",
+      "subject": "Rank workflows by observed gh-aw audit friction AI Credit totals for investigation.",
       "objective": "Identify which repository and workflow combinations have the largest measured friction totals in retained observations.",
       "acceptance": "Compare friction-aic and distinct runs with the underlying measurement states and attribution evidence; do not equate a ranking with avoidable cost or a validated saving.",
       "description": "Total gh-aw audit friction cost grouped by repository and workflow.",
@@ -3106,7 +3106,7 @@
     },
     {
       "id": "friction-observations",
-      "intent": "List retained gh-aw audit friction measurements with their run context and attribution totals.",
+      "subject": "List retained gh-aw audit friction measurements with their run context and attribution totals.",
       "objective": "Trace each reported friction measurement to a run and distinguish counted, suppressed, and unattributed occurrences.",
       "acceptance": "Preserve native AIC, total-run AIC, measurement state, timestamps, links, and occurrence counts; missing or unattributed evidence remains uncertain, not a verified opportunity for savings.",
       "description": "Newest friction measurements first, preserving the native audit values and uncertainty state.",
@@ -3125,7 +3125,7 @@
     },
     {
       "id": "indexing-daily-records",
-      "intent": "Aggregate records committed from CAO Activity by ingestion UTC day.",
+      "subject": "Aggregate records committed from CAO Activity by ingestion UTC day.",
       "objective": "Expose the observed daily committed-record totals for ingestion diagnostics.",
       "acceptance": "Each returned UTC day sums committedRecords from the selected ingestion transaction kinds; absent days or low totals alone do not establish missing source records.",
       "description": "",
@@ -3146,7 +3146,7 @@
     },
     {
       "id": "indexing-daily-workflow-runs",
-      "intent": "Aggregate workflow runs ingested from CAO Activity by UTC day.",
+      "subject": "Aggregate workflow runs ingested from CAO Activity by UTC day.",
       "objective": "Expose the observed daily raw-run totals from ingestion transactions.",
       "acceptance": "Each returned UTC day sums rawRuns from the selected ingestion transaction kinds; transaction volume is not a count of distinct retained runs or proof of source coverage.",
       "description": "",
@@ -3167,7 +3167,7 @@
     },
     {
       "id": "indexing-campaigns-table-count",
-      "intent": "Count retained campaigns rows in the dashboard database.",
+      "subject": "Count retained campaigns rows in the dashboard database.",
       "objective": "Provide the retained campaigns row count for the table-count diagnostic.",
       "acceptance": "Label the result campaigns and count campaign rows in the current database; absence or zero does not establish completeness or expected campaign coverage.",
       "description": "",
@@ -3186,7 +3186,7 @@
     },
     {
       "id": "indexing-repositories-table-count",
-      "intent": "Count retained repositories rows in the dashboard database.",
+      "subject": "Count retained repositories rows in the dashboard database.",
       "objective": "Provide the retained repositories row count for the table-count diagnostic.",
       "acceptance": "Label the result repositories and count repository rows in the current database; absence or zero does not establish completeness or expected repository coverage.",
       "description": "",
@@ -3205,7 +3205,7 @@
     },
     {
       "id": "indexing-workflows-table-count",
-      "intent": "Count retained workflows rows in the dashboard database.",
+      "subject": "Count retained workflows rows in the dashboard database.",
       "objective": "Provide the retained workflows row count for the table-count diagnostic.",
       "acceptance": "Label the result workflows and count workflow rows in the current database; absence or zero does not establish completeness or expected workflow coverage.",
       "description": "",
@@ -3224,7 +3224,7 @@
     },
     {
       "id": "indexing-runs-table-count",
-      "intent": "Count retained workflow runs rows in the dashboard database.",
+      "subject": "Count retained workflow runs rows in the dashboard database.",
       "objective": "Provide the retained workflow runs row count for the table-count diagnostic.",
       "acceptance": "Label the result workflow runs and count run rows in the current database; absence or zero does not establish completeness or expected execution volume.",
       "description": "",
@@ -3243,7 +3243,7 @@
     },
     {
       "id": "indexing-domains-table-count",
-      "intent": "Count retained network domains rows in the dashboard database.",
+      "subject": "Count retained network domains rows in the dashboard database.",
       "objective": "Provide the retained network domains row count for the table-count diagnostic.",
       "acceptance": "Label the result network domains and count domain event rows in the current database; absence or zero does not prove no network activity.",
       "description": "",
@@ -3262,7 +3262,7 @@
     },
     {
       "id": "indexing-tools-table-count",
-      "intent": "Count retained tool events rows in the dashboard database.",
+      "subject": "Count retained tool events rows in the dashboard database.",
       "objective": "Provide the retained tool events row count for the table-count diagnostic.",
       "acceptance": "Label the result tool events and count tool event rows in the current database; absence or zero does not prove no tool use.",
       "description": "",
@@ -3281,7 +3281,7 @@
     },
     {
       "id": "indexing-audits-table-count",
-      "intent": "Count retained audit events rows in the dashboard database.",
+      "subject": "Count retained audit events rows in the dashboard database.",
       "objective": "Provide the retained audit events row count for the table-count diagnostic.",
       "acceptance": "Label the result audit events and count audit event rows in the current database; absence or zero does not prove no audit findings.",
       "description": "",
@@ -3300,7 +3300,7 @@
     },
     {
       "id": "indexing-issues-table-count",
-      "intent": "Count retained issue events rows in the dashboard database.",
+      "subject": "Count retained issue events rows in the dashboard database.",
       "objective": "Provide the retained issue events row count for the table-count diagnostic.",
       "acceptance": "Label the result issue events and count issue event rows in the current database; absence or zero does not prove no issues exist.",
       "description": "",
@@ -3319,7 +3319,7 @@
     },
     {
       "id": "indexing-operational-values-table-count",
-      "intent": "Count retained operational values rows in the dashboard database.",
+      "subject": "Count retained operational values rows in the dashboard database.",
       "objective": "Provide the retained operational values row count for the table-count diagnostic.",
       "acceptance": "Label the result operational values and count operational-value rows in the current database; absence or zero does not imply zero value or an evaluated outcome.",
       "description": "",
@@ -3338,7 +3338,7 @@
     },
     {
       "id": "indexing-transactions-table-count",
-      "intent": "Count retained ingestion transactions rows in the dashboard database.",
+      "subject": "Count retained ingestion transactions rows in the dashboard database.",
       "objective": "Provide the retained ingestion transactions row count for the table-count diagnostic.",
       "acceptance": "Label the result ingestion transactions and count transaction IDs in the current database; absence or zero does not establish whether upstream ingestion ran.",
       "description": "",
@@ -3357,7 +3357,7 @@
     },
     {
       "id": "indexing-database-table-counts",
-      "intent": "Count retained canonical dashboard database rows by table.",
+      "subject": "Count retained canonical dashboard database rows by table.",
       "objective": "Compare the retained table row counts to identify tables needing further ingestion or coverage investigation.",
       "acceptance": "Union the named table-count projections and report their table labels and counts; check source availability, retention, and separate transaction evidence before interpreting an empty or small table as an ingestion defect.",
       "description": "",
@@ -3396,7 +3396,7 @@
     },
     {
       "id": "indexing-transactions",
-      "intent": "Prepare retained ingestion transactions for card presentation.",
+      "subject": "Prepare retained ingestion transactions for card presentation.",
       "objective": "Expose transaction identity, kind, timestamp, committed-record count, and payload hash for ingestion traceability.",
       "acceptance": "Projected fields match retained transactions without implying successful upstream coverage from a committed count or hash alone; missing transactions require a freshness and availability check.",
       "description": "",
@@ -3417,7 +3417,7 @@
     },
     {
       "id": "engines-models-usage",
-      "intent": "Summarize run-level AIC and token usage by agent and model identifiers without treating unavailable telemetry as zero.",
+      "subject": "Summarize run-level AIC and token usage by agent and model identifiers without treating unavailable telemetry as zero.",
       "objective": "Locate agent and model combinations whose observed per-run AIC or token usage merits checking against individual runs.",
       "acceptance": "Report run counts and native minimum, mean, and maximum values only for reported metrics; inspect underlying runs for per-metric telemetry coverage and context before comparing combinations, and infer neither efficiency nor outcome value from usage alone.",
       "description": "Observed workflow runs grouped by agent ID and model ID. Each AIC and token statistic uses only runs that reported that metric.",
@@ -3438,7 +3438,7 @@
     },
     {
       "id": "skill-invocations",
-      "intent": "Select observed skill invocations for skill usage analytics.",
+      "subject": "Select observed skill invocations for skill usage analytics.",
       "objective": "Expose skill event identity, scope, invocation counts, and failed counts for downstream usage analysis.",
       "acceptance": "Keep each observed event and its repository/workflow attribution with native counts; missing records or failed counts alone do not establish whether a skill was useful or available.",
       "description": "",
@@ -3455,7 +3455,7 @@
     },
     {
       "id": "skill-invocations-by-skill",
-      "intent": "Rank skills by their observed invocation count.",
+      "subject": "Rank skills by their observed invocation count.",
       "objective": "Identify skills with the highest observed invocation totals for follow-up inspection.",
       "acceptance": "Sum observed invocation counts by skill and retain the rank as a usage description; do not equate popularity with effectiveness or infer unobserved invocations.",
       "description": "",
@@ -3474,7 +3474,7 @@
     },
     {
       "id": "skill-invocations-by-workflow-totals",
-      "intent": "Rank workflows by their observed skill invocation count.",
+      "subject": "Rank workflows by their observed skill invocation count.",
       "objective": "Produce repository-scoped workflow invocation totals for downstream skill-usage comparison.",
       "acceptance": "Sum observed invocation counts by organization, repository, and workflow; totals describe recorded usage only, not success or expected adoption.",
       "description": "",
@@ -3491,7 +3491,7 @@
     },
     {
       "id": "skill-invocations-by-workflow",
-      "intent": "Present workflow skill invocation totals with drill-through navigation to the workflow dashboard.",
+      "subject": "Present workflow skill invocation totals with drill-through navigation to the workflow dashboard.",
       "objective": "Expose observed workflow skill invocation totals with a link to inspect each workflow.",
       "acceptance": "Each projected workflow coordinate, link, and invocation total traces to the grouped source; using a link to investigate does not establish that usage caused an outcome.",
       "description": "",
@@ -3510,7 +3510,7 @@
     },
     {
       "id": "skill-workflow-totals",
-      "intent": "Count observed invocations for each skill and workflow.",
+      "subject": "Count observed invocations for each skill and workflow.",
       "objective": "Produce skill-by-workflow invocation totals for the downstream inventory.",
       "acceptance": "Sum observed invocation counts by skill, organization, repository, and workflow; missing combinations are not evidence that a skill could not run.",
       "description": "",
@@ -3527,7 +3527,7 @@
     },
     {
       "id": "skill-workflow-inventory",
-      "intent": "List observed skills by workflow with drill-through navigation to the workflow dashboard.",
+      "subject": "List observed skills by workflow with drill-through navigation to the workflow dashboard.",
       "objective": "Identify observed skill/workflow combinations and provide a workflow link for inspecting their runs.",
       "acceptance": "Show the repository, workflow, skill, link, and observed invocation total from the grouped evidence; an absent row does not prove non-use, and a high count does not prove effectiveness.",
       "description": "",
@@ -3546,7 +3546,7 @@
     },
     {
       "id": "experiment-assignment-coverage",
-      "intent": "Count observed run assignments for each experiment and workflow without inferring a completion target.",
+      "subject": "Count observed run assignments for each experiment and workflow without inferring a completion target.",
       "objective": "Expose assignment counts by experiment and workflow for investigating observed experiment coverage.",
       "acceptance": "Count retained assignment rows in each experiment/workflow group, not distinct runs; do not invent a target, infer missing assignments from absent groups, or treat assignments as eval or grader outcomes.",
       "description": "",
@@ -3567,7 +3567,7 @@
     },
     {
       "id": "eval-yes-no-status",
-      "intent": "Select explicit YES/NO eval answers while retaining unknown results only in the underlying evidence collection.",
+      "subject": "Select explicit YES/NO eval answers while retaining unknown results only in the underlying evidence collection.",
       "objective": "Expose explicitly answered eval observations for comparison with their underlying run evidence.",
       "acceptance": "Return only recorded YES and NO answers; excluded unknowns must not be interpreted as NO, absent evals as YES, or an eval answer as a validated operational outcome.",
       "description": "",
@@ -3588,7 +3588,7 @@
     },
     {
       "id": "grader-status-ledger",
-      "intent": "Report explicit grader pass/fail observations without inferring current state from prior runs.",
+      "subject": "Report explicit grader pass/fail observations without inferring current state from prior runs.",
       "objective": "Distinguish explicit per-observation grader pass and fail verdicts from unknown statuses.",
       "acceptance": "Map only pass/passed to YES and fail/failed to NO, leaving all other statuses unknown; preserve run-level evidence and do not infer current success, causation, or policy authority from a prior verdict.",
       "description": "",
@@ -3609,7 +3609,7 @@
     },
     {
       "id": "database-campaign-count",
-      "intent": "Count campaigns in the dashboard database.",
+      "subject": "Count campaigns in the dashboard database.",
       "objective": "Establish the retained campaign inventory denominator for Overview health presentation.",
       "acceptance": "The campaigns count matches canonical campaign identities in the selected snapshot; missing inventory is reported as incomplete rather than interpreted as no campaigns.",
       "description": "",
@@ -3628,7 +3628,7 @@
     },
     {
       "id": "overview-run-summary",
-      "intent": "Summarize successful, failed, and active runs with rollout-mode counts.",
+      "subject": "Summarize successful, failed, and active runs with rollout-mode counts.",
       "objective": "Expose observed success, failure, and active run counts, including active live and review modes, for the selected horizon.",
       "acceptance": "Each count follows its declared conclusion, status, and rollout-mode filters; run success is not treated as a verified outcome, and incomplete or stale evidence is identified.",
       "description": "",
@@ -3647,7 +3647,7 @@
     },
     {
       "id": "overview-delivery-summary",
-      "intent": "Count distinct target repositories with successful worker dispatch runs in the selected horizon.",
+      "subject": "Count distinct target repositories with successful worker dispatch runs in the selected horizon.",
       "objective": "Measure observed reach among registered repositories with successful dispatched worker runs.",
       "acceptance": "Distinct delivered-repositories is limited to registered targets and successful workflow_dispatch worker runs in the selected horizon; it does not establish accepted delivery or authorized coverage.",
       "description": "",
@@ -3668,7 +3668,7 @@
     },
     {
       "id": "overview-value-summary",
-      "intent": "Count all observed grader results.",
+      "subject": "Count all observed grader results.",
       "objective": "Identify whether any grader observations are available to the Overview status presentation.",
       "acceptance": "The value-gains field counts observed grader records only; inspect each result's native measure, unit, direction, maturity, and uncertainty before claiming an outcome or improvement.",
       "description": "",
@@ -3687,7 +3687,7 @@
     },
     {
       "id": "overview-run-status-input",
-      "intent": "Prepare the compact run summary for declarative factory status classification.",
+      "subject": "Prepare the compact run summary for declarative factory status classification.",
       "objective": "Carry successful-runs, failed-runs, and active-runs into the status join without changing their meaning.",
       "acceptance": "The projected counts retain the selected horizon and match overview-run-summary; the join key is only a presentation key, not additional evidence.",
       "description": "",
@@ -3706,7 +3706,7 @@
     },
     {
       "id": "overview-value-status-input",
-      "intent": "Prepare the compact value summary for declarative factory status classification.",
+      "subject": "Prepare the compact value summary for declarative factory status classification.",
       "objective": "Carry the grader-observation count into the optional status join.",
       "acceptance": "The projected value-gains count matches overview-value-summary; a zero count does not establish complete grader coverage, and a nonzero count is not proof of gain.",
       "description": "",
@@ -3725,7 +3725,7 @@
     },
     {
       "id": "overview-factory-status",
-      "intent": "Classify the factory heading from compact run and optional value evidence.",
+      "subject": "Classify the factory heading from compact run and optional value evidence.",
       "objective": "Provide a bounded Overview heading based on observed run counts and optional grader-record presence.",
       "acceptance": "The heading matches the declared run-count and optional grader-presence branches; grader presence is not verified value, and the heading does not authorize any policy change.",
       "description": "",
@@ -3746,7 +3746,7 @@
     },
     {
       "id": "overview-registered-repository-summary",
-      "intent": "Count canonical repository identities registered in the resolved control-plane scope.",
+      "subject": "Count canonical repository identities registered in the resolved control-plane scope.",
       "objective": "Provide the registered-repository denominator for observed worker reach.",
       "acceptance": "The count reflects canonical repository records in the resolved scope; it is not evidence of live enrollment, successful execution, or full inventory completeness.",
       "description": "",
@@ -3765,7 +3765,7 @@
     },
     {
       "id": "overview-delivery-coverage-input",
-      "intent": "Prepare successful delivery totals for the repository coverage summary.",
+      "subject": "Prepare successful delivery totals for the repository coverage summary.",
       "objective": "Carry the distinct delivered-repositories count into the coverage join.",
       "acceptance": "The projected count equals overview-delivery-summary for the selected horizon; the join key adds no repository observations.",
       "description": "",
@@ -3785,7 +3785,7 @@
     },
     {
       "id": "overview-registered-repository-coverage-input",
-      "intent": "Prepare registered repository totals for the repository coverage summary.",
+      "subject": "Prepare registered repository totals for the repository coverage summary.",
       "objective": "Carry the registered-repositories count into the coverage denominator join.",
       "acceptance": "The projected count equals overview-registered-repository-summary for the resolved scope; missing inventory is not treated as zero eligible targets.",
       "description": "",
@@ -3804,7 +3804,7 @@
     },
     {
       "id": "overview-rhythm",
-      "intent": "Compare successful runs for this week and last week on every weekday, layering the current week over the previous week.",
+      "subject": "Compare successful runs for this week and last week on every weekday, layering the current week over the previous week.",
       "objective": "Show the observed weekday pattern of successful runs across the current and previous calendar weeks.",
       "acceptance": "When rhythm is present, verify weekday order, successful-run counts, and reached-day flags; if rhythm is absent, report the comparison as unavailable rather than zero activity, and do not attribute changes to workflow improvements.",
       "description": "",
@@ -3825,7 +3825,7 @@
     },
     {
       "id": "campaign-runtime-problem-counts",
-      "intent": "Count current failing workflow and runtime repository partitions for each campaign.",
+      "subject": "Count current failing workflow and runtime repository partitions for each campaign.",
       "objective": "Project campaign-level counts of retained runtime problem partitions for health and navigation.",
       "acceptance": "Each campaign's problem-partitions count reflects campaign-runtime-problems rows, not distinct incidents or all possible faults; absent reports are not proof of health.",
       "description": "Current retained runtime problem counts by campaign.",
@@ -3845,7 +3845,7 @@
     },
     {
       "id": "overview-repository-coverage-summary",
-      "intent": "Aggregate reached and total repositories across the resolved organization scope.",
+      "subject": "Aggregate reached and total repositories across the resolved organization scope.",
       "objective": "Pair observed reached-repositories and registered-repositories-total for a comparable coverage denominator.",
       "acceptance": "Both totals come from their named input queries and share the resolved scope; verify the left-joined inventory source independently before interpreting a zero total, since a missing join can aggregate to zero.",
       "description": "",
@@ -3866,7 +3866,7 @@
     },
     {
       "id": "overview-repository-coverage",
-      "intent": "Measure registered repository reach from successful worker execution.",
+      "subject": "Measure registered repository reach from successful worker execution.",
       "objective": "Present observed successful-worker repository reach as a ratio alongside numerator and denominator.",
       "acceptance": "repository-coverage is reached-repositories divided by registered-repositories-total when available; preserve the counts and undefined denominator, and do not call reach successful outcomes.",
       "description": "",
@@ -3886,7 +3886,7 @@
     },
     {
       "id": "overview-healthy-campaign-count",
-      "intent": "Count campaigns with no retained workflow or target errors.",
+      "subject": "Count campaigns with no retained workflow or target errors.",
       "objective": "Count campaigns with no retained runtime problem partitions for the Overview health display.",
       "acceptance": "healthy-campaigns counts canonical campaigns without observed problem partitions; missing runtime evidence is not independent proof of healthy execution.",
       "description": "",
@@ -3908,7 +3908,7 @@
     },
     {
       "id": "overview-campaign-count-presentation-input",
-      "intent": "Prepare the campaign inventory count for Overview presentation queries.",
+      "subject": "Prepare the campaign inventory count for Overview presentation queries.",
       "objective": "Project the campaign inventory count into the health presentation join.",
       "acceptance": "The campaigns value matches database-campaign-count; the presentation key does not expand the campaign scope.",
       "description": "",
@@ -3927,7 +3927,7 @@
     },
     {
       "id": "overview-healthy-campaign-presentation-input",
-      "intent": "Prepare the healthy campaign count for Overview presentation queries.",
+      "subject": "Prepare the healthy campaign count for Overview presentation queries.",
       "objective": "Project the campaigns without retained problems into the health presentation join.",
       "acceptance": "The healthy-campaigns value matches overview-healthy-campaign-count and remains an absence-of-observed-problems measure, not verified health.",
       "description": "",
@@ -3948,7 +3948,7 @@
     },
     {
       "id": "overview-campaign-health-presentation",
-      "intent": "Produce presentation-ready campaign health values for the Overview header and floor.",
+      "subject": "Produce presentation-ready campaign health values for the Overview header and floor.",
       "objective": "Display the ratio of campaigns without retained runtime problems to registered campaigns with both underlying counts.",
       "acceptance": "The percentage and detail agree with healthy-campaigns and campaigns; a missing or zero denominator remains unavailable, and the displayed ratio is not proof of impact.",
       "description": "",
@@ -3970,7 +3970,7 @@
     },
     {
       "id": "overview-header-status-presentation-input",
-      "intent": "Prepare the factory status heading for the declarative Overview header.",
+      "subject": "Prepare the factory status heading for the declarative Overview header.",
       "objective": "Carry the factory heading into the Overview header join unchanged.",
       "acceptance": "The heading matches overview-factory-status; the presentation key does not imply additional evidence or a policy recommendation.",
       "description": "",
@@ -3990,7 +3990,7 @@
     },
     {
       "id": "overview-header-presentation",
-      "intent": "Resolve the Overview heading from declarative status and campaign-health evidence.",
+      "subject": "Resolve the Overview heading from declarative status and campaign-health evidence.",
       "objective": "Display the configured heading corresponding to observed run status and campaign health.",
       "acceptance": "The selected heading follows the declared presentation branches; numeric branch boundaries are UI classification only, not operational targets or rollout thresholds.",
       "description": "",
@@ -4015,7 +4015,7 @@
     },
     {
       "id": "overview-run-motion-presentation-input",
-      "intent": "Prepare active run state for Overview station presentation.",
+      "subject": "Prepare active run state for Overview station presentation.",
       "objective": "Expose whether at least one queued or in-progress run was observed for station display.",
       "acceptance": "active reflects overview-run-summary's active-runs count; no observed active run does not prove the fleet is idle when the snapshot is incomplete.",
       "description": "",
@@ -4034,7 +4034,7 @@
     },
     {
       "id": "overview-campaign-station",
-      "intent": "Provide the presentation-ready campaign health station for Overview.",
+      "subject": "Provide the presentation-ready campaign health station for Overview.",
       "objective": "Show the retained-problem-free campaign ratio, supporting counts, and observed run motion together.",
       "acceptance": "Station value, display, detail, description, and active flag match their input queries; neither absence of problems nor run motion is verified campaign effectiveness.",
       "description": "",
@@ -4058,7 +4058,7 @@
     },
     {
       "id": "overview-repository-station-presentation-input",
-      "intent": "Prepare repository coverage for the presentation-ready Overview station.",
+      "subject": "Prepare repository coverage for the presentation-ready Overview station.",
       "objective": "Format repository reach with its reached and registered counts for the station.",
       "acceptance": "The percentage and detail preserve overview-repository-coverage's numerator and denominator; unavailable coverage remains unavailable, not zero or complete reach.",
       "description": "",
@@ -4078,7 +4078,7 @@
     },
     {
       "id": "overview-repository-station",
-      "intent": "Provide the presentation-ready repository coverage station for Overview.",
+      "subject": "Provide the presentation-ready repository coverage station for Overview.",
       "objective": "Show observed registered-repository worker reach and run motion in one station.",
       "acceptance": "Value and formatted evidence match the coverage presentation input, and active matches run motion; neither changes policy or establishes accepted outcomes.",
       "description": "",
@@ -4101,7 +4101,7 @@
     },
     {
       "id": "overview-disabled-dispatchers",
-      "intent": "Identify campaigns whose dispatcher is disabled in GitHub Actions.",
+      "subject": "Identify campaigns whose dispatcher is disabled in GitHub Actions.",
       "objective": "Surface campaigns with observed inactive orchestrator workflows for operator verification.",
       "acceptance": "disabled-dispatchers counts workflow-role orchestrator records with workflow-active false per campaign; verify current GitHub state before acting, and do not infer a policy change.",
       "description": "",
@@ -4120,7 +4120,7 @@
     },
     {
       "id": "overview-campaign-links",
-      "intent": "Provide one navigation row per registered campaign that opens its dedicated campaign view.",
+      "subject": "Provide one navigation row per registered campaign that opens its dedicated campaign view.",
       "objective": "Let operators navigate to each campaign while showing observed dispatcher and runtime-problem indicators.",
       "acceptance": "Each row retains its canonical campaign identity and link, with indicator counts derived only from the named inputs; missing status does not mean enabled or healthy.",
       "description": "Registered campaigns with a resolved dashboard link to their dedicated campaign view.",
@@ -4145,7 +4145,7 @@
     },
     {
       "id": "cost-by-campaign",
-      "intent": "Present observed AI Credit cost grouped by centrally managed campaign.",
+      "subject": "Present observed AI Credit cost grouped by centrally managed campaign.",
       "objective": "Identify campaigns whose observed AI Credit use needs investigation.",
       "acceptance": "Rows preserve native aic values and descending order; investigate fresh campaign runs and snapshot completeness before suggesting a cost intervention, without inferring savings or value.",
       "description": "",
@@ -4173,7 +4173,7 @@
     },
     {
       "id": "cost-by-repository",
-      "intent": "Present observed AI Credit cost grouped by repository.",
+      "subject": "Present observed AI Credit cost grouped by repository.",
       "objective": "Locate repositories with higher observed AI Credit totals for evidence-led investigation.",
       "acceptance": "Each repository coordinate and native aic total agrees with repository-aic-totals; confirm the selected horizon and underlying runs before attributing cost or proposing a change.",
       "description": "",
@@ -4194,7 +4194,7 @@
     },
     {
       "id": "cost-by-workflow",
-      "intent": "Present observed AI Credit cost grouped by repository-owned workflow.",
+      "subject": "Present observed AI Credit cost grouped by repository-owned workflow.",
       "objective": "Locate repository workflows with higher observed AI Credit totals and open their workflow evidence.",
       "acceptance": "Workflow identity, link, and native aic total match workflow-aic-totals in descending order; cost alone does not establish waste, quality, or value.",
       "description": "",
@@ -4215,7 +4215,7 @@
     },
     {
       "id": "cost-per-workflow-run",
-      "intent": "Present the average observed AI Credit cost of a single run for each repository-owned workflow.",
+      "subject": "Present the average observed AI Credit cost of a single run for each repository-owned workflow.",
       "objective": "Compare observed AI Credit per run across repository workflows with each observed-runs denominator.",
       "acceptance": "aic-per-run is derived from native aic and observed-runs for matching workflows only; missing or zero denominators remain unavailable, and differences are not claimed as efficiency gains.",
       "description": "Observed AI Credit totals divided by observed run attempts for each declared workflow.",
@@ -4241,7 +4241,7 @@
     },
     {
       "id": "failure-run-base",
-      "intent": "Select retained runs with failure, startup-failure, stale, or timed-out conclusions for the failed-run ledger and streak inputs.",
+      "subject": "Select retained runs with failure, startup-failure, stale, or timed-out conclusions for the failed-run ledger and streak inputs.",
       "objective": "Provide one consistent failure-conclusion evidence set to downstream Overview queries.",
       "acceptance": "Each selected run has one of the four declared conclusions within the selected horizon; other conclusions remain outside this set, and missing run coverage is not interpreted as no failures.",
       "description": "",
@@ -4260,7 +4260,7 @@
     },
     {
       "id": "failed-runs",
-      "intent": "List failed workflow runs that need operator attention.",
+      "subject": "List failed workflow runs that need operator attention.",
       "objective": "Give operators the most recent observed failed runs to inspect in GitHub.",
       "acceptance": "Unprojected run rows retain available conclusion, started-at, and run evidence fields in descending started-at order; inspect source logs and missing links before attributing a cause or declaring resolution.",
       "description": "",
@@ -4279,7 +4279,7 @@
     },
     {
       "id": "overview-failing-runs",
-      "intent": "Identify failed runs in the selected snapshot horizon so subsequent streak logic can use the same declarative failure definition.",
+      "subject": "Identify failed runs in the selected snapshot horizon so subsequent streak logic can use the same declarative failure definition.",
       "objective": "Project distinct failure-run counts by organization, repository, workflow, and run for streak joins.",
       "acceptance": "Each grouped run identity has a failing-runs count derived from failure-run-base in the selected horizon; this stage does not assert a consecutive streak or require action.",
       "description": "",
@@ -4298,7 +4298,7 @@
     },
     {
       "id": "overview-failing-workflows",
-      "intent": "Identify only workflows that have at least one failed run in the selected snapshot horizon before computing streaks.",
+      "subject": "Identify only workflows that have at least one failed run in the selected snapshot horizon before computing streaks.",
       "objective": "Provide workflow identities with observed failed runs for the streak computation.",
       "acceptance": "Each organization/repository/workflow group has a distinct failing-runs count from overview-failing-runs; the count covers observed failures, not the latest consecutive streak.",
       "description": "",
@@ -4317,7 +4317,7 @@
     },
     {
       "id": "overview-repeated-failure-groups",
-      "intent": "Group each workflow's latest consecutive failing run sequence in the selected snapshot horizon, resetting the group after any successful run.",
+      "subject": "Group each workflow's latest consecutive failing run sequence in the selected snapshot horizon, resetting the group after any successful run.",
       "objective": "Project the latest observed consecutive failure-count per workflow for downstream blocked-work matching.",
       "acceptance": "failure-count follows run ordering and the declared latest-failure-streak reducer, with non-failing runs breaking the streak; missing earlier runs or incomplete snapshots limit the observed sequence.",
       "description": "",
@@ -4338,7 +4338,7 @@
     },
     {
       "id": "overview-repeated-failure-candidates",
-      "intent": "Attach selected-horizon failure counts to each workflow's latest canonical work item.",
+      "subject": "Attach selected-horizon failure counts to each workflow's latest canonical work item.",
       "objective": "Pair blocked work items with observed workflow failure streaks and retained run evidence before attention filtering.",
       "acceptance": "Candidates are filtered to blocked items with a matching organization/repository/workflow streak; is-repeated reflects failure-count greater than one, while selected evidence-link and run-link can be absent or refer to the work item rather than the latest failed run.",
       "description": "",
@@ -4358,7 +4358,7 @@
     },
     {
       "id": "overview-repeated-failure-attention",
-      "intent": "Keep only unresolved workflows with two or more failures in the selected horizon.",
+      "subject": "Keep only unresolved workflows with two or more failures in the selected horizon.",
       "objective": "Surface blocked workflow items with observed repeated failures for bounded run investigation.",
       "acceptance": "Every row inherits a blocked item with is-repeated true and projects evidence-link and run-link when available; verify run order, links, and current state before treating the failure as still unresolved.",
       "description": "",
@@ -4377,7 +4377,7 @@
     },
     {
       "id": "overview-review-attention",
-      "intent": "Select only unresolved outputs explicitly awaiting human review with their retained GitHub evidence destination.",
+      "subject": "Select only unresolved outputs explicitly awaiting human review with their retained GitHub evidence destination.",
       "objective": "Present review-state work items and their retained GitHub destination to a human reviewer.",
       "acceptance": "Rows are filtered to lifecycle-state review and project the work-item ID as attention-signal-id, plus reason, evidence-link, and run-link where present; reviewer disposition must be checked at source.",
       "description": "",
@@ -4394,7 +4394,7 @@
     },
     {
       "id": "overview-needs-attention",
-      "intent": "Combine grouped repeated failures and unresolved review outputs without introducing ordinary activity or duplicate work items.",
+      "subject": "Combine grouped repeated failures and unresolved review outputs without introducing ordinary activity or duplicate work items.",
       "objective": "Prioritize observed blocked repeated-failure work and review-state outputs for investigation.",
       "acceptance": "Rows come only from the repeated-failure or review inputs and retain their source reasons, links, and ordering; confirm fresh source status before acting, and do not equate a missing row with resolved work.",
       "description": "",
@@ -4414,7 +4414,7 @@
     },
     {
       "id": "domain-entity-insights",
-      "intent": "Summarize one domain entity for its dedicated Insights view.",
+      "subject": "Summarize one domain entity for its dedicated Insights view.",
       "objective": "Identify domain decisions with request volume worth investigating before considering any egress change.",
       "acceptance": "For the selected domain, request totals match the retained domain observations grouped by decision; missing data or blocked traffic does not establish a need for access, which requires underlying request and policy review.",
       "description": "",
@@ -4440,7 +4440,7 @@
     },
     {
       "id": "tool-entity-insights",
-      "intent": "Summarize one tool entity for its dedicated Insights view.",
+      "subject": "Summarize one tool entity for its dedicated Insights view.",
       "objective": "Select a tool and status combination whose recorded call volume merits investigation.",
       "acceptance": "For the selected tool, observation counts match retained MCP call observations grouped by server, tool, and status; missing calls are not zero usage and status counts do not establish effectiveness or cause.",
       "description": "",
@@ -4466,7 +4466,7 @@
     },
     {
       "id": "audit-entity-insights",
-      "intent": "Summarize one audit event entity for its dedicated Insights view.",
+      "subject": "Summarize one audit event entity for its dedicated Insights view.",
       "objective": "Select an audit summary and status requiring closer review of underlying observations.",
       "acceptance": "For the selected summary, counts agree with retained audit observation IDs grouped by event status; repeated observations are not silently treated as distinct incidents, and absence does not prove no findings.",
       "description": "",

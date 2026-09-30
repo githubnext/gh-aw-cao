@@ -4,7 +4,7 @@ import { dashboardQueryOutputFields } from '../../src/data/queries/declarative.j
 import { TABLE_FIELDS } from '../../src/specification.js';
 
 /** @param {Record<string, unknown>} value */
-const query = (value) => ({ intent: 'Exercise static query reference checking.', ...value });
+const query = (value) => ({ subject: 'Exercise static query reference checking.', ...value });
 
 describe('dashboard query type checker', () => {
   it('compiles transitive table and query schemas through every field-producing clause', () => {
@@ -317,7 +317,7 @@ describe('dashboard query type checker', () => {
   it('matches runtime output-field inference for valid query pipelines', () => {
     const definitions = [
       {
-        intent: 'Aggregate usage by workflow.',
+        subject: 'Aggregate usage by workflow.',
         name: 'usage-summary',
         from: 'usage',
         aggregate: {
@@ -326,7 +326,7 @@ describe('dashboard query type checker', () => {
         }
       },
       {
-        intent: 'Format and select the usage summary.',
+        subject: 'Format and select the usage summary.',
         name: 'selected-summary',
         from: 'usage-summary',
         compute: [{ as: 'label', function: /** @type {const} */ ('format-count'), args: [{ field: 'total-aic' }] }],

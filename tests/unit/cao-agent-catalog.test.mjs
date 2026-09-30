@@ -50,13 +50,13 @@ test("cao queries lists named dashboard queries as JSON", async () => {
   assert.equal(query.execution.local, true);
   assert.equal(query.execution.backend, "sqlite");
   assert.ok(query.execution.requirements.includes("runs"));
-  assert.ok(query.intent.length > 0);
+  assert.ok(query.subject.length > 0);
 });
 
 test("every named query defines its own objective and verifiable acceptance", async () => {
   const { dashboard } = await loadAgentDashboardDocument();
   for (const query of dashboard.queries) {
-    for (const field of ["intent", "objective", "acceptance"]) {
+    for (const field of ["subject", "objective", "acceptance"]) {
       assert.ok(typeof query[field] === "string" && query[field].trim(), `${query.name} needs ${field}`);
     }
   }

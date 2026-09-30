@@ -26,12 +26,12 @@ const document = {
     queries: [
       {
         name: "usage-base",
-        intent: "Reuse shared usage stages.",
+        subject: "Reuse shared usage stages.",
         from: "runs",
       },
       {
         name: "usage-by-workflow",
-        intent: "Show observed AI Credit usage by workflow.",
+        subject: "Show observed AI Credit usage by workflow.",
         objective: "Investigate unusual usage.",
         acceptance: "Usage is explained.",
         description: "Usage grouped by workflow.",
@@ -39,7 +39,7 @@ const document = {
       },
       {
         name: "configuration-policy",
-        intent: "Show control-repository configuration.",
+        subject: "Show control-repository configuration.",
         from: "work-items",
       },
     ],
@@ -92,7 +92,7 @@ describe("agent catalog", () => {
 
   it("preserves query semantics and description for query-info", () => {
     const query = describeQuery(document, "usage-by-workflow");
-    expect(query?.intent).toBe("Show observed AI Credit usage by workflow.");
+    expect(query?.subject).toBe("Show observed AI Credit usage by workflow.");
     expect(query?.objective).toBe("Investigate unusual usage.");
     expect(query?.acceptance).toBe("Usage is explained.");
     expect(query?.description).toBe("Usage grouped by workflow.");
@@ -195,18 +195,18 @@ const structuralDocument = {
       { label: "Analyze", pages: ["built-in", "", "unknown-page"] },
     ],
     queries: [
-      { name: "runs-base", intent: "Read runs.", from: "runs" },
-      { name: "drill-runs", intent: "Drill into runs.", from: "runs-base" },
-      { name: "counted", intent: "Count runs.", from: "runs-base" },
+      { name: "runs-base", subject: "Read runs.", from: "runs" },
+      { name: "drill-runs", subject: "Drill into runs.", from: "runs-base" },
+      { name: "counted", subject: "Count runs.", from: "runs-base" },
       {
         name: "multi-source",
-        intent: "Join two sources.",
+        subject: "Join two sources.",
         from: "runs-base",
         joins: [{ source: "counted", on: [] }],
       },
-      { name: "detail", intent: "Report one repository.", from: "runs-base" },
-      { name: "unused", intent: "Never rendered.", from: "audits" },
-      { intent: "Anonymous queries are not catalogued.", from: "runs" },
+      { name: "detail", subject: "Report one repository.", from: "runs-base" },
+      { name: "unused", subject: "Never rendered.", from: "audits" },
+      { subject: "Anonymous queries are not catalogued.", from: "runs" },
     ],
     pages: [
       {
@@ -435,7 +435,7 @@ describe("agent catalog structure", () => {
     const mutable = {
       dashboard: {
         navigation: [{ pages: ["one"] }],
-        queries: [{ name: "q", intent: "Read runs.", from: "runs" }],
+        queries: [{ name: "q", subject: "Read runs.", from: "runs" }],
         pages: [{ id: "one", title: "One", views: [{ data: { source: "q" } }] }],
       },
     };

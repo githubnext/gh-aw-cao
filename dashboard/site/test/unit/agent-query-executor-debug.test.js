@@ -41,8 +41,8 @@ const document = {
     title: 'Test dashboard',
     navigation: [{ pages: ['runs'] }],
     queries: [
-      { name: 'all-runs', intent: 'Show every run.', from: 'runs' },
-      { name: 'browser-only', intent: 'Read a browser source.', from: 'work-items' }
+      { name: 'all-runs', subject: 'Show every run.', from: 'runs' },
+      { name: 'browser-only', subject: 'Read a browser source.', from: 'work-items' }
     ],
     pages: [
       { id: 'runs', title: 'Runs', views: [{ id: 'runs-table', data: { source: 'all-runs' } }] }

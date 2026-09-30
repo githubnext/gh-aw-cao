@@ -7,7 +7,7 @@ import { publishDailyOverviewAggregates } from '../../src/data/storage/indexeddb
 function failedRunCountQuery(overrides = {}) {
   return {
     name: 'overview-failed-run-count',
-    intent: 'Count failed workflow runs that need operator attention.',
+    subject: 'Count failed workflow runs that need operator attention.',
     from: 'runs',
     filter: { predicates: [{ field: 'run-conclusion', in: ['failure', 'startup-failure', 'stale', 'timed-out'] }] },
     aggregate: {
