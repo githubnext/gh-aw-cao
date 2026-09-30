@@ -76,25 +76,26 @@ export function renderDashboardHorizon(options) {
   );
   const root = h('div', { className: 'dashboard-horizon' }, skeleton);
   let wasAvailable = false;
-  /** @param {boolean} expanded */
-  const setExpanded = (expanded) => {
-    toggle.setAttribute('aria-expanded', String(expanded));
-    root.classList.toggle('filter-bar-expanded', expanded);
+  const expanded = state(false);
+  toggle.addEventListener('click', () => {
+    expanded.set((current) => !current);
+  }, { signal: lifetime.signal });
+  root.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !expanded.get()) return;
+    expanded.set(false);
+    toggle.focus();
+    event.stopPropagation();
+  }, { signal: lifetime.signal });
+  effect(() => {
+    const isExpanded = expanded.get();
+    toggle.setAttribute('aria-expanded', String(isExpanded));
+    root.classList.toggle('filter-bar-expanded', isExpanded);
     const dashboardRoot = root.closest('.dashboard-root');
     const activeFilterBar = dashboardRoot?.querySelector('.dashboard-page:not([hidden]) > .page-chrome > .filter-bar');
     if (activeFilterBar instanceof HTMLElement) {
-      activeFilterBar.classList.toggle('filter-bar-expanded', expanded);
+      activeFilterBar.classList.toggle('filter-bar-expanded', isExpanded);
     }
-    debugDashboardHorizon({ event: 'toggled', expanded });
-  };
-  toggle.addEventListener('click', () => {
-    setExpanded(toggle.getAttribute('aria-expanded') !== 'true');
-  }, { signal: lifetime.signal });
-  root.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape' || toggle.getAttribute('aria-expanded') !== 'true') return;
-    setExpanded(false);
-    toggle.focus();
-    event.stopPropagation();
+    debugDashboardHorizon({ event: 'toggled', expanded: isExpanded });
   }, { signal: lifetime.signal });
 
   effect(() => {
