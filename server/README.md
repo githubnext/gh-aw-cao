@@ -916,13 +916,25 @@ provider errors. If no trace ID appears, configure an OTLP trace endpoint as
 described below before expecting backend correlation; avoid sending callback
 URLs, cookies, codes, or tokens when requesting support.
 
+All generic server HTTP spans use a redacted copy of each request: the server
+does not export peer/client IP addresses, user-agent strings, query strings,
+arbitrary URL paths, W3C baggage, or client-provided tracestate. The original
+request still reaches the authentication and rate-limiting code unchanged.
+OAuth callbacks continue to use their own fixed-attribute span and extract
+only W3C trace context, not baggage. Trace IDs are correlation identifiers,
+not user identities. For GDPR-sensitive deployments, operators must also
+limit collector/exporter access and retention, review any upstream proxy
+logging and configured resource attributes, and avoid attaching identifiers
+in custom instrumentation. This application-level minimization does not
+certify the entire deployment's GDPR compliance.
+
 ## Telemetry
 
 The server is instrumented with standard, vendor-neutral
 [OpenTelemetry](https://opentelemetry.io/) tracing and metrics
 (`internal/telemetry/`). HTTP requests other than `GET /auth/callback` are
-wrapped with `otelhttp`, which
-supplies OpenTelemetry HTTP semantic-convention attributes and the standard
+wrapped with `otelhttp` using a redacted request, which supplies bounded
+OpenTelemetry HTTP semantic-convention attributes and the standard
 `http.server.request.duration`, `http.server.request.body.size`, and
 `http.server.response.body.size` metrics. OAuth callbacks instead emit a
 dedicated W3C-context-propagating server span named `GET /auth/callback` with
@@ -934,8 +946,8 @@ failures additionally use a fixed, bounded `error.type` (`invalid_state`,
 `session_id_generation_failed`, `csrf_generation_failed`, or
 `session_save_failed`). Only server-side failures mark the span as an error;
 raw exceptions and provider error descriptions are never recorded. This
-separate instrumentation avoids the generic HTTP span's client IP and user
-agent attributes on authentication callbacks. The callback retains
+separate instrumentation avoids exposing callback request metadata. The callback
+retains
 `X-Trace-Id` and `X-Span-Id` correlation headers; no OAuth code, state, cookie,
 token, login, provider message, query string, or other user identifier is
 added to its telemetry. The query engine and ingestion paths

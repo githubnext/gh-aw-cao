@@ -8,6 +8,7 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
+	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -29,52 +30,28 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-var oauthFailurePage = template.Must(template.New("oauth-failure").Parse(`<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign-in help · CAO</title></head>
-<body><main>
-<h1>We couldn’t complete your sign-in</h1>
-<p>Try again with an account that has access to this dashboard. If the problem continues, share the request ID below with your dashboard administrator.</p>
-<p><button type="button" id="sign-out">Sign out and try again</button></p>
-<noscript><p>Automatic sign-out requires JavaScript. Clear this site’s cookies, then sign in again.</p></noscript>
-<p><a href="https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md#oauth-sign-in-troubleshooting" rel="noreferrer noopener">Sign-in troubleshooting</a></p>
-{{if .}}<p>Request ID: <code>{{.}}</code></p>{{end}}
-<p id="recovery-error" role="alert" hidden>Could not sign out. Please try again or clear this site’s cookies before signing in.</p>
-</main><script src="/auth/recovery.js" defer></script></body>
-</html>`))
+//go:embed oauth_failure.html
+var oauthFailureHTML string
 
-const oauthRecoveryScript = `const button = document.getElementById('sign-out');
-button.addEventListener('click', async () => {
-  button.disabled = true;
-  try {
-    const csrf = document.cookie.split(';').map((cookie) => cookie.trim()).find((cookie) => cookie.startsWith('cao_csrf='));
-    const response = await fetch('/auth/logout', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: csrf ? { 'X-CSRF-Token': decodeURIComponent(csrf.slice('cao_csrf='.length)) } : {},
-    });
-    if (response.status === 204 || response.status === 401) {
-      location.assign('/auth/logged-out');
-      return;
-    }
-  } catch {
-    // Keep the current page visible when logout cannot be confirmed.
-  }
-  button.disabled = false;
-  document.getElementById('recovery-error').hidden = false;
-});
-`
+var oauthFailurePage = template.Must(template.New("oauth-failure").Parse(oauthFailureHTML))
 
-func (oauth *githubOAuth) recoveryScript(response http.ResponseWriter, _ *http.Request) {
-	response.Header().Set("Cache-Control", "no-store")
-	response.Header().Set("Content-Type", "text/javascript; charset=utf-8")
-	_, _ = io.WriteString(response, oauthRecoveryScript)
-}
+var oauthFailureScriptHash = func() string {
+	_, script, found := strings.Cut(oauthFailureHTML, "<script>")
+	if !found {
+		panic("OAuth failure page is missing its recovery script")
+	}
+	script, _, found = strings.Cut(script, "</script>")
+	if !found {
+		panic("OAuth failure page has an unterminated recovery script")
+	}
+	sum := sha256.Sum256([]byte(script))
+	return base64.StdEncoding.EncodeToString(sum[:])
+}()
 
 func writeOAuthFailure(response http.ResponseWriter, status int, traceID trace.TraceID) {
 	response.Header().Set("Cache-Control", "no-store")
 	response.Header().Set("Referrer-Policy", "no-referrer")
-	response.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'")
+	response.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'sha256-"+oauthFailureScriptHash+"'; connect-src 'self'; base-uri 'none'; form-action 'none'")
 	response.Header().Set("Content-Type", "text/html; charset=utf-8")
 	response.WriteHeader(status)
 	id := ""
@@ -264,7 +241,7 @@ func (oauth *githubOAuth) loggedOut(response http.ResponseWriter, _ *http.Reques
 }
 
 func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.Request) {
-	ctx := otel.GetTextMapPropagator().Extract(request.Context(), propagation.HeaderCarrier(request.Header))
+	ctx := propagation.TraceContext{}.Extract(request.Context(), propagation.HeaderCarrier(request.Header))
 	ctx, span := telemetry.Tracer().Start(ctx, "GET /auth/callback",
 		trace.WithSpanKind(trace.SpanKindServer),
 		trace.WithAttributes(

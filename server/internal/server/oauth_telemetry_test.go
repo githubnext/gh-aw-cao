@@ -1,6 +1,8 @@
 package server
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -108,8 +110,21 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 	if unauthorized.Header().Get("Content-Type") != "text/html; charset=utf-8" ||
 		unauthorized.Header().Get("Cache-Control") != "no-store" ||
 		unauthorized.Header().Get("Referrer-Policy") != "no-referrer" ||
-		!strings.Contains(unauthorized.Header().Get("Content-Security-Policy"), "script-src 'self'") {
+		!strings.Contains(unauthorized.Header().Get("Content-Security-Policy"), "script-src 'sha256-") {
 		t.Fatalf("callback failure missing safe response headers: %#v", unauthorized.Header())
+	}
+	_, inlineScript, found := strings.Cut(unauthorized.Body.String(), "<script>")
+	if !found {
+		t.Fatal("OAuth recovery script is not inlined")
+	}
+	inlineScript, _, found = strings.Cut(inlineScript, "</script>")
+	if !found {
+		t.Fatal("OAuth recovery script is unterminated")
+	}
+	sum := sha256.Sum256([]byte(inlineScript))
+	if !strings.Contains(unauthorized.Header().Get("Content-Security-Policy"),
+		"'sha256-"+base64.StdEncoding.EncodeToString(sum[:])+"'") {
+		t.Fatal("CSP must allow only the embedded recovery script")
 	}
 
 	app = newAzureTestApp(t, github.URL)
@@ -252,13 +267,14 @@ func TestOAuthRecoveryUsesExistingProtectedLogout(t *testing.T) {
 	app := newAzureTestApp(t, github.URL)
 	sessionCookie, csrfCookie := callbackSession(t, app)
 
-	script := httptest.NewRecorder()
-	app.Handler().ServeHTTP(script, azureRequest(t, http.MethodGet, "/auth/recovery.js"))
-	if script.Code != http.StatusOK || script.Header().Get("Cache-Control") != "no-store" ||
-		!strings.Contains(script.Body.String(), "fetch('/auth/logout'") ||
-		!strings.Contains(script.Body.String(), "'X-CSRF-Token'") ||
-		!strings.Contains(script.Body.String(), "response.status === 204 || response.status === 401") {
-		t.Fatal("recovery script must use the existing CSRF-protected logout and handle missing sessions")
+	page := httptest.NewRecorder()
+	app.Handler().ServeHTTP(page, azureRequest(t, http.MethodGet, "/auth/callback?state=invalid"))
+	if page.Code != http.StatusBadRequest || page.Header().Get("Cache-Control") != "no-store" ||
+		!strings.Contains(page.Body.String(), "<script>") ||
+		!strings.Contains(page.Body.String(), "fetch('/auth/logout'") ||
+		!strings.Contains(page.Body.String(), "'X-CSRF-Token'") ||
+		!strings.Contains(page.Body.String(), "response.status === 204 || response.status === 401") {
+		t.Fatal("embedded recovery page must use the existing CSRF-protected logout and handle missing sessions")
 	}
 
 	unprotected := httptest.NewRecorder()
@@ -288,5 +304,59 @@ func TestOAuthRecoveryUsesExistingProtectedLogout(t *testing.T) {
 	}
 	if !foundClearedState {
 		t.Fatal("recovery landing page must clear stale OAuth state")
+	}
+}
+
+func TestHTTPServerTelemetryExcludesClientIdentifiers(t *testing.T) {
+	previous := otel.GetTracerProvider()
+	previousMeter := otel.GetMeterProvider()
+	exporter := tracetest.NewInMemoryExporter()
+	provider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+	reader := sdkmetric.NewManualReader()
+	meterProvider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	otel.SetTracerProvider(provider)
+	otel.SetMeterProvider(meterProvider)
+	t.Cleanup(func() {
+		_ = provider.Shutdown(t.Context())
+		_ = meterProvider.Shutdown(t.Context())
+		otel.SetTracerProvider(previous)
+		otel.SetMeterProvider(previousMeter)
+	})
+
+	app := newAzureTestApp(t, fakeGitHub(t, fakeGitHubOptions{membershipState: "active"}).URL)
+	for _, input := range []struct{ method, path string }{
+		{http.MethodGet, "/auth/login"},
+		{http.MethodGet, "/auth/login/private-user-path"},
+		{"PRIVATE-192.0.2.50", "/auth/login/private-user-path"},
+	} {
+		request := azureRequest(t, input.method, input.path)
+		request.RemoteAddr = "192.0.2.50:1234"
+		request.Header.Set("X-Forwarded-For", "198.51.100.90")
+		request.Header.Set("User-Agent", "private-user-agent")
+		response := httptest.NewRecorder()
+		app.Handler().ServeHTTP(response, request)
+		if response.Code != http.StatusFound && response.Code != http.StatusOK && response.Code != http.StatusMethodNotAllowed {
+			t.Fatalf("request %s returned %d", input.path, response.Code)
+		}
+	}
+	spans := exporter.GetSpans()
+	if len(spans) != 3 || spans[0].Name != "GET /auth/login" || spans[1].Name != "GET /*" || spans[2].Name != " /*" {
+		t.Fatalf("unexpected HTTP spans: %#v", spans)
+	}
+	var metrics metricdata.ResourceMetrics
+	if err := reader.Collect(t.Context(), &metrics); err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(struct {
+		Spans   tracetest.SpanStubs
+		Metrics metricdata.ResourceMetrics
+	}{spans, metrics})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, private := range []string{"192.0.2.50", "198.51.100.90", "private-user-agent", "private-user-path"} {
+		if strings.Contains(string(encoded), private) {
+			t.Fatalf("HTTP telemetry exposed client data %q", private)
+		}
 	}
 }
