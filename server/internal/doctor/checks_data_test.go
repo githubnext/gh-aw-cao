@@ -207,3 +207,51 @@ func TestClassifyIntegrityDiagnosticsPassesWhenClean(t *testing.T) {
 		t.Fatalf("duplicates = %d, want 0", classification.duplicates)
 	}
 }
+
+func TestClassifySourceReadProbeFailsOnReadFailuresBeforeNearLimitWarnings(t *testing.T) {
+	classification := classifySourceReadProbe(
+		[]string{"runs: connection reset"}, []string{"repositories (900 rows)"}, 5, 400, 1000)
+	if classification.status != StatusFail {
+		t.Fatalf("status = %v, want %v", classification.status, StatusFail)
+	}
+	if classification.reason != sourceReadProbeReasonFailures {
+		t.Fatalf("reason = %v, want %v", classification.reason, sourceReadProbeReasonFailures)
+	}
+	if classification.summary != "1 of 5 sources did not read back correctly" {
+		t.Fatalf("summary = %q, unexpected", classification.summary)
+	}
+}
+
+func TestClassifySourceReadProbeWarnsWhenSourceIsNearRowLimit(t *testing.T) {
+	classification := classifySourceReadProbe(
+		nil, []string{"repositories (900 rows)"}, 5, 2000, 1000)
+	if classification.status != StatusWarn {
+		t.Fatalf("status = %v, want %v", classification.status, StatusWarn)
+	}
+	if classification.reason != sourceReadProbeReasonNearLimit {
+		t.Fatalf("reason = %v, want %v", classification.reason, sourceReadProbeReasonNearLimit)
+	}
+}
+
+func TestClassifySourceReadProbePassesWhenAllSourcesReadCleanly(t *testing.T) {
+	classification := classifySourceReadProbe(nil, nil, 5, 2000, 1000)
+	if classification.status != StatusPass {
+		t.Fatalf("status = %v, want %v", classification.status, StatusPass)
+	}
+	if classification.reason != sourceReadProbeReasonAllReadable {
+		t.Fatalf("reason = %v, want %v", classification.reason, sourceReadProbeReasonAllReadable)
+	}
+	if classification.summary != "all 5 sources read back 2000 rows matching their recorded counts" {
+		t.Fatalf("summary = %q, unexpected", classification.summary)
+	}
+}
+
+func TestClassifySourceReadProbeHandlesNoSources(t *testing.T) {
+	classification := classifySourceReadProbe(nil, nil, 0, 0, 1000)
+	if classification.status != StatusPass {
+		t.Fatalf("status = %v, want %v", classification.status, StatusPass)
+	}
+	if classification.summary != "all 0 sources read back 0 rows matching their recorded counts" {
+		t.Fatalf("summary = %q, unexpected", classification.summary)
+	}
+}
