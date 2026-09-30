@@ -16,6 +16,8 @@ export async function buildDashboardSite({
   controlSettings,
   commitSha,
   activityDataPath,
+  githubRepository = process.env.GITHUB_REPOSITORY,
+  githubServerUrl = process.env.GITHUB_SERVER_URL,
   repositoryRoot = new URL("../../../", import.meta.url),
 }) {
   if (!destination) throw new Error("dashboard destination is required");
@@ -59,6 +61,20 @@ export async function buildDashboardSite({
     JSON.parse(await readFile(dashboardPath, "utf8")),
     controlSettings.web?.experimental === true,
   );
+  if (githubRepository) {
+    if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\/[A-Za-z0-9._-]+$/.test(githubRepository)
+        || githubRepository.includes("..")) {
+      throw new Error("GITHUB_REPOSITORY must be a valid owner/repository slug");
+    }
+    dashboard.dashboard.repository = githubRepository;
+  }
+  if (githubServerUrl) {
+    const url = new URL(githubServerUrl);
+    if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) {
+      throw new Error("GITHUB_SERVER_URL must be an HTTPS URL without credentials, query, or fragment");
+    }
+    dashboard.dashboard["github-url-base"] = url.href.replace(/\/+$/, "");
+  }
   const splitDashboard = splitDashboardDocument({
     languageVersion: dashboard["language-version"],
     dashboard: dashboard.dashboard,

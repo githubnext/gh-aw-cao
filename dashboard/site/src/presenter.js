@@ -233,7 +233,7 @@ export function renderDashboard(input) {
     }),
     callouts: renderSiteCallouts(document.dashboard.callouts, sources),
     pages: pages.map((page) => renderPagePlaceholder(page)),
-    footer: renderDashboardFooter({ evaluatedAt, commitSha: input.commitSha })
+    footer: renderDashboardFooter({ evaluatedAt, commitSha: input.commitSha, githubUrlBase, dashboardRepository })
   });
   const root = h(
     'div',

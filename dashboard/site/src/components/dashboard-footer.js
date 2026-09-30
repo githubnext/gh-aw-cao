@@ -1,8 +1,8 @@
 import { h } from '../dom.js';
 import { formatMediumUtcDateTimeWithSuffix } from './ui-primitives.js';
 
-/** @param {{ evaluatedAt: string, commitSha?: string | null }} options */
-export function renderDashboardFooter({ evaluatedAt, commitSha }) {
+/** @param {{ evaluatedAt: string, commitSha?: string | null, githubUrlBase: string, dashboardRepository: string | null }} options */
+export function renderDashboardFooter({ evaluatedAt, commitSha, githubUrlBase, dashboardRepository }) {
   return h(
     'footer',
     { className: 'report-footer' },
@@ -18,8 +18,8 @@ export function renderDashboardFooter({ evaluatedAt, commitSha }) {
           'span',
           { className: 'report-footer-version', title: commitSha },
           'Version ',
-          /^[0-9a-f]{40}$/.test(commitSha)
-            ? h('a', { href: `https://github.com/githubnext/gh-aw-cao/commit/${commitSha}`, 'aria-label': `View commit ${commitSha} on GitHub` }, h('code', null, commitSha.slice(0, 7)))
+          /^[0-9a-f]{40}$/.test(commitSha) && dashboardRepository
+            ? h('a', { href: `${githubUrlBase}/${dashboardRepository}/commit/${commitSha}`, 'aria-label': `View commit ${commitSha} on GitHub` }, h('code', null, commitSha.slice(0, 7)))
             : h('code', null, commitSha.slice(0, 7))
         )
       : null
