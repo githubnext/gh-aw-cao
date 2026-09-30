@@ -143,6 +143,26 @@ func TestProfilesAreMutuallyExclusive(t *testing.T) {
 	})
 }
 
+func TestClassifyCollectorProfile(t *testing.T) {
+	cases := []struct {
+		name    string
+		rawApp  string
+		profile collectorProfile
+	}{
+		{"blank selects the Actions snapshot profile", "", collectorProfileActionsSnapshot},
+		{"whitespace-only selects the Actions snapshot profile", "   ", collectorProfileActionsSnapshot},
+		{"any App identifier selects the collection profile", "12345", collectorProfileCollection},
+		{"a non-numeric value still selects the collection profile", "not-a-number", collectorProfileCollection},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := classifyCollectorProfile(tc.rawApp); got != tc.profile {
+				t.Fatalf("classifyCollectorProfile(%q) = %q, want %q", tc.rawApp, got, tc.profile)
+			}
+		})
+	}
+}
+
 func TestCollectorConfigFromEnvSelectsTheDefaultProfileWhenUnset(t *testing.T) {
 	t.Setenv("CAO_COLLECT_APP_ID", "")
 	config, err := CollectorConfigFromEnv()
