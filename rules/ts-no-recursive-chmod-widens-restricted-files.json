@@ -91,17 +91,7 @@
       "readiness_for_target": "not-applicable",
       "reason": "No execa/execa.sync chmod invocations exist in this repository's JS/TS sources; the unsafe pattern does not occur here (recursive chmod usage in this repo is confined to shell scripts, outside the rule's scope).",
       "txn_id": "refiner-36658147600-1"
-    },
-    {
-      "target_repo": "githubnext/gh-aw-cao",
-      "target_commit": "cebef44829c344e3c54097a649a77fa5b181d73b",
-      "true_positive_count": 0,
-      "false_positive_count": 1,
-      "false_negative_count": 0,
-      "readiness_for_target": "needs-work",
-      "reason": "Only match is tests/e2e/cao-mcp-container.mjs:89 chmod -R a+rX on an mkdtemp'd directory holding solely a copied public dashboard SQLite fixture; no restricted-mode (0o600) file is ever written there, so widening permissions has no information-disclosure consequence. False positive against the rule's stated unsafe pattern; needs directory-provenance narrowing (require corroborating evidence of a restrictive-mode write in the same subtree) before adoption here.",
-      "txn_id": "refiner-36681751591-1"
     }
   ],
-  "last_seen_at": "2026-09-30T07:07:44Z"
+  "last_seen_at": "2026-09-30T02:12:38Z"
 }
