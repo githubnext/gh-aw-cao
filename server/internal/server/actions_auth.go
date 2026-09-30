@@ -104,7 +104,7 @@ func verifyPrivateActionsRepositoryScope(ctx context.Context, client *http.Clien
 	if err != nil {
 		return errors.New("GitHub Actions MCP repository check failed")
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusOK {
 		return errors.New("GitHub Actions MCP repository could not be verified")
 	}
@@ -130,7 +130,7 @@ func verifyPrivateActionsTokenScope(ctx context.Context, client *http.Client, ba
 	if err != nil {
 		return errors.New("GitHub Actions MCP token scope check failed")
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusOK {
 		return errors.New("GitHub Actions MCP token repository scope could not be verified")
 	}
