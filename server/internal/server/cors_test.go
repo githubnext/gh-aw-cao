@@ -84,6 +84,14 @@ func TestHostPolicyReadsCORSFromCaoJSON(t *testing.T) {
 		t.Fatalf("unexpected CORS policy: %+v", resolved.CORS)
 	}
 
+	zeroAge := strings.Replace(document, `"max-age": 120`, `"max-age": 0`, 1)
+	if err := os.WriteFile(path, []byte(zeroAge), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadHostPolicyFromEnv(); err == nil || !strings.Contains(err.Error(), "max-age") {
+		t.Fatalf("expected explicit zero max-age rejection, got %v", err)
+	}
+
 	invalid := strings.Replace(document, `"https://Tools.Example.com"`, `"*"`, 1)
 	if err := os.WriteFile(path, []byte(invalid), 0o600); err != nil {
 		t.Fatal(err)
@@ -128,6 +136,15 @@ func TestConfiguredCORSAllowsOnlyListedOrigins(t *testing.T) {
 		response.Header().Get("Access-Control-Max-Age") != "120" ||
 		!strings.Contains(response.Header().Get("Access-Control-Allow-Headers"), "X-CSRF-Token") {
 		t.Fatalf("unexpected preflight response %d: %v", response.Code, response.Header())
+	}
+
+	unsupported := azureRequest(t, http.MethodOptions, "/api/v1/query")
+	unsupported.Header.Set("Origin", "https://tools.example.com")
+	unsupported.Header.Set("Access-Control-Request-Method", http.MethodDelete)
+	response = httptest.NewRecorder()
+	app.Handler().ServeHTTP(response, unsupported)
+	if response.Header().Get("Access-Control-Allow-Methods") != "" {
+		t.Fatalf("unsupported preflight method was allowed: %v", response.Header())
 	}
 
 	denied := azureRequest(t, http.MethodOptions, "/api/v1/query")

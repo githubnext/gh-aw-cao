@@ -40,6 +40,9 @@ func (document corsPolicyDocument) resolve() (CORSPolicy, error) {
 		MaxAge:           defaultCORSMaxAge,
 	}
 	if document.MaxAge != nil {
+		if *document.MaxAge < 1 {
+			return CORSPolicy{}, fmt.Errorf("cors max-age must be between 1 and %d seconds", maxCORSMaxAge)
+		}
 		policy.MaxAge = *document.MaxAge
 	}
 	return policy.normalize()
@@ -151,9 +154,13 @@ func (a *App) cors(next http.Handler) http.Handler {
 		if policy.AllowCredentials {
 			headers.Set("Access-Control-Allow-Credentials", "true")
 		}
-		if request.Method == http.MethodOptions && request.Header.Get("Access-Control-Request-Method") != "" {
+		if requested := request.Header.Get("Access-Control-Request-Method"); request.Method == http.MethodOptions && requested != "" {
 			headers.Add("Vary", "Access-Control-Request-Method")
 			headers.Add("Vary", "Access-Control-Request-Headers")
+			if requested != http.MethodGet && requested != http.MethodHead && requested != http.MethodPost {
+				response.WriteHeader(http.StatusNoContent)
+				return
+			}
 			headers.Set("Access-Control-Allow-Methods", corsAllowedMethods)
 			headers.Set("Access-Control-Allow-Headers", corsAllowedHeaders)
 			headers.Set("Access-Control-Max-Age", maxAge)

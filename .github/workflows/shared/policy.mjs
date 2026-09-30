@@ -391,6 +391,12 @@ function validateCORS(cors, path) {
   assertKeys(cors, CORS_KEYS, path);
   if ("allowed-origins" in cors) {
     assertUniqueStrings(cors["allowed-origins"], `${path}.allowed-origins`, CORS_ORIGIN_PATTERN);
+    for (const origin of cors["allowed-origins"]) {
+      const port = /:([0-9]+)\/?$/.exec(origin.replace(/^[a-z]+:\/\/\[[^\]]*\]/, ""))?.[1];
+      if (port !== undefined && (Number(port) < 1 || Number(port) > 65535)) {
+        throw new PolicyError(`${path}.allowed-origins has an invalid port`);
+      }
+    }
     if (cors["allowed-origins"].length > 32) {
       throw new PolicyError(`${path}.allowed-origins accepts at most 32 origins`);
     }
