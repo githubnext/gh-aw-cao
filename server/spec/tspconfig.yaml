@@ -1,0 +1,12 @@
+emit:
+  - "@typespec/openapi3"
+  - "@typespec/json-schema"
+options:
+  "@typespec/openapi3":
+    emitter-output-dir: "{project-root}/generated"
+    output-file: "openapi.yaml"
+    openapi-versions:
+      - 3.1.0
+  "@typespec/json-schema":
+    emitter-output-dir: "{project-root}/generated/schemas"
+    emit-all-models: false

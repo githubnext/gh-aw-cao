@@ -1,0 +1,14 @@
+{
+  "name": "cao-server-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "tsp compile .",
+    "check": "npm run generate && git diff --exit-code -- generated && git status --porcelain -- generated | grep -q '^' && exit 1 || test $? -eq 1"
+  },
+  "devDependencies": {
+    "@typespec/compiler": "1.16.0",
+    "@typespec/json-schema": "1.16.0",
+    "@typespec/openapi3": "1.16.0"
+  }
+}
