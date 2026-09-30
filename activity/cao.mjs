@@ -2874,7 +2874,8 @@ export async function runCli(arguments_, input = process.stdin, { signal } = {})
     : undefined;
   const databasePath = option(options, 'database', false) || DEFAULT_DATABASE_PATH;
   if (['query', 'mcp'].includes(command) && options.database === undefined
-    && (!existsSync(databasePath) || !existsSync(path.join(path.dirname(databasePath), 'payload-hashes.json')))) {
+    && (!existsSync(databasePath) || ((command === 'mcp' || positional || options.id)
+      && !existsSync(path.join(path.dirname(databasePath), 'payload-hashes.json'))))) {
     throw new UsageError(`No downloaded CAO snapshot at ${databasePath}; run cao download before querying, or pass --database FILE for an explicitly prepared database`);
   }
   const databaseCommands = new Set(['issue-status', 'gh', 'computation', 'operational-value', 'ingest', 'ingest-jsonl', 'query', 'mcp']);
