@@ -1,6 +1,6 @@
 {
   "source_sha": "a78678112f952b666750efc605803ddd222bab87",
-  "next_category": "dependency installation and caching",
+  "next_category": "Astro documentation generation",
   "evaluations": [
     {
       "evaluated_at": "2026-09-30T17:55:00Z",
@@ -191,6 +191,14 @@
         36761704809
       ],
       "outcome": "no_actionable_improvement: latest 20 successful docs.yml runs in the last 14 days still show the dominant reusable-dashboard bottleneck already recorded in memory, not a new scheduling/concurrency/docs-side issue. Trusted docs metadata across 20 successful runs showed median full workflow 71s (p90 106.9s), median build 47s (p90 52.3s), median deploy 20s (p90 77.6s on 7 deploys), and median schedule-freshness 8s (p90 8.2s). The freshness guard skipped 4 of the latest 20 successful docs runs and every built run hit both node_modules and central-agentic-ops-dashboard caches, leaving only ~13s median documentation build and ~7-8s artifact upload in docs.yml. Cross-checking the latest successful cao-dashboard runs still shows Upgrade fallback activity data at 49-62s median 61s, while Validate restored activity data then confirms a 367.1 MiB SQLite plus 801 shards and Assemble Dashboard Language site spends only 2-5s before copying a 367.1 MiB database and 104 shards / 232.3 MiB into a 35.3 MiB uploaded artifact. Because the next-category slot is scheduling/concurrency/avoidable rebuilds and the only >=60s repeated cost remains the already-recorded reusable-dashboard re-upgrade suggestion, no new non-duplicate action is warranted in this cycle.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-09-30T21:26:37Z",
+      "worker_run_id": "36779171714",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [],
+      "outcome": "incomplete: GitHub Actions API rate limit prevented collecting at least five comparable successful docs.yml runs from the last 14 days for the next category in this cycle, so no safe recommendation could be refreshed without relying on stale or partial evidence.",
       "suggestion_fingerprint": null
     }
   ]
