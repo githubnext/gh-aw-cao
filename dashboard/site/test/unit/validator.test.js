@@ -37,10 +37,10 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
-  it('limits combined query semantic metadata to 1024 characters', () => {
+  it('limits combined query semantic metadata to 512 characters', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const query = document.dashboard.queries[0];
-    query.intent = 'a'.repeat(1023);
+    query.intent = 'a'.repeat(511);
     query.objective = '😀';
     delete query.acceptance;
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
@@ -51,7 +51,7 @@ describe('dashboard document validation', () => {
       errors: expect.arrayContaining([{
         code: 'DLS-E003',
         path: '$.dashboard.queries[0]',
-        message: 'Combined intent, objective, and acceptance must be at most 1024 characters (found 1025); shorten them or offload details to a separate Markdown file in the repository.'
+        message: 'Combined intent, objective, and acceptance must be at most 512 characters (found 513); shorten them or offload details to a separate Markdown file in the repository.'
       }])
     });
   });
@@ -62,8 +62,8 @@ describe('dashboard document validation', () => {
       (/** @type {{ views?: unknown[] }} */ page) => page.views?.length
     );
     const view = document.dashboard.pages[pageIndex].views[0];
-    view.intent = 'a'.repeat(512);
-    view.objective = 'b'.repeat(512);
+    view.intent = 'a'.repeat(256);
+    view.objective = 'b'.repeat(256);
     delete view.acceptance;
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
 
@@ -73,9 +73,37 @@ describe('dashboard document validation', () => {
       errors: expect.arrayContaining([{
         code: 'DLS-E003',
         path: `$.dashboard.pages[${pageIndex}].views[0]`,
-        message: 'Combined intent, objective, and acceptance must be at most 1024 characters (found 1025); shorten them or offload details to a separate Markdown file in the repository.'
+        message: 'Combined intent, objective, and acceptance must be at most 512 characters (found 513); shorten them or offload details to a separate Markdown file in the repository.'
       }])
     });
+  });
+
+  it('reports every oversized query and custom, built-in, or reusable view', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const builtInIndex = document.dashboard.pages.findIndex(
+      (/** @type {{ definition?: { views?: unknown[] } }} */ page) => page.definition?.views?.length
+    );
+    const customIndex = document.dashboard.pages.findIndex(
+      (/** @type {{ views?: unknown[] }} */ page) => page.views?.length
+    );
+    document.dashboard.queries[0].intent = 'a'.repeat(513);
+    document.dashboard.queries[1].intent = 'a'.repeat(513);
+    document.dashboard.views[0].intent = 'a'.repeat(513);
+    document.dashboard.pages[builtInIndex].definition.views[0].intent = 'a'.repeat(513);
+    document.dashboard.pages[customIndex].views[0].intent = 'a'.repeat(513);
+
+    const result = validateDashboardDocument(JSON.stringify(document));
+    for (const path of [
+      '$.dashboard.queries[0]',
+      '$.dashboard.queries[1]',
+      '$.dashboard.views[0]',
+      `$.dashboard.pages[${builtInIndex}].definition.views[0]`,
+      `$.dashboard.pages[${customIndex}].views[0]`
+    ]) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: 'DLS-E003', path })
+      ]));
+    }
   });
 
   it('validates the optional page view-mode control', () => {
@@ -788,9 +816,9 @@ describe('dashboard document validation', () => {
     const [mostBlocked, domains] = firewall.views;
     expect(mostBlocked).toMatchObject({
       id: 'security-firewall-most-blocked-domains',
-      intent: 'Prioritize investigation of the most blocked domains and affected workflows without assuming blocked requests require access.',
-      objective: 'Refresh the firewall snapshot, inspect the highest-blocked domains, and query firewall-domain-workflows with --param domain=DOMAIN for each selected domain. Identify the affected workflows and whether blocked traffic is required for their intended operation before proposing any egress change.',
-      acceptance: 'Record each investigated domain and workflow with its evidence timestamp, blocked and allowed counts, and a disposition (expected denial, unnecessary traffic, or justified access request). If fresh evidence is unavailable, report the investigation as incomplete rather than treating empty query results as zero blocks. Propose egress changes only for justified requests through review, then verify the result using a newer firewall snapshot.',
+      intent: 'Investigate the most blocked domains and affected workflows without assuming they need access.',
+      objective: 'Refresh firewall evidence; query firewall-domain-workflows with --param domain=DOMAIN. Check whether workflows need blocked traffic before proposing egress changes.',
+      acceptance: 'Record domain, workflow, timestamp, blocked/allowed counts and disposition (expected denial, unnecessary traffic, justified access). Without fresh evidence, report incomplete, not zero. Review justified egress changes against a newer snapshot.',
       prompt: 'auto',
       mark: 'chart',
       chart: 'pie',

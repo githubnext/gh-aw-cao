@@ -96,7 +96,7 @@
       "name": "campaign-problem-error-groups",
       "intent": "Cluster retained failed Run evidence by workflow, runtime repository, target repository, and error signature so repeated identical failures for one target collapse into one diagnosable group.",
       "objective": "Rank repeated target-specific error signatures for investigation without merging unrelated failures.",
-      "acceptance": "Each group's occurrence-count and latest-run match retained joined failed runs sharing all declared grouping fields, including campaign, workflow, repositories, problem kind, and signature; unknown signatures may group together and counts do not prove a root cause.",
+      "acceptance": "Occurrence-count and latest-run match retained failed runs grouped by campaign, workflow, repositories, problem kind, and signature; unknown signatures may group together. Counts do not prove a root cause.",
       "description": "One row per distinct target repository and error signature within a campaign runtime problem partition, with an occurrence count and the most recent matching Run identity for follow-up.",
       "from": "campaign-problem-run-evidence",
       "aggregate": {
@@ -170,7 +170,7 @@
       "name": "campaign-problem-items",
       "intent": "Attach the most recent representative Run evidence to each distinct campaign runtime problem error signature.",
       "objective": "Open the representative failed run and target for each current campaign problem group.",
-      "acceptance": "For joined failure items, inspect run-link and the matching run ID, campaign, workflow, and runtime repository; target repository is not a join key, so verify it against run evidence. Unioned unobserved orchestrators need separate inventory review and may have no run link. Missing links and diagnostics remain unknown; rollout mode does not authorize policy changes.",
+      "acceptance": "Check joined run-link, run ID, campaign, workflow, and runtime repository; verify target against run evidence (not a join key). Unobserved orchestrators need inventory review. Missing evidence remains unknown; rollout mode does not authorize policy changes.",
       "description": "Current campaign runtime problems represented by the newest error signature for each target repository, with its effective rollout mode, an occurrence count, the most recent matching failed Run, and a repair prompt.",
       "from": "campaign-current-problem-error-groups",
       "joins": [

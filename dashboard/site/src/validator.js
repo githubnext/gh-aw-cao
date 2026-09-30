@@ -1860,6 +1860,12 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
       continue;
     }
 
+    const viewPath = `${path}.definition.views[${index}]`;
+    if (view.intent !== undefined) validateStringField(view.intent, `${viewPath}.intent`, true, errors);
+    if (view.objective !== undefined) validateStringField(view.objective, `${viewPath}.objective`, true, errors);
+    if (view.acceptance !== undefined) validateStringField(view.acceptance, `${viewPath}.acceptance`, true, errors);
+    validateSemanticMetadataLength(view, viewPath, errors);
+
     const data = view.data;
     if (!isPlainObject(data)) {
       errors.push(createError(
@@ -1870,7 +1876,6 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
       continue;
     }
 
-    const viewPath = `${path}.definition.views[${index}]`;
     if (isPlainObject(view.list) && view.list.style === 'entity-cards') {
       if (typeof view.list.card !== 'string' || !declaredCardTemplates.has(view.list.card)) {
         errors.push(createError(
@@ -6389,10 +6394,10 @@ function validateSemanticMetadataLength(definition, path, errors) {
     const value = definition[field];
     return total + (typeof value === 'string' ? [...value].length : 0);
   }, 0);
-  if (length > 1024) {
+  if (length > 512) {
     errors.push(createError(
       ERROR_CODES.missingOrInvalidRequiredField,
-      `Combined intent, objective, and acceptance must be at most 1024 characters (found ${length}); shorten them or offload details to a separate Markdown file in the repository.`,
+      `Combined intent, objective, and acceptance must be at most 512 characters (found ${length}); shorten them or offload details to a separate Markdown file in the repository.`,
       path
     ));
   }

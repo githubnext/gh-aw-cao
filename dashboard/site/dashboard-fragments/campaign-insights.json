@@ -4,7 +4,7 @@
       "name": "campaign-operational-value-primary-series",
       "intent": "Project numeric repository-level campaign operational-value observations into temporal series with native units and direction.",
       "objective": "Choose a repository and native operational-value measure whose observed trend needs evidence review.",
-      "acceptance": "Each plotted point carries its observation time, repository, definition key, native unit and direction; the projection omits null or nonnumeric values rather than replacing them with zero. Point-level maturity is not projected: requery operational-values and campaign-operational-value-evidence-state before interpreting any trend as matured evidence, and do not infer causality.",
+      "acceptance": "Each point has time, repository, definition, native unit and direction; null and nonnumeric values are omitted, not zero. Requery operational-values and campaign-operational-value-evidence-state for point maturity before interpreting trends; do not infer causality.",
       "description": "Repository operational-value numeric series; point-level maturity and missing values require source observation review.",
       "from": "operational-values",
       "temporal-series": {
