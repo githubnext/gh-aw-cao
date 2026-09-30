@@ -210,22 +210,24 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(factory.getByRole('heading', { name: 'Your campaigns need attention.' })).toBeVisible();
     await expect(factory.locator('.factory-running')).toHaveCount(0);
     await expect(factory.locator('.factory-rhythm-day')).toHaveCount(7);
-    const yAxisLabel = factory.locator('.factory-rhythm .graph-widget-y-axis-label');
-    await expect(yAxisLabel).toHaveText('Successful runs');
-    await expect(yAxisLabel).toBeVisible();
-    const axisPlacement = await factory.locator('.factory-rhythm .graph-widget-chart').evaluate((chart) => {
-      const label = chart.querySelector('.graph-widget-y-axis-label');
-      const plot = chart.querySelector('.factory-rhythm-bars');
-      if (!label || !plot) throw new Error('The rhythm axis and bars must be present');
-      const axis = label.getBoundingClientRect();
-      const bars = plot.getBoundingClientRect();
-      const bounds = chart.getBoundingClientRect();
-      return { axisLeft: axis.left, axisRight: axis.right, axisCenter: (axis.top + axis.bottom) / 2,
-        barsLeft: bars.left, barsCenter: (bars.top + bars.bottom) / 2, chartLeft: bounds.left };
+    const headingPlacement = await factory.locator('.factory-rhythm').evaluate((rhythm) => {
+      const title = rhythm.querySelector('.factory-rhythm-heading > span');
+      const subtitle = rhythm.querySelector('.factory-rhythm-heading > strong');
+      const legend = rhythm.querySelector('.factory-rhythm-legend');
+      if (!title || !subtitle || !legend) throw new Error('The rhythm heading and legend must be present');
+      return {
+        title: title.textContent, subtitle: subtitle.textContent,
+        titleBottom: title.getBoundingClientRect().bottom,
+        subtitleTop: subtitle.getBoundingClientRect().top,
+        subtitleBottom: subtitle.getBoundingClientRect().bottom,
+        legendTop: legend.getBoundingClientRect().top
+      };
     });
-    expect(axisPlacement.axisLeft).toBeGreaterThanOrEqual(axisPlacement.chartLeft);
-    expect(axisPlacement.axisRight).toBeLessThan(axisPlacement.barsLeft);
-    expect(axisPlacement.axisCenter).toBeCloseTo(axisPlacement.barsCenter, 0);
+    expect(headingPlacement.title).toBe('Campaign rhythm');
+    expect(headingPlacement.subtitle).toBe('Successful runs');
+    expect(headingPlacement.titleBottom).toBeLessThanOrEqual(headingPlacement.subtitleTop);
+    expect(headingPlacement.subtitleBottom).toBeLessThanOrEqual(headingPlacement.legendTop);
+    await expect(factory.locator('.factory-rhythm .graph-widget-y-axis-label')).toHaveCount(0);
     const rhythmBars = factory.locator('.factory-rhythm-bar-pair i:not([hidden])');
     await expect(rhythmBars).toHaveCount(14);
     await expect(factory.locator('.factory-rhythm-day').nth(3))
@@ -247,8 +249,10 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
       };
     });
     expect(layered.currentBottom).toBeCloseTo(layered.previousBottom, 0);
+    expect(layered.currentRight - layered.currentLeft).toBeCloseTo(layered.previousRight - layered.previousLeft, 0);
     expect(layered.currentLeft).toBeGreaterThan(layered.previousLeft);
-    expect(layered.currentRight).toBeLessThan(layered.previousRight);
+    expect(layered.currentLeft).toBeLessThan(layered.previousRight);
+    expect(layered.currentRight).toBeGreaterThan(layered.previousRight);
     expect(layered.currentLayer).toBe('1');
     await expect(rhythmBars.first()).toHaveCSS('animation-name', 'factory-rhythm-bar-grow');
     expect(await rhythmBars.last().evaluate((element) => getComputedStyle(element).animationDelay)).toBe('0.21s');

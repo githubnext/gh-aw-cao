@@ -1616,8 +1616,6 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .factory-rhythm-legend-previous { border: 1px solid var(--border); background: var(--canvas-subtle); }
 .factory-rhythm-summary { margin: 0; color: var(--muted); font-size: .75rem; }
 .factory-rhythm-heading strong { font-size: .875rem; }
-.factory-rhythm .graph-widget-chart { min-width: 0; display: grid; grid-template-columns: min-content minmax(0, 1fr); align-items: center; gap: 6px; }
-.factory-rhythm .graph-widget-y-axis-label { color: var(--muted); font-size: .625rem; font-weight: 600; white-space: nowrap; writing-mode: vertical-rl; transform: rotate(180deg); }
 .factory-rhythm-bars { height: 74px; position: relative; display: grid; grid-template-columns: repeat(7, minmax(18px, 1fr)); align-items: end; gap: 9px; }
 .overview-campaigns-view-all { display: inline-flex; justify-self: start; margin-top: 12px; color: var(--accent); font-size: .8125rem; font-weight: 600; text-decoration: none; }
 .overview-campaigns-view-all:hover { text-decoration: underline; }
@@ -1634,8 +1632,8 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 @keyframes factory-rhythm-bar-grow {
   from { opacity: .4; transform: translateX(-50%) scaleY(0); }
 }
-.factory-rhythm-baseline { width: 82%; border: 1px solid var(--border); background: var(--canvas-subtle); }
-.factory-rhythm-current { z-index: 1; width: 58%; background: color-mix(in srgb, var(--success) 72%, var(--accent)); }
+.factory-rhythm-baseline { left: 42%; width: 58%; border: 1px solid var(--border); background: var(--canvas-subtle); }
+.factory-rhythm-current { z-index: 1; left: 58%; width: 58%; background: color-mix(in srgb, var(--success) 72%, var(--accent)); }
 .factory-rhythm-bars small { color: var(--muted); font-size: .625rem; font-style: normal; }
 .factory-rhythm-pending .factory-rhythm-bars { border-radius: 6px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
 .factory-rhythm-pending .factory-rhythm-bars > * { visibility: hidden; }

@@ -10,6 +10,7 @@ import { effect } from '../reactive.js';
  *   legendClassName?: string,
  *   plotClassName?: string,
  *   yAxisLabel?: string,
+ *   subtitle?: string,
  *   title: string,
  *   ariaLabel: string,
  *   legendLabel: string,
@@ -49,6 +50,7 @@ export function renderReactiveGraphWidget(options) {
       'div',
       { className: ['graph-widget-heading', options.headingClassName].filter(Boolean).join(' ') },
       h('span', null, options.title),
+      ...(options.subtitle ? [h('strong', null, options.subtitle)] : []),
       h(
         'ul',
         {
