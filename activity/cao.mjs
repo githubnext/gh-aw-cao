@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { createReadStream, createWriteStream, readFileSync, realpathSync } from 'node:fs';
+import { createReadStream, createWriteStream, existsSync, readFileSync, realpathSync } from 'node:fs';
 import { readFile, readdir, mkdir, mkdtemp, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { createInterface } from 'node:readline';
@@ -2873,6 +2873,9 @@ export async function runCli(arguments_, input = process.stdin, { signal } = {})
     ? await rawQueryFromStdin(options, input)
     : undefined;
   const databasePath = option(options, 'database', false) || DEFAULT_DATABASE_PATH;
+  if (['query', 'mcp'].includes(command) && options.database === undefined && !existsSync(databasePath)) {
+    throw new UsageError(`No CAO snapshot at ${databasePath}; run cao download before querying, or pass --database FILE for an explicitly prepared database`);
+  }
   const databaseCommands = new Set(['issue-status', 'gh', 'computation', 'operational-value', 'ingest', 'ingest-jsonl', 'query', 'mcp']);
   const indexedDB = databaseCommands.has(command) ? await createDatabase(databasePath) : undefined;
   return handler({
