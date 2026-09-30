@@ -173,7 +173,7 @@ func NewCollector(
 			enrollment: enrollment,
 			queue:      queue,
 			backfill:   backfill,
-			admitter:   collect.Admitter{Enrollment: enrollment, Queue: queue},
+			admitter:   collect.Admitter{Enrollment: enrollment, Queue: queue, IssueStore: store},
 			reporter: collect.Reporter{
 				Enrollment: enrollment, Queue: queue, Backfill: backfill, Store: store,
 			},
@@ -245,7 +245,7 @@ func NewCollector(
 		runner:     runner,
 		projector:  projector,
 		admitter: collect.Admitter{
-			Enrollment: enrollment, Queue: queue,
+			Enrollment: enrollment, Queue: queue, IssueStore: store,
 			Projection: projector,
 		},
 		backfill: backfill,

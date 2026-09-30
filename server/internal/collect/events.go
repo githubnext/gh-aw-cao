@@ -20,6 +20,8 @@ type IntentKind string
 const (
 	// IntentCollect requests collection of one repository.
 	IntentCollect IntentKind = "collect"
+	// IntentIssueStatus updates a retained issue status observation only.
+	IntentIssueStatus IntentKind = "issue-status"
 	// IntentEnroll adds repositories to the enrollment set.
 	IntentEnroll IntentKind = "enroll"
 	// IntentUnenroll removes repositories from the enrollment set.
@@ -38,6 +40,7 @@ type Intent struct {
 	Repositories   []string
 	InstallationID int64
 	Reason         string
+	Issue          redisx.IssueUpdate
 }
 
 type webhookEnvelope struct {
@@ -52,6 +55,14 @@ type webhookEnvelope struct {
 		Status     string `json:"status"`
 		Conclusion string `json:"conclusion"`
 	} `json:"workflow_run"`
+	Issue struct {
+		Number      int64           `json:"number"`
+		State       string          `json:"state"`
+		StateReason *string         `json:"state_reason"`
+		ClosedAt    *string         `json:"closed_at"`
+		UpdatedAt   string          `json:"updated_at"`
+		PullRequest json.RawMessage `json:"pull_request"`
+	} `json:"issue"`
 	Repositories []struct {
 		FullName string `json:"full_name"`
 	} `json:"repositories"`
@@ -78,6 +89,8 @@ func ParseEvent(event string, payload []byte) (Intent, error) {
 	switch trimmedEvent {
 	case "workflow_run":
 		intent, err = parseWorkflowRunEvent(envelope)
+	case "issues":
+		intent, err = parseIssueEvent(envelope)
 	case "installation":
 		intent = parseInstallationEvent(envelope)
 	case "installation_repositories":
@@ -85,6 +98,7 @@ func ParseEvent(event string, payload []byte) (Intent, error) {
 	default:
 		intent = Intent{Kind: IntentIgnore}
 	}
+
 	if err != nil {
 		return Intent{}, err
 	}
@@ -93,6 +107,53 @@ func ParseEvent(event string, payload []byte) (Intent, error) {
 	// logging every delivery cannot flood the log.
 	eventsLog.Printf("classified webhook event=%s kind=%s", trimmedEvent, intent.Kind)
 	return intent, nil
+}
+
+func parseIssueEvent(envelope webhookEnvelope) (Intent, error) {
+	switch envelope.Action {
+	case "opened", "reopened", "closed", "edited", "assigned", "unassigned",
+		"labeled", "unlabeled", "milestoned", "demilestoned", "locked", "unlocked":
+	default:
+		return Intent{Kind: IntentIgnore}, nil
+	}
+	issue := envelope.Issue
+	if envelope.Repository.FullName == "" || issue.Number <= 0 || issue.UpdatedAt == "" ||
+		len(issue.PullRequest) != 0 || envelope.Installation.ID <= 0 {
+		return Intent{Kind: IntentIgnore}, nil
+	}
+	repository, err := NormalizeRepository(envelope.Repository.FullName)
+	if err != nil {
+		return Intent{Kind: IntentIgnore}, nil
+	}
+	observed, err := time.Parse(time.RFC3339Nano, issue.UpdatedAt)
+	if err != nil {
+		return Intent{Kind: IntentIgnore}, nil
+	}
+	state := strings.ToUpper(issue.State)
+	if state != "OPEN" && state != "CLOSED" ||
+		(envelope.Action == "closed" && state != "CLOSED") ||
+		((envelope.Action == "opened" || envelope.Action == "reopened") && state != "OPEN") {
+		return Intent{Kind: IntentIgnore}, nil
+	}
+	update := redisx.IssueUpdate{
+		Repository: repository, InstallationID: envelope.Installation.ID,
+		ID:    fmt.Sprintf("github:issue:%s:%d", repository, issue.Number),
+		State: state, ObservedAt: observed.UTC().Format("2006-01-02T15:04:05.000000000Z"),
+	}
+	if state == "CLOSED" {
+		if issue.StateReason != nil {
+			update.StateReason = *issue.StateReason
+		}
+		if issue.ClosedAt != nil {
+			closed, err := time.Parse(time.RFC3339Nano, *issue.ClosedAt)
+			if err != nil {
+				return Intent{Kind: IntentIgnore}, nil
+			}
+			update.ClosedAt = closed.UTC().Format(time.RFC3339Nano)
+		}
+	}
+	return Intent{Kind: IntentIssueStatus, Repository: repository,
+		InstallationID: envelope.Installation.ID, Issue: update}, nil
 }
 
 // parseWorkflowRunEvent maps a "workflow_run" delivery to a collection intent.
@@ -190,6 +251,8 @@ type Admitter struct {
 	// Projection requests a projection after erasure, so the canonical
 	// database stops reporting repositories that left ingestion scope.
 	Projection ProjectionRequester
+	// Issue updates are applied only to already retained issue rows.
+	IssueStore *redisx.Store
 }
 
 // ProjectionRequester marks the lake as changed. Projector satisfies it.
@@ -229,11 +292,15 @@ func (a Admitter) AdmitDelivery(
 	if err != nil {
 		return Admission{}, err
 	}
+	if intent.Kind == IntentIssueStatus {
+		return a.admitIssue(ctx, intent, delivery, deliveryTTL)
+	}
 	if intent.Kind != IntentCollect {
 		reservation, err := a.Queue.Store.ReserveDelivery(ctx, delivery, 30*time.Second)
 		if err != nil {
 			return Admission{}, err
 		}
+
 		switch reservation {
 		case redisx.DeliveryAlreadyCommitted:
 			return Admission{Kind: intent.Kind, Duplicate: true}, nil
@@ -270,6 +337,30 @@ func (a Admitter) AdmitDelivery(
 		return Admission{}, err
 	}
 	return Admission{Kind: IntentCollect, Enqueued: enqueued, Duplicate: duplicate}, nil
+}
+
+func (a Admitter) admitIssue(ctx context.Context, intent Intent, delivery string, ttl time.Duration) (Admission, error) {
+	if a.IssueStore == nil {
+		return Admission{Kind: IntentIgnore}, nil
+	}
+	enrolled, err := a.Enrollment.Enrolled(ctx, intent.Repository)
+	if err != nil {
+		return Admission{}, err
+	}
+	owner, err := a.Enrollment.InstallationFor(ctx, intent.Repository)
+	if err != nil {
+		return Admission{}, err
+	}
+	if !enrolled || owner != intent.InstallationID {
+		return Admission{Kind: IntentIgnore}, nil
+	}
+	update := intent.Issue
+	update.Delivery = delivery
+	updated, duplicate, _, err := a.IssueStore.ApplyIssueUpdate(ctx, update, ttl)
+	if err != nil {
+		return Admission{}, err
+	}
+	return Admission{Kind: IntentIssueStatus, Enqueued: updated, Duplicate: duplicate}, nil
 }
 
 // resolveCollectInstallation determines the installation that must own a

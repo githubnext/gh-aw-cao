@@ -566,10 +566,17 @@ func (s *Store) Activate(ctx context.Context, generation, dataRevision string, e
 	redisLog.Printf("activating generation sources=%d", len(counts))
 	data, _ := json.Marshal(counts)
 	activated := time.Now().UTC().Format(time.RFC3339Nano)
-	script := `local revision = redis.call("INCR", KEYS[3]); redis.call("HSET", KEYS[1], "generation", ARGV[1], "revision", revision, "dataRevision", ARGV[2], "evaluatedAt", ARGV[3], "counts", ARGV[4], "activatedAt", ARGV[5]); redis.call("SET", KEYS[2], ARGV[1]); return revision`
+	script := `local previous = redis.call("GET", KEYS[2])
+if previous and previous ~= ARGV[1] then
+  local overlays = redis.call("HGETALL", ARGV[6] .. previous .. ":issue-status")
+  for i = 1, #overlays, 2 do
+    redis.call("HSET", ARGV[6] .. ARGV[1] .. ":issue-status", overlays[i], overlays[i+1])
+  end
+end
+local revision = redis.call("INCR", KEYS[3]); redis.call("HSET", KEYS[1], "generation", ARGV[1], "revision", revision, "dataRevision", ARGV[2], "evaluatedAt", ARGV[3], "counts", ARGV[4], "activatedAt", ARGV[5]); redis.call("SET", KEYS[2], ARGV[1]); return revision`
 	value, err := s.Client.Do(
 		ctx, "EVAL", script, "3", s.activeKey(), s.activeGenerationKey(), s.revisionSequenceKey(),
-		generation, dataRevision, evaluatedAt.UTC().Format(time.RFC3339Nano), string(data), activated,
+		generation, dataRevision, evaluatedAt.UTC().Format(time.RFC3339Nano), string(data), activated, s.namespace+":g:",
 	)
 	if err != nil {
 		return 0, fmt.Errorf("activate Redis generation: %w", err)
@@ -705,6 +712,37 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 				return model.Source{}, metrics, err
 			}
 			rows = append(rows, row)
+		}
+	}
+	if name == "issues" {
+		value, err := s.Client.Do(ctx, "HGETALL", s.generationKey(generation)+":issue-status")
+		metrics.RedisCommands++
+		if err != nil {
+			return model.Source{}, metrics, err
+		}
+		fields, err := Strings(value)
+		if err != nil {
+			return model.Source{}, metrics, err
+		}
+		overlays := make(map[string]model.Row, len(fields)/2)
+		for i := 0; i+1 < len(fields); i += 2 {
+			var update model.Row
+			if err := json.Unmarshal([]byte(fields[i+1]), &update); err != nil {
+				return model.Source{}, metrics, err
+			}
+			overlays[fields[i]] = update
+		}
+		for _, row := range rows {
+			if update := overlays[fmt.Sprint(row["id"])]; update != nil {
+				observed, updateErr := time.Parse(time.RFC3339Nano, fmt.Sprint(update["statusObservedAt"]))
+				snapshot, snapshotErr := time.Parse(time.RFC3339Nano, fmt.Sprint(row["statusObservedAt"]))
+				if updateErr != nil || snapshotErr == nil && !observed.After(snapshot) {
+					continue
+				}
+				for field, value := range update {
+					row[field] = value
+				}
+			}
 		}
 	}
 	metrics.RedisRows = len(rows)

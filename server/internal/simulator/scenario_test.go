@@ -148,6 +148,51 @@ func TestGenerateIssueLifecycleDeliveries(t *testing.T) {
 	}
 }
 
+func TestDeliverIssueLifecycleInOrder(t *testing.T) {
+	const secret = "simulator-secret"
+	var actions []string
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		payload, err := io.ReadAll(request.Body)
+		if err != nil {
+			t.Error(err)
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		mac := hmac.New(sha256.New, []byte(secret))
+		_, _ = mac.Write(payload)
+		if request.Header.Get("X-Hub-Signature-256") != "sha256="+hex.EncodeToString(mac.Sum(nil)) {
+			t.Error("invalid issue webhook signature")
+		}
+		if request.Header.Get("X-GitHub-Event") == "issues" {
+			var body struct {
+				Action string `json:"action"`
+			}
+			if err := json.Unmarshal(payload, &body); err != nil {
+				t.Error(err)
+			}
+			actions = append(actions, body.Action)
+		}
+		writer.WriteHeader(http.StatusAccepted)
+	}))
+	defer server.Close()
+	scenario := Scenario{Name: "issue-delivery", Repositories: 1, IssueEventsPerRepository: 4}
+	result, err := scenario.Deliver(context.Background(), server.Client(), server.URL, secret, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Attempts != 7 || result.Failed != 0 {
+		t.Fatalf("unexpected delivery result: %#v", result)
+	}
+	if got := len(actions); got != 4 {
+		t.Fatalf("issue actions = %v", actions)
+	}
+	for i, want := range []string{"opened", "closed", "reopened", "edited"} {
+		if actions[i] != want {
+			t.Fatalf("issue action %d = %s, want %s", i, actions[i], want)
+		}
+	}
+}
+
 func TestLoadScenarioRejectsUnknownFieldsAndOverlappingWindows(t *testing.T) {
 	for _, input := range []string{
 		`{"name":"x","repositories":1,"unknown":true}`,

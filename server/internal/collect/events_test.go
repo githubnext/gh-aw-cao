@@ -1,6 +1,7 @@
 package collect
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -55,6 +56,7 @@ func TestParseEventClassifiesDeliveries(t *testing.T) {
 			wantKind: IntentIgnore,
 		},
 	}
+
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			intent, err := ParseEvent(testCase.event, []byte(testCase.payload))
@@ -74,6 +76,54 @@ func TestParseEventClassifiesDeliveries(t *testing.T) {
 				t.Fatalf("installation = %d, want %d", intent.InstallationID, testCase.wantInstal)
 			}
 		})
+	}
+}
+
+func TestParseIssueEventStatusAndBoundaries(t *testing.T) {
+	base := `{"action":"%s","installation":{"id":42},"repository":{"full_name":"Octo/Api"},
+		"issue":{"number":12,"state":"%s","state_reason":"completed",
+		"closed_at":"2026-01-02T03:04:05Z","updated_at":"2026-01-02T03:04:06Z"%s}}`
+	for _, tc := range []struct {
+		action, state, extra string
+		want                 IntentKind
+	}{
+		{"closed", "closed", "", IntentIssueStatus},
+		{"reopened", "open", "", IntentIssueStatus},
+		{"opened", "open", "", IntentIssueStatus},
+		{"edited", "closed", "", IntentIssueStatus},
+		{"labeled", "open", "", IntentIssueStatus},
+		{"closed", "open", "", IntentIgnore},
+		{"deleted", "closed", "", IntentIgnore},
+		{"edited", "closed", `,"pull_request":{"url":"https://api.github.com/pull/12"}`, IntentIgnore},
+	} {
+		t.Run(tc.action+"/"+tc.state+tc.extra, func(t *testing.T) {
+			intent, err := ParseEvent("issues", []byte(fmt.Sprintf(base, tc.action, tc.state, tc.extra)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if intent.Kind != tc.want {
+				t.Fatalf("kind = %q, want %q", intent.Kind, tc.want)
+			}
+			if tc.want == IntentIssueStatus {
+				if intent.Issue.ID != "github:issue:octo/api:12" ||
+					intent.Issue.Repository != "octo/api" || intent.Issue.InstallationID != 42 {
+					t.Fatalf("unsafe issue identity: %+v", intent.Issue)
+				}
+				if tc.state == "open" && (intent.Issue.ClosedAt != "" || intent.Issue.StateReason != "") {
+					t.Fatalf("reopening retained closing fields: %+v", intent.Issue)
+				}
+			}
+		})
+	}
+	for _, payload := range []string{
+		`{"action":"closed","installation":{"id":42},"repository":{"full_name":"octo/api"},"issue":{"number":12,"state":"closed"}}`,
+		`{"action":"closed","installation":{"id":0},"repository":{"full_name":"octo/api"},"issue":{"number":12,"state":"closed","updated_at":"2026-01-02T03:04:06Z"}}`,
+		`{"action":"closed","installation":{"id":42},"repository":{"full_name":"../api"},"issue":{"number":12,"state":"closed","updated_at":"2026-01-02T03:04:06Z"}}`,
+	} {
+		intent, err := ParseEvent("issues", []byte(payload))
+		if err != nil || intent.Kind != IntentIgnore {
+			t.Fatalf("invalid issue accepted: %+v %v", intent, err)
+		}
 	}
 }
 
