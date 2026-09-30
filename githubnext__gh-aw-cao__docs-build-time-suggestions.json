@@ -1,39 +1,7 @@
 {
-  "source_sha": "85578b891470b0aec1f4ce531130f1729927793a",
-  "next_category": "dependency installation and caching",
+  "source_sha": "0ca4a35c7128e99b24e744ac760818b08d5ac3f3",
+  "next_category": "Astro documentation generation",
   "evaluations": [
-    {
-      "evaluated_at": "2026-09-30T02:12:51Z",
-      "worker_run_id": "36658388705",
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        36657997387,
-        36653323698,
-        36649101159,
-        36648890547,
-        36648633676,
-        36648478342,
-        36646927879,
-        36646895035
-      ],
-      "outcome": "no_actionable_improvement: latest 8 comparable successful docs.yml runs kept Pages upload at 4-7s (median 6s, p90 7s), deploy at 9-20s on schedule-triggered deployments (median 14s, p90 19s), and the uploaded github-pages artifact near 30.0 MB; transfer and packaging remain below the 60s/15% threshold, while duplicate workflow_run rebuilds remain the only material waste already tracked under scheduling."
-    },
-    {
-      "evaluated_at": "2026-09-30T01:44:30Z",
-      "worker_run_id": "36656434679",
-      "category": "scheduling, concurrency, and avoidable rebuilds",
-      "evidence_run_ids": [
-        36653323698,
-        36649101159,
-        36648890547,
-        36648633676,
-        36648478342,
-        36646927879,
-        36646895035
-      ],
-      "outcome": "no_actionable_improvement: latest 7 successful runs repeat the already-tracked workflow_run duplicate-build pattern, but an open suggestion with the same fingerprint already exists in memory and no new source or timing evidence materially alters the recommendation.",
-      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
-    },
     {
       "evaluated_at": "2026-09-30T01:06:35Z",
       "worker_run_id": "36653246021",
@@ -586,6 +554,22 @@
         36744206100
       ],
       "outcome": "no_actionable_improvement: the latest 20 completed docs.yml runs in the last 14 days yielded 8 successful runs, including one same-SHA duplicate workflow_run rebuild pair (36748491322 -> 36748716240) that still matches the already-open scheduling recommendation in issue #15029. Current successful-run medians were 53.5s full workflow (p90 123.2s), 0s queue time (p90 0s), 43.5s build job (p90 51.5s), and 26s deploy job on deploying runs (p90 42.8s). Trusted logs again showed npm package cache hits plus node_modules and cached CAO Dashboard restore hits on every built success, with Build documentation median 13s, Restore cached CAO Dashboard median 1.5s, and Upload Pages artifact median 7s. No new source or materially changed timing evidence justifies repeating the same scheduling issue or creating a new recommendation.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-30T17:42:58Z",
+      "worker_run_id": "36752813499",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36752345073,
+        36751367691,
+        36751116923,
+        36750575116,
+        36748716240,
+        36748491322,
+        36747388266
+      ],
+      "outcome": "no_actionable_improvement: latest 7 successful docs.yml runs in the last 14 days included 6 built runs and 1 freshness skip. Trusted cache metadata confirmed npm package cache hits plus node_modules and cached CAO Dashboard restore hits on every sampled build; Install dependencies, Save node_modules, dashboard lookup, and dashboard artifact download were skipped. Current medians were 52s full workflow (p90 123.6s), 45.5s build job (p90 62s), 8.5s schedule-freshness (p90 9s), 26s deploy job on deploying runs (p90 42.8s), 13s Build documentation step, 5s Restore node_modules, 2s Restore cached CAO Dashboard, and 7s Upload Pages artifact. Dependency installation and cache reuse remain below the 60s or 15% threshold, while the only recurring material waste still visible remains the already-recorded same-SHA workflow_run duplicate rebuild issue #15029.",
       "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
     }
   ]
