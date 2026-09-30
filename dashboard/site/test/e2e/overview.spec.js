@@ -217,6 +217,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
       if (!title || !subtitle || !legend) throw new Error('The rhythm heading and legend must be present');
       const subtitleStyle = getComputedStyle(subtitle);
       const legendStyle = getComputedStyle(legend.querySelector('li') ?? legend);
+      /** @param {CSSStyleDeclaration} style */
       const typography = (style) => ({
         fontFamily: style.fontFamily,
         fontSize: style.fontSize,
