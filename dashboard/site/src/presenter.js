@@ -2155,7 +2155,8 @@ function renderCustomView(pageId, view, index, sources, units, cardTemplates, he
       contextDetails,
       headingTag,
       state === 'empty' ? emptyMessage : undefined,
-      state === 'unavailable' ? metadata?.['query-error'] : undefined
+      state === 'unavailable' ? metadata?.['query-error'] : undefined,
+      state === 'unavailable' ? metadata?.['query-diagnostic'] : undefined
     );
   }
 
@@ -2392,9 +2393,12 @@ function renderPageTitleLink(target, candidate) {
  * @param {'h3'|'h4'} [headingTag]
  * @param {string} [message]
  * @param {unknown} [queryError]
+ * @param {unknown} [queryDiagnostic]
  * @returns {HTMLElement}
  */
-function renderCustomViewState(pageId, title, sourceName, availability, contextDetails, headingTag = 'h3', message, queryError) {
+function renderCustomViewState(pageId, title, sourceName, availability, contextDetails, headingTag = 'h3', message, queryError, queryDiagnostic) {
+  const queryFailed = typeof queryDiagnostic === 'string'
+    && queryDiagnostic.startsWith('$.dashboard.queries[');
   return renderPageSection(pageId, title, [
     h(
       'div',
@@ -2407,8 +2411,14 @@ function renderCustomViewState(pageId, title, sourceName, availability, contextD
       h(
         'div',
         { className: 'view-state-card-body' },
-        h('p', { className: 'view-state-message', 'data-view-availability': availability }, message ?? customViewAvailabilityMessage(availability)),
-        ...renderCustomViewStateDetails(sourceName, contextDetails, queryError)
+        h(
+          'p',
+          { className: 'view-state-message', 'data-view-availability': availability },
+          message ?? (queryFailed
+            ? 'This view cannot be shown because its data query failed.'
+            : customViewAvailabilityMessage(availability))
+        ),
+        ...renderCustomViewStateDetails(sourceName, contextDetails, queryError, queryDiagnostic)
       )
     )
   ], headingTag);
