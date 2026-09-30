@@ -242,7 +242,9 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     expect(headingPlacement.subtitleBottom).toBeLessThanOrEqual(headingPlacement.legendTop);
     await expect(factory.locator('.factory-rhythm .graph-widget-y-axis-label')).toHaveCount(0);
     const rhythmBars = factory.locator('.factory-rhythm-bar-pair i:not([hidden])');
-    await expect(rhythmBars).toHaveCount(14);
+    await expect(rhythmBars).toHaveCount(10);
+    await expect(factory.locator('.factory-rhythm-current[hidden]')).toHaveCount(4);
+    await expect(factory.locator('.factory-rhythm-current[hidden]').first()).toHaveCSS('display', 'none');
     await expect(factory.locator('.factory-rhythm-day').nth(3))
       .toHaveAttribute('aria-label', 'Thu 2026-09-17: 0 successful runs this week (day not yet reached); 4 successful runs last week.');
     const layeredDays = await factory.locator('.factory-rhythm-day').evaluateAll((days) => days.map((day) => {
@@ -262,7 +264,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
       };
     }));
     expect(layeredDays).toHaveLength(7);
-    for (const layered of layeredDays) {
+    for (const layered of layeredDays.slice(0, 3)) {
       expect(layered.currentBottom).toBeCloseTo(layered.previousBottom, 0);
       expect(layered.currentLeft).toBeCloseTo(layered.previousLeft, 0);
       expect(layered.currentRight).toBeCloseTo(layered.previousRight, 0);

@@ -95,7 +95,8 @@ describe('Overview component boundaries', () => {
     expect(rendered.querySelectorAll('.factory-rhythm-baseline')).toHaveLength(7);
     expect(barHeight(days[0]?.querySelector('.factory-rhythm-current'))).toBeCloseTo(100 / 7);
     expect(barHeight(days[0]?.querySelector('.factory-rhythm-baseline'))).toBe(100);
-    expect(barHeight(days[3]?.querySelector('.factory-rhythm-current'))).toBe(5);
+    expect(days[3]?.querySelector('.factory-rhythm-current')?.hidden).toBe(true);
+    expect(barHeight(days[3]?.querySelector('.factory-rhythm-current'))).toBe(0);
     expect(barHeight(days[3]?.querySelector('.factory-rhythm-baseline'))).toBeCloseTo(400 / 7);
 
     rows.set(rhythmRows(10));
@@ -119,7 +120,32 @@ describe('Overview component boundaries', () => {
     expect(rendered.querySelectorAll('.factory-rhythm-bar-pair i')).toHaveLength(14);
     expect(rendered.querySelector('.factory-rhythm-day')?.getAttribute('aria-label'))
       .toBe('Mon: 0 successful runs this week (day not yet reached); 0 successful runs last week.');
-    expect(barHeight(rendered.querySelector('.factory-rhythm-current'))).toBe(5);
+    expect(rendered.querySelectorAll('.factory-rhythm-bar-pair i:not([hidden])')).toHaveLength(0);
+    expect(barHeight(rendered.querySelector('.factory-rhythm-current'))).toBe(0);
+    controller.abort();
+  });
+
+  it('rhythm hides zero bars independently and restores them when counts change', () => {
+    const controller = new AbortController();
+    const rows = state(rhythmRows());
+    const rendered = renderFactoryRhythm({ rows: rows.get }, { signal: controller.signal });
+    const first = rendered.querySelector('.factory-rhythm-day');
+    const current = first?.querySelector('.factory-rhythm-current');
+    const previous = first?.querySelector('.factory-rhythm-baseline');
+
+    expect(current?.hidden).toBe(false);
+    expect(previous?.hidden).toBe(false);
+    const zeroPrevious = rhythmRows();
+    zeroPrevious[0].rhythm.days[0].previous = 0;
+    rows.set(zeroPrevious);
+    expect(current?.hidden).toBe(false);
+    expect(previous?.hidden).toBe(true);
+    expect(barHeight(previous)).toBe(0);
+    expect(first?.getAttribute('aria-label')).toContain('0 successful runs last week');
+
+    rows.set(rhythmRows());
+    expect(previous?.hidden).toBe(false);
+    expect(barHeight(previous)).toBe(100);
     controller.abort();
   });
 

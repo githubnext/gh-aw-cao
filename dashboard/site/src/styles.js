@@ -1622,6 +1622,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .factory-rhythm-bars > .factory-rhythm-day { height: 100%; position: relative; display: grid; grid-template-rows: 1fr auto; align-items: end; gap: 5px; border: 0; border-radius: 3px; background: transparent; text-align: center; cursor: default; }
 .factory-rhythm-bar-pair { height: 100%; position: relative; display: block; }
 .factory-rhythm-bar-pair i { position: absolute; bottom: 0; left: 50%; min-width: 4px; min-height: 5px; display: block; border-radius: 3px 3px 1px 1px; transform: translateX(-50%); transform-origin: center bottom; animation: factory-rhythm-bar-grow 360ms cubic-bezier(.2, .7, .2, 1) both; animation-delay: calc((var(--factory-rhythm-day, 1) - 1) * 35ms); }
+.factory-rhythm-bar-pair i[hidden] { display: none; }
 .factory-rhythm-day:nth-child(2) { --factory-rhythm-day: 2; }
 .factory-rhythm-day:nth-child(3) { --factory-rhythm-day: 3; }
 .factory-rhythm-day:nth-child(4) { --factory-rhythm-day: 4; }
