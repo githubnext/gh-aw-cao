@@ -10,14 +10,18 @@ const debugTheme = createDebug('theme-settings');
 
 /** @typedef {'system'|'light'|'dark'} DashboardTheme */
 
+/** @type {DashboardTheme | null} */
+let unpersistedTheme = null;
+
 /** @returns {DashboardTheme} */
 function savedTheme() {
-  let theme = /** @type {DashboardTheme} */ ('system');
+  let theme = unpersistedTheme ?? /** @type {DashboardTheme} */ ('system');
   let fallback = true;
   try {
     const stored = globalThis.window?.localStorage?.getItem(THEME_STORAGE_KEY);
-    if (stored === 'system' || stored === 'light' || stored === 'dark') {
+    if (unpersistedTheme === null && (stored === 'system' || stored === 'light' || stored === 'dark')) {
       theme = stored;
+      unpersistedTheme = null;
       fallback = false;
     }
   } catch {
@@ -47,9 +51,11 @@ export function renderThemeControl() {
   const persistTheme = (nextTheme) => {
     try {
       globalThis.window?.localStorage?.setItem(THEME_STORAGE_KEY, nextTheme);
+      unpersistedTheme = null;
       debugTheme({ event: 'changed', theme: nextTheme, persisted: true });
     } catch (error) {
       // The theme still applies for the current page when storage is unavailable.
+      unpersistedTheme = nextTheme;
       debugTheme({ event: 'changed', theme: nextTheme, persisted: false, errorName: error instanceof Error ? error.name : 'unknown' });
     }
   };

@@ -46,6 +46,31 @@ describe('dashboard theme settings reactive state', () => {
     expect(control.querySelector('[data-theme-value="dark"]')?.getAttribute('aria-pressed')).toBe('true');
   });
 
+  it('retains the in-session selection across Settings navigation when storage rejects writes', async () => {
+    localStorage.setItem('central-agentic-ops.dashboard.theme', 'light');
+    const { renderThemeControl } = await import('../../src/components/theme-settings.js');
+    const dashboardRoot = Object.assign(document.createElement('div'), { className: 'dashboard-root' });
+    document.body.replaceChildren(dashboardRoot);
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('quota exceeded', 'QuotaExceededError');
+    });
+    try {
+      const control = renderThemeControl();
+      dashboardRoot.append(control);
+      /** @type {HTMLButtonElement} */ (control.querySelector('[data-theme-value="dark"]')).click();
+      expect(dashboardRoot.dataset.theme).toBe('dark');
+
+      control.remove();
+      const reopened = renderThemeControl();
+      dashboardRoot.append(reopened);
+      expect(reopened.querySelector('[data-theme-value="dark"]')?.getAttribute('aria-pressed')).toBe('true');
+      expect(dashboardRoot.dataset.theme).toBe('dark');
+      expect(localStorage.getItem('central-agentic-ops.dashboard.theme')).toBe('light');
+    } finally {
+      setItemSpy.mockRestore();
+    }
+  });
+
   it('stops reacting to theme changes once the control detaches from the document', async () => {
     const { renderThemeControl } = await import('../../src/components/theme-settings.js');
     const dashboardRoot = Object.assign(document.createElement('div'), { className: 'dashboard-root' });
