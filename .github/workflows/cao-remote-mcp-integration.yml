@@ -1,0 +1,30 @@
+name: CAO remote MCP integration
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  actions: read
+  contents: read
+  issues: read
+  pull-requests: read
+  id-token: write
+
+jobs:
+  remote-mcp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version-file: server/go.mod
+          cache: false
+      - name: Exercise hosted CAO MCP
+        env:
+          CAO_REMOTE_MCP_TEST: "1"
+          GITHUB_TOKEN: ${{ github.token }}
+        run: go -C server test ./internal/server -run '^TestRemoteMCPIntegration$' -count=1 -v

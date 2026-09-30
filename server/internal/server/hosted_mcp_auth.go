@@ -36,7 +36,7 @@ func (a *App) authorizeHostedMCP(request *http.Request) bool {
 		!claims.VerifyAudience(actionsMCPAudience, true) ||
 		claims["repository"] != a.config.ActionsRepository ||
 		claims["repository_id"] != a.config.HostedMCPRepositoryID ||
-		claims["workflow_ref"] != a.config.ActionsRepository+"/.github/workflows/cao-remote-mcp-explorer.lock.yml@refs/heads/main" ||
+		claims["workflow_ref"] != a.config.ActionsRepository+"/.github/workflows/cao-remote-mcp-integration.yml@refs/heads/main" ||
 		!nonemptyOIDCClaim(claims, "event_name") ||
 		!nonemptyOIDCClaim(claims, "run_id") ||
 		!claims.VerifyIssuedAt(time.Now().Unix(), true) ||

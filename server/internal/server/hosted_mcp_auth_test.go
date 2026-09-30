@@ -58,7 +58,7 @@ func TestHostedMCPAuthentication(t *testing.T) {
 	baseClaims := jwt.MapClaims{
 		"iss": actionsOIDCIssuer, "aud": actionsMCPAudience,
 		"repository": "githubnext/gh-aw-cao", "repository_id": "1302952722",
-		"workflow_ref": "githubnext/gh-aw-cao/.github/workflows/cao-remote-mcp-explorer.lock.yml@refs/heads/main", "event_name": "schedule", "run_id": "123",
+		"workflow_ref": "githubnext/gh-aw-cao/.github/workflows/cao-remote-mcp-integration.yml@refs/heads/main", "event_name": "push", "run_id": "123",
 		"iat": time.Now().Add(-time.Minute).Unix(), "exp": time.Now().Add(time.Minute).Unix(),
 	}
 	sign := func(claims jwt.MapClaims, signingKey *rsa.PrivateKey) string {

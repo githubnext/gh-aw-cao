@@ -1265,8 +1265,9 @@ The endpoint exposes only `cao_catalog` and `cao_query`; it accepts no
 SQL, arbitrary query definitions, refresh, rebuild, webhook, administration, or
 repository mutation operations.
 
-The Coolify deployment enables `/mcp` for the approved
-`githubnext/gh-aw-cao` workflow on the default branch. Hosted MCP requires a
+The Coolify deployment enables `/mcp` for the deterministic
+`cao-remote-mcp-integration.yml` test on pushes to the default branch of
+`githubnext/gh-aw-cao`. Hosted MCP requires a
 signed GitHub Actions OIDC assertion with audience
 `https://cao.githubnext.com/mcp` and the repository-scoped job token in
 `X-GitHub-Actions-Token`. The server checks the OIDC issuer, GitHub signing
