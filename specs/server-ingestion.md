@@ -85,6 +85,16 @@ window and the same underlying GitHub activity.
   asserts identical canonical records from an Actions-published directory and a
   server-collected evidence lake covering the same window.
 
+### 2.3 HTTP host independence
+
+The acquisition profile is independent of which process owns the HTTP
+listener. When an external host serves CAO's handler, it MUST start the
+selected ingestion profile before admitting requests and MUST allow CAO's
+background work to stop only after the HTTP host has drained. The external
+host MUST NOT bypass CAO's webhook verification or independently infer
+collection scope from requests. The mutual-exclusion, enrollment, durable
+admission, and recovery requirements in this document remain unchanged.
+
 ## 3. Enrollment
 
 In the collector profile the ingestion scope is the set of repositories on which

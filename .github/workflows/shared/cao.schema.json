@@ -227,8 +227,8 @@
         },
         "name": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
         "authentication": { "type": "string", "enum": ["github-oauth"] },
-        "listener": { "type": "string", "enum": ["process", "platform"] },
-        "require-https": { "type": "boolean" },
+        "listener": { "type": "string", "enum": ["process", "platform", "external"] },
+        "require-https": { "const": true },
         "trust-platform-proxy": { "type": "boolean" },
         "supports-single-replica": { "type": "boolean" },
         "replicas": { "type": "integer", "minimum": 1 }

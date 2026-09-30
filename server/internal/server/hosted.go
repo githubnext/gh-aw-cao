@@ -33,6 +33,36 @@ func NewHostedAppFromEnv(
 	if err != nil {
 		return nil, err
 	}
+	if host.Profile.Listener != HostListenerProcess {
+		return nil, fmt.Errorf("host target module %q does not own a process listener", host.Profile.Name)
+	}
+	return newHostedAppWithPolicy(ctx, host, listen, certFile, keyFile, siteDirectory, dashboardQueriesPath, databaseQueriesPath, logger)
+}
+
+// NewExternallyHostedAppFromEnv builds an OAuth-protected CAO service without
+// opening a listener. The host policy must explicitly delegate listener
+// ownership; credentials and transport policy remain CAO-owned.
+func NewExternallyHostedAppFromEnv(
+	ctx context.Context,
+	siteDirectory, dashboardQueriesPath, databaseQueriesPath string,
+	logger *log.Logger,
+) (*App, error) {
+	host, err := loadHostPolicyFromEnv()
+	if err != nil {
+		return nil, err
+	}
+	if host.Profile.Listener != HostListenerExternal {
+		return nil, fmt.Errorf("host target module %q does not delegate listener ownership to an external host", host.Profile.Name)
+	}
+	return newHostedAppWithPolicy(ctx, host, "", "", "", siteDirectory, dashboardQueriesPath, databaseQueriesPath, logger)
+}
+
+func newHostedAppWithPolicy(
+	ctx context.Context,
+	host *resolvedHostPolicy,
+	listen, certFile, keyFile, siteDirectory, dashboardQueriesPath, databaseQueriesPath string,
+	logger *log.Logger,
+) (*App, error) {
 	if err := validateHostedRedisURL(
 		host.RedisURL,
 		host.RedisOptions.AllowPrivatePlaintext,

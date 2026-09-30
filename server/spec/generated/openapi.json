@@ -478,7 +478,7 @@
     "/api/health": {
       "get": {
         "operationId": "Health_health",
-        "description": "Public liveness and storage health, including when no projection exists.",
+        "description": "Public liveness and storage health, including when no projection exists.An externally hosted handler also returns an Unavailable error until startup completes or after shutdown.",
         "parameters": [],
         "responses": {
           "200": {
@@ -496,7 +496,23 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HealthResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HealthResponse"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "error"
+                      ],
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "description": "An error response. The message is diagnostic, not a stable error code."
+                    }
+                  ]
                 }
               }
             }
@@ -528,7 +544,23 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReadinessResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ReadinessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "error"
+                      ],
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "description": "An error response. The message is diagnostic, not a stable error code."
+                    }
+                  ]
                 }
               }
             }
@@ -1150,7 +1182,7 @@
     "/api/v1/events": {
       "get": {
         "operationId": "Queries_events",
-        "description": "Server-sent stream: each `data:` line is a RevisionEvent JSON object; `: keepalive` comments arrive every 20 seconds.",
+        "description": "Server-sent stream: each `data:` line is a RevisionEvent JSON object; `: keepalive` comments arrive every 20 seconds. HTTP hosts must support flushing and must not impose a finite whole-request timeout on this route.",
         "parameters": [],
         "responses": {
           "200": {
@@ -1323,7 +1355,23 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HealthResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HealthResponse"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "error"
+                      ],
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "description": "An error response. The message is diagnostic, not a stable error code."
+                    }
+                  ]
                 }
               }
             }

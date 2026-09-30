@@ -190,6 +190,7 @@ flowchart LR
 | Query engine | `internal/query/` | Validates Dashboard Language definitions and executes joins, filters, computed fields, aggregates, temporal series, selection, ordering, and limits under resource budgets. |
 | Redis projection | `internal/redisx/` | Stores source rows and metadata with core Redis commands and atomically publishes the active generation. |
 | HTTP(S)/API server | `internal/server/` | Enforces loopback binding, optionally terminates operator-configured TLS, serves static dashboard assets, handles API requests, and publishes revision events. |
+| Externally hosted service | `hosting/` | Exposes a listener-independent application lifecycle and the complete hosted HTTP handler to other Go HTTP hosts. |
 | Azure Functions profile | `internal/server/azure.go` | Builds the same HTTP handler without starting a listener, validates Azure app settings, requires `rediss://` Redis, and trusts forwarded host/protocol headers only for configured Azure hosts. |
 | GitHub OAuth sessions | `internal/server/oauth.go` | Implements the GitHub OAuth authorization-code flow, active organization/team authorization, refresh-token rotation, server-side encrypted sessions in Redis, logout revocation, and CSRF protection for mutating requests. |
 | Shared API model | `internal/model/` | Defines logical sources, active-generation metadata, diagnostics, and query metrics. |
@@ -218,6 +219,31 @@ or Redis enforcement. Startup rejects unsupported capability combinations, a
 serialized profile backed by a pooled Redis client, collection on an
 artifact-only profile, and process-listener settings on a platform-listener
 profile.
+
+The `generic` target also accepts `listener: external` for a Go host that owns
+the HTTP server instead of CAO's `Serve` command. Use the public `hosting.New`
+constructor with explicit paths to the built site and query documents, call
+`Start(ctx)` before serving `Handler()`, drain the host's HTTP server before
+`Stop()`, and keep the startup context alive through that drain. `Handler()`
+includes all CAO authentication, trusted-host, CSRF, rate-limit, webhook, and
+telemetry middleware; it returns `503` before startup or after cancellation.
+There is no alternate raw router or automatic trust of an embedding host's
+identity headers. The existing process-owned `serve-hosted` and Azure handlers
+do not select this mode.
+Generic OAuth targets cannot disable HTTPS in policy; Azure's explicit local
+simulation is a separate platform-only case.
+
+The external host must supply TLS or a private, explicitly trusted proxy
+boundary, preserve request `Host`, direct peer address, TLS state, and
+`http.Flusher`/response deadline control, and keep a long-lived
+`/api/v1/events` stream outside finite whole-request timeouts. CAO's built-in
+listener removes its ordinary write deadline only for that streaming route;
+other routes retain bounded HTTP timeouts. A host's global request timeout
+cannot be repaired by CAO after it cancels the request context. Use a dedicated
+hostname: the browser's OAuth, API, and static paths are rooted at `/`.
+Keep separate limits for concurrent streams, connections, and overall host
+memory in the embedding deployment; CAO's Redis token buckets bound request
+arrival, not the lifetime of an accepted stream.
 
 ## Hosted service profile
 

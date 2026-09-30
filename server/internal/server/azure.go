@@ -53,6 +53,10 @@ func validateHostedMode(store *redisx.Store, config *Config) error {
 	if profile.RequiresHTTPS && !policy.RequireHTTPS {
 		return errors.New("hosted mode requires HTTPS")
 	}
+	if profile.Listener == HostListenerExternal && config.Proxy.TrustForwarded &&
+		len(config.Proxy.TrustedProxyPrefixes) == 0 {
+		return errors.New("externally hosted forwarded headers require explicit trusted proxy CIDRs")
+	}
 	if profile.Listener == HostListenerProcess {
 		if isLoopbackListen(config.Listen) && !config.Proxy.TrustForwarded {
 			config.Proxy.TrustForwarded = true

@@ -416,12 +416,15 @@ function validateTarget(target, path) {
       if (!(key in target)) throw new PolicyError(`${path}.${key} is required for the generic module`);
     }
     assertOneOf(target.authentication, `${path}.authentication`, ["github-oauth"]);
-    assertOneOf(target.listener, `${path}.listener`, ["process", "platform"]);
+    assertOneOf(target.listener, `${path}.listener`, ["process", "platform", "external"]);
     if (target.authentication !== "github-oauth") {
       throw new PolicyError(`${path}.authentication must be github-oauth for a configured host target`);
     }
-    for (const key of ["require-https", "trust-platform-proxy", "supports-single-replica"]) {
+    for (const key of ["trust-platform-proxy", "supports-single-replica"]) {
       if (key in target) assertBoolean(target[key], `${path}.${key}`);
+    }
+    if ("require-https" in target && target["require-https"] !== true) {
+      throw new PolicyError(`${path}.require-https must be true for a configured host target`);
     }
     if (target.listener === "platform" && target.authentication !== "github-oauth") {
       throw new PolicyError(`${path} platform listeners require github-oauth authentication`);
