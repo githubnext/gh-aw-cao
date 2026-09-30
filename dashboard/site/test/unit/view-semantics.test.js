@@ -77,6 +77,7 @@ describe('semantic view prompts', () => {
     expect(prompt).toContain('cao query-info QUERY_ID');
     expect(prompt).toContain('cao_query');
     expect(prompt).toContain('cao download');
+    expect(prompt.startsWith('Improve CAO by increasing ROI, reducing cost, and increasing operational value, reliability, and velocity.')).toBe(true);
     expect(prompt).toContain('/analyze-cao');
     expect(prompt).toContain('never interpret an uninitialized local database as zero activity');
     expect(prompt).toContain('This is a preview of the data. Requery for full data.');
