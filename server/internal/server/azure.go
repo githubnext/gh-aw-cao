@@ -13,9 +13,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
+
+var proxyLog = logger.New("cao:server:proxy")
 
 type ProxyPolicy struct {
 	AllowedHosts         []string
@@ -73,12 +76,32 @@ func validateHostedMode(store *redisx.Store, config *Config) error {
 	return nil
 }
 
-func validProxyRequest(request *http.Request, policy ProxyPolicy) bool {
+// proxyRejectionReason names why classifyProxyRequest rejected a request. It
+// is stable across host-value and header-content changes, so it is useful to
+// log without exposing the request's Host, X-Forwarded-* values, or client
+// address.
+type proxyRejectionReason string
+
+const (
+	proxyRejectionNone            proxyRejectionReason = ""
+	proxyRejectionUntrustedPeer   proxyRejectionReason = "untrusted-proxy-peer"
+	proxyRejectionEmptyHost       proxyRejectionReason = "empty-host"
+	proxyRejectionHostNotAllowed  proxyRejectionReason = "host-not-allowed"
+	proxyRejectionInsecureRequest proxyRejectionReason = "insecure-request"
+)
+
+// classifyProxyRequest decides whether request satisfies policy and, when it
+// does not, which precondition failed. It is a pure function extracted from
+// validProxyRequest so the trusted-peer check, host allow-listing, and the
+// HTTPS requirement are each independently testable against a plain
+// *http.Request, and so a rejection can be logged by reason without
+// exposing the request's host or forwarded-header values.
+func classifyProxyRequest(request *http.Request, policy ProxyPolicy) proxyRejectionReason {
 	host := request.Host
 	secure := request.TLS != nil
 	if policy.TrustForwarded {
 		if len(policy.TrustedProxyPrefixes) > 0 && !trustedProxyPeer(request.RemoteAddr, policy.TrustedProxyPrefixes) {
-			return false
+			return proxyRejectionUntrustedPeer
 		}
 		if forwarded := forwardedHeader(request, "X-Forwarded-Host"); forwarded != "" {
 			host = forwarded
@@ -88,7 +111,7 @@ func validProxyRequest(request *http.Request, policy ProxyPolicy) bool {
 	}
 	host = strings.ToLower(strings.TrimSpace(strings.Split(host, ",")[0]))
 	if host == "" {
-		return false
+		return proxyRejectionEmptyHost
 	}
 	if strings.Contains(host, ":") {
 		host = strings.Split(host, ":")[0]
@@ -101,12 +124,25 @@ func validProxyRequest(request *http.Request, policy ProxyPolicy) bool {
 		}
 	}
 	if !allowed {
+		return proxyRejectionHostNotAllowed
+	}
+	if policy.RequireHTTPS && !secure {
+		return proxyRejectionInsecureRequest
+	}
+	return proxyRejectionNone
+}
+
+// validProxyRequest reports whether request satisfies policy, logging the
+// specific precondition that failed on rejection so a misconfigured proxy
+// policy or an unexpected caller is diagnosable without exposing the
+// request's host or forwarded-header values.
+func validProxyRequest(request *http.Request, policy ProxyPolicy) bool {
+	reason := classifyProxyRequest(request, policy)
+	if reason != proxyRejectionNone {
+		proxyLog.Printf("proxy request rejected reason=%s", reason)
 		return false
 	}
-	if !policy.RequireHTTPS {
-		return true
-	}
-	return secure
+	return true
 }
 
 func trustedProxyPeer(remoteAddress string, prefixes []netip.Prefix) bool {
