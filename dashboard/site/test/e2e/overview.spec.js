@@ -202,8 +202,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(campaigns.locator('.link-button-list')).toHaveCSS('border-top-width', '0px');
     const pageBounds = await page.locator('[data-page-id="overview"]').boundingBox();
     const mainBounds = await page.locator('main.dashboard-prototype').boundingBox();
-    expect(pageBounds).not.toBeNull();
-    expect(mainBounds).not.toBeNull();
+    if (!pageBounds || !mainBounds) throw new Error('Overview and main bounds must be available');
     expect(pageBounds.x).toBeCloseTo(mainBounds.x, 0);
     expect(pageBounds.width).toBeGreaterThan(mainBounds.width - 20);
     await expect(campaigns.getByRole('link', { name: 'View AW Doctor campaign dashboard' }))
