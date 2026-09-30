@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { renderCloseButton, renderTooltip } from './ui-primitives.js';
+import { formatMediumUtcDateTime, renderCloseButton, renderTooltip } from './ui-primitives.js';
 import { createDebug } from '../debug.js';
 
 const debugRefreshError = createDebug('refresh-error');
@@ -85,6 +85,6 @@ export function renderDashboardCurrentStatus(snapshot, { refreshing = false } = 
 function formatSnapshotDate(snapshot) {
   const timestamp = Date.parse(snapshot.createdAt);
   return Number.isFinite(timestamp)
-    ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(timestamp)
+    ? formatMediumUtcDateTime(timestamp)
     : 'an unknown time';
 }
