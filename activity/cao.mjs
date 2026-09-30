@@ -72,7 +72,7 @@ import {
   USAGE
 } from './cli-usage.mjs';
 import { NamedQueryError } from './agent-catalog.mjs';
-import { normalizedPhaseBatch } from './normalized-phase.mjs';
+import { normalizedPhaseBatch, relationshipSafeEvidenceBatch } from './normalized-phase.mjs';
 import { mergeEvidenceDefinition } from '../dashboard/site/src/data/model/schema.js';
 import { commandHandlers } from './commands/index.mjs';
 import { setupCaoControlPlane } from './setup.mjs';
@@ -1859,7 +1859,9 @@ function consolidationBucket(collection, record) {
  * @param {string} outputDirectory
  * @param {number} maxBytes
  */
-async function consolidatePhasePayloads(phase, cachePaths, outputDirectory, maxBytes) {
+async function consolidatePhasePayloads(
+  phase, cachePaths, outputDirectory, maxBytes, { runWorkflowIds = new Map() } = {}
+) {
   /** @type {Map<string, Map<string, Record<string, unknown>>>} */
   const deduped = new Map(NORMALIZED_COLLECTIONS.map((collection) => [collection, new Map()]));
   let sourceRecords = 0;
@@ -1886,6 +1888,20 @@ async function consolidatePhasePayloads(phase, cachePaths, outputDirectory, maxB
       records.set(id, record);
     }
   }
+  if (phase === 'records' && runWorkflowIds.size > 0) {
+    const batch = Object.fromEntries(
+      NORMALIZED_COLLECTIONS.map((collection) =>
+        [collection, [...deduped.get(collection).values()]])
+    );
+    const safe = relationshipSafeEvidenceBatch(batch, runWorkflowIds);
+    for (const collection of ['experimentAssignments', 'graderObservations', 'evalObservations']) {
+      deduped.set(collection, new Map(safe[collection].map((record) => [String(record.id), record])));
+    }
+  }
+  const consolidatedRunWorkflowIds = phase === 'runs'
+    ? new Map([...deduped.get('runs').values()].map((run) =>
+      [String(run.id), String(run.workflowId)]))
+    : runWorkflowIds;
   /** @type {Map<string, string[]>} */
   const buckets = new Map();
   let uniqueRecords = 0;
@@ -1935,7 +1951,7 @@ async function consolidatePhasePayloads(phase, cachePaths, outputDirectory, maxB
   if (written.length === 0) {
     written.push(await writeConsolidatedShard(phase, STRUCTURAL_CONSOLIDATION_BUCKET, 0, [], outputDirectory));
   }
-  return written;
+  return { names: written, runWorkflowIds: consolidatedRunWorkflowIds };
 }
 
 async function writeConsolidatedShard(phase, bucket, index, lines, outputDirectory) {
@@ -2091,17 +2107,20 @@ async function hashActivityPayloads({
         cachePaths[phase].push(outputPath);
       }
     }
+    let runWorkflowIds = new Map();
     for (const [phase, directory] of [
       ['runs', runsDirectory],
       ['records', recordsDirectory]
     ].filter(([, directory]) => Boolean(directory))) {
-      const names = await consolidatePhasePayloads(
+      const consolidated = await consolidatePhasePayloads(
         phase,
         cachePaths[phase],
         directory,
-        DEFAULT_COMPACTED_JSONL_SHARD_BYTES
+        DEFAULT_COMPACTED_JSONL_SHARD_BYTES,
+        { runWorkflowIds }
       );
-      for (const name of names) {
+      if (phase === 'runs') runWorkflowIds = consolidated.runWorkflowIds;
+      for (const name of consolidated.names) {
         retainedPayloads[phase].add(name);
         hashes[`${path.basename(directory)}/${name}`] = await hashFile(path.join(directory, name));
       }

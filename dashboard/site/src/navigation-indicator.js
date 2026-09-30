@@ -1,3 +1,7 @@
+import { createDebug } from './debug.js';
+
+const debugNavigationIndicator = createDebug('navigation-indicator');
+
 /**
  * Resolves the declarative navigation indicator for one page.
  * The returned source names refer to declarative query outputs that already
@@ -9,11 +13,17 @@
 export function navigationIndicator(page) {
   if (!isPlainObject(page['navigation-indicator'])) return null;
   const indicator = /** @type {Record<string, unknown>} */ (page['navigation-indicator']);
-  if (typeof indicator.label !== 'string' || indicator.label.length === 0) return null;
+  if (typeof indicator.label !== 'string' || indicator.label.length === 0) {
+    debugNavigationIndicator({ event: 'rejected', reason: 'missing-label', pageId: String(page.id ?? '') });
+    return null;
+  }
   const sources = Array.isArray(indicator.any)
     ? indicator.any.filter((source) => typeof source === 'string' && source.length > 0)
     : [];
-  if (sources.length === 0) return null;
+  if (sources.length === 0) {
+    debugNavigationIndicator({ event: 'rejected', reason: 'no-sources', pageId: String(page.id ?? '') });
+    return null;
+  }
   return {
     label: indicator.label,
     sources
@@ -26,7 +36,10 @@ export function navigationIndicator(page) {
  * @param {Array<Record<string, unknown>>} pages
  */
 export function navigationIndicatorSourceNames(pages) {
-  return [...new Set(pages.flatMap(navigationIndicatorSourceNamesForPage))];
+  const raw = pages.flatMap(navigationIndicatorSourceNamesForPage);
+  const unique = [...new Set(raw)];
+  debugNavigationIndicator({ event: 'source-names-resolved', pageCount: pages.length, rawCount: raw.length, uniqueCount: unique.length });
+  return unique;
 }
 
 /**

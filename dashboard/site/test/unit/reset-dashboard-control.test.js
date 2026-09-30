@@ -98,6 +98,32 @@ describe('dashboard local-data reset', () => {
     database.close();
   });
 
+  it('stops reacting to status changes once the control detaches from the document', async () => {
+    const reload = vi.fn();
+    const database = /** @type {IDBDatabase} */ (await openBlockingDatabase(DATABASE_NAME));
+    const control = renderResetDashboardControl({ storage: localStorage, indexedDB, reload });
+    document.body.append(control);
+
+    /** @type {HTMLButtonElement} */ (control.querySelector('.reset-dashboard-trigger')).click();
+    const dialog = /** @type {HTMLDialogElement} */ (control.querySelector('dialog'));
+    /** @type {HTMLButtonElement} */ (dialog.querySelector('.reset-dashboard-confirm')).click();
+
+    await vi.waitFor(() => expect(dialog.textContent).toContain('other open dashboard tabs'));
+
+    control.remove();
+    // Let the MutationObserver microtask backing createFactoryScope run.
+    await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+    const statusBeforeUnblock = dialog.querySelector('output')?.textContent;
+    database.close();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    // The effect stopped when the control detached, so the confirmation
+    // moving from blocked to reset can no longer update the detached output,
+    // even though the underlying reset itself still completes.
+    expect(dialog.querySelector('output')?.textContent).toBe(statusBeforeUnblock);
+  });
+
   it('clears localStorage even when app database deletion fails', async () => {
     localStorage.setItem('central-agentic-ops.dashboard.theme', 'dark');
     const deletionError = new Error('deletion failed');

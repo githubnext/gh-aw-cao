@@ -12,6 +12,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   document.head.replaceChildren();
   localStorage.clear();
+  document.cookie = "cao_csrf=; Max-Age=0; Path=/";
 });
 
 describe("remote dashboard data backend", () => {
@@ -94,6 +95,9 @@ describe("remote dashboard data backend", () => {
   });
 
   it("refreshes through the server without asking the browser to ingest data", async () => {
+    document.head.innerHTML = '<meta name="cao-auth-mode" content="github">';
+    document.cookie = "cao_csrf=oauth-csrf-token; Path=/";
+    localStorage.setItem("cao-dashboard-access-token", "stale-local-token");
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ revision: 5, changed: false }), {
         status: 200,
@@ -111,6 +115,13 @@ describe("remote dashboard data backend", () => {
       "/api/v1/refresh",
       "/api/v1/query",
     ]);
+    for (const [, init] of fetchMock.mock.calls) {
+      expect(init).toMatchObject({
+        credentials: "same-origin",
+        headers: expect.objectContaining({ "X-CSRF-Token": "oauth-csrf-token" }),
+      });
+      expect(init?.headers).not.toHaveProperty("Authorization");
+    }
   });
 
   it("resolves repository memory through the authenticated server API", async () => {
@@ -160,6 +171,29 @@ describe("remote dashboard data backend", () => {
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/api/v1/events"), expect.objectContaining({
       credentials: "omit",
       headers: expect.objectContaining({ Authorization: "Bearer stream-access-token" }),
+    }));
+  });
+
+  it("authenticates the revision stream with the OAuth session cookie when no bearer token exists", async () => {
+    document.head.innerHTML = '<meta name="cao-auth-mode" content="github">';
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.close();
+      },
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(stream, {
+      status: 200,
+      headers: { "Content-Type": "text/event-stream" },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const stop = subscribeRemoteRevision(() => {});
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    stop();
+
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/api/v1/events"), expect.objectContaining({
+      credentials: "same-origin",
+      headers: { Accept: "text/event-stream" },
     }));
   });
 

@@ -8,7 +8,35 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var collectEnvLog = logger.New("cao:server:collectenv")
+
+// collectorProfile identifies which of the two mutually exclusive
+// collection profiles CollectorConfigFromEnv selected. It is useful for
+// diagnosing a misconfigured deployment without logging any of the
+// resolved configuration values themselves.
+type collectorProfile string
+
+const (
+	collectorProfileActionsSnapshot collectorProfile = "actions-snapshot"
+	collectorProfileCollection      collectorProfile = "collection"
+)
+
+// classifyCollectorProfile decides which collection profile a raw
+// CAO_COLLECT_APP_ID value selects: a blank value selects the default
+// published-snapshot Actions profile, and any other value selects the
+// collection profile. It is a pure function extracted from
+// CollectorConfigFromEnv so this branch is independently testable without
+// touching the process environment or requiring a valid App identifier.
+func classifyCollectorProfile(rawAppID string) collectorProfile {
+	if strings.TrimSpace(rawAppID) == "" {
+		return collectorProfileActionsSnapshot
+	}
+	return collectorProfileCollection
+}
 
 // CollectorConfigFromEnv reads the optional collection profile from the
 // environment.
@@ -20,7 +48,9 @@ import (
 //nolint:nilnil // a nil config with a nil error is the documented "Actions profile selected" result.
 func CollectorConfigFromEnv() (*CollectorConfig, error) {
 	rawAppID := strings.TrimSpace(os.Getenv("CAO_COLLECT_APP_ID"))
-	if rawAppID == "" {
+	profile := classifyCollectorProfile(rawAppID)
+	if profile == collectorProfileActionsSnapshot {
+		collectEnvLog.Printf("collector profile resolved profile=%s", profile)
 		return nil, nil
 	}
 	appID, err := strconv.ParseInt(rawAppID, 10, 64)
@@ -36,6 +66,7 @@ func CollectorConfigFromEnv() (*CollectorConfig, error) {
 		}
 		privateKey = key
 	}
+	collectEnvLog.Printf("collector profile resolved profile=%s admit_only=%t", profile, admitOnly)
 	config := &CollectorConfig{
 		AppID:                 appID,
 		AdmitOnly:             admitOnly,

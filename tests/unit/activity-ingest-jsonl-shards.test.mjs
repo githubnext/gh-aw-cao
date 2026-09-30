@@ -5,7 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { promisify } from 'node:util';
-import { normalizedPhaseBatch } from '../../activity/normalized-phase.mjs';
+import {
+  normalizedPhaseBatch,
+  relationshipSafeEvidenceBatch
+} from '../../activity/normalized-phase.mjs';
 import { NORMALIZED_COLLECTIONS } from '../../activity/cli-usage.mjs';
 
 const execFileAsync = promisify(execFile);
@@ -24,6 +27,24 @@ test('normalized phase partition emits every relational experiment collection ex
   for (const collection of ['graders', 'graderObservations', 'evals', 'evalObservations']) {
     assert.equal(records[collection].length, 1, collection);
   }
+});
+
+test('relationship-safe evidence drops observations tied to another workflow', () => {
+  const batch = Object.fromEntries(NORMALIZED_COLLECTIONS.map((collection) => [collection, []]));
+  batch.runs = [{ id: 'run:1', workflowId: 'workflow:campaign' }];
+  batch.graders = [
+    { id: 'grader:campaign', workflowId: 'workflow:campaign' },
+    { id: 'grader:package', workflowId: 'workflow:package' }
+  ];
+  batch.graderObservations = [
+    { id: 'observation:valid', runId: 'run:1', graderId: 'grader:campaign' },
+    { id: 'observation:mismatched', runId: 'run:1', graderId: 'grader:package' }
+  ];
+
+  const safe = relationshipSafeEvidenceBatch(batch);
+
+  assert.deepEqual(safe.graderObservations, [batch.graderObservations[0]]);
+  assert.deepEqual(safe.graders, batch.graders);
 });
 
 async function readNormalizedJsonl(filePath) {
