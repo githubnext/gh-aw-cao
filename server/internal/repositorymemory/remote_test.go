@@ -62,7 +62,7 @@ func TestRemoteResolverCachesCampaignAndContent(t *testing.T) {
 	if source.blobCalls != 1 {
 		t.Fatalf("content was not cached: blob=%d", source.blobCalls)
 	}
-	if governor.reservations != 3 || governor.observations != 6 {
+	if governor.reservations != 6 || governor.observations != 6 {
 		t.Fatalf("unexpected governor calls: %#v", governor)
 	}
 	if cache.campaignTTL != remoteCampaignTTL || cache.fileTTL != remoteFileTTL {

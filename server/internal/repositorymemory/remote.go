@@ -21,7 +21,7 @@ var remoteLog = logger.New("cao:repositorymemory:remote")
 
 const (
 	remoteCampaignTTL  = 5 * time.Minute
-	remoteFileTTL      = 5 * time.Minute
+	remoteFileTTL      = time.Hour
 	remoteLockTTL      = 2 * time.Minute
 	remoteOperationTTL = 90 * time.Second
 )
@@ -123,11 +123,8 @@ func (r *RemoteResolver) Campaign(ctx context.Context, campaignID string) (*Camp
 	if ok {
 		etag = cached.ETag
 	}
-	conditional := etag != ""
-	if !conditional {
-		if err := r.reserve(ctx, installationID); err != nil {
-			return nil, err
-		}
+	if err := r.reserve(ctx, installationID); err != nil {
+		return nil, err
 	}
 	commit, response, err := r.Source.ResolveRef(
 		ctx, installationID, r.ControlRepository, "heads/memory/"+campaignID, etag)
@@ -144,11 +141,6 @@ func (r *RemoteResolver) Campaign(ctx context.Context, campaignID string) (*Camp
 			return nil, err
 		}
 		return cached.Campaign, nil
-	}
-	if conditional {
-		if err := r.reserve(ctx, installationID); err != nil {
-			return nil, err
-		}
 	}
 	if ok && cached.Campaign != nil && cached.Campaign.Commit == commit {
 		if err := r.cacheCampaign(ctx, campaignID, cached.Campaign, response.ETag); err != nil {
