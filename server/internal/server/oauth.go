@@ -76,6 +76,7 @@ const (
 	csrfCookieName    = "cao_csrf"
 	sessionTTL        = 30 * 24 * time.Hour
 	tokenRefreshSkew  = 5 * time.Minute
+	authorizationRecheckInterval = 5 * time.Minute
 )
 
 type GitHubOAuthConfig struct {
@@ -113,6 +114,7 @@ type oauthSession struct {
 	RefreshToken   string    `json:"refreshToken"`
 	AccessExpires  time.Time `json:"accessExpires"`
 	RefreshExpires time.Time `json:"refreshExpires"`
+	AuthorizedAt   time.Time `json:"authorizedAt"`
 	CSRFToken      string    `json:"csrfToken"`
 }
 
@@ -205,7 +207,6 @@ func (oauth *githubOAuth) emitAuthBranch(branch string) {
 }
 
 func (oauth *githubOAuth) login(response http.ResponseWriter, request *http.Request) {
-	oauth.retryPendingRevocations(request.Context(), 8)
 	state, err := randomToken(32)
 	if err != nil {
 		oauth.logBranch("login.state_generation_failed")
@@ -313,6 +314,40 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 		fail(http.StatusUnauthorized, "exchange_failed")
 		return
 	}
+	now := time.Now().UTC()
+	session := oauthSession{
+		AccessToken:    tokens.AccessToken,
+		RefreshToken:   tokens.RefreshToken,
+		AccessExpires:  now.Add(time.Duration(tokens.ExpiresIn) * time.Second),
+		RefreshExpires: now.Add(time.Duration(tokens.RefreshTokenExpiresIn) * time.Second),
+		AuthorizedAt:   now,
+	}
+	if tokens.ExpiresIn <= 0 {
+		oauth.logBranch("callback.access_expiry_defaulted")
+		session.AccessExpires = now.Add(time.Hour)
+	} else {
+		oauth.logBranch("callback.access_expiry_provided")
+	}
+	if tokens.RefreshTokenExpiresIn <= 0 {
+		oauth.logBranch("callback.refresh_expiry_defaulted")
+		session.RefreshExpires = now.Add(sessionTTL)
+	} else {
+		oauth.logBranch("callback.refresh_expiry_provided")
+	}
+	retained := false
+	defer func() {
+		if !retained {
+			if oauth.revokeCredentials(ctx, session) != nil {
+				if oauth.queueRevocation(ctx, session) != nil {
+					oauth.logBranch("callback.revocation_queue_failed")
+				} else {
+					oauth.logBranch("callback.revocation_queued")
+				}
+			} else {
+				oauth.logBranch("callback.credentials_revoked")
+			}
+		}
+	}()
 	account, err := oauth.authorizedAccount(ctx, tokens.AccessToken)
 	if err != nil {
 		serverLog.Printf("oauth authorization failed")
@@ -332,35 +367,17 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 		fail(http.StatusInternalServerError, "csrf_generation_failed")
 		return
 	}
-	now := time.Now().UTC()
-	session := oauthSession{
-		ID:             sessionID,
-		Login:          account.Login,
-		AvatarURL:      account.AvatarURL,
-		AccessToken:    tokens.AccessToken,
-		RefreshToken:   tokens.RefreshToken,
-		AccessExpires:  now.Add(time.Duration(tokens.ExpiresIn) * time.Second),
-		RefreshExpires: now.Add(time.Duration(tokens.RefreshTokenExpiresIn) * time.Second),
-		CSRFToken:      csrfToken,
-	}
-	if tokens.ExpiresIn == 0 {
-		oauth.logBranch("callback.access_expiry_defaulted")
-		session.AccessExpires = now.Add(time.Hour)
-	} else {
-		oauth.logBranch("callback.access_expiry_provided")
-	}
-	if tokens.RefreshTokenExpiresIn <= 0 {
-		oauth.logBranch("callback.refresh_expiry_defaulted")
-		session.RefreshExpires = now.Add(sessionTTL)
-	} else {
-		oauth.logBranch("callback.refresh_expiry_provided")
-	}
+	session.ID = sessionID
+	session.Login = account.Login
+	session.AvatarURL = account.AvatarURL
+	session.CSRFToken = csrfToken
 	if err := oauth.saveSession(ctx, session); err != nil {
 		serverLog.Printf("oauth session save failed")
 		oauth.logBranch("callback.session_save_failed")
 		fail(http.StatusServiceUnavailable, "session_save_failed")
 		return
 	}
+	retained = true
 	oauth.setSessionCookies(response, session)
 	serverLog.Printf("oauth callback completed")
 	oauth.logBranch("callback.succeeded")
@@ -450,6 +467,31 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 		return oauthSession{}, false
 	}
 	if time.Now().UTC().Add(tokenRefreshSkew).Before(session.AccessExpires) {
+		if time.Since(session.AuthorizedAt) >= authorizationRecheckInterval {
+			account, err := oauth.authorizedAccount(request.Context(), session.AccessToken)
+			if err != nil || !strings.EqualFold(account.Login, session.Login) {
+				oauth.logBranch("session.authorization_rejected")
+				oauth.invalidateSession(response, request.Context(), session.ID)
+				return oauthSession{}, false
+			}
+			session.AvatarURL = account.AvatarURL
+			session.AuthorizedAt = time.Now().UTC()
+			saved, err := oauth.saveSessionIfUnchanged(request.Context(), session, expected)
+			if err != nil {
+				oauth.logBranch("session.revalidation_save_failed")
+				return oauthSession{}, false
+			}
+			if !saved {
+				latest, err := oauth.loadSession(request.Context(), session.ID)
+				if err != nil || time.Since(latest.AuthorizedAt) >= authorizationRecheckInterval {
+					oauth.logBranch("session.revalidation_superseded")
+					return oauthSession{}, false
+				}
+				session = latest
+			} else {
+				oauth.logBranch("session.authorization_revalidated")
+			}
+		}
 		oauth.logBranch("session.active")
 		return session, true
 	}
@@ -512,6 +554,7 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 		return oauthSession{}, false
 	}
 	session.AvatarURL = account.AvatarURL
+	session.AuthorizedAt = time.Now().UTC()
 	saved, err := oauth.saveSessionIfUnchanged(request.Context(), session, expected)
 	if err != nil {
 		serverLog.Printf("oauth refreshed session save failed")
