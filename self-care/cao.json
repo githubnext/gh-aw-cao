@@ -20,6 +20,7 @@
     "primer-brand-checker": "self-care-primer-brand-checker",
     "reactive-ui-expert": "self-care-reactive-ui-expert",
     "release-blogger": "self-care-release-blogger",
-    "server-go-logging": "self-care-server-go-logging"
+    "server-go-logging": "self-care-server-go-logging",
+    "specs-maintainer": "self-care-specs-maintainer"
   }
 }
