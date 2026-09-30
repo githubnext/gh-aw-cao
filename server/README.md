@@ -340,58 +340,47 @@ network when `control-plane.web.host.redis.allow-private-plaintext` is `true`
 and the endpoint uses a private service hostname or IP. This policy does not
 affect Azure: Azure Functions continues to require `rediss://`.
 
-The conventional `.github/workflows/coolify-deploy.yml` resolves published
-release tags to exact commits and consumes the matching official `cao-server`
-package without rebuilding it. It refuses
-every fork repository payload. Manual runs require current maintain/admin
-permission for both the original and rerun actors and must use the current
-default-branch workflow. They accept a required `alpha` or `stable` channel.
-Alpha resolves current `main`; stable resolves the latest eligible
-published stable `vX.Y.Z` tag. The package
-workflow builds and scans that tag's exact commit rather than branch HEAD, and
-delivery verifies the selected package's OCI version and revision labels.
+The conventional `.github/workflows/coolify-deploy.yml` consumes the official
+`cao-server` package for the current protected `main` commit without rebuilding
+it. It refuses every fork repository payload. A successful `main` push run of
+the package workflow starts production delivery automatically; authorized
+maintainers and administrators can also dispatch it manually from the current
+default-branch workflow. Delivery verifies the selected package's OCI version,
+revision labels, and GitHub attestation before exposing deployment credentials.
 
 | Event | Immutable GHCR identity | GitHub environment |
 | --- | --- | --- |
-| Published stable `vX.Y.Z` release | tag resolved and repeatedly verified at its exact commit (`vX.Y.Z`) | `coolify-stable` |
-| Push to `main` | `sha-<full-main-commit>` | `coolify-alpha` |
-| Manual alpha from `main` | current `sha-<full-main-commit>` | `coolify-alpha` |
-| Manual stable from `main` or `release` | latest eligible published stable `vX.Y.Z` tag at its exact commit | `coolify-stable` |
+| Successful package workflow for a push to current `main` | `sha-<full-main-commit>` | `coolify-production` |
+| Authorized manual run from current `main` | current `sha-<full-main-commit>` | `coolify-production` |
 
-Configure `COOLIFY_DEPLOY_ENDPOINT` and `COOLIFY_DEPLOY_TOKEN` as secrets on each
-environment. The HTTPS endpoint is the deployment adapter for that Coolify
-resource. It must record the previous digest, update `CAO_IMAGE` from the
-request's exact digest reference, trigger the resource, poll Coolify's
-asynchronous deployment to a terminal state, and verify `/api/readiness`.
-Failure must redeploy the recorded previous digest and verify its readiness
-before returning a non-success response. Success is a bounded JSON response
-containing exactly the requested identity as
-`{"status":"ready","image":"...@sha256:...","digest":"sha256:..."}`; an
-accepted/queued Coolify response is not success.
-
-Before invoking the adapter, the workflow rechecks that alpha is still `main`
-HEAD and stable is still the latest published `vX.Y.Z` release
-with an unchanged tag target. Environment protection rules provide approvals. The scanned local
+Configure `COOLIFY_BASE_URL`, `COOLIFY_APPLICATION_UUID`, and
+`COOLIFY_READINESS_URL` as variables and `COOLIFY_API_TOKEN` as a secret on the
+protected `coolify-production` environment. Before invoking the native Coolify
+API client, the workflow rechecks that the package source is still `main` HEAD.
+The client records the previous digest, updates `CAO_IMAGE`, waits for Coolify's
+asynchronous deployment, and verifies `/api/readiness`. Failure redeploys the
+recorded previous digest and verifies readiness before returning an error.
+Environment protection rules provide approvals. The scanned local
 image is first pushed under a run/attempt candidate tag. A canonical source
 identity is created from that candidate digest only when absent; if it already
 exists, exact digest equality is mandatory. Labels on existing registry
-objects are never trusted. No tier reads another tier's image, no release
-promotes an alpha artifact, and deployment always uses the verified digest,
-never a candidate or channel tag. Release tags must satisfy the channel's
-SemVer form and build metadata is rejected because `+` cannot be preserved in
-a Docker tag.
+objects are never trusted. Production deployment always uses the verified
+`main` digest, never a candidate or mutable channel tag. Release package tags
+must use exact `vX.Y.Z` SemVer without build metadata because `+` cannot be
+preserved in a Docker tag.
 
 #### Rollback
 
 Record the last known-good `name@sha256:...` from the GitHub deployment history
-before every rollout. To roll back, use the same protected environment's
-Coolify deployment adapter to set `CAO_IMAGE` to that exact prior digest and
-redeploy; do not retag it as `stable`, `alpha`, or `latest`. Confirm
-`/api/readiness`, OAuth login and authorization, a bounded query, webhook
-signature handling, and rate-limit behavior. Redis is disposable: if the new
-binary wrote an unusable projection, clear only that deployment namespace and
-rebuild from the retained trusted artifact. Rotating back the image does not
-roll back OAuth, webhook, or session secrets.
+before every rollout. The production client automatically restores that image
+when a rollout fails. For an intentional rollback after a successful rollout,
+set `CAO_IMAGE` in Coolify to the exact prior digest and redeploy; do not retag
+it as `stable`, `alpha`, or `latest`. Confirm `/api/readiness`, OAuth login and
+authorization, a bounded query, webhook signature handling, and rate-limit
+behavior. Redis is disposable: if the new binary wrote an unusable projection,
+clear only that deployment namespace and rebuild from the retained trusted
+artifact. Rotating back the image does not roll back OAuth, webhook, or session
+secrets.
 
 The hosted server exposes canonical repository/run APIs, verifies and
 deduplicates webhook deliveries, and coordinates projection updates with a

@@ -403,25 +403,22 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   Compose deployments select `serve-hosted`, `collect`, `backfill`, or `doctor`
   per service without rebuilding the package. Canonical identities are
   immutable commit or release identities, never mutable channel tags.
-  Conventional Coolify delivery refuses fork repository payloads and consumes
-  only this package by verified digest, matching OCI source labels, and a
-  GitHub attestation bound to the expected signer workflow and source commit. A push
-  to `main` maps to alpha, while
-  published stable `vX.Y.Z` release events map to stable. Manual and rerun
-  delivery requires current maintain/admin permission for both the original and
-  triggering actors, and manual delivery executes only from current protected
-  `main`.
-  Manual alpha runs resolve the current `main` commit; manual stable runs
-  resolve the exact commit of the latest eligible published stable `vX.Y.Z`
-  release, regardless of whether `main` or `release` is selected. Every
+  Conventional Coolify production delivery refuses fork repository payloads
+  and consumes only the current protected `main` package by verified digest,
+  matching OCI source labels, and a GitHub attestation bound to the expected
+  signer workflow and source commit. A successful package workflow for a
+  `main` push starts delivery automatically. Manual delivery requires current
+  maintain/admin permission for both the original and triggering actors and
+  executes only from current protected `main`; rerunning automatic delivery
+  requires current maintain/admin permission for the triggering actor. Every
   package candidate is pushed under a unique run identity, then a canonical
   source identity is created or accepted only at the same digest. Immediately
-  before a protected deployment, the delivery workflow revalidates channel
-  freshness. Its
-  synchronous adapter reports ready only after Coolify completes and
-  `/api/readiness` passes, rolling back to the recorded prior digest on failure.
-  Tiers never promote artifacts implicitly and deployments never consume
-  mutable channel tags or merely accepted asynchronous operations.
+  before entering the single protected production deployment, the delivery
+  workflow revalidates that its source is still `main` HEAD. Its native Coolify
+  API client reports success only after Coolify completes and
+  `/api/readiness` passes, and rolls back to the recorded prior digest on
+  failure. Deployments never consume mutable channel tags or treat merely
+  accepted asynchronous operations as success.
 - Browsers and external clients never receive Redis endpoints or credentials.
   Redis generations are staged and validated before atomic activation; a failed
   rebuild leaves the previous generation active, and an empty Redis instance is
