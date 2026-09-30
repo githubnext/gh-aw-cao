@@ -27,7 +27,7 @@ The Coolify deployment is an alternative to the Azure deployment. It doesn't rep
 | Artifact volume | A named Docker volume, managed by Coolify, that contains a complete and verified dashboard payload. |
 | GitHub OAuth app | An OAuth app with the callback URL `https://PUBLIC-HOST/auth/callback`. |
 | Webhook secret | A secret of at least 32 characters. The server requires one even if you don't use webhooks. |
-| Deployment automation (optional) | To use `.github/workflows/coolify-deploy.yml`, configure the protected `coolify-production` GitHub environment with the Coolify API variables and token described below. For more information, see [Automating delivery](#automating-delivery). |
+| Deployment automation (optional) | To use `.github/workflows/coolify-production-deploy.yml`, configure the protected `coolify-production` GitHub environment with the Coolify API variables and token described below. For more information, see [Automating delivery](#automating-delivery). |
 
 The running container needs outbound access only to Redis and to the GitHub OAuth and API endpoints.
 
@@ -166,7 +166,7 @@ sources, stale source branches, forks, and unauthorized original or rerun actors
 Manual packages use the separate immutable `dispatch-<full-commit>` identity,
 so they cannot redefine automatic `main` or release identities.
 
-The `.github/workflows/coolify-deploy.yml` workflow does not rebuild the image.
+The `.github/workflows/coolify-production-deploy.yml` workflow does not rebuild the image.
 After a successful `main` push run of **CAO server package**, it verifies that
 the package run and source still match the current protected default branch. It
 then resolves the matching immutable `cao-server:sha-COMMIT` identity, verifies

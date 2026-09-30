@@ -340,7 +340,7 @@ network when `control-plane.web.host.redis.allow-private-plaintext` is `true`
 and the endpoint uses a private service hostname or IP. This policy does not
 affect Azure: Azure Functions continues to require `rediss://`.
 
-The conventional `.github/workflows/coolify-deploy.yml` consumes the official
+The conventional `.github/workflows/coolify-production-deploy.yml` consumes the official
 `cao-server` package for the current protected `main` commit without rebuilding
 it. It refuses every fork repository payload. A successful `main` push run of
 the package workflow starts production delivery automatically; authorized

@@ -150,7 +150,7 @@ components:
     path: .github/workflows/cao-package-publish.yml
     responsibility: execute from protected main, revalidate caller and package authority, verify sealed metadata and OCI labels, and immutably publish and attest the CAO server image
   dashboard_coolify_delivery:
-    path: .github/workflows/coolify-deploy.yml
+    path: .github/workflows/coolify-production-deploy.yml
     responsibility: consume a successful protected-main package run, verify its immutable digest, source labels, provenance and freshness, and deploy it through the native Coolify API client to one protected production environment with readiness verification and rollback
   dashboard_upstash_deployment:
     path: server/internal/server/hosted.go

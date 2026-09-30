@@ -76,7 +76,7 @@ test("Coolify Compose contains no credentials and requires immutable image input
 });
 
 test("Coolify production delivery consumes the successful main package", async () => {
-  const source = await text(".github/workflows/coolify-deploy.yml");
+  const source = await text(".github/workflows/coolify-production-deploy.yml");
   const workflow = parse(source);
   const authorize = workflow.jobs.authorize;
   const packageJob = workflow.jobs.package;
@@ -152,7 +152,7 @@ test("Coolify production delivery consumes the successful main package", async (
 });
 
 test("Coolify delivery pins actions and does not log deployment secrets", async () => {
-  const source = await text(".github/workflows/coolify-deploy.yml");
+  const source = await text(".github/workflows/coolify-production-deploy.yml");
 
   for (const match of source.matchAll(/uses:\s+[^@\s]+@([^\s#]+)/g)) {
     assert.match(match[1], /^[0-9a-f]{40}$/, `action is not pinned: ${match[0]}`);
@@ -166,7 +166,7 @@ test("Coolify delivery pins actions and does not log deployment secrets", async 
 });
 
 test("Coolify workflow_run trigger mitigates the dangerous-triggers audit", async () => {
-  const source = await text(".github/workflows/coolify-deploy.yml");
+  const source = await text(".github/workflows/coolify-production-deploy.yml");
   const workflow = parse(source);
   const authorization = workflow.jobs.authorize;
   const packageJob = workflow.jobs.package;
