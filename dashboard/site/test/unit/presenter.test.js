@@ -3766,26 +3766,34 @@ describe('presenter built-in and custom pages', () => {
 
   it('explains a coded server limit with its query ID and retries the page', async () => {
     const root = document.createElement('div');
-    root.innerHTML = '<main class="dashboard-prototype"><section class="dashboard-page" id="page-campaigns" data-page-id="campaigns" data-page-pending></section></main>';
+    root.innerHTML = `<a data-nav-page-id="campaigns" href="#page-campaigns">Campaigns</a>
+      <main class="dashboard-prototype">
+        <section class="dashboard-page" id="page-first" data-page-id="first" data-page-pending></section>
+        <section class="dashboard-page" id="page-campaigns" data-page-id="campaigns" data-page-pending></section>
+      </main>`;
     document.body.append(root);
-    const renderPage = vi.fn()
-      .mockRejectedValueOnce(new DashboardServerError('limit', 'query_plan_too_large', 'campaign-repository-coverage'))
-      .mockImplementation(() => {
+    let attempts = 0;
+    const renderPage = vi.fn((pageId) => {
+      if (pageId === 'campaigns' && ++attempts === 1) {
+        return Promise.reject(new DashboardServerError('limit', 'query_plan_too_large', 'campaign-repository-coverage'));
+      }
         const page = document.createElement('section');
-        page.id = 'page-campaigns';
+        page.id = `page-${pageId}`;
         page.className = 'dashboard-page';
-        page.dataset.pageId = 'campaigns';
-        page.textContent = 'Campaigns loaded';
+        page.dataset.pageId = pageId;
+        page.textContent = `${pageId} loaded`;
         return page;
-      });
-    const dispose = enableDashboardPageNavigation(root, 'Dashboard', renderPage, 'campaigns');
+    });
+    const dispose = enableDashboardPageNavigation(root, 'Dashboard', renderPage, 'first');
     try {
+      await vi.waitFor(() => expect(root.querySelector('#page-first')?.hasAttribute('data-page-pending')).toBe(false));
+      /** @type {HTMLAnchorElement} */ (root.querySelector('[data-nav-page-id="campaigns"]')).click();
       await vi.waitFor(() => expect(root.querySelector('.page-load-error-detail')?.textContent)
         .toBe('Query: campaign-repository-coverage'));
       expect(root.querySelector('.page-load-error h2')?.textContent).toContain('more data');
       /** @type {HTMLButtonElement} */ (root.querySelector('.page-load-error button')).click();
-      await vi.waitFor(() => expect(root.querySelector('#page-campaigns')?.textContent).toBe('Campaigns loaded'));
-      expect(renderPage).toHaveBeenCalledTimes(2);
+      await vi.waitFor(() => expect(root.querySelector('#page-campaigns')?.textContent).toBe('campaigns loaded'));
+      expect(attempts).toBe(2);
     } finally {
       dispose();
       root.remove();

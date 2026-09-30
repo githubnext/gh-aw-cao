@@ -346,7 +346,8 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 				continue
 			}
 			if err := load(join.Source, definition); err != nil {
-				if join.Type == "left" {
+				var limitErr *PlanLimitError
+				if join.Type == "left" && !errors.As(err, &limitErr) {
 					available[join.Source] = model.Source{Source: join.Source, Rows: []model.Row{}, Metadata: model.Metadata{"availability": "unavailable"}}
 					continue
 				}
