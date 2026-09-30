@@ -10,6 +10,7 @@ permissions:
   contents: read
   issues: read
   pull-requests: read
+  id-token: write
   copilot-requests: write
 strict: true
 concurrency:
@@ -26,9 +27,11 @@ mcp-servers:
   cao:
     type: http
     url: https://cao.githubnext.com/mcp
+    auth:
+      type: github-oidc
+      audience: https://cao.githubnext.com/mcp
     headers:
-      Authorization: "${{ format('{0} {1}', 'Bearer', github.token) }}"
-      X-GitHub-Actor: "${{ github.actor }}"
+      X-GitHub-Actions-Token: "${{ github.token }}"
     allowed: ["*"]
     required: true
 safe-outputs:

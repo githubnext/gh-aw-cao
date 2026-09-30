@@ -126,9 +126,14 @@ rate-limiting identity. Before accepting this authentication mode, startup
 probes the configured `GITHUB_REPOSITORY` with the token and fails closed unless
 `actions`, `contents`, `issues`, and `pull-requests` all have read access.
 The actor header is an assertion bound to the server-configured value, not an
-independently trusted client identity. MCP is disabled by default, is read-only,
-and is rejected by hosted profiles until remote MCP OAuth is integrated with
-the existing hosted session and authorization lifecycle.
+independently trusted client identity. MCP is disabled by default and read-only.
+Only the Coolify hosted profile can opt in: it requires a signed, audience-bound
+GitHub Actions OIDC assertion from the pinned repository and workflow plus a
+separate job token with successful read-access probes. Browser OAuth does not
+authorize `/mcp`. The probes cannot distinguish the built-in job token from an
+alternative credential with equivalent read access, nor attest to exact token
+permissions; do not treat them as token provenance verification. Restrict
+workflow edits and never expose these credentials to untrusted code.
 
 ## HTTP and TLS protections
 

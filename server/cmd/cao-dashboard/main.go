@@ -400,9 +400,6 @@ func newServeHostedCommand() *cobra.Command {
 	dashboardQueries := cmd.Flags().String("dashboard-queries", "../dashboard/site/dashboard.json", "default dashboard query document")
 	mcpEnabled := cmd.Flags().Bool("mcp-enabled", false, "serve the read-only MCP endpoint at /mcp")
 	cmd.RunE = func(*cobra.Command, []string) error {
-		if *mcpEnabled {
-			return errors.New("MCP is not available in hosted mode")
-		}
 		commandLog.Printf("serve-hosted flags parsed tls=%s", resolveHostedTLSMode(*cert))
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
@@ -414,6 +411,7 @@ func newServeHostedCommand() *cobra.Command {
 		app, err := server.NewHostedAppFromEnv(
 			ctx, *listen, *cert, *key, *siteDirectory, *dashboardQueries, *databaseQueries,
 			log.New(os.Stderr, "cao-dashboard: ", log.LstdFlags),
+			*mcpEnabled,
 		)
 		if err != nil {
 			return err

@@ -28,6 +28,7 @@ func NewHostedAppFromEnv(
 	dashboardQueriesPath string,
 	databaseQueriesPath string,
 	logger *log.Logger,
+	mcpEnabled ...bool,
 ) (*App, error) {
 	host, err := loadHostPolicyFromEnv()
 	if err != nil {
@@ -87,6 +88,11 @@ func NewHostedAppFromEnv(
 	}
 	config := Config{
 		HostProfile:            host.Profile,
+		MCPEnabled:             len(mcpEnabled) > 0 && mcpEnabled[0],
+		HostedMCPRepositoryID:  os.Getenv("CAO_MCP_REPOSITORY_ID"),
+		ActionsRepository:      os.Getenv("CAO_MCP_REPOSITORY"),
+		AgentCatalogPath:       "/app/agent/catalog.json",
+		MCPContractPath:        "/app/agent/mcp-contract.json",
 		SingleReplicaConfirmed: host.SingleReplicaConfirmed,
 		Listen:                 listen,
 		CertFile:               certFile,

@@ -330,7 +330,7 @@ func TestHostedMCPConfigurationFailsClosed(t *testing.T) {
 		},
 		GitHubOAuth: validOAuthConfig("https://github.test"),
 	})
-	if err == nil || err.Error() != "MCP is available only in local bearer-authenticated mode" {
+	if err == nil || err.Error() != "hosted MCP requires the Coolify OAuth profile and a pinned Actions repository" {
 		t.Fatalf("hosted mode returned %v, want MCP rejection", err)
 	}
 }

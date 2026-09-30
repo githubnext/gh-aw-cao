@@ -9,6 +9,7 @@ services:
         REVISION: ${SOURCE_COMMIT:-unknown}
     command:
       - serve-hosted
+      - --mcp-enabled
       - --listen
       - 0.0.0.0:8080
       - --site
@@ -21,6 +22,8 @@ services:
       REDIS_URL: ${REDIS_URL:-}
       REDIS_NAMESPACE: ${REDIS_NAMESPACE:-coolify-dashboard}
       CAO_POLICY_PATH: /app/.github/workflows/cao.coolify.json
+      CAO_MCP_REPOSITORY: githubnext/gh-aw-cao
+      CAO_MCP_REPOSITORY_ID: "1302952722"
       CAO_ALLOWED_HOSTS: ${CAO_ALLOWED_HOSTS:?Configure the public dashboard host}
       CAO_TRUSTED_PROXY_CIDRS: ${CAO_TRUSTED_PROXY_CIDRS:?Configure the exact Coolify proxy network CIDR}
       CAO_GITHUB_CLIENT_ID: ${CAO_GITHUB_CLIENT_ID:?Configure the GitHub OAuth client ID}

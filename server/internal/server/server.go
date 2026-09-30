@@ -51,25 +51,26 @@ type Config struct {
 	Proxy                  ProxyPolicy
 	// CORS is the reviewed cross-origin policy; the zero value is
 	// same-origin only.
-	CORS                 CORSPolicy
-	GitHubOAuth          *GitHubOAuthConfig
-	DatabaseQueriesPath  string
-	DashboardQueries     []query.Definition
-	DashboardQueriesPath string
-	AgentCatalogPath     string
-	MCPContractPath      string
-	MCPEnabled           bool
-	GitHubActionsToken   string
-	GitHubActionsActor   string
-	ActionsRepository    string
-	GitHubAPIURL         string
-	ActionsHTTPClient    *http.Client
-	SourceDirectory      string
-	Reconciler           Reconciler
-	Collector            *CollectorConfig
-	WebhookSecret        string
-	AdminUsers           []string
-	Logger               *log.Logger
+	CORS                  CORSPolicy
+	GitHubOAuth           *GitHubOAuthConfig
+	DatabaseQueriesPath   string
+	DashboardQueries      []query.Definition
+	DashboardQueriesPath  string
+	AgentCatalogPath      string
+	MCPContractPath       string
+	MCPEnabled            bool
+	HostedMCPRepositoryID string
+	GitHubActionsToken    string
+	GitHubActionsActor    string
+	ActionsRepository     string
+	GitHubAPIURL          string
+	ActionsHTTPClient     *http.Client
+	SourceDirectory       string
+	Reconciler            Reconciler
+	Collector             *CollectorConfig
+	WebhookSecret         string
+	AdminUsers            []string
+	Logger                *log.Logger
 	// RateLimits overrides inbound request rate limits; the zero value keeps
 	// the production defaults.
 	RateLimits RateLimitConfig
@@ -163,7 +164,10 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 		}
 	}
 	if config.MCPEnabled && profile.Authentication != HostAuthenticationBearer {
-		return nil, errors.New("MCP is available only in local bearer-authenticated mode")
+		if profile.Name != "coolify" || profile.Authentication != HostAuthenticationOAuth ||
+			config.HostedMCPRepositoryID == "" || config.ActionsRepository == "" {
+			return nil, errors.New("hosted MCP requires the Coolify OAuth profile and a pinned Actions repository")
+		}
 	}
 	actionsToken, actionsActor, err := githubActionsMCPIdentity(config, accessToken)
 	if err != nil {
@@ -515,6 +519,14 @@ func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 		if !validProxyRequest(request, a.proxyPolicy()) {
 			a.logAuthBranch("access.proxy_rejected")
 			http.Error(response, "invalid forwarded request host", http.StatusMisdirectedRequest)
+			return
+		}
+		if request.URL.Path == "/mcp" {
+			if a.mcp == nil || !a.authorizeHostedMCP(request) {
+				writeError(response, http.StatusUnauthorized, "MCP authentication is required")
+				return
+			}
+			next.ServeHTTP(response, request)
 			return
 		}
 		if publicServiceEndpoint(request.URL.Path) ||

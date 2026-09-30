@@ -1265,10 +1265,24 @@ The endpoint exposes only `cao_catalog` and `cao_query`; it accepts no
 SQL, arbitrary query definitions, refresh, rebuild, webhook, administration, or
 repository mutation operations.
 
-MCP is intentionally unavailable from `serve-hosted` in this first slice.
-Hosted enablement requires a remote-client OAuth flow tied to the existing CAO
-session, organization/team authorization, account-selection, and revocation
-model; attempts to pass `--mcp-enabled` to `serve-hosted` fail closed.
+The Coolify deployment enables `/mcp` for the approved
+`githubnext/gh-aw-cao` workflow on the default branch. Hosted MCP requires a
+signed GitHub Actions OIDC assertion with audience
+`https://cao.githubnext.com/mcp` and the repository-scoped job token in
+`X-GitHub-Actions-Token`. The server checks the OIDC issuer, GitHub signing
+key, audience, repository and immutable repository ID, workflow reference,
+run and lifetime before probing the token's access to Actions runs, contents,
+issues and pull requests. The workflow declares those four read permissions
+and `id-token: write` (for requesting the OIDC assertion). A browser OAuth
+session alone cannot access hosted MCP. Other hosted deployments and the
+local bearer mode remain unchanged.
+
+The token probes establish access to these endpoints, **not** the exact
+permissions granted to the token or proof that it is the built-in job token:
+GitHub does not expose an installation-token introspection API that binds a
+separately supplied token to an OIDC job assertion. Authorization therefore
+rests on the signed, allowlisted job identity. Do not broaden the approved
+workflow reference or allow untrusted workflow code to supply credentials.
 
 Use `--redis-url` and optional `--redis-namespace` only on the server command
 line. The same namespace must be supplied to `ingest` and `serve` when
