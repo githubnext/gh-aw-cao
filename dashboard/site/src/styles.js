@@ -2083,6 +2083,11 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
 .report-footer-status time { color: var(--fg); font-weight: 600; white-space: nowrap; }
 .report-footer-version { white-space: nowrap; }
 .empty, .page-placeholder { margin: 0; padding: 28px 16px; color: var(--muted); text-align: center; }
+.page-load-error { display: flex; align-items: flex-start; gap: 12px; width: min(100% - 32px, 560px); margin: 32px auto; padding: 20px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); }
+.page-load-error > .octicon { flex: none; color: var(--attention); }
+.page-load-error-body h2 { margin: 0 0 8px; font-size: 1.1rem; }
+.page-load-error-body p { margin: 0 0 12px; color: var(--muted); }
+.page-load-error-body .page-load-error-detail { font-family: monospace; overflow-wrap: anywhere; }
 .browser-support-message { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--canvas); color: var(--fg); }
 .browser-support-message-panel { width: min(100%, 520px); padding: 24px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); text-align: center; }
 .browser-support-message-panel h1 { margin: 0 0 8px; font-size: 1.5rem; }

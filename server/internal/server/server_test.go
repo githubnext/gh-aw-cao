@@ -24,6 +24,25 @@ import (
 
 const testAccessToken = "0123456789abcdef0123456789abcdef"
 
+func TestQueryPlanLimitErrorResponse(t *testing.T) {
+	response := httptest.NewRecorder()
+	writeQueryError(response, http.StatusBadRequest, &query.PlanLimitError{
+		QueryID: "campaign-repository-coverage", Boundary: "retained_bytes",
+	})
+	if response.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", response.Code)
+	}
+	var payload map[string]string
+	if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["code"] != "query_plan_too_large" || payload["queryId"] != "campaign-repository-coverage" ||
+		payload["boundary"] != "retained_bytes" || !strings.Contains(payload["error"], "campaign-repository-coverage") ||
+		strings.Contains(payload["error"], "536870912") || strings.Contains(payload["error"], "512") {
+		t.Fatalf("unexpected limit response: %v", payload)
+	}
+}
+
 func TestValidateListenSafety(t *testing.T) {
 	for _, address := range []string{"127.0.0.1:8443", "localhost:8443", "[::1]:8443"} {
 		if err := ValidateListen(address, "", ""); err != nil {
