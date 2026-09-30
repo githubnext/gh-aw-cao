@@ -591,7 +591,10 @@
       "experimental": false,
       "parameters": [],
       "queries": [
-        "marketplace-package-detail"
+        "marketplace-package-detail",
+        "marketplace-publisher-options",
+        "marketplace-ranked",
+        "marketplace-registry-options"
       ]
     },
     {
@@ -2705,6 +2708,63 @@
           "runs",
           "tools",
           "workflows"
+        ]
+      }
+    },
+    {
+      "id": "marketplace-registry-options",
+      "intent": "Provide distinct authorized registry choices from resolved package records.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "marketplace-packages"
+      ],
+      "used-by-pages": [
+        "marketplace"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "marketplace-packages"
+        ]
+      }
+    },
+    {
+      "id": "marketplace-publisher-options",
+      "intent": "Provide distinct publisher choices from resolved package records.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "marketplace-packages"
+      ],
+      "used-by-pages": [
+        "marketplace"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "marketplace-packages"
+        ]
+      }
+    },
+    {
+      "id": "marketplace-ranked",
+      "intent": "Order keyword-matched campaign packages by reviewed publisher attestation, public maintenance evidence, local adoption evidence, and public popularity, without treating missing evidence as zero.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "marketplace-packages"
+      ],
+      "used-by-pages": [
+        "marketplace"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "marketplace-packages"
         ]
       }
     },

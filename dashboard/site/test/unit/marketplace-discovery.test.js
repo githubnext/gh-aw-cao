@@ -54,6 +54,8 @@ describe('marketplace discovery', () => {
     expect(rows('marketplace-ranked')?.map((row) => row.id)).toEqual(['one']);
     expect(rows('marketplace-registry-options')).toHaveLength(2);
     expect(rows('marketplace-publisher-options')).toHaveLength(2);
+    expect(resolve({ search: { fields: ['package-name'], query: 'workflow' } })
+      .rows('marketplace-ranked')?.map((row) => row.id)).toEqual(['three']);
   });
 
   it('sorts by a selected worker field with deterministic ties', () => {
