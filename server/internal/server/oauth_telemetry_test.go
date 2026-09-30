@@ -136,6 +136,22 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 		"'sha256-"+base64.StdEncoding.EncodeToString(sum[:])+"'") {
 		t.Fatal("CSP must allow only the embedded recovery script")
 	}
+	_, inlineStyle, found := strings.Cut(unauthorized.Body.String(), "<style>")
+	if !found {
+		t.Fatal("OAuth recovery styles are not inlined")
+	}
+	inlineStyle, _, found = strings.Cut(inlineStyle, "</style>")
+	if !found {
+		t.Fatal("OAuth recovery styles are unterminated")
+	}
+	sum = sha256.Sum256([]byte(inlineStyle))
+	csp := unauthorized.Header().Get("Content-Security-Policy")
+	if !strings.Contains(csp, "style-src 'sha256-"+base64.StdEncoding.EncodeToString(sum[:])+"'") ||
+		!strings.Contains(unauthorized.Body.String(), `class="brand"`) ||
+		!strings.Contains(unauthorized.Body.String(), `class="error-card"`) ||
+		!strings.Contains(inlineStyle, "@media (prefers-color-scheme: dark)") {
+		t.Fatal("OAuth recovery page must be branded, theme-aware, and allow only its embedded styles")
+	}
 
 	app = newAzureTestApp(t, github.URL)
 	stateCookie, state = loginState(t, app)
