@@ -102,7 +102,7 @@ describe('canonical dashboard view subscriptions', () => {
       'page:overview:view:summary', ['summary'], { pages: [] }, () => {}, undefined,
       { pageId: 'overview', viewId: 'summary' }
     );
-    expect(SubscriptionWorker.current?.messages.find((message) => message.operation === 'subscribe-canonical-dashboard'))
+    expect(SubscriptionWorker.current?.messages.find((message) => message.subscriptionId === 'page:overview:view:summary'))
       .toMatchObject({
         subscriptionId: 'page:overview:view:summary',
         pageId: 'overview',

@@ -17,7 +17,7 @@ import { createDebug } from "../debug.js";
 
 const debugStartup = createDebug("startup");
 
-/** @typedef {{ pageId?: string, viewId?: string, sourceIndex?: number, queryContext?: DashboardQueryContext }} BatchedSourceOptions */
+/** @typedef {{ pageId?: string, viewId?: string, sourceIndex?: number, routeParameters?: Record<string, string>, queryContext?: DashboardQueryContext }} BatchedSourceOptions */
 
 /**
  * Coalesces source requests issued by one page in the same turn so the worker
@@ -42,6 +42,7 @@ export function createBatchedSourceLoader(dashboardContext) {
       for (const request of requests) {
         const key = JSON.stringify([
           request.options?.pageId ?? null,
+          request.options?.routeParameters ?? null,
           request.options?.queryContext ?? null,
         ]);
         const group = groups.get(key) ?? [];
@@ -67,6 +68,7 @@ export function createBatchedSourceLoader(dashboardContext) {
             {
               pageId: options?.pageId,
               viewId: viewIds.size === 1 ? options?.viewId : undefined,
+              routeParameters: options?.routeParameters,
               queryContext: options?.queryContext,
             },
           );
@@ -153,6 +155,7 @@ export async function startDashboardData(options) {
     settleUi = () => waitForDashboardUi(browserWindow),
   } = options;
   const cleanup = new AbortController();
+  let nextViewSubscriptionId = 0;
   let stopAutomaticDataUpdates = () => {};
   /** @type {() => void} */
   let startBackgroundWork = () => {};
@@ -271,7 +274,7 @@ export async function startDashboardData(options) {
     const bindings = Object.fromEntries(Object.entries(pagePaginatedSourceBindings(pageId))
       .filter(([, binding]) => binding.viewId === viewId));
     return subscribeSources({
-      subscriptionId: `page:${pageId}:view:${viewId}`,
+      subscriptionId: `page:${pageId}:view:${viewId}:${++nextViewSubscriptionId}`,
       sourceNames: [...new Set(sourceNames)],
       pageOptions: { ...pageOptions, pageId, viewId },
       pagination: continuationRequests(Object.keys(bindings)),

@@ -314,6 +314,7 @@ export function renderDashboard(input) {
             return render(sources);
           }
           /** @param {Record<string, LogicalSourceInput>} pageSources */
+          /** @param {Record<string, LogicalSourceInput>} pageSources @param {boolean} [replace] @param {string[][]} [aliases] */
           const publish = (pageSources, replace = false, aliases = []) => {
             if (options.signal.aborted) return;
             const merged = replace ? pageSources : { ...liveSources.get(), ...pageSources };
@@ -352,7 +353,7 @@ export function renderDashboard(input) {
                   message: result.reason instanceof Error ? result.reason.message : String(result.reason)
                 });
               }
-              loading.set(false);
+              if (!input.loading) loading.set(false);
             });
           } else {
             options.onUpdate = (pageSources) => publish(pageSources, true);
@@ -363,7 +364,7 @@ export function renderDashboard(input) {
                 message: error instanceof Error ? error.message : String(error)
               });
             }).finally(() => {
-              if (!options.signal.aborted) loading.set(false);
+              if (!options.signal.aborted && !input.loading) loading.set(false);
             });
           }
           return rendered;
@@ -938,6 +939,10 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
         if (rendered.classList.contains('custom-view')) replacement.classList.add('custom-view');
         if (rendered.parentNode) rendered.replaceWith(replacement);
         rendered = replacement;
+        const owningPage = replacement.closest('.dashboard-page');
+        if (isRouteView && owningPage instanceof HTMLElement && routeParameter) {
+          dispatchPageRoute(replacement, routeParameter, owningPage.dataset.routeValue ?? '');
+        }
       }, { signal: binding.signal });
     }
     rendered.classList.add('custom-view');
@@ -2274,6 +2279,16 @@ function renderElementView(pageId, title, view, viewIndex, sources, contextDetai
       ? [[sourceName, source]]
       : [];
   }));
+  const hashParameters = new URLSearchParams(globalThis.location?.hash.split('?')[1] ?? '');
+  const declaredParameters = [
+    routeParameter,
+    ...(Array.isArray(viewData?.arguments) ? viewData.arguments.flatMap((argument) => (
+      isPlainObject(argument) && typeof argument.name === 'string' ? [argument.name] : []
+    )) : [])
+  ].filter((parameter) => typeof parameter === 'string');
+  const routeParameters = Object.fromEntries(declaredParameters.flatMap((parameter) => (
+    hashParameters.has(parameter) ? [[parameter, hashParameters.get(parameter) ?? '']] : []
+  )));
 
   if (sourceNames.length === 1) {
     const sourceName = sourceNames[0];
@@ -2306,6 +2321,7 @@ function renderElementView(pageId, title, view, viewIndex, sources, contextDetai
     time: isPlainObject(viewData?.time) ? viewData.time : undefined,
     titleLink: isPlainObject(view['title-link']) ? view['title-link'] : undefined,
     routeParameter,
+    routeParameters,
     queryContext,
     viewId: typeof view.id === 'string' ? view.id : undefined,
     viewIndex,

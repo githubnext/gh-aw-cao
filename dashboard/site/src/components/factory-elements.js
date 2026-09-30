@@ -107,6 +107,7 @@ export function renderFactoryElement(context, defaultSources, selectSourceNames,
     viewId: context.viewId,
     viewIndex: context.viewIndex,
     sourceNames: context.sourceNames,
+    routeParameters: context.routeParameters,
     queryContext: context.queryContext
   });
   const scope = createFactoryScope();
