@@ -8,6 +8,7 @@ import { isPlainObject, renderLazyDisclosure, renderLiveRegion, renderSectionHea
 import { renderSettingsCliActions } from './cli-actions.js';
 import { createFactoryScope } from './factory-elements.js';
 import { renderResetDashboardControl } from './reset-dashboard-control.js';
+import { effect, state } from '../reactive.js';
 import {
   automaticDashboardBackgroundUpdatesActive,
   automaticDashboardDataUpdatesEnabled,
@@ -261,47 +262,31 @@ function policyDocumentFromRow(row) {
 /** @param {Record<string, unknown>} policyDocument */
 function renderSettingsEditor(policyDocument) {
   const original = cloneDocument(policyDocument);
-  let draft = cloneDocument(policyDocument);
+  const draft = state(cloneDocument(policyDocument));
   const status = /** @type {HTMLOutputElement} */ (h('output', {
     className: 'configuration-edit-status',
     'aria-live': 'polite'
-  }, 'No changes'));
+  }));
   const settings = h('div', { className: 'configuration-settings' });
   const copyControl = createCopyControl({
-    getContent: () => JSON.stringify(draft, null, 2),
+    getContent: () => JSON.stringify(draft.get(), null, 2),
     label: 'Copy updated JSON',
     buttonClassName: 'configuration-copy-button',
     statusClassName: 'configuration-copy-status',
     successText: 'Updated JSON copied.'
   });
-  let lastModified = false;
-  const updateStatus = () => {
-    const modified = JSON.stringify(draft) !== JSON.stringify(original);
-    status.textContent = modified ? 'Modified locally' : 'No changes';
-    status.setAttribute('data-state', modified ? 'modified' : 'clean');
-    if (modified !== lastModified) {
-      debugConfigurationView('settings draft state changed', { modified });
-      lastModified = modified;
-    }
-  };
   /** @param {string[]} segments @param {unknown} value */
   const updateValue = (segments, value) => {
-    setDocumentValue(draft, segments, value);
-    copyControl.reset();
-    updateStatus();
+    draft.set((current) => {
+      const next = cloneDocument(current);
+      setDocumentValue(next, segments, value);
+      return next;
+    });
   };
-  const renderSettings = () => settings.replaceChildren(
-    ...Object.entries(draft).map(([name, value]) => renderEntry(name, value, name, [name], updateValue))
-  );
   const resetButton = h('button', {
     type: 'button',
     className: 'configuration-reset-button',
-    onClick: () => {
-      draft = cloneDocument(original);
-      renderSettings();
-      copyControl.reset();
-      updateStatus();
-    }
+    onClick: () => draft.set(cloneDocument(original))
   }, 'Discard changes');
   const diagnosticsStatus = /** @type {HTMLOutputElement} */ (renderLiveRegion('output', 'configuration-copy-status'));
   const diagnosticsButton = /** @type {HTMLButtonElement} */ (h('button', {
@@ -330,10 +315,25 @@ function renderSettingsEditor(policyDocument) {
       }
     }
   }, 'Collect diagnostics'));
-  renderSettings();
-  updateStatus();
 
-  return h('div', { className: 'configuration-editor' },
+  const scope = createFactoryScope();
+  let lastModified = false;
+  effect(() => {
+    const currentDraft = draft.get();
+    const modified = JSON.stringify(currentDraft) !== JSON.stringify(original);
+    copyControl.reset();
+    status.textContent = modified ? 'Modified locally' : 'No changes';
+    status.setAttribute('data-state', modified ? 'modified' : 'clean');
+    settings.replaceChildren(
+      ...Object.entries(currentDraft).map(([name, value]) => renderEntry(name, value, name, [name], updateValue))
+    );
+    if (modified !== lastModified) {
+      debugConfigurationView('settings draft state changed', { modified });
+      lastModified = modified;
+    }
+  }, { signal: scope.signal });
+
+  const root = h('div', { className: 'configuration-editor' },
     h('div', { className: 'configuration-editor-toolbar' },
       h('div', null,
         h('strong', null, '.github/workflows/cao.json'),
@@ -352,6 +352,8 @@ function renderSettingsEditor(policyDocument) {
       'Edits stay in this browser and do not change the policy.'
     )
   );
+  scope.bind(root);
+  return root;
 }
 
 function renderAutomaticDataUpdatesSetting() {

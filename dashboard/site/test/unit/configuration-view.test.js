@@ -495,6 +495,29 @@ describe('Configuration dashboard view', () => {
     expect(/** @type {HTMLInputElement | null} */ (rendered.querySelector('#configuration-control-plane-defaults-max-repositories'))?.value).toBe('7');
   });
 
+  it('stops reacting to draft edits once the editor is detached from the document', () => {
+    const rendered = renderConfigurationView(context({
+      document: { version: 1, 'control-plane': { defaults: { 'max-repositories': 7 } } },
+      raw: '',
+      diagnostics: []
+    }));
+    if (!rendered) throw new Error('configuration view did not render');
+    document.body.append(rendered);
+
+    const input = /** @type {HTMLInputElement | null} */ (
+      rendered.querySelector('#configuration-control-plane-defaults-max-repositories')
+    );
+    if (!(input instanceof HTMLInputElement)) throw new Error('number setting did not render');
+    input.value = '12';
+    input.dispatchEvent(new Event('input'));
+    expect(rendered.querySelector('.configuration-edit-status')?.textContent).toBe('Modified locally');
+
+    rendered.remove();
+    input.value = '99';
+    input.dispatchEvent(new Event('input'));
+    expect(rendered.querySelector('.configuration-edit-status')?.textContent).toBe('Modified locally');
+  });
+
   it('does not offer editing controls for invalid structured content', () => {
     const rendered = renderConfigurationView(context({ document: null, raw: '{bad json', diagnostics: [] }));
     if (!rendered) throw new Error('configuration view did not render');
