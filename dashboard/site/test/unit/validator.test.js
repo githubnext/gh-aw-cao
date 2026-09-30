@@ -747,6 +747,10 @@ describe('dashboard document validation', () => {
     const [mostBlocked, domains] = firewall.views;
     expect(mostBlocked).toMatchObject({
       id: 'security-firewall-most-blocked-domains',
+      intent: 'Prioritize investigation of the most blocked domains and affected workflows without assuming blocked requests require access.',
+      objective: 'Investigate blocked firewall domains and determine whether the affected workflows need an approved egress configuration change.',
+      acceptance: 'Each investigated block has a documented disposition; any needed configuration change is reviewed and verified against fresh firewall evidence.',
+      prompt: 'auto',
       mark: 'chart',
       chart: 'pie',
       layout: 'full',

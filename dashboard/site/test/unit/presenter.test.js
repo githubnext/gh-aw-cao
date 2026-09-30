@@ -1015,6 +1015,8 @@ describe('presenter built-in and custom pages', () => {
     expect(prompt?.getAttribute('aria-label')).toBe('Fix it: Most blocked domains');
     expect(page?.querySelector('.pie-chart-card > .chart-prompt-heading > .chart-prompt-action .table-intent-button')).toBe(prompt);
     prompt?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Prioritize investigation of the most blocked domains');
+    expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Investigate blocked firewall domains');
     expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Each investigated block has a documented disposition');
     expect(page?.querySelector('[data-chart-category="blocked.example"]')).not.toBeNull();
     expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] .chart-legend-pie strong')?.textContent).toBe('3,177,281');
