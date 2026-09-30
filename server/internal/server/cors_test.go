@@ -196,7 +196,10 @@ func TestConfiguredCORSNeverSharesCredentialedResponses(t *testing.T) {
 		request := azureRequest(t, http.MethodGet, path)
 		request.Header.Set("Origin", "https://tools.example.com")
 		request.Header.Set("Sec-Fetch-Mode", "cors")
-		request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "any-session"})
+		request.AddCookie(&http.Cookie{
+			Name: sessionCookieName, Value: "any-session", Secure: true,
+			HttpOnly: true, SameSite: http.SameSiteLaxMode,
+		})
 		response := httptest.NewRecorder()
 		app.Handler().ServeHTTP(response, request)
 		if response.Header().Get("Access-Control-Allow-Credentials") != "" {
