@@ -1,6 +1,6 @@
 {
-  "source_sha": "7b5aed1e089bb0d63e24a8a5bbc54b1a308f4887",
-  "next_category": "Astro documentation generation",
+  "source_sha": "ba2e9452de4b6e68301b9af89e9d24a89c0e84a7",
+  "next_category": "reusable dashboard generation",
   "evaluations": [
     {
       "evaluated_at": "2026-09-30T08:43:00Z",
@@ -507,6 +507,27 @@
         36689491358
       ],
       "outcome": "no_actionable_improvement: latest 15 successful docs.yml runs in the last 14 days included 8 built runs and 6 schedule-freshness skips. Every built run restored node_modules from cache, skipped Install dependencies and Save node_modules, and kept dependency-related step medians at Checkout 6s, Set up Node.js 4.5s, Restore node_modules 5s, and Build documentation 12.5s, with build-job median 39.5s and full-workflow median 43s. This category remains below the 60s or 15% threshold, while the only material docs waste still visible is the already-open duplicate workflow_run rebuild issue #15029.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-30T11:40:00Z",
+      "worker_run_id": "36709608673",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        36709288205,
+        36708749228,
+        36708163767,
+        36706014180,
+        36705399773,
+        36704812809,
+        36703767333,
+        36702460255,
+        36699872682,
+        36698149036,
+        36696470817,
+        36696396135
+      ],
+      "outcome": "no_actionable_improvement: latest 12 completed successful docs.yml runs in the last 14 days included 7 built runs and 5 schedule-freshness skips. The Build documentation step stayed at 8-14s (median 13s, p90 14s), with build-job median 39s and full-workflow median 43.5s. Astro generation remains below the 60s or 15% threshold, while the only material waste still visible is the already-open duplicate workflow_run rebuild issue #15029.",
       "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
     }
   ]
