@@ -1,6 +1,6 @@
 {
-  "source_sha": "a78678112f952b666750efc605803ddd222bab87",
-  "next_category": "Astro documentation generation",
+  "source_sha": "e4ab83a8cba752b4ea3800feefac08922699780a",
+  "next_category": "reusable dashboard generation",
   "evaluations": [
     {
       "evaluated_at": "2026-09-30T17:55:00Z",
@@ -199,6 +199,24 @@
       "category": "dependency installation and caching",
       "evidence_run_ids": [],
       "outcome": "incomplete: GitHub Actions API rate limit prevented collecting at least five comparable successful docs.yml runs from the last 14 days for the next category in this cycle, so no safe recommendation could be refreshed without relying on stale or partial evidence.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-09-30T21:43:06Z",
+      "worker_run_id": "36780747330",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        36780396012,
+        36779270931,
+        36779170527,
+        36777530284,
+        36776737094,
+        36775155319,
+        36773949525,
+        36772641118,
+        36772261024
+      ],
+      "outcome": "no_actionable_improvement: latest 20 completed docs.yml runs from the last 14 days yielded 9 successful runs, including 5 comparable build executions and 4 schedule-freshness skips. Trusted job metadata showed 0s median queue, 56s median full workflow time (p90 119.2s), 47s median build-job time (p90 49.6s), and 44.5s median deploy-job time on the 2 deploying runs; step medians were 13s Build documentation, 6s Restore node_modules, 2s Restore cached CAO Dashboard, and 8s Upload Pages artifact. Logs confirmed node_modules and central-agentic-ops-dashboard cache hits on every built run, with Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact skipped throughout. Cross-checking the latest successful cao-dashboard run still shows the dominant repeated upstream cost is 64s in Upgrade fallback activity data while Assemble Dashboard Language site takes 2s and docs-side Astro generation stays below the 60s or 15% action threshold. The next-cycle Astro category therefore has sufficient evidence but no new non-duplicate improvement beyond the already-recorded reusable-dashboard suggestion.",
       "suggestion_fingerprint": null
     }
   ]
