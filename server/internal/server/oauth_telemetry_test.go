@@ -114,6 +114,14 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 		!strings.Contains(unauthorized.Header().Get("Content-Security-Policy"), "script-src 'sha256-") {
 		t.Fatalf("callback failure missing safe response headers: %#v", unauthorized.Header())
 	}
+	if !strings.Contains(unauthorized.Body.String(), "active member of an organization or team") ||
+		!strings.Contains(unauthorized.Body.String(), "check your membership") ||
+		!strings.Contains(unauthorized.Body.String(), "Request ID:") {
+		t.Fatal("authorization failure must offer actionable, privacy-preserving help")
+	}
+	if strings.Contains(exchange.Body.String(), "check your membership") {
+		t.Fatal("exchange failures must not claim an authorization or membership issue")
+	}
 	_, inlineScript, found := strings.Cut(unauthorized.Body.String(), "<script>")
 	if !found {
 		t.Fatal("OAuth recovery script is not inlined")

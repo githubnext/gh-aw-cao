@@ -55,7 +55,7 @@ func oauthPageScriptHash(page string) string {
 var oauthFailureScriptHash = oauthPageScriptHash(oauthFailureHTML)
 var oauthLoggedOutScriptHash = oauthPageScriptHash(oauthLoggedOutHTML)
 
-func writeOAuthFailure(response http.ResponseWriter, status int, traceID trace.TraceID) {
+func writeOAuthFailure(response http.ResponseWriter, status int, reason string, traceID trace.TraceID) {
 	response.Header().Set("Cache-Control", "no-store")
 	response.Header().Set("Referrer-Policy", "no-referrer")
 	response.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'sha256-"+oauthFailureScriptHash+"'; connect-src 'self'; base-uri 'none'; form-action 'none'")
@@ -65,7 +65,10 @@ func writeOAuthFailure(response http.ResponseWriter, status int, traceID trace.T
 	if traceID.IsValid() {
 		id = traceID.String()
 	}
-	_ = oauthFailurePage.Execute(response, id)
+	_ = oauthFailurePage.Execute(response, struct {
+		TraceID             string
+		AuthorizationFailed bool
+	}{id, reason == "authorization_failed"})
 }
 
 const (
@@ -279,7 +282,7 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 		if status >= http.StatusInternalServerError {
 			span.SetStatus(codes.Error, "OAuth callback failed")
 		}
-		writeOAuthFailure(response, status, span.SpanContext().TraceID())
+		writeOAuthFailure(response, status, reason, span.SpanContext().TraceID())
 	}
 	if !oauth.validState(request) {
 		serverLog.Printf("oauth callback rejected invalid state")

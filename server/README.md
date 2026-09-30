@@ -902,6 +902,15 @@ If the OAuth callback shows a sign-in error, select **Sign out and try again**.
 This attempts the existing CSRF-protected logout (including server-side token
 revocation), clears the pending OAuth state and the dashboard IndexedDB cache
 on the signed-out page, and then offers a fresh, explicit GitHub sign-in.
+
+The older `{"error":"GitHub authorization failed"}` response corresponds to
+an authorization failure; current versions show a help page instead. This
+failure can mean the selected account is not an active member of an allowed
+organization or team, or that GitHub membership could not be verified.
+Try an authorized account, or ask your dashboard administrator to check the
+allowed organizations and teams and your active membership. Do not send
+OAuth callback URLs, codes, tokens, or cookies when requesting help.
+
 If other open tabs block browser data deletion, close them and wait for the
 signed-out page to finish before signing in. If logout cannot be confirmed,
 the page keeps the error visible; clear this site's cookies before retrying,
