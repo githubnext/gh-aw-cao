@@ -74,6 +74,7 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
     const viewData = isPlainObject(view) && isPlainObject(view.data)
       ? /** @type {Record<string, unknown>} */ (view.data)
       : null;
+    const useQueryContext = viewData?.['query-context'] !== false;
     const routeField = viewData && typeof viewData['route-field'] === 'string'
       ? viewData['route-field']
       : '';
@@ -85,14 +86,14 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
         ...compileViewFilterPredicates(viewData?.filters),
         ...compileArgumentPredicates(viewData?.arguments, options.routeParameters),
         ...compileTimePredicates(viewData?.time),
-        ...compileGlobalFilterPredicates(options.queryContext?.filters),
-        ...compileTimePredicates(options.queryContext?.timeWindow),
+        ...compileGlobalFilterPredicates(useQueryContext ? options.queryContext?.filters : undefined),
+        ...compileTimePredicates(useQueryContext ? options.queryContext?.timeWindow : undefined),
         ...compileRoutePredicates(routeField, routeValue)
       ];
-      if (usesNativeSource(view, sourceName, predicates, options.queryContext, resolvedQueries)) return;
+      if (usesNativeSource(view, sourceName, predicates, useQueryContext ? options.queryContext : undefined, resolvedQueries)) return;
       const alias = dashboardViewAliasName(pageId, view, viewIndex, sourceName, sourceIndex);
       aliases.push(alias);
-      const compiled = compileAliasedQuery(sourceName, alias, predicates, options.queryContext?.search, options.queryContext?.orderBy, options.evaluatedAt, resolvedQueries);
+      const compiled = compileAliasedQuery(sourceName, alias, predicates, useQueryContext ? options.queryContext?.search : undefined, useQueryContext ? options.queryContext?.orderBy : undefined, options.evaluatedAt, resolvedQueries);
       queries.push(...compiled.dependencies, compiled.query);
       if (compiled.replacesSource) replacedSources.add(sourceName);
     });

@@ -518,6 +518,22 @@
           {
             "field": "stars",
             "title": "Public stars"
+          },
+          {
+            "field": "verification-source",
+            "title": "Verification source"
+          },
+          {
+            "field": "maintenance-source",
+            "title": "Maintenance source"
+          },
+          {
+            "field": "popularity-source",
+            "title": "Popularity source"
+          },
+          {
+            "field": "signals-observed-at",
+            "title": "Signals observed"
           }
         ]
       },

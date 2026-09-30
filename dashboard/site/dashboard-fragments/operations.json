@@ -1,6 +1,20 @@
 {
   "queries": [
     {
+      "name": "marketplace-registry-options",
+      "intent": "Provide distinct authorized registry choices from resolved package records.",
+      "from": "marketplace-packages",
+      "aggregate": { "by": ["registry-id", "registry-name"], "values": [{ "field": "id", "as": "packages", "reducer": "count" }] },
+      "order-by": [{ "field": "registry-name", "direction": "asc" }]
+    },
+    {
+      "name": "marketplace-publisher-options",
+      "intent": "Provide distinct publisher choices from resolved package records.",
+      "from": "marketplace-packages",
+      "aggregate": { "by": ["publisher"], "values": [{ "field": "id", "as": "packages", "reducer": "count" }] },
+      "order-by": [{ "field": "publisher", "direction": "asc" }]
+    },
+    {
       "name": "marketplace-ranked",
       "intent": "Order keyword-matched campaign packages by reviewed publisher attestation, public maintenance evidence, local adoption evidence, and public popularity, without treating missing evidence as zero.",
       "from": "marketplace-packages",
@@ -42,12 +56,44 @@
             { "value": 2 },
             { "field": "maintenance-unknown-rank" }
           ]
+        },
+        {
+          "as": "adoption-observed",
+          "function": "coalesce",
+          "args": [{ "field": "adoption-count" }, { "value": -1 }]
+        },
+        {
+          "as": "stars-observed",
+          "function": "coalesce",
+          "args": [{ "field": "stars" }, { "value": -1 }]
+        },
+        {
+          "as": "adoption-missing",
+          "function": "equals-any",
+          "args": [{ "field": "adoption-observed" }, { "value": -1 }]
+        },
+        {
+          "as": "stars-missing",
+          "function": "equals-any",
+          "args": [{ "field": "stars-observed" }, { "value": -1 }]
+        },
+        {
+          "as": "adoption-evidence-rank",
+          "function": "if",
+          "args": [{ "field": "adoption-missing" }, { "value": 0 }, { "value": 1 }]
+        },
+        {
+          "as": "stars-evidence-rank",
+          "function": "if",
+          "args": [{ "field": "stars-missing" }, { "value": 0 }, { "value": 1 }]
         }
       ],
       "order-by": [
         { "field": "verification-rank", "direction": "desc" },
         { "field": "maintenance-rank", "direction": "desc" },
+        { "field": "adoption-evidence-rank", "direction": "desc" },
         { "field": "adoption-count", "direction": "desc" },
+        { "field": "stars-evidence-rank", "direction": "desc" },
         { "field": "stars", "direction": "desc" },
         { "field": "package-name", "direction": "asc" },
         { "field": "id", "direction": "asc" }
@@ -1259,6 +1305,18 @@
       "experimental": false,
       "description": "Find campaign packages to extend your agentic operations.",
       "views": [
+        {
+          "id": "marketplace-controls",
+          "title": "Find packages",
+          "data": {
+            "sources": ["marketplace-registry-options", "marketplace-publisher-options"],
+            "query-context": false
+          },
+          "mark": "element",
+          "element": "marketplace-controls",
+          "intent": "Bind accessible discovery controls to subscribed worker query parameters without querying or deriving package rows in the UI.",
+          "layout": "full"
+        },
         {
           "id": "marketplace-packages",
           "title": "Campaign packages for agentic operations",

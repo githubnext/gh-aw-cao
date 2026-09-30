@@ -3099,6 +3099,13 @@ function validateView(view, viewNode, path, viewIds, errors) {
   } else {
     const dataNode = getValueNodeByKey(viewNode, 'data');
     validateObjectKeys(dataNode, VIEW_DATA_KEYS, `${path}.data`, errors);
+    if (view.data['query-context'] !== undefined && typeof view.data['query-context'] !== 'boolean') {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'data.query-context must be a boolean.',
+        `${path}.data.query-context`
+      ));
+    }
     if (view.mark === 'element') {
       validateSourceSequence(view.data.sources, `${path}.data.sources`, errors);
       if (view.data.source !== undefined) {
