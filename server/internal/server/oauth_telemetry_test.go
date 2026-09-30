@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
@@ -104,22 +105,40 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 		t.Fatalf("authorization failure status = %d", unauthorized.Code)
 	}
 
+	app = newAzureTestApp(t, github.URL)
+	stateCookie, state = loginState(t, app)
+	unavailable, err := redisx.New("redis://127.0.0.1:1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	app.oauth.store = redisx.NewStore(unavailable, "test")
+	failedSave := httptest.NewRecorder()
+	request = azureRequest(t, http.MethodGet, "/auth/callback?code="+secretCode+"&state="+url.QueryEscape(state))
+	request.AddCookie(stateCookie)
+	app.Handler().ServeHTTP(failedSave, request)
+	if failedSave.Code != http.StatusServiceUnavailable {
+		t.Fatalf("session save failure status = %d", failedSave.Code)
+	}
+
 	var spans tracetest.SpanStubs
 	for _, span := range traces.GetSpans() {
 		if span.Name == "GET /auth/callback" {
 			spans = append(spans, span)
 		}
 	}
-	if len(spans) != 6 {
+	if len(spans) != 7 {
 		t.Fatalf("callback produced %d spans, want exactly one per callback", len(spans))
 	}
 	for _, span := range spans {
 		if span.Name != "GET /auth/callback" || span.SpanKind != trace.SpanKindServer {
 			t.Fatalf("unexpected callback span: %s (%v)", span.Name, span.SpanKind)
 		}
-		if span.Status.Code != codes.Unset || len(span.Events) != 0 {
-			t.Fatalf("client outcomes must not record raw exceptions or mark server failures: %#v", span)
+		if len(span.Events) != 0 {
+			t.Fatal("callback span must not record raw exceptions")
 		}
+	}
+	if spans[6].Status.Code != codes.Error {
+		t.Fatal("session persistence failure must mark the callback span as a server error")
 	}
 	if spans[0].Parent.TraceID().String() != "4bf92f3577b34da6a3ce929d0e0e4736" ||
 		!spans[0].Parent.IsRemote() {
@@ -128,7 +147,11 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 	for i, expected := range []struct{ outcome, errorType string }{
 		{"success", ""}, {"failure", "invalid_state"}, {"failure", "missing_code"},
 		{"failure", "provider_denied"}, {"failure", "exchange_failed"}, {"failure", "authorization_failed"},
+		{"failure", "session_save_failed"},
 	} {
+		if i < 6 && spans[i].Status.Code != codes.Unset {
+			t.Fatalf("client outcome %d must not be marked as a server error", i)
+		}
 		attrs := spanAttributes(spans[i].Attributes)
 		if attrs["http.route"] != "/auth/callback" || attrs["http.request.method"] != "GET" ||
 			attrs["cao_dashboard.auth.callback.outcome"] != expected.outcome {
@@ -158,18 +181,17 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 				if point.Value != 1 {
 					t.Fatalf("callback count = %d, want 1", point.Value)
 				}
-				outcomes = append(outcomes, attrs["cao_dashboard.auth.callback.outcome"].(string)+"/"+
-					func() string {
-						if attrs["error.type"] == nil {
-							return ""
-						}
-						return attrs["error.type"].(string)
-					}())
+				outcome := attrs["cao_dashboard.auth.callback.outcome"].(string) + "/"
+				if errorType, ok := attrs["error.type"].(string); ok {
+					outcome += errorType
+				}
+				outcomes = append(outcomes, outcome)
 			}
 		}
 	}
 	for _, expected := range []string{"success/", "failure/invalid_state", "failure/missing_code",
-		"failure/provider_denied", "failure/exchange_failed", "failure/authorization_failed"} {
+		"failure/provider_denied", "failure/exchange_failed", "failure/authorization_failed",
+		"failure/session_save_failed"} {
 		found := false
 		for _, outcome := range outcomes {
 			found = found || outcome == expected
@@ -178,7 +200,7 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 			t.Fatalf("missing metric outcome %q in %v", expected, outcomes)
 		}
 	}
-	if len(outcomes) != 6 {
+	if len(outcomes) != 7 {
 		t.Fatalf("unexpected metric outcomes: %v", outcomes)
 	}
 
