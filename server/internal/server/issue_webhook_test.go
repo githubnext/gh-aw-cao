@@ -81,7 +81,7 @@ func TestSignedIssueWebhookRefreshesRetainedSource(t *testing.T) {
 		return result
 	}
 	send(payload, "delivery-1", false)
-	if result := send(payload, "delivery-1", true); result["queued"] != true {
+	if result := send(payload, "delivery-1", true); result["applied"] != true || result["queued"] != false {
 		t.Fatalf("signed issue was not applied: %+v", result)
 	}
 	if result := send(payload, "delivery-1", true); result["duplicate"] != true {
@@ -132,7 +132,7 @@ func TestSignedIssueWebhookRefreshesRetainedSource(t *testing.T) {
 		if err := json.Unmarshal(delivery.Payload, &event); err != nil {
 			t.Fatal(err)
 		}
-		if result := send(string(delivery.Payload), delivery.ID, true); result["queued"] != true {
+		if result := send(string(delivery.Payload), delivery.ID, true); result["applied"] != true || result["queued"] != false {
 			t.Fatalf("%s was not applied to existing source: %+v", event.Action, result)
 		}
 		loaded, _, err := store.LoadSource(t.Context(), "g2", "issues", nil)

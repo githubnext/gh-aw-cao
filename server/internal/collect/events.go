@@ -273,6 +273,8 @@ type Admission struct {
 	Kind      IntentKind `json:"kind"`
 	Enqueued  bool       `json:"enqueued"`
 	Duplicate bool       `json:"duplicate,omitempty"`
+	Applied   bool       `json:"applied,omitempty"`
+	Reason    string     `json:"reason,omitempty"`
 	// ErasureQueued counts repositories with durable erasure work because they
 	// left ingestion scope.
 	ErasureQueued int `json:"erasureQueued,omitempty"`
@@ -360,7 +362,7 @@ func (a Admitter) admitIssue(ctx context.Context, intent Intent, delivery string
 		return Admission{}, err
 	}
 	if !enrolled || owner != intent.InstallationID {
-		return Admission{Kind: IntentIgnore}, nil
+		return Admission{Kind: IntentIgnore, Reason: "not-enrolled"}, nil
 	}
 	update := intent.Issue
 	update.Delivery = delivery
@@ -368,7 +370,11 @@ func (a Admitter) admitIssue(ctx context.Context, intent Intent, delivery string
 	if err != nil {
 		return Admission{}, err
 	}
-	return Admission{Kind: IntentIssueStatus, Enqueued: updated, Duplicate: duplicate}, nil
+	reason := ""
+	if !updated && !duplicate {
+		reason = "not-applied"
+	}
+	return Admission{Kind: IntentIssueStatus, Applied: updated, Duplicate: duplicate, Reason: reason}, nil
 }
 
 // resolveCollectInstallation determines the installation that must own a

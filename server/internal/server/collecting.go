@@ -307,11 +307,18 @@ func (c *Collector) Admit(ctx context.Context, event GitHubWebhook) (map[string]
 		}
 		return nil, err
 	}
-	return map[string]any{
+	result := map[string]any{
 		"kind":      string(admission.Kind),
 		"queued":    admission.Enqueued,
 		"duplicate": admission.Duplicate,
-	}, nil
+	}
+	if admission.Kind == collect.IntentIssueStatus {
+		result["applied"] = admission.Applied
+	}
+	if admission.Reason != "" {
+		result["reason"] = admission.Reason
+	}
+	return result, nil
 }
 
 // Start launches cold start, in-process workers, and delivery recovery.
