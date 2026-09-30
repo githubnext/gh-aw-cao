@@ -42,11 +42,11 @@ test('a chart with composed semantics offers a prompt preview and returns focus'
   await action.click();
   const dialog = page.locator('[data-view-id="cost-by-campaign"] .table-intent-dialog');
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator('.table-intent-preview')).toContainText('Named CAO query IDs:');
-  await expect(dialog.locator('.table-intent-preview')).toContainText('Any unusual campaign cost is explained');
-  await expect(dialog.locator('.table-intent-preview')).toContainText('/analyze-cao');
-  await expect(dialog.locator('.table-intent-preview')).toContainText('This is a preview of the data. Requery for full data.');
-  await expect(dialog.locator('.table-intent-preview')).toContainText('Create a PR with the changes.');
+  expect(await dialog.locator('.table-intent-preview').inputValue()).toContain('Named CAO query IDs:');
+  expect(await dialog.locator('.table-intent-preview').inputValue()).toContain('Any unusual campaign cost is explained');
+  expect(await dialog.locator('.table-intent-preview').inputValue()).toContain('/analyze-cao');
+  expect(await dialog.locator('.table-intent-preview').inputValue()).toContain('This is a preview of the data. Requery for full data.');
+  expect(await dialog.locator('.table-intent-preview').inputValue()).toContain('Create a PR with the changes.');
   await dialog.getByRole('button', { name: 'Close prompt preview' }).click();
   await expect(action).toBeFocused();
 });
@@ -65,9 +65,9 @@ test('an open shared prompt preview tracks reactive evidence until it closes', a
   `);
   await page.getByRole('button', { name: 'Inspect evidence' }).click();
   const preview = page.locator('.table-intent-preview');
-  await expect(preview).toHaveText('first observation');
+  await expect(preview).toHaveValue('first observation');
   await page.evaluate(() => Reflect.get(window, 'refreshEvidence')());
-  await expect(preview).toHaveText('updated observation');
+  await expect(preview).toHaveValue('updated observation');
   await page.getByRole('button', { name: 'Close prompt preview' }).click();
   await expect(page.getByRole('button', { name: 'Inspect evidence' })).toBeFocused();
 });

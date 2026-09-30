@@ -1587,14 +1587,54 @@ export function renderPromptPreviewAction(label, getContent, actionId, icon = 'c
   });
   const closePreview = () => {
     opened.set(false);
+    stopSpeech();
     dismissPreview();
   };
-  const preview = h('pre', { className: 'table-intent-preview' });
+  const preview = /** @type {HTMLTextAreaElement} */ (h('textarea', {
+    className: 'table-intent-preview',
+    'aria-label': 'Prompt text',
+    spellcheck: true,
+    onInput: () => content.set(preview.value)
+  }));
+  const synthesis = typeof window !== 'undefined' ? window.speechSynthesis : undefined;
+  let speaking = false;
+  const stopSpeech = () => {
+    if (!speaking) return;
+    speaking = false;
+    synthesis?.cancel();
+    speechButton.textContent = 'Read aloud';
+    speechButton.setAttribute('aria-pressed', 'false');
+  };
+  const speechButton = /** @type {HTMLButtonElement} */ (h('button', {
+    type: 'button',
+    className: 'table-intent-speech-button',
+    disabled: !synthesis || typeof SpeechSynthesisUtterance === 'undefined',
+    'aria-pressed': 'false',
+    onClick: () => {
+      if (!synthesis || typeof SpeechSynthesisUtterance === 'undefined') return;
+      if (speaking) {
+        stopSpeech();
+        return;
+      }
+      const utterance = new SpeechSynthesisUtterance(preview.value);
+      utterance.onend = utterance.onerror = () => {
+        if (!speaking) return;
+        speaking = false;
+        speechButton.textContent = 'Read aloud';
+        speechButton.setAttribute('aria-pressed', 'false');
+      };
+      speaking = true;
+      speechButton.textContent = 'Stop reading';
+      speechButton.setAttribute('aria-pressed', 'true');
+      synthesis.speak(utterance);
+    }
+  }, 'Read aloud'));
   effect(() => {
     if (opened.get()) content.set(getContent());
   }, { signal: scope?.signal });
   effect(() => {
-    preview.textContent = content.get();
+    const value = content.get();
+    if (preview.value !== value) preview.value = value;
   }, { signal: scope?.signal });
   const copyControl = createCopyControl({
     getContent: content.get,
@@ -1620,12 +1660,14 @@ export function renderPromptPreviewAction(label, getContent, actionId, icon = 'c
         onClick: closePreview
       })
     ),
+    h('p', { className: 'table-intent-guidance' }, 'When asking an agent for help, include the prompt text below so it has the full context. You can edit it before copying.'),
     preview,
     ...(promptCliAction ? [promptCliAction.output] : []),
     h(
       'footer',
       { className: 'table-intent-dialog-footer' },
       activeControl.status,
+      speechButton,
       activeControl.button
     )
   );
@@ -1649,8 +1691,10 @@ export function renderPromptPreviewAction(label, getContent, actionId, icon = 'c
   ));
   dialog.addEventListener('close', () => {
     opened.set(false);
+    stopSpeech();
     triggerButton?.focus();
   }, scope ? { signal: scope.signal } : undefined);
+  scope?.signal.addEventListener('abort', stopSpeech, { once: true });
   const root = h('span', { className: 'table-intent-control' }, triggerButton, dialog);
   scope?.bind(root);
   return root;

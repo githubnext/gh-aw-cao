@@ -1089,14 +1089,19 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .table-cli-action-button:hover { border-color: var(--accent); background: var(--accent-muted); color: var(--accent); }
 .table-cli-action-button .octicon { width: 16px; height: 16px; margin: 0; }
 .table-intent-dialog { width: min(680px, calc(100vw - 32px)); height: fit-content; max-width: none; max-height: calc(100dvh - 32px); margin: auto; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); box-shadow: 0 16px 48px color-mix(in srgb, var(--canvas-inset) 70%, transparent); color: var(--fg); }
-.table-intent-dialog[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; align-content: start; }
+.table-intent-dialog[open] { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; align-content: start; }
 .table-intent-dialog::backdrop { background: color-mix(in srgb, var(--canvas-inset) 72%, transparent); }
 .table-intent-dialog-header { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); text-align: left; }
 .table-intent-dialog-header h2 { margin: 0; font-size: 1rem; }
 .table-intent-dialog-close { width: 28px; height: 28px; display: grid; flex: 0 0 28px; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
 .table-intent-dialog-close:hover { background: var(--neutral-muted); color: var(--fg); }
-.table-intent-preview { max-height: min(60vh, 560px); margin: 0; padding: 18px; overflow: auto; background: var(--canvas); color: var(--fg); font: .8125rem/1.55 var(--font-mono); letter-spacing: 0; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; }
+.table-intent-guidance { margin: 0; padding: 12px 16px; color: var(--muted); font-size: .8125rem; text-align: left; }
+.table-intent-preview { width: 100%; min-height: 160px; max-height: min(60vh, 560px); box-sizing: border-box; margin: 0; padding: 18px; overflow: auto; resize: vertical; border: 0; background: var(--canvas); color: var(--fg); font: .8125rem/1.55 var(--font-mono); letter-spacing: 0; text-align: left; overflow-wrap: anywhere; }
+.table-intent-preview:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 .table-intent-dialog-footer { min-height: 58px; display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--border); background: var(--canvas-subtle); }
+.table-intent-speech-button { min-height: 34px; padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--fg); font: inherit; cursor: pointer; }
+.table-intent-speech-button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.table-intent-speech-button:disabled { opacity: .6; cursor: not-allowed; }
 .table-intent-copy-status { min-width: 0; flex: 1; color: var(--muted); text-align: left; }
 .table-intent-copy-button { min-height: 34px; display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border: 1px solid var(--accent); border-radius: 6px; background: var(--accent); color: var(--canvas); font: inherit; font-weight: 600; cursor: pointer; }
 .table-intent-copy-button:hover { filter: brightness(1.08); }
