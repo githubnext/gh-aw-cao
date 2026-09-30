@@ -167,7 +167,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
           id: 'overview-parity',
           title: 'Overview parity',
           'card-templates': dashboardDocument.dashboard['card-templates'],
-          pages: [pageDefinition]
+          pages: [pageDefinition, { id: 'other', kind: 'custom', title: 'Other', views: [] }]
         }
       },
       sourceData: sources,
@@ -202,9 +202,19 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(campaigns.locator('.link-button-list')).toHaveCSS('border-top-width', '0px');
     const pageBounds = await page.locator('[data-page-id="overview"]').boundingBox();
     const mainBounds = await page.locator('main.dashboard-prototype').boundingBox();
+    const introBounds = await factory.locator(':scope > .factory-intro').boundingBox();
     if (!pageBounds || !mainBounds) throw new Error('Overview and main bounds must be available');
     expect(pageBounds.x).toBeCloseTo(mainBounds.x, 0);
-    expect(pageBounds.width).toBeGreaterThan(mainBounds.width - 20);
+    expect(pageBounds.width).toBeCloseTo(mainBounds.width, 0);
+    expect(pageBounds.y).toBeCloseTo(mainBounds.y, 0);
+    expect(introBounds?.y).toBeCloseTo(mainBounds.y, 0);
+    await expect(page.locator('.app-main > .top-nav')).toBeHidden();
+    await expect(page.locator('.app-main > .report-footer')).toBeHidden();
+    if (viewport.width > 700) {
+      await expect(page.locator('.org-sidebar')).toBeVisible();
+    } else {
+      await expect(page.locator('.mobile-nav-menu')).toBeVisible();
+    }
     await expect(campaigns.getByRole('link', { name: 'View AW Doctor campaign dashboard' }))
       .toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
     await expect(campaigns.getByRole('link', { name: 'View Dependabot campaign dashboard' }))
@@ -291,7 +301,14 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
       getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length
     )).toBe(2);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    await page.screenshot({ path: `test-results/overview-${viewport.width}.png`, fullPage: true });
   }
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.locator('[data-nav-page-id="other"]').click();
+  await expect(page.locator('.app-main > .top-nav')).toBeVisible();
+  await expect(page.locator('.app-main > .report-footer')).toBeVisible();
+  await expect(page.locator('main.dashboard-prototype')).toHaveCSS('padding-top', '24px');
 });
 
 test('disables Overview rhythm animation when reduced motion is preferred', async ({ page }) => {

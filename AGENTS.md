@@ -75,6 +75,8 @@ Run these commands from the `dashboard/site/` directory:
 | `npm run typecheck` | TypeScript strict-mode check |
 | `npm run validate:corpus` | Dashboard authoring corpus validation |
 
+After UI changes, when Playwright loads the full website, capture and include desktop and mobile screenshots in the PR. Wait for the affected page to render before capturing; do not present screenshots of a mocked page as full-site screenshots.
+
 ### Dashboard debug logging
 
 - Create a category logger with `createDebug(category)` from `dashboard/site/src/debug.js`; call it with structured, non-sensitive metadata only.
@@ -123,6 +125,7 @@ Run these commands from the `dashboard/site/` directory:
 ## Working changes
 
 - Read the relevant workflow source, its imports, its campaign manifest, and the effective policy before changing behavior.
+- When Playwright was used, the dashboard was populated with data, and frontend code changed, capture screenshots of the populated dashboard and publish them with the pull request using an available artifact or PR attachment mechanism. Screenshot publication is required only when all three conditions are met.
 - Always run the applicable lint and type-check commands for code changes before committing.
 - Always run `gh aw compile` if any `.md` file is modified.
 - In the catalog, follow the relevant skill under `.github/skills/` and run the narrowest tests plus `npm run compile`.

@@ -1,6 +1,9 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { DashboardServerError } from '../remote-data-backend.js';
+import { createDebug } from '../debug.js';
+
+const debugPageLoadError = createDebug('page-load-error');
 
 /** @type {Record<string, { title: string, description: string, boundaries?: Record<string, string> }>} */
 const ERROR_PRESENTATIONS = {
@@ -25,13 +28,19 @@ const DEFAULT_PRESENTATION = {
  */
 export function renderPageLoadError(error, retry) {
   const serverError = error instanceof DashboardServerError ? error : null;
-  const presentation = serverError
-    ? Object.hasOwn(ERROR_PRESENTATIONS, serverError.code) ? ERROR_PRESENTATIONS[serverError.code] : DEFAULT_PRESENTATION
-    : DEFAULT_PRESENTATION;
+  const matched = Boolean(serverError && Object.hasOwn(ERROR_PRESENTATIONS, serverError.code));
+  const presentation = matched ? ERROR_PRESENTATIONS[/** @type {DashboardServerError} */ (serverError).code] : DEFAULT_PRESENTATION;
   const boundary = serverError && presentation.boundaries
     && Object.hasOwn(presentation.boundaries, serverError.boundary)
     ? presentation.boundaries[serverError.boundary]
     : undefined;
+  debugPageLoadError({
+    event: 'classified',
+    errorKind: serverError ? 'server' : 'generic',
+    code: serverError?.code,
+    matched,
+    hasBoundary: boundary !== undefined
+  });
   return h('div', { className: 'page-load-error', role: 'alert' },
     octicon('alert'),
     h('div', { className: 'page-load-error-body' },
@@ -40,7 +49,14 @@ export function renderPageLoadError(error, retry) {
       presentation !== DEFAULT_PRESENTATION && serverError?.queryId
         ? h('p', { className: 'page-load-error-detail' }, `Query: ${serverError.queryId}`) : null,
       boundary ? h('p', { className: 'page-load-error-detail' }, `Limit type: ${boundary}`) : null,
-      h('button', { type: 'button', className: 'button', onclick: retry }, 'Try again')
+      h('button', {
+        type: 'button',
+        className: 'button',
+        onclick: () => {
+          debugPageLoadError({ event: 'retry-requested' });
+          retry();
+        }
+      }, 'Try again')
     )
   );
 }
