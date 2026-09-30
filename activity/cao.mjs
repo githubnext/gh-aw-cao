@@ -85,7 +85,7 @@ const debug = createDebug('ingest');
 const debugHash = createDebug('hash-payloads');
 
 // Commands whose first argument may be an identifier instead of an option.
-const POSITIONAL_COMMANDS = new Set(['dashboard-complexity', 'pages', 'query-info', 'query']);
+const POSITIONAL_COMMANDS = new Set(['dashboard-complexity', 'pages', 'query-info', 'query', 'prompt']);
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_ISSUE_STATUS_BATCH_SIZE = 50;
 const DEFAULT_ISSUE_STATUS_GRAPHQL_COST_BUDGET = 25;
@@ -110,7 +110,7 @@ const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location ht
 const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
-const COMMANDS = new Set(['init', 'setup', 'setup-auth', 'add', 'update', 'upgrade-gh-aw', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'issue-status', 'query', 'computation', 'operational-value', 'cluster-problems', 'doctor', 'validate', 'download', 'hash-payloads', 'activity-stats', 'validate-activity-data', 'gh', 'pages', 'queries', 'query-info', 'mcp']);
+const COMMANDS = new Set(['init', 'setup', 'setup-auth', 'add', 'update', 'upgrade-gh-aw', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'issue-status', 'query', 'prompt', 'computation', 'operational-value', 'cluster-problems', 'doctor', 'validate', 'download', 'hash-payloads', 'activity-stats', 'validate-activity-data', 'gh', 'pages', 'queries', 'query-info', 'mcp']);
 
 // Intentional CLI misuse that should print usage without an internal stack trace.
 class UsageError extends Error {}
@@ -2878,8 +2878,12 @@ export async function runCli(arguments_, input = process.stdin, { signal } = {})
       && !existsSync(path.join(path.dirname(databasePath), 'payload-hashes.json'))))) {
     throw new UsageError(`No downloaded CAO snapshot at ${databasePath}; run cao download before querying, or pass --database FILE for an explicitly prepared database`);
   }
+  if (command === 'prompt' && options.database !== undefined && !existsSync(databasePath)) {
+    throw new UsageError(`No CAO snapshot at ${databasePath}; pass --database FILE for an existing snapshot or omit it for a definition-only prompt`);
+  }
   const databaseCommands = new Set(['issue-status', 'gh', 'computation', 'operational-value', 'ingest', 'ingest-jsonl', 'query', 'mcp']);
-  const indexedDB = databaseCommands.has(command) ? await createDatabase(databasePath) : undefined;
+  const indexedDB = databaseCommands.has(command) || (command === 'prompt' && options.database !== undefined)
+    ? await createDatabase(databasePath) : undefined;
   return handler({
     options,
     positional,

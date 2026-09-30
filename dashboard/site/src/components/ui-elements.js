@@ -11,6 +11,7 @@ import { renderFactoryFloorElement } from './factory-floor.js';
 import { renderFactoryHeaderElement } from './factory-header.js';
 import { renderLinkButtonList } from './link-button-list.js';
 import { renderMarkdownElement } from './markdown.js';
+import { renderMarketplaceControls } from './marketplace-controls.js';
 import { renderOutcomeDetail } from './outcome-detail.js';
 import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outcome-detail-sections.js';
 import { renderProblemDetail } from './problem-detail.js';
@@ -55,7 +56,8 @@ const ELEMENT_RENDERERS = new Map([
   ['factory-floor', renderFactoryFloorElement],
   ['all-campaign-memory', renderAllCampaignMemory],
   ['link-button-list', renderLinkButtonList],
-  ['markdown', renderMarkdownElement]
+  ['markdown', renderMarkdownElement],
+  ['marketplace-controls', renderMarketplaceControls]
 ]);
 
 /** Elements that load declared sources independently of the active page subscription. */
@@ -82,7 +84,8 @@ const EMPTY_AWARE_ELEMENTS = new Set([
   'factory-floor',
   'all-campaign-memory',
   'link-button-list',
-  'markdown'
+  'markdown',
+  'marketplace-controls'
 ]);
 const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy']);
 

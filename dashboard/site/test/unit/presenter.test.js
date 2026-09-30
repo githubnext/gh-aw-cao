@@ -1643,13 +1643,15 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.repository-link')).toBeNull();
   });
 
-  it('renders the dashboard commit SHA in the footer', () => {
+  it('renders the dashboard commit SHA linked to the same repository as the chrome icon', () => {
     const commitSha = '0123456789abcdef0123456789abcdef01234567';
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
         id: 'versioned-dashboard',
         title: 'Versioned Dashboard',
+        'github-url-base': 'https://github.example.com',
+        repository: 'octo-org/agentic-operations',
         pages: [{ id: 'usage', kind: /** @type {'built-in'} */ ('built-in'), page: 'usage', title: 'Usage' }]
       }
     };
@@ -1658,6 +1660,10 @@ describe('presenter built-in and custom pages', () => {
 
     expect(rendered.querySelector('.report-footer-version')?.textContent).toBe('Version 0123456');
     expect(rendered.querySelector('.report-footer-version')?.getAttribute('title')).toBe(commitSha);
+    expect(rendered.querySelector('.report-footer-version a')?.getAttribute('href')).toBe(
+      `https://github.example.com/octo-org/agentic-operations/commit/${commitSha}`
+    );
+    expect(rendered.querySelector('.repository-link')?.getAttribute('href')).toBe('https://github.example.com/octo-org/agentic-operations');
   });
 
   it('DLS-DOC-012 DLS-SAFE-011 renders a labeled GitHub repository link resolved against a custom github-url-base', () => {

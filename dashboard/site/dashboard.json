@@ -494,12 +494,46 @@
             "field": "package-version",
             "title": "Version",
             "display": "ref"
+          },
+          {
+            "field": "verification-status",
+            "title": "Publisher verification",
+            "display": "label"
+          },
+          {
+            "field": "maintenance-status",
+            "title": "Maintenance",
+            "display": "label"
           }
         ],
         "details": [
           {
             "field": "publisher",
             "title": "By"
+          },
+          {
+            "field": "installation-status",
+            "title": "Installed here"
+          },
+          {
+            "field": "stars",
+            "title": "Public stars"
+          },
+          {
+            "field": "verification-source",
+            "title": "Verification source"
+          },
+          {
+            "field": "maintenance-source",
+            "title": "Maintenance source"
+          },
+          {
+            "field": "popularity-source",
+            "title": "Popularity source"
+          },
+          {
+            "field": "signals-observed-at",
+            "title": "Signals observed"
           }
         ]
       },
@@ -525,12 +559,58 @@
             "field": "package-version",
             "title": "Version",
             "display": "ref"
+          },
+          {
+            "field": "verification-status",
+            "title": "Publisher verification",
+            "display": "label"
+          },
+          {
+            "field": "maintenance-status",
+            "title": "Maintenance",
+            "display": "label"
           }
         ],
         "details": [
           {
             "field": "publisher",
             "title": "By"
+          },
+          {
+            "field": "verification-source",
+            "title": "Verified by"
+          },
+          {
+            "field": "maintenance-source",
+            "title": "Maintenance source"
+          },
+          {
+            "field": "last-maintained-at",
+            "title": "Last registry commit"
+          },
+          {
+            "field": "stars",
+            "title": "Public stars"
+          },
+          {
+            "field": "forks",
+            "title": "Public forks"
+          },
+          {
+            "field": "installation-status",
+            "title": "Installed here"
+          },
+          {
+            "field": "adoption-count",
+            "title": "Observed control installs"
+          },
+          {
+            "field": "adoption-source",
+            "title": "Adoption source"
+          },
+          {
+            "field": "signals-observed-at",
+            "title": "Signals observed"
           }
         ],
         "actions": [

@@ -2,7 +2,9 @@
   "queries": [
     {
       "name": "failure-run-base",
-      "intent": "Reuse shared query stages for failed-runs, overview-failing-runs",
+      "intent": "Select retained runs with failure, startup-failure, stale, or timed-out conclusions for the failed-run ledger and streak inputs.",
+      "objective": "Provide one consistent failure-conclusion evidence set to downstream Overview queries.",
+      "acceptance": "Each selected run has one of the four declared conclusions within the selected horizon; other conclusions remain outside this set, and missing run coverage is not interpreted as no failures.",
       "from": "runs",
       "filter": {
         "predicates": [
@@ -21,6 +23,8 @@
     {
       "name": "failed-runs",
       "intent": "List failed workflow runs that need operator attention.",
+      "objective": "Give operators the most recent observed failed runs to inspect in GitHub.",
+      "acceptance": "Unprojected run rows retain available conclusion, started-at, and run evidence fields in descending started-at order; inspect source logs and missing links before attributing a cause or declaring resolution.",
       "from": "failure-run-base",
       "order-by": [
         {
@@ -32,6 +36,8 @@
     {
       "name": "overview-failing-runs",
       "intent": "Identify failed runs in the selected snapshot horizon so subsequent streak logic can use the same declarative failure definition.",
+      "objective": "Project distinct failure-run counts by organization, repository, workflow, and run for streak joins.",
+      "acceptance": "Each grouped run identity has a failing-runs count derived from failure-run-base in the selected horizon; this stage does not assert a consecutive streak or require action.",
       "from": "failure-run-base",
       "aggregate": {
         "by": [
@@ -52,6 +58,8 @@
     {
       "name": "overview-failing-workflows",
       "intent": "Identify only workflows that have at least one failed run in the selected snapshot horizon before computing streaks.",
+      "objective": "Provide workflow identities with observed failed runs for the streak computation.",
+      "acceptance": "Each organization/repository/workflow group has a distinct failing-runs count from overview-failing-runs; the count covers observed failures, not the latest consecutive streak.",
       "from": "overview-failing-runs",
       "aggregate": {
         "by": [
@@ -71,6 +79,8 @@
     {
       "name": "overview-repeated-failure-groups",
       "intent": "Group each workflow's latest consecutive failing run sequence in the selected snapshot horizon, resetting the group after any successful run.",
+      "objective": "Project the latest observed consecutive failure-count per workflow for downstream blocked-work matching.",
+      "acceptance": "failure-count follows run ordering and the declared latest-failure-streak reducer, with non-failing runs breaking the streak; missing earlier runs or incomplete snapshots limit the observed sequence.",
       "from": "runs",
       "joins": [
         {
@@ -161,6 +171,8 @@
     {
       "name": "overview-repeated-failure-candidates",
       "intent": "Attach selected-horizon failure counts to each workflow's latest canonical work item.",
+      "objective": "Pair blocked work items with observed workflow failure streaks and retained run evidence before attention filtering.",
+      "acceptance": "Candidates are filtered to blocked items with a matching organization/repository/workflow streak; is-repeated reflects failure-count greater than one, while selected evidence-link and run-link can be absent or refer to the work item rather than the latest failed run.",
       "from": "work-items",
       "joins": [
         {
@@ -364,6 +376,8 @@
     {
       "name": "overview-repeated-failure-attention",
       "intent": "Keep only unresolved workflows with two or more failures in the selected horizon.",
+      "objective": "Surface blocked workflow items with observed repeated failures for bounded run investigation.",
+      "acceptance": "Every row inherits a blocked item with is-repeated true and projects evidence-link and run-link when available; verify run order, links, and current state before treating the failure as still unresolved.",
       "from": "overview-repeated-failure-candidates",
       "filter": {
         "predicates": [
@@ -418,6 +432,8 @@
     {
       "name": "overview-review-attention",
       "intent": "Select only unresolved outputs explicitly awaiting human review with their retained GitHub evidence destination.",
+      "objective": "Present review-state work items and their retained GitHub destination to a human reviewer.",
+      "acceptance": "Rows are filtered to lifecycle-state review and project the work-item ID as attention-signal-id, plus reason, evidence-link, and run-link where present; reviewer disposition must be checked at source.",
       "from": "work-items",
       "filter": {
         "predicates": [
@@ -541,6 +557,8 @@
     {
       "name": "overview-needs-attention",
       "intent": "Combine grouped repeated failures and unresolved review outputs without introducing ordinary activity or duplicate work items.",
+      "objective": "Prioritize observed blocked repeated-failure work and review-state outputs for investigation.",
+      "acceptance": "Rows come only from the repeated-failure or review inputs and retain their source reasons, links, and ordering; confirm fresh source status before acting, and do not equate a missing row with resolved work.",
       "from": "overview-repeated-failure-attention",
       "union": [
         "overview-review-attention"

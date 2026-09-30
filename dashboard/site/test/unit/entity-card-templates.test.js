@@ -33,7 +33,15 @@ describe('entity card templates', () => {
       'icon-field': 'package-icon',
       title: { field: 'package-name' },
       subtitle: { field: 'package-description' },
-      details: [{ field: 'publisher', title: 'By' }]
+      details: [
+        { field: 'publisher', title: 'By' },
+        { field: 'installation-status', title: 'Installed here' },
+        { field: 'stars', title: 'Public stars' },
+        { field: 'verification-source', title: 'Verification source' },
+        { field: 'maintenance-source', title: 'Maintenance source' },
+        { field: 'popularity-source', title: 'Popularity source' },
+        { field: 'signals-observed-at', title: 'Signals observed' }
+      ]
     });
     expect(templates['marketplace-package-summary'].actions).toBeUndefined();
     expect(templates['marketplace-package']).toMatchObject({
@@ -52,7 +60,11 @@ describe('entity card templates', () => {
       (/** @type {Record<string, any>} */ section) => section.label === 'Maintenance'
     )?.pages).toContain('marketplace');
     expect(pages.marketplace.views[0]).toMatchObject({
-      data: { source: 'marketplace-packages' },
+      element: 'marketplace-controls',
+      data: { sources: ['marketplace-registry-options', 'marketplace-publisher-options'], 'query-context': false }
+    });
+    expect(pages.marketplace.views[1]).toMatchObject({
+      data: { source: 'marketplace-ranked' },
       list: {
         style: 'entity-cards',
         appearance: 'marketplace',

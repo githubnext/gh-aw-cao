@@ -3,6 +3,8 @@
     {
       "name": "database-campaign-count",
       "intent": "Count campaigns in the dashboard database.",
+      "objective": "Establish the retained campaign inventory denominator for Overview health presentation.",
+      "acceptance": "The campaigns count matches canonical campaign identities in the selected snapshot; missing inventory is reported as incomplete rather than interpreted as no campaigns.",
       "from": "campaigns",
       "aggregate": {
         "values": [
@@ -17,6 +19,8 @@
     {
       "name": "overview-run-summary",
       "intent": "Summarize successful, failed, and active runs with rollout-mode counts.",
+      "objective": "Expose observed success, failure, and active run counts, including active live and review modes, for the selected horizon.",
+      "acceptance": "Each count follows its declared conclusion, status, and rollout-mode filters; run success is not treated as a verified outcome, and incomplete or stale evidence is identified.",
       "from": "overview-runs",
       "aggregate": {
         "values": [
@@ -116,6 +120,8 @@
     {
       "name": "overview-delivery-summary",
       "intent": "Count distinct target repositories with successful worker dispatch runs in the selected horizon.",
+      "objective": "Measure observed reach among registered repositories with successful dispatched worker runs.",
+      "acceptance": "Distinct delivered-repositories is limited to registered targets and successful workflow_dispatch worker runs in the selected horizon; it does not establish accepted delivery or authorized coverage.",
       "from": "overview-runs",
       "joins": [
         {
@@ -164,6 +170,8 @@
     {
       "name": "overview-value-summary",
       "intent": "Count all observed grader results.",
+      "objective": "Identify whether any grader observations are available to the Overview status presentation.",
+      "acceptance": "The value-gains field counts observed grader records only; inspect each result's native measure, unit, direction, maturity, and uncertainty before claiming an outcome or improvement.",
       "from": "grader-observations",
       "aggregate": {
         "values": [
@@ -178,6 +186,8 @@
     {
       "name": "overview-run-status-input",
       "intent": "Prepare the compact run summary for declarative factory status classification.",
+      "objective": "Carry successful-runs, failed-runs, and active-runs into the status join without changing their meaning.",
+      "acceptance": "The projected counts retain the selected horizon and match overview-run-summary; the join key is only a presentation key, not additional evidence.",
       "from": "overview-run-summary",
       "compute": [
         {
@@ -211,6 +221,8 @@
     {
       "name": "overview-value-status-input",
       "intent": "Prepare the compact value summary for declarative factory status classification.",
+      "objective": "Carry the grader-observation count into the optional status join.",
+      "acceptance": "The projected value-gains count matches overview-value-summary; a zero count does not establish complete grader coverage, and a nonzero count is not proof of gain.",
       "from": "overview-value-summary",
       "compute": [
         {
@@ -238,6 +250,8 @@
     {
       "name": "overview-factory-status",
       "intent": "Classify the factory heading from compact run and optional value evidence.",
+      "objective": "Provide a bounded Overview heading based on observed run counts and optional grader-record presence.",
+      "acceptance": "The heading matches the declared run-count and optional grader-presence branches; grader presence is not verified value, and the heading does not authorize any policy change.",
       "from": "overview-run-status-input",
       "joins": [
         {
@@ -403,6 +417,8 @@
     {
       "name": "overview-registered-repository-summary",
       "intent": "Count canonical repository identities registered in the resolved control-plane scope.",
+      "objective": "Provide the registered-repository denominator for observed worker reach.",
+      "acceptance": "The count reflects canonical repository records in the resolved scope; it is not evidence of live enrollment, successful execution, or full inventory completeness.",
       "from": "repositories",
       "aggregate": {
         "values": [
@@ -417,6 +433,8 @@
     {
       "name": "overview-delivery-coverage-input",
       "intent": "Prepare successful delivery totals for the repository coverage summary.",
+      "objective": "Carry the distinct delivered-repositories count into the coverage join.",
+      "acceptance": "The projected count equals overview-delivery-summary for the selected horizon; the join key adds no repository observations.",
       "from": "overview-delivery-summary",
       "compute": [
         {
@@ -444,6 +462,8 @@
     {
       "name": "overview-registered-repository-coverage-input",
       "intent": "Prepare registered repository totals for the repository coverage summary.",
+      "objective": "Carry the registered-repositories count into the coverage denominator join.",
+      "acceptance": "The projected count equals overview-registered-repository-summary for the resolved scope; missing inventory is not treated as zero eligible targets.",
       "from": "overview-registered-repository-summary",
       "compute": [
         {
@@ -471,6 +491,8 @@
     {
       "name": "overview-rhythm",
       "intent": "Compare successful runs for this week and last week on every weekday, layering the current week over the previous week.",
+      "objective": "Show the observed weekday pattern of successful runs across the current and previous calendar weeks.",
+      "acceptance": "When rhythm is present, verify weekday order, successful-run counts, and reached-day flags; if rhythm is absent, report the comparison as unavailable rather than zero activity, and do not attribute changes to workflow improvements.",
       "from": "overview-runs",
       "time": {
         "range": "15d"
@@ -505,6 +527,8 @@
     {
       "name": "campaign-runtime-problem-counts",
       "intent": "Count current failing workflow and runtime repository partitions for each campaign.",
+      "objective": "Project campaign-level counts of retained runtime problem partitions for health and navigation.",
+      "acceptance": "Each campaign's problem-partitions count reflects campaign-runtime-problems rows, not distinct incidents or all possible faults; absent reports are not proof of health.",
       "description": "Current retained runtime problem counts by campaign.",
       "from": "campaign-runtime-problems",
       "aggregate": {
@@ -523,6 +547,8 @@
     {
       "name": "overview-repository-coverage-summary",
       "intent": "Aggregate reached and total repositories across the resolved organization scope.",
+      "objective": "Pair observed reached-repositories and registered-repositories-total for a comparable coverage denominator.",
+      "acceptance": "Both totals come from their named input queries and share the resolved scope; verify the left-joined inventory source independently before interpreting a zero total, since a missing join can aggregate to zero.",
       "from": "overview-delivery-coverage-input",
       "joins": [
         {
@@ -560,6 +586,8 @@
     {
       "name": "overview-repository-coverage",
       "intent": "Measure registered repository reach from successful worker execution.",
+      "objective": "Present observed successful-worker repository reach as a ratio alongside numerator and denominator.",
+      "acceptance": "repository-coverage is reached-repositories divided by registered-repositories-total when available; preserve the counts and undefined denominator, and do not call reach successful outcomes.",
       "from": "overview-repository-coverage-summary",
       "compute": [
         {
@@ -590,6 +618,8 @@
     {
       "name": "overview-healthy-campaign-count",
       "intent": "Count campaigns with no retained workflow or target errors.",
+      "objective": "Count campaigns with no retained runtime problem partitions for the Overview health display.",
+      "acceptance": "healthy-campaigns counts canonical campaigns without observed problem partitions; missing runtime evidence is not independent proof of healthy execution.",
       "from": "campaigns",
       "joins": [
         {
@@ -656,6 +686,8 @@
     {
       "name": "overview-campaign-count-presentation-input",
       "intent": "Prepare the campaign inventory count for Overview presentation queries.",
+      "objective": "Project the campaign inventory count into the health presentation join.",
+      "acceptance": "The campaigns value matches database-campaign-count; the presentation key does not expand the campaign scope.",
       "from": "database-campaign-count",
       "compute": [
         {
@@ -683,6 +715,8 @@
     {
       "name": "overview-healthy-campaign-presentation-input",
       "intent": "Prepare the healthy campaign count for Overview presentation queries.",
+      "objective": "Project the campaigns without retained problems into the health presentation join.",
+      "acceptance": "The healthy-campaigns value matches overview-healthy-campaign-count and remains an absence-of-observed-problems measure, not verified health.",
       "from": "overview-healthy-campaign-count",
       "compute": [
         {
@@ -710,6 +744,8 @@
     {
       "name": "overview-campaign-health-presentation",
       "intent": "Produce presentation-ready campaign health values for the Overview header and floor.",
+      "objective": "Display the ratio of campaigns without retained runtime problems to registered campaigns with both underlying counts.",
+      "acceptance": "The percentage and detail agree with healthy-campaigns and campaigns; a missing or zero denominator remains unavailable, and the displayed ratio is not proof of impact.",
       "from": "overview-healthy-campaign-presentation-input",
       "joins": [
         {
@@ -821,6 +857,8 @@
     {
       "name": "overview-header-status-presentation-input",
       "intent": "Prepare the factory status heading for the declarative Overview header.",
+      "objective": "Carry the factory heading into the Overview header join unchanged.",
+      "acceptance": "The heading matches overview-factory-status; the presentation key does not imply additional evidence or a policy recommendation.",
       "from": "overview-factory-status",
       "compute": [
         {
@@ -848,6 +886,8 @@
     {
       "name": "overview-header-presentation",
       "intent": "Resolve the Overview heading from declarative status and campaign-health evidence.",
+      "objective": "Display the configured heading corresponding to observed run status and campaign health.",
+      "acceptance": "The selected heading follows the declared presentation branches; numeric branch boundaries are UI classification only, not operational targets or rollout thresholds.",
       "from": "overview-header-status-presentation-input",
       "joins": [
         {
@@ -932,6 +972,8 @@
     {
       "name": "overview-run-motion-presentation-input",
       "intent": "Prepare active run state for Overview station presentation.",
+      "objective": "Expose whether at least one queued or in-progress run was observed for station display.",
+      "acceptance": "active reflects overview-run-summary's active-runs count; no observed active run does not prove the fleet is idle when the snapshot is incomplete.",
       "from": "overview-run-summary",
       "compute": [
         {
@@ -971,6 +1013,8 @@
     {
       "name": "overview-campaign-station",
       "intent": "Provide the presentation-ready campaign health station for Overview.",
+      "objective": "Show the retained-problem-free campaign ratio, supporting counts, and observed run motion together.",
+      "acceptance": "Station value, display, detail, description, and active flag match their input queries; neither absence of problems nor run motion is verified campaign effectiveness.",
       "from": "overview-campaign-health-presentation",
       "joins": [
         {
@@ -1015,6 +1059,8 @@
     {
       "name": "overview-repository-station-presentation-input",
       "intent": "Prepare repository coverage for the presentation-ready Overview station.",
+      "objective": "Format repository reach with its reached and registered counts for the station.",
+      "acceptance": "The percentage and detail preserve overview-repository-coverage's numerator and denominator; unavailable coverage remains unavailable, not zero or complete reach.",
       "from": "overview-repository-coverage",
       "compute": [
         {
@@ -1109,6 +1155,8 @@
     {
       "name": "overview-repository-station",
       "intent": "Provide the presentation-ready repository coverage station for Overview.",
+      "objective": "Show observed registered-repository worker reach and run motion in one station.",
+      "acceptance": "Value and formatted evidence match the coverage presentation input, and active matches run motion; neither changes policy or establishes accepted outcomes.",
       "from": "overview-repository-station-presentation-input",
       "joins": [
         {
@@ -1149,6 +1197,8 @@
     {
       "name": "overview-disabled-dispatchers",
       "intent": "Identify campaigns whose dispatcher is disabled in GitHub Actions.",
+      "objective": "Surface campaigns with observed inactive orchestrator workflows for operator verification.",
+      "acceptance": "disabled-dispatchers counts workflow-role orchestrator records with workflow-active false per campaign; verify current GitHub state before acting, and do not infer a policy change.",
       "from": "workflows",
       "filter": {
         "predicates": [
@@ -1178,6 +1228,8 @@
     {
       "name": "overview-campaign-links",
       "intent": "Provide one navigation row per registered campaign that opens its dedicated campaign view.",
+      "objective": "Let operators navigate to each campaign while showing observed dispatcher and runtime-problem indicators.",
+      "acceptance": "Each row retains its canonical campaign identity and link, with indicator counts derived only from the named inputs; missing status does not mean enabled or healthy.",
       "description": "Registered campaigns with a resolved dashboard link to their dedicated campaign view.",
       "from": "campaigns",
       "joins": [
@@ -1390,6 +1442,8 @@
     {
       "name": "cost-by-campaign",
       "intent": "Present observed AI Credit cost grouped by centrally managed campaign.",
+      "objective": "Identify campaigns whose observed AI Credit usage warrants inspection alongside their run evidence.",
+      "acceptance": "Rows preserve native aic values and descending order; investigate fresh campaign runs and snapshot completeness before suggesting a cost intervention, without inferring savings or value.",
       "objective": "Identify campaigns whose observed AI Credit use needs investigation.",
       "from": "campaign-inventory",
       "select": [
@@ -1413,6 +1467,8 @@
     {
       "name": "cost-by-repository",
       "intent": "Present observed AI Credit cost grouped by repository.",
+      "objective": "Locate repositories with higher observed AI Credit totals for evidence-led investigation.",
+      "acceptance": "Each repository coordinate and native aic total agrees with repository-aic-totals; confirm the selected horizon and underlying runs before attributing cost or proposing a change.",
       "from": "repository-aic-totals",
       "compute": [
         {
@@ -1506,6 +1562,8 @@
     {
       "name": "cost-by-workflow",
       "intent": "Present observed AI Credit cost grouped by repository-owned workflow.",
+      "objective": "Locate repository workflows with higher observed AI Credit totals and open their workflow evidence.",
+      "acceptance": "Workflow identity, link, and native aic total match workflow-aic-totals in descending order; cost alone does not establish waste, quality, or value.",
       "from": "workflow-aic-totals",
       "compute": [
         {
@@ -1626,6 +1684,8 @@
     {
       "name": "cost-per-workflow-run",
       "intent": "Present the average observed AI Credit cost of a single run for each repository-owned workflow.",
+      "objective": "Compare observed AI Credit per run across repository workflows with each observed-runs denominator.",
+      "acceptance": "aic-per-run is derived from native aic and observed-runs for matching workflows only; missing or zero denominators remain unavailable, and differences are not claimed as efficiency gains.",
       "description": "Observed AI Credit totals divided by observed run attempts for each declared workflow.",
       "from": "workflow-aic-totals",
       "joins": [

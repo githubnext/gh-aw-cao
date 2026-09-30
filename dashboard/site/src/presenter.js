@@ -13,7 +13,8 @@ import { externalAnchorAttrs, findLink } from './components/link-content.js';
 import { elementHandlesEmptyRows, elementHandlesUnavailableSource, elementLoadsSourcesAsync, renderUiElement } from './components/ui-elements.js';
 import { renderDataView, renderPromptPreviewAction, supportsIncrementalChartContinuation } from './components/data-view.js';
 import { declaredAgentTaskActionId } from './components/cli-actions.js';
-import { effectiveViewSemantics, semanticViewPrompt } from './view-semantics.js';
+import { effectiveViewSemantics } from './view-semantics.js';
+import { semanticViewPrompt } from './semantic-view-prompt.js';
 import { enableHorizonOutsideClickDismissal, renderFilterBar, renderViewModeControl, setTimeWindowFilter, setTimeWindowRange } from './components/filter-bar.js';
 import { renderDashboardForm } from './components/dashboard-form.js';
 import { renderSiteCallouts } from './components/site-callout.js';
@@ -233,7 +234,7 @@ export function renderDashboard(input) {
     }),
     callouts: renderSiteCallouts(document.dashboard.callouts, sources),
     pages: pages.map((page) => renderPagePlaceholder(page)),
-    footer: renderDashboardFooter({ evaluatedAt, commitSha: input.commitSha })
+    footer: renderDashboardFooter({ evaluatedAt, commitSha: input.commitSha, githubUrlBase, dashboardRepository })
   });
   const root = h(
     'div',

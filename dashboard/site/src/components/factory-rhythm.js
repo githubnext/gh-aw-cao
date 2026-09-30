@@ -66,9 +66,11 @@ export function renderFactoryRhythm(source, scope) {
 
 /** @param {RhythmDay} day */
 function rhythmDayDescription(day) {
-  const current = `${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'} this week`;
-  const previous = `${formatCount(day.previous)} successful ${day.previous === 1 ? 'run' : 'runs'} last week`;
-  return `${day.label}${day.date ? ` ${day.date}` : ''}: ${current}${day.reached ? '' : ' (day not yet reached)'}; ${previous}.`;
+  const counts = [];
+  if (day.count > 0) counts.push(`${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'} this week`);
+  if (day.previous > 0) counts.push(`${formatCount(day.previous)} successful ${day.previous === 1 ? 'run' : 'runs'} last week`);
+  const summary = counts.length ? counts.join('; ') : 'No successful runs this week or last week';
+  return `${day.label}${day.date ? ` ${day.date}` : ''}: ${summary}${day.reached ? '' : ' (day not yet reached)'}.`;
 }
 
 /** @param {RhythmSource} source @returns {{ days: RhythmDay[] }} */

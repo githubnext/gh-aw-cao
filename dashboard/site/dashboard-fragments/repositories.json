@@ -3,6 +3,8 @@
     {
       "name": "entity-workflow-run-totals",
       "intent": "Summarize run outcomes and AI Credit consumption for reusable workflow cards.",
+      "objective": "Compare retained run-attempt activity, recorded conclusions, and AI Credit usage per workflow card.",
+      "acceptance": "Group by organization, repository, and workflow; expose distinct run-attempt count, success/failure conclusion counts, and sum of recorded AIC, without treating missing run history as zero actual activity.",
       "from": "runs",
       "compute": [
         {
@@ -75,6 +77,8 @@
     {
       "name": "entity-workflows",
       "intent": "Project workflow entities for reusable workflow cards and repository drill-down.",
+      "objective": "Relate declared workflows to observed run and AIC totals for workflow-level drill-down.",
+      "acceptance": "Keep declared workflow identity, role, registration, campaign, link, and joined totals; a missing run match defaults to displayed zeros but does not establish no executions or outcomes.",
       "from": "workflows",
       "joins": [
         {
@@ -231,6 +235,8 @@
     {
       "name": "repository-runs",
       "intent": "Project canonical runs into repository-addressable run evidence.",
+      "objective": "Expose retained run chronology and status for a selected repository's drill-down.",
+      "acceptance": "Retain repository coordinate, workflow, run identity, title, event, start time, conclusion, mode, AIC, and run link; absent details or runs do not establish a healthy or idle repository.",
       "description": "Workflow runs with a stable repository route key.",
       "from": "runs",
       "compute": [
@@ -299,6 +305,8 @@
     {
       "name": "repository-workflow-totals",
       "intent": "Summarize declared and disabled workflow counts by repository.",
+      "objective": "Compare declared and disabled workflow counts for each repository in the retained workflow inventory.",
+      "acceptance": "Count declared workflows and workflow-active=false entries by organization and repository; missing declarations must not be interpreted as a complete zero-workflow inventory.",
       "description": "Declared and disabled workflow totals for each repository.",
       "from": "workflows",
       "aggregate": {
@@ -331,6 +339,8 @@
     {
       "name": "repository-report-totals",
       "intent": "Summarize published outcome report counts by repository.",
+      "objective": "Show retained outcome-report volume per repository for comparison with observed execution.",
+      "acceptance": "Count retained outcome rows by organization and repository; a missing aggregate does not prove no reports were published or that reported outcomes succeeded.",
       "description": "Published report totals for each repository.",
       "from": "outcomes",
       "aggregate": {
@@ -350,6 +360,8 @@
     {
       "name": "repository-run-totals",
       "intent": "Summarize distinct runs, failures, and approval-required runs by repository.",
+      "objective": "Compare retained run volume, selected failure and action-required conclusions, and imported-record presence per repository.",
+      "acceptance": "Group by organization and repository; preserve distinct run IDs, configured failure/action-required conclusion counts, and imported-run sums. Missing enrichment or run history must not be treated as complete coverage.",
       "description": "Distinct run and conclusion totals for each repository.",
       "from": "run-import-status",
       "aggregate": {
@@ -403,7 +415,9 @@
     },
     {
       "name": "repository-activity-core",
-      "intent": "Join each repository with its workflow, report, evaluation, and run totals.",
+      "intent": "Join each repository with its workflow, report, and run totals.",
+      "objective": "Attach retained workflow, report, and run aggregates to each repository for bounded inventory review.",
+      "acceptance": "Preserve each repository and the available joined aggregates by organization and repository; unmatched metrics remain missing evidence, not confirmed zero activity or evaluated outcomes.",
       "description": "Repository inventory joined with workflow, report, evaluation, and run totals.",
       "from": "repositories",
       "joins": [
@@ -488,6 +502,8 @@
     {
       "name": "repository-activity",
       "intent": "Show repository-level execution health, outcome activity, and AI Credit usage in an actionable inventory.",
+      "objective": "Prioritize repository drill-down using declared workflows, observed runs, reports, failures, import coverage, and AIC.",
+      "acceptance": "Return repository identity and link with retained counts, ingestion indicator, failure summary, AIC, and computed status; statuses describe retained evidence only, and an empty or unavailable preview cannot verify health, outcomes, or zero activity.",
       "description": "Repository-local execution health and attributed outcome totals.",
       "from": "repository-activity-core",
       "joins": [

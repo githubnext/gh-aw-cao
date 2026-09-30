@@ -16,6 +16,7 @@ const executeFile = promisify(execFile);
 const campaignJsonUrl = new URL("../../package.json", import.meta.url);
 const campaignJson = JSON.parse(await readFile(campaignJsonUrl, "utf8"));
 const cao = fileURLToPath(new URL(campaignJson.bin.cao, campaignJsonUrl));
+const caoShell = fileURLToPath(new URL("../../cao.sh", import.meta.url));
 
 test("materialized Go agent artifacts match the dashboard source", async () => {
   const [catalog, dashboard, generatedCatalog, generatedDashboard] = await Promise.all([
@@ -52,6 +53,15 @@ test("cao queries lists named dashboard queries as JSON", async () => {
   assert.ok(query.intent.length > 0);
 });
 
+test("every named query defines its own objective and verifiable acceptance", async () => {
+  const { dashboard } = await loadAgentDashboardDocument();
+  for (const query of dashboard.queries) {
+    for (const field of ["intent", "objective", "acceptance"]) {
+      assert.ok(typeof query[field] === "string" && query[field].trim(), `${query.name} needs ${field}`);
+    }
+  }
+});
+
 test("cao queries prints a human readable catalog by default", async () => {
   const output = await runCao(["queries"]);
   assert.match(output, /campaign-runs/);
@@ -70,6 +80,40 @@ test("cao query-info exposes authored semantic annotations", async () => {
   assert.match(payload.query.objective, /Identify campaigns/);
   const text = await runCao(["query-info", "cost-by-campaign"]);
   assert.match(text, /objective: Identify campaigns/);
+});
+
+test("cao.sh prompt renders a named query using the dashboard prompt template without a snapshot", async () => {
+  const cwd = await mkdtemp(path.join(tmpdir(), "cao-agent-prompt-"));
+  try {
+    const { stdout } = await executeFile(caoShell, ["prompt", "cost-by-campaign"], { cwd });
+    assert.match(stdout, /^Improve CAO by increasing ROI/);
+    assert.match(stdout, /Query: cost-by-campaign/);
+    assert.match(stdout, /Focus on this query's objective and acceptance/);
+    assert.match(stdout, /report a no-op or incomplete investigation/);
+    assert.match(stdout, /Intent:\nPresent observed AI Credit cost grouped by centrally managed campaign\./);
+    assert.doesNotMatch(stdout, /Intent:\nReuse shared query stages/);
+    assert.match(stdout, /Named CAO query IDs: .*cost-by-campaign/);
+    assert.match(stdout, /\/analyze-cao/);
+    assert.match(stdout, /No data preview was supplied/);
+    assert.match(stdout, /"evidence": \{\}/);
+    assert.doesNotMatch(stdout, /Page: undefined|View: undefined/);
+    assert.match(stdout, /Create a PR with the changes\.\n$/);
+    await assert.rejects(access(path.join(cwd, ".cao")));
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test("cao prompt rejects unknown queries and undeclared parameters without a stack trace", async () => {
+  for (const args of [
+    ["prompt"],
+    ["prompt", "not-a-query"],
+    ["prompt", "cost-by-campaign", "--param", "unknown=value"]
+  ]) {
+    const result = await runCaoResult(args);
+    assert.equal(result.code, 1);
+    assert.doesNotMatch(result.stderr, /\n\s+at /);
+  }
 });
 
 test("cao pages relates pages to the queries they read", async () => {
@@ -102,6 +146,7 @@ test("cao --help documents the agent analysis bootstrap", async () => {
     "cao pages",
     "cao queries",
     "cao query-info",
+    "cao prompt QUERY_ID",
     "cao query QUERY_ID",
     "cao mcp",
   ]) {
@@ -130,6 +175,24 @@ const database = path.join(temporaryDirectory, "gh-aw-logs.sqlite");
 
 test.after(async () => {
   await rm(temporaryDirectory, { recursive: true, force: true });
+});
+
+test("cao prompt includes a bounded preview from an explicitly selected snapshot", async () => {
+  await runCao(["query", "campaign-runs", "--database", database]);
+  const output = await runCao(["prompt", "campaign-runs", "--database", database, "--param", "campaign=dashboard"]);
+  assert.match(output, /Query: campaign-runs/);
+  assert.match(output, /"campaign": "dashboard"/);
+  assert.match(output, /"availability": "empty"/);
+  assert.match(output, /"rows": \[\]/);
+  assert.match(output, /Create a PR with the changes\.\n$/);
+});
+
+test("cao prompt refuses a missing snapshot instead of creating one", async () => {
+  const missing = path.join(temporaryDirectory, "missing.sqlite");
+  const result = await runCaoResult(["prompt", "campaign-runs", "--database", missing]);
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /No CAO snapshot/);
+  await assert.rejects(access(missing));
 });
 
 test("cao query does not create an empty default database when no snapshot was downloaded", async () => {

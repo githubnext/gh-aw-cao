@@ -94,6 +94,7 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | `all-campaign-memory` | Browses every campaign repository-memory branch in place without route navigation. |
 | `link-button-list` | Presents one source as an inset grouped list of Octicon navigation rows with disclosure chevrons. |
 | `markdown` | Presents retained Markdown from a declared source field with safe repository-relative links. |
+| `marketplace-controls` | Exposes dropdown facets, keyword search and sort for worker-executed marketplace queries. |
 
 ## Testing standard
 

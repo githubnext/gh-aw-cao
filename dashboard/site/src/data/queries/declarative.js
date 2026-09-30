@@ -32,7 +32,7 @@ const debugQuery = createDebug('data:query');
  *   union?: string[],
  *   time?: { range?: string, start?: string, end?: string },
  *   joins?: Array<{ source: string, type?: 'inner'|'left', on: Array<{ left: string, right: string }>, fields: Array<{ field: string, as: string }> }>,
- *   filter?: { predicates?: Array<{ field: string, equals?: unknown, in?: unknown[], includes?: string, gte?: unknown, lt?: unknown, optional?: boolean }> },
+ *   filter?: { predicates?: Array<{ field: string, equals?: unknown, in?: unknown[], includes?: string, gte?: unknown, lt?: unknown, optional?: boolean }>, search?: { fields: string[], query: string } },
  *   compute?: import('../../data-operations.js').ComputedField[],
  *   ['temporal-series']?: import('../../data-operations.js').TemporalSeriesDefinition,
  *   aggregate?: { by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'sum'|'mean'|'min'|'max', filter?: { predicates: Array<{ field: string, equals?: string|number|boolean, in?: Array<string|number|boolean> }> } }> },
@@ -926,8 +926,8 @@ function queryOperatorStage(operator) {
 export function compileRowOperators(definition) {
   /** @type {import('../../data-operations.js').DataOperator[]} */
   const operators = [];
-  if (definition.filter?.predicates?.length) {
-    operators.push({ op: 'filter', predicates: definition.filter.predicates });
+  if (definition.filter?.predicates?.length || definition.filter?.search?.query) {
+    operators.push({ op: 'filter', ...definition.filter });
   }
   if (definition.compute?.length) operators.push({ op: 'compute', values: definition.compute });
   if (definition['temporal-series']) operators.push({ op: 'temporal-series', ...definition['temporal-series'] });

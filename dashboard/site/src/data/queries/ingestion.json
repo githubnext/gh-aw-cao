@@ -222,7 +222,19 @@
         "readme": { "field": "readme", "default": "" },
         "readmePath": { "field": "readme-path", "default": "" },
         "sourceCoordinate": { "field": "source" },
-        "addCommand": { "field": "add-command" }
+        "addCommand": { "field": "add-command" },
+        "verificationStatus": { "field": "verification-status", "default": "unknown" },
+        "verificationSource": { "field": "verification-source", "default": "unknown" },
+        "maintenanceStatus": { "field": "maintenance-status", "default": "unknown" },
+        "maintenanceSource": { "field": "maintenance-source", "default": "unknown" },
+        "lastMaintainedAt": { "field": "last-maintained-at", "default": "" },
+        "stars": { "field": "stars", "default": null },
+        "forks": { "field": "forks", "default": null },
+        "popularitySource": { "field": "popularity-source", "default": "unknown" },
+        "signalsObservedAt": { "field": "signals-observed-at", "default": "" },
+        "installationStatus": { "field": "installation-status", "default": "unknown" },
+        "adoptionCount": { "field": "adoption-count", "default": null },
+        "adoptionSource": { "field": "adoption-source", "default": "unknown" }
       }
     },
     {
