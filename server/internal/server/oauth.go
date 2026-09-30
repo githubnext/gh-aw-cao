@@ -19,6 +19,13 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -200,17 +207,52 @@ func (oauth *githubOAuth) loggedOut(response http.ResponseWriter, _ *http.Reques
 }
 
 func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.Request) {
+	ctx := otel.GetTextMapPropagator().Extract(request.Context(), propagation.HeaderCarrier(request.Header))
+	ctx, span := telemetry.Tracer().Start(ctx, "GET /auth/callback",
+		trace.WithSpanKind(trace.SpanKindServer),
+		trace.WithAttributes(
+			attribute.String("http.route", "/auth/callback"),
+			attribute.String("http.request.method", http.MethodGet),
+		),
+	)
+	defer span.End()
+	telemetry.SetResponseTraceHeaders(response, span.SpanContext())
+	request = request.WithContext(ctx)
+	outcome := "success"
+	errorType := ""
+	defer func() {
+		attrs := []attribute.KeyValue{attribute.String("cao_dashboard.auth.callback.outcome", outcome)}
+		if errorType != "" {
+			attrs = append(attrs, attribute.String("error.type", errorType))
+		}
+		span.SetAttributes(attrs...)
+		counter, err := otel.Meter("github.com/githubnext/gh-aw-cao/server").Int64Counter(
+			"cao_dashboard.auth.callback.count",
+			metric.WithUnit("{callback}"),
+			metric.WithDescription("Completed GitHub OAuth callbacks by outcome and fixed error type"),
+		)
+		if err == nil {
+			counter.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+	}()
+	fail := func(status int, reason, message string) {
+		outcome, errorType = "failure", reason
+		if status >= http.StatusInternalServerError {
+			span.SetStatus(codes.Error, "OAuth callback failed")
+		}
+		writeError(response, status, message)
+	}
 	if !oauth.validState(request) {
 		serverLog.Printf("oauth callback rejected invalid state")
 		oauth.logBranch("callback.state_rejected")
-		writeError(response, http.StatusBadRequest, "invalid OAuth state")
+		fail(http.StatusBadRequest, "invalid_state", "invalid OAuth state")
 		return
 	}
 	oauth.clearStateCookie(response)
 	code := strings.TrimSpace(request.URL.Query().Get("code"))
 	if code == "" {
 		oauth.logBranch("callback.code_missing")
-		writeError(response, http.StatusBadRequest, "OAuth code is required")
+		fail(http.StatusBadRequest, "missing_code", "OAuth code is required")
 		return
 	}
 	tokens, err := oauth.exchange(request.Context(), url.Values{
@@ -222,26 +264,26 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 	if err != nil {
 		serverLog.Printf("oauth exchange failed")
 		oauth.logBranch("callback.exchange_failed")
-		writeError(response, http.StatusUnauthorized, "GitHub OAuth exchange failed")
+		fail(http.StatusUnauthorized, "exchange_failed", "GitHub OAuth exchange failed")
 		return
 	}
 	account, err := oauth.authorizedAccount(request.Context(), tokens.AccessToken)
 	if err != nil {
 		serverLog.Printf("oauth authorization failed")
 		oauth.logBranch("callback.authorization_failed")
-		writeError(response, http.StatusForbidden, "GitHub authorization failed")
+		fail(http.StatusForbidden, "authorization_failed", "GitHub authorization failed")
 		return
 	}
 	sessionID, err := randomToken(32)
 	if err != nil {
 		oauth.logBranch("callback.session_id_generation_failed")
-		writeError(response, http.StatusInternalServerError, "failed to create session")
+		fail(http.StatusInternalServerError, "session_id_generation_failed", "failed to create session")
 		return
 	}
 	csrfToken, err := randomToken(32)
 	if err != nil {
 		oauth.logBranch("callback.csrf_generation_failed")
-		writeError(response, http.StatusInternalServerError, "failed to create session")
+		fail(http.StatusInternalServerError, "csrf_generation_failed", "failed to create session")
 		return
 	}
 	now := time.Now().UTC()
@@ -270,7 +312,7 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 	if err := oauth.saveSession(request.Context(), session); err != nil {
 		serverLog.Printf("oauth session save failed")
 		oauth.logBranch("callback.session_save_failed")
-		writeError(response, http.StatusServiceUnavailable, "failed to create session")
+		fail(http.StatusServiceUnavailable, "session_save_failed", "failed to create session")
 		return
 	}
 	oauth.setSessionCookies(response, session)

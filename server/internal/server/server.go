@@ -297,6 +297,11 @@ func (a *App) Handler() http.Handler {
 	register("GET /api/v1/ingestion/health", a.collectionStatus)
 	mux.HandleFunc("/", a.static)
 	instrumented := otelhttp.NewHandler(withResponseTraceHeaders(mux), telemetry.SpanHTTPServer,
+		otelhttp.WithFilter(func(request *http.Request) bool {
+			// The generic HTTP server span includes client IP and user agent.
+			// OAuth callbacks use a dedicated, allowlisted server span instead.
+			return request.Method != http.MethodGet || request.URL.Path != "/auth/callback"
+		}),
 		otelhttp.WithSpanNameFormatter(func(_ string, request *http.Request) string {
 			// Match against the fixed, small set of registered API/auth
 			// patterns directly instead of calling mux.Handler, which
