@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -93,15 +94,16 @@ type GitTreeEntry struct {
 	Size int64
 }
 
-// APIResponse carries the rate-limit and retry metadata needed by the shared
-// Redis-backed governor.
+// APIResponse carries quota metadata and conditional-response state.
 type APIResponse struct {
-	Remaining  int
-	Reset      time.Time
-	RetryAfter time.Duration
-	StatusCode int
-	Truncated  bool
-	Secondary  bool
+	Remaining   int
+	Reset       time.Time
+	RetryAfter  time.Duration
+	StatusCode  int
+	ETag        string
+	NotModified bool
+	Truncated   bool
+	Secondary   bool
 }
 
 // ErrNotFound reports that a requested Git object or ref does not exist.
@@ -394,16 +396,36 @@ func (c *Client) RateLimit(ctx context.Context, installationID int64) (int, time
 	return limits.Core.Remaining, limits.Core.Reset.Time, nil
 }
 
-// ResolveRef resolves one repository ref without checking out a working tree.
+// ResolveRef resolves one repository ref, optionally using an ETag for conditional requests.
 func (c *Client) ResolveRef(
-	ctx context.Context, installationID int64, repository, ref string,
+	ctx context.Context, installationID int64, repository, ref, etag string,
 ) (string, APIResponse, error) {
 	client, owner, name, err := c.repositoryClient(installationID, repository)
 	if err != nil {
 		return "", APIResponse{}, err
 	}
-	reference, response, err := client.Git.GetRef(ctx, owner, name, ref)
+	ref = strings.TrimPrefix(ref, "refs/")
+	refParts := strings.Split(ref, "/")
+	for index := range refParts {
+		refParts[index] = url.PathEscape(refParts[index])
+	}
+	request, err := client.NewRequest(
+		http.MethodGet,
+		"repos/"+url.PathEscape(owner)+"/"+url.PathEscape(name)+"/git/ref/"+strings.Join(refParts, "/"),
+		nil,
+	)
+	if err != nil {
+		return "", APIResponse{}, err
+	}
+	if etag != "" {
+		request.Header.Set("If-None-Match", etag)
+	}
+	reference := new(github.Reference)
+	response, err := client.Do(ctx, request, reference)
 	state := apiResponse(response, err)
+	if state.NotModified {
+		return "", state, nil
+	}
 	if err != nil {
 		return "", state, classifyGitHubError("resolve repository ref", err, state)
 	}
@@ -528,6 +550,8 @@ func apiResponse(response *github.Response, err error) APIResponse {
 		state.Reset = response.Rate.Reset.Time
 		if response.Response != nil {
 			state.StatusCode = response.StatusCode
+			state.ETag = response.Header.Get("ETag")
+			state.NotModified = response.StatusCode == http.StatusNotModified
 		}
 	}
 	var primary *github.RateLimitError

@@ -2,6 +2,7 @@ package redisx
 
 import (
 	"context"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -75,6 +76,38 @@ func TestCacheMarketplaceRegistrySkipsWriteForNonPositiveTTL(t *testing.T) {
 	}
 	if client.command != nil {
 		t.Fatalf("expected no Redis command for a non-positive TTL, got: %#v", client.command)
+	}
+}
+
+func TestCacheRepositoryMemoryUsesNamespacedKeysAndTTL(t *testing.T) {
+	client := &marketplaceStoreCommandClient{}
+	store := NewStore(client, "memory-test")
+	ttl := 5 * time.Minute
+
+	if err := store.CacheRepositoryMemoryCampaign(
+		t.Context(), "campaign", []byte(`{"campaign":"campaign"}`), ttl,
+	); err != nil {
+		t.Fatal(err)
+	}
+	assertRepositoryMemoryCacheCommand(t, client.command,
+		store.Key("repository-memory:campaign:"+repositoryMemoryCacheKey("campaign")), ttl)
+
+	if err := store.CacheRepositoryMemoryFile(
+		t.Context(), "campaign", "commit", "notes.md", []byte("content"), time.Hour,
+	); err != nil {
+		t.Fatal(err)
+	}
+	assertRepositoryMemoryCacheCommand(t, client.command,
+		store.Key("repository-memory:cached-file:"+repositoryMemoryCacheKey("campaign", "commit", "notes.md")), time.Hour)
+}
+
+func assertRepositoryMemoryCacheCommand(t *testing.T, command []string, key string, ttl time.Duration) {
+	t.Helper()
+	if len(command) != 5 || command[0] != "SET" || command[1] != key {
+		t.Fatalf("unexpected Redis cache command: %#v", command)
+	}
+	if command[3] != "PX" || command[4] != strconv.FormatInt(ttl.Milliseconds(), 10) {
+		t.Fatalf("unexpected Redis cache TTL arguments: %#v", command[3:])
 	}
 }
 
