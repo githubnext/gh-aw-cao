@@ -1,4 +1,5 @@
 import { h } from '../dom.js';
+import { renderThemeControl } from './theme-settings.js';
 import { collectFullDiagnostics } from '../diagnostics.js';
 import { capturedConsoleLogText } from '../console-log-capture.js';
 import { createDebug, fullDebugUrl } from '../debug.js';
@@ -409,6 +410,19 @@ function renderAutomaticDataUpdatesSetting() {
   return section;
 }
 
+function renderAppearanceSetting() {
+  return h('section', { className: 'configuration-browser-settings', 'aria-labelledby': 'configuration-appearance-heading' },
+    renderConfigurationSectionHeading('configuration-appearance-heading', 'Appearance', 'Choose how this dashboard looks.'),
+    renderConfigurationSettingRow(
+      {
+        label: h('span', { className: 'configuration-setting-label' }, 'Theme'),
+        description: h('p', null, 'Follow your system setting or choose a theme for this browser.')
+      },
+      renderThemeControl()
+    )
+  );
+}
+
 function renderDebuggingSettings() {
   if (dashboardInstalled()) return null;
 
@@ -461,6 +475,7 @@ export function renderConfigurationView(context) {
     }),
     renderLocalDataActions(),
     renderSettingsCliActions(),
+    renderAppearanceSetting(),
     renderAutomaticDataUpdatesSetting(),
     isPlainObject(policyDocument)
       ? renderSettingsEditor(policyDocument)

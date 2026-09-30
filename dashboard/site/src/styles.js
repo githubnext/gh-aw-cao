@@ -518,17 +518,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .refresh-button { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 3px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: inherit; font-size: .75rem; font-weight: 500; text-decoration: none; cursor: pointer; transition: background-color 120ms ease; }
 .refresh-button:hover { background: var(--neutral-muted); }
 .refresh-button .octicon { width: 14px; height: 14px; }
-.theme-control { position: relative; flex: 0 0 auto; }
-.theme-control > summary { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border-radius: 6px; color: var(--muted); cursor: pointer; list-style: none; transition: background-color 120ms ease, color 120ms ease; }
-.theme-control > summary::-webkit-details-marker { display: none; }
-.theme-control > summary:hover, .theme-control[open] > summary { background: var(--neutral-muted); color: var(--fg); }
-.theme-control > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
-.theme-control > summary .octicon { width: 16px; height: 16px; }
-.theme-control-popover { width: 250px; display: grid; gap: 10px; position: absolute; z-index: 50; top: calc(100% + 8px); right: 0; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); }
-.theme-control-heading { display: grid; gap: 2px; }
-.theme-control-heading strong { font-size: .8125rem; }
-.theme-control-heading span { color: var(--muted); font-size: .75rem; }
-.theme-control-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.theme-control-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: min(100%, 320px); }
 .theme-control-options button { min-width: 0; min-height: 34px; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 5px 8px; border: 1px solid var(--border); background: var(--canvas); color: var(--fg); font: inherit; font-size: .75rem; cursor: pointer; }
 .theme-control-options button:first-child { border-radius: 6px 0 0 6px; }
 .theme-control-options button + button { margin-left: -1px; }
@@ -1393,6 +1383,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .configuration-setting-row { min-height: 70px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 38%); align-items: center; gap: 18px; padding: 9px 12px; border-top: 1px solid var(--border-muted); }
 .configuration-setting-copy { min-width: 0; }
 .configuration-setting-copy label { display: block; font-size: .875rem; font-weight: 600; }
+.configuration-setting-label { display: block; font-size: .875rem; font-weight: 600; }
 .configuration-setting-copy code { display: block; margin-top: 2px; color: var(--muted); font-size: .6875rem; overflow-wrap: anywhere; }
 .configuration-setting-copy p { margin: 3px 0 0; color: var(--muted); font-size: .75rem; line-height: 1.35; }
 .configuration-setting-row :is(input:not([type="checkbox"]), select, textarea) { width: 100%; min-height: 34px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--fg); font: inherit; font-size: .8125rem; }
@@ -2221,14 +2212,12 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .mobile-nav-menu-actions .horizon-summary { width: 100%; position: static; }
   .mobile-nav-menu-actions .horizon-tooltip { top: calc(100% + 4px); right: 0; left: auto; }
   .mobile-nav-menu-actions .account-menu { width: 100%; }
-  .mobile-nav-menu-actions .theme-control { width: 100%; }
-  .mobile-nav-menu-actions :is(.horizon-toggle, .theme-control > summary, .repository-link, .account-menu-avatar) { width: 100%; height: auto; min-height: 32px; display: flex; flex: none; align-items: center; justify-content: flex-start; place-items: unset; gap: 10px; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--fg); font-weight: 500; text-align: left; }
-  .mobile-nav-menu-actions :is(.horizon-toggle, .theme-control > summary, .repository-link, .account-menu-avatar):hover { background: var(--neutral-muted); }
-  .mobile-nav-menu-actions :is(.horizon-toggle, .theme-control > summary, .repository-link, .account-menu-avatar) > .octicon { width: 16px; height: 16px; color: var(--muted); }
+  .mobile-nav-menu-actions :is(.horizon-toggle, .repository-link, .account-menu-avatar) { width: 100%; height: auto; min-height: 32px; display: flex; flex: none; align-items: center; justify-content: flex-start; place-items: unset; gap: 10px; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--fg); font-weight: 500; text-align: left; }
+  .mobile-nav-menu-actions :is(.horizon-toggle, .repository-link, .account-menu-avatar):hover { background: var(--neutral-muted); }
+  .mobile-nav-menu-actions :is(.horizon-toggle, .repository-link, .account-menu-avatar) > .octicon { width: 16px; height: 16px; color: var(--muted); }
   .mobile-nav-menu-actions .account-menu-avatar { border-radius: 6px; box-shadow: none; }
   .mobile-nav-menu-actions .account-menu-avatar-image { width: 20px; height: 20px; border-radius: 50%; }
-  .mobile-nav-menu-actions :is(.horizon-toggle, .theme-control > summary, .repository-link, .account-menu-avatar) .action-label { position: static; width: auto; height: auto; overflow: visible; margin: 0; padding: 0; clip: auto; color: var(--fg); font-size: .8125rem; font-weight: 500; white-space: normal; }
-  .mobile-nav-menu-actions .theme-control-popover { width: 100%; position: static; margin-top: 4px; box-shadow: none; }
+  .mobile-nav-menu-actions :is(.horizon-toggle, .repository-link, .account-menu-avatar) .action-label { position: static; width: auto; height: auto; overflow: visible; margin: 0; padding: 0; clip: auto; color: var(--fg); font-size: .8125rem; font-weight: 500; white-space: normal; }
   .mobile-nav-menu-actions .account-menu-popover { width: 100%; position: static; margin-top: 4px; box-shadow: none; }
   .sidebar-toggle { display: none; }
   .sidebar-collapsed .org-sidebar { padding: 14px 12px 10px; }

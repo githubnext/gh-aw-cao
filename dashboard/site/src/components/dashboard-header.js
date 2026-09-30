@@ -3,7 +3,7 @@ import { octicon } from '../octicons.js';
 import { renderActionLabel } from './ui-primitives.js';
 
 /**
- * @param {{ title: string, description?: string, experimental?: boolean, overviewPageHref: string, dashboardHorizon: HTMLElement, dashboardAppearance: HTMLElement, accountMenu: HTMLElement | null, githubUrlBase: string, dashboardRepository: string | null }} options
+ * @param {{ title: string, description?: string, experimental?: boolean, overviewPageHref: string, dashboardHorizon: HTMLElement, accountMenu: HTMLElement | null, githubUrlBase: string, dashboardRepository: string | null }} options
  */
 export function renderDashboardHeader(options) {
   return h(
@@ -45,7 +45,6 @@ export function renderDashboardHeader(options) {
         'div',
         { className: 'report-actions' },
         options.dashboardHorizon,
-        options.dashboardAppearance,
         options.dashboardRepository
           ? h(
               'a',
