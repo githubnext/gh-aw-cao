@@ -908,7 +908,9 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
             labelledRegion.removeAttribute('aria-labelledby');
             labelledRegion.setAttribute('aria-label', getViewTitle(view, index));
           } else if (!labelledRegion) {
-            (heading.closest('.metric-card-widget') ?? rendered).setAttribute('aria-label', getViewTitle(view, index));
+            const region = heading.closest('.metric-card-widget') ?? rendered;
+            if (region === rendered && rendered.matches('.semantic-prompt-view')) rendered.setAttribute('role', 'group');
+            region.setAttribute('aria-label', getViewTitle(view, index));
           }
           heading.remove();
         }

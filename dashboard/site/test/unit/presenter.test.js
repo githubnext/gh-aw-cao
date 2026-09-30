@@ -211,6 +211,8 @@ describe('declarative view title visibility', () => {
     });
     const card = rendered.querySelector('[data-view-id="card"]');
     expect(card?.querySelector('h3, h4')).toBeNull();
+    expect(card?.getAttribute('role')).toBe('group');
+    expect(card?.getAttribute('aria-label')).toBe('Card title');
     expect(card?.querySelector('.metric-card-widget')?.getAttribute('aria-label')).toBe('Card title');
     expect(card?.querySelector('.table-intent-button')).not.toBeNull();
     const notice = rendered.querySelector('[data-view-id="notice"]');
