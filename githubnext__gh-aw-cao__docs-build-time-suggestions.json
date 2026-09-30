@@ -1,6 +1,6 @@
 {
-  "source_sha": "c881a051ebf43f43289bf5b679679b0b1633f31e",
-  "next_category": "reusable dashboard generation",
+  "source_sha": "8211acce189d0020d3a8f357885745971d2164c0",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
       "evaluated_at": "2026-09-29T20:31:00Z",
@@ -117,6 +117,14 @@
       "category": "scheduling, concurrency, and avoidable rebuilds",
       "evidence_run_ids": [36669135685, 36667112855, 36667051668, 36666370602, 36665534758, 36664862503, 36663396318, 36663299418, 36663269051, 36662135509, 36660772104, 36660766656, 36657997387, 36656980283, 36656398875, 36653323698, 36649101159, 36648890547, 36648633676, 36648478342],
       "outcome": "no_actionable_improvement: latest 20 completed successful docs.yml runs still show the same duplicate workflow_run rebuild pattern, but the recommendation fingerprint is already recorded in memory and current evidence does not materially change timing or source conditions. Median workflow runtime stayed 54.5s overall, built runs stayed 41s, and five workflow_run runs still duplicated same-SHA scheduled deploy builds.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-30T05:31:00Z",
+      "worker_run_id": "36673387847",
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [36673481332, 36673409300, 36673367569, 36673223376, 36671533427, 36670769527, 36670177770, 36669785073],
+      "outcome": "no_actionable_improvement: latest 8 successful docs.yml runs still restored the central-agentic-ops-dashboard cache on every built run, skipped dashboard artifact lookup/download every time, and kept dashboard restore at 1-2s with build median 37s and workflow median 44.5s. The only material docs build waste remains the already-tracked duplicate workflow_run rebuild pattern.",
       "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
     }
   ]
