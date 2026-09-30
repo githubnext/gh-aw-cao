@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
@@ -19,6 +18,8 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
 func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {

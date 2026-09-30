@@ -20,14 +20,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
-	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
 //go:embed oauth_failure.html
