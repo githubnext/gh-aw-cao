@@ -231,7 +231,7 @@ Before auditing, check for an open pull request with the `[self-care:accessibili
 
 ## Step 1: Serve the built documentation site
 
-Dependencies were installed from the lockfile and the site was built before the agent started. Do not reinstall dependencies and do not rebuild the site.
+Dependencies were installed from the lockfile and the site was built before the agent started. Do not reinstall dependencies or rebuild the site before the initial audit.
 
 Discover the repository's documented preview command and site base path from `package.json` and the Astro configuration, then start the prepared site on an available local port. For this repository, use `npm run docs:preview -- --host 127.0.0.1 --port <port>` so Astro serves the configured base path. Do not use a generic flat static server rooted at `dist/` as the primary preview mechanism; it serves `dist/index.html` but returns 404 for `/gh-aw-cao/` because Astro preview performs the base-path routing. Capture the server log and poll the derived site URL for up to 120 seconds before continuing. Do not assume a port, directory name, or base path.
 
@@ -285,7 +285,7 @@ Choose the single highest-impact reproducible barrier that can be fixed within t
 
 Run `git diff --check` and `npm run docs:build`. Serve the updated build and repeat the affected page's axe audit in both color schemes, plus the relevant manual keyboard, focus, reflow, and motion checks from Step 3. Confirm the original violation is gone without introducing new violations. Review the final diff and scan every changed file for secrets.
 
-Call `create_pull_request` exactly once only when the fix is supported by rendered evidence, remains within the allowed files, and all validation succeeds. Provide only the unprefixed fix summary as the title; the configured `title-prefix` is added automatically. Begin the PR body with a concise unheaded summary of the barrier and fix. Include the affected URLs, original WCAG finding and before/after browser evidence, audit coverage and any remaining barriers or skipped checks, the validation results, and a `### Control Plane` section with correlation ID `${{ inputs.correlation_id }}`, central repository `${{ inputs.central_repo }}`, and control plane run `${{ inputs.control_plane_run_url }}`. Cite the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+Call `create_pull_request` exactly once only when the fix is supported by rendered evidence, remains within the allowed files, and all validation succeeds. Provide only the unprefixed fix summary as the title; the configured `title-prefix` is added automatically, so do not repeat it or add a semantically equivalent category prefix. Begin the PR body with a concise unheaded summary of the barrier and fix. Include the affected URLs, original WCAG finding and before/after browser evidence, audit coverage and any remaining barriers or skipped checks, the validation results, and a `### Control Plane` section with correlation ID `${{ inputs.correlation_id }}`, central repository `${{ inputs.central_repo }}`, and control plane run `${{ inputs.control_plane_run_url }}`. Cite the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
 
 Call `noop` exactly once instead if the audit is clean, tooling fails, evidence is insufficient, the fix is outside the allowed files, validation fails, or no safe improvement can be made. Never claim skipped checks passed or publish an issue as a fallback.
 
