@@ -6,111 +6,35 @@
       "evaluated_at": "2026-09-29T20:31:00Z",
       "worker_run_id": "36626413300",
       "category": "Astro documentation generation",
-      "evidence_run_ids": [
-        36626444233,
-        36625685641,
-        36625420005,
-        36623460362,
-        36622374664,
-        36622187347,
-        36621657087,
-        36620134433,
-        36618851571,
-        36616250620,
-        36616178759,
-        36615392351,
-        36615102477,
-        36614520763,
-        36613942953,
-        36612578738,
-        36610779325,
-        36609151685,
-        36607531070,
-        36607481039
-      ],
+      "evidence_run_ids": [36626444233, 36625685641, 36625420005, 36623460362, 36622374664, 36622187347, 36621657087, 36620134433, 36618851571, 36616250620, 36616178759, 36615392351, 36615102477, 36614520763, 36613942953, 36612578738, 36610779325, 36609151685, 36607531070, 36607481039],
       "outcome": "no_actionable_improvement: Astro docs build median 12s and p90 13s across 19 built runs; below 60s/15% threshold."
     },
     {
       "evaluated_at": "2026-09-29T19:53:17.506592Z",
       "worker_run_id": "36622055961",
       "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        36622187347,
-        36622074249,
-        36622031308,
-        36622020963,
-        36621832569,
-        36621807065,
-        36621698828,
-        36621657087,
-        36621429936,
-        36621429566,
-        36621142854,
-        36621019524,
-        36621018387,
-        36620853509,
-        36620743610,
-        36620729256,
-        36620694716,
-        36620570431,
-        36620468458,
-        36620181985
-      ],
+      "evidence_run_ids": [36622187347, 36622074249, 36622031308, 36622020963, 36621832569, 36621807065, 36621698828, 36621657087, 36621429936, 36621429566, 36621142854, 36621019524, 36621018387, 36620853509, 36620743610, 36620729256, 36620694716, 36620570431, 36620468458, 36620181985],
       "outcome": "incomplete: fewer than five comparable successful docs.yml runs in the last 14 days"
     },
     {
       "evaluated_at": "2026-09-29T20:56:43Z",
       "worker_run_id": "36629495892",
       "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        36628967576,
-        36628232110,
-        36626444233,
-        36625685641,
-        36625420005,
-        36623460362,
-        36622374664,
-        36622187347
-      ],
+      "evidence_run_ids": [36628967576, 36628232110, 36626444233, 36625685641, 36625420005, 36623460362, 36622374664, 36622187347],
       "outcome": "no_actionable_improvement: reusable dashboard generation cache hit in all 8 comparable successful runs; dashboard restore median 2s, docs build median 41.5s, workflow median 55.5s, so no uncached dashboard-generation cost above the 60s/15% threshold in docs.yml."
     },
     {
       "evaluated_at": "2026-09-29T21:30:00Z",
       "worker_run_id": "36632856508",
       "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        36631001695,
-        36630486278,
-        36628967576,
-        36628232110,
-        36627902161,
-        36626444233,
-        36625685641,
-        36625420005
-      ],
+      "evidence_run_ids": [36631001695, 36630486278, 36628967576, 36628232110, 36627902161, 36626444233, 36625685641, 36625420005],
       "outcome": "no_actionable_improvement: docs.yml Pages upload median 6s on built runs and deploy median 10s on deploying schedule runs; packaging is below the 60s/15% threshold, while schedule-freshness API lookups add ~4s on every scheduled run but belong to scheduling/avoidable rebuilds, not this category."
     },
     {
       "evaluated_at": "2026-09-29T21:41:45Z",
       "worker_run_id": "36634494405",
       "category": "scheduling, concurrency, and avoidable rebuilds",
-      "evidence_run_ids": [
-        36634106269,
-        36633476719,
-        36632954614,
-        36631001695,
-        36630486278,
-        36628967576,
-        36628232110,
-        36627902161,
-        36626444233,
-        36625685641,
-        36625420005,
-        36623460362,
-        36622374664,
-        36622187347,
-        36621657087
-      ],
+      "evidence_run_ids": [36634106269, 36633476719, 36632954614, 36631001695, 36630486278, 36628967576, 36628232110, 36627902161, 36626444233, 36625685641, 36625420005, 36623460362, 36622374664, 36622187347, 36621657087],
       "outcome": "suggested: workflow_run docs builds repeatedly rebuild immediately after successful cao-dashboard pushes on the same head SHA even though schedule-freshness skips equivalent scheduled runs; add a workflow_run freshness gate keyed to the latest successful dashboard run SHA to avoid duplicate docs rebuilds.",
       "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
     },
@@ -118,92 +42,44 @@
       "evaluated_at": "2026-09-29T22:29:09Z",
       "worker_run_id": "36639365028",
       "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        36639375613,
-        36639055495,
-        36637066632,
-        36635651609,
-        36635486569,
-        36634885197,
-        36634106269,
-        36633476719,
-        36632954614
-      ],
+      "evidence_run_ids": [36639375613, 36639055495, 36637066632, 36635651609, 36635486569, 36634885197, 36634106269, 36633476719, 36632954614],
       "outcome": "no_actionable_improvement: dependency restore cache hit in all 9 comparable successful docs.yml runs; install/save never ran, build median 43s and workflow median 66s, so dependency installation and caching are below the 60s/15% threshold."
     },
     {
       "evaluated_at": "2026-09-29T22:43:21Z",
       "worker_run_id": "36640753803",
       "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        36639375613,
-        36639055495,
-        36637066632,
-        36635651609,
-        36635486569,
-        36634885197,
-        36634106269,
-        36633476719,
-        36632954614
-      ],
+      "evidence_run_ids": [36639375613, 36639055495, 36637066632, 36635651609, 36635486569, 36634885197, 36634106269, 36633476719, 36632954614],
       "outcome": "no_actionable_improvement: dependency restore cache hit in all 9 comparable successful docs.yml runs; install/save never ran, build median 43s and workflow median 66s, so dependency installation and caching remain below the 60s/15% threshold and no material evidence change justifies a new recommendation."
     },
     {
       "evaluated_at": "2026-09-29T23:27:10Z",
       "worker_run_id": "36644885772",
       "category": "Astro documentation generation",
-      "evidence_run_ids": [
-        36644846281,
-        36644705830,
-        36644603458,
-        36644489697,
-        36642947300,
-        36639375613,
-        36639055495,
-        36637066632,
-        36635651609,
-        36635486569,
-        36634885197,
-        36634106269,
-        36633476719,
-        36632954614,
-        36631001695,
-        36628967576,
-        36628232110
-      ],
+      "evidence_run_ids": [36644846281, 36644705830, 36644603458, 36644489697, 36642947300, 36639375613, 36639055495, 36637066632, 36635651609, 36635486569, 36634885197, 36634106269, 36633476719, 36632954614, 36631001695, 36628967576, 36628232110],
       "outcome": "no_actionable_improvement: Astro docs build median 12s and p90 13s across 17 built successful docs.yml runs; below 60s and 15% workflow-threshold, while repeated workflow_run rebuilds remain tracked under scheduling."
     },
     {
       "evaluated_at": "2026-09-29T23:38:30Z",
       "worker_run_id": "36645992782",
       "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        36645950643,
-        36645690151,
-        36644846281,
-        36644705830,
-        36644603458,
-        36644489697,
-        36642947300,
-        36641511486,
-        36640353484
-      ],
+      "evidence_run_ids": [36645950643, 36645690151, 36644846281, 36644705830, 36644603458, 36644489697, 36642947300, 36641511486, 36640353484],
       "outcome": "no_actionable_improvement: over the latest 9 successful docs.yml runs (7 built, 2 freshness skips), Pages upload median stayed 6s with p90 6.4s, deploy median on deploying schedule runs was 19s with p90 19.8s, and the uploaded github-pages artifact was ~29.9 MB; transfer and packaging remain below the 60s/15% threshold, while the only material waste still visible is duplicate workflow_run rebuilds already tracked under scheduling."
     },
     {
       "evaluated_at": "2026-09-30T01:06:35Z",
       "worker_run_id": "36653246021",
       "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        36653323698,
-        36649101159,
-        36648890547,
-        36648633676,
-        36648478342,
-        36646927879,
-        36646895035
-      ],
+      "evidence_run_ids": [36653323698, 36649101159, 36648890547, 36648633676, 36648478342, 36646927879, 36646895035],
       "outcome": "no_actionable_improvement: docs.yml restored the central-agentic-ops-dashboard cache in all 7 comparable successful runs; dashboard restore took 1-3s, while build median was 44s and workflow median 74s, so reusable dashboard generation remains below the 60s/15% threshold and the duplicate workflow_run rebuild issue is already tracked under scheduling."
+    },
+    {
+      "evaluated_at": "2026-09-30T01:44:30Z",
+      "worker_run_id": "36656434679",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [36653323698, 36649101159, 36648890547, 36648633676, 36648478342, 36646927879, 36646895035],
+      "outcome": "no_actionable_improvement: latest 7 successful runs repeat the already-tracked workflow_run duplicate-build pattern, but an open suggestion with the same fingerprint already exists in memory and no new source or timing change materially alters the recommendation.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
     }
   ]
 }
