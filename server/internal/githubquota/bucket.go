@@ -15,7 +15,11 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var bucketLog = logger.New("cao:githubquota:bucket")
 
 // ResourceCore is GitHub's primary REST API rate-limit resource.
 const ResourceCore = "core"
@@ -43,18 +47,49 @@ func (b BucketID) Normalize() BucketID {
 	return b
 }
 
+// bucketRejectionReason classifies why a BucketID failed Validate. It is
+// useful for diagnosing malformed bucket identities — for example a
+// misconfigured provider or a corrupted storage key — without logging the
+// app name, installation ID, or resource value itself.
+type bucketRejectionReason string
+
+const (
+	bucketRejectionReasonApp          bucketRejectionReason = "app"
+	bucketRejectionReasonInstallation bucketRejectionReason = "installation"
+	bucketRejectionReasonResource     bucketRejectionReason = "resource"
+)
+
+// classifyBucketRejection reports why a bucket identity is not well formed.
+// It is a pure function extracted from Validate so the rejection reason is
+// testable independently of the caller's logging, and so Validate itself
+// stays a thin wrapper over one classification.
+func classifyBucketRejection(bucket BucketID) (bucketRejectionReason, bool) {
+	if !identifierPattern.MatchString(bucket.App) {
+		return bucketRejectionReasonApp, true
+	}
+	if bucket.Installation <= 0 {
+		return bucketRejectionReasonInstallation, true
+	}
+	if !identifierPattern.MatchString(bucket.Resource) {
+		return bucketRejectionReasonResource, true
+	}
+	return "", false
+}
+
 // Validate reports whether the bucket identity is well formed.
 func (b BucketID) Validate() error {
-	if !identifierPattern.MatchString(b.App) {
+	reason, rejected := classifyBucketRejection(b)
+	if !rejected {
+		return nil
+	}
+	switch reason {
+	case bucketRejectionReasonApp:
 		return errors.New("github quota bucket app must contain 1-64 lowercase letters, digits, dots, underscores, or hyphens")
-	}
-	if b.Installation <= 0 {
+	case bucketRejectionReasonInstallation:
 		return errors.New("github quota bucket installation must be positive")
-	}
-	if !identifierPattern.MatchString(b.Resource) {
+	default:
 		return errors.New("github quota bucket resource must contain 1-64 lowercase letters, digits, dots, underscores, or hyphens")
 	}
-	return nil
 }
 
 // String renders the bucket for logs and operator reports.
@@ -70,8 +105,9 @@ func (b BucketID) storageKey() string {
 
 func normalizeBucket(bucket BucketID) (BucketID, error) {
 	bucket = bucket.Normalize()
-	if err := bucket.Validate(); err != nil {
-		return BucketID{}, err
+	if reason, rejected := classifyBucketRejection(bucket); rejected {
+		bucketLog.Printf("rejected bucket identity reason=%s", reason)
+		return BucketID{}, bucket.Validate()
 	}
 	return bucket, nil
 }
