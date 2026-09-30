@@ -101,6 +101,7 @@ type Coordinates struct {
 	RegistryName   string
 	Precedence     int
 	Repository     string
+	APIURL         string
 	Path           string
 	Ref            string
 	ResolvedCommit string
@@ -160,6 +161,7 @@ func ParsePackageManifest(source string, coordinates Coordinates) (Package, erro
 		Description:        scalar(source, "description"),
 		Publisher:          publisher,
 		Repository:         coordinates.Repository,
+		RepositoryLink:     repositoryLink(coordinates.Repository, coordinates.APIURL),
 		Path:               packagePath,
 		Ref:                coordinates.Ref,
 		ResolvedCommit:     coordinates.ResolvedCommit,
@@ -180,6 +182,35 @@ func ParsePackageManifest(source string, coordinates Coordinates) (Package, erro
 		InstallationStatus: "unknown",
 		AdoptionSource:     "unknown",
 	}, nil
+}
+
+func repositoryLink(repository, apiURL string) *RepositoryLink {
+	if !repositoryPattern.MatchString(repository) {
+		return nil
+	}
+	if apiURL == "" {
+		apiURL = "https://api.github.com"
+	}
+	api, err := url.Parse(apiURL)
+	if err != nil || api.Scheme != "https" || api.Hostname() == "" || api.User != nil ||
+		api.RawQuery != "" || api.Fragment != "" || api.EscapedPath() != api.Path {
+		return nil
+	}
+	webBase := ""
+	switch {
+	case strings.EqualFold(api.Hostname(), "api.github.com") && (api.Path == "" || api.Path == "/"):
+		webBase = "https://github.com"
+	case strings.HasSuffix(strings.TrimSuffix(api.Path, "/"), "/api/v3"):
+		webBase = api.Scheme + "://" + api.Host + strings.TrimSuffix(strings.TrimSuffix(api.Path, "/"), "/api/v3")
+	default:
+		return nil
+	}
+	owner, name, _ := strings.Cut(repository, "/")
+	return &RepositoryLink{
+		Relation: "repository",
+		Href:     strings.TrimRight(webBase, "/") + "/" + url.PathEscape(owner) + "/" + url.PathEscape(name),
+		Label:    "Open " + repository + " on GitHub",
+	}
 }
 
 const maxRepositorySignalBytes = 64 * 1024
@@ -237,6 +268,13 @@ func nonnegativeCount(raw any) (*int, bool) {
 	}
 	count := int(number)
 	return &count, true
+}
+
+func setPublisherVerification(pkg *Package, verified bool) {
+	pkg.VerificationStatus, pkg.VerificationSource = "unknown", "unknown"
+	if verified {
+		pkg.VerificationStatus, pkg.VerificationSource = "verified", "control-policy"
+	}
 }
 
 func scalarPattern(name string) *regexp.Regexp {
@@ -375,6 +413,7 @@ func ResolveRegistry(ctx context.Context, registry Registry, precedence int, opt
 			RegistryName:   registry.Name,
 			Precedence:     precedence,
 			Repository:     registry.Repository,
+			APIURL:         apiBase(registry),
 			Path:           entry.path,
 			Ref:            registry.Ref,
 			ResolvedCommit: commit,
@@ -387,9 +426,7 @@ func ResolveRegistry(ctx context.Context, registry Registry, precedence int, opt
 		pkg.SignalsObservedAt = observed.Format(time.RFC3339)
 		pkg.MaintenanceStatus, pkg.MaintenanceSource, pkg.LastMaintainedAt = maintenanceStatus, maintenanceSource, lastMaintainedAt
 		pkg.Stars, pkg.Forks, pkg.PopularitySource = stars, forks, popularitySource
-		if registry.VerifiedPublisher {
-			pkg.VerificationStatus, pkg.VerificationSource = "verified", "control-policy"
-		}
+		setPublisherVerification(&pkg, registry.VerifiedPublisher)
 		packages = append(packages, pkg)
 	}
 	resolveLog.Printf("resolved registry registry_id=%s entries=%d packages=%d skipped_private=%d",

@@ -85,37 +85,45 @@ type Config struct {
 
 // Package is the normalized, safe package DTO shared with activity/marketplace.mjs.
 type Package struct {
-	ID                 string   `json:"id"`
-	RegistryID         string   `json:"registry-id"`
-	RegistryName       string   `json:"registry-name"`
-	RegistryPrecedence int      `json:"registry-precedence"`
-	Name               string   `json:"name"`
-	Description        string   `json:"description"`
-	Publisher          string   `json:"publisher"`
-	Repository         string   `json:"repository"`
-	Path               string   `json:"path"`
-	Ref                string   `json:"ref"`
-	ResolvedCommit     string   `json:"resolved-commit"`
-	Version            string   `json:"version"`
-	Icon               string   `json:"icon"`
-	Artwork            string   `json:"artwork"`
-	Contents           []string `json:"contents"`
-	Readme             string   `json:"readme"`
-	ReadmePath         string   `json:"readme-path"`
-	Source             string   `json:"source"`
-	AddCommand         string   `json:"add-command"`
-	VerificationStatus string   `json:"verification-status"`
-	VerificationSource string   `json:"verification-source"`
-	MaintenanceStatus  string   `json:"maintenance-status"`
-	MaintenanceSource  string   `json:"maintenance-source"`
-	LastMaintainedAt   string   `json:"last-maintained-at"`
-	Stars              *int     `json:"stars"`
-	Forks              *int     `json:"forks"`
-	PopularitySource   string   `json:"popularity-source"`
-	SignalsObservedAt  string   `json:"signals-observed-at"`
-	InstallationStatus string   `json:"installation-status"`
-	AdoptionCount      *int     `json:"adoption-count"`
-	AdoptionSource     string   `json:"adoption-source"`
+	ID                 string          `json:"id"`
+	RegistryID         string          `json:"registry-id"`
+	RegistryName       string          `json:"registry-name"`
+	RegistryPrecedence int             `json:"registry-precedence"`
+	Name               string          `json:"name"`
+	Description        string          `json:"description"`
+	Publisher          string          `json:"publisher"`
+	Repository         string          `json:"repository"`
+	RepositoryLink     *RepositoryLink `json:"repository-link,omitempty"`
+	Path               string          `json:"path"`
+	Ref                string          `json:"ref"`
+	ResolvedCommit     string          `json:"resolved-commit"`
+	Version            string          `json:"version"`
+	Icon               string          `json:"icon"`
+	Artwork            string          `json:"artwork"`
+	Contents           []string        `json:"contents"`
+	Readme             string          `json:"readme"`
+	ReadmePath         string          `json:"readme-path"`
+	Source             string          `json:"source"`
+	AddCommand         string          `json:"add-command"`
+	VerificationStatus string          `json:"verification-status"`
+	VerificationSource string          `json:"verification-source"`
+	MaintenanceStatus  string          `json:"maintenance-status"`
+	MaintenanceSource  string          `json:"maintenance-source"`
+	LastMaintainedAt   string          `json:"last-maintained-at"`
+	Stars              *int            `json:"stars"`
+	Forks              *int            `json:"forks"`
+	PopularitySource   string          `json:"popularity-source"`
+	SignalsObservedAt  string          `json:"signals-observed-at"`
+	InstallationStatus string          `json:"installation-status"`
+	AdoptionCount      *int            `json:"adoption-count"`
+	AdoptionSource     string          `json:"adoption-source"`
+}
+
+// RepositoryLink points only to a recognized public GitHub repository web URL.
+type RepositoryLink struct {
+	Relation string `json:"relation"`
+	Href     string `json:"href"`
+	Label    string `json:"label"`
 }
 
 // Row converts the package to a dashboard row. Field names are kebab-case to
@@ -125,7 +133,7 @@ func (p Package) Row() model.Row {
 	if contents == nil {
 		contents = []string{}
 	}
-	return model.Row{
+	row := model.Row{
 		"id":                  p.ID,
 		"registry-id":         p.RegistryID,
 		"registry-name":       p.RegistryName,
@@ -149,15 +157,19 @@ func (p Package) Row() model.Row {
 		"verification-source": p.VerificationSource,
 		"maintenance-status":  p.MaintenanceStatus,
 		"maintenance-source":  p.MaintenanceSource,
-		"last-maintained-at":   p.LastMaintainedAt,
-		"stars":                p.Stars,
-		"forks":                p.Forks,
-		"popularity-source":    p.PopularitySource,
-		"signals-observed-at":  p.SignalsObservedAt,
+		"last-maintained-at":  p.LastMaintainedAt,
+		"stars":               p.Stars,
+		"forks":               p.Forks,
+		"popularity-source":   p.PopularitySource,
+		"signals-observed-at": p.SignalsObservedAt,
 		"installation-status": p.InstallationStatus,
-		"adoption-count":       p.AdoptionCount,
-		"adoption-source":      p.AdoptionSource,
+		"adoption-count":      p.AdoptionCount,
+		"adoption-source":     p.AdoptionSource,
 	}
+	if p.RepositoryLink != nil {
+		row["repository-link"] = p.RepositoryLink
+	}
+	return row
 }
 
 // RegistryDiagnostic reports one registry's resolution outcome without any
@@ -382,6 +394,10 @@ func resolveOneRegistry(
 		}}
 	}
 	if cached, hit := loadCachedRegistry(ctx, cache, registry.ID, generation); hit {
+		for i := range cached {
+			setPublisherVerification(&cached[i], registry.VerifiedPublisher)
+			cached[i].RepositoryLink = repositoryLink(cached[i].Repository, apiBase(registry))
+		}
 		return registryOutcome{
 			packages:   cached,
 			diagnostic: RegistryDiagnostic{RegistryID: registry.ID, Status: "available", Packages: len(cached)},

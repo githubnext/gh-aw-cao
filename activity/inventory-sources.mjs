@@ -1038,7 +1038,10 @@ export async function discoverInventoryDashboardSources({
         error?.message || String(error),
       ),
     })),
-    resolveMarketplace(controlSettings?.marketplace ?? { registries: [] }),
+    resolveMarketplace(controlSettings?.marketplace ?? { registries: [] }, {
+      installedRecords: inventory.campaigns,
+      controlRepository: repository,
+    }),
   ]);
   const workflowRegistries = await discoverWorkflowVersions(rawWorkflowRegistries);
   log.info`Workflow discovery completed for ${workflowRegistries.length} repository registries`;

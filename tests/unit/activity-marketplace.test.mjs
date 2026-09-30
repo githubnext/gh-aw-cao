@@ -32,7 +32,7 @@ function registryFetch({
   readme = "# Demo\n\nExample package readme.\n",
   readmeUnavailable = false,
   fail = false,
-  repository = { private: false, stargazers_count: 12, forks_count: 3 },
+  repository = { private: false, visibility: "public", stargazers_count: 12, forks_count: 3 },
   commitDate = "2026-08-01T00:00:00Z",
 } = {}) {
   const calls = [];
@@ -133,11 +133,33 @@ test("private and inaccessible repositories never leak popularity or claim stale
     const { packages } = await resolveMarketplace({ registries: [registry("private")] }, {
       fetchImpl, now: () => Date.parse("2026-09-01T00:00:00Z"),
     });
+
     assert.equal(packages.length, 1);
     assert.equal(packages[0].stars, null);
     assert.equal(packages[0].forks, null);
     assert.equal(packages[0]["maintenance-status"], "unknown");
   }
+});
+
+test("local adoption counts only valid installed gh-aw records, not policy or runs", async () => {
+  const fake = registryFetch();
+  const result = await resolveMarketplace({ registries: [registry("official")] }, {
+    fetchImpl: fake.fetchImpl,
+    controlRepository: "example/control",
+    installedRecords: [
+      { source: "example/packages/demo@main", resolvedCommit: SHA },
+      { source: "example/packages/demo@main", resolvedCommit: SHA },
+      { source: "example/packages/other@main", resolvedCommit: "invalid" },
+    ],
+  });
+  assert.equal(result.packages[0]["installation-status"], "installed");
+  assert.equal(result.packages[0]["adoption-count"], 1);
+  assert.equal(result.packages[0]["adoption-source"], "local-gh-aw-records");
+  const missing = await resolveMarketplace({ registries: [registry("official")] }, {
+    fetchImpl: fake.fetchImpl, controlRepository: "example/control", installedRecords: [],
+  });
+  assert.equal(missing.packages[0]["installation-status"], "not-installed");
+  assert.equal(missing.packages[0]["adoption-count"], null);
 });
 
 test("an unreadable README leaves the package resolvable", async () => {

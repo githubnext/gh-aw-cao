@@ -1,6 +1,59 @@
 {
   "queries": [
     {
+      "name": "marketplace-ranked",
+      "intent": "Order keyword-matched campaign packages by reviewed publisher attestation, public maintenance evidence, local adoption evidence, and public popularity, without treating missing evidence as zero.",
+      "from": "marketplace-packages",
+      "compute": [
+        {
+          "as": "verified-publisher",
+          "function": "equals-any",
+          "args": [{ "field": "verification-status" }, { "value": "verified" }]
+        },
+        {
+          "as": "recently-maintained",
+          "function": "equals-any",
+          "args": [{ "field": "maintenance-status" }, { "value": "active" }]
+        },
+        {
+          "as": "maintenance-unavailable",
+          "function": "equals-any",
+          "args": [{ "field": "maintenance-status" }, { "value": "unknown" }]
+        },
+        {
+          "as": "verification-rank",
+          "function": "if",
+          "args": [
+            { "field": "verified-publisher" },
+            { "value": 1 },
+            { "value": 0 }
+          ]
+        },
+        {
+          "as": "maintenance-unknown-rank",
+          "function": "if",
+          "args": [{ "field": "maintenance-unavailable" }, { "value": 1 }, { "value": 0 }]
+        },
+        {
+          "as": "maintenance-rank",
+          "function": "if",
+          "args": [
+            { "field": "recently-maintained" },
+            { "value": 2 },
+            { "field": "maintenance-unknown-rank" }
+          ]
+        }
+      ],
+      "order-by": [
+        { "field": "verification-rank", "direction": "desc" },
+        { "field": "maintenance-rank", "direction": "desc" },
+        { "field": "adoption-count", "direction": "desc" },
+        { "field": "stars", "direction": "desc" },
+        { "field": "package-name", "direction": "asc" },
+        { "field": "id", "direction": "asc" }
+      ]
+    },
+    {
       "name": "ingestion-health",
       "intent": "Show the current Redis-backed webhook and collection health snapshot.",
       "from": "collection-health",
@@ -1211,13 +1264,7 @@
           "title": "Campaign packages for agentic operations",
           "description": "Discover packages from your configured registries. Select a package to review its contents and copy an immutable add command.",
           "data": {
-            "source": "marketplace-packages",
-            "order-by": [
-              {
-                "field": "package-name",
-                "direction": "asc"
-              }
-            ]
+            "source": "marketplace-ranked"
           },
           "mark": "list",
           "list": {

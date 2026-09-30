@@ -1,7 +1,7 @@
 # CAO Campaign Package Marketplace
 
 The marketplace is a read-only catalog projection. It does not install packages
-or track installation state.
+or grant control-plane authority. Installation evidence is descriptive only.
 
 ## Registry configuration
 
@@ -22,6 +22,13 @@ secret names:
 Resolvers read those named secrets only in the trusted Activity or hosted
 backend. Secret values and access tokens are never serialized.
 
+The optional `verified-publisher: true` is a reviewed control-repository
+attestation of the owner of that registry's repository. It does not imply
+GitHub Verified Partner status or validate a publisher named by a manifest.
+An absent or false attestation means `unknown`, not "unverified". Removing a
+registry or its attestation changes only discovery and display, never execution
+permissions.
+
 ## Package contract
 
 Both backends return rows with the same safe fields:
@@ -29,7 +36,31 @@ Both backends return rows with the same safe fields:
 `id`, `registry-id`, `registry-name`, `registry-precedence`, `name`,
 `description`, `publisher`, `repository`, `repository-link`, `path`, `ref`, `resolved-commit`,
 `version`, `icon`, `artwork`, `contents`, `readme`, `readme-path`, `source`,
-and `add-command`.
+`add-command`, `verification-status`, `verification-source`,
+`maintenance-status`, `maintenance-source`, `last-maintained-at`, `stars`,
+`forks`, `popularity-source`, `signals-observed-at`, `installation-status`,
+`adoption-count`, and `adoption-source`.
+
+Signal values and provenance:
+
+| Signal | Known value | Unknown or unavailable |
+| --- | --- | --- |
+| Verification | `verified`, source `control-policy` | `unknown`, source `unknown`; no self-attested badge |
+| Maintenance | `active` when the resolved registry ref's commit has a committer date within 180 days of observation, otherwise `stale`; source `github-repository` | `unknown` and empty `last-maintained-at` if the repository is not confirmed public, the date is missing/invalid/future, or the API cannot be read |
+| Popularity | Nonnegative `stars` and `forks` from a confirmed public repository, source `github-public-repository` | both `null`, source `unknown` for private, inaccessible, or incomplete data |
+| Installation | `installed` or `not-installed` only where the current control repository and its gh-aw installed campaign records are available; source `local-gh-aw-records` | `unknown`, source `unknown` when no authoritative records are available |
+| Adoption | `1` only for a matching valid installed record in this control repository | `null` without such evidence; never a guessed fleet-wide total |
+
+`signals-observed-at` records the trusted resolver's UTC observation time;
+empty means the resolver has not supplied evidence. These values are
+repository-level signals shared by packages in the same registry repository.
+They describe the registry ref, not the age of each package's own changes.
+The read-only static Activity projection and hosted resolver expose the same
+safe fields. The hosted resolver reports installation and adoption as unknown
+unless it has verified records for the current control repository. Neither
+policy configuration, runs, target reach, nor workflow presence proves an
+installation. Cross-organization counts require a separately authorized
+aggregate; target-repository reach must be reported as a distinct measure.
 
 `repository-link` is a safe repository relation link derived from the registry's
 GitHub API URL when its public repository URL can be determined. It is omitted
@@ -48,3 +79,8 @@ the resolver from normalized package coordinates as
 `./cao.sh add REPOSITORY[/PATH]@RESOLVED_COMMIT`.
 
 Registry failures are isolated and reported as credential-free diagnostics.
+Repository signal failures do not hide usable packages. Private repository
+counts and token-derived details are never published, even to authenticated
+dashboard clients. Keyword search and declarative ranking may use only safe
+normalized fields. Semantic matching remains disabled until permission-aware
+index evidence and quality tests exist; no guessed semantic matches are shown.

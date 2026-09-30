@@ -236,7 +236,7 @@ async function resolveRegistry(registry, precedence, options) {
   try {
     const response = await githubRequest(options.fetchImpl, `${base}/repos/${repositoryPath}`, token);
     const repository = await response.json();
-    if (repository.private === false) {
+    if (repository.private === false && repository.visibility === "public") {
       if (Number.isSafeInteger(repository.stargazers_count) && repository.stargazers_count >= 0
         && Number.isSafeInteger(repository.forks_count) && repository.forks_count >= 0) {
         signals.stars = repository.stargazers_count;
@@ -332,5 +332,19 @@ export async function resolveMarketplace(marketplace, options = {}) {
       seen.add(coordinate);
       return true;
     });
+  if (Array.isArray(options.installedRecords) && typeof options.controlRepository === "string" && REPOSITORY_PATTERN.test(options.controlRepository)) {
+    const installed = new Set(options.installedRecords
+      .filter((record) => COMMIT_PATTERN.test(record?.resolvedCommit ?? ""))
+      .map((record) => String(record.source ?? "").split("@", 1)[0].toLowerCase()));
+    for (const entry of ordered) {
+      if (!installed.has(entry.id)) {
+        entry["installation-status"] = "not-installed";
+      } else {
+        entry["installation-status"] = "installed";
+        entry["adoption-count"] = 1;
+      }
+      entry["adoption-source"] = "local-gh-aw-records";
+    }
+  }
   return { packages: ordered, diagnostics };
 }

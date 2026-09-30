@@ -35,6 +35,9 @@ type fakeGitHubConfig struct {
 	// installationToken, if set, answers GitHub App installation token
 	// exchanges instead of 404ing them.
 	installationToken string
+	repositoryPayload map[string]any
+	repositoryStatus  int
+	commitDate        string
 }
 
 // fakeGitHubServer is a self-signed HTTPS test double for the GitHub REST
@@ -79,7 +82,21 @@ func newFakeGitHubServer(t *testing.T, cfg fakeGitHubConfig) *fakeGitHubServer {
 			}
 			writeJSON(w, map[string]any{"token": cfg.installationToken})
 		case strings.Contains(r.URL.Path, "/commits/"):
-			writeJSON(w, map[string]any{"sha": fakeCommitSHA})
+			commit := map[string]any{"sha": fakeCommitSHA}
+			if cfg.commitDate != "" {
+				commit["commit"] = map[string]any{"committer": map[string]any{"date": cfg.commitDate}}
+			}
+			writeJSON(w, commit)
+		case strings.HasSuffix(r.URL.Path, "/repos/example/packages"):
+			if cfg.repositoryStatus != 0 {
+				w.WriteHeader(cfg.repositoryStatus)
+				return
+			}
+			if cfg.repositoryPayload != nil {
+				writeJSON(w, cfg.repositoryPayload)
+			} else {
+				w.WriteHeader(http.StatusNotFound)
+			}
 		case strings.Contains(r.URL.Path, "/git/trees/"):
 			entries := make([]map[string]any, 0, len(paths)+len(cfg.readmePaths))
 			for _, path := range paths {
