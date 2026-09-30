@@ -357,6 +357,16 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   ready tasks without sleeping on delayed work; scheduled tasks count toward
   backpressure and queue depth. Shutdown preserves leased work, and
   repository-lock contention backs off without consuming collection attempts.
+- `server/internal/githubquota` is the CAO-side authority for GitHub API quota.
+  A bucket is one independently metered quota identified by GitHub App
+  identity, installation, and rate-limit resource, never by a token. Redis
+  keeps GitHub's last authoritative observation separate from expiring
+  reservations. Admission requires remaining minus reserved minus cost to stay at
+  or above the requested floor. Same-window observations never raise remaining
+  quota, and parking never discards the primary quota state. A non-secret
+  provider registry lists the candidate buckets for a workload, and selection
+  prefers the unparked, known bucket with the most headroom. Existing
+  collection budgets do not use this service yet.
 - The ingestion reliability simulator uses strict, seeded JSON scenarios to
   generate up to 20,000 synthetic repositories and 1,000,000 workflow events.
   Signed webhook traffic uses the production endpoint and queue admission path;
