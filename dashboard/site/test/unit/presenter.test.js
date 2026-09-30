@@ -615,6 +615,86 @@ describe('dashboard DOM provenance', () => {
     rendered.remove();
   });
 
+  it('updates nested section views from separate queries without replacing sibling UX', async () => {
+    const requests = new Map();
+    const loadPageSources = /** @type {NonNullable<Parameters<typeof renderDashboardView>[0]['loadPageSources']>} */ (vi.fn(() => {
+      throw new Error('Nested views must not use the page-wide subscription.');
+    }));
+    loadPageSources.subscribeViewSources = vi.fn((_pageId, viewId, names, options) => {
+      requests.set(viewId, { names, options });
+      return new Promise(() => {});
+    });
+    const rendered = renderDashboardView({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'nested-query-bindings',
+          title: 'Nested query bindings',
+          queries: [
+            { name: 'run-counts', from: 'runs', aggregate: { values: [{ field: 'name', as: 'count', reducer: 'count' }] } }
+          ],
+          pages: [{
+            id: 'overview', kind: 'custom', title: 'Overview',
+            views: [
+              { id: 'successes', title: 'Successes', mark: 'table', data: { source: 'runs', filters: { conclusion: 'success' } }, encoding: { columns: [{ field: 'name' }] } },
+              { id: 'failures', title: 'Failures', mark: 'table', disclosure: 'supplemental', data: { source: 'runs', filters: { conclusion: 'failure' } }, encoding: { columns: [{ field: 'name' }] } }
+            ],
+            sections: [{
+              id: 'results', title: 'Results', layout: 'full',
+              views: ['successes', 'failures'],
+              'count-source': 'run-counts', 'count-field': 'count', 'count-label': 'runs'
+            }]
+          }]
+        }
+      },
+      sources: {},
+      loadPageSources
+    });
+    document.body.append(rendered);
+    try {
+      await vi.waitFor(() => expect(requests.size).toBe(3));
+      expect(loadPageSources).not.toHaveBeenCalled();
+      expect(requests.get('successes').names).toEqual(['runs']);
+      expect(requests.get('failures').names).toEqual(['runs']);
+      expect(requests.get('page-chrome').names).toEqual(['run-counts']);
+      const section = rendered.querySelector('[data-section-id="results"]');
+      const disclosure = section?.querySelector('.view-disclosure');
+      expect(section?.querySelector('[data-view-id="successes"] .dashboard-view-skeleton')).not.toBeNull();
+      expect(disclosure?.querySelector('.dashboard-view-skeleton')).not.toBeNull();
+      /** @param {string} name @param {Array<Record<string, unknown>>} rows */
+      const source = (name, rows) => ({
+        source: name, rows,
+        metadata: { availability: 'available', completeness: 'complete', freshness: 'fresh' }
+      });
+
+      requests.get('failures').options.onUpdate({
+        'view:overview:failures:runs': source('runs', [{ name: 'failed run' }])
+      });
+      await vi.waitFor(() => expect(disclosure?.textContent).toContain('failed run'));
+      expect(section?.querySelector('[data-view-id="successes"] .dashboard-view-skeleton')).not.toBeNull();
+      expect(section?.querySelector('.view-disclosure')).toBe(disclosure);
+      const failuresContent = disclosure?.querySelector(':scope > :not(summary)');
+
+      requests.get('page-chrome').options.onUpdate({
+        'run-counts': source('run-counts', [{ count: 2 }])
+      });
+      await vi.waitFor(() => expect(section?.querySelector('.layout-section-header')?.textContent).toContain('2 runs'));
+      expect(disclosure?.querySelector(':scope > :not(summary)')).toBe(failuresContent);
+
+      requests.get('successes').options.onUpdate({
+        'view:overview:successes:runs': source('runs', [{ name: 'successful run' }])
+      });
+      await vi.waitFor(() => expect(section?.querySelector('[data-view-id="successes"]')?.textContent).toContain('successful run'));
+      expect(section?.querySelector('.view-disclosure')).toBe(disclosure);
+      expect(disclosure?.querySelector(':scope > :not(summary)')).toBe(failuresContent);
+      expect(section?.querySelectorAll('.view-disclosure')).toHaveLength(1);
+      expect(section?.querySelector('[data-view-id="successes"]')?.textContent).not.toContain('failed run');
+    } finally {
+      disposeDashboard(rendered);
+      rendered.remove();
+    }
+  });
+
   it('updates a supplemental view inside its existing disclosure', async () => {
     let update = () => {};
     const loadPageSources = /** @type {NonNullable<Parameters<typeof renderDashboardView>[0]['loadPageSources']>} */ (
