@@ -2,6 +2,10 @@
  * Shared workflow route parsing and formatting helpers.
  */
 
+import { createDebug } from '../debug.js';
+
+const debugWorkflowRoute = createDebug('workflow-route');
+
 /**
  * @typedef {{ repository: string, workflow: string }} WorkflowRoute
  */
@@ -12,6 +16,20 @@
  * @returns {WorkflowRoute | null}
  */
 export function parseWorkflowRoute(value) {
+  const route = parseRoute(value);
+  debugWorkflowRoute({
+    operation: 'parse',
+    status: route ? 'valid' : 'invalid',
+    inputLength: typeof value === 'string' ? value.length : 0
+  });
+  return route;
+}
+
+/**
+ * @param {unknown} value
+ * @returns {WorkflowRoute | null}
+ */
+function parseRoute(value) {
   if (typeof value !== 'string' || value.length > 700) return null;
   const separator = value.indexOf(':');
   if (separator <= 0) return null;
@@ -31,5 +49,7 @@ export function parseWorkflowRoute(value) {
  * @returns {string}
  */
 export function workflowRouteValue(repository, workflow) {
-  return `${repository}:${workflow}`;
+  const value = `${repository}:${workflow}`;
+  debugWorkflowRoute({ operation: 'format', status: 'formatted', outputLength: value.length });
+  return value;
 }
