@@ -1860,11 +1860,7 @@ function consolidationBucket(collection, record) {
  * @param {number} maxBytes
  */
 async function consolidatePhasePayloads(
-  phase,
-  cachePaths,
-  outputDirectory,
-  maxBytes,
-  { runWorkflowIds = new Map() } = {}
+  phase, cachePaths, outputDirectory, maxBytes, { runWorkflowIds = new Map() } = {}
 ) {
   /** @type {Map<string, Map<string, Record<string, unknown>>>} */
   const deduped = new Map(NORMALIZED_COLLECTIONS.map((collection) => [collection, new Map()]));
