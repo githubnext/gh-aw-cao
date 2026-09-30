@@ -967,7 +967,9 @@ added to its telemetry. The query engine and ingestion paths
 start dedicated `cao_dashboard.query.execute` and `cao_dashboard.ingest.run`
 spans. MCP requests use the OpenTelemetry MCP semantic conventions, including
 `mcp.method.name`, `mcp.protocol.version`, `gen_ai.operation.name`, and
-`gen_ai.tool.name`; tool arguments and results are never recorded. Application
+`gen_ai.tool.name`; tool arguments, results, session identifiers, untrusted
+tracestate and baggage are never recorded. Error spans use fixed descriptions
+and bounded classifications rather than raw exception messages. Application
 attributes are limited to non-secret aggregate counts, revisions, durations,
 operation and row counts, rate-limit cost, and structural operator counts. Query
 names, source names, fields, predicates, literals, route parameters, result
@@ -975,7 +977,7 @@ values, Redis URLs, credentials, GitHub tokens, and row contents are never
 recorded. Identifiers follow the W3C Trace Context specification: the tracer
 provider installs `propagation.TraceContext` so a client-sent HTTP `traceparent`
 continues an existing transport trace. MCP spans use trace context from
-`params._meta` as their remote parent and link the ambient HTTP span. Every API
+`params._meta.traceparent` as their remote parent and link the ambient HTTP span. Every API
 response also echoes the active request's ids as `X-Trace-Id` / `X-Span-Id`
 headers for correlating a client-visible request with exported spans.
 
@@ -990,6 +992,7 @@ exporter is started for a signal unless its endpoint is configured:
 | `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` | Enables the OTLP/HTTP metric exporter and sets its destination. |
 | `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_EXPORTER_OTLP_TRACES_HEADERS`, `OTEL_EXPORTER_OTLP_METRICS_HEADERS` | Authentication headers read directly by the corresponding OTLP exporter. Supply them through the deployment platform's secret manager; never place values in command-line arguments, checked-in configuration, or logs. |
 | `OTEL_SERVICE_NAME` | Overrides the default `cao-dashboard` `service.name` resource attribute. |
+| `OTEL_RESOURCE_ATTRIBUTES` | Adds deployment-selected resource attributes; only configure reviewed, non-identifying values. Hostname detection is not enabled by default. |
 | `OTEL_SDK_DISABLED` | Set to `true` to keep both providers as no-ops even when endpoints are configured. |
 
 There is no Azure-specific exporter linked into the binary. To ship telemetry to

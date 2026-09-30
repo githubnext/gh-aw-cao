@@ -11,6 +11,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -175,6 +176,29 @@ func assertMCPToolSpan(t *testing.T, span tracetest.SpanStub, toolName string) {
 			t.Errorf("sensitive content attribute %s must be absent", key)
 		}
 	}
+	if _, ok := attributes["mcp.session.id"]; ok {
+		t.Fatal("session identifiers must not be exported")
+	}
+}
+
+func TestMCPTraceContextDropsUntrustedBaggageAndTracestate(t *testing.T) {
+	previousPropagator := otel.GetTextMapPropagator()
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{}, propagation.Baggage{},
+	))
+	t.Cleanup(func() { otel.SetTextMapPropagator(previousPropagator) })
+
+	parent, _ := mcpTraceContext(t.Context(), map[string]any{
+		"traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+		"tracestate":  "vendor=private-identifier",
+		"baggage":     "account=private-identifier",
+	})
+	if got := trace.SpanContextFromContext(parent); !got.IsRemote() || got.TraceState().Len() != 0 {
+		t.Fatalf("MCP trace context must preserve only traceparent: %v", got)
+	}
+	if got := baggage.FromContext(parent); got.Len() != 0 {
+		t.Fatalf("MCP context must not propagate baggage: %v", got)
+	}
 }
 
 func spanAttributes(attributes []attribute.KeyValue) map[string]any {
@@ -254,7 +278,7 @@ func TestRecordMCPServerErrorCallerErrorLeavesSpanUnmarked(t *testing.T) {
 }
 
 // TestRecordMCPServerErrorServerErrorMarksSpanFailed verifies that a
-// non-caller error records an error event and marks the span failed, using a
+// non-caller error marks the span failed without recording its message, using a
 // real SDK span.
 func TestRecordMCPServerErrorServerErrorMarksSpanFailed(t *testing.T) {
 	exporter := tracetest.NewInMemoryExporter()
@@ -262,7 +286,7 @@ func TestRecordMCPServerErrorServerErrorMarksSpanFailed(t *testing.T) {
 	t.Cleanup(func() { _ = provider.Shutdown(t.Context()) })
 	ctx, span := provider.Tracer("test").Start(t.Context(), "server-error")
 
-	recordMCPServerError(span, errors.New("boom"))
+	recordMCPServerError(span, errors.New("private user content"))
 	span.End()
 	_ = ctx
 
@@ -274,7 +298,7 @@ func TestRecordMCPServerErrorServerErrorMarksSpanFailed(t *testing.T) {
 	if got := attributes[errorTypeKey]; got != "*errors.errorString" {
 		t.Fatalf("error.type = %#v, want *errors.errorString", got)
 	}
-	if len(recorded.Events) != 1 {
-		t.Fatalf("server-error span must record one error event, got %d", len(recorded.Events))
+	if len(recorded.Events) != 0 || recorded.Status.Description != "MCP request failed" {
+		t.Fatalf("server-error span must not export raw errors: events=%v status=%v", recorded.Events, recorded.Status)
 	}
 }

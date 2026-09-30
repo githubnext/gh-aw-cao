@@ -9,9 +9,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
@@ -25,7 +23,6 @@ var mcpTelemetryLog = logger.New("cao:server:mcp-telemetry")
 const (
 	mcpMethodNameKey      = "mcp.method.name"
 	mcpProtocolVersionKey = "mcp.protocol.version"
-	mcpSessionIDKey       = "mcp.session.id"
 	genAIToolNameKey      = "gen_ai.tool.name"
 	genAIOperationNameKey = "gen_ai.operation.name"
 	errorTypeKey          = "error.type"
@@ -51,10 +48,6 @@ func mcpServerTelemetry() mcp.Middleware {
 			if protocolVersion := mcpRequestProtocolVersion(request); protocolVersion != "" {
 				attributes = append(attributes, attribute.String(mcpProtocolVersionKey, protocolVersion))
 			}
-			if session := request.GetSession(); session != nil && session.ID() != "" {
-				attributes = append(attributes, attribute.String(mcpSessionIDKey, session.ID()))
-			}
-
 			parentContext, links := mcpParentContext(ctx, request)
 			parentContext, span := telemetry.Tracer().Start(parentContext, spanName,
 				trace.WithSpanKind(trace.SpanKindServer),
@@ -92,14 +85,11 @@ func mcpMetadata(params mcp.Params) map[string]any {
 
 func mcpTraceContext(ambient context.Context, metadata map[string]any) (context.Context, []trace.Link) {
 	carrier := propagation.MapCarrier{}
-	for _, key := range []string{"traceparent", "tracestate", "baggage"} {
-		if value, ok := metadata[key].(string); ok {
-			carrier[key] = value
-		}
+	if value, ok := metadata["traceparent"].(string); ok {
+		carrier["traceparent"] = value
 	}
 	parent := trace.ContextWithSpanContext(ambient, trace.SpanContext{})
-	parent = baggage.ContextWithBaggage(parent, baggage.Baggage{})
-	parent = otel.GetTextMapPropagator().Extract(parent, carrier)
+	parent = propagation.TraceContext{}.Extract(parent, carrier)
 	if spanContext := trace.SpanContextFromContext(ambient); spanContext.IsValid() {
 		return parent, []trace.Link{{SpanContext: spanContext}}
 	}
@@ -145,7 +135,6 @@ func recordMCPServerError(span trace.Span, err error) {
 		span.SetAttributes(attribute.String(errorTypeKey, classification.ErrorTypeAttribute))
 	}
 	mcpTelemetryLog.Printf("mcp server error classified as server_error")
-	span.RecordError(err)
 	span.SetStatus(codes.Error, "MCP request failed")
 }
 

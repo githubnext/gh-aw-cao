@@ -747,8 +747,9 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 	defer span.End()
 	request = request.WithContext(ctx)
 	fail := func(status int, message string) {
-		span.RecordError(errors.New(message))
-		span.SetStatus(codes.Error, message)
+		if status >= http.StatusInternalServerError {
+			span.SetStatus(codes.Error, "query execution failed")
+		}
 		writeError(response, status, message)
 	}
 	request.Body = http.MaxBytesReader(response, request.Body, 8<<20)
