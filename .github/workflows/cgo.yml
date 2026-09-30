@@ -225,7 +225,11 @@ jobs:
               marker,
               `**Go Redis dashboard integration: ${passed ? 'PASSED' : 'FAILED'}**`,
               '',
+              '<details><summary><b>Per-page results</b></summary>',
+              '',
               summary,
+              '',
+              '</details>',
               '',
               `[View the workflow run and integration artifact](${runUrl}).`,
             ].join('\n')
