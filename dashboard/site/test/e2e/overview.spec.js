@@ -208,8 +208,16 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     expect(pageBounds.width).toBeCloseTo(mainBounds.width, 0);
     expect(pageBounds.y).toBeCloseTo(mainBounds.y, 0);
     expect(introBounds?.y).toBeCloseTo(mainBounds.y, 0);
-    await expect(page.locator('.app-main > .top-nav')).toBeHidden();
-    await expect(page.locator('.app-main > .report-footer')).toBeHidden();
+    if (viewport.width > 700) {
+      await expect(page.locator('.app-main > .top-nav')).toBeVisible();
+    } else {
+      await expect(page.locator('.mobile-page-header #page-title')).toBeVisible();
+    }
+    await expect(page.locator('.app-main > .report-footer')).toBeVisible();
+    for (const heading of await page.locator('.custom-view.page-section > :is(h3, h4)').all()) {
+      await expect(heading).toHaveCSS('position', 'absolute');
+      await expect(heading).toHaveCSS('clip', 'rect(0px, 0px, 0px, 0px)');
+    }
     if (viewport.width > 700) {
       await expect(page.locator('.org-sidebar')).toBeVisible();
     } else {
