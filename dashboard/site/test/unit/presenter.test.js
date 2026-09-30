@@ -3458,6 +3458,17 @@ describe('presenter built-in and custom pages', () => {
                 }
               },
               {
+                id: 'failed-query',
+                title: 'Failed Query',
+                data: {
+                  source: 'failed-query-source'
+                },
+                mark: 'table',
+                encoding: {
+                  columns: [{ field: 'name' }]
+                }
+              },
+              {
                 id: 'missing-element-source',
                 title: 'Missing Element Source',
                 mark: 'element',
@@ -3577,6 +3588,21 @@ describe('presenter built-in and custom pages', () => {
             freshness: 'unknown',
             availability: 'empty'
           }
+        },
+        'failed-query-source': {
+          source: 'failed-query-source',
+          rows: [],
+          metadata: {
+            'source-id': 'failed-query-source-fixture',
+            'source-kind': 'derived',
+            'as-of': '2026-08-29T20:00:00Z',
+            'retrieved-at': '2026-08-29T20:01:00Z',
+            completeness: 'unknown',
+            freshness: 'unknown',
+            availability: 'unavailable',
+            'query-diagnostic': '$.dashboard.queries[failed-query-source]: input source "campaign-inventory" is unavailable.',
+            'query-error': { code: 'input-unavailable', source: 'campaign-inventory' }
+          }
         }
       }
     });
@@ -3621,6 +3647,11 @@ describe('presenter built-in and custom pages', () => {
     expect(unavailableCard?.querySelector('.octicon-alert')).not.toBeNull();
     expect(unavailableSection?.querySelector('[data-view-availability="unavailable"]')?.textContent).toBe('This view cannot be shown because its data source is unavailable.');
     expect(unavailableSection?.textContent).toContain('Affected source: missing-source');
+
+    const failedQuerySection = [...rendered.querySelectorAll('.page-section')].find((section) => section.textContent?.includes('Failed Query'));
+    expect(failedQuerySection?.querySelector('[data-view-availability="unavailable"]')?.textContent).toBe('This view cannot be shown because its data query failed.');
+    expect(failedQuerySection?.textContent).toContain('Query diagnostic: $.dashboard.queries[failed-query-source]: input source "campaign-inventory" is unavailable.');
+    expect(failedQuerySection?.textContent).toContain('Unavailable query dependency: campaign-inventory');
 
     const missingElementSourceSection = [...rendered.querySelectorAll('.page-section')].find((section) => section.textContent?.includes('Missing Element Source'));
     expect(missingElementSourceSection?.querySelector('[data-view-availability="unavailable"]')?.textContent).toBe('This view cannot be shown because its data source is unavailable.');

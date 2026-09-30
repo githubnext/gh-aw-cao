@@ -167,6 +167,7 @@ export function customViewAvailabilityMessage(availability) {
  * @param {string | null} sourceName
  * @param {string[]} contextDetails
  * @param {unknown} [queryError]
+ * @param {unknown} [queryDiagnostic]
  * @returns {HTMLElement[]}
  */
 export function renderCustomViewStateDetails(sourceName, contextDetails, queryError, queryDiagnostic) {
