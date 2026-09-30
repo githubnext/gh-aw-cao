@@ -1,6 +1,6 @@
 {
   "source_sha": "1ad03b79585bb2a512c1d714134ecfee661988a8",
-  "next_category": "artifact transfer and Pages packaging",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
       "evaluated_at": "2026-09-30T08:43:00Z",
@@ -554,6 +554,24 @@
         36710018714
       ],
       "outcome": "no_actionable_improvement: latest 10 successful docs.yml runs in the last 14 days all restored the central-agentic-ops-dashboard cache and skipped dashboard artifact lookup/download, keeping dashboard restore at 1-3s versus a build-job median of 45.5s. The sampled matching CAO Dashboard source run spent 29s in Upgrade fallback activity data and only 3s in Assemble Dashboard Language site, so reusable dashboard generation is not the docs bottleneck. The only material docs waste still visible is the already-open duplicate workflow_run rebuild issue #15029 under scheduling.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-30T13:12:00Z",
+      "worker_run_id": "36719109702",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        36716310050,
+        36715347114,
+        36714890196,
+        36712268212,
+        36711776283,
+        36711471019,
+        36711357155,
+        36711314063,
+        36710799117
+      ],
+      "outcome": "no_actionable_improvement: within the latest 20 completed docs.yml runs from the last 14 days, 9 comparable successful runs executed build+upload+deploy. Full workflow median was 54s (p90 85.2s), queue median 0s, build median 44s (p90 48.4s), and deploy median 17s (p90 17.8s). Upload Pages artifact stayed at 7s median (p90 7.2s) while the uploaded github-pages artifact stayed near 35.5 MB, and every comparable run skipped dashboard artifact lookup/download after a successful Restore cached CAO Dashboard step. Transfer and Pages packaging remain below the 60s or 15% threshold, while the only material docs waste still visible remains the already-open duplicate workflow_run rebuild issue #15029.",
       "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
     }
   ]
