@@ -52,7 +52,7 @@ const deployedShardSources = new Map();
 // budget keeps ~15% headroom above that baseline to catch real regressions
 // without failing on data growth alone. Lower it once the Overview query is
 // faster.
-const overviewRequestSamples = numberSetting("DASHBOARD_OVERVIEW_REQUEST_SAMPLES", 5);
+const overviewRequestSamples = numberSetting("DASHBOARD_OVERVIEW_REQUEST_SAMPLES", 9);
 const maximumOverviewRequestMs = numberSetting("DASHBOARD_OVERVIEW_MAX_REQUEST_MS", 600);
 
 function numberSetting(name, fallback) {
@@ -228,18 +228,6 @@ test(`benchmarks every dashboard query against settled deployed data (shard ${sh
       return completed.at - started.at;
     });
 
-    const indexedDbCount = await page.evaluate(async () => {
-      const { countCollections, ENTITY_STORES } = await import("./src/data/storage/indexeddb.js");
-      const startedAt = performance.now();
-      const counts = await countCollections(indexedDB, ENTITY_STORES);
-      return {
-        durationMs: Math.round((performance.now() - startedAt) * 100) / 100,
-        stores: ENTITY_STORES.length,
-        records: Object.values(counts).reduce((total, count) => total + count, 0),
-        counts,
-      };
-    });
-
     const overviewSamples = await page.evaluate(async ({ context, sourceNames, samples }) => {
       const { loadCanonicalDashboardPage } = await import("./src/data-processor.js");
       const measured = [];
@@ -275,6 +263,17 @@ test(`benchmarks every dashboard query against settled deployed data (shard ${sh
     // the median worker sample by duration rather than by arrival order.
     const worker = overviewWorkerMetrics
       .toSorted((left, right) => left.totalMs - right.totalMs)[Math.floor(overviewWorkerMetrics.length / 2)];
+    const indexedDbCount = await page.evaluate(async () => {
+      const { countCollections, ENTITY_STORES } = await import("./src/data/storage/indexeddb.js");
+      const startedAt = performance.now();
+      const counts = await countCollections(indexedDB, ENTITY_STORES);
+      return {
+        durationMs: Math.round((performance.now() - startedAt) * 100) / 100,
+        stores: ENTITY_STORES.length,
+        records: Object.values(counts).reduce((total, count) => total + count, 0),
+        counts,
+      };
+    });
     const shardQueries = partitionQueryDefinitions(dashboardContext.queries, shard.index, shard.total);
     const results = await page.evaluate(async ({ context, chunkSize, queries }) => {
       const { loadCanonicalDashboardPage } = await import("./src/data-processor.js");
@@ -327,7 +326,7 @@ test(`benchmarks every dashboard query against settled deployed data (shard ${sh
     const report = {
       generatedAt: new Date().toISOString(),
       dashboardUrl: deployedDashboardUrl,
-      methodology: "Fresh Chromium profile running the checkout's dashboard and query worker; proxy current deployed data; measure native IndexedDB count() across all canonical entity stores, initial Overview readiness, and the median of several settled Overview requests by worker phase; then measure a 25-row first chunk, one continuation chunk when present, and one unpaginated fill iteration.",
+      methodology: "Fresh Chromium profile running the checkout's dashboard and query worker; proxy current deployed data; measure initial Overview readiness and the median of several settled Overview requests by worker phase; then count all canonical entity stores with native IndexedDB count() and measure a 25-row first chunk, one continuation chunk when present, and one unpaginated fill iteration.",
       chunkSize: QUERY_CHUNK_SIZE,
       shard: { index: shard.index, total: shard.total },
       populateMs: Math.round(populateMs * 100) / 100,
