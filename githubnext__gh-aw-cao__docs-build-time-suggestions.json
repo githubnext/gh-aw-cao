@@ -1,6 +1,6 @@
 {
   "source_sha": "a78678112f952b666750efc605803ddd222bab87",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "next_category": "dependency installation and caching",
   "evaluations": [
     {
       "evaluated_at": "2026-09-30T17:55:00Z",
@@ -162,6 +162,35 @@
         36769982793
       ],
       "outcome": "no_actionable_improvement: latest 9 successful docs.yml runs in the last 14 days provided enough comparable evidence. Trusted docs job metadata showed median full workflow time 87s (p90 110.8s), median build job 45s (p90 49.2s), median deploy job 30s (p90 63.6s on 3 deploys), median schedule-freshness 7s, and 0s queue because these run records start immediately. Build-step medians stayed at 5s Restore node_modules, 13s Build documentation, 2s Restore cached CAO Dashboard, and 8s Upload Pages artifact. Trusted docs logs confirmed cache hits on every sampled run for both node_modules and central-agentic-ops-dashboard, so Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact stayed skipped. Cross-checking the three latest successful cao-dashboard runs showed the upstream dashboard cache is still refreshed after 97s median build jobs whose dominant repeated cost is 61s Upgrade fallback activity data; cache transfer itself remained small at 7s Upload dashboard artifact and 10s total cache-job download/delete/save. Artifact transfer and Pages packaging therefore remain well below the >=60s or >=15% actionable threshold versus the existing reusable-dashboard re-upgrade bottleneck.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-09-30T20:56:07Z",
+      "worker_run_id": "36775645712",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36775155319,
+        36773949525,
+        36772641118,
+        36772261024,
+        36771902110,
+        36770211953,
+        36770067209,
+        36769982691,
+        36769826313,
+        36768877358,
+        36767932185,
+        36767324836,
+        36767079987,
+        36766457398,
+        36765268980,
+        36764851985,
+        36763064254,
+        36762812519,
+        36762607366,
+        36761704809
+      ],
+      "outcome": "no_actionable_improvement: latest 20 successful docs.yml runs in the last 14 days still show the dominant reusable-dashboard bottleneck already recorded in memory, not a new scheduling/concurrency/docs-side issue. Trusted docs metadata across 20 successful runs showed median full workflow 71s (p90 106.9s), median build 47s (p90 52.3s), median deploy 20s (p90 77.6s on 7 deploys), and median schedule-freshness 8s (p90 8.2s). The freshness guard skipped 4 of the latest 20 successful docs runs and every built run hit both node_modules and central-agentic-ops-dashboard caches, leaving only ~13s median documentation build and ~7-8s artifact upload in docs.yml. Cross-checking the latest successful cao-dashboard runs still shows Upgrade fallback activity data at 49-62s median 61s, while Validate restored activity data then confirms a 367.1 MiB SQLite plus 801 shards and Assemble Dashboard Language site spends only 2-5s before copying a 367.1 MiB database and 104 shards / 232.3 MiB into a 35.3 MiB uploaded artifact. Because the next-category slot is scheduling/concurrency/avoidable rebuilds and the only >=60s repeated cost remains the already-recorded reusable-dashboard re-upgrade suggestion, no new non-duplicate action is warranted in this cycle.",
       "suggestion_fingerprint": null
     }
   ]
