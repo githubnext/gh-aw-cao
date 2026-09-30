@@ -356,7 +356,7 @@ func TestEventStreamOutlivesHTTPWriteTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusOK {
 		t.Fatalf("stream returned %d", response.StatusCode)
 	}
