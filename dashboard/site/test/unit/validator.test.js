@@ -39,8 +39,8 @@ describe('dashboard document validation', () => {
 
   it('validates optional view title visibility without removing the accessible title', () => {
     const document = JSON.parse(authoritativeDashboardSource);
-    const overview = document.dashboard.pages.find((page) => page.id === 'overview');
-    const view = overview.views.find((candidate) => candidate.id === 'overview-header');
+    const overview = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'overview');
+    const view = overview.views.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'overview-header');
     expect(view.title).toBe('How are we doing?');
     expect(view['show-title']).toBe(false);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);

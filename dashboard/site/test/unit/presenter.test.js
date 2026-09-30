@@ -150,23 +150,34 @@ describe('declarative view title visibility', () => {
   });
 
   it('hides a chart title even when its prompt action moves the heading', () => {
-    const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ ({
-      languageVersion: '0.1.0',
-      dashboard: {
-        id: 'chart-titles', title: 'Chart titles',
-        pages: [{
-          id: 'overview', kind: 'custom', title: 'Overview',
-          views: [{ id: 'quiet-chart', title: 'Quiet chart', 'show-title': false, prompt: 'always',
-            mark: 'chart', chart: 'bar', data: { source: 'runs' },
-            encoding: { x: { field: 'workflow', type: 'nominal' }, y: { field: 'count', type: 'quantitative' } } }]
-        }]
-      }
-    });
-    const rendered = renderDashboardView({ document, sources: {} });
-    const view = rendered.querySelector('[data-view-id="quiet-chart"]');
-    expect(view?.querySelector('.chart-prompt-heading > h3')?.classList.contains('sr-only')).toBe(true);
-    expect(view?.querySelector('.table-intent-button')?.getAttribute('aria-label')).toBe('Fix it: Quiet chart');
-    disposeDashboard(rendered);
+    for (const [chart, layout] of [['bar', 'full'], ['pie', 'full'], ['bar', 'horizontal']]) {
+      const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ ({
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'chart-titles', title: 'Chart titles',
+          pages: [{
+            id: 'overview', kind: 'custom', title: 'Overview',
+            views: [{ id: 'quiet-chart', title: 'Quiet chart', 'show-title': false, prompt: 'always',
+              mark: 'chart', chart, layout, data: { source: 'runs' },
+              encoding: { x: { field: 'workflow', type: 'nominal' }, y: { field: 'count', type: 'quantitative' } } }]
+          }]
+        }
+      });
+      const rendered = renderDashboardView({
+        document,
+        sources: {
+          runs: {
+            source: 'runs', rows: [{ workflow: 'daily', count: 3 }],
+            metadata: { 'source-id': 'runs', 'source-kind': 'fixture', 'as-of': '', 'retrieved-at': '',
+              availability: 'available', completeness: 'complete', freshness: 'fresh' }
+          }
+        }
+      });
+      const view = rendered.querySelector('[data-view-id="quiet-chart"]');
+      expect(view?.querySelector('.chart-prompt-heading > h3')?.classList.contains('sr-only'), `${chart} ${layout}`).toBe(true);
+      expect(view?.querySelector('.table-intent-button')?.getAttribute('aria-label')).toBe('Fix it: Quiet chart');
+      disposeDashboard(rendered);
+    }
   });
 });
 

@@ -885,7 +885,14 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
         const heading = rendered.matches('.page-section')
           ? rendered.querySelector(
             ':scope > h3, :scope > h4, :scope > .chart-prompt-heading > h3,'
-            + ' :scope > .chart-prompt-heading > h4'
+            + ' :scope > .chart-prompt-heading > h4,'
+            + ' :scope > .pie-chart-card > h3, :scope > .pie-chart-card > h4,'
+            + ' :scope > .pie-chart-card > .chart-prompt-heading > h3,'
+            + ' :scope > .pie-chart-card > .chart-prompt-heading > h4,'
+            + ' :scope > .chart-horizontal-card > .chart-horizontal-copy > h3,'
+            + ' :scope > .chart-horizontal-card > .chart-horizontal-copy > h4,'
+            + ' :scope > .chart-horizontal-card > .chart-horizontal-copy > .chart-prompt-heading > h3,'
+            + ' :scope > .chart-horizontal-card > .chart-horizontal-copy > .chart-prompt-heading > h4'
           )
           : rendered.querySelector(
             ':scope > .semantic-prompt-heading > h3, :scope > .semantic-prompt-heading > h4,'
