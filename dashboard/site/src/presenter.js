@@ -3,6 +3,7 @@
  */
 
 import { h } from './dom.js';
+import { batch, effect, state } from './reactive.js';
 import { getPrimerStyles } from './styles.js';
 import { octicon } from './octicons.js';
 import { renderDataStateMetrics } from './components/data-state.js';
@@ -190,8 +191,6 @@ export function renderDashboard(input) {
   const cardTemplates = Object.fromEntries((document.dashboard['card-templates'] ?? []).map((template) => [template.id, template]));
   const reusableViews = document.dashboard.views ?? [];
   const horizonRange = resolveDashboardHorizon(document.dashboard);
-  const hasData = Object.values(rawSources).some((source) => Array.isArray(source?.rows) && source.rows.length > 0);
-  const showInitialLoadingSkeleton = input.loading === true && !hasData;
   const dataHorizon = resolveDataHorizon(rawSources);
   const githubUrlBase = typeof document.dashboard['github-url-base'] === 'string' && document.dashboard['github-url-base'].length > 0
     ? document.dashboard['github-url-base']
@@ -277,6 +276,8 @@ export function renderDashboard(input) {
         const effectiveQueryContext = options.queryContext ?? (initialViewMode ? { viewMode: initialViewMode } : undefined);
         options.queryContext = effectiveQueryContext;
         const rendersBeforePageSources = dashboardPageSourcesAreIndependentlyBound(resolvedPage(), reusableViews);
+        const liveSources = state(sources);
+        const loading = state((input.loading === true || Boolean(input.loadPageSources)) && !rendersBeforePageSources);
         /** @param {Record<string, LogicalSourceInput>} pageSources */
         const updateHorizon = (pageSources) => {
           if (options.signal?.aborted !== true) {
@@ -294,13 +295,11 @@ export function renderDashboard(input) {
           const page = resolvedPage();
           if (!page) throw new Error(`Dashboard page "${pageId}" is not available.`);
           updateHorizon(pageSources);
-          const pageHasData = Object.values(pageSources).some(
-            (source) => Array.isArray(source?.rows) && source.rows.length > 0
-          );
-          const rendered = showInitialLoadingSkeleton
-              && (page.id === 'overview' || !pageHasData)
-            ? renderPageLoadingSkeleton(page)
-            : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, effectiveQueryContext, document.dashboard.queries ?? []);
+          const rendered = renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, effectiveQueryContext, document.dashboard.queries ?? [], {
+            sources: liveSources,
+            loading,
+            signal: options.signal
+          });
           debugPerformance('page render', {
             pageId,
             phase: renderCount++ === 0 ? 'initial' : 'update',
@@ -314,8 +313,23 @@ export function renderDashboard(input) {
           if (rendersBeforePageSources) {
             return render(sources);
           }
-          options.onUpdate = (pageSources) => options.renderUpdate(render(pageSources));
-          return input.loadPageSources(pageId, options).then(render);
+          options.onUpdate = (pageSources) => {
+            updateHorizon(pageSources);
+            batch(() => {
+              liveSources.set(pageSources);
+              loading.set(false);
+            });
+          };
+          const rendered = render(sources);
+          void input.loadPageSources(pageId, options).then(options.onUpdate).catch((error) => {
+            if (options.signal.aborted) return;
+            debugRender('page source binding failed', {
+              pageId,
+              message: error instanceof Error ? error.message : String(error)
+            });
+            loading.set(false);
+          });
+          return rendered;
         }
         const renderedPage = render(sources);
         /** @param {HTMLElement} rendered */
@@ -708,10 +722,10 @@ function renderPageSkeleton() {
  * @param {Array<Record<string, unknown>>} [queries]
  * @returns {HTMLElement}
  */
-function renderPage(page, sources, units, dashboardDefaults, cardTemplates, reusableViews, queryContext, queries = []) {
+function renderPage(page, sources, units, dashboardDefaults, cardTemplates, reusableViews, queryContext, queries = [], binding) {
   const title = getPageTitle(page);
   const payload = getBuiltInPagePayload(page, reusableViews);
-  return renderCustomPage(payload, title, sources, units, dashboardDefaults, cardTemplates, true, queryContext, queries);
+  return renderCustomPage(payload, title, sources, units, dashboardDefaults, cardTemplates, true, queryContext, queries, binding);
 }
 
 /**
@@ -726,7 +740,7 @@ function renderPage(page, sources, units, dashboardDefaults, cardTemplates, reus
  * @param {Array<Record<string, unknown>>} [queries]
  * @returns {HTMLElement}
  */
-function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTemplates, withFilterBar = true, queryContext, queries = []) {
+function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTemplates, withFilterBar = true, queryContext, queries = [], binding) {
   const effectiveDashboardDefaults = inventoryPage(page.id)
     ? { ...dashboardDefaults, time: undefined }
     : dashboardDefaults;
@@ -777,14 +791,17 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       )
     );
     const isNavigationCompositeView = isPlainObject(view) && view.mark === 'element';
-    const render = () => {
-      let rendered = renderCustomView(page.id, view, index, sources, units, cardTemplates, headingTag, routeParameter, queryContext);
+    const render = (viewSources = sources, pending = false) => {
+      let rendered = pending && getViewSources(view).length > 0
+        && !(isPlainObject(view) && typeof view.element === 'string' && elementLoadsSourcesAsync(view.element))
+        ? renderPageSection(page.id, getViewTitle(view, index), [renderDashboardViewSkeleton()], headingTag)
+        : renderCustomView(page.id, view, index, viewSources, units, cardTemplates, headingTag, routeParameter, queryContext);
       if (isPlainObject(view)) {
         const semantics = effectiveViewSemantics(view, queries);
         if (view.prompt === 'always' || (view.prompt !== 'none'
           && semantics.intent && semantics.objective && semantics.acceptance)) {
           const selectedSources = Object.fromEntries(getViewSources(view).flatMap((sourceName, sourceIndex) => {
-            const source = sources[resolveViewSourceName(sources, page.id, view, index, sourceName, sourceIndex)];
+            const source = viewSources[resolveViewSourceName(viewSources, page.id, view, index, sourceName, sourceIndex)];
             return source ? [[sourceName, source]] : [];
           }));
           const prompt = renderPromptPreviewAction(
@@ -846,18 +863,35 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       if (!isNavigationCompositeView && disclosure === 'essential') rendered.dataset.viewModeContent = viewModeForView(view);
       return rendered;
     };
-    const rendered = isRouteView
+    let rendered = isRouteView
       || index === 0
       || (isPlainObject(view) && (view.mark === 'callout' || (
         typeof view.element === 'string' && elementLoadsSourcesAsync(view.element)
       )))
-      ? render()
+      ? render(binding?.sources.get() ?? sources, binding?.loading.get() ?? false)
       : renderLazyView({
         label: getViewTitle(view, index),
         headingLevel: headingTag,
         minHeight: layout === 'half' || layout === 'third' ? 180 : 280,
-        render
+        render: () => render(binding?.sources.get() ?? sources, binding?.loading.get() ?? false)
       });
+    if (binding && getViewSources(view).length > 0
+        && !(isPlainObject(view) && typeof view.element === 'string' && elementLoadsSourcesAsync(view.element))) {
+      let initial = true;
+      effect(() => {
+        const current = binding.sources.get();
+        const pending = binding.loading.get() && getViewSources(view).some((name, sourceIndex) => (
+          !current[resolveViewSourceName(current, page.id, view, index, name, sourceIndex)]
+        ));
+        if (initial) {
+          initial = false;
+          return;
+        }
+        const replacement = render(current, pending);
+        if (rendered.parentNode) rendered.replaceWith(replacement);
+        rendered = replacement;
+      }, { signal: binding.signal });
+    }
     rendered.classList.add('custom-view');
     rendered.setAttribute('data-view-id', viewId || `view-${index + 1}`);
     rendered.setAttribute('data-view-layout', layout);
