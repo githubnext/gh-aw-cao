@@ -260,6 +260,9 @@
           },
           "server-go-logging": {
             "workflow": "self-care-server-go-logging"
+          },
+          "specs-maintainer": {
+            "workflow": "self-care-specs-maintainer"
           }
         }
       }

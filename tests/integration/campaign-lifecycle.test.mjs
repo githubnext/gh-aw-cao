@@ -160,6 +160,7 @@ const selfCareExpectedFiles = [
   ".github/workflows/self-care-reactive-ui-expert.md",
   ".github/workflows/self-care-release-blogger.md",
   ".github/workflows/self-care-server-go-logging.md",
+  ".github/workflows/self-care-specs-maintainer.md",
   ".github/workflows/self-care.md",
   ".github/workflows/shared/activity-cache.md",
   ".github/workflows/shared/control.md",

@@ -113,7 +113,7 @@ test("SelfCare runs every 20 minutes", () => {
   assert.doesNotMatch(source, /model: copilot\/gpt-5\.4/);
   assert.match(
     source,
-    /self-care-dashboard-data-schema`, `self-care-data-acquisition-audit`, `self-care-docs-maintainer`, `self-care-glossary`, and `self-care-release-blogger`.*preceding 24 hours/
+    /self-care-dashboard-data-schema`, `self-care-data-acquisition-audit`, `self-care-docs-maintainer`, `self-care-glossary`, `self-care-release-blogger`, and `self-care-specs-maintainer`.*preceding 24 hours/
   );
   assert.match(source, /ten most recent runs of each workflow/);
   assert.match(source, /self-care-documentation-discoverability.*preceding seven days/);
@@ -245,6 +245,33 @@ test("SelfCare docs maintainer uses daily merged-change and ADR evidence", () =>
   assert.match(source, /Call `noop` exactly once/);
   assert.match(source, /\{\{#runtime-import\? \.github\/cao\/self-care\.md\}\}/);
   assert.doesNotMatch(source, /^\s+(contents|actions|pull-requests): write$/m);
+});
+
+test("SelfCare specs maintainer fixes missing specification updates in W3C style", () => {
+  const source = workflow("self-care-specs-maintainer.md");
+  const compiled = workflow("self-care-specs-maintainer.lock.yml");
+
+  assert.match(source, /^name: "SelfCare \/ Specs Maintainer"$/m);
+  assert.match(source, /on:\n\s+bots: \["github-actions\[bot\]", "cao-githubnext-gh-aw-cao-write\[bot\]"\]/);
+  assert.match(source, /imports:\n\s+- \.\.\/agents\/w3c-specification\.md\n\s+- uses: shared\/control\.md/);
+  assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: specs-maintainer/);
+  assert.match(source, /safe_output_mode` is `live`/);
+  assert.match(source, /evidence-watermark\.json/);
+  assert.match(source, /Inspect at most 30 merged pull requests/);
+  assert.match(source, /discard only keys less than or equal to the saved key/);
+  assert.match(source, /Ignore copyable markers from every other author/);
+  assert.match(source, /never treat a pull request description as proof of behavior/);
+  assert.match(source, /does not modify the governing file under `specs\/`/);
+  assert.match(source, /RFC 2119/);
+  assert.match(source, /allowed-files:\n\s+- "specs\/\*\.md"\n/);
+  assert.match(source, /draft: true/);
+  assert.match(source, /max-patch-files: 3/);
+  assert.match(source, /npm run docs:build/);
+  assert.match(source, /Call `create_pull_request` exactly once/);
+  assert.match(source, /Call `noop` exactly once/);
+  assert.match(source, /\{\{#runtime-import\? \.github\/cao\/self-care\.md\}\}/);
+  assert.doesNotMatch(source, /^\s+(contents|actions|pull-requests): write$/m);
+  assert.match(compiled, /GH_AW_AGENT_FILE: "\.github\/agents\/w3c-specification\.md"/);
 });
 
 test("SelfCare docs build-time investigator rotates evidenced recommendations", () => {
