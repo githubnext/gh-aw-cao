@@ -1286,7 +1286,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .control-plane-vitals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin: 0; padding: 0 1px 1px; border-right: 1px solid var(--border); border-left: 1px solid var(--border); background: var(--border); }
 .control-plane-vitals > div { min-width: 0; padding: 14px 16px; background: var(--canvas); }
 .control-plane-vitals dt { color: var(--muted); font-size: .75rem; font-weight: 600; text-transform: uppercase; }
-.control-plane-vitals dd { margin: 2px 0 0; font-size: 1.625rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.control-plane-vitals dd { margin: 2px 0 0; font-size: 1.75rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 .control-plane-vitals p { min-height: 2.6em; margin: 0; color: var(--muted); font-size: .75rem; line-height: 1.3; }
 .control-plane-vitals .vital-failures dd { color: var(--danger); }
 .execution-health { padding: 10px 16px 12px; border: 1px solid var(--border); border-top: 0; border-radius: 0 0 6px 6px; background: var(--canvas); }
@@ -2034,7 +2034,7 @@ tbody tr:hover { background: var(--canvas-subtle); }
 .markdown-body h1, .markdown-body h2 { margin: 24px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border-muted); line-height: 1.25; }
 .markdown-body h1 { font-size: 1.5rem; }
 .markdown-body h2 { font-size: 1.25rem; }
-.markdown-body h3 { margin: 20px 0 10px; font-size: 1.0625rem; }
+.markdown-body h3 { margin: 20px 0 10px; font-size: 1.125rem; }
 .markdown-body p, .markdown-body ul, .markdown-body ol, .markdown-body blockquote, .markdown-body pre, .markdown-body table { margin-block: 0 16px; }
 .markdown-body li + li { margin-top: 4px; }
 .markdown-body blockquote { margin-inline: 0; padding: 0 16px; border-left: 4px solid var(--border); color: var(--muted); }
