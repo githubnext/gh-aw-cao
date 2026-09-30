@@ -35,17 +35,17 @@ var oauthFailurePage = template.Must(template.New("oauth-failure").Parse(`<!doct
 <body><main>
 <h1>We couldn’t complete your sign-in</h1>
 <p>Try again with an account that has access to this dashboard. If the problem continues, share the request ID below with your dashboard administrator.</p>
-<p><a href="/auth/logged-out" id="sign-out">Sign out and try again</a></p>
+<p><button type="button" id="sign-out">Sign out and try again</button></p>
+<noscript><p>Automatic sign-out requires JavaScript. Clear this site’s cookies, then sign in again.</p></noscript>
 <p><a href="https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md#oauth-sign-in-troubleshooting" rel="noreferrer noopener">Sign-in troubleshooting</a></p>
 {{if .}}<p>Request ID: <code>{{.}}</code></p>{{end}}
 <p id="recovery-error" role="alert" hidden>Could not sign out. Please try again or clear this site’s cookies before signing in.</p>
 </main><script src="/auth/recovery.js" defer></script></body>
 </html>`))
 
-const oauthRecoveryScript = `const link = document.getElementById('sign-out');
-link.addEventListener('click', async (event) => {
-  event.preventDefault();
-  link.setAttribute('aria-disabled', 'true');
+const oauthRecoveryScript = `const button = document.getElementById('sign-out');
+button.addEventListener('click', async () => {
+  button.disabled = true;
   try {
     const csrf = document.cookie.split('; ').find((cookie) => cookie.startsWith('cao_csrf='));
     const response = await fetch('/auth/logout', {
@@ -60,7 +60,7 @@ link.addEventListener('click', async (event) => {
   } catch {
     // Keep the current page visible when logout cannot be confirmed.
   }
-  link.removeAttribute('aria-disabled');
+  button.disabled = false;
   document.getElementById('recovery-error').hidden = false;
 });
 `

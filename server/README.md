@@ -896,6 +896,26 @@ API responses use `Cache-Control: no-store`. The dashboard service worker
 excludes `/api/` so query results and event streams are never placed in browser
 caches.
 
+## OAuth sign-in troubleshooting
+
+If the OAuth callback shows a sign-in error, select **Sign out and try again**.
+This attempts the existing CSRF-protected logout (including server-side token
+revocation), clears the pending OAuth state on the signed-out page, and offers a
+fresh, explicit GitHub sign-in. If logout cannot be confirmed, the page keeps
+the error visible; clear this site's cookies before retrying, or contact your
+dashboard administrator. Try a GitHub account that is an active member of an
+organization or team permitted by the dashboard. Signing in does not itself
+grant access.
+
+The error page shows a request ID when tracing is enabled. Administrators can
+search for that W3C trace ID in their OpenTelemetry backend and inspect the
+`GET /auth/callback` span's fixed `error.type` classification. The same ID is
+sent as `X-Trace-Id` on the response. Neither the page nor the span reveals
+the OAuth code, state, credentials, account, membership details, or raw
+provider errors. If no trace ID appears, configure an OTLP trace endpoint as
+described below before expecting backend correlation; avoid sending callback
+URLs, cookies, codes, or tokens when requesting support.
+
 ## Telemetry
 
 The server is instrumented with standard, vendor-neutral

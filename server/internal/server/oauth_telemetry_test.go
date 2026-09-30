@@ -78,6 +78,7 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 	stateCookie, state = loginState(t, app)
 	denied := httptest.NewRecorder()
 	request = azureRequest(t, http.MethodGet, "/auth/callback?error=private-provider-message&state="+url.QueryEscape(state))
+	request.Header.Set("User-Agent", "private-user-agent")
 	request.AddCookie(stateCookie)
 	app.Handler().ServeHTTP(denied, request)
 	if denied.Code != http.StatusBadRequest {
@@ -103,6 +104,12 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 	app.Handler().ServeHTTP(unauthorized, request)
 	if unauthorized.Code != http.StatusForbidden {
 		t.Fatalf("authorization failure status = %d", unauthorized.Code)
+	}
+	if unauthorized.Header().Get("Content-Type") != "text/html; charset=utf-8" ||
+		unauthorized.Header().Get("Cache-Control") != "no-store" ||
+		unauthorized.Header().Get("Referrer-Policy") != "no-referrer" ||
+		!strings.Contains(unauthorized.Header().Get("Content-Security-Policy"), "script-src 'self'") {
+		t.Fatalf("callback failure missing safe response headers: %#v", unauthorized.Header())
 	}
 
 	app = newAzureTestApp(t, github.URL)
@@ -140,10 +147,29 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 	if spans[6].Status.Code != codes.Error {
 		t.Fatal("session persistence failure must mark the callback span as a server error")
 	}
+	for i, response := range []*httptest.ResponseRecorder{invalid, missing, denied, exchange, unauthorized, failedSave} {
+		span := spans[i+1]
+		body := response.Body.String()
+		if !strings.Contains(body, "We couldn’t complete your sign-in") ||
+			!strings.Contains(body, `<button type="button" id="sign-out">`) ||
+			!strings.Contains(body, "#oauth-sign-in-troubleshooting") ||
+			!strings.Contains(body, span.SpanContext.TraceID().String()) ||
+			response.Header().Get("X-Trace-Id") != span.SpanContext.TraceID().String() ||
+			response.Header().Get("X-Span-Id") != span.SpanContext.SpanID().String() {
+			t.Fatalf("callback error %d missing help or matching trace ID", i)
+		}
+		for _, private := range []string{secretCode, firstState, firstCookieValue, "private-invalid-state",
+			"private-provider-message", "private-user-agent", "access-old", "refresh-old", "octocat"} {
+			if strings.Contains(body, private) {
+				t.Fatalf("callback error %d exposed private value %q", i, private)
+			}
+		}
+	}
 	if spans[0].Parent.TraceID().String() != "4bf92f3577b34da6a3ce929d0e0e4736" ||
 		!spans[0].Parent.IsRemote() {
 		t.Fatal("callback did not preserve the remote W3C parent")
 	}
+
 	for i, expected := range []struct{ outcome, errorType string }{
 		{"success", ""}, {"failure", "invalid_state"}, {"failure", "missing_code"},
 		{"failure", "provider_denied"}, {"failure", "exchange_failed"}, {"failure", "authorization_failed"},
@@ -152,6 +178,7 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 		if i < 6 && spans[i].Status.Code != codes.Unset {
 			t.Fatalf("client outcome %d must not be marked as a server error", i)
 		}
+
 		attrs := spanAttributes(spans[i].Attributes)
 		if attrs["http.route"] != "/auth/callback" || attrs["http.request.method"] != "GET" ||
 			attrs["cao_dashboard.auth.callback.outcome"] != expected.outcome {
@@ -217,5 +244,49 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 		if strings.Contains(string(encoded), private) {
 			t.Fatalf("OAuth telemetry exposed private value %q", private)
 		}
+	}
+}
+
+func TestOAuthRecoveryUsesExistingProtectedLogout(t *testing.T) {
+	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
+	app := newAzureTestApp(t, github.URL)
+	sessionCookie, csrfCookie := callbackSession(t, app)
+
+	script := httptest.NewRecorder()
+	app.Handler().ServeHTTP(script, azureRequest(t, http.MethodGet, "/auth/recovery.js"))
+	if script.Code != http.StatusOK || script.Header().Get("Cache-Control") != "no-store" ||
+		!strings.Contains(script.Body.String(), "fetch('/auth/logout'") ||
+		!strings.Contains(script.Body.String(), "'X-CSRF-Token'") ||
+		!strings.Contains(script.Body.String(), "response.status === 204 || response.status === 401") {
+		t.Fatal("recovery script must use the existing CSRF-protected logout and handle missing sessions")
+	}
+
+	unprotected := httptest.NewRecorder()
+	request := azureRequest(t, http.MethodPost, "/auth/logout")
+	request.AddCookie(sessionCookie)
+	app.Handler().ServeHTTP(unprotected, request)
+	if unprotected.Code != http.StatusForbidden || github.sawRevocation("access-old") {
+		t.Fatal("recovery must not bypass logout CSRF validation")
+	}
+	logout := httptest.NewRecorder()
+	request = azureRequest(t, http.MethodPost, "/auth/logout")
+	request.AddCookie(sessionCookie)
+	request.AddCookie(csrfCookie)
+	request.Header.Set("X-CSRF-Token", csrfCookie.Value)
+	app.Handler().ServeHTTP(logout, request)
+	if logout.Code != http.StatusNoContent || !github.sawRevocation("access-old") {
+		t.Fatal("recovery must revoke the existing session before restarting login")
+	}
+	loggedOut := httptest.NewRecorder()
+	app.Handler().ServeHTTP(loggedOut, azureRequest(t, http.MethodGet, "/auth/logged-out"))
+	if loggedOut.Code != http.StatusOK || !strings.Contains(loggedOut.Body.String(), `href="/auth/login"`) {
+		t.Fatal("recovery landing page must offer explicit sign-in")
+	}
+	foundClearedState := false
+	for _, cookie := range loggedOut.Result().Cookies() {
+		foundClearedState = foundClearedState || cookie.Name == "cao_oauth_state" && cookie.MaxAge < 0
+	}
+	if !foundClearedState {
+		t.Fatal("recovery landing page must clear stale OAuth state")
 	}
 }
