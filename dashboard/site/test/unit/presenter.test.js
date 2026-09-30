@@ -150,7 +150,7 @@ describe('semantic view prompt action', () => {
     const heading = rendered.querySelector('[data-view-id="health-chart"] .chart-prompt-heading');
     expect(heading?.querySelector('h3, h4')?.textContent).toBe('Health chart');
     expect(heading?.querySelector('.chart-prompt-action .table-intent-button')).toBe(button);
-    expect(button?.querySelector('.octicon')).not.toBeNull();
+    expect(button?.querySelector('.octicon-copilot')).not.toBeNull();
     button?.click();
     const preview = rendered.querySelector('.table-intent-preview')?.textContent ?? '';
     expect(preview).toContain('Show health\n\nCompare workflow health');

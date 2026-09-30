@@ -815,7 +815,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
               });
             },
             declaredAgentTaskActionId(),
-            'comment',
+            'copilot',
             'semantic-prompt'
           );
           prompt.classList.add(view.mark === 'chart' ? 'chart-prompt-action' : 'semantic-prompt-action');

@@ -662,8 +662,8 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .chart-prompt-heading { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .chart-prompt-heading > :is(h3, h4) { min-width: 0; margin: 0; }
 .chart-prompt-action { margin-left: auto; flex: none; }
-.chart-prompt-action .table-intent-button { width: 32px; min-height: 32px; justify-content: center; padding: 0; border-color: transparent; background: transparent; color: var(--muted); }
-.chart-prompt-action .table-intent-button:hover { border-color: var(--border); background: var(--neutral-muted); color: var(--fg); }
+.chart-prompt-action .table-intent-button { width: 32px; min-height: 32px; justify-content: center; padding: 0; border-color: transparent; background: transparent; color: var(--accent); }
+.chart-prompt-action .table-intent-button:hover { border-color: transparent; background: var(--accent-muted); color: var(--accent); }
 .chart-prompt-action .table-intent-button span { display: none; }
 .view-description-tooltip { position: absolute; top: 4px; right: 0; }
 .custom-view-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
