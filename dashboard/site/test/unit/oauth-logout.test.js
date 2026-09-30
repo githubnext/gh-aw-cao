@@ -22,6 +22,14 @@ afterEach(() => {
 });
 
 describe('hosted OAuth signed-out page', () => {
+  it('uses the sign-in error page visual treatment', () => {
+    expect(html).toContain('<section class="signed-out-card" aria-labelledby="signed-out-title">');
+    expect(html).toContain('Central Agentic Ops');
+    expect(html).toContain('@media (prefers-color-scheme: dark)');
+    expect(html).toContain('@media (max-width: 480px)');
+    expect(html).toContain('.sign-in[hidden] { display: none; }');
+  });
+
   it('deletes the canonical IndexedDB database before offering sign-in', async () => {
     const database = await new Promise((resolve, reject) => {
       const request = indexedDB.open(DATABASE_NAME);

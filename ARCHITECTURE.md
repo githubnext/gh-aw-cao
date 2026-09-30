@@ -178,6 +178,11 @@ both profiles and a retained lake repopulates a database on cold start without
 contacting GitHub. Configuring both profiles fails at startup: a canonical
 database has one writer. The collection profile also persists allowlisted
 Redis-backed operational counters and exposes a read-only health status API.
+For retained issues in enrolled repositories, verified GitHub issue lifecycle
+deliveries refresh only status observations in Redis. These observations are
+deduplicated and ordered against the projected status timestamp, never create
+issue rows, and yield to newer snapshot evidence; other webhook payloads remain
+invalidation signals, not projection authority.
 Authorized operators receive the registered `collection-health` runtime source
 through the Dashboard Language query boundary; it is not published or stored in
 browser IndexedDB. The Ingestion page renders that bounded snapshot alongside
@@ -372,7 +377,8 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   that the Ingestion page charts. Existing collection budgets do not use this
   service yet.
 - The ingestion reliability simulator uses strict, seeded JSON scenarios to
-  generate up to 20,000 synthetic repositories and 1,000,000 workflow events.
+  generate up to 20,000 synthetic repositories and 1,000,000 workflow and
+  optional issue events combined.
   Signed webhook traffic uses the production endpoint and queue admission path;
   a bounded fake GitHub REST API supplies timed latency, outage, rate-limit, and
   transient-error windows to the normal collection subprocess. The simulator is

@@ -28,19 +28,20 @@ const (
 // Scenario describes deterministic webhook traffic and time-bounded API
 // behavior. Durations in API windows are measured from simulator startup.
 type Scenario struct {
-	Name                string      `json:"name"`
-	Repositories        int         `json:"repositories"`
-	EventsPerRepository int         `json:"events_per_repository"`
-	Seed                int64       `json:"seed"`
-	Distribution        string      `json:"distribution"`
-	OutOfOrder          bool        `json:"out_of_order"`
-	DuplicateEvery      int         `json:"duplicate_every"`
-	DropEvery           int         `json:"drop_every"`
-	DelayEvery          int         `json:"delay_every"`
-	Delay               string      `json:"delay"`
-	ReplayCount         int         `json:"replay_count"`
-	RemoveRepositories  bool        `json:"remove_repositories"`
-	API                 []APIWindow `json:"api"`
+	Name                     string      `json:"name"`
+	Repositories             int         `json:"repositories"`
+	EventsPerRepository      int         `json:"events_per_repository"`
+	IssueEventsPerRepository int         `json:"issue_events_per_repository,omitempty"`
+	Seed                     int64       `json:"seed"`
+	Distribution             string      `json:"distribution"`
+	OutOfOrder               bool        `json:"out_of_order"`
+	DuplicateEvery           int         `json:"duplicate_every"`
+	DropEvery                int         `json:"drop_every"`
+	DelayEvery               int         `json:"delay_every"`
+	Delay                    string      `json:"delay"`
+	ReplayCount              int         `json:"replay_count"`
+	RemoveRepositories       bool        `json:"remove_repositories"`
+	API                      []APIWindow `json:"api"`
 	// RateLimit optionally meters GitHub API traffic with a fixed-window
 	// primary rate limit, so load tests can exhaust a deliberately low budget.
 	RateLimit *APIRateLimit `json:"rate_limit,omitempty"`
@@ -116,6 +117,9 @@ func (s Scenario) Validate() error {
 	if s.EventsPerRepository < 0 || s.EventsPerRepository > maxEvents/s.Repositories {
 		return fmt.Errorf("simulator events exceed the %d event limit", maxEvents)
 	}
+	if s.IssueEventsPerRepository < 0 || s.IssueEventsPerRepository > maxEvents/s.Repositories-s.EventsPerRepository {
+		return fmt.Errorf("simulator events exceed the %d event limit", maxEvents)
+	}
 	switch s.Distribution {
 	case "uniform", "hot", "long-tail", "synchronized":
 	default:
@@ -186,7 +190,7 @@ func (s Scenario) Validate() error {
 	return nil
 }
 
-// Generate creates installation and workflow_run.completed webhook events
+// Generate creates installation, workflow_run.completed, and optional issues webhook events
 // using only the scenario seed, so repeated runs produce identical traffic.
 func (s Scenario) Generate() ([]Delivery, error) {
 	s.defaults()
@@ -200,7 +204,7 @@ func (s Scenario) Generate() ([]Delivery, error) {
 		repositories[i] = fmt.Sprintf("simulator/repo-%05d", i+1)
 	}
 
-	deliveries := make([]Delivery, 0, 1+(s.Repositories+99)/100+s.Repositories*s.EventsPerRepository+1)
+	deliveries := make([]Delivery, 0, 1+(s.Repositories+99)/100+s.Repositories*(s.EventsPerRepository+s.IssueEventsPerRepository)+1)
 	appendDelivery := func(event string, payload any, bootstrap bool) error {
 		content, err := json.Marshal(payload)
 		if err != nil {
@@ -272,6 +276,30 @@ func (s Scenario) Generate() ([]Delivery, error) {
 		})
 	}
 	deliveries = append(deliveries, workflowEvents...)
+	issueActions := []string{"opened", "closed", "reopened", "edited"}
+	for _, name := range repositories {
+		for i := 0; i < s.IssueEventsPerRepository; i++ {
+			action := issueActions[i%len(issueActions)]
+			at := time.Unix(1_800_000_000+int64(i), 0).UTC().Format(time.RFC3339)
+			issue := map[string]any{
+				"number": 1, "state": "open", "state_reason": nil,
+				"closed_at": nil, "updated_at": at,
+				"html_url": fmt.Sprintf("https://github.com/%s/issues/1", name),
+			}
+			if action == "closed" {
+				issue["state"] = "closed"
+				issue["state_reason"] = "completed"
+				issue["closed_at"] = at
+			}
+			if err := appendDelivery("issues", map[string]any{
+				"action": action, "issue": issue,
+				"repository":   map[string]string{"full_name": name},
+				"installation": map[string]int{"id": 1},
+			}, false); err != nil {
+				return nil, err
+			}
+		}
+	}
 	if s.RemoveRepositories {
 		if err := appendDelivery("installation_repositories", map[string]any{
 			"action": "removed", "installation": map[string]any{"id": 1},

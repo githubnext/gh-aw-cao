@@ -648,6 +648,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .layout-section-header-summary h3 { font-size: 1.25rem; }
 .layout-section-header p { margin: 3px 0 0; color: var(--muted); font-size: .8125rem; }
 .layout-section .page-section { min-width: 0; }
+.custom-view.page-section > :is(h3, h4) { width: 1px; height: 1px; position: absolute; overflow: hidden; margin: -1px; padding: 0; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .layout-section .page-section > h4, .layout-section .page-section > .chart-prompt-heading > h4 { margin: 12px 0 8px; font-size: .875rem; font-weight: 600; }
 .view-description-section { position: relative; }
 .semantic-prompt-view { position: relative; }
@@ -744,7 +745,8 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .view-state-card-body { min-width: 0; display: grid; gap: 4px; }
 .view-state-card :is(p, ul) { margin: 0; }
 .view-state-message { font-weight: 600; }
-.view-state-card .view-source, .view-state-card .view-context { color: var(--muted); font-size: .8125rem; }
+.view-state-card .view-source, .view-state-card .view-context, .view-state-card .view-diagnostic { color: var(--muted); font-size: .8125rem; }
+.view-state-card .view-diagnostic { overflow-wrap: anywhere; }
 .view-state-card .view-context { padding-inline-start: 1.25em; }
 .view-metadata-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin: 0 0 12px; color: var(--fg); }
 .view-metadata-summary > div { display: inline-flex; align-items: center; gap: 7px; }
@@ -1562,7 +1564,6 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .dashboard-overview-page .custom-view[data-view-layout="half"].chart-view-pie .pie-chart-card { grid-template-columns: minmax(0, 1fr); padding: 16px; }
 .dashboard-overview-page .custom-view[data-view-layout="half"].chart-view-pie .pie-chart-layout { grid-column: 1; grid-row: auto; grid-template-columns: minmax(120px, 160px) minmax(0, 1fr); gap: 12px; }
 .dashboard-overview-page .custom-view[data-view-layout="half"].chart-view-pie .pie-chart-card > :is(.view-source, .view-metadata, .view-context) { grid-column: 1; }
-.app-main:has(.dashboard-overview-page:not([hidden])) > :is(.top-nav, .report-footer) { display: none; }
 main.dashboard-prototype:has(.dashboard-overview-page:not([hidden])) { padding: 0; scrollbar-gutter: auto; }
 .dashboard-overview-page { margin: 0; }
 .dashboard-overview-page > .custom-view-grid { display: block; background: transparent; }

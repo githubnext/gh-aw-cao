@@ -524,9 +524,10 @@ func TestOAuthRecoveryUsesExistingProtectedLogout(t *testing.T) {
 		t.Fatal("signed-out page script must be complete")
 	}
 	hash := sha256.Sum256([]byte(script))
-	expectedCSP := "default-src 'none'; script-src 'sha256-" + base64.StdEncoding.EncodeToString(hash[:]) + "'; base-uri 'none'; form-action 'none'"
+	expectedCSP := "default-src 'none'; style-src 'sha256-" + oauthLoggedOutStyleHash + "'; script-src 'sha256-" + base64.StdEncoding.EncodeToString(hash[:]) + "'; base-uri 'none'; form-action 'none'"
 	if loggedOut.Header().Get("Content-Security-Policy") != expectedCSP ||
 		loggedOut.Header().Get("Cache-Control") != "no-store" ||
+		!strings.Contains(loggedOut.Body.String(), `<section class="signed-out-card"`) ||
 		!strings.Contains(script, "indexedDB.deleteDatabase('gh-aw-cao-dashboard-data')") ||
 		!strings.Contains(loggedOut.Body.String(), `id="sign-in" href="/auth/login" hidden`) {
 		t.Fatal("signed-out page must protect its cleanup script and gate sign-in on database deletion")

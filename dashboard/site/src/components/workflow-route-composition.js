@@ -5,6 +5,9 @@
 import { createRouteBodyConfig } from './route-body-config.js';
 import { WORKFLOW_ROUTE_BODY_VALUES } from './route-body-specification.js';
 import { WORKFLOW_ROUTE_BODY_RENDERERS } from './workflow-route-bodies.js';
+import { createDebug } from '../debug.js';
+
+const debugWorkflowRouteComposition = createDebug('workflow-route-composition');
 
 /**
  * @typedef {'insights'|'reports'|'runs'} WorkflowRouteBody
@@ -92,5 +95,11 @@ export function workflowRouteBody(body) {
  * @returns {WorkflowRouteBodyComposition}
  */
 export function workflowRouteComposition(body) {
-  return /** @type {WorkflowRouteBodyComposition} */ (WORKFLOW_ROUTE_BODY_CONFIG.composition(WORKFLOW_ROUTE_BODY_COMPOSITIONS, body));
+  const resolved = /** @type {WorkflowRouteBodyComposition} */ (WORKFLOW_ROUTE_BODY_CONFIG.composition(WORKFLOW_ROUTE_BODY_COMPOSITIONS, body));
+  debugWorkflowRouteComposition({
+    event: 'composition-resolved',
+    tab: resolved.currentTab,
+    fellBackToDefault: resolved.currentTab !== body
+  });
+  return resolved;
 }
