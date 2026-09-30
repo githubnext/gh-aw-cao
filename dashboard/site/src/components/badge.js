@@ -3,7 +3,10 @@
  */
 
 import { h } from '../dom.js';
+import { createDebug } from '../debug.js';
 import { stringOrFallback } from '../view-formatters.js';
+
+const debugBadge = createDebug('badge');
 
 /**
  * Renders the shared `status <statusClass>` badge markup used by every
@@ -31,6 +34,8 @@ export function renderStatusBadge(status) {
     statusClass = 'status-attention';
   } else if (['failure', 'failed', 'rejected', 'danger', 'unavailable', 'insufficient', 'critical', 'timed-out', 'startup-failure', 'needs attention'].includes(normalized)) {
     statusClass = 'status-danger';
+  } else {
+    debugBadge({ event: 'status-unmatched', normalized, statusClass });
   }
 
   return renderStatusSpan(statusClass, text);
@@ -46,6 +51,9 @@ export function renderGraderStatusBadge(status) {
   const statusClass = normalized === 'pass'
     ? 'status-success'
     : ['fail', 'error'].includes(normalized) ? 'status-danger' : 'status-attention';
+  if (normalized !== 'pass' && normalized !== 'fail' && normalized !== 'error') {
+    debugBadge({ event: 'grader-status-unmatched', normalized, statusClass });
+  }
   return renderStatusSpan(statusClass, text);
 }
 
@@ -66,7 +74,9 @@ export function modeBadgeClassName(normalizedMode) {
  */
 export function renderModeBadge(mode) {
   const text = stringOrFallback(mode, 'unknown');
-  const modeClass = modeBadgeClassName(text.toLowerCase());
+  const normalized = text.toLowerCase();
+  const modeClass = modeBadgeClassName(normalized);
+  if (!modeClass) debugBadge({ event: 'mode-unmatched', normalized });
 
   return h('span', { className: `mode-badge ${modeClass}`.trim() }, text);
 }
