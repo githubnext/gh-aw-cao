@@ -9,6 +9,9 @@ import { createRoutePageShell } from './route-page-shell.js';
 import { findLink } from './link-content.js';
 import { rowsFor } from './source-rows.js';
 import { parseWorkflowRoute, workflowRouteValue } from './workflow-route.js';
+import { createDebug } from '../debug.js';
+
+const debugWorkflowRouteShell = createDebug('workflow-route-shell');
 
 /**
  * @typedef {{
@@ -38,6 +41,11 @@ import { parseWorkflowRoute, workflowRouteValue } from './workflow-route.js';
  */
 export function renderWorkflowRouteShell(context, config) {
   const workflows = rowsFor(context.sources, 'workflows');
+  debugWorkflowRouteShell({
+    event: 'initialized',
+    currentTab: config.currentTab,
+    workflowCount: workflows.length
+  });
   return createRoutePageShell(context, {
     rootClassName: config.rootClassName,
     datasetKey: 'workflow',
@@ -59,7 +67,11 @@ export function renderWorkflowRouteShell(context, config) {
             && text(candidate.workflow) === route.workflow
           ))
         : null;
-      if (!workflow || !route) return null;
+      if (!workflow || !route) {
+        debugWorkflowRouteShell({ event: 'not-found', currentTab: config.currentTab });
+        return null;
+      }
+      debugWorkflowRouteShell({ event: 'matched', currentTab: config.currentTab });
       const name = workflowName(workflow);
       return {
         allocation: workflowRouteAllocation(config, route, workflow, name),
