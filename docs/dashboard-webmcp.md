@@ -30,7 +30,7 @@ The mapping from a page definition to a tool is deterministic:
 | --- | --- |
 | `id` | Tool name, prefixed with `cao_` |
 | `title` | Tool title |
-| `description` or `subject` | Tool description |
+| `description` or `intent` | Tool description |
 | `route.hash-query-parameter` | Required string input |
 | `form.fields` | Input schema properties |
 

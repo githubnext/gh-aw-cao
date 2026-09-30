@@ -90,8 +90,8 @@ test("cao.sh prompt renders a named query using the dashboard prompt template wi
     assert.match(stdout, /Query: cost-by-campaign/);
     assert.match(stdout, /Focus on this query's objective and acceptance/);
     assert.match(stdout, /report a no-op or incomplete investigation/);
-    assert.match(stdout, /Intent:\nPresent observed AI Credit cost grouped by centrally managed campaign\./);
-    assert.doesNotMatch(stdout, /Intent:\nReuse shared query stages/);
+    assert.match(stdout, /Subject:\nPresent observed AI Credit cost grouped by centrally managed campaign\./);
+    assert.doesNotMatch(stdout, /Subject:\nReuse shared query stages/);
     assert.match(stdout, /Named CAO query IDs: .*cost-by-campaign/);
     assert.match(stdout, /\/analyze-cao/);
     assert.match(stdout, /No data preview was supplied/);

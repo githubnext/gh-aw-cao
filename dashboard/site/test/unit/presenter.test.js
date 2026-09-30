@@ -263,7 +263,7 @@ describe('semantic view prompt action', () => {
     expect(button?.querySelector('.octicon-copilot')).not.toBeNull();
     button?.click();
     const preview = rendered.querySelector('.table-intent-preview')?.textContent ?? '';
-    expect(preview).toContain('Show health\n\nCompare workflow health');
+    expect(preview).toContain('Subject:\nShow health\n\nCompare workflow health');
     expect(preview).toContain('Investigate failures');
     expect(preview).toContain('Runs pass');
     expect(preview).toContain('Named CAO query IDs: health');
