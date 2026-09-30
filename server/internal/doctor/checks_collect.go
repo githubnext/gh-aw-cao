@@ -540,6 +540,47 @@ func (d Doctor) checkBudget(ctx context.Context) Check {
 	}
 }
 
+// lakePopulationReason names why checkLake reached its status, stable across
+// summary wording changes so it is useful to log without exposing the
+// reported byte and run-shard counts.
+type lakePopulationReason string
+
+const (
+	lakePopulationReasonEmpty     lakePopulationReason = "empty"
+	lakePopulationReasonPopulated lakePopulationReason = "populated"
+)
+
+// lakePopulationClassification is the status, summary, and remedy
+// classifyLakePopulation derives from the evidence lake's populated flag and
+// reported byte and run-shard counts.
+type lakePopulationClassification struct {
+	status  Status
+	summary string
+	remedy  string
+	reason  lakePopulationReason
+}
+
+// classifyLakePopulation decides the collect.lake check's outcome from the
+// lake's populated flag and reported size alone. It is a pure function so
+// the empty-versus-populated distinction is testable without a real
+// directory tree on disk.
+func classifyLakePopulation(populated bool, totalBytes int64, runShards int) lakePopulationClassification {
+	if !populated {
+		return lakePopulationClassification{
+			status:  StatusWarn,
+			summary: "the evidence lake holds no replayable evidence",
+			remedy:  "until it is populated, a cold start must re-collect from GitHub rather than replay locally",
+			reason:  lakePopulationReasonEmpty,
+		}
+	}
+	return lakePopulationClassification{
+		status: StatusPass,
+		summary: fmt.Sprintf("%s of replayable evidence across %d run shards",
+			humanBytes(totalBytes), runShards),
+		reason: lakePopulationReasonPopulated,
+	}
+}
+
 // checkLake inspects the evidence lake, which is what makes a cold start a
 // local replay instead of a full re-collection from GitHub.
 func (d Doctor) checkLake(context.Context) Check {
@@ -594,19 +635,11 @@ func (d Doctor) checkLake(context.Context) Check {
 	if err != nil {
 		return failed(id, areaCollect, title, err)
 	}
-	if !populated {
-		return Check{
-			ID: id, Area: areaCollect, Title: title, Status: StatusWarn,
-			Summary: "the evidence lake holds no replayable evidence",
-			Details: details,
-			Remedy:  "until it is populated, a cold start must re-collect from GitHub rather than replay locally",
-		}
-	}
+	classification := classifyLakePopulation(populated, shardBytes+runBytes+recordBytes, runs)
+	doctorLog.Printf("evidence lake classified status=%s reason=%s", classification.status, classification.reason)
 	return Check{
-		ID: id, Area: areaCollect, Title: title, Status: StatusPass,
-		Summary: fmt.Sprintf("%s of replayable evidence across %d run shards",
-			humanBytes(shardBytes+runBytes+recordBytes), runs),
-		Details: details,
+		ID: id, Area: areaCollect, Title: title, Status: classification.status,
+		Summary: classification.summary, Details: details, Remedy: classification.remedy,
 	}
 }
 
