@@ -662,6 +662,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .view-description-section { position: relative; }
 .semantic-prompt-view { position: relative; }
 .semantic-prompt-action { display: block; width: fit-content; margin: 0 0 12px auto; }
+.view-description-section > .semantic-prompt-action { position: absolute; top: 0; right: 32px; margin: 0; }
 .semantic-prompt-action .table-intent-button { width: 32px; min-height: 32px; justify-content: center; padding: 0; border-color: transparent; background: transparent; color: var(--accent); }
 .semantic-prompt-action .table-intent-button:hover { border-color: transparent; background: var(--accent-muted); color: var(--accent); }
 .semantic-prompt-action .table-intent-button span { display: none; }
@@ -2287,6 +2288,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .dashboard-full-view .custom-view-grid > .chart-view-swimlane { padding-bottom: 12px; }
   .dashboard-page:is([data-view-mode="table"], [data-view-mode="card"]) > .custom-view-grid { margin-inline: calc(-1 * var(--dashboard-page-padding-inline)); }
   .dashboard-page:is([data-view-mode="table"], [data-view-mode="card"]) > .custom-view-grid > .custom-view { padding-inline: 0; }
+  .campaign-insights-page:is([data-view-mode="table"], [data-view-mode="card"]) > .custom-view-grid > .custom-view { padding-inline: var(--dashboard-page-padding-inline); }
   .data-state-summary, .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .layout-section[data-section-layout="wide"], .layout-section[data-section-layout="narrow"] { grid-column: span 12; }
   .custom-view[data-view-layout="half"], .custom-view[data-view-layout="third"] { grid-column: span 12; }
