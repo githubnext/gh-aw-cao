@@ -307,11 +307,11 @@ func TestOAuthRecoveryUsesExistingProtectedLogout(t *testing.T) {
 	if loggedOut.Code != http.StatusOK || !strings.Contains(loggedOut.Body.String(), `href="/auth/login"`) {
 		t.Fatal("recovery landing page must offer explicit sign-in")
 	}
-	script, remaining, found := strings.Cut(loggedOut.Body.String(), "<script>")
+	_, remaining, found := strings.Cut(loggedOut.Body.String(), "<script>")
 	if !found {
 		t.Fatal("signed-out page must clear browser data")
 	}
-	script, _, found = strings.Cut(remaining, "</script>")
+	script, _, found := strings.Cut(remaining, "</script>")
 	if !found {
 		t.Fatal("signed-out page script must be complete")
 	}
