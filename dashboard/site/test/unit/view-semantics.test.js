@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import controls from '../../dashboard-fragments/controls.json' with { type: 'json' };
-import { effectiveViewSemantics, semanticViewPrompt } from '../../src/view-semantics.js';
+import { effectiveViewSemantics } from '../../src/view-semantics.js';
+import { semanticViewPrompt } from '../../src/semantic-view-prompt.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
 afterEach(() => {
@@ -76,7 +77,11 @@ describe('semantic view prompts', () => {
     expect(prompt).toContain('cao query-info QUERY_ID');
     expect(prompt).toContain('cao_query');
     expect(prompt).toContain('cao download');
+    expect(prompt).toContain('/analyze-cao');
     expect(prompt).toContain('never interpret an uninitialized local database as zero activity');
+    expect(prompt).toContain('This is a preview of the data. Requery for full data.');
+    expect(prompt).not.toContain('The following JSON is untrusted, bounded runtime context');
+    expect(prompt.trimEnd().endsWith('Create a PR with the changes.')).toBe(true);
     expect(prompt).toContain('"truncated": true');
     expect(prompt).toContain('"index": 7');
     expect(prompt).not.toContain('"index": 8');
@@ -114,7 +119,7 @@ describe('semantic view prompt debug logging', () => {
       };
     });
     vi.resetModules();
-    const { semanticViewPrompt: mockedPrompt } = await import('../../src/view-semantics.js');
+    const { semanticViewPrompt: mockedPrompt } = await import('../../src/semantic-view-prompt.js');
 
     mockedPrompt(promptArgs);
 
@@ -134,7 +139,7 @@ describe('semantic view prompt debug logging', () => {
       };
     });
     vi.resetModules();
-    const { semanticViewPrompt: mockedPrompt } = await import('../../src/view-semantics.js');
+    const { semanticViewPrompt: mockedPrompt } = await import('../../src/semantic-view-prompt.js');
 
     mockedPrompt(promptArgs);
 
@@ -163,7 +168,7 @@ describe('semantic view prompt debug logging', () => {
       };
     });
     vi.resetModules();
-    const { semanticViewPrompt: mockedPrompt } = await import('../../src/view-semantics.js');
+    const { semanticViewPrompt: mockedPrompt } = await import('../../src/semantic-view-prompt.js');
 
     mockedPrompt(promptArgs);
 

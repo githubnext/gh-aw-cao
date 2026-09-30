@@ -44,6 +44,9 @@ test('a chart with composed semantics offers a prompt preview and returns focus'
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('.table-intent-preview')).toContainText('Named CAO query IDs:');
   await expect(dialog.locator('.table-intent-preview')).toContainText('Any unusual campaign cost is explained');
+  await expect(dialog.locator('.table-intent-preview')).toContainText('/analyze-cao');
+  await expect(dialog.locator('.table-intent-preview')).toContainText('This is a preview of the data. Requery for full data.');
+  await expect(dialog.locator('.table-intent-preview')).toContainText('Create a PR with the changes.');
   await dialog.getByRole('button', { name: 'Close prompt preview' }).click();
   await expect(action).toBeFocused();
 });
