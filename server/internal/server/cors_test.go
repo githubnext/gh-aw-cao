@@ -147,6 +147,18 @@ func TestConfiguredCORSAllowsOnlyListedOrigins(t *testing.T) {
 		t.Fatalf("unsupported preflight method was allowed: %v", response.Header())
 	}
 
+	misdirected := azureRequest(t, http.MethodOptions, "/api/v1/query")
+	misdirected.Host = "attacker.example"
+	misdirected.Header.Set("X-Forwarded-Host", "attacker.example")
+	misdirected.Header.Set("Origin", "https://tools.example.com")
+	misdirected.Header.Set("Access-Control-Request-Method", http.MethodPost)
+	response = httptest.NewRecorder()
+	app.Handler().ServeHTTP(response, misdirected)
+	if response.Code != http.StatusMisdirectedRequest ||
+		response.Header().Get("Access-Control-Allow-Origin") != "" {
+		t.Fatalf("misdirected preflight was answered: %d %v", response.Code, response.Header())
+	}
+
 	denied := azureRequest(t, http.MethodOptions, "/api/v1/query")
 	denied.Header.Set("Origin", "https://evil.example")
 	denied.Header.Set("Access-Control-Request-Method", http.MethodPost)

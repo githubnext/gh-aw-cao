@@ -920,7 +920,8 @@ To let another reviewed origin call the server, declare it in
 Preflights from listed origins are answered with `204` before authentication
 and allow `GET`, `HEAD`, and `POST` with `Content-Type`, `X-CSRF-Token`, and
 `Traceparent` headers. Unlisted origins receive no CORS headers. CORS never
-bypasses authentication, CSRF checks, or host validation.
+bypasses authentication, CSRF checks, or host validation. The normative contract
+is `specs/server-cors.md`.
 
 ## OAuth sign-in troubleshooting
 

@@ -67,6 +67,13 @@ operations have a dedicated two-second deadline to prevent a degraded Redis
 service from holding request workers for the full server I/O timeout. The
 complete normative contract is `specs/server-rate-limiting.md`.
 
+The server is same-origin by default and emits no CORS headers. A reviewed
+`control-plane.web.host.cors` policy may list exact origins; wildcards and
+plaintext non-loopback origins are rejected, and CORS never relaxes
+authentication, CSRF, host validation, or rate limiting. Unauthenticated
+subresource requests receive `401` instead of a redirect to GitHub OAuth. The
+complete normative contract is `specs/server-cors.md`.
+
 Webhook delivery IDs and projection leases are stored in the deployment Redis
 namespace. Failed reconciliation removes its delivery marker so GitHub can
 retry. Full rebuilds and webhook reconciliation share a distributed lease;

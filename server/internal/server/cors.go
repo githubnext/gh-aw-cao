@@ -146,7 +146,7 @@ func (a *App) cors(next http.Handler) http.Handler {
 		headers := response.Header()
 		headers.Add("Vary", "Origin")
 		origin := request.Header.Get("Origin")
-		if origin == "" || !policy.allows(origin) {
+		if origin == "" || !policy.allows(origin) || !a.validCORSRequestHost(request) {
 			next.ServeHTTP(response, request)
 			return
 		}
@@ -169,4 +169,14 @@ func (a *App) cors(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(response, request)
 	})
+}
+
+// validCORSRequestHost applies the same host validation as the access
+// middleware so a preflight answered before authentication can never succeed
+// for a request that access control would reject as misdirected.
+func (a *App) validCORSRequestHost(request *http.Request) bool {
+	if a.oauth != nil {
+		return validProxyRequest(request, a.proxyPolicy())
+	}
+	return validLocalRequestHost(request.Host)
 }
