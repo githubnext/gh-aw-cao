@@ -252,7 +252,11 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 	code := strings.TrimSpace(request.URL.Query().Get("code"))
 	if code == "" {
 		oauth.logBranch("callback.code_missing")
-		fail(http.StatusBadRequest, "missing_code", "OAuth code is required")
+		reason := "missing_code"
+		if request.URL.Query().Has("error") {
+			reason = "provider_denied"
+		}
+		fail(http.StatusBadRequest, reason, "OAuth code is required")
 		return
 	}
 	tokens, err := oauth.exchange(request.Context(), url.Values{

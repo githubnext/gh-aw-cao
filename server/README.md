@@ -900,10 +900,25 @@ caches.
 
 The server is instrumented with standard, vendor-neutral
 [OpenTelemetry](https://opentelemetry.io/) tracing and metrics
-(`internal/telemetry/`). Every HTTP request is wrapped with `otelhttp`, which
+(`internal/telemetry/`). HTTP requests other than `GET /auth/callback` are
+wrapped with `otelhttp`, which
 supplies OpenTelemetry HTTP semantic-convention attributes and the standard
 `http.server.request.duration`, `http.server.request.body.size`, and
-`http.server.response.body.size` metrics. The query engine and ingestion paths
+`http.server.response.body.size` metrics. OAuth callbacks instead emit a
+dedicated W3C-context-propagating server span named `GET /auth/callback` with
+only fixed `http.route` and `http.request.method` attributes, plus
+`cao_dashboard.auth.callback.count` (unit `{callback}`). Both the span and
+counter use `cao_dashboard.auth.callback.outcome` (`success` or `failure`);
+failures additionally use a fixed, bounded `error.type` (`invalid_state`,
+`missing_code`, `provider_denied`, `exchange_failed`, `authorization_failed`,
+`session_id_generation_failed`, `csrf_generation_failed`, or
+`session_save_failed`). Only server-side failures mark the span as an error;
+raw exceptions and provider error descriptions are never recorded. This
+separate instrumentation avoids the generic HTTP span's client IP and user
+agent attributes on authentication callbacks. The callback retains
+`X-Trace-Id` and `X-Span-Id` correlation headers; no OAuth code, state, cookie,
+token, login, provider message, query string, or other user identifier is
+added to its telemetry. The query engine and ingestion paths
 start dedicated `cao_dashboard.query.execute` and `cao_dashboard.ingest.run`
 spans. MCP requests use the OpenTelemetry MCP semantic conventions, including
 `mcp.method.name`, `mcp.protocol.version`, `gen_ai.operation.name`, and
