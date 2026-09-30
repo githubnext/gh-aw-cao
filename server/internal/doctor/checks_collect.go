@@ -344,6 +344,64 @@ func classifyQueueBacklog(depth, pending, deadLetters int64, maximum int) queueB
 	}
 }
 
+// backfillClassificationReason names why checkBackfill reached its status,
+// stable across summary wording changes so it is useful to log without
+// exposing the reported phase or error text.
+type backfillClassificationReason string
+
+const (
+	backfillReasonErrored    backfillClassificationReason = "errored"
+	backfillReasonNeverRun   backfillClassificationReason = "never-run"
+	backfillReasonIncomplete backfillClassificationReason = "incomplete"
+	backfillReasonComplete   backfillClassificationReason = "complete"
+)
+
+// backfillClassification is the status, summary, and remedy
+// classifyBackfillState derives from a collect.BackfillState alone.
+type backfillClassification struct {
+	status  Status
+	summary string
+	remedy  string
+	reason  backfillClassificationReason
+}
+
+// classifyBackfillState decides the collect.backfill check's outcome from a
+// collect.BackfillState alone. It is a pure function so each outcome -- an
+// errored run, a namespace that has never seeded, an incomplete phase, and a
+// completed run -- is testable without a fake Redis-backed store. A reported
+// error is checked first, matching the prior inline behavior.
+func classifyBackfillState(state collect.BackfillState) backfillClassification {
+	if state.Error != "" {
+		return backfillClassification{
+			status:  StatusFail,
+			summary: "the last cold start reported an error",
+			remedy:  "re-run `cao-dashboard backfill`; cold start is idempotent and resumes from its checkpoint",
+			reason:  backfillReasonErrored,
+		}
+	}
+	if state.Phase == "idle" {
+		return backfillClassification{
+			status:  StatusWarn,
+			summary: "cold start has never run in this namespace",
+			remedy:  "run `cao-dashboard backfill` so an empty database is repopulated from installations and the evidence lake",
+			reason:  backfillReasonNeverRun,
+		}
+	}
+	if state.Phase != "complete" {
+		return backfillClassification{
+			status:  StatusWarn,
+			summary: fmt.Sprintf("cold start is in the %q phase", state.Phase),
+			remedy:  "cold start did not reach the complete phase; re-run `cao-dashboard backfill` to resume",
+			reason:  backfillReasonIncomplete,
+		}
+	}
+	return backfillClassification{
+		status:  StatusPass,
+		summary: fmt.Sprintf("cold start is in the %q phase", state.Phase),
+		reason:  backfillReasonComplete,
+	}
+}
+
 func (d Doctor) checkBackfill(ctx context.Context) Check {
 	const id, title = "collect.backfill", "Cold start"
 	if !d.profile().collecting {
@@ -367,31 +425,12 @@ func (d Doctor) checkBackfill(ctx context.Context) Check {
 	}
 	if state.Error != "" {
 		details = append(details, detail("error", state.Error))
-		return Check{
-			ID: id, Area: areaCollect, Title: title, Status: StatusFail,
-			Summary: "the last cold start reported an error",
-			Details: details,
-			Remedy:  "re-run `cao-dashboard backfill`; cold start is idempotent and resumes from its checkpoint",
-		}
 	}
-	if state.Phase == "idle" {
-		return Check{
-			ID: id, Area: areaCollect, Title: title, Status: StatusWarn,
-			Summary: "cold start has never run in this namespace",
-			Details: details,
-			Remedy:  "run `cao-dashboard backfill` so an empty database is repopulated from installations and the evidence lake",
-		}
-	}
-	status := StatusPass
-	remedy := ""
-	if state.Phase != "complete" {
-		status = StatusWarn
-		remedy = "cold start did not reach the complete phase; re-run `cao-dashboard backfill` to resume"
-	}
+	classification := classifyBackfillState(state)
+	doctorLog.Printf("cold start classified status=%s reason=%s", classification.status, classification.reason)
 	return Check{
-		ID: id, Area: areaCollect, Title: title, Status: status,
-		Summary: fmt.Sprintf("cold start is in the %q phase", state.Phase),
-		Details: details, Remedy: remedy,
+		ID: id, Area: areaCollect, Title: title, Status: classification.status,
+		Summary: classification.summary, Details: details, Remedy: classification.remedy,
 	}
 }
 

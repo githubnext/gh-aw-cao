@@ -5,6 +5,8 @@ import (
 	"os"
 	"slices"
 	"testing"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/collect"
 )
 
 // fakeLookPath and fakeStat are the injected probes for missingTooling. A
@@ -205,3 +207,57 @@ func (fakeDirInfo) IsDir() bool { return true }
 type fakeRegularFileInfo struct{ os.FileInfo }
 
 func (fakeRegularFileInfo) IsDir() bool { return false }
+
+func TestClassifyBackfillStateReportsErrorBeforeAnythingElse(t *testing.T) {
+	// An idle phase alongside a reported error must not mask the error
+	// classification; the error is checked first regardless of phase.
+	classification := classifyBackfillState(collect.BackfillState{Phase: "idle", Error: "installation enumeration failed"})
+	if classification.status != StatusFail {
+		t.Fatalf("status = %v, want %v", classification.status, StatusFail)
+	}
+	if classification.reason != backfillReasonErrored {
+		t.Fatalf("reason = %v, want %v", classification.reason, backfillReasonErrored)
+	}
+	if classification.remedy == "" {
+		t.Fatal("expected a remedy for an errored cold start")
+	}
+}
+
+func TestClassifyBackfillStateWarnsWhenNeverRun(t *testing.T) {
+	classification := classifyBackfillState(collect.BackfillState{Phase: "idle"})
+	if classification.status != StatusWarn {
+		t.Fatalf("status = %v, want %v", classification.status, StatusWarn)
+	}
+	if classification.reason != backfillReasonNeverRun {
+		t.Fatalf("reason = %v, want %v", classification.reason, backfillReasonNeverRun)
+	}
+	if classification.remedy == "" {
+		t.Fatal("expected a remedy for a namespace that has never cold-started")
+	}
+}
+
+func TestClassifyBackfillStateWarnsWhenIncomplete(t *testing.T) {
+	classification := classifyBackfillState(collect.BackfillState{Phase: "collecting"})
+	if classification.status != StatusWarn {
+		t.Fatalf("status = %v, want %v", classification.status, StatusWarn)
+	}
+	if classification.reason != backfillReasonIncomplete {
+		t.Fatalf("reason = %v, want %v", classification.reason, backfillReasonIncomplete)
+	}
+	if classification.remedy == "" {
+		t.Fatal("expected a remedy for an incomplete cold start")
+	}
+}
+
+func TestClassifyBackfillStatePassesWhenComplete(t *testing.T) {
+	classification := classifyBackfillState(collect.BackfillState{Phase: "complete"})
+	if classification.status != StatusPass {
+		t.Fatalf("status = %v, want %v", classification.status, StatusPass)
+	}
+	if classification.reason != backfillReasonComplete {
+		t.Fatalf("reason = %v, want %v", classification.reason, backfillReasonComplete)
+	}
+	if classification.remedy != "" {
+		t.Fatalf("expected no remedy for a completed cold start, got %q", classification.remedy)
+	}
+}
