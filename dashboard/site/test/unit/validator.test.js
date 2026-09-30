@@ -37,6 +37,47 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
+  it('limits combined query semantic metadata to 1024 characters', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const query = document.dashboard.queries[0];
+    query.intent = 'a'.repeat(1023);
+    query.objective = '😀';
+    delete query.acceptance;
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
+    query.acceptance = 'b';
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([{
+        code: 'DLS-E003',
+        path: '$.dashboard.queries[0]',
+        message: 'Combined intent, objective, and acceptance must be at most 1024 characters (found 1025); shorten them or offload details to a separate Markdown file in the repository.'
+      }])
+    });
+  });
+
+  it('limits combined view semantic metadata independently of its query', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const pageIndex = document.dashboard.pages.findIndex(
+      (/** @type {{ views?: unknown[] }} */ page) => page.views?.length
+    );
+    const view = document.dashboard.pages[pageIndex].views[0];
+    view.intent = 'a'.repeat(512);
+    view.objective = 'b'.repeat(512);
+    delete view.acceptance;
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
+    view.acceptance = 'c';
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([{
+        code: 'DLS-E003',
+        path: `$.dashboard.pages[${pageIndex}].views[0]`,
+        message: 'Combined intent, objective, and acceptance must be at most 1024 characters (found 1025); shorten them or offload details to a separate Markdown file in the repository.'
+      }])
+    });
+  });
+
   it('validates the optional page view-mode control', () => {
     const accepted = JSON.parse(authoritativeDashboardSource);
     const campaignInsights = accepted.dashboard.pages.find(
