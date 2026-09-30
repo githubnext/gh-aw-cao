@@ -492,20 +492,11 @@
             }
           },
           "503": {
-            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "description": "Service unavailable.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  },
-                  "description": "An error response. The message is diagnostic, not a stable error code."
+                  "$ref": "#/components/schemas/HealthResponse"
                 }
               }
             }
@@ -533,20 +524,11 @@
             }
           },
           "503": {
-            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "description": "Service unavailable.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  },
-                  "description": "An error response. The message is diagnostic, not a stable error code."
+                  "$ref": "#/components/schemas/ReadinessResponse"
                 }
               }
             }
@@ -1337,20 +1319,11 @@
             }
           },
           "503": {
-            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "description": "Service unavailable.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  },
-                  "description": "An error response. The message is diagnostic, not a stable error code."
+                  "$ref": "#/components/schemas/HealthResponse"
                 }
               }
             }

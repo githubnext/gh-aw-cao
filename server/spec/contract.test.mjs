@@ -37,16 +37,30 @@ test('the generated contract describes the implemented security and wire formats
   assert.equal(openapi.components.securitySchemes.ApiKeyAuth.name, 'cao_session')
 })
 
-test('query payload field names and reusable schemas stay in sync with Go', () => {
-  const goRequest = implementation.match(/type queryRequest struct \{([\s\S]*?)\n\}/)?.[1]
-  const requestFields = Object.keys(openapi.components.schemas.QueryRequest.properties)
-  for (const field of requestFields) {
-    assert.match(goRequest, new RegExp(`json:"${field}(?:,omitempty)?"`))
+test('structured payload fields stay in sync with Go JSON tags', () => {
+  const pairs = [
+    ['../internal/server/server.go', 'queryRequest', 'QueryRequest'],
+    ['../internal/server/server.go', 'queryResponse', 'QueryResponse'],
+    ['../internal/query/types.go', 'Definition', 'QueryDefinition'],
+    ['../internal/model/model.go', 'Source', 'QuerySource'],
+    ['../internal/model/model.go', 'Metrics', 'QueryMetrics'],
+    ['../internal/server/operations.go', 'rebuildStatus', 'RebuildStatus'],
+    ['../internal/collect/recovery.go', 'Status', 'CollectionStatus'],
+    ['../internal/githubquota/usage.go', 'UsageReport', 'QuotaUsage'],
+    ['../internal/repositorymemory/memory.go', 'Campaign', 'MemoryCampaign']
+  ]
+  for (const [file, name, schema] of pairs) {
+    const source = readFileSync(join(directory, file), 'utf8')
+    const fields = source.match(new RegExp(`type ${name} struct \\{([\\s\\S]*?)\\n\\}`))?.[1]
+    assert.ok(fields, `missing Go struct ${name}`)
+    const goFields = [...fields.matchAll(/`json:"([^",]+)(?:,omitempty)?"`/g)]
+      .map(([, field]) => field).sort()
+    const specFields = Object.keys(openapi.components.schemas[schema].properties).sort()
+    assert.deepEqual(specFields, goFields, `${schema} differs from ${file}:${name}`)
   }
-  const goResponse = implementation.match(/type queryResponse struct \{([\s\S]*?)\n\}/)?.[1]
-  for (const field of Object.keys(openapi.components.schemas.QueryResponse.properties)) {
-    assert.match(goResponse, new RegExp(`json:"${field}(?:,omitempty)?"`))
-  }
+})
+
+test('selected JSON Schemas and nullable responses are emitted', () => {
   for (const schema of ['QueryRequest', 'QueryResponse', 'QueryDefinition', 'RevisionEvent', 'WebhookAcknowledgement']) {
     const document = JSON.parse(readFileSync(join(directory, 'generated/schemas', `${schema}.json`), 'utf8'))
     assert.equal(document.$schema, 'https://json-schema.org/draft/2020-12/schema')
@@ -56,4 +70,8 @@ test('query payload field names and reusable schemas stay in sync with Go', () =
     readdirSync(join(directory, 'generated/schemas')).sort(),
     ['QueryDefinition.json', 'QueryRequest.json', 'QueryResponse.json', 'RevisionEvent.json', 'WebhookAcknowledgement.json']
   )
+  const campaign = openapi.paths['/api/v1/memory/{campaign}'].get.responses['200'].content['application/json'].schema
+  assert.ok(campaign.anyOf.some(branch => branch.type === 'null'))
+  assert.equal(openapi.paths['/api/health'].get.responses['503'].content['application/json'].schema.$ref,
+    '#/components/schemas/HealthResponse')
 })
