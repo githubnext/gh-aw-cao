@@ -797,6 +797,16 @@ describe('dashboard view query contracts', () => {
       { queue: 'In flight', tasks: 2 },
       { queue: 'Backfill run tasks', tasks: 13 }
     ]);
+    const unconfigured = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries', queries, sourceNames,
+      sources: {
+        'collection-health': {
+          source: 'collection-health', metadata: { ...metadata, availability: 'available' },
+          rows: [{ configured: false, 'queue-depth': 0, 'pending-tasks': 0, 'backfill-queued-run-tasks': 0 }]
+        }
+      }
+    }));
+    expect(unconfigured['ingestion-queue-sizes'].rows).toEqual([]);
     const denied = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries', queries, sourceNames, sources: {}
     }));
