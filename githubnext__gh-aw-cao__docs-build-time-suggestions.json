@@ -1,6 +1,6 @@
 {
-  "source_sha": "f0a003c577f4f7d13428885c67b214eb51abbd08",
-  "next_category": "artifact transfer and Pages packaging",
+  "source_sha": "0b1621136b9d06416ff9427eaed784884e2fcc76",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
       "evaluated_at": "2026-09-30T17:55:00Z",
@@ -96,6 +96,14 @@
       "category": "artifact transfer and Pages packaging",
       "evidence_run_ids": [],
       "outcome": "incomplete: GitHub Actions API rate limit was already exhausted before this run could collect the required minimum of five comparable successful docs.yml runs from the last 14 days. Existing memory still points to open issue #15332 for the reusable-dashboard re-upgrade bottleneck, but this category could not be refreshed safely from trusted live evidence in this run.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-09-30T22:39:00Z",
+      "worker_run_id": "36786745181",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [36786456896, 36786191815, 36785463849, 36783705556, 36783554147, 36783133789, 36781785434, 36781182839, 36780396012, 36779270931, 36785991247],
+      "outcome": "no_actionable_improvement: refreshed artifact-transfer and Pages-packaging evidence with ten successful docs.yml runs and one successful cao-dashboard producer run from the last 14 days. Trusted docs metadata showed 54.5s median full workflow time (p90 85.1s), 44.5s median build-job time (p90 50.0s), 17.5s median deploy-job time (p90 19.4s on four deploys), and 8.5s median schedule-freshness time (p90 9.5s). Step medians stayed small: 13.0s Build documentation, 6.0s Restore node_modules, 2.0s Restore cached CAO Dashboard, and 7.5s Upload Pages artifact, with Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact skipped on every built docs run because both caches hit. The sampled successful cao-dashboard run still spent 66s in Upgrade fallback activity data while Assemble Dashboard Language site took 2s and Upload dashboard artifact 6s; logs showed it recopied a 374.7 MiB gh-aw-logs.sqlite plus 105 shards / 237.0 MiB into a compressed 36.1 MiB artifact. Artifact transfer and Pages packaging therefore remain well below the >=60s or >=15% actionable threshold, and the only qualifying improvement is still the already-open reusable-dashboard suggestion in issue #15332.",
       "suggestion_fingerprint": null
     }
   ]
