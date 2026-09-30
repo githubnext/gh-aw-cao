@@ -2,7 +2,7 @@
   "queries": [
     {
       "name": "campaign-operational-value-primary-series",
-      "intent": "Project numeric repository-level campaign operational-value observations into temporal series with native units and direction.",
+      "subject": "Project numeric repository-level campaign operational-value observations into temporal series with native units and direction.",
       "objective": "Choose a repository and native operational-value measure whose observed trend needs evidence review.",
       "acceptance": "Each point has time, repository, definition, native unit and direction; null and nonnumeric values are omitted, not zero. Requery operational-values and campaign-operational-value-evidence-state for point maturity before interpreting trends; do not infer causality.",
       "description": "Repository operational-value numeric series; point-level maturity and missing values require source observation review.",
@@ -37,7 +37,7 @@
     },
     {
       "name": "campaign-operational-value-evidence-state-totals",
-      "intent": "Summarize whether selected-horizon repository operational-value observations include matured evidence or only interim evidence.",
+      "subject": "Summarize whether selected-horizon repository operational-value observations include matured evidence or only interim evidence.",
       "objective": "Determine whether the campaign has matured value observations available for inspection.",
       "acceptance": "Observation-count matches retained timestamped observations and matured-observation-count counts only non-null native values with matured status for the same campaign and horizon; missing campaigns do not imply zero value or no evidence.",
       "description": "Campaign-level maturity counts used to distinguish interim from matured operational-value evidence.",
@@ -70,7 +70,7 @@
     },
     {
       "name": "campaign-operational-value-evidence-state",
-      "intent": "Classify selected-horizon repository operational-value evidence by maturity without changing native values.",
+      "subject": "Classify selected-horizon repository operational-value evidence by maturity without changing native values.",
       "objective": "Decide whether to inspect matured observations or label the campaign's value evidence interim.",
       "acceptance": "Evidence-state is observed-value only when matured-observation-count is positive, otherwise interim-evidence for a returned campaign; this classification neither changes native measure values nor upgrades missing or interim evidence to a verified outcome.",
       "description": "Campaign-level evidence state consumed by the repository operational-value history presenter.",
@@ -107,7 +107,7 @@
     },
     {
       "name": "campaign-operational-value-plot-inventory",
-      "intent": "Describe each repository operational-value plot rendered on campaign Insights.",
+      "subject": "Describe each repository operational-value plot rendered on campaign Insights.",
       "objective": "Identify which repository operational-value plots are backed by available series evidence.",
       "acceptance": "Every plot entry derives from a primary-series group with its repository, native measure definition, unit, and direction; neither null-only observations nor point-level maturity are represented, so requery operational-values before treating an empty inventory as zero value or a plot as matured evidence.",
       "description": "Plot inventory derived from numeric repository operational-value series; maturity must be checked separately.",
@@ -115,7 +115,7 @@
     },
     {
       "name": "campaign-audit-summary-plot-inventory",
-      "intent": "Describe the rendered audit-summary chart using the shared campaign Insights plot contract.",
+      "subject": "Describe the rendered audit-summary chart using the shared campaign Insights plot contract.",
       "objective": "Find campaigns with retained high- or medium-severity audit summaries worth reviewing.",
       "acceptance": "Each campaign's bucket count equals its retained audit-event-summary-buckets rows; the count describes displayed groups, not distinct incidents or confirmed harm, and missing buckets are not proof of safety.",
       "description": "One plot-inventory row per campaign when its high- and medium-severity audit summary chart has data.",
@@ -135,7 +135,7 @@
     },
     {
       "name": "campaign-insight-plot-inventory",
-      "intent": "Inventory every plot rendered on each campaign Insights page through one reusable plot contract.",
+      "subject": "Inventory every plot rendered on each campaign Insights page through one reusable plot contract.",
       "objective": "Choose an available campaign Insights plot to inspect its underlying evidence.",
       "acceptance": "Each plot entry is supplied by the repository value or audit summary plot inventory for the same campaign; no plot count is treated as outcome quality, and unavailable evidence is not synthesized into a plot.",
       "description": "One campaign row per rendered Insights plot, independent of the plot's data source or renderer.",
@@ -146,7 +146,7 @@
     },
     {
       "name": "campaign-insight-tab-counts",
-      "intent": "Count the plots declared by the shared campaign Insights plot inventory.",
+      "subject": "Count the plots declared by the shared campaign Insights plot inventory.",
       "objective": "Determine whether a campaign has evidence-backed Insights plots to inspect.",
       "acceptance": "For every returned campaign, items equals its rows in campaign-insight-plot-inventory for the same horizon; absent rows do not establish absent value, and plot counts do not measure impact.",
       "description": "One campaign row with the number of rendered Insights plots, independent of plot type.",
