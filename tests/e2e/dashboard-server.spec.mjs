@@ -59,6 +59,36 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
     audits: 1,
     issues: 1,
   });
+  expect(JSON.stringify(healthPayload)).not.toMatch(/redis:\/\/|password|credential/i);
+
+  const query = await context.request.post("/api/v1/query", {
+    headers,
+    data: { sourceNames: ["runs"], queries: [] },
+  });
+  expect(query.ok()).toBe(true);
+  const queryPayload = await query.json();
+  expect(queryPayload.sources.runs.rows).toEqual([
+    expect.objectContaining({
+      run: "424242",
+      repository: "gh-aw-cao",
+      workflow: ".github/workflows/dashboard.md",
+    }),
+  ]);
+
+  for (const expected of populatedViews) {
+    await page.goto(`/#page-${expected.page}`);
+    await expect(page.getByRole("heading", { name: expected.heading, exact: true, level: 1 })).toBeVisible();
+    const tableMode = page.getByRole("button", { name: "Table", exact: true });
+    await expect(tableMode).toBeVisible();
+    await tableMode.click();
+    await expect(tableMode).toHaveAttribute("aria-pressed", "true");
+    const view = page.locator(`[data-view-id="${expected.view}"]`);
+    await view.scrollIntoViewIfNeeded();
+    await expect(view).toBeVisible();
+    await expect(view.locator(`td[data-field="${expected.field}"]`, { hasText: expected.value })).toBeVisible();
+    await expect(view).not.toContainText("Unavailable");
+  }
+});
 
   test("every dashboard page resolves its queries against the Go Redis server", async ({ context, page }) => {
     test.setTimeout(1_600_000);
@@ -162,34 +192,4 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
     expect(blocker, "Dashboard setup must succeed").toBeUndefined();
     expect(results.length, "Every declared page must be assessed").toBeGreaterThan(0);
     expect(results.filter((result) => result.status !== "passed"), "Every Go Redis dashboard page must load").toEqual([]);
-  });
-  expect(JSON.stringify(healthPayload)).not.toMatch(/redis:\/\/|password|credential/i);
-
-  const query = await context.request.post("/api/v1/query", {
-    headers,
-    data: { sourceNames: ["runs"], queries: [] },
-  });
-  expect(query.ok()).toBe(true);
-  const queryPayload = await query.json();
-  expect(queryPayload.sources.runs.rows).toEqual([
-    expect.objectContaining({
-      run: "424242",
-      repository: "gh-aw-cao",
-      workflow: ".github/workflows/dashboard.md",
-    }),
-  ]);
-
-  for (const expected of populatedViews) {
-    await page.goto(`/#page-${expected.page}`);
-    await expect(page.getByRole("heading", { name: expected.heading, exact: true, level: 1 })).toBeVisible();
-    const tableMode = page.getByRole("button", { name: "Table", exact: true });
-    await expect(tableMode).toBeVisible();
-    await tableMode.click();
-    await expect(tableMode).toHaveAttribute("aria-pressed", "true");
-    const view = page.locator(`[data-view-id="${expected.view}"]`);
-    await view.scrollIntoViewIfNeeded();
-    await expect(view).toBeVisible();
-    await expect(view.locator(`td[data-field="${expected.field}"]`, { hasText: expected.value })).toBeVisible();
-    await expect(view).not.toContainText("Unavailable");
-  }
 });
