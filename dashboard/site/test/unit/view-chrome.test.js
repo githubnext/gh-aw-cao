@@ -104,9 +104,10 @@ describe('view chrome component helpers', () => {
   it('identifies unavailable query dependencies from structured errors without displaying arbitrary text', () => {
     const details = renderCustomViewStateDetails('mcp-top-tools', [], {
       code: 'input-unavailable', source: 'mcp-tool-totals'
-    });
+    }, '$.dashboard.queries[mcp-top-tools]: input source "mcp-tool-totals" is unavailable.');
     expect(details.map((item) => item.textContent)).toEqual([
       'Affected source: mcp-top-tools',
+      'Query diagnostic: $.dashboard.queries[mcp-top-tools]: input source "mcp-tool-totals" is unavailable.',
       'Unavailable query dependency: mcp-tool-totals'
     ]);
     expect(renderCustomViewStateDetails('mcp-top-tools', [], {
@@ -119,6 +120,9 @@ describe('view chrome component helpers', () => {
       code: 'input-unavailable', source: '<secret>'
     })).toHaveLength(1);
     expect(renderCustomViewStateDetails('mcp-top-tools', [], 'input source "mcp-tool-totals" is unavailable')).toHaveLength(1);
+    expect(renderCustomViewStateDetails('mcp-top-tools', [], null, 'arbitrary error text')).toHaveLength(1);
+    expect(renderCustomViewStateDetails('mcp-top-tools', [], null, '$.dashboard.queries[x]: malformed\nerror.')).toHaveLength(1);
+    expect(renderCustomViewStateDetails('mcp-top-tools', [], null, `$.dashboard.queries[x]: ${'x'.repeat(1024)}`)).toHaveLength(1);
   });
 
   it('wraps a rendered supplemental view in the shared view-disclosure summary toggle', () => {

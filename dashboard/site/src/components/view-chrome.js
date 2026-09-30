@@ -167,12 +167,24 @@ export function customViewAvailabilityMessage(availability) {
  * @param {string | null} sourceName
  * @param {string[]} contextDetails
  * @param {unknown} [queryError]
+ * @param {unknown} [queryDiagnostic]
  * @returns {HTMLElement[]}
  */
-export function renderCustomViewStateDetails(sourceName, contextDetails, queryError) {
+export function renderCustomViewStateDetails(sourceName, contextDetails, queryError, queryDiagnostic) {
   const details = [];
   if (sourceName) {
     details.push(h('p', { className: 'view-source' }, `Affected source: ${sourceName}`));
+  }
+  const hasControlCharacter = typeof queryDiagnostic === 'string'
+    && [...queryDiagnostic].some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127);
+  const diagnostic = typeof queryDiagnostic === 'string'
+    && queryDiagnostic.length <= 1024
+    && queryDiagnostic.startsWith('$.dashboard.queries[')
+    && !hasControlCharacter
+    ? queryDiagnostic
+    : null;
+  if (diagnostic) {
+    details.push(h('p', { className: 'view-diagnostic' }, `Query diagnostic: ${diagnostic}`));
   }
   const error = queryError && typeof queryError === 'object' && !Array.isArray(queryError)
     ? /** @type {{ code?: unknown, source?: unknown }} */ (queryError)
@@ -190,6 +202,7 @@ export function renderCustomViewStateDetails(sourceName, contextDetails, queryEr
     event: 'custom-view-state-details',
     hasSourceName: Boolean(sourceName),
     hasQueryError: Boolean(error),
+    hasQueryDiagnostic: Boolean(diagnostic),
     dependencyResolved: Boolean(dependency),
     detailCount: details.length
   });
