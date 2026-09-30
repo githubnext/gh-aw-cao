@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile, execFileSync } from "node:child_process";
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -138,11 +138,28 @@ test("cao query does not create an empty default database when no snapshot was d
     await assert.rejects(
       executeFile(process.execPath, [cao, "query", "firewall-most-blocked-domains"], { cwd }),
       (error) => {
-        assert.match(error.stderr, /No CAO snapshot.*run cao download/);
+        assert.match(error.stderr, /No downloaded CAO snapshot.*run cao download/);
         return true;
       },
     );
     await assert.rejects(access(path.join(cwd, ".cao", "gh-aw-logs.sqlite")));
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test("cao query does not mistake an existing empty default database for downloaded evidence", async () => {
+  const cwd = await mkdtemp(path.join(tmpdir(), "cao-agent-empty-snapshot-"));
+  try {
+    await mkdir(path.join(cwd, ".cao"));
+    await writeFile(path.join(cwd, ".cao", "gh-aw-logs.sqlite"), "");
+    await assert.rejects(
+      executeFile(process.execPath, [cao, "query", "firewall-most-blocked-domains"], { cwd }),
+      (error) => {
+        assert.match(error.stderr, /No downloaded CAO snapshot.*run cao download/);
+        return true;
+      },
+    );
   } finally {
     await rm(cwd, { recursive: true, force: true });
   }
