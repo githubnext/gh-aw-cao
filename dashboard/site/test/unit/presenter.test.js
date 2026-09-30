@@ -114,6 +114,62 @@ beforeEach(() => {
   vi.stubGlobal('Worker', DataRequestWorker);
 });
 
+describe('declarative view title visibility', () => {
+  it('keeps the view and its accessible title while visually hiding only its title heading', () => {
+    const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ ({
+      languageVersion: '0.1.0',
+      dashboard: {
+        id: 'view-titles', title: 'View titles',
+        pages: [{
+          id: 'overview', kind: 'custom', title: 'Overview',
+          views: [
+            { id: 'quiet', title: 'Quiet title', 'show-title': false, mark: 'metric',
+              data: { source: 'runs' }, encoding: { value: { field: 'count', aggregate: 'count' } } },
+            { id: 'visible', title: 'Visible title', mark: 'metric',
+              data: { source: 'runs' }, encoding: { value: { field: 'count', aggregate: 'count' } } }
+          ]
+        }]
+      }
+    });
+    const rendered = renderDashboardView({
+      document,
+      sources: {
+        runs: {
+          source: 'runs', rows: [{ count: 3 }],
+          metadata: { 'source-id': 'runs', 'source-kind': 'fixture', 'as-of': '', 'retrieved-at': '',
+            availability: 'available', completeness: 'complete', freshness: 'fresh' }
+        }
+      }
+    });
+    const quiet = rendered.querySelector('[data-view-id="quiet"]');
+    expect(quiet?.querySelector(':scope > h3')?.classList.contains('sr-only')).toBe(true);
+    expect(quiet?.getAttribute('aria-labelledby')).toBe('overview-quiet-title-heading');
+    expect(quiet?.querySelector('.metric-value')?.textContent).toBe('1');
+    expect(rendered.querySelector('[data-view-id="visible"] > h3')?.classList.contains('sr-only')).toBe(false);
+    disposeDashboard(rendered);
+  });
+
+  it('hides a chart title even when its prompt action moves the heading', () => {
+    const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ ({
+      languageVersion: '0.1.0',
+      dashboard: {
+        id: 'chart-titles', title: 'Chart titles',
+        pages: [{
+          id: 'overview', kind: 'custom', title: 'Overview',
+          views: [{ id: 'quiet-chart', title: 'Quiet chart', 'show-title': false, prompt: 'always',
+            mark: 'chart', chart: 'bar', data: { source: 'runs' },
+            encoding: { x: { field: 'workflow', type: 'nominal' }, y: { field: 'count', type: 'quantitative' } } }]
+        }]
+      }
+    });
+    const rendered = renderDashboardView({ document, sources: {} });
+    const view = rendered.querySelector('[data-view-id="quiet-chart"]');
+    expect(view?.querySelector('.chart-prompt-heading > h3')?.classList.contains('sr-only')).toBe(true);
+    expect(view?.querySelector('.table-intent-button')?.getAttribute('aria-label')).toBe('Fix it: Quiet chart');
+    disposeDashboard(rendered);
+  });
+});
+
 describe('semantic view prompt action', () => {
   it('automatically exposes the shared preview on a chart with composed semantics', () => {
     const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ ({

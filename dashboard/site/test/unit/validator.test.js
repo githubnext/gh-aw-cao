@@ -37,6 +37,26 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
+  it('validates optional view title visibility without removing the accessible title', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const overview = document.dashboard.pages.find((page) => page.id === 'overview');
+    const view = overview.views.find((candidate) => candidate.id === 'overview-header');
+    expect(view.title).toBe('How are we doing?');
+    expect(view['show-title']).toBe(false);
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
+    view['show-title'] = true;
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    view['show-title'] = 'false';
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([expect.objectContaining({
+        path: `$.dashboard.pages[${document.dashboard.pages.indexOf(overview)}].views[0].show-title`,
+        message: 'show-title must be a Boolean when present.'
+      })])
+    });
+  });
+
   it('limits combined query semantic metadata to 512 characters', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const query = document.dashboard.queries[0];

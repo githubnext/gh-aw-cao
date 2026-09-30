@@ -883,7 +883,10 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       suppressSupplementalTableHeading(rendered, view, index);
       if (isPlainObject(view) && view['show-title'] === false) {
         const heading = rendered.matches('.page-section')
-          ? rendered.querySelector(':scope > h3, :scope > h4')
+          ? rendered.querySelector(
+            ':scope > h3, :scope > h4, :scope > .chart-prompt-heading > h3,'
+            + ' :scope > .chart-prompt-heading > h4'
+          )
           : rendered.querySelector(
             ':scope > .semantic-prompt-heading > h3, :scope > .semantic-prompt-heading > h4,'
             + ' :scope > .metric-card-widget-label, :scope > .dashboard-callout-heading > div > h3,'
