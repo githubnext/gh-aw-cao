@@ -1,7 +1,15 @@
 {
-  "source_sha": "95630dcf46f31cf87cfb753148c52f0e6eeebec9",
-  "next_category": "reusable dashboard generation",
+  "source_sha": "d18fc2c1e8c4d462e1df252625914cfcd18bee66",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
+    {
+      "evaluated_at": "2026-09-30T18:59:00Z",
+      "worker_run_id": "36762157121",
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [36761704809, 36761372037, 36760418777, 36759028380, 36756777976, 36755676271, 36753926090, 36752345073, 36751367691, 36751116923, 36750575116, 36748716240, 36748491322, 36747388266, 36746434539, 36744566230, 36744206100, 36741843910, 36741226546, 36740743782],
+      "outcome": "actionable_improvement: among the latest 20 successful docs.yml runs in the last 14 days, docs execution spent a median 44s in build and 54s end-to-end, with dashboard restore itself only 2.0s median. Trusted docs logs confirmed repeated cache hits for the central-agentic-ops-dashboard cache and node_modules, so docs is already reusing the dashboard artifact efficiently. However, trusted cao-dashboard runs that feed that cache still spend 54-59s in Upgrade fallback activity data on every successful push while the actual Assemble Dashboard Language site step takes only 1-5s and artifact upload 7-8s. Those same logs validated and recopied a 361.1 MiB gh-aw-logs.sqlite plus 103 shards / 228.5 MiB into the reusable dashboard artifact before compressing ~34.7 MiB for upload. This makes reusable dashboard generation bottleneck on rebuilding and repackaging the activity database instead of on dashboard rendering. A workflow change that publishes and reuses a pre-upgraded, ready-to-package dashboard input (or otherwise skips Upgrade fallback activity data when the restored activity cache already validates) is expected to save about 55s per cao-dashboard run, which is roughly 57% of that workflow's build job and would remove the dominant source feeding docs dashboard freshness.",
+      "suggestion_fingerprint": "reusable-dashboard-skip-reupgrade-of-validated-activity-cache"
+    },
     {
       "evaluated_at": "2026-09-30T18:41:00Z",
       "worker_run_id": "36759098824",
