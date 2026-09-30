@@ -827,8 +827,8 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       if (pending && !isSelfBound) rendered.setAttribute('aria-busy', 'true');
       if (isPlainObject(view)) {
         const semantics = effectiveViewSemantics(view, queries);
-        if (view.prompt === 'always' || (view.prompt !== 'none'
-          && semantics.intent && semantics.objective && semantics.acceptance)) {
+        if (view['show-title'] !== false && (view.prompt === 'always' || (view.prompt !== 'none'
+          && semantics.intent && semantics.objective && semantics.acceptance))) {
           const selectedSources = Object.fromEntries(getViewSources(view).flatMap((sourceName, sourceIndex) => {
             const source = viewSources[resolveViewSourceName(viewSources, page.id, view, index, sourceName, sourceIndex)];
             return source ? [[sourceName, source]] : [];
@@ -913,6 +913,10 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
             region.setAttribute('aria-label', getViewTitle(view, index));
           }
           heading.remove();
+        }
+        if (rendered.matches('.page-section')) {
+          rendered.querySelector(':scope > .view-description-tooltip')?.remove();
+          rendered.classList.remove('view-description-section');
         }
       }
       if (disclosure === 'essential') {

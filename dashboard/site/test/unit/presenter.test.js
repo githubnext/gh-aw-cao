@@ -123,9 +123,9 @@ describe('declarative view title visibility', () => {
         pages: [{
           id: 'overview', kind: 'custom', title: 'Overview',
           views: [
-            { id: 'quiet', title: 'Quiet title', 'show-title': false, mark: 'metric',
+            { id: 'quiet', title: 'Quiet title', 'show-title': false, description: 'Quiet explanation', mark: 'metric',
               data: { source: 'runs' }, encoding: { value: { field: 'count', aggregate: 'count' } } },
-            { id: 'visible', title: 'Visible title', mark: 'metric',
+            { id: 'visible', title: 'Visible title', description: 'Visible explanation', mark: 'metric',
               data: { source: 'runs' }, encoding: { value: { field: 'count', aggregate: 'count' } } }
           ]
         }]
@@ -145,12 +145,15 @@ describe('declarative view title visibility', () => {
     expect(quiet?.querySelector(':scope > h3')).toBeNull();
     expect(quiet?.hasAttribute('aria-labelledby')).toBe(false);
     expect(quiet?.getAttribute('aria-label')).toBe('Quiet title');
+    expect(quiet?.querySelector('.view-description-tooltip')).toBeNull();
+    expect(quiet?.classList.contains('view-description-section')).toBe(false);
     expect(quiet?.querySelector('.metric-value')?.textContent).toBe('1');
     expect(rendered.querySelector('[data-view-id="visible"] > h3')?.textContent).toBe('Visible title');
+    expect(rendered.querySelector('[data-view-id="visible"] .view-description-tooltip')).not.toBeNull();
     disposeDashboard(rendered);
   });
 
-  it('hides a chart title even when its prompt action moves the heading', () => {
+  it('omits chart header chrome including prompt actions', () => {
     for (const [chart, layout] of [['bar', 'full'], ['pie', 'full'], ['bar', 'horizontal']]) {
       const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ ({
         languageVersion: '0.1.0',
@@ -177,12 +180,12 @@ describe('declarative view title visibility', () => {
       const view = rendered.querySelector('[data-view-id="quiet-chart"]');
       expect(view?.querySelector('.chart-prompt-heading > h3'), `${chart} ${layout}`).toBeNull();
       expect(view?.getAttribute('aria-label'), `${chart} ${layout}`).toBe('Quiet chart');
-      expect(view?.querySelector('.table-intent-button')?.getAttribute('aria-label')).toBe('Fix it: Quiet chart');
+      expect(view?.querySelector('.chart-prompt-heading, .table-intent-button'), `${chart} ${layout}`).toBeNull();
       disposeDashboard(rendered);
     }
   });
 
-  it('omits card and callout titles without omitting their prompt actions', () => {
+  it('omits card and callout header actions with their titles', () => {
     const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ ({
       languageVersion: '0.1.0',
       dashboard: {
@@ -214,11 +217,33 @@ describe('declarative view title visibility', () => {
     expect(card?.getAttribute('role')).toBe('group');
     expect(card?.getAttribute('aria-label')).toBe('Card title');
     expect(card?.querySelector('.metric-card-widget')?.getAttribute('aria-label')).toBe('Card title');
-    expect(card?.querySelector('.table-intent-button')).not.toBeNull();
+    expect(card?.querySelector('.semantic-prompt-heading, .table-intent-button')).toBeNull();
     const notice = rendered.querySelector('[data-view-id="notice"]');
     expect(notice?.querySelector('h3, h4')).toBeNull();
     expect(notice?.querySelector('.dashboard-callout')?.getAttribute('aria-label')).toBe('Notice title');
-    expect(notice?.querySelector('.table-intent-button')).not.toBeNull();
+    expect(notice?.querySelector('.semantic-prompt-heading, .table-intent-button')).toBeNull();
+    disposeDashboard(rendered);
+  });
+
+  it('does not wrap a headerless element view in empty prompt chrome', () => {
+    const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ ({
+      languageVersion: '0.1.0',
+      dashboard: {
+        id: 'headerless-element', title: 'Headerless element',
+        pages: [{
+          id: 'overview', kind: 'custom', title: 'Overview',
+          views: [{
+            id: 'campaign', title: 'Campaign', 'show-title': false, prompt: 'always',
+            mark: 'element', element: 'factory-header', data: { sources: ['overview-header-presentation'] }
+          }]
+        }]
+      }
+    });
+    const rendered = renderDashboardView({ document, sources: {} });
+    const view = rendered.querySelector('[data-view-id="campaign"]');
+    expect(view).not.toBeNull();
+    expect(view?.querySelector('.semantic-prompt-heading, .table-intent-button')).toBeNull();
+    expect(view?.querySelector('.factory-intro')).not.toBeNull();
     disposeDashboard(rendered);
   });
 });
