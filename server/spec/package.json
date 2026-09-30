@@ -1,0 +1,15 @@
+{
+  "name": "cao-server-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "rm -rf generated && tsp compile . --warn-as-error",
+    "test": "node --test contract.test.mjs",
+    "check": "npm run generate && npm test && git diff --exit-code -- generated && test -z \"$(git ls-files --others --exclude-standard -- generated)\""
+  },
+  "devDependencies": {
+    "@typespec/compiler": "1.16.0",
+    "@typespec/json-schema": "1.16.0",
+    "@typespec/openapi3": "1.16.0"
+  }
+}

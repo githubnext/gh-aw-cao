@@ -1,5 +1,8 @@
 # Go and Redis dashboard server
 
+The [TypeSpec HTTP contract](spec/README.md) is the source for generated
+OpenAPI 3.1 and selected JSON Schemas; consult it before changing server routes.
+
 The `server/` module is an optional backend for running the Central Agentic Ops
 dashboard with server-owned persistence and query execution. It ingests the
 same compacted data published with the deployed dashboard, materializes
