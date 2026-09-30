@@ -58,6 +58,9 @@ func TestRemoteResolverCachesCampaignAndContent(t *testing.T) {
 	if governor.reservations != 3 || governor.observations != 3 {
 		t.Fatalf("unexpected governor calls: %#v", governor)
 	}
+	if cache.campaignTTL != remoteCampaignTTL || cache.fileTTL != remoteFileTTL {
+		t.Fatalf("unexpected cache TTLs: campaign=%s file=%s", cache.campaignTTL, cache.fileTTL)
+	}
 }
 
 func TestRemoteResolverNegativeCachesMissingBranch(t *testing.T) {
@@ -169,9 +172,11 @@ func newRemoteResolver(
 }
 
 type remoteCache struct {
-	campaigns map[string][]byte
-	files     map[string][]byte
-	acquire   bool
+	campaigns   map[string][]byte
+	files       map[string][]byte
+	campaignTTL time.Duration
+	fileTTL     time.Duration
+	acquire     bool
 }
 
 func newRemoteCache() *remoteCache {
@@ -183,9 +188,10 @@ func (c *remoteCache) CachedRepositoryMemoryCampaign(_ context.Context, campaign
 }
 
 func (c *remoteCache) CacheRepositoryMemoryCampaign(
-	_ context.Context, campaign string, content []byte, _ time.Duration,
+	_ context.Context, campaign string, content []byte, ttl time.Duration,
 ) error {
 	c.campaigns[campaign] = append([]byte(nil), content...)
+	c.campaignTTL = ttl
 	return nil
 }
 
@@ -196,9 +202,10 @@ func (c *remoteCache) CachedRepositoryMemoryFile(
 }
 
 func (c *remoteCache) CacheRepositoryMemoryFile(
-	_ context.Context, campaign, commit, path string, content []byte, _ time.Duration,
+	_ context.Context, campaign, commit, path string, content []byte, ttl time.Duration,
 ) error {
 	c.files[campaign+"\x00"+commit+"\x00"+path] = append([]byte(nil), content...)
+	c.fileTTL = ttl
 	return nil
 }
 

@@ -21,7 +21,7 @@ var remoteLog = logger.New("cao:repositorymemory:remote")
 
 const (
 	remoteCampaignTTL  = 5 * time.Minute
-	remoteFileTTL      = time.Hour
+	remoteFileTTL      = 5 * time.Minute
 	remoteLockTTL      = 2 * time.Minute
 	remoteOperationTTL = 90 * time.Second
 )
