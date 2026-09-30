@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { effectiveViewSemantics, semanticViewPrompt } from '../../src/view-semantics.js';
+
+afterEach(() => {
+  vi.doUnmock('../../src/debug.js');
+  vi.resetModules();
+});
 
 describe('semantic view prompts', () => {
   const queries = [
@@ -41,5 +46,97 @@ describe('semantic view prompts', () => {
     expect(prompt).not.toContain('"index": 8');
     expect(prompt).not.toContain('ignore rules');
     expect(prompt).not.toContain('x'.repeat(201));
+  });
+});
+
+describe('semantic view prompt debug logging', () => {
+  const semantics = effectiveViewSemantics({ data: { source: 'summary' } }, []);
+  const promptArgs = {
+    pageId: 'overview', viewId: 'health', title: 'Health', semantics,
+    queryParameters: { repository: 'org/repo' }, filters: {}, scope: { organization: 'org' },
+    sources: {
+      summary: {
+        rows: Array.from({ length: 30 }, (_, index) => ({ index })),
+        metadata: { availability: 'available' }
+      },
+      trends: {
+        rows: [],
+        metadata: { availability: 'unavailable' }
+      }
+    }
+  };
+
+  it('is disabled by default (no debug output) when the debug query is absent', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '', output })
+      };
+    });
+    vi.resetModules();
+    const { semanticViewPrompt: mockedPrompt } = await import('../../src/view-semantics.js');
+
+    mockedPrompt(promptArgs);
+
+    expect(output.debug).not.toHaveBeenCalled();
+  });
+
+  it('logs source, truncation, and availability counts under its predictable category when enabled', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) =>
+          actual.createDebug(category, { search: () => '?debug=view-semantics', output })
+      };
+    });
+    vi.resetModules();
+    const { semanticViewPrompt: mockedPrompt } = await import('../../src/view-semantics.js');
+
+    mockedPrompt(promptArgs);
+
+    expect(output.debug).toHaveBeenCalledWith(
+      '[cao:view-semantics]',
+      {
+        pageId: 'overview',
+        viewId: 'health',
+        sourceCount: 2,
+        truncatedSourceCount: 1,
+        unavailableSourceCount: 1
+      }
+    );
+  });
+
+  it('never logs sensitive row content, only scalar metadata', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) =>
+          actual.createDebug(category, { search: () => '?debug=view-semantics', output })
+      };
+    });
+    vi.resetModules();
+    const { semanticViewPrompt: mockedPrompt } = await import('../../src/view-semantics.js');
+
+    mockedPrompt(promptArgs);
+
+    for (const call of output.debug.mock.calls) {
+      const [, payload] = call;
+      for (const value of Object.values(payload)) {
+        expect(typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean').toBe(true);
+      }
+      expect(JSON.stringify(payload)).not.toContain('org/repo');
+    }
   });
 });
