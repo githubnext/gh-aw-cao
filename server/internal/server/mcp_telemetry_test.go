@@ -188,7 +188,16 @@ func TestMCPTraceContextDropsUntrustedBaggageAndTracestate(t *testing.T) {
 	))
 	t.Cleanup(func() { otel.SetTextMapPropagator(previousPropagator) })
 
-	parent, _ := mcpTraceContext(t.Context(), map[string]any{
+	member, err := baggage.NewMember("account", "private-identifier")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bag, err := baggage.New(member)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ambient := baggage.ContextWithBaggage(t.Context(), bag)
+	parent, _ := mcpTraceContext(ambient, map[string]any{
 		"traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
 		"tracestate":  "vendor=private-identifier",
 		"baggage":     "account=private-identifier",
@@ -198,6 +207,18 @@ func TestMCPTraceContextDropsUntrustedBaggageAndTracestate(t *testing.T) {
 	}
 	if got := baggage.FromContext(parent); got.Len() != 0 {
 		t.Fatalf("MCP context must not propagate baggage: %v", got)
+	}
+}
+
+func TestMCPUntrustedMethodAndVersionAreBounded(t *testing.T) {
+	if got := safeMCPMethod("tools/call"); got != "tools/call" {
+		t.Fatalf("known MCP method = %q", got)
+	}
+	if got := safeMCPMethod("tools/call/private-user"); got != "other" {
+		t.Fatalf("unknown MCP method = %q, want other", got)
+	}
+	if mcpVersionPattern.MatchString("2026-07-28/private-user") {
+		t.Fatal("untrusted protocol version must not be exported")
 	}
 }
 

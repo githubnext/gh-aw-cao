@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/baggage"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -105,6 +107,7 @@ func TestSetupWithHTTPEndpointConfiguresProvider(t *testing.T) {
 	t.Cleanup(func() { otel.SetTracerProvider(previousProvider) })
 	t.Setenv("OTEL_SDK_DISABLED", "")
 	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:4318")
+	t.Setenv("OTEL_RESOURCE_ATTRIBUTES", "")
 	shutdown, err := Setup(context.Background(), "test")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -119,6 +122,17 @@ func TestSetupWithHTTPEndpointConfiguresProvider(t *testing.T) {
 	provider := otel.GetTracerProvider()
 	if provider == nil {
 		t.Fatal("expected a global tracer provider to be installed")
+	}
+	carrier := propagation.MapCarrier{
+		"traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+		"baggage":     "account=private-identifier",
+	}
+	extracted := otel.GetTextMapPropagator().Extract(context.Background(), carrier)
+	if !trace.SpanContextFromContext(extracted).IsValid() {
+		t.Fatal("traceparent must still be propagated")
+	}
+	if baggage.FromContext(extracted).Len() != 0 {
+		t.Fatal("untrusted baggage must not be propagated")
 	}
 }
 

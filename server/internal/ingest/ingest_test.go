@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -10,9 +11,36 @@ import (
 	"testing"
 	"time"
 
+	"go.opentelemetry.io/otel"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
+
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
+	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
+
+func TestIngestionErrorSpanExcludesFilePath(t *testing.T) {
+	previousProvider := otel.GetTracerProvider()
+	exporter := tracetest.NewInMemoryExporter()
+	provider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+	otel.SetTracerProvider(provider)
+	t.Cleanup(func() {
+		_ = provider.Shutdown(t.Context())
+		otel.SetTracerProvider(previousProvider)
+	})
+	directory := t.TempDir()
+	if _, err := Run(context.Background(), nil, directory, Options{}); err == nil {
+		t.Fatal("missing manifest must fail")
+	}
+	spans := exporter.GetSpans()
+	if len(spans) != 1 || spans[0].Name != telemetry.SpanIngestRun {
+		t.Fatalf("expected one ingestion span, got %v", spans)
+	}
+	if spans[0].Status.Description != "ingestion failed" || len(spans[0].Events) != 0 {
+		t.Fatalf("ingestion error leaked details: status=%v events=%v", spans[0].Status, spans[0].Events)
+	}
+}
 
 func TestValidateManifestVerifiesHashesAndRunShard(t *testing.T) {
 	directory := scratchDirectory(t)

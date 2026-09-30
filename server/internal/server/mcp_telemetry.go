@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"regexp"
 	"strconv"
 
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
@@ -19,6 +21,8 @@ import (
 )
 
 var mcpTelemetryLog = logger.New("cao:server:mcp-telemetry")
+
+var mcpVersionPattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 
 const (
 	mcpMethodNameKey      = "mcp.method.name"
@@ -32,9 +36,10 @@ const (
 func mcpServerTelemetry() mcp.Middleware {
 	return func(next mcp.MethodHandler) mcp.MethodHandler {
 		return func(ctx context.Context, method string, request mcp.Request) (mcp.Result, error) {
-			spanName := method
+			safeMethod := safeMCPMethod(method)
+			spanName := safeMethod
 			attributes := []attribute.KeyValue{
-				attribute.String(mcpMethodNameKey, method),
+				attribute.String(mcpMethodNameKey, safeMethod),
 				attribute.String("network.transport", "tcp"),
 				attribute.String("network.protocol.name", "http"),
 			}
@@ -45,7 +50,7 @@ func mcpServerTelemetry() mcp.Middleware {
 					attribute.String(genAIOperationNameKey, "execute_tool"),
 				)
 			}
-			if protocolVersion := mcpRequestProtocolVersion(request); protocolVersion != "" {
+			if protocolVersion := mcpRequestProtocolVersion(request); mcpVersionPattern.MatchString(protocolVersion) {
 				attributes = append(attributes, attribute.String(mcpProtocolVersionKey, protocolVersion))
 			}
 			parentContext, links := mcpParentContext(ctx, request)
@@ -89,6 +94,7 @@ func mcpTraceContext(ambient context.Context, metadata map[string]any) (context.
 		carrier["traceparent"] = value
 	}
 	parent := trace.ContextWithSpanContext(ambient, trace.SpanContext{})
+	parent = baggage.ContextWithBaggage(parent, baggage.Baggage{})
 	parent = propagation.TraceContext{}.Extract(parent, carrier)
 	if spanContext := trace.SpanContextFromContext(ambient); spanContext.IsValid() {
 		return parent, []trace.Link{{SpanContext: spanContext}}
@@ -145,6 +151,18 @@ func isMCPCallerError(code int64) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func safeMCPMethod(method string) string {
+	switch method {
+	case "initialize", "ping", "tools/list", "tools/call", "resources/list",
+		"resources/read", "resources/templates/list", "prompts/list", "prompts/get",
+		"completion/complete", "logging/setLevel", "notifications/initialized",
+		"notifications/cancelled", "notifications/progress":
+		return method
+	default:
+		return "other"
 	}
 }
 

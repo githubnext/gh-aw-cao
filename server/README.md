@@ -968,7 +968,8 @@ start dedicated `cao_dashboard.query.execute` and `cao_dashboard.ingest.run`
 spans. MCP requests use the OpenTelemetry MCP semantic conventions, including
 `mcp.method.name`, `mcp.protocol.version`, `gen_ai.operation.name`, and
 `gen_ai.tool.name`; tool arguments, results, session identifiers, untrusted
-tracestate and baggage are never recorded. Error spans use fixed descriptions
+tracestate and baggage are never recorded. MCP methods are allowlisted and
+protocol versions must have the standard date shape. Error spans use fixed descriptions
 and bounded classifications rather than raw exception messages. Application
 attributes are limited to non-secret aggregate counts, revisions, durations,
 operation and row counts, rate-limit cost, and structural operator counts. Query
