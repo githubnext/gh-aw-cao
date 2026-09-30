@@ -72,10 +72,10 @@ func writeOAuthFailure(response http.ResponseWriter, status int, reason string, 
 }
 
 const (
-	sessionCookieName = "cao_session"
-	csrfCookieName    = "cao_csrf"
-	sessionTTL        = 30 * 24 * time.Hour
-	tokenRefreshSkew  = 5 * time.Minute
+	sessionCookieName            = "cao_session"
+	csrfCookieName               = "cao_csrf"
+	sessionTTL                   = 30 * 24 * time.Hour
+	tokenRefreshSkew             = 5 * time.Minute
 	authorizationRecheckInterval = 5 * time.Minute
 )
 
@@ -322,7 +322,7 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 		RefreshExpires: now.Add(time.Duration(tokens.RefreshTokenExpiresIn) * time.Second),
 		AuthorizedAt:   now,
 	}
-	if tokens.ExpiresIn <= 0 {
+	if tokens.ExpiresIn == 0 {
 		oauth.logBranch("callback.access_expiry_defaulted")
 		session.AccessExpires = now.Add(time.Hour)
 	} else {

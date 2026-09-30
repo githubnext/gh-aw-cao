@@ -150,6 +150,9 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 	if failedSave.Code != http.StatusServiceUnavailable {
 		t.Fatalf("session save failure status = %d", failedSave.Code)
 	}
+	if !github.sawRevocation("access-old") || !github.sawRevocation("refresh-old") {
+		t.Fatal("failed session persistence left issued credentials active")
+	}
 
 	var spans tracetest.SpanStubs
 	for _, span := range traces.GetSpans() {

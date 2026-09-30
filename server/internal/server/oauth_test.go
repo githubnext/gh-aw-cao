@@ -138,6 +138,92 @@ func TestAzureOAuthRejectsInvalidStateAndDeniedMembership(t *testing.T) {
 	if len(response.Result().Cookies()) != 1 {
 		t.Fatalf("denied callback should only clear state cookie, got %#v", response.Result().Cookies())
 	}
+	if !deniedGitHub.sawRevocation("access-old") || !deniedGitHub.sawRevocation("refresh-old") {
+		t.Fatal("denied callback left issued credentials active")
+	}
+}
+
+func TestOAuthRevalidatesMembershipBeforeAccessTokenExpires(t *testing.T) {
+	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
+	app := newAzureTestApp(t, github.URL)
+	cookie, _ := callbackSession(t, app)
+
+	github.membershipState = "inactive"
+	current := httptest.NewRecorder()
+	request := azureRequest(t, http.MethodGet, "/api/auth/session")
+	request.AddCookie(cookie)
+	app.Handler().ServeHTTP(current, request)
+	if current.Code != http.StatusOK {
+		t.Fatalf("freshly authorized session returned %d", current.Code)
+	}
+
+	session, err := app.oauth.loadSession(t.Context(), cookie.Value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	session.AuthorizedAt = time.Now().Add(-authorizationRecheckInterval)
+	if err := app.oauth.saveSession(t.Context(), session); err != nil {
+		t.Fatal(err)
+	}
+	denied := httptest.NewRecorder()
+	app.Handler().ServeHTTP(denied, request)
+	if denied.Code != http.StatusUnauthorized {
+		t.Fatalf("removed member retained access: %d", denied.Code)
+	}
+	if !github.sawRevocation("access-old") || !github.sawRevocation("refresh-old") {
+		t.Fatal("removed member's credentials were not revoked")
+	}
+	if _, err := app.oauth.loadSession(t.Context(), cookie.Value); err == nil {
+		t.Fatal("removed member's session remained active")
+	}
+}
+
+func TestOAuthRevalidationPersistsAuthorizationFreshness(t *testing.T) {
+	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
+	app := newAzureTestApp(t, github.URL)
+	cookie, _ := callbackSession(t, app)
+	session, expected, err := app.oauth.loadSessionRecord(t.Context(), cookie.Value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	session.AuthorizedAt = time.Now().Add(-authorizationRecheckInterval)
+	saved, err := app.oauth.saveSessionIfUnchanged(t.Context(), session, expected)
+	if err != nil || !saved {
+		t.Fatalf("could not age authorization: %v", err)
+	}
+	request := azureRequest(t, http.MethodGet, "/api/auth/session")
+	request.AddCookie(cookie)
+	current := httptest.NewRecorder()
+	app.Handler().ServeHTTP(current, request)
+	if current.Code != http.StatusOK {
+		t.Fatalf("revalidated session returned %d", current.Code)
+	}
+	updated, err := app.oauth.loadSession(t.Context(), cookie.Value)
+	if err != nil || time.Since(updated.AuthorizedAt) >= authorizationRecheckInterval {
+		t.Fatalf("authorization freshness was not persisted: %v", err)
+	}
+}
+
+func TestOAuthQueuesCredentialsWhenCallbackAuthorizationFails(t *testing.T) {
+	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "inactive", accessExpiresIn: 3600, rejectRevocation: true})
+	app := newAzureTestApp(t, github.URL)
+	stateCookie, state := loginState(t, app)
+	response := httptest.NewRecorder()
+	request := azureRequest(t, http.MethodGet, "/auth/callback?code=code-1&state="+url.QueryEscape(state))
+	request.AddCookie(stateCookie)
+	app.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("denied callback returned %d", response.Code)
+	}
+	key, err := app.oauth.configStore(t.Context(), "SRANDMEMBER", app.oauth.revocationIndexKey())
+	if err != nil || key == nil {
+		t.Fatalf("unrevoked callback credentials were not queued: %v", err)
+	}
+	github.rejectRevocation = false
+	app.oauth.retryPendingRevocations(t.Context(), 1)
+	if !github.sawRevocation("access-old") || !github.sawRevocation("refresh-old") {
+		t.Fatal("callback credentials could not be revoked from the retry queue")
+	}
 }
 
 func TestAzureOAuthRefreshRotationLogoutAndRefreshFailure(t *testing.T) {
@@ -525,8 +611,7 @@ func TestHostedOAuthQueuesFailedCredentialRevocation(t *testing.T) {
 	}
 
 	github.rejectRevocation = false
-	login := httptest.NewRecorder()
-	app.Handler().ServeHTTP(login, azureRequest(t, http.MethodGet, "/auth/login"))
+	app.oauth.retryPendingRevocations(t.Context(), 8)
 	if !github.sawRevocation("access-old") || !github.sawRevocation("refresh-old") {
 		t.Fatalf("queued credentials were not revoked on retry: %#v", github.revoked)
 	}
@@ -556,12 +641,14 @@ type fakeGitHubServer struct {
 	*httptest.Server
 	revoked          []string
 	rejectRevocation bool
+	membershipState  string
 }
 
 func fakeGitHub(t *testing.T, options fakeGitHubOptions) *fakeGitHubServer {
 	t.Helper()
 	server := &fakeGitHubServer{}
 	server.rejectRevocation = options.rejectRevocation
+	server.membershipState = options.membershipState
 	mux := http.NewServeMux()
 	mux.HandleFunc("/login/oauth/access_token", func(response http.ResponseWriter, request *http.Request) {
 		if err := request.ParseForm(); err != nil {
@@ -588,7 +675,7 @@ func fakeGitHub(t *testing.T, options fakeGitHubOptions) *fakeGitHubServer {
 		})
 	})
 	mux.HandleFunc("/user/memberships/orgs/example", func(response http.ResponseWriter, request *http.Request) {
-		state := options.membershipState
+		state := server.membershipState
 		if options.refreshedMembershipState != "" && request.Header.Get("Authorization") == "Bearer "+"access-new" {
 			state = options.refreshedMembershipState
 		}
