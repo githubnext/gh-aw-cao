@@ -373,6 +373,60 @@ func TestGenericTLSOptionsRejectInvalidCA(t *testing.T) {
 	}
 }
 
+func TestResolveRedisTLSMode(t *testing.T) {
+	cases := []struct {
+		name         string
+		policyMode   redisTLSMode
+		providerMode redisTLSMode
+		wantMode     redisTLSMode
+		wantSource   redisTLSModeSource
+		wantErr      bool
+	}{
+		{
+			name:       "explicit policy mode takes precedence over the provider",
+			policyMode: redisTLSDisabled, providerMode: redisTLSAuto,
+			wantMode: redisTLSDisabled, wantSource: redisTLSModeSourcePolicy,
+		},
+		{
+			name:       "provider mode is used when the policy leaves it unset",
+			policyMode: "", providerMode: redisTLSRequired,
+			wantMode: redisTLSRequired, wantSource: redisTLSModeSourceProvider,
+		},
+		{
+			name:       "auto is the default when neither the policy nor the provider set a mode",
+			policyMode: "", providerMode: "",
+			wantMode: redisTLSAuto, wantSource: redisTLSModeSourceDefault,
+		},
+		{
+			name:       "a provider requiring TLS accepts an explicit required policy mode",
+			policyMode: redisTLSRequired, providerMode: redisTLSRequired,
+			wantMode: redisTLSRequired, wantSource: redisTLSModeSourcePolicy,
+		},
+		{
+			name:       "a provider requiring TLS rejects a disabled policy mode",
+			policyMode: redisTLSDisabled, providerMode: redisTLSRequired,
+			wantErr: true,
+		},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			mode, source, err := resolveRedisTLSMode(testCase.policyMode, testCase.providerMode, "generic")
+			if testCase.wantErr {
+				if err == nil {
+					t.Fatal("expected an error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if mode != testCase.wantMode || source != testCase.wantSource {
+				t.Fatalf("resolveRedisTLSMode() = (%q, %q), want (%q, %q)", mode, source, testCase.wantMode, testCase.wantSource)
+			}
+		})
+	}
+}
+
 func TestRedisEnvironmentRejectsInvalidPort(t *testing.T) {
 	for _, port := range []string{"0", "65536", "invalid"} {
 		_, err := redisURLFromEnvironment(
