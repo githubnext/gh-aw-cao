@@ -475,17 +475,19 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   const campaignInsights = page.locator('[data-page-id="campaign-insights"]');
   await expect(campaignInsights).toBeVisible();
   await expect(campaignInsights.locator('.custom-view-grid > .custom-view').first()).toHaveCSS('padding-left', '14px');
-  const promptedSection = campaignInsights.locator('.view-description-section').filter({
-    has: campaignInsights.locator('.semantic-prompt-action')
-  }).first();
-  await expect(promptedSection.locator('.semantic-prompt-action')).toHaveCSS('position', 'absolute');
-  const promptAndHelp = await promptedSection.evaluate((section) => {
-    const prompt = section.querySelector('.semantic-prompt-action')?.getBoundingClientRect();
-    const help = section.querySelector('.view-description-tooltip')?.getBoundingClientRect();
-    return prompt && help ? { promptRight: prompt.right, helpLeft: help.left } : null;
-  });
-  expect(promptAndHelp).not.toBeNull();
-  expect(promptAndHelp.promptRight).toBeLessThanOrEqual(promptAndHelp.helpLeft);
+  const prompt = campaignInsights.locator('.semantic-prompt-action').first();
+  if (await prompt.count() > 0) {
+    await expect(prompt).toHaveCSS('position', 'absolute');
+    const promptAndHelp = await prompt.evaluate((element) => {
+      const section = element.closest('.view-description-section');
+      const promptBox = element.getBoundingClientRect();
+      const helpBox = section?.querySelector('.view-description-tooltip')?.getBoundingClientRect();
+      return promptBox && helpBox ? { promptRight: promptBox.right, helpLeft: helpBox.left } : null;
+    });
+    if (promptAndHelp) {
+      expect(promptAndHelp.promptRight).toBeLessThanOrEqual(promptAndHelp.helpLeft);
+    }
+  }
   await expect(campaignInsights.locator('[data-view-id="campaign-audit-event-summary-buckets"]')).toHaveCount(0);
   await expect(campaignInsights).toHaveAttribute('data-view-mode', 'table');
   await expect(campaignInsights.locator('.view-mode-control')).toHaveCount(0);

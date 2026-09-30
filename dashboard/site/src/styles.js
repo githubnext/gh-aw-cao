@@ -661,8 +661,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .layout-section .page-section > h4, .layout-section .page-section > .chart-prompt-heading > h4 { margin: 12px 0 8px; font-size: .875rem; font-weight: 600; }
 .view-description-section { position: relative; }
 .semantic-prompt-view { position: relative; }
-.semantic-prompt-action { display: block; width: fit-content; margin: 0 0 12px auto; }
-.view-description-section > .semantic-prompt-action { position: absolute; top: 0; right: 32px; margin: 0; }
+.semantic-prompt-action { position: absolute; top: 0; right: 32px; display: block; width: fit-content; margin: 0; }
 .semantic-prompt-action .table-intent-button { width: 32px; min-height: 32px; justify-content: center; padding: 0; border-color: transparent; background: transparent; color: var(--accent); }
 .semantic-prompt-action .table-intent-button:hover { border-color: transparent; background: var(--accent-muted); color: var(--accent); }
 .semantic-prompt-action .table-intent-button span { display: none; }
