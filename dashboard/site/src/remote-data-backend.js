@@ -256,6 +256,25 @@ function startRemoteRevisionStream() {
   let retry;
   let stopped = false;
 
+  /**
+   * @param {(subscriber: { onRevision: (revision: number, healthRevision: number | null) => void, onError?: (error: Error) => void }) => void} callback
+   * @param {"revision" | "error"} callbackType
+   */
+  const notifySubscribers = (callback, callbackType) => {
+    for (const subscriber of [...remoteRevisionSubscribers]) {
+      if (!remoteRevisionSubscribers.has(subscriber)) continue;
+      try {
+        callback(subscriber);
+      } catch (error) {
+        debugRemoteBackend({
+          event: "subscriber-callback-failed",
+          callback: callbackType,
+          errorName: error instanceof Error ? error.name : "UnknownError",
+        });
+      }
+    }
+  };
+
   /** @param {string} data */
   const emit = (data) => {
     try {
@@ -270,18 +289,15 @@ function startRemoteRevisionStream() {
         observedRevision = payload.revision;
         if (healthRevision !== null) observedHealthRevision = healthRevision;
         if (changed) {
-          for (const subscriber of [...remoteRevisionSubscribers]) {
-            if (remoteRevisionSubscribers.has(subscriber)) {
-              subscriber.onRevision(payload.revision, healthRevision);
-            }
-          }
+          notifySubscribers(
+            (subscriber) => subscriber.onRevision(payload.revision, healthRevision),
+            "revision",
+          );
         }
       }
     } catch (error) {
       const failure = error instanceof Error ? error : new Error(String(error));
-      for (const subscriber of [...remoteRevisionSubscribers]) {
-        subscriber.onError?.(failure);
-      }
+      notifySubscribers((subscriber) => subscriber.onError?.(failure), "error");
     }
   };
 
@@ -325,9 +341,7 @@ function startRemoteRevisionStream() {
       const errorName = error instanceof Error ? error.name : "UnknownError";
       debugRemoteBackend({ event: "stream-reconnecting", errorName });
       const failure = error instanceof Error ? error : new Error(String(error));
-      for (const subscriber of [...remoteRevisionSubscribers]) {
-        subscriber.onError?.(failure);
-      }
+      notifySubscribers((subscriber) => subscriber.onError?.(failure), "error");
       retry = setTimeout(() => void connect(), 1000);
     }
   };
