@@ -18,7 +18,48 @@ afterEach(() => {
   document.body.innerHTML = '';
   window.history.replaceState({}, '', '/');
   vi.restoreAllMocks();
+  localStorage.clear();
   vi.resetModules();
+});
+
+describe('dashboard sidebar collapse reactive state', () => {
+  it('applies the initial collapsed state from storage and syncs the toggle button', async () => {
+    localStorage.setItem('central-agentic-ops.dashboard.sidebar-collapsed', 'true');
+    const { enableDashboardNavigation } = await import('../../src/components/dashboard-navigation.js');
+    const root = buildNavigationRoot();
+    enableDashboardNavigation(root);
+
+    const appShell = root.querySelector('.app-shell');
+    const toggle = root.querySelector('.sidebar-toggle');
+    expect(appShell?.classList.contains('sidebar-collapsed')).toBe(true);
+    expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle?.getAttribute('aria-label')).toBe('Expand navigation');
+  });
+
+  it('toggles collapsed state, syncs the button, and persists the new value on click', async () => {
+    const { enableDashboardNavigation } = await import('../../src/components/dashboard-navigation.js');
+    const root = buildNavigationRoot();
+    enableDashboardNavigation(root);
+
+    const appShell = root.querySelector('.app-shell');
+    const toggle = /** @type {HTMLButtonElement} */ (root.querySelector('.sidebar-toggle'));
+    expect(appShell?.classList.contains('sidebar-collapsed')).toBe(false);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+
+    toggle.click();
+
+    expect(appShell?.classList.contains('sidebar-collapsed')).toBe(true);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.getAttribute('aria-label')).toBe('Expand navigation');
+    expect(localStorage.getItem('central-agentic-ops.dashboard.sidebar-collapsed')).toBe('true');
+
+    toggle.click();
+
+    expect(appShell?.classList.contains('sidebar-collapsed')).toBe(false);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(toggle.getAttribute('aria-label')).toBe('Collapse navigation');
+    expect(localStorage.getItem('central-agentic-ops.dashboard.sidebar-collapsed')).toBe('false');
+  });
 });
 
 describe('dashboard navigation debug logging', () => {
