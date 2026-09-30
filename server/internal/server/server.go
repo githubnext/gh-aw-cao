@@ -90,6 +90,9 @@ type App struct {
 	actionsToken  string
 	actionsActor  string
 	quota         *githubquota.Service
+	startMu       sync.Mutex
+	startContext  context.Context
+	stop          context.CancelFunc
 }
 
 func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) {
@@ -208,35 +211,84 @@ func verifyGitHubActionsPermissionsAtStartup(config Config, token string) error 
 	return verifyGitHubActionsPermissions(ctx, config, token)
 }
 
-func (a *App) Serve(ctx context.Context) error {
-	if a.config.HostProfile.Listener != HostListenerProcess {
-		return fmt.Errorf(
-			"host profile %q delegates listener ownership to the platform",
-			a.config.HostProfile.Name,
-		)
+// Start initializes the projection and background tasks without taking
+// ownership of an HTTP listener. The caller must keep ctx alive while serving
+// and call Stop after the listener has drained.
+func (a *App) Start(ctx context.Context) error {
+	if a.config.HostProfile.Listener == HostListenerPlatform {
+		return fmt.Errorf("host profile %q delegates startup to the platform", a.config.HostProfile.Name)
 	}
-	serverLog.Printf("starting server tls=%t initial_ingestion=%t", a.config.CertFile != "", a.config.SourceDirectory != "")
+	a.startMu.Lock()
+	defer a.startMu.Unlock()
+	if a.startContext != nil {
+		return errors.New("dashboard service has already started")
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	runCtx, cancel := context.WithCancel(ctx)
+	serverLog.Printf("starting service initial_ingestion=%t", a.config.SourceDirectory != "")
 	if a.config.SourceDirectory != "" {
-		result, err := ingest.Run(ctx, a.store, a.config.SourceDirectory, ingest.Options{DatabaseQueriesPath: a.config.DatabaseQueriesPath})
+		result, err := ingest.Run(runCtx, a.store, a.config.SourceDirectory, ingest.Options{DatabaseQueriesPath: a.config.DatabaseQueriesPath})
 		if err != nil {
+			cancel()
 			return fmt.Errorf("initial ingestion failed: %w", err)
 		}
-		if a.oauth != nil {
-			go a.oauth.runRevocationWorker(ctx)
-		}
 		a.hub.Broadcast(result.Revision)
-		a.config.Logger.Printf("activated local dashboard revision %d", result.Revision)
+		a.config.Logger.Printf("activated dashboard revision %d", result.Revision)
 	}
-	var listenConfig net.ListenConfig
 	if collector := a.Collector(); collector != nil {
-		if a.oauth != nil {
-			go a.oauth.runRevocationWorker(ctx)
-		}
-		if err := collector.Start(ctx, a.hub.Broadcast); err != nil {
+		if err := collector.Start(runCtx, a.hub.Broadcast); err != nil {
+			cancel()
 			return fmt.Errorf("start collection: %w", err)
 		}
 		serverLog.Printf("collection profile started workers=%d", a.config.Collector.Workers)
 	}
+	if err := runCtx.Err(); err != nil {
+		cancel()
+		return err
+	}
+	a.startContext = runCtx
+	a.stop = cancel
+	if a.oauth != nil && (a.config.SourceDirectory != "" || a.Collector() != nil) {
+		go a.oauth.runRevocationWorker(runCtx)
+	}
+	return nil
+}
+
+// Stop cancels CAO-owned background tasks. The external host must drain its
+// HTTP listener before stopping the application.
+func (a *App) Stop() {
+	a.startMu.Lock()
+	defer a.startMu.Unlock()
+	if a.stop != nil {
+		a.stop()
+	}
+}
+
+func (a *App) requireStarted(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		a.startMu.Lock()
+		ctx := a.startContext
+		a.startMu.Unlock()
+		if ctx == nil || ctx.Err() != nil {
+			writeError(response, http.StatusServiceUnavailable, "dashboard service is not running")
+			return
+		}
+		next.ServeHTTP(response, request)
+	})
+}
+
+func (a *App) Serve(ctx context.Context) error {
+	if a.config.HostProfile.Listener != HostListenerProcess {
+		return fmt.Errorf("host profile %q delegates listener ownership", a.config.HostProfile.Name)
+	}
+	if err := a.Start(ctx); err != nil {
+		return err
+	}
+	defer a.Stop()
+	serverLog.Printf("starting server tls=%t", a.config.CertFile != "")
+	var listenConfig net.ListenConfig
 	listener, err := listenConfig.Listen(ctx, "tcp", a.config.Listen)
 	if err != nil {
 		return err
@@ -266,15 +318,25 @@ func (a *App) Serve(ctx context.Context) error {
 	} else {
 		a.config.Logger.Printf("serving local dashboard at %s", a.capabilityURL())
 	}
+	serveDone := make(chan struct{})
+	shutdownResult := make(chan error, 1)
+	defer close(serveDone)
 	go func() {
-		<-ctx.Done()
-		shutdown, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-		defer cancel()
-		_ = httpServer.Shutdown(shutdown)
+		select {
+		case <-ctx.Done():
+			shutdown, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			defer cancel()
+			err := httpServer.Shutdown(shutdown)
+			if err != nil {
+				serverLog.Printf("HTTP shutdown failed: %v", err)
+			}
+			shutdownResult <- err
+		case <-serveDone:
+		}
 	}()
 	err = httpServer.Serve(servingListener)
 	if errors.Is(err, http.ErrServerClosed) {
-		return nil
+		return <-shutdownResult
 	}
 	return err
 }
@@ -369,7 +431,11 @@ func (a *App) Handler() http.Handler {
 		}
 		instrumented.ServeHTTP(response, safe)
 	})
-	return securityHeaders(a.preAuthRateLimit(a.cors(a.requireAccess(a.rateLimit(safeTelemetry)))))
+	handler := a.preAuthRateLimit(a.cors(a.requireAccess(a.rateLimit(safeTelemetry))))
+	if a.config.HostProfile.Listener == HostListenerExternal {
+		handler = a.requireStarted(handler)
+	}
+	return securityHeaders(handler)
 }
 
 type originalHTTPRequestKey struct{}
@@ -701,6 +767,12 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 	flusher, ok := response.(http.Flusher)
 	if !ok {
 		http.Error(response, "streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+	if err := http.NewResponseController(response).SetWriteDeadline(time.Time{}); err != nil &&
+		!errors.Is(err, http.ErrNotSupported) {
+		serverLog.Printf("event stream requires a response writer with deadline control: %v", err)
+		writeError(response, http.StatusInternalServerError, "streaming unsupported")
 		return
 	}
 	response.Header().Set("Content-Type", "text/event-stream")

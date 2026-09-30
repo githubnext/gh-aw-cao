@@ -38,13 +38,14 @@ model NotReady {
 namespace Health {
   /** Public liveness and storage health, including when no projection exists. */
   @route("/api/health")
-  @get op health(): HealthResponse | UnhealthyHealth;
+  /** An externally hosted handler also returns an Unavailable error until startup completes or after shutdown. */
+  @get op health(): HealthResponse | UnhealthyHealth | Unavailable;
 
   /** Alias of /api/health. */
   @route("/api/v1/health")
-  @get op healthV1(): HealthResponse | UnhealthyHealth;
+  @get op healthV1(): HealthResponse | UnhealthyHealth | Unavailable;
 
   /** Public readiness; an empty Redis is healthy but not ready. */
   @route("/api/readiness")
-  @get op readiness(): ReadinessResponse | NotReady;
+  @get op readiness(): ReadinessResponse | NotReady | Unavailable;
 }

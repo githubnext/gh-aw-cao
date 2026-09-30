@@ -3,6 +3,8 @@ import { octicon } from '../octicons.js';
 import { renderCliActionCommand } from '../cli-action-template.js';
 import { createCopyControl, createModalDialog, renderCloseButton, renderLiveRegion } from './ui-primitives.js';
 import { createDebug } from '../debug.js';
+import { createFactoryScope } from './factory-elements.js';
+import { effect, state } from '../reactive.js';
 
 const debugCliActions = createDebug('cli-actions');
 
@@ -96,39 +98,56 @@ function resultText(result) {
 export function createPromptCliActionControl(actionId, getPrompt) {
   const action = declaredCliActions.find((candidate) => candidate.id === actionId);
   if (!declaredCliActionsCanExecute || !action || action['copy-only'] === true) return null;
+  const scope = createFactoryScope();
   const status = /** @type {HTMLOutputElement} */ (renderLiveRegion('output', 'table-intent-copy-status'));
   const output = h('pre', { className: 'cli-action-output', hidden: true });
+
+  // `busy`, `statusText`, `outputVisible`, and `outputText` are this control's
+  // entire visible state; the effect below is the only place that writes
+  // them onto the owned `button`/`status`/`output` nodes.
+  const busy = state(false);
+  const statusText = state('');
+  const outputVisible = state(false);
+  const outputText = state('');
+
   const button = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button',
     className: 'table-intent-copy-button',
     onClick: async () => {
-      button.disabled = true;
-      status.textContent = 'Starting agent task…';
-      output.textContent = '';
-      output.hidden = false;
+      busy.set(true);
+      statusText.set('Starting agent task…');
+      outputText.set('');
+      outputVisible.set(true);
       try {
         const result = await executeAction(action.id, {}, {}, ({ data }) => {
-          output.textContent += data;
+          outputText.set((current) => current + data);
           output.scrollTop = output.scrollHeight;
         }, getPrompt());
-        status.textContent = result.ok ? 'Agent task started.' : (result.error || 'Could not start agent task.');
-        if (!output.textContent) output.textContent = resultText(result);
+        statusText.set(result.ok ? 'Agent task started.' : (result.error || 'Could not start agent task.'));
+        if (!outputText.get()) outputText.set(resultText(result));
       } catch (error) {
-        status.textContent = error instanceof Error ? error.message : 'Could not start agent task.';
+        statusText.set(error instanceof Error ? error.message : 'Could not start agent task.');
       } finally {
-        button.disabled = false;
+        busy.set(false);
       }
     }
   }, 'Start agent task'));
+  effect(() => {
+    button.disabled = busy.get();
+    status.textContent = statusText.get();
+    output.hidden = !outputVisible.get();
+    output.textContent = outputText.get();
+  }, { signal: scope.signal });
+  scope.bind(button);
   return {
     button,
     status,
     output,
     reset() {
-      status.textContent = '';
-      output.textContent = '';
-      output.hidden = true;
-      button.disabled = false;
+      statusText.set('');
+      outputText.set('');
+      outputVisible.set(false);
+      busy.set(false);
     }
   };
 }
@@ -222,6 +241,17 @@ function renderCliActionControl(action, options = {}) {
   });
   const status = copyControl?.status ?? /** @type {HTMLOutputElement} */ (renderLiveRegion('output', 'cli-action-status'));
   const output = h('pre', { className: 'cli-action-output', hidden: true });
+
+  // `busy`, `statusText`, `outputVisible`, `outputText`, and `confirmLabel` are
+  // the dialog's entire executable-run state; the effect below is the only
+  // place that writes them onto the owned `status`/`output`/`confirm` nodes.
+  const scope = createFactoryScope();
+  const busy = state(false);
+  const statusText = state('');
+  const outputVisible = state(false);
+  const outputText = state('');
+  const confirmLabel = state('Run action');
+
   const cancel = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button',
     className: 'cli-action-cancel',
@@ -231,34 +261,42 @@ function renderCliActionControl(action, options = {}) {
       type: 'button',
       className: 'cli-action-confirm',
       onClick: async () => {
-        confirm.disabled = true;
-        cancel.disabled = true;
-        status.textContent = 'Running…';
-        output.textContent = '';
-        output.hidden = false;
+        busy.set(true);
+        statusText.set('Running…');
+        outputText.set('');
+        outputVisible.set(true);
         debugCliActions({ event: 'execute-started', actionId: action.id });
         try {
           const result = await executeAction(action.id, argumentValues, templateValues, ({ data }) => {
-            output.textContent += data;
+            outputText.set((current) => current + data);
             output.scrollTop = output.scrollHeight;
           });
-          status.textContent = result.ok ? 'Completed' : (result.error || 'Action failed');
-          if (!output.textContent) output.textContent = resultText(result);
-          confirm.textContent = 'Run again';
+          statusText.set(result.ok ? 'Completed' : (result.error || 'Action failed'));
+          if (!outputText.get()) outputText.set(resultText(result));
+          confirmLabel.set('Run again');
           debugCliActions({ event: 'execute-completed', actionId: action.id, ok: result.ok });
         } catch (error) {
-          status.textContent = error instanceof Error ? error.message : 'Action failed.';
+          statusText.set(error instanceof Error ? error.message : 'Action failed.');
           debugCliActions({
             event: 'execute-failed',
             actionId: action.id,
             errorName: error instanceof Error ? error.name : 'UnknownError'
           });
         } finally {
-          confirm.disabled = false;
-          cancel.disabled = false;
+          busy.set(false);
         }
       }
     }, 'Run action'));
+  if (canExecute) {
+    effect(() => {
+      confirm.disabled = busy.get();
+      cancel.disabled = busy.get();
+      status.textContent = statusText.get();
+      output.hidden = !outputVisible.get();
+      output.textContent = outputText.get();
+      confirm.textContent = confirmLabel.get();
+    }, { signal: scope.signal });
+  }
   trigger = /** @type {HTMLButtonElement} */ (h(
     'button',
     {
@@ -271,10 +309,12 @@ function renderCliActionControl(action, options = {}) {
       title: rowPresentation ? action.label : undefined,
       'aria-label': rowPresentation ? action.label : undefined,
       onClick: () => {
-        status.textContent = '';
         copyControl?.reset();
-        output.hidden = true;
-        if (canExecute) confirm.textContent = 'Run action';
+        if (canExecute) {
+          statusText.set('');
+          outputVisible.set(false);
+          confirmLabel.set('Run action');
+        }
         resetArguments();
         open();
       }
@@ -319,6 +359,7 @@ function renderCliActionControl(action, options = {}) {
   dialog.addEventListener('close', () => {
     trigger.focus();
   });
+  if (canExecute) scope.bind(trigger);
   return { trigger, dialog };
 }
 

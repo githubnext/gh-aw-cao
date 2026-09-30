@@ -69,7 +69,7 @@ func TestApplyTargetModuleOverridesRejectsNonOAuthAuthenticationOnGeneric(t *tes
 
 func TestApplyTargetModuleOverridesMergesGenericCapabilities(t *testing.T) {
 	generic := hostTargetModules["generic"]
-	requireHTTPS := false
+	requireHTTPS := true
 	trustProxy := true
 	singleReplica := true
 	resolved, err := applyTargetModuleOverrides(generic, targetPolicy{
@@ -85,10 +85,22 @@ func TestApplyTargetModuleOverridesMergesGenericCapabilities(t *testing.T) {
 	}
 	if resolved.authentication != HostAuthenticationOAuth ||
 		resolved.listener != HostListenerPlatform ||
-		resolved.requireHTTPS != false ||
+		!resolved.requireHTTPS ||
 		!resolved.trustPlatformProxy ||
 		!resolved.supportsSingleReplica {
 		t.Fatalf("applyTargetModuleOverrides did not merge overrides: %+v", resolved)
+	}
+}
+
+func TestGenericHostCannotDisableHTTPS(t *testing.T) {
+	disabled := false
+	for _, listener := range []HostListener{HostListenerProcess, HostListenerExternal, HostListenerPlatform} {
+		if _, err := applyTargetModuleOverrides(hostTargetModules["generic"], targetPolicy{
+			Module: "generic", Authentication: HostAuthenticationOAuth,
+			Listener: listener, RequireHTTPS: &disabled,
+		}); err == nil {
+			t.Fatalf("generic %s listener accepted disabled HTTPS", listener)
+		}
 	}
 }
 

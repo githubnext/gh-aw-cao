@@ -19,7 +19,7 @@ hero:
       link: /gh-aw-cao/setup-quickstarts/
       variant: secondary
       icon: right-arrow
-    - text: Dashboard
+    - text: Sample Dashboard
       link: https://githubnext.github.io/gh-aw-cao/cao
       variant: secondary
       icon: right-arrow

@@ -583,6 +583,56 @@ func (d Doctor) checkQueryDefinitions(ctx context.Context) Check {
 	}
 }
 
+// sourceReadProbeReason names why checkSourceReads reached its status,
+// stable across summary wording changes so it is useful to log without
+// exposing the per-source names, row counts, or read errors it classifies.
+type sourceReadProbeReason string
+
+const (
+	sourceReadProbeReasonFailures    sourceReadProbeReason = "failures"
+	sourceReadProbeReasonNearLimit   sourceReadProbeReason = "near-limit"
+	sourceReadProbeReasonAllReadable sourceReadProbeReason = "all-readable"
+)
+
+// sourceReadProbeClassification is the status, summary, and remedy
+// classifySourceReadProbe derives from a generation's per-source read
+// results.
+type sourceReadProbeClassification struct {
+	status  Status
+	summary string
+	remedy  string
+	reason  sourceReadProbeReason
+}
+
+// classifySourceReadProbe decides the query.reads check's outcome from the
+// read failures and near-row-limit sources checkSourceReads collected, plus
+// the total source and row counts. It is a pure function so the
+// failures-outrank-warnings precedence is testable without a real Redis
+// store or generation.
+func classifySourceReadProbe(failures, near []string, sourceCount, totalRows, maxInputRows int) sourceReadProbeClassification {
+	if len(failures) > 0 {
+		return sourceReadProbeClassification{
+			status:  StatusFail,
+			summary: fmt.Sprintf("%d of %d sources did not read back correctly", len(failures), sourceCount),
+			remedy:  "the stored generation is inconsistent with its recorded counts; reproject",
+			reason:  sourceReadProbeReasonFailures,
+		}
+	}
+	if len(near) > 0 {
+		return sourceReadProbeClassification{
+			status:  StatusWarn,
+			summary: fmt.Sprintf("%d sources are within ten percent of the %d row read limit", len(near), maxInputRows),
+			remedy:  "a source that crosses the limit stops being readable entirely; narrow the collection window or retention",
+			reason:  sourceReadProbeReasonNearLimit,
+		}
+	}
+	return sourceReadProbeClassification{
+		status:  StatusPass,
+		summary: fmt.Sprintf("all %d sources read back %d rows matching their recorded counts", sourceCount, totalRows),
+		reason:  sourceReadProbeReasonAllReadable,
+	}
+}
+
 // checkSourceReads reads every active source the way the dashboard does.
 //
 // This is the only check that proves the stored rows are actually readable
@@ -643,26 +693,15 @@ func (d Doctor) checkSourceReads(ctx context.Context) Check {
 			sample = sample[:3]
 		}
 		details = append(details, detail("failures", strings.Join(sample, "; ")))
-		return Check{
-			ID: id, Area: areaQuery, Title: title, Status: StatusFail,
-			Summary: fmt.Sprintf("%d of %d sources did not read back correctly", len(failures), len(active.Counts)),
-			Details: details,
-			Remedy:  "the stored generation is inconsistent with its recorded counts; reproject",
-		}
 	}
 	if len(near) > 0 {
 		details = append(details, detail("nearRowLimit", strings.Join(near, ", ")))
-		return Check{
-			ID: id, Area: areaQuery, Title: title, Status: StatusWarn,
-			Summary: fmt.Sprintf("%d sources are within ten percent of the %d row read limit", len(near), query.MaxInputRows),
-			Details: details,
-			Remedy:  "a source that crosses the limit stops being readable entirely; narrow the collection window or retention",
-		}
 	}
+	classification := classifySourceReadProbe(failures, near, len(active.Counts), totalRows, query.MaxInputRows)
+	doctorLog.Printf("source read probe classified status=%s reason=%s", classification.status, classification.reason)
 	return Check{
-		ID: id, Area: areaQuery, Title: title, Status: StatusPass,
-		Summary: fmt.Sprintf("all %d sources read back %d rows matching their recorded counts", len(active.Counts), totalRows),
-		Details: details,
+		ID: id, Area: areaQuery, Title: title, Status: classification.status,
+		Summary: classification.summary, Details: details, Remedy: classification.remedy,
 	}
 }
 

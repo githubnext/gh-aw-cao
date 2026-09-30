@@ -62,20 +62,22 @@ export function renderFilterBar(onChange, options = {}) {
     ),
     null
   );
-  /** @param {boolean} expanded */
-  const setExpanded = (expanded) => {
-    root.querySelector('.horizon-toggle')?.setAttribute('aria-expanded', String(expanded));
-    root.classList.toggle('filter-bar-expanded', expanded);
-  };
+  const expanded = state(false);
+  // The smallest DOM update needed from expanded state: the sibling horizon
+  // toggle's accessible state and the root's expanded class.
+  effect(() => {
+    const isExpanded = expanded.get();
+    root.querySelector('.horizon-toggle')?.setAttribute('aria-expanded', String(isExpanded));
+    root.classList.toggle('filter-bar-expanded', isExpanded);
+  });
   root.addEventListener('click', (event) => {
     if (!(event.target instanceof Element) || !event.target.closest('.horizon-toggle')) return;
-    const toggle = root.querySelector('.horizon-toggle');
-    setExpanded(toggle?.getAttribute('aria-expanded') !== 'true');
+    expanded.set((current) => !current);
   });
   root.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !expanded.get()) return;
     const toggle = root.querySelector('.horizon-toggle');
-    if (event.key !== 'Escape' || toggle?.getAttribute('aria-expanded') !== 'true') return;
-    setExpanded(false);
+    expanded.set(false);
     if (toggle instanceof HTMLElement) toggle.focus();
     event.stopPropagation();
   });

@@ -314,6 +314,25 @@ func TestHostAndRedisModulesComposeIndependently(t *testing.T) {
 	}
 }
 
+func TestExternalHostProfileComposesWithRedis(t *testing.T) {
+	profile, err := (hostPolicy{
+		Target: targetPolicy{
+			Module: "generic", Authentication: HostAuthenticationOAuth,
+			Listener: HostListenerExternal,
+		},
+		Redis: redisPolicy{Module: "redis-cloud"},
+	}).resolve(mapLookup(map[string]string{
+		"REDIS_URL": "rediss://cache.example.com:6379",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if profile.Profile.Listener != HostListenerExternal ||
+		!profile.Profile.RequiresHTTPS || !profile.Profile.SupportsCollection {
+		t.Fatalf("external host lost security or Redis capabilities: %+v", profile.Profile)
+	}
+}
+
 func TestDeploymentModuleRegistry(t *testing.T) {
 	targets := make([]string, 0, len(hostTargetModules))
 	for name := range hostTargetModules {

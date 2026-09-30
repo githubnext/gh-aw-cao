@@ -141,6 +141,19 @@ checks in shared request handling.
 Startup rejects configurations or Redis clients that do not satisfy the
 selected capabilities.
 
+An externally owned HTTP host is a separate, explicit `generic` target with
+`listener: external`, not an alias for Azure's platform listener. The public
+`server/hosting/` facade constructs the same hosted CAO application from the
+reviewed host policy, starts its artifact projection and optional collection,
+and exposes only the complete `http.Handler`. The host owns transport and
+graceful HTTP draining; CAO owns OAuth, session/CSRF authorization, webhook
+verification, proxy trust, rate limits, Redis, and background-task cancellation.
+Requests fail closed before startup and after shutdown. The host must preserve
+streaming and response deadline control for revision events, and must not apply
+a finite whole-request timeout to that route. External hosting introduces no
+runtime-loaded modules, rollout authority, or dependency on a particular
+HTTP framework.
+
 Hosted startup may compile that profile and its generic Redis connection from
 the non-secret `control-plane.web.host` section of
 `.github/workflows/cao.json`. The policy names environment variables rather
@@ -241,7 +254,8 @@ reconstructable.
 | `<operation>/problem-clustering.mjs` | Optional bounded problem computation installed with its package. |
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
 | `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
-| `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Redis projection, server-side Dashboard Language query engine, and peer Azure Functions and Coolify deployment profiles. |
+| `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Redis projection, server-side Dashboard Language query engine, externally hosted handler facade, and peer Azure Functions and Coolify deployment profiles. |
+| `server/spec/` | Editable TypeSpec HTTP and SSE contract with generated OpenAPI 3.1 and JSON Schemas; the contract checks registered server routes and selected payloads. |
 | `dashboard/site/src/data/` | Canonical browser data model, adapters, normalization, storage, and declarative query engine. |
 | `research/` | Executable notebooks and experimental reference runtimes used to validate proposed computation semantics against canonical data; these are not dashboard production code. |
 | `specs/computations.md` | Versioned computation, bounded insight, provenance, quality, and measure contracts. |

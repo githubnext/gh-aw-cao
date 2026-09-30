@@ -20,6 +20,7 @@ type HostListener string
 const (
 	HostListenerProcess  HostListener = "process"
 	HostListenerPlatform HostListener = "platform"
+	HostListenerExternal HostListener = "external"
 )
 
 type HostRedisSession string
@@ -82,7 +83,9 @@ func (profile HostProfile) validate() error {
 		profile.Authentication != HostAuthenticationOAuth {
 		return fmt.Errorf("host profile %q has unsupported authentication %q", profile.Name, profile.Authentication)
 	}
-	if profile.Listener != HostListenerProcess && profile.Listener != HostListenerPlatform {
+	if profile.Listener != HostListenerProcess &&
+		profile.Listener != HostListenerPlatform &&
+		profile.Listener != HostListenerExternal {
 		return fmt.Errorf("host profile %q has unsupported listener %q", profile.Name, profile.Listener)
 	}
 	if profile.RedisSession != HostRedisPooled && profile.RedisSession != HostRedisSerialized {
@@ -91,8 +94,12 @@ func (profile HostProfile) validate() error {
 	if !profile.RequiresRedis {
 		return fmt.Errorf("host profile %q cannot disable the server Redis dependency", profile.Name)
 	}
-	if profile.Listener == HostListenerPlatform && profile.Authentication != HostAuthenticationOAuth {
-		return fmt.Errorf("host profile %q cannot use bearer authentication with a platform listener", profile.Name)
+	if profile.Listener != HostListenerProcess && profile.Authentication != HostAuthenticationOAuth {
+		return fmt.Errorf("host profile %q cannot use bearer authentication with an externally owned listener", profile.Name)
+	}
+	if profile.Authentication == HostAuthenticationOAuth &&
+		profile.Listener != HostListenerPlatform && !profile.RequiresHTTPS {
+		return fmt.Errorf("host profile %q requires HTTPS for hosted authentication", profile.Name)
 	}
 	if profile.IsolateProcessNamespace && profile.RedisSession != HostRedisSerialized {
 		return fmt.Errorf("host profile %q requires namespace isolation without a serialized Redis session", profile.Name)
@@ -124,7 +131,7 @@ const (
 	hostProfileRejectionReasonUnsupportedCollector hostProfileRejectionReason = "unsupported-collection"
 	hostProfileRejectionReasonUnconfirmedReplica   hostProfileRejectionReason = "unconfirmed-single-replica"
 	hostProfileRejectionReasonUnsupportedOAuth     hostProfileRejectionReason = "unsupported-oauth"
-	hostProfileRejectionReasonPlatformListener     hostProfileRejectionReason = "platform-listener-conflict"
+	hostProfileRejectionReasonDelegatedListener    hostProfileRejectionReason = "delegated-listener-conflict"
 )
 
 // classifyRedisSessionMismatch reports whether the store's reported session
@@ -174,9 +181,9 @@ func classifyHostProfileRejection(
 	if profile.Authentication == HostAuthenticationBearer && config.GitHubOAuth != nil {
 		return hostProfileRejectionReasonUnsupportedOAuth
 	}
-	if profile.Listener == HostListenerPlatform &&
+	if profile.Listener != HostListenerProcess &&
 		(strings.TrimSpace(config.Listen) != "" || config.CertFile != "" || config.KeyFile != "") {
-		return hostProfileRejectionReasonPlatformListener
+		return hostProfileRejectionReasonDelegatedListener
 	}
 	return hostProfileRejectionReasonNone
 }
@@ -222,7 +229,7 @@ func validateHostProfile(store *redisx.Store, config *Config) error {
 		return fmt.Errorf("host profile %q requires a confirmed single-replica deployment", profile.Name)
 	case hostProfileRejectionReasonUnsupportedOAuth:
 		return fmt.Errorf("host profile %q does not support GitHub OAuth", profile.Name)
-	case hostProfileRejectionReasonPlatformListener:
+	case hostProfileRejectionReasonDelegatedListener:
 		return fmt.Errorf("host profile %q must not configure a process listener or TLS files", profile.Name)
 	}
 	if profile.TrustsPlatformProxy {

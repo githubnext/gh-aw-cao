@@ -157,24 +157,25 @@ func (r DeliveryReplayer) Recover(ctx context.Context) (ReplayResult, error) {
 // In the Actions profile the same surface reports that collection is not
 // configured and never fails.
 type Status struct {
-	Configured       bool             `json:"configured"`
-	Health           string           `json:"health"`
-	Coverage         Coverage         `json:"coverage"`
-	QueueDepth       int64            `json:"queueDepth"`
-	PendingTasks     int64            `json:"pendingTasks"`
-	OldestPending    string           `json:"oldestPendingAge,omitempty"`
-	DeadLetters      int64            `json:"deadLetters"`
-	Backfill         string           `json:"backfill"`
-	BackfillFailures int              `json:"backfillFailures"`
-	BackfillRunTasks int              `json:"backfillQueuedRunTasks"`
-	LastProjected    string           `json:"lastProjected,omitempty"`
-	Counters         map[string]int64 `json:"counters"`
-	HealthRevision   int64            `json:"healthRevision"`
-	LastWebhookAt    string           `json:"lastWebhookAt,omitempty"`
-	LastFailureAt    string           `json:"lastFailureAt,omitempty"`
-	LastFailureCode  string           `json:"lastFailureCode,omitempty"`
-	LastSuccessAt    string           `json:"lastSuccessAt,omitempty"`
-	RateLimits       []Headroom       `json:"rateLimits,omitempty"`
+	Configured       bool               `json:"configured"`
+	Health           string             `json:"health"`
+	Coverage         Coverage           `json:"coverage"`
+	QueueDepth       int64              `json:"queueDepth"`
+	PendingTasks     int64              `json:"pendingTasks"`
+	OldestPending    string             `json:"oldestPendingAge,omitempty"`
+	DeadLetters      int64              `json:"deadLetters"`
+	Backfill         string             `json:"backfill"`
+	BackfillFailures int                `json:"backfillFailures"`
+	BackfillRunTasks int                `json:"backfillQueuedRunTasks"`
+	LastProjected    string             `json:"lastProjected,omitempty"`
+	Counters         map[string]int64   `json:"counters"`
+	Load             map[string]float64 `json:"load"`
+	HealthRevision   int64              `json:"healthRevision"`
+	LastWebhookAt    string             `json:"lastWebhookAt,omitempty"`
+	LastFailureAt    string             `json:"lastFailureAt,omitempty"`
+	LastFailureCode  string             `json:"lastFailureCode,omitempty"`
+	LastSuccessAt    string             `json:"lastSuccessAt,omitempty"`
+	RateLimits       []Headroom         `json:"rateLimits,omitempty"`
 }
 
 // Headroom is one installation's remaining GitHub budget.
@@ -221,6 +222,10 @@ func (r Reporter) Snapshot(ctx context.Context) (Status, error) {
 		return status, err
 	}
 	status.Counters = counters
+	status.Load, err = r.Store.Loads(ctx, []string{"webhook", "collection", "failure"}, time.Minute)
+	if err != nil {
+		return status, err
+	}
 	status.HealthRevision, _ = strconv.ParseInt(events["healthRevision"], 10, 64)
 	status.LastWebhookAt = events["lastWebhookAt"]
 	status.LastFailureAt = events["lastFailureAt"]

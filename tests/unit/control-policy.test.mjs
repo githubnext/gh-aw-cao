@@ -201,6 +201,14 @@ test("control policy validates provider-neutral host and Redis configuration", (
     controlSettings(parsePolicy(source), "acme/control").web.host,
     policy["control-plane"].web.host,
   );
+
+  policy["control-plane"].web.host.target.listener = "external";
+  assert.equal(validate(JSON.stringify(policy)).status, 0);
+
+  policy["control-plane"].web.host.target["require-https"] = false;
+  const insecure = validate(JSON.stringify(policy));
+  assert.notEqual(insecure.status, 0);
+  assert.match(insecure.stderr, /require-https/);
 });
 
 test("control policy validates host CORS configuration", () => {

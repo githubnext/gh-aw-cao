@@ -28,6 +28,7 @@ structure:
   dashboard: dashboard/
   dashboard_data: dashboard/site/src/data/
   dashboard_redis_server: server/
+  dashboard_server_contract: server/spec/
   dashboard_coolify_profile: server/coolify/
   dashboard_upstash_profile: server/internal/server/hosted.go
   dashboard_container: server/Dockerfile
@@ -140,6 +141,12 @@ components:
   dashboard_https_server:
     path: server/
     responsibility: independently resolve compiled app-target and declarative Redis-provider modules from non-secret cao.json, compose and validate their capabilities, ingest deployed artifacts, execute Dashboard Language queries server-side, and serve bounded canonical or explicitly registered runtime-source results
+  dashboard_http_contract:
+    path: server/spec/
+    responsibility: specify the public Go server HTTP and SSE contracts in TypeSpec and generate checked OpenAPI and JSON Schema artifacts
+  dashboard_external_host:
+    path: server/hosting/
+    responsibility: expose the complete hosted CAO handler and cancellation-aware application startup to a separately owned HTTP listener without exporting Redis or authentication internals
   dashboard_coolify_deployment:
     path: server/coolify/
     responsibility: let a repository-scoped Coolify GitHub App watch protected main, build the non-root serve-hosted container from the checked-out source commit, and run it behind a fail-closed Coolify TLS proxy with an atomically populated external read-only artifact volume
@@ -228,6 +235,8 @@ dependencies:
   - redis_projection -> dashboard_https_server
   - dashboard_https_server -> dashboard_language_queries
   - dashboard_https_server -> dashboard_canonical_api
+  - dashboard_https_server -> dashboard_http_contract
+  - dashboard_external_host -> dashboard_https_server
   - dashboard_coolify_deployment -> dashboard_https_server
   - dashboard_server_package -> dashboard_server_package_publisher
   - dashboard_server_package_publisher -> dashboard_https_server
@@ -314,6 +323,9 @@ invariants:
   - "The hosted Redis profile MUST use GitHub OAuth with explicit organization or team authorization, explicit rebuild administrators, server-side secrets and sessions, and an explicit account-selection flow for switching GitHub identities."
   - "Hosted Redis MUST use TLS by default and Azure Functions MUST always require TLS; private plaintext Redis is allowed only through an explicit opt-in and only for a private IP or single-label service hostname."
   - "A hosted non-loopback listener MUST terminate TLS or explicitly trust only private proxy CIDRs; forwarded headers are authoritative only from a direct peer in those CIDRs, with an exact allowed host and HTTPS protocol."
+  - "An externally owned host MUST use an explicit generic OAuth target with listener external, preserve the entire CAO security handler, require direct HTTPS or a trusted private proxy boundary, and fail closed before service startup and after cancellation."
+  - "Generic OAuth host target policy MUST NOT disable HTTPS; local platform simulation is an explicit separate profile."
+  - "External HTTP hosts MUST drain active requests before stopping CAO background tasks and MUST preserve unbounded event-stream flushing without removing finite request limits from non-streaming endpoints."
   - "cao.json MUST remain the only rollout policy; cao.<deployment>.json profiles MAY extend only control-plane.web.host and MUST reject traversal, cycles, duplicate keys, and any authority or campaign override."
   - "The CAO server package MUST require stable release identities in exact vX.Y.Z form on protected main history; admit manual branch dispatch only for original and rerun actors with maintain or admin permission when the executing workflow is current protected main and the requested source branch is at its current head; keep manual dispatch identities separate from main and release identities; run lint, test, and image build/scanning as separate jobs; test exact sources; gate Dockerfile and workflow security with Hadolint, actionlint, and zizmor; preserve raw static-check outputs in a short-lived artifact even on failure; independently gate high/critical CVEs with Trivy and Grype; check container hardening with Dockle; generate an SPDX SBOM with Syft; keep lint, test, build, and scanner execution outside the package-write security domain; pass only a checksummed candidate and exact metadata to the protected-main reusable publisher; revalidate caller, source, checksum, metadata, and OCI labels before publication; publish only immutable commit or exact stable release identities; attest provenance and SBOM for the exact OCI digest; expose the multi-role server for downstream Docker Compose command selection; emit privacy-safe core.info milestones for JavaScript control checks; and never publish mutable channel tags."
   - "Package and delivery step summaries MUST use non-nested details sections and disclose only check scope, policy, and outcome; they MUST NOT reproduce vulnerability records, SBOM contents, image inventory, credentials, endpoints, payloads, registry responses, or adapter responses."
