@@ -1,0 +1,44 @@
+name: Hosted MCP integration
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/cao-mcp-remote.yml
+      - server/coolify/compose.yml
+      - server/cmd/cao-dashboard/**
+      - server/internal/server/**
+      - tests/e2e/cao-mcp-remote.mjs
+
+permissions:
+  actions: read
+  contents: read
+  issues: read
+  pull-requests: read
+  id-token: write
+
+jobs:
+  remote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - name: Verify deployed MCP
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          for attempt in $(seq 1 20); do
+            if node --test tests/e2e/cao-mcp-remote.mjs; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 20 ]; then
+              exit 1
+            fi
+            sleep 30
+          done
