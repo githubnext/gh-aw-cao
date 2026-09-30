@@ -39,6 +39,8 @@ test("Coolify image is multi-stage, non-root, versioned, and health checked", as
   assert.match(dockerfile, /COPY --from=dashboard-build/);
   assert.match(dockerfile, /USER 65532:65532/);
   assert.match(dockerfile, /HEALTHCHECK/);
+  assert.match(dockerfile, /CMD \["sh", "-c"/);
+  assert.doesNotMatch(dockerfile, /CMD \["CMD-SHELL"/);
   assert.match(dockerfile, /ENTRYPOINT \["\/app\/cao-dashboard"\]/);
 });
 
@@ -57,6 +59,9 @@ test("Coolify Compose contains no credentials and requires immutable image input
   assert.deepEqual(dashboard.security_opt, ["no-new-privileges:true"]);
   assert.equal(dashboard.ports, undefined);
   assert.deepEqual(dashboard.expose, ["8080"]);
+  assert.equal(dashboard.healthcheck.test[0], "CMD-SHELL");
+  assert.match(dashboard.healthcheck.test[1], /\$\$\{CAO_ALLOWED_HOSTS%%,\*\}/);
+  assert.match(dashboard.healthcheck.test[1], /\/api\/readiness/);
   assert.match(dashboard.volumes[0], /:\/app\/source:ro$/);
   assert.deepEqual(dashboard.volumes.slice(1), [
     "./.github/workflows/cao.json:/app/config/cao.json:ro",

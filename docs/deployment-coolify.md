@@ -63,8 +63,16 @@ In the following steps, replace `PUBLIC-HOST` with the public host name of your 
 1. Prepare the artifact volume.
 
    1. Create a new volume that isn't attached to any service.
-   1. From a trusted `cao-dashboard.yml` artifact, copy `payload-hashes.json` and every inventory, run, and record file that it lists into the volume.
-   1. Verify the hash of every file.
+   1. From one trusted `cao-dashboard.yml` artifact, copy
+      `payload-hashes.json`, `inventory-sources.json`, and every payload file
+      named by the manifest into the volume. Do not combine files from
+      different publication generations.
+   1. Verify every hash declared by `payload-hashes.json`. If downloading from
+      a mutable published URL, also confirm that both `payload-hashes.json` and
+      `inventory-sources.json` remained unchanged from the start through the
+      end of the download.
+   1. Make every directory traversable and every file readable by the
+      container's non-root UID `65532`.
 
    > [!CAUTION]
    > Never copy files into a volume that a running service uses.
