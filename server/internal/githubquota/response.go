@@ -103,7 +103,10 @@ func (s *Service) RecordResponse(
 	quota := ParseResponse(header, statusCode, time.Now())
 	bucket := BucketID{App: app, Installation: installation, Resource: quota.Resource}
 	if quota.HasObservation {
-		if err := s.Observe(ctx, bucket, quota.Observation); err != nil {
+		// Record the shared Redis clock rather than this replica's clock.
+		observation := quota.Observation
+		observation.ObservedAt = time.Time{}
+		if err := s.Observe(ctx, bucket, observation); err != nil {
 			return quota, err
 		}
 	}
