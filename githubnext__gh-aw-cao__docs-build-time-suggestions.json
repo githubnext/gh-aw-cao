@@ -1,7 +1,15 @@
 {
-  "source_sha": "841d418319be2d27a2b7977784cfd163ee0605b1",
-  "next_category": "Astro documentation generation",
+  "source_sha": "95630dcf46f31cf87cfb753148c52f0e6eeebec9",
+  "next_category": "reusable dashboard generation",
   "evaluations": [
+    {
+      "evaluated_at": "2026-09-30T18:41:00Z",
+      "worker_run_id": "36759098824",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [36759028380, 36756777976, 36755676271, 36753926090, 36752345073, 36751367691, 36751116923, 36750575116, 36748716240, 36748491322, 36747388266, 36746434539, 36744566230, 36744206100, 36741843910, 36741226546, 36740743782, 36740343633, 36739998828, 36738710344],
+      "outcome": "no_actionable_improvement: evaluated the latest 20 completed successful docs.yml runs from the last 14 days, with 16 build executions and 4 freshness skips. Trusted job metadata showed Build documentation at 12.5s median and 13.0s p90, versus 43.0s median build-job execution, 65.5s median full workflow wall time, and 11.0s median build queue. Install dependencies was skipped on all 16 build executions because node_modules restore hit every time, and Restore cached CAO Dashboard stayed at 2.0s median with lookup/download steps skipped. The main outliers were Checkout at 27-36s on runs 36741226546 and 36752345073 and deploy/job queue variance, not Astro generation. Astro generation therefore does not meet the >=60s or >=15% actionable savings threshold without weakening correctness or freshness.",
+      "suggestion_fingerprint": null
+    },
     {
       "evaluated_at": "2026-09-30T17:55:00Z",
       "worker_run_id": "36754344107",
