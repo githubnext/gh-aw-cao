@@ -881,6 +881,16 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
         }
       }
       suppressSupplementalTableHeading(rendered, view, index);
+      if (isPlainObject(view) && view['show-title'] === false) {
+        const heading = rendered.matches('.page-section')
+          ? rendered.querySelector(':scope > h3, :scope > h4')
+          : rendered.querySelector(
+            ':scope > .semantic-prompt-heading > h3, :scope > .semantic-prompt-heading > h4,'
+            + ' :scope > .metric-card-widget-label, :scope > .dashboard-callout-heading > div > h3,'
+            + ' :scope > .dashboard-callout-heading > div > h4'
+          );
+        heading?.classList.add('sr-only');
+      }
       if (disclosure === 'essential') {
         rendered.classList.add('custom-view');
         rendered.setAttribute('data-view-layout', layout);

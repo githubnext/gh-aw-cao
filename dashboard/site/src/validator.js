@@ -2512,6 +2512,13 @@ function validateView(view, viewNode, path, viewIds, errors) {
   }
 
   validateOptionalStringField(view.title, `${path}.title`, errors);
+  if (view['show-title'] !== undefined && typeof view['show-title'] !== 'boolean') {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'show-title must be a Boolean when present.',
+      `${path}.show-title`
+    ));
+  }
   validateStringField(view['disclosure-label'], `${path}.disclosure-label`, false, errors);
   if (
     view['disclosure-label'] !== undefined
