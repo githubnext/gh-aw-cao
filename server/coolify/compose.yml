@@ -1,6 +1,12 @@
 services:
   dashboard:
-    image: ${CAO_IMAGE:?CAO_IMAGE must be an immutable ghcr.io/OWNER/REPOSITORY/cao-server@sha256:DIGEST reference}
+    build:
+      context: ../..
+      dockerfile: server/Dockerfile
+      args:
+        CAO_PROFILE: cao.coolify.json
+        VERSION: ${SOURCE_COMMIT:-dev}
+        REVISION: ${SOURCE_COMMIT:-unknown}
     command:
       - serve-hosted
       - --listen
@@ -14,7 +20,7 @@ services:
     environment:
       REDIS_URL: ${REDIS_URL:-}
       REDIS_NAMESPACE: ${REDIS_NAMESPACE:-coolify-dashboard}
-      CAO_POLICY_PATH: /app/config/cao.coolify.json
+      CAO_POLICY_PATH: /app/.github/workflows/cao.coolify.json
       CAO_ALLOWED_HOSTS: ${CAO_ALLOWED_HOSTS:?Configure the public dashboard host}
       CAO_TRUSTED_PROXY_CIDRS: ${CAO_TRUSTED_PROXY_CIDRS:?Configure the exact Coolify proxy network CIDR}
       CAO_GITHUB_CLIENT_ID: ${CAO_GITHUB_CLIENT_ID:?Configure the GitHub OAuth client ID}
@@ -27,7 +33,7 @@ services:
       CAO_GITHUB_ADMIN_USERS: ${CAO_GITHUB_ADMIN_USERS:?Configure at least one administrator}
       CAO_GITHUB_WEBHOOK_SECRET: ${CAO_GITHUB_WEBHOOK_SECRET:?Configure the webhook secret}
       CAO_SOURCE_DIRECTORY: /app/source
-      CAO_BUILD_VERSION: ${CAO_BUILD_VERSION:-unknown}
+      CAO_BUILD_VERSION: ${SOURCE_COMMIT:-unknown}
     expose:
       - "8080"
     healthcheck:
@@ -46,8 +52,6 @@ services:
       retries: 3
     volumes:
       - cao-dashboard-artifact:/app/source:ro
-      - ./.github/workflows/cao.json:/app/config/cao.json:ro
-      - ./.github/workflows/cao.coolify.json:/app/config/cao.coolify.json:ro
     init: true
     read_only: true
     tmpfs:

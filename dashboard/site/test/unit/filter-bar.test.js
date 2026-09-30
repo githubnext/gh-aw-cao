@@ -165,7 +165,8 @@ describe('time-window filter bar', () => {
     const dashboard = document.createElement('main');
     dashboard.append(filterBar, document.createElement('button'));
     document.body.append(dashboard);
-    enableHorizonOutsideClickDismissal(dashboard);
+    const collapseDashboardHorizon = vi.fn();
+    enableHorizonOutsideClickDismissal(dashboard, collapseDashboardHorizon);
 
     toggle.click();
     filterBar.querySelector('[aria-label="Current filters"]')?.dispatchEvent(
@@ -176,6 +177,7 @@ describe('time-window filter bar', () => {
     dashboard.lastElementChild?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
     expect(filterBar.classList.contains('filter-bar-expanded')).toBe(false);
+    expect(collapseDashboardHorizon).toHaveBeenCalledOnce();
   });
 
   it('reports no active time filter by default', () => {

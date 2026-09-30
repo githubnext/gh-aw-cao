@@ -311,15 +311,23 @@ source tests, and protected-main ancestry. Syft produces an SPDX SBOM, and the
 protected-main `.github/workflows/cao-package-publish.yml` reusable workflow
 revalidates caller authority, source metadata, checksums, and OCI labels before
 attesting both build provenance and the SBOM for the exact OCI digest.
-Downstream delivery verifies that signer workflow and source commit before
-admitting the image.
+Those package guarantees apply to consumers of the published image. The native
+Coolify resource builds from repository source instead and does not use the
+published package as its deployment input.
 
 `server/coolify/compose.yml` expects:
 
-- `CAO_IMAGE` as a full `ghcr.io/.../cao-server@sha256:...` reference;
 - `CAO_ARTIFACT_VOLUME` as the name of an existing Coolify-managed volume;
 - the public host and the exact private CIDR of Coolify's proxy network;
 - OAuth, session, webhook, and Redis credentials supplied as Coolify secrets.
+
+Configure the resource through the Coolify GitHub App, select protected `main`,
+set the Compose file to `server/coolify/compose.yml`, enable automatic
+deployments, and enable **Include Source Commit in Build**. Compose passes
+Coolify's `SOURCE_COMMIT` to `server/Dockerfile` as the image version and
+revision. The Dockerfile bakes `cao.json` and `cao.coolify.json` into the image,
+so runtime policy bind mounts and **Preserve Repository During Deployment** are
+not required.
 
 The external artifact volume is authoritative input, not checked-in deployment
 data. Before the first start, populate an unattached staging volume with a
@@ -343,58 +351,29 @@ network when `control-plane.web.host.redis.allow-private-plaintext` is `true`
 and the endpoint uses a private service hostname or IP. This policy does not
 affect Azure: Azure Functions continues to require `rediss://`.
 
-The conventional `.github/workflows/coolify-deploy.yml` resolves published
-release tags to exact commits and consumes the matching official `cao-server`
-package without rebuilding it. It refuses
-every fork repository payload. Manual runs require current maintain/admin
-permission for both the original and rerun actors and must use the current
-default-branch workflow. They accept a required `alpha` or `stable` channel.
-Alpha resolves current `main`; stable resolves the latest eligible
-published stable `vX.Y.Z` tag. The package
-workflow builds and scans that tag's exact commit rather than branch HEAD, and
-delivery verifies the selected package's OCI version and revision labels.
+The GitHub App webhook starts production delivery after a protected `main`
+update. Coolify checks out that commit, builds the Compose service, and replaces
+the running service after health evaluation. No GitHub deployment workflow,
+Coolify API token, public Coolify API endpoint, Tailscale runner access,
+registry credential, or mutable registry tag is required.
 
-| Event | Immutable GHCR identity | GitHub environment |
-| --- | --- | --- |
-| Published stable `vX.Y.Z` release | tag resolved and repeatedly verified at its exact commit (`vX.Y.Z`) | `coolify-stable` |
-| Push to `main` | `sha-<full-main-commit>` | `coolify-alpha` |
-| Manual alpha from `main` | current `sha-<full-main-commit>` | `coolify-alpha` |
-| Manual stable from `main` or `release` | latest eligible published stable `vX.Y.Z` tag at its exact commit | `coolify-stable` |
-
-Configure `COOLIFY_DEPLOY_ENDPOINT` and `COOLIFY_DEPLOY_TOKEN` as secrets on each
-environment. The HTTPS endpoint is the deployment adapter for that Coolify
-resource. It must record the previous digest, update `CAO_IMAGE` from the
-request's exact digest reference, trigger the resource, poll Coolify's
-asynchronous deployment to a terminal state, and verify `/api/readiness`.
-Failure must redeploy the recorded previous digest and verify its readiness
-before returning a non-success response. Success is a bounded JSON response
-containing exactly the requested identity as
-`{"status":"ready","image":"...@sha256:...","digest":"sha256:..."}`; an
-accepted/queued Coolify response is not success.
-
-Before invoking the adapter, the workflow rechecks that alpha is still `main`
-HEAD and stable is still the latest published `vX.Y.Z` release
-with an unchanged tag target. Environment protection rules provide approvals. The scanned local
-image is first pushed under a run/attempt candidate tag. A canonical source
-identity is created from that candidate digest only when absent; if it already
-exists, exact digest equality is mandatory. Labels on existing registry
-objects are never trusted. No tier reads another tier's image, no release
-promotes an alpha artifact, and deployment always uses the verified digest,
-never a candidate or channel tag. Release tags must satisfy the channel's
-SemVer form and build metadata is rejected because `+` cannot be preserved in
-a Docker tag.
+This simpler source-build path has a deliberate tradeoff: the deployed image
+does not pass through the official package workflow's Trivy, Grype, Dockle,
+SBOM, or GitHub provenance admission gates. Those checks and attestations still
+protect the published `cao-server` package, but they are not production
+delivery evidence for Coolify. Branch protection, restricted GitHub App
+access, Coolify build isolation, and operator review of failed builds are the
+source-deployment controls.
 
 #### Rollback
 
-Record the last known-good `name@sha256:...` from the GitHub deployment history
-before every rollout. To roll back, use the same protected environment's
-Coolify deployment adapter to set `CAO_IMAGE` to that exact prior digest and
-redeploy; do not retag it as `stable`, `alpha`, or `latest`. Confirm
-`/api/readiness`, OAuth login and authorization, a bounded query, webhook
-signature handling, and rate-limit behavior. Redis is disposable: if the new
-binary wrote an unusable projection, clear only that deployment namespace and
-rebuild from the retained trusted artifact. Rotating back the image does not
-roll back OAuth, webhook, or session secrets.
+Redeploy the last known-good entry from Coolify's deployment history, or revert
+the responsible commit on `main` and let automatic deployment rebuild it.
+Confirm `/api/readiness`, OAuth login and authorization, a bounded query,
+webhook signature handling, and rate-limit behavior. Redis is disposable: if
+the new binary wrote an unusable projection, clear only that deployment
+namespace and rebuild from the retained trusted artifact. Rolling back source
+does not roll back OAuth, webhook, or session secrets.
 
 The hosted server exposes canonical repository/run APIs, verifies and
 deduplicates webhook deliveries, and coordinates projection updates with a

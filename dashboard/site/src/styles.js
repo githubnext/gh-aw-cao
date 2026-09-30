@@ -1562,7 +1562,9 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .dashboard-overview-page .custom-view[data-view-layout="half"].chart-view-pie .pie-chart-card { grid-template-columns: minmax(0, 1fr); padding: 16px; }
 .dashboard-overview-page .custom-view[data-view-layout="half"].chart-view-pie .pie-chart-layout { grid-column: 1; grid-row: auto; grid-template-columns: minmax(120px, 160px) minmax(0, 1fr); gap: 12px; }
 .dashboard-overview-page .custom-view[data-view-layout="half"].chart-view-pie .pie-chart-card > :is(.view-source, .view-metadata, .view-context) { grid-column: 1; }
-.dashboard-overview-page { margin: -24px calc(-1 * var(--dashboard-page-padding-inline)) 0; }
+.app-main:has(.dashboard-overview-page:not([hidden])) > :is(.top-nav, .report-footer) { display: none; }
+main.dashboard-prototype:has(.dashboard-overview-page:not([hidden])) { padding: 0; scrollbar-gutter: auto; }
+.dashboard-overview-page { margin: 0; }
 .dashboard-overview-page > .custom-view-grid { display: block; background: transparent; }
 .dashboard-overview-page .custom-view { margin: 0; }
 .dashboard-overview-page > .custom-view-grid > .custom-view { overflow: hidden; border: 0; border-radius: 0; background: transparent; }
@@ -2275,8 +2277,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .dashboard-full-view .app-main { height: 100%; min-height: 0; overflow: hidden; }
   main.dashboard-prototype { overflow: visible; overflow-x: clip; padding: var(--dashboard-mobile-page-padding-top) var(--dashboard-page-padding-inline) var(--dashboard-mobile-page-padding-bottom); }
   .dashboard-full-view main.dashboard-prototype { padding: 0 var(--dashboard-page-padding-inline); }
-  /* Paired with the mobile main padding above: cancel top/inline overview inset, but do not negate bottom padding. */
-  .dashboard-overview-page { margin: calc(-1 * var(--dashboard-mobile-page-padding-top)) calc(-1 * var(--dashboard-page-padding-inline)) 0; }
+  main.dashboard-prototype:has(.dashboard-overview-page:not([hidden])) { padding: 0; }
   .dashboard-full-view .custom-view-grid > .custom-view { padding-inline: var(--dashboard-page-padding-inline); }
   .dashboard-full-view .custom-view-grid > .chart-view-swimlane { padding-bottom: 12px; }
   .dashboard-page:is([data-view-mode="table"], [data-view-mode="card"]) > .custom-view-grid { margin-inline: calc(-1 * var(--dashboard-page-padding-inline)); }

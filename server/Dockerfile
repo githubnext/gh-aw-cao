@@ -60,6 +60,7 @@ COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/src/agent/
 COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/src/agent/queries.generated.json /app/agent/queries.json
 COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/src/agent/mcp-contract.json /app/agent/mcp-contract.json
 COPY --from=dashboard-build --chown=cao:cao /workspace/.github/workflows/cao.json /app/.github/workflows/cao.json
+COPY --from=dashboard-build --chown=cao:cao /workspace/.github/workflows/cao.coolify.json /app/.github/workflows/cao.coolify.json
 
 WORKDIR /app
 USER 65532:65532

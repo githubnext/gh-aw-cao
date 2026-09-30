@@ -142,16 +142,13 @@ components:
     responsibility: independently resolve compiled app-target and declarative Redis-provider modules from non-secret cao.json, compose and validate their capabilities, ingest deployed artifacts, execute Dashboard Language queries server-side, and serve bounded canonical or explicitly registered runtime-source results
   dashboard_coolify_deployment:
     path: server/coolify/
-    responsibility: build and run the non-root serve-hosted container behind a fail-closed Coolify TLS proxy with a managed Redis connection and an atomically populated external read-only artifact volume
+    responsibility: let a repository-scoped Coolify GitHub App watch protected main, build the non-root serve-hosted container from the checked-out source commit, and run it behind a fail-closed Coolify TLS proxy with an atomically populated external read-only artifact volume
   dashboard_server_package:
     path: .github/workflows/cao-package.yml
     responsibility: validate protected source authority, test and independently scan, and seal the deployment-neutral multi-role CAO server image without package-write authority
   dashboard_server_package_publisher:
     path: .github/workflows/cao-package-publish.yml
     responsibility: execute from protected main, revalidate caller and package authority, verify sealed metadata and OCI labels, and immutably publish and attest the CAO server image
-  dashboard_coolify_delivery:
-    path: .github/workflows/coolify-deploy.yml
-    responsibility: resolve the matching official CAO server package, verify its immutable digest and source labels, revalidate channel freshness, and synchronously deploy it to isolated protected environments
   dashboard_upstash_deployment:
     path: server/internal/server/hosted.go
     responsibility: run one hosted replica over one fail-closed serialized Upstash TCP session with a fresh process namespace and artifact-only ingestion
@@ -234,8 +231,6 @@ dependencies:
   - dashboard_coolify_deployment -> dashboard_https_server
   - dashboard_server_package -> dashboard_server_package_publisher
   - dashboard_server_package_publisher -> dashboard_https_server
-  - dashboard_coolify_delivery -> dashboard_server_package_publisher
-  - dashboard_coolify_delivery -> dashboard_coolify_deployment
   - dashboard_upstash_deployment -> dashboard_https_server
   - dashboard_upstash_deployment -> redis_projection
   - dashboard_github_auth -> dashboard_https_server
@@ -322,7 +317,7 @@ invariants:
   - "cao.json MUST remain the only rollout policy; cao.<deployment>.json profiles MAY extend only control-plane.web.host and MUST reject traversal, cycles, duplicate keys, and any authority or campaign override."
   - "The CAO server package MUST require stable release identities in exact vX.Y.Z form on protected main history; admit manual branch dispatch only for original and rerun actors with maintain or admin permission when the executing workflow is current protected main and the requested source branch is at its current head; keep manual dispatch identities separate from main and release identities; run lint, test, and image build/scanning as separate jobs; test exact sources; gate Dockerfile and workflow security with Hadolint, actionlint, and zizmor; preserve raw static-check outputs in a short-lived artifact even on failure; independently gate high/critical CVEs with Trivy and Grype; check container hardening with Dockle; generate an SPDX SBOM with Syft; keep lint, test, build, and scanner execution outside the package-write security domain; pass only a checksummed candidate and exact metadata to the protected-main reusable publisher; revalidate caller, source, checksum, metadata, and OCI labels before publication; publish only immutable commit or exact stable release identities; attest provenance and SBOM for the exact OCI digest; expose the multi-role server for downstream Docker Compose command selection; emit privacy-safe core.info milestones for JavaScript control checks; and never publish mutable channel tags."
   - "Package and delivery step summaries MUST use non-nested details sections and disclose only check scope, policy, and outcome; they MUST NOT reproduce vulnerability records, SBOM contents, image inventory, credentials, endpoints, payloads, registry responses, or adapter responses."
-  - "Coolify delivery MUST refuse fork repository payloads; require current maintain or admin permission for both original and triggering actors on manual runs and reruns; require manual runs to use the current protected-main workflow; map main pushes to alpha and published stable vX.Y.Z events to stable; admit manual alpha only from current main and manual stable only at the latest eligible published stable tag commit; consume the matching official CAO server package only after digest, source-label, protected-publisher signer, and source-digest attestation verification; deploy exact digests through tier-specific protected environments; and never implicitly promote or deploy mutable channel tags."
+  - "Coolify production delivery MUST use a repository-scoped Coolify GitHub App and automatic deployments from protected main; build server/Dockerfile through server/coolify/compose.yml from the selected source commit; embed SOURCE_COMMIT; bake the base and Coolify policy profiles into the image; retain the authoritative activity artifact as an external read-only volume; require no GitHub deployment workflow, Coolify API token, public Coolify API endpoint, runner tailnet access, registry credentials, or mutable registry tag; and treat package-workflow scans, hardening checks, SBOMs, and attestations as guarantees for published packages rather than admission evidence for the source-built production image."
   - "Hosted logout and account switching MUST remove active session authority before remote token revocation; failed GitHub revocations MUST retain encrypted credentials only in the durable Redis pending-revocation queue for bounded maintenance retries through credential expiry."
   - "Hosted session encryption MUST identify the active key and support one explicitly configured previous key during controlled rotation; the previous key MUST remain available until sessions and revocation records using it drain."
   - "OAuth refresh MUST atomically compare-and-swap the encrypted session record; a refresh superseded by logout or another refresh MUST revoke or durably queue its newly issued credentials and MUST NOT restore session authority."
@@ -420,9 +415,9 @@ flows:
     - redis_projection
     - dashboard_language_queries
     - dashboard_ui
-  coolify_image_delivery:
-    - dashboard_coolify_delivery
+  coolify_source_delivery:
     - dashboard_coolify_deployment
+    - dashboard_https_server
   activity_cli:
     - gh_aw_logs
     - activity_jsonl_shards

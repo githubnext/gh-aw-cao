@@ -251,7 +251,7 @@ export function renderDashboard(input) {
   enableDashboardNavigation(root);
   syncDashboardNavigationIndicators(root, pages, sources);
   restoreDashboardTheme(root);
-  enableHorizonOutsideClickDismissal(root);
+  enableHorizonOutsideClickDismissal(root, dashboardHorizon.collapse);
   root.addEventListener('dashboard-time-window-change', (event) => {
     if (!(event instanceof CustomEvent)) return;
     setTimeWindowFilter(event.detail?.start, event.detail?.end, root);

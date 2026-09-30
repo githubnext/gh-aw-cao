@@ -177,8 +177,9 @@ export function renderViewModeControl(modes, initialMode, onChange) {
 /**
  * Closes an expanded horizon control when a click occurs outside its filter bar.
  * @param {HTMLElement} root
+ * @param {() => void} [collapseDashboardHorizon]
  */
-export function enableHorizonOutsideClickDismissal(root) {
+export function enableHorizonOutsideClickDismissal(root, collapseDashboardHorizon = () => {}) {
   root.addEventListener('click', (event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
@@ -189,6 +190,7 @@ export function enableHorizonOutsideClickDismissal(root) {
       element.querySelector('.horizon-toggle')?.setAttribute('aria-expanded', 'false');
       element.classList.remove('filter-bar-expanded');
     }
+    collapseDashboardHorizon();
   });
 }
 

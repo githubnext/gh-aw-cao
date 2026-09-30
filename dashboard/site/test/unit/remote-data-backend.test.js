@@ -213,6 +213,92 @@ describe("remote dashboard data backend", () => {
     }));
   });
 
+  it("shares one revision stream across subscribers until the last one unsubscribes", async () => {
+    /** @type {(data: string) => void} */
+    let emitEvent = () => {};
+    const stream = new ReadableStream({
+      start(controller) {
+        emitEvent = (data) => controller.enqueue(new TextEncoder().encode(data));
+      },
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(stream, {
+      status: 200,
+      headers: { "Content-Type": "text/event-stream" },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    /** @type {number[]} */
+    const firstRevisions = [];
+    /** @type {number[]} */
+    const secondRevisions = [];
+    const stopFirst = subscribeRemoteRevision((revision) => firstRevisions.push(revision));
+    const stopSecond = subscribeRemoteRevision((revision) => secondRevisions.push(revision));
+    try {
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+      emitEvent('data: {"revision":5021}\n\n');
+      await vi.waitFor(() => {
+        expect(firstRevisions).toEqual([5021]);
+        expect(secondRevisions).toEqual([5021]);
+      });
+
+      const streamSignal = fetchMock.mock.calls[0]?.[1]?.signal;
+      stopFirst();
+      expect(streamSignal?.aborted).toBe(false);
+      stopSecond();
+      expect(streamSignal?.aborted).toBe(true);
+    } finally {
+      stopFirst();
+      stopSecond();
+    }
+  });
+
+  it("isolates failing subscribers and reconnects after the revision stream closes", async () => {
+    /** @type {ReadableStreamDefaultController<Uint8Array> | undefined} */
+    let streamController;
+    const firstStream = new ReadableStream({
+      start(controller) {
+        streamController = controller;
+      },
+    });
+    const secondStream = new ReadableStream();
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(firstStream, {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      }))
+      .mockResolvedValueOnce(new Response(secondStream, {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    /** @type {number[]} */
+    const revisions = [];
+    /** @type {string[]} */
+    const errors = [];
+    const stopFailingSubscriber = subscribeRemoteRevision(
+      () => { throw new Error("subscriber failure"); },
+      () => { throw new Error("subscriber error handler failure"); },
+    );
+    const stopHealthySubscriber = subscribeRemoteRevision(
+      (revision) => revisions.push(revision),
+      (error) => errors.push(error.message),
+    );
+    try {
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+      streamController?.enqueue(new TextEncoder().encode('data: {"revision":5022}\n\n'));
+      await vi.waitFor(() => expect(revisions).toEqual([5022]));
+
+      streamController?.close();
+      await vi.waitFor(() => expect(errors).toEqual(["Dashboard data server event stream disconnected."]));
+      await new Promise((resolve) => setTimeout(resolve, 1100));
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      stopFailingSubscriber();
+      stopHealthySubscriber();
+    }
+  });
+
   it("stays silent by default and logs only scalar metadata under its predictable category", async () => {
     const output = { debug: vi.fn() };
     vi.doMock("../../src/debug.js", async () => {
