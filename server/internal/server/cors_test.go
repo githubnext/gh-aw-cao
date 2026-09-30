@@ -38,6 +38,8 @@ func TestCORSPolicyRejectsUnsafeOrigins(t *testing.T) {
 		"https://dashboard.example.com/path", "https://user@dashboard.example.com",
 		"https://dashboard.example.com?x=1", "https://dashboard.example.com#x",
 		"ftp://dashboard.example.com", "dashboard.example.com", "",
+		"https://bücher.example", "https://example.com.", "https://exa_mple.com",
+		"https://a..example.com", "https://.example.com",
 	} {
 		if _, err := (CORSPolicy{AllowedOrigins: []string{origin}}).normalize(); err == nil {
 			t.Errorf("origin %q was accepted", origin)

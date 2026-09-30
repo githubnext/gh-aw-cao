@@ -88,8 +88,11 @@ refuse to start, when any of the following holds:
 4. an entry's scheme is not `https`, except that `http` is permitted only for
    `localhost`, a loopback IPv4 address, or `[::1]`;
 5. an entry's port is outside 1–65535;
-6. `allow-credentials` is present without `allowed-origins`; or
-7. `max-age` is present and outside 1–86400.
+6. an entry's host is neither an IP literal nor an ASCII DNS name of
+   non-empty labels of letters, digits, and `-` (internationalized names MUST
+   be written in punycode; trailing dots and `_` are rejected);
+7. `allow-credentials` is present without `allowed-origins`; or
+8. `max-age` is present and outside 1–86400.
 
 ### 3.4 Normalization
 

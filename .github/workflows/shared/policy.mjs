@@ -12,7 +12,7 @@ const WEB_KEYS = ["experimental", "favicon", "host"];
 const HOST_KEYS = ["target", "redis", "cors"];
 const CORS_KEYS = ["allowed-origins", "allow-credentials", "max-age"];
 const CORS_ORIGIN_PATTERN =
-  /^(?:https:\/\/(?:[A-Za-z0-9.-]+|\[[0-9A-Fa-f:.]+\])|http:\/\/(?:localhost|127(?:\.[0-9]{1,3}){3}|\[::1\]))(?::[0-9]{1,5})?\/?$/;
+  /^(?:https:\/\/(?:[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*|\[[0-9A-Fa-f:.]+\])|http:\/\/(?:localhost|127(?:\.[0-9]{1,3}){3}|\[::1\]))(?::[0-9]{1,5})?\/?$/;
 const TARGET_KEYS = [
   "module", "name", "authentication", "listener", "require-https",
   "trust-platform-proxy", "supports-single-replica", "replicas",

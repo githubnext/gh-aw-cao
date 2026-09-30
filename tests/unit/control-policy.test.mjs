@@ -230,6 +230,9 @@ test("control policy validates host CORS configuration", () => {
     [{ "allow-credentials": true }, /allow-credentials requires allowed-origins/],
     [{ "max-age": 0 }, /max-age must be an integer/],
     [{ "allowed-origins": ["https://tools.example.com:70000"] }, /invalid port/],
+    [{ "allowed-origins": ["https://example.com."] }, /allowed-origins has an invalid value/],
+    [{ "allowed-origins": ["https://a..example.com"] }, /allowed-origins has an invalid value/],
+    [{ "allowed-origins": ["https://bücher.example"] }, /allowed-origins has an invalid value/],
     [{ origins: [] }, /cors/],
   ]) {
     policy["control-plane"].web.host.cors = cors;

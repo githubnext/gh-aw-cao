@@ -6,9 +6,15 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 )
+
+// corsHostnamePattern accepts ASCII (punycode) DNS names only. Browsers
+// serialize Origin hosts in ASCII, so Unicode, underscore, empty-label, or
+// trailing-dot entries could never match and would only obscure the policy.
+var corsHostnamePattern = regexp.MustCompile(`^[a-z0-9-]+(?:\.[a-z0-9-]+)*$`)
 
 const (
 	maxCORSAllowedOrigins = 32
@@ -98,6 +104,10 @@ func canonicalCORSOrigin(value string) (string, error) {
 	}
 	scheme := strings.ToLower(parsed.Scheme)
 	host := strings.ToLower(parsed.Host)
+	if hostname := strings.ToLower(parsed.Hostname()); net.ParseIP(hostname) == nil &&
+		!corsHostnamePattern.MatchString(hostname) {
+		return "", invalid
+	}
 	switch scheme {
 	case "https":
 	case "http":
