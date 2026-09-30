@@ -21,6 +21,7 @@ import (
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/google/go-github/v66/github"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
 
@@ -74,6 +75,13 @@ type Repository struct {
 	PushedAt   time.Time
 	Private    bool
 	Visibility string
+}
+
+// WorkflowRun is the stable run identity needed by historical collection.
+type WorkflowRun struct {
+	ID        int64
+	Attempt   int
+	CreatedAt time.Time
 }
 
 // GitTreeEntry is one entry returned by the Git tree API.
@@ -217,6 +225,85 @@ func (c *Client) ListRepositories(ctx context.Context, installationID int64) ([]
 	}
 	appLog.Printf("enumerated installation repositories count=%d", len(repositories))
 	return repositories, nil
+}
+
+// ListWorkflowRuns returns one page of a repository's workflow runs, newest
+// first. The caller owns the persisted page cursor so enumeration can resume
+// after process restarts.
+func (c *Client) ListWorkflowRuns(
+	ctx context.Context, installationID int64, repository string, page, perPage int,
+) ([]WorkflowRun, int, githubquota.ResponseQuota, error) {
+	client, owner, name, err := c.repositoryClient(installationID, repository)
+	if err != nil {
+		return nil, 0, githubquota.ResponseQuota{}, err
+	}
+	if page < 1 {
+		page = 1
+	}
+	if perPage < 1 || perPage > 100 {
+		perPage = 100
+	}
+	runs, response, err := client.Actions.ListRepositoryWorkflowRuns(ctx, owner, name, &github.ListWorkflowRunsOptions{
+		ListOptions: github.ListOptions{Page: page, PerPage: perPage},
+	})
+	quota := workflowRunResponseQuota(response)
+	if err != nil {
+		return nil, 0, quota, fmt.Errorf("list repository workflow runs: %w", err)
+	}
+	var result []WorkflowRun
+	if runs != nil {
+		for _, run := range runs.WorkflowRuns {
+			if run.GetID() <= 0 {
+				continue
+			}
+			attempt := run.GetRunAttempt()
+			if attempt <= 0 {
+				attempt = 1
+			}
+			result = append(result, WorkflowRun{
+				ID:        run.GetID(),
+				Attempt:   attempt,
+				CreatedAt: run.GetCreatedAt().Time,
+			})
+		}
+	}
+	nextPage := 0
+	if response != nil {
+		nextPage = response.NextPage
+	}
+	return result, nextPage, quota, nil
+}
+
+func workflowRunResponseQuota(response *github.Response) githubquota.ResponseQuota {
+	if response == nil || response.Response == nil {
+		return githubquota.ResponseQuota{}
+	}
+	quota := githubquota.ParseResponse(
+		response.Header, response.StatusCode, time.Now().UTC())
+	return quota
+}
+
+// QuotaRateLimit reads the core quota observation used to initialize an
+// installation bucket before it has any recorded API responses.
+func (c *Client) QuotaRateLimit(
+	ctx context.Context, installationID int64,
+) (githubquota.ResponseQuota, error) {
+	client, err := c.installationClient(installationID)
+	if err != nil {
+		return githubquota.ResponseQuota{}, err
+	}
+	_, response, err := client.RateLimit.Get(ctx)
+	quota := workflowRunResponseQuota(response)
+	if err != nil {
+		return quota, fmt.Errorf("read installation rate limit: %w", err)
+	}
+	if response == nil || response.Response == nil {
+		return quota, errors.New("rate limit response is missing quota metadata")
+	}
+	if !quota.HasObservation {
+		return quota, errors.New("rate limit response is missing core quota headers")
+	}
+	return quota, nil
 }
 
 // ValidateRepositoryAccess enumerates the App's complete repository scope and

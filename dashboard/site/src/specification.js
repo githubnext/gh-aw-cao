@@ -600,7 +600,7 @@ export const SOURCE_ENTITY_IDENTIFIER_FIELDS = {
   'evidence-records': ['evidence-id']
 };
 
-export const SERVER_SOURCE_VALUES = ['collection-health'];
+export const SERVER_SOURCE_VALUES = ['collection-health', 'github-quota-usage'];
 
 export const SERVER_SOURCE_FIELDS = {
   'collection-health': [
@@ -625,6 +625,19 @@ export const SERVER_SOURCE_FIELDS = {
     'collection-failed',
     'collection-retried',
     'collection-dead-lettered'
+  ],
+  'github-quota-usage': [
+    'observed-at',
+    'scope',
+    'bucket',
+    'app',
+    'installation',
+    'resource',
+    'buckets',
+    'limit',
+    'used',
+    'reserved',
+    'usage-percent'
   ]
 };
 

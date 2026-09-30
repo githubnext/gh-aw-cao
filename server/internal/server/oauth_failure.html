@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign-in help · CAO</title></head>
+<body><main>
+<h1>We couldn’t complete your sign-in</h1>
+{{if .AuthorizationFailed}}<p>We couldn’t verify that this GitHub account has access to the dashboard. Sign in with an account that is an active member of an organization or team approved by your dashboard administrator. If you already have access, ask your administrator to check your membership and the dashboard’s allowed organizations and teams; GitHub may also be temporarily unavailable. If a request ID appears below, share it with your administrator to help them investigate.</p>
+{{else}}<p>Try again with an account that has access to this dashboard. If the problem continues, share the request ID below with your dashboard administrator.</p>{{end}}
+<p><button type="button" id="sign-out">Sign out and try again</button></p>
+<noscript><p>Automatic sign-out requires JavaScript. Clear this site’s cookies, then sign in again.</p></noscript>
+<p><a href="https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md#oauth-sign-in-troubleshooting" rel="noreferrer noopener">Sign-in troubleshooting</a></p>
+{{if .TraceID}}<p>Request ID: <code>{{.TraceID}}</code></p>{{end}}
+<p id="recovery-error" role="alert" hidden>Could not sign out. Please try again or clear this site’s cookies before signing in.</p>
+</main><script>const button = document.getElementById('sign-out');
+button.addEventListener('click', async () => {
+  button.disabled = true;
+  try {
+    const csrf = document.cookie.split(';').map((cookie) => cookie.trim()).find((cookie) => cookie.startsWith('cao_csrf='));
+    const response = await fetch('/auth/logout', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: csrf ? { 'X-CSRF-Token': decodeURIComponent(csrf.slice('cao_csrf='.length)) } : {},
+    });
+    if (response.status === 204 || response.status === 401) {
+      location.assign('/auth/logged-out');
+      return;
+    }
+  } catch {
+  }
+  button.disabled = false;
+  document.getElementById('recovery-error').hidden = false;
+});
+</script></body>
+</html>

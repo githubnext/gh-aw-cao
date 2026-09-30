@@ -41,7 +41,7 @@ func (s *memoryBudgetStore) ReserveRateLimit(
 	if !exists {
 		return 3, nil
 	}
-	state := parseBudgetState(value)
+	state, _ := parseBudgetState(value)
 	if state.ParkedTo.Unix() > now {
 		return 1, nil
 	}
@@ -65,7 +65,7 @@ func (s *memoryBudgetStore) ObserveRateLimit(
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	storageKey := key + "/" + field
-	state := parseBudgetState(s.values[storageKey])
+	state, _ := parseBudgetState(s.values[storageKey])
 	if unixOrZero(state.Reset) == reset && state.Remaining < remaining {
 		remaining = state.Remaining
 	}
@@ -81,7 +81,7 @@ func (s *memoryBudgetStore) ParkRateLimit(
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	storageKey := key + "/" + field
-	state := parseBudgetState(s.values[storageKey])
+	state, _ := parseBudgetState(s.values[storageKey])
 	if parkedTo > unixOrZero(state.ParkedTo) {
 		state.ParkedTo = instantOrZero(parkedTo)
 	}
@@ -233,6 +233,41 @@ func TestBudgetObservationDoesNotRestoreReservedHeadroom(t *testing.T) {
 	}
 	if remaining != 3500 {
 		t.Fatalf("stale observation restored headroom to %d", remaining)
+	}
+}
+
+func TestParseBudgetStateDecodesValidValue(t *testing.T) {
+	reset := time.Unix(1700000000, 0).UTC()
+	parked := time.Unix(1700000600, 0).UTC()
+	value := formatBudgetState(budgetState{Remaining: 4200, Reset: reset, ParkedTo: parked})
+	state, ok := parseBudgetState(value)
+	if !ok {
+		t.Fatalf("expected %q to decode", value)
+	}
+	if state.Remaining != 4200 || !state.Reset.Equal(reset) || !state.ParkedTo.Equal(parked) {
+		t.Fatalf("unexpected decoded state: %+v", state)
+	}
+}
+
+func TestParseBudgetStateRejectsMalformedValue(t *testing.T) {
+	for _, value := range []string{"", "not-a-budget-state", "1|2"} {
+		if state, ok := parseBudgetState(value); ok {
+			t.Fatalf("expected %q to be rejected as malformed, got %+v", value, state)
+		}
+	}
+}
+
+func TestHeadroomToleratesMalformedStoredValue(t *testing.T) {
+	store := newMemoryBudgetStore()
+	store.values[budgetKey+"/5"] = "corrupted"
+	budget := Budget{Store: store}
+	remaining, parkedTo, err := budget.Headroom(context.Background(), 5)
+	if err != nil {
+		t.Fatalf("expected a malformed stored value to decode to the zero state, got error %v", err)
+	}
+	if remaining != 0 || !parkedTo.IsZero() {
+		t.Fatalf("expected zero-value headroom for a malformed stored value, got remaining=%d parkedTo=%v",
+			remaining, parkedTo)
 	}
 }
 

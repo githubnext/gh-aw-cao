@@ -191,6 +191,29 @@ describe('chart element helpers', () => {
     expect(layout.hasAttribute('data-chart-table-hidden')).toBe(false);
   });
 
+  it('stops reacting to toggle clicks once the pie layout detaches from the document', async () => {
+    const chart = renderChartWidget('pie', [], [], {
+      entries: [['first', 2], ['largest', 5]],
+      total: 7
+    });
+    const layout = renderPieChartLayout(chart, renderPieLegend([['first', 2], ['largest', 5]], 7));
+    document.body.append(layout);
+    const toggle = /** @type {HTMLButtonElement} */ (layout.querySelector('button'));
+    // Let the MutationObserver backing createFactoryScope observe the initial attach.
+    await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+    layout.remove();
+    // Let the MutationObserver microtask backing createFactoryScope run.
+    await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+    toggle.click();
+
+    // The effect stopped when the layout detached, so the click can no longer
+    // toggle the now-detached layout's hidden marker or the button's label.
+    expect(layout.hasAttribute('data-chart-table-hidden')).toBe(false);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  });
+
   it('distinguishes missing chart data from an insufficient sample', () => {
     for (const chartType of ['bar', 'histogram', 'line', 'pie', 'scatter']) {
       const chart = renderChartWidget(chartType, [], []);

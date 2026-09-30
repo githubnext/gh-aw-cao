@@ -114,35 +114,73 @@ func (d Doctor) checkCollectionSettings(context.Context) Check {
 			Remedy:  "correct the CAO_COLLECT_* environment before starting the collector",
 		}
 	}
-	if d.getenv("CAO_GITHUB_WEBHOOK_SECRET") == "" && profile.admitOnly {
+	classification := classifyCollectionSettings(d.getenv("CAO_GITHUB_WEBHOOK_SECRET") != "", profile.admitOnly, appID)
+	doctorLog.Printf("collection settings classified status=%s reason=%s", classification.status, classification.reason)
+	return Check{
+		ID: id, Area: areaCollect, Title: title, Status: classification.status,
+		Summary: classification.summary, Details: details, Remedy: classification.remedy,
+	}
+}
+
+// collectionSettingsReason names why classifyCollectionSettings reached its
+// result, stable across summary wording changes so it is useful to log
+// without exposing the configured App identifier.
+type collectionSettingsReason string
+
+const (
+	collectionSettingsReasonNoSecretAdmitOnly collectionSettingsReason = "no-webhook-secret-admit-only" // #nosec G101 -- diagnostic reason, not a credential
+	collectionSettingsReasonNoSecretWorker    collectionSettingsReason = "no-webhook-secret-worker"     // #nosec G101 -- diagnostic reason, not a credential
+	collectionSettingsReasonAdmitOnly         collectionSettingsReason = "admit-only"
+	collectionSettingsReasonConfigured        collectionSettingsReason = "configured"
+)
+
+// collectionSettingsClassification is the status, summary, remedy, and
+// stable reason classifyCollectionSettings derives from the already
+// validated collection settings.
+type collectionSettingsClassification struct {
+	status  Status
+	summary string
+	remedy  string
+	reason  collectionSettingsReason
+}
+
+// classifyCollectionSettings decides the collect.settings check's final
+// outcome once CollectorConfig.Validate has already succeeded: a missing
+// webhook secret is a failure in an admission-capable process (deliveries
+// cannot be verified), a warning in a worker-only process, and otherwise the
+// process reports whether it holds an App private key or runs
+// admission-only. It is a pure function so each outcome is testable without
+// a real CollectorConfig or environment.
+func classifyCollectionSettings(webhookSecretPresent, admitOnly bool, appID int64) collectionSettingsClassification {
+	if !webhookSecretPresent && admitOnly {
 		// Without a secret the server cannot verify a delivery, so admission
 		// has no way to distinguish GitHub from anyone else.
-		return Check{
-			ID: id, Area: areaCollect, Title: title, Status: StatusFail,
-			Summary: "no webhook secret is configured; deliveries cannot be verified",
-			Details: details,
-			Remedy:  "set CAO_GITHUB_WEBHOOK_SECRET to the App's webhook secret",
+		return collectionSettingsClassification{
+			status:  StatusFail,
+			summary: "no webhook secret is configured; deliveries cannot be verified",
+			remedy:  "set CAO_GITHUB_WEBHOOK_SECRET to the App's webhook secret",
+			reason:  collectionSettingsReasonNoSecretAdmitOnly,
 		}
 	}
-	if d.getenv("CAO_GITHUB_WEBHOOK_SECRET") == "" {
-		return Check{
-			ID: id, Area: areaCollect, Title: title, Status: StatusWarn,
-			Summary: "collection workers are configured, but this environment cannot admit webhooks",
-			Details: details,
-			Remedy:  "this is expected in a worker-only process; a process that serves the webhook endpoint must configure CAO_GITHUB_WEBHOOK_SECRET",
+	if !webhookSecretPresent {
+		return collectionSettingsClassification{
+			status:  StatusWarn,
+			summary: "collection workers are configured, but this environment cannot admit webhooks",
+			remedy:  "this is expected in a worker-only process; a process that serves the webhook endpoint must configure CAO_GITHUB_WEBHOOK_SECRET",
+			reason:  collectionSettingsReasonNoSecretWorker,
 		}
 	}
-	if profile.admitOnly {
-		return Check{
-			ID: id, Area: areaCollect, Title: title, Status: StatusPass,
-			Summary: "admission-only collection is configured and holds no App private key",
-			Details: details,
+	if admitOnly {
+		return collectionSettingsClassification{
+			status:  StatusPass,
+			summary: "admission-only collection is configured and holds no App private key",
+			reason:  collectionSettingsReasonAdmitOnly,
 		}
 	}
-	return Check{
-		ID: id, Area: areaCollect, Title: title, Status: StatusPass,
-		Summary: fmt.Sprintf("collection is configured for App %d", appID),
-		Details: details,
+	return collectionSettingsClassification{
+		status:  StatusPass,
+		summary: fmt.Sprintf("collection is configured for App %d", appID),
+		reason:  collectionSettingsReasonConfigured,
 	}
 }
 

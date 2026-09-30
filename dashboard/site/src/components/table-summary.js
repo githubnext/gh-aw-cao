@@ -4,6 +4,7 @@
 
 import { h } from '../dom.js';
 import { effect, state } from '../reactive.js';
+import { createFactoryScope } from './factory-elements.js';
 import { renderHistogramBins } from './histogram.js';
 import { formatCount, formatCountNoun } from './count-formatters.js';
 import { renderDefinitionListRows } from './view-chrome.js';
@@ -122,31 +123,33 @@ function renderTableSummaryContent(column) {
 function addTableSummaryToggle(row) {
   const firstCell = row.cells[0];
   if (!firstCell) return;
-  const toggle = h(
-    'button',
-    {
-      type: 'button',
-      className: 'table-summary-toggle',
-      'aria-expanded': 'true',
-      'aria-label': 'Collapse column summaries',
-      title: 'Collapse column summaries'
-    },
-    octicon('chevron-up')
-  );
-  toggle.addEventListener('click', () => {
-    const expanded = toggle.getAttribute('aria-expanded') !== 'true';
-    syncToggleButtonState(toggle, expanded, {
+  const scope = createFactoryScope();
+  const toggle = h('button', { type: 'button', className: 'table-summary-toggle' }, octicon('chevron-up'));
+  // `expanded` is the toggle's entire visible state; the effect below is the
+  // only place that writes it onto the toggle button and row, replacing the
+  // manual attribute/classList bookkeeping the click handler used to repeat.
+  const expanded = state(true);
+  effect(() => {
+    const isExpanded = expanded.get();
+    syncToggleButtonState(toggle, isExpanded, {
       expandedLabel: 'Collapse column summaries',
       collapsedLabel: 'Expand column summaries',
       expandedIcon: 'chevron-up',
       collapsedIcon: 'chevron-down'
     });
-    row.classList.toggle('table-summary-collapsed', !expanded);
-    for (const content of row.querySelectorAll('.table-summary-expanded')) content.toggleAttribute('hidden', !expanded);
-    for (const content of row.querySelectorAll('.table-summary-compact')) content.toggleAttribute('hidden', expanded);
-    debugTableSummary({ event: 'toggle-changed', expanded });
-  });
+    row.classList.toggle('table-summary-collapsed', !isExpanded);
+    for (const content of row.querySelectorAll('.table-summary-expanded')) content.toggleAttribute('hidden', !isExpanded);
+    for (const content of row.querySelectorAll('.table-summary-compact')) content.toggleAttribute('hidden', isExpanded);
+  }, { signal: scope.signal });
+  toggle.addEventListener('click', () => {
+    expanded.set((current) => {
+      const next = !current;
+      debugTableSummary({ event: 'toggle-changed', expanded: next });
+      return next;
+    });
+  }, { signal: scope.signal });
   firstCell.append(toggle);
+  scope.bind(row);
 }
 
 /**

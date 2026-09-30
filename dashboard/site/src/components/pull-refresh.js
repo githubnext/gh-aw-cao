@@ -10,6 +10,7 @@
  */
 
 import { h } from '../dom.js';
+import { effect, state } from '../reactive.js';
 import { requestDashboardRefresh } from '../dashboard-data-updates.js';
 import { createDebug } from '../debug.js';
 
@@ -18,6 +19,10 @@ const MOVE_THRESHOLD = 12;
 const REFRESHING_RESET_DELAY_MS = 600;
 
 const debugPullRefresh = createDebug('pull-refresh');
+
+/** @typedef {{ visible: boolean, armed: boolean, label: string }} PullRefreshViewModel */
+/** @type {PullRefreshViewModel} */
+const RESET_VIEW = { visible: false, armed: false, label: 'Pull down to refresh' };
 
 /**
  * @param {{
@@ -34,8 +39,18 @@ export function enablePullRefresh({ scroller, view, isActive, signal }) {
     role: 'status',
     'aria-live': 'polite',
     hidden: true
-  }, 'Pull down to refresh');
+  });
   scroller.prepend(indicator);
+  const viewModel = state(RESET_VIEW);
+  // Owns the indicator's visibility, armed styling, and label as one reactive
+  // sink so the gesture handlers below only ever call `viewModel.set(...)`
+  // instead of writing `hidden`/`classList`/`textContent` at each call site.
+  effect(() => {
+    const current = viewModel.get();
+    indicator.hidden = !current.visible;
+    indicator.classList.toggle('overview-pull-refresh-armed', current.armed);
+    indicator.textContent = current.label;
+  }, { signal });
   /** @type {{ startY: number, armed: boolean } | null} */
   let gesture = null;
   const scrollTop = () => Math.max(
@@ -44,8 +59,7 @@ export function enablePullRefresh({ scroller, view, isActive, signal }) {
   );
   const reset = () => {
     gesture = null;
-    indicator.hidden = true;
-    indicator.classList.remove('overview-pull-refresh-armed');
+    viewModel.set(RESET_VIEW);
   };
   scroller.addEventListener('touchstart', (event) => {
     const touch = event.touches[0];
@@ -61,13 +75,15 @@ export function enablePullRefresh({ scroller, view, isActive, signal }) {
     const wasArmed = gesture.armed;
     gesture.armed = distance >= ARM_DISTANCE;
     if (gesture.armed && !wasArmed) debugPullRefresh({ event: 'armed' });
-    indicator.hidden = false;
-    indicator.classList.toggle('overview-pull-refresh-armed', gesture.armed);
-    indicator.textContent = gesture.armed ? 'Release to refresh' : 'Pull down to refresh';
+    viewModel.set({
+      visible: true,
+      armed: gesture.armed,
+      label: gesture.armed ? 'Release to refresh' : 'Pull down to refresh'
+    });
   }, { passive: true, signal });
   scroller.addEventListener('touchend', () => {
     if (!gesture?.armed) return reset();
-    indicator.textContent = 'Refreshing dashboard';
+    viewModel.set((current) => ({ ...current, label: 'Refreshing dashboard' }));
     debugPullRefresh({ event: 'refresh-requested' });
     requestDashboardRefresh(view);
     view.setTimeout(() => {

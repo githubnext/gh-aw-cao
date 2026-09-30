@@ -4,21 +4,24 @@ import { scopedStorageKey } from '../storage-scope.js';
 import { createDebug } from '../debug.js';
 import { effect, state } from '../reactive.js';
 import { createFactoryScope } from './factory-elements.js';
-import { enableDetailsMenuDismissal, renderActionLabel } from './ui-primitives.js';
 
 const THEME_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.theme');
 const debugTheme = createDebug('theme-settings');
 
 /** @typedef {'system'|'light'|'dark'} DashboardTheme */
 
+/** @type {DashboardTheme | null} */
+let unpersistedTheme = null;
+
 /** @returns {DashboardTheme} */
 function savedTheme() {
-  let theme = /** @type {DashboardTheme} */ ('system');
+  let theme = unpersistedTheme ?? /** @type {DashboardTheme} */ ('system');
   let fallback = true;
   try {
     const stored = globalThis.window?.localStorage?.getItem(THEME_STORAGE_KEY);
-    if (stored === 'system' || stored === 'light' || stored === 'dark') {
+    if (unpersistedTheme === null && (stored === 'system' || stored === 'light' || stored === 'dark')) {
       theme = stored;
+      unpersistedTheme = null;
       fallback = false;
     }
   } catch {
@@ -39,13 +42,6 @@ export function restoreDashboardTheme(root) {
   applyTheme(root, savedTheme());
 }
 
-/** @param {HTMLElement} root @param {HTMLElement} control */
-export function enableThemeControl(root, control) {
-  if (control instanceof HTMLDetailsElement) {
-    enableDetailsMenuDismissal(root, control, '[data-theme-value]');
-  }
-}
-
 export function renderThemeControl() {
   const scope = createFactoryScope();
   const theme = state(savedTheme());
@@ -55,9 +51,11 @@ export function renderThemeControl() {
   const persistTheme = (nextTheme) => {
     try {
       globalThis.window?.localStorage?.setItem(THEME_STORAGE_KEY, nextTheme);
+      unpersistedTheme = null;
       debugTheme({ event: 'changed', theme: nextTheme, persisted: true });
     } catch (error) {
       // The theme still applies for the current page when storage is unavailable.
+      unpersistedTheme = nextTheme;
       debugTheme({ event: 'changed', theme: nextTheme, persisted: false, errorName: error instanceof Error ? error.name : 'unknown' });
     }
   };
@@ -83,19 +81,7 @@ export function renderThemeControl() {
       button.setAttribute('aria-pressed', String(button.dataset.themeValue === current));
     }
   }, { signal: scope.signal });
-  const root = h('details', { className: 'theme-control' },
-    h('summary', { 'aria-label': 'Appearance', title: 'Appearance' },
-      octicon('sun'),
-      renderActionLabel('Appearance')
-    ),
-    h('div', { className: 'theme-control-popover', 'aria-labelledby': 'dashboard-appearance-heading' },
-      h('div', { className: 'theme-control-heading' },
-        h('strong', { id: 'dashboard-appearance-heading' }, 'Appearance'),
-        h('span', null, 'Choose how this dashboard looks.')
-      ),
-      h('div', { className: 'theme-control-options' }, buttons)
-    )
-  );
+  const root = h('div', { className: 'theme-control-options', role: 'group', 'aria-label': 'Theme' }, buttons);
   scope.bind(root);
   return root;
 }

@@ -1,4 +1,5 @@
 import { h } from '../dom.js';
+import { renderThemeControl } from './theme-settings.js';
 import { collectFullDiagnostics } from '../diagnostics.js';
 import { capturedConsoleLogText } from '../console-log-capture.js';
 import { createDebug, fullDebugUrl } from '../debug.js';
@@ -368,28 +369,20 @@ function renderAutomaticDataUpdatesSetting() {
     }
     return 'On. Hourly downloads continue after the dashboard is closed and pause on metered connections or unsuitable power conditions.';
   };
-  /** @type {HTMLInputElement} */
-  let checkbox;
-  /** @type {HTMLElement} */
-  let status;
-  const updateStatus = () => {
-    checkbox.checked = automaticDashboardDataUpdatesEnabled();
-    status.textContent = statusText();
-  };
-  checkbox = renderCheckbox({
+  const scope = createFactoryScope();
+  const enabled = state(automaticDashboardDataUpdatesEnabled());
+  const checkbox = renderCheckbox({
     id: 'configuration-automatic-dashboard-data-updates',
     className: 'configuration-setting-toggle',
-    checked: automaticDashboardDataUpdatesEnabled(),
+    checked: enabled.get(),
     disabled: Boolean(unavailableReason),
     onChange: /** @param {Event} event */ (event) => {
-      const enabled = /** @type {HTMLInputElement} */ (event.currentTarget).checked;
-      setAutomaticDashboardDataUpdatesEnabled(enabled);
-      updateStatus();
+      const checked = /** @type {HTMLInputElement} */ (event.currentTarget).checked;
+      setAutomaticDashboardDataUpdatesEnabled(checked);
+      enabled.set(checked);
     }
   });
-  status = h('p', { className: 'configuration-browser-setting-status', 'aria-live': 'polite' },
-    statusText()
-  );
+  const status = h('p', { className: 'configuration-browser-setting-status', 'aria-live': 'polite' });
   checkbox.setAttribute('aria-describedby', 'configuration-automatic-dashboard-data-updates-status');
   status.id = 'configuration-automatic-dashboard-data-updates-status';
   const section = h('section', { className: 'configuration-browser-settings', 'aria-labelledby': 'configuration-browser-settings-heading' },
@@ -403,11 +396,31 @@ function renderAutomaticDataUpdatesSetting() {
     ),
     status
   );
-  const stopStatusUpdates = onAutomaticDashboardBackgroundUpdateStatus(updateStatus);
-  const sectionScope = createFactoryScope();
-  sectionScope.signal.addEventListener('abort', stopStatusUpdates, { once: true });
-  sectionScope.bind(section);
+  // The smallest DOM update needed from the enabled state: resync the checkbox
+  // and status text whenever this setting or its background-update status changes.
+  effect(() => {
+    checkbox.checked = enabled.get();
+    status.textContent = statusText();
+  }, { signal: scope.signal });
+  const stopStatusUpdates = onAutomaticDashboardBackgroundUpdateStatus(() => {
+    enabled.set(automaticDashboardDataUpdatesEnabled());
+  });
+  scope.signal.addEventListener('abort', stopStatusUpdates, { once: true });
+  scope.bind(section);
   return section;
+}
+
+function renderAppearanceSetting() {
+  return h('section', { className: 'configuration-browser-settings', 'aria-labelledby': 'configuration-appearance-heading' },
+    renderConfigurationSectionHeading('configuration-appearance-heading', 'Appearance', 'Choose how this dashboard looks.'),
+    renderConfigurationSettingRow(
+      {
+        label: h('span', { className: 'configuration-setting-label' }, 'Theme'),
+        description: h('p', null, 'Follow your system setting or choose a theme for this browser.')
+      },
+      renderThemeControl()
+    )
+  );
 }
 
 function renderDebuggingSettings() {
@@ -460,6 +473,7 @@ export function renderConfigurationView(context) {
       description: context.description,
       headingTag: 'h2'
     }),
+    renderAppearanceSetting(),
     renderLocalDataActions(),
     renderSettingsCliActions(),
     renderAutomaticDataUpdatesSetting(),

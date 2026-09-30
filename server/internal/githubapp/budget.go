@@ -140,23 +140,36 @@ func (b Budget) read(ctx context.Context, installationID int64) (budgetState, er
 	if err != nil || value == "" {
 		return budgetState{}, err
 	}
-	return parseBudgetState(value), nil
+	state, ok := parseBudgetState(value)
+	if !ok {
+		// A stored value that fails to decode is treated the same as no
+		// observation (the caller falls back to ErrBudgetUnknown), but is
+		// worth surfacing: it normally means the encoding in formatBudgetState
+		// changed without a matching read-side change.
+		budgetLog.Printf("stored budget state failed to decode")
+	}
+	return state, nil
 }
 
 func formatBudgetState(state budgetState) string {
 	return fmt.Sprintf("%d|%d|%d", state.Remaining, unixOrZero(state.Reset), unixOrZero(state.ParkedTo))
 }
 
-func parseBudgetState(value string) budgetState {
+// parseBudgetState decodes formatBudgetState's "remaining|reset|parkedTo"
+// encoding. It is a pure function so a malformed stored value is testable
+// without a fake Redis reply, and it reports whether decoding succeeded so
+// callers can distinguish a genuinely absent observation from stored data
+// that no longer matches the expected encoding.
+func parseBudgetState(value string) (budgetState, bool) {
 	var remaining, reset, parked int64
 	if _, err := fmt.Sscanf(value, "%d|%d|%d", &remaining, &reset, &parked); err != nil {
-		return budgetState{}
+		return budgetState{}, false
 	}
 	return budgetState{
 		Remaining: int(remaining),
 		Reset:     instantOrZero(reset),
 		ParkedTo:  instantOrZero(parked),
-	}
+	}, true
 }
 
 func unixOrZero(instant time.Time) int64 {

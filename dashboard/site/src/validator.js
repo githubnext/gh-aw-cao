@@ -1867,6 +1867,12 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
       continue;
     }
 
+    const viewPath = `${path}.definition.views[${index}]`;
+    if (view.intent !== undefined) validateStringField(view.intent, `${viewPath}.intent`, true, errors);
+    if (view.objective !== undefined) validateStringField(view.objective, `${viewPath}.objective`, true, errors);
+    if (view.acceptance !== undefined) validateStringField(view.acceptance, `${viewPath}.acceptance`, true, errors);
+    validateSemanticMetadataLength(view, viewPath, errors);
+
     const data = view.data;
     if (!isPlainObject(data)) {
       errors.push(createError(
@@ -1877,7 +1883,6 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
       continue;
     }
 
-    const viewPath = `${path}.definition.views[${index}]`;
     if (isPlainObject(view.list) && view.list.style === 'entity-cards') {
       if (typeof view.list.card !== 'string' || !declaredCardTemplates.has(view.list.card)) {
         errors.push(createError(
@@ -2531,6 +2536,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
   }
   if (view.objective !== undefined) validateStringField(view.objective, `${path}.objective`, true, errors);
   if (view.acceptance !== undefined) validateStringField(view.acceptance, `${path}.acceptance`, true, errors);
+  validateSemanticMetadataLength(view, path, errors);
   if (view.prompt !== undefined && (typeof view.prompt !== 'string' || !['auto', 'none', 'always'].includes(view.prompt))) {
     errors.push(createError(
       ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
@@ -3997,6 +4003,7 @@ function validateQueries(queries, queriesNode, errors) {
     validateStringField(query.intent, `${path}.intent`, true, errors);
     if (query.objective !== undefined) validateStringField(query.objective, `${path}.objective`, true, errors);
     if (query.acceptance !== undefined) validateStringField(query.acceptance, `${path}.acceptance`, true, errors);
+    validateSemanticMetadataLength(query, path, errors);
     validateOptionalStringField(query.description, `${path}.description`, errors);
     const parameters = validateQueryParameters(
       query.parameters,
@@ -6377,6 +6384,27 @@ function validateStringField(value, path, required, errors) {
     errors.push(createError(
       ERROR_CODES.missingOrInvalidRequiredField,
       `${path.split('.').at(-1)} must be a non-empty string.`,
+      path
+    ));
+  }
+}
+
+/**
+ * @param {Record<string, unknown>} definition
+ * @param {string} path
+ * @param {ValidationError[]} errors
+ */
+function validateSemanticMetadataLength(definition, path, errors) {
+  const fields = ['intent', 'objective', 'acceptance'];
+  if (fields.some((field) => definition[field] !== undefined && typeof definition[field] !== 'string')) return;
+  const length = fields.reduce((total, field) => {
+    const value = definition[field];
+    return total + (typeof value === 'string' ? [...value].length : 0);
+  }, 0);
+  if (length > 512) {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      `Combined intent, objective, and acceptance must be at most 512 characters (found ${length}); shorten them or offload details to a separate Markdown file in the repository.`,
       path
     ));
   }

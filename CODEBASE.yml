@@ -166,13 +166,16 @@ components:
     responsibility: verify and deduplicate GitHub deliveries and reconcile the disposable projection from authoritative inputs
   dashboard_server_collection:
     path: server/internal/collect/
-    responsibility: optional alternative ingestion profile that collects evidence into a snapshot-compatible evidence lake from GitHub App installations and projects it through the existing ingestion pipeline
+    responsibility: optional alternative ingestion profile that discovers paginated historical workflow runs into durable resumable run tasks, while retaining repository collection into a snapshot-compatible evidence lake and the existing ingestion pipeline
   dashboard_collection_health:
     path: server/internal/server/collecting.go
     responsibility: persist allowlisted Redis-backed ingestion counters and expose a read-only health API and admin-authorized collection-health runtime source through the query boundary
   dashboard_collection_credentials:
     path: server/internal/githubapp/
     responsibility: mint short-lived installation tokens and govern per-installation GitHub rate-limit budget
+  github_quota_service:
+    path: server/internal/githubquota/
+    responsibility: coordinate GitHub API quota across replicas for buckets keyed by app, installation, and resource through authoritative observations, expiring atomic Redis reservations, parking, a credential-free provider registry, headroom-based bucket selection, and a bounded 24-hour usage history exposed to administrators through a REST API and the github-quota-usage runtime source
   dashboard_rebuild_control:
     path: server/internal/server/operations.go
     responsibility: coordinate multi-replica rebuilds, stage and validate a fresh generation, atomically activate it, and report operational status

@@ -164,6 +164,8 @@ Build a requirement-to-evidence matrix for applicable essential cybersecurity re
 
 For each requirement record `EVIDENCE_SUFFICIENT`, `GAP_FOUND`, `HUMAN_REVIEW_REQUIRED`, `NOT_ASSESSED`, or `INCOMPLETE`, plus repository evidence, missing evidence, limitations, source provenance, and a prioritized remediation recommendation. Do not treat a passing tool result as proof of conformity.
 
+Every `GAP_FOUND`, `HUMAN_REVIEW_REQUIRED`, `NOT_ASSESSED`, and `INCOMPLETE` row MUST have an accountable owner and disposition in a linked remediation/disposition table keyed by requirement. Use an evidenced role or team when no individual is verified; assign technical repository work to Copilot only when the assignment is real, otherwise mark it `pending assignment`. Use `assigned` only with a verifiable issue or pull request and assignee, `evidence provided` with the controlled evidence location, or `pending human decision` with the responsible role and exact question. `HUMAN_REVIEW_REQUIRED`, `NOT_ASSESSED`, and `INCOMPLETE` findings MUST NOT be described as accepted or resolved. Do not invent an owner, assignment, decision, or evidence location.
+
 ## Reporting contract
 
 Treat the issue as an RFC-style evidence record, not a narrative audit. Use **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** only for normative requirements or recommendations, as defined by [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119). Keep observed evidence, missing or inaccessible evidence, regulatory interpretation, and human decisions distinct. Every material claim **MUST** include its requirement or topic, source provision or instrument, official URL, and verification date; inaccessible evidence **MUST** remain `INCOMPLETE` or `NOT_ASSESSED` and **MUST NOT** be turned into a negative conclusion. Prefer one independently testable claim per row and state `none known` or `not verified` explicitly where applicable.
@@ -180,7 +182,7 @@ Immediately after the issue heading, include exactly one marker in this form, re
 
 `<!-- operational-value: domain=security-requirements target=OWNER/REPO target-sha=40_HEX_SHA -->`
 
-Add a `### Human Acceptance` section telling a non-bot reviewer to add a thumbs-up reaction only after reviewing the complete requirement-to-evidence matrix, regulatory provenance, cross-cutting gaps, remediation backlog, and human-review questions. Never add that reaction or claim human acceptance yourself.
+Add a `### Human Acceptance` section telling a non-bot reviewer to add a thumbs-up reaction only after reviewing the complete requirement-to-evidence matrix, regulatory provenance, cross-cutting gaps, remediation backlog, and human-review questions, and confirming that every `INCOMPLETE`, `NOT_ASSESSED`, and `HUMAN_REVIEW_REQUIRED` row has an owner and disposition. If any such row lacks either, state that acceptance is blocked. Never add that reaction or claim human acceptance yourself.
 
 Material conclusions about CRA scope exclusion, economic-operator role, commercial versus non-commercial FOSS treatment, substantial modification, important Class I or Class II classification, critical-product classification, conformity-assessment route, applicability of a harmonised standard, presumption of conformity, active exploitation, the severe-incident threshold, reportability, EU Declaration of Conformity readiness, or final market-release eligibility require explicit human review.
 

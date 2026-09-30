@@ -134,8 +134,7 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 	ctx, span := telemetry.Tracer().Start(ctx, telemetry.SpanIngestRun)
 	defer func() {
 		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
+			span.SetStatus(codes.Error, "ingestion failed")
 		} else {
 			span.SetAttributes(
 				attribute.Int64("cao_dashboard.ingest.revision", result.Revision),

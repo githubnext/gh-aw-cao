@@ -4,8 +4,11 @@
  * duplicated as hardcoded literals across the overview and campaigns views.
  */
 
+import { createDebug } from '../debug.js';
 import runConclusionClassification from './run-conclusion-classification.json' with { type: 'json' };
 import campaignAicUtilizationThresholds from './campaign-aic-utilization-thresholds.json' with { type: 'json' };
+
+const debugRunClassification = createDebug('run-classification');
 
 const FAILURE_CONCLUSIONS = new Set(runConclusionClassification.failure ?? []);
 const APPROVAL_CONCLUSIONS = new Set(runConclusionClassification.approval ?? []);
@@ -15,7 +18,9 @@ const APPROVAL_CONCLUSIONS = new Set(runConclusionClassification.approval ?? [])
  * @returns {boolean}
  */
 export function isFailureConclusion(conclusion) {
-  return FAILURE_CONCLUSIONS.has(String(conclusion));
+  const result = FAILURE_CONCLUSIONS.has(String(conclusion));
+  if (result) debugRunClassification({ event: 'conclusion-classified', kind: 'failure' });
+  return result;
 }
 
 /**
@@ -23,7 +28,9 @@ export function isFailureConclusion(conclusion) {
  * @returns {boolean}
  */
 export function isApprovalConclusion(conclusion) {
-  return APPROVAL_CONCLUSIONS.has(String(conclusion));
+  const result = APPROVAL_CONCLUSIONS.has(String(conclusion));
+  if (result) debugRunClassification({ event: 'conclusion-classified', kind: 'approval' });
+  return result;
 }
 
 /**
@@ -35,6 +42,16 @@ export function isApprovalConclusion(conclusion) {
  * @returns {string}
  */
 export function classifyUtilizationRatio(ratio) {
+  const status = resolveUtilizationStatus(ratio);
+  debugRunClassification({ event: 'utilization-classified', status });
+  return status;
+}
+
+/**
+ * @param {number} ratio
+ * @returns {string}
+ */
+function resolveUtilizationStatus(ratio) {
   for (const rule of campaignAicUtilizationThresholds) {
     if (typeof rule.max !== 'number' || ratio < rule.max) {
       return rule.status;

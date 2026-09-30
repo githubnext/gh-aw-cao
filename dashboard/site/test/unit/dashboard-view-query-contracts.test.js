@@ -781,6 +781,12 @@ describe('dashboard view query contracts', () => {
       .toBe('collection-health');
   });
 
+  it('registers GitHub quota usage as a server-owned query source', () => {
+    expect(SERVER_SOURCE_VALUES).toContain('github-quota-usage');
+    expect(queries.find((/** @type {{ name: string }} */ query) => query.name === 'github-api-usage')?.from)
+      .toBe('github-quota-usage');
+  });
+
   it('does not retain queries unused by dashboard content or another retained query', () => {
     const retained = new Set(declaredQueryReferences({
       ...dashboard,
@@ -806,7 +812,7 @@ describe('dashboard view query contracts', () => {
     const requested = [...new Set(dashboard.pages.flatMap((/** @type {Record<string, unknown>} */ page) => viewsOf(page).flatMap(sourceNamesOf)))]
       .filter((name) => queryNames.has(name));
     const workerRequested = requested.filter((name) => !requiresServerSource(name));
-    expect(requested.filter((name) => requiresServerSource(name))).toEqual(['ingestion-health']);
+    expect(requested.filter((name) => requiresServerSource(name)).sort()).toEqual(['github-api-usage', 'ingestion-health']);
     const results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries,

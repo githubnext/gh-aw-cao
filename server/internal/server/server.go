@@ -14,6 +14,7 @@ import (
 	"mime"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -26,6 +27,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
+	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/marketplace"
@@ -83,6 +85,7 @@ type App struct {
 	mcp           http.Handler
 	actionsToken  string
 	actionsActor  string
+	quota         *githubquota.Service
 }
 
 func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) {
@@ -121,6 +124,7 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 		}
 	}
 	reconciler := config.Reconciler
+	var quota *githubquota.Service
 	var memoryResolver *repositorymemory.RemoteResolver
 	if err := validateProfileExclusivity(config); err != nil {
 		return nil, err
@@ -130,6 +134,7 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 		if err != nil {
 			return nil, fmt.Errorf("configure collection: %w", err)
 		}
+		quota = collector.quota
 		reconciler = collector
 		if !config.Collector.AdmitOnly {
 			memoryResolver = &repositorymemory.RemoteResolver{
@@ -161,11 +166,18 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 			return nil, err
 		}
 	}
+	if store != nil && quota == nil {
+		quota, err = githubquota.New(store, githubquota.Options{})
+		if err != nil {
+			return nil, fmt.Errorf("configure github quota: %w", err)
+		}
+	}
 	serverLog.Printf("initialized host_profile=%s oauth=%t source_ingestion=%t", profile.Name, oauth != nil, config.SourceDirectory != "")
 	app := &App{
 		store: store, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
 		canonical: canonicalService{store: store}, reconciler: reconciler, memory: memoryResolver,
 		webhookSecret: []byte(config.WebhookSecret), actionsToken: actionsToken, actionsActor: actionsActor,
+		quota: quota,
 	}
 	if config.MCPEnabled {
 		handler, err := app.newMCPHandler()
@@ -295,8 +307,20 @@ func (a *App) Handler() http.Handler {
 	register("GET /api/admin/rebuild/status", a.rebuildStatus)
 	register("GET /api/admin/collection/status", a.collectionStatus)
 	register("GET /api/v1/ingestion/health", a.collectionStatus)
+	register("GET /api/v1/github-quota/usage", a.gitHubQuotaUsage)
 	mux.HandleFunc("/", a.static)
-	instrumented := otelhttp.NewHandler(withResponseTraceHeaders(mux), telemetry.SpanHTTPServer,
+	tracedMux := withResponseTraceHeaders(mux)
+	instrumented := otelhttp.NewHandler(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		original := request.Context().Value(originalHTTPRequestKey{}).(*http.Request)
+		restored := original.WithContext(request.Context())
+		restored.Body = request.Body
+		tracedMux.ServeHTTP(response, restored)
+	}), telemetry.SpanHTTPServer,
+		otelhttp.WithFilter(func(request *http.Request) bool {
+			// OAuth callbacks use a dedicated, allowlisted server span instead
+			// of the generic HTTP instrumentation.
+			return request.Method != http.MethodGet || request.URL.Path != "/auth/callback"
+		}),
 		otelhttp.WithSpanNameFormatter(func(_ string, request *http.Request) string {
 			// Match against the fixed, small set of registered API/auth
 			// patterns directly instead of calling mux.Handler, which
@@ -311,8 +335,32 @@ func (a *App) Handler() http.Handler {
 			return request.Method + " /*"
 		}),
 	)
-	return securityHeaders(a.preAuthRateLimit(a.requireAccess(a.rateLimit(instrumented))))
+	safeTelemetry := http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		safe := request.Clone(context.WithValue(request.Context(), originalHTTPRequestKey{}, request))
+		safe.RemoteAddr = ""
+		safe.Host = ""
+		safe.RequestURI = ""
+		safe.Header = make(http.Header)
+		if traceparent := request.Header.Get("Traceparent"); traceparent != "" {
+			safe.Header.Set("Traceparent", traceparent)
+		}
+		path := ""
+		if _, ok := routePatterns[request.Method+" "+request.URL.Path]; ok {
+			path = request.URL.Path
+		}
+		safe.URL = &url.URL{Path: path}
+		switch request.Method {
+		case http.MethodGet, http.MethodHead, http.MethodPost, http.MethodPut,
+			http.MethodPatch, http.MethodDelete, http.MethodOptions:
+		default:
+			safe.Method = ""
+		}
+		instrumented.ServeHTTP(response, safe)
+	})
+	return securityHeaders(a.preAuthRateLimit(a.requireAccess(a.rateLimit(safeTelemetry))))
 }
+
+type originalHTTPRequestKey struct{}
 
 // withResponseTraceHeaders exposes the W3C trace/span ids that otelhttp
 // assigned to the in-flight request as response headers, so operators can
@@ -711,8 +759,9 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 	defer span.End()
 	request = request.WithContext(ctx)
 	fail := func(status int, message string) {
-		span.RecordError(errors.New(message))
-		span.SetStatus(codes.Error, message)
+		if status >= http.StatusInternalServerError {
+			span.SetStatus(codes.Error, "query execution failed")
+		}
 		writeError(response, status, message)
 	}
 	request.Body = http.MaxBytesReader(response, request.Body, 8<<20)
@@ -836,6 +885,10 @@ type generationLoader struct {
 func (loader *generationLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
 	if name == collectionHealthSourceName {
 		source, err := loader.app.collectionHealthSource(loader.ctx, loader.allowCollectionHealth)
+		return source, model.Metrics{}, err
+	}
+	if name == gitHubQuotaUsageSourceName {
+		source, err := loader.app.gitHubQuotaUsageSource(loader.ctx, loader.allowCollectionHealth)
 		return source, model.Metrics{}, err
 	}
 	if name == marketplace.SourceName {

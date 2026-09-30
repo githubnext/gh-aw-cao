@@ -6,6 +6,7 @@ import (
 	"errors"
 	"math/rand/v2"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
@@ -16,6 +17,7 @@ var queueLog = logger.New("cao:collect:queue")
 
 const (
 	taskStream       = "collect:tasks"
+	runTaskStream    = "collect:run-tasks"
 	delayedTaskSet   = "collect:delayed-tasks"
 	deadLetterStream = "collect:dead-letters"
 	defaultGroup     = "collectors"
@@ -35,6 +37,19 @@ type Task struct {
 	// collection. An admission-only process has no evidence lake, so
 	// withdrawing consent is queued for a worker that does.
 	Erase bool `json:"erase,omitempty"`
+}
+
+// RunTask is one durable historical workflow-run item. Key is the stable
+// repository/run/attempt identity; it is not a claim that run artifacts have
+// been parsed or collected.
+type RunTask struct {
+	Key            string    `json:"key"`
+	Repository     string    `json:"repository"`
+	InstallationID int64     `json:"installationId"`
+	RunID          int64     `json:"runId"`
+	Attempt        int       `json:"attempt"`
+	CreatedAt      time.Time `json:"createdAt,omitempty"`
+	EnqueuedAt     time.Time `json:"enqueuedAt"`
 }
 
 // Lease is a task delivered to one consumer and not yet acknowledged.
@@ -92,6 +107,35 @@ func (q Queue) Ensure(ctx context.Context) error {
 // error, it is the debounce working.
 func (q Queue) Enqueue(ctx context.Context, task Task) (bool, error) {
 	return q.enqueue(ctx, task)
+}
+
+// EnqueueRun durably admits one historical workflow run. Unlike repository
+// collection tasks, run tasks are never coalesced by repository.
+func (q Queue) EnqueueRun(ctx context.Context, task RunTask) (bool, error) {
+	repository, err := NormalizeRepository(task.Repository)
+	if err != nil {
+		return false, err
+	}
+	if task.InstallationID <= 0 || task.RunID <= 0 || task.Attempt <= 0 {
+		return false, errors.New("run tasks require an installation, run id, and positive attempt")
+	}
+	task.Repository = repository
+	task.Key = runTaskIdentity(repository, task.RunID, task.Attempt)
+	if task.EnqueuedAt.IsZero() {
+		task.EnqueuedAt = time.Now().UTC()
+	}
+	payload, err := json.Marshal(task)
+	if err != nil {
+		return false, err
+	}
+	return q.Store.StreamEnqueueUnique(
+		ctx, runTaskStream, task.Key, q.MaxLength,
+		map[string]string{"key": task.Key, "repository": repository, "task": string(payload)},
+	)
+}
+
+func runTaskIdentity(repository string, runID int64, attempt int) string {
+	return repository + ":" + strconv.FormatInt(runID, 10) + ":" + strconv.Itoa(attempt)
 }
 
 // EnqueueDelivery atomically deduplicates a GitHub delivery and durably

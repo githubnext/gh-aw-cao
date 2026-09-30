@@ -2,6 +2,7 @@ import { h } from '../dom.js';
 import { createDebug } from '../debug.js';
 import { navigationIndicator } from '../navigation-indicator.js';
 import { agenticWorkflowMark, octicon } from '../octicons.js';
+import { effect, state } from '../reactive.js';
 import { scopedStorageKey } from '../storage-scope.js';
 import { titleCase } from './count-formatters.js';
 import { enableDetailsMenuDismissal, syncToggleButtonState } from './ui-primitives.js';
@@ -414,31 +415,33 @@ function enableSidebarToggle(root) {
   const toggle = root.querySelector('.sidebar-toggle');
   if (!(appShell instanceof HTMLElement) || !(toggle instanceof HTMLButtonElement)) return;
 
-  /** @param {boolean} collapsed */
-  const setCollapsed = (collapsed) => {
-    appShell.classList.toggle('sidebar-collapsed', collapsed);
-    syncToggleButtonState(toggle, !collapsed, {
+  let initiallyCollapsed = false;
+  try {
+    initiallyCollapsed = globalThis.window?.localStorage?.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true';
+  } catch (error) {
+    // Storage can be unavailable in embedded or privacy-restricted contexts.
+    debugNavigation({ event: 'sidebar-state.read_failed', errorName: /** @type {Error} */ (error)?.name });
+  }
+  const collapsed = state(initiallyCollapsed);
+
+  // The smallest DOM update needed from collapsed state: toggle the shell class and
+  // resync the toggle button's accessible label, title, and icon.
+  effect(() => {
+    const isCollapsed = collapsed.get();
+    appShell.classList.toggle('sidebar-collapsed', isCollapsed);
+    syncToggleButtonState(toggle, !isCollapsed, {
       expandedLabel: 'Collapse navigation',
       collapsedLabel: 'Expand navigation',
       expandedIcon: 'sidebar-expand',
       collapsedIcon: 'sidebar-collapse'
     });
-  };
-
-  let collapsed = false;
-  try {
-    collapsed = globalThis.window?.localStorage?.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true';
-  } catch (error) {
-    // Storage can be unavailable in embedded or privacy-restricted contexts.
-    debugNavigation({ event: 'sidebar-state.read_failed', errorName: /** @type {Error} */ (error)?.name });
-  }
-  setCollapsed(collapsed);
+  });
 
   toggle.addEventListener('click', () => {
-    collapsed = !collapsed;
-    setCollapsed(collapsed);
+    const nextCollapsed = !collapsed.get();
+    collapsed.set(nextCollapsed);
     try {
-      globalThis.window?.localStorage?.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(collapsed));
+      globalThis.window?.localStorage?.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(nextCollapsed));
     } catch (error) {
       // The display mode still works for the current page when storage is unavailable.
       debugNavigation({ event: 'sidebar-state.write_failed', errorName: /** @type {Error} */ (error)?.name });

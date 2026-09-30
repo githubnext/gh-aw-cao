@@ -78,7 +78,6 @@ func Setup(ctx context.Context, version string) (Shutdown, error) {
 	noop := func(context.Context) error { return nil }
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
-		propagation.Baggage{},
 	))
 	traceEndpoint, traceDecision := resolveExporterDecision(
 		os.Getenv("OTEL_SDK_DISABLED"),
@@ -101,7 +100,6 @@ func Setup(ctx context.Context, version string) (Shutdown, error) {
 			semconv.ServiceVersionKey.String(version),
 		),
 		resource.WithFromEnv(),
-		resource.WithHost(),
 		resource.WithTelemetrySDK(),
 	)
 	if err != nil {

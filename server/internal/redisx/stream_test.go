@@ -73,6 +73,34 @@ func TestStreamEnqueueDeliveryCombinesDedupDebounceAndAppend(t *testing.T) {
 	}
 }
 
+func TestStreamEnqueueUniqueAtomicallyDeduplicatesBeforeAppend(t *testing.T) {
+	client := &streamCommandClient{value: int64(1)}
+	store := NewStore(client, "test")
+	enqueued, err := store.StreamEnqueueUnique(
+		context.Background(), "run-tasks", "octo/api:42:1", 100,
+		map[string]string{"key": "octo/api:42:1", "task": "{}"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !enqueued {
+		t.Fatal("expected the first unique task to be appended")
+	}
+	if client.command[0] != "EVAL" {
+		t.Fatalf("command = %q, want atomic EVAL", client.command[0])
+	}
+	script := client.command[1]
+	exists := strings.Index(script, `redis.call("EXISTS"`)
+	appendEntry := strings.Index(script, `redis.call("XADD"`)
+	markIdentity := strings.Index(script, `redis.call("SET"`)
+	if exists < 0 || appendEntry < 0 || markIdentity < 0 || exists >= appendEntry || appendEntry >= markIdentity {
+		t.Fatalf("unique identity check, append, and marker must be atomic and ordered:\n%s", script)
+	}
+	if strings.HasSuffix(client.command[4], "octo/api:42:1") {
+		t.Fatal("raw run identity must not become a Redis key")
+	}
+}
+
 func TestStreamAddNeverUsesDestructiveMaxLengthTrimming(t *testing.T) {
 	client := &streamCommandClient{value: "1-0"}
 	store := NewStore(client, "test")

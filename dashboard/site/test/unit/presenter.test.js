@@ -1049,7 +1049,7 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Prioritize investigation of the most blocked domains');
     expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('query firewall-domain-workflows with --param domain=DOMAIN');
     expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Named CAO query IDs: firewall-domain-totals, firewall-most-blocked-domains');
-    expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Record each investigated domain and workflow');
+    expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Record domain/workflow, time, blocked/allowed counts and disposition');
     expect(page?.querySelector('[data-chart-category="blocked.example"]')).not.toBeNull();
     expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] .chart-legend-pie strong')?.textContent).toBe('3,177,281');
     expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
@@ -1335,6 +1335,16 @@ describe('presenter built-in and custom pages', () => {
             backfill: 0
           }],
           metadata
+        },
+        'github-api-usage': {
+          source: 'github-api-usage',
+          rows: [
+            { 'observed-at': '2026-09-02T11:00:00Z', scope: 'aggregate', bucket: 'all buckets', limit: 10000, used: 2500, 'usage-percent': 25 },
+            { 'observed-at': '2026-09-02T12:00:00Z', scope: 'aggregate', bucket: 'all buckets', limit: 10000, used: 4000, 'usage-percent': 40 },
+            { 'observed-at': '2026-09-02T11:00:00Z', scope: 'bucket', bucket: 'collector/123/core', limit: 5000, used: 1000, 'usage-percent': 20 },
+            { 'observed-at': '2026-09-02T12:00:00Z', scope: 'bucket', bucket: 'collector/123/core', limit: 5000, used: 3000, 'usage-percent': 60 }
+          ],
+          metadata
         }
       }
     });
@@ -1344,8 +1354,10 @@ describe('presenter built-in and custom pages', () => {
       window.location.hash = '#page-indexing';
       await vi.waitFor(() => expect(rendered.querySelector('[data-page-id="indexing"]')?.hasAttribute('data-page-pending')).toBe(false));
       const page = rendered.querySelector('[data-page-id="indexing"]');
-      expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(5);
+      expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(6);
       expect(page?.querySelectorAll('[data-chart-widget="bar"]')).toHaveLength(2);
+      expect(page?.querySelectorAll('[data-view-id="github-api-usage"] [data-chart-widget="line"]')).toHaveLength(1);
+      expect(page?.querySelector('[data-view-id="github-api-usage"]')?.textContent).toContain('collector/123/core');
       expect(page?.querySelectorAll('[data-chart-widget="horizontal-bar"]')).toHaveLength(1);
       expect(page?.textContent).not.toContain('Local database');
       expect(page?.textContent).toContain('ingest-jsonl');
@@ -1709,30 +1721,19 @@ describe('presenter built-in and custom pages', () => {
       }
     };
 
+    localStorage.setItem('central-agentic-ops.dashboard.theme', 'dark');
     const rendered = renderDashboard({ document, sources: {} });
     globalThis.document.body.append(rendered);
 
     expect(rendered.querySelector('.refresh-button')).toBeNull();
     expect(rendered.querySelector('.account-menu')).toBeNull();
+    expect(rendered.querySelector('.report-actions [data-theme-value]')).toBeNull();
+    expect(rendered.dataset.theme).toBe('dark');
     const repositoryLink = rendered.querySelector('.repository-link');
     expect(repositoryLink).not.toBeNull();
     expect(repositoryLink?.getAttribute('href')).toBe('https://github.example.com/octo-org/agentic-operations');
     expect(repositoryLink?.getAttribute('aria-label')).toBe('View octo-org/agentic-operations on GitHub');
     expect(repositoryLink?.getAttribute('title')).toBe('View octo-org/agentic-operations on GitHub');
-    const themeControl = rendered.querySelector('.theme-control');
-    if (!(themeControl instanceof HTMLDetailsElement)) throw new Error('appearance control did not render');
-    expect(themeControl.nextElementSibling).toBe(repositoryLink);
-    expect(themeControl.querySelector('summary')?.getAttribute('aria-label')).toBe('Appearance');
-    expect([...themeControl.querySelectorAll('[data-theme-value]')].map((node) => node.textContent)).toEqual(['System', 'Light', 'Dark']);
-    themeControl.open = true;
-    /** @type {HTMLButtonElement} */ (themeControl.querySelector('[data-theme-value="dark"]')).click();
-    expect(themeControl.open).toBe(false);
-    expect(rendered.dataset.theme).toBe('dark');
-    expect(localStorage.getItem('central-agentic-ops.dashboard.theme')).toBe('dark');
-    themeControl.open = true;
-    themeControl.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    expect(themeControl.open).toBe(false);
-    expect(globalThis.document.activeElement).toBe(themeControl.querySelector('summary'));
     localStorage.clear();
     expect(rendered.querySelector('.sidebar-brand > span')?.textContent).toBe('agentic-operations');
     expect(rendered.querySelector('.mobile-page-header .mobile-brand-name')?.textContent).toBe('agentic-operations');

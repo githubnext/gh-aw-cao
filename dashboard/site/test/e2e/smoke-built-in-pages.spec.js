@@ -474,6 +474,20 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await campaignNavigation.getByRole('link', { name: 'Operational Value' }).click();
   const campaignInsights = page.locator('[data-page-id="campaign-insights"]');
   await expect(campaignInsights).toBeVisible();
+  await expect(campaignInsights.locator('.custom-view-grid > .custom-view').first()).toHaveCSS('padding-left', '14px');
+  const prompt = campaignInsights.locator('.semantic-prompt-action').first();
+  if (await prompt.count() > 0) {
+    await expect(prompt).toHaveCSS('position', 'absolute');
+    const promptAndHelp = await prompt.evaluate((element) => {
+      const section = element.closest('.view-description-section');
+      const promptBox = element.getBoundingClientRect();
+      const helpBox = section?.querySelector('.view-description-tooltip')?.getBoundingClientRect();
+      return promptBox && helpBox ? { promptRight: promptBox.right, helpLeft: helpBox.left } : null;
+    });
+    if (promptAndHelp) {
+      expect(promptAndHelp.promptRight).toBeLessThanOrEqual(promptAndHelp.helpLeft);
+    }
+  }
   await expect(campaignInsights.locator('[data-view-id="campaign-audit-event-summary-buckets"]')).toHaveCount(0);
   await expect(campaignInsights).toHaveAttribute('data-view-mode', 'table');
   await expect(campaignInsights.locator('.view-mode-control')).toHaveCount(0);

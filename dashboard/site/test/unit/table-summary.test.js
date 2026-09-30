@@ -52,6 +52,31 @@ describe('renderTableSummaryRow', () => {
     expect([...rendered.querySelectorAll('.table-summary-expanded')].every((node) => !node.hasAttribute('hidden'))).toBe(true);
   });
 
+  it('stops reacting to toggle clicks once the row detaches from the document', async () => {
+    const rendered = renderSummaries([
+      { label: 'Status', type: 'nominal', values: ['open', 'open', 'closed'] }
+    ]);
+    const table = document.createElement('table');
+    table.append(document.createElement('tbody'));
+    /** @type {HTMLTableSectionElement} */ (table.querySelector('tbody')).append(rendered);
+    document.body.append(table);
+    const toggle = /** @type {HTMLButtonElement} */ (rendered.querySelector('.table-summary-toggle'));
+    // Let the MutationObserver backing createFactoryScope observe the initial attach.
+    await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+    rendered.remove();
+    // Let the MutationObserver microtask backing createFactoryScope run.
+    await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+    toggle.click();
+
+    // The effect stopped when the row detached, so the click can no longer
+    // toggle the now-detached row's collapsed state or the button's label.
+    expect(rendered.classList.contains('table-summary-collapsed')).toBe(false);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    table.remove();
+  });
+
   it('summarizes quantitative values and includes a histogram', () => {
     const rendered = renderSummaries([{
       label: 'Score',

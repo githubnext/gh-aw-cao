@@ -30,6 +30,39 @@ const (
 	redisTLSDisabled redisTLSMode = "disabled"
 )
 
+// redisTLSModeSource identifies which input supplied the resolved Redis TLS
+// mode. It is useful for diagnosing a misconfigured deployment without
+// logging the policy document, provider module, or resolved mode's origin
+// in more detail than this classification.
+type redisTLSModeSource string
+
+const (
+	redisTLSModeSourcePolicy   redisTLSModeSource = "policy"
+	redisTLSModeSourceProvider redisTLSModeSource = "provider"
+	redisTLSModeSourceDefault  redisTLSModeSource = "default"
+)
+
+// resolveRedisTLSMode applies the standard priority for the effective Redis
+// TLS mode: an explicit policy-configured mode, then the Redis provider
+// module's own mode, then redisTLSAuto. A provider module that requires TLS
+// rejects any explicitly policy-configured mode other than redisTLSRequired,
+// so a deployment cannot silently disable TLS against a provider that
+// mandates it. It is a pure function extracted from hostPolicy.resolve so
+// this priority and rejection logic is testable without a full policy
+// document or environment lookup.
+func resolveRedisTLSMode(policyMode, providerMode redisTLSMode, providerModule string) (redisTLSMode, redisTLSModeSource, error) {
+	if policyMode == "" {
+		if providerMode == "" {
+			return redisTLSAuto, redisTLSModeSourceDefault, nil
+		}
+		return providerMode, redisTLSModeSourceProvider, nil
+	}
+	if providerMode == redisTLSRequired && policyMode != redisTLSRequired {
+		return "", "", fmt.Errorf("redis provider module %q requires TLS", providerModule)
+	}
+	return policyMode, redisTLSModeSourcePolicy, nil
+}
+
 type resolvedHostPolicy struct {
 	Profile                HostProfile
 	SingleReplicaConfirmed bool
@@ -356,18 +389,14 @@ func (policy hostPolicy) resolve(lookup func(string) (string, bool)) (*resolvedH
 	portEnv := firstNonempty(policy.Redis.PortEnv, provider.portEnv)
 	usernameEnv := firstNonempty(policy.Redis.UsernameEnv, provider.usernameEnv)
 	passwordEnv := firstNonempty(policy.Redis.PasswordEnv, provider.passwordEnv)
-	tlsMode := policy.Redis.TLS.Mode
-	if tlsMode == "" {
-		tlsMode = provider.tlsMode
-		if tlsMode == "" {
-			tlsMode = redisTLSAuto
-		}
-	} else if provider.tlsMode == redisTLSRequired && tlsMode != redisTLSRequired {
-		return nil, fmt.Errorf("redis provider module %q requires TLS", policy.Redis.Module)
+	tlsMode, tlsSource, err := resolveRedisTLSMode(policy.Redis.TLS.Mode, provider.tlsMode, policy.Redis.Module)
+	if err != nil {
+		return nil, err
 	}
 	if tlsMode != redisTLSAuto && tlsMode != redisTLSRequired && tlsMode != redisTLSDisabled {
 		return nil, fmt.Errorf("unsupported Redis TLS mode %q", tlsMode)
 	}
+	serverLog.Printf("resolved redis tls mode=%s source=%s", tlsMode, tlsSource)
 	redisURL, err := redisURLFromEnvironment(
 		lookup, urlEnv, hostEnv, portEnv, usernameEnv, passwordEnv, tlsMode,
 	)

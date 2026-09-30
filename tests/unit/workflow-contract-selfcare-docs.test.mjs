@@ -153,6 +153,7 @@ test("SelfCare documentation discoverability audits the public agent entry point
 
 test("SelfCare accessibility checker audits the served docs site with axe-core evidence", () => {
   const source = workflow("self-care-accessibility-checker.md");
+  const compiled = workflow("self-care-accessibility-checker.lock.yml");
   const liveGuard = "if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}";
 
   assert.match(source, /^name: "SelfCare \/ Accessibility"$/m);
@@ -160,6 +161,9 @@ test("SelfCare accessibility checker audits the served docs site with axe-core e
   assert.match(source, /campaign: self-care/);
   assert.match(source, /worker: accessibility-checker/);
   assert.match(source, /safe_output_mode` is `live`/);
+  assert.match(source, /read_pull_requests: read/);
+  assert.match(source, /pull-requests: read/);
+  assert.doesNotMatch(source, /^\s+(contents|issues|pull-requests): write$/m);
   assert.match(source, /engine:\n\s+id: pi\n\s+model: copilot\/gpt-5\.4/);
   assert.match(source, /cli-proxy: true/);
   assert.match(source, /playwright:\n\s+version: "0\.1\.18"/);
@@ -176,16 +180,23 @@ test("SelfCare accessibility checker audits the served docs site with axe-core e
   assert.match(source, /colorScheme: "light"/);
   assert.match(source, /colorScheme: "dark"/);
   assert.match(source, /prefers-reduced-motion/);
-  assert.match(source, /safe-outputs:\n\s+allowed-domains:\n\s+- githubnext\.github\.io\n\s+create-issue:/);
-  assert.match(source, /create-issue:\n\s+target-repo:.*\n\s+deduplicate-by-title: true\n\s+title-prefix: "\[self-care:accessibility-checker\] "/);
+  assert.match(source, /safe-outputs:\n\s+allowed-domains:\n\s+- githubnext\.github\.io\n\s+create-pull-request:/);
+  assert.match(source, /create-pull-request:\n\s+target-repo:.*\n\s+title-prefix: "\[self-care:accessibility-checker\] "/);
   assert.match(source, /labels: \[self-care, self-care:accessibility-checker\]/);
-  assert.match(source, /close-older-key: self-care-accessibility-checker/);
-  assert.match(source, /Begin the issue body directly with a concise, unheaded executive summary/);
-  assert.match(source, /select the single most important action with the highest expected return on investment/);
-  assert.match(source, /<details><summary><b>Agent prompt<\/b><\/summary>/);
-  assert.match(source, /<details><summary><b>All Findings and Evidence<\/b><\/summary>/);
+  assert.match(source, /draft: true/);
+  assert.match(source, /if-no-changes: ignore/);
+  assert.match(source, /fallback-as-issue: false/);
+  assert.match(source, /protected-files: blocked/);
+  assert.match(source, /max-patch-files: 4/);
+  assert.match(source, /allowed-files:\n\s+- "docs\/styles\/\*\.css"\n\s+- "docs\/components\/\*\.astro"\n\s+- "docs\/\*\.md"/);
+  assert.match(source, /exact `gh-aw-workflow-id: self-care-accessibility-checker` body marker/);
+  assert.match(source, /Call `create_pull_request` exactly once only when the fix is supported/);
+  assert.match(source, /Call `noop` exactly once instead if the audit is clean/);
   assert.equal(source.split(liveGuard).length - 1, 7);
-  assert.doesNotMatch(source, /^\s+(create-pull-request|add-comment|create-discussion|push-to-pull-request-branch):/m);
+  assert.doesNotMatch(source, /^\s+(create-issue|add-comment|create-discussion|push-to-pull-request-branch):/m);
+  assert.match(compiled, /docs\/styles\/\*\.css/);
+  assert.match(compiled, /docs\/components\/\*\.astro/);
+  assert.match(compiled, /"tools":\["create_pull_request","missing_data","missing_tool","noop"\]/);
 });
 
 test("docs diagram generator creates one validated theme-aware SVG pair", () => {

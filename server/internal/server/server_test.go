@@ -699,6 +699,10 @@ func fakeRedis(t *testing.T) (string, func()) {
 								result = 0
 								break
 							}
+							if len(command) >= 7 && command[6] != "" && bulkResult != command[6] {
+								bulkResult = "superseded"
+								break
+							}
 							values[command[4]] = bulkResult
 							if sets[command[5]] == nil {
 								sets[command[5]] = map[string]bool{}

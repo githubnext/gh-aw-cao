@@ -191,7 +191,7 @@
       "name": "campaign-performance-baseline-totals",
       "intent": "Establish a selected-horizon campaign baseline from concluded run attempts while keeping reliability, unverified production, and efficiency as separate facts.",
       "objective": "Select campaigns whose retained run reliability, output production, or AI Credit efficiency merits closer examination.",
-      "acceptance": "For each campaign, concluded and successful attempt counts, output counts, and mean AI Credits reconcile to the corresponding filtered retained run attempts; absent denominators or costs stay unknown, and produced outputs are unverified outcomes, not operational value.",
+      "acceptance": "Concluded and successful attempts, outputs, and mean AI Credits reconcile to filtered retained runs; absent denominators or costs stay unknown. Produced outputs are unverified, not operational value.",
       "description": "Canonical campaign run attempts aggregated into bounded selected-horizon baseline totals without treating runtime success or produced outputs as operational value.",
       "from": "campaign-runs",
       "compute": [

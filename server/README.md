@@ -874,6 +874,7 @@ IndexedDB ingestion:
 | `POST /api/v1/refresh` | Return the current revision and authoritative evaluation time without ingesting data. |
 | `GET /api/v1/events` | Server-Sent Events stream that notifies active views when the Redis revision changes. |
 | `GET /api/v1/diagnostics` | Canonical schema counts, relationship errors, and duplicate IDs for the active generation. |
+| `GET /api/v1/github-quota/usage` | Administrator-only GitHub API quota usage for the last 24 hours: the peak observed usage of each bucket (App, installation, resource) and the limit-weighted aggregate per 15-minute slot. The same data is the `github-quota-usage` runtime source behind the Ingestion page chart. No credentials are included. |
 | `GET /api/repositories` and `GET /api/repositories/:id` | Return canonical repository objects. |
 | `GET /api/repositories/:id/runs` and `GET /api/workflows/:id/runs` | Return related canonical runs. |
 | `GET /api/runs/:id/jobs`, `GET /api/runs/:id/sessions`, `GET /api/sessions/:id/events` | Return related canonical execution records when published. |
@@ -885,18 +886,97 @@ API responses use `Cache-Control: no-store`. The dashboard service worker
 excludes `/api/` so query results and event streams are never placed in browser
 caches.
 
+## OAuth sign-in troubleshooting
+
+If the OAuth callback shows a sign-in error, select **Sign out and try again**.
+This attempts the existing CSRF-protected logout (including server-side token
+revocation), clears the pending OAuth state and the dashboard IndexedDB cache
+on the signed-out page, and then offers a fresh, explicit GitHub sign-in.
+
+The older `{"error":"GitHub authorization failed"}` response corresponds to
+an authorization failure; current versions show a help page instead. This
+failure can mean the selected account is not an active member of an allowed
+organization or team, or that GitHub membership could not be verified.
+Try an authorized account, or ask your dashboard administrator to check the
+allowed organizations and teams and your active membership. Do not send
+OAuth callback URLs, codes, tokens, or cookies when requesting help.
+
+If other open tabs block browser data deletion, close them and wait for the
+signed-out page to finish before signing in. If logout cannot be confirmed,
+the page keeps the error visible; clear this site's cookies before retrying,
+or contact your dashboard administrator. Try a GitHub account that is an
+active member of an organization or team permitted by the dashboard.
+Signing in does not itself grant access.
+
+The error page shows a request ID when tracing is enabled. Administrators can
+search for that W3C trace ID in their OpenTelemetry backend and inspect the
+`GET /auth/callback` span's fixed `error.type` classification. The same ID is
+sent as `X-Trace-Id` on the response. Neither the page nor the span reveals
+the OAuth code, state, credentials, account, membership details, or raw
+provider errors. If no trace ID appears, configure an OTLP trace endpoint as
+described below before expecting backend correlation; avoid sending callback
+URLs, cookies, codes, or tokens when requesting support.
+
+All generic server HTTP spans use a redacted copy of each request: the server
+does not export peer/client IP addresses, user-agent strings, query strings,
+arbitrary URL paths, W3C baggage, or client-provided tracestate. The original
+request still reaches the authentication and rate-limiting code unchanged.
+Raw user-agent strings may identify or fingerprint a browser, so they remain
+excluded from telemetry rather than assuming their collection is GDPR compliant.
+OAuth callbacks continue to use their own fixed-attribute span and extract
+only W3C trace context, not baggage. Trace IDs are correlation identifiers,
+not user identities. For GDPR-sensitive deployments, operators must also
+limit collector/exporter access and retention, review any upstream proxy
+logging and configured resource attributes, and avoid attaching identifiers
+in custom instrumentation. This application-level minimization does not
+certify the entire deployment's GDPR compliance.
+
 ## Telemetry
 
 The server is instrumented with standard, vendor-neutral
 [OpenTelemetry](https://opentelemetry.io/) tracing and metrics
-(`internal/telemetry/`). Every HTTP request is wrapped with `otelhttp`, which
-supplies OpenTelemetry HTTP semantic-convention attributes and the standard
+(`internal/telemetry/`). HTTP requests other than `GET /auth/callback` are
+wrapped with `otelhttp` using a redacted request, which supplies bounded
+OpenTelemetry HTTP semantic-convention attributes and the standard
 `http.server.request.duration`, `http.server.request.body.size`, and
-`http.server.response.body.size` metrics. The query engine and ingestion paths
+`http.server.response.body.size` metrics. OAuth callbacks instead emit a
+dedicated W3C-context-propagating server span named `GET /auth/callback` with
+only fixed `http.route` and `http.request.method` attributes, plus
+`cao_dashboard.auth.callback.count` (unit `{callback}`). Both the span and
+counter use `cao_dashboard.auth.callback.outcome` (`success` or `failure`);
+failures additionally use a fixed, bounded `error.type` (`invalid_state`,
+`missing_code`, `provider_denied`, `exchange_failed`, `authorization_failed`,
+`session_id_generation_failed`, `csrf_generation_failed`, or
+`session_save_failed`). Only server-side failures mark the span as an error;
+raw exceptions and provider error descriptions are never recorded. This
+separate instrumentation avoids exposing callback request metadata. The callback
+retains
+`X-Trace-Id` and `X-Span-Id` correlation headers; no OAuth code, state, cookie,
+token, login, provider message, query string, or other user identifier is
+added to its telemetry. Authorization rechecks start a
+`cao_dashboard.auth.revalidate` span before the protected request is served;
+failed callbacks and rechecks emit `cao_dashboard.auth.decision` events and
+`cao_dashboard.auth.decision.count` (unit `{decision}`). Only fixed
+`cao_dashboard.auth.operation` (`callback_cleanup` or `session_revalidation`)
+and `cao_dashboard.auth.outcome` values are recorded, distinguishing accepted,
+rejected, concurrent, and failed rechecks from revoked, queued, or failed
+callback credential cleanup. No account, membership, token, cookie, or provider
+message is attached to these signals. The query engine and ingestion paths
 start dedicated `cao_dashboard.query.execute` and `cao_dashboard.ingest.run`
-spans. MCP requests use the OpenTelemetry MCP semantic conventions, including
+spans. The GitHub API quota service (`internal/githubquota/`) starts
+`cao_githubquota.<operation>` spans (`observe`, `commit`, `reserve`, `release`,
+`park`, `unpark`, `state`, `select`, `usage`) and records
+`cao_githubquota.operation.count` and `cao_githubquota.operation.duration`
+by operation, bucket App and resource, and a fixed `cao_githubquota.outcome`.
+Per-bucket `cao_githubquota.bucket.remaining`, `.reserved`, `.available`, and
+`.parked` gauges are keyed by App, installation, and resource. Reservation IDs,
+tokens, and free-form parking reasons are never recorded. Its debug logs use the
+`cao:githubquota` and `cao:redis:githubquota` namespaces. MCP requests use the OpenTelemetry MCP semantic conventions, including
 `mcp.method.name`, `mcp.protocol.version`, `gen_ai.operation.name`, and
-`gen_ai.tool.name`; tool arguments and results are never recorded. Application
+`gen_ai.tool.name`; tool arguments, results, session identifiers, untrusted
+tracestate and baggage are never recorded. MCP methods are allowlisted and
+protocol versions must have the standard date shape. Error spans use fixed descriptions
+and bounded classifications rather than raw exception messages. Application
 attributes are limited to non-secret aggregate counts, revisions, durations,
 operation and row counts, rate-limit cost, and structural operator counts. Query
 names, source names, fields, predicates, literals, route parameters, result
@@ -904,7 +984,7 @@ values, Redis URLs, credentials, GitHub tokens, and row contents are never
 recorded. Identifiers follow the W3C Trace Context specification: the tracer
 provider installs `propagation.TraceContext` so a client-sent HTTP `traceparent`
 continues an existing transport trace. MCP spans use trace context from
-`params._meta` as their remote parent and link the ambient HTTP span. Every API
+`params._meta.traceparent` as their remote parent and link the ambient HTTP span. Every API
 response also echoes the active request's ids as `X-Trace-Id` / `X-Span-Id`
 headers for correlating a client-visible request with exported spans.
 
@@ -919,6 +999,7 @@ exporter is started for a signal unless its endpoint is configured:
 | `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` | Enables the OTLP/HTTP metric exporter and sets its destination. |
 | `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_EXPORTER_OTLP_TRACES_HEADERS`, `OTEL_EXPORTER_OTLP_METRICS_HEADERS` | Authentication headers read directly by the corresponding OTLP exporter. Supply them through the deployment platform's secret manager; never place values in command-line arguments, checked-in configuration, or logs. |
 | `OTEL_SERVICE_NAME` | Overrides the default `cao-dashboard` `service.name` resource attribute. |
+| `OTEL_RESOURCE_ATTRIBUTES` | Adds deployment-selected resource attributes; only configure reviewed, non-identifying values. Hostname detection is not enabled by default. |
 | `OTEL_SDK_DISABLED` | Set to `true` to keep both providers as no-ops even when endpoints are configured. |
 
 There is no Azure-specific exporter linked into the binary. To ship telemetry to

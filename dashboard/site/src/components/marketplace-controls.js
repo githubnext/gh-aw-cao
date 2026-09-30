@@ -1,5 +1,8 @@
 import { h } from '../dom.js';
 import { rowsFor } from './source-rows.js';
+import { createDebug } from '../debug.js';
+
+const debugMarketplaceControls = createDebug('marketplace-controls');
 
 /** @type {Record<string, Array<{field: string, direction: 'asc'|'desc'}>>} */
 const SORTS = {
@@ -70,7 +73,14 @@ export function renderMarketplaceControls(context) {
     h('p', { className: 'marketplace-controls-note' },
       'Search matches package names and descriptions. Missing signals are unknown, not zero. Semantic matching is not enabled.')
   );
-  function update() {
+  debugMarketplaceControls({
+    event: 'rendered',
+    registryOptionCount: options['registry-id'].length,
+    publisherOptionCount: options.publisher.length,
+    initialSort: selectedSort
+  });
+  /** @param {'submit'|'change'} trigger */
+  function update(trigger) {
     const nextFilters = { ...currentFilters };
     for (const label of selects) {
       const select = label.querySelector('select');
@@ -79,6 +89,13 @@ export function renderMarketplaceControls(context) {
       else delete nextFilters[select.name];
     }
     const query = search.value.trim().slice(0, 160);
+    debugMarketplaceControls({
+      event: 'query-context-changed',
+      trigger,
+      filterCount: Object.keys(nextFilters).length,
+      hasSearch: query.length > 0,
+      sort: sort.value
+    });
     root.dispatchEvent(new CustomEvent('dashboard-query-context-change', {
       bubbles: true,
       detail: { pageId: context.pageId, queryContext: {
@@ -89,9 +106,9 @@ export function renderMarketplaceControls(context) {
       } }
     }));
   }
-  root.addEventListener('submit', (event) => { event.preventDefault(); update(); });
+  root.addEventListener('submit', (event) => { event.preventDefault(); update('submit'); });
   root.addEventListener('change', (event) => {
-    if (event.target !== search) update();
+    if (event.target !== search) update('change');
   });
   return root;
 }

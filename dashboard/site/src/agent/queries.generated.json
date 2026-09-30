@@ -5657,7 +5657,7 @@
   "name": "campaign-performance-baseline-totals",
   "intent": "Establish a selected-horizon campaign baseline from concluded run attempts while keeping reliability, unverified production, and efficiency as separate facts.",
   "objective": "Select campaigns whose retained run reliability, output production, or AI Credit efficiency merits closer examination.",
-  "acceptance": "For each campaign, concluded and successful attempt counts, output counts, and mean AI Credits reconcile to the corresponding filtered retained run attempts; absent denominators or costs stay unknown, and produced outputs are unverified outcomes, not operational value.",
+  "acceptance": "Concluded and successful attempts, outputs, and mean AI Credits reconcile to filtered retained runs; absent denominators or costs stay unknown. Produced outputs are unverified, not operational value.",
   "description": "Canonical campaign run attempts aggregated into bounded selected-horizon baseline totals without treating runtime success or produced outputs as operational value.",
   "from": "campaign-runs",
   "compute": [
@@ -6039,7 +6039,7 @@
   "name": "campaign-problem-error-groups",
   "intent": "Cluster retained failed Run evidence by workflow, runtime repository, target repository, and error signature so repeated identical failures for one target collapse into one diagnosable group.",
   "objective": "Rank repeated target-specific error signatures for investigation without merging unrelated failures.",
-  "acceptance": "Each group's occurrence-count and latest-run match retained joined failed runs sharing all declared grouping fields, including campaign, workflow, repositories, problem kind, and signature; unknown signatures may group together and counts do not prove a root cause.",
+  "acceptance": "Occurrence-count and latest-run match retained failed runs grouped by campaign, workflow, repositories, problem kind, and signature; unknown signatures may group together. Counts do not prove a root cause.",
   "description": "One row per distinct target repository and error signature within a campaign runtime problem partition, with an occurrence count and the most recent matching Run identity for follow-up.",
   "from": "campaign-problem-run-evidence",
   "aggregate": {
@@ -6113,7 +6113,7 @@
   "name": "campaign-problem-items",
   "intent": "Attach the most recent representative Run evidence to each distinct campaign runtime problem error signature.",
   "objective": "Open the representative failed run and target for each current campaign problem group.",
-  "acceptance": "For joined failure items, inspect run-link and the matching run ID, campaign, workflow, and runtime repository; target repository is not a join key, so verify it against run evidence. Unioned unobserved orchestrators need separate inventory review and may have no run link. Missing links and diagnostics remain unknown; rollout mode does not authorize policy changes.",
+  "acceptance": "Check joined run-link, run ID, campaign, workflow, and runtime repository; verify target against run evidence (not a join key). Unobserved orchestrators need inventory review. Missing evidence remains unknown; rollout mode does not authorize policy changes.",
   "description": "Current campaign runtime problems represented by the newest error signature for each target repository, with its effective rollout mode, an occurrence count, the most recent matching failed Run, and a repair prompt.",
   "from": "campaign-current-problem-error-groups",
   "joins": [
@@ -6351,7 +6351,7 @@
   "name": "campaign-operational-value-primary-series",
   "intent": "Project numeric repository-level campaign operational-value observations into temporal series with native units and direction.",
   "objective": "Choose a repository and native operational-value measure whose observed trend needs evidence review.",
-  "acceptance": "Each plotted point carries its observation time, repository, definition key, native unit and direction; the projection omits null or nonnumeric values rather than replacing them with zero. Point-level maturity is not projected: requery operational-values and campaign-operational-value-evidence-state before interpreting any trend as matured evidence, and do not infer causality.",
+  "acceptance": "Each point has time, repository, definition, native unit and direction; null and nonnumeric values are omitted, not zero. Requery operational-values and campaign-operational-value-evidence-state for point maturity before interpreting trends; do not infer causality.",
   "description": "Repository operational-value numeric series; point-level maturity and missing values require source observation review.",
   "from": "operational-values",
   "temporal-series": {
@@ -7037,6 +7037,48 @@
    },
    {
     "field": "collection-dead-lettered"
+   }
+  ]
+ },
+ {
+  "name": "github-api-usage",
+  "intent": "Show retained GitHub API quota usage per bucket and in aggregate over the last 24 hours.",
+  "objective": "Determine whether any GitHub App installation or the CAO fleet as a whole is approaching its GitHub API rate limit.",
+  "acceptance": "Report peak usage percentages with their limits, used, and reserved counts; treat a slot without observations as unknown rather than idle, and never infer credentials from bucket identity.",
+  "from": "github-quota-usage",
+  "select": [
+   {
+    "field": "observed-at"
+   },
+   {
+    "field": "scope"
+   },
+   {
+    "field": "bucket"
+   },
+   {
+    "field": "app"
+   },
+   {
+    "field": "installation"
+   },
+   {
+    "field": "resource"
+   },
+   {
+    "field": "buckets"
+   },
+   {
+    "field": "limit"
+   },
+   {
+    "field": "used"
+   },
+   {
+    "field": "reserved"
+   },
+   {
+    "field": "usage-percent"
    }
   ]
  },

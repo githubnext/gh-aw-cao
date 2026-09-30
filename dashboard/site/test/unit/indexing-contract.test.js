@@ -135,4 +135,29 @@ describe('indexing dashboard', () => {
       'empty-message': expect.stringContaining('server-side collection profile')
     });
   });
+
+  it('declares a 24-hour GitHub API usage line chart on the Ingestion page', () => {
+    const page = dashboard.pages.find(/** @param {any} page */ (page) => page.id === 'indexing');
+    const query = dashboard.queries.find(/** @param {any} query */ (query) => query.name === 'github-api-usage');
+    const view = page.views.find(/** @param {any} view */ (view) => view.id === 'github-api-usage');
+
+    expect(query).toMatchObject({
+      from: 'github-quota-usage',
+      select: expect.arrayContaining([
+        { field: 'observed-at' },
+        { field: 'bucket' },
+        { field: 'usage-percent' }
+      ])
+    });
+    expect(view).toMatchObject({
+      mark: 'chart',
+      chart: 'line',
+      data: { source: 'github-api-usage' },
+      encoding: {
+        x: { field: 'observed-at', type: 'temporal', 'time-unit': 'hour' },
+        y: { field: 'usage-percent', aggregate: 'max' },
+        color: { field: 'bucket' }
+      }
+    });
+  });
 });

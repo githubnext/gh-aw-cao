@@ -8,11 +8,17 @@
  * rather than the resolution logic being wired to one built-in page id.
  */
 
+import { createDebug } from '../debug.js';
+
+const debugModeIndicator = createDebug('mode-indicator');
+
 /**
  * @param {string} search a URL search string, e.g. `location.search`
  * @returns {'review' | 'live' | ''}
  */
 export function resolveModeIndicator(search) {
   const requested = new URLSearchParams(search ?? '').get('mode');
-  return requested === 'review' || requested === 'live' ? requested : '';
+  const resolved = requested === 'review' || requested === 'live' ? requested : '';
+  debugModeIndicator({ event: 'resolved', hasRequestedValue: requested != null, resolved: resolved || 'none' });
+  return resolved;
 }

@@ -87,7 +87,12 @@ describe('Configuration dashboard view', () => {
 
     if (!rendered) throw new Error('configuration view did not render');
 
-    expect(rendered.querySelector('[data-theme-value]')).toBeNull();
+    const theme = rendered.querySelector('.theme-control-options');
+    expect(rendered.children[1]?.querySelector('#configuration-appearance-heading')?.textContent).toBe('Appearance');
+    expect(theme?.getAttribute('role')).toBe('group');
+    expect(theme?.getAttribute('aria-label')).toBe('Theme');
+    expect([...rendered.querySelectorAll('[data-theme-value]')].map((button) => button.textContent))
+      .toEqual(['System', 'Light', 'Dark']);
     expect(rendered.querySelector('.configuration-database-counts')).toBeNull();
     expect(rendered.querySelector('.reset-dashboard-trigger')).not.toBeNull();
     expect(rendered.querySelector('a[href="#page-indexing"]')).toBeNull();
@@ -198,6 +203,31 @@ describe('Configuration dashboard view', () => {
     expect(rendered.querySelector('.configuration-browser-setting-status')?.textContent)
       .toContain('Periodic Background Sync is not supported');
     rendered.remove();
+  });
+
+  it('stops reacting to background update status once the setting detaches from the document', async () => {
+    localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
+    localStorage.setItem('central-agentic-ops.dashboard.background-data-updates-active', 'true');
+    const rendered = renderConfigurationView(context({
+      document: { version: 1 },
+      raw: '',
+      diagnostics: []
+    }));
+    if (!rendered) throw new Error('configuration view did not render');
+    document.body.append(rendered);
+    const checkbox = /** @type {HTMLInputElement | null} */ (
+      rendered.querySelector('#configuration-automatic-dashboard-data-updates')
+    );
+
+    rendered.remove();
+    // Let the MutationObserver microtask backing createFactoryScope run.
+    await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+    setAutomaticDashboardDataUpdatesEnabled(false);
+
+    // The effect stopped when the setting detached, so a status change no
+    // longer updates the detached checkbox.
+    expect(checkbox?.checked).toBe(true);
   });
 
   it('exposes Settings in the bottom management navigation without a chart', () => {

@@ -103,7 +103,6 @@ describe('dashboard sidebar', () => {
       title: 'Overview',
       overviewPageHref: '#page-overview',
       dashboardHorizon: document.createElement('div'),
-      dashboardAppearance: document.createElement('details'),
       accountMenu,
       githubUrlBase: 'https://github.com',
       dashboardRepository: 'octo/example'

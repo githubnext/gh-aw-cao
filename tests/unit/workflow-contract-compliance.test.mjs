@@ -191,6 +191,11 @@ test("EU CRA workflows preserve advisory and human-review boundaries", () => {
   assert.match(security, /absence of known exploitable vulnerabilities at market placement/);
   assert.doesNotMatch(security, /absence or reduction of known exploitable vulnerabilities/);
   assert.match(security, /leave operational distribution and remediation-process evidence to the vulnerability-handling auditor/);
+  assert.match(security, /Every `GAP_FOUND`, `HUMAN_REVIEW_REQUIRED`, `NOT_ASSESSED`, and `INCOMPLETE` row MUST have an accountable owner and disposition/);
+  assert.match(security, /Use `assigned` only with a verifiable issue or pull request and assignee/);
+  assert.match(security, /otherwise mark it `pending assignment`/);
+  assert.match(security, /confirming that every `INCOMPLETE`, `NOT_ASSESSED`, and `HUMAN_REVIEW_REQUIRED` row has an owner and disposition/);
+  assert.match(security, /If any such row lacks either, state that acceptance is blocked/);
 
   const supplyChain = workflow("eu-cra-compliance-supply-chain-sbom-auditor.md");
   assert.match(supplyChain, /machine-readable SBOM covering at least top-level dependencies/);

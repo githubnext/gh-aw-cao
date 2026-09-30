@@ -96,6 +96,87 @@ func TestRepositoryMemoryHandlerReportsConcurrentRefresh(t *testing.T) {
 	}
 }
 
+func TestRepositoryMemoryIntegrityFailureAcceptsMatchingContent(t *testing.T) {
+	content := []byte("# Context\n")
+	sum := sha256.Sum256(content)
+	expected := repositorymemory.File{Size: int64(len(content)), SHA256: hex.EncodeToString(sum[:])}
+	if reason, ok := repositoryMemoryIntegrityFailure(content, expected); !ok {
+		t.Fatalf("expected matching content to pass integrity validation, got reason %q", reason)
+	}
+}
+
+func TestRepositoryMemoryIntegrityFailureAcceptsContentWithoutRecordedChecksum(t *testing.T) {
+	content := []byte("# Context\n")
+	expected := repositorymemory.File{Size: int64(len(content))}
+	if reason, ok := repositoryMemoryIntegrityFailure(content, expected); !ok {
+		t.Fatalf("expected content without a recorded checksum to pass, got reason %q", reason)
+	}
+}
+
+func TestRepositoryMemoryIntegrityFailureRejectsSizeMismatch(t *testing.T) {
+	content := []byte("# Context\n")
+	expected := repositorymemory.File{Size: int64(len(content)) + 1}
+	reason, ok := repositoryMemoryIntegrityFailure(content, expected)
+	if ok || reason != repositoryMemoryIntegrityReasonSizeMismatch {
+		t.Fatalf("expected size-mismatch rejection, got ok=%t reason=%q", ok, reason)
+	}
+}
+
+func TestRepositoryMemoryIntegrityFailureRejectsSHA256Mismatch(t *testing.T) {
+	content := []byte("# Context\n")
+	expected := repositorymemory.File{Size: int64(len(content)), SHA256: strings.Repeat("0", 64)}
+	reason, ok := repositoryMemoryIntegrityFailure(content, expected)
+	if ok || reason != repositoryMemoryIntegrityReasonSHA256Mismatch {
+		t.Fatalf("expected sha256-mismatch rejection, got ok=%t reason=%q", ok, reason)
+	}
+}
+
+func TestRepositoryMemoryIntegrityFailureIsCaseInsensitiveForSHA256(t *testing.T) {
+	content := []byte("# Context\n")
+	sum := sha256.Sum256(content)
+	expected := repositorymemory.File{
+		Size:   int64(len(content)),
+		SHA256: strings.ToUpper(hex.EncodeToString(sum[:])),
+	}
+	if reason, ok := repositoryMemoryIntegrityFailure(content, expected); !ok {
+		t.Fatalf("expected case-insensitive checksum comparison to pass, got reason %q", reason)
+	}
+}
+
+func TestRepositoryMemoryContentRejectsIntegrityFailure(t *testing.T) {
+	content := []byte("# Context\n")
+	manifest, err := json.Marshal(repositorymemory.Manifest{
+		Version: 1,
+		Campaigns: []repositorymemory.Campaign{{
+			Campaign: "security-review",
+			Branch:   "memory/security-review",
+			Commit:   strings.Repeat("a", 40),
+			Files: []repositorymemory.File{{
+				Path:   "notes/context.md",
+				OID:    strings.Repeat("b", 40),
+				SHA256: strings.Repeat("0", 64),
+				Size:   int64(len(content)),
+			}},
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := &repositoryMemoryClient{manifest: manifest, content: content}
+	app := &App{store: redisx.NewStore(client, "test")}
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequestWithContext(
+		t.Context(), http.MethodGet,
+		"/api/v1/memory/security-review/content?path=notes%2Fcontext.md", nil,
+	)
+	request.SetPathValue("campaign", "security-review")
+	app.repositoryMemoryContent(response, request)
+	if response.Code != http.StatusServiceUnavailable {
+		t.Fatalf("integrity-failure response = %d %s", response.Code, response.Body.String())
+	}
+}
+
 type repositoryMemoryClient struct {
 	manifest []byte
 	content  []byte

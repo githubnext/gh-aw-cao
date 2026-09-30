@@ -35,6 +35,12 @@ Administrative rebuilds additionally require an explicit GitHub login in
 Mutating browser requests require the session-bound CSRF token. The webhook
 route is exempt from browser authentication only because it independently
 requires a valid `X-Hub-Signature-256` signature and delivery identity.
+Active sessions recheck GitHub membership at most five minutes after the last
+successful authorization, independently of access-token refresh. Failed checks
+remove session authority and revoke or durably queue its credentials. OAuth
+callbacks that cannot establish an authorized, stored session likewise revoke
+or durably queue issued credentials; a background worker retries pending
+revocations without delaying the login redirect.
 
 API and OAuth abuse is bounded with atomic Redis token buckets shared by all
 server replicas. Authenticated buckets use a digest of the GitHub login, while

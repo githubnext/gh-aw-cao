@@ -187,8 +187,7 @@ test('phone navigation keeps all views in the full-label menu without horizontal
   await expect(menu.getByText('Overview', { exact: true })).toBeVisible();
   await expect(menu.getByText('Runs', { exact: true })).toBeVisible();
   const menuActions = page.locator('.mobile-nav-menu-actions');
-  await expect(menuActions.locator('.theme-control .action-label')).toBeVisible();
-  await expect(menuActions.locator('.theme-control .action-label')).toHaveText('Appearance');
+  await expect(menuActions.locator('[data-theme-value]')).toHaveCount(0);
   await expect(menuActions.locator('.repository-link .action-label')).toBeVisible();
   await expect(menuActions.locator('.repository-link .action-label')).toHaveText('githubnext/gh-aw-cao');
   await expect(menuActions.locator('.account-menu')).toHaveCount(0);

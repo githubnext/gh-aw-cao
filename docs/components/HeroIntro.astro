@@ -28,7 +28,7 @@ const { title = data.title, tagline, actions = [] } = data.hero || {};
   <div class="sl-flex copy">
     {
       title !== data.title && (
-        <p class="product-name" aria-label={data.title}>
+        <p class="product-name">
           <span class="product-name-sizer" aria-hidden="true">{data.title}</span>
           <span class="product-name-animation" aria-hidden="true" data-product-name-animation data-text={data.title}>
             <span class="product-name-text" data-product-name-text>{data.title}</span>
