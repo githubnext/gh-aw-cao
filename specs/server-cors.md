@@ -81,7 +81,7 @@ Unknown members MUST be rejected.
 An implementation MUST reject the entire host policy, and the server MUST
 refuse to start, when any of the following holds:
 
-1. `allowed-origins` has more than 32 entries or duplicate entries;
+1. `allowed-origins` has more than 32 entries;
 2. an entry contains `*`, is `null` or empty, or is not an absolute URL;
 3. an entry has user information, a path other than `/`, a query, or a
    fragment;
@@ -95,8 +95,11 @@ refuse to start, when any of the following holds:
 
 The server MUST normalize each origin to the serialized form browsers send in
 the `Origin` header: lowercase scheme and host, no trailing `/`, and no port
-when the port is the scheme default (443 for `https`, 80 for `http`). Entries
-that are equal after normalization MUST be deduplicated. Origin comparison
+when the port is the scheme default (443 for `https`, 80 for `http`). The policy
+validator MUST additionally reject entries that are equal ignoring case, so
+reviewed policy stays unambiguous; the server MUST merge entries that are
+equal after normalization (for example `https://a.example` and
+`https://a.example:443`) rather than fail. Origin comparison
 MUST be an exact string match against the normalized list; prefix, suffix, and
 pattern matching MUST NOT be used.
 
