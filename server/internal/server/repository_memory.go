@@ -9,9 +9,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/repositorymemory"
 )
+
+var repositoryMemoryLog = logger.New("cao:server:repository-memory")
 
 func (a *App) repositoryMemoryCampaign(response http.ResponseWriter, request *http.Request) {
 	campaignID := request.PathValue("campaign")
@@ -96,13 +99,41 @@ func (a *App) repositoryMemoryContent(response http.ResponseWriter, request *htt
 		writeError(response, http.StatusServiceUnavailable, "repository memory is unavailable")
 		return
 	}
-	sum := sha256.Sum256(content)
-	if int64(len(content)) != selected.Size ||
-		(selected.SHA256 != "" && !strings.EqualFold(selected.SHA256, hex.EncodeToString(sum[:]))) {
+	if reason, ok := repositoryMemoryIntegrityFailure(content, *selected); !ok {
+		repositoryMemoryLog.Printf("repository-memory file failed integrity validation reason=%s", reason)
 		writeError(response, http.StatusServiceUnavailable, "repository-memory file failed integrity validation")
 		return
 	}
 	writeJSON(response, http.StatusOK, map[string]string{"content": string(content)})
+}
+
+// repositoryMemoryIntegrityReason names why repositoryMemoryIntegrityFailure
+// rejected a fetched file, stable across message wording changes so it is
+// useful to log without exposing the file's path or content.
+type repositoryMemoryIntegrityReason string
+
+const (
+	repositoryMemoryIntegrityReasonSizeMismatch   repositoryMemoryIntegrityReason = "size-mismatch"
+	repositoryMemoryIntegrityReasonSHA256Mismatch repositoryMemoryIntegrityReason = "sha256-mismatch"
+)
+
+// repositoryMemoryIntegrityFailure validates fetched content against the
+// manifest's recorded size and, when present, SHA-256 checksum. It is a pure
+// function extracted from repositoryMemoryContent so the size-mismatch and
+// checksum-mismatch rejection paths are independently testable without a
+// Redis-backed store. ok is false when content fails validation; reason then
+// names which check failed.
+func repositoryMemoryIntegrityFailure(content []byte, expected repositorymemory.File) (reason repositoryMemoryIntegrityReason, ok bool) {
+	if int64(len(content)) != expected.Size {
+		return repositoryMemoryIntegrityReasonSizeMismatch, false
+	}
+	if expected.SHA256 != "" {
+		sum := sha256.Sum256(content)
+		if !strings.EqualFold(expected.SHA256, hex.EncodeToString(sum[:])) {
+			return repositoryMemoryIntegrityReasonSHA256Mismatch, false
+		}
+	}
+	return "", true
 }
 
 func (a *App) repositoryMemorySnapshot(request *http.Request, campaignID string) (string, repositorymemory.Campaign, error) {
