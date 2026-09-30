@@ -106,6 +106,19 @@
   color: #f0f6fc !important;
 }
 
+:root[data-theme="dark"] .sl-markdown-content code:not(:where(.not-content *)) {
+  color: #c2c8d3;
+}
+
+:root[data-theme="dark"] .sl-markdown-content pre code:not(:where(.not-content *)) {
+  color: inherit;
+}
+
+:root[data-theme="dark"] .starlight-aside--caution .sl-markdown-content code:not(:where(.not-content *)),
+:root[data-theme="dark"] .starlight-aside--caution code:not(:where(.not-content *)) {
+  color: #f0f3f8;
+}
+
 @media (max-width: 22rem) {
   .site-title {
     gap: 0.45rem;
