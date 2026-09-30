@@ -311,3 +311,44 @@ func TestClassifyBackfillStatePassesWhenComplete(t *testing.T) {
 		t.Fatalf("expected no remedy for a completed cold start, got %q", classification.remedy)
 	}
 }
+
+func TestClassifyLakePopulationWarnsWhenEmpty(t *testing.T) {
+	classification := classifyLakePopulation(false, 0, 0)
+	if classification.status != StatusWarn {
+		t.Fatalf("status = %v, want %v", classification.status, StatusWarn)
+	}
+	if classification.reason != lakePopulationReasonEmpty {
+		t.Fatalf("reason = %v, want %v", classification.reason, lakePopulationReasonEmpty)
+	}
+	if classification.remedy == "" {
+		t.Fatal("expected a remedy for an unpopulated evidence lake")
+	}
+}
+
+func TestClassifyLakePopulationPassesWhenPopulated(t *testing.T) {
+	classification := classifyLakePopulation(true, 4096, 3)
+	if classification.status != StatusPass {
+		t.Fatalf("status = %v, want %v", classification.status, StatusPass)
+	}
+	if classification.reason != lakePopulationReasonPopulated {
+		t.Fatalf("reason = %v, want %v", classification.reason, lakePopulationReasonPopulated)
+	}
+	if classification.remedy != "" {
+		t.Fatalf("expected no remedy for a populated evidence lake, got %q", classification.remedy)
+	}
+	if !strings.Contains(classification.summary, "3 run shards") {
+		t.Fatalf("summary = %q, want it to mention the run shard count", classification.summary)
+	}
+}
+
+func TestClassifyLakePopulationIgnoresSizeWhenEmpty(t *testing.T) {
+	// A reported size alongside an unpopulated lake must not flip the
+	// classification to pass; Populated() is the sole authority here.
+	classification := classifyLakePopulation(false, 4096, 3)
+	if classification.status != StatusWarn {
+		t.Fatalf("status = %v, want %v", classification.status, StatusWarn)
+	}
+	if classification.reason != lakePopulationReasonEmpty {
+		t.Fatalf("reason = %v, want %v", classification.reason, lakePopulationReasonEmpty)
+	}
+}

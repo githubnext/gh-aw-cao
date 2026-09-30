@@ -565,11 +565,18 @@ func parseActiveGeneration(fields []string) (model.ActiveGeneration, int) {
 func (s *Store) Activate(ctx context.Context, generation, dataRevision string, evaluatedAt time.Time, counts map[string]int) (int64, error) {
 	redisLog.Printf("activating generation sources=%d", len(counts))
 	data, _ := json.Marshal(counts)
-	activated := time.Now().UTC().Format(time.RFC3339Nano)
-	script := `local revision = redis.call("INCR", KEYS[3]); redis.call("HSET", KEYS[1], "generation", ARGV[1], "revision", revision, "dataRevision", ARGV[2], "evaluatedAt", ARGV[3], "counts", ARGV[4], "activatedAt", ARGV[5]); redis.call("SET", KEYS[2], ARGV[1]); return revision`
+	activationTime := time.Now().UTC()
+	activated := activationTime.Format(time.RFC3339Nano)
+	// The issue overlay is keyed by identity independently of generations;
+	// activation never scans or copies issue status.
+	script := fmt.Sprintf(issueStatusPruneScript, int64(issueStatusRetention.Seconds())) +
+		`prune(KEYS[4], KEYS[5], tonumber(ARGV[6]), ARGV[1], ARGV[7], ARGV[8], ARGV[9]); local revision = redis.call("INCR", KEYS[3]); redis.call("HSET", KEYS[1], "generation", ARGV[1], "revision", revision, "dataRevision", ARGV[2], "evaluatedAt", ARGV[3], "counts", ARGV[4], "activatedAt", ARGV[5]); redis.call("SET", KEYS[2], ARGV[1]); return revision`
 	value, err := s.Client.Do(
-		ctx, "EVAL", script, "3", s.activeKey(), s.activeGenerationKey(), s.revisionSequenceKey(),
+		ctx, "EVAL", script, "5", s.activeKey(), s.activeGenerationKey(), s.revisionSequenceKey(),
+		s.issueStatusKey(), s.issueStatusAgeKey(),
 		generation, dataRevision, evaluatedAt.UTC().Format(time.RFC3339Nano), string(data), activated,
+		strconv.FormatInt(activationTime.Unix(), 10),
+		s.namespace+":g:", ":source:"+safeName("issues")+":row:", ":source:"+safeName("issues")+":rows",
 	)
 	if err != nil {
 		return 0, fmt.Errorf("activate Redis generation: %w", err)
@@ -707,6 +714,57 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 			rows = append(rows, row)
 		}
 	}
+	if name == "issues" {
+		// Only request statuses for retained rows; even a large global overlay
+		// never requires an unbounded Redis reply or main-thread hash scan.
+		for offset := 0; offset < len(rows); offset += batchSize {
+			end := min(len(rows), offset+batchSize)
+			ids := make([]string, 0, end-offset)
+			issueRows := make([]model.Row, 0, end-offset)
+			for _, row := range rows[offset:end] {
+				if id, ok := row["id"].(string); ok && id != "" &&
+					row["isPullRequest"] == false && !strings.Contains(fmt.Sprint(row["url"]), "/pull/") {
+					ids = append(ids, id)
+					issueRows = append(issueRows, row)
+				}
+			}
+			if len(ids) == 0 {
+				continue
+			}
+			command := append([]string{"HMGET", s.issueStatusKey()}, ids...)
+			value, err := s.Client.Do(ctx, command...)
+			metrics.RedisCommands++
+			if err != nil {
+				return model.Source{}, metrics, err
+			}
+			updates, ok := value.([]any)
+			if !ok || len(updates) != len(ids) {
+				return model.Source{}, metrics, errors.New("invalid issue status response")
+			}
+			for i, raw := range updates {
+				if raw == nil {
+					continue
+				}
+				var update model.Row
+				if err := json.Unmarshal([]byte(fmt.Sprint(raw)), &update); err != nil {
+					return model.Source{}, metrics, err
+				}
+				row := issueRows[i]
+				if update["ambiguous"] == true || update["rowHash"] != rowID(row, 0) ||
+					!strings.EqualFold(fmt.Sprint(update["repository"]), fmt.Sprint(row["repositoryFullName"])) {
+					continue
+				}
+				observed, updateErr := time.Parse(time.RFC3339Nano, fmt.Sprint(update["statusObservedAt"]))
+				snapshot, snapshotErr := time.Parse(time.RFC3339Nano, fmt.Sprint(row["statusObservedAt"]))
+				if updateErr != nil || snapshotErr == nil && !observed.After(snapshot) {
+					continue
+				}
+				for _, field := range []string{"state", "closed", "stateReason", "closedAt", "statusObservedAt"} {
+					row[field] = update[field]
+				}
+			}
+		}
+	}
 	metrics.RedisRows = len(rows)
 	redisLog.Printf("loaded source rows=%d mode=fallback", len(rows))
 	return model.Source{Source: name, Rows: rows, Metadata: metadata}, metrics, nil
@@ -759,3 +817,5 @@ func (s *Store) sourceSetKey(generation, source string) string {
 func (s *Store) rowPrefix(generation, source string) string {
 	return s.generationKey(generation) + ":source:" + safeName(source) + ":row:"
 }
+func (s *Store) issueStatusKey() string    { return s.Key("issue-status") }
+func (s *Store) issueStatusAgeKey() string { return s.Key("issue-status:updated") }

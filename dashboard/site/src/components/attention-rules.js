@@ -5,6 +5,9 @@
  */
 
 import attentionRules from './attention-rules.json' with { type: 'json' };
+import { createDebug } from '../debug.js';
+
+const debugAttentionRules = createDebug('attention-rules');
 
 /**
  * @typedef {{ icon: string, tone: string, title: string, detail: string }} AttentionItem
@@ -17,7 +20,7 @@ import attentionRules from './attention-rules.json' with { type: 'json' };
  * @returns {AttentionItem[]}
  */
 export function buildAttentionItems(metricsByRule) {
-  return attentionRules
+  const items = attentionRules
     .map((rule) => ({ rule, values: metricsByRule[rule.metric] }))
     .filter(({ values }) => values != null && Number(values.count) > 0)
     .map(({ rule, values }) => ({
@@ -26,6 +29,10 @@ export function buildAttentionItems(metricsByRule) {
       title: renderAttentionTemplate(rule.title, /** @type {Record<string, unknown>} */ (values)),
       detail: renderAttentionTemplate(rule.detail, /** @type {Record<string, unknown>} */ (values))
     }));
+
+  debugAttentionRules({ event: 'items-built', ruleCount: attentionRules.length, firedCount: items.length });
+
+  return items;
 }
 
 /**
