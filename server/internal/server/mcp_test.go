@@ -140,6 +140,10 @@ func TestGitHubActionsMCPRequiresAllReadPermissions(t *testing.T) {
 				if request.Header.Get("Authorization") != "Bearer "+testActionsToken {
 					t.Error("permission probe did not use the configured token")
 				}
+				if request.URL.Path == "/repos/githubnext/gh-aw-cao" {
+					_, _ = response.Write([]byte(`{"private":false}`))
+					return
+				}
 				permission := permissionForProbePath(request.URL.Path)
 				seen[permission] = true
 				if permission == denied {
@@ -165,6 +169,66 @@ func TestGitHubActionsMCPRequiresAllReadPermissions(t *testing.T) {
 				}
 			} else if err == nil || !strings.Contains(err.Error(), denied+": read") {
 				t.Fatalf("denied %s permission returned %v", denied, err)
+			}
+		})
+	}
+}
+
+func TestGitHubActionsMCPPrivateRepositoryRequiresExclusiveTokenScope(t *testing.T) {
+	for _, test := range []struct {
+		name, metadata, scope       string
+		metadataStatus, scopeStatus int
+		wantOK, wantScopeProbe      bool
+	}{
+		{name: "private matching scope", metadata: `{"private":true}`, scope: `{"total_count":1,"repositories":[{"full_name":"GitHubNext/GH-AW-CAO"}]}`, wantOK: true, wantScopeProbe: true},
+		{name: "private other repository", metadata: `{"private":true}`, scope: `{"total_count":1,"repositories":[{"full_name":"other/repo"}]}`, wantScopeProbe: true},
+		{name: "private multiple repositories", metadata: `{"private":true}`, scope: `{"total_count":2,"repositories":[{"full_name":"githubnext/gh-aw-cao"},{"full_name":"other/repo"}]}`, wantScopeProbe: true},
+		{name: "private missing scope", metadata: `{"private":true}`, scope: `{"repositories":[{"full_name":"githubnext/gh-aw-cao"}]}`, wantScopeProbe: true},
+		{name: "private malformed scope", metadata: `{"private":true}`, scope: `not json`, wantScopeProbe: true},
+		{name: "private inaccessible scope", metadata: `{"private":true}`, scopeStatus: http.StatusForbidden, wantScopeProbe: true},
+		{name: "public skips scope", metadata: `{"private":false}`, wantOK: true},
+		{name: "missing visibility", metadata: `{}`},
+		{name: "malformed visibility", metadata: `not json`},
+		{name: "inaccessible repository", metadataStatus: http.StatusNotFound},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			scopeProbed := false
+			api := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				if request.Header.Get("Authorization") != "Bearer "+testActionsToken {
+					t.Error("scope check did not use the configured token")
+				}
+				switch request.URL.Path {
+				case "/repos/githubnext/gh-aw-cao":
+					if test.metadataStatus != 0 {
+						response.WriteHeader(test.metadataStatus)
+					} else {
+						_, _ = response.Write([]byte(test.metadata))
+					}
+				case "/installation/repositories":
+					scopeProbed = true
+					if request.URL.Query().Get("per_page") != "2" {
+						t.Error("scope probe must request two repositories")
+					}
+					if test.scopeStatus != 0 {
+						response.WriteHeader(test.scopeStatus)
+					} else {
+						_, _ = response.Write([]byte(test.scope))
+					}
+				default:
+					response.WriteHeader(http.StatusOK)
+				}
+			}))
+			defer api.Close()
+			err := verifyGitHubActionsPermissions(t.Context(), Config{
+				ActionsRepository: "githubnext/gh-aw-cao",
+				GitHubAPIURL:      api.URL,
+				ActionsHTTPClient: api.Client(),
+			}, testActionsToken)
+			if (err == nil) != test.wantOK {
+				t.Fatalf("scope validation returned %v, want success %t", err, test.wantOK)
+			}
+			if scopeProbed != test.wantScopeProbe {
+				t.Fatalf("scope probe called = %t, want %t", scopeProbed, test.wantScopeProbe)
 			}
 		})
 	}
@@ -385,7 +449,7 @@ func newMCPTestApp(t *testing.T, enabled bool) *App {
 func newMCPTestAppWithActions(t *testing.T, token, actor string) *App {
 	t.Helper()
 	api := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
-		response.WriteHeader(http.StatusOK)
+		_, _ = response.Write([]byte(`{"private":false}`))
 	}))
 	t.Cleanup(api.Close)
 	return newMCPTestAppConfig(t, true, token, actor, api.URL, api.Client())

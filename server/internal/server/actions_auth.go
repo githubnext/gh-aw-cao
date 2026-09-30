@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -63,6 +64,9 @@ func verifyGitHubActionsPermissions(ctx context.Context, config Config, token st
 		client = &http.Client{Timeout: 10 * time.Second}
 	}
 	repositoryPath := "/repos/" + url.PathEscape(owner) + "/" + url.PathEscape(name)
+	if err := verifyPrivateActionsRepositoryScope(ctx, client, baseURL, repositoryPath, owner+"/"+name, token); err != nil {
+		return err
+	}
 	probes := []githubPermissionProbe{
 		{name: "actions", path: repositoryPath + "/actions/runs?per_page=1"},
 		{name: "contents", path: repositoryPath + "/contents?per_page=1"},
@@ -74,10 +78,7 @@ func verifyGitHubActionsPermissions(ctx context.Context, config Config, token st
 		if err != nil {
 			return errors.New("GitHub Actions MCP permission check could not be created")
 		}
-		request.Header.Set("Accept", "application/vnd.github+json")
-		request.Header.Set("Authorization", "Bearer "+token)
-		request.Header.Set("X-GitHub-Api-Version", "2022-11-28")
-		request.Header.Set("User-Agent", "gh-aw-cao-mcp")
+		setActionsRequestHeaders(request, token)
 		response, err := client.Do(request)
 		if err != nil {
 			actionsAuthLog.Printf("permission probe request failed probe=%s", probe.name)
@@ -91,4 +92,65 @@ func verifyGitHubActionsPermissions(ctx context.Context, config Config, token st
 		}
 	}
 	return nil
+}
+
+func verifyPrivateActionsRepositoryScope(ctx context.Context, client *http.Client, baseURL, repositoryPath, repository, token string) error {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+repositoryPath, nil)
+	if err != nil {
+		return errors.New("GitHub Actions MCP repository check could not be created")
+	}
+	setActionsRequestHeaders(request, token)
+	response, err := client.Do(request)
+	if err != nil {
+		return errors.New("GitHub Actions MCP repository check failed")
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return errors.New("GitHub Actions MCP repository could not be verified")
+	}
+	var metadata struct {
+		Private *bool `json:"private"`
+	}
+	if err := json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&metadata); err != nil || metadata.Private == nil {
+		return errors.New("GitHub Actions MCP repository visibility could not be verified")
+	}
+	if !*metadata.Private {
+		return nil
+	}
+	return verifyPrivateActionsTokenScope(ctx, client, baseURL, repository, token)
+}
+
+func verifyPrivateActionsTokenScope(ctx context.Context, client *http.Client, baseURL, repository, token string) error {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/installation/repositories?per_page=2", nil)
+	if err != nil {
+		return errors.New("GitHub Actions MCP token scope check could not be created")
+	}
+	setActionsRequestHeaders(request, token)
+	response, err := client.Do(request)
+	if err != nil {
+		return errors.New("GitHub Actions MCP token scope check failed")
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return errors.New("GitHub Actions MCP token repository scope could not be verified")
+	}
+	var scope struct {
+		TotalCount   *int `json:"total_count"`
+		Repositories []struct {
+			FullName string `json:"full_name"`
+		} `json:"repositories"`
+	}
+	if err := json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&scope); err != nil ||
+		scope.TotalCount == nil || *scope.TotalCount != 1 ||
+		len(scope.Repositories) != 1 || !strings.EqualFold(scope.Repositories[0].FullName, repository) {
+		return errors.New("GitHub Actions MCP token must be scoped only to the private CAO repository")
+	}
+	return nil
+}
+
+func setActionsRequestHeaders(request *http.Request, token string) {
+	request.Header.Set("Accept", "application/vnd.github+json")
+	request.Header.Set("Authorization", "Bearer "+token)
+	request.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+	request.Header.Set("User-Agent", "gh-aw-cao-mcp")
 }

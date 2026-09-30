@@ -1258,6 +1258,12 @@ permissions:
   pull-requests: read
 ```
 
+For a private `GITHUB_REPOSITORY`, the token must additionally be a GitHub App
+installation token scoped exclusively to that repository; the server verifies
+its installation repository list and refuses startup if the scope cannot be
+verified or includes another repository. Public repositories need only the
+read-permission probes.
+
 Keep the token in the Actions environment rather than passing it on a command
 line.
 

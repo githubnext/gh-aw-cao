@@ -125,6 +125,12 @@ constant-time checked, scoped to `/mcp`, never logged, and used as the
 rate-limiting identity. Before accepting this authentication mode, startup
 probes the configured `GITHUB_REPOSITORY` with the token and fails closed unless
 `actions`, `contents`, `issues`, and `pull-requests` all have read access.
+If the repository is private, the token MUST be an installation token whose
+accessible repository list contains exactly that one repository. An inaccessible
+repository, unknown visibility, unavailable installation scope, or additional
+accessible repository rejects this authentication mode at startup. Public
+repositories retain the read-permission checks without an installation-scope
+requirement.
 The actor header is an assertion bound to the server-configured value, not an
 independently trusted client identity. MCP is disabled by default, is read-only,
 and is rejected by hosted profiles until remote MCP OAuth is integrated with
