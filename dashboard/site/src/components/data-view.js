@@ -1598,9 +1598,12 @@ export function renderPromptPreviewAction(label, getContent, actionId, icon = 'c
   }));
   const synthesis = typeof window !== 'undefined' ? window.speechSynthesis : undefined;
   let speaking = false;
+  /** @type {SpeechSynthesisUtterance | null} */
+  let activeUtterance = null;
   const stopSpeech = () => {
     if (!speaking) return;
     speaking = false;
+    activeUtterance = null;
     synthesis?.cancel();
     speechButton.textContent = 'Read aloud';
     speechButton.setAttribute('aria-pressed', 'false');
@@ -1618,12 +1621,14 @@ export function renderPromptPreviewAction(label, getContent, actionId, icon = 'c
       }
       const utterance = new SpeechSynthesisUtterance(preview.value);
       utterance.onend = utterance.onerror = () => {
-        if (!speaking) return;
+        if (activeUtterance !== utterance) return;
         speaking = false;
+        activeUtterance = null;
         speechButton.textContent = 'Read aloud';
         speechButton.setAttribute('aria-pressed', 'false');
       };
       speaking = true;
+      activeUtterance = utterance;
       speechButton.textContent = 'Stop reading';
       speechButton.setAttribute('aria-pressed', 'true');
       synthesis.speak(utterance);

@@ -42,6 +42,9 @@ test('a chart with composed semantics offers a prompt preview and returns focus'
   await action.click();
   const dialog = page.locator('[data-view-id="cost-by-campaign"] .table-intent-dialog');
   await expect(dialog).toBeVisible();
+  await expect(dialog.locator('.table-intent-guidance')).toContainText('include the prompt text');
+  await expect(dialog.getByRole('textbox', { name: 'Prompt text' })).toHaveAttribute('spellcheck', 'true');
+  await expect(dialog.getByRole('button', { name: 'Read aloud' })).toBeVisible();
   expect(await dialog.locator('.table-intent-preview').inputValue()).toContain('Named CAO query IDs:');
   expect(await dialog.locator('.table-intent-preview').inputValue()).toContain('Any unusual campaign cost is explained');
   expect(await dialog.locator('.table-intent-preview').inputValue()).toContain('/analyze-cao');
