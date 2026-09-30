@@ -111,6 +111,15 @@ the source commit, evaluates `server/coolify/compose.yml`, builds
 `server/Dockerfile`, and replaces the running service after the container passes
 its health check.
 
+The Compose service enables the read-only `/mcp` endpoint alongside the dashboard.
+The `Hosted MCP integration` workflow verifies the deployed endpoint against
+`https://cao.githubnext.com/mcp` after changes to `main` and on manual dispatch.
+It uses a GitHub Actions token with read access to Actions, contents, issues,
+and pull requests plus a short-lived Actions OIDC token with audience
+`https://cao.githubnext.com`. It lists tools, inspects the catalog, and runs a
+named query. A successful push can precede Coolify's asynchronous deployment;
+the workflow retries while waiting for the new server to become available.
+
 The deployment-neutral `.github/workflows/cao-package.yml` workflow continues
 to test, scan, attest, and publish the official
 `ghcr.io/githubnext/gh-aw-cao/cao-server` package. That package is useful for

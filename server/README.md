@@ -1299,10 +1299,17 @@ The endpoint exposes only `cao_catalog` and `cao_query`; it accepts no
 SQL, arbitrary query definitions, refresh, rebuild, webhook, administration, or
 repository mutation operations.
 
-MCP is intentionally unavailable from `serve-hosted` in this first slice.
-Hosted enablement requires a remote-client OAuth flow tied to the existing CAO
-session, organization/team authorization, account-selection, and revocation
-model; attempts to pass `--mcp-enabled` to `serve-hosted` fail closed.
+Hosted deployments can opt in with `serve-hosted --mcp-enabled`. This does not
+expose the local bearer capability or grant access to other APIs. The hosted
+`/mcp` endpoint accepts GitHub Actions callers with a bearer `GITHUB_TOKEN`
+and a GitHub Actions OIDC token in `X-GitHub-OIDC-Token`. Mint the OIDC token
+with `id-token: write` and the audience `https://cao.githubnext.com`; grant
+the Actions token `actions: read`, `contents: read`, `issues: read`, and
+`pull-requests: read`. The server verifies the OIDC provenance and repository
+identity and checks the Actions token's repository read permissions before
+serving MCP requests. Keep both tokens in the Actions process environment,
+never in a URL, commit, or log. Browser access continues to use the hosted
+GitHub OAuth session.
 
 Use `--redis-url` and optional `--redis-namespace` only on the server command
 line. The same namespace must be supplied to `ingest` and `serve` when

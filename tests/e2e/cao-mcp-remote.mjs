@@ -80,4 +80,5 @@ test('hosted MCP lists tools, inspects the catalog, and executes a named query',
   assert.equal(query.structuredContent?.query, 'campaign-runs');
   assert.ok(Array.isArray(query.structuredContent.rows));
   assert.ok(query.structuredContent.metadata?.availability);
+  assert.notEqual(query.structuredContent.metadata.availability, 'unavailable');
 });
