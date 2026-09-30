@@ -14,10 +14,13 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"go.opentelemetry.io/otel/codes"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
+
+var mcpLog = logger.New("cao:server:mcp")
 
 type mcpContract struct {
 	ProtocolVersion string `json:"protocolVersion"`
@@ -132,6 +135,8 @@ func (a *App) newMCPHandler() (http.Handler, error) {
 		Stateless: true, JSONResponse: true, MaxRequestBodyBytes: contract.Limits.MaxRequestBytes,
 		PropagateRequestCancellation: true,
 	})
+	mcpLog.Printf("mcp handler constructed tools=%d default_rows=%d max_rows=%d",
+		len(contract.Tools), contract.Limits.DefaultQueryRows, contract.Limits.MaxQueryRows)
 	return &mcpContractHandler{next: handler, tools: contract.Tools}, nil
 }
 
@@ -325,18 +330,44 @@ func onlyArguments(args map[string]any, names ...string) error {
 	return nil
 }
 
-func (runtime *mcpRuntime) queryLimit(value any) (int, error) {
+// queryLimitOutcome classifies how resolveQueryLimit produced its result, so
+// callers can log the decision without exposing the caller-supplied limit
+// value itself.
+type queryLimitOutcome string
+
+const (
+	queryLimitOutcomeDefault  queryLimitOutcome = "default"
+	queryLimitOutcomeClamped  queryLimitOutcome = "clamped-to-max"
+	queryLimitOutcomeExact    queryLimitOutcome = "exact"
+	queryLimitOutcomeRejected queryLimitOutcome = "rejected"
+)
+
+// resolveQueryLimit applies the cao_query tool's limit contract: a nil value
+// selects defaultRows, a value at or above maxRows clamps to maxRows, and
+// any other value must be a positive integer. It is a pure function
+// extracted from mcpRuntime.queryLimit so the limit contract is testable
+// against plain values instead of a constructed mcpRuntime.
+func resolveQueryLimit(value any, defaultRows, maxRows int) (int, queryLimitOutcome, error) {
 	if value == nil {
-		return runtime.contract.Limits.DefaultQueryRows, nil
+		return defaultRows, queryLimitOutcomeDefault, nil
 	}
 	number, ok := value.(float64)
 	if !ok || math.IsInf(number, 0) || math.IsNaN(number) || math.Trunc(number) != number || number < 1 {
-		return 0, errors.New("cao_query limit must be a positive integer")
+		return 0, queryLimitOutcomeRejected, errors.New("cao_query limit must be a positive integer")
 	}
-	if number >= float64(runtime.contract.Limits.MaxQueryRows) {
-		return runtime.contract.Limits.MaxQueryRows, nil
+	if number >= float64(maxRows) {
+		return maxRows, queryLimitOutcomeClamped, nil
 	}
-	return int(number), nil
+	return int(number), queryLimitOutcomeExact, nil
+}
+
+func (runtime *mcpRuntime) queryLimit(value any) (int, error) {
+	limit, outcome, err := resolveQueryLimit(value, runtime.contract.Limits.DefaultQueryRows, runtime.contract.Limits.MaxQueryRows)
+	if err != nil {
+		mcpLog.Printf("cao_query limit rejected outcome=%s", outcome)
+		return 0, err
+	}
+	return limit, nil
 }
 
 func (runtime *mcpRuntime) queryFilters(entry agentQuery, value any) ([]query.Predicate, map[string]string, error) {

@@ -3,8 +3,10 @@
  */
 
 import { h } from '../dom.js';
+import { effect, state } from '../reactive.js';
 import { formatNumber, formatShortUtcDate, toNumber } from '../view-formatters.js';
 import { formatCount, formatCoveragePercent, pluralSuffix } from './count-formatters.js';
+import { createFactoryScope } from './factory-elements.js';
 import { binHistogramValues } from './histogram.js';
 import { renderSafeLink } from './link-content.js';
 import { renderEmptyMessage, renderLegendList } from './ui-primitives.js';
@@ -320,17 +322,25 @@ export function renderPieChartLayout(chart, table) {
   const toggle = h('button', {
     type: 'button',
     className: 'pie-chart-table-toggle',
-    'aria-controls': tableId,
-    'aria-expanded': 'true',
-    'aria-label': 'Hide chart table'
+    'aria-controls': tableId
   });
   const layout = h('div', { className: 'pie-chart-layout' }, chart, toggle, table);
+  const scope = createFactoryScope();
+  const expanded = state(true);
+  // `expanded` is the toggle's entire visible state; this effect is the only
+  // place that writes the layout's hidden marker and the toggle's expanded
+  // attribute/label, replacing the read-then-write bookkeeping the click
+  // handler used to repeat against `layout`'s own attribute.
+  effect(() => {
+    const isExpanded = expanded.get();
+    layout.toggleAttribute('data-chart-table-hidden', !isExpanded);
+    toggle.setAttribute('aria-expanded', String(isExpanded));
+    toggle.setAttribute('aria-label', `${isExpanded ? 'Hide' : 'Show'} chart table`);
+  }, { signal: scope.signal });
   toggle.addEventListener('click', () => {
-    layout.toggleAttribute('data-chart-table-hidden');
-    const expanded = !layout.hasAttribute('data-chart-table-hidden');
-    toggle.setAttribute('aria-expanded', String(expanded));
-    toggle.setAttribute('aria-label', `${expanded ? 'Hide' : 'Show'} chart table`);
-  });
+    expanded.set((current) => !current);
+  }, { signal: scope.signal });
+  scope.bind(layout);
   return layout;
 }
 

@@ -188,16 +188,23 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(factory.locator(':scope > [data-view-id="overview-floor"]')).toHaveClass(/factory-floor/);
     const campaigns = factory.locator(':scope > [data-view-id="overview-campaigns"]');
     await expect(campaigns).toBeVisible();
-    await expect(campaigns.locator(':scope > header')).toBeHidden();
+    await expect(campaigns.locator(':scope > header')).toHaveCSS('clip-path', 'inset(50%)');
+    await expect(campaigns.locator(':scope > header > h2')).toHaveText('Campaigns');
     await expect(campaigns.locator(':scope > header > p')).toHaveCount(0);
     await expect(campaigns.locator('.link-button-list')).toBeVisible();
     await expect(campaigns.locator('.link-button-list-item')).toHaveCount(2);
     await expect(campaigns).toHaveCSS('row-gap', '12px');
-    await expect(campaigns.locator(':scope > header')).toHaveCSS(
-      'margin-top',
-      viewport.width <= 700 ? '24px' : '0px'
-    );
-    await expect(campaigns.locator(':scope > header')).toHaveCSS('padding', '8px 16px');
+    for (const view of await factory.locator(':scope > .custom-view').all()) {
+      await expect(view).toHaveCSS('border-top-width', '0px');
+      await expect(view).toHaveCSS('border-left-width', '0px');
+    }
+    await expect(factory.locator('.factory-floor')).toHaveCSS('border-bottom-width', '0px');
+    await expect(campaigns.locator('.link-button-list')).toHaveCSS('border-top-width', '0px');
+    const pageBounds = await page.locator('[data-page-id="overview"]').boundingBox();
+    const mainBounds = await page.locator('main.dashboard-prototype').boundingBox();
+    if (!pageBounds || !mainBounds) throw new Error('Overview and main bounds must be available');
+    expect(pageBounds.x).toBeCloseTo(mainBounds.x, 0);
+    expect(pageBounds.width).toBeGreaterThan(mainBounds.width - 20);
     await expect(campaigns.getByRole('link', { name: 'View AW Doctor campaign dashboard' }))
       .toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
     await expect(campaigns.getByRole('link', { name: 'View Dependabot campaign dashboard' }))
