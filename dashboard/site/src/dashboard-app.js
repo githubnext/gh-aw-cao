@@ -121,6 +121,7 @@
         views: [],
       };
       const syncDashboardContext = () => {
+        dashboardDocument.dashboard.queries = dashboardQueries;
         dashboardContext.githubUrlBase = dashboardDocument.dashboard["github-url-base"];
         dashboardContext.dashboardRepository = dashboardDocument.dashboard.repository ?? null;
         dashboardContext.pages = dashboardDocument.dashboard.pages;

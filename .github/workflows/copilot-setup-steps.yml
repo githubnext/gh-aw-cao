@@ -42,3 +42,7 @@ jobs:
         working-directory: dashboard/site
       - name: Install gh-aw extension
         uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
+      - name: Stage CAO dashboard evidence
+        env:
+          DASHBOARD_DATA_URL: ${{ vars.CAO_DASHBOARD_DATA_URL }}
+        run: npm run dashboard:data:download

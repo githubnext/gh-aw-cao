@@ -41,6 +41,8 @@ describe('semantic view prompts', () => {
     });
     expect(prompt).toContain('cao query-info QUERY_ID');
     expect(prompt).toContain('cao_query');
+    expect(prompt).toContain('cao download');
+    expect(prompt).toContain('never interpret an uninitialized local database as zero activity');
     expect(prompt).toContain('"truncated": true');
     expect(prompt).toContain('"index": 7');
     expect(prompt).not.toContain('"index": 8');

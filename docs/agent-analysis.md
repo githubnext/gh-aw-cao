@@ -38,6 +38,15 @@ Do you have shell access?
    cao download
    ```
 
+   In Copilot cloud-agent sessions, the repository's setup steps download the
+   snapshot before the agent starts. To use a deployment other than the public
+   default, set the `CAO_DASHBOARD_DATA_URL` repository variable to its
+   `payload-hashes.json` URL. The setup step passes it as `DASHBOARD_DATA_URL`;
+   no credentials are stored in the URL. If the deployment is unavailable or
+   network access is blocked, the setup download fails and there is no fresh
+   evidence to query. Do not treat an empty locally created database as a
+   successful download or infer zero firewall blocks from it.
+
 2. Discover the dashboard pages an operator reads:
 
    ```bash
