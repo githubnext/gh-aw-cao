@@ -267,6 +267,20 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 	operations := 0
 	retainedRows := 0
 	var retainedBytes int64
+	sourceConsumers := map[string]string{}
+	for _, name := range order {
+		if definition := index[name]; definition != nil {
+			inputs := append([]string{definition.From}, definition.Union...)
+			for _, join := range definition.Joins {
+				inputs = append(inputs, join.Source)
+			}
+			for _, input := range inputs {
+				if _, isQuery := index[input]; !isQuery && sourceConsumers[input] == "" {
+					sourceConsumers[input] = name
+				}
+			}
+		}
+	}
 	load := func(name string, definition *Definition) error {
 		if _, ok := sources[name]; ok {
 			return nil
@@ -280,7 +294,13 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 			return fmt.Errorf("query plan exceeds max retained rows of %d", MaxRetainedRows)
 		}
 		if sourceBytes > MaxRetainedBytes-retainedBytes {
-			return fmt.Errorf("query plan exceeds max retained bytes of %d", MaxRetainedBytes)
+			queryID := name
+			if definition != nil {
+				queryID = definition.Name
+			} else if consumer := sourceConsumers[name]; consumer != "" {
+				queryID = consumer
+			}
+			return &PlanLimitError{QueryID: queryID, Limit: MaxRetainedBytes}
 		}
 		sources[name] = source
 		retainedRows += len(source.Rows)
@@ -373,7 +393,7 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 			return nil, metrics, fmt.Errorf("query plan exceeds max retained rows of %d", MaxRetainedRows)
 		}
 		if resultBytes > MaxRetainedBytes-retainedBytes {
-			return nil, metrics, fmt.Errorf("query plan exceeds max retained bytes of %d", MaxRetainedBytes)
+			return nil, metrics, &PlanLimitError{QueryID: definition.Name, Limit: MaxRetainedBytes}
 		}
 		queryLog.Printf("executed query rows=%d operations=%d fallback=%d", len(result.Rows), used, len(fallback))
 		sources[name] = result

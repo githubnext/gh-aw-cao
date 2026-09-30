@@ -787,8 +787,19 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 	}
 	result, status, err := a.executeQuery(ctx, input, a.adminAuthorized(request))
 	if err != nil {
-		fail(status, err.Error())
+		writeQueryError(response, status, err)
 		return
+	}
+
+	func writeQueryError(response http.ResponseWriter, status int, err error) {
+		var limitErr *query.PlanLimitError
+		if errors.As(err, &limitErr) {
+			writeJSON(response, http.StatusUnprocessableEntity, map[string]string{
+				"error": limitErr.Error(), "code": "query_plan_too_large", "queryId": limitErr.QueryID,
+			})
+			return
+		}
+		writeError(response, status, err.Error())
 	}
 	result.Metrics.RateLimitCost = queryRateLimitCost(result.Metrics)
 	if status, err := a.chargeQueryRateLimit(ctx, response, result.Metrics.RateLimitCost); err != nil {

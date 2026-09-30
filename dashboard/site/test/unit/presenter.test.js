@@ -10,6 +10,7 @@ import { campaignDashboardSources } from '../campaign-dashboard-documents.js';
 import { applyDashboardQueries } from '../workflow-inventory-query.js';
 import { resolveBuiltInPages } from '../../src/dashboard-chunks.js';
 import { authoritativeDashboard as builtInDashboardDocument } from '../authoritative-dashboard.js';
+import { DashboardServerError } from '../../src/remote-data-backend.js';
 
 const campaignDashboardDocuments = campaignDashboardSources.map((source) => JSON.parse(source));
 const authoritativeDashboardDocument = composeDashboardDocuments(
@@ -3750,13 +3751,43 @@ describe('presenter built-in and custom pages', () => {
       /** @type {HTMLAnchorElement} */ (root.querySelector('[data-nav-page-id="second"]')).click();
 
       await vi.waitFor(() => {
-        expect(root.querySelector('#page-second .empty')?.textContent).toBe('Unable to load this page.');
+        expect(root.querySelector('#page-second .page-load-error h2')?.textContent).toBe('Unable to load this page');
       });
       const page = /** @type {HTMLElement} */ (root.querySelector('#page-second'));
       expect(page.getAttribute('aria-busy')).toBeNull();
       expect(page.getAttribute('aria-label')).toBeNull();
-      expect(page.querySelector('.empty')?.getAttribute('role')).toBe('alert');
+      expect(page.querySelector('.page-load-error')?.getAttribute('role')).toBe('alert');
+      expect(page.querySelector('.page-load-error button')?.textContent).toBe('Try again');
     } finally {
+      root.remove();
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
+  it('explains a coded server limit with its query ID and retries the page', async () => {
+    const root = document.createElement('div');
+    root.innerHTML = '<main class="dashboard-prototype"><section class="dashboard-page" id="page-campaigns" data-page-id="campaigns" data-page-pending></section></main>';
+    document.body.append(root);
+    const renderPage = vi.fn()
+      .mockRejectedValueOnce(new DashboardServerError('limit', 'query_plan_too_large', 'campaign-repository-coverage'))
+      .mockImplementation(() => {
+        const page = document.createElement('section');
+        page.id = 'page-campaigns';
+        page.className = 'dashboard-page';
+        page.dataset.pageId = 'campaigns';
+        page.textContent = 'Campaigns loaded';
+        return page;
+      });
+    const dispose = enableDashboardPageNavigation(root, 'Dashboard', renderPage, 'campaigns');
+    try {
+      await vi.waitFor(() => expect(root.querySelector('.page-load-error-detail')?.textContent)
+        .toBe('Query: campaign-repository-coverage'));
+      expect(root.querySelector('.page-load-error h2')?.textContent).toContain('more data');
+      /** @type {HTMLButtonElement} */ (root.querySelector('.page-load-error button')).click();
+      await vi.waitFor(() => expect(root.querySelector('#page-campaigns')?.textContent).toBe('Campaigns loaded'));
+      expect(renderPage).toHaveBeenCalledTimes(2);
+    } finally {
+      dispose();
       root.remove();
       window.history.replaceState(null, '', '/');
     }

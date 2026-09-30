@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  DashboardServerError,
   disableRemoteDashboardPwa,
   queryRemoteDashboard,
   queryRemoteRepositoryMemory,
@@ -16,6 +17,19 @@ afterEach(() => {
 });
 
 describe("remote dashboard data backend", () => {
+  it("preserves a coded query limit and failing query ID", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      error: 'Query "campaign-repository-coverage" needs more retained data.',
+      code: "query_plan_too_large",
+      queryId: "campaign-repository-coverage",
+    }), { status: 422, headers: { "Content-Type": "application/json" } })));
+    await expect(queryRemoteDashboard([], { pages: [] })).rejects.toMatchObject({
+      name: "DashboardServerError",
+      code: "query_plan_too_large",
+      queryId: "campaign-repository-coverage",
+    });
+    expect(new DashboardServerError("failure", "query_plan_too_large", "campaign-inventory")).toBeInstanceOf(Error);
+  });
   it("activates only for the server-injected backend marker", () => {
     expect(usesRemoteDataBackend(document)).toBe(false);
     const meta = document.createElement("meta");

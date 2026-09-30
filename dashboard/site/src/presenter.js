@@ -12,6 +12,7 @@ import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayo
 import { externalAnchorAttrs, findLink } from './components/link-content.js';
 import { elementHandlesEmptyRows, elementHandlesUnavailableSource, elementLoadsSourcesAsync, renderUiElement } from './components/ui-elements.js';
 import { renderDataView, renderPromptPreviewAction, supportsIncrementalChartContinuation } from './components/data-view.js';
+import { DashboardServerError } from './remote-data-backend.js';
 import { declaredAgentTaskActionId } from './components/cli-actions.js';
 import { effectiveViewSemantics } from './view-semantics.js';
 import { semanticViewPrompt } from './semantic-view-prompt.js';
@@ -1457,7 +1458,21 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
               status: 'failed',
               message: error instanceof Error ? error.message : String(error)
             });
-            currentPage.replaceChildren(renderEmptyMessage('Unable to load this page.', { role: 'alert' }));
+            const limited = error instanceof DashboardServerError && error.code === 'query_plan_too_large';
+            const retry = h('button', { type: 'button', className: 'button' }, 'Try again');
+            retry.addEventListener('click', () => activate(pageId, parameters));
+            currentPage.setAttribute('data-page-pending', '');
+            currentPage.replaceChildren(h('div', { className: 'page-load-error', role: 'alert' },
+              octicon('alert'),
+              h('div', { className: 'page-load-error-body' },
+                h('h2', null, limited ? 'This page needs more data than the server can process' : 'Unable to load this page'),
+                h('p', null, limited
+                  ? 'Try a shorter time range or contact your dashboard administrator if this continues.'
+                  : 'The page could not be loaded. Please try again.'),
+                limited && error.queryId ? h('p', { className: 'page-load-error-detail' }, `Query: ${error.queryId}`) : null,
+                retry
+              )
+            ));
             currentPage.removeAttribute('aria-busy');
             currentPage.removeAttribute('aria-label');
           });

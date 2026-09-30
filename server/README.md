@@ -837,7 +837,10 @@ Execution fails closed when a requested plan exceeds 16 dependency levels, 256
 derived queries, or 16 joins along one dependency path. Independent queries in a
 batch do not consume one another's structural join allowance. Runtime guards cap
 a query at 5 million row operations, 500,000 simultaneously referenced or
-retained rows, and 256 MiB of estimated working or retained row data. Per-query
+retained rows, 256 MiB of estimated working row data, and 512 MiB of estimated
+retained row data. A retained-byte limit failure returns HTTP 422 with
+`code: "query_plan_too_large"` and the failing `queryId` alongside a readable
+`error` message; other query limits remain independently enforced. Per-query
 input, join, output, and operator limits remain independently enforced.
 Expensive stages, including sorting, are charged against the operation budget
 before they allocate or run.
