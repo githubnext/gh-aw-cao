@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import controls from '../../dashboard-fragments/controls.json';
 import { effectiveViewSemantics, semanticViewPrompt } from '../../src/view-semantics.js';
 
 afterEach(() => {
@@ -7,6 +8,16 @@ afterEach(() => {
 });
 
 describe('semantic view prompts', () => {
+  it('names the firewall queries needed to investigate blocked domains', () => {
+    const firewall = controls.pages.find((page) => page.id === 'firewall');
+    const view = firewall?.views.find((candidate) => candidate.id === 'security-firewall-most-blocked-domains');
+    if (!view) throw new Error('Firewall prompt view is missing.');
+    const semantics = effectiveViewSemantics(view, controls.queries);
+    expect(semantics.queryIds).toEqual(['firewall-domain-totals', 'firewall-most-blocked-domains']);
+    expect(semantics.objective).toContain('firewall-domain-workflows');
+    expect(semantics.acceptance).toContain('investigation as incomplete');
+  });
+
   const queries = [
     { name: 'base', from: 'runs', intent: 'Observe runs', acceptance: 'Runs healthy' },
     { name: 'summary', from: 'base', intent: 'Summarize health', objective: 'Investigate failures' },

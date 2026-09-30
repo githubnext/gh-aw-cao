@@ -6,7 +6,7 @@ const presenter = vi.hoisted(() => ({
   dashboardPagePaginatedSourceBindings: vi.fn(() => ({})),
   dashboardPageSourceNames: vi.fn(() => []),
   disposeDashboard: vi.fn(),
-  renderDashboard: vi.fn(() => document.createElement("div")),
+  renderDashboard: vi.fn((/** @type {import('../../src/presenter.js').PresentationInput} */ _input) => document.createElement("div")),
   updateWithViewTransition: vi.fn((_doc, callback) => callback())
 }));
 const dataProcessor = vi.hoisted(() => ({

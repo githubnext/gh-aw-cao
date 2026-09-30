@@ -171,7 +171,7 @@
           languageVersion: normalized.core["language-version"],
           dashboard: /** @type {import('./presenter.js').PresentableDashboard} */ (normalized.core.dashboard),
         };
-        dashboardQueries.splice(0, dashboardQueries.length);
+        dashboardQueries.splice(0, dashboardQueries.length, ...(normalized.core.dashboard.queries ?? []));
         dashboardPageChunks = new Map(
           [...normalized.pageChunks.entries()].map(([pageId, chunk]) => [pageId, normalizeDashboardPageChunk(chunk)])
         );
