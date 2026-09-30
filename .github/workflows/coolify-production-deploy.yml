@@ -199,6 +199,7 @@ jobs:
       url: ${{ vars.COOLIFY_READINESS_URL }}
     permissions:
       contents: read
+      id-token: write
     steps:
       - id: freshness
         name: Reject stale deployment source
@@ -229,6 +230,12 @@ jobs:
           ref: ${{ needs.authorize.outputs.source_sha }}
           fetch-depth: 1
           persist-credentials: false
+      - name: Connect to Coolify tailnet
+        uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4.2.0
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
+          tags: tag:coolify-deploy
       - id: deployment
         name: Deploy exact digest
         env:

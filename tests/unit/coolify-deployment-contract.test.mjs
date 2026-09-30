@@ -211,7 +211,10 @@ test("Coolify workflow_run trigger mitigates the dangerous-triggers audit", asyn
     contents: "read",
     packages: "read",
   });
-  assert.deepEqual(deploy.permissions, { contents: "read" });
+  assert.deepEqual(deploy.permissions, {
+    contents: "read",
+    "id-token": "write",
+  });
   assert.equal(deploy.needs.includes("package"), true);
   assert.equal(checkout.with.ref, "${{ needs.authorize.outputs.source_sha }}");
   assert.doesNotMatch(source, /download-artifact/);
@@ -227,7 +230,17 @@ test("Coolify workflow_run trigger mitigates the dangerous-triggers audit", asyn
     deployment.env.COOLIFY_API_TOKEN,
     "${{ secrets.COOLIFY_API_TOKEN }}",
   );
+  const tailnet = deploy.steps.find((step) => step.name === "Connect to Coolify tailnet");
+  assert.equal(tailnet.uses, "tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd");
+  assert.deepEqual(tailnet.with, {
+    "oauth-client-id": "${{ secrets.TS_OAUTH_CLIENT_ID }}",
+    audience: "${{ secrets.TS_AUDIENCE }}",
+    tags: "tag:coolify-deploy",
+  });
+  assert.ok(deploy.steps.indexOf(tailnet) < deploy.steps.indexOf(deployment));
   assert.equal((source.match(/secrets\.COOLIFY_API_TOKEN/g) ?? []).length, 1);
+  assert.equal((source.match(/secrets\.TS_OAUTH_CLIENT_ID/g) ?? []).length, 1);
+  assert.equal((source.match(/secrets\.TS_AUDIENCE/g) ?? []).length, 1);
 
   const documentation = await text("docs/deployment-coolify.md");
   assert.match(
@@ -235,4 +248,6 @@ test("Coolify workflow_run trigger mitigates the dangerous-triggers audit", asyn
     /accept deployments only from the protected\s+default branch/,
   );
   assert.match(documentation, /required reviewers/);
+  assert.match(documentation, /workload identity federation credential/);
+  assert.match(documentation, /tag:coolify-deploy/);
 });

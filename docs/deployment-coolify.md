@@ -109,14 +109,23 @@ For the production deployment of the `githubnext/gh-aw-cao` dashboard:
 1. Use an amd64 Coolify host. The package workflow builds on GitHub's amd64
    `ubuntu-latest` runner.
 1. Configure one protected `coolify-production` GitHub environment. Store
-   `COOLIFY_API_TOKEN` only as an environment secret. Add these environment
-   variables:
+   `COOLIFY_API_TOKEN`, `TS_OAUTH_CLIENT_ID`, and `TS_AUDIENCE` as environment
+   secrets. Create a Tailscale GitHub workload identity federation credential
+   with writable `auth_keys` scope, restrict it to this repository's protected
+   `main` deployment, and assign it the `tag:coolify-deploy` tag. In the tailnet
+   access policy, allow that tag to reach only the Coolify HTTPS API host and
+   port. Add these environment variables:
 
    | Variable | Value |
    | --- | --- |
    | `COOLIFY_BASE_URL` | Origin of the Coolify instance, such as `https://coolify.example.com`. |
    | `COOLIFY_APPLICATION_UUID` | UUID shown for the Compose application. |
    | `COOLIFY_READINESS_URL` | Public dashboard origin, such as `https://dashboard.example.com`. |
+
+   `TS_OAUTH_CLIENT_ID` and `TS_AUDIENCE` are the client ID and audience from
+   the Tailscale workload identity federation credential. The deployment job
+   uses GitHub OIDC to join the tailnet temporarily; no reusable Tailscale
+   auth key or OAuth client secret is needed.
 
 1. Configure the environment to accept deployments only from the protected
    default branch. Initially add repository maintainers or administrators as
