@@ -4,7 +4,7 @@ description: Run the Central Agentic Ops dashboard server as a hardened containe
 ---
 
 > [!WARNING]
-> **Experimental:** The Coolify deployment is experimental and isn't certified for production use. The container image, Compose file, deployment workflow, adapter contract, and environment variables can change between releases. Before you expose the deployment to users, complete your own security, network, backup, monitoring, and rollback reviews.
+> **Experimental:** The Coolify deployment is experimental and isn't certified for production use. The container image, Compose file, deployment workflow, API client, and environment variables can change between releases. Before you expose the deployment to users, complete your own security, network, backup, monitoring, and rollback reviews.
 
 ## About the Coolify deployment
 
@@ -27,7 +27,7 @@ The Coolify deployment is an alternative to the Azure deployment. It doesn't rep
 | Artifact volume | A named Docker volume, managed by Coolify, that contains a complete and verified dashboard payload. |
 | GitHub OAuth app | An OAuth app with the callback URL `https://PUBLIC-HOST/auth/callback`. |
 | Webhook secret | A secret of at least 32 characters. The server requires one even if you don't use webhooks. |
-| Deployment automation (optional) | To use `.github/workflows/coolify-deploy.yml`, set the repository variable `COOLIFY_DEPLOY_ENABLED` to `true` for push deployments. You also need the GitHub environments `coolify-alpha` and `coolify-stable`, each with the `COOLIFY_DEPLOY_ENDPOINT` and `COOLIFY_DEPLOY_TOKEN` secrets, plus a deployment adapter for your Coolify resource. For more information, see [Automating delivery](#automating-delivery). |
+| Deployment automation (optional) | To use `.github/workflows/coolify-production-deploy.yml`, configure the protected `coolify-production` GitHub environment with the Coolify API variables and token described below. For more information, see [Automating delivery](#automating-delivery). |
 
 The running container needs outbound access only to Redis and to the GitHub OAuth and API endpoints.
 
@@ -88,9 +88,9 @@ In the following steps, replace `PUBLIC-HOST` with the public host name of your 
    1. Confirm that the dashboard refuses an unauthorized account.
    1. If you use webhooks, send a signed test delivery.
 
-### Deploying a sample image
+### Deploying the githubnext production application
 
-For a test deployment of the `githubnext/gh-aw-cao` dashboard:
+For the production deployment of the `githubnext/gh-aw-cao` dashboard:
 
 1. Create a Git-backed Docker Compose application in Coolify from this repository.
    Keep the repository root as the working directory and set the Compose location
@@ -106,11 +106,11 @@ For a test deployment of the `githubnext/gh-aw-cao` dashboard:
 1. Enable the Coolify API and create a token with `read`, `read:sensitive`,
    `write`, and `deploy` abilities. `read:sensitive` lets rollback read the
    previous `CAO_IMAGE`; store the token only in the protected environment.
-1. Use an amd64 Coolify host. The sample workflow builds on GitHub's amd64
+1. Use an amd64 Coolify host. The package workflow builds on GitHub's amd64
    `ubuntu-latest` runner.
-1. Configure protected `coolify-sample-publish` and `coolify-sample` GitHub
-   environments. Store `COOLIFY_API_TOKEN` only as a `coolify-sample` secret.
-   Add these `coolify-sample` environment variables:
+1. Configure one protected `coolify-production` GitHub environment. Store
+   `COOLIFY_API_TOKEN` only as an environment secret. Add these environment
+   variables:
 
    | Variable | Value |
    | --- | --- |
@@ -118,30 +118,26 @@ For a test deployment of the `githubnext/gh-aw-cao` dashboard:
    | `COOLIFY_APPLICATION_UUID` | UUID shown for the Compose application. |
    | `COOLIFY_READINESS_URL` | Public dashboard origin, such as `https://dashboard.example.com`. |
 
-1. Configure both environments to accept deployments only from the protected
-   default branch, and add only repository maintainers or administrators as
-   required reviewers. These controls are required because GitHub loads a
-   workflow definition from the ref selected by the person dispatching it.
+1. Configure the environment to accept deployments only from the protected
+   default branch. Initially add repository maintainers or administrators as
+   required reviewers; remove the approval only after the automated path has
+   been exercised successfully.
 1. Disable Coolify automatic deployments and deploy webhooks for this
-   application. The sample workflow must be the exclusive writer of
+   application. The production workflow must be the exclusive writer of
    `CAO_IMAGE`; GitHub concurrency cannot prevent deployments started in the
    Coolify UI or by other automation.
-1. From the default branch, manually run **Deploy sample dashboard to Coolify**.
+1. From the default branch, manually run **Deploy dashboard to Coolify** once
+   to validate the configuration.
 
-The workflow fails closed unless both the original actor and, for a rerun, the
-triggering actor have the `maintain` or `admin` repository role. It also requires
-the current default-branch commit. Every job that can resolve or deploy the
-package repeats these checks, including when an individual job is rerun. The
-workflow resolves the matching immutable `cao-server:sha-COMMIT` package,
-verifies its source labels, updates the application's `CAO_IMAGE`, starts a
-Coolify deployment, polls it to completion, and verifies `/api/readiness`.
-Package resolution cannot access the deployment environment or its secrets. If
-deployment or readiness fails, the workflow restores and redeploys the previous
-image before reporting failure.
-
-This native API client is specific to the manual sample workflow. The separate
-channel-based `coolify-deploy.yml` workflow continues to use the adapter
-contract described in [Automating delivery](#automating-delivery).
+Manual runs require both the original and triggering actors to have the
+`maintain` or `admin` repository role. A rerun of an automatic deployment
+requires the triggering actor to have one of those roles. The workflow always
+requires the current default-branch commit. It resolves the matching immutable
+`cao-server:sha-COMMIT` package, verifies its source labels and provenance,
+updates the application's `CAO_IMAGE`, starts a Coolify deployment, polls it to
+completion, and verifies `/api/readiness`. Package resolution cannot access the
+deployment environment or its secrets. If deployment or readiness fails, the
+workflow restores and redeploys the previous image before reporting failure.
 
 ### Updating the data
 
@@ -170,19 +166,21 @@ sources, stale source branches, forks, and unauthorized original or rerun actors
 Manual packages use the separate immutable `dispatch-<full-commit>` identity,
 so they cannot redefine automatic `main` or release identities.
 
-The `.github/workflows/coolify-deploy.yml` workflow does not rebuild the image.
-It resolves the matching immutable `cao-server` identity, verifies its version
-and revision labels, verifies GitHub artifact provenance from the protected-main
-`cao-package-publish.yml` signer for the expected source commit, and sends its
-digest to the protected deployment adapter. The package workflow keeps build
-and scanner execution without package-write authority, transfers a checksummed
-image archive plus exact source metadata to the protected reusable publisher,
-and attaches both SLSA provenance and the SPDX SBOM to the published OCI digest.
+The `.github/workflows/coolify-production-deploy.yml` workflow does not rebuild the image.
+After a successful `main` push run of **CAO server package**, it verifies that
+the package run and source still match the current protected default branch. It
+then resolves the matching immutable `cao-server:sha-COMMIT` identity, verifies
+its version and revision labels, and verifies GitHub artifact provenance from
+the protected-main `cao-package-publish.yml` signer for the expected source
+commit. The package workflow keeps build and scanner execution without
+package-write authority, transfers a checksummed image archive plus exact
+source metadata to the protected reusable publisher, and attaches both SLSA
+provenance and the SPDX SBOM to the published OCI digest.
 
 Every package and delivery job writes a privacy-preserving step summary using
 non-nested `<details>` sections. Summaries contain check names, gate policies, and
 outcomes only. They omit vulnerability records, SBOM contents, image inventory,
-credentials, deployment endpoints and payloads, and registry or adapter
+credentials, deployment endpoints and payloads, and registry or Coolify API
 responses.
 
 A downstream Compose project can reuse one digest for multiple CAO roles:
@@ -206,33 +204,18 @@ deployment authority, or rollout policy.
 
 | Trigger | Image | Environment |
 | --- | --- | --- |
-| A published stable `vX.Y.Z` release | `cao-server:vX.Y.Z`, built from the release commit | `coolify-stable` |
-| A push to `main` | `cao-server:sha-COMMIT` | `coolify-alpha` |
-| A manual run for `alpha` or `stable`, from `main` or `release` | The current `main`, or the latest eligible stable `vX.Y.Z` release | The matching environment |
+| Successful package workflow for a push to current `main` | `cao-server:sha-COMMIT` | `coolify-production` |
+| Authorized manual run from current `main` | Current `cao-server:sha-COMMIT` | `coolify-production` |
 
-Both workflows refuse payloads from forks. Before delivery calls the adapter,
-it checks that the source is still current for its channel and that the official
-package labels match that source. Pushes enter the alpha deployment environment
-only when the repository variable `COOLIFY_DEPLOY_ENABLED` is `true`. Release
-and manual runs always enter the matching deployment environment. Every
-deployment fails closed when either adapter secret is absent. To require
-approvals, use environment protection rules.
-
-The repository doesn't include a deployment adapter. Your adapter must do the following:
-
-1. Record the digest that is currently deployed.
-1. Set `CAO_IMAGE` to the requested digest.
-1. Start the Coolify deployment, then poll until it finishes.
-1. Verify `/api/readiness`.
-1. If any step fails, redeploy the previous digest, verify it, and then return an error.
-
-The adapter reports success only by returning this JSON body, with the requested image and digest:
-
-```json
-{"status":"ready","image":"NAME@sha256:DIGEST","digest":"sha256:DIGEST"}
-```
-
-The workflow treats any other response as a failure, including responses that say the deployment is queued or accepted.
+Both package and deployment workflows refuse fork payloads. The deployment
+workflow rechecks that the source is still `main` HEAD immediately before it
+calls the native Coolify API client. The client records the current image,
+updates `CAO_IMAGE` to the requested digest, waits for Coolify to finish,
+verifies `/api/readiness`, and confirms that the requested image remains
+configured. On failure, it restores and redeploys the previous image and
+verifies readiness before reporting the original deployment failure. Missing
+variables, credentials, API authority, package evidence, or readiness fail
+closed.
 
 ## Configuration reference
 
@@ -288,7 +271,7 @@ Follow these rules when you add the values.
 
   Use the same `CAO_GITHUB_WEBHOOK_SECRET` value in the GitHub webhook configuration. A webhook secret is required even when you don't send webhooks.
 - **Take the OAuth values from your OAuth app.** `CAO_GITHUB_CLIENT_ID` and `CAO_GITHUB_CLIENT_SECRET` come from the GitHub OAuth app that you registered, and `CAO_GITHUB_REDIRECT_URL` must exactly match that app's **Authorization callback URL**, `https://PUBLIC-HOST/auth/callback`.
-- **Keep `CAO_IMAGE` readable.** Don't mark it **Shown Once**. Rollback and the sample deployment workflow read the currently deployed digest before they replace it.
+- **Keep `CAO_IMAGE` readable.** Don't mark it **Shown Once**. Rollback and the production deployment workflow read the currently deployed digest before they replace it.
 - **Enable Runtime.** The server reads every variable at startup, so each one needs the **Runtime** scope. **Buildtime** matters only for a Coolify-built image.
 - **Leave managed variables alone.** Coolify shows `CAO_SOURCE_DIRECTORY` as **Managed**, because `compose.yml` pins it to `/app/source`, the read-only mount of the artifact volume. Don't override it. `CAO_POLICY_PATH` is set the same way.
 - **Duplicate the values for Preview if you use preview deployments.** Coolify keeps **Production** and **Preview** values separate, so a preview deployment fails on the same required variables until you set them again for **Preview**. Give each preview its own `REDIS_NAMESPACE`, artifact volume, host name, OAuth app, and secrets. Sharing a namespace or session secret with production lets a preview build read and write production sessions and data. If you don't use preview deployments, turn them off instead of copying production credentials.
@@ -340,7 +323,7 @@ Add `--deep` to read every active source, `--format json` for automation, or `--
 
 ### Delivery history
 
-The deployment history of each `coolify-*` environment on GitHub records every digest that was deployed.
+The deployment history of the `coolify-production` environment on GitHub records every deployment attempt.
 
 ### Agentic workflow traces
 
@@ -352,14 +335,13 @@ You configure traces for orchestrators and workers in the control repository. Fo
 - **Trusted proxies only.** The server trusts forwarded headers only from `CAO_TRUSTED_PROXY_CIDRS`. The forwarded protocol must be `https`, and the host must exactly match `CAO_ALLOWED_HOSTS`.
 - **Encrypted Redis by default.** The server refuses plaintext Redis unless you allow it for a private address or a single-label service name.
 - **Immutable images.** Every deployment uses an exact, scanned image digest. Channel tags never identify a deployment, and no channel promotes another channel's image.
-- **Automatic rollback.** The sample workflow and the channel adapter each redeploy and verify the previous digest before reporting a failed rollout.
+- **Automatic rollback.** The production deployment client redeploys and verifies the previous digest before reporting a failed rollout.
 - **Safe ingestion.** Ingestion and rebuilds activate only complete generations. If they fail, the previous generation stays active.
 
 ## What this deployment does not guarantee
 
 - **Platform operations.** You operate Coolify, the host, Docker, TLS certificates, and the proxy network. CAO provides no SLA and doesn't harden the host.
 - **Redis operations.** You're responsible for Redis authentication, access control lists, persistence, memory sizing, and network isolation. Redis holds disposable data, and CAO doesn't back it up.
-- **A channel deployment adapter.** The repository includes a native client for the manual sample workflow, but not an adapter for `coolify-deploy.yml`. You must build and secure one that meets the [contract](#automating-delivery).
 - **Data freshness.** Nothing refreshes the artifact volume automatically. Data is only as fresh as the last volume that you prepared or the last rebuild. For the upstream schedule, see [CAO Activity](activity.md).
 - **Live updates.** Server-sent events are best effort. If they stop, clients fall back to polling.
 - **Per-repository authorization.** Authorized users can read all of the active data.
@@ -369,7 +351,7 @@ You configure traces for orchestrators and workers in the control repository. Fo
 
 Before every rollout, record the last known-good `NAME@sha256:DIGEST` from the GitHub deployment history.
 
-1. Using the adapter for the same protected environment, set `CAO_IMAGE` to that exact digest and redeploy. Don't retag images.
+1. In Coolify, set `CAO_IMAGE` to that exact prior digest and redeploy. Don't retag images. The production workflow performs this step automatically when a rollout fails; use the manual procedure for an intentional rollback after a successful rollout.
 1. Confirm readiness, OAuth sign-in and authorization, a bounded query, webhook signature handling, and rate limits.
 1. If the new version wrote unusable data to Redis, clear only the deployment's Redis namespace. The service then loads the retained artifact again.
 

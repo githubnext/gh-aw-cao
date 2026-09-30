@@ -1,0 +1,262 @@
+name: Deploy production dashboard to Coolify
+
+on:
+  workflow_dispatch:
+  workflow_run: # zizmor: ignore[dangerous-triggers] - retained for post-package deployment; the authorization job admits only the successful canonical main package run, and package provenance is verified before the protected deployment job.
+    workflows: [CAO server package]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: coolify-production-deployment
+  cancel-in-progress: false
+
+jobs:
+  authorize:
+    name: Authorize production deployment
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      source_sha: ${{ steps.authorization.outputs.source_sha }}
+    steps:
+      - id: authorization
+        name: Resolve trusted main package
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          ORIGINAL_ACTOR: ${{ github.actor }}
+          PACKAGE_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          PACKAGE_EVENT: ${{ github.event.workflow_run.event }}
+          PACKAGE_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          PACKAGE_HEAD_REPOSITORY: ${{ github.event.workflow_run.head_repository.full_name }}
+          PACKAGE_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          PACKAGE_WORKFLOW_PATH: ${{ github.event.workflow_run.path }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+          WORKFLOW_REF: ${{ github.ref }}
+          WORKFLOW_SHA: ${{ github.sha }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            core.info('Starting production deployment authorization');
+            const repositoryName = `${context.repo.owner}/${context.repo.repo}`;
+            if (repositoryName !== 'githubnext/gh-aw-cao' || context.payload.repository.fork) {
+              throw new Error('Production deployment is restricted to the canonical repository');
+            }
+            core.info('Canonical repository identity verified');
+
+            const manual = process.env.EVENT_NAME === 'workflow_dispatch';
+            const rerun = Number(process.env.RUN_ATTEMPT) > 1;
+            if (manual || rerun) {
+              core.info('Checking manual or rerun actor permissions');
+              const actors = manual
+                ? new Set([process.env.ORIGINAL_ACTOR, process.env.TRIGGERING_ACTOR])
+                : new Set([process.env.TRIGGERING_ACTOR]);
+              for (const actor of actors) {
+                const { data: access } = await github.rest.repos.getCollaboratorPermissionLevel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  username: actor,
+                });
+                if (!['admin', 'maintain'].includes(access.role_name)) {
+                  throw new Error('Manual deployment and reruns require maintain or admin permission');
+                }
+              }
+              core.info('Required repository permissions verified');
+            } else {
+              core.info('Successful package completion supplies automatic deployment authority');
+            }
+
+            const { data: repository } = await github.rest.repos.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            const defaultBranch = repository.default_branch;
+            const { data: branch } = await github.rest.repos.getBranch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: defaultBranch,
+            });
+
+            let sourceSha;
+            if (manual) {
+              core.info('Validating manual deployment source');
+              if (process.env.WORKFLOW_REF !== `refs/heads/${defaultBranch}` ||
+                  process.env.WORKFLOW_SHA !== branch.commit.sha) {
+                throw new Error('Manual deployment must use the current default-branch workflow');
+              }
+              sourceSha = process.env.WORKFLOW_SHA;
+            } else {
+              core.info('Validating completed package workflow');
+              if (process.env.PACKAGE_CONCLUSION !== 'success' ||
+                  process.env.PACKAGE_EVENT !== 'push' ||
+                  process.env.PACKAGE_HEAD_BRANCH !== defaultBranch ||
+                  process.env.PACKAGE_HEAD_REPOSITORY !== repositoryName ||
+                  process.env.PACKAGE_WORKFLOW_PATH !== '.github/workflows/cao-package.yml') {
+                throw new Error('Automatic deployment requires a successful canonical main package run');
+              }
+              sourceSha = process.env.PACKAGE_HEAD_SHA;
+            }
+
+            if (!/^[0-9a-f]{40}$/.test(sourceSha) || sourceSha !== branch.commit.sha) {
+              throw new Error('Deployment source is not the current default-branch commit');
+            }
+            core.setOutput('source_sha', sourceSha);
+            core.info('Production deployment authorization completed');
+      - name: Summarize deployment authorization
+        if: always()
+        env:
+          AUTHORIZATION_STATUS: ${{ steps.authorization.outcome }}
+        run: |
+          {
+            echo "## Production deployment authorization"
+            echo
+            echo "<details><summary>Trusted package source: ${AUTHORIZATION_STATUS}</summary>"
+            echo
+            echo "- Check: canonical repository, successful main package run or authorized manual run, and current source"
+            echo "- Data exposure: outcome only; actor and source identities are omitted"
+            echo "</details>"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  package:
+    name: Resolve official production package
+    needs: authorize
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      attestations: read
+      contents: read
+      packages: read
+    outputs:
+      image: ${{ steps.package.outputs.image }}
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: package
+        name: Resolve and verify immutable package
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REVISION: ${{ needs.authorize.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          repository="ghcr.io/githubnext/gh-aw-cao/cao-server"
+          canonical="${repository}:sha-${REVISION}"
+          manifest="$(docker buildx imagetools inspect "${canonical}" --format '{{json .Manifest}}')"
+          digest="$(jq -r '.digest // empty' <<<"${manifest}")"
+          if [[ ! "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "official production package did not resolve to an immutable digest" >&2
+            exit 1
+          fi
+          image="${repository}@${digest}"
+          docker pull "${image}" >/dev/null
+          package_revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "${image}")"
+          package_version="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "${image}")"
+          expected_version="0.0.0-main.${REVISION:0:12}"
+          if [[ "${package_revision}" != "${REVISION}" || "${package_version}" != "${expected_version}" ]]; then
+            echo "official production package metadata does not match the current main commit" >&2
+            exit 1
+          fi
+          GH_TOKEN="${GITHUB_TOKEN}" gh attestation verify "oci://${image}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/cao-package-publish.yml" \
+            --source-digest "${REVISION}" >/dev/null
+          echo "image=${image}" >> "${GITHUB_OUTPUT}"
+      - name: Summarize package admission
+        if: always()
+        env:
+          PACKAGE_STATUS: ${{ steps.package.outcome }}
+        run: |
+          {
+            echo "## Production package admission"
+            echo
+            echo "<details><summary>Immutable digest, OCI labels, and attestation: ${PACKAGE_STATUS}</summary>"
+            echo
+            echo "- Check: current protected-main source and protected publisher"
+            echo "- Data exposure: outcome only; package metadata and attestations are omitted"
+            echo "</details>"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  deploy:
+    name: Deploy production
+    needs: [authorize, package]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: coolify-production
+      url: ${{ vars.COOLIFY_READINESS_URL }}
+    permissions:
+      contents: read
+    steps:
+      - id: freshness
+        name: Reject stale deployment source
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          EXPECTED_SHA: ${{ needs.authorize.outputs.source_sha }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            core.info('Rechecking the protected default branch');
+            const { data: repository } = await github.rest.repos.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            const { data: branch } = await github.rest.repos.getBranch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: repository.default_branch,
+            });
+            if (!/^[0-9a-f]{40}$/.test(process.env.EXPECTED_SHA) ||
+                branch.commit.sha !== process.env.EXPECTED_SHA) {
+              throw new Error('Production deployment source is no longer the default-branch HEAD');
+            }
+            core.info('Production deployment source remains current');
+      - name: Checkout deployment client
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.authorize.outputs.source_sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - id: deployment
+        name: Deploy exact digest
+        env:
+          COOLIFY_BASE_URL: ${{ vars.COOLIFY_BASE_URL }}
+          COOLIFY_APPLICATION_UUID: ${{ vars.COOLIFY_APPLICATION_UUID }}
+          COOLIFY_READINESS_URL: ${{ vars.COOLIFY_READINESS_URL }}
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          CAO_IMAGE: ${{ needs.package.outputs.image }}
+        run: node scripts/deploy-coolify.mjs
+      - name: Summarize production deployment
+        if: always()
+        env:
+          DEPLOYMENT_STATUS: ${{ steps.deployment.outcome }}
+          FRESHNESS_STATUS: ${{ steps.freshness.outcome }}
+        run: |
+          {
+            echo "## Protected Coolify production deployment"
+            echo
+            for check in \
+              "Source freshness|${FRESHNESS_STATUS}" \
+              "Exact digest deployment, readiness, and rollback|${DEPLOYMENT_STATUS}"; do
+              name="${check%%|*}"
+              status="${check#*|}"
+              echo "<details><summary>${name}: ${status}</summary>"
+              echo
+              echo "- Data exposure: check name and outcome only"
+              echo "</details>"
+              echo
+            done
+            echo "Coolify credentials, endpoint, application identity, image identity, and API responses are omitted."
+          } >> "${GITHUB_STEP_SUMMARY}"
