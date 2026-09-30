@@ -1016,8 +1016,9 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('.pie-chart-card > .chart-prompt-heading > .chart-prompt-action .table-intent-button')).toBe(prompt);
     prompt?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Prioritize investigation of the most blocked domains');
-    expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Investigate blocked firewall domains');
-    expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Each investigated block has a documented disposition');
+    expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('query firewall-domain-workflows with --param domain=DOMAIN');
+    expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Named CAO query IDs: firewall-domain-totals, firewall-most-blocked-domains');
+    expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Record each investigated domain and workflow');
     expect(page?.querySelector('[data-chart-category="blocked.example"]')).not.toBeNull();
     expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] .chart-legend-pie strong')?.textContent).toBe('3,177,281');
     expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
