@@ -76,6 +76,12 @@ test("Coolify Compose contains no credentials and requires immutable image input
 });
 
 test("Coolify production delivery consumes the successful main package", async () => {
+  await assert.rejects(() => text(".github/workflows/coolify-deploy.yml"), {
+    code: "ENOENT",
+  });
+  await assert.rejects(() => text(".github/workflows/coolify-sample-deploy.yml"), {
+    code: "ENOENT",
+  });
   const source = await text(".github/workflows/coolify-production-deploy.yml");
   const workflow = parse(source);
   const authorize = workflow.jobs.authorize;
