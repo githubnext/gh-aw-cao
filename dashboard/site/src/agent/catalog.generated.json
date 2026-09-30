@@ -869,8 +869,8 @@
   "queries": [
     {
       "id": "event-base",
-      "intent": "Reuse shared query stages for entity-events, event-runs",
-      "objective": "Establish the retained run-owned event evidence available for downstream import-coverage analysis.",
+      "intent": "Unify retained run-owned records for entity-events.",
+      "objective": "Establish the retained run-owned event evidence available for event inspection.",
       "acceptance": "The result unions retained audit, domain, tool, and issue records with their available run identity; an empty or unavailable preview cannot establish zero source activity or complete import coverage.",
       "description": "",
       "parameters": [],
@@ -893,6 +893,82 @@
       }
     },
     {
+      "id": "audit-event-runs",
+      "intent": "Count imported audit records per run before combining event sources.",
+      "objective": "Bound audit evidence for run import-coverage analysis.",
+      "acceptance": "Count only retained audit records with event identity by run attempt; missing evidence does not establish zero activity.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "audits"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits"
+        ]
+      }
+    },
+    {
+      "id": "domain-event-runs",
+      "intent": "Count imported domain records per run before combining event sources.",
+      "objective": "Bound domain evidence for run import-coverage analysis.",
+      "acceptance": "Count only retained domain records with event identity by run attempt; missing evidence does not establish zero activity.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "domains"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "domains"
+        ]
+      }
+    },
+    {
+      "id": "tool-event-runs",
+      "intent": "Count imported tool records per run before combining event sources.",
+      "objective": "Bound tool evidence for run import-coverage analysis.",
+      "acceptance": "Count only retained tool records with event identity by run attempt; missing evidence does not establish zero activity.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "tools"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "tools"
+        ]
+      }
+    },
+    {
+      "id": "issue-event-runs",
+      "intent": "Count imported issue records per run before combining event sources.",
+      "objective": "Bound issue evidence for run import-coverage analysis.",
+      "acceptance": "Count only retained issue records with event identity by run attempt; missing evidence does not establish zero activity.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "issues"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "issues"
+        ]
+      }
+    },
+    {
       "id": "event-runs",
       "intent": "Identify each workflow run that has one or more imported run-owned records.",
       "objective": "Identify run attempts with retained imported records so their presence can be compared with observed runs.",
@@ -900,7 +976,10 @@
       "description": "Distinct workflow runs represented by imported domain, tool, audit, or issue records.",
       "parameters": [],
       "sources": [
-        "event-base"
+        "audit-event-runs",
+        "domain-event-runs",
+        "issue-event-runs",
+        "tool-event-runs"
       ],
       "used-by-pages": [],
       "execution": {
