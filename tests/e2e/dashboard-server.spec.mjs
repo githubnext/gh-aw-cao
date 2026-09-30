@@ -98,7 +98,15 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
     let blocker;
 
     try {
+      const initialQueryResponses = [];
+      const onInitialResponse = (response) => {
+        if (new URL(response.url()).pathname === "/api/v1/query") initialQueryResponses.push(response);
+      };
+      page.on("response", onInitialResponse);
       await page.goto(`/?access_token=${accessToken}`);
+      await expect(page.locator('meta[name="dashboard-data-backend"]')).toHaveAttribute("content", "redis-http");
+      await expect(page.locator('[data-page-id="overview"]')).not.toHaveAttribute("aria-busy", "true", { timeout: 30_000 });
+      page.off("response", onInitialResponse);
       const dashboardResponse = await context.request.get("/dashboard.json");
       expect(dashboardResponse.ok()).toBe(true);
       const dashboard = await dashboardResponse.json();
@@ -118,19 +126,23 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
       for (const definition of pages) {
         const result = { pageId: definition.id, status: "failed", queries: 0, errors: [] };
         results.push(result);
-        const assessedPage = await context.newPage();
-        const queryResponses = [];
+        const queryResponses = definition.id === "overview" ? [...initialQueryResponses] : [];
         const browserErrors = [];
-        assessedPage.on("pageerror", (error) => browserErrors.push(error.message));
-        assessedPage.on("response", (response) => {
+        let remainingTokens = 30;
+        let resetSeconds = 0;
+        const onPageError = (error) => browserErrors.push(error.message);
+        const onResponse = (response) => {
           if (new URL(response.url()).pathname !== "/api/v1/query") return;
           queryResponses.push(response);
-        });
+          remainingTokens = Math.min(remainingTokens, Number(response.headers()["ratelimit-remaining"] ?? 30));
+          resetSeconds = Math.max(resetSeconds, Number(response.headers()["ratelimit-reset"] ?? 0));
+        };
+        page.on("pageerror", onPageError);
+        page.on("response", onResponse);
         try {
-          await assessedPage.goto(`/${dashboardAssessmentPageHash(definition, dashboard)}`, {
-            waitUntil: "domcontentloaded",
-          });
-          const activePage = assessedPage.locator(`[data-page-id="${definition.id}"]`);
+          await page.evaluate((hash) => { window.location.hash = hash; },
+            dashboardAssessmentPageHash(definition, dashboard));
+          const activePage = page.locator(`[data-page-id="${definition.id}"]`);
           await expect(activePage).toBeVisible({ timeout: 30_000 });
           await expect(activePage).not.toHaveAttribute("aria-busy", "true", { timeout: 30_000 });
           await activePage.locator("details.view-disclosure").evaluateAll((items) => {
@@ -145,7 +157,7 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
           }
           for (let index = 0; index < await views.count(); index += 1) {
             const view = views.nth(index);
-            if (await view.isVisible()) await view.scrollIntoViewIfNeeded();
+            if (await view.isVisible()) await view.scrollIntoViewIfNeeded().catch(() => {});
           }
           await expect(activePage.locator(visibleBusyViewSelector)).toHaveCount(0, { timeout: 30_000 });
           const failures = await activePage.locator('[aria-label^="Unable to load "]')
@@ -160,6 +172,14 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
             const payload = await response.json();
             if (!payload.sources || typeof payload.sources !== "object") {
               result.errors.push("Query returned no sources object");
+              continue;
+            }
+            const request = response.request().postDataJSON();
+            const replaced = new Set(request.replacedSources ?? []);
+            for (const name of [...(request.sourceNames ?? []), ...(request.aliases ?? [])]) {
+              if (!replaced.has(name) && !Object.hasOwn(payload.sources, name)) {
+                result.errors.push(`Query did not resolve source: ${name}`);
+              }
             }
           }
           if (declared.length > 0 && result.queries === 0) result.errors.push("No Go server queries observed");
@@ -167,7 +187,11 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
         } catch (error) {
           result.errors.push(error instanceof Error ? error.message : String(error));
         } finally {
-          await assessedPage.close();
+          page.off("pageerror", onPageError);
+          page.off("response", onResponse);
+          if (remainingTokens < 12 && resetSeconds > 0) {
+            await page.waitForTimeout((resetSeconds + 1) * 1000);
+          }
         }
       }
     } catch (error) {
