@@ -58,6 +58,10 @@ test("Coolify Compose contains no credentials and requires immutable image input
   assert.equal(dashboard.ports, undefined);
   assert.deepEqual(dashboard.expose, ["8080"]);
   assert.match(dashboard.volumes[0], /:\/app\/source:ro$/);
+  assert.deepEqual(dashboard.volumes.slice(1), [
+    "./.github/workflows/cao.json:/app/config/cao.json:ro",
+    "./.github/workflows/cao.coolify.json:/app/config/cao.coolify.json:ro",
+  ]);
   assert.doesNotMatch(source, /github_pat_|ghp_|gho_|-----BEGIN/);
   for (const [name, value] of Object.entries(dashboard.environment)) {
     if (/SECRET|REDIS_URL/.test(name)) {

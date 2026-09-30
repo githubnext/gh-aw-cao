@@ -88,7 +88,9 @@ For a test deployment of the `githubnext/gh-aw-cao` dashboard:
    Keep the repository root as the working directory and set the Compose location
    to `server/coolify/compose.yml`. Enable **Preserve Repository During
    Deployment** so the checked-in `cao.json` and `cao.coolify.json` bind mounts
-   remain available. A pasted Compose file cannot resolve those profiles.
+   remain available. The Compose policy bind sources are relative to Coolify's
+   repository-root project directory. A pasted Compose file or a different
+   project directory cannot resolve those profiles.
 1. Configure the variables in `.env.example`, including one non-preview
    `CAO_IMAGE` variable that is not marked **Shown Once**. Use an immutable
    `ghcr.io/githubnext/gh-aw-cao/cao-server@sha256:...` value. If the GHCR
