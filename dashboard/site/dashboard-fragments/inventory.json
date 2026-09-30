@@ -300,6 +300,9 @@
           {
             "id": "workflows-by-aic-per-run",
             "title": "Average AIC per run by workflow",
+            "intent": "Compare observed average AI Credit cost per run across workflows.",
+            "objective": "Identify costly workflows for a closer review of their run evidence.",
+            "acceptance": "Comparisons use observed run averages, without inferring waste or outcome value from cost alone.",
             "description": "Declared workflows ranked by average AI Credit cost per observed run.",
             "data": {
               "source": "workflow-aic-per-run",
@@ -441,6 +444,9 @@
           {
             "id": "runs-last-week",
             "title": "Runs in the last week",
+            "intent": "See the daily distribution of observed run conclusions in the last seven days.",
+            "objective": "Spot changes in run activity or failures worth investigating.",
+            "acceptance": "Any apparent trend is checked against underlying runs and data completeness.",
             "description": "Workflow run conclusions observed during the last seven days.",
             "data": {
               "source": "runs-daily-conclusions",
@@ -561,6 +567,9 @@
           {
             "id": "issues-by-repository",
             "title": "Top repositories with issues",
+            "intent": "Compare retained issue safe outputs across the ten most represented repositories.",
+            "objective": "Identify repositories with issue activity that needs review.",
+            "acceptance": "The ranking describes retained issues, not all repository problems or their resolution.",
             "description": "The share of retained issues attributed to the ten repositories with the most issue safe outputs.",
             "data": {
               "source": "issue-repository-totals"
@@ -585,6 +594,9 @@
           {
             "id": "issues-by-status",
             "title": "Open and closed issues",
+            "intent": "See the current status distribution of retained issue safe outputs.",
+            "objective": "Find open issues and closing reasons requiring review.",
+            "acceptance": "Status is interpreted from retained issue evidence, without assuming closure means the underlying problem is resolved.",
             "description": "The current split of retained issue safe outputs by open state or closing reason.",
             "data": {
               "source": "issue-safe-outputs"

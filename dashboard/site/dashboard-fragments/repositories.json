@@ -1062,6 +1062,9 @@
           {
             "id": "repositories-issues",
             "title": "Top repositories with issues",
+            "intent": "Compare retained issue safe outputs across the ten most represented repositories.",
+            "objective": "Identify repositories with issue activity that needs review.",
+            "acceptance": "The ranking describes retained issues, not all repository problems or their resolution.",
             "description": "The share of retained issues attributed to the ten repositories with the most issue safe outputs.",
             "data": {
               "source": "issue-repository-totals"
@@ -1352,6 +1355,9 @@
         {
           "id": "repository-run-health",
           "title": "Run health trend",
+          "intent": "Track this repository's daily observed run conclusions.",
+          "objective": "Identify days with failures or changes in run activity for investigation.",
+          "acceptance": "Any apparent trend is checked against underlying runs and data completeness.",
           "description": "Daily run conclusions show this repository's execution health at a glance.",
           "data": {
             "source": "repository-runs",

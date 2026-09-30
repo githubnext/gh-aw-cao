@@ -139,6 +139,9 @@
         {
           "id": "domain-insights-chart",
           "title": "Requests by firewall decision",
+          "intent": "Compare observed requests for this domain by firewall decision.",
+          "objective": "Determine whether blocked requests need investigation.",
+          "acceptance": "Any investigation uses the underlying request evidence; a block alone does not justify expanding egress.",
           "data": {
             "source": "domain-entity-insights",
             "arguments": [
@@ -325,6 +328,9 @@
         {
           "id": "tool-insights-chart",
           "title": "Calls by status",
+          "intent": "Compare observed calls to this MCP tool by status.",
+          "objective": "Find call failures or other statuses worth investigating.",
+          "acceptance": "Status counts are checked against call evidence before attributing a cause.",
           "data": {
             "source": "tool-entity-insights",
             "arguments": [
@@ -511,6 +517,9 @@
         {
           "id": "audit-insights-chart",
           "title": "Observations by status",
+          "intent": "Compare audit observations for this entity by status.",
+          "objective": "Identify audit statuses requiring closer review.",
+          "acceptance": "Any concerning status is corroborated with its underlying audit observations.",
           "data": {
             "source": "audit-entity-insights",
             "arguments": [

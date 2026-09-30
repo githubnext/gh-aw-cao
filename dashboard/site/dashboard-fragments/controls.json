@@ -821,6 +821,9 @@
         {
           "id": "steering-type-breakdown",
           "title": "Steering types",
+          "intent": "Compare observed steering warnings by type.",
+          "objective": "Choose which warning categories to investigate first.",
+          "acceptance": "A warning category is investigated using its underlying events; no warning is mistaken for a completed failure.",
           "description": "The share of observed steering warnings by steering type, such as running out of tokens or running out of time.",
           "data": {
             "source": "steering-type-totals",
@@ -846,6 +849,9 @@
         {
           "id": "steering-top-workflows",
           "title": "Workflows with the most steering",
+          "intent": "Rank workflows by observed steering warnings.",
+          "objective": "Find workflows that may need a closer look at their run evidence.",
+          "acceptance": "Priority is based on observed counts, with no claim that unlisted workflows had no warnings.",
           "description": "The ten workflows with the highest observed steering warning totals.",
           "data": {
             "source": "steering-top-workflows",
@@ -1039,6 +1045,9 @@
         {
           "id": "mcp-top-tools",
           "title": "Top MCP tools",
+          "intent": "Compare observed MCP tool call counts, excluding the internal safe outputs server.",
+          "objective": "Identify frequently used tools for further usage review.",
+          "acceptance": "The ranking is interpreted as observed usage only, not tool effectiveness or permission authority.",
           "description": "The ten most frequently called MCP tools, excluding the internal safe outputs server.",
           "data": {
             "source": "mcp-top-tools"

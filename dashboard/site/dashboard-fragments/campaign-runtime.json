@@ -533,6 +533,9 @@
         {
           "id": "campaign-run-status",
           "title": "Workflow run status",
+          "intent": "See the distribution of observed run statuses for this campaign.",
+          "objective": "Identify failed or stalled campaign runs that merit inspection.",
+          "acceptance": "Any concerning status is checked against the underlying runs; an empty chart is not treated as proof of healthy execution.",
           "description": "Observed workflow conclusions provide the campaign's leading execution signal.",
           "data": {
             "source": "campaign-runs",
@@ -559,6 +562,9 @@
         {
           "id": "campaign-failure-reason-distribution",
           "title": "Why these dispatches failed",
+          "intent": "Compare retained failure reasons for this campaign's dispatches.",
+          "objective": "Prioritize which failed dispatches need investigation.",
+          "acceptance": "A prioritized reason is supported by the linked dispatch evidence; missing reasons remain unknown.",
           "description": "Grouped by the strongest failure reason retained for each dispatch. Select a reason in the table below to open its GitHub Actions evidence.",
           "data": {
             "source": "dispatches",

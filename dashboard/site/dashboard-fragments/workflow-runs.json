@@ -419,6 +419,9 @@
         {
           "id": "workflow-report-status",
           "title": "Report status",
+          "intent": "See the disposition of retained reports for this workflow.",
+          "objective": "Identify reports whose durable outputs need follow-up.",
+          "acceptance": "Status is verified against source reports and is not equated with verified impact.",
           "description": "The disposition of durable outputs is the leading outcome signal for this workflow.",
           "data": {
             "source": "workflow-reports",
@@ -516,6 +519,9 @@
         {
           "id": "workflow-run-health",
           "title": "Run health trend",
+          "intent": "Track this workflow's daily observed run conclusions.",
+          "objective": "Spot failures or changes in run activity for investigation.",
+          "acceptance": "Any apparent trend is checked against underlying runs and data completeness.",
           "description": "Daily conclusions show this workflow's execution health at a glance.",
           "data": {
             "source": "workflow-runs",
@@ -736,6 +742,9 @@
         {
           "id": "workflow-runtime-health",
           "title": "Runtime health trend",
+          "intent": "Track observed run conclusions over time for this workflow.",
+          "objective": "Find runs whose runtime status warrants inspection.",
+          "acceptance": "Conclusions are checked against the linked runs; runtime success is not treated as a verified outcome.",
           "description": "Daily conclusions provide the leading runtime signal for this workflow.",
           "data": {
             "source": "workflow-runs",
@@ -802,6 +811,9 @@
         {
           "id": "outcome-disposition",
           "title": "Outcome disposition",
+          "intent": "See the current disposition of retained outcomes in this context.",
+          "objective": "Identify outcomes requiring review of their durable records.",
+          "acceptance": "The chart reflects retained disposition only, not independently verified operational impact.",
           "description": "The current disposition is the leading signal for this retained outcome.",
           "data": {
             "source": "outcomes",

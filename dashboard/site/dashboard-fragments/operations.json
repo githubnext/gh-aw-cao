@@ -1396,6 +1396,9 @@
         {
           "id": "indexing-database-table-counts",
           "title": "Database table counts",
+          "intent": "Compare retained row counts across dashboard database tables.",
+          "objective": "Identify missing or unexpectedly sized data tables for ingestion review.",
+          "acceptance": "Counts are used as ingestion diagnostics, not as proof of source completeness.",
           "description": "Rows retained by dashboard database table, including ingestion transactions.",
           "data": {
             "source": "indexing-database-table-counts",
@@ -1453,6 +1456,9 @@
         {
           "id": "indexing-size",
           "title": "Indexed data over time",
+          "intent": "Track new Activity records retained by the dashboard each day.",
+          "objective": "Spot changes in ingestion volume that may need investigation.",
+          "acceptance": "An apparent gap is checked against ingestion evidence before attributing it to missing source activity.",
           "description": "New workflow runs and records retained from CAO Activity each day.",
           "data": {
             "source": "indexing-daily-records"
@@ -1477,6 +1483,9 @@
         {
           "id": "indexing-workflow-runs",
           "title": "Workflow runs indexed",
+          "intent": "Track new workflow runs retained from Activity each day.",
+          "objective": "Identify days with unexpected changes in indexed run volume.",
+          "acceptance": "Changes are compared with ingestion and source evidence, not interpreted as workflow health alone.",
           "description": "New workflow runs retained from CAO Activity each day.",
           "data": {
             "source": "indexing-daily-workflow-runs"
@@ -1554,6 +1563,9 @@
         {
           "id": "skills-most-invoked",
           "title": "Most invoked skills",
+          "intent": "Rank skills by observed invocation count.",
+          "objective": "Choose heavily used skills for closer usage review.",
+          "acceptance": "Counts describe recorded invocations, not successful use or operational value.",
           "description": "Skills ranked by observed invocation count.",
           "data": {
             "source": "skill-invocations-by-skill",
@@ -1585,6 +1597,9 @@
         {
           "id": "skills-by-workflow",
           "title": "Skill invocations per workflow",
+          "intent": "Compare observed skill invocation counts across workflows.",
+          "objective": "Identify workflows whose skill usage warrants inspection.",
+          "acceptance": "Counts are checked against workflow evidence before drawing conclusions about effectiveness.",
           "description": "Workflows ranked by their observed skill invocation count.",
           "data": {
             "source": "skill-invocations-by-workflow",
@@ -1670,6 +1685,9 @@
         {
           "id": "engines-models-distribution",
           "title": "Agent and model distribution",
+          "intent": "Compare observed run counts by agent and model combination.",
+          "objective": "Identify the combinations to examine in run-level evidence.",
+          "acceptance": "The distribution describes observed usage only, not quality or model preference.",
           "description": "Distribution of observed workflow runs by agent and model combination.",
           "data": {
             "source": "engines-models-usage"
@@ -1694,6 +1712,9 @@
         {
           "id": "engines-models-cost",
           "title": "Average AIC per run",
+          "intent": "Compare observed average AI Credit cost per run by agent and model combination.",
+          "objective": "Identify combinations whose cost merits further review.",
+          "acceptance": "Cost differences are interpreted alongside underlying run evidence, not as proof of efficiency or causality.",
           "description": "Average AI Credit cost per observed workflow run by agent and model combination.",
           "data": {
             "source": "engines-models-usage",
@@ -1886,6 +1907,9 @@
         {
           "id": "friction-by-workflow",
           "title": "Friction cost by workflow",
+          "intent": "Compare measured friction AI Credit cost across workflows.",
+          "objective": "Prioritize workflows for review of avoidable cost evidence.",
+          "acceptance": "A cost is treated as a measured signal, not a confirmed saving until the supporting evidence is reviewed.",
           "description": "The share of measured avoidable AI Credit cost attributed to each workflow.",
           "data": {
             "source": "friction-by-workflow",
@@ -2008,6 +2032,9 @@
           {
             "id": "operational-value-history",
             "title": "Operational value over time",
+            "intent": "Track retained repository observations by package-defined operational value ID.",
+            "objective": "Identify changes in a value's native measure worth investigating.",
+            "acceptance": "Values are interpreted with their declared units, direction, and maturity; an interim observation is not claimed as a verified outcome.",
             "description": "Each line tracks one package-defined value ID across retained repository observations.",
             "data": {
               "source": "operational-values"
@@ -2210,6 +2237,9 @@
         {
           "id": "experiments-assignment-chart",
           "title": "Observed assignments by workflow and experiment",
+          "intent": "Compare retained experiment assignments across workflows and experiments.",
+          "objective": "Identify assignment coverage that needs inspection before interpreting experimental evidence.",
+          "acceptance": "An assignment count is treated as observation coverage, not as an experiment result or effect.",
           "data": {
             "source": "experiment-assignment-coverage",
             "order-by": [{ "field": "assignments", "direction": "desc" }],
