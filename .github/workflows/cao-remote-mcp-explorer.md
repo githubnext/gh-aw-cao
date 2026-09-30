@@ -1,9 +1,9 @@
 ---
 name: CAO Remote MCP Explorer
-description: Explores all tools exposed by the hosted CAO MCP and reports hourly results
+description: Explores all tools exposed by the hosted CAO MCP and reports daily results
 intent: Track the availability and behavior of the hosted CAO MCP by testing every discovered tool and reporting verified results or blockers.
 on:
-  schedule: hourly
+  schedule: daily
   workflow_dispatch:
 permissions:
   actions: read
@@ -52,4 +52,4 @@ Explore only `https://cao.githubnext.com/mcp` using the configured `cao` MCP CLI
 1. Use `cao --help` and per-tool help to inventory **every** tool exposed by the server, including tools not documented in this repository. Record each tool's name, purpose, and required inputs before testing. The MCP is required: a failed connection or authentication stops the run before the agent starts; do not claim an issue was created for a startup failure.
 2. Exercise every discovered read-only tool at least once with minimal valid inputs from its schema. For `cao_catalog`, request pages and queries; for `cao_query`, use a returned query ID and declared parameters with `limit: 1`. Use results from discovery tools to supply required IDs to dependent tools. Do not guess IDs, fabricate data, submit arbitrary SQL, or make repetitive or unbounded calls.
 3. For any newly exposed tool with side effects, use only an explicitly documented non-mutating dry-run mode. If no such mode exists, do not invoke it: mark it untested and explain the safety blocker. Do not use MCP tools to write to GitHub or change the server. Record each tool's success, failure, or untested reason without including raw sensitive results.
-4. Create exactly one issue through `safeoutputs create_issue` with a stable title such as `Hourly exploration`. Include the UTC run time, a link to `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`, the discovered/tested/blocked counts, a status for **every** discovered tool, unexpected capabilities, and actionable follow-up. The newest issue supersedes previous hourly reports. Never include tokens, authentication headers, raw query rows, or private repository data.
+4. Create exactly one issue through `safeoutputs create_issue` with a stable title such as `Daily exploration`. Include the UTC run time, a link to `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`, the discovered/tested/blocked counts, a status for **every** discovered tool, unexpected capabilities, and actionable follow-up. The newest issue supersedes previous daily reports. Never include tokens, authentication headers, raw query rows, or private repository data.
