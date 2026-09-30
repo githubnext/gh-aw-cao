@@ -1609,13 +1609,13 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .factory-intro .factory-rhythm { grid-template-columns: minmax(0, 1fr); align-self: stretch; gap: 16px; padding: 0; border: 0; background: transparent; }
 .factory-rhythm-heading { display: grid; gap: 5px; }
 .factory-rhythm-heading > span { color: var(--muted); font-size: .6875rem; font-weight: 700; text-transform: uppercase; }
-.factory-rhythm-legend { display: flex; flex-wrap: wrap; gap: 5px 12px; margin: 0; padding: 0; list-style: none; color: var(--muted); font-size: .6875rem; }
+.factory-rhythm-heading strong, .factory-rhythm-legend { color: var(--muted); font-size: .6875rem; font-weight: 400; }
+.factory-rhythm-legend { display: flex; flex-wrap: wrap; gap: 5px 12px; margin: 0; padding: 0; list-style: none; }
 .factory-rhythm-legend li { display: inline-flex; align-items: center; gap: 5px; }
 .factory-rhythm-legend i { width: 9px; height: 9px; display: inline-block; border-radius: 2px; }
 .factory-rhythm-legend-current { background: color-mix(in srgb, var(--success) 72%, var(--accent)); }
 .factory-rhythm-legend-previous { border: 1px solid var(--border); background: var(--canvas-subtle); }
 .factory-rhythm-summary { margin: 0; color: var(--muted); font-size: .75rem; }
-.factory-rhythm-heading strong { font-size: .875rem; }
 .factory-rhythm-bars { height: 74px; position: relative; display: grid; grid-template-columns: repeat(7, minmax(18px, 1fr)); align-items: end; gap: 9px; }
 .overview-campaigns-view-all { display: inline-flex; justify-self: start; margin-top: 12px; color: var(--accent); font-size: .8125rem; font-weight: 600; text-decoration: none; }
 .overview-campaigns-view-all:hover { text-decoration: underline; }
