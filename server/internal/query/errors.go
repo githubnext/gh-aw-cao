@@ -2,12 +2,14 @@ package query
 
 import "fmt"
 
-// PlanLimitError identifies the query whose retained data exceeded the plan budget.
+const BoundaryRetainedBytes = "retained_bytes"
+
+// PlanLimitError identifies the query and the type of plan boundary exceeded.
 type PlanLimitError struct {
-	QueryID string
-	Limit   int64
+	QueryID  string
+	Boundary string
 }
 
 func (e *PlanLimitError) Error() string {
-	return fmt.Sprintf("Query %q needs more retained data than the server allows (limit %d MiB).", e.QueryID, e.Limit>>20)
+	return fmt.Sprintf("Query %q needs more retained data than the server allows. Try a narrower time range or contact your dashboard administrator.", e.QueryID)
 }

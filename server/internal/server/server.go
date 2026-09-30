@@ -805,7 +805,7 @@ func writeQueryError(response http.ResponseWriter, status int, err error) {
 	var limitErr *query.PlanLimitError
 	if errors.As(err, &limitErr) {
 		writeJSON(response, http.StatusUnprocessableEntity, map[string]string{
-			"error": limitErr.Error(), "code": "query_plan_too_large", "queryId": limitErr.QueryID,
+			"error": limitErr.Error(), "code": "query_plan_too_large", "queryId": limitErr.QueryID, "boundary": limitErr.Boundary,
 		})
 		return
 	}

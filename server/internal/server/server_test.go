@@ -27,7 +27,7 @@ const testAccessToken = "0123456789abcdef0123456789abcdef"
 func TestQueryPlanLimitErrorResponse(t *testing.T) {
 	response := httptest.NewRecorder()
 	writeQueryError(response, http.StatusBadRequest, &query.PlanLimitError{
-		QueryID: "campaign-repository-coverage", Limit: query.MaxRetainedBytes,
+		QueryID: "campaign-repository-coverage", Boundary: "retained_bytes",
 	})
 	if response.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status = %d, want 422", response.Code)
@@ -37,7 +37,8 @@ func TestQueryPlanLimitErrorResponse(t *testing.T) {
 		t.Fatal(err)
 	}
 	if payload["code"] != "query_plan_too_large" || payload["queryId"] != "campaign-repository-coverage" ||
-		!strings.Contains(payload["error"], "campaign-repository-coverage") {
+		payload["boundary"] != "retained_bytes" || !strings.Contains(payload["error"], "campaign-repository-coverage") ||
+		strings.Contains(payload["error"], "536870912") || strings.Contains(payload["error"], "512") {
 		t.Fatalf("unexpected limit response: %v", payload)
 	}
 }

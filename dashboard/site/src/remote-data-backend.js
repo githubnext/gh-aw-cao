@@ -13,12 +13,13 @@ const REMOTE_BACKEND = "redis-http";
 const ACCESS_TOKEN_STORAGE_KEY = "cao-dashboard-access-token";
 
 export class DashboardServerError extends Error {
-  /** @param {string} message @param {string} code @param {string} queryId */
-  constructor(message, code, queryId) {
+  /** @param {string} message @param {string} code @param {string} queryId @param {string} [boundary] */
+  constructor(message, code, queryId, boundary = "") {
     super(message);
     this.name = "DashboardServerError";
     this.code = code;
     this.queryId = queryId;
+    this.boundary = boundary;
   }
 }
 /** @type {number | null} */
@@ -112,7 +113,11 @@ async function apiRequest(path, init = {}, signal) {
     const payload = await response.json().catch(() => null);
     const message = typeof payload?.error === "string" ? payload.error : `Dashboard data server request failed: ${response.status}`;
     if (typeof payload?.code === "string") {
-      throw new DashboardServerError(message, payload.code, typeof payload?.queryId === "string" ? payload.queryId : "");
+      throw new DashboardServerError(
+        message, payload.code,
+        typeof payload?.queryId === "string" ? payload.queryId : "",
+        typeof payload?.boundary === "string" ? payload.boundary : ""
+      );
     }
     throw new Error(message);
   }

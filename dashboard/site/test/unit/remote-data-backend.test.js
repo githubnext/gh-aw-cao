@@ -22,11 +22,13 @@ describe("remote dashboard data backend", () => {
       error: 'Query "campaign-repository-coverage" needs more retained data.',
       code: "query_plan_too_large",
       queryId: "campaign-repository-coverage",
+      boundary: "retained_bytes",
     }), { status: 422, headers: { "Content-Type": "application/json" } })));
     await expect(queryRemoteDashboard([], { pages: [] })).rejects.toMatchObject({
       name: "DashboardServerError",
       code: "query_plan_too_large",
       queryId: "campaign-repository-coverage",
+      boundary: "retained_bytes",
     });
     expect(new DashboardServerError("failure", "query_plan_too_large", "campaign-inventory")).toBeInstanceOf(Error);
   });
