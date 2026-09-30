@@ -260,21 +260,56 @@ func (a *App) rateLimitSubject(request *http.Request) string {
 	return "client:" + a.clientIP(request)
 }
 
+// clientIPSource names which input resolveClientIP used to produce a
+// client address. It is stable across header-content and address-value
+// changes, so it is useful to log without exposing the resolved address
+// itself.
+type clientIPSource string
+
+const (
+	clientIPSourceUntrustedBoundary clientIPSource = "untrusted-boundary"
+	clientIPSourceForwardedFor      clientIPSource = "x-forwarded-for"
+	clientIPSourceForwardedHeader   clientIPSource = "forwarded-header"
+	clientIPSourceRemoteFallback    clientIPSource = "remote-fallback"
+)
+
+// resolveClientIP applies the standard priority for the caller's address
+// visible to rate limiting: a trusted X-Forwarded-For value, then a trusted
+// RFC 7239 Forwarded value, then the direct TCP peer address. It is a pure
+// function over the already-extracted header values and trust decision, so
+// every branch — an untrusted boundary, each forwarded header, and a
+// malformed forwarded value falling back to the peer address — is testable
+// without constructing an *http.Request. It returns the resolved address and
+// which input supplied it, so callers can log the source without exposing
+// the address itself.
+func resolveClientIP(trustBoundary bool, forwardedFor, forwardedHeaderValue, remoteAddress string) (string, clientIPSource) {
+	if !trustBoundary {
+		return remoteIP(remoteAddress), clientIPSourceUntrustedBoundary
+	}
+	if forwardedFor != "" {
+		if ip := parseForwardedIP(forwardedFor); ip != nil {
+			return ip.String(), clientIPSourceForwardedFor
+		}
+		return remoteIP(remoteAddress), clientIPSourceRemoteFallback
+	}
+	if ip := parseForwardedFor(forwardedHeaderValue); ip != nil {
+		return ip.String(), clientIPSourceForwardedHeader
+	}
+	return remoteIP(remoteAddress), clientIPSourceRemoteFallback
+}
+
 func (a *App) clientIP(request *http.Request) string {
 	policy := a.proxyPolicy()
-	if policy.TrustForwarded &&
-		(len(policy.TrustedProxyPrefixes) == 0 || trustedProxyPeer(request.RemoteAddr, policy.TrustedProxyPrefixes)) {
-		if forwarded := forwardedHeader(request, "X-Forwarded-For"); forwarded != "" {
-			if ip := parseForwardedIP(forwarded); ip != nil {
-				return ip.String()
-			}
-			return remoteIP(request.RemoteAddr)
-		}
-		if ip := parseForwardedFor(forwardedHeader(request, "Forwarded")); ip != nil {
-			return ip.String()
-		}
-	}
-	return remoteIP(request.RemoteAddr)
+	trustBoundary := policy.TrustForwarded &&
+		(len(policy.TrustedProxyPrefixes) == 0 || trustedProxyPeer(request.RemoteAddr, policy.TrustedProxyPrefixes))
+	ip, source := resolveClientIP(
+		trustBoundary,
+		forwardedHeader(request, "X-Forwarded-For"),
+		forwardedHeader(request, "Forwarded"),
+		request.RemoteAddr,
+	)
+	serverLog.Printf("client address resolved source=%s", source)
+	return ip
 }
 
 func remoteIP(address string) string {

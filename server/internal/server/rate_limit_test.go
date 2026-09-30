@@ -490,3 +490,38 @@ func TestQueryChargeIsCappedAtConfiguredCapacity(t *testing.T) {
 		t.Fatalf("charged cost = %q, want capacity minus the admitted token (3)", got)
 	}
 }
+
+func TestResolveClientIPRejectsUntrustedBoundary(t *testing.T) {
+	ip, source := resolveClientIP(false, "203.0.113.9", `for=203.0.113.9`, "127.0.0.1:4321")
+	if ip != "127.0.0.1" || source != clientIPSourceUntrustedBoundary {
+		t.Fatalf("resolveClientIP(untrusted) = (%q, %q), want (127.0.0.1, %q)", ip, source, clientIPSourceUntrustedBoundary)
+	}
+}
+
+func TestResolveClientIPPrefersForwardedFor(t *testing.T) {
+	ip, source := resolveClientIP(true, "198.51.100.8", `for=203.0.113.9`, "127.0.0.1:4321")
+	if ip != "198.51.100.8" || source != clientIPSourceForwardedFor {
+		t.Fatalf("resolveClientIP(forwarded-for) = (%q, %q), want (198.51.100.8, %q)", ip, source, clientIPSourceForwardedFor)
+	}
+}
+
+func TestResolveClientIPFallsBackToForwardedHeader(t *testing.T) {
+	ip, source := resolveClientIP(true, "", `for="[2001:db8::8]:4567";proto=https`, "127.0.0.1:4321")
+	if ip != "2001:db8::8" || source != clientIPSourceForwardedHeader {
+		t.Fatalf("resolveClientIP(forwarded-header) = (%q, %q), want (2001:db8::8, %q)", ip, source, clientIPSourceForwardedHeader)
+	}
+}
+
+func TestResolveClientIPFallsBackToRemoteOnMalformedForwardedFor(t *testing.T) {
+	ip, source := resolveClientIP(true, "unknown", `for=203.0.113.9`, "127.0.0.1:4321")
+	if ip != "127.0.0.1" || source != clientIPSourceRemoteFallback {
+		t.Fatalf("resolveClientIP(malformed forwarded-for) = (%q, %q), want (127.0.0.1, %q)", ip, source, clientIPSourceRemoteFallback)
+	}
+}
+
+func TestResolveClientIPFallsBackToRemoteWhenNoForwardedValues(t *testing.T) {
+	ip, source := resolveClientIP(true, "", "", "127.0.0.1:4321")
+	if ip != "127.0.0.1" || source != clientIPSourceRemoteFallback {
+		t.Fatalf("resolveClientIP(no forwarded values) = (%q, %q), want (127.0.0.1, %q)", ip, source, clientIPSourceRemoteFallback)
+	}
+}
