@@ -202,25 +202,27 @@ explicit plaintext opt-in. Network isolation and Redis authentication remain
 operator responsibilities. Azure Functions ignores this hosted opt-in and
 continues to require `rediss://` to Azure Managed Redis.
 
-Deployment uses a protected GitHub environment and an exact GHCR digest.
-Fork repository payloads are refused. Manual execution is limited to `main` or
-`release`; alpha requires current `main`, while beta and stable resolve the exact
-commit of the latest eligible published release in their channel. A uniquely
-tagged candidate is scanned locally before publication. Existing canonical
-source tags are accepted only when their digest exactly equals that candidate;
-registry labels are not authority.
+Deployment uses a Git-backed Coolify resource restricted to protected `main`.
+The Coolify GitHub App supplies source access and the webhook that starts an
+automatic deployment. Coolify checks out the selected commit, builds
+`server/Dockerfile` through the checked-in Compose file, embeds
+`SOURCE_COMMIT`, and evaluates container health before activation. Production
+delivery needs no GitHub deployment environment, Coolify API token, public
+Coolify API endpoint, registry credential, or mutable registry tag.
 
-Immediately before deployment, the workflow proves the source is still current
-for its channel. The synchronous adapter must record the previous digest, poll
-Coolify's asynchronous operation, verify `/api/readiness`, and roll back and
-verify the prior digest before reporting failure. The workflow accepts success
-only when bounded JSON reports `ready` and echoes the exact requested image and
-digest. Mutable channel tags and queued/accepted responses are never deployment
-success. Operational rollback still means redeploying a previously recorded
-digest through the same protected environment, then checking readiness, OAuth
+This source-build boundary does not admit the deployed image through the
+official package workflow's vulnerability scans, hardening check, SBOM, or
+GitHub artifact attestation. Those controls continue to protect published
+packages, not the native Coolify build. Restrict GitHub App repository access,
+protect `main`, review source and Compose changes, isolate the Coolify builder,
+and treat failed or unexpected builds as deployment failures.
+
+Operational rollback means redeploying a retained Coolify deployment or
+reverting to a known-good source commit, then checking readiness, OAuth
 authorization, queries, webhook verification, and rate limits. If required,
 rebuild the disposable Redis namespace from the retained artifact rather than
-treating Redis as rollback authority.
+treating Redis as rollback authority. Rollback is operator-controlled and is
+not automatically verified by a repository-owned API client.
 
 ## Upstash profile
 
