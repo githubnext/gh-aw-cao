@@ -80,8 +80,14 @@ func (m *memoryStore) ObserveGitHubQuota(
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	bucket := m.bucket(key)
-	_, released := bucket.reservations[releaseID]
-	delete(bucket.reservations, releaseID)
+	released := false
+	if releaseID != "" {
+		_, released = bucket.reservations[releaseID]
+		delete(bucket.reservations, releaseID)
+	}
+	if observation.ObservedAt.IsZero() {
+		observation.ObservedAt = m.now
+	}
 	outcome := redisx.GitHubQuotaObservationStale
 	reset := time.UnixMilli(observation.ResetAt.UnixMilli()).UTC()
 	switch {

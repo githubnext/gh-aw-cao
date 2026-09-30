@@ -71,7 +71,7 @@ func TestGitHubQuotaRejectsInvalidArguments(t *testing.T) {
 		t.Fatal("negative remaining was accepted")
 	}
 	if _, _, _, err := store.ObserveGitHubQuota(ctx, "a:1:core", GitHubQuotaObservation{Limit: 1, Remaining: 1}, ""); err == nil {
-		t.Fatal("observation without times was accepted")
+		t.Fatal("observation without a reset time was accepted")
 	}
 	if _, _, err := store.ParkGitHubQuota(ctx, "a:1:core", time.Time{}, "x"); err == nil {
 		t.Fatal("parking without an end time was accepted")
@@ -131,8 +131,9 @@ func TestGitHubQuotaScriptsAgainstRedis(t *testing.T) {
 	if admission, _, _, err := store.ReserveGitHubQuota(ctx, bucket, "r0", 1, 0, time.Minute); err != nil || admission != GitHubQuotaUnknown {
 		t.Fatalf("unknown bucket admission = %v, %v", admission, err)
 	}
-	outcome, _, state, err := store.ObserveGitHubQuota(ctx, bucket, GitHubQuotaObservation{Limit: 5000, Remaining: 1500, ResetAt: reset, ObservedAt: time.Now()}, "")
-	if err != nil || outcome != GitHubQuotaObservationReplaced || state.Remaining != 1500 || !state.ResetAt.Equal(reset) {
+	outcome, _, state, err := store.ObserveGitHubQuota(ctx, bucket, GitHubQuotaObservation{Limit: 5000, Remaining: 1500, ResetAt: reset}, "")
+	if err != nil || outcome != GitHubQuotaObservationReplaced || state.Remaining != 1500 || !state.ResetAt.Equal(reset) ||
+		state.ObservedAt.IsZero() || state.ObservedAt.After(state.Now) {
 		t.Fatalf("first observation = %v %#v %v", outcome, state, err)
 	}
 	// 1500 - 400 >= 1000 admits; 1500 - 400 - 200 < 1000 denies.

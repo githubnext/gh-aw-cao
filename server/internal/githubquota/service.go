@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 	"unicode"
@@ -71,9 +72,11 @@ func (e *UnavailableError) Unwrap() error {
 // Observation is one authoritative rate-limit observation from GitHub
 // response metadata.
 type Observation struct {
-	Limit      int
-	Remaining  int
-	ResetAt    time.Time
+	Limit     int
+	Remaining int
+	ResetAt   time.Time
+	// ObservedAt is when GitHub produced the response. When zero, the shared
+	// Redis clock is recorded so replicas with skewed clocks agree.
 	ObservedAt time.Time
 }
 
@@ -198,9 +201,6 @@ func (s *Service) observe(ctx context.Context, bucket BucketID, observation Obse
 	}
 	if observation.ResetAt.IsZero() {
 		return false, errors.New("github quota observation requires a reset time")
-	}
-	if observation.ObservedAt.IsZero() {
-		observation.ObservedAt = time.Now()
 	}
 	outcome, released, _, err := s.store.ObserveGitHubQuota(ctx, bucket.storageKey(), redisx.GitHubQuotaObservation{
 		Limit:      int64(observation.Limit),
@@ -352,8 +352,11 @@ func (s *Service) Select(ctx context.Context, candidates []BucketID, requirement
 			return BucketID{}, err
 		}
 		status := state.Status
-		if status == StatusAvailable && state.Available-requirement.EstimatedCost < floor {
-			status = StatusExhausted
+		if status != StatusParked && status != StatusUnknown {
+			status = StatusAvailable
+			if state.Available-requirement.EstimatedCost < floor {
+				status = StatusExhausted
+			}
 		}
 		if status != StatusAvailable {
 			denial = preferDenial(denial, s.unavailableFromState(state, status))
@@ -394,10 +397,10 @@ func (s *Service) describe(bucket BucketID, state redisx.GitHubQuotaState) Bucke
 	available := max(state.Remaining-state.Reserved, 0)
 	described := BucketState{
 		Bucket:      bucket,
-		Limit:       int(state.Limit),
-		Remaining:   int(state.Remaining),
-		Reserved:    int(state.Reserved),
-		Available:   int(available),
+		Limit:       boundedInt(state.Limit),
+		Remaining:   boundedInt(state.Remaining),
+		Reserved:    boundedInt(state.Reserved),
+		Available:   boundedInt(available),
 		ResetAt:     state.ResetAt,
 		ObservedAt:  state.ObservedAt,
 		ParkedUntil: state.ParkedUntil,
@@ -437,6 +440,18 @@ func (s *Service) unavailableFromState(state BucketState, status Status) *Unavai
 		unavailable.cause = ErrUnknown
 	}
 	return unavailable
+}
+
+// boundedInt converts a persisted quota count to int, saturating so a
+// corrupted or oversized value cannot overflow on 32-bit platforms.
+func boundedInt(value int64) int {
+	if value <= 0 {
+		return 0
+	}
+	if value > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	return int(value)
 }
 
 func newReservationID() (string, error) {

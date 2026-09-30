@@ -61,7 +61,7 @@ const (
 	GitHubQuotaDuplicateReservation
 )
 
-var gitHubQuotaBucketKey = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,256}$`)
+var gitHubQuotaIdentifier = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,256}$`)
 
 const (
 	maxGitHubQuotaParkReason = 256
@@ -133,9 +133,14 @@ local current_observed = tonumber(s[3]) or 0
 local remaining = tonumber(ARGV[2])
 local reset = tonumber(ARGV[3])
 local observed = tonumber(ARGV[4])
+local observed_arg = ARGV[4]
+if observed <= 0 then
+  observed = now
+  observed_arg = now
+end
 local outcome = 0
 if not current or not current_reset or reset > current_reset then
-  redis.call("HSET", KEYS[1], "limit", ARGV[1], "remaining", ARGV[2], "reset", ARGV[3], "observed", ARGV[4])
+  redis.call("HSET", KEYS[1], "limit", ARGV[1], "remaining", ARGV[2], "reset", ARGV[3], "observed", observed_arg)
   outcome = 1
 elseif reset == current_reset then
   redis.call("HSET", KEYS[1], "limit", ARGV[1], "remaining", math.min(current, remaining),
@@ -198,6 +203,7 @@ func (s *Store) GitHubQuotaSnapshot(ctx context.Context, bucket string) (GitHubQ
 }
 
 // ObserveGitHubQuota atomically records an authoritative GitHub observation.
+// A zero ObservedAt records the Redis clock so replicas share one time source.
 // When releaseID is not empty the matching reservation is removed in the same
 // atomic step so committed work is never counted twice or not at all.
 func (s *Store) ObserveGitHubQuota(
@@ -207,10 +213,14 @@ func (s *Store) ObserveGitHubQuota(
 		observation.Limit > maxGitHubQuotaCost || observation.Remaining > maxGitHubQuotaCost {
 		return 0, false, GitHubQuotaState{}, errors.New("github quota observation must be non-negative and bounded")
 	}
-	if observation.ResetAt.IsZero() || observation.ObservedAt.IsZero() {
-		return 0, false, GitHubQuotaState{}, errors.New("github quota observation requires reset and observation times")
+	if observation.ResetAt.IsZero() {
+		return 0, false, GitHubQuotaState{}, errors.New("github quota observation requires a reset time")
 	}
-	if releaseID != "" && !gitHubQuotaBucketKey.MatchString(releaseID) {
+	observedAt := int64(0)
+	if !observation.ObservedAt.IsZero() {
+		observedAt = observation.ObservedAt.UnixMilli()
+	}
+	if releaseID != "" && !gitHubQuotaIdentifier.MatchString(releaseID) {
 		return 0, false, GitHubQuotaState{}, errors.New("github quota reservation ID is invalid")
 	}
 	code, released, state, err := s.evalGitHubQuota(
@@ -218,7 +228,7 @@ func (s *Store) ObserveGitHubQuota(
 		strconv.FormatInt(observation.Limit, 10),
 		strconv.FormatInt(observation.Remaining, 10),
 		strconv.FormatInt(observation.ResetAt.UnixMilli(), 10),
-		strconv.FormatInt(observation.ObservedAt.UnixMilli(), 10),
+		strconv.FormatInt(observedAt, 10),
 		releaseID,
 	)
 	if err != nil {
@@ -235,7 +245,7 @@ func (s *Store) ObserveGitHubQuota(
 func (s *Store) ReserveGitHubQuota(
 	ctx context.Context, bucket, id string, cost, minimumRemain int64, ttl time.Duration,
 ) (GitHubQuotaAdmission, time.Time, GitHubQuotaState, error) {
-	if !gitHubQuotaBucketKey.MatchString(id) {
+	if !gitHubQuotaIdentifier.MatchString(id) {
 		return 0, time.Time{}, GitHubQuotaState{}, errors.New("github quota reservation ID is invalid")
 	}
 	if cost <= 0 || cost > maxGitHubQuotaCost || minimumRemain < 0 || minimumRemain > maxGitHubQuotaCost {
@@ -263,7 +273,7 @@ func (s *Store) ReserveGitHubQuota(
 // ReleaseGitHubQuota atomically removes an unused reservation. It reports
 // whether the reservation still existed.
 func (s *Store) ReleaseGitHubQuota(ctx context.Context, bucket, id string) (bool, GitHubQuotaState, error) {
-	if !gitHubQuotaBucketKey.MatchString(id) {
+	if !gitHubQuotaIdentifier.MatchString(id) {
 		return false, GitHubQuotaState{}, errors.New("github quota reservation ID is invalid")
 	}
 	code, _, state, err := s.evalGitHubQuota(ctx, gitHubQuotaReleaseScript, bucket, id)
@@ -308,7 +318,7 @@ func (s *Store) gitHubQuotaKeys(bucket string) []string {
 func (s *Store) evalGitHubQuota(
 	ctx context.Context, script, bucket string, arguments ...string,
 ) (int64, int64, GitHubQuotaState, error) {
-	if !gitHubQuotaBucketKey.MatchString(bucket) {
+	if !gitHubQuotaIdentifier.MatchString(bucket) {
 		return 0, 0, GitHubQuotaState{}, errors.New("github quota bucket key is invalid")
 	}
 	command := append([]string{"EVAL", script, "3"}, s.gitHubQuotaKeys(bucket)...)

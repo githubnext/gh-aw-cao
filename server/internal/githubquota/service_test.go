@@ -102,6 +102,12 @@ func TestSafetyReserveIsAFloorForEveryRequest(t *testing.T) {
 	if state.Status != StatusExhausted {
 		t.Fatalf("bucket at the safety reserve reported %s", state.Status)
 	}
+	if selected, err := service.Select(t.Context(), []BucketID{bucket}, Requirement{}); err != nil || selected != bucket.Normalize() {
+		t.Fatalf("zero-cost selection at the safety reserve = %s, %v", selected, err)
+	}
+	if _, err := service.Select(t.Context(), []BucketID{bucket}, Requirement{EstimatedCost: 1}); !errors.Is(err, ErrExhausted) {
+		t.Fatalf("selection crossing the safety reserve = %v", err)
+	}
 }
 
 func TestReservationsExpire(t *testing.T) {
