@@ -32,12 +32,15 @@ function registryFetch({
   readme = "# Demo\n\nExample package readme.\n",
   readmeUnavailable = false,
   fail = false,
+  repository = { private: false, stargazers_count: 12, forks_count: 3 },
+  commitDate = "2026-08-01T00:00:00Z",
 } = {}) {
   const calls = [];
   const fetchImpl = async (url, init = {}) => {
     calls.push({ url, init });
     if (fail) return response({}, 503);
-    if (url.includes("/commits/")) return response({ sha: SHA });
+    if (url.includes("/commits/")) return response({ sha: SHA, commit: { committer: { date: commitDate } } });
+    if (url.endsWith("/repos/example/packages")) return response(repository);
     if (url.includes("/git/trees/")) {
       return response({
         tree: [
@@ -99,6 +102,42 @@ test("packages carry the README preview published beside their manifest", async 
   const result = await resolveMarketplace({ registries: [registry("official")] }, { fetchImpl: fake.fetchImpl });
   assert.equal(result.packages[0].readme, "# Demo\n\nExample package readme.\n");
   assert.equal(result.packages[0]["readme-path"], "demo/README.md");
+});
+
+test("repository signals are public-only, observed and policy-verified, never manifest-verified", async () => {
+  const fake = registryFetch({ manifest: "name: Demo\nverified-publisher: true\n" });
+  const options = { fetchImpl: fake.fetchImpl, now: () => Date.parse("2026-09-01T00:00:00Z") };
+  const unknown = await resolveMarketplace({ registries: [registry("unverified")] }, options);
+  assert.equal(unknown.packages[0]["verification-status"], "unknown");
+  const verified = await resolveMarketplace({
+    registries: [registry("approved", { "verified-publisher": true })],
+  }, options);
+  const pkg = verified.packages[0];
+  assert.equal(pkg["verification-status"], "verified");
+  assert.equal(pkg["verification-source"], "control-policy");
+  assert.equal(pkg["maintenance-status"], "active");
+  assert.equal(pkg["last-maintained-at"], "2026-08-01T00:00:00.000Z");
+  assert.equal(pkg.stars, 12);
+  assert.equal(pkg.forks, 3);
+  assert.equal(pkg["signals-observed-at"], "2026-09-01T00:00:00.000Z");
+  assert.equal(pkg["installation-status"], "unknown");
+  assert.equal(pkg["adoption-count"], null);
+});
+
+test("private and inaccessible repositories never leak popularity or claim stale maintenance", async () => {
+  for (const repository of [{ private: true, stargazers_count: 500, forks_count: 50 }, null]) {
+    const fake = registryFetch({ repository, commitDate: "2020-01-01T00:00:00Z" });
+    const fetchImpl = async (url, init) => url.endsWith("/repos/example/packages") && repository === null
+      ? response({}, 403)
+      : fake.fetchImpl(url, init);
+    const { packages } = await resolveMarketplace({ registries: [registry("private")] }, {
+      fetchImpl, now: () => Date.parse("2026-09-01T00:00:00Z"),
+    });
+    assert.equal(packages.length, 1);
+    assert.equal(packages[0].stars, null);
+    assert.equal(packages[0].forks, null);
+    assert.equal(packages[0]["maintenance-status"], "unknown");
+  }
 });
 
 test("an unreadable README leaves the package resolvable", async () => {
