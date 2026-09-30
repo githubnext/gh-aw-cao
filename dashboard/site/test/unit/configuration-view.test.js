@@ -200,6 +200,31 @@ describe('Configuration dashboard view', () => {
     rendered.remove();
   });
 
+  it('stops reacting to background update status once the setting detaches from the document', async () => {
+    localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
+    localStorage.setItem('central-agentic-ops.dashboard.background-data-updates-active', 'true');
+    const rendered = renderConfigurationView(context({
+      document: { version: 1 },
+      raw: '',
+      diagnostics: []
+    }));
+    if (!rendered) throw new Error('configuration view did not render');
+    document.body.append(rendered);
+    const checkbox = /** @type {HTMLInputElement | null} */ (
+      rendered.querySelector('#configuration-automatic-dashboard-data-updates')
+    );
+
+    rendered.remove();
+    // Let the MutationObserver microtask backing createFactoryScope run.
+    await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+    setAutomaticDashboardDataUpdatesEnabled(false);
+
+    // The effect stopped when the setting detached, so a status change no
+    // longer updates the detached checkbox.
+    expect(checkbox?.checked).toBe(true);
+  });
+
   it('exposes Settings in the bottom management navigation without a chart', () => {
     const dashboard = authoritativeDashboard.dashboard;
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'configuration');
