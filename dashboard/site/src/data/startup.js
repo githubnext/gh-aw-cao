@@ -292,8 +292,34 @@ export async function startDashboardData(options) {
     ]);
   };
 
-  await loadCanonicalDashboardPage([], dashboardContext);
-  let snapshot = await loadDashboardSnapshotMetadata();
+  const bootstrapStartedAt = performance.now();
+  /** @template T @param {string} step @param {() => Promise<T>} run @returns {Promise<T>} */
+  const bootstrapStep = async (step, run) => {
+    const stepStartedAt = performance.now();
+    debugStartup({ op: "bootstrap", step, status: "started" });
+    try {
+      const result = await run();
+      debugStartup({ op: "bootstrap", step, status: "completed", durationMs: Math.round(performance.now() - stepStartedAt) });
+      return result;
+    } catch (error) {
+      debugStartup({
+        op: "bootstrap",
+        step,
+        status: "failed",
+        durationMs: Math.round(performance.now() - stepStartedAt),
+        errorName: error instanceof Error ? error.name : "Unknown",
+      });
+      throw error;
+    }
+  };
+  await bootstrapStep("open-canonical-database", () => loadCanonicalDashboardPage([], dashboardContext));
+  let snapshot = await bootstrapStep("read-snapshot-metadata", () => loadDashboardSnapshotMetadata());
+  debugStartup({
+    op: "bootstrap",
+    status: "ready",
+    snapshot: snapshot === null ? "absent" : "present",
+    durationMs: Math.round(performance.now() - bootstrapStartedAt),
+  });
   const remoteDataBackend = usesRemoteDataBackend(document);
   let hasCompleteSnapshot = remoteDataBackend || snapshot !== null;
   render({}, hasCompleteSnapshot ? "cached" : "loading", loadPageSources, undefined, snapshot);

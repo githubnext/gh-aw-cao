@@ -101,6 +101,26 @@ describe('view chrome component helpers', () => {
     expect(withoutSource).toHaveLength(0);
   });
 
+  it('identifies unavailable query dependencies from structured errors without displaying arbitrary text', () => {
+    const details = renderCustomViewStateDetails('mcp-top-tools', [], {
+      code: 'input-unavailable', source: 'mcp-tool-totals'
+    });
+    expect(details.map((item) => item.textContent)).toEqual([
+      'Affected source: mcp-top-tools',
+      'Unavailable query dependency: mcp-tool-totals'
+    ]);
+    expect(renderCustomViewStateDetails('mcp-top-tools', [], {
+      code: 'input-unavailable', source: 'mcp-top-tools'
+    })).toHaveLength(1);
+    expect(renderCustomViewStateDetails('mcp-top-tools', [], {
+      code: 'other-error', source: 'mcp-tool-totals'
+    })).toHaveLength(1);
+    expect(renderCustomViewStateDetails('mcp-top-tools', [], {
+      code: 'input-unavailable', source: '<secret>'
+    })).toHaveLength(1);
+    expect(renderCustomViewStateDetails('mcp-top-tools', [], 'input source "mcp-tool-totals" is unavailable')).toHaveLength(1);
+  });
+
   it('wraps a rendered supplemental view in the shared view-disclosure summary toggle', () => {
     const rendered = document.createElement('div');
     rendered.textContent = 'body content';

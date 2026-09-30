@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DataRequestWorker } from '../data-request-worker.js';
-import { renderDataView } from '../../src/components/data-view.js';
+import { renderDataView, renderPromptPreviewAction } from '../../src/components/data-view.js';
 import { setDeclaredCliActions } from '../../src/components/cli-actions.js';
+import { state } from '../../src/reactive.js';
 import { processDataRequest } from '../../src/data-worker.js';
 import { HORIZON_FILTER_STORAGE_KEY } from '../../src/components/filter-bar.js';
 
@@ -14,6 +15,31 @@ const metadata = {
   completeness: /** @type {'complete'} */ ('complete'),
   freshness: /** @type {'fresh'} */ ('fresh')
 };
+
+describe('reactive prompt preview', () => {
+  it('updates the open preview and copy from current state, then stops on detachment', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    const evidence = state('first observation');
+    const control = renderPromptPreviewAction('Inspect evidence', evidence.get, undefined, 'comment', 'semantic-prompt');
+    document.body.append(control);
+    const trigger = /** @type {HTMLButtonElement} */ (control.querySelector('.table-intent-button'));
+    trigger.click();
+    const preview = control.querySelector('.table-intent-preview');
+    expect(preview?.textContent).toBe('first observation');
+    evidence.set('updated observation');
+    expect(preview?.textContent).toBe('updated observation');
+    /** @type {HTMLButtonElement} */ (control.querySelector('.table-intent-copy-button')).click();
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith('updated observation'));
+
+    control.remove();
+    await Promise.resolve();
+    evidence.set('detached observation');
+    expect(preview?.textContent).toBe('updated observation');
+    trigger.click();
+    expect(preview?.textContent).toBe('updated observation');
+  });
+});
 
 function stubIntersectionObserver() {
   /** @type {Map<Element, IntersectionObserverCallback>} */

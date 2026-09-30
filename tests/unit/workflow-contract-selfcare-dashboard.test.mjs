@@ -22,15 +22,15 @@ test("SelfCare agent discoverability audits bounded access-path routing", () => 
   assert.match(source, /draft: true/);
 });
 
-test("dashboard view assessment issues are ready for agent assignment", () => {
+test("dashboard view assessment comments only on pull requests", () => {
   const source = workflow("dashboard-views.yml");
-  const issueReporter = source.slice(source.indexOf("} else {", source.indexOf("if (isPullRequest)")));
+  const report = source.slice(source.indexOf("\n  report:"));
 
-  assert.match(issueReporter, /github\.rest\.issues\.create/);
-  assert.match(issueReporter, /labels: \['self-care'\]/);
-  assert.match(issueReporter, /\*\*Action:\*\* Assign this issue to Copilot/);
-  assert.match(issueReporter, /<details><summary><b>Agent prompt<\/b><\/summary>/);
-  assert.match(issueReporter, /npm run test:e2e:dashboard-views/);
+  assert.match(report, /always\(\) &&\s+github\.event_name == 'pull_request'/);
+  assert.match(report, /github\.rest\.issues\.updateComment/);
+  assert.match(report, /github\.rest\.issues\.createComment/);
+  assert.doesNotMatch(report, /github\.rest\.issues\.create\(/);
+  assert.doesNotMatch(report, /closeIssue/);
   assert.match(source, /typeof summary\.queryUsageGraph === 'string'/);
   assert.match(source, /replaceAll\('```', '` ` `'\)/);
   assert.match(source, /slice\(0, 40_000\)/);

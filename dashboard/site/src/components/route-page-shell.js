@@ -6,6 +6,9 @@ import { h } from '../dom.js';
 import { createFactoryScope } from './factory-elements.js';
 import { createRouteView } from './route-empty-state.js';
 import { renderRouteTabSet } from './route-tab-set.js';
+import { createDebug } from '../debug.js';
+
+const debugRoutePageShell = createDebug('route-page-shell');
 
 /**
  * @typedef {{ id: string, label: string, icon: string, href: string, count?: number, trailingIcon?: string, routeTitle?: string, routeDescription?: string }} RoutePageTab
@@ -102,12 +105,21 @@ export function createRoutePageShell(context, options) {
       } else if (tabs) {
         root.prepend(tabs);
       }
+      debugRoutePageShell({
+        currentTab: options.currentTab,
+        tabPlacement: tabs && page ? 'promoted' : tabs ? 'prepended' : 'none',
+        hasSelection
+      });
       routeTitle = '';
       routeDescription = '';
     },
     renderMatched: (routeValue) => {
       const match = options.renderMatched(routeValue, root);
-      if (!match) return null;
+      if (!match) {
+        debugRoutePageShell({ currentTab: options.currentTab, outcome: 'not-found' });
+        return null;
+      }
+      debugRoutePageShell({ currentTab: options.currentTab, outcome: 'matched' });
       const allocation = match.allocation;
       const title = typeof allocation.title === 'string' ? allocation.title : '';
       const description = typeof allocation.description === 'string' ? allocation.description : '';

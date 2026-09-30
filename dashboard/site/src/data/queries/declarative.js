@@ -703,7 +703,7 @@ function materializeDashboardQuery(definition, sources, defect, budget) {
     if (unavailable) {
       status = 'unavailable';
       failure = `input source "${unavailable.name}" is unavailable`;
-      return unavailableResult(definition, composedMetadata(definition.name, inputs, 0), failure);
+      return unavailableResult(definition, composedMetadata(definition.name, inputs, 0), failure, unavailable.name);
     }
 
     const effectiveSources = { ...sources };
@@ -1066,9 +1066,10 @@ function composedMetadata(name, inputs, rowCount, optionalInputs = new Set()) {
  * @param {DashboardQuery} definition
  * @param {SourceMetadata} metadata
  * @param {string} reason
+ * @param {string} [unavailableInput]
  * @returns {LogicalSourceInput}
  */
-function unavailableResult(definition, metadata, reason) {
+function unavailableResult(definition, metadata, reason, unavailableInput) {
   return {
     source: definition.name,
     rows: [],
@@ -1077,7 +1078,8 @@ function unavailableResult(definition, metadata, reason) {
       completeness: 'unknown',
       freshness: 'unknown',
       availability: 'unavailable',
-      'query-diagnostic': `$.dashboard.queries[${definition.name}]: ${reason}.`
+      'query-diagnostic': `$.dashboard.queries[${definition.name}]: ${reason}.`,
+      ...(unavailableInput ? { 'query-error': { code: 'input-unavailable', source: unavailableInput } } : {})
     }
   };
 }

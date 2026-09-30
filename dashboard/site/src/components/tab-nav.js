@@ -38,7 +38,7 @@ const debugTabNav = createDebug('tab-nav');
  * @returns {HTMLElement}
  */
 export function renderLinkTabs({ className, ariaLabel, tabs }) {
-  return h(
+  const nav = h(
     'nav',
     { className, 'aria-label': ariaLabel },
     ...tabs.map(({ label, icon, href, current, count, trailingIcon }) => h(
@@ -52,6 +52,21 @@ export function renderLinkTabs({ className, ariaLabel, tabs }) {
       trailingIcon ? octicon(trailingIcon, 'tab-trailing-icon') : null
     ))
   );
+  nav.addEventListener('keydown', (event) => {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const links = /** @type {HTMLAnchorElement[]} */ ([...nav.querySelectorAll(':scope > a')]);
+    const index = links.indexOf(/** @type {HTMLAnchorElement} */ (event.target));
+    if (index < 0) return;
+    const nextIndex = event.key === 'Home' ? 0
+      : event.key === 'End' ? links.length - 1
+        : event.key === 'ArrowRight' ? (index + 1) % links.length
+          : event.key === 'ArrowLeft' ? (index - 1 + links.length) % links.length
+            : -1;
+    if (nextIndex < 0) return;
+    event.preventDefault();
+    links[nextIndex].focus();
+  });
+  return nav;
 }
 
 /**

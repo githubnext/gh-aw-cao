@@ -497,7 +497,12 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   )).toHaveCount(0);
   await expect(operationalValueHistory).toContainText('campaign rollups are omitted');
   await expect(operationalValueHistory).toContainText('gh-aw-cao');
+  await page.setViewportSize({ width: 1920, height: 900 });
+  await expect(operationalValueHistory).toHaveCSS('gap', '16px');
+  await expect(operationalValueHistory).toHaveCSS('padding-bottom', '16px');
+  await expect(operationalValueHistory.locator('.temporal-plot-axis').first()).toHaveCSS('font-size', '10px');
   await page.setViewportSize({ width: 1200, height: 750 });
+  await expect(operationalValueHistory.locator('.temporal-plot-axis').first()).toHaveCSS('font-size', '19px');
   await expect(page.locator('.dashboard-root')).not.toHaveClass(/dashboard-full-view/);
   const main = page.locator('main.dashboard-prototype');
   await expect.poll(() => main.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);

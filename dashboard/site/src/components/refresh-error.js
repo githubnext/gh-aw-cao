@@ -53,30 +53,29 @@ export function renderRefreshError(retry, { hasCachedSnapshot = true } = {}) {
 
 /**
  * @param {{ createdAt: string }} snapshot
- * @param {'refreshing'|'stale'} state
  */
-export function renderDashboardSnapshotStatus(snapshot, state) {
+export function renderDashboardSnapshotStatus(snapshot) {
   const date = formatSnapshotDate(snapshot);
-  const message = state === 'refreshing'
-    ? `Refreshing dashboard data. Showing the last complete snapshot from ${date}.`
-    : `Dashboard refresh failed. Showing the last complete snapshot from ${date}.`;
   return h('p', {
     className: 'dashboard-snapshot-status',
     role: 'status',
     'aria-live': 'polite'
-  }, message);
+  }, `Dashboard refresh failed. Showing the last complete snapshot from ${date}.`);
 }
 
 /**
  * @param {{ createdAt: string }} snapshot
+ * @param {{ refreshing?: boolean }} [options]
  */
-export function renderDashboardCurrentStatus(snapshot) {
+export function renderDashboardCurrentStatus(snapshot, { refreshing = false } = {}) {
   return renderTooltip({
     id: 'dashboard-current-status-tooltip',
-    label: 'Dashboard data is current',
-    description: `Dashboard data is current as of ${formatSnapshotDate(snapshot)}.`,
-    icon: octicon('check-circle-fill'),
-    className: 'dashboard-current-status'
+    label: refreshing ? 'Refreshing dashboard data' : 'Dashboard data is current',
+    description: refreshing
+      ? `Showing the last complete snapshot from ${formatSnapshotDate(snapshot)} while dashboard data refreshes.`
+      : `Dashboard data is current as of ${formatSnapshotDate(snapshot)}.`,
+    icon: octicon(refreshing ? 'sync' : 'check-circle-fill'),
+    className: refreshing ? 'dashboard-current-status dashboard-current-status-refreshing' : 'dashboard-current-status'
   });
 }
 

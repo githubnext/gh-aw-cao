@@ -848,6 +848,26 @@
         "args": [{ "field": "is-pull-request" }, { "value": "pull-request" }, { "value": "issue" }]
       },
       {
+        "as": "_outcome-link-label",
+        "function": "if",
+        "args": [{ "field": "is-pull-request" }, { "value": "View pull request" }, { "value": "View issue" }]
+      },
+      {
+        "as": "external-link",
+        "function": "link",
+        "args": [{ "field": "correlation-id" }, { "field": "_outcome-link-label" }]
+      },
+      {
+        "as": "issue-link",
+        "function": "if",
+        "args": [{ "field": "is-pull-request" }, { "value": null }, { "field": "external-link" }]
+      },
+      {
+        "as": "pull-request-link",
+        "function": "if",
+        "args": [{ "field": "is-pull-request" }, { "field": "external-link" }, { "value": null }]
+      },
+      {
         "as": "_safe-output-is-issue",
         "function": "equals-any",
         "args": [{ "field": "safe-output-type" }, { "value": "create_issue" }]

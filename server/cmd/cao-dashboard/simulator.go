@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -159,6 +160,50 @@ func newSimulateWebhooksCommand() *cobra.Command {
 	return cmd
 }
 
+// simulatorAPIStopReason classifies why runSimulatorAPI's select returned,
+// so callers can log the outcome without duplicating this decision. It
+// mirrors classifyWorkerStop's shape for the collection worker in main.go.
+type simulatorAPIStopReason string
+
+const (
+	simulatorAPIStopReasonShutdown simulatorAPIStopReason = "shutdown"
+	simulatorAPIStopReasonClean    simulatorAPIStopReason = "clean"
+	simulatorAPIStopReasonError    simulatorAPIStopReason = "error"
+)
+
+// runSimulatorAPI serves httpServer on listener until ctx is cancelled or the
+// server stops on its own, then reports which happened. It is extracted from
+// newSimulateAPICommand's RunE so the shutdown-versus-server-error race is
+// testable against a real *http.Server and net.Listener, without a cobra
+// command or process signals.
+//
+// The shutdown context survives cancellation of ctx, because ctx is
+// normally already cancelled by the signal handler that triggered shutdown.
+func runSimulatorAPI(ctx context.Context, httpServer *http.Server, listener net.Listener, shutdownTimeout time.Duration) error {
+	serverErrors := make(chan error, 1)
+	go func() {
+		serverErrors <- httpServer.Serve(listener)
+	}()
+	select {
+	case <-ctx.Done():
+		shutdownContext, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)
+		defer cancel()
+		err := httpServer.Shutdown(shutdownContext)
+		simulatorLog.Printf("simulator API stopped reason=%s", simulatorAPIStopReasonShutdown)
+		if err != nil {
+			return fmt.Errorf("stop simulator API: %w", err)
+		}
+		return nil
+	case err := <-serverErrors:
+		if errors.Is(err, http.ErrServerClosed) {
+			simulatorLog.Printf("simulator API stopped reason=%s", simulatorAPIStopReasonClean)
+			return nil
+		}
+		simulatorLog.Printf("simulator API stopped reason=%s", simulatorAPIStopReasonError)
+		return fmt.Errorf("simulator API stopped: %w", err)
+	}
+}
+
 func newSimulateAPICommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "simulate-api",
@@ -185,24 +230,7 @@ func newSimulateAPICommand() *cobra.Command {
 		}
 		ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
-		serverErrors := make(chan error, 1)
-		go func() {
-			serverErrors <- server.Serve(listener)
-		}()
-		select {
-		case <-ctx.Done():
-			shutdownContext, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			if err := server.Shutdown(shutdownContext); err != nil {
-				return fmt.Errorf("stop simulator API: %w", err)
-			}
-			return nil
-		case err := <-serverErrors:
-			if errors.Is(err, http.ErrServerClosed) {
-				return nil
-			}
-			return fmt.Errorf("simulator API stopped: %w", err)
-		}
+		return runSimulatorAPI(ctx, server, listener, 5*time.Second)
 	}
 	return cmd
 }

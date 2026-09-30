@@ -103,3 +103,66 @@ export function offerCancelCommand(document, options = {}) {
 
   return { complete, cancel: requestCancel };
 }
+
+/**
+ * Reports whether an error came from a user-requested data-processing cancel.
+ * @param {unknown} error
+ */
+export function isDataProcessingCancellation(error) {
+  for (let current = error, depth = 0; current && depth < 5; depth += 1) {
+    if (current instanceof Error && current.name === 'DataProcessingCancelledError') return true;
+    current = current instanceof Error ? current.cause : undefined;
+  }
+  return false;
+}
+
+/**
+ * Keeps the dashboard usable after the user cancels startup data preparation.
+ * Offers a reload, and a local data reset for a browser whose disposable
+ * canonical database no longer opens or answers queries.
+ *
+ * @param {Document} document
+ * @param {{ reload: () => void, reset: () => Promise<void> }} options
+ */
+export function offerStartupRecovery(document, options) {
+  debugCancelCommand({ event: 'startup-recovery-offered' });
+  /** @type {ReturnType<typeof publishNotification>} */
+  const notification = publishNotification({
+    message: 'Dashboard data loading was cancelled.',
+    tone: 'warning',
+    duration: 0,
+    detailsSubtitle: 'Recovery options',
+    details: [
+      'Reload to retry loading dashboard data.',
+      'If loading keeps stalling, reset local data. This deletes the dashboard data cached in this browser and reloads it from the published source.'
+    ],
+    actions: [
+      { label: 'Reload', run: () => options.reload() },
+      {
+        label: 'Reset local data',
+        run: () => {
+          notification.update({ message: 'Resetting local dashboard data…', tone: 'warning', duration: 0 });
+          debugCancelCommand({ event: 'startup-reset-requested' });
+          options.reset().then(
+            () => options.reload(),
+            (error) => {
+              debugCancelCommand({
+                event: 'startup-reset-failed',
+                errorName: error instanceof Error ? error.name : 'Unknown'
+              });
+              notification.update({
+                message: error instanceof Error && error.name === 'IndexedDBDeleteBlockedError'
+                  ? 'Reset is waiting for other open dashboard tabs. Close them and reload.'
+                  : 'Could not reset local dashboard data.',
+                tone: 'error',
+                duration: 0,
+                actions: [{ label: 'Reload', run: () => options.reload() }]
+              });
+            }
+          );
+        }
+      }
+    ]
+  }, document);
+  return notification;
+}

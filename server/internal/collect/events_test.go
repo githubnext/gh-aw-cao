@@ -209,3 +209,32 @@ func TestNormalizeRepositoryRejectsUnsafeReferences(t *testing.T) {
 		}
 	}
 }
+
+func TestDecideCollectInstallationRequiresEnrollmentAndInstallation(t *testing.T) {
+	cases := []struct {
+		name           string
+		enrolled       bool
+		installationID int64
+		wantOK         bool
+		wantID         int64
+	}{
+		{name: "enrolled with installation", enrolled: true, installationID: 42, wantOK: true, wantID: 42},
+		{name: "enrolled without installation mapping", enrolled: true, installationID: 0, wantOK: false},
+		{name: "not enrolled but installation known", enrolled: false, installationID: 42, wantOK: false},
+		{name: "not enrolled and no installation", enrolled: false, installationID: 0, wantOK: false},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			gotID, gotOK := decideCollectInstallation(testCase.enrolled, testCase.installationID)
+			if gotOK != testCase.wantOK {
+				t.Fatalf("ok = %t, want %t", gotOK, testCase.wantOK)
+			}
+			if gotOK && gotID != testCase.wantID {
+				t.Fatalf("installationID = %d, want %d", gotID, testCase.wantID)
+			}
+			if !gotOK && gotID != 0 {
+				t.Fatalf("installationID = %d, want 0 when rejected", gotID)
+			}
+		})
+	}
+}

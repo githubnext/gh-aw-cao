@@ -3707,6 +3707,7 @@
     {
       "id": "cost-by-campaign",
       "intent": "Present observed AI Credit cost grouped by centrally managed campaign.",
+      "objective": "Identify campaigns whose observed AI Credit use needs investigation.",
       "description": "",
       "parameters": [],
       "sources": [

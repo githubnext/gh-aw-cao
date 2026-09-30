@@ -8,6 +8,9 @@ import { findLink, renderExternalLinkOrFallback } from './link-content.js';
 import { formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderIconSpan } from './ui-primitives.js';
 import { text, titleCase } from './count-formatters.js';
 import { renderMetadataSection } from './view-chrome.js';
+import { createDebug } from '../debug.js';
+
+const debugOutcomeDetailSections = createDebug('outcome-detail-sections');
 
 /**
  * @typedef {'discussion'|'metadata'} OutcomeDetailSectionBody
@@ -25,7 +28,10 @@ const OUTCOME_DETAIL_SECTION_RENDERERS = {
  * @returns {HTMLElement | null}
  */
 export function renderOutcomeDetailSection(outcome, body) {
-  if (body !== 'discussion' && body !== 'metadata') return null;
+  if (body !== 'discussion' && body !== 'metadata') {
+    debugOutcomeDetailSections({ event: 'unknown-section-body', requested: typeof body === 'string' ? body : typeof body });
+    return null;
+  }
   return OUTCOME_DETAIL_SECTION_RENDERERS[body](outcome);
 }
 
@@ -75,6 +81,12 @@ function renderOutcomeMetadataSection(outcome) {
   const runLink = findLink(outcome, 'run-link');
   const workflowLink = findLink(outcome, 'workflow-link');
   const workflowName = text(outcome['workflow-name']) || text(outcome.workflow) || 'Unknown workflow';
+  debugOutcomeDetailSections({
+    event: 'metadata-resolved',
+    hasSourceLink: sourceLink != null,
+    hasRunLink: runLink != null,
+    hasWorkflowLink: workflowLink != null
+  });
 
   return h(
     'aside',
@@ -137,23 +149,34 @@ const ALLOWED_MARKDOWN_CLASSES = new Set([
 function sanitizedMarkdownNodes(html) {
   if (!html) return [];
   const parsed = new DOMParser().parseFromString(html, 'text/html');
-  return [...parsed.body.childNodes]
-    .map(cloneSafeMarkdownNode)
+  const stats = { dropped: 0 };
+  const nodes = [...parsed.body.childNodes]
+    .map((node) => cloneSafeMarkdownNode(node, stats))
     .filter((node) => node !== null);
+  debugOutcomeDetailSections({
+    event: 'discussion-sanitized',
+    outputNodes: nodes.length,
+    droppedNodes: stats.dropped
+  });
+  return nodes;
 }
 
 /**
  * @param {Node} node
+ * @param {{ dropped: number }} stats
  * @returns {Node | null}
  */
-function cloneSafeMarkdownNode(node) {
+function cloneSafeMarkdownNode(node, stats) {
   if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.textContent ?? '');
-  if (!(node instanceof HTMLElement) || DROPPED_MARKDOWN_TAGS.has(node.tagName)) return null;
+  if (!(node instanceof HTMLElement) || DROPPED_MARKDOWN_TAGS.has(node.tagName)) {
+    stats.dropped += 1;
+    return null;
+  }
 
   if (!ALLOWED_MARKDOWN_TAGS.has(node.tagName)) {
     const fragment = document.createDocumentFragment();
     for (const child of node.childNodes) {
-      const safeChild = cloneSafeMarkdownNode(child);
+      const safeChild = cloneSafeMarkdownNode(child, stats);
       if (safeChild) fragment.append(safeChild);
     }
     return fragment;
@@ -162,7 +185,7 @@ function cloneSafeMarkdownNode(node) {
   const clone = document.createElement(node.tagName.toLowerCase());
   copySafeAttributes(node, clone);
   for (const child of node.childNodes) {
-    const safeChild = cloneSafeMarkdownNode(child);
+    const safeChild = cloneSafeMarkdownNode(child, stats);
     if (safeChild) clone.append(safeChild);
   }
   return clone;

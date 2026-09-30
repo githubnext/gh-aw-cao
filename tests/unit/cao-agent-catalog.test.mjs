@@ -65,6 +65,13 @@ test("cao query-info explains one query and its parameters", async () => {
   assert.ok(payload.query["used-by-pages"].length > 0);
 });
 
+test("cao query-info exposes authored semantic annotations", async () => {
+  const payload = JSON.parse(await runCao(["query-info", "cost-by-campaign", "--json"]));
+  assert.match(payload.query.objective, /Identify campaigns/);
+  const text = await runCao(["query-info", "cost-by-campaign"]);
+  assert.match(text, /objective: Identify campaigns/);
+});
+
 test("cao pages relates pages to the queries they read", async () => {
   const payload = JSON.parse(await runCao(["pages", "--json"]));
   assert.ok(payload.pages.length > 0);

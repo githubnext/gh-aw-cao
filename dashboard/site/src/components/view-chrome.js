@@ -6,6 +6,9 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { renderDisclosureSummaryLabel, renderDlRow, renderListWithFallback, renderSectionHeading, renderTooltip } from './ui-primitives.js';
 import { formatCount, slugify, titleCase } from './count-formatters.js';
+import { createDebug } from '../debug.js';
+
+const debugViewChrome = createDebug('view-chrome');
 
 /**
  * @param {string} pageId
@@ -163,14 +166,33 @@ export function customViewAvailabilityMessage(availability) {
 /**
  * @param {string | null} sourceName
  * @param {string[]} contextDetails
+ * @param {unknown} [queryError]
  * @returns {HTMLElement[]}
  */
-export function renderCustomViewStateDetails(sourceName, contextDetails) {
+export function renderCustomViewStateDetails(sourceName, contextDetails, queryError) {
   const details = [];
   if (sourceName) {
     details.push(h('p', { className: 'view-source' }, `Affected source: ${sourceName}`));
   }
+  const error = queryError && typeof queryError === 'object' && !Array.isArray(queryError)
+    ? /** @type {{ code?: unknown, source?: unknown }} */ (queryError)
+    : null;
+  const dependency = error?.code === 'input-unavailable' && typeof error.source === 'string'
+    && error.source.length <= 256
+    && /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?::[a-z][a-z0-9]*(?:-[a-z0-9]+)*)*$/.test(error.source)
+    ? error.source
+    : null;
+  if (dependency && dependency !== sourceName) {
+    details.push(h('p', { className: 'view-source' }, `Unavailable query dependency: ${dependency}`));
+  }
   details.push(...renderContextChrome(contextDetails));
+  debugViewChrome({
+    event: 'custom-view-state-details',
+    hasSourceName: Boolean(sourceName),
+    hasQueryError: Boolean(error),
+    dependencyResolved: Boolean(dependency),
+    detailCount: details.length
+  });
   return details;
 }
 

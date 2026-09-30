@@ -1,0 +1,7 @@
+# CVE-2026-85091 currently has no fixed Alpine package release.
+ignore:
+  - vulnerability: CVE-2026-85091
+    package:
+      name: zlib
+      type: apk
+    reason: No upstream Alpine fix is available; remove this exclusion when one is released.

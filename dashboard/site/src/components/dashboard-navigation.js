@@ -182,10 +182,87 @@ export function enableDashboardNavigation(root) {
   enableSidebarToggle(root);
   enableNavSectionStatePersistence(root);
   enableMobileViewModeToggle(root);
+  enableSidebarKeyboardNavigation(root);
   const menu = root.querySelector('.mobile-nav-menu');
   if (menu instanceof HTMLDetailsElement) {
     enableDetailsMenuDismissal(root, menu, '[data-mobile-nav-page-id]');
+    enableMobileNavigationKeyboard(menu);
   }
+}
+
+/** @param {HTMLElement} root */
+function enableSidebarKeyboardNavigation(root) {
+  const nav = root.querySelector('.primary-nav');
+  if (!(nav instanceof HTMLElement)) return;
+  /** @returns {HTMLElement[]} */
+  const visibleItems = () => [...nav.querySelectorAll('.nav-section-toggle, [data-nav-page-id]')]
+    .filter((item) => item instanceof HTMLElement)
+    .map((item) => /** @type {HTMLElement} */ (item))
+    .filter((item) => (!item.closest('.nav-section') || item.matches('.nav-section-toggle')
+        || /** @type {HTMLDetailsElement | null} */ (item.closest('.nav-section'))?.open)
+      && getComputedStyle(item).display !== 'none');
+  nav.addEventListener('keydown', (event) => {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const target = event.target;
+    if (!(target instanceof HTMLElement) || !target.matches('.nav-section-toggle, [data-nav-page-id]')) return;
+    const items = visibleItems();
+    const index = items.indexOf(target);
+    if (index < 0) return;
+    const section = target.parentElement instanceof HTMLDetailsElement ? target.parentElement : null;
+    /** @type {HTMLElement | undefined} */
+    let next;
+    switch (event.key) {
+      case 'ArrowDown': next = items[index + 1]; break;
+      case 'ArrowUp': next = items[index - 1]; break;
+      case 'Home': next = items[0]; break;
+      case 'End': next = items.at(-1); break;
+      case 'ArrowRight':
+        if (!section) return;
+        if (!section.open) section.open = true;
+        else if (section.contains(items[index + 1])) next = items[index + 1];
+        break;
+      case 'ArrowLeft':
+        if (section?.open) section.open = false;
+        else if (!section) {
+          const summary = /** @type {HTMLElement | null} */ (target.closest('.nav-section')?.querySelector('.nav-section-toggle'));
+          if (summary && items.includes(summary)) next = summary;
+          else return;
+        }
+        else return;
+        break;
+      default: return;
+    }
+    event.preventDefault();
+    next?.focus();
+  });
+  nav.addEventListener('toggle', (event) => {
+    const section = event.target;
+    if (section instanceof HTMLDetailsElement && !section.open && section.contains(section.ownerDocument.activeElement)) {
+      section.querySelector('summary')?.focus();
+    }
+  }, true);
+}
+
+/** @param {HTMLDetailsElement} menu */
+function enableMobileNavigationKeyboard(menu) {
+  menu.addEventListener('keydown', (event) => {
+    if (event.altKey || event.ctrlKey || event.metaKey || !menu.open) return;
+    const target = event.target;
+    if (!(target instanceof HTMLElement) || !target.matches('.mobile-nav-menu > summary, [data-mobile-nav-page-id]')) return;
+    const links = /** @type {HTMLAnchorElement[]} */ ([...menu.querySelectorAll('[data-mobile-nav-page-id]')]);
+    const index = links.indexOf(/** @type {HTMLAnchorElement} */ (target));
+    /** @type {HTMLAnchorElement | undefined} */
+    let next;
+    switch (event.key) {
+      case 'ArrowDown': next = links[index + 1]; break;
+      case 'ArrowUp': next = links[index - 1]; break;
+      case 'Home': next = links[0]; break;
+      case 'End': next = links.at(-1); break;
+      default: return;
+    }
+    event.preventDefault();
+    next?.focus();
+  });
 }
 
 /** @param {HTMLElement} root */

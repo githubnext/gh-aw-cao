@@ -503,6 +503,12 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .tooltip-trigger:hover { background: var(--neutral-muted); color: var(--fg); }
 .tooltip-trigger .octicon { width: 14px; height: 14px; }
 .dashboard-current-status .tooltip-trigger { color: var(--success); }
+.dashboard-current-status-refreshing .tooltip-trigger { color: var(--muted); }
+.dashboard-current-status-refreshing .octicon-sync { animation: dashboard-refresh-spin 1s linear infinite; }
+@keyframes dashboard-refresh-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-current-status-refreshing .octicon-sync { animation: none; }
+}
 .tooltip-content { width: min(320px, calc(100vw - 28px)); position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; display: grid; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); color: var(--fg); font-weight: 400; line-height: 1.4; white-space: normal; visibility: hidden; opacity: 0; pointer-events: none; transition: opacity 80ms linear, visibility 80ms linear; }
 .tooltip-help:hover .tooltip-content, .tooltip-help:focus-within .tooltip-content { visibility: visible; opacity: 1; }
 .tooltip-description { color: var(--muted); }
@@ -647,8 +653,18 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .layout-section-header-summary h3 { font-size: 1.25rem; }
 .layout-section-header p { margin: 3px 0 0; color: var(--muted); font-size: .8125rem; }
 .layout-section .page-section { min-width: 0; }
-.layout-section .page-section > h4 { margin: 12px 0 8px; font-size: .875rem; font-weight: 600; }
+.layout-section .page-section > h4, .layout-section .page-section > .chart-prompt-heading > h4 { margin: 12px 0 8px; font-size: .875rem; font-weight: 600; }
 .view-description-section { position: relative; }
+.semantic-prompt-view { position: relative; }
+.semantic-prompt-action { display: block; width: fit-content; margin: 0 0 12px auto; }
+.semantic-prompt-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.semantic-prompt-heading > :is(h3, h4) { margin: 0; }
+.chart-prompt-heading { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.chart-prompt-heading > :is(h3, h4) { min-width: 0; margin: 0; }
+.chart-prompt-action { margin-left: auto; flex: none; }
+.chart-prompt-action .table-intent-button { width: 32px; min-height: 32px; justify-content: center; padding: 0; border-color: transparent; background: transparent; color: var(--muted); }
+.chart-prompt-action .table-intent-button:hover { border-color: var(--border); background: var(--neutral-muted); color: var(--fg); }
+.chart-prompt-action .table-intent-button span { display: none; }
 .view-description-tooltip { position: absolute; top: 4px; right: 0; }
 .custom-view-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
 .custom-view { min-width: 0; grid-column: span 12; }
@@ -824,6 +840,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .line-chart-temporal-marker text { fill: var(--purple); font-size: 1.8px; font-weight: 600; }
 .insights-temporal-plot-panel, .operational-value-native-plots { min-width: 0; width: 100%; }
 .insights-temporal-plot-panel { overflow: hidden; }
+.measure-history-operational-value { display: grid; gap: 16px; padding-bottom: 16px; }
 .operational-value-native-plots { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 12px; }
 .temporal-metric-plot { min-width: 0; width: 100%; overflow: hidden; padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); }
 .temporal-plot-heading { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 12px; margin-bottom: 4px; }
@@ -859,6 +876,10 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .temporal-plot-run-outcome-legend-label { fill: var(--muted); }
 .temporal-plot-run-outcome-legend-success { fill: var(--success); }
 .temporal-plot-run-outcome-legend-failure { fill: var(--danger); }
+@media (min-width: 1440px) {
+  .temporal-plot-axis { font-size: 10px; }
+  .temporal-plot-run-outcome-legend { font-size: 10px; }
+}
 .temporal-metric-plot .chart-series-1 { fill: var(--accent); stroke: var(--accent); }
 .temporal-metric-plot .chart-series-2 { fill: var(--success); stroke: var(--success); }
 .temporal-metric-plot .chart-series-3 { fill: var(--attention); stroke: var(--attention); }
@@ -1025,6 +1046,8 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .layout-section .pie-chart-card { padding: 0; border: 0; }
 #page-preview .pie-chart-card { padding: 0; border: 0; }
 .pie-chart-card > h3, .pie-chart-card > h4 { align-self: end; margin: 0; font-size: 1.25rem; }
+.pie-chart-card > .chart-prompt-heading { align-self: end; }
+.pie-chart-card > .chart-prompt-heading > :is(h3, h4) { font-size: 1.25rem; }
 .pie-chart-card > .view-description { align-self: start; }
 .pie-chart-card > .view-source, .pie-chart-card > .view-metadata, .pie-chart-card > .view-context { grid-column: 1; margin: 0; font-size: .6875rem; }
 .pie-chart-layout { min-width: 0; display: grid; grid-column: 2; grid-row: 1 / span 6; grid-template-columns: minmax(120px, 180px) minmax(0, 1fr); align-items: center; gap: 20px; }
@@ -1040,6 +1063,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .pie-chart-layout .chart-legend-pie strong, .pie-chart-layout .chart-legend-pie small { font-variant-numeric: tabular-nums; text-align: right; }
 .chart-horizontal-card { display: grid; grid-template-columns: minmax(190px, .65fr) minmax(0, 1.35fr); align-items: start; gap: 24px; padding: 20px 24px; }
 .chart-horizontal-copy > h3, .chart-horizontal-copy > h4 { margin: 0; font-size: 1.25rem; }
+.chart-horizontal-copy > .chart-prompt-heading > :is(h3, h4) { font-size: 1.25rem; }
 .chart-horizontal-copy > .view-description { margin-top: 3px; }
 .chart-horizontal-copy > .view-source, .chart-horizontal-copy > .view-metadata, .chart-horizontal-copy > .view-context { margin: 0; font-size: .6875rem; }
 .chart-horizontal-layout { min-width: 0; }
@@ -1373,6 +1397,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 :is(.readiness-page, .runtime-page, .security-page, .firewall-page, .value-page, .cost-page, .github-api-page) .layout-section-header h3 { margin: 2px 0 0; font-size: 1.25rem; }
 :is(.readiness-page, .runtime-page, .security-page, .firewall-page, .value-page, .cost-page, .github-api-page) .layout-section-header > strong { flex: none; color: var(--muted); font-size: .75rem; }
 :is(.runtime-page, .security-page, .firewall-page, .value-page) .layout-section .page-section > h4,
+:is(.runtime-page, .security-page, .firewall-page, .value-page) .layout-section .page-section > .chart-prompt-heading > h4,
 :is(.runtime-page, .security-page, .firewall-page, .value-page) .layout-section .view-source,
 :is(.runtime-page, .security-page, .firewall-page, .value-page) .layout-section .view-metadata { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 :is(.runtime-page, .security-page, .firewall-page, .value-page) .layout-section .table-region { margin-top: 0; }
@@ -2254,6 +2279,8 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .dashboard-overview-page { margin: calc(-1 * var(--dashboard-mobile-page-padding-top)) calc(-1 * var(--dashboard-page-padding-inline)) 0; }
   .dashboard-full-view .custom-view-grid > .custom-view { padding-inline: var(--dashboard-page-padding-inline); }
   .dashboard-full-view .custom-view-grid > .chart-view-swimlane { padding-bottom: 12px; }
+  .dashboard-page:is([data-view-mode="table"], [data-view-mode="card"]) > .custom-view-grid { margin-inline: calc(-1 * var(--dashboard-page-padding-inline)); }
+  .dashboard-page:is([data-view-mode="table"], [data-view-mode="card"]) > .custom-view-grid > .custom-view { padding-inline: 0; }
   .data-state-summary, .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .layout-section[data-section-layout="wide"], .layout-section[data-section-layout="narrow"] { grid-column: span 12; }
   .custom-view[data-view-layout="half"], .custom-view[data-view-layout="third"] { grid-column: span 12; }

@@ -262,6 +262,50 @@ test('full-view chart, card, and table content share the page inset', async ({ p
   expect(contentInsets).toEqual([expectedInset, expectedInset, expectedInset]);
 });
 
+test('mobile table and card modes use the full viewport width', async ({ page }) => {
+  const styles = await page.evaluate(async (stylesUrl) => {
+    const { getPrimerStyles } = await import(stylesUrl);
+    return getPrimerStyles();
+  }, 'http://dashboard.test/src/styles.js');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setContent(`
+    <style>${styles}</style>
+    <div class="dashboard-root dashboard-full-view">
+      <div class="app-shell">
+        <aside class="org-sidebar"></aside>
+        <div class="app-main">
+          <main class="dashboard-prototype">
+            <section class="dashboard-page" data-view-mode="table">
+              <div class="custom-view-grid">
+                <section class="custom-view" data-view-layout="full-view">
+                  <div data-view-mode-content="table"><div class="table-region">Table</div></div>
+                  <div data-mobile-card-list>Cards</div>
+                </section>
+              </div>
+            </section>
+          </main>
+        </div>
+      </div>
+    </div>
+  `);
+
+  const table = page.locator('.table-region');
+  const cards = page.locator('[data-mobile-card-list]');
+  /** @param {import('@playwright/test').Locator} element */
+  const horizontalBounds = async (element) => element.evaluate((node) => {
+    const bounds = node.getBoundingClientRect();
+    return { left: bounds.left, right: bounds.right };
+  });
+
+  await expect(table).toBeVisible();
+  expect(await horizontalBounds(table)).toEqual({ left: 0, right: 390 });
+  await page.locator('.dashboard-page').evaluate((element) => {
+    element.setAttribute('data-view-mode', 'card');
+  });
+  await expect(cards).toBeVisible();
+  expect(await horizontalBounds(cards)).toEqual({ left: 0, right: 390 });
+});
+
 const horizontalBarFixtureLabel = 'extremely-long-dependabot-update-planner.md';
 const horizontalBarDesktopFixtureSuffix = 'planner.md';
 

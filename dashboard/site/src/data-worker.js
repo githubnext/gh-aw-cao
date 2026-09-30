@@ -1135,6 +1135,9 @@ export function processDataRequest(request, signal) {
 
 /** @type {Map<number, AbortController>} */
 const inFlight = new Map();
+/** @type {Map<number, string>} */
+const inFlightOperations = new Map();
+const debugRequests = createDebug('data:worker');
 
 /**
  * Cancels the identified in-flight requests, or every in-flight request when
@@ -1212,11 +1215,21 @@ if (typeof document === 'undefined' && workerScope) {
     }
     if (event.data?.operation === 'cancel-data-processing') {
       const cancelled = cancelInFlight(event.data.ids);
+      debugRequests({
+        event: 'cancel-received',
+        requestedCount: Array.isArray(event.data.ids) ? event.data.ids.length : 0,
+        cancelled,
+        inFlightOperations: [...inFlightOperations.values()]
+      });
       workerScope.postMessage({ id, data: { cancelled } });
       return;
     }
     const controller = new AbortController();
+    const operation = typeof event.data?.operation === 'string' ? event.data.operation : 'unknown';
+    const startedAt = monotonicNow();
     inFlight.set(id, controller);
+    inFlightOperations.set(id, operation);
+    debugRequests({ event: 'request-started', id, operation, inFlightCount: inFlight.size });
     /** @param {unknown} error */
     const failure = (error) => ({
       error: error instanceof Error ? error.message : String(error),
@@ -1224,6 +1237,15 @@ if (typeof document === 'undefined' && workerScope) {
     });
     const settle = (/** @type {Record<string, unknown>} */ message) => {
       inFlight.delete(id);
+      inFlightOperations.delete(id);
+      debugRequests({
+        event: 'request-settled',
+        id,
+        operation,
+        status: 'error' in message ? (message.cancelled ? 'cancelled' : 'failed') : 'succeeded',
+        durationMs: Math.round(monotonicNow() - startedAt),
+        inFlightCount: inFlight.size
+      });
       try {
         workerScope.postMessage({ id, ...message });
       } catch (error) {

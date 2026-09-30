@@ -1058,6 +1058,26 @@ describe('declarative dashboard queries', () => {
   });
 
 
+  it('distinguishes absent MCP activity from an unavailable upstream source', () => {
+    const empty = executeDashboardQueries(dashboardQueries, {
+      'mcp-calls': { source: 'mcp-calls', rows: [], metadata: metadata('mcp-calls', { availability: 'empty' }) }
+    }, ['mcp-top-tools'])['mcp-top-tools'];
+    expect(empty.metadata.availability).toBe('empty');
+    expect(empty.metadata['query-diagnostic']).toBeUndefined();
+    expect(empty.metadata['query-error']).toBeUndefined();
+
+    const unavailable = executeDashboardQueries(dashboardQueries, {
+      'mcp-calls': { source: 'mcp-calls', rows: [], metadata: metadata('mcp-calls', { availability: 'unavailable' }) }
+    }, ['mcp-top-tools'])['mcp-top-tools'];
+    expect(unavailable.metadata.availability).toBe('unavailable');
+    expect(unavailable.metadata['query-diagnostic']).toBe(
+      '$.dashboard.queries[mcp-top-tools]: input source "mcp-tool-totals" is unavailable.'
+    );
+    expect(unavailable.metadata['query-error']).toEqual({
+      code: 'input-unavailable', source: 'mcp-tool-totals'
+    });
+  });
+
   it('groups MCP activity by tool and excludes the safe outputs server', () => {
       const mcpCalls = {
         source: 'mcp-calls',

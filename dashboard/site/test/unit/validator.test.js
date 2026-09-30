@@ -3947,7 +3947,7 @@ dashboard:
     expect(result.ok).toBe(true);
   });
 
-  it('DLS-VIEW-034 accepts inert element intent and rejects empty or non-element intent', () => {
+  it('DLS-VIEW-034 accepts semantic annotations on all marks and rejects empty values', () => {
     const elementDocument = `language-version: "0.1.0"
 dashboard:
   id: element-intent
@@ -3993,11 +3993,50 @@ dashboard:
               - field: run-conclusion`
       )
     );
-    expect(nonElementIntent.ok).toBe(false);
-    if (!nonElementIntent.ok) {
-      expect(nonElementIntent.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E007',
-        path: '$.dashboard.pages[0].views[0].intent'
+    expect(nonElementIntent.ok).toBe(true);
+    const withSemantics = elementDocument.replace(
+      '          intent: Help operators identify workflow states that require attention.',
+      '          intent: Help operators identify workflow states that require attention.\n          objective: Resolve failing workflows.\n          acceptance: No failing workflows remain.'
+    );
+    expect(validateDashboardDocument(withSemantics).ok).toBe(true);
+    for (const field of ['objective', 'acceptance']) {
+      const invalid = validateDashboardDocument(withSemantics.replace(
+        new RegExp(`${field}: [^\\n]+`), `${field}: ""`
+      ));
+      expect(invalid.ok).toBe(false);
+      if (!invalid.ok) expect(invalid.errors).toContainEqual(expect.objectContaining({
+        path: `$.dashboard.pages[0].views[0].${field}`
+      }));
+    }
+  });
+
+  it('DLS-VIEW-034 accepts only declarative prompt modes for charts', () => {
+    const chartDocument = `language-version: "0.1.0"
+dashboard:
+  id: chart-prompt
+  title: Chart Prompt
+  pages:
+    - id: operations
+      kind: custom
+      views:
+        - id: summary
+          data:
+            source: runs
+          mark: chart
+          chart: pie
+          prompt: auto
+          encoding:
+            x: { field: run-conclusion, type: nominal }
+            y: { field: duration, type: quantitative }
+`;
+    for (const mode of ['auto', 'none', 'always']) {
+      expect(validateDashboardDocument(chartDocument.replace('prompt: auto', `prompt: ${mode}`)).ok).toBe(true);
+    }
+    for (const mode of ['sometimes', 'true', '42']) {
+      const result = validateDashboardDocument(chartDocument.replace('prompt: auto', `prompt: ${mode}`));
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.errors).toContainEqual(expect.objectContaining({
+        path: '$.dashboard.pages[0].views[0].prompt'
       }));
     }
   });
@@ -5205,6 +5244,20 @@ describe('declarative query validation', () => {
 
   it('accepts a derived query used as a logical source', () => {
     expect(validateDashboardDocument(queryDocument([aicQuery, validQuery])).ok).toBe(true);
+  });
+
+  it('accepts optional query objective and acceptance only as non-empty text', () => {
+    const semanticQuery = { ...validQuery, objective: 'Investigate costs.', acceptance: 'Costs explained.' };
+    expect(validateDashboardDocument(queryDocument([aicQuery, semanticQuery])).ok).toBe(true);
+    for (const field of ['objective', 'acceptance']) {
+      const invalid = validateDashboardDocument(queryDocument([
+        aicQuery, { ...semanticQuery, [field]: '' }
+      ]));
+      expect(invalid.ok).toBe(false);
+      if (!invalid.ok) expect(invalid.errors).toContainEqual(expect.objectContaining({
+        path: `$.dashboard.queries[1].${field}`
+      }));
+    }
   });
 
   it('validates reusable temporal-series projections', () => {

@@ -83,14 +83,13 @@ jobs:
     name: Report dashboard view assessment
     if: >-
       always() &&
-      (github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository)
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     needs: assess
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       actions: read
-      issues: write
       pull-requests: write
     steps:
       - name: Download assessment
@@ -216,76 +215,24 @@ jobs:
               ].filter(Boolean).join('\n')
             }
 
-            if (isPullRequest) {
-              const comments = await github.paginate(github.rest.issues.listComments, {
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              ...context.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            })
+            const existing = comments.find((comment) =>
+              comment.user?.type === 'Bot' && comment.body?.includes(marker)
+            )
+            if (existing) {
+              await github.rest.issues.updateComment({
+                ...context.repo,
+                comment_id: existing.id,
+                body,
+              })
+            } else {
+              await github.rest.issues.createComment({
                 ...context.repo,
                 issue_number: context.issue.number,
-                per_page: 100,
-              })
-              const existing = comments.find((comment) =>
-                comment.user?.type === 'Bot' && comment.body?.includes(marker)
-              )
-              if (existing) {
-                await github.rest.issues.updateComment({
-                  ...context.repo,
-                  comment_id: existing.id,
-                  body,
-                })
-              } else {
-                await github.rest.issues.createComment({
-                  ...context.repo,
-                  issue_number: context.issue.number,
-                  body,
-                })
-              }
-            } else {
-              body = [
                 body,
-                '',
-                '**Action:** Assign this issue to Copilot using the agent prompt below; accept the fix when the affected views pass the assessment.',
-                '',
-                '<details><summary><b>Agent prompt</b></summary>',
-                '',
-                'Investigate and fix the dashboard view assessment findings reported in this issue.',
-                '',
-                `1. Download the \`dashboard-views\` artifact from ${runUrl} and inspect \`summary.json\` for the affected page IDs, browser errors, failed requests, missing views or data sources, and DOM-budget violations.`,
-                '2. Reproduce the findings from the repository root with `DASHBOARD_DATA_URL=https://githubnext.github.io/gh-aw-cao/cao/payload-hashes.json npm run test:e2e:dashboard-views`; use `DASHBOARD_PAGE_IDS` to narrow the run when appropriate.',
-                '3. Trace each failure through the declarative view, canonical data adapter and normalization, query worker, and view payload stages. Do not add a JavaScript-based dashboard view or treat browser IndexedDB as an authority.',
-                '4. Make the smallest root-cause fix and add or update focused regression coverage.',
-                '5. Validate the affected assessment plus `npm test`, `npm run lint`, and `npm run typecheck` from `dashboard/site/`.',
-                '',
-                '</details>',
-                '',
-              ].join('\n')
-              const issues = await github.paginate(github.rest.issues.listForRepo, {
-                ...context.repo,
-                state: 'open',
-                per_page: 100,
-              })
-              const previous = issues.filter((issue) =>
-                !issue.pull_request &&
-                issue.user?.type === 'Bot' &&
-                issue.body?.includes(marker)
-              )
-              for (const issue of previous) {
-                await github.graphql(
-                  `mutation($input: CloseIssueInput!) {
-                    closeIssue(input: $input) {
-                      issue { id }
-                    }
-                  }`,
-                  {
-                    input: {
-                      issueId: issue.node_id,
-                      stateReason: 'COMPLETED',
-                    },
-                  },
-                )
-              }
-              await github.rest.issues.create({
-                ...context.repo,
-                title: 'Dashboard view assessment',
-                body,
-                labels: ['self-care'],
               })
             }

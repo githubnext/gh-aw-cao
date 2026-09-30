@@ -257,22 +257,9 @@ func (a Admitter) AdmitDelivery(
 		admission.Duplicate = !fresh
 		return admission, nil
 	}
-	enrolled, err := a.Enrollment.Enrolled(ctx, intent.Repository)
+	installationID, err := a.resolveCollectInstallation(ctx, intent)
 	if err != nil {
 		return Admission{}, err
-	}
-	if !enrolled {
-		return Admission{}, ErrNotEnrolled
-	}
-	installationID := intent.InstallationID
-	if installationID == 0 {
-		installationID, err = a.Enrollment.InstallationFor(ctx, intent.Repository)
-		if err != nil {
-			return Admission{}, err
-		}
-	}
-	if installationID == 0 {
-		return Admission{}, ErrNotEnrolled
 	}
 	enqueued, duplicate, err := a.Queue.EnqueueDelivery(ctx, Task{
 		Repository:     intent.Repository,
@@ -283,6 +270,46 @@ func (a Admitter) AdmitDelivery(
 		return Admission{}, err
 	}
 	return Admission{Kind: IntentCollect, Enqueued: enqueued, Duplicate: duplicate}, nil
+}
+
+// resolveCollectInstallation determines the installation that must own a
+// collect intent's enqueued task. It centralizes the enrollment check and
+// installation lookup shared by AdmitDelivery and admitIntent's IntentCollect
+// branch, so the two entry points cannot drift into different admission
+// rules for the same intent kind.
+func (a Admitter) resolveCollectInstallation(ctx context.Context, intent Intent) (int64, error) {
+	enrolled, err := a.Enrollment.Enrolled(ctx, intent.Repository)
+	if err != nil {
+		return 0, err
+	}
+	installationID := intent.InstallationID
+	if enrolled && installationID == 0 {
+		installationID, err = a.Enrollment.InstallationFor(ctx, intent.Repository)
+		if err != nil {
+			return 0, err
+		}
+	}
+	resolved, ok := decideCollectInstallation(enrolled, installationID)
+	if !ok {
+		// Either the repository is out of scope, or enrollment covers it but
+		// no installation maps to it; either way this is a meaningful
+		// admission-time gap worth observing, and it is not called from a
+		// polling or retry loop.
+		eventsLog.Printf("collect intent refused enrolled=%t", enrolled)
+		return 0, ErrNotEnrolled
+	}
+	return resolved, nil
+}
+
+// decideCollectInstallation applies the admission rule for a collect intent:
+// the repository must be enrolled, and an installation must be known for it.
+// It is a pure function so this rule is testable without a Redis-backed
+// Enrollment store.
+func decideCollectInstallation(enrolled bool, installationID int64) (int64, bool) {
+	if !enrolled || installationID == 0 {
+		return 0, false
+	}
+	return installationID, true
 }
 
 func (a Admitter) queueErasures(ctx context.Context, installationID int64, repositories []string) error {
@@ -339,22 +366,9 @@ func (a Admitter) admitIntent(ctx context.Context, intent Intent) (Admission, er
 		}
 		return Admission{Kind: IntentRemoveInstallation, ErasureQueued: erased}, nil
 	case IntentCollect:
-		enrolled, err := a.Enrollment.Enrolled(ctx, intent.Repository)
+		installationID, err := a.resolveCollectInstallation(ctx, intent)
 		if err != nil {
 			return Admission{}, err
-		}
-		if !enrolled {
-			return Admission{}, ErrNotEnrolled
-		}
-		installationID := intent.InstallationID
-		if installationID == 0 {
-			installationID, err = a.Enrollment.InstallationFor(ctx, intent.Repository)
-			if err != nil {
-				return Admission{}, err
-			}
-		}
-		if installationID == 0 {
-			return Admission{}, ErrNotEnrolled
 		}
 		enqueued, err := a.Queue.Enqueue(ctx, Task{
 			Repository:     intent.Repository,

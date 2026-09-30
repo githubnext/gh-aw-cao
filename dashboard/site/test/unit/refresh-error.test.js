@@ -31,12 +31,24 @@ describe('refresh error', () => {
     expect(document.body.contains(error)).toBe(false);
   });
 
-  it('announces refresh progress with the last complete snapshot time', () => {
-    const status = renderDashboardSnapshotStatus({ createdAt: '2026-09-28T12:00:00.000Z' }, 'refreshing');
+  it('announces a failed refresh with the last complete snapshot time', () => {
+    const status = renderDashboardSnapshotStatus({ createdAt: '2026-09-28T12:00:00.000Z' });
 
     expect(status.getAttribute('role')).toBe('status');
-    expect(status.textContent).toContain('Refreshing dashboard data.');
+    expect(status.textContent).toContain('Dashboard refresh failed.');
     expect(status.textContent).toContain('Showing the last complete snapshot from');
+  });
+
+  it('shows refresh progress in the existing status tooltip', () => {
+    const status = renderDashboardCurrentStatus({ createdAt: '2026-09-28T12:00:00.000Z' }, { refreshing: true });
+    const button = status.querySelector('button');
+    const tooltip = status.querySelector('[role="tooltip"]');
+
+    expect(button?.getAttribute('aria-label')).toBe('Refreshing dashboard data');
+    expect(button?.getAttribute('aria-describedby')).toBe(tooltip?.id);
+    expect(status.querySelector('.octicon-sync')).not.toBeNull();
+    expect(status.querySelector('.octicon-check-circle-fill')).toBeNull();
+    expect(tooltip?.textContent).toContain('Showing the last complete snapshot from');
   });
 
   it('shows the current snapshot time in an accessible icon tooltip', () => {

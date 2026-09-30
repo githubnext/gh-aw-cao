@@ -286,6 +286,51 @@ describe('canonical view sources', () => {
     })]);
   });
 
+  it('projects safe-output links declaratively for issues and pull requests', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+    await putCanonicalRecord('issues', {
+      id: 'event:safe-output:issue',
+      runId: 'github:run:42:attempt:2',
+      timestamp: '2026-09-09T04:00:10Z',
+      source: 'safe-output',
+      type: 'safe_output.created',
+      summary: 'Created issue',
+      correlationId: 'https://github.com/githubnext/gh-aw-cao/issues/123',
+      safeOutputType: 'create_issue',
+      isPullRequest: false,
+      number: 123
+    });
+    await putCanonicalRecord('issues', {
+      id: 'event:safe-output:pull-request',
+      runId: 'github:run:42:attempt:2',
+      timestamp: '2026-09-09T04:00:20Z',
+      source: 'safe-output',
+      type: 'safe_output.created',
+      summary: 'Created pull request',
+      correlationId: 'https://github.com/githubnext/gh-aw-cao/pull/124',
+      safeOutputType: 'create_pull_request',
+      isPullRequest: true,
+      number: 124
+    });
+
+    const projected = await queryCanonicalViewSources(indexedDB, sources, ['outcomes']);
+
+    expect(projected.outcomes.rows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        'outcome-title': 'Created issue',
+        'issue-link': { href: 'https://github.com/githubnext/gh-aw-cao/issues/123', label: 'View issue' },
+        'pull-request-link': null,
+        'external-link': { href: 'https://github.com/githubnext/gh-aw-cao/issues/123', label: 'View issue' }
+      }),
+      expect.objectContaining({
+        'outcome-title': 'Created pull request',
+        'issue-link': null,
+        'pull-request-link': { href: 'https://github.com/githubnext/gh-aw-cao/pull/124', label: 'View pull request' },
+        'external-link': { href: 'https://github.com/githubnext/gh-aw-cao/pull/124', label: 'View pull request' }
+      })
+    ]));
+  });
+
   it('returns the same zero counts as declarative execution for empty tables', async () => {
     const tableNames = [...DATABASE_STORES];
     const definitions = tableNames.map((table) => ({

@@ -2,6 +2,10 @@
  * Bounded schema previews for the offline dashboard data-schema report.
  */
 
+import { createDebug } from './debug.js';
+
+const debugDataHealth = createDebug('data-health');
+
 /**
  * @typedef {import('./presenter.js').LogicalSourceInput} LogicalSourceInput
  * @typedef {import('./presenter.js').SourceMetadata} SourceMetadata
@@ -13,8 +17,20 @@
  * @returns {Record<string, LogicalSourceInput>}
  */
 export function deriveDataHealthSources(sources) {
-  const metadata = combineSourceMetadata(Object.values(sources));
-  const schemaRows = Object.entries(sources).map(([name, source]) => schemaDiagnostic(name, source));
+  const entries = Object.entries(sources);
+  const metadata = combineSourceMetadata(entries.map(([, source]) => source));
+  const schemaRows = entries.map(([name, source]) => schemaDiagnostic(name, source));
+  const truncatedCount = entries.reduce(
+    (count, [, source]) => count + (Array.isArray(source?.rows) && source.rows.length > MAX_SCHEMA_SAMPLE_ROWS ? 1 : 0),
+    0
+  );
+  debugDataHealth({
+    event: 'schema-derived',
+    sourceCount: entries.length,
+    truncatedCount,
+    completeness: metadata.completeness,
+    freshness: metadata.freshness
+  });
   return {
     'data-health-schema': healthSource('data-health-schema', schemaRows, metadata)
   };
@@ -39,7 +55,11 @@ const MAX_SCHEMA_PROPERTIES = 12;
 
 /** @param {string} name @param {LogicalSourceInput} source */
 function schemaDiagnostic(name, source) {
+  const totalRows = Array.isArray(source?.rows) ? source.rows.length : 0;
   const rows = Array.isArray(source?.rows) ? source.rows.slice(0, MAX_SCHEMA_SAMPLE_ROWS) : [];
+  if (totalRows > MAX_SCHEMA_SAMPLE_ROWS) {
+    debugDataHealth({ event: 'sample-truncated', source: name, totalRows, sampledRows: rows.length });
+  }
   if (rows.length === 0) return { source: name, schema: '{}' };
   const rowShapes = rows.map((row) => inferShape(row, new Set()));
   return { source: name, schema: formatShape(mergeShapes(rowShapes), 0) };
@@ -167,6 +187,8 @@ function combineSourceMetadata(sources) {
   const metadata = sources.map((source) => source?.metadata).filter(Boolean);
   const retrieved = metadata.map((value) => value['retrieved-at']).filter(Boolean).sort().at(-1);
   const now = retrieved ?? new Date().toISOString();
+  const availability = sources.length > 0 ? 'available' : 'empty';
+  if (availability === 'empty') debugDataHealth({ event: 'no-sources-observed' });
   return {
     'source-id': 'data-health',
     'source-kind': 'derived',
@@ -174,6 +196,6 @@ function combineSourceMetadata(sources) {
     'retrieved-at': now,
     completeness: metadata.some((value) => value.completeness === 'partial') ? 'partial' : metadata.length > 0 && metadata.every((value) => value.completeness === 'complete') ? 'complete' : 'unknown',
     freshness: metadata.some((value) => value.freshness === 'stale') ? 'stale' : metadata.length > 0 && metadata.every((value) => value.freshness === 'fresh') ? 'fresh' : 'unknown',
-    availability: sources.length > 0 ? 'available' : 'empty'
+    availability
   };
 }

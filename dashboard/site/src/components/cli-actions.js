@@ -20,6 +20,12 @@ export function setDeclaredCliActions(actions, options = {}) {
   declaredCliActionTemplateValues = options.templateValues ?? {};
 }
 
+/** @returns {string | undefined} */
+export function declaredAgentTaskActionId() {
+  return declaredCliActions.find((action) => action.command === 'gh agent-task create --from-file -'
+    && action.placement === 'row')?.id;
+}
+
 /**
  * @param {string} id
  * @param {Record<string, boolean>} argumentsValue
