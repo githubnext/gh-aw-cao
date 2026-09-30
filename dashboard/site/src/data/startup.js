@@ -102,7 +102,7 @@ export function createBatchedSourceLoader(dashboardContext) {
 /** @typedef {Record<string, import('../presenter.js').LogicalSourceInput>} DashboardSources */
 /** @typedef {{ filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc' | 'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card', formValues?: Record<string, string|number|boolean> }} DashboardQueryContext */
 /** @typedef {{ signal: AbortSignal, onUpdate: (sources: DashboardSources) => void, routeParameters?: Record<string, string>, queryContext?: DashboardQueryContext }} PageLoadOptions */
-/** @typedef {((pageId: string, options: PageLoadOptions) => Promise<DashboardSources>) & { prepare?: (pageId: string) => Promise<void>, subscribeBackgroundSources?: (sourceNames: string[], options: PageLoadOptions) => Promise<DashboardSources> }} PageSourceLoader */
+/** @typedef {((pageId: string, options: PageLoadOptions) => Promise<DashboardSources>) & { prepare?: (pageId: string) => Promise<void>, subscribeBackgroundSources?: (sourceNames: string[], options: PageLoadOptions) => Promise<DashboardSources>, subscribeViewSources?: (pageId: string, viewId: string, sourceNames: string[], options: PageLoadOptions) => Promise<DashboardSources> }} PageSourceLoader */
 
 /**
  * Gives a cached render two animation frames to commit before network activity starts.
@@ -264,6 +264,18 @@ export async function startDashboardData(options) {
       pagination,
       transform: (sources) => bindContinuations(pageId, sources, paginatedSources, pageOptions),
       errorLabel: `Unable to update dashboard page ${pageId}`
+    });
+  };
+  loadPageSources.subscribeViewSources = (pageId, viewId, sourceNames, pageOptions) => {
+    const bindings = Object.fromEntries(Object.entries(pagePaginatedSourceBindings(pageId))
+      .filter(([, binding]) => binding.viewId === viewId));
+    return subscribeSources({
+      subscriptionId: `page:${pageId}:view:${viewId}`,
+      sourceNames: [...new Set(sourceNames)],
+      pageOptions: { ...pageOptions, pageId },
+      pagination: continuationRequests(Object.keys(bindings)),
+      transform: (sources) => bindContinuations(pageId, sources, bindings, pageOptions),
+      errorLabel: `Unable to update dashboard view ${viewId}`
     });
   };
   loadPageSources.subscribeBackgroundSources = async (sourceNames, pageOptions) => {

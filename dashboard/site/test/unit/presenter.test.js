@@ -890,10 +890,12 @@ describe('dashboard DOM provenance', () => {
     });
     document.body.append(rendered);
     const page = await activatePage(rendered, 'repositories');
+    console.log('DEBUG PAGE', page?.outerHTML.slice(0, 3200));
+    console.log('DEBUG CURRENT', rendered.querySelector('[data-page-id="repositories"]')?.outerHTML.slice(0, 3200));
 
     await vi.waitFor(() => {
       expect(page?.querySelector('td[data-field="repository"]')?.textContent).toBe('githubnext/gh-aw-cao');
-    });
+    }).catch((error) => { console.log('DEBUG LATER', rendered.querySelector('[data-page-id="repositories"]')?.outerHTML.slice(0, 3500)); throw error; });
     expect(page?.querySelector('.dashboard-view-skeleton')).toBeNull();
     rendered.remove();
   });

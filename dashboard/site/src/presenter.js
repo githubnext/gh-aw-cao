@@ -100,7 +100,7 @@ import {
  */
 
 /**
- * @typedef {((pageId: string, options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>>) & { prepare?: (pageId: string) => Promise<void>, subscribeBackgroundSources?: (sourceNames: string[], options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>> }} PageSourceLoader
+ * @typedef {((pageId: string, options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>>) & { prepare?: (pageId: string) => Promise<void>, subscribeBackgroundSources?: (sourceNames: string[], options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>>, subscribeViewSources?: (pageId: string, viewId: string, sourceNames: string[], options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>> }} PageSourceLoader
  */
 
 /**
@@ -313,22 +313,51 @@ export function renderDashboard(input) {
           if (rendersBeforePageSources) {
             return render(sources);
           }
-          options.onUpdate = (pageSources) => {
-            updateHorizon(pageSources);
+          /** @param {Record<string, LogicalSourceInput>} pageSources */
+          const publish = (pageSources) => {
+            const merged = { ...liveSources.get(), ...pageSources };
+            updateHorizon(merged);
             batch(() => {
-              liveSources.set(pageSources);
-              loading.set(false);
+              liveSources.set(merged);
             });
           };
           const rendered = render(sources);
-          void input.loadPageSources(pageId, options).then(options.onUpdate).catch((error) => {
-            if (options.signal.aborted) return;
-            debugRender('page source binding failed', {
-              pageId,
-              message: error instanceof Error ? error.message : String(error)
+          if (input.loadPageSources.subscribeViewSources) {
+            const payload = getBuiltInPagePayload(resolvedPage(), reusableViews);
+            const bindings = (payload.views ?? []).flatMap((view, index) => {
+              if (!isPlainObject(view) || (typeof view.element === 'string' && elementLoadsSourcesAsync(view.element))) return [];
+              const names = getViewSources(view);
+              return names.length ? [{ id: typeof view.id === 'string' ? view.id : `view-${index + 1}`, names }] : [];
             });
-            loading.set(false);
-          });
+            const remaining = collectDashboardPageSourceNames(document, pageId, effectiveQueryContext?.viewMode)
+              .filter((name) => !bindings.some((binding) => binding.names.includes(name)));
+            if (remaining.length) bindings.push({ id: 'page-chrome', names: remaining });
+            const subscribeViewSources = input.loadPageSources.subscribeViewSources;
+            const subscriptions = bindings.map(({ id, names }) => subscribeViewSources(
+              pageId, id, names, { ...options, onUpdate: publish }
+            ).then(publish));
+            void Promise.allSettled(subscriptions).then((results) => {
+              if (options.signal.aborted) return;
+              for (const result of results) {
+                if (result.status === 'rejected') debugRender('view source binding failed', {
+                  pageId,
+                  message: result.reason instanceof Error ? result.reason.message : String(result.reason)
+                });
+              }
+              loading.set(false);
+            });
+          } else {
+            options.onUpdate = publish;
+            void input.loadPageSources(pageId, options).then(publish).catch((error) => {
+              if (options.signal.aborted) return;
+              debugRender('page source binding failed', {
+                pageId,
+                message: error instanceof Error ? error.message : String(error)
+              });
+            }).finally(() => {
+              if (!options.signal.aborted) loading.set(false);
+            });
+          }
           return rendered;
         }
         const renderedPage = render(sources);
@@ -720,9 +749,10 @@ function renderPageSkeleton() {
  * @param {Array<Record<string, unknown>>} reusableViews
  * @param {PageSourceLoadOptions['queryContext']} [queryContext]
  * @param {Array<Record<string, unknown>>} [queries]
+ * @param {{ sources: import('./reactive.js').State<Record<string, LogicalSourceInput>>, loading: import('./reactive.js').State<boolean>, signal: AbortSignal }} [binding]
  * @returns {HTMLElement}
  */
-function renderPage(page, sources, units, dashboardDefaults, cardTemplates, reusableViews, queryContext, queries = [], binding) {
+function renderPage(page, sources, units, dashboardDefaults, cardTemplates, reusableViews, queryContext, queries = [], binding = undefined) {
   const title = getPageTitle(page);
   const payload = getBuiltInPagePayload(page, reusableViews);
   return renderCustomPage(payload, title, sources, units, dashboardDefaults, cardTemplates, true, queryContext, queries, binding);
@@ -738,9 +768,10 @@ function renderPage(page, sources, units, dashboardDefaults, cardTemplates, reus
  * @param {boolean} [withFilterBar]
  * @param {PageSourceLoadOptions['queryContext']} [queryContext]
  * @param {Array<Record<string, unknown>>} [queries]
+ * @param {{ sources: import('./reactive.js').State<Record<string, LogicalSourceInput>>, loading: import('./reactive.js').State<boolean>, signal: AbortSignal }} [binding]
  * @returns {HTMLElement}
  */
-function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTemplates, withFilterBar = true, queryContext, queries = [], binding) {
+function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTemplates, withFilterBar = true, queryContext, queries = [], binding = undefined) {
   const effectiveDashboardDefaults = inventoryPage(page.id)
     ? { ...dashboardDefaults, time: undefined }
     : dashboardDefaults;
@@ -777,6 +808,13 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
     }
   }
   const renderedViews = views.map((view, index) => {
+    const viewSourceNames = getViewSources(view);
+    const isSelfBound = isPlainObject(view) && typeof view.element === 'string' && elementLoadsSourcesAsync(view.element);
+    /** @param {Record<string, LogicalSourceInput>} current */
+    const viewIsPending = (current) => binding?.loading.get() === true
+      && viewSourceNames.some((name, sourceIndex) => (
+        !current[resolveViewSourceName(current, page.id, view, index, name, sourceIndex)]
+      ));
     const viewId = isPlainObject(view) && typeof view.id === 'string' ? view.id : '';
     const headingTag = sections.length > 0 && !standaloneCalloutViewIds.has(viewId) ? 'h4' : 'h3';
     const layout = isPlainObject(view) && typeof view.layout === 'string' ? view.layout : 'full';
@@ -792,8 +830,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
     );
     const isNavigationCompositeView = isPlainObject(view) && view.mark === 'element';
     const render = (viewSources = sources, pending = false) => {
-      let rendered = pending && getViewSources(view).length > 0
-        && !(isPlainObject(view) && typeof view.element === 'string' && elementLoadsSourcesAsync(view.element))
+      let rendered = pending && viewSourceNames.length > 0 && !isSelfBound
         ? renderPageSection(page.id, getViewTitle(view, index), [renderDashboardViewSkeleton()], headingTag)
         : renderCustomView(page.id, view, index, viewSources, units, cardTemplates, headingTag, routeParameter, queryContext);
       if (isPlainObject(view)) {
@@ -864,29 +901,41 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       return rendered;
     };
     let rendered = isRouteView
+      || (binding && viewIsPending(binding.sources.get()))
       || index === 0
       || (isPlainObject(view) && (view.mark === 'callout' || (
         typeof view.element === 'string' && elementLoadsSourcesAsync(view.element)
       )))
-      ? render(binding?.sources.get() ?? sources, binding?.loading.get() ?? false)
+      ? render(binding?.sources.get() ?? sources, viewIsPending(binding?.sources.get() ?? sources))
       : renderLazyView({
         label: getViewTitle(view, index),
         headingLevel: headingTag,
         minHeight: layout === 'half' || layout === 'third' ? 180 : 280,
-        render: () => render(binding?.sources.get() ?? sources, binding?.loading.get() ?? false)
+        render: () => {
+          const current = binding?.sources.get() ?? sources;
+          const next = render(current, viewIsPending(current));
+          rendered = next;
+          return next;
+        }
       });
-    if (binding && getViewSources(view).length > 0
-        && !(isPlainObject(view) && typeof view.element === 'string' && elementLoadsSourcesAsync(view.element))) {
+    if (binding && viewSourceNames.length > 0 && !isSelfBound) {
       let initial = true;
+      let previousSources = binding.sources.get();
+      let previousPending = viewIsPending(previousSources);
       effect(() => {
         const current = binding.sources.get();
-        const pending = binding.loading.get() && getViewSources(view).some((name, sourceIndex) => (
-          !current[resolveViewSourceName(current, page.id, view, index, name, sourceIndex)]
-        ));
+        const pending = viewIsPending(current);
         if (initial) {
           initial = false;
           return;
         }
+        const changed = previousPending !== pending || viewSourceNames.some((name, sourceIndex) => {
+          const resolved = resolveViewSourceName(current, page.id, view, index, name, sourceIndex);
+          return current[resolved] !== previousSources[resolved];
+        });
+        previousSources = current;
+        previousPending = pending;
+        if (!changed || rendered.hasAttribute('data-lazy-view')) return;
         const replacement = render(current, pending);
         if (rendered.parentNode) rendered.replaceWith(replacement);
         rendered = replacement;
@@ -919,6 +968,22 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       ...sections.map((section) => renderLayoutSection(page.id, section, renderedViewsById, sources))
     )
     : h('div', { className: 'custom-view-grid' }, ...renderedViews);
+  if (binding) {
+    for (const section of sections) {
+      if (!section['count-source'] && !section['count-sources']?.length) continue;
+      const sectionRoot = [...renderedContent.querySelectorAll('[data-section-id]')]
+        .find((element) => element.getAttribute('data-section-id') === section.id);
+      if (!sectionRoot) continue;
+      let initial = true;
+      effect(() => {
+        const current = binding.sources.get();
+        if (initial) { initial = false; return; }
+        const next = renderLayoutSection(page.id, section, renderedViewsById, current);
+        const oldChrome = sectionRoot.querySelector(':scope > :first-child');
+        if (oldChrome && next.firstChild) oldChrome.replaceWith(next.firstChild);
+      }, { signal: binding.signal });
+    }
+  }
   const routeTabs = routeParameter ? declaredRouteTabs(page.route) : null;
   const renderedRouteTabs = routeTabs && routeParameter
     ? renderDeclaredRouteTabs({
