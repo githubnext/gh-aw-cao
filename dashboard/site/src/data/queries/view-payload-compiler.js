@@ -67,8 +67,9 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
   const requestedSources = options.sourceNames ? new Set(options.sourceNames) : null;
 
   views.forEach((view, viewIndex) => {
-    if (options.viewId && (!isPlainObject(view) || view.id !== options.viewId)) return;
-    if (options.queryContext?.viewMode && !viewMatchesMode(view, options.queryContext.viewMode)) return;
+    if (options.viewId && (!isPlainObject(view)
+      || (view.id ?? `view-${viewIndex + 1}`) !== options.viewId)) return;
+    if (!options.viewId && options.queryContext?.viewMode && !viewMatchesMode(view, options.queryContext.viewMode)) return;
     const sources = getViewSources(view);
     if (sources.length === 0) return;
     const viewData = isPlainObject(view) && isPlainObject(view.data)

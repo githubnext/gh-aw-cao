@@ -38,6 +38,20 @@ it('compiles distinct aliases when two views filter the same source differently'
   expect(results[dashboardViewAliasName('operations', page.views[1], 1, 'runs')].rows).toEqual([sources.runs.rows[1]]);
 });
 
+it('compiles the generated identifier for an unnamed bound view regardless of page mode', () => {
+  const page = {
+    views: [{ mark: 'table', data: { source: 'runs', filters: { 'run-conclusion': 'success' } } }]
+  };
+  const payload = compileDashboardViewPayloadQueries(page, 'operations', {
+    viewId: 'view-1',
+    queryContext: { viewMode: 'chart' }
+  });
+  expect(payload.aliases).toEqual([dashboardViewAliasName('operations', page.views[0], 0, 'runs')]);
+  expect(payload.queries[0]).toMatchObject({
+    filter: { predicates: [{ field: 'run-conclusion', equals: 'success' }] }
+  });
+});
+
 it('resolves page form defaults and runtime values into typed query parameters', () => {
   const page = {
     form: {

@@ -905,7 +905,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
         render: () => {
           const current = binding?.sources.get() ?? sources;
           const next = render(current, viewIsPending(current));
-          rendered = next;
+          if (disclosure !== 'supplemental') rendered = next;
           return next;
         }
       });
@@ -926,24 +926,19 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
         });
         previousSources = current;
         previousPending = pending;
-        if (!changed || rendered.hasAttribute('data-lazy-view')) return;
-        let replacement = render(current, pending);
-        if (disclosure === 'supplemental') {
-          replacement = renderViewDisclosure(replacement, layout, disclosure, getViewTitle(view, index));
-          const previousDetails = rendered.matches('details') ? rendered : rendered.querySelector('details');
-          const nextDetails = replacement.matches('details') ? replacement : replacement.querySelector('details');
-          if (previousDetails instanceof HTMLDetailsElement && nextDetails instanceof HTMLDetailsElement) {
-            nextDetails.open = previousDetails.open;
-          }
-        }
+        const target = disclosure === 'supplemental'
+          ? rendered.querySelector(':scope > :not(summary)')
+          : rendered;
+        if (!(target instanceof HTMLElement) || !changed || target.hasAttribute('data-lazy-view')) return;
+        const replacement = render(current, pending);
         for (const attribute of ['data-view-id', 'data-view-layout', 'data-disclosure', 'data-view-mode-content', 'data-view-lazy-list']) {
-          if (rendered.hasAttribute(attribute)) replacement.setAttribute(attribute, rendered.getAttribute(attribute) ?? '');
+          if (target.hasAttribute(attribute)) replacement.setAttribute(attribute, target.getAttribute(attribute) ?? '');
         }
-        if (rendered.classList.contains('custom-view')) replacement.classList.add('custom-view');
-        const active = rendered.ownerDocument.activeElement;
-        const focusedId = active instanceof HTMLElement && rendered.contains(active) ? active.id : '';
-        if (rendered.parentNode) rendered.replaceWith(replacement);
-        rendered = replacement;
+        if (target.classList.contains('custom-view')) replacement.classList.add('custom-view');
+        const active = target.ownerDocument.activeElement;
+        const focusedId = active instanceof HTMLElement && target.contains(active) ? active.id : '';
+        if (target.parentNode) target.replaceWith(replacement);
+        if (disclosure !== 'supplemental') rendered = replacement;
         if (focusedId) {
           const focusTarget = [...replacement.querySelectorAll('[id]')].find((node) => node.id === focusedId);
           if (focusTarget instanceof HTMLElement) focusTarget.focus({ preventScroll: true });
@@ -968,7 +963,8 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
 
     rendered.classList.remove('custom-view');
     rendered.removeAttribute('data-view-layout');
-    return renderViewDisclosure(rendered, layout, disclosure, getViewTitle(view, index));
+    rendered = renderViewDisclosure(rendered, layout, disclosure, getViewTitle(view, index));
+    return rendered;
   });
   const renderedViewsById = new Map(views.map((view, index) => [
     isPlainObject(view) && typeof view.id === 'string' ? view.id : `view-${index + 1}`,

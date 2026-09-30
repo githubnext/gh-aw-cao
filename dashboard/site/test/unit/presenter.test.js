@@ -615,6 +615,52 @@ describe('dashboard DOM provenance', () => {
     rendered.remove();
   });
 
+  it('updates a supplemental view inside its existing disclosure', async () => {
+    let update = () => {};
+    const loadPageSources = /** @type {NonNullable<Parameters<typeof renderDashboardView>[0]['loadPageSources']>} */ (
+      () => new Promise(() => {})
+    );
+    loadPageSources.subscribeViewSources = (_pageId, _viewId, _sourceNames, options) => {
+      update = () => options.onUpdate({
+        'more-data': {
+          source: 'more-data',
+          rows: [{ name: 'Updated' }],
+          metadata: { 'source-id': 'more-data', 'source-kind': 'fixture', 'as-of': '', 'retrieved-at': '', availability: 'available', completeness: 'complete', freshness: 'fresh' }
+        }
+      });
+      return new Promise(() => {});
+    };
+    const rendered = renderDashboardView({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'disclosure-bindings',
+          title: 'Disclosure bindings',
+          pages: [{
+            id: 'overview', kind: 'custom', title: 'Overview',
+            views: [{
+              id: 'more', title: 'More', mark: 'table', disclosure: 'supplemental',
+              data: { source: 'more-data' }, encoding: { columns: [{ field: 'name' }] }
+            }]
+          }]
+        }
+      },
+      sources: {},
+      loadPageSources
+    });
+    document.body.append(rendered);
+    await vi.waitFor(() => expect(rendered.querySelector('.view-disclosure')).not.toBeNull());
+    const disclosure = /** @type {HTMLDetailsElement} */ (rendered.querySelector('.view-disclosure'));
+    disclosure.open = true;
+    update();
+    await vi.waitFor(() => expect(disclosure.textContent).toContain('Updated'));
+    expect(rendered.querySelectorAll('.view-disclosure')).toHaveLength(1);
+    expect(disclosure.querySelector('details')).toBeNull();
+    expect(disclosure.open).toBe(true);
+    disposeDashboard(rendered);
+    rendered.remove();
+  });
+
   it('requests a refresh after pulling down from the top of Overview', () => {
     const rendered = renderDashboardView({
       document: authoritativeDashboardDocument,
