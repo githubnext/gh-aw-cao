@@ -245,7 +245,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(rhythmBars).toHaveCount(14);
     await expect(factory.locator('.factory-rhythm-day').nth(3))
       .toHaveAttribute('aria-label', 'Thu 2026-09-17: 0 successful runs this week (day not yet reached); 4 successful runs last week.');
-    const layered = await factory.locator('.factory-rhythm-day').first().evaluate((day) => {
+    const layeredDays = await factory.locator('.factory-rhythm-day').evaluateAll((days) => days.map((day) => {
       const previous = day.querySelector('.factory-rhythm-baseline');
       const current = day.querySelector('.factory-rhythm-current');
       if (!previous || !current) throw new Error('Both rhythm bars must be present');
@@ -260,13 +260,14 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
         currentRight: currentBounds.right,
         currentLayer: getComputedStyle(current).zIndex
       };
-    });
-    expect(layered.currentBottom).toBeCloseTo(layered.previousBottom, 0);
-    expect(layered.currentRight - layered.currentLeft).toBeCloseTo(layered.previousRight - layered.previousLeft, 0);
-    expect(layered.currentLeft).toBeGreaterThan(layered.previousLeft);
-    expect(layered.currentLeft).toBeLessThan(layered.previousRight);
-    expect(layered.currentRight).toBeGreaterThan(layered.previousRight);
-    expect(layered.currentLayer).toBe('1');
+    }));
+    expect(layeredDays).toHaveLength(7);
+    for (const layered of layeredDays) {
+      expect(layered.currentBottom).toBeCloseTo(layered.previousBottom, 0);
+      expect(layered.currentLeft).toBeCloseTo(layered.previousLeft, 0);
+      expect(layered.currentRight).toBeCloseTo(layered.previousRight, 0);
+      expect(layered.currentLayer).toBe('1');
+    }
     await expect(rhythmBars.first()).toHaveCSS('animation-name', 'factory-rhythm-bar-grow');
     expect(await rhythmBars.last().evaluate((element) => getComputedStyle(element).animationDelay)).toBe('0.21s');
     await expect(factory.locator('.factory-station')).toHaveCount(2);

@@ -1632,8 +1632,8 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 @keyframes factory-rhythm-bar-grow {
   from { opacity: .4; transform: translateX(-50%) scaleY(0); }
 }
-.factory-rhythm-bar-pair .factory-rhythm-baseline { left: 42%; width: 58%; border: 1px solid var(--border); background: var(--canvas-subtle); }
-.factory-rhythm-bar-pair .factory-rhythm-current { z-index: 1; left: 58%; width: 58%; background: color-mix(in srgb, var(--success) 72%, var(--accent)); }
+.factory-rhythm-bar-pair .factory-rhythm-baseline { width: 58%; border: 1px solid var(--border); background: var(--canvas-subtle); }
+.factory-rhythm-bar-pair .factory-rhythm-current { z-index: 1; width: 58%; background: color-mix(in srgb, var(--success) 72%, var(--accent)); }
 .factory-rhythm-bars small { color: var(--muted); font-size: .625rem; font-style: normal; }
 .factory-rhythm-pending .factory-rhythm-bars { border-radius: 6px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
 .factory-rhythm-pending .factory-rhythm-bars > * { visibility: hidden; }
