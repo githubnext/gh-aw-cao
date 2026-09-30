@@ -495,34 +495,33 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 			ctx := propagation.TraceContext{}.Extract(request.Context(), propagation.HeaderCarrier(request.Header))
 			ctx, span := telemetry.Tracer().Start(ctx, "cao_dashboard.auth.revalidate")
 			defer span.End()
-			request = request.WithContext(ctx)
-			account, err := oauth.authorizedAccount(request.Context(), session.AccessToken)
+			account, err := oauth.authorizedAccount(ctx, session.AccessToken)
 			if err != nil || !strings.EqualFold(account.Login, session.Login) {
 				oauth.logBranch("session.authorization_rejected")
-				recordOAuthDecision(request.Context(), "session_revalidation", "rejected")
-				oauth.invalidateSessionIfUnchanged(response, request.Context(), session.ID, expected)
+				recordOAuthDecision(ctx, "session_revalidation", "rejected")
+				oauth.invalidateSessionIfUnchanged(response, ctx, session.ID, expected)
 				return oauthSession{}, false
 			}
 			session.AvatarURL = account.AvatarURL
 			session.AuthorizedAt = time.Now().UTC()
-			saved, err := oauth.saveSessionIfUnchanged(request.Context(), session, expected)
+			saved, err := oauth.saveSessionIfUnchanged(ctx, session, expected)
 			if err != nil {
 				oauth.logBranch("session.revalidation_save_failed")
-				recordOAuthDecision(request.Context(), "session_revalidation", "store_failed")
+				recordOAuthDecision(ctx, "session_revalidation", "store_failed")
 				return oauthSession{}, false
 			}
 			if !saved {
-				latest, err := oauth.loadSession(request.Context(), session.ID)
+				latest, err := oauth.loadSession(ctx, session.ID)
 				if err != nil || time.Since(latest.AuthorizedAt) >= authorizationRecheckInterval {
 					oauth.logBranch("session.revalidation_superseded")
-					recordOAuthDecision(request.Context(), "session_revalidation", "superseded")
+					recordOAuthDecision(ctx, "session_revalidation", "superseded")
 					return oauthSession{}, false
 				}
 				session = latest
-				recordOAuthDecision(request.Context(), "session_revalidation", "concurrent_accepted")
+				recordOAuthDecision(ctx, "session_revalidation", "concurrent_accepted")
 			} else {
 				oauth.logBranch("session.authorization_revalidated")
-				recordOAuthDecision(request.Context(), "session_revalidation", "accepted")
+				recordOAuthDecision(ctx, "session_revalidation", "accepted")
 			}
 		}
 		oauth.logBranch("session.active")
@@ -637,10 +636,6 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 	serverLog.Printf("oauth session refreshed")
 	oauth.logBranch("refresh.succeeded")
 	return session, true
-}
-
-func (oauth *githubOAuth) invalidateSession(response http.ResponseWriter, ctx context.Context, sessionID string) {
-	oauth.invalidateSessionIfUnchanged(response, ctx, sessionID, "")
 }
 
 func (oauth *githubOAuth) invalidateSessionIfUnchanged(response http.ResponseWriter, ctx context.Context, sessionID, expected string) {
