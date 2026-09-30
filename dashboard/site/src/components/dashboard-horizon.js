@@ -25,6 +25,7 @@ const debugDashboardHorizon = createDebug('dashboard-horizon');
  * @returns {{
  *   element: HTMLElement,
  *   update: (next: HorizonViewModel) => void,
+ *   collapse: () => void,
  *   dispose: () => void
  * }}
  */
@@ -144,6 +145,9 @@ export function renderDashboardHorizon(options) {
           ? current
           : next;
       });
+    },
+    collapse() {
+      expanded.set(false);
     },
     dispose() {
       lifetime.abort();
