@@ -167,7 +167,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
           id: 'overview-parity',
           title: 'Overview parity',
           'card-templates': dashboardDocument.dashboard['card-templates'],
-          pages: [pageDefinition]
+          pages: [pageDefinition, { id: 'other', kind: 'custom', title: 'Other', views: [] }]
         }
       },
       sourceData: sources,
@@ -301,7 +301,14 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
       getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length
     )).toBe(2);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    await page.screenshot({ path: `test-results/overview-${viewport.width}.png`, fullPage: true });
   }
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.locator('[data-nav-page-id="other"]').click();
+  await expect(page.locator('.app-main > .top-nav')).toBeVisible();
+  await expect(page.locator('.app-main > .report-footer')).toBeVisible();
+  await expect(page.locator('main.dashboard-prototype')).toHaveCSS('padding-top', '24px');
 });
 
 test('disables Overview rhythm animation when reduced motion is preferred', async ({ page }) => {
