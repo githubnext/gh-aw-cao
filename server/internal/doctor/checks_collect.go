@@ -128,8 +128,8 @@ func (d Doctor) checkCollectionSettings(context.Context) Check {
 type collectionSettingsReason string
 
 const (
-	collectionSettingsReasonNoSecretAdmitOnly collectionSettingsReason = "no-webhook-secret-admit-only"
-	collectionSettingsReasonNoSecretWorker    collectionSettingsReason = "no-webhook-secret-worker"
+	collectionSettingsReasonNoSecretAdmitOnly collectionSettingsReason = "no-webhook-secret-admit-only" // #nosec G101 -- diagnostic reason, not a credential
+	collectionSettingsReasonNoSecretWorker    collectionSettingsReason = "no-webhook-secret-worker"     // #nosec G101 -- diagnostic reason, not a credential
 	collectionSettingsReasonAdmitOnly         collectionSettingsReason = "admit-only"
 	collectionSettingsReasonConfigured        collectionSettingsReason = "configured"
 )
