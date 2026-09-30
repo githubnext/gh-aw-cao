@@ -21,6 +21,10 @@ func TestListWorkflowRunsExposesPaginatedRunIdentity(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		requestedPages = append(requestedPages, request.URL.Query().Get("page"))
 		response.Header().Set("Content-Type", "application/json")
+		response.Header().Set("X-RateLimit-Limit", "5000")
+		response.Header().Set("X-RateLimit-Remaining", "4999")
+		response.Header().Set("X-RateLimit-Reset", strconv.FormatInt(time.Now().Add(time.Hour).Unix(), 10))
+		response.Header().Set("X-RateLimit-Resource", "core")
 		if request.URL.Query().Get("page") == "1" {
 			response.Header().Set("Link", fmt.Sprintf(
 				"<%s/repos/octo/api/actions/runs?page=2&per_page=1>; rel=\"next\"", serverURL(request),
@@ -43,7 +47,7 @@ func TestListWorkflowRunsExposesPaginatedRunIdentity(t *testing.T) {
 			7: {client: installationClient},
 		},
 	}
-	first, nextPage, err := client.ListWorkflowRuns(context.Background(), 7, "octo/api", 1, 1)
+	first, nextPage, quota, err := client.ListWorkflowRuns(context.Background(), 7, "octo/api", 1, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +55,10 @@ func TestListWorkflowRunsExposesPaginatedRunIdentity(t *testing.T) {
 		!first[0].CreatedAt.Equal(time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)) || nextPage != 2 {
 		t.Fatalf("first page runs=%+v next=%d, want run 42 attempt 2 next page 2", first, nextPage)
 	}
-	second, nextPage, err := client.ListWorkflowRuns(context.Background(), 7, "octo/api", nextPage, 1)
+	if !quota.HasResponse || !quota.HasObservation || quota.Resource != "core" || quota.Observation.Remaining != 4999 {
+		t.Fatalf("first page quota=%+v, want core response observation", quota)
+	}
+	second, nextPage, _, err := client.ListWorkflowRuns(context.Background(), 7, "octo/api", nextPage, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,6 +67,40 @@ func TestListWorkflowRunsExposesPaginatedRunIdentity(t *testing.T) {
 	}
 	if got := strings.Join(requestedPages, ","); got != "1,2" {
 		t.Fatalf("requested pages=%q, want 1,2", got)
+	}
+}
+
+func TestQuotaRateLimitReturnsCoreObservation(t *testing.T) {
+	reset := time.Now().Add(time.Hour).UTC().Truncate(time.Second)
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.Header().Set("Content-Type", "application/json")
+		response.Header().Set("X-RateLimit-Limit", "5000")
+		response.Header().Set("X-RateLimit-Remaining", "4321")
+		response.Header().Set("X-RateLimit-Reset", strconv.FormatInt(reset.Unix(), 10))
+		response.Header().Set("X-RateLimit-Resource", "core")
+		_, _ = fmt.Fprintf(response, `{"resources":{"core":{"limit":5000,"remaining":4321,"reset":%d}}}`,
+			reset.Unix())
+	}))
+	defer server.Close()
+	baseURL, err := url.Parse(server.URL + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	installationClient := github.NewClient(server.Client())
+	installationClient.BaseURL = baseURL
+	client := &Client{
+		installations: map[int64]*installationEntry{
+			7: {client: installationClient},
+		},
+	}
+	quota, err := client.QuotaRateLimit(context.Background(), 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !quota.HasResponse || !quota.HasObservation || quota.Resource != "core" ||
+		quota.Observation.Limit != 5000 || quota.Observation.Remaining != 4321 ||
+		!quota.Observation.ResetAt.Equal(reset) {
+		t.Fatalf("quota observation=%+v, want core 4321/5000 reset at %s", quota, reset)
 	}
 }
 

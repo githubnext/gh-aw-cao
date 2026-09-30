@@ -20,6 +20,9 @@ const (
 
 // ResponseQuota is the quota metadata carried by one GitHub API response.
 type ResponseQuota struct {
+	// HasResponse distinguishes an API response without quota headers from a
+	// transport failure where the request outcome is unknown.
+	HasResponse bool
 	// Resource is the rate-limit resource the response was metered against.
 	Resource string
 	// Observation is valid when HasObservation is true.
@@ -33,7 +36,7 @@ type ResponseQuota struct {
 // ParseResponse extracts authoritative quota metadata from a GitHub API
 // response's status and headers. Only rate-limit headers are read.
 func ParseResponse(header http.Header, statusCode int, now time.Time) ResponseQuota {
-	result := ResponseQuota{Resource: ResourceCore}
+	result := ResponseQuota{HasResponse: true, Resource: ResourceCore}
 	if resource := strings.ToLower(strings.TrimSpace(header.Get("X-RateLimit-Resource"))); identifierPattern.MatchString(resource) {
 		result.Resource = resource
 	}

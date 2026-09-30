@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
+	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
 )
 
 type workflowRunPageKey struct {
@@ -22,9 +23,12 @@ type workflowRunPageKey struct {
 }
 
 type workflowRunPage struct {
-	runs     []githubapp.WorkflowRun
-	nextPage int
-	err      error
+	runs            []githubapp.WorkflowRun
+	nextPage        int
+	responseQuota   githubquota.ResponseQuota
+	err             error
+	rateObservation githubquota.Observation
+	rateLimitErr    error
 }
 
 type fakeWorkflowRunEnumerator struct {
@@ -36,6 +40,60 @@ type fakeRepositoryEnumerator struct {
 	installations []githubapp.Installation
 	repositories  map[int64][]githubapp.Repository
 	failures      map[int64]error
+}
+
+type fakeRunQuota struct {
+	known        bool
+	unavailable  error
+	observations []githubquota.Observation
+	reservations []githubquota.Reservation
+	commits      []githubquota.Observation
+	releases     int
+	parks        int
+}
+
+func (f *fakeRunQuota) Reserve(
+	_ context.Context, bucket githubquota.BucketID, request githubquota.ReservationRequest,
+) (githubquota.Reservation, error) {
+	if request.EstimatedCost != 1 {
+		return githubquota.Reservation{}, errors.New("unexpected quota reservation cost")
+	}
+	if f.unavailable != nil {
+		return githubquota.Reservation{}, f.unavailable
+	}
+	if !f.known {
+		return githubquota.Reservation{}, githubquota.ErrUnknown
+	}
+	reservation := githubquota.Reservation{
+		ID: "run-list", Bucket: bucket.Normalize(), Amount: request.EstimatedCost,
+	}
+	f.reservations = append(f.reservations, reservation)
+	return reservation, nil
+}
+
+func (f *fakeRunQuota) Observe(
+	_ context.Context, _ githubquota.BucketID, observation githubquota.Observation,
+) error {
+	f.known = true
+	f.observations = append(f.observations, observation)
+	return nil
+}
+
+func (f *fakeRunQuota) Commit(
+	_ context.Context, _ githubquota.Reservation, observation githubquota.Observation,
+) error {
+	f.commits = append(f.commits, observation)
+	return nil
+}
+
+func (f *fakeRunQuota) Release(context.Context, githubquota.Reservation) error {
+	f.releases++
+	return nil
+}
+
+func (f *fakeRunQuota) Park(context.Context, githubquota.BucketID, time.Time, string) error {
+	f.parks++
+	return nil
 }
 
 func (f fakeRepositoryEnumerator) ListInstallations(context.Context) ([]githubapp.Installation, error) {
@@ -53,17 +111,36 @@ func (f fakeRepositoryEnumerator) ListRepositories(
 
 func (f *fakeWorkflowRunEnumerator) ListWorkflowRuns(
 	_ context.Context, installationID int64, repository string, page, perPage int,
-) ([]githubapp.WorkflowRun, int, error) {
+) ([]githubapp.WorkflowRun, int, githubquota.ResponseQuota, error) {
 	if perPage != runBackfillPageSize {
-		return nil, 0, errors.New("unexpected workflow run page size")
+		return nil, 0, githubquota.ResponseQuota{}, errors.New("unexpected workflow run page size")
 	}
 	key := workflowRunPageKey{installationID: installationID, repository: repository, page: page}
 	f.calls = append(f.calls, key)
 	result, ok := f.pages[key]
 	if !ok {
-		return nil, 0, errors.New("unexpected workflow run page")
+		return nil, 0, githubquota.ResponseQuota{}, errors.New("unexpected workflow run page")
 	}
-	return result.runs, result.nextPage, result.err
+	return result.runs, result.nextPage, result.responseQuota, result.err
+}
+
+func (f *fakeWorkflowRunEnumerator) QuotaRateLimit(
+	context.Context, int64,
+) (githubquota.ResponseQuota, error) {
+	for _, page := range f.pages {
+		if page.rateLimitErr != nil {
+			return githubquota.ResponseQuota{
+				HasResponse: true, Resource: githubquota.ResourceCore,
+			}, page.rateLimitErr
+		}
+		if !page.rateObservation.ResetAt.IsZero() {
+			return githubquota.ResponseQuota{
+				HasResponse: true, Resource: githubquota.ResourceCore,
+				HasObservation: true, Observation: page.rateObservation,
+			}, nil
+		}
+	}
+	return githubquota.ResponseQuota{}, errors.New("unexpected quota bootstrap request")
 }
 
 func TestNormalizeEnumeratedRepositoriesCanonicalizesAndCounts(t *testing.T) {
@@ -266,6 +343,69 @@ func TestEnqueueHistoricalRunsPaginatesResumesAndPrioritizesNewRuns(t *testing.T
 	assertBackfillMetric(t, metrics, "cao_dashboard.collection.backfill.run_discovered.count", 12)
 	assertBackfillMetric(t, metrics, "cao_dashboard.collection.backfill.run_task_queued.count", 6)
 	assertBackfillMetric(t, metrics, "cao_dashboard.collection.backfill.enumeration_failure.count", 1)
+}
+
+func TestRunEnumerationBootstrapsAndReconcilesQuota(t *testing.T) {
+	reset := time.Now().Add(time.Hour).UTC()
+	initial := githubquota.Observation{Limit: 5000, Remaining: 4800, ResetAt: reset}
+	response := githubquota.ResponseQuota{
+		HasResponse: true, Resource: githubquota.ResourceCore, HasObservation: true,
+		Observation: githubquota.Observation{Limit: 5000, Remaining: 4799, ResetAt: reset},
+	}
+	enumerator := &fakeWorkflowRunEnumerator{pages: map[workflowRunPageKey]workflowRunPage{
+		{installationID: 7, repository: "octo/api", page: 1}: {
+			runs: []githubapp.WorkflowRun{{ID: 42, Attempt: 1}}, responseQuota: response,
+			rateObservation: initial,
+		},
+	}}
+	quota := &fakeRunQuota{}
+	backfill := Backfill{RunEnumerator: enumerator, Quota: quota, QuotaApp: "github-app-123"}
+
+	runs, nextPage, err := backfill.listWorkflowRuns(t.Context(), 7, "octo/api", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(runs) != 1 || runs[0].ID != 42 || nextPage != 0 {
+		t.Fatalf("runs=%+v nextPage=%d, want run 42 and no next page", runs, nextPage)
+	}
+	if len(quota.observations) != 1 || quota.observations[0] != initial {
+		t.Fatalf("bootstrap observations=%+v, want %+v", quota.observations, initial)
+	}
+	if len(quota.reservations) != 1 || quota.reservations[0].Bucket !=
+		(githubquota.BucketID{App: "github-app-123", Installation: 7, Resource: "core"}) {
+		t.Fatalf("reservations=%+v, want an installation-scoped core reservation", quota.reservations)
+	}
+	if len(quota.commits) != 1 || quota.commits[0] != response.Observation || quota.releases != 0 {
+		t.Fatalf("commits=%+v releases=%d, want the response observation committed once",
+			quota.commits, quota.releases)
+	}
+}
+
+func TestRunEnumerationQuotaExhaustionLeavesCursorUnchanged(t *testing.T) {
+	store, ctx := integrationStore(t)
+	enumerator := &fakeWorkflowRunEnumerator{pages: map[workflowRunPageKey]workflowRunPage{
+		{installationID: 7, repository: "octo/api", page: 1}: {
+			runs: []githubapp.WorkflowRun{{ID: 42, Attempt: 1}},
+		},
+	}}
+	backfill := Backfill{
+		Store: store, Queue: Queue{Store: store, MaxLength: 100},
+		RunEnumerator: enumerator, Quota: &fakeRunQuota{unavailable: githubquota.ErrExhausted},
+		QuotaApp: "github-app-123",
+	}
+	queued, failures, err := backfill.enqueueHistoricalRuns(ctx, []enrolledRepository{
+		{name: "octo/api", installationID: 7},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if queued != 0 || failures != 1 || len(enumerator.calls) != 0 {
+		t.Fatalf("queued=%d failures=%d API calls=%d, want no API calls and one deferred failure",
+			queued, failures, len(enumerator.calls))
+	}
+	if cursor, err := store.HashGet(ctx, runBackfillCursorKey, "7:octo/api"); err != nil || cursor != "" {
+		t.Fatalf("cursor=%q err=%v, want unchanged", cursor, err)
+	}
 }
 
 func assertBackfillMetric(

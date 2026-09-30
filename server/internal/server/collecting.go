@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/collect"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
+	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
@@ -121,6 +123,7 @@ func (config *CollectorConfig) Validate() error {
 type Collector struct {
 	config     CollectorConfig
 	client     *githubapp.Client
+	quota      *githubquota.Service
 	enrollment collect.Enrollment
 	queue      collect.Queue
 	lake       collect.Lake
@@ -147,14 +150,26 @@ func NewCollector(
 	if store == nil {
 		return nil, errors.New("collection requires Redis")
 	}
+	quotaFloor := config.RateLimitFloor
+	if quotaFloor <= 0 {
+		quotaFloor = 1000
+	}
+	quota, err := githubquota.New(store, githubquota.Options{SafetyReserve: quotaFloor})
+	if err != nil {
+		return nil, fmt.Errorf("configure github quota: %w", err)
+	}
+	quotaApp := "github-app-" + strconv.FormatInt(config.AppID, 10)
 	enrollment := collect.Enrollment{Store: store}
 	queue := collect.Queue{Store: store, MaxLength: int64(config.QueueMaxLength)}
 	if config.AdmitOnly {
 		// Erasure is enqueued rather than performed, because this process has
 		// no evidence lake to erase from.
-		backfill := collect.Backfill{Store: store}
+		backfill := collect.Backfill{
+			Store: store, Quota: quota, QuotaApp: quotaApp,
+		}
 		return &Collector{
 			config:     config,
+			quota:      quota,
 			enrollment: enrollment,
 			queue:      queue,
 			backfill:   backfill,
@@ -218,10 +233,12 @@ func NewCollector(
 	backfill := collect.Backfill{
 		Store: store, Enrollment: enrollment, Queue: queue,
 		Projector: projector, Lake: lake, Enumerator: client, RunEnumerator: client,
+		Quota: quota, QuotaApp: quotaApp,
 	}
 	return &Collector{
 		config:     config,
 		client:     client,
+		quota:      quota,
 		enrollment: enrollment,
 		queue:      queue,
 		lake:       lake,

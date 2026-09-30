@@ -8,12 +8,14 @@ import (
 	"net"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
+	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
@@ -41,7 +43,23 @@ type Enumerator interface {
 type WorkflowRunEnumerator interface {
 	ListWorkflowRuns(
 		ctx context.Context, installationID int64, repository string, page, perPage int,
-	) ([]githubapp.WorkflowRun, int, error)
+	) ([]githubapp.WorkflowRun, int, githubquota.ResponseQuota, error)
+}
+
+type WorkflowRunQuotaRefresher interface {
+	QuotaRateLimit(ctx context.Context, installationID int64) (githubquota.ResponseQuota, error)
+}
+
+type RunQuotaService interface {
+	Reserve(
+		ctx context.Context, bucket githubquota.BucketID, request githubquota.ReservationRequest,
+	) (githubquota.Reservation, error)
+	Observe(ctx context.Context, bucket githubquota.BucketID, observation githubquota.Observation) error
+	Commit(
+		ctx context.Context, reservation githubquota.Reservation, observation githubquota.Observation,
+	) error
+	Release(ctx context.Context, reservation githubquota.Reservation) error
+	Park(ctx context.Context, bucket githubquota.BucketID, until time.Time, reason string) error
 }
 
 // Backfill performs resumable cold start.
@@ -57,6 +75,8 @@ type Backfill struct {
 	Lake          Lake
 	Enumerator    Enumerator
 	RunEnumerator WorkflowRunEnumerator
+	Quota         RunQuotaService
+	QuotaApp      string
 }
 
 // BackfillState is the resumable checkpoint, published for status reporting.
@@ -301,8 +321,8 @@ func (b Backfill) enqueueHistoricalRuns(
 				return queued, failures, errors.New("invalid historical run backfill cursor")
 			}
 			page := cursor.Page
-			runs, nextPage, err := b.RunEnumerator.ListWorkflowRuns(
-				ctx, repository.installationID, repository.name, page, runBackfillPageSize,
+			runs, nextPage, err := b.listWorkflowRuns(
+				ctx, repository.installationID, repository.name, page,
 			)
 			if err != nil {
 				if ctx.Err() != nil {
@@ -418,6 +438,99 @@ func (b Backfill) enqueueHistoricalRuns(
 	}
 	backfillLog.Printf("historical run enumeration completed queued=%d failures=%d", queued, failures)
 	return queued, failures, nil
+}
+
+func (b Backfill) listWorkflowRuns(
+	ctx context.Context, installationID int64, repository string, page int,
+) ([]githubapp.WorkflowRun, int, error) {
+	if b.Quota == nil {
+		runs, nextPage, _, err := b.RunEnumerator.ListWorkflowRuns(
+			ctx, installationID, repository, page, runBackfillPageSize)
+		return runs, nextPage, err
+	}
+	if strings.TrimSpace(b.QuotaApp) == "" {
+		return nil, 0, errors.New("historical run quota requires a GitHub App identity")
+	}
+	bucket := githubquota.BucketID{
+		App: b.QuotaApp, Installation: installationID, Resource: githubquota.ResourceCore,
+	}
+	reservation, err := b.Quota.Reserve(
+		ctx, bucket, githubquota.ReservationRequest{EstimatedCost: 1})
+	if errors.Is(err, githubquota.ErrUnknown) {
+		refresher, ok := b.RunEnumerator.(WorkflowRunQuotaRefresher)
+		if !ok {
+			return nil, 0, err
+		}
+		response, refreshErr := refresher.QuotaRateLimit(ctx, installationID)
+		responseBucket := bucket
+		responseBucket.Resource = response.Resource
+		if response.HasObservation && responseBucket.Normalize() == bucket.Normalize() {
+			if err := b.Quota.Observe(ctx, bucket, response.Observation); err != nil {
+				return nil, 0, err
+			}
+		}
+		if !response.ParkUntil.IsZero() {
+			if err := b.Quota.Park(ctx, responseBucket, response.ParkUntil, response.ParkReason); err != nil {
+				return nil, 0, err
+			}
+		}
+		if refreshErr != nil {
+			return nil, 0, refreshErr
+		}
+		if !response.HasObservation || responseBucket.Normalize() != bucket.Normalize() {
+			return nil, 0, errors.New("rate limit response did not report core quota")
+		}
+		reservation, err = b.Quota.Reserve(
+			ctx, bucket, githubquota.ReservationRequest{EstimatedCost: 1})
+	}
+	if err != nil {
+		return nil, 0, err
+	}
+	runs, nextPage, responseQuota, listErr := b.RunEnumerator.ListWorkflowRuns(
+		ctx, installationID, repository, page, runBackfillPageSize)
+	if quotaErr := b.reconcileRunQuota(ctx, bucket, reservation, responseQuota); quotaErr != nil {
+		return nil, 0, fmt.Errorf("record workflow run quota response: %w", quotaErr)
+	}
+	return runs, nextPage, listErr
+}
+
+func (b Backfill) reconcileRunQuota(
+	ctx context.Context,
+	bucket githubquota.BucketID,
+	reservation githubquota.Reservation,
+	response githubquota.ResponseQuota,
+) error {
+	if !response.HasResponse {
+		// The request may have reached GitHub even if its response was lost.
+		// Keep the reservation until its TTL expires rather than refunding quota.
+		return nil
+	}
+	responseBucket := bucket
+	responseBucket.Resource = response.Resource
+	if !response.HasObservation {
+		// Missing quota headers leave the request cost unknown; retain the
+		// reservation until its TTL expires and apply any requested backoff.
+		if !response.ParkUntil.IsZero() {
+			return b.Quota.Park(ctx, responseBucket, response.ParkUntil, response.ParkReason)
+		}
+		return nil
+	}
+	var err error
+	if responseBucket.Normalize() == reservation.Bucket.Normalize() {
+		err = b.Quota.Commit(ctx, reservation, response.Observation)
+	} else {
+		err = b.Quota.Release(ctx, reservation)
+		if err == nil {
+			err = b.Quota.Observe(ctx, responseBucket, response.Observation)
+		}
+	}
+	if err != nil {
+		return err
+	}
+	if !response.ParkUntil.IsZero() {
+		return b.Quota.Park(ctx, responseBucket, response.ParkUntil, response.ParkReason)
+	}
+	return nil
 }
 
 func runBackfillCursorField(repository enrolledRepository) string {

@@ -124,6 +124,7 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 		}
 	}
 	reconciler := config.Reconciler
+	var quota *githubquota.Service
 	var memoryResolver *repositorymemory.RemoteResolver
 	if err := validateProfileExclusivity(config); err != nil {
 		return nil, err
@@ -133,6 +134,7 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 		if err != nil {
 			return nil, fmt.Errorf("configure collection: %w", err)
 		}
+		quota = collector.quota
 		reconciler = collector
 		if !config.Collector.AdmitOnly {
 			memoryResolver = &repositorymemory.RemoteResolver{
@@ -164,18 +166,18 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 			return nil, err
 		}
 	}
+	if store != nil && quota == nil {
+		quota, err = githubquota.New(store, githubquota.Options{})
+		if err != nil {
+			return nil, fmt.Errorf("configure github quota: %w", err)
+		}
+	}
 	serverLog.Printf("initialized host_profile=%s oauth=%t source_ingestion=%t", profile.Name, oauth != nil, config.SourceDirectory != "")
 	app := &App{
 		store: store, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
 		canonical: canonicalService{store: store}, reconciler: reconciler, memory: memoryResolver,
 		webhookSecret: []byte(config.WebhookSecret), actionsToken: actionsToken, actionsActor: actionsActor,
-	}
-	if store != nil {
-		quota, err := githubquota.New(store, githubquota.Options{})
-		if err != nil {
-			return nil, fmt.Errorf("configure github quota: %w", err)
-		}
-		app.quota = quota
+		quota: quota,
 	}
 	if config.MCPEnabled {
 		handler, err := app.newMCPHandler()
