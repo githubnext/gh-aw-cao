@@ -177,7 +177,7 @@ describe('declarative view title visibility', () => {
       const view = rendered.querySelector('[data-view-id="quiet-chart"]');
       expect(view?.querySelector('.chart-prompt-heading > h3'), `${chart} ${layout}`).toBeNull();
       expect(view?.getAttribute('aria-label'), `${chart} ${layout}`).toBe('Quiet chart');
-      expect(view?.querySelector('.table-subject-button')?.getAttribute('aria-label')).toBe('Fix it: Quiet chart');
+      expect(view?.querySelector('.table-intent-button')?.getAttribute('aria-label')).toBe('Fix it: Quiet chart');
       disposeDashboard(rendered);
     }
   });
@@ -214,11 +214,11 @@ describe('declarative view title visibility', () => {
     expect(card?.getAttribute('role')).toBe('group');
     expect(card?.getAttribute('aria-label')).toBe('Card title');
     expect(card?.querySelector('.metric-card-widget')?.getAttribute('aria-label')).toBe('Card title');
-    expect(card?.querySelector('.table-subject-button')).not.toBeNull();
+    expect(card?.querySelector('.table-intent-button')).not.toBeNull();
     const notice = rendered.querySelector('[data-view-id="notice"]');
     expect(notice?.querySelector('h3, h4')).toBeNull();
     expect(notice?.querySelector('.dashboard-callout')?.getAttribute('aria-label')).toBe('Notice title');
-    expect(notice?.querySelector('.table-subject-button')).not.toBeNull();
+    expect(notice?.querySelector('.table-intent-button')).not.toBeNull();
     disposeDashboard(rendered);
   });
 });
@@ -255,14 +255,14 @@ describe('semantic view prompt action', () => {
         }
       }
     });
-    const button = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('[data-view-id="health-chart"] .table-subject-button'));
+    const button = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('[data-view-id="health-chart"] .table-intent-button'));
     expect(button?.getAttribute('aria-label')).toBe('Fix it: Health chart');
     const heading = rendered.querySelector('[data-view-id="health-chart"] .chart-prompt-heading');
     expect(heading?.querySelector('h3, h4')?.textContent).toBe('Health chart');
-    expect(heading?.querySelector('.chart-prompt-action .table-subject-button')).toBe(button);
+    expect(heading?.querySelector('.chart-prompt-action .table-intent-button')).toBe(button);
     expect(button?.querySelector('.octicon-copilot')).not.toBeNull();
     button?.click();
-    const preview = rendered.querySelector('.table-subject-preview')?.textContent ?? '';
+    const preview = rendered.querySelector('.table-intent-preview')?.textContent ?? '';
     expect(preview).toContain('Show health\n\nCompare workflow health');
     expect(preview).toContain('Investigate failures');
     expect(preview).toContain('Runs pass');
@@ -294,15 +294,15 @@ describe('semantic view prompt action', () => {
           }
         });
         const rendered = renderDashboardView({ document, sources: {} });
-        const button = rendered.querySelector('[data-view-id="test-chart"] .table-subject-button');
+        const button = rendered.querySelector('[data-view-id="test-chart"] .table-intent-button');
         expect(Boolean(button), `${chart} ${prompt ?? 'default'} annotated=${annotated}`).toBe(expected);
         if (expected) {
           expect(button?.getAttribute('aria-label')).toBe('Fix it: Test chart');
-          expect(rendered.querySelector('[data-view-id="test-chart"] .chart-prompt-heading > .chart-prompt-action .table-subject-button')).toBe(button);
+          expect(rendered.querySelector('[data-view-id="test-chart"] .chart-prompt-heading > .chart-prompt-action .table-intent-button')).toBe(button);
         }
         if (prompt === 'always') {
           button?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-          expect(rendered.querySelector('.table-subject-preview')?.textContent).toContain('View: test-chart');
+          expect(rendered.querySelector('.table-intent-preview')?.textContent).toContain('View: test-chart');
         }
         disposeDashboard(rendered);
       }
@@ -329,7 +329,7 @@ describe('semantic view prompt action', () => {
     const callout = rendered.querySelector('[data-view-id="alert"]');
     expect(callout?.querySelectorAll('h3, h4')).toHaveLength(1);
     expect(callout?.querySelector('aside')?.getAttribute('aria-labelledby')).toBe('overview-alert-callout-heading');
-    const prompt = callout?.querySelector('.semantic-prompt-action .table-subject-button');
+    const prompt = callout?.querySelector('.semantic-prompt-action .table-intent-button');
     expect(prompt?.getAttribute('aria-label')).toBe('Create prompt for Review required');
     expect(prompt?.querySelector('span')?.textContent).toBe('Create prompt for Review required');
     disposeDashboard(rendered);
@@ -1406,14 +1406,14 @@ describe('presenter built-in and custom pages', () => {
 
     const page = await activatePage(rendered, 'firewall');
     expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] [data-chart-widget="pie"]')).not.toBeNull();
-    const prompt = page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] .table-subject-button');
+    const prompt = page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] .table-intent-button');
     expect(prompt?.getAttribute('aria-label')).toBe('Fix it: Most blocked domains');
-    expect(page?.querySelector('.pie-chart-card > .chart-prompt-heading > .chart-prompt-action .table-subject-button')).toBe(prompt);
+    expect(page?.querySelector('.pie-chart-card > .chart-prompt-heading > .chart-prompt-action .table-intent-button')).toBe(prompt);
     prompt?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    expect(page?.querySelector('.table-subject-preview')?.textContent).toContain('Prioritize investigation of the most blocked domains');
-    expect(page?.querySelector('.table-subject-preview')?.textContent).toContain('query firewall-domain-workflows with --param domain=DOMAIN');
-    expect(page?.querySelector('.table-subject-preview')?.textContent).toContain('Named CAO query IDs: firewall-domain-totals, firewall-most-blocked-domains');
-    expect(page?.querySelector('.table-subject-preview')?.textContent).toContain('Record domain/workflow, time, blocked/allowed counts and disposition');
+    expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Prioritize investigation of the most blocked domains');
+    expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('query firewall-domain-workflows with --param domain=DOMAIN');
+    expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Named CAO query IDs: firewall-domain-totals, firewall-most-blocked-domains');
+    expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Record domain/workflow, time, blocked/allowed counts and disposition');
     expect(page?.querySelector('[data-chart-category="blocked.example"]')).not.toBeNull();
     expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] .chart-legend-pie strong')?.textContent).toBe('3,177,281');
     expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();

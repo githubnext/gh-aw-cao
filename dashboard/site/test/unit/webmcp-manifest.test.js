@@ -54,7 +54,7 @@ const dashboardDocument = {
         id: 'simulator',
         kind: 'custom',
         title: 'Simulator',
-        subject: 'Estimate observed AIC under an operator-selected multiplier.',
+        intent: 'Estimate observed AIC under an operator-selected multiplier.',
         form: {
           fields: [
             { id: 'multiplier', label: 'AIC multiplier', control: 'slider', default: 1, min: 0, max: 4, step: 0.25 },

@@ -98,6 +98,24 @@ describe('dashboard document validation', () => {
     });
   });
 
+  it('rejects the former intent field on queries and views', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const pageIndex = document.dashboard.pages.findIndex(
+      (/** @type {{ views?: unknown[] }} */ page) => page.views?.length
+    );
+    document.dashboard.queries[0].intent = 'Old query metadata';
+    document.dashboard.pages[pageIndex].views[0].intent = 'Old view metadata';
+
+    const result = validateDashboardDocument(JSON.stringify(document));
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ path: '$.dashboard.queries[0].intent' }),
+        expect.objectContaining({ path: `$.dashboard.pages[${pageIndex}].views[0].intent` })
+      ]));
+    }
+  });
+
   it('reports every oversized query and custom, built-in, or reusable view', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const builtInIndex = document.dashboard.pages.findIndex(
