@@ -6,6 +6,9 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { renderDisclosureSummaryLabel, renderDlRow, renderListWithFallback, renderSectionHeading, renderTooltip } from './ui-primitives.js';
 import { formatCount, slugify, titleCase } from './count-formatters.js';
+import { createDebug } from '../debug.js';
+
+const debugViewChrome = createDebug('view-chrome');
 
 /**
  * @param {string} pageId
@@ -183,6 +186,13 @@ export function renderCustomViewStateDetails(sourceName, contextDetails, queryEr
     details.push(h('p', { className: 'view-source' }, `Unavailable query dependency: ${dependency}`));
   }
   details.push(...renderContextChrome(contextDetails));
+  debugViewChrome({
+    event: 'custom-view-state-details',
+    hasSourceName: Boolean(sourceName),
+    hasQueryError: Boolean(error),
+    dependencyResolved: Boolean(dependency),
+    detailCount: details.length
+  });
   return details;
 }
 
