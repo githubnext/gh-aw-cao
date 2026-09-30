@@ -202,9 +202,19 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(campaigns.locator('.link-button-list')).toHaveCSS('border-top-width', '0px');
     const pageBounds = await page.locator('[data-page-id="overview"]').boundingBox();
     const mainBounds = await page.locator('main.dashboard-prototype').boundingBox();
+    const introBounds = await factory.locator(':scope > .factory-intro').boundingBox();
     if (!pageBounds || !mainBounds) throw new Error('Overview and main bounds must be available');
     expect(pageBounds.x).toBeCloseTo(mainBounds.x, 0);
-    expect(pageBounds.width).toBeGreaterThan(mainBounds.width - 20);
+    expect(pageBounds.width).toBeCloseTo(mainBounds.width, 0);
+    expect(pageBounds.y).toBeCloseTo(mainBounds.y, 0);
+    expect(introBounds?.y).toBeCloseTo(mainBounds.y, 0);
+    await expect(page.locator('.app-main > .top-nav')).toBeHidden();
+    await expect(page.locator('.app-main > .report-footer')).toBeHidden();
+    if (viewport.width > 700) {
+      await expect(page.locator('.org-sidebar')).toBeVisible();
+    } else {
+      await expect(page.locator('.mobile-nav-menu')).toBeVisible();
+    }
     await expect(campaigns.getByRole('link', { name: 'View AW Doctor campaign dashboard' }))
       .toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
     await expect(campaigns.getByRole('link', { name: 'View Dependabot campaign dashboard' }))
