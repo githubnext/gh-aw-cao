@@ -900,26 +900,32 @@ other than `navigate`) with `401` instead of redirecting them to the
 cross-origin GitHub authorize endpoint, which browsers block by CORS. Only
 top-level navigations are redirected to `/auth/login`.
 
-To let another reviewed origin call the server, declare it in
-`control-plane.web.host.cors` in `cao.json` or its host overlay:
+To let another reviewed origin read anonymous responses (such as the public
+health endpoints), declare it in `control-plane.web.host.cors` in `cao.json` or
+its host overlay:
 
 ```json
 "cors": {
   "allowed-origins": ["https://tools.example.com"],
-  "allow-credentials": true,
   "max-age": 600
 }
 ```
 
+CORS is credential-less by design. The server never sends
+`Access-Control-Allow-Credentials`, so browsers refuse to expose any response
+to a cross-origin request made with cookies. A listed origin therefore cannot
+act as the signed-in user or read session data such as the CSRF token from
+`/api/auth/session`. `allow-credentials` is not a supported field and is
+rejected. Cross-origin integrations that need user data must use a
+server-to-server path, not the browser session.
+
 | Field | Default | Purpose |
 | --- | --- | --- |
 | `allowed-origins` | none | Exact origins echoed in `Access-Control-Allow-Origin`. Wildcards, `null`, paths, user info, and plaintext origins other than loopback are rejected; at most 32. |
-| `allow-credentials` | `false` | Send `Access-Control-Allow-Credentials: true` so listed origins may use the session cookie. Requires `allowed-origins`. |
 | `max-age` | `600` | Preflight cache lifetime in seconds (1-86400). |
 
 Preflights from listed origins are answered with `204` before authentication
-and allow `GET`, `HEAD`, and `POST` with `Content-Type`, `X-CSRF-Token`, and
-`Traceparent` headers. Unlisted origins receive no CORS headers. CORS never
+and allow only `GET` and `HEAD` with the `Traceparent` header. Unlisted origins receive no CORS headers. CORS never
 bypasses authentication, CSRF checks, or host validation. The normative contract
 is `specs/server-cors.md`.
 

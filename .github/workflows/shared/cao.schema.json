@@ -262,7 +262,7 @@
     "hostCORS": {
       "type": "object",
       "additionalProperties": false,
-      "$comment": "Omit for same-origin only. Origins are exact; wildcards, paths, and plaintext non-loopback origins are rejected.",
+      "$comment": "Omit for same-origin only. CORS is credential-less: listed origins can never read session-authenticated responses. Origins are exact; wildcards, paths, and plaintext non-loopback origins are rejected.",
       "properties": {
         "allowed-origins": {
           "type": "array",
@@ -278,10 +278,8 @@
             ]
           }
         },
-        "allow-credentials": { "type": "boolean" },
         "max-age": { "type": "integer", "minimum": 1, "maximum": 86400 }
-      },
-      "dependentRequired": { "allow-credentials": ["allowed-origins"] }
+      }
     },
     "host": { "$ref": "#/$defs/modularHost" },
     "defaults": {

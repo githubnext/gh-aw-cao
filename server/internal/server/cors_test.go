@@ -45,9 +45,6 @@ func TestCORSPolicyRejectsUnsafeOrigins(t *testing.T) {
 			t.Errorf("origin %q was accepted", origin)
 		}
 	}
-	if _, err := (CORSPolicy{AllowCredentials: true}).normalize(); err == nil {
-		t.Error("allow-credentials without origins was accepted")
-	}
 	if _, err := (CORSPolicy{AllowedOrigins: []string{"https://a.example"}, MaxAge: maxCORSMaxAge + 1}).normalize(); err == nil {
 		t.Error("oversized max-age was accepted")
 	}
@@ -65,7 +62,6 @@ func TestHostPolicyReadsCORSFromCaoJSON(t *testing.T) {
 					"redis": {"module": "render", "tls": {"mode": "required"}},
 					"cors": {
 						"allowed-origins": ["https://Tools.Example.com"],
-						"allow-credentials": true,
 						"max-age": 120
 					}
 				}
@@ -82,7 +78,7 @@ func TestHostPolicyReadsCORSFromCaoJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !slices.Equal(resolved.CORS.AllowedOrigins, []string{"https://tools.example.com"}) ||
-		!resolved.CORS.AllowCredentials || resolved.CORS.MaxAge != 120 {
+		resolved.CORS.MaxAge != 120 {
 		t.Fatalf("unexpected CORS policy: %+v", resolved.CORS)
 	}
 
@@ -92,6 +88,14 @@ func TestHostPolicyReadsCORSFromCaoJSON(t *testing.T) {
 	}
 	if _, err := loadHostPolicyFromEnv(); err == nil || !strings.Contains(err.Error(), "max-age") {
 		t.Fatalf("expected explicit zero max-age rejection, got %v", err)
+	}
+
+	credentialed := strings.Replace(document, `"max-age": 120`, `"max-age": 120, "allow-credentials": true`, 1)
+	if err := os.WriteFile(path, []byte(credentialed), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadHostPolicyFromEnv(); err == nil {
+		t.Fatal("credentialed CORS policy was accepted")
 	}
 
 	invalid := strings.Replace(document, `"https://Tools.Example.com"`, `"*"`, 1)
@@ -121,32 +125,34 @@ func TestConfiguredCORSAllowsOnlyListedOrigins(t *testing.T) {
 	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
 	app := newAzureTestApp(t, github.URL)
 	app.config.CORS = CORSPolicy{
-		AllowedOrigins:   []string{"https://tools.example.com"},
-		AllowCredentials: true,
-		MaxAge:           120,
+		AllowedOrigins: []string{"https://tools.example.com"},
+		MaxAge:         120,
 	}
 
 	preflight := azureRequest(t, http.MethodOptions, "/api/v1/query")
 	preflight.Header.Set("Origin", "https://tools.example.com")
-	preflight.Header.Set("Access-Control-Request-Method", http.MethodPost)
-	preflight.Header.Set("Access-Control-Request-Headers", "content-type, x-csrf-token")
+	preflight.Header.Set("Access-Control-Request-Method", http.MethodGet)
+	preflight.Header.Set("Access-Control-Request-Headers", "traceparent")
 	response := httptest.NewRecorder()
 	app.Handler().ServeHTTP(response, preflight)
 	if response.Code != http.StatusNoContent ||
 		response.Header().Get("Access-Control-Allow-Origin") != "https://tools.example.com" ||
-		response.Header().Get("Access-Control-Allow-Credentials") != "true" ||
+		response.Header().Get("Access-Control-Allow-Credentials") != "" ||
 		response.Header().Get("Access-Control-Max-Age") != "120" ||
-		!strings.Contains(response.Header().Get("Access-Control-Allow-Headers"), "X-CSRF-Token") {
+		response.Header().Get("Access-Control-Allow-Methods") != "GET, HEAD" ||
+		strings.Contains(response.Header().Get("Access-Control-Allow-Headers"), "X-CSRF-Token") {
 		t.Fatalf("unexpected preflight response %d: %v", response.Code, response.Header())
 	}
 
 	unsupported := azureRequest(t, http.MethodOptions, "/api/v1/query")
 	unsupported.Header.Set("Origin", "https://tools.example.com")
-	unsupported.Header.Set("Access-Control-Request-Method", http.MethodDelete)
-	response = httptest.NewRecorder()
-	app.Handler().ServeHTTP(response, unsupported)
-	if response.Header().Get("Access-Control-Allow-Methods") != "" {
-		t.Fatalf("unsupported preflight method was allowed: %v", response.Header())
+	for _, method := range []string{http.MethodPost, http.MethodDelete} {
+		unsupported.Header.Set("Access-Control-Request-Method", method)
+		response = httptest.NewRecorder()
+		app.Handler().ServeHTTP(response, unsupported)
+		if response.Header().Get("Access-Control-Allow-Methods") != "" {
+			t.Fatalf("unsupported preflight method %s was allowed: %v", method, response.Header())
+		}
 	}
 
 	misdirected := azureRequest(t, http.MethodOptions, "/api/v1/query")
@@ -179,6 +185,23 @@ func TestConfiguredCORSAllowsOnlyListedOrigins(t *testing.T) {
 	if response.Code != http.StatusUnauthorized ||
 		response.Header().Get("Access-Control-Allow-Origin") != "https://tools.example.com" {
 		t.Fatalf("expected readable 401 for allowed origin, got %d: %v", response.Code, response.Header())
+	}
+}
+
+func TestConfiguredCORSNeverSharesCredentialedResponses(t *testing.T) {
+	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
+	app := newAzureTestApp(t, github.URL)
+	app.config.CORS = CORSPolicy{AllowedOrigins: []string{"https://tools.example.com"}, MaxAge: 120}
+	for _, path := range []string{"/api/auth/session", "/api/v1/health"} {
+		request := azureRequest(t, http.MethodGet, path)
+		request.Header.Set("Origin", "https://tools.example.com")
+		request.Header.Set("Sec-Fetch-Mode", "cors")
+		request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "any-session"})
+		response := httptest.NewRecorder()
+		app.Handler().ServeHTTP(response, request)
+		if response.Header().Get("Access-Control-Allow-Credentials") != "" {
+			t.Fatalf("%s granted credentialed CORS access: %v", path, response.Header())
+		}
 	}
 }
 

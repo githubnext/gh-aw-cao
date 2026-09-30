@@ -94,8 +94,10 @@ secret environment, not in either JSON document.
 The host extension may also declare `cors` next to `target` and `redis`. Omit
 it to keep the dashboard same-origin. When another reviewed origin must call
 the server, list exact origins, for example
-`"cors": { "allowed-origins": ["https://tools.example.com"], "allow-credentials": true }`.
-Wildcards and plaintext non-loopback origins are rejected.
+`"cors": { "allowed-origins": ["https://tools.example.com"] }`.
+Wildcards and plaintext non-loopback origins are rejected. CORS is
+credential-less: listed origins can read only anonymous responses and can never
+use or read the signed-in session.
 
 To use the extension, explicitly point the hosted server's `CAO_POLICY_PATH`
 at the reviewed extension and pass that file as the dashboard build's control

@@ -20,30 +20,34 @@ const (
 	maxCORSAllowedOrigins = 32
 	defaultCORSMaxAge     = 600
 	maxCORSMaxAge         = 86400
-	corsAllowedMethods    = "GET, HEAD, POST"
-	corsAllowedHeaders    = "Content-Type, X-CSRF-Token, Traceparent"
+	corsAllowedMethods    = "GET, HEAD"
+	corsAllowedHeaders    = "Traceparent"
 )
 
 // CORSPolicy is the reviewed cross-origin policy from
 // control-plane.web.host.cors. The zero value keeps the dashboard strictly
 // same-origin: no Access-Control-* headers are ever emitted.
+//
+// CORS is credential-less by design. The server never emits
+// Access-Control-Allow-Credentials, so browsers refuse to expose any
+// response to a cross-origin request made with cookies. A listed origin can
+// read only what an anonymous caller can read (public health endpoints and
+// 401 responses); it can never act as, or read data of, the signed-in user,
+// including the CSRF token from /api/auth/session.
 type CORSPolicy struct {
-	AllowedOrigins   []string
-	AllowCredentials bool
-	MaxAge           int
+	AllowedOrigins []string
+	MaxAge         int
 }
 
 type corsPolicyDocument struct {
-	AllowedOrigins   []string `json:"allowed-origins"`
-	AllowCredentials bool     `json:"allow-credentials"`
-	MaxAge           *int     `json:"max-age"`
+	AllowedOrigins []string `json:"allowed-origins"`
+	MaxAge         *int     `json:"max-age"`
 }
 
 func (document corsPolicyDocument) resolve() (CORSPolicy, error) {
 	policy := CORSPolicy{
-		AllowedOrigins:   document.AllowedOrigins,
-		AllowCredentials: document.AllowCredentials,
-		MaxAge:           defaultCORSMaxAge,
+		AllowedOrigins: document.AllowedOrigins,
+		MaxAge:         defaultCORSMaxAge,
 	}
 	if document.MaxAge != nil {
 		if *document.MaxAge < 1 {
@@ -59,9 +63,6 @@ func (document corsPolicyDocument) resolve() (CORSPolicy, error) {
 // credentials in the origin, or plaintext origins other than loopback.
 func (policy CORSPolicy) normalize() (CORSPolicy, error) {
 	if len(policy.AllowedOrigins) == 0 {
-		if policy.AllowCredentials {
-			return CORSPolicy{}, errors.New("cors allow-credentials requires allowed-origins")
-		}
 		return CORSPolicy{}, nil
 	}
 	if len(policy.AllowedOrigins) > maxCORSAllowedOrigins {
@@ -161,13 +162,10 @@ func (a *App) cors(next http.Handler) http.Handler {
 			return
 		}
 		headers.Set("Access-Control-Allow-Origin", origin)
-		if policy.AllowCredentials {
-			headers.Set("Access-Control-Allow-Credentials", "true")
-		}
 		if requested := request.Header.Get("Access-Control-Request-Method"); request.Method == http.MethodOptions && requested != "" {
 			headers.Add("Vary", "Access-Control-Request-Method")
 			headers.Add("Vary", "Access-Control-Request-Headers")
-			if requested != http.MethodGet && requested != http.MethodHead && requested != http.MethodPost {
+			if requested != http.MethodGet && requested != http.MethodHead {
 				response.WriteHeader(http.StatusNoContent)
 				return
 			}

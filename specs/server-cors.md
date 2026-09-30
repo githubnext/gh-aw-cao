@@ -71,10 +71,10 @@ environment variables, request data, steering files, or target repositories.
 | Member | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `allowed-origins` | array of strings | none | Exact origins permitted to make cross-origin requests. |
-| `allow-credentials` | boolean | `false` | Whether listed origins may send the session cookie. |
 | `max-age` | integer | `600` | Preflight cache lifetime in seconds. |
 
-Unknown members MUST be rejected.
+Unknown members MUST be rejected. In particular, `allow-credentials` is not a
+member of this policy and MUST be rejected; see Section 3.5.
 
 ### 3.3 Validation
 
@@ -91,8 +91,7 @@ refuse to start, when any of the following holds:
 6. an entry's host is neither an IP literal nor an ASCII DNS name of
    non-empty labels of letters, digits, and `-` (internationalized names MUST
    be written in punycode; trailing dots and `_` are rejected);
-7. `allow-credentials` is present without `allowed-origins`; or
-8. `max-age` is present and outside 1–86400.
+7. `max-age` is present and outside 1–86400.
 
 ### 3.4 Normalization
 
@@ -105,6 +104,24 @@ equal after normalization (for example `https://a.example` and
 `https://a.example:443`) rather than fail. Origin comparison
 MUST be an exact string match against the normalized list; prefix, suffix, and
 pattern matching MUST NOT be used.
+
+### 3.5 Credential-less CORS
+
+Cross-origin access MUST be credential-less. The server MUST NOT emit
+`Access-Control-Allow-Credentials` on any response, and no configuration MAY
+enable it.
+
+Browsers enforce this: per the Fetch Standard, a response to a request whose
+credentials mode is `include` is a network error to the caller unless it
+carries `Access-Control-Allow-Credentials: true`. A listed origin can
+therefore read only responses an anonymous caller could read (public health
+endpoints and `401` bodies). It can never read session-authenticated data,
+including the CSRF token served by `/api/auth/session`, and so can never
+satisfy the CSRF check on a state-changing request. Session cookies also
+remain `SameSite=Lax`, so cross-site subrequests do not carry them.
+
+Integrations that need a user's data MUST use a server-to-server channel
+with its own credential, not the dashboard's browser session.
 
 ## 4. Request handling
 
@@ -139,15 +156,12 @@ A request is a preflight when its method is `OPTIONS` and it carries
 valid host, the server MUST respond `204 No Content` without invoking
 authentication or the application handler, and MUST set:
 
-- `Access-Control-Allow-Origin` to the request's `Origin` value;
-- `Access-Control-Allow-Credentials: true` only when `allow-credentials` is
-  `true`.
+- `Access-Control-Allow-Origin` to the request's `Origin` value.
 
-When the requested method is `GET`, `HEAD`, or `POST`, the response MUST also
-set:
+When the requested method is `GET` or `HEAD`, the response MUST also set:
 
-- `Access-Control-Allow-Methods: GET, HEAD, POST`;
-- `Access-Control-Allow-Headers: Content-Type, X-CSRF-Token, Traceparent`;
+- `Access-Control-Allow-Methods: GET, HEAD`;
+- `Access-Control-Allow-Headers: Traceparent`;
 - `Access-Control-Max-Age` to the resolved `max-age`.
 
 When the requested method is any other method, the response MUST omit
@@ -157,9 +171,8 @@ When the requested method is any other method, the response MUST omit
 ### 4.5 Actual requests
 
 For a non-preflight request from a listed origin with a valid host, the server
-MUST set `Access-Control-Allow-Origin` to the request's `Origin` value and,
-when `allow-credentials` is `true`, `Access-Control-Allow-Credentials: true`,
-and MUST then apply authentication, CSRF validation, authorization, and rate
+MUST set `Access-Control-Allow-Origin` to the request's `Origin` value and
+MUST then apply authentication, CSRF validation, authorization, and rate
 limiting unchanged. The server MUST NOT emit `Access-Control-Allow-Origin: *`.
 
 ## 5. Unauthenticated subresources
@@ -191,8 +204,8 @@ A conforming implementation MUST test:
 3. that `cors` is resolved from `cao.json` through the host policy loader;
 4. that the same-origin default emits no `Access-Control-*` headers;
 5. preflight success for a listed origin and allowed method, including
-   credentials and max-age;
-6. preflight denial for an unsupported requested method;
+   max-age and the absence of `Access-Control-Allow-Credentials`;
+6. preflight denial for `POST` and other unsupported requested methods;
 7. no CORS headers for unlisted origins, with `Vary: Origin` present;
 8. no CORS headers and a misdirected-request rejection for a preflight with
    an invalid host;
@@ -208,12 +221,12 @@ It MUST NOT replace or relax authentication, organization and team
 authorization, administrator checks, CSRF validation, webhook signature
 validation, host validation, or rate limiting.
 
-Enabling `allow-credentials` lets scripts on every listed origin make
-requests with the operator's users' sessions and read the responses. Operators
-SHOULD list only origins under the same administrative control as the
-dashboard and SHOULD leave `allow-credentials` disabled unless those origins
-must act as the signed-in user. Wildcards are forbidden because they would
-make this grant unreviewable.
+Credentialed CORS is intentionally unsupported (Section 3.5): a credentialed
+grant would let script on every listed origin act as, and read the data of,
+any signed-in user, which turns a single cross-site scripting flaw on any
+listed origin into a dashboard account takeover. Operators SHOULD still list
+only origins under the same administrative control as the dashboard.
+Wildcards are forbidden because they would make the grant unreviewable.
 
 Logs MUST NOT include `Origin` values, cookies, or credentials; only fixed
 authentication branch names such as `access.subresource_unauthorized` MAY be
@@ -250,3 +263,5 @@ logged.
   handling.
 - Required `401` instead of an OAuth redirect for unauthenticated
   subresources, and a credentialed manifest fetch.
+- Defined credential-less cross-origin access restricted to `GET` and
+  `HEAD`.

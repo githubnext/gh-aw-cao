@@ -211,7 +211,6 @@ test("control policy validates host CORS configuration", () => {
       redis: { module: "render" },
       cors: {
         "allowed-origins": ["https://tools.example.com", "http://localhost:5173"],
-        "allow-credentials": true,
         "max-age": 600,
       },
     },
@@ -227,7 +226,7 @@ test("control policy validates host CORS configuration", () => {
     [{ "allowed-origins": ["*"] }, /allowed-origins has an invalid value/],
     [{ "allowed-origins": ["http://tools.example.com"] }, /allowed-origins has an invalid value/],
     [{ "allowed-origins": ["https://tools.example.com/path"] }, /allowed-origins has an invalid value/],
-    [{ "allow-credentials": true }, /allow-credentials requires allowed-origins/],
+    [{ "allowed-origins": ["https://tools.example.com"], "allow-credentials": true }, /allow-credentials/],
     [{ "max-age": 0 }, /max-age must be an integer/],
     [{ "allowed-origins": ["https://tools.example.com:70000"] }, /invalid port/],
     [{ "allowed-origins": ["https://example.com."] }, /allowed-origins has an invalid value/],

@@ -69,7 +69,9 @@ complete normative contract is `specs/server-rate-limiting.md`.
 
 The server is same-origin by default and emits no CORS headers. A reviewed
 `control-plane.web.host.cors` policy may list exact origins; wildcards and
-plaintext non-loopback origins are rejected, and CORS never relaxes
+plaintext non-loopback origins are rejected. CORS is credential-less: the
+server never sends `Access-Control-Allow-Credentials`, so listed origins cannot
+read session-authenticated responses or the CSRF token. CORS never relaxes
 authentication, CSRF, host validation, or rate limiting. Unauthenticated
 subresource requests receive `401` instead of a redirect to GitHub OAuth. The
 complete normative contract is `specs/server-cors.md`.

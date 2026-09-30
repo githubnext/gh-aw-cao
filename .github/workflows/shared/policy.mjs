@@ -10,7 +10,7 @@ const SCOPE_KEYS = ["allowed-owners", "allowed-repositories"];
 const INVENTORY_KEYS = ["max-scan-repositories", "cell-count", "cell-index", "batch-size", "batch-index"];
 const WEB_KEYS = ["experimental", "favicon", "host"];
 const HOST_KEYS = ["target", "redis", "cors"];
-const CORS_KEYS = ["allowed-origins", "allow-credentials", "max-age"];
+const CORS_KEYS = ["allowed-origins", "max-age"];
 const CORS_ORIGIN_PATTERN =
   /^(?:https:\/\/(?:[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*|\[[0-9A-Fa-f:.]+\])|http:\/\/(?:localhost|127(?:\.[0-9]{1,3}){3}|\[::1\]))(?::[0-9]{1,5})?\/?$/;
 const TARGET_KEYS = [
@@ -399,12 +399,6 @@ function validateCORS(cors, path) {
     }
     if (cors["allowed-origins"].length > 32) {
       throw new PolicyError(`${path}.allowed-origins accepts at most 32 origins`);
-    }
-  }
-  if ("allow-credentials" in cors) {
-    assertBoolean(cors["allow-credentials"], `${path}.allow-credentials`);
-    if (!("allowed-origins" in cors)) {
-      throw new PolicyError(`${path}.allow-credentials requires allowed-origins`);
     }
   }
   if ("max-age" in cors) assertInteger(cors["max-age"], `${path}.max-age`, 1, 86400);
