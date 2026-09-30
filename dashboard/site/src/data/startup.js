@@ -17,7 +17,7 @@ import { createDebug } from "../debug.js";
 
 const debugStartup = createDebug("startup");
 
-/** @typedef {{ pageId?: string, viewId?: string, sourceIndex?: number, queryContext?: DashboardQueryContext }} BatchedSourceOptions */
+/** @typedef {{ pageId?: string, viewId?: string, sourceIndex?: number, routeParameters?: Record<string, string>, queryContext?: DashboardQueryContext }} BatchedSourceOptions */
 
 /**
  * Coalesces source requests issued by one page in the same turn so the worker
@@ -42,6 +42,7 @@ export function createBatchedSourceLoader(dashboardContext) {
       for (const request of requests) {
         const key = JSON.stringify([
           request.options?.pageId ?? null,
+          request.options?.routeParameters ?? null,
           request.options?.queryContext ?? null,
         ]);
         const group = groups.get(key) ?? [];
@@ -67,6 +68,7 @@ export function createBatchedSourceLoader(dashboardContext) {
             {
               pageId: options?.pageId,
               viewId: viewIds.size === 1 ? options?.viewId : undefined,
+              routeParameters: options?.routeParameters,
               queryContext: options?.queryContext,
             },
           );
@@ -102,7 +104,7 @@ export function createBatchedSourceLoader(dashboardContext) {
 /** @typedef {Record<string, import('../presenter.js').LogicalSourceInput>} DashboardSources */
 /** @typedef {{ filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc' | 'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card', formValues?: Record<string, string|number|boolean> }} DashboardQueryContext */
 /** @typedef {{ signal: AbortSignal, onUpdate: (sources: DashboardSources) => void, routeParameters?: Record<string, string>, queryContext?: DashboardQueryContext }} PageLoadOptions */
-/** @typedef {((pageId: string, options: PageLoadOptions) => Promise<DashboardSources>) & { prepare?: (pageId: string) => Promise<void>, subscribeBackgroundSources?: (sourceNames: string[], options: PageLoadOptions) => Promise<DashboardSources> }} PageSourceLoader */
+/** @typedef {((pageId: string, options: PageLoadOptions) => Promise<DashboardSources>) & { prepare?: (pageId: string) => Promise<void>, subscribeBackgroundSources?: (sourceNames: string[], options: PageLoadOptions) => Promise<DashboardSources>, subscribeViewSources?: (pageId: string, viewId: string, sourceNames: string[], options: PageLoadOptions) => Promise<DashboardSources> }} PageSourceLoader */
 
 /**
  * Gives a cached render two animation frames to commit before network activity starts.
@@ -153,6 +155,7 @@ export async function startDashboardData(options) {
     settleUi = () => waitForDashboardUi(browserWindow),
   } = options;
   const cleanup = new AbortController();
+  let nextViewSubscriptionId = 0;
   let stopAutomaticDataUpdates = () => {};
   /** @type {() => void} */
   let startBackgroundWork = () => {};
@@ -197,7 +200,7 @@ export async function startDashboardData(options) {
   /**
    * Subscribes to a bounded source set. The returned promise resolves with the
    * first snapshot; later snapshots are delivered through `pageOptions.onUpdate`.
-   * @param {{ subscriptionId: string, sourceNames: string[], pageOptions: PageLoadOptions & { pageId?: string }, pagination?: Record<string, { limit: number, continuationToken?: string }>, transform?: (sources: DashboardSources) => DashboardSources, errorLabel: string }} options
+   * @param {{ subscriptionId: string, sourceNames: string[], pageOptions: PageLoadOptions & { pageId?: string, viewId?: string }, pagination?: Record<string, { limit: number, continuationToken?: string }>, transform?: (sources: DashboardSources) => DashboardSources, errorLabel: string }} options
    */
   const subscribeSources = (options) => {
     const pageOptions = options.pageOptions;
@@ -231,6 +234,7 @@ export async function startDashboardData(options) {
         {
           signal: pageOptions.signal,
           pageId: pageOptions.pageId,
+          viewId: pageOptions.viewId,
           routeParameters: pageOptions.routeParameters,
           queryContext: pageOptions.queryContext,
           onError: (error) => {
@@ -264,6 +268,18 @@ export async function startDashboardData(options) {
       pagination,
       transform: (sources) => bindContinuations(pageId, sources, paginatedSources, pageOptions),
       errorLabel: `Unable to update dashboard page ${pageId}`
+    });
+  };
+  loadPageSources.subscribeViewSources = (pageId, viewId, sourceNames, pageOptions) => {
+    const bindings = Object.fromEntries(Object.entries(pagePaginatedSourceBindings(pageId))
+      .filter(([, binding]) => binding.viewId === viewId));
+    return subscribeSources({
+      subscriptionId: `page:${pageId}:view:${viewId}:${++nextViewSubscriptionId}`,
+      sourceNames: [...new Set(sourceNames)],
+      pageOptions: { ...pageOptions, pageId, viewId },
+      pagination: continuationRequests(Object.keys(bindings)),
+      transform: (sources) => bindContinuations(pageId, sources, bindings, pageOptions),
+      errorLabel: `Unable to update dashboard view ${viewId}`
     });
   };
   loadPageSources.subscribeBackgroundSources = async (sourceNames, pageOptions) => {

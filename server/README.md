@@ -1287,7 +1287,10 @@ npm run dashboard:server:test
 
 The Redis-backed end-to-end test uses the deployed-format subset under
 `server/testdata/deployed-subset`, starts the HTTP server, and verifies that
-the Runs, Workflows, and Repositories views render populated rows:
+the Runs, Workflows, and Repositories views render populated rows. It also
+visits every declared dashboard page against the Go server and checks that
+visible views and their Redis-backed HTTP queries resolve. CI uploads a
+per-page report and posts the results to same-repository pull requests:
 
 ```bash
 docker-compose -f server/docker-compose.yml up -d

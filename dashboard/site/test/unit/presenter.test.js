@@ -455,7 +455,7 @@ describe('dashboard DOM provenance', () => {
     expect(rendered.querySelector('.factory-intro')).toBeNull();
   });
 
-  it('waits for page sources when a page mixes bound elements with ordinary views', async () => {
+  it('renders independently bound elements while an ordinary view awaits its source', async () => {
     const rendered = renderDashboardView({
       document: {
         languageVersion: '0.1.0',
@@ -490,13 +490,27 @@ describe('dashboard DOM provenance', () => {
     });
 
     await vi.waitFor(() => {
-      expect(rendered.querySelector('[data-page-id="overview"]')?.getAttribute('aria-busy')).toBe('true');
+      expect(rendered.querySelector('[data-page-id="overview"] .factory-intro')).not.toBeNull();
     });
-    expect(rendered.querySelector('.factory-intro')).toBeNull();
+    expect(rendered.querySelector('[data-view-id="runs-table"] .dashboard-view-skeleton')).not.toBeNull();
+    expect(rendered.querySelector('[data-page-id="overview"]')?.getAttribute('aria-busy')).not.toBe('true');
     disposeDashboard(rendered);
   });
 
-  it('waits for section count sources that are not independently bound', async () => {
+  it('renders sections before their count sources arrive', async () => {
+    let deliverCount = () => {};
+    const loadPageSources = /** @type {NonNullable<Parameters<typeof renderDashboardView>[0]['loadPageSources']>} */ (
+      () => new Promise(() => {})
+    );
+    loadPageSources.subscribeViewSources = (_pageId, _viewId, _sourceNames) => new Promise((resolve) => {
+      deliverCount = () => resolve({
+        'overview-count': {
+          source: 'overview-count',
+          rows: [{ count: 1 }, { count: 2 }],
+          metadata: { 'source-id': 'overview-count', 'source-kind': 'fixture', 'as-of': '', 'retrieved-at': '', availability: 'available', completeness: 'complete', freshness: 'fresh' }
+        }
+      });
+    });
     const rendered = renderDashboardView({
       document: {
         languageVersion: '0.1.0',
@@ -519,20 +533,258 @@ describe('dashboard DOM provenance', () => {
               title: 'Overview',
               layout: 'full',
               views: ['overview-header'],
-              'count-source': 'overview-count'
+              'count-source': 'overview-count',
+              'count-label': 'items'
             }]
           }]
         }
       },
       sources: {},
-      loadPageSources: () => new Promise(() => {})
+      loadPageSources
     });
 
     await vi.waitFor(() => {
-      expect(rendered.querySelector('[data-page-id="overview"]')?.getAttribute('aria-busy')).toBe('true');
+      expect(rendered.querySelector('[data-page-id="overview"] .layout-section')).not.toBeNull();
     });
-    expect(rendered.querySelector('.factory-intro')).toBeNull();
+    const intro = rendered.querySelector('.factory-intro');
+    expect(intro).not.toBeNull();
+    await vi.waitFor(() => expect(deliverCount).not.toBeNull());
+    deliverCount();
+    await vi.waitFor(() => expect(rendered.querySelector('[data-section-id="overview-section"] .layout-section-header')?.textContent).toContain('2 items'));
+    expect(rendered.querySelector('.factory-intro')).toBe(intro);
     disposeDashboard(rendered);
+  });
+
+  it('binds each view independently and retains unaffected view nodes', async () => {
+    const callbacks = new Map();
+    const resolveSnapshots = new Map();
+    const loadPageSources = /** @type {NonNullable<Parameters<typeof renderDashboardView>[0]['loadPageSources']>} */ (vi.fn(() => {
+      throw new Error('Page-wide subscriptions must not be used.');
+    }));
+    loadPageSources.subscribeViewSources = vi.fn((pageId, viewId, names, options) => {
+      callbacks.set(viewId, options.onUpdate);
+      return new Promise((resolve) => resolveSnapshots.set(viewId, resolve));
+    });
+    const rendered = renderDashboardView({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'view-binding-dashboard',
+          title: 'View bindings',
+          pages: [{
+            id: 'overview',
+            kind: 'custom',
+            title: 'Overview',
+            views: [
+              { id: 'first', title: 'First', mark: 'table', data: { source: 'first-data' }, encoding: { columns: [{ field: 'name' }] } },
+              { id: 'second', title: 'Second', mark: 'table', data: { source: 'second-data' }, encoding: { columns: [{ field: 'name' }] } }
+            ]
+          }]
+        }
+      },
+      sources: {},
+      loadPageSources
+    });
+    document.body.append(rendered);
+    await vi.waitFor(() => expect(resolveSnapshots.size).toBe(2));
+    expect(loadPageSources).not.toHaveBeenCalled();
+    expect(rendered.querySelector('[data-view-id="first"] .dashboard-view-skeleton')).not.toBeNull();
+    expect(rendered.querySelector('[data-view-id="second"] .dashboard-view-skeleton')).not.toBeNull();
+    expect(rendered.querySelector('[data-view-id="first"]')?.getAttribute('aria-busy')).toBe('true');
+
+    /** @param {string} name @param {string} value */
+    const source = (name, value) => ({
+      source: name,
+      rows: [{ name: value }],
+      metadata: { availability: 'available', completeness: 'complete', freshness: 'fresh' }
+    });
+    resolveSnapshots.get('first')({ 'first-data': source('first-data', 'one') });
+    await vi.waitFor(() => expect(rendered.querySelector('[data-view-id="first"]')?.textContent).toContain('one'));
+    const firstView = rendered.querySelector('[data-view-id="first"]');
+    expect(firstView?.hasAttribute('aria-busy')).toBe(false);
+    expect(rendered.querySelector('[data-view-id="second"] .dashboard-view-skeleton')).not.toBeNull();
+
+    resolveSnapshots.get('second')({ 'second-data': source('second-data', 'two') });
+    await vi.waitFor(() => expect(rendered.querySelector('[data-view-id="second"]')?.textContent).toContain('two'));
+    expect(rendered.querySelector('[data-view-id="first"]')).toBe(firstView);
+    callbacks.get('second')({ 'second-data': source('second-data', 'updated') });
+    expect(rendered.querySelector('[data-view-id="second"]')?.textContent).toContain('updated');
+    expect(rendered.querySelector('[data-view-id="first"]')).toBe(firstView);
+    disposeDashboard(rendered);
+    callbacks.get('second')({ 'second-data': source('second-data', 'stale') });
+    expect(rendered.textContent).not.toContain('stale');
+    rendered.remove();
+  });
+
+  it('updates nested section views from separate queries without replacing sibling UX', async () => {
+    const requests = new Map();
+    const loadPageSources = /** @type {NonNullable<Parameters<typeof renderDashboardView>[0]['loadPageSources']>} */ (vi.fn(() => {
+      throw new Error('Nested views must not use the page-wide subscription.');
+    }));
+    loadPageSources.subscribeViewSources = vi.fn((_pageId, viewId, names, options) => {
+      requests.set(viewId, { names, options });
+      return new Promise(() => {});
+    });
+    const rendered = renderDashboardView({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'nested-query-bindings',
+          title: 'Nested query bindings',
+          queries: [
+            { name: 'run-counts', from: 'runs', aggregate: { values: [{ field: 'name', as: 'count', reducer: 'count' }] } }
+          ],
+          pages: [{
+            id: 'overview', kind: 'custom', title: 'Overview',
+            views: [
+              { id: 'successes', title: 'Successes', mark: 'table', data: { source: 'runs', filters: { conclusion: 'success' } }, encoding: { columns: [{ field: 'name' }] } },
+              { id: 'failures', title: 'Failures', mark: 'table', disclosure: 'supplemental', data: { source: 'runs', filters: { conclusion: 'failure' } }, encoding: { columns: [{ field: 'name' }] } }
+            ],
+            sections: [{
+              id: 'results', title: 'Results', layout: 'full',
+              views: ['successes', 'failures'],
+              'count-source': 'run-counts', 'count-field': 'count', 'count-label': 'runs'
+            }]
+          }]
+        }
+      },
+      sources: {},
+      loadPageSources
+    });
+    document.body.append(rendered);
+    try {
+      await vi.waitFor(() => expect(requests.size).toBe(3));
+      expect(loadPageSources).not.toHaveBeenCalled();
+      expect(requests.get('successes').names).toEqual(['runs']);
+      expect(requests.get('failures').names).toEqual(['runs']);
+      expect(requests.get('page-chrome').names).toEqual(['run-counts']);
+      const section = rendered.querySelector('[data-section-id="results"]');
+      const disclosure = section?.querySelector('.view-disclosure');
+      expect(section?.querySelector('[data-view-id="successes"] .dashboard-view-skeleton')).not.toBeNull();
+      expect(disclosure?.querySelector('.dashboard-view-skeleton')).not.toBeNull();
+      /** @param {string} name @param {Array<Record<string, unknown>>} rows */
+      const source = (name, rows) => ({
+        source: name, rows,
+        metadata: { availability: 'available', completeness: 'complete', freshness: 'fresh' }
+      });
+
+      requests.get('failures').options.onUpdate({
+        'view:overview:failures:runs': source('runs', [{ name: 'failed run' }])
+      });
+      await vi.waitFor(() => expect(disclosure?.textContent).toContain('failed run'));
+      expect(section?.querySelector('[data-view-id="successes"] .dashboard-view-skeleton')).not.toBeNull();
+      expect(section?.querySelector('.view-disclosure')).toBe(disclosure);
+      const failuresContent = disclosure?.querySelector(':scope > :not(summary)');
+
+      requests.get('page-chrome').options.onUpdate({
+        'run-counts': source('run-counts', [{ count: 2 }])
+      });
+      await vi.waitFor(() => expect(section?.querySelector('.layout-section-header')?.textContent).toContain('2 runs'));
+      expect(disclosure?.querySelector(':scope > :not(summary)')).toBe(failuresContent);
+      const sectionHeader = section?.querySelector('.layout-section-header');
+
+      requests.get('successes').options.onUpdate({
+        'view:overview:successes:runs': source('runs', [{ name: 'successful run' }])
+      });
+      await vi.waitFor(() => expect(section?.querySelector('[data-view-id="successes"]')?.textContent).toContain('successful run'));
+      expect(section?.querySelector('.layout-section-header')).toBe(sectionHeader);
+      expect(section?.querySelector('.view-disclosure')).toBe(disclosure);
+      expect(disclosure?.querySelector(':scope > :not(summary)')).toBe(failuresContent);
+      expect(section?.querySelectorAll('.view-disclosure')).toHaveLength(1);
+      expect(section?.querySelector('[data-view-id="successes"]')?.textContent).not.toContain('failed run');
+    } finally {
+      disposeDashboard(rendered);
+      rendered.remove();
+    }
+  });
+
+  it('keeps a source-bound callout as the section root while its source loads', async () => {
+    let update = () => {};
+    const loadPageSources = /** @type {NonNullable<Parameters<typeof renderDashboardView>[0]['loadPageSources']>} */ (
+      () => new Promise(() => {})
+    );
+    loadPageSources.subscribeViewSources = (_pageId, _viewId, _names, options) => {
+      update = () => options.onUpdate({
+        runs: {
+          source: 'runs', rows: [{ name: 'A run' }],
+          metadata: { 'source-id': 'runs', 'source-kind': 'fixture', 'as-of': '', 'retrieved-at': '', availability: 'available', completeness: 'complete', freshness: 'fresh' }
+        }
+      });
+      return new Promise(() => {});
+    };
+    const rendered = renderDashboardView({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'callout-query-bindings', title: 'Callout query bindings',
+          pages: [{
+            id: 'overview', kind: 'custom', title: 'Overview',
+            views: [{ id: 'notice', title: 'Notice', mark: 'callout', data: { source: 'runs' }, callout: { label: 'Note' } }],
+            sections: [{ id: 'notice-section', title: 'Notice', layout: 'full', views: ['notice'] }]
+          }]
+        }
+      },
+      sources: {},
+      loadPageSources
+    });
+    document.body.append(rendered);
+    try {
+      await vi.waitFor(() => expect(rendered.querySelector('[data-section-id="notice-section"]')).not.toBeNull());
+      expect(rendered.querySelector('[data-section-id="notice-section"]')?.classList.contains('dashboard-callout')).toBe(true);
+      expect(rendered.querySelector('[data-section-id="notice-section"] .dashboard-view-skeleton')).toBeNull();
+      update();
+      await vi.waitFor(() => expect(rendered.querySelector('[data-section-id="notice-section"]')?.classList.contains('dashboard-callout')).toBe(true));
+      expect(rendered.querySelector('[data-section-id="notice-section"]')?.classList.contains('layout-section')).toBe(false);
+    } finally {
+      disposeDashboard(rendered);
+      rendered.remove();
+    }
+  });
+
+  it('updates a supplemental view inside its existing disclosure', async () => {
+    let update = () => {};
+    const loadPageSources = /** @type {NonNullable<Parameters<typeof renderDashboardView>[0]['loadPageSources']>} */ (
+      () => new Promise(() => {})
+    );
+    loadPageSources.subscribeViewSources = (_pageId, _viewId, _sourceNames, options) => {
+      update = () => options.onUpdate({
+        'more-data': {
+          source: 'more-data',
+          rows: [{ name: 'Updated' }],
+          metadata: { 'source-id': 'more-data', 'source-kind': 'fixture', 'as-of': '', 'retrieved-at': '', availability: 'available', completeness: 'complete', freshness: 'fresh' }
+        }
+      });
+      return new Promise(() => {});
+    };
+    const rendered = renderDashboardView({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'disclosure-bindings',
+          title: 'Disclosure bindings',
+          pages: [{
+            id: 'overview', kind: 'custom', title: 'Overview',
+            views: [{
+              id: 'more', title: 'More', mark: 'table', disclosure: 'supplemental',
+              data: { source: 'more-data' }, encoding: { columns: [{ field: 'name' }] }
+            }]
+          }]
+        }
+      },
+      sources: {},
+      loadPageSources
+    });
+    document.body.append(rendered);
+    await vi.waitFor(() => expect(rendered.querySelector('.view-disclosure')).not.toBeNull());
+    const disclosure = /** @type {HTMLDetailsElement} */ (rendered.querySelector('.view-disclosure'));
+    disclosure.open = true;
+    update();
+    await vi.waitFor(() => expect(disclosure.textContent).toContain('Updated'));
+    expect(rendered.querySelectorAll('.view-disclosure')).toHaveLength(1);
+    expect(disclosure.querySelector('details')).toBeNull();
+    expect(disclosure.open).toBe(true);
+    disposeDashboard(rendered);
+    rendered.remove();
   });
 
   it('requests a refresh after pulling down from the top of Overview', () => {
@@ -803,7 +1055,7 @@ describe('dashboard DOM provenance', () => {
     expect(rendered.hasAttribute('data-json-path')).toBe(false);
   });
 
-  it('shows a neutral loading skeleton instead of unavailable source errors during initial load', () => {
+  it('shows a view loading skeleton instead of unavailable source errors during initial load', async () => {
     const rendered = renderDashboard({
       document: {
         languageVersion: '0.1.0',
@@ -833,8 +1085,11 @@ describe('dashboard DOM provenance', () => {
       loading: true
     });
 
+    await vi.waitFor(() => {
+      expect(rendered.querySelector('[data-page-id="repositories"] .page-layout-grid')).not.toBeNull();
+    });
     const page = rendered.querySelector('[data-page-id="repositories"]');
-    expect(page?.getAttribute('aria-busy')).toBe('true');
+    expect(page?.getAttribute('aria-busy')).not.toBe('true');
     expect(page?.getAttribute('aria-label')).toBeNull();
     expect(page?.querySelector('[role="status"]')).toBeNull();
     expect(page?.querySelector('.dashboard-view-skeleton')).not.toBeNull();
@@ -890,16 +1145,15 @@ describe('dashboard DOM provenance', () => {
       })
     });
     document.body.append(rendered);
-    const page = await activatePage(rendered, 'repositories');
-
+    await activatePage(rendered, 'repositories');
     await vi.waitFor(() => {
-      expect(page?.querySelector('td[data-field="repository"]')?.textContent).toBe('githubnext/gh-aw-cao');
+      expect(rendered.querySelector('[data-page-id="repositories"] td[data-field="repository"]')?.textContent).toBe('githubnext/gh-aw-cao');
     });
-    expect(page?.querySelector('.dashboard-view-skeleton')).toBeNull();
+    expect(rendered.querySelector('[data-page-id="repositories"] .dashboard-view-skeleton')).toBeNull();
     rendered.remove();
   });
 
-  it('keeps Overview metrics and empty inventory hidden until initial loading completes', async () => {
+  it('renders Overview composition while its components load independently', async () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {},
@@ -907,10 +1161,10 @@ describe('dashboard DOM provenance', () => {
     });
     document.body.append(rendered);
     const page = await activatePage(rendered, 'overview');
-
-    expect(page?.querySelector('.dashboard-view-skeleton')).not.toBeNull();
-    expect(page?.querySelector('.factory-station')).toBeNull();
-    expect(page?.querySelector('.link-button-list-empty')).toBeNull();
+    await vi.waitFor(() => {
+      expect(rendered.querySelector('[data-page-id="overview"] .custom-view-grid')).not.toBeNull();
+    });
+    expect(page?.getAttribute('aria-busy')).not.toBe('true');
     expect(page?.textContent).not.toContain('Loading dashboard data…');
     rendered.remove();
   });

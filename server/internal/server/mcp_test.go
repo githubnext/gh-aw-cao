@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -173,6 +174,47 @@ func TestGitHubActionsMCPPermissionCheckRequiresRepository(t *testing.T) {
 	err := verifyGitHubActionsPermissions(t.Context(), Config{}, testActionsToken)
 	if err == nil || !strings.Contains(err.Error(), "GITHUB_REPOSITORY") {
 		t.Fatalf("missing repository returned %v", err)
+	}
+}
+
+func TestResolveQueryLimit(t *testing.T) {
+	const defaultRows, maxRows = 50, 500
+
+	tests := []struct {
+		name        string
+		value       any
+		wantLimit   int
+		wantOutcome queryLimitOutcome
+		wantErr     bool
+	}{
+		{name: "nil selects default", value: nil, wantLimit: defaultRows, wantOutcome: queryLimitOutcomeDefault},
+		{name: "exact value under max", value: float64(10), wantLimit: 10, wantOutcome: queryLimitOutcomeExact},
+		{name: "value equal to max clamps", value: float64(maxRows), wantLimit: maxRows, wantOutcome: queryLimitOutcomeClamped},
+		{name: "value above max clamps", value: float64(maxRows * 2), wantLimit: maxRows, wantOutcome: queryLimitOutcomeClamped},
+		{name: "zero is rejected", value: float64(0), wantErr: true, wantOutcome: queryLimitOutcomeRejected},
+		{name: "negative is rejected", value: float64(-1), wantErr: true, wantOutcome: queryLimitOutcomeRejected},
+		{name: "fractional is rejected", value: float64(1.5), wantErr: true, wantOutcome: queryLimitOutcomeRejected},
+		{name: "NaN is rejected", value: math.NaN(), wantErr: true, wantOutcome: queryLimitOutcomeRejected},
+		{name: "infinity is rejected", value: math.Inf(1), wantErr: true, wantOutcome: queryLimitOutcomeRejected},
+		{name: "non-numeric is rejected", value: "10", wantErr: true, wantOutcome: queryLimitOutcomeRejected},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			limit, outcome, err := resolveQueryLimit(test.value, defaultRows, maxRows)
+			if test.wantErr {
+				if err == nil {
+					t.Fatalf("resolveQueryLimit(%v) = nil error, want error", test.value)
+				}
+			} else if err != nil {
+				t.Fatalf("resolveQueryLimit(%v) returned unexpected error: %v", test.value, err)
+			}
+			if outcome != test.wantOutcome {
+				t.Errorf("resolveQueryLimit(%v) outcome = %s, want %s", test.value, outcome, test.wantOutcome)
+			}
+			if !test.wantErr && limit != test.wantLimit {
+				t.Errorf("resolveQueryLimit(%v) = %d, want %d", test.value, limit, test.wantLimit)
+			}
+		})
 	}
 }
 

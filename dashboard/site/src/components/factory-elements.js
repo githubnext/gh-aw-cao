@@ -35,7 +35,7 @@ export function resolveFactorySourceNames(defaults, config) {
  * worker results settle and update only the widgets that consume each result.
  * @param {Record<string, import('../presenter.js').LogicalSourceInput>} sources
  * @param {string[]} names
- * @param {{ pageId?: string, viewId?: string, viewIndex?: number, sourceNames?: string[], queryContext?: import('./ui-elements.js').ElementRenderContext['queryContext'] }} [request]
+ * @param {{ pageId?: string, viewId?: string, viewIndex?: number, sourceNames?: string[], routeParameters?: Record<string, string>, queryContext?: import('./ui-elements.js').ElementRenderContext['queryContext'] }} [request]
  * @param {{ refreshViewSources?: boolean }} [options]
  * @returns {SourceBindings}
  */
@@ -107,6 +107,7 @@ export function renderFactoryElement(context, defaultSources, selectSourceNames,
     viewId: context.viewId,
     viewIndex: context.viewIndex,
     sourceNames: context.sourceNames,
+    routeParameters: context.routeParameters,
     queryContext: context.queryContext
   });
   const scope = createFactoryScope();
