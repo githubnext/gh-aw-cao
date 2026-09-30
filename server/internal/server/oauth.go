@@ -47,7 +47,7 @@ const oauthRecoveryScript = `const button = document.getElementById('sign-out');
 button.addEventListener('click', async () => {
   button.disabled = true;
   try {
-    const csrf = document.cookie.split('; ').find((cookie) => cookie.startsWith('cao_csrf='));
+    const csrf = document.cookie.split(';').map((cookie) => cookie.trim()).find((cookie) => cookie.startsWith('cao_csrf='));
     const response = await fetch('/auth/logout', {
       method: 'POST',
       credentials: 'same-origin',
