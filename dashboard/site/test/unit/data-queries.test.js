@@ -106,6 +106,46 @@ describe('declarative dashboard queries', () => {
     expect(result.rows).toEqual([{ event: '1' }, { event: '2' }, { event: '3' }, { event: '4' }]);
   });
 
+  it('projects shared event fields before materializing event consumers', () => {
+    const fields = [
+      'organization', 'repository', 'workflow', 'run', 'run-attempt', 'event',
+      'event-source', 'event-type', 'event-summary', 'event-status', 'github-entity-type',
+      'safe-output-type', 'safe-output-url', 'correlation-id',
+      'implementation-pull-request-url', 'event-timestamp', 'run-link'
+    ];
+    const sources = Object.fromEntries(['audits', 'domains', 'tools', 'issues'].map((source) => [
+      source,
+      {
+        source,
+        rows: [{
+          ...Object.fromEntries(fields.map((field) => [field, `${field}-${source}`])),
+          organization: 'example',
+          repository: 'repo',
+          workflow: 'workflow',
+          run: source,
+          'run-attempt': '1',
+          event: `event-${source}`,
+          'safe-output-url': `https://example.com/${source}`,
+          'campaign-readme': 'x'.repeat(10000)
+        }],
+        metadata: metadata(source)
+      }
+    ]));
+
+    const result = executeDashboardQueries(
+      dashboardQueries,
+      sources,
+      ['event-base', 'entity-events', 'event-runs']
+    );
+
+    expect(Object.keys(result['event-base'].rows[0])).toEqual(fields);
+    expect(result['event-base'].rows[0]).not.toHaveProperty('campaign-readme');
+    expect(result['entity-events'].rows).toHaveLength(4);
+    expect(result['entity-events'].rows[0]['event-url']).toMatch(/^https:\/\/example\.com\//);
+    expect(result['event-runs'].rows).toHaveLength(4);
+    expect(result['event-runs'].rows.every((row) => row.events === 1)).toBe(true);
+  });
+
   it('keeps available union branches when one branch is unavailable', () => {
     const result = executeDashboardQuery(
       {

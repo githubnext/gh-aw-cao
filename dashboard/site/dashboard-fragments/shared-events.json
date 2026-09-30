@@ -2,14 +2,33 @@
   "queries": [
     {
       "name": "event-base",
-      "intent": "Reuse shared query stages for entity-events, event-runs",
-      "objective": "Establish the retained run-owned event evidence available for downstream import-coverage analysis.",
+      "intent": "Project shared event fields before combining run-owned records.",
+      "objective": "Provide the narrow retained event evidence needed for inspection and run import-coverage analysis.",
       "acceptance": "The result unions retained audit, domain, tool, and issue records with their available run identity; an empty or unavailable preview cannot establish zero source activity or complete import coverage.",
       "from": "audits",
       "union": [
         "domains",
         "tools",
         "issues"
+      ],
+      "select": [
+        { "field": "organization" },
+        { "field": "repository" },
+        { "field": "workflow" },
+        { "field": "run" },
+        { "field": "run-attempt" },
+        { "field": "event" },
+        { "field": "event-source" },
+        { "field": "event-type" },
+        { "field": "event-summary" },
+        { "field": "event-status" },
+        { "field": "github-entity-type" },
+        { "field": "safe-output-type" },
+        { "field": "safe-output-url" },
+        { "field": "correlation-id" },
+        { "field": "implementation-pull-request-url" },
+        { "field": "event-timestamp" },
+        { "field": "run-link" }
       ]
     },
     {
