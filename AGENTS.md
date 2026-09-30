@@ -75,6 +75,8 @@ Run these commands from the `dashboard/site/` directory:
 | `npm run typecheck` | TypeScript strict-mode check |
 | `npm run validate:corpus` | Dashboard authoring corpus validation |
 
+After UI changes, when Playwright loads the full website, capture and include desktop and mobile screenshots in the PR. Wait for the affected page to render before capturing; do not present screenshots of a mocked page as full-site screenshots.
+
 ### Dashboard debug logging
 
 - Create a category logger with `createDebug(category)` from `dashboard/site/src/debug.js`; call it with structured, non-sensitive metadata only.
