@@ -1,1 +1,575 @@
-{"source_sha":"765a714efea3e1656b72732faba42bc3ac654b07","next_category":"artifact transfer and Pages packaging","evaluations":[{"evaluated_at":"2026-09-30T04:31:00Z","worker_run_id":"36669042691","category":"scheduling, concurrency, and avoidable rebuilds","evidence_run_ids":[36669135685,36667112855,36667051668,36666370602,36665534758,36664862503,36663396318,36663299418,36663269051,36662135509,36660772104,36660766656,36657997387,36656980283,36656398875,36653323698,36649101159,36648890547,36648633676,36648478342],"outcome":"no_actionable_improvement: latest 20 completed successful docs.yml runs still show the same duplicate workflow_run rebuild pattern, but the recommendation fingerprint is already recorded in memory and current evidence does not materially change timing or source conditions. Median workflow runtime stayed 54.5s overall, built runs stayed 41s, and five workflow_run runs still duplicated same-SHA scheduled deploy builds.","suggestion_fingerprint":"scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"},{"evaluated_at":"2026-09-30T04:00:00Z","worker_run_id":"36666661532","category":"dependency installation and caching","evidence_run_ids":[36666370602,36665534758,36664862503,36663396318,36663299418,36663269051,36662135509,36660772104,36660766656],"outcome":"no_actionable_improvement: latest 9 successful docs.yml runs still restored node_modules from cache on every built run, skipped Install dependencies and Save node_modules every time, and kept dependency-related step timings at Checkout median 6s, Set up Node.js median 4.5s, Restore node_modules median 5s, with build median 39s and workflow median 51s. This category remains below the 60s/15% threshold, while the only actionable waste remains the already-tracked duplicate workflow_run rebuild issue.","suggestion_fingerprint":"scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"},{"evaluated_at":"2026-09-30T03:30:00Z","worker_run_id":"36664671405","category":"dependency installation and caching","evidence_run_ids":[36663299418,36663396318,36662135509,36660772104,36657997387,36656398875,36653323698,36649101159,36648890547],"outcome":"no_actionable_improvement: latest 9 successful docs.yml runs kept Restore node_modules on a cache hit, skipped Install dependencies and Save node_modules in every built run, and left Build documentation at 8-13s plus dashboard restore at 1-3s. Full workflow median stayed ~75s with build median ~44s, so dependency installation and caching remain below the 60s/15% threshold and the only material waste still visible is the already-tracked duplicate workflow_run rebuild pattern."},{"evaluated_at":"2026-09-30T02:48:00Z","worker_run_id":"36661577598","category":"scheduling, concurrency, and avoidable rebuilds","evidence_run_ids":[36660772104,36660766656,36657997387,36656980283,36656398875,36653323698,36649101159,36648890547,36648633676,36648478342],"outcome":"no_actionable_improvement: latest 10 completed docs.yml runs still show duplicate workflow_run rebuilds immediately after successful cao-dashboard pushes on the same head SHA, but the same suggestion fingerprint is already recorded in memory and no open-issue check surfaced a materially new source or timing change.","suggestion_fingerprint":"scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"},{"evaluated_at":"2026-09-30T02:12:51Z","worker_run_id":"36658388705","category":"artifact transfer and Pages packaging","evidence_run_ids":[36657997387,36653323698,36649101159,36648890547,36648633676,36648478342,36646927879,36646895035],"outcome":"no_actionable_improvement: latest 8 comparable successful docs.yml runs kept Pages upload at 4-7s (median 6s, p90 7s), deploy at 9-20s on schedule-triggered deployments (median 14s, p90 19s), and the uploaded github-pages artifact near 30.0 MB; transfer and packaging remain below the 60s/15% threshold, while duplicate workflow_run rebuilds remain the only material waste already tracked under scheduling."},{"evaluated_at":"2026-09-30T01:44:30Z","worker_run_id":"36656434679","category":"scheduling, concurrency, and avoidable rebuilds","evidence_run_ids":[36653323698,36649101159,36648890547,36648633676,36648478342,36646927879,36646895035],"outcome":"no_actionable_improvement: latest 7 successful runs repeat the already-tracked workflow_run duplicate-build pattern, but an open suggestion with the same fingerprint already exists in memory and no new source or timing evidence materially alters the recommendation.","suggestion_fingerprint":"scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"},{"evaluated_at":"2026-09-30T01:06:35Z","worker_run_id":"36653246021","category":"reusable dashboard generation","evidence_run_ids":[36653323698,36649101159,36648890547,36648633676,36648478342,36646927879,36646895035],"outcome":"no_actionable_improvement: docs.yml restored the central-agentic-ops-dashboard cache in all 7 comparable successful runs; dashboard restore took 1-3s, while build median was 44s and workflow median 74s, so reusable dashboard generation remains below the 60s/15% threshold and the duplicate workflow_run rebuild issue is already tracked under scheduling.","suggestion_fingerprint":"scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"},{"evaluated_at":"2026-09-29T23:38:30Z","worker_run_id":"36645992782","category":"artifact transfer and Pages packaging","evidence_run_ids":[36645950643,36645690151,36644846281,36644705830,36644603458,36644489697,36642947300,36641511486,36640353484],"outcome":"no_actionable_improvement: over the latest 9 successful docs.yml runs (7 built, 2 freshness skips), Pages upload median stayed 6s with p90 6.4s, deploy median on deploying schedule runs was 19s with p90 19.8s, and the uploaded github-pages artifact was ~29.9 MB; transfer and packaging remain below the 60s/15% threshold, while the only material waste still visible is duplicate workflow_run rebuilds already tracked under scheduling."},{"evaluated_at":"2026-09-29T23:27:10Z","worker_run_id":"36644885772","category":"Astro documentation generation","evidence_run_ids":[36644846281,36644705830,36644603458,36644489697,36642947300,36639375613,36639055495,36637066632,36635651609,36635486569,36634885197,36634106269,36633476719,36632954614,36631001695,36628967576,36628232110],"outcome":"no_actionable_improvement: Astro docs build median 12s and p90 13s across 17 built successful docs.yml runs; below 60s and 15% workflow-threshold, while repeated workflow_run rebuilds remain tracked under scheduling."},{"evaluated_at":"2026-09-29T22:43:21Z","worker_run_id":"36640753803","category":"dependency installation and caching","evidence_run_ids":[36639375613,36639055495,36637066632,36635651609,36635486569,36634885197,36634106269,36633476719,36632954614],"outcome":"no_actionable_improvement: dependency restore cache hit in all 9 comparable successful docs.yml runs; install/save never ran, build median 43s and workflow median 66s, so dependency installation and caching remain below the 60s/15% threshold and no material evidence change justifies a new recommendation."},{"evaluated_at":"2026-09-29T22:29:09Z","worker_run_id":"36639365028","category":"dependency installation and caching","evidence_run_ids":[36639375613,36639055495,36637066632,36635651609,36635486569,36634885197,36634106269,36633476719,36632954614],"outcome":"no_actionable_improvement: dependency restore cache hit in all 9 comparable successful docs.yml runs; install/save never ran, build median 43s and workflow median 66s, so dependency installation and caching are below the 60s/15% threshold."},{"evaluated_at":"2026-09-29T21:41:45Z","worker_run_id":"36634494405","category":"scheduling, concurrency, and avoidable rebuilds","evidence_run_ids":[36634106269,36633476719,36632954614,36631001695,36630486278,36628967576,36628232110,36627902161,36626444233,36625685641,36625420005,36623460362,36622374664,36622187347,36621657087],"outcome":"suggested: workflow_run docs builds repeatedly rebuild immediately after successful cao-dashboard pushes on the same head SHA even though schedule-freshness skips equivalent scheduled runs; add a workflow_run freshness gate keyed to the latest successful dashboard run SHA to avoid duplicate docs rebuilds.","suggestion_fingerprint":"scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"},{"evaluated_at":"2026-09-29T21:30:00Z","worker_run_id":"36632856508","category":"artifact transfer and Pages packaging","evidence_run_ids":[36631001695,36630486278,36628967576,36628232110,36627902161,36626444233,36625685641,36625420005],"outcome":"no_actionable_improvement: docs.yml Pages upload median 6s on built runs and deploy median 10s on deploying schedule runs; packaging is below the 60s/15% threshold, while schedule-freshness API lookups add ~4s on every scheduled run but belong to scheduling/avoidable rebuilds, not this category."},{"evaluated_at":"2026-09-29T20:56:43Z","worker_run_id":"36629495892","category":"reusable dashboard generation","evidence_run_ids":[36628967576,36628232110,36626444233,36625685641,36625420005,36623460362,36622374664,36622187347],"outcome":"no_actionable_improvement: reusable dashboard generation cache hit in all 8 comparable successful runs; dashboard restore median 2s, docs build median 41.5s, workflow median 55.5s, so no uncached dashboard-generation cost above the 60s/15% threshold in docs.yml."},{"evaluated_at":"2026-09-29T20:31:00Z","worker_run_id":"36626413300","category":"Astro documentation generation","evidence_run_ids":[36626444233,36625685641,36625420005,36623460362,36622374664,36622187347,36621657087,36620134433,36618851571,36616250620,36616178759,36615392351,36615102477,36614520763,36613942953,36612578738,36610779325,36609151685,36607531070,36607481039],"outcome":"no_actionable_improvement: Astro docs build median 12s and p90 13s across 19 built runs; below 60s/15% threshold."},{"evaluated_at":"2026-09-29T19:53:17.506592Z","worker_run_id":"36622055961","category":"dependency installation and caching","evidence_run_ids":[36622187347,36622074249,36622031308,36622020963,36621832569,36621807065,36621698828,36621657087,36621429936,36621429566,36621142854,36621019524,36621018387,36620853509,36620743610,36620729256,36620694716,36620570431,36620468458,36620181985],"outcome":"incomplete: fewer than five comparable successful docs.yml runs in the last 14 days"},{"evaluated_at":"2026-09-30T09:08:00Z","worker_run_id":"36693649727","category":"reusable dashboard generation","evidence_run_ids":[36690617797,36689491358,36684547346,36682884057,36682591964,36682312588],"outcome":"no_actionable_improvement: within the latest 20 completed docs.yml runs in the last 14 days, 6 comparable successful runs executed the build job and every one restored the central-agentic-ops-dashboard cache, skipping dashboard lookup/download. Docs build median was 40s (p90 47s), dashboard restore median 1s (p90 3s), and the CAO Dashboard source run sampled for matching SHAs spent its time in activity-data upgrade/health steps rather than site assembly (e.g. run 36682312661: Upgrade fallback activity data 116s, Assess activity database health 18s, Assemble Dashboard Language site 1s). The reusable dashboard-generation category remains well below the 60s or 15% action threshold, and the only material docs waste still visible is the already-recorded scheduling fingerprint for duplicate workflow_run rebuilds.","suggestion_fingerprint":"scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"},{"evaluated_at":"2026-09-30T09:30:00Z","worker_run_id":"36696153942","category":"artifact transfer and Pages packaging","evidence_run_ids":[36690617797,36689491358,36684547346,36682884057,36682591964,36682312588],"outcome":"no_actionable_improvement: within the latest 20 completed docs.yml runs from the last 14 days, 6 comparable successful runs executed the build job. Upload Pages artifact stayed at 5-7s by step timing, successful deploy jobs stayed at 11-15s, and the emitted github-pages artifact was ~32.3 MB in the latest deploying sample. That keeps artifact transfer and Pages packaging below the 60s or 15% threshold, while the only material docs waste still visible remains the already-recorded duplicate workflow_run rebuild fingerprint under scheduling.","suggestion_fingerprint":"scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"},{"evaluated_at":"2026-09-30T09:59:13Z","worker_run_id":"36699198262","category":"scheduling, concurrency, and avoidable rebuilds","evidence_run_ids":[36698149036,36696470817,36696396135,36696344537,36693466107,36692682314,36690617797,36689491358,36687272110,36686455708,36684547346,36682884057,36682591964,36682312588],"outcome":"no_actionable_improvement: latest 20 completed docs.yml runs in the last 14 days still show duplicate workflow_run docs rebuilds after same-SHA cao-dashboard completions, but the recommendation is already represented by open issue #15029 and memory fingerprint scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha. Current successful-run medians stayed at 43s overall and 45s for built runs, with duplicate workflow_run builds at 43-45s and one queued scheduled outlier at 255s total due to 181s queue time; no materially changed source or timing evidence justifies a new issue.","suggestion_fingerprint":"scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"},{"evaluated_at":"2026-09-30T10:30:00Z","worker_run_id":"36702446641","category":"dependency installation and caching","evidence_run_ids":[36702460255,36699872682,36698149036,36696470817,36696396135,36696344537,36693466107,36692682314,36690617797,36689491358,36687272110,36686455708,36684547346,36682884057,36682591964,36682312588],"outcome":"no_actionable_improvement: latest 16 successful docs.yml runs in the last 14 days included 9 built runs and 7 schedule-freshness skips. Every built run restored node_modules from cache, skipped Install dependencies and Save node_modules, and kept restore/setup costs at Checkout median 6s, Set up Node.js median 3s, Restore node_modules median 5s, with build-job median 39s and full-workflow median 43s. This category remains below the 60s or 15% threshold, while the only material docs waste still visible is the already-open duplicate workflow_run rebuild issue #15029.","suggestion_fingerprint":"scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"},{"evaluated_at":"2026-09-30T10:55:45Z","worker_run_id":"36705125000","category":"dependency installation and caching","evidence_run_ids":[],"outcome":"incomplete: GitHub API rate limit was exceeded before collecting the required latest 20 completed docs.yml runs, job timings, and cache-hit metadata for githubnext/gh-aw-cao; per instructions, additional API and model work stopped and no actionable recommendation was emitted."},{"evaluated_at":"2026-09-30T11:26:40Z","worker_run_id":"36708156727","category":"dependency installation and caching","evidence_run_ids":[36708163767,36706014180,36705399773,36704812809,36703767333,36702460255,36699872682,36698149036,36696470817,36696396135,36696344537,36693466107,36692682314,36690617797,36689491358],"outcome":"no_actionable_improvement: latest 15 successful docs.yml runs in the last 14 days included 8 built runs and 6 schedule-freshness skips. Every built run restored node_modules from cache, skipped Install dependencies and Save node_modules, and kept dependency-related step medians at Checkout 6s, Set up Node.js 4.5s, Restore node_modules 5s, and Build documentation 12.5s, with build-job median 39.5s and full-workflow median 43s. This category remains below the 60s or 15% threshold, while the only material docs waste still visible is the already-open duplicate workflow_run rebuild issue #15029.","suggestion_fingerprint":"scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"},{"evaluated_at":"2026-09-30T11:40:00Z","worker_run_id":"36709608673","category":"Astro documentation generation","evidence_run_ids":[36709288205,36708749228,36708163767,36706014180,36705399773,36704812809,36703767333,36702460255,36699872682,36698149036,36696470817,36696396135],"outcome":"no_actionable_improvement: latest 12 completed successful docs.yml runs in the last 14 days included 7 built runs and 5 schedule-freshness skips. The Build documentation step stayed at 8-14s (median 13s, p90 14s), with build-job median 39s and full-workflow median 43.5s. Astro generation remains below the 60s or 15% threshold, while the only material waste still visible is the already-open duplicate workflow_run rebuild issue #15029.","suggestion_fingerprint":"scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"},{"evaluated_at":"2026-09-30T11:54:00Z","worker_run_id":"36711085450","category":"reusable dashboard generation","evidence_run_ids":[],"outcome":"incomplete: GitHub API rate limit was already exceeded before collecting the required latest 20 completed docs.yml runs, comparable successful-run timings, or trusted cache-hit metadata for the next reusable dashboard generation evaluation in githubnext/gh-aw-cao; per instructions, additional API work stopped and no actionable recommendation was emitted."},{"evaluated_at":"2026-09-30T12:50:00Z","worker_run_id":"36716394299","category":"reusable dashboard generation","evidence_run_ids":[36716310050,36715347114,36714890196,36712268212,36711776283,36711471019,36711357155,36711314063,36710799117,36710018714],"outcome":"no_actionable_improvement: latest 10 successful docs.yml runs in the last 14 days all restored the central-agentic-ops-dashboard cache and skipped dashboard artifact lookup/download, keeping dashboard restore at 1-3s versus a build-job median of 45.5s. The sampled matching CAO Dashboard source run for the same dashboard SHA spent 29s in Upgrade fallback activity data and only 3s in Assemble Dashboard Language site, so reusable dashboard generation is not the docs bottleneck. The only material docs waste still visible is the already-open duplicate workflow_run rebuild issue #15029 under scheduling.","suggestion_fingerprint":"scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"},{"evaluated_at":"2026-09-30T13:12:00Z","worker_run_id":"36719109702","category":"artifact transfer and Pages packaging","evidence_run_ids":[36716310050,36715347114,36714890196,36712268212,36711776283,36711471019,36711357155,36711314063,36710799117],"outcome":"no_actionable_improvement: within the latest 20 completed docs.yml runs from the last 14 days, 9 comparable successful runs executed build+upload+deploy. Full workflow median was 54s (p90 85.2s), queue median 0s, build median 44s (p90 48.4s), and deploy median 17s (p90 17.8s). Upload Pages artifact stayed at 7s median (p90 7.2s) while the uploaded github-pages artifact stayed near 35.5 MB, and every comparable run skipped dashboard artifact lookup/download after a successful Restore cached CAO Dashboard step. Transfer and Pages packaging remain below the 60s or 15% threshold, while the only material docs waste still visible remains the already-open duplicate workflow_run rebuild issue #15029.","suggestion_fingerprint":"scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"},{"evaluated_at":"2026-09-30T13:40:00Z","worker_run_id":"36722353067","category":"scheduling, concurrency, and avoidable rebuilds","evidence_run_ids":[36722402391,36721910965,36721887108,36720659472,36718641570,36716310050,36715347114,36714890196,36712268212,36711776283,36711471019,36711357155,36711314063,36710799117],"outcome":"no_actionable_improvement: latest 14 successful docs.yml runs in the last 14 days still show same-SHA workflow_run rebuilds after schedule or push-triggered docs builds, but the recommendation is already represented by open issue #15029 and the same scheduling fingerprint in memory. Current successful-run medians stayed at 54.5s overall and 43.5s for built runs; duplicate workflow_run runs remained 38-63s each while schedule-freshness skips still complete in 13s. No materially changed source or timing evidence justifies a new issue.","suggestion_fingerprint":"scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"},{"evaluated_at":"2026-09-30T14:00:00Z","worker_run_id":"36724998772","category":"dependency installation and caching","evidence_run_ids":[36724870133,36723915311,36723769583,36722402391,36721910965,36721887108,36720659472,36718641570,36716310050,36715347114,36714890196],"outcome":"no_actionable_improvement: latest 11 successful docs.yml runs in the last 14 days included 10 build executions and 1 schedule-freshness skip. Every complete build with step metadata restored node_modules and skipped Install dependencies plus Save node_modules, while Restore cached CAO Dashboard also hit on every complete build with step metadata and kept dashboard reuse at 1-3s. Current medians were 63s full workflow (p90 120s, driven by one 56s queue outlier), 47s build job (p90 49s), 13s Build documentation step (p90 13s), and 5.5s Restore node_modules (p90 7s). The matching CAO Dashboard source run for the same dashboard SHA spent 53s in Upgrade fallback activity data and 7s in Assess activity database health, versus 2s in Assemble Dashboard Language site and 8s in Install dashboard build dependencies, so docs dependency installation and cache reuse remain well below the 60s or 15% threshold and no new actionable improvement is warranted beyond the already-tracked scheduling duplicate-build issue #15029.","suggestion_fingerprint":"scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"},{"evaluated_at":"2026-09-30T14:40:00Z","worker_run_id":"36729506905","category":"scheduling, concurrency, and avoidable rebuilds","evidence_run_ids":[36729417691,36727642383,36727220885,36726963736,36726905231,36726042924,36724870133,36723915311,36723769583,36722402391,36721910965,36721887108,36720659472],"outcome":"no_actionable_improvement: latest 20 completed docs.yml runs in the last 14 days yielded 13 successful comparable runs and still show same-SHA workflow_run rebuilds after push or schedule builds, but that recommendation is already represented by open issue #15029 and the same scheduling fingerprint in memory. Current successful-run medians are 66s full workflow (p90 121.6s), 46s build job (p90 52.6s), 45s deploy job on deploying schedule runs (p90 47.4s), and 9s schedule-freshness (p90 9.6s). No materially changed source or timing evidence justifies a new issue.","suggestion_fingerprint":"scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"},{"evaluated_at":"2026-09-30T15:01:24Z","worker_run_id":36732960620,"category":"dependency installation and caching","evidence_run_ids":[36732262893,36731701438,36730699521,36729417691,36727642383,36727220885,36726963736,36726905231,36726042924,36724870133,36723915311,36723769583,36722402391,36721910965],"outcome":"no_action"},{"evaluated_at":"2026-09-30T15:30:00Z","worker_run_id":"36736661384","category":"Astro documentation generation","evidence_run_ids":[36734924113,36733706657,36732262893,36731701438,36730699521,36729417691,36727642383,36727220885,36726963736,36726042924,36724870133,36723915311],"outcome":"no_actionable_improvement: latest 12 completed successful docs.yml runs in the last 14 days included 12 comparable successes, with 12 build executions and 5 deploy executions. Queue time stayed at 0s median and p90, workflow execution median was 67.5s (p90 121.8s), build-job median 47s (p90 52.8s), deploy-job median 43s across deploying runs (p90 61.6s), and Build documentation stayed at 13s median (p90 14s). Trusted cache metadata confirmed both the npm package cache and the node_modules restore cache hit on sampled built runs, and the Astro build log for run 36733706657 showed the site build itself completing in 10.50s with pagefind in 291ms and image optimization in 206ms. Astro documentation generation remains below the 60s or 15% threshold, while the only material docs waste still visible remains the already-open duplicate workflow_run rebuild issue #15029.","suggestion_fingerprint":"scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"},{"evaluated_at":"2026-09-30T16:05:00Z","worker_run_id":"36740515268","category":"artifact transfer and Pages packaging","evidence_run_ids":[36740743782,36740343633,36739998828,36738710344,36736893249,36734924113,36733706657,36732262893],"outcome":"no_actionable_improvement: within the latest 20 completed docs.yml runs from the last 14 days, 8 successful runs provided at least five comparable successes and 7 executed the build job. Trusted cache metadata in sampled logs showed node_modules and the cached CAO Dashboard both hitting; Install dependencies, Save node_modules, dashboard lookup, and dashboard artifact download were skipped on built runs. Median full workflow time was 53.5s with p90 98.2s; median build job time was 40s with p90 49.8s; schedule-freshness added 6-10s before built schedule runs; Upload Pages artifact stayed at 5-8s (median 7s, p90 7.9s). Deploy execution on schedule-triggered publishing runs stayed at 13s median, with one 72s outlier driving deploy p90 to 55.0s and full-workflow p90 upward. Artifact transfer and Pages packaging remain below the 60s or 15% threshold, and the only recurring material waste still visible remains the already-recorded same-SHA workflow_run duplicate rebuild fingerprint.","suggestion_fingerprint":"scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"},{"evaluated_at":"2026-09-30T16:31:00Z","worker_run_id":"36744516012","category":"scheduling, concurrency, and avoidable rebuilds","evidence_run_ids":[36744566230,36744206100,36741843910,36741226546,36740743782,36740343633,36739998828,36738710344],"outcome":"no_actionable_improvement: latest 8 successful docs.yml runs in the last 14 days still show same-SHA workflow_run rebuilds after scheduled deploys (36744566230 -> 36744206100 at 56s, 36741226546 -> 36740743782 at 40s), but the recommendation is already represented by open issue #15029 and the same scheduling fingerprint in memory. Current successful-run medians are 52s full workflow (p90 99.4s), 43s build job (p90 56.0s), 18s deploy job across deploying runs (p90 23.6s), 9s schedule-freshness (p90 9.7s), and 0s queue time. No materially changed source or timing evidence justifies a new issue.","suggestion_fingerprint":"scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"}]}
+{
+  "source_sha": "765a714efea3e1656b72732faba42bc3ac654b07",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "evaluations": [
+    {
+      "evaluated_at": "2026-09-30T02:12:51Z",
+      "worker_run_id": "36658388705",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        36657997387,
+        36653323698,
+        36649101159,
+        36648890547,
+        36648633676,
+        36648478342,
+        36646927879,
+        36646895035
+      ],
+      "outcome": "no_actionable_improvement: latest 8 comparable successful docs.yml runs kept Pages upload at 4-7s (median 6s, p90 7s), deploy at 9-20s on schedule-triggered deployments (median 14s, p90 19s), and the uploaded github-pages artifact near 30.0 MB; transfer and packaging remain below the 60s/15% threshold, while duplicate workflow_run rebuilds remain the only material waste already tracked under scheduling."
+    },
+    {
+      "evaluated_at": "2026-09-30T01:44:30Z",
+      "worker_run_id": "36656434679",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36653323698,
+        36649101159,
+        36648890547,
+        36648633676,
+        36648478342,
+        36646927879,
+        36646895035
+      ],
+      "outcome": "no_actionable_improvement: latest 7 successful runs repeat the already-tracked workflow_run duplicate-build pattern, but an open suggestion with the same fingerprint already exists in memory and no new source or timing evidence materially alters the recommendation.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-30T01:06:35Z",
+      "worker_run_id": "36653246021",
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        36653323698,
+        36649101159,
+        36648890547,
+        36648633676,
+        36648478342,
+        36646927879,
+        36646895035
+      ],
+      "outcome": "no_actionable_improvement: docs.yml restored the central-agentic-ops-dashboard cache in all 7 comparable successful runs; dashboard restore took 1-3s, while build median was 44s and workflow median 74s, so reusable dashboard generation remains below the 60s/15% threshold and the duplicate workflow_run rebuild issue is already tracked under scheduling.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-29T23:38:30Z",
+      "worker_run_id": "36645992782",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        36645950643,
+        36645690151,
+        36644846281,
+        36644705830,
+        36644603458,
+        36644489697,
+        36642947300,
+        36641511486,
+        36640353484
+      ],
+      "outcome": "no_actionable_improvement: over the latest 9 successful docs.yml runs (7 built, 2 freshness skips), Pages upload median stayed 6s with p90 6.4s, deploy median on deploying schedule runs was 19s with p90 19.8s, and the uploaded github-pages artifact was ~29.9 MB; transfer and packaging remain below the 60s/15% threshold, while the only material waste still visible is duplicate workflow_run rebuilds already tracked under scheduling."
+    },
+    {
+      "evaluated_at": "2026-09-29T23:27:10Z",
+      "worker_run_id": "36644885772",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        36644846281,
+        36644705830,
+        36644603458,
+        36644489697,
+        36642947300,
+        36639375613,
+        36639055495,
+        36637066632,
+        36635651609,
+        36635486569,
+        36634885197,
+        36634106269,
+        36633476719,
+        36632954614,
+        36631001695,
+        36628967576,
+        36628232110
+      ],
+      "outcome": "no_actionable_improvement: Astro docs build median 12s and p90 13s across 17 built successful docs.yml runs; below 60s and 15% workflow-threshold, while repeated workflow_run rebuilds remain tracked under scheduling."
+    },
+    {
+      "evaluated_at": "2026-09-29T22:43:21Z",
+      "worker_run_id": "36640753803",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36639375613,
+        36639055495,
+        36637066632,
+        36635651609,
+        36635486569,
+        36634885197,
+        36634106269,
+        36633476719,
+        36632954614
+      ],
+      "outcome": "no_actionable_improvement: dependency restore cache hit in all 9 comparable successful docs.yml runs; install/save never ran, build median 43s and workflow median 66s, so dependency installation and caching remain below the 60s/15% threshold and no material evidence change justifies a new recommendation."
+    },
+    {
+      "evaluated_at": "2026-09-29T22:29:09Z",
+      "worker_run_id": "36639365028",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36639375613,
+        36639055495,
+        36637066632,
+        36635651609,
+        36635486569,
+        36634885197,
+        36634106269,
+        36633476719,
+        36632954614
+      ],
+      "outcome": "no_actionable_improvement: dependency restore cache hit in all 9 comparable successful docs.yml runs; install/save never ran, build median 43s and workflow median 66s, so dependency installation and caching are below the 60s/15% threshold."
+    },
+    {
+      "evaluated_at": "2026-09-29T21:41:45Z",
+      "worker_run_id": "36634494405",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36634106269,
+        36633476719,
+        36632954614,
+        36631001695,
+        36630486278,
+        36628967576,
+        36628232110,
+        36627902161,
+        36626444233,
+        36625685641,
+        36625420005,
+        36623460362,
+        36622374664,
+        36622187347,
+        36621657087
+      ],
+      "outcome": "suggested: workflow_run docs builds repeatedly rebuild immediately after successful cao-dashboard pushes on the same head SHA even though schedule-freshness skips equivalent scheduled runs; add a workflow_run freshness gate keyed to the latest successful dashboard run SHA to avoid duplicate docs rebuilds.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-29T21:30:00Z",
+      "worker_run_id": "36632856508",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        36631001695,
+        36630486278,
+        36628967576,
+        36628232110,
+        36627902161,
+        36626444233,
+        36625685641,
+        36625420005
+      ],
+      "outcome": "no_actionable_improvement: docs.yml Pages upload median 6s on built runs and deploy median 10s on deploying schedule runs; packaging is below the 60s/15% threshold, while schedule-freshness API lookups add ~4s on every scheduled run but belong to scheduling/avoidable rebuilds, not this category."
+    },
+    {
+      "evaluated_at": "2026-09-29T20:56:43Z",
+      "worker_run_id": "36629495892",
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        36628967576,
+        36628232110,
+        36626444233,
+        36625685641,
+        36625420005,
+        36623460362,
+        36622374664,
+        36622187347
+      ],
+      "outcome": "no_actionable_improvement: reusable dashboard generation cache hit in all 8 comparable successful runs; dashboard restore median 2s, docs build median 41.5s, workflow median 55.5s, so no uncached dashboard-generation cost above the 60s/15% threshold in docs.yml."
+    },
+    {
+      "evaluated_at": "2026-09-29T20:31:00Z",
+      "worker_run_id": "36626413300",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        36626444233,
+        36625685641,
+        36625420005,
+        36623460362,
+        36622374664,
+        36622187347,
+        36621657087,
+        36620134433,
+        36618851571,
+        36616250620,
+        36616178759,
+        36615392351,
+        36615102477,
+        36614520763,
+        36613942953,
+        36612578738,
+        36610779325,
+        36609151685,
+        36607531070,
+        36607481039
+      ],
+      "outcome": "no_actionable_improvement: Astro docs build median 12s and p90 13s across 19 built runs; below 60s/15% threshold."
+    },
+    {
+      "evaluated_at": "2026-09-29T19:53:17.506592Z",
+      "worker_run_id": "36622055961",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36622187347,
+        36622074249,
+        36622031308,
+        36622020963,
+        36621832569,
+        36621807065,
+        36621698828,
+        36621657087,
+        36621429936,
+        36621429566,
+        36621142854,
+        36621019524,
+        36621018387,
+        36620853509,
+        36620743610,
+        36620729256,
+        36620694716,
+        36620570431,
+        36620468458,
+        36620181985
+      ],
+      "outcome": "incomplete: fewer than five comparable successful docs.yml runs in the last 14 days"
+    },
+    {
+      "evaluated_at": "2026-09-30T09:08:00Z",
+      "worker_run_id": "36693649727",
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        36690617797,
+        36689491358,
+        36684547346,
+        36682884057,
+        36682591964,
+        36682312588
+      ],
+      "outcome": "no_actionable_improvement: within the latest 20 completed docs.yml runs in the last 14 days, 6 comparable successful runs executed the build job and every one restored the central-agentic-ops-dashboard cache, skipping dashboard lookup/download. Docs build median was 40s (p90 47s), dashboard restore median 1s (p90 3s), and the CAO Dashboard source run sampled for matching SHAs spent its time in activity-data upgrade/health steps rather than site assembly (e.g. run 36682312661: Upgrade fallback activity data 116s, Assess activity database health 18s, Assemble Dashboard Language site 1s). The reusable dashboard-generation category remains well below the 60s or 15% action threshold, and the only material docs waste still visible is the already-recorded scheduling fingerprint for duplicate workflow_run rebuilds.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-30T09:30:00Z",
+      "worker_run_id": "36696153942",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        36690617797,
+        36689491358,
+        36684547346,
+        36682884057,
+        36682591964,
+        36682312588
+      ],
+      "outcome": "no_actionable_improvement: within the latest 20 completed docs.yml runs from the last 14 days, 6 comparable successful runs executed the build job. Upload Pages artifact stayed at 5-7s by step timing, successful deploy jobs stayed at 11-15s, and the emitted github-pages artifact was ~32.3 MB in the latest deploying sample. That keeps artifact transfer and Pages packaging below the 60s or 15% threshold, while the only material docs waste still visible remains the already-recorded duplicate workflow_run rebuild fingerprint under scheduling.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-30T09:59:13Z",
+      "worker_run_id": "36699198262",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36698149036,
+        36696470817,
+        36696396135,
+        36696344537,
+        36693466107,
+        36692682314,
+        36690617797,
+        36689491358,
+        36687272110,
+        36686455708,
+        36684547346,
+        36682884057,
+        36682591964,
+        36682312588
+      ],
+      "outcome": "no_actionable_improvement: latest 20 completed docs.yml runs in the last 14 days still show duplicate workflow_run docs rebuilds after same-SHA cao-dashboard completions, but the recommendation is already represented by open issue #15029 and memory fingerprint scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha. Current successful-run medians stayed at 43s overall and 45s for built runs, with duplicate workflow_run builds at 43-45s and one queued scheduled outlier at 255s total due to 181s queue time; no materially changed source or timing evidence justifies a new issue.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-30T10:30:00Z",
+      "worker_run_id": "36702446641",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36702460255,
+        36699872682,
+        36698149036,
+        36696470817,
+        36696396135,
+        36696344537,
+        36693466107,
+        36692682314,
+        36690617797,
+        36689491358,
+        36687272110,
+        36686455708,
+        36684547346,
+        36682884057,
+        36682591964,
+        36682312588
+      ],
+      "outcome": "no_actionable_improvement: latest 16 successful docs.yml runs in the last 14 days included 9 built runs and 7 schedule-freshness skips. Every built run restored node_modules from cache, skipped Install dependencies and Save node_modules, and kept restore/setup costs at Checkout median 6s, Set up Node.js median 3s, Restore node_modules median 5s, with build-job median 39s and full-workflow median 43s. This category remains below the 60s or 15% threshold, while the only material docs waste still visible is the already-open duplicate workflow_run rebuild issue #15029.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-30T10:55:45Z",
+      "worker_run_id": "36705125000",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [],
+      "outcome": "incomplete: GitHub API rate limit was exceeded before collecting the required latest 20 completed docs.yml runs, job timings, and cache-hit metadata for githubnext/gh-aw-cao; per instructions, additional API and model work stopped and no actionable recommendation was emitted."
+    },
+    {
+      "evaluated_at": "2026-09-30T11:26:40Z",
+      "worker_run_id": "36708156727",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36708163767,
+        36706014180,
+        36705399773,
+        36704812809,
+        36703767333,
+        36702460255,
+        36699872682,
+        36698149036,
+        36696470817,
+        36696396135,
+        36696344537,
+        36693466107,
+        36692682314,
+        36690617797,
+        36689491358
+      ],
+      "outcome": "no_actionable_improvement: latest 15 successful docs.yml runs in the last 14 days included 8 built runs and 6 schedule-freshness skips. Every built run restored node_modules from cache, skipped Install dependencies and Save node_modules, and kept dependency-related step medians at Checkout 6s, Set up Node.js 4.5s, Restore node_modules 5s, and Build documentation 12.5s, with build-job median 39.5s and full-workflow median 43s. This category remains below the 60s or 15% threshold, while the only material docs waste still visible is the already-open duplicate workflow_run rebuild issue #15029.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-30T11:40:00Z",
+      "worker_run_id": "36709608673",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        36709288205,
+        36708749228,
+        36708163767,
+        36706014180,
+        36705399773,
+        36704812809,
+        36703767333,
+        36702460255,
+        36699872682,
+        36698149036,
+        36696470817,
+        36696396135
+      ],
+      "outcome": "no_actionable_improvement: latest 12 completed successful docs.yml runs in the last 14 days included 7 built runs and 5 schedule-freshness skips. The Build documentation step stayed at 8-14s (median 13s, p90 14s), with build-job median 39s and full-workflow median 43.5s. Astro generation remains below the 60s or 15% threshold, while the only material waste still visible is the already-open duplicate workflow_run rebuild issue #15029.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-30T11:54:00Z",
+      "worker_run_id": "36711085450",
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [],
+      "outcome": "incomplete: GitHub API rate limit was already exceeded before collecting the required latest 20 completed docs.yml runs, comparable successful-run timings, or trusted cache-hit metadata for the next reusable dashboard generation evaluation in githubnext/gh-aw-cao; per instructions, additional API work stopped and no actionable recommendation was emitted."
+    },
+    {
+      "evaluated_at": "2026-09-30T12:50:00Z",
+      "worker_run_id": "36716394299",
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        36716310050,
+        36715347114,
+        36714890196,
+        36712268212,
+        36711776283,
+        36711471019,
+        36711357155,
+        36711314063,
+        36710799117,
+        36710018714
+      ],
+      "outcome": "no_actionable_improvement: latest 10 successful docs.yml runs in the last 14 days all restored the central-agentic-ops-dashboard cache and skipped dashboard artifact lookup/download, keeping dashboard restore at 1-3s versus a build-job median of 45.5s. The sampled matching CAO Dashboard source run for the same dashboard SHA spent 29s in Upgrade fallback activity data and only 3s in Assemble Dashboard Language site, so reusable dashboard generation is not the docs bottleneck. The only material docs waste still visible is the already-open duplicate workflow_run rebuild issue #15029 under scheduling.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-30T13:12:00Z",
+      "worker_run_id": "36719109702",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        36716310050,
+        36715347114,
+        36714890196,
+        36712268212,
+        36711776283,
+        36711471019,
+        36711357155,
+        36711314063,
+        36710799117
+      ],
+      "outcome": "no_actionable_improvement: within the latest 20 completed docs.yml runs from the last 14 days, 9 comparable successful runs executed build+upload+deploy. Full workflow median was 54s (p90 85.2s), queue median 0s, build median 44s (p90 48.4s), and deploy median 17s (p90 17.8s). Upload Pages artifact stayed at 7s median (p90 7.2s) while the uploaded github-pages artifact stayed near 35.5 MB, and every comparable run skipped dashboard artifact lookup/download after a successful Restore cached CAO Dashboard step. Transfer and Pages packaging remain below the 60s or 15% threshold, while the only material docs waste still visible remains the already-open duplicate workflow_run rebuild issue #15029.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-30T13:40:00Z",
+      "worker_run_id": "36722353067",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36722402391,
+        36721910965,
+        36721887108,
+        36720659472,
+        36718641570,
+        36716310050,
+        36715347114,
+        36714890196,
+        36712268212,
+        36711776283,
+        36711471019,
+        36711357155,
+        36711314063,
+        36710799117
+      ],
+      "outcome": "no_actionable_improvement: latest 14 successful docs.yml runs in the last 14 days still show same-SHA workflow_run rebuilds after schedule or push-triggered docs builds, but the recommendation is already represented by open issue #15029 and the same scheduling fingerprint in memory. Current successful-run medians stayed at 54.5s overall and 43.5s for built runs; duplicate workflow_run runs remained 38-63s each while schedule-freshness skips still complete in 13s. No materially changed source or timing evidence justifies a new issue.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-30T14:00:00Z",
+      "worker_run_id": "36724998772",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36724870133,
+        36723915311,
+        36723769583,
+        36722402391,
+        36721910965,
+        36721887108,
+        36720659472,
+        36718641570,
+        36716310050,
+        36715347114,
+        36714890196
+      ],
+      "outcome": "no_actionable_improvement: latest 11 successful docs.yml runs in the last 14 days included 10 build executions and 1 schedule-freshness skip. Every complete build with step metadata restored node_modules and skipped Install dependencies plus Save node_modules, while Restore cached CAO Dashboard also hit on every complete build with step metadata and kept dashboard reuse at 1-3s. Current medians were 63s full workflow (p90 120s, driven by one 56s queue outlier), 47s build job (p90 49s), 13s Build documentation step (p90 13s), and 5.5s Restore node_modules (p90 7s). The matching CAO Dashboard source run for the same dashboard SHA spent 53s in Upgrade fallback activity data and 7s in Assess activity database health, versus 2s in Assemble Dashboard Language site and 8s in Install dashboard build dependencies, so docs dependency installation and cache reuse remain well below the 60s or 15% threshold and no new actionable improvement is warranted beyond the already-tracked scheduling duplicate-build issue #15029.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-30T14:40:00Z",
+      "worker_run_id": "36729506905",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36729417691,
+        36727642383,
+        36727220885,
+        36726963736,
+        36726905231,
+        36726042924,
+        36724870133,
+        36723915311,
+        36723769583,
+        36722402391,
+        36721910965,
+        36721887108,
+        36720659472
+      ],
+      "outcome": "no_actionable_improvement: latest 20 completed docs.yml runs in the last 14 days yielded 13 successful comparable runs and still show same-SHA workflow_run rebuilds after push or schedule builds, but that recommendation is already represented by open issue #15029 and the same scheduling fingerprint in memory. Current successful-run medians are 66s full workflow (p90 121.6s), 46s build job (p90 52.6s), 45s deploy job on deploying schedule runs (p90 47.4s), and 9s schedule-freshness (p90 9.6s). No materially changed source or timing evidence justifies a new issue.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-30T15:01:24Z",
+      "worker_run_id": 36732960620,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36732262893,
+        36731701438,
+        36730699521,
+        36729417691,
+        36727642383,
+        36727220885,
+        36726963736,
+        36726905231,
+        36726042924,
+        36724870133,
+        36723915311,
+        36723769583,
+        36722402391,
+        36721910965
+      ],
+      "outcome": "no_action"
+    },
+    {
+      "evaluated_at": "2026-09-30T15:30:00Z",
+      "worker_run_id": "36736661384",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        36734924113,
+        36733706657,
+        36732262893,
+        36731701438,
+        36730699521,
+        36729417691,
+        36727642383,
+        36727220885,
+        36726963736,
+        36726042924,
+        36724870133,
+        36723915311
+      ],
+      "outcome": "no_actionable_improvement: latest 12 completed successful docs.yml runs in the last 14 days included 12 comparable successes, with 12 build executions and 5 deploy executions. Queue time stayed at 0s median and p90, workflow execution median was 67.5s (p90 121.8s), build-job median 47s (p90 52.8s), deploy-job median 43s across deploying runs (p90 61.6s), and Build documentation stayed at 13s median (p90 14s). Trusted cache metadata confirmed both the npm package cache and the node_modules restore cache hit on sampled built runs, and the Astro build log for run 36733706657 showed the site build itself completing in 10.50s with pagefind in 291ms and image optimization in 206ms. Astro documentation generation remains below the 60s or 15% threshold, while the only material docs waste still visible remains the already-open duplicate workflow_run rebuild issue #15029.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-30T16:05:00Z",
+      "worker_run_id": "36740515268",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        36740743782,
+        36740343633,
+        36739998828,
+        36738710344,
+        36736893249,
+        36734924113,
+        36733706657,
+        36732262893
+      ],
+      "outcome": "no_actionable_improvement: within the latest 20 completed docs.yml runs from the last 14 days, 8 successful runs provided at least five comparable successes and 7 executed the build job. Trusted cache metadata in sampled logs showed node_modules and the cached CAO Dashboard both hitting; Install dependencies, Save node_modules, dashboard lookup, and dashboard artifact download were skipped on built runs. Median full workflow time was 53.5s with p90 98.2s; median build job time was 40s with p90 49.8s; schedule-freshness added 6-10s before built schedule runs; Upload Pages artifact stayed at 5-8s (median 7s, p90 7.9s). Deploy execution on schedule-triggered publishing runs stayed at 13s median, with one 72s outlier driving deploy p90 to 55.0s and full-workflow p90 upward. Artifact transfer and Pages packaging remain below the 60s or 15% threshold, and the only recurring material waste still visible remains the already-recorded same-SHA workflow_run duplicate rebuild fingerprint.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-30T16:31:00Z",
+      "worker_run_id": "36744516012",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36744566230,
+        36744206100,
+        36741843910,
+        36741226546,
+        36740743782,
+        36740343633,
+        36739998828,
+        36738710344
+      ],
+      "outcome": "no_actionable_improvement: latest 8 successful docs.yml runs in the last 14 days still show same-SHA workflow_run rebuilds after scheduled deploys (36744566230 -> 36744206100 at 56s, 36741226546 -> 36740743782 at 40s), but the recommendation is already represented by open issue #15029 and the same scheduling fingerprint in memory. Current successful-run medians are 52s full workflow (p90 99.4s), 43s build job (p90 56.0s), 18s deploy job across deploying runs (p90 23.6s), 9s schedule-freshness (p90 9.7s), and 0s queue time. No materially changed source or timing evidence justifies a new issue.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-30T16:57:44Z",
+      "worker_run_id": "36747519805",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        36747388266,
+        36746434539,
+        36744566230,
+        36744206100,
+        36741843910,
+        36741226546,
+        36740743782,
+        36740343633
+      ],
+      "outcome": "no_actionable_improvement: within the latest 20 completed docs.yml runs in the last 14 days, 8 successful runs provided sufficient evidence and 6 executed the build job. Trusted cache metadata from sampled build logs showed npm package cache hits plus node_modules and cached CAO Dashboard restore hits; Install dependencies, Save node_modules, dashboard lookup, and dashboard artifact download were skipped on built runs. Current successful-run medians were 48s full workflow with p90 147s (driven by one 40s queue outlier), 41.5s build job with p90 65s, and 2s queue time median. Upload Pages artifact stayed at 6-7s with uploaded github-pages artifacts at 36.6-37.0 MB, while deploy execution on the two schedule-triggered publishing runs stayed at 18-25s. Artifact transfer and Pages packaging remain below the 60s or 15% threshold, and the only recurring material waste still visible remains the already-open same-SHA workflow_run duplicate rebuild issue #15029.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    }
+  ]
+}
