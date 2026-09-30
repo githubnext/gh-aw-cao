@@ -2,6 +2,10 @@
  * Shared route-bound element composition selection helpers.
  */
 
+import { createDebug } from '../debug.js';
+
+const debugRouteComposition = createDebug('route-composition');
+
 /**
  * @template {string} T
  * @template V
@@ -32,8 +36,13 @@ export function bindRouteChangeListener(root, routeParameter, render) {
   root.dataset.routeView = '';
   if (routeParameter !== undefined) root.dataset.routeParameter = routeParameter;
   root.addEventListener('dashboard-route-change', (event) => {
-    if (!(event instanceof CustomEvent) || event.detail?.parameter !== routeParameter) return;
+    if (!(event instanceof CustomEvent) || event.detail?.parameter !== routeParameter) {
+      debugRouteComposition({ event: 'change-ignored', routeParameter });
+      return;
+    }
+    debugRouteComposition({ event: 'change-applied', routeParameter, hasValue: Boolean(event.detail.value) });
     render(event.detail.value);
   });
+  debugRouteComposition({ event: 'bound', routeParameter });
   render('');
 }
