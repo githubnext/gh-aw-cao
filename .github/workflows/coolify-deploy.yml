@@ -2,7 +2,7 @@ name: Deploy dashboard to Coolify
 
 on:
   workflow_dispatch:
-  workflow_run:
+  workflow_run: # zizmor: ignore[dangerous-triggers] - retained for post-package deployment; the authorization job admits only the successful canonical main package run, and package provenance is verified before the protected deployment job.
     workflows: [CAO server package]
     types: [completed]
     branches: [main]

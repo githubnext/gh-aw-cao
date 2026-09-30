@@ -164,3 +164,69 @@ test("Coolify delivery pins actions and does not log deployment secrets", async 
     /(?:echo|printf|cat|head|tail)\b[^\n]*(?:COOLIFY_(?:BASE_URL|APPLICATION_UUID|READINESS_URL|API_TOKEN)|secrets\.)/,
   );
 });
+
+test("Coolify workflow_run trigger mitigates the dangerous-triggers audit", async () => {
+  const source = await text(".github/workflows/coolify-deploy.yml");
+  const workflow = parse(source);
+  const authorization = workflow.jobs.authorize;
+  const packageJob = workflow.jobs.package;
+  const deploy = workflow.jobs.deploy;
+  const authorizeScript = authorization.steps.find(
+    (step) => step.id === "authorization",
+  ).with.script;
+  const packageScript = packageJob.steps.find(
+    (step) => step.id === "package",
+  ).run;
+  const checkout = deploy.steps.find(
+    (step) => step.name === "Checkout deployment client",
+  );
+  const deployment = deploy.steps.find(
+    (step) => step.id === "deployment",
+  );
+
+  assert.match(
+    source,
+    /workflow_run: # zizmor: ignore\[dangerous-triggers\] - retained for post-package deployment;/,
+  );
+  assert.match(authorization.if, /workflow_run\.conclusion == 'success'/);
+  assert.match(authorization.if, /workflow_run\.event == 'push'/);
+  assert.match(authorizeScript, /repositoryName !== 'githubnext\/gh-aw-cao'/);
+  assert.match(authorizeScript, /PACKAGE_HEAD_BRANCH !== defaultBranch/);
+  assert.match(authorizeScript, /PACKAGE_HEAD_REPOSITORY !== repositoryName/);
+  assert.match(
+    authorizeScript,
+    /PACKAGE_WORKFLOW_PATH !== '\.github\/workflows\/cao-package\.yml'/,
+  );
+  assert.match(authorizeScript, /sourceSha !== branch\.commit\.sha/);
+
+  assert.deepEqual(authorization.permissions, { contents: "read" });
+  assert.deepEqual(packageJob.permissions, {
+    attestations: "read",
+    contents: "read",
+    packages: "read",
+  });
+  assert.deepEqual(deploy.permissions, { contents: "read" });
+  assert.equal(deploy.needs.includes("package"), true);
+  assert.equal(checkout.with.ref, "${{ needs.authorize.outputs.source_sha }}");
+  assert.doesNotMatch(source, /download-artifact/);
+  assert.match(packageScript, /ghcr\.io\/githubnext\/gh-aw-cao\/cao-server/);
+  assert.match(
+    packageScript,
+    /--signer-workflow "\$\{GITHUB_REPOSITORY\}\/\.github\/workflows\/cao-package-publish\.yml"/,
+  );
+  assert.match(packageScript, /--source-digest "\$\{REVISION\}"/);
+
+  assert.equal(deploy.environment.name, "coolify-production");
+  assert.equal(
+    deployment.env.COOLIFY_API_TOKEN,
+    "${{ secrets.COOLIFY_API_TOKEN }}",
+  );
+  assert.equal((source.match(/secrets\.COOLIFY_API_TOKEN/g) ?? []).length, 1);
+
+  const documentation = await text("docs/deployment-coolify.md");
+  assert.match(
+    documentation,
+    /accept deployments only from the protected\s+default branch/,
+  );
+  assert.match(documentation, /required reviewers/);
+});
