@@ -35,6 +35,7 @@ import { declaredRouteTabs, renderDeclaredRouteTabs } from './components/route-t
 import { buildChartPoints, prepareChartPoints, prepareTableRows, toViewText } from './components/view-data.js';
 import { enableDashboardKeyboardNavigation, updateWithViewTransition } from './components/dashboard-interactions.js';
 import { enablePullRefresh } from './components/pull-refresh.js';
+import { resolveModeIndicator } from './components/mode-indicator.js';
 import { createDebug } from './debug.js';
 import { navigationIndicatorSourceNames } from './navigation-indicator.js';
 
@@ -70,11 +71,11 @@ import {
  */
 
 /**
- * @typedef {{ id: string, kind: 'built-in', page: string, title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, experimental?: boolean, ['filter-bar']?: boolean, ['view-mode-control']?: boolean, ['pull-refresh']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], definition?: { views?: Array<unknown>, sections?: PresentablePageSection[], ['data-state']?: Record<string, boolean> } }} PresentableBuiltInPage
+ * @typedef {{ id: string, kind: 'built-in', page: string, title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, experimental?: boolean, ['filter-bar']?: boolean, ['view-mode-control']?: boolean, ['pull-refresh']?: boolean, ['mode-indicator']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], definition?: { views?: Array<unknown>, sections?: PresentablePageSection[], ['data-state']?: Record<string, boolean> } }} PresentableBuiltInPage
  */
 
 /**
- * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, experimental?: boolean, ['filter-bar']?: boolean, ['view-mode-control']?: boolean, ['pull-refresh']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string, ['title-format']?: 'title-case' }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
+ * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, experimental?: boolean, ['filter-bar']?: boolean, ['view-mode-control']?: boolean, ['pull-refresh']?: boolean, ['mode-indicator']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string, ['title-format']?: 'title-case' }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
  */
 
 /**
@@ -663,6 +664,7 @@ function renderPagePlaceholder(page) {
     'data-page-title': getPageTitle(page),
     'data-page-description': payload.description ?? '',
     'data-page-experimental': page.experimental === true ? 'true' : undefined,
+    'data-page-mode-indicator': page['mode-indicator'] === true ? 'true' : undefined,
     'data-route-parameter': routeParameter,
     'data-route-navigation-page': routeNavigationPage,
     'data-route-title-format': payload.route?.['title-format'],
@@ -1529,10 +1531,10 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       pageDescription.textContent = description;
       pageDescription.toggleAttribute('hidden', description.length === 0);
     }
-    const requestedMode = pageId === 'campaigns'
-      ? new URLSearchParams(root.ownerDocument.defaultView?.location.search ?? '').get('mode')
+    const mode = page?.dataset.pageModeIndicator === 'true'
+      ? resolveModeIndicator(root.ownerDocument.defaultView?.location.search ?? '')
       : '';
-    renderPageMode(pageMode, requestedMode === 'review' || requestedMode === 'live' ? requestedMode : '');
+    renderPageMode(pageMode, mode);
     if (page && !populationDeferred) dispatchPageRoute(page, routeParameter ?? '', routeValue);
     if (page && !populationDeferred && !pagePopulated) {
       emitDashboardDebugEvent(root.ownerDocument, DASHBOARD_RENDER_EVENT, {

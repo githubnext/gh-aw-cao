@@ -514,6 +514,7 @@
       "icon": "goal",
       "class-name": "campaigns-page",
       "description": "Activity from centrally managed campaigns.",
+      "mode-indicator": true,
       "definition": {
         "data-state": {
           "availability": true

@@ -560,6 +560,35 @@ describe('dashboard DOM provenance', () => {
     disposeDashboard(rendered);
   });
 
+  it('shows the mode badge only for a page declaring mode-indicator: true', async () => {
+    const rendered = renderDashboardView({
+      document: authoritativeDashboardDocument,
+      sources: {}
+    });
+    document.body.replaceChildren(rendered);
+    try {
+      window.location.hash = '#page-overview';
+      window.history.replaceState(null, '', `${window.location.pathname}?mode=review${window.location.hash}`);
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      await vi.waitFor(() => {
+        expect(rendered.querySelector('[data-page-id="overview"]')?.hasAttribute('hidden')).toBe(false);
+      });
+      expect(rendered.querySelector('[data-page-mode]')?.hasAttribute('hidden')).toBe(true);
+
+      window.location.hash = '#page-campaigns';
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      await vi.waitFor(() => {
+        expect(rendered.querySelector('[data-page-id="campaigns"]')?.hasAttribute('hidden')).toBe(false);
+      });
+      const pageMode = rendered.querySelector('[data-page-mode]');
+      expect(pageMode?.hasAttribute('hidden')).toBe(false);
+      expect(pageMode?.textContent).toBe('Review');
+    } finally {
+      disposeDashboard(rendered);
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
   it('reports the paginated source shared by the runs page views', () => {
     const lazySourceNames = dashboardPageLazySourceNames(authoritativeDashboardDocument, 'runs');
     expect(lazySourceNames).toContain('runs-table');

@@ -1697,6 +1697,13 @@ function validatePage(page, pageNode, path, pageIds, errors) {
       `${path}.pull-refresh`
     ));
   }
+  if (page['mode-indicator'] !== undefined && typeof page['mode-indicator'] !== 'boolean') {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'mode-indicator must be a Boolean when present.',
+      `${path}.mode-indicator`
+    ));
+  }
   validatePageForm(page.form, getValueNodeByKey(pageNode, 'form'), `${path}.form`, errors);
   if (page.icon !== undefined) {
     validateStringField(page.icon, `${path}.icon`, true, errors);
