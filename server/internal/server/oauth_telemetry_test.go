@@ -401,6 +401,68 @@ func TestOAuthRevalidationTelemetryExcludesIdentity(t *testing.T) {
 	}
 }
 
+func TestOAuthCallbackQueuedRevocationTelemetry(t *testing.T) {
+	previousTracer := otel.GetTracerProvider()
+	previousMeter := otel.GetMeterProvider()
+	traces := tracetest.NewInMemoryExporter()
+	traceProvider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(traces))
+	reader := sdkmetric.NewManualReader()
+	meterProvider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	otel.SetTracerProvider(traceProvider)
+	otel.SetMeterProvider(meterProvider)
+	t.Cleanup(func() {
+		_ = meterProvider.Shutdown(t.Context())
+		_ = traceProvider.Shutdown(t.Context())
+		otel.SetTracerProvider(previousTracer)
+		otel.SetMeterProvider(previousMeter)
+	})
+
+	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "inactive", rejectRevocation: true})
+	app := newAzureTestApp(t, github.URL)
+	stateCookie, state := loginState(t, app)
+	request := azureRequest(t, http.MethodGet, "/auth/callback?code=code-1&state="+url.QueryEscape(state))
+	request.AddCookie(stateCookie)
+	response := httptest.NewRecorder()
+	app.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("denied callback returned %d", response.Code)
+	}
+	var metrics metricdata.ResourceMetrics
+	if err := reader.Collect(t.Context(), &metrics); err != nil {
+		t.Fatal(err)
+	}
+	queued := int64(0)
+	for _, scope := range metrics.ScopeMetrics {
+		for _, instrument := range scope.Metrics {
+			if instrument.Name != "cao_dashboard.auth.decision.count" {
+				continue
+			}
+			for _, point := range instrument.Data.(metricdata.Sum[int64]).DataPoints {
+				attrs := spanAttributes(point.Attributes.ToSlice())
+				if attrs["cao_dashboard.auth.operation"] == "callback_cleanup" &&
+					attrs["cao_dashboard.auth.outcome"] == "queued" {
+					queued += point.Value
+				}
+			}
+		}
+	}
+	if queued != 1 {
+		t.Fatalf("callback cleanup queued decisions = %d, want 1", queued)
+	}
+	encoded, err := json.Marshal(struct {
+		Spans   tracetest.SpanStubs
+		Metrics metricdata.ResourceMetrics
+	}{traces.GetSpans(), metrics})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, private := range []string{state, stateCookie.Value, "access-old", "refresh-old", "octocat"} {
+		if strings.Contains(string(encoded), private) {
+			t.Fatalf("queued cleanup telemetry contains private value %q", private)
+		}
+	}
+}
+
 func TestOAuthRecoveryUsesExistingProtectedLogout(t *testing.T) {
 	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
 	app := newAzureTestApp(t, github.URL)

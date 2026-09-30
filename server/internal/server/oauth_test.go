@@ -245,6 +245,10 @@ func TestOAuthQueuesCredentialsWhenCallbackAuthorizationFails(t *testing.T) {
 	stateCookie, state := loginState(t, app)
 	response := httptest.NewRecorder()
 	request := azureRequest(t, http.MethodGet, "/auth/callback?code=code-1&state="+url.QueryEscape(state))
+	ctx, cancel := context.WithCancel(request.Context())
+	defer cancel()
+	request = request.WithContext(ctx)
+	github.onUserRequest = cancel
 	request.AddCookie(stateCookie)
 	app.Handler().ServeHTTP(response, request)
 	if response.Code != http.StatusForbidden {
