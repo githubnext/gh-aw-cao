@@ -882,8 +882,8 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       }
       suppressSupplementalTableHeading(rendered, view, index);
       if (isPlainObject(view) && view['show-title'] === false) {
-        const heading = rendered.matches('.page-section')
-          ? rendered.querySelector(
+        const headings = rendered.matches('.page-section')
+          ? rendered.querySelectorAll(
             ':scope > h3, :scope > h4, :scope > .chart-prompt-heading > h3,'
             + ' :scope > .chart-prompt-heading > h4,'
             + ' :scope > .pie-chart-card > h3, :scope > .pie-chart-card > h4,'
@@ -894,12 +894,24 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
             + ' :scope > .chart-horizontal-card > .chart-horizontal-copy > .chart-prompt-heading > h3,'
             + ' :scope > .chart-horizontal-card > .chart-horizontal-copy > .chart-prompt-heading > h4'
           )
-          : rendered.querySelector(
+          : rendered.querySelectorAll(
             ':scope > .semantic-prompt-heading > h3, :scope > .semantic-prompt-heading > h4,'
             + ' :scope > .metric-card-widget-label, :scope > .dashboard-callout-heading > div > h3,'
-            + ' :scope > .dashboard-callout-heading > div > h4'
+            + ' :scope > .dashboard-callout-heading > div > h4,'
+            + ' :scope > .metric-card-widget > .metric-card-widget-label,'
+            + ' :scope > .dashboard-callout > .dashboard-callout-heading > div > h3,'
+            + ' :scope > .dashboard-callout > .dashboard-callout-heading > div > h4'
           );
-        heading?.classList.add('sr-only');
+        for (const heading of headings) {
+          const labelledRegion = heading.closest('[aria-labelledby]');
+          if (labelledRegion?.getAttribute('aria-labelledby') === heading.id) {
+            labelledRegion.removeAttribute('aria-labelledby');
+            labelledRegion.setAttribute('aria-label', getViewTitle(view, index));
+          } else if (!labelledRegion) {
+            (heading.closest('.metric-card-widget') ?? rendered).setAttribute('aria-label', getViewTitle(view, index));
+          }
+          heading.remove();
+        }
       }
       if (disclosure === 'essential') {
         rendered.classList.add('custom-view');

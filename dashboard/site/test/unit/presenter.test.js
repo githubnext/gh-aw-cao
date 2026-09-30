@@ -115,7 +115,7 @@ beforeEach(() => {
 });
 
 describe('declarative view title visibility', () => {
-  it('keeps the view and its accessible title while visually hiding only its title heading', () => {
+  it('keeps the view and its accessible title without rendering its title heading', () => {
     const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ ({
       languageVersion: '0.1.0',
       dashboard: {
@@ -142,10 +142,11 @@ describe('declarative view title visibility', () => {
       }
     });
     const quiet = rendered.querySelector('[data-view-id="quiet"]');
-    expect(quiet?.querySelector(':scope > h3')?.classList.contains('sr-only')).toBe(true);
-    expect(quiet?.getAttribute('aria-labelledby')).toBe('overview-quiet-title-heading');
+    expect(quiet?.querySelector(':scope > h3')).toBeNull();
+    expect(quiet?.hasAttribute('aria-labelledby')).toBe(false);
+    expect(quiet?.getAttribute('aria-label')).toBe('Quiet title');
     expect(quiet?.querySelector('.metric-value')?.textContent).toBe('1');
-    expect(rendered.querySelector('[data-view-id="visible"] > h3')?.classList.contains('sr-only')).toBe(false);
+    expect(rendered.querySelector('[data-view-id="visible"] > h3')?.textContent).toBe('Visible title');
     disposeDashboard(rendered);
   });
 
@@ -174,10 +175,49 @@ describe('declarative view title visibility', () => {
         }
       });
       const view = rendered.querySelector('[data-view-id="quiet-chart"]');
-      expect(view?.querySelector('.chart-prompt-heading > h3')?.classList.contains('sr-only'), `${chart} ${layout}`).toBe(true);
+      expect(view?.querySelector('.chart-prompt-heading > h3'), `${chart} ${layout}`).toBeNull();
+      expect(view?.getAttribute('aria-label'), `${chart} ${layout}`).toBe('Quiet chart');
       expect(view?.querySelector('.table-intent-button')?.getAttribute('aria-label')).toBe('Fix it: Quiet chart');
       disposeDashboard(rendered);
     }
+  });
+
+  it('omits card and callout titles without omitting their prompt actions', () => {
+    const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ ({
+      languageVersion: '0.1.0',
+      dashboard: {
+        id: 'quiet-cards', title: 'Quiet cards',
+        pages: [{
+          id: 'overview', kind: 'custom', title: 'Overview',
+          views: [
+            { id: 'card', title: 'Card title', 'show-title': false, prompt: 'always',
+              mark: 'metric', metric: { style: 'card' }, data: { source: 'runs' },
+              encoding: { value: { field: 'count', aggregate: 'count' } } },
+            { id: 'notice', title: 'Notice title', 'show-title': false, prompt: 'always',
+              mark: 'callout', description: 'Read this note.' }
+          ]
+        }]
+      }
+    });
+    const rendered = renderDashboardView({
+      document,
+      sources: {
+        runs: {
+          source: 'runs', rows: [{ count: 3 }],
+          metadata: { 'source-id': 'runs', 'source-kind': 'fixture', 'as-of': '', 'retrieved-at': '',
+            availability: 'available', completeness: 'complete', freshness: 'fresh' }
+        }
+      }
+    });
+    const card = rendered.querySelector('[data-view-id="card"]');
+    expect(card?.querySelector('h3, h4')).toBeNull();
+    expect(card?.querySelector('.metric-card-widget')?.getAttribute('aria-label')).toBe('Card title');
+    expect(card?.querySelector('.table-intent-button')).not.toBeNull();
+    const notice = rendered.querySelector('[data-view-id="notice"]');
+    expect(notice?.querySelector('h3, h4')).toBeNull();
+    expect(notice?.querySelector('.dashboard-callout')?.getAttribute('aria-label')).toBe('Notice title');
+    expect(notice?.querySelector('.table-intent-button')).not.toBeNull();
+    disposeDashboard(rendered);
   });
 });
 
