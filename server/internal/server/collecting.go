@@ -173,7 +173,7 @@ func NewCollector(
 			enrollment: enrollment,
 			queue:      queue,
 			backfill:   backfill,
-			admitter:   collect.Admitter{Enrollment: enrollment, Queue: queue},
+			admitter:   collect.Admitter{Enrollment: enrollment, Queue: queue, IssueStore: store},
 			reporter: collect.Reporter{
 				Enrollment: enrollment, Queue: queue, Backfill: backfill, Store: store,
 			},
@@ -245,7 +245,7 @@ func NewCollector(
 		runner:     runner,
 		projector:  projector,
 		admitter: collect.Admitter{
-			Enrollment: enrollment, Queue: queue,
+			Enrollment: enrollment, Queue: queue, IssueStore: store,
 			Projection: projector,
 		},
 		backfill: backfill,
@@ -307,11 +307,18 @@ func (c *Collector) Admit(ctx context.Context, event GitHubWebhook) (map[string]
 		}
 		return nil, err
 	}
-	return map[string]any{
+	result := map[string]any{
 		"kind":      string(admission.Kind),
 		"queued":    admission.Enqueued,
 		"duplicate": admission.Duplicate,
-	}, nil
+	}
+	if admission.Kind == collect.IntentIssueStatus {
+		result["applied"] = admission.Applied
+	}
+	if admission.Reason != "" {
+		result["reason"] = admission.Reason
+	}
+	return result, nil
 }
 
 // Start launches cold start, in-process workers, and delivery recovery.

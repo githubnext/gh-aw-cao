@@ -52,7 +52,10 @@ repositories, a five-hour GitHub API outage, recovery rate limiting, signed
 duplicate/replayed deliveries, out-of-order activity, and a delayed delivery
 batch. Scenarios are strict JSON; supported traffic distributions are uniform,
 hot-repository, long-tail, and synchronized. Repository counts are bounded at
-20,000 and generated workflow events at one million.
+20,000 and generated workflow and issue events combined at one million. Set
+`issue_events_per_repository` in a scenario to generate ordered `issues`
+`opened`, `closed`, `reopened`, and `edited` webhook deliveries for each synthetic
+repository; the default is zero.
 
 Start the fake GitHub API in one terminal. `--time-scale 3600` advances one
 scenario hour per wall-clock second:
@@ -574,6 +577,12 @@ Collection separates three concerns that fail differently:
    debounce, and appends one task to a Redis stream. A successful response
    therefore means durable admission. Admission is constant-time and takes no
    projection lease, so a delivery burst cannot block the endpoint.
+   Signed `issues` lifecycle events instead refresh status fields only for
+   existing issues in enrolled repositories, without queuing a repository
+   collection. The response reports `applied` (not `queued`); a same-timestamp
+   conflicting status reports `reason: ambiguous-status` and defers to the
+   projected row until newer evidence arrives. Status observations are retained
+   across generation activations and newer projected evidence takes precedence.
 2. **Collection.** Workers lease tasks and run the same
    `gh aw logs --audit` and `activity/cao.mjs` commands the Activity workflow
    runs, writing into the evidence lake. One repository is collected at a time,

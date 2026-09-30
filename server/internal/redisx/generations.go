@@ -173,6 +173,9 @@ func (s *Store) DropGeneration(ctx context.Context, generation string) error {
 			return fmt.Errorf("reclaim generation row set: %w", err)
 		}
 	}
+	if _, err := s.Client.Do(ctx, "UNLINK", s.generationKey(generation)+":issue-status"); err != nil {
+		return fmt.Errorf("reclaim generation issue status: %w", err)
+	}
 	if _, err := s.Client.Do(ctx, "UNLINK", s.generationKey(generation)); err != nil {
 		return fmt.Errorf("reclaim generation metadata: %w", err)
 	}
