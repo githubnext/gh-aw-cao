@@ -403,22 +403,21 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   Compose deployments select `serve-hosted`, `collect`, `backfill`, or `doctor`
   per service without rebuilding the package. Canonical identities are
   immutable commit or release identities, never mutable channel tags.
-  Conventional Coolify production delivery refuses fork repository payloads
-  and consumes only the current protected `main` package by verified digest,
-  matching OCI source labels, and a GitHub attestation bound to the expected
-  signer workflow and source commit. A successful package workflow for a
-  `main` push starts delivery automatically. Manual delivery requires current
-  maintain/admin permission for both the original and triggering actors and
-  executes only from current protected `main`; rerunning automatic delivery
-  requires current maintain/admin permission for the triggering actor. Every
-  package candidate is pushed under a unique run identity, then a canonical
-  source identity is created or accepted only at the same digest. Immediately
-  before entering the single protected production deployment, the delivery
-  workflow revalidates that its source is still `main` HEAD. Its native Coolify
-  API client reports success only after Coolify completes and
-  `/api/readiness` passes, and rolls back to the recorded prior digest on
-  failure. Deployments never consume mutable channel tags or treat merely
-  accepted asynchronous operations as success.
+  Conventional Coolify production delivery is independent of the package
+  publisher. A Coolify GitHub App restricted to this repository watches
+  protected `main`; its webhook causes Coolify to check out the selected
+  commit, build `server/Dockerfile` through
+  `server/coolify/compose.yml`, embed `SOURCE_COMMIT`, and activate the service
+  only after container health evaluation. The image contains both the base and
+  Coolify deployment policies, while the authoritative activity artifact
+  remains an external read-only volume. Production delivery requires no
+  GitHub deployment workflow, Coolify API token, public Coolify API endpoint,
+  runner tailnet access, registry credentials, or mutable registry tag.
+  Coolify owns build logs, deployment history, and operator-initiated rollback
+  to a retained deployment or known-good source revision. The source-built
+  image is not admitted through the package workflow's vulnerability scans,
+  hardening check, SBOM, or artifact attestations; those guarantees continue
+  to apply only to published packages.
 - Browsers and external clients never receive Redis endpoints or credentials.
   Redis generations are staged and validated before atomic activation; a failed
   rebuild leaves the previous generation active, and an empty Redis instance is
