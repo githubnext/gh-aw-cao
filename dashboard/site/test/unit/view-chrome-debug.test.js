@@ -49,6 +49,7 @@ describe('view chrome debug logging', () => {
         event: 'custom-view-state-details',
         hasSourceName: true,
         hasQueryError: true,
+        hasQueryDiagnostic: false,
         dependencyResolved: true,
         detailCount: 2
       }
@@ -78,6 +79,7 @@ describe('view chrome debug logging', () => {
         event: 'custom-view-state-details',
         hasSourceName: false,
         hasQueryError: false,
+        hasQueryDiagnostic: false,
         dependencyResolved: false,
         detailCount: 1
       }

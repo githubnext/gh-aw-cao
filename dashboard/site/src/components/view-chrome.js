@@ -175,10 +175,12 @@ export function renderCustomViewStateDetails(sourceName, contextDetails, queryEr
   if (sourceName) {
     details.push(h('p', { className: 'view-source' }, `Affected source: ${sourceName}`));
   }
+  const hasControlCharacter = typeof queryDiagnostic === 'string'
+    && [...queryDiagnostic].some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127);
   const diagnostic = typeof queryDiagnostic === 'string'
     && queryDiagnostic.length <= 1024
     && queryDiagnostic.startsWith('$.dashboard.queries[')
-    && !/[\u0000-\u001f\u007f]/.test(queryDiagnostic)
+    && !hasControlCharacter
     ? queryDiagnostic
     : null;
   if (diagnostic) {

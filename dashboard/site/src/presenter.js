@@ -2398,6 +2398,7 @@ function renderPageTitleLink(target, candidate) {
  */
 function renderCustomViewState(pageId, title, sourceName, availability, contextDetails, headingTag = 'h3', message, queryError, queryDiagnostic) {
   const queryFailed = typeof queryDiagnostic === 'string'
+    && queryDiagnostic.length <= 1024
     && queryDiagnostic.startsWith('$.dashboard.queries[');
   return renderPageSection(pageId, title, [
     h(
