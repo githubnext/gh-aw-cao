@@ -3,6 +3,7 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, resolve, sep } from "node:path";
 import { adaptCachedGhAwJsonl } from "../../dashboard/site/src/data/adapters/gh-aw-logs.js";
+import { NORMALIZED_JSONL_INGESTION_VERSION } from "../../dashboard/site/src/data/ingest/coordinator.js";
 import { CANONICAL_SCHEMA_VERSION } from "../../dashboard/site/src/data/model/schema.js";
 import { normalize } from "../../dashboard/site/src/data/normalize/index.js";
 import { syntheticGhAwLogs } from "../helpers/synthetic-gh-aw-logs.mjs";
@@ -17,7 +18,7 @@ const payload = Buffer.from([
   {
     kind: "metadata",
     schemaVersion: CANONICAL_SCHEMA_VERSION,
-    ingestionVersion: 3,
+    ingestionVersion: NORMALIZED_JSONL_INGESTION_VERSION,
     sourceRecords: runs,
     phase: "runs",
     records: records.length,
