@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"net/http"
 	"net/url"
@@ -27,6 +28,61 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
+
+var oauthFailurePage = template.Must(template.New("oauth-failure").Parse(`<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign-in help · CAO</title></head>
+<body><main>
+<h1>We couldn’t complete your sign-in</h1>
+<p>Try again with an account that has access to this dashboard. If the problem continues, share the request ID below with your dashboard administrator.</p>
+<p><a href="/auth/logged-out" id="sign-out">Sign out and try again</a></p>
+<p><a href="https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md#oauth-sign-in-troubleshooting" rel="noreferrer noopener">Sign-in troubleshooting</a></p>
+{{if .}}<p>Request ID: <code>{{.}}</code></p>{{end}}
+<p id="recovery-error" role="alert" hidden>Could not sign out. Please try again or clear this site’s cookies before signing in.</p>
+</main><script src="/auth/recovery.js" defer></script></body>
+</html>`))
+
+const oauthRecoveryScript = `const link = document.getElementById('sign-out');
+link.addEventListener('click', async (event) => {
+  event.preventDefault();
+  link.setAttribute('aria-disabled', 'true');
+  try {
+    const csrf = document.cookie.split('; ').find((cookie) => cookie.startsWith('cao_csrf='));
+    const response = await fetch('/auth/logout', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: csrf ? { 'X-CSRF-Token': decodeURIComponent(csrf.slice('cao_csrf='.length)) } : {},
+    });
+    if (response.status === 204 || response.status === 401) {
+      location.assign('/auth/logged-out');
+      return;
+    }
+  } catch {
+    // Keep the current page visible when logout cannot be confirmed.
+  }
+  link.removeAttribute('aria-disabled');
+  document.getElementById('recovery-error').hidden = false;
+});
+`
+
+func (oauth *githubOAuth) recoveryScript(response http.ResponseWriter, _ *http.Request) {
+	response.Header().Set("Cache-Control", "no-store")
+	response.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	_, _ = io.WriteString(response, oauthRecoveryScript)
+}
+
+func writeOAuthFailure(response http.ResponseWriter, status int, traceID trace.TraceID) {
+	response.Header().Set("Cache-Control", "no-store")
+	response.Header().Set("Referrer-Policy", "no-referrer")
+	response.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'")
+	response.Header().Set("Content-Type", "text/html; charset=utf-8")
+	response.WriteHeader(status)
+	id := ""
+	if traceID.IsValid() {
+		id = traceID.String()
+	}
+	_ = oauthFailurePage.Execute(response, id)
+}
 
 const (
 	sessionCookieName = "cao_session"
@@ -197,6 +253,7 @@ func (oauth *githubOAuth) login(response http.ResponseWriter, request *http.Requ
 
 func (oauth *githubOAuth) loggedOut(response http.ResponseWriter, _ *http.Request) {
 	oauth.logBranch("logged_out.rendered")
+	oauth.clearStateCookie(response)
 	response.Header().Set("Cache-Control", "no-store")
 	response.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = io.WriteString(response, `<!doctype html>
@@ -235,17 +292,17 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 			counter.Add(ctx, 1, metric.WithAttributes(attrs...))
 		}
 	}()
-	fail := func(status int, reason, message string) {
+	fail := func(status int, reason string) {
 		outcome, errorType = "failure", reason
 		if status >= http.StatusInternalServerError {
 			span.SetStatus(codes.Error, "OAuth callback failed")
 		}
-		writeError(response, status, message)
+		writeOAuthFailure(response, status, span.SpanContext().TraceID())
 	}
 	if !oauth.validState(request) {
 		serverLog.Printf("oauth callback rejected invalid state")
 		oauth.logBranch("callback.state_rejected")
-		fail(http.StatusBadRequest, "invalid_state", "invalid OAuth state")
+		fail(http.StatusBadRequest, "invalid_state")
 		return
 	}
 	oauth.clearStateCookie(response)
@@ -256,7 +313,7 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 		if request.URL.Query().Has("error") {
 			reason = "provider_denied"
 		}
-		fail(http.StatusBadRequest, reason, "OAuth code is required")
+		fail(http.StatusBadRequest, reason)
 		return
 	}
 	tokens, err := oauth.exchange(request.Context(), url.Values{
@@ -268,26 +325,26 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 	if err != nil {
 		serverLog.Printf("oauth exchange failed")
 		oauth.logBranch("callback.exchange_failed")
-		fail(http.StatusUnauthorized, "exchange_failed", "GitHub OAuth exchange failed")
+		fail(http.StatusUnauthorized, "exchange_failed")
 		return
 	}
 	account, err := oauth.authorizedAccount(request.Context(), tokens.AccessToken)
 	if err != nil {
 		serverLog.Printf("oauth authorization failed")
 		oauth.logBranch("callback.authorization_failed")
-		fail(http.StatusForbidden, "authorization_failed", "GitHub authorization failed")
+		fail(http.StatusForbidden, "authorization_failed")
 		return
 	}
 	sessionID, err := randomToken(32)
 	if err != nil {
 		oauth.logBranch("callback.session_id_generation_failed")
-		fail(http.StatusInternalServerError, "session_id_generation_failed", "failed to create session")
+		fail(http.StatusInternalServerError, "session_id_generation_failed")
 		return
 	}
 	csrfToken, err := randomToken(32)
 	if err != nil {
 		oauth.logBranch("callback.csrf_generation_failed")
-		fail(http.StatusInternalServerError, "csrf_generation_failed", "failed to create session")
+		fail(http.StatusInternalServerError, "csrf_generation_failed")
 		return
 	}
 	now := time.Now().UTC()
@@ -316,7 +373,7 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 	if err := oauth.saveSession(request.Context(), session); err != nil {
 		serverLog.Printf("oauth session save failed")
 		oauth.logBranch("callback.session_save_failed")
-		fail(http.StatusServiceUnavailable, "session_save_failed", "failed to create session")
+		fail(http.StatusServiceUnavailable, "session_save_failed")
 		return
 	}
 	oauth.setSessionCookies(response, session)
