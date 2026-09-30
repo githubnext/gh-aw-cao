@@ -67,7 +67,7 @@ func TestServiceEmitsSpansAndMetricsWithoutSecrets(t *testing.T) {
 			t.Fatalf("unexpected span name %q", span.Name)
 		}
 		for _, attr := range span.Attributes {
-			value := attr.Value.Emit()
+			value := attr.Value.String()
 			if strings.Contains(value, reservation.ID) || strings.Contains(value, privateReason) {
 				t.Fatalf("span %s recorded sensitive attribute %s", span.Name, attr.Key)
 			}

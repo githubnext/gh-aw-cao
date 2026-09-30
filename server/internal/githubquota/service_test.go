@@ -307,7 +307,7 @@ func TestRegistryDiscoversBucketsWithoutCredentials(t *testing.T) {
 		t.Fatal("provider lookup exposed internal state")
 	}
 	for name, document := range map[string]string{
-		"credential field": `{"providers":[{"name":"a","app":"a","installations":[1],"privateKey":"x"}]}`,
+		"unknown field":    `{"providers":[{"name":"a","app":"a","installations":[1],"privateKey":"x"}]}`,
 		"duplicate":        `{"providers":[{"name":"a","app":"a","installations":[1]},{"name":"a","app":"b","installations":[1]}]}`,
 		"no installations": `{"providers":[{"name":"a","app":"a","installations":[]}]}`,
 		"invalid app":      `{"providers":[{"name":"a","app":"a:b","installations":[1]}]}`,
