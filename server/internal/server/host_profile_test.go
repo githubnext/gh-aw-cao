@@ -137,6 +137,131 @@ func TestHostProfileDefaultsOnlyWhenCompletelyUnset(t *testing.T) {
 	}
 }
 
+func TestClassifyRedisSessionMismatchDetectsIncompatibleSessions(t *testing.T) {
+	tests := []struct {
+		name           string
+		required       HostRedisSession
+		reportsSession bool
+		singleSession  bool
+		mismatch       bool
+	}{
+		{"serialized requires reported single session", HostRedisSerialized, true, true, false},
+		{"serialized rejects unreported session", HostRedisSerialized, false, false, true},
+		{"serialized rejects reported non-single session", HostRedisSerialized, true, false, true},
+		{"pooled requires non-single session", HostRedisPooled, false, false, false},
+		{"pooled rejects reported single session", HostRedisPooled, true, true, true},
+		{"pooled accepts reported non-single session", HostRedisPooled, true, false, false},
+		{"unknown session kind never mismatches", HostRedisSession("unknown"), true, true, false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := classifyRedisSessionMismatch(test.required, test.reportsSession, test.singleSession)
+			if got != test.mismatch {
+				t.Fatalf("classifyRedisSessionMismatch(%q, %t, %t) = %t, want %t",
+					test.required, test.reportsSession, test.singleSession, got, test.mismatch)
+			}
+		})
+	}
+}
+
+func TestClassifyHostProfileRejectionOrdersChecksAndReportsReason(t *testing.T) {
+	valid := hostedHostProfile()
+
+	tests := []struct {
+		name            string
+		profile         HostProfile
+		config          Config
+		storeConfigured bool
+		reportsSession  bool
+		singleSession   bool
+		processIsolated bool
+		want            hostProfileRejectionReason
+	}{
+		{
+			name:    "invalid profile rejected before any config check",
+			profile: HostProfile{},
+			want:    hostProfileRejectionReasonInvalidProfile,
+		},
+		{
+			name:    "missing redis when required",
+			profile: valid,
+			want:    hostProfileRejectionReasonMissingRedis,
+		},
+		{
+			name:            "redis session mismatch",
+			profile:         valid,
+			storeConfigured: true,
+			reportsSession:  true,
+			singleSession:   true,
+			want:            hostProfileRejectionReasonRedisSessionMismatch,
+		},
+		{
+			name: "namespace isolation mismatch",
+			profile: func() HostProfile {
+				p := valid
+				p.RedisSession = HostRedisSerialized
+				p.IsolateProcessNamespace = true
+				p.SingleReplica = true
+				return p
+			}(),
+			storeConfigured: true,
+			reportsSession:  true,
+			singleSession:   true,
+			processIsolated: false,
+			want:            hostProfileRejectionReasonNamespaceMismatch,
+		},
+		{
+			name:            "unsupported collection",
+			profile:         func() HostProfile { p := valid; p.SupportsCollection = false; return p }(),
+			config:          Config{Collector: &CollectorConfig{}},
+			storeConfigured: true,
+			reportsSession:  true,
+			want:            hostProfileRejectionReasonUnsupportedCollector,
+		},
+		{
+			name:            "unconfirmed single replica",
+			profile:         func() HostProfile { p := valid; p.RedisSession = HostRedisSerialized; p.SingleReplica = true; return p }(),
+			storeConfigured: true,
+			reportsSession:  true,
+			singleSession:   true,
+			want:            hostProfileRejectionReasonUnconfirmedReplica,
+		},
+		{
+			name:            "unsupported oauth",
+			profile:         localHostProfile(),
+			config:          Config{GitHubOAuth: &GitHubOAuthConfig{}},
+			storeConfigured: true,
+			reportsSession:  true,
+			want:            hostProfileRejectionReasonUnsupportedOAuth,
+		},
+		{
+			name:            "platform listener conflict",
+			profile:         azureFunctionsHostProfile(),
+			config:          Config{Listen: "127.0.0.1:8080"},
+			storeConfigured: true,
+			reportsSession:  true,
+			want:            hostProfileRejectionReasonPlatformListener,
+		},
+		{
+			name:            "accepted configuration reports none",
+			profile:         valid,
+			storeConfigured: true,
+			reportsSession:  true,
+			want:            hostProfileRejectionReasonNone,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := classifyHostProfileRejection(
+				test.profile, test.config, test.storeConfigured, test.reportsSession, test.singleSession, test.processIsolated,
+			)
+			if got != test.want {
+				t.Fatalf("classifyHostProfileRejection() = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
 func TestUpstashHostProfileRequiresSerializedClientAndArtifactIngestion(t *testing.T) {
 	pooled, err := redisx.New("redis://127.0.0.1:6379")
 	if err != nil {
