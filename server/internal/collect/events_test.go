@@ -2,6 +2,7 @@ package collect
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -102,6 +103,11 @@ func TestParseIssueEventStatusAndBoundaries(t *testing.T) {
 			intent, err := ParseEvent("issues", []byte(fmt.Sprintf(base, tc.action, tc.state, tc.extra)))
 			if err != nil {
 				t.Fatal(err)
+			}
+			enterprise := strings.Replace(fmt.Sprintf(base, "closed", "closed", ""),
+				"https://github.com/", "https://github.enterprise.example/", 1)
+			if intent, err := ParseEvent("issues", []byte(enterprise)); err != nil || intent.Kind != IntentIssueStatus {
+				t.Fatalf("enterprise issue was not classified: %+v (%v)", intent, err)
 			}
 			if intent.Kind != tc.want {
 				t.Fatalf("kind = %q, want %q", intent.Kind, tc.want)

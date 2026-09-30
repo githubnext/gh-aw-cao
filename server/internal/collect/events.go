@@ -128,7 +128,7 @@ func parseIssueEvent(envelope webhookEnvelope) (Intent, error) {
 		return Intent{Kind: IntentIgnore}, nil
 	}
 	link, err := url.Parse(issue.HTMLURL)
-	if err != nil || link.Scheme != "https" || !strings.EqualFold(link.Host, "github.com") ||
+	if err != nil || link.Scheme != "https" || link.Hostname() == "" ||
 		!strings.EqualFold(link.Path, fmt.Sprintf("/%s/issues/%d", repository, issue.Number)) ||
 		link.RawQuery != "" || link.Fragment != "" || link.User != nil {
 		return Intent{Kind: IntentIgnore}, nil
@@ -367,6 +367,9 @@ func (a Admitter) admitIssue(ctx context.Context, intent Intent, delivery string
 	update := intent.Issue
 	update.Delivery = delivery
 	updated, duplicate, _, err := a.IssueStore.ApplyIssueUpdate(ctx, update, ttl)
+	if errors.Is(err, redisx.ErrIssueStatusAmbiguous) {
+		return Admission{Kind: IntentIssueStatus, Reason: "ambiguous-status"}, nil
+	}
 	if err != nil {
 		return Admission{}, err
 	}

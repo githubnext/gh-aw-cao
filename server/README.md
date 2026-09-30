@@ -598,6 +598,12 @@ Collection separates three concerns that fail differently:
    debounce, and appends one task to a Redis stream. A successful response
    therefore means durable admission. Admission is constant-time and takes no
    projection lease, so a delivery burst cannot block the endpoint.
+   Signed `issues` lifecycle events instead refresh status fields only for
+   existing issues in enrolled repositories, without queuing a repository
+   collection. The response reports `applied` (not `queued`); a same-timestamp
+   conflicting status reports `reason: ambiguous-status` and defers to the
+   projected row until newer evidence arrives. Status observations are retained
+   across generation activations and newer projected evidence takes precedence.
 2. **Collection.** Workers lease tasks and run the same
    `gh aw logs --audit` and `activity/cao.mjs` commands the Activity workflow
    runs, writing into the evidence lake. One repository is collected at a time,

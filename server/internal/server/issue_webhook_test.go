@@ -96,6 +96,16 @@ func TestSignedIssueWebhookRefreshesRetainedSource(t *testing.T) {
 	if err != nil || active.Revision != 2 {
 		t.Fatalf("duplicate or unsigned webhook changed revision: %+v (%v)", active, err)
 	}
+	reopened := strings.ReplaceAll(payload, `"action":"closed"`, `"action":"reopened"`)
+	reopened = strings.ReplaceAll(reopened, `"state":"closed"`, `"state":"open"`)
+	if result := send(reopened, "delivery-same-second", true); result["reason"] != "ambiguous-status" ||
+		result["applied"] != false {
+		t.Fatalf("same-second conflicting status was not flagged: %+v", result)
+	}
+	source, _, err = store.LoadSource(t.Context(), "g1", "issues", nil)
+	if err != nil || source.Rows[0]["state"] != "OPEN" {
+		t.Fatalf("ambiguous status must defer to projected row: %+v (%v)", source, err)
+	}
 
 	repository := "simulator/repo-00001"
 	if err := enrollment.AddRepositories(t.Context(), 1, []string{repository}); err != nil {
@@ -166,7 +176,7 @@ func TestSignedIssueWebhookRefreshesRetainedSource(t *testing.T) {
 		t.Fatalf("issue events enqueued workflow collection: depth=%d err=%v", depth, err)
 	}
 	active, err = store.Active(t.Context())
-	if err != nil || active.Revision != 7 {
+	if err != nil || active.Revision != 8 {
 		t.Fatalf("issue lifecycle did not advance live revision: %+v (%v)", active, err)
 	}
 }
