@@ -80,5 +80,18 @@
     "txn_id": "refiner-36601303276-1"
   },
   "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36601303276",
-  "last_updated_target_repo": "github/gh-aw-firewall"
+  "last_updated_target_repo": "github/gh-aw-firewall",
+  "additional_target_evaluations": [
+    {
+      "target_repo": "github/gh-aw-actions",
+      "target_commit": "a65c3ae1e11016c37f426bb3847a6f5e1a7d58df",
+      "true_positive_count": 0,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "No execa/execa.sync chmod invocations exist in this repository's JS/TS sources; the unsafe pattern does not occur here (recursive chmod usage in this repo is confined to shell scripts, outside the rule's scope).",
+      "txn_id": "refiner-36658147600-1"
+    }
+  ],
+  "last_seen_at": "2026-09-30T02:12:38Z"
 }
