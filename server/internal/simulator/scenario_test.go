@@ -499,3 +499,73 @@ func TestFakeGitHubAPIRejectsInvalidRateLimit(t *testing.T) {
 		}
 	}
 }
+
+func TestPartitionDeliveriesSeparatesBootstrapPrimaryDelayedAndFinal(t *testing.T) {
+	deliveries := []Delivery{
+		{Event: "installation", Bootstrap: true, Sequence: 0},
+		{Event: "workflow_run", Sequence: 1},
+		{Event: "workflow_run", Sequence: 2, Delayed: true},
+		{Event: "issues", Sequence: 3},
+	}
+	partition := partitionDeliveries(deliveries, 0, 0)
+	if len(partition.bootstrap) != 1 || partition.bootstrap[0].Event != "installation" {
+		t.Fatalf("bootstrap = %#v, want one installation delivery", partition.bootstrap)
+	}
+	if len(partition.primary) != 1 || partition.primary[0].Sequence != 1 {
+		t.Fatalf("primary = %#v, want the non-delayed workflow_run delivery", partition.primary)
+	}
+	if len(partition.delayed) != 1 || partition.delayed[0].Sequence != 2 {
+		t.Fatalf("delayed = %#v, want the delayed workflow_run delivery", partition.delayed)
+	}
+	if len(partition.final) != 1 || partition.final[0].Event != "issues" {
+		t.Fatalf("final = %#v, want the non-workflow_run delivery", partition.final)
+	}
+	if len(partition.workflowEvents) != 2 {
+		t.Fatalf("workflowEvents = %#v, want both workflow_run deliveries", partition.workflowEvents)
+	}
+	if partition.dropped != 0 || partition.duplicated != 0 {
+		t.Fatalf("dropped=%d duplicated=%d, want zero without sampling rules", partition.dropped, partition.duplicated)
+	}
+}
+
+func TestPartitionDeliveriesAppliesDropEveryAndDuplicateEveryToWorkflowRunEvents(t *testing.T) {
+	deliveries := make([]Delivery, 0, 6)
+	for i := range 6 {
+		deliveries = append(deliveries, Delivery{Event: "workflow_run", Sequence: i})
+	}
+	partition := partitionDeliveries(deliveries, 3, 2)
+	// dropEvery=3 drops the 3rd and 6th workflow_run deliveries (Sequence 2
+	// and 5); duplicateEvery=2 duplicates the survivors whose 1-based
+	// position among workflow_run deliveries is itself a multiple of 2.
+	if partition.dropped != 2 {
+		t.Fatalf("dropped = %d, want 2", partition.dropped)
+	}
+	if len(partition.workflowEvents) != 6 {
+		t.Fatalf("workflowEvents = %d, want all 6 workflow_run deliveries retained for replay", len(partition.workflowEvents))
+	}
+	if len(partition.primary) != 4+partition.duplicated {
+		t.Fatalf("primary = %d, want 4 surviving events plus %d duplicates", len(partition.primary), partition.duplicated)
+	}
+	if partition.duplicated == 0 {
+		t.Fatal("duplicated = 0, want at least one duplicate among the surviving events")
+	}
+}
+
+func TestPartitionDeliveriesTreatsDroppedWorkflowRunEventsAsNotBootstrapOrFinal(t *testing.T) {
+	deliveries := []Delivery{{Event: "workflow_run", Sequence: 0}, {Event: "workflow_run", Sequence: 1}}
+	partition := partitionDeliveries(deliveries, 1, 0)
+	if partition.dropped != 2 {
+		t.Fatalf("dropped = %d, want both workflow_run deliveries dropped by dropEvery=1", partition.dropped)
+	}
+	if len(partition.primary) != 0 || len(partition.delayed) != 0 || len(partition.bootstrap) != 0 || len(partition.final) != 0 {
+		t.Fatalf("dropped deliveries must not appear in any sent batch: %#v", partition)
+	}
+}
+
+func TestPartitionDeliveriesHandlesNoDeliveries(t *testing.T) {
+	partition := partitionDeliveries(nil, 0, 0)
+	if len(partition.bootstrap) != 0 || len(partition.primary) != 0 || len(partition.delayed) != 0 ||
+		len(partition.final) != 0 || len(partition.workflowEvents) != 0 || partition.dropped != 0 || partition.duplicated != 0 {
+		t.Fatalf("partition of no deliveries must be entirely empty, got %#v", partition)
+	}
+}

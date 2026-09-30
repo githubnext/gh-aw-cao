@@ -17,6 +17,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
 
 const (
@@ -24,6 +26,8 @@ const (
 	maxEvents       = 1000000
 	maxConcurrency  = 512
 )
+
+var scenarioLog = logger.New("cao:simulator:scenario")
 
 // Scenario describes deterministic webhook traffic and time-bounded API
 // behavior. Durations in API windows are measured from simulator startup.
@@ -344,6 +348,66 @@ type RunResult struct {
 	Replayed   int `json:"replayed"`
 }
 
+// deliveryPartition is the pure outcome of splitting one scenario's generated
+// deliveries into the ordered batches Deliver sends: an installation
+// bootstrap batch (concurrency 1), a primary batch of immediate workflow_run
+// and non-workflow_run events (concurrency n), a delayed batch of
+// workflow_run events held back for Delay (concurrency n), and a final batch
+// of trailing non-workflow_run events (concurrency 1). workflowEvents
+// retains every non-dropped workflow_run delivery in generation order, for
+// Deliver's later replay selection.
+type deliveryPartition struct {
+	bootstrap      []Delivery
+	primary        []Delivery
+	delayed        []Delivery
+	final          []Delivery
+	workflowEvents []Delivery
+	dropped        int
+	duplicated     int
+}
+
+// partitionDeliveries classifies one scenario's generated deliveries into
+// deliveryPartition's batches, applying the dropEvery and duplicateEvery
+// sampling rules to workflow_run events. It is a pure function extracted
+// from Deliver so this classification is testable directly against a
+// []Delivery slice, without a real or fake HTTP endpoint.
+func partitionDeliveries(deliveries []Delivery, dropEvery, duplicateEvery int) deliveryPartition {
+	partition := deliveryPartition{
+		bootstrap:      make([]Delivery, 0),
+		delayed:        make([]Delivery, 0),
+		primary:        make([]Delivery, 0, len(deliveries)),
+		final:          make([]Delivery, 0),
+		workflowEvents: make([]Delivery, 0, len(deliveries)),
+	}
+	workflowCount := 0
+	for _, delivery := range deliveries {
+		if delivery.Bootstrap {
+			partition.bootstrap = append(partition.bootstrap, delivery)
+			continue
+		}
+		if delivery.Event != "workflow_run" {
+			partition.final = append(partition.final, delivery)
+			continue
+		}
+		workflowCount++
+		partition.workflowEvents = append(partition.workflowEvents, delivery)
+		if dropEvery > 0 && workflowCount%dropEvery == 0 {
+			partition.dropped++
+			continue
+		}
+		if delivery.Delayed {
+			partition.delayed = append(partition.delayed, delivery)
+			continue
+		}
+		partition.primary = append(partition.primary, delivery)
+		if duplicateEvery > 0 && workflowCount%duplicateEvery == 0 {
+			partition.primary = append(partition.primary, delivery)
+			partition.duplicated++
+		}
+	}
+	return partition
+}
+
 // Deliver sends the scenario's signed events to the real CAO webhook endpoint.
 // It uses bounded concurrency and reuses delivery IDs for duplicates/replays.
 func (s Scenario) Deliver(ctx context.Context, client *http.Client, endpoint, secret string, concurrency int) (RunResult, error) {
@@ -368,39 +432,23 @@ func (s Scenario) Deliver(ctx context.Context, client *http.Client, endpoint, se
 		return RunResult{}, fmt.Errorf("simulator concurrency cannot exceed %d", maxConcurrency)
 	}
 
+	partition := partitionDeliveries(deliveries, s.DropEvery, s.DuplicateEvery)
+	// One classification per Deliver call is a meaningful state transition
+	// worth observing, and Deliver is never called from a polling or retry
+	// loop, so logging it cannot flood the log.
+	scenarioLog.Printf(
+		"partitioned deliveries bootstrap=%d primary=%d delayed=%d final=%d dropped=%d duplicated=%d",
+		len(partition.bootstrap), len(partition.primary), len(partition.delayed), len(partition.final),
+		partition.dropped, partition.duplicated,
+	)
 	var result RunResult
-	bootstrap := make([]Delivery, 0)
-	delayed := make([]Delivery, 0)
-	primary := make([]Delivery, 0, len(deliveries))
-	final := make([]Delivery, 0)
-	workflowEvents := make([]Delivery, 0, s.Repositories*s.EventsPerRepository)
-	workflowCount := 0
-	for _, delivery := range deliveries {
-		if delivery.Bootstrap {
-			bootstrap = append(bootstrap, delivery)
-			continue
-		}
-		if delivery.Event == "workflow_run" {
-			workflowCount++
-			workflowEvents = append(workflowEvents, delivery)
-			if s.DropEvery > 0 && workflowCount%s.DropEvery == 0 {
-				result.Dropped++
-				continue
-			}
-			if delivery.Delayed {
-				delayed = append(delayed, delivery)
-				continue
-			}
-		} else {
-			final = append(final, delivery)
-			continue
-		}
-		primary = append(primary, delivery)
-		if delivery.Event == "workflow_run" && s.DuplicateEvery > 0 && workflowCount%s.DuplicateEvery == 0 {
-			primary = append(primary, delivery)
-			result.Duplicates++
-		}
-	}
+	bootstrap := partition.bootstrap
+	delayed := partition.delayed
+	primary := partition.primary
+	final := partition.final
+	workflowEvents := partition.workflowEvents
+	result.Dropped = partition.dropped
+	result.Duplicates = partition.duplicated
 	result.Attempts = len(bootstrap)
 	accepted, failed, err := sendDeliveries(ctx, client, endpoint, secret, bootstrap, 1)
 	result.Accepted += accepted
