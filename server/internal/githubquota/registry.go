@@ -8,7 +8,11 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var registryLog = logger.New("cao:githubquota:registry")
 
 var providerNamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}$`)
 
@@ -56,21 +60,49 @@ func ParseRegistry(data []byte) (*Registry, error) {
 	return NewRegistry(document.Providers...)
 }
 
+// buildRegistryProviders normalizes and validates providers, and rejects a
+// provider name defined more than once. It is a pure function extracted from
+// NewRegistry so the normalization, per-name deduplication, and
+// duplicate-name rejection are testable directly against plain
+// []BucketProvider values, without constructing a *Registry.
+func buildRegistryProviders(providers []BucketProvider) ([]BucketProvider, map[string]int, error) {
+	byName := make(map[string]int, len(providers))
+	normalized := make([]BucketProvider, 0, len(providers))
+	for _, provider := range providers {
+		normalizedProvider, err := normalizeProvider(provider)
+		if err != nil {
+			return nil, nil, err
+		}
+		if _, exists := byName[normalizedProvider.Name]; exists {
+			return nil, nil, fmt.Errorf("github quota provider %q is defined more than once", normalizedProvider.Name)
+		}
+		byName[normalizedProvider.Name] = len(normalized)
+		normalized = append(normalized, normalizedProvider)
+	}
+	return normalized, byName, nil
+}
+
+// registryBucketCount totals the buckets a set of already-normalized
+// providers describes: each provider's installation count times its
+// resource count. It is useful for diagnosing a misconfigured registry
+// without logging any provider name, App identity, or installation ID.
+func registryBucketCount(providers []BucketProvider) int {
+	count := 0
+	for _, provider := range providers {
+		count += len(provider.Installations) * len(provider.Resources)
+	}
+	return count
+}
+
 // NewRegistry validates and normalizes providers.
 func NewRegistry(providers ...BucketProvider) (*Registry, error) {
-	registry := &Registry{byName: make(map[string]int, len(providers))}
-	for _, provider := range providers {
-		normalized, err := normalizeProvider(provider)
-		if err != nil {
-			return nil, err
-		}
-		if _, exists := registry.byName[normalized.Name]; exists {
-			return nil, fmt.Errorf("github quota provider %q is defined more than once", normalized.Name)
-		}
-		registry.byName[normalized.Name] = len(registry.providers)
-		registry.providers = append(registry.providers, normalized)
+	normalized, byName, err := buildRegistryProviders(providers)
+	if err != nil {
+		registryLog.Printf("registry construction failed providers=%d", len(providers))
+		return nil, err
 	}
-	return registry, nil
+	registryLog.Printf("registry constructed providers=%d buckets=%d", len(normalized), registryBucketCount(normalized))
+	return &Registry{providers: normalized, byName: byName}, nil
 }
 
 func normalizeProvider(provider BucketProvider) (BucketProvider, error) {

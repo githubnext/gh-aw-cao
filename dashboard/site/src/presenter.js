@@ -13,6 +13,7 @@ import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayo
 import { externalAnchorAttrs, findLink } from './components/link-content.js';
 import { elementHandlesEmptyRows, elementHandlesUnavailableSource, elementLoadsSourcesAsync, renderUiElement } from './components/ui-elements.js';
 import { renderDataView, renderPromptPreviewAction, supportsIncrementalChartContinuation } from './components/data-view.js';
+import { renderPageLoadError } from './components/page-load-error.js';
 import { declaredAgentTaskActionId } from './components/cli-actions.js';
 import { effectiveViewSemantics } from './view-semantics.js';
 import { semanticViewPrompt } from './semantic-view-prompt.js';
@@ -1574,7 +1575,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
               status: 'failed',
               message: error instanceof Error ? error.message : String(error)
             });
-            currentPage.replaceChildren(renderEmptyMessage('Unable to load this page.', { role: 'alert' }));
+            currentPage.setAttribute('data-page-pending', '');
+            currentPage.replaceChildren(renderPageLoadError(error, () => activate(pageId, parameters)));
             currentPage.removeAttribute('aria-busy');
             currentPage.removeAttribute('aria-label');
           });

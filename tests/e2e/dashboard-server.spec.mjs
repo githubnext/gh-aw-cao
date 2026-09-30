@@ -1,4 +1,16 @@
 import { expect, test } from "@playwright/test";
+import { mkdir, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import {
+  dashboardAssessmentPageHash,
+  declaredDashboardViewIds,
+  visibleBusyViewSelector,
+} from "./dashboard-view-assessment.mjs";
+import {
+  dashboardPageChunkPath,
+  mergeDashboardPage,
+  normalizeDashboardPageChunk,
+} from "../../dashboard/site/src/dashboard-chunks.js";
 
 const accessToken = process.env.DASHBOARD_SERVER_ACCESS_TOKEN
   || "0123456789abcdef0123456789abcdef";
@@ -76,4 +88,132 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
     await expect(view.locator(`td[data-field="${expected.field}"]`, { hasText: expected.value })).toBeVisible();
     await expect(view).not.toContainText("Unavailable");
   }
+});
+
+  test("every dashboard page resolves its queries against the Go Redis server", async ({ context, page }) => {
+    test.setTimeout(1_600_000);
+    const outputDirectory = resolve("test-results/dashboard-server");
+    await mkdir(outputDirectory, { recursive: true });
+    const results = [];
+    let blocker;
+
+    try {
+      const initialQueryResponses = [];
+      const onInitialResponse = (response) => {
+        if (new URL(response.url()).pathname === "/api/v1/query") initialQueryResponses.push(response);
+      };
+      page.on("response", onInitialResponse);
+      await page.goto(`/?access_token=${accessToken}`);
+      await expect(page.locator('meta[name="dashboard-data-backend"]')).toHaveAttribute("content", "redis-http");
+      await expect(page.locator('[data-page-id="overview"]')).not.toHaveAttribute("aria-busy", "true", { timeout: 30_000 });
+      page.off("response", onInitialResponse);
+      const dashboardResponse = await context.request.get("/dashboard.json");
+      expect(dashboardResponse.ok()).toBe(true);
+      const dashboard = await dashboardResponse.json();
+      const pages = [];
+      for (const definition of dashboard.dashboard.pages) {
+        const chunkPath = dashboardPageChunkPath(definition);
+        if (!chunkPath) {
+          pages.push(definition);
+          continue;
+        }
+        const chunkResponse = await context.request.get(`/${chunkPath.replace(/^\/+/, "")}`);
+        expect(chunkResponse.ok(), `Load page definition for ${definition.id}`).toBe(true);
+        pages.push(mergeDashboardPage(definition, normalizeDashboardPageChunk(await chunkResponse.json()).page));
+      }
+      expect(pages.length).toBeGreaterThan(0);
+
+      for (const definition of pages) {
+        const result = { pageId: definition.id, status: "failed", queries: 0, errors: [] };
+        results.push(result);
+        const queryResponses = definition.id === "overview" ? [...initialQueryResponses] : [];
+        const browserErrors = [];
+        let remainingTokens = 30;
+        let resetSeconds = 0;
+        const onPageError = (error) => browserErrors.push(error.message);
+        const onResponse = (response) => {
+          if (new URL(response.url()).pathname !== "/api/v1/query") return;
+          queryResponses.push(response);
+          remainingTokens = Math.min(remainingTokens, Number(response.headers()["ratelimit-remaining"] ?? 30));
+          resetSeconds = Math.max(resetSeconds, Number(response.headers()["ratelimit-reset"] ?? 0));
+        };
+        page.on("pageerror", onPageError);
+        page.on("response", onResponse);
+        try {
+          await page.evaluate((hash) => { window.location.hash = hash; },
+            dashboardAssessmentPageHash(definition, dashboard));
+          const activePage = page.locator(`[data-page-id="${definition.id}"]`);
+          await expect(activePage).toBeVisible({ timeout: 30_000 });
+          await expect(activePage).not.toHaveAttribute("aria-busy", "true", { timeout: 30_000 });
+          await activePage.locator("details.view-disclosure").evaluateAll((items) => {
+            for (const item of items) item.open = true;
+          });
+          const views = activePage.locator("[data-view-id]");
+          const declared = declaredDashboardViewIds(definition, dashboard.dashboard.views);
+          const rendered = await views.evaluateAll((items) =>
+            items.map((item) => item.getAttribute("data-view-id")));
+          for (const viewId of declared) {
+            if (!rendered.includes(viewId)) result.errors.push(`Missing view: ${viewId}`);
+          }
+          for (let index = 0; index < await views.count(); index += 1) {
+            const view = views.nth(index);
+            if (await view.isVisible()) await view.scrollIntoViewIfNeeded().catch(() => {});
+          }
+          await expect(activePage.locator(visibleBusyViewSelector)).toHaveCount(0, { timeout: 30_000 });
+          const failures = await activePage.locator('[aria-label^="Unable to load "]')
+            .evaluateAll((items) => items.map((item) => item.getAttribute("aria-label")));
+          result.errors.push(...failures, ...browserErrors);
+          for (const response of queryResponses) {
+            result.queries += 1;
+            if (!response.ok()) {
+              result.errors.push(`Query HTTP ${response.status()}`);
+              continue;
+            }
+            const payload = await response.json();
+            if (!payload.sources || typeof payload.sources !== "object") {
+              result.errors.push("Query returned no sources object");
+              continue;
+            }
+            const request = response.request().postDataJSON();
+            const replaced = new Set(request.replacedSources ?? []);
+            for (const name of [...(request.sourceNames ?? []), ...(request.aliases ?? [])]) {
+              if (!replaced.has(name) && !Object.hasOwn(payload.sources, name)) {
+                result.errors.push(`Query did not resolve source: ${name}`);
+              }
+            }
+          }
+          if (declared.length > 0 && result.queries === 0) result.errors.push("No Go server queries observed");
+          result.status = result.errors.length === 0 ? "passed" : "failed";
+        } catch (error) {
+          result.errors.push(error instanceof Error ? error.message : String(error));
+        } finally {
+          page.off("pageerror", onPageError);
+          page.off("response", onResponse);
+          if (remainingTokens < 12 && resetSeconds > 0) {
+            await page.waitForTimeout((resetSeconds + 1) * 1000);
+          }
+        }
+      }
+    } catch (error) {
+      blocker = error instanceof Error ? error.message : String(error);
+    } finally {
+      const passed = results.filter((result) => result.status === "passed").length;
+      const summary = [
+        "### Go Redis dashboard page checks",
+        "",
+        `**${blocker || results.some((result) => result.status !== "passed") ? "FAILED" : "PASSED"}** — ${passed}/${results.length} pages passed.`,
+        ...(blocker ? ["", `Setup failed: ${blocker.replaceAll("\n", " ")}`] : []),
+        "",
+        "| Page | Status | Queries | Errors |",
+        "|---|---|---:|---|",
+        ...results.map((result) =>
+          `| ${result.pageId} | ${result.status.toUpperCase()} | ${result.queries} | ${result.errors.map((error) => error.replaceAll("|", "\\|").replaceAll("\n", " ")).join("; ") || "—"} |`),
+        "",
+      ].join("\n");
+      await writeFile(resolve(outputDirectory, "summary.md"), summary);
+      await writeFile(resolve(outputDirectory, "summary.json"), `${JSON.stringify({ blocker, results }, null, 2)}\n`);
+    }
+    expect(blocker, "Dashboard setup must succeed").toBeUndefined();
+    expect(results.length, "Every declared page must be assessed").toBeGreaterThan(0);
+    expect(results.filter((result) => result.status !== "passed"), "Every Go Redis dashboard page must load").toEqual([]);
 });

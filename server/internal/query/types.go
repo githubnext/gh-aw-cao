@@ -18,7 +18,7 @@ const (
 	MaxWorkingRows           = 500_000
 	MaxRetainedRows          = 500_000
 	MaxWorkingBytes          = 256 << 20
-	MaxRetainedBytes         = 256 << 20
+	MaxRetainedBytes         = 512 << 20
 	MaxAggregateValues       = 64
 	MaxPredicateAlternatives = 32
 	MaxOperations            = 5_000_000
