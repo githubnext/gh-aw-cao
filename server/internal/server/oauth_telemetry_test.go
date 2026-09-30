@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
@@ -167,12 +168,28 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 		if span.Name != "GET /auth/callback" || span.SpanKind != trace.SpanKindServer {
 			t.Fatalf("unexpected callback span: %s (%v)", span.Name, span.SpanKind)
 		}
-		if len(span.Events) != 0 {
-			t.Fatal("callback span must not record raw exceptions")
+		for _, event := range span.Events {
+			if event.Name != "cao_dashboard.auth.decision" {
+				t.Fatalf("callback span recorded unexpected event %q", event.Name)
+			}
+			attrs := spanAttributes(event.Attributes)
+			if attrs["cao_dashboard.auth.operation"] != "callback_cleanup" ||
+				attrs["cao_dashboard.auth.outcome"] != "revoked" {
+				t.Fatalf("callback cleanup event has unexpected attributes: %#v", attrs)
+			}
 		}
 	}
 	if spans[6].Status.Code != codes.Error {
 		t.Fatal("session persistence failure must mark the callback span as a server error")
+	}
+	for i, span := range spans {
+		want := 0
+		if i == 5 || i == 6 {
+			want = 1
+		}
+		if len(span.Events) != want {
+			t.Fatalf("callback span %d recorded %d cleanup decisions, want %d", i, len(span.Events), want)
+		}
 	}
 	for i, response := range []*httptest.ResponseRecorder{invalid, missing, denied, exchange, unauthorized, failedSave} {
 		span := spans[i+1]
@@ -225,8 +242,19 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 		t.Fatal(err)
 	}
 	var outcomes []string
+	var cleanupDecisions int64
 	for _, scope := range data.ScopeMetrics {
 		for _, instrument := range scope.Metrics {
+			if instrument.Name == "cao_dashboard.auth.decision.count" {
+				for _, point := range instrument.Data.(metricdata.Sum[int64]).DataPoints {
+					attrs := spanAttributes(point.Attributes.ToSlice())
+					if attrs["cao_dashboard.auth.operation"] != "callback_cleanup" ||
+						attrs["cao_dashboard.auth.outcome"] != "revoked" {
+						t.Fatalf("unexpected cleanup decision: %#v", attrs)
+					}
+					cleanupDecisions += point.Value
+				}
+			}
 			if instrument.Name != "cao_dashboard.auth.callback.count" {
 				continue
 			}
@@ -257,6 +285,9 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 	if len(outcomes) != 7 {
 		t.Fatalf("unexpected metric outcomes: %v", outcomes)
 	}
+	if cleanupDecisions != 2 {
+		t.Fatalf("callback cleanup decisions = %d, want 2", cleanupDecisions)
+	}
 
 	encoded, err := json.Marshal(struct {
 		Spans   tracetest.SpanStubs
@@ -270,6 +301,102 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 		"private-user-agent", "192.0.2.89", "access-old", "refresh-old", "test-user"} {
 		if strings.Contains(string(encoded), private) {
 			t.Fatalf("OAuth telemetry exposed private value %q", private)
+		}
+	}
+}
+
+func TestOAuthRevalidationTelemetryExcludesIdentity(t *testing.T) {
+	previousTracer := otel.GetTracerProvider()
+	previousMeter := otel.GetMeterProvider()
+	traces := tracetest.NewInMemoryExporter()
+	traceProvider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(traces))
+	reader := sdkmetric.NewManualReader()
+	meterProvider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	otel.SetTracerProvider(traceProvider)
+	otel.SetMeterProvider(meterProvider)
+	t.Cleanup(func() {
+		_ = meterProvider.Shutdown(t.Context())
+		_ = traceProvider.Shutdown(t.Context())
+		otel.SetTracerProvider(previousTracer)
+		otel.SetMeterProvider(previousMeter)
+	})
+
+	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
+	app := newAzureTestApp(t, github.URL)
+	cookie, _ := callbackSession(t, app)
+	traces.Reset()
+	for _, outcome := range []string{"accepted", "rejected"} {
+		session, err := app.oauth.loadSession(t.Context(), cookie.Value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		session.AuthorizedAt = time.Now().Add(-authorizationRecheckInterval)
+		if err := app.oauth.saveSession(t.Context(), session); err != nil {
+			t.Fatal(err)
+		}
+		if outcome == "rejected" {
+			github.membershipState = "inactive"
+		}
+		request := azureRequest(t, http.MethodGet, "/api/auth/session")
+		request.AddCookie(cookie)
+		response := httptest.NewRecorder()
+		app.Handler().ServeHTTP(response, request)
+		wantStatus := http.StatusOK
+		if outcome == "rejected" {
+			wantStatus = http.StatusUnauthorized
+		}
+		if response.Code != wantStatus {
+			t.Fatalf("revalidation %s returned %d", outcome, response.Code)
+		}
+	}
+
+	var decisions []string
+	for _, span := range traces.GetSpans() {
+		for _, event := range span.Events {
+			if event.Name != "cao_dashboard.auth.decision" {
+				t.Fatalf("unexpected revalidation event %q", event.Name)
+			}
+			attrs := spanAttributes(event.Attributes)
+			if attrs["cao_dashboard.auth.operation"] != "session_revalidation" {
+				t.Fatalf("unexpected operation in revalidation event: %#v", attrs)
+			}
+			decisions = append(decisions, attrs["cao_dashboard.auth.outcome"].(string))
+		}
+	}
+	if len(decisions) != 2 || decisions[0] != "accepted" || decisions[1] != "rejected" {
+		t.Fatalf("unexpected revalidation decisions: %v", decisions)
+	}
+	var metrics metricdata.ResourceMetrics
+	if err := reader.Collect(t.Context(), &metrics); err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]int64{}
+	for _, scope := range metrics.ScopeMetrics {
+		for _, instrument := range scope.Metrics {
+			if instrument.Name != "cao_dashboard.auth.decision.count" {
+				continue
+			}
+			for _, point := range instrument.Data.(metricdata.Sum[int64]).DataPoints {
+				attrs := spanAttributes(point.Attributes.ToSlice())
+				if attrs["cao_dashboard.auth.operation"] == "session_revalidation" {
+					seen[attrs["cao_dashboard.auth.outcome"].(string)] += point.Value
+				}
+			}
+		}
+	}
+	if seen["accepted"] != 1 || seen["rejected"] != 1 || len(seen) != 2 {
+		t.Fatalf("unexpected revalidation metrics: %v", seen)
+	}
+	encoded, err := json.Marshal(struct {
+		Spans   tracetest.SpanStubs
+		Metrics metricdata.ResourceMetrics
+	}{traces.GetSpans(), metrics})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, private := range []string{cookie.Value, "octocat", "access-old", "refresh-old", github.URL} {
+		if strings.Contains(string(encoded), private) {
+			t.Fatalf("revalidation telemetry contains private value %q", private)
 		}
 	}
 }

@@ -204,6 +204,41 @@ func TestOAuthRevalidationPersistsAuthorizationFreshness(t *testing.T) {
 	}
 }
 
+func TestOAuthRefreshReconcilesConcurrentAuthorizationRecheck(t *testing.T) {
+	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: -60, refreshSucceeds: true})
+	app := newAzureTestApp(t, github.URL)
+	cookie, csrf := callbackSession(t, app)
+	github.onUserRequest = func() {
+		current, sealed, err := app.oauth.loadSessionRecord(t.Context(), cookie.Value)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		current.AuthorizedAt = time.Now().UTC()
+		saved, err := app.oauth.saveSessionIfUnchanged(t.Context(), current, sealed)
+		if err != nil || !saved {
+			t.Errorf("could not simulate concurrent revalidation: saved=%t err=%v", saved, err)
+		}
+		github.onUserRequest = nil
+	}
+	request := azureRequest(t, http.MethodPost, "/api/v1/refresh")
+	request.AddCookie(cookie)
+	request.AddCookie(csrf)
+	request.Header.Set("X-CSRF-Token", csrf.Value)
+	response := httptest.NewRecorder()
+	app.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("concurrent revalidation stranded refresh: %d", response.Code)
+	}
+	session, err := app.oauth.loadSession(t.Context(), cookie.Value)
+	if err != nil || session.AccessToken != "access-new" || session.RefreshToken != "refresh-new" {
+		t.Fatalf("refresh did not retain issued tokens: %v", err)
+	}
+	if github.sawRevocation("access-new") || github.sawRevocation("refresh-new") {
+		t.Fatal("successfully persisted refresh credentials were revoked")
+	}
+}
+
 func TestOAuthQueuesCredentialsWhenCallbackAuthorizationFails(t *testing.T) {
 	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "inactive", accessExpiresIn: 3600, rejectRevocation: true})
 	app := newAzureTestApp(t, github.URL)
