@@ -32,6 +32,7 @@ const debugUiElements = createDebug('ui-elements');
  *   scope?: Record<string, unknown>,
  *   time?: Record<string, unknown>,
  *   routeParameter?: string,
+ *   routeParameters?: Record<string, string>,
  *   queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' },
  *   titleLink?: Record<string, unknown>,
  *   element?: string,
