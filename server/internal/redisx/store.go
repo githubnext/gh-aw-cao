@@ -570,13 +570,26 @@ func (s *Store) Activate(ctx context.Context, generation, dataRevision string, e
 if previous and previous ~= ARGV[1] then
   local overlays = redis.call("HGETALL", ARGV[6] .. previous .. ":issue-status")
   for i = 1, #overlays, 2 do
-    redis.call("HSET", ARGV[6] .. ARGV[1] .. ":issue-status", overlays[i], overlays[i+1])
+    local update = cjson.decode(overlays[i+1])
+    local row = ARGV[6] .. ARGV[1] .. ARGV[7] .. (update.rowHash or "")
+    if update.rowHash and redis.call("SISMEMBER", ARGV[6] .. ARGV[1] .. ARGV[8], row) == 1 then
+      local raw = redis.call("HGET", row, "raw")
+      if raw then
+        local issue = cjson.decode(raw)
+        local url = type(issue.url) == "string" and issue.url or ""
+        if issue.id == overlays[i] and issue.isPullRequest == false and
+           not string.find(url, "/pull/", 1, true) then
+          redis.call("HSET", ARGV[6] .. ARGV[1] .. ":issue-status", overlays[i], overlays[i+1])
+        end
+      end
+    end
   end
 end
 local revision = redis.call("INCR", KEYS[3]); redis.call("HSET", KEYS[1], "generation", ARGV[1], "revision", revision, "dataRevision", ARGV[2], "evaluatedAt", ARGV[3], "counts", ARGV[4], "activatedAt", ARGV[5]); redis.call("SET", KEYS[2], ARGV[1]); return revision`
 	value, err := s.Client.Do(
 		ctx, "EVAL", script, "3", s.activeKey(), s.activeGenerationKey(), s.revisionSequenceKey(),
-		generation, dataRevision, evaluatedAt.UTC().Format(time.RFC3339Nano), string(data), activated, s.namespace+":g:",
+		generation, dataRevision, evaluatedAt.UTC().Format(time.RFC3339Nano), string(data), activated,
+		s.namespace+":g:", ":source:"+safeName("issues")+":row:", ":source:"+safeName("issues")+":rows",
 	)
 	if err != nil {
 		return 0, fmt.Errorf("activate Redis generation: %w", err)
@@ -734,12 +747,18 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 		}
 		for _, row := range rows {
 			if update := overlays[fmt.Sprint(row["id"])]; update != nil {
+				if row["isPullRequest"] != false || strings.Contains(fmt.Sprint(row["url"]), "/pull/") {
+					continue
+				}
 				observed, updateErr := time.Parse(time.RFC3339Nano, fmt.Sprint(update["statusObservedAt"]))
 				snapshot, snapshotErr := time.Parse(time.RFC3339Nano, fmt.Sprint(row["statusObservedAt"]))
 				if updateErr != nil || snapshotErr == nil && !observed.After(snapshot) {
 					continue
 				}
 				for field, value := range update {
+					if field == "rowHash" {
+						continue
+					}
 					row[field] = value
 				}
 			}

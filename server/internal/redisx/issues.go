@@ -21,8 +21,9 @@ type IssueUpdate struct {
 
 // ApplyIssueUpdate atomically checks current enrollment, delivery identity and
 // active generation before recording a small generation-scoped status overlay.
-// The immutable projected row remains intact; a later projection supersedes
-// this overlay with its own authoritative snapshot.
+// Webhook payloads are not general projection authority: this is limited to
+// GitHub's signed issue status observation for a retained issue. It never
+// changes a canonical row; a newer projected snapshot wins over the overlay.
 func (s *Store) ApplyIssueUpdate(ctx context.Context, issue IssueUpdate, ttl time.Duration) (updated, duplicate bool, revision int64, err error) {
 	hash := sha256.Sum256([]byte(issue.ID))
 	row := hex.EncodeToString(hash[:16])
@@ -30,7 +31,8 @@ func (s *Store) ApplyIssueUpdate(ctx context.Context, issue IssueUpdate, ttl tim
 	// activation between lookup and write must not update a retired generation.
 	script := `
 if redis.call("EXISTS", KEYS[3]) == 1 then return {0, 1, 0} end
-if redis.call("HGET", KEYS[4], ARGV[1]) ~= ARGV[2] then return {0, 0, 0} end
+if redis.call("SISMEMBER", KEYS[6], ARGV[1]) == 0 or
+   redis.call("HGET", KEYS[4], ARGV[1]) ~= ARGV[2] then return {0, 0, 0} end
 local generation = redis.call("GET", KEYS[2])
 if not generation or generation == "" then
   redis.call("SET", KEYS[3], "1", "PX", ARGV[9])
@@ -45,9 +47,11 @@ end
 local raw = redis.call("HGET", rowkey, "raw")
 if not raw then return {0, 0, 0} end
 local issue = cjson.decode(raw)
-if issue.id ~= ARGV[7] or issue.isPullRequest == true or
-   string.find(issue.url or "", "/pull/", 1, true) or
-   string.lower(issue.repositoryFullName or "") ~= ARGV[1] then
+local url = type(issue.url) == "string" and issue.url or ""
+local repository = type(issue.repositoryFullName) == "string" and issue.repositoryFullName or ""
+if issue.id ~= ARGV[7] or issue.isPullRequest ~= false or
+   string.find(url, "/pull/", 1, true) or
+   string.lower(repository) ~= ARGV[1] then
   redis.call("SET", KEYS[3], "1", "PX", ARGV[9])
   return {0, 0, 0}
 end
@@ -68,6 +72,14 @@ if observed ~= "" and not previousTime then
   redis.call("SET", KEYS[3], "1", "PX", ARGV[9])
   return {0, 0, 0}
 end
+local snapshot = type(issue.statusObservedAt) == "string" and
+  timestamp(issue.statusObservedAt) or nil
+if type(issue.statusObservedAt) == "string" and
+   issue.statusObservedAt ~= "" and not snapshot then
+  redis.call("SET", KEYS[3], "1", "PX", ARGV[9])
+  return {0, 0, 0}
+end
+if snapshot and (not previousTime or snapshot > previousTime) then previousTime = snapshot end
 if previousTime and previousTime >= timestamp(ARGV[10]) then
   redis.call("SET", KEYS[3], "1", "PX", ARGV[9])
   return {0, 0, 0}
@@ -76,15 +88,15 @@ redis.call("HSET", overlaykey, ARGV[7], cjson.encode({
   state=ARGV[11], closed=ARGV[11]=="CLOSED",
   stateReason=ARGV[12] ~= "" and ARGV[12] or cjson.null,
   closedAt=ARGV[13] ~= "" and ARGV[13] or cjson.null,
-  statusObservedAt=ARGV[10]
+  statusObservedAt=ARGV[10], rowHash=ARGV[5]
 }))
 redis.call("SET", KEYS[3], "1", "PX", ARGV[9])
 local revision = redis.call("INCR", KEYS[5])
 redis.call("HSET", KEYS[1], "revision", revision)
 return {1, 0, revision}`
-	value, err := s.Client.Do(ctx, "EVAL", script, "5",
+	value, err := s.Client.Do(ctx, "EVAL", script, "6",
 		s.activeKey(), s.activeGenerationKey(), s.deliveryKey(issue.Delivery),
-		s.Key("collect:repository-installation"), s.revisionSequenceKey(),
+		s.Key("collect:repository-installation"), s.revisionSequenceKey(), s.Key("collect:repositories"),
 		strings.ToLower(issue.Repository), strconv.FormatInt(issue.InstallationID, 10),
 		s.namespace+":g:", ":source:"+safeName("issues")+":row:", row,
 		":source:"+safeName("issues")+":rows", issue.ID,

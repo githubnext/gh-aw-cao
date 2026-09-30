@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -61,6 +62,7 @@ type webhookEnvelope struct {
 		StateReason *string         `json:"state_reason"`
 		ClosedAt    *string         `json:"closed_at"`
 		UpdatedAt   string          `json:"updated_at"`
+		HTMLURL     string          `json:"html_url"`
 		PullRequest json.RawMessage `json:"pull_request"`
 	} `json:"issue"`
 	Repositories []struct {
@@ -123,6 +125,12 @@ func parseIssueEvent(envelope webhookEnvelope) (Intent, error) {
 	}
 	repository, err := NormalizeRepository(envelope.Repository.FullName)
 	if err != nil {
+		return Intent{Kind: IntentIgnore}, nil
+	}
+	link, err := url.Parse(issue.HTMLURL)
+	if err != nil || link.Scheme != "https" || !strings.EqualFold(link.Host, "github.com") ||
+		!strings.EqualFold(link.Path, fmt.Sprintf("/%s/issues/%d", repository, issue.Number)) ||
+		link.RawQuery != "" || link.Fragment != "" || link.User != nil {
 		return Intent{Kind: IntentIgnore}, nil
 	}
 	observed, err := time.Parse(time.RFC3339Nano, issue.UpdatedAt)

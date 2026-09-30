@@ -82,7 +82,8 @@ func TestParseEventClassifiesDeliveries(t *testing.T) {
 func TestParseIssueEventStatusAndBoundaries(t *testing.T) {
 	base := `{"action":"%s","installation":{"id":42},"repository":{"full_name":"Octo/Api"},
 		"issue":{"number":12,"state":"%s","state_reason":"completed",
-		"closed_at":"2026-01-02T03:04:05Z","updated_at":"2026-01-02T03:04:06Z"%s}}`
+		"closed_at":"2026-01-02T03:04:05Z","updated_at":"2026-01-02T03:04:06Z",
+		"html_url":"https://github.com/Octo/Api/issues/12"%s}}`
 	for _, tc := range []struct {
 		action, state, extra string
 		want                 IntentKind
@@ -95,6 +96,7 @@ func TestParseIssueEventStatusAndBoundaries(t *testing.T) {
 		{"closed", "open", "", IntentIgnore},
 		{"deleted", "closed", "", IntentIgnore},
 		{"edited", "closed", `,"pull_request":{"url":"https://api.github.com/pull/12"}`, IntentIgnore},
+		{"edited", "closed", `,"html_url":"https://github.com/Octo/Api/pull/12"`, IntentIgnore},
 	} {
 		t.Run(tc.action+"/"+tc.state+tc.extra, func(t *testing.T) {
 			intent, err := ParseEvent("issues", []byte(fmt.Sprintf(base, tc.action, tc.state, tc.extra)))
