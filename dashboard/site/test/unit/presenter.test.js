@@ -497,6 +497,19 @@ describe('dashboard DOM provenance', () => {
   });
 
   it('renders sections before their count sources arrive', async () => {
+    let deliverCount = () => {};
+    const loadPageSources = /** @type {NonNullable<Parameters<typeof renderDashboardView>[0]['loadPageSources']>} */ (
+      () => new Promise(() => {})
+    );
+    loadPageSources.subscribeViewSources = (_pageId, _viewId, _sourceNames) => new Promise((resolve) => {
+      deliverCount = () => resolve({
+        'overview-count': {
+          source: 'overview-count',
+          rows: [{ count: 1 }, { count: 2 }],
+          metadata: { 'source-id': 'overview-count', 'source-kind': 'fixture', 'as-of': '', 'retrieved-at': '', availability: 'available', completeness: 'complete', freshness: 'fresh' }
+        }
+      });
+    });
     const rendered = renderDashboardView({
       document: {
         languageVersion: '0.1.0',
@@ -519,19 +532,25 @@ describe('dashboard DOM provenance', () => {
               title: 'Overview',
               layout: 'full',
               views: ['overview-header'],
-              'count-source': 'overview-count'
+              'count-source': 'overview-count',
+              'count-label': 'items'
             }]
           }]
         }
       },
       sources: {},
-      loadPageSources: () => new Promise(() => {})
+      loadPageSources
     });
 
     await vi.waitFor(() => {
       expect(rendered.querySelector('[data-page-id="overview"] .layout-section')).not.toBeNull();
     });
-    expect(rendered.querySelector('.factory-intro')).not.toBeNull();
+    const intro = rendered.querySelector('.factory-intro');
+    expect(intro).not.toBeNull();
+    await vi.waitFor(() => expect(deliverCount).not.toBeNull());
+    deliverCount();
+    await vi.waitFor(() => expect(rendered.querySelector('[data-section-id="overview-section"] .layout-section-header')?.textContent).toContain('2 items'));
+    expect(rendered.querySelector('.factory-intro')).toBe(intro);
     disposeDashboard(rendered);
   });
 
@@ -570,6 +589,7 @@ describe('dashboard DOM provenance', () => {
     expect(loadPageSources).not.toHaveBeenCalled();
     expect(rendered.querySelector('[data-view-id="first"] .dashboard-view-skeleton')).not.toBeNull();
     expect(rendered.querySelector('[data-view-id="second"] .dashboard-view-skeleton')).not.toBeNull();
+    expect(rendered.querySelector('[data-view-id="first"]')?.getAttribute('aria-busy')).toBe('true');
 
     /** @param {string} name @param {string} value */
     const source = (name, value) => ({
@@ -580,6 +600,7 @@ describe('dashboard DOM provenance', () => {
     resolveSnapshots.get('first')({ 'first-data': source('first-data', 'one') });
     await vi.waitFor(() => expect(rendered.querySelector('[data-view-id="first"]')?.textContent).toContain('one'));
     const firstView = rendered.querySelector('[data-view-id="first"]');
+    expect(firstView?.hasAttribute('aria-busy')).toBe(false);
     expect(rendered.querySelector('[data-view-id="second"] .dashboard-view-skeleton')).not.toBeNull();
 
     resolveSnapshots.get('second')({ 'second-data': source('second-data', 'two') });

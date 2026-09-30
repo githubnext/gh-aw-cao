@@ -313,7 +313,6 @@ export function renderDashboard(input) {
           if (rendersBeforePageSources) {
             return render(sources);
           }
-          /** @param {Record<string, LogicalSourceInput>} pageSources */
           /** @param {Record<string, LogicalSourceInput>} pageSources @param {boolean} [replace] @param {string[][]} [aliases] */
           const publish = (pageSources, replace = false, aliases = []) => {
             if (options.signal.aborted) return;
@@ -819,8 +818,12 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
         ? Object.fromEntries(Object.entries(viewSources).filter(([, source]) => source.metadata?.availability !== 'unavailable'))
         : viewSources;
       let rendered = pending && viewSourceNames.length > 0 && !isSelfBound
-        ? renderPageSection(page.id, getViewTitle(view, index), [renderDashboardViewSkeleton()], headingTag)
+        ? renderPageSection(page.id, getViewTitle(view, index), [
+            renderDashboardViewSkeleton(),
+            h('span', { className: 'sr-only' }, `Loading ${getViewTitle(view, index)}`)
+          ], headingTag)
         : renderCustomView(page.id, view, index, readySources, units, cardTemplates, headingTag, routeParameter, queryContext);
+      if (pending && !isSelfBound) rendered.setAttribute('aria-busy', 'true');
       if (isPlainObject(view)) {
         const semantics = effectiveViewSemantics(view, queries);
         if (view.prompt === 'always' || (view.prompt !== 'none'
@@ -937,8 +940,14 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
           if (rendered.hasAttribute(attribute)) replacement.setAttribute(attribute, rendered.getAttribute(attribute) ?? '');
         }
         if (rendered.classList.contains('custom-view')) replacement.classList.add('custom-view');
+        const active = rendered.ownerDocument.activeElement;
+        const focusedId = active instanceof HTMLElement && rendered.contains(active) ? active.id : '';
         if (rendered.parentNode) rendered.replaceWith(replacement);
         rendered = replacement;
+        if (focusedId) {
+          const focusTarget = [...replacement.querySelectorAll('[id]')].find((node) => node.id === focusedId);
+          if (focusTarget instanceof HTMLElement) focusTarget.focus({ preventScroll: true });
+        }
         const owningPage = replacement.closest('.dashboard-page');
         if (isRouteView && owningPage instanceof HTMLElement && routeParameter) {
           dispatchPageRoute(replacement, routeParameter, owningPage.dataset.routeValue ?? '');
@@ -977,14 +986,13 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       if (!section['count-source'] && !section['count-sources']?.length) continue;
       const sectionRoot = [...renderedContent.querySelectorAll('[data-section-id]')]
         .find((element) => element.getAttribute('data-section-id') === section.id);
-      if (!sectionRoot) continue;
+      if (!(sectionRoot instanceof HTMLElement) || !sectionRoot.classList.contains('layout-section')) continue;
       let initial = true;
       effect(() => {
         const current = binding.sources.get();
         if (initial) { initial = false; return; }
-        const next = renderLayoutSection(page.id, section, renderedViewsById, current);
         const oldChrome = sectionRoot.querySelector(':scope > :first-child');
-        if (oldChrome && next.firstChild) oldChrome.replaceWith(next.firstChild);
+        if (oldChrome) oldChrome.replaceWith(renderLayoutSectionChrome(page.id, section, layoutSectionCount(section, current)));
       }, { signal: binding.signal });
     }
   }
@@ -1169,23 +1177,7 @@ function renderHiddenDataStateMetrics(effectiveState) {
  */
 function renderLayoutSection(pageId, section, renderedViews, sources) {
   const headingId = `${pageId}-${section.id}-layout-heading`;
-  const countSourceNames = Array.isArray(section['count-sources'])
-    ? section['count-sources']
-    : section['count-source'] ? [section['count-source']] : [];
-  const countField = typeof section['count-field'] === 'string' ? section['count-field'] : null;
-  const countSources = countSourceNames.map((sourceName) => sources[sourceName]).filter(Boolean);
-  const countValues = countField
-    ? countSources.flatMap((source) => {
-        if (source.metadata?.availability === 'unavailable') return [];
-        const value = Number(source.rows?.[0]?.[countField]);
-        return Number.isFinite(value) ? [value] : [];
-      })
-    : [];
-  const count = countField
-    ? countValues.length > 0 ? countValues.reduce((total, value) => total + value, 0) : null
-    : countSources.length === 1 && Array.isArray(countSources[0]?.rows)
-      ? countSources[0].rows.length
-      : null;
+  const count = layoutSectionCount(section, sources);
   const sectionViews = section.views.map((viewId) => renderedViews.get(viewId)
     ?? renderEmptyMessage(`View unavailable: ${viewId}`, { 'data-missing-view-id': viewId }));
   if (sectionViews.length === 1 && sectionViews[0].classList.contains('dashboard-callout')) {
@@ -1209,6 +1201,27 @@ function renderLayoutSection(pageId, section, renderedViews, sources) {
       ...sectionViews
     )
   );
+}
+
+/** @param {PresentablePageSection} section @param {Record<string, LogicalSourceInput>} sources */
+function layoutSectionCount(section, sources) {
+  const countSourceNames = Array.isArray(section['count-sources'])
+    ? section['count-sources']
+    : section['count-source'] ? [section['count-source']] : [];
+  const countField = typeof section['count-field'] === 'string' ? section['count-field'] : null;
+  const countSources = countSourceNames.map((sourceName) => sources[sourceName]).filter(Boolean);
+  const countValues = countField
+    ? countSources.flatMap((source) => {
+        if (source.metadata?.availability === 'unavailable') return [];
+        const value = Number(source.rows?.[0]?.[countField]);
+        return Number.isFinite(value) ? [value] : [];
+      })
+    : [];
+  return countField
+    ? countValues.length > 0 ? countValues.reduce((total, value) => total + value, 0) : null
+    : countSources.length === 1 && Array.isArray(countSources[0]?.rows)
+      ? countSources[0].rows.length
+      : null;
 }
 
 /**
