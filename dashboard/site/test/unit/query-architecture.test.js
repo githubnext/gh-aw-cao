@@ -123,8 +123,13 @@ describe('dashboard query architecture', () => {
         { field: 'event-timestamp' },
         { field: 'run-link' }
       ]);
-    expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'event-runs')?.from)
-      .toBe('event-base');
+    const eventRuns = dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'event-runs');
+    expect(eventRuns?.from).toBe('audit-event-runs');
+    expect(eventRuns?.union).toEqual(['domain-event-runs', 'tool-event-runs', 'issue-event-runs']);
+    for (const name of [eventRuns?.from, ...eventRuns.union]) {
+      expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === name)?.aggregate)
+        .toMatchObject({ values: [{ field: 'event', as: 'events', reducer: 'count' }] });
+    }
     expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-opportunities'))
       .toBeUndefined();
     expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-interventions'))

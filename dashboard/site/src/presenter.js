@@ -881,6 +881,40 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
         }
       }
       suppressSupplementalTableHeading(rendered, view, index);
+      if (isPlainObject(view) && view['show-title'] === false) {
+        const headings = rendered.matches('.page-section')
+          ? rendered.querySelectorAll(
+            ':scope > h3, :scope > h4, :scope > .chart-prompt-heading > h3,'
+            + ' :scope > .chart-prompt-heading > h4,'
+            + ' :scope > .pie-chart-card > h3, :scope > .pie-chart-card > h4,'
+            + ' :scope > .pie-chart-card > .chart-prompt-heading > h3,'
+            + ' :scope > .pie-chart-card > .chart-prompt-heading > h4,'
+            + ' :scope > .chart-horizontal-card > .chart-horizontal-copy > h3,'
+            + ' :scope > .chart-horizontal-card > .chart-horizontal-copy > h4,'
+            + ' :scope > .chart-horizontal-card > .chart-horizontal-copy > .chart-prompt-heading > h3,'
+            + ' :scope > .chart-horizontal-card > .chart-horizontal-copy > .chart-prompt-heading > h4'
+          )
+          : rendered.querySelectorAll(
+            ':scope > .semantic-prompt-heading > h3, :scope > .semantic-prompt-heading > h4,'
+            + ' :scope > .metric-card-widget-label, :scope > .dashboard-callout-heading > div > h3,'
+            + ' :scope > .dashboard-callout-heading > div > h4,'
+            + ' :scope > .metric-card-widget > .metric-card-widget-label,'
+            + ' :scope > .dashboard-callout > .dashboard-callout-heading > div > h3,'
+            + ' :scope > .dashboard-callout > .dashboard-callout-heading > div > h4'
+          );
+        for (const heading of headings) {
+          const labelledRegion = heading.closest('[aria-labelledby]');
+          if (labelledRegion?.getAttribute('aria-labelledby') === heading.id) {
+            labelledRegion.removeAttribute('aria-labelledby');
+            labelledRegion.setAttribute('aria-label', getViewTitle(view, index));
+          } else if (!labelledRegion) {
+            const region = heading.closest('.metric-card-widget') ?? rendered;
+            if (region === rendered && rendered.matches('.semantic-prompt-view')) rendered.setAttribute('role', 'group');
+            region.setAttribute('aria-label', getViewTitle(view, index));
+          }
+          heading.remove();
+        }
+      }
       if (disclosure === 'essential') {
         rendered.classList.add('custom-view');
         rendered.setAttribute('data-view-layout', layout);

@@ -2,6 +2,10 @@
  * GitHub Primer CSS tokens and element styles cloned from CAO dashboard.
  */
 
+import { createDebug } from './debug.js';
+
+const debug = createDebug('styles');
+
 /**
  * Minifies a CSS string while preserving the contents of double-quoted
  * strings (e.g. `content: "Segoe UI"`, font-family lists) untouched. Strips
@@ -12,6 +16,7 @@
  * @returns {string}
  */
 function minifyCss(css) {
+  const startedAt = Date.now();
   /** @type {string[]} */
   const strings = [];
   const masked = css.replace(/"[^"]*"/g, (match) => {
@@ -25,7 +30,14 @@ function minifyCss(css) {
     .replace(/: /g, ':')
     .replace(/;}/g, '}')
     .trim();
-  return minified.replace(/@@CSS_STR_(\d+)@@/g, (_match, index) => strings[Number(index)]);
+  const result = minified.replace(/@@CSS_STR_(\d+)@@/g, (_match, index) => strings[Number(index)]);
+  debug({
+    event: 'minified',
+    inputLength: css.length,
+    outputLength: result.length,
+    durationMs: Date.now() - startedAt
+  });
+  return result;
 }
 
 /**
