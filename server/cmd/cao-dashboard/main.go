@@ -551,8 +551,10 @@ func newIngestCommand() *cobra.Command {
 			return err
 		}
 		defer closeTelemetry()
-		if err := store.Ping(ctx); err != nil {
-			return errors.New("redis is unavailable")
+		failure, readinessErr := classifyIngestReadiness(store.Ping(ctx))
+		commandLog.Printf("ingest resolved readiness failure=%s", failure)
+		if readinessErr != nil {
+			return readinessErr
 		}
 		result, err := ingest.Run(ctx, store, resolvedSource, ingest.Options{DatabaseQueriesPath: *databaseQueries})
 		if err != nil {
@@ -572,6 +574,27 @@ const (
 	workerStopReasonShutdown workerStopReason = "shutdown"
 	workerStopReasonError    workerStopReason = "error"
 )
+
+// ingestReadinessFailure classifies why the ingest command could not proceed
+// to ingest.Run, so a failure is diagnosable without logging the resolved
+// Redis endpoint or namespace.
+type ingestReadinessFailure string
+
+const (
+	ingestReadinessFailureNone  ingestReadinessFailure = "none"
+	ingestReadinessFailureRedis ingestReadinessFailure = "redis-unavailable"
+)
+
+// classifyIngestReadiness maps store.Ping's result to the caller's readiness
+// outcome and the public error to return. It is extracted from
+// newIngestCommand's RunE so the pre-ingest readiness check is testable as a
+// pure function, without a live Redis connection.
+func classifyIngestReadiness(pingErr error) (ingestReadinessFailure, error) {
+	if pingErr != nil {
+		return ingestReadinessFailureRedis, errors.New("redis is unavailable")
+	}
+	return ingestReadinessFailureNone, nil
+}
 
 // classifyWorkerStop applies the standard priority for interpreting
 // worker.Run's returned error: a nil error is a clean exit, an error

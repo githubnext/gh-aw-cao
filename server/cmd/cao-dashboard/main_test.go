@@ -422,6 +422,33 @@ func TestDoctorStoreToleratesUnconstructibleClient(t *testing.T) {
 	}
 }
 
+func TestClassifyIngestReadinessAcceptsSuccessfulPing(t *testing.T) {
+	failure, err := classifyIngestReadiness(nil)
+	if err != nil {
+		t.Fatalf("classifyIngestReadiness(nil) error = %v, want nil", err)
+	}
+	if failure != ingestReadinessFailureNone {
+		t.Errorf("classifyIngestReadiness(nil) failure = %q, want %q", failure, ingestReadinessFailureNone)
+	}
+}
+
+func TestClassifyIngestReadinessReportsUnavailableRedisWithoutExposingUnderlyingError(t *testing.T) {
+	underlying := errors.New("dial tcp 10.0.0.5:6379: connection refused")
+	failure, err := classifyIngestReadiness(underlying)
+	if err == nil {
+		t.Fatal("classifyIngestReadiness(underlying) error = nil, want non-nil")
+	}
+	if failure != ingestReadinessFailureRedis {
+		t.Errorf("classifyIngestReadiness(underlying) failure = %q, want %q", failure, ingestReadinessFailureRedis)
+	}
+	if strings.Contains(err.Error(), "10.0.0.5") {
+		t.Errorf("classifyIngestReadiness(underlying) error = %q, must not expose the underlying endpoint", err.Error())
+	}
+	if errors.Is(err, underlying) {
+		t.Error("classifyIngestReadiness(underlying) error wraps the underlying ping error; it must return an opaque sentinel")
+	}
+}
+
 func TestResolveBackfillMode(t *testing.T) {
 	tests := []struct {
 		name       string
