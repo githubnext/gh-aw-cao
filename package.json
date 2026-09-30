@@ -18,6 +18,7 @@
     "dashboard:server:serve": "go -C server run ./cmd/cao-dashboard serve",
     "dashboard:server:lint": "cd server && golangci-lint fmt --diff && golangci-lint run ./...",
     "dashboard:server:test": "go -C server test ./...",
+    "dashboard:server:spec": "npm --prefix server/spec run generate",
     "dashboard:local:mobile": "DASHBOARD_DATA_URL=https://githubnext.github.io/gh-aw-cao/cao/payload-hashes.json MOBILE_BROWSER=chromium MOBILE_DEVICE='Pixel 7' MOBILE_PROFILE=low-memory MOBILE_MEMORY_MB=256 playwright test --config=tests/playwright/configs/mobile.config.mjs",
     "dashboard:data": "node activity/cao.mjs",
     "dashboard:data:download": "npm run dashboard:data -- download",

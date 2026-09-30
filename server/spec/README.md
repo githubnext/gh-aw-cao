@@ -32,6 +32,8 @@ event types, respectively; do not infer Redis storage or MCP internals from them
    must pass the contract checks, and CI compares registered routes and key
    query fields with the generated artifacts.
 4. In `server/spec/`, run `npm ci`, then `npm run generate` and `npm test`.
+   From the repository root, `npm run dashboard:server:spec` runs the same
+   TypeSpec generator after the spec dependencies are installed.
    Commit the `.tsp` source and refreshed `generated/` outputs together.
    `npm run check` regenerates and fails if the committed artifacts drift.
    Run `go -C server test ./...` when changing the implementation. The
