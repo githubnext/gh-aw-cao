@@ -5,9 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"sort"
 	"strconv"
 	"time"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
@@ -16,6 +20,8 @@ import (
 )
 
 var backfillLog = logger.New("cao:collect:backfill")
+
+const backfillMeterName = "github.com/githubnext/gh-aw-cao/server"
 
 const (
 	backfillStateKey     = "collect:backfill"
@@ -72,6 +78,7 @@ type BackfillState struct {
 // paginated historical workflow-run tasks. It does not process run artifacts.
 func (b Backfill) Run(ctx context.Context) (BackfillState, error) {
 	state := BackfillState{Phase: "replaying", StartedAt: time.Now().UTC().Format(time.RFC3339Nano)}
+	backfillLog.Printf("cold start backfill started")
 	b.publish(ctx, state)
 	populated, err := b.Lake.Populated()
 	if err != nil {
@@ -95,6 +102,10 @@ func (b Backfill) Run(ctx context.Context) (BackfillState, error) {
 	state.Installations = installations
 	state.Repositories = len(repositories)
 	state.EnumerationFailures = enumerationFailures
+	backfillLog.Printf(
+		"backfill repository enumeration completed installations=%d repositories=%d failures=%d",
+		installations, len(repositories), enumerationFailures,
+	)
 	state.Phase = "seeding"
 	b.publish(ctx, state)
 	queued, err := b.seed(ctx, repositories)
@@ -167,6 +178,8 @@ func (b Backfill) enumerate(ctx context.Context) ([]enrolledRepository, int, int
 			// for the rest; the gap is visible in enrollment coverage.
 			backfillLog.Printf("installation enumeration failed; continuing installation=%d", installation.ID)
 			failures++
+			recordBackfillCounter(ctx, "cao_dashboard.collection.backfill.enumeration_failure.count",
+				"Installation or repository enumeration failures during collection backfill")
 			continue
 		}
 		names, enrolled, skipped := normalizeEnumeratedRepositories(covered)
@@ -206,8 +219,16 @@ func normalizeEnumeratedRepositories(covered []githubapp.Repository) (names []st
 
 type runPage struct {
 	repository enrolledRepository
+	cursor     runBackfillCursor
 	nextPage   int
 	runs       []githubapp.WorkflowRun
+}
+
+type runBackfillCursor struct {
+	Page       int  `json:"page"`
+	Discovered int  `json:"discovered"`
+	Pass       int  `json:"pass"`
+	Complete   bool `json:"complete,omitempty"`
 }
 
 type pendingRunTask struct {
@@ -256,6 +277,7 @@ func (b Backfill) enqueueHistoricalRuns(
 	if err := b.Queue.Ensure(ctx); err != nil {
 		return 0, 0, err
 	}
+	backfillLog.Printf("historical run enumeration started repositories=%d", len(active))
 
 	for len(active) > 0 {
 		pages = pages[:0]
@@ -264,20 +286,21 @@ func (b Backfill) enqueueHistoricalRuns(
 			if err := ctx.Err(); err != nil {
 				return queued, failures, err
 			}
-			cursor, err := b.Store.HashGet(ctx, runBackfillCursorKey, runBackfillCursorField(repository))
+			cursorValue, err := b.Store.HashGet(ctx, runBackfillCursorKey, runBackfillCursorField(repository))
 			if err != nil {
 				return queued, failures, err
 			}
-			if cursor == runBackfillComplete {
+			cursor, err := parseRunBackfillCursor(cursorValue)
+			if err != nil {
+				return queued, failures, err
+			}
+			if cursor.Complete {
 				continue
 			}
-			page := 1
-			if cursor != "" {
-				page, err = strconv.Atoi(cursor)
-				if err != nil || page < 1 {
-					return queued, failures, errors.New("invalid historical run backfill cursor")
-				}
+			if cursor.Page < 1 {
+				return queued, failures, errors.New("invalid historical run backfill cursor")
 			}
+			page := cursor.Page
 			runs, nextPage, err := b.RunEnumerator.ListWorkflowRuns(
 				ctx, repository.installationID, repository.name, page, runBackfillPageSize,
 			)
@@ -285,21 +308,33 @@ func (b Backfill) enqueueHistoricalRuns(
 				if ctx.Err() != nil {
 					return queued, failures, ctx.Err()
 				}
-				backfillLog.Printf("workflow run enumeration failed; continuing installation=%d", repository.installationID)
+				backfillLog.Printf(
+					"workflow run enumeration failed; continuing repository=%s page=%d error_class=%s",
+					repository.name, page, classifyBackfillError(err),
+				)
 				failures++
+				recordBackfillCounter(ctx, "cao_dashboard.collection.backfill.enumeration_failure.count",
+					"Installation or repository enumeration failures during collection backfill")
 				// Keep this cursor unchanged for the next backfill invocation.
 				continue
+			}
+			backfillLog.Printf(
+				"workflow run page enumerated page=%d runs=%d has_next_page=%t",
+				page, len(runs), nextPage != 0,
+			)
+			recordBackfillCounter(ctx, "cao_dashboard.collection.backfill.page.count",
+				"Workflow run pages read during collection backfill")
+			if len(runs) > 0 {
+				recordBackfillCounter(ctx, "cao_dashboard.collection.backfill.run_discovered.count",
+					"Workflow runs discovered during collection backfill", int64(len(runs)))
 			}
 			if nextPage != 0 && nextPage <= page {
 				return queued, failures, errors.New("workflow run enumeration returned a non-advancing page")
 			}
-			pages = append(pages, runPage{repository: repository, nextPage: nextPage, runs: runs})
-			if nextPage != 0 {
-				remaining = append(remaining, repository)
-			}
+			pages = append(pages, runPage{
+				repository: repository, cursor: cursor, nextPage: nextPage, runs: runs,
+			})
 		}
-		active = remaining
-
 		var tasks []pendingRunTask
 		for _, page := range pages {
 			for _, run := range page.runs {
@@ -316,6 +351,9 @@ func (b Backfill) enqueueHistoricalRuns(
 			}
 			return left.run.CreatedAt.After(right.run.CreatedAt)
 		})
+		pageQueued := 0
+		pageDeduplicated := 0
+		queuedByRepository := make(map[string]int)
 		for _, pending := range tasks {
 			attempt := pending.run.Attempt
 			if attempt <= 0 {
@@ -330,25 +368,109 @@ func (b Backfill) enqueueHistoricalRuns(
 			}
 			if enqueued {
 				queued++
+				pageQueued++
+				queuedByRepository[runBackfillCursorField(pending.repository)]++
+				recordBackfillCounter(ctx, "cao_dashboard.collection.backfill.run_task_queued.count",
+					"Workflow run tasks durably queued during collection backfill")
+			} else {
+				pageDeduplicated++
+				recordBackfillCounter(ctx, "cao_dashboard.collection.backfill.run_task_deduplicated.count",
+					"Duplicate workflow run tasks suppressed during collection backfill")
 			}
 		}
 		for _, page := range pages {
-			nextCursor := runBackfillComplete
-			if page.nextPage != 0 {
-				nextCursor = strconv.Itoa(page.nextPage)
+			cursor := page.cursor
+			switch {
+			case page.nextPage != 0:
+				cursor.Page = page.nextPage
+				cursor.Discovered += queuedByRepository[runBackfillCursorField(page.repository)]
+				remaining = append(remaining, page.repository)
+			case cursor.Discovered+queuedByRepository[runBackfillCursorField(page.repository)] > 0:
+				// A new run inserted ahead of the current page shifts numeric
+				// offsets and can move an older run past the final page. Repeat
+				// from page one until a complete pass discovers no new identities.
+				cursor.Page = 1
+				cursor.Discovered = 0
+				cursor.Pass++
+				remaining = append(remaining, page.repository)
+				backfillLog.Printf(
+					"historical run backfill restarting verification pass=%d",
+					cursor.Pass,
+				)
+			default:
+				cursor.Complete = true
+			}
+			payload, err := json.Marshal(cursor)
+			if err != nil {
+				return queued, failures, err
 			}
 			if err := b.Store.HashSet(
-				ctx, runBackfillCursorKey, runBackfillCursorField(page.repository), nextCursor,
+				ctx, runBackfillCursorKey, runBackfillCursorField(page.repository), string(payload),
 			); err != nil {
 				return queued, failures, err
 			}
 		}
+		active = remaining
+		backfillLog.Printf(
+			"historical run page round admitted queued=%d deduplicated=%d repositories=%d",
+			pageQueued, pageDeduplicated, len(pages),
+		)
 	}
+	backfillLog.Printf("historical run enumeration completed queued=%d failures=%d", queued, failures)
 	return queued, failures, nil
 }
 
 func runBackfillCursorField(repository enrolledRepository) string {
 	return strconv.FormatInt(repository.installationID, 10) + ":" + repository.name
+}
+
+func parseRunBackfillCursor(value string) (runBackfillCursor, error) {
+	if value == "" {
+		return runBackfillCursor{Page: 1}, nil
+	}
+	if value == runBackfillComplete {
+		return runBackfillCursor{Complete: true}, nil
+	}
+	var cursor runBackfillCursor
+	if err := json.Unmarshal([]byte(value), &cursor); err == nil && cursor.Page > 0 {
+		return cursor, nil
+	}
+	// Accept the numeric page format used by the initial backfill release.
+	page, err := strconv.Atoi(value)
+	if err != nil || page < 1 {
+		return runBackfillCursor{}, errors.New("invalid historical run backfill cursor")
+	}
+	return runBackfillCursor{Page: page}, nil
+}
+
+func classifyBackfillError(err error) string {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "timeout"
+	}
+	if errors.Is(err, context.Canceled) {
+		return "canceled"
+	}
+	var networkError net.Error
+	if errors.As(err, &networkError) {
+		return "network"
+	}
+	return "api"
+}
+
+func recordBackfillCounter(ctx context.Context, name, description string, value ...int64) {
+	counter, err := otel.Meter(backfillMeterName).Int64Counter(
+		name,
+		metric.WithUnit("{item}"),
+		metric.WithDescription(description),
+	)
+	if err != nil {
+		return
+	}
+	increment := int64(1)
+	if len(value) > 0 {
+		increment = value[0]
+	}
+	counter.Add(ctx, increment)
 }
 
 // sortByRecency orders enrolled repositories most-recently-pushed first, in

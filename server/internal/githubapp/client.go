@@ -260,7 +260,7 @@ func (c *Client) ListWorkflowRuns(
 			}
 			result = append(result, WorkflowRun{
 				ID:        run.GetID(),
-				Attempt:   int(attempt),
+				Attempt:   attempt,
 				CreatedAt: run.GetCreatedAt().Time,
 			})
 		}

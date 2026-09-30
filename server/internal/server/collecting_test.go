@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/collect"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
@@ -31,6 +32,22 @@ func TestCollectionHealthSourceIsAvailableOnlyToAuthorizedReaders(t *testing.T) 
 	}
 	if available.Rows[0]["configured"] != false || available.Rows[0]["health"] != "not-configured" {
 		t.Fatalf("unconfigured profile was not explicit: %+v", available.Rows[0])
+	}
+}
+
+func TestCollectionHealthSourceReportsBackfillProgress(t *testing.T) {
+	source := collectionHealthSource(collect.Status{
+		Configured: true, Health: "recovering", Backfill: "partial",
+		BackfillFailures: 2, BackfillRunTasks: 17,
+	})
+	if got := source.Rows[0]["backfill"]; got != "partial" {
+		t.Fatalf("backfill phase = %v, want partial", got)
+	}
+	if got := source.Rows[0]["backfill-failures"]; got != 2 {
+		t.Fatalf("backfill failures = %v, want 2", got)
+	}
+	if got := source.Rows[0]["backfill-queued-run-tasks"]; got != 17 {
+		t.Fatalf("backfill queued run tasks = %v, want 17", got)
 	}
 }
 

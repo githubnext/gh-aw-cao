@@ -8,6 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"go.opentelemetry.io/otel"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
+
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 )
 
@@ -172,6 +176,14 @@ func TestEnumerateContinuesAfterInstallationRepositoryFailure(t *testing.T) {
 
 func TestEnqueueHistoricalRunsPaginatesResumesAndPrioritizesNewRuns(t *testing.T) {
 	store, ctx := integrationStore(t)
+	previousMeter := otel.GetMeterProvider()
+	reader := sdkmetric.NewManualReader()
+	meterProvider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	otel.SetMeterProvider(meterProvider)
+	t.Cleanup(func() {
+		_ = meterProvider.Shutdown(ctx)
+		otel.SetMeterProvider(previousMeter)
+	})
 	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	run := func(id int64, age int) githubapp.WorkflowRun {
 		return githubapp.WorkflowRun{ID: id, Attempt: 1, CreatedAt: base.Add(time.Duration(-age) * time.Hour)}
@@ -205,8 +217,10 @@ func TestEnqueueHistoricalRunsPaginatesResumesAndPrioritizesNewRuns(t *testing.T
 	if queued != 5 || failures != 1 {
 		t.Fatalf("queued=%d failures=%d, want queued=5 failures=1", queued, failures)
 	}
-	if got, err := store.HashGet(ctx, runBackfillCursorKey, "1:octo/one"); err != nil || got != runBackfillComplete {
-		t.Fatalf("one cursor=%q err=%v, want complete", got, err)
+	if got, err := store.HashGet(ctx, runBackfillCursorKey, "1:octo/one"); err != nil {
+		t.Fatalf("read one cursor: %v", err)
+	} else if cursor, err := parseRunBackfillCursor(got); err != nil || !cursor.Complete {
+		t.Fatalf("one cursor=%q decoded=%+v err=%v, want complete", got, cursor, err)
 	}
 	if got, err := store.HashGet(ctx, runBackfillCursorKey, "3:octo/three"); err != nil || got != "" {
 		t.Fatalf("failed repository cursor=%q err=%v, want unchanged", got, err)
@@ -221,8 +235,8 @@ func TestEnqueueHistoricalRunsPaginatesResumesAndPrioritizesNewRuns(t *testing.T
 	if queued != 1 || failures != 0 {
 		t.Fatalf("resume queued=%d failures=%d, want queued=1 failures=0", queued, failures)
 	}
-	if len(enumerator.calls) != 5 {
-		t.Fatalf("enumerator calls=%v, want 5 calls with completed repositories skipped", enumerator.calls)
+	if len(enumerator.calls) != 9 {
+		t.Fatalf("enumerator calls=%v, want 9 calls with completed repositories skipped", enumerator.calls)
 	}
 
 	if err := store.StreamEnsureGroup(ctx, runTaskStream, "run-backfill-test"); err != nil {
@@ -232,7 +246,7 @@ func TestEnqueueHistoricalRunsPaginatesResumesAndPrioritizesNewRuns(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	var gotRunIDs []int64
+	gotRunIDs := make([]int64, 0, len(messages))
 	for _, message := range messages {
 		var task RunTask
 		if err := json.Unmarshal([]byte(message.Fields["task"]), &task); err != nil {
@@ -244,6 +258,40 @@ func TestEnqueueHistoricalRunsPaginatesResumesAndPrioritizesNewRuns(t *testing.T
 	if !slices.Equal(gotRunIDs, wantRunIDs) {
 		t.Fatalf("run task order=%v, want newest-first %v", gotRunIDs, wantRunIDs)
 	}
+	var metrics metricdata.ResourceMetrics
+	if err := reader.Collect(ctx, &metrics); err != nil {
+		t.Fatal(err)
+	}
+	assertBackfillMetric(t, metrics, "cao_dashboard.collection.backfill.page.count", 8)
+	assertBackfillMetric(t, metrics, "cao_dashboard.collection.backfill.run_discovered.count", 12)
+	assertBackfillMetric(t, metrics, "cao_dashboard.collection.backfill.run_task_queued.count", 6)
+	assertBackfillMetric(t, metrics, "cao_dashboard.collection.backfill.enumeration_failure.count", 1)
+}
+
+func assertBackfillMetric(
+	t *testing.T, metrics metricdata.ResourceMetrics, name string, want int64,
+) {
+	t.Helper()
+	for _, scope := range metrics.ScopeMetrics {
+		for _, metric := range scope.Metrics {
+			if metric.Name != name {
+				continue
+			}
+			sum, ok := metric.Data.(metricdata.Sum[int64])
+			if !ok {
+				t.Fatalf("metric %q has data type %T, want int64 sum", name, metric.Data)
+			}
+			if len(sum.DataPoints) != 1 || sum.DataPoints[0].Value != want {
+				t.Fatalf("metric %q data points=%+v, want one point with value %d", name, sum.DataPoints, want)
+			}
+			if sum.DataPoints[0].Attributes.Len() != 0 {
+				t.Fatalf("metric %q must not include high-cardinality attributes: %v",
+					name, sum.DataPoints[0].Attributes)
+			}
+			return
+		}
+	}
+	t.Fatalf("metric %q was not recorded", name)
 }
 
 func TestFailedBackfillStateSetsPhaseErrorAndCompletedAt(t *testing.T) {
