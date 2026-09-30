@@ -3,8 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "generate": "tsp compile .",
-    "check": "npm run generate && git diff --exit-code -- generated && git status --porcelain -- generated | grep -q '^' && exit 1 || test $? -eq 1"
+    "generate": "rm -rf generated && tsp compile . --warn-as-error",
+    "test": "node --test contract.test.mjs",
+    "check": "npm run generate && npm test && git diff --exit-code -- generated && test -z \"$(git ls-files --others --exclude-standard -- generated)\""
   },
   "devDependencies": {
     "@typespec/compiler": "1.16.0",

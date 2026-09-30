@@ -1,0 +1,214 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "QueryResponse.json",
+    "type": "object",
+    "properties": {
+        "revision": {
+            "type": "string"
+        },
+        "healthRevision": {
+            "type": "string"
+        },
+        "evaluatedAt": {
+            "type": "string"
+        },
+        "sources": {
+            "$ref": "#/$defs/RecordQuerySource"
+        },
+        "metrics": {
+            "$ref": "#/$defs/QueryMetrics"
+        }
+    },
+    "required": [
+        "revision",
+        "evaluatedAt",
+        "sources",
+        "metrics"
+    ],
+    "$defs": {
+        "RecordQuerySource": {
+            "type": "object",
+            "properties": {},
+            "unevaluatedProperties": {
+                "$ref": "#/$defs/QuerySource"
+            }
+        },
+        "QueryMetrics": {
+            "type": "object",
+            "properties": {
+                "durationMs": {
+                    "type": "string"
+                },
+                "operations": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                },
+                "outputRows": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                },
+                "peakWorkingRows": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                },
+                "retainedRows": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                },
+                "peakWorkingBytes": {
+                    "type": "string"
+                },
+                "retainedBytes": {
+                    "type": "string"
+                },
+                "dependencyDepth": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                },
+                "rateLimitCost": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                },
+                "queryCount": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                },
+                "unionCount": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                },
+                "joinCount": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                },
+                "filterCount": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                },
+                "computeCount": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                },
+                "aggregateCount": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                },
+                "aggregateValueCount": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                },
+                "temporalSeriesCount": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                },
+                "selectCount": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                },
+                "orderByCount": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                },
+                "limitCount": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                },
+                "pushedDown": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "redisCommands": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                },
+                "redisRows": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                },
+                "fallbackOperations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "required": [
+                "durationMs",
+                "operations",
+                "outputRows",
+                "peakWorkingRows",
+                "retainedRows",
+                "peakWorkingBytes",
+                "retainedBytes",
+                "dependencyDepth",
+                "rateLimitCost",
+                "queryCount",
+                "unionCount",
+                "joinCount",
+                "filterCount",
+                "computeCount",
+                "aggregateCount",
+                "aggregateValueCount",
+                "temporalSeriesCount",
+                "selectCount",
+                "orderByCount",
+                "limitCount",
+                "pushedDown",
+                "redisCommands",
+                "redisRows",
+                "fallbackOperations"
+            ]
+        },
+        "QuerySource": {
+            "type": "object",
+            "properties": {
+                "source": {
+                    "type": "string"
+                },
+                "rows": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/RecordUnknown"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/$defs/RecordUnknown"
+                },
+                "continuationToken": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "source",
+                "rows",
+                "metadata"
+            ]
+        },
+        "RecordUnknown": {
+            "type": "object",
+            "properties": {},
+            "unevaluatedProperties": {}
+        }
+    }
+}

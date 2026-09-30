@@ -1,6 +1,8 @@
 import "@typespec/http";
+import "@typespec/json-schema";
 
 using TypeSpec.Http;
+using TypeSpec.JsonSchema;
 namespace Cao;
 
 /** An error response. The message is diagnostic, not a stable error code. */
@@ -19,11 +21,14 @@ alias Unprocessable = Failure<422>;
 alias Unavailable = Failure<503>;
 
 /** Local bearer capability or hosted OAuth session, depending on deployment profile. */
-alias DashboardAuth = BearerAuth | ApiKeyAuth<"cookie", "cao_session">;
+alias DashboardAuth = BearerAuth | ApiKeyAuth<ApiKeyLocation.cookie, "cao_session">;
 
 /** Dynamic canonical data fields are maintained by the dashboard data model. */
 alias JsonObject = Record<unknown>;
 
+/** JSON object within each SSE data frame (not the wire framing itself). */
+@jsonSchema
+@example(#{revision: 42, healthRevision: 7})
 model RevisionEvent {
   revision: int64;
   healthRevision: int64;

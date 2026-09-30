@@ -1,0 +1,35 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "WebhookAcknowledgement.json",
+    "type": "object",
+    "properties": {
+        "accepted": {
+            "type": "boolean",
+            "const": true
+        },
+        "duplicate": {
+            "type": "boolean"
+        },
+        "ignored": {
+            "type": "boolean"
+        },
+        "reason": {
+            "type": "string"
+        },
+        "kind": {
+            "type": "string"
+        },
+        "queued": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "accepted"
+    ],
+    "examples": [
+        {
+            "accepted": true,
+            "duplicate": true
+        }
+    ]
+}

@@ -50,7 +50,7 @@ model TemporalSeries {
 model QueryDefinition {
   name: string;
   from: string;
-  union?: string[];
+  `union`?: string[];
   joins?: Join[];
   filter?: Filter;
   compute?: ComputedField[];
@@ -70,8 +70,9 @@ model PaginationRequest {
 }
 /** Requests may supply query definitions or use server-configured definitions. */
 @jsonSchema
+@example(#{sourceNames: #["runs"], aliases: #[], pagination: #{runs: #{limit: 50}}})
 model QueryRequest {
-  sourceNames: string[];
+  sourceNames?: string[];
   queries?: QueryDefinition[];
   compiledQueries?: QueryDefinition[];
   aliases?: string[];
@@ -124,6 +125,13 @@ model QueryResponse {
   sources: Record<QuerySource>;
   metrics: QueryMetrics;
 }
+model QueryPlanTooLarge {
+  @statusCode statusCode: 422;
+  error: string;
+  code: "query_plan_too_large";
+  queryId: string;
+  boundary: string;
+}
 
 @tag("Queries")
 @useAuth(DashboardAuth)
@@ -131,7 +139,7 @@ namespace Queries {
   /** Execute Dashboard Language against the active server projection. Up to 256 source names and 8 MiB of request body. */
   @route("/api/v1/query")
   @post op execute(@body request: QueryRequest):
-    QueryResponse | BadRequest | Unauthorized | Forbidden | Unprocessable | TooManyRequests | Unavailable;
+    QueryResponse | BadRequest | Unauthorized | Forbidden | QueryPlanTooLarge | TooManyRequests | Unavailable;
 
   /** Server-sent stream: each `data:` line is a RevisionEvent JSON object; `: keepalive` comments arrive every 20 seconds. */
   @route("/api/v1/events")
