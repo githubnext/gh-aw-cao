@@ -45,7 +45,7 @@ type InstallationResolver interface {
 
 // GitHubSource is the bounded Git data API used to resolve memory branches.
 type GitHubSource interface {
-	ResolveRef(context.Context, int64, string, string) (string, githubapp.APIResponse, error)
+	ResolveRef(context.Context, int64, string, string, string) (string, githubapp.APIResponse, error)
 	Tree(context.Context, int64, string, string) ([]githubapp.GitTreeEntry, githubapp.APIResponse, error)
 	Blob(context.Context, int64, string, string) ([]byte, githubapp.APIResponse, error)
 	RateLimit(context.Context, int64) (int, time.Time, error)
@@ -79,12 +79,17 @@ func (e *ThrottledError) Error() string {
 
 type cachedCampaign struct {
 	Campaign *Campaign `json:"campaign"`
+	ETag     string    `json:"etag,omitempty"`
 }
 
 // Campaign returns one cached campaign manifest, fetching it from GitHub on a miss.
 func (r *RemoteResolver) Campaign(ctx context.Context, campaignID string) (*Campaign, error) {
-	if cached, ok, err := r.cachedCampaign(ctx, campaignID); err != nil || ok {
-		return cached, err
+	cached, ok, err := r.cachedCampaign(ctx, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	if ok && cached.Campaign == nil {
+		return cached.Campaign, nil
 	}
 	token, err := randomToken()
 	if err != nil {
@@ -103,23 +108,55 @@ func (r *RemoteResolver) Campaign(ctx context.Context, campaignID string) (*Camp
 	}()
 	ctx, cancel := context.WithTimeout(ctx, remoteOperationTTL)
 	defer cancel()
-	if cached, ok, err := r.cachedCampaign(ctx, campaignID); err != nil || ok {
-		return cached, err
+	cached, ok, err = r.cachedCampaign(ctx, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	if ok && cached.Campaign == nil {
+		return cached.Campaign, nil
 	}
 	installationID, err := r.Installations.InstallationFor(ctx, r.ControlRepository)
 	if err != nil || installationID <= 0 {
 		return nil, errors.New("control repository GitHub App installation is unavailable")
 	}
-	if err := r.reserve(ctx, installationID); err != nil {
-		return nil, err
+	etag := ""
+	if ok {
+		etag = cached.ETag
+	}
+	conditional := etag != ""
+	if !conditional {
+		if err := r.reserve(ctx, installationID); err != nil {
+			return nil, err
+		}
 	}
 	commit, response, err := r.Source.ResolveRef(
-		ctx, installationID, r.ControlRepository, "heads/memory/"+campaignID)
+		ctx, installationID, r.ControlRepository, "heads/memory/"+campaignID, etag)
 	if err = r.observe(ctx, installationID, response, err); errors.Is(err, githubapp.ErrNotFound) {
-		return nil, r.cacheCampaign(ctx, campaignID, nil)
+		return nil, r.cacheCampaign(ctx, campaignID, nil, "")
 	} else if err != nil {
 		return nil, err
 	}
+	if response.NotModified {
+		if !ok || cached.Campaign == nil {
+			return nil, errors.New("repository memory ref was not modified without a cached campaign")
+		}
+		if err := r.cacheCampaign(ctx, campaignID, cached.Campaign, cached.ETag); err != nil {
+			return nil, err
+		}
+		return cached.Campaign, nil
+	}
+	if conditional {
+		if err := r.reserve(ctx, installationID); err != nil {
+			return nil, err
+		}
+	}
+	if ok && cached.Campaign != nil && cached.Campaign.Commit == commit {
+		if err := r.cacheCampaign(ctx, campaignID, cached.Campaign, response.ETag); err != nil {
+			return nil, err
+		}
+		return cached.Campaign, nil
+	}
+	refETag := response.ETag
 	if err := r.reserve(ctx, installationID); err != nil {
 		return nil, err
 	}
@@ -130,7 +167,7 @@ func (r *RemoteResolver) Campaign(ctx context.Context, campaignID string) (*Camp
 	campaign := buildRemoteCampaign(campaignID, commit, entries, response.Truncated)
 	remoteLog.Printf("built remote campaign entries=%d admitted=%d omitted=%d",
 		len(entries), len(campaign.Files), totalOmitted(campaign.Omitted))
-	if err := r.cacheCampaign(ctx, campaignID, campaign); err != nil {
+	if err := r.cacheCampaign(ctx, campaignID, campaign, refETag); err != nil {
 		return nil, err
 	}
 	return campaign, nil
@@ -206,7 +243,7 @@ func (r *RemoteResolver) Content(ctx context.Context, campaignID, filePath strin
 	return content, nil
 }
 
-func (r *RemoteResolver) cachedCampaign(ctx context.Context, campaignID string) (*Campaign, bool, error) {
+func (r *RemoteResolver) cachedCampaign(ctx context.Context, campaignID string) (*cachedCampaign, bool, error) {
 	content, err := r.Cache.CachedRepositoryMemoryCampaign(ctx, campaignID)
 	if err != nil || content == nil {
 		return nil, false, err
@@ -215,11 +252,13 @@ func (r *RemoteResolver) cachedCampaign(ctx context.Context, campaignID string) 
 	if err := json.Unmarshal(content, &cached); err != nil {
 		return nil, false, err
 	}
-	return cached.Campaign, true, nil
+	return &cached, true, nil
 }
 
-func (r *RemoteResolver) cacheCampaign(ctx context.Context, campaignID string, campaign *Campaign) error {
-	content, err := json.Marshal(cachedCampaign{Campaign: campaign})
+func (r *RemoteResolver) cacheCampaign(
+	ctx context.Context, campaignID string, campaign *Campaign, etag string,
+) error {
+	content, err := json.Marshal(cachedCampaign{Campaign: campaign, ETag: etag})
 	if err != nil {
 		return err
 	}

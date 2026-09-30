@@ -20,8 +20,13 @@ func TestRemoteResolverCachesCampaignAndContent(t *testing.T) {
 			{Path: "ignored.exe", OID: testOID, Mode: "100644", Type: "blob", Size: 1},
 			{Path: "link.md", OID: testOID, Mode: "120000", Type: "blob", Size: 5},
 		},
-		content:  []byte("hello"),
-		response: githubapp.APIResponse{Remaining: 100, Reset: time.Now().Add(time.Hour), Truncated: true},
+		content: []byte("hello"),
+		response: githubapp.APIResponse{
+			Remaining: 100, Reset: time.Now().Add(time.Hour), Truncated: true, ETag: `"ref-v1"`,
+		},
+		treeResponse: githubapp.APIResponse{
+			Remaining: 100, Reset: time.Now().Add(time.Hour), Truncated: true, ETag: `"tree-v1"`,
+		},
 	}
 	governor := &remoteGovernor{}
 	resolver := newRemoteResolver(cache, source, governor)
@@ -38,11 +43,13 @@ func TestRemoteResolverCachesCampaignAndContent(t *testing.T) {
 		campaign.Omitted.FileLimit != 1 {
 		t.Fatalf("unexpected omissions: %#v", campaign.Omitted)
 	}
+	source.refNotModified = true
 	if _, err := resolver.Campaign(context.Background(), "example"); err != nil {
 		t.Fatal(err)
 	}
-	if source.refCalls != 1 || source.treeCalls != 1 {
-		t.Fatalf("campaign was not cached: ref=%d tree=%d", source.refCalls, source.treeCalls)
+	if source.refCalls != 2 || source.treeCalls != 1 || source.requestedETag != `"ref-v1"` {
+		t.Fatalf("campaign ETag was not used: ref=%d tree=%d etag=%q",
+			source.refCalls, source.treeCalls, source.requestedETag)
 	}
 
 	content, err := resolver.Content(context.Background(), "example", "notes.md")
@@ -55,11 +62,58 @@ func TestRemoteResolverCachesCampaignAndContent(t *testing.T) {
 	if source.blobCalls != 1 {
 		t.Fatalf("content was not cached: blob=%d", source.blobCalls)
 	}
-	if governor.reservations != 3 || governor.observations != 3 {
+	if governor.reservations != 3 || governor.observations != 6 {
 		t.Fatalf("unexpected governor calls: %#v", governor)
 	}
 	if cache.campaignTTL != remoteCampaignTTL || cache.fileTTL != remoteFileTTL {
 		t.Fatalf("unexpected cache TTLs: campaign=%s file=%s", cache.campaignTTL, cache.fileTTL)
+	}
+}
+
+func TestRemoteResolverInvalidatesCampaignWhenETagChanges(t *testing.T) {
+	cache := newRemoteCache()
+	source := &remoteSource{
+		commit: testOID,
+		entries: []githubapp.GitTreeEntry{
+			{Path: "before.md", OID: testOID, Mode: "100644", Type: "blob", Size: 6},
+		},
+		response: githubapp.APIResponse{ETag: `"ref-v1"`},
+	}
+	resolver := newRemoteResolver(cache, source, &remoteGovernor{})
+
+	first, err := resolver.Campaign(context.Background(), "example")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(first.Files) != 1 || first.Files[0].Path != "before.md" {
+		t.Fatalf("unexpected initial campaign: %#v", first)
+	}
+
+	source.commit = "fedcba9876543210fedcba9876543210fedcba98"
+	source.entries = []githubapp.GitTreeEntry{
+		{Path: "after.md", OID: testOID, Mode: "100644", Type: "blob", Size: 5},
+	}
+	source.response = githubapp.APIResponse{ETag: `"ref-v2"`}
+	second, err := resolver.Campaign(context.Background(), "example")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Commit != source.commit || len(second.Files) != 1 || second.Files[0].Path != "after.md" {
+		t.Fatalf("updated ref did not invalidate the cached campaign: %#v", second)
+	}
+	if source.refCalls != 2 || source.treeCalls != 2 || source.requestedETag != `"ref-v1"` {
+		t.Fatalf("unexpected conditional refresh calls: ref=%d tree=%d etag=%q",
+			source.refCalls, source.treeCalls, source.requestedETag)
+	}
+	source.refNotModified = true
+	third, err := resolver.Campaign(context.Background(), "example")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if third.Commit != source.commit || source.refCalls != 3 || source.treeCalls != 2 ||
+		source.requestedETag != `"ref-v2"` {
+		t.Fatalf("updated campaign ETag was not cached: campaign=%#v ref=%d tree=%d etag=%q",
+			third, source.refCalls, source.treeCalls, source.requestedETag)
 	}
 }
 
@@ -230,6 +284,9 @@ type remoteSource struct {
 	entries                        []githubapp.GitTreeEntry
 	content                        []byte
 	response                       githubapp.APIResponse
+	treeResponse                   githubapp.APIResponse
+	refNotModified                 bool
+	requestedETag                  string
 	refErr, treeErr, blobErr       error
 	refCalls, treeCalls, blobCalls int
 	rateRemaining                  int
@@ -238,17 +295,24 @@ type remoteSource struct {
 }
 
 func (s *remoteSource) ResolveRef(
-	context.Context, int64, string, string,
+	_ context.Context, _ int64, _, _, etag string,
 ) (string, githubapp.APIResponse, error) {
 	s.refCalls++
-	return s.commit, s.response, s.refErr
+	s.requestedETag = etag
+	response := s.response
+	response.NotModified = s.refNotModified
+	return s.commit, response, s.refErr
 }
 
 func (s *remoteSource) Tree(
 	context.Context, int64, string, string,
 ) ([]githubapp.GitTreeEntry, githubapp.APIResponse, error) {
 	s.treeCalls++
-	return s.entries, s.response, s.treeErr
+	response := s.response
+	if s.treeResponse.ETag != "" {
+		response = s.treeResponse
+	}
+	return s.entries, response, s.treeErr
 }
 
 func (s *remoteSource) Blob(
