@@ -1018,7 +1018,7 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Prioritize investigation of the most blocked domains');
     expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('query firewall-domain-workflows with --param domain=DOMAIN');
     expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Named CAO query IDs: firewall-domain-totals, firewall-most-blocked-domains');
-    expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Record each investigated domain and workflow');
+    expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Record domain/workflow, time, blocked/allowed counts and disposition');
     expect(page?.querySelector('[data-chart-category="blocked.example"]')).not.toBeNull();
     expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] .chart-legend-pie strong')?.textContent).toBe('3,177,281');
     expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
