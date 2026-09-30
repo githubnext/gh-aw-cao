@@ -337,8 +337,10 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 	retained := false
 	defer func() {
 		if !retained {
-			if oauth.revokeCredentials(ctx, session) != nil {
-				if oauth.queueRevocation(ctx, session) != nil {
+			cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 25*time.Second)
+			defer cancel()
+			if oauth.revokeCredentials(cleanup, session) != nil {
+				if oauth.queueRevocation(cleanup, session) != nil {
 					oauth.logBranch("callback.revocation_queue_failed")
 				} else {
 					oauth.logBranch("callback.revocation_queued")
@@ -471,7 +473,7 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 			account, err := oauth.authorizedAccount(request.Context(), session.AccessToken)
 			if err != nil || !strings.EqualFold(account.Login, session.Login) {
 				oauth.logBranch("session.authorization_rejected")
-				oauth.invalidateSession(response, request.Context(), session.ID)
+				oauth.invalidateSessionIfUnchanged(response, request.Context(), session.ID, expected)
 				return oauthSession{}, false
 			}
 			session.AvatarURL = account.AvatarURL
@@ -592,7 +594,15 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 }
 
 func (oauth *githubOAuth) invalidateSession(response http.ResponseWriter, ctx context.Context, sessionID string) {
-	session, sealed, err := oauth.stageRevocation(ctx, sessionID)
+	oauth.invalidateSessionIfUnchanged(response, ctx, sessionID, "")
+}
+
+func (oauth *githubOAuth) invalidateSessionIfUnchanged(response http.ResponseWriter, ctx context.Context, sessionID, expected string) {
+	session, sealed, err := oauth.stageRevocationIfUnchanged(ctx, sessionID, expected)
+	if errors.Is(err, errSessionSuperseded) {
+		oauth.logBranch("invalidation.session_superseded")
+		return
+	}
 	if err != nil {
 		serverLog.Printf("oauth credential revocation staging failed")
 		oauth.logBranch("invalidation.revocation_staging_failed")
@@ -763,9 +773,16 @@ func (oauth *githubOAuth) revokeCredentials(ctx context.Context, session oauthSe
 }
 
 func (oauth *githubOAuth) stageRevocation(ctx context.Context, sessionID string) (oauthSession, string, error) {
+	return oauth.stageRevocationIfUnchanged(ctx, sessionID, "")
+}
+
+var errSessionSuperseded = errors.New("session was superseded")
+
+func (oauth *githubOAuth) stageRevocationIfUnchanged(ctx context.Context, sessionID, expected string) (oauthSession, string, error) {
 	const script = `
 local value = redis.call("GET", KEYS[1])
 if not value then return false end
+if ARGV[1] ~= "" and value ~= ARGV[1] then return "superseded" end
 redis.call("SET", KEYS[2], value)
 redis.call("SADD", KEYS[3], KEYS[2])
 redis.call("DEL", KEYS[1])
@@ -775,12 +792,16 @@ return value`
 		oauth.sessionKey(sessionID),
 		oauth.revocationKey(sessionID),
 		oauth.revocationIndexKey(),
+		expected,
 	)
 	if err != nil {
 		return oauthSession{}, "", err
 	}
 	if value == nil || fmt.Sprint(value) == "0" {
 		return oauthSession{}, "", nil
+	}
+	if fmt.Sprint(value) == "superseded" {
+		return oauthSession{}, "", errSessionSuperseded
 	}
 	sealed := fmt.Sprint(value)
 	plain, err := oauth.open(sealed)
