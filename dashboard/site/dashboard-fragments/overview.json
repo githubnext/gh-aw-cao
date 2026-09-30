@@ -492,7 +492,7 @@
       "name": "overview-rhythm",
       "intent": "Compare successful runs for this week and last week on every weekday, layering the current week over the previous week.",
       "objective": "Show the observed weekday pattern of successful runs across the current and previous calendar weeks.",
-      "acceptance": "The rhythm output retains weekday order, successful-run counts, and reached-day flags; check snapshot completeness separately before interpreting zero days or attributing changes to workflow improvements.",
+      "acceptance": "When rhythm is present, verify weekday order, successful-run counts, and reached-day flags; if rhythm is absent, report the comparison as unavailable rather than zero activity, and do not attribute changes to workflow improvements.",
       "from": "overview-runs",
       "time": {
         "range": "15d"

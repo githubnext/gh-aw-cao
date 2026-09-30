@@ -8561,7 +8561,7 @@
     "name": "overview-rhythm",
     "intent": "Compare successful runs for this week and last week on every weekday, layering the current week over the previous week.",
     "objective": "Show the observed weekday pattern of successful runs across the current and previous calendar weeks.",
-    "acceptance": "The rhythm output retains weekday order, successful-run counts, and reached-day flags; check snapshot completeness separately before interpreting zero days or attributing changes to workflow improvements.",
+    "acceptance": "When rhythm is present, verify weekday order, successful-run counts, and reached-day flags; if rhythm is absent, report the comparison as unavailable rather than zero activity, and do not attribute changes to workflow improvements.",
     "from": "overview-runs",
     "time": {
       "range": "15d"
@@ -9937,7 +9937,7 @@
     "name": "failed-runs",
     "intent": "List failed workflow runs that need operator attention.",
     "objective": "Give operators the most recent observed failed runs to inspect in GitHub.",
-    "acceptance": "Runs retain their native conclusion, timestamp, and evidence destination in descending started-at order; review run logs before attributing a cause or declaring resolution.",
+    "acceptance": "Unprojected run rows retain available conclusion, started-at, and run evidence fields in descending started-at order; inspect source logs and missing links before attributing a cause or declaring resolution.",
     "from": "failure-run-base",
     "order-by": [
       {
@@ -10085,7 +10085,7 @@
     "name": "overview-repeated-failure-candidates",
     "intent": "Attach selected-horizon failure counts to each workflow's latest canonical work item.",
     "objective": "Pair blocked work items with observed workflow failure streaks and retained run evidence before attention filtering.",
-    "acceptance": "Candidates have lifecycle-state blocked and a matching organization/repository/workflow streak; is-repeated reflects failure-count greater than one, and the selected link points to retained evidence rather than an assumed latest failed run.",
+    "acceptance": "Candidates are filtered to blocked items with a matching organization/repository/workflow streak; is-repeated reflects failure-count greater than one, while selected evidence-link and run-link can be absent or refer to the work item rather than the latest failed run.",
     "from": "work-items",
     "joins": [
       {
@@ -10290,7 +10290,7 @@
     "name": "overview-repeated-failure-attention",
     "intent": "Keep only unresolved workflows with two or more failures in the selected horizon.",
     "objective": "Surface blocked workflow items with observed repeated failures for bounded run investigation.",
-    "acceptance": "Every row inherits a blocked item with is-repeated true and a retained evidence destination; verify run order and current state before treating the failure as still unresolved.",
+    "acceptance": "Every row inherits a blocked item with is-repeated true and projects evidence-link and run-link when available; verify run order, links, and current state before treating the failure as still unresolved.",
     "from": "overview-repeated-failure-candidates",
     "filter": {
       "predicates": [
@@ -10346,7 +10346,7 @@
     "name": "overview-review-attention",
     "intent": "Select only unresolved outputs explicitly awaiting human review with their retained GitHub evidence destination.",
     "objective": "Present review-state work items and their retained GitHub destination to a human reviewer.",
-    "acceptance": "Every item has lifecycle-state review with work-item identity, reason, and available evidence or run link; reviewer disposition must be checked at source, not inferred from its presence.",
+    "acceptance": "Rows are filtered to lifecycle-state review and project the work-item ID as attention-signal-id, plus reason, evidence-link, and run-link where present; reviewer disposition must be checked at source.",
     "from": "work-items",
     "filter": {
       "predicates": [
