@@ -17,15 +17,15 @@ function binding({ pending = false, unavailable = false, rows = [] } = {}) {
   };
 }
 
-/** @param {number} [currentOffset] @returns {Record<string, unknown>[]} */
-function rhythmRows(currentOffset = 0) {
+/** @param {number} [currentOffset] @param {number} [firstPrevious] @returns {Record<string, unknown>[]} */
+function rhythmRows(currentOffset = 0, firstPrevious = 7) {
   return [{
     rhythm: {
       days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((label, index) => ({
         label,
         date: `2026-09-${String(7 + index).padStart(2, '0')}`,
         current: index < 3 ? index + 1 + currentOffset : 0,
-        previous: 7 - index,
+        previous: index === 0 ? firstPrevious : 7 - index,
         reached: index < 3
       }))
     }
@@ -89,13 +89,14 @@ describe('Overview component boundaries', () => {
     expect(rendered.querySelector('.graph-widget-y-axis-label')).toBeNull();
     expect(rendered.querySelector('.graph-widget-plot.factory-rhythm-bars')).not.toBeNull();
     expect(days[0]?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 1 successful run this week; 7 successful runs last week.');
-    expect(days[3]?.getAttribute('aria-label')).toBe('Thu 2026-09-10: 0 successful runs this week (day not yet reached); 4 successful runs last week.');
+    expect(days[3]?.getAttribute('aria-label')).toBe('Thu 2026-09-10: 4 successful runs last week (day not yet reached).');
     expect(rendered.querySelectorAll('.factory-rhythm-day-future')).toHaveLength(4);
     expect(rendered.querySelectorAll('.factory-rhythm-current')).toHaveLength(7);
     expect(rendered.querySelectorAll('.factory-rhythm-baseline')).toHaveLength(7);
     expect(barHeight(days[0]?.querySelector('.factory-rhythm-current'))).toBeCloseTo(100 / 7);
     expect(barHeight(days[0]?.querySelector('.factory-rhythm-baseline'))).toBe(100);
-    expect(barHeight(days[3]?.querySelector('.factory-rhythm-current'))).toBe(5);
+    expect(days[3]?.querySelector('.factory-rhythm-current')?.hasAttribute('hidden')).toBe(true);
+    expect(barHeight(days[3]?.querySelector('.factory-rhythm-current'))).toBe(0);
     expect(barHeight(days[3]?.querySelector('.factory-rhythm-baseline'))).toBeCloseTo(400 / 7);
 
     rows.set(rhythmRows(10));
@@ -118,8 +119,39 @@ describe('Overview component boundaries', () => {
     expect(rendered.querySelector('.graph-widget-y-axis-label')).toBeNull();
     expect(rendered.querySelectorAll('.factory-rhythm-bar-pair i')).toHaveLength(14);
     expect(rendered.querySelector('.factory-rhythm-day')?.getAttribute('aria-label'))
-      .toBe('Mon: 0 successful runs this week (day not yet reached); 0 successful runs last week.');
-    expect(barHeight(rendered.querySelector('.factory-rhythm-current'))).toBe(5);
+      .toBe('Mon: No successful runs this week or last week (day not yet reached).');
+    expect(rendered.querySelectorAll('.factory-rhythm-bar-pair i:not([hidden])')).toHaveLength(0);
+    expect(barHeight(rendered.querySelector('.factory-rhythm-current'))).toBe(0);
+    controller.abort();
+  });
+
+  it('rhythm hides zero bars independently and restores them when counts change', () => {
+    const controller = new AbortController();
+    const rows = state(rhythmRows());
+    const rendered = renderFactoryRhythm({ rows: rows.get }, { signal: controller.signal });
+    const first = rendered.querySelector('.factory-rhythm-day');
+    const current = first?.querySelector('.factory-rhythm-current');
+    const previous = first?.querySelector('.factory-rhythm-baseline');
+
+    expect(current?.hasAttribute('hidden')).toBe(false);
+    expect(previous?.hasAttribute('hidden')).toBe(false);
+    rows.set(rhythmRows(0, 0));
+    expect(current?.hasAttribute('hidden')).toBe(false);
+    expect(previous?.hasAttribute('hidden')).toBe(true);
+    expect(barHeight(previous)).toBe(0);
+    expect(first?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 1 successful run this week.');
+
+    rows.set(rhythmRows());
+    expect(previous?.hasAttribute('hidden')).toBe(false);
+    expect(barHeight(previous)).toBe(100);
+    rows.set(rhythmRows(-1));
+    expect(current?.hasAttribute('hidden')).toBe(true);
+    expect(previous?.hasAttribute('hidden')).toBe(false);
+    expect(first?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 7 successful runs last week.');
+    rows.set(rhythmRows(-1, 0));
+    expect(current?.hasAttribute('hidden')).toBe(true);
+    expect(previous?.hasAttribute('hidden')).toBe(true);
+    expect(first?.getAttribute('aria-label')).toBe('Mon 2026-09-07: No successful runs this week or last week.');
     controller.abort();
   });
 

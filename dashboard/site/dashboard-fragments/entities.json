@@ -3,6 +3,8 @@
     {
       "name": "domain-entity-insights",
       "intent": "Summarize one domain entity for its dedicated Insights view.",
+      "objective": "Identify domain decisions with request volume worth investigating before considering any egress change.",
+      "acceptance": "For the selected domain, request totals match the retained domain observations grouped by decision; missing data or blocked traffic does not establish a need for access, which requires underlying request and policy review.",
       "from": "domains",
       "aggregate": {
         "by": [
@@ -31,6 +33,8 @@
     {
       "name": "tool-entity-insights",
       "intent": "Summarize one tool entity for its dedicated Insights view.",
+      "objective": "Select a tool and status combination whose recorded call volume merits investigation.",
+      "acceptance": "For the selected tool, observation counts match retained MCP call observations grouped by server, tool, and status; missing calls are not zero usage and status counts do not establish effectiveness or cause.",
       "from": "mcp-tool-calls",
       "aggregate": {
         "by": [
@@ -61,6 +65,8 @@
     {
       "name": "audit-entity-insights",
       "intent": "Summarize one audit event entity for its dedicated Insights view.",
+      "objective": "Select an audit summary and status requiring closer review of underlying observations.",
+      "acceptance": "For the selected summary, counts agree with retained audit observation IDs grouped by event status; repeated observations are not silently treated as distinct incidents, and absence does not prove no findings.",
       "from": "audits",
       "aggregate": {
         "by": [

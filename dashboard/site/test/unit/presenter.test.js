@@ -1016,8 +1016,9 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('.pie-chart-card > .chart-prompt-heading > .chart-prompt-action .table-intent-button')).toBe(prompt);
     prompt?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Prioritize investigation of the most blocked domains');
-    expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Investigate blocked firewall domains');
-    expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Each investigated block has a documented disposition');
+    expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('query firewall-domain-workflows with --param domain=DOMAIN');
+    expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Named CAO query IDs: firewall-domain-totals, firewall-most-blocked-domains');
+    expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Record each investigated domain and workflow');
     expect(page?.querySelector('[data-chart-category="blocked.example"]')).not.toBeNull();
     expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] .chart-legend-pie strong')?.textContent).toBe('3,177,281');
     expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
@@ -1642,13 +1643,15 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.repository-link')).toBeNull();
   });
 
-  it('renders the dashboard commit SHA in the footer', () => {
+  it('renders the dashboard commit SHA linked to the same repository as the chrome icon', () => {
     const commitSha = '0123456789abcdef0123456789abcdef01234567';
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
         id: 'versioned-dashboard',
         title: 'Versioned Dashboard',
+        'github-url-base': 'https://github.example.com',
+        repository: 'octo-org/agentic-operations',
         pages: [{ id: 'usage', kind: /** @type {'built-in'} */ ('built-in'), page: 'usage', title: 'Usage' }]
       }
     };
@@ -1657,6 +1660,10 @@ describe('presenter built-in and custom pages', () => {
 
     expect(rendered.querySelector('.report-footer-version')?.textContent).toBe('Version 0123456');
     expect(rendered.querySelector('.report-footer-version')?.getAttribute('title')).toBe(commitSha);
+    expect(rendered.querySelector('.report-footer-version a')?.getAttribute('href')).toBe(
+      `https://github.example.com/octo-org/agentic-operations/commit/${commitSha}`
+    );
+    expect(rendered.querySelector('.repository-link')?.getAttribute('href')).toBe('https://github.example.com/octo-org/agentic-operations');
   });
 
   it('DLS-DOC-012 DLS-SAFE-011 renders a labeled GitHub repository link resolved against a custom github-url-base', () => {

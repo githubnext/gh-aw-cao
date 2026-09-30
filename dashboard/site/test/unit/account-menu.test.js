@@ -180,4 +180,29 @@ describe('hosted GitHub account menu', () => {
     expect(logs).not.toContain('sensitive-switch-response');
     expect(logs).not.toContain('sensitive-network-error');
   });
+
+  it('stops reacting to session state once the menu detaches from the document', async () => {
+    document.head.innerHTML = '<meta name="cao-auth-mode" content="github">';
+    const debug = vi.fn();
+    const fetchMock = vi.fn().mockImplementation(() => new Promise(() => {}));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const menu = renderAccountMenu({ debug });
+    if (!(menu instanceof HTMLDetailsElement)) throw new Error('account menu was not rendered');
+    document.body.append(menu);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    menu.remove();
+    // Let the MutationObserver microtask backing createFactoryScope run.
+    await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+    document.body.append(menu);
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ login: 'late-arrival' }), { status: 200 }));
+
+    // The effect stopped when the menu detached, so a resolved session after
+    // reattachment no longer reveals the menu or updates its login label.
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(menu.hidden).toBe(true);
+    expect(menu.textContent).not.toContain('@late-arrival');
+  });
 });

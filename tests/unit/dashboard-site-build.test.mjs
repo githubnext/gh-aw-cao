@@ -57,6 +57,23 @@ test("dashboard site embeds a validated commit SHA", () => {
   );
 });
 
+test("dashboard build uses GitHub Actions repository and server URL for the chrome and version links", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "dashboard-actions-links-"));
+  try {
+    await buildDashboardSite({
+      destination: path.join(root, "output"),
+      controlSettings: { campaigns: {} },
+      githubRepository: "octo-org/operations",
+      githubServerUrl: "https://github.example.com",
+    });
+    const dashboard = JSON.parse(await readFile(path.join(root, "output", "dashboard.json"), "utf8"));
+    assert.equal(dashboard.dashboard.repository, "octo-org/operations");
+    assert.equal(dashboard.dashboard["github-url-base"], "https://github.example.com");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("dashboard build accepts resolved settings and extracts composed policy settings", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-control-settings-"));
   try {

@@ -13,8 +13,11 @@ import (
 	"os"
 	"strings"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
+
+var hostedLog = logger.New("cao:server:hosted")
 
 func NewHostedAppFromEnv(
 	ctx context.Context,
@@ -116,21 +119,53 @@ func NewHostedAppFromEnv(
 	return New(ctx, store, config)
 }
 
+// hostedRedisURLRejection classifies why validateHostedRedisURL rejected a
+// hosted Redis URL. It is useful for diagnosing a misconfigured deployment
+// without logging the URL itself, which can carry embedded credentials.
+type hostedRedisURLRejection string
+
+const (
+	hostedRedisURLRejectionNone           hostedRedisURLRejection = "none"
+	hostedRedisURLRejectionUnparsable     hostedRedisURLRejection = "unparsable"
+	hostedRedisURLRejectionPlaintextOptIn hostedRedisURLRejection = "plaintext-not-opted-in"
+	hostedRedisURLRejectionPublicHostname hostedRedisURLRejection = "public-hostname"
+)
+
+// classifyHostedRedisURL decides whether a hosted Redis URL is acceptable,
+// given already-parsed scheme and hostname, without performing the URL
+// parsing itself. It is a pure function extracted from validateHostedRedisURL
+// so the TLS-required, opt-in, and private-hostname decisions are testable
+// directly against scheme and hostname values, without constructing a
+// *url.URL for every case.
+func classifyHostedRedisURL(scheme, hostname string, allowPrivatePlaintext, forceTLS bool) hostedRedisURLRejection {
+	if strings.EqualFold(scheme, "rediss") || forceTLS {
+		return hostedRedisURLRejectionNone
+	}
+	if !strings.EqualFold(scheme, "redis") || !allowPrivatePlaintext {
+		return hostedRedisURLRejectionPlaintextOptIn
+	}
+	if !privateRedisHostname(hostname) {
+		return hostedRedisURLRejectionPublicHostname
+	}
+	return hostedRedisURLRejectionNone
+}
+
 func validateHostedRedisURL(redisURL string, allowPrivatePlaintext, forceTLS bool) error {
 	parsed, err := url.Parse(strings.TrimSpace(redisURL))
 	if err != nil {
+		hostedLog.Printf("hosted redis url rejected reason=%s", hostedRedisURLRejectionUnparsable)
 		return errors.New("invalid hosted Redis URL")
 	}
-	if strings.EqualFold(parsed.Scheme, "rediss") || forceTLS {
+	switch classifyHostedRedisURL(parsed.Scheme, parsed.Hostname(), allowPrivatePlaintext, forceTLS) {
+	case hostedRedisURLRejectionPlaintextOptIn:
+		hostedLog.Printf("hosted redis url rejected reason=%s", hostedRedisURLRejectionPlaintextOptIn)
+		return errors.New("hosted mode requires rediss:// Redis transport unless private plaintext Redis is explicitly enabled")
+	case hostedRedisURLRejectionPublicHostname:
+		hostedLog.Printf("hosted redis url rejected reason=%s", hostedRedisURLRejectionPublicHostname)
+		return errors.New("hosted plaintext Redis requires a private IP or single-label service hostname")
+	default:
 		return nil
 	}
-	if !strings.EqualFold(parsed.Scheme, "redis") || !allowPrivatePlaintext {
-		return errors.New("hosted mode requires rediss:// Redis transport unless private plaintext Redis is explicitly enabled")
-	}
-	if !privateRedisHostname(parsed.Hostname()) {
-		return errors.New("hosted plaintext Redis requires a private IP or single-label service hostname")
-	}
-	return nil
 }
 
 func isUpstashRedisURL(redisURL string) bool {

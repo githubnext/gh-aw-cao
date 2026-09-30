@@ -21,6 +21,7 @@ import { runMode } from "./mode.mjs";
 import { runOperationalValueCommand } from "./operational-value.mjs";
 import { runPages } from "./pages.mjs";
 import { runPruneDashboard } from "./prune-dashboard.mjs";
+import { runPrompt } from "./prompt.mjs";
 import { runQueries } from "./queries.mjs";
 import { runQueryInfo } from "./query-info.mjs";
 import { runQuery } from "./query.mjs";
@@ -55,6 +56,7 @@ export const commandHandlers = new Map([
   ["operational-value", runOperationalValueCommand],
   ["pages", runPages],
   ["prune-dashboard", runPruneDashboard],
+  ["prompt", runPrompt],
   ["queries", runQueries],
   ["query", runQuery],
   ["query-info", runQueryInfo],

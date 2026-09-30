@@ -1,10 +1,13 @@
 import { pluralSuffix } from './components/count-formatters.js';
+import { createDebug } from './debug.js';
 
 const HORIZON_PATTERN = /^([1-9][0-9]*)(h|d|w)$/;
 const UNIT_HOURS = { h: 1, d: 24, w: 7 * 24 };
 const UNIT_LABELS = { h: 'hour', d: 'day', w: 'week' };
 
 export const DEFAULT_DASHBOARD_HORIZON = '1w';
+
+const debugHorizon = createDebug('horizon');
 
 /**
  * @param {unknown} dashboard
@@ -14,9 +17,11 @@ export function resolveDashboardHorizon(dashboard) {
   const configured = dashboard && typeof dashboard === 'object'
     ? /** @type {{ defaults?: { time?: { range?: unknown } } }} */ (dashboard).defaults?.time?.range
     : undefined;
-  return typeof configured === 'string' && HORIZON_PATTERN.test(configured)
-    ? configured
-    : DEFAULT_DASHBOARD_HORIZON;
+  const valid = typeof configured === 'string' && HORIZON_PATTERN.test(configured);
+  if (!valid && configured !== undefined) {
+    debugHorizon({ event: 'resolve-fallback', configuredType: typeof configured, fallback: DEFAULT_DASHBOARD_HORIZON });
+  }
+  return valid ? /** @type {string} */ (configured) : DEFAULT_DASHBOARD_HORIZON;
 }
 
 /**
@@ -25,7 +30,10 @@ export function resolveDashboardHorizon(dashboard) {
  */
 export function dashboardHorizonHours(range) {
   const match = HORIZON_PATTERN.exec(range);
-  if (!match) throw new Error(`Invalid dashboard horizon: ${range}`);
+  if (!match) {
+    debugHorizon({ event: 'parse-invalid', operation: 'dashboardHorizonHours' });
+    throw new Error(`Invalid dashboard horizon: ${range}`);
+  }
   const unit = /** @type {'h'|'d'|'w'} */ (match[2]);
   return Number(match[1]) * UNIT_HOURS[unit];
 }
@@ -48,6 +56,7 @@ export function formatDashboardHorizon(range) {
  */
 export function formatDashboardHorizonHours(hours) {
   if (!Number.isInteger(hours) || hours <= 0) {
+    debugHorizon({ event: 'parse-invalid', operation: 'formatDashboardHorizonHours' });
     throw new Error(`Invalid dashboard horizon hours: ${hours}`);
   }
   const unit = hours % UNIT_HOURS.w === 0

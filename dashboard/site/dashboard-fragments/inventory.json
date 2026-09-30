@@ -3,6 +3,8 @@
     {
       "name": "runs-daily-conclusions",
       "intent": "Aggregate workflow run conclusions by UTC day for the Runs stacked area graph.",
+      "objective": "Expose changes in observed run conclusions by day for investigation.",
+      "acceptance": "Count retained runs by started-at UTC day and recorded conclusion; an empty day or missing conclusion is not evidence of healthy execution or absence of activity.",
       "from": "runs",
       "compute": [
         {
@@ -32,6 +34,8 @@
     {
       "name": "entity-events",
       "intent": "Project all run-owned records for reusable cards and run drill-down.",
+      "objective": "Expose run-owned event identity, status, provenance, timestamp, and available navigation links for inspection.",
+      "acceptance": "Projected event fields and fallback URL trace to the source record; a missing link or event is not proof of no output, and event status alone does not verify downstream impact.",
       "from": "event-base",
       "compute": [
         {
@@ -112,6 +116,8 @@
     {
       "name": "runs-table",
       "intent": "Show observed workflow runs in a table with execution, repository, workflow, engine, model, and navigation details.",
+      "objective": "Locate observed runs whose recorded status or conclusion needs closer inspection.",
+      "acceptance": "Show recorded run identity, status, conclusion, scope, execution metadata, and source links in newest-first order; absent runs require a freshness and coverage check, and a successful run is not proof of accepted outcomes.",
       "description": "Observed workflow runs ordered from newest to oldest.",
       "from": "runs",
       "compute": [
@@ -188,6 +194,8 @@
     {
       "name": "workflow-aic-per-run",
       "intent": "List declared workflows with observed runs and their average AI Credit cost per run.",
+      "objective": "Identify workflows with observed run AIC averages worth investigating alongside run evidence.",
+      "acceptance": "Include only workflow inventory rows marked as having observed runs, retaining their reported averages and missing telemetry; inspect underlying runs and separate outcome evidence before inferring waste or benefit.",
       "description": "Workflow AI Credit averages limited to workflows with at least one observed run.",
       "from": "workflow-inventory",
       "filter": {

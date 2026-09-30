@@ -1,6 +1,8 @@
 import { h } from '../dom.js';
 import { createDebug } from '../debug.js';
 import { octicon } from '../octicons.js';
+import { effect, state } from '../reactive.js';
+import { createFactoryScope } from './factory-elements.js';
 import { enableDetailsMenuDismissal, renderActionLabel } from './ui-primitives.js';
 
 const debugAuth = createDebug('auth');
@@ -10,11 +12,10 @@ function usesGitHubAuthentication() {
 }
 
 /**
- * @param {HTMLDetailsElement} menu
- * @param {HTMLElement} loginLabel
  * @param {(event: string) => void} debug
+ * @returns {Promise<string>} the logged-in account's login
  */
-async function loadAccount(menu, loginLabel, debug) {
+async function loadAccount(debug) {
   debug('session.request_started');
   let response;
   try {
@@ -39,9 +40,8 @@ async function loadAccount(menu, loginLabel, debug) {
     debug('session.payload_invalid');
     throw new Error('GitHub account session has no login');
   }
-  loginLabel.textContent = `@${account.login}`;
-  menu.hidden = false;
   debug('session.available');
+  return account.login;
 }
 
 /**
@@ -127,6 +127,12 @@ export function renderAccountMenu(options = {}) {
   }
   debug('profile.hosted');
   const navigate = options.navigate ?? ((url) => window.location.assign(url));
+  const scope = createFactoryScope();
+
+  // `login` and `errorMessage` are the menu's entire visible state; the
+  // effect below is the only place that writes them onto the owned DOM.
+  const login = state(/** @type {string | null} */ (null));
+  const errorMessage = state(/** @type {string | null} */ (null));
 
   const loginLabel = h('strong', null, 'GitHub account');
   const switchButton = /** @type {HTMLButtonElement} */ (h(
@@ -164,6 +170,15 @@ export function renderAccountMenu(options = {}) {
     )
   ));
 
+  effect(() => {
+    const currentLogin = login.get();
+    loginLabel.textContent = currentLogin ? `@${currentLogin}` : 'GitHub account';
+    menu.hidden = currentLogin === null;
+    const currentError = errorMessage.get();
+    if (currentError) menu.dataset.error = currentError;
+    else delete menu.dataset.error;
+  }, { signal: scope.signal });
+
   switchButton.addEventListener('click', () => {
     void switchAccount(switchButton, debug).then((result) => {
       debug('switch.navigation_started');
@@ -175,10 +190,9 @@ export function renderAccountMenu(options = {}) {
       }
     }).catch(() => {
       debug('switch.failed');
-      const error = new Error('Unable to switch GitHub account');
-      menu.dataset.error = String(error?.message ?? error);
+      errorMessage.set('Unable to switch GitHub account');
     });
-  });
+  }, { signal: scope.signal });
   logoutButton.addEventListener('click', () => {
     void logout(logoutButton, debug).then(() => {
       debug('logout.navigation_started');
@@ -190,17 +204,18 @@ export function renderAccountMenu(options = {}) {
       }
     }).catch(() => {
       debug('logout.failed');
-      const error = new Error('Unable to log out');
-      menu.dataset.error = String(error?.message ?? error);
+      errorMessage.set('Unable to log out');
     });
-  });
+  }, { signal: scope.signal });
   queueMicrotask(() => {
     if (document.body) enableDetailsMenuDismissal(document.body, menu, '.account-menu-action');
-    void loadAccount(menu, loginLabel, debug).catch(() => {
+    void loadAccount(debug).then((accountLogin) => {
+      login.set(accountLogin);
+    }).catch(() => {
       debug('session.unavailable');
-      const error = new Error('GitHub account session is unavailable');
-      menu.dataset.error = String(error?.message ?? error);
+      errorMessage.set('GitHub account session is unavailable');
     });
   });
+  scope.bind(menu);
   return menu;
 }

@@ -3,6 +3,8 @@
     {
       "name": "entity-runs",
       "intent": "Project run entities for reusable run cards and workflow drill-down.",
+      "objective": "Expose retained run-attempt identity, execution timing, conclusion, and link for a bounded workflow-run inspection.",
+      "acceptance": "Keep organization, repository, workflow, run and attempt with status, conclusion, event, branch, duration, timestamps, and run link; missing timing or conclusion remains unknown rather than inferred success.",
       "from": "runs",
       "select": [
         {
@@ -61,6 +63,8 @@
     {
       "name": "workflow-runs",
       "intent": "Project canonical runs into route-addressable workflow run evidence.",
+      "objective": "Trace retained runs and recorded failure evidence for a selected workflow route.",
+      "acceptance": "Preserve workflow route, run identity, start/end, status, conclusion, failure fields, mode, engine/model metadata, and run link; missing failure details do not prove success or rule out incomplete import.",
       "description": "Workflow runs with a stable repository and workflow route key.",
       "from": "runs",
       "compute": [
@@ -177,6 +181,8 @@
     {
       "name": "workflow-reports",
       "intent": "Project retained outcomes into route-addressable workflow reports.",
+      "objective": "Review retained workflow outcome reports separately from execution status before interpreting operational results.",
+      "acceptance": "Keep route, safe output, report title and summary, recorded status, category, observation time, metadata, and external link; missing reports or status do not imply success or no work.",
       "description": "Workflow outcome reports with stable route keys and disposition fields.",
       "from": "outcomes",
       "compute": [

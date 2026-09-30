@@ -6,7 +6,7 @@ const presenter = vi.hoisted(() => ({
   dashboardPagePaginatedSourceBindings: vi.fn(() => ({})),
   dashboardPageSourceNames: vi.fn(() => []),
   disposeDashboard: vi.fn(),
-  renderDashboard: vi.fn(() => document.createElement("div")),
+  renderDashboard: vi.fn((/** @type {import('../../src/presenter.js').PresentationInput} */ _input) => document.createElement("div")),
   updateWithViewTransition: vi.fn((_doc, callback) => callback())
 }));
 const dataProcessor = vi.hoisted(() => ({
@@ -90,6 +90,26 @@ afterEach(() => {
 });
 
 describe("dashboard app page-chunk debug logging", () => {
+  it("passes loaded page queries to the presenter for semantic prompts", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input) => {
+      if (String(input).includes("dashboard.json")) {
+        return new Response(JSON.stringify(stubDashboardSchema({ id: "overview", chunk: "dashboard-pages/overview.json" })), { status: 200 });
+      }
+      return new Response(JSON.stringify({
+        page: { id: "overview", views: [{ data: { source: "observations" }, prompt: "auto" }] },
+        queries: [{ name: "observations", from: "runs", intent: "Inspect runs" }]
+      }), { status: 200 });
+    }));
+    vi.resetModules();
+
+    await import("../../src/dashboard-app.js");
+    await vi.waitFor(() => expect(presenter.renderDashboard.mock.calls.some(
+      ([argument]) => argument.document.dashboard.queries?.some((query) => query.name === "observations")
+    )).toBe(true));
+
+    vi.unstubAllGlobals();
+  });
+
   it("is disabled by default (no debug output) when the debug query is absent", async () => {
     const debugFn = vi.fn();
     mockDebugModule(debugFn, "");

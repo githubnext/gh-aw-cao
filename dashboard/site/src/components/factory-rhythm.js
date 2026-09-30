@@ -30,8 +30,8 @@ export function renderFactoryRhythm(source, scope) {
       const maximum = Math.max(...days.flatMap((day) => [day.count, day.previous]), 1);
       return days.map((day) => ({
         ...day,
-        currentHeight: Math.max(5, day.count / maximum * 100),
-        previousHeight: Math.max(5, day.previous / maximum * 100)
+        currentHeight: day.count > 0 ? Math.max(5, day.count / maximum * 100) : 0,
+        previousHeight: day.previous > 0 ? Math.max(5, day.previous / maximum * 100) : 0
       }));
     },
     key: (day) => day.label,
@@ -43,10 +43,12 @@ export function renderFactoryRhythm(source, scope) {
       element.title = description;
       const current = element.querySelector('.factory-rhythm-current');
       if (current instanceof HTMLElement) {
+        current.hidden = day.count <= 0;
         current.style.height = `${day.currentHeight}%`;
       }
       const baseline = element.querySelector('.factory-rhythm-baseline');
       if (baseline instanceof HTMLElement) {
+        baseline.hidden = day.previous <= 0;
         baseline.style.height = `${day.previousHeight}%`;
       }
       const label = element.querySelector('small');
@@ -64,9 +66,11 @@ export function renderFactoryRhythm(source, scope) {
 
 /** @param {RhythmDay} day */
 function rhythmDayDescription(day) {
-  const current = `${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'} this week`;
-  const previous = `${formatCount(day.previous)} successful ${day.previous === 1 ? 'run' : 'runs'} last week`;
-  return `${day.label}${day.date ? ` ${day.date}` : ''}: ${current}${day.reached ? '' : ' (day not yet reached)'}; ${previous}.`;
+  const counts = [];
+  if (day.count > 0) counts.push(`${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'} this week`);
+  if (day.previous > 0) counts.push(`${formatCount(day.previous)} successful ${day.previous === 1 ? 'run' : 'runs'} last week`);
+  const summary = counts.length ? counts.join('; ') : 'No successful runs this week or last week';
+  return `${day.label}${day.date ? ` ${day.date}` : ''}: ${summary}${day.reached ? '' : ' (day not yet reached)'}.`;
 }
 
 /** @param {RhythmSource} source @returns {{ days: RhythmDay[] }} */

@@ -57,6 +57,7 @@ export const USAGE = `Usage:
   cao pages [PAGE_ID] [--dashboard FILE] [--json]
   cao queries [--dashboard FILE] [--json]
   cao query-info QUERY_ID [--dashboard FILE] [--json]
+  cao prompt QUERY_ID [--dashboard FILE] [--param NAME=VALUE...] [--database FILE]
   cao query QUERY_ID [--database FILE] [--dashboard FILE] [--param NAME=VALUE...] [--limit COUNT]
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao mcp [--database FILE] [--dashboard FILE] [--host HOST] [--port PORT]
@@ -96,6 +97,8 @@ Agent analysis:
     cao queries
   Inspect a query:
     cao query-info QUERY_ID
+  Render a query prompt (use --database FILE to include a bounded data preview):
+    cao prompt QUERY_ID [--param NAME=VALUE]
   Run a named query:
     cao query QUERY_ID [--param NAME=VALUE]
   Start the read-only MCP server for agents without a shell:

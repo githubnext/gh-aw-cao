@@ -748,8 +748,8 @@ describe('dashboard document validation', () => {
     expect(mostBlocked).toMatchObject({
       id: 'security-firewall-most-blocked-domains',
       intent: 'Prioritize investigation of the most blocked domains and affected workflows without assuming blocked requests require access.',
-      objective: 'Investigate blocked firewall domains and determine whether the affected workflows need an approved egress configuration change.',
-      acceptance: 'Each investigated block has a documented disposition; any needed configuration change is reviewed and verified against fresh firewall evidence.',
+      objective: 'Refresh the firewall snapshot, inspect the highest-blocked domains, and query firewall-domain-workflows with --param domain=DOMAIN for each selected domain. Identify the affected workflows and whether blocked traffic is required for their intended operation before proposing any egress change.',
+      acceptance: 'Record each investigated domain and workflow with its evidence timestamp, blocked and allowed counts, and a disposition (expected denial, unnecessary traffic, or justified access request). If fresh evidence is unavailable, report the investigation as incomplete rather than treating empty query results as zero blocks. Propose egress changes only for justified requests through review, then verify the result using a newer firewall snapshot.',
       prompt: 'auto',
       mark: 'chart',
       chart: 'pie',

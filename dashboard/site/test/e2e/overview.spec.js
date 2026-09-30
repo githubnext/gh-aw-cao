@@ -215,8 +215,20 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
       const subtitle = rhythm.querySelector('.factory-rhythm-heading > strong');
       const legend = rhythm.querySelector('.factory-rhythm-legend');
       if (!title || !subtitle || !legend) throw new Error('The rhythm heading and legend must be present');
+      const subtitleStyle = getComputedStyle(subtitle);
+      const legendStyle = getComputedStyle(legend.querySelector('li') ?? legend);
+      /** @param {CSSStyleDeclaration} style */
+      const typography = (style) => ({
+        fontFamily: style.fontFamily,
+        fontSize: style.fontSize,
+        fontStyle: style.fontStyle,
+        fontWeight: style.fontWeight,
+        color: style.color
+      });
       return {
         title: title.textContent, subtitle: subtitle.textContent,
+        subtitleTypography: typography(subtitleStyle),
+        legendTypography: typography(legendStyle),
         titleBottom: title.getBoundingClientRect().bottom,
         subtitleTop: subtitle.getBoundingClientRect().top,
         subtitleBottom: subtitle.getBoundingClientRect().bottom,
@@ -225,14 +237,17 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     });
     expect(headingPlacement.title).toBe('Campaign rhythm');
     expect(headingPlacement.subtitle).toBe('Successful runs');
+    expect(headingPlacement.subtitleTypography).toEqual(headingPlacement.legendTypography);
     expect(headingPlacement.titleBottom).toBeLessThanOrEqual(headingPlacement.subtitleTop);
     expect(headingPlacement.subtitleBottom).toBeLessThanOrEqual(headingPlacement.legendTop);
     await expect(factory.locator('.factory-rhythm .graph-widget-y-axis-label')).toHaveCount(0);
     const rhythmBars = factory.locator('.factory-rhythm-bar-pair i:not([hidden])');
-    await expect(rhythmBars).toHaveCount(14);
+    await expect(rhythmBars).toHaveCount(10);
+    await expect(factory.locator('.factory-rhythm-current[hidden]')).toHaveCount(4);
+    await expect(factory.locator('.factory-rhythm-current[hidden]').first()).toHaveCSS('display', 'none');
     await expect(factory.locator('.factory-rhythm-day').nth(3))
-      .toHaveAttribute('aria-label', 'Thu 2026-09-17: 0 successful runs this week (day not yet reached); 4 successful runs last week.');
-    const layered = await factory.locator('.factory-rhythm-day').first().evaluate((day) => {
+      .toHaveAttribute('aria-label', 'Thu 2026-09-17: 4 successful runs last week (day not yet reached).');
+    const layeredDays = await factory.locator('.factory-rhythm-day').evaluateAll((days) => days.map((day) => {
       const previous = day.querySelector('.factory-rhythm-baseline');
       const current = day.querySelector('.factory-rhythm-current');
       if (!previous || !current) throw new Error('Both rhythm bars must be present');
@@ -247,13 +262,14 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
         currentRight: currentBounds.right,
         currentLayer: getComputedStyle(current).zIndex
       };
-    });
-    expect(layered.currentBottom).toBeCloseTo(layered.previousBottom, 0);
-    expect(layered.currentRight - layered.currentLeft).toBeCloseTo(layered.previousRight - layered.previousLeft, 0);
-    expect(layered.currentLeft).toBeGreaterThan(layered.previousLeft);
-    expect(layered.currentLeft).toBeLessThan(layered.previousRight);
-    expect(layered.currentRight).toBeGreaterThan(layered.previousRight);
-    expect(layered.currentLayer).toBe('1');
+    }));
+    expect(layeredDays).toHaveLength(7);
+    for (const layered of layeredDays.slice(0, 3)) {
+      expect(layered.currentBottom).toBeCloseTo(layered.previousBottom, 0);
+      expect(layered.currentLeft).toBeCloseTo(layered.previousLeft, 0);
+      expect(layered.currentRight).toBeCloseTo(layered.previousRight, 0);
+      expect(layered.currentLayer).toBe('1');
+    }
     await expect(rhythmBars.first()).toHaveCSS('animation-name', 'factory-rhythm-bar-grow');
     expect(await rhythmBars.last().evaluate((element) => getComputedStyle(element).animationDelay)).toBe('0.21s');
     await expect(factory.locator('.factory-station')).toHaveCount(2);

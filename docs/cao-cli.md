@@ -154,6 +154,15 @@ Check runtime health or query canonical records:
   --limit 20
 ```
 
+Render a named dashboard query as an editable agent prompt with the same template as the UI:
+
+```bash
+./cao.sh prompt cost-by-campaign
+./cao.sh prompt campaign-runs --param campaign=dependabot --database .cao/gh-aw-logs.sqlite
+```
+
+Without `--database`, the command needs no downloaded snapshot and includes no evidence rows. With `--database FILE`, it executes the named query against that existing snapshot and includes a bounded preview; this does not grant rollout authority. Use `--dashboard FILE` to experiment with a different dashboard definition.
+
 Run `./cao.sh doctor` to validate and repair the downloaded SQLite snapshot. This is different from `gh aw doctor`, which validates the workflow installation and repository setup.
 
 ## Evaluate and Evolve

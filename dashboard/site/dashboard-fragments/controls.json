@@ -3,6 +3,8 @@
     {
       "name": "firewall-domain-totals",
       "intent": "Show each observed firewall domain with the number of runs and total accepted and blocked requests.",
+      "objective": "Identify domains with observed denied requests for a closer review of firewall evidence.",
+      "acceptance": "Report distinct observed runs and native accepted and blocked request totals by domain; a denied request alone does not justify allowing egress, and no row does not prove no requests occurred.",
       "description": "Distinct runs and accepted and blocked request totals by firewall domain.",
       "from": "firewall-observations",
       "filter": {
@@ -72,6 +74,8 @@
     {
       "name": "firewall-most-blocked-domains",
       "intent": "Highlight the domains with the most blocked firewall requests.",
+      "objective": "Prioritize up to ten observed domains by blocked request total for investigation.",
+      "acceptance": "Rank by observed blocked totals and inspect underlying domain/workflow evidence before deciding whether a block needs attention; the ranking is not a policy authorization or an incidence rate.",
       "description": "The ten domains with the highest observed blocked request totals.",
       "from": "firewall-domain-totals",
       "order-by": [
@@ -89,6 +93,8 @@
     {
       "name": "firewall-domain-workflows",
       "intent": "Show workflows that allowed or blocked requests to each observed firewall domain.",
+      "objective": "Locate which observed workflows contributed accepted or denied requests for a domain.",
+      "acceptance": "Preserve workflow scope, source link, distinct runs, and native accepted and blocked totals; investigate the run and egress context rather than assuming a denied request is a failure or grounds for wider access.",
       "description": "Workflow-level accepted and blocked request totals by firewall domain.",
       "from": "firewall-observations",
       "filter": {
@@ -177,6 +183,8 @@
     {
       "name": "mcp-tool-totals",
       "intent": "Group observed MCP activity by tool and count calls and calling workflows, excluding the internal safe outputs server.",
+      "objective": "Expose tool-level call, workflow, and byte totals to investigate observed MCP usage.",
+      "acceptance": "Group only observed non-safe-output-server calls by server and tool, preserving counts and byte totals; lack of calls does not establish no access, and call volume does not establish value or permission.",
       "description": "Observed MCP tool-call totals grouped by MCP server and tool, with the number of distinct calling workflows.",
       "from": "mcp-tool-calls",
       "filter": {
@@ -253,6 +261,8 @@
     {
       "name": "mcp-top-tools",
       "intent": "Show the ten most frequently called MCP tools.",
+      "objective": "Identify up to ten tools with the highest observed non-safe-output-server call counts for inspection.",
+      "acceptance": "Rank observed calls by tool label and inspect grouped tool evidence before drawing conclusions; do not treat popularity as effectiveness or authority to add tools.",
       "description": "The ten MCP tools with the most observed calls, excluding the internal safe outputs server.",
       "from": "mcp-tool-totals",
       "order-by": [
@@ -270,6 +280,8 @@
     {
       "name": "steering-events",
       "intent": "Prepare observed gateway steering warnings for aggregation by steering type and workflow.",
+      "objective": "Expose warning identity, run context, type, and timestamp for downstream steering diagnostics.",
+      "acceptance": "Project recorded gateway steering events with workflow and run attribution where available; a warning is not a completed budget overrun, failure, or reason to increase limits.",
       "description": "Gateway steering warnings emitted when a run approaches its AI Credit budget, time limit, or another declared limit, labelled with a readable steering type.",
       "from": "audits",
       "filter": {
@@ -492,6 +504,8 @@
     {
       "name": "steering-type-totals",
       "intent": "Show how often each kind of steering warning occurred.",
+      "objective": "Identify steering warning categories to inspect in their run context.",
+      "acceptance": "Report observed event totals and distinct runs and workflows by type; confirm underlying warnings before interpreting frequency, and do not infer actual limit breaches.",
       "description": "Observed gateway steering warnings grouped by steering type with the number of affected runs and workflows.",
       "from": "steering-events",
       "aggregate": {
@@ -548,6 +562,8 @@
     {
       "name": "steering-workflow-totals",
       "intent": "Count steering warnings for each workflow.",
+      "objective": "Expose workflow-level warning totals and token/time warning breakdowns for downstream review.",
+      "acceptance": "Count recorded events and distinct runs by workflow, retaining the declared token/time categories; other types remain in total events and no warning alone establishes a failure.",
       "description": "Gateway steering warnings grouped by workflow, split into token-budget and time-limit warnings.",
       "from": "steering-events",
       "aggregate": {
@@ -617,6 +633,8 @@
     {
       "name": "steering-workflows",
       "intent": "Present workflow steering totals with a link to each workflow dashboard.",
+      "objective": "Show observed workflow steering totals with navigation to the affected run context.",
+      "acceptance": "Keep workflow identity, link, events, runs, and warning breakdowns tied to their grouped evidence; use drill-through before recommending changes, not warning counts as a basis to widen budgets.",
       "description": "Workflow steering totals labelled with a link to the workflow runtime page.",
       "from": "steering-workflow-totals",
       "compute": [
@@ -724,6 +742,8 @@
     {
       "name": "steering-top-workflows",
       "intent": "Highlight the workflows with the most steering warnings.",
+      "objective": "Prioritize up to ten workflows by observed warning count for investigation.",
+      "acceptance": "Rank recorded warning totals with workflow context, checking underlying events and telemetry coverage; a high rank neither proves overrun nor justifies a limit change.",
       "description": "The ten workflows with the highest observed gateway steering warning totals.",
       "from": "steering-workflows",
       "order-by": [
@@ -942,8 +962,8 @@
           "title": "Most blocked domains",
           "description": "The ten domains with the highest observed blocked request totals.",
           "intent": "Prioritize investigation of the most blocked domains and affected workflows without assuming blocked requests require access.",
-          "objective": "Investigate blocked firewall domains and determine whether the affected workflows need an approved egress configuration change.",
-          "acceptance": "Each investigated block has a documented disposition; any needed configuration change is reviewed and verified against fresh firewall evidence.",
+          "objective": "Refresh the firewall snapshot, inspect the highest-blocked domains, and query firewall-domain-workflows with --param domain=DOMAIN for each selected domain. Identify the affected workflows and whether blocked traffic is required for their intended operation before proposing any egress change.",
+          "acceptance": "Record each investigated domain and workflow with its evidence timestamp, blocked and allowed counts, and a disposition (expected denial, unnecessary traffic, or justified access request). If fresh evidence is unavailable, report the investigation as incomplete rather than treating empty query results as zero blocks. Propose egress changes only for justified requests through review, then verify the result using a newer firewall snapshot.",
           "prompt": "auto",
           "data": {
             "source": "firewall-most-blocked-domains"

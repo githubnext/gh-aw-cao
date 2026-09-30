@@ -1,5 +1,56 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+describe('dashboard theme settings reactive state', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.resetModules();
+  });
+
+  it('applies the selected theme to the dashboard root and syncs every button aria-pressed', async () => {
+    const { renderThemeControl } = await import('../../src/components/theme-settings.js');
+    const dashboardRoot = Object.assign(document.createElement('div'), { className: 'dashboard-root' });
+    document.body.replaceChildren(dashboardRoot);
+    const control = renderThemeControl();
+    dashboardRoot.appendChild(control);
+
+    expect(dashboardRoot.dataset.theme).toBeUndefined();
+    expect(control.querySelector('[data-theme-value="system"]')?.getAttribute('aria-pressed')).toBe('true');
+
+    /** @type {HTMLButtonElement} */ (control.querySelector('[data-theme-value="dark"]')).click();
+
+    expect(dashboardRoot.dataset.theme).toBe('dark');
+    expect(control.querySelector('[data-theme-value="dark"]')?.getAttribute('aria-pressed')).toBe('true');
+    expect(control.querySelector('[data-theme-value="system"]')?.getAttribute('aria-pressed')).toBe('false');
+    expect(control.querySelector('[data-theme-value="light"]')?.getAttribute('aria-pressed')).toBe('false');
+
+    /** @type {HTMLButtonElement} */ (control.querySelector('[data-theme-value="light"]')).click();
+
+    expect(dashboardRoot.dataset.theme).toBe('light');
+    expect(control.querySelector('[data-theme-value="light"]')?.getAttribute('aria-pressed')).toBe('true');
+    expect(control.querySelector('[data-theme-value="dark"]')?.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('stops reacting to theme changes once the control detaches from the document', async () => {
+    const { renderThemeControl } = await import('../../src/components/theme-settings.js');
+    const dashboardRoot = Object.assign(document.createElement('div'), { className: 'dashboard-root' });
+    document.body.replaceChildren(dashboardRoot);
+    const control = renderThemeControl();
+    dashboardRoot.appendChild(control);
+
+    control.remove();
+    // Let the MutationObserver microtask backing createFactoryScope run.
+    await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+    dashboardRoot.appendChild(control);
+    /** @type {HTMLButtonElement} */ (control.querySelector('[data-theme-value="dark"]')).click();
+
+    // The effect stopped when the control detached, so re-attaching and
+    // clicking no longer updates a root that is no longer reachable via the
+    // stopped effect's closure-captured button list.
+    expect(control.querySelector('[data-theme-value="dark"]')?.getAttribute('aria-pressed')).toBe('false');
+  });
+});
+
 describe('dashboard theme settings debug logging', () => {
   beforeEach(() => {
     localStorage.clear();

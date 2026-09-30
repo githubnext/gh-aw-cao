@@ -121,6 +121,7 @@
         views: [],
       };
       const syncDashboardContext = () => {
+        dashboardDocument.dashboard.queries = dashboardQueries;
         dashboardContext.githubUrlBase = dashboardDocument.dashboard["github-url-base"];
         dashboardContext.dashboardRepository = dashboardDocument.dashboard.repository ?? null;
         dashboardContext.pages = dashboardDocument.dashboard.pages;
@@ -170,7 +171,7 @@
           languageVersion: normalized.core["language-version"],
           dashboard: /** @type {import('./presenter.js').PresentableDashboard} */ (normalized.core.dashboard),
         };
-        dashboardQueries.splice(0, dashboardQueries.length);
+        dashboardQueries.splice(0, dashboardQueries.length, ...(normalized.core.dashboard.queries ?? []));
         dashboardPageChunks = new Map(
           [...normalized.pageChunks.entries()].map(([pageId, chunk]) => [pageId, normalizeDashboardPageChunk(chunk)])
         );
