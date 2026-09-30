@@ -34,20 +34,26 @@ import (
 //go:embed oauth_failure.html
 var oauthFailureHTML string
 
+//go:embed oauth_logged_out.html
+var oauthLoggedOutHTML string
+
 var oauthFailurePage = template.Must(template.New("oauth-failure").Parse(oauthFailureHTML))
 
-var oauthFailureScriptHash = func() string {
-	_, script, found := strings.Cut(oauthFailureHTML, "<script>")
+func oauthPageScriptHash(page string) string {
+	_, script, found := strings.Cut(page, "<script>")
 	if !found {
-		panic("OAuth failure page is missing its recovery script")
+		panic("OAuth page is missing its script")
 	}
 	script, _, found = strings.Cut(script, "</script>")
 	if !found {
-		panic("OAuth failure page has an unterminated recovery script")
+		panic("OAuth page has an unterminated script")
 	}
 	sum := sha256.Sum256([]byte(script))
 	return base64.StdEncoding.EncodeToString(sum[:])
-}()
+}
+
+var oauthFailureScriptHash = oauthPageScriptHash(oauthFailureHTML)
+var oauthLoggedOutScriptHash = oauthPageScriptHash(oauthLoggedOutHTML)
 
 func writeOAuthFailure(response http.ResponseWriter, status int, traceID trace.TraceID) {
 	response.Header().Set("Cache-Control", "no-store")
@@ -233,12 +239,10 @@ func (oauth *githubOAuth) loggedOut(response http.ResponseWriter, _ *http.Reques
 	oauth.logBranch("logged_out.rendered")
 	oauth.clearStateCookie(response)
 	response.Header().Set("Cache-Control", "no-store")
+	response.Header().Set("Referrer-Policy", "no-referrer")
+	response.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'sha256-"+oauthLoggedOutScriptHash+"'; base-uri 'none'; form-action 'none'")
 	response.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = io.WriteString(response, `<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Signed out · CAO</title></head>
-<body><main><h1>You are signed out</h1><p><a href="/auth/login">Sign in with GitHub</a></p></main></body>
-</html>`)
+	_, _ = io.WriteString(response, oauthLoggedOutHTML)
 }
 
 func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.Request) {
@@ -294,7 +298,7 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 		fail(http.StatusBadRequest, reason)
 		return
 	}
-	tokens, err := oauth.exchange(request.Context(), url.Values{
+	tokens, err := oauth.exchange(ctx, url.Values{
 		"client_id":     {oauth.config.ClientID},
 		"client_secret": {oauth.config.ClientSecret},
 		"code":          {code},
@@ -306,7 +310,7 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 		fail(http.StatusUnauthorized, "exchange_failed")
 		return
 	}
-	account, err := oauth.authorizedAccount(request.Context(), tokens.AccessToken)
+	account, err := oauth.authorizedAccount(ctx, tokens.AccessToken)
 	if err != nil {
 		serverLog.Printf("oauth authorization failed")
 		oauth.logBranch("callback.authorization_failed")
@@ -348,7 +352,7 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 	} else {
 		oauth.logBranch("callback.refresh_expiry_provided")
 	}
-	if err := oauth.saveSession(request.Context(), session); err != nil {
+	if err := oauth.saveSession(ctx, session); err != nil {
 		serverLog.Printf("oauth session save failed")
 		oauth.logBranch("callback.session_save_failed")
 		fail(http.StatusServiceUnavailable, "session_save_failed")

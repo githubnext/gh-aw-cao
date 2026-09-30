@@ -900,12 +900,14 @@ caches.
 
 If the OAuth callback shows a sign-in error, select **Sign out and try again**.
 This attempts the existing CSRF-protected logout (including server-side token
-revocation), clears the pending OAuth state on the signed-out page, and offers a
-fresh, explicit GitHub sign-in. If logout cannot be confirmed, the page keeps
-the error visible; clear this site's cookies before retrying, or contact your
-dashboard administrator. Try a GitHub account that is an active member of an
-organization or team permitted by the dashboard. Signing in does not itself
-grant access.
+revocation), clears the pending OAuth state and the dashboard IndexedDB cache
+on the signed-out page, and then offers a fresh, explicit GitHub sign-in.
+If other open tabs block browser data deletion, close them and wait for the
+signed-out page to finish before signing in. If logout cannot be confirmed,
+the page keeps the error visible; clear this site's cookies before retrying,
+or contact your dashboard administrator. Try a GitHub account that is an
+active member of an organization or team permitted by the dashboard.
+Signing in does not itself grant access.
 
 The error page shows a request ID when tracing is enabled. Administrators can
 search for that W3C trace ID in their OpenTelemetry backend and inspect the
@@ -920,6 +922,8 @@ All generic server HTTP spans use a redacted copy of each request: the server
 does not export peer/client IP addresses, user-agent strings, query strings,
 arbitrary URL paths, W3C baggage, or client-provided tracestate. The original
 request still reaches the authentication and rate-limiting code unchanged.
+Raw user-agent strings may identify or fingerprint a browser, so they remain
+excluded from telemetry rather than assuming their collection is GDPR compliant.
 OAuth callbacks continue to use their own fixed-attribute span and extract
 only W3C trace context, not baggage. Trace IDs are correlation identifiers,
 not user identities. For GDPR-sensitive deployments, operators must also

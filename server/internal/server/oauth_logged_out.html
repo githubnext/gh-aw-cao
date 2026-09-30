@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Signed out · CAO</title></head>
+<body><main><h1>You are signed out</h1>
+<p id="cleanup-status" role="status">Clearing dashboard data from this browser…</p>
+<p><a id="sign-in" href="/auth/login" hidden>Sign in with GitHub</a></p>
+<noscript><p>Clear this site’s browser data before signing in again.</p></noscript>
+</main><script>const status = document.getElementById('cleanup-status');
+const signIn = document.getElementById('sign-in');
+try {
+  const request = indexedDB.deleteDatabase('gh-aw-cao-dashboard-data');
+  request.onsuccess = () => {
+    status.textContent = 'Dashboard data cleared from this browser.';
+    signIn.hidden = false;
+  };
+  request.onblocked = () => {
+    status.textContent = 'Close other open dashboard tabs to finish clearing local data.';
+  };
+  request.onerror = () => {
+    status.textContent = 'Could not clear local dashboard data. Close other tabs and reload this page before signing in.';
+  };
+} catch {
+  status.textContent = 'Could not clear local dashboard data. Clear this site’s browser data before signing in.';
+}
+</script></body>
+</html>

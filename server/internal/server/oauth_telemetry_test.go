@@ -47,8 +47,8 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 	firstState, firstCookieValue := state, stateCookie.Value
 	traces.Reset()
 
-	secretCode := "private-oauth-code"
-	request := azureRequest(t, http.MethodGet, "/auth/callback?code="+secretCode+"&state="+url.QueryEscape(state))
+	callbackCode := "private-oauth-code"
+	request := azureRequest(t, http.MethodGet, "/auth/callback?code="+callbackCode+"&state="+url.QueryEscape(state))
 	request.Header.Set("traceparent", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")
 	request.Header.Set("User-Agent", "private-user-agent")
 	request.Header.Set("X-Forwarded-For", "192.0.2.89")
@@ -64,7 +64,7 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 	}
 
 	invalid := httptest.NewRecorder()
-	app.Handler().ServeHTTP(invalid, azureRequest(t, http.MethodGet, "/auth/callback?code="+secretCode+"&state=private-invalid-state"))
+	app.Handler().ServeHTTP(invalid, azureRequest(t, http.MethodGet, "/auth/callback?code="+callbackCode+"&state=private-invalid-state"))
 	if invalid.Code != http.StatusBadRequest {
 		t.Fatalf("invalid state status = %d", invalid.Code)
 	}
@@ -91,7 +91,7 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 	stateCookie, state = loginState(t, app)
 	app.oauth.config.TokenURL = github.URL + "/unavailable"
 	exchange := httptest.NewRecorder()
-	request = azureRequest(t, http.MethodGet, "/auth/callback?code="+secretCode+"&state="+url.QueryEscape(state))
+	request = azureRequest(t, http.MethodGet, "/auth/callback?code="+callbackCode+"&state="+url.QueryEscape(state))
 	request.AddCookie(stateCookie)
 	app.Handler().ServeHTTP(exchange, request)
 	if exchange.Code != http.StatusUnauthorized {
@@ -102,7 +102,7 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 	app = newAzureTestApp(t, deniedGitHub.URL)
 	stateCookie, state = loginState(t, app)
 	unauthorized := httptest.NewRecorder()
-	request = azureRequest(t, http.MethodGet, "/auth/callback?code="+secretCode+"&state="+url.QueryEscape(state))
+	request = azureRequest(t, http.MethodGet, "/auth/callback?code="+callbackCode+"&state="+url.QueryEscape(state))
 	request.AddCookie(stateCookie)
 	app.Handler().ServeHTTP(unauthorized, request)
 	if unauthorized.Code != http.StatusForbidden {
@@ -136,7 +136,7 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 	}
 	app.oauth.store = redisx.NewStore(unavailable, "test")
 	failedSave := httptest.NewRecorder()
-	request = azureRequest(t, http.MethodGet, "/auth/callback?code="+secretCode+"&state="+url.QueryEscape(state))
+	request = azureRequest(t, http.MethodGet, "/auth/callback?code="+callbackCode+"&state="+url.QueryEscape(state))
 	request.AddCookie(stateCookie)
 	app.Handler().ServeHTTP(failedSave, request)
 	if failedSave.Code != http.StatusServiceUnavailable {
@@ -174,7 +174,7 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 			response.Header().Get("X-Span-Id") != span.SpanContext.SpanID().String() {
 			t.Fatalf("callback error %d missing help or matching trace ID", i)
 		}
-		for _, private := range []string{secretCode, firstState, firstCookieValue, "private-invalid-state",
+		for _, private := range []string{callbackCode, firstState, firstCookieValue, "private-invalid-state",
 			"private-provider-message", "private-user-agent", "access-old", "refresh-old", "octocat"} {
 			if strings.Contains(body, private) {
 				t.Fatalf("callback error %d exposed private value %q", i, private)
@@ -254,7 +254,7 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, private := range []string{secretCode, firstState, firstCookieValue, state, stateCookie.Value,
+	for _, private := range []string{callbackCode, firstState, firstCookieValue, state, stateCookie.Value,
 		"private-invalid-state", "private-provider-message",
 		"private-user-agent", "192.0.2.89", "access-old", "refresh-old", "test-user"} {
 		if strings.Contains(string(encoded), private) {
@@ -298,6 +298,22 @@ func TestOAuthRecoveryUsesExistingProtectedLogout(t *testing.T) {
 	app.Handler().ServeHTTP(loggedOut, azureRequest(t, http.MethodGet, "/auth/logged-out"))
 	if loggedOut.Code != http.StatusOK || !strings.Contains(loggedOut.Body.String(), `href="/auth/login"`) {
 		t.Fatal("recovery landing page must offer explicit sign-in")
+	}
+	script, remaining, found := strings.Cut(loggedOut.Body.String(), "<script>")
+	if !found {
+		t.Fatal("signed-out page must clear browser data")
+	}
+	script, _, found = strings.Cut(remaining, "</script>")
+	if !found {
+		t.Fatal("signed-out page script must be complete")
+	}
+	hash := sha256.Sum256([]byte(script))
+	expectedCSP := "default-src 'none'; script-src 'sha256-" + base64.StdEncoding.EncodeToString(hash[:]) + "'; base-uri 'none'; form-action 'none'"
+	if loggedOut.Header().Get("Content-Security-Policy") != expectedCSP ||
+		loggedOut.Header().Get("Cache-Control") != "no-store" ||
+		!strings.Contains(script, "indexedDB.deleteDatabase('gh-aw-cao-dashboard-data')") ||
+		!strings.Contains(loggedOut.Body.String(), `id="sign-in" href="/auth/login" hidden`) {
+		t.Fatal("signed-out page must protect its cleanup script and gate sign-in on database deletion")
 	}
 	foundClearedState := false
 	for _, cookie := range loggedOut.Result().Cookies() {
