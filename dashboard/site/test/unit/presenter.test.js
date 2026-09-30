@@ -1703,9 +1703,9 @@ describe('presenter built-in and custom pages', () => {
         'ingestion-queue-sizes': {
           source: 'ingestion-queue-sizes',
           rows: [
-            { queue: 'Webhook queue', tasks: 12 },
+            { queue: 'Ready and scheduled', tasks: 12 },
             { queue: 'In flight', tasks: 3 },
-            { queue: 'Backfill run tasks', tasks: 4 }
+            { queue: 'Backfill admitted (total)', tasks: 4 }
           ],
           metadata
         },
@@ -1732,7 +1732,7 @@ describe('presenter built-in and custom pages', () => {
       expect(page?.querySelectorAll('[data-view-id="github-api-usage"] [data-chart-widget="line"]')).toHaveLength(1);
       expect(page?.querySelector('[data-view-id="github-api-usage"]')?.textContent).toContain('collector/123/core');
       expect(page?.querySelectorAll('[data-chart-widget="horizontal-bar"]')).toHaveLength(2);
-      expect(page?.querySelector('[data-view-id="ingestion-queue-sizes"]')?.textContent).toContain('Backfill run tasks');
+      expect(page?.querySelector('[data-view-id="ingestion-queue-sizes"]')?.textContent).toContain('Backfill admitted (total)');
       expect(page?.textContent).not.toContain('Local database');
       expect(page?.textContent).toContain('ingest-jsonl');
       expect(page?.querySelector('[data-view-id="ingestion-health-status"]')?.textContent).toContain('healthy');

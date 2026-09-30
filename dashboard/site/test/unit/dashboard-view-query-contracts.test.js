@@ -793,9 +793,9 @@ describe('dashboard view query contracts', () => {
       }
     }));
     expect(available['ingestion-queue-sizes'].rows).toEqual([
-      { queue: 'Webhook queue', tasks: 8 },
+      { queue: 'Ready and scheduled', tasks: 8 },
       { queue: 'In flight', tasks: 2 },
-      { queue: 'Backfill run tasks', tasks: 13 }
+      { queue: 'Backfill admitted (total)', tasks: 13 }
     ]);
     const unconfigured = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries', queries, sourceNames,

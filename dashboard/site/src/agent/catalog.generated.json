@@ -3023,9 +3023,9 @@
     },
     {
       "id": "ingestion-queued",
-      "intent": "Label current webhook queue depth for the administrator queue chart.",
-      "objective": "Identify webhook collection work waiting in the queue.",
-      "acceptance": "Show the observed queue depth only when collection is configured; missing or unauthorized health data is not zero pending work.",
+      "intent": "Label the shared collection task queue depth for the administrator queue chart.",
+      "objective": "Identify total ready and scheduled collection work, including backfill tasks.",
+      "acceptance": "Show the observed shared queue depth only when collection is configured; missing or unauthorized health data is not zero pending work.",
       "description": "",
       "parameters": [],
       "sources": [
@@ -3041,7 +3041,7 @@
     {
       "id": "ingestion-inflight",
       "intent": "Label current in-flight collection tasks for the administrator queue chart.",
-      "objective": "Distinguish leased collection tasks from queued webhook work.",
+      "objective": "Distinguish leased collection tasks from work awaiting collection.",
       "acceptance": "Show the observed pending task count only when collection is configured; do not infer a count from an unavailable source.",
       "description": "",
       "parameters": [],
@@ -3057,9 +3057,9 @@
     },
     {
       "id": "ingestion-backfill",
-      "intent": "Label current queued backfill runs for the administrator queue chart.",
-      "objective": "Identify historical run tasks still awaiting collection.",
-      "acceptance": "Show the observed queued backfill run count only when collection is configured; missing health data does not imply completed backfill.",
+      "intent": "Label cumulative backfill run admissions for the administrator ingestion chart.",
+      "objective": "Compare historically admitted run tasks with current outstanding work without treating admissions as a live backlog.",
+      "acceptance": "Show the cumulative run task admissions only when collection is configured; this value does not decrease as tasks complete and missing health data does not imply completed backfill.",
       "description": "",
       "parameters": [],
       "sources": [
@@ -3074,9 +3074,9 @@
     },
     {
       "id": "ingestion-queue-sizes",
-      "intent": "Compare pending webhook and historical backfill work from the administrator-only server snapshot.",
-      "objective": "Spot a growing backlog without confusing in-flight tasks with unprocessed work.",
-      "acceptance": "Queue sizes come only from an authorized collection-health snapshot; unavailable state is not zero.",
+      "intent": "Compare current shared queue pressure, in-flight tasks, and cumulative historical backfill admissions from the administrator-only server snapshot.",
+      "objective": "Spot a growing backlog without treating past backfill admissions as outstanding work.",
+      "acceptance": "Current queue sizes and cumulative admissions come only from an authorized collection-health snapshot; unavailable state is not zero.",
       "description": "",
       "parameters": [],
       "sources": [

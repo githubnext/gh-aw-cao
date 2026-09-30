@@ -648,14 +648,16 @@ The same binary runs every role:
 | `cao-dashboard backfill --replay-only` | repopulate the database from retained evidence with no GitHub requests |
 | `cao-dashboard doctor` | run a read-only, systematic check-up of Redis, canonical data, queries, and collection |
 
-`GET /api/admin/collection/status` reports enrollment coverage, webhook queue
-depth, in-flight tasks, queued backfill runs, dead letters, cold-start phase,
+`GET /api/admin/collection/status` reports enrollment coverage, shared collection queue
+depth (including webhook and backfill tasks), in-flight tasks, cumulative
+backfill run admissions, dead letters, cold-start phase,
 and per-installation rate-limit headroom. Its `load` values (`webhook`,
 `collection`, `failure`) are distributed event counts with a 60-second
 half-life: one new event contributes 1, then its contribution halves each
 minute without requiring periodic cleanup. They are estimates of recent
-activity, not exact per-minute rates. The Ingestion dashboard compares the
-queues as horizontal bars and shows these loads to administrators. In the
+activity, not exact per-minute rates. The Ingestion dashboard compares
+current outstanding work and cumulative backfill admissions as clearly labeled
+horizontal bars and shows these loads to administrators. In the
 default profile the endpoint reports `{"configured": false}` rather than
 failing.
 
