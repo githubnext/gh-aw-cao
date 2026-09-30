@@ -268,7 +268,8 @@ test("landing page uses a theme-aware blueprint background", () => {
 });
 
 test("landing product name uses an accessible GitHub-style cursor typing animation", () => {
-  assert.match(heroIntro, /class="product-name" aria-label=\{data\.title\}/);
+  assert.match(heroIntro, /class="product-name">/);
+  assert.doesNotMatch(heroIntro, /class="product-name" aria-label=/);
   assert.match(heroIntro, /font-family: "Mona Sans Mono", monospace/);
   assert.match(heroIntro, /font-weight: 600/);
   assert.match(heroIntro, /color: var\(--cao-product-label\)/);

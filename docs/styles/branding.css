@@ -101,6 +101,11 @@
   margin-inline: auto;
 }
 
+:root[data-theme="dark"] .mermaid .edgeLabel > p {
+  background-color: #30363d !important;
+  color: #f0f6fc !important;
+}
+
 @media (max-width: 22rem) {
   .site-title {
     gap: 0.45rem;

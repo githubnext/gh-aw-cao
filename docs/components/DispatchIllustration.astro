@@ -437,6 +437,7 @@ const organizationNodes = [
     --review: #58a6ff;
     --attention: #d29922;
     --danger: #f85149;
+    --muted: #c9d1d9;
   }
 
   h3 {
@@ -882,6 +883,10 @@ const organizationNodes = [
 
   .repository-copy {
     min-width: 0;
+  }
+
+  .repository-copy > small {
+    color: var(--muted);
   }
 
   .node-continuation {
