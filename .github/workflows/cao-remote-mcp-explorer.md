@@ -34,9 +34,13 @@ mcp-servers:
 safe-outputs:
   create-issue:
     title-prefix: "[cao-remote-mcp] "
+    deduplicate-by-title: true
     close-older-issues: true
     close-older-key: cao-remote-mcp-explorer
     max: 1
+    expires: 3d
+  noop:
+    report-as-issue: false
   mentions: false
   allowed-github-references: []
 ---
