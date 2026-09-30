@@ -219,7 +219,9 @@ describe('semantic view prompt action', () => {
     const callout = rendered.querySelector('[data-view-id="alert"]');
     expect(callout?.querySelectorAll('h3, h4')).toHaveLength(1);
     expect(callout?.querySelector('aside')?.getAttribute('aria-labelledby')).toBe('overview-alert-callout-heading');
-    expect(callout?.querySelector('.table-intent-button')?.getAttribute('aria-label')).toBe('Create prompt for Review required');
+    const prompt = callout?.querySelector('.semantic-prompt-action .table-intent-button');
+    expect(prompt?.getAttribute('aria-label')).toBe('Create prompt for Review required');
+    expect(prompt?.querySelector('span')?.textContent).toBe('Create prompt for Review required');
     disposeDashboard(rendered);
   });
 });
