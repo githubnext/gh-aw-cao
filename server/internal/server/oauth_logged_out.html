@@ -1,10 +1,75 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Signed out · CAO</title></head>
-<body><main><h1>You are signed out</h1>
-<p id="cleanup-status" role="status">Clearing dashboard data from this browser…</p>
-<p><a id="sign-in" href="/auth/login" hidden>Sign in with GitHub</a></p>
-<noscript><p>Clear this site’s browser data before signing in again.</p></noscript>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Signed out · CAO</title>
+<style>
+:root {
+  color-scheme: light;
+  --canvas: #f6f8fa;
+  --surface: #ffffff;
+  --fg: #1f2328;
+  --muted: #59636e;
+  --border: #d1d9e0;
+  --accent: #0969da;
+  --accent-hover: #0550ae;
+  --focus: #0969da;
+  --shadow: 0 8px 24px #1f23280a;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --canvas: #0d1117;
+    --surface: #151b23;
+    --fg: #f0f6fc;
+    --muted: #9198a1;
+    --border: #3d444d;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --focus: #58a6ff;
+    --shadow: 0 8px 24px #01040966;
+  }
+}
+* { box-sizing: border-box; }
+body { min-width: 320px; min-height: 100vh; margin: 0; background: var(--canvas); color: var(--fg); font-size: 14px; line-height: 1.5; }
+.page { min-height: 100vh; display: grid; align-content: center; justify-items: center; gap: 24px; padding: 40px 20px; }
+.brand { width: min(100%, 560px); display: flex; align-items: center; gap: 10px; color: var(--fg); font-size: 16px; font-weight: 600; letter-spacing: -.02em; }
+.brand-mark { width: 28px; height: 28px; color: var(--accent); }
+.signed-out-card { width: min(100%, 560px); padding: 28px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+.heading { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 18px; }
+.signed-out-icon { width: 32px; height: 32px; display: grid; flex: 0 0 32px; place-items: center; border-radius: 50%; background: #ddf4ff; color: #0969da; font-size: 17px; font-weight: 700; }
+.eyebrow { margin: 0 0 2px; color: var(--muted); font-size: 12px; font-weight: 600; }
+h1 { margin: 0; font-size: clamp(20px, 4vw, 24px); font-weight: 600; line-height: 1.25; letter-spacing: -.025em; }
+.message { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.65; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 24px; }
+.sign-in { min-height: 36px; display: inline-flex; align-items: center; padding: 7px 14px; border: 1px solid #1f883d; border-radius: 6px; background: #1f883d; color: #fff; font-weight: 600; text-decoration: none; }
+.sign-in:hover { border-color: #1a7f37; background: #1a7f37; color: #fff; text-decoration: none; }
+.sign-in:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.sign-in[hidden] { display: none; }
+.noscript { margin: 16px 0 0; color: var(--muted); font-size: 12px; }
+@media (prefers-color-scheme: dark) {
+  .signed-out-icon { background: #102a42; color: #58a6ff; }
+}
+@media (max-width: 480px) {
+  .page { align-content: start; gap: 20px; padding: 28px 16px; }
+  .signed-out-card { padding: 22px 18px; }
+  .actions { align-items: flex-start; flex-direction: column; gap: 14px; }
+}
+</style>
+</head>
+<body><main class="page">
+<div class="brand">
+<svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M1 3a2 2 0 0 1 2-2h6.5a2 2 0 0 1 2 2v6.5a2 2 0 0 1-2 2H7v4.063C7 16.355 7.644 17 8.438 17H12.5v-2.5a2 2 0 0 1 2-2H21a2 2 0 0 1 2 2V21a2 2 0 0 1-2 2h-6.5a2 2 0 0 1-2-2v-2.5H8.437A2.939 2.939 0 0 1 5.5 15.562V11.5H3a2 2 0 0 1-2-2Zm2-.5a.5.5 0 0 0-.5.5v6.5a.5.5 0 0 0 .5.5h6.5a.5.5 0 0 0 .5-.5V3a.5.5 0 0 0-.5-.5Zm11.5 11.5a.5.5 0 0 0-.5.5V21a.5.5 0 0 0 .5.5H21a.5.5 0 0 0 .5-.5v-6.5a.5.5 0 0 0-.5-.5Z" fill="currentColor"/><path d="m17.143 3.15c.083-.222.406-.222.49 0l.58 1.545c.18.48.565.855 1.049 1.023l1.584.566c.228.081.228.396 0 .477l-1.584.566a1.763 1.719 0 0 0-1.05 1.023l-.58 1.545c-.083.223-.406.223-.489 0l-.58-1.545a1.763 1.719 0 0 0-1.049-1.023l-1.584-.566c-.228-.081-.228-.396 0-.477l1.584-.566a1.763 1.719 0 0 0 1.05-1.023Z" fill="#8250df" stroke="#8250df" stroke-width=".717"/></svg>
+<span>Central Agentic Ops</span>
+</div>
+<section class="signed-out-card" aria-labelledby="signed-out-title">
+<div class="heading"><span class="signed-out-icon" aria-hidden="true">✓</span><div><p class="eyebrow">Signed out</p><h1 id="signed-out-title">You are signed out</h1></div></div>
+<p class="message" id="cleanup-status" role="status">Clearing dashboard data from this browser…</p>
+<div class="actions"><a class="sign-in" id="sign-in" href="/auth/login" hidden>Sign in with GitHub <span aria-hidden="true">→</span></a></div>
+<noscript><p class="noscript">Clear this site’s browser data before signing in again.</p></noscript>
+</section>
 </main><script>const status = document.getElementById('cleanup-status');
 const signIn = document.getElementById('sign-in');
 try {

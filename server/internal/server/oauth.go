@@ -68,6 +68,7 @@ func oauthPageStyleHash(page string) string {
 var oauthFailureScriptHash = oauthPageScriptHash(oauthFailureHTML)
 var oauthFailureStyleHash = oauthPageStyleHash(oauthFailureHTML)
 var oauthLoggedOutScriptHash = oauthPageScriptHash(oauthLoggedOutHTML)
+var oauthLoggedOutStyleHash = oauthPageStyleHash(oauthLoggedOutHTML)
 
 func writeOAuthFailure(response http.ResponseWriter, status int, reason string, traceID trace.TraceID) {
 	response.Header().Set("Cache-Control", "no-store")
@@ -274,7 +275,7 @@ func (oauth *githubOAuth) loggedOut(response http.ResponseWriter, _ *http.Reques
 	oauth.clearStateCookie(response)
 	response.Header().Set("Cache-Control", "no-store")
 	response.Header().Set("Referrer-Policy", "no-referrer")
-	response.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'sha256-"+oauthLoggedOutScriptHash+"'; base-uri 'none'; form-action 'none'")
+	response.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'sha256-"+oauthLoggedOutStyleHash+"'; script-src 'sha256-"+oauthLoggedOutScriptHash+"'; base-uri 'none'; form-action 'none'")
 	response.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = io.WriteString(response, oauthLoggedOutHTML)
 }
