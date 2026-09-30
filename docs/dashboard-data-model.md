@@ -60,7 +60,8 @@ The current dashboard publication does not include immutable GitHub repository o
 
 ## Maintenance inventory
 
-The top-level Maintenance page combines two distinct inventory concerns:
+The Maintenance page, grouped in navigation alongside Marketplace, Indexing, and
+Configuration, combines two distinct inventory concerns:
 
 - **Agentic campaigns** use Campaign records and compare `campaign-version` with
   `campaign-current-version`. These are installed campaign revisions resolved
