@@ -70,6 +70,76 @@ func TestListWorkflowRunsExposesPaginatedRunIdentity(t *testing.T) {
 	}
 }
 
+func TestResolveRefSendsConditionalETagAndHandlesNotModified(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.Header.Get("If-None-Match") != `"ref-v1"` {
+			t.Errorf("If-None-Match = %q, want %q", request.Header.Get("If-None-Match"), `"ref-v1"`)
+		}
+		if request.URL.Path != "/repos/octo/api/git/ref/heads/memory/example" {
+			t.Errorf("request path = %q", request.URL.Path)
+		}
+		response.Header().Set("ETag", `"ref-v1"`)
+		response.Header().Set("X-RateLimit-Remaining", "4999")
+		response.WriteHeader(http.StatusNotModified)
+	}))
+	defer server.Close()
+
+	baseURL, err := url.Parse(server.URL + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	installationClient := github.NewClient(server.Client())
+	installationClient.BaseURL = baseURL
+	client := &Client{
+		installations: map[int64]*installationEntry{
+			7: {client: installationClient},
+		},
+	}
+
+	commit, response, err := client.ResolveRef(
+		context.Background(), 7, "octo/api", "heads/memory/example", `"ref-v1"`,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if commit != "" || !response.NotModified || response.ETag != `"ref-v1"` {
+		t.Fatalf("unexpected conditional ref response: commit=%q response=%+v", commit, response)
+	}
+}
+
+func TestResolveRefReturnsETagAndCommit(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		response.Header().Set("ETag", `"ref-v1"`)
+		response.Header().Set("X-RateLimit-Remaining", "4999")
+		response.Header().Set("Content-Type", "application/json")
+		_, _ = response.Write([]byte(`{"object":{"sha":"0123456789012345678901234567890123456789"}}`))
+	}))
+	defer server.Close()
+
+	baseURL, err := url.Parse(server.URL + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	installationClient := github.NewClient(server.Client())
+	installationClient.BaseURL = baseURL
+	client := &Client{
+		installations: map[int64]*installationEntry{
+			7: {client: installationClient},
+		},
+	}
+
+	commit, response, err := client.ResolveRef(
+		context.Background(), 7, "octo/api", "heads/memory/example", "",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if commit != "0123456789012345678901234567890123456789" ||
+		response.ETag != `"ref-v1"` || response.NotModified {
+		t.Fatalf("unexpected ref response: commit=%q response=%+v", commit, response)
+	}
+}
+
 func TestQuotaRateLimitReturnsCoreObservation(t *testing.T) {
 	reset := time.Now().Add(time.Hour).UTC().Truncate(time.Second)
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {

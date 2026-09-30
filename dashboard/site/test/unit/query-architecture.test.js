@@ -103,6 +103,26 @@ describe('dashboard query architecture', () => {
       });
     expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'entity-events')?.from)
       .toBe('event-base');
+    expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'event-base')?.select)
+      .toEqual([
+        { field: 'organization' },
+        { field: 'repository' },
+        { field: 'workflow' },
+        { field: 'run' },
+        { field: 'run-attempt' },
+        { field: 'event' },
+        { field: 'event-source' },
+        { field: 'event-type' },
+        { field: 'event-summary' },
+        { field: 'event-status' },
+        { field: 'github-entity-type' },
+        { field: 'safe-output-type' },
+        { field: 'safe-output-url' },
+        { field: 'correlation-id' },
+        { field: 'implementation-pull-request-url' },
+        { field: 'event-timestamp' },
+        { field: 'run-link' }
+      ]);
     const eventRuns = dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'event-runs');
     expect(eventRuns?.from).toBe('audit-event-runs');
     expect(eventRuns?.union).toEqual(['domain-event-runs', 'tool-event-runs', 'issue-event-runs']);

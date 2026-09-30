@@ -251,7 +251,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Navigation section | `label`, `pages`, `experimental`, `placement` |
 | Page section | `id`, `title`, `description`, `layout`, `views`, `count-source`, `count-sources`, `count-field`, `count-label` |
 | Custom page `route` | `hash-query-parameter`, `navigation-page`, `title-format`, `tabs-class-name`, `tab`, `tabs` |
-| View | `id`, `title`, `description`, `intent`, `objective`, `acceptance`, `locked`, `data`, `mark`, `element`, `config`, `callout`, `chart`, `metric`, `list`, `tree`, `layout`, `disclosure`, `controls`, `lazy-list`, `column-summaries`, `empty-message`, `title-link`, `encoding` |
+| View | `id`, `title`, `show-title`, `description`, `intent`, `objective`, `acceptance`, `locked`, `data`, `mark`, `element`, `config`, `callout`, `chart`, `metric`, `list`, `tree`, `layout`, `disclosure`, `controls`, `lazy-list`, `column-summaries`, `empty-message`, `title-link`, `encoding` |
 | View `data` | `source` or `sources`, `scope`, `time`, `filters`, `arguments`, `limit`, `order-by` |
 | View data argument | `name`, `field` |
 | View `config` | `body`, `sections`, `labels`, `measure-source`, `empty-message` |
@@ -1222,6 +1222,7 @@ The view/query prompt template lives in `dashboard/site/src/semantic-view-prompt
 - **DLS-VIEW-039:** A page **MUST NOT** expose more than one unlocked `table` view initially. Every additional unlocked table **MUST** use `disclosure: supplemental`. `disclosure: supplemental` **MUST NOT** be used on a page's only unlocked `table` view, since that hides its sole tabular content behind a closed disclosure with no other essential table exposed to the user.
 - **DLS-VIEW-040:** A supplemental `table` view **MUST NOT** declare `title`. It **MAY** declare a non-empty `disclosure-label`; otherwise, its presenter **MUST** derive the disclosure label from the view identifier. The presenter **MUST NOT** repeat that label as a visible heading inside the expanded table. Other views **MUST NOT** declare `disclosure-label`.
 - **DLS-VIEW-041:** An `element` view **MAY** declare `config.labels` for an element that presents counted summary boxes. Each entry **MUST** be keyed by a canonical kebab-case identifier and **MUST** be a plural text variable containing exactly the non-empty strings `singular` and `plural`. A presenter **MUST** present `singular` when the accompanying count has an absolute value of one and `plural` otherwise, **MUST** apply the same selection to the accessible name of that box, and **MUST** fall back to the element's declared default text for an undeclared label. Plural text selection **MUST** affect presentation only.
+- **DLS-VIEW-042:** `show-title`, when present, **MUST** be Boolean and defaults to `true`. When `false`, the presenter **MUST** omit the view title heading from the rendered view without hiding the view or removing its accessible name. This does not omit data-derived headings inside named UI elements or supplemental disclosure labels.
 
 ---
 

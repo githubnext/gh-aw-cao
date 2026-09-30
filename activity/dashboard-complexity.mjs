@@ -1,8 +1,11 @@
 import { DatabaseSync } from 'node:sqlite';
 import databaseQueries from '../dashboard/site/src/data/queries/database.json' with { type: 'json' };
+import { dashboardQueryOutputFields } from '../dashboard/site/src/data/queries/declarative.js';
 import { canonicalDatabaseName } from '../dashboard/site/src/data/storage/indexeddb.js';
 
 const DATABASE_SOURCE_TABLES = databaseSourceTables(databaseQueries);
+const DATABASE_SOURCE_FIELDS = databaseSourceFields(databaseQueries);
+const LARGE_MATERIALIZED_OUTPUT_FIELD_UNITS = 256;
 
 /**
  * Analyze the static row-read complexity of every Dashboard Language query.
@@ -58,6 +61,9 @@ export function formatDashboardComplexityMarkdown(analysis, { limit, queryId } =
     query['total-row-read-units'],
     query['direct-row-read-units'],
     query['dependency-row-read-units'],
+    query['output-field-count'] ?? 'unknown',
+    query['total-materialized-field-units'] ?? 'unknown',
+    query.warnings.length > 0 ? query.warnings.join('<br>') : '—',
     query.class === 'linear-row-reads-with-n-log-n-sort' ? 'linear + sort' : 'linear'
   ].join(' | '));
   const sources = sourceCoefficients.length === 0
@@ -71,6 +77,7 @@ export function formatDashboardComplexityMarkdown(analysis, { limit, queryId } =
     '### Dashboard query complexity',
     '',
     `Estimated **${analysis.summary['materialize-all-row-read-units']} normalized row-read units** to materialize all ${analysis.queries} queries once with shared dependencies reused.`,
+    `Estimated **${analysis.summary['materialize-all-field-units']} normalized materialized field-units** across the same graph; this relative estimate uses output row counts and inferred field counts, not field-value byte sizes.`,
     ...(queryId === undefined ? [] : ['', `Selected query: ${markdownCode(queryId)}.`]),
     '',
     `Database table coefficients: ${sources}.`,
@@ -83,8 +90,8 @@ export function formatDashboardComplexityMarkdown(analysis, { limit, queryId } =
           )).join(', ')}.`
         ]),
     '',
-    '| Rank | Query | Used by | Total | Direct | Dependencies | Complexity |',
-    '| ---: | --- | --- | ---: | ---: | ---: | --- |',
+    '| Rank | Query | Used by | Total | Direct | Dependencies | Output fields | Materialized field units | Warnings | Complexity |',
+    '| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |',
     ...rows.map((row) => `| ${row} |`),
     ...(queryId === undefined && ranking.length < analysis.ranking.length
       ? ['', `_Showing ${ranking.length} of ${analysis.ranking.length} queries._`]
@@ -165,12 +172,13 @@ function viewQueryNames(view) {
 }
 
 /**
- * Static upper-bound row-read model matching the declarative executor:
+ * Static upper-bound row-read and output-size model matching the declarative executor:
  * - every database table is weighted by its deployed row count relative to the
  *   largest table, or one when deployed counts are unavailable;
  * - filters, joins, aggregates, and limits do not reduce the upper-bound row count;
  * - joins cannot expand the left side because duplicate right keys fail closed;
  * - dependencies are materialized once and reused within one execution batch.
+ * - output field counts use the database query projection and declarative query schema.
  *
  * @param {Map<string, Record<string, any>>} index
  * @param {{ weights: Map<string, number>, counts: Record<string, number> | undefined }} tableWeights
@@ -219,9 +227,19 @@ function queryComplexityEstimates(index, tableWeights) {
     }
 
     visiting.delete(name);
+    const fields = dashboardQueryOutputFields(query, (source) => (
+      index.has(source) ? estimate(source).fields : DATABASE_SOURCE_FIELDS.get(source)
+    ));
+    const outputFieldCount = fields?.length;
+    const materializedFieldUnits = outputFieldCount === undefined
+      ? undefined
+      : normalizedCoefficient(coefficientTotal(output) * outputFieldCount);
     const value = {
       reads,
       output,
+      fields,
+      outputFieldCount,
+      materializedFieldUnits,
       'stage-reads': stageReads,
       class: query['order-by'] ? 'linear-row-reads-with-n-log-n-sort' : 'linear-row-reads'
     };
@@ -240,16 +258,31 @@ function queryComplexityEstimates(index, tableWeights) {
     const own = direct.get(name) ?? emptyComplexityEstimate();
     const directRowReads = normalizedCoefficient(coefficientTotal(own.reads));
     const totalRowReads = normalizedCoefficient(coefficientTotal(total));
+    const dependencyFieldUnits = [...dependencies].reduce((sum, dependency) => (
+      sum + (direct.get(dependency)?.materializedFieldUnits ?? 0)
+    ), 0);
+    const totalMaterializedFieldUnits = own.materializedFieldUnits === undefined
+      ? undefined
+      : normalizedCoefficient(own.materializedFieldUnits + dependencyFieldUnits);
+    const warnings = totalMaterializedFieldUnits !== undefined
+        && totalMaterializedFieldUnits >= LARGE_MATERIALIZED_OUTPUT_FIELD_UNITS
+      ? [`Potentially large materialized output: ${totalMaterializedFieldUnits} normalized field-units (threshold ${LARGE_MATERIALIZED_OUTPUT_FIELD_UNITS}); project or aggregate before materializing wide rows.`]
+      : [];
     queries.set(name, {
       model: tableWeights.counts ? 'deployment-weighted-upper-bound' : 'normalized-upper-bound',
       assumptions: tableWeights.counts
         ? 'Database tables are weighted by deployed row counts normalized to the largest table; selectivity is 1; query dependencies materialize once per batch.'
         : 'Each database table has weight 1; selectivity is 1; query dependencies materialize once per batch.',
       class: own.class,
+      'output-field-count': own.outputFieldCount,
       'direct-row-read-units': directRowReads,
       'dependency-row-read-units': normalizedCoefficient(totalRowReads - directRowReads),
       'total-row-read-units': totalRowReads,
       'output-row-units': normalizedCoefficient(coefficientTotal(own.output)),
+      'direct-materialized-field-units': own.materializedFieldUnits,
+      'dependency-materialized-field-units': normalizedCoefficient(dependencyFieldUnits),
+      'total-materialized-field-units': totalMaterializedFieldUnits,
+      warnings,
       'source-coefficients': coefficientsObject(total),
       'direct-source-coefficients': coefficientsObject(own.reads),
       'stage-row-reads': own['stage-reads']
@@ -266,7 +299,8 @@ function queryComplexityEstimates(index, tableWeights) {
     }
   }
   const ranked = [...queries].toSorted((left, right) => (
-    right[1]['total-row-read-units'] - left[1]['total-row-read-units']
+    score(right[1]) - score(left[1])
+    || right[1]['total-row-read-units'] - left[1]['total-row-read-units']
     || right[1]['direct-row-read-units'] - left[1]['direct-row-read-units']
     || left[0].localeCompare(right[0])
   ));
@@ -274,10 +308,13 @@ function queryComplexityEstimates(index, tableWeights) {
   const pressure = ranked.map(([name, value], index_) => ({
     rank: index_ + 1,
     name,
-    score: value['total-row-read-units'],
+    score: score(value),
     'total-row-read-units': value['total-row-read-units'],
     'direct-row-read-units': value['direct-row-read-units'],
     'dependency-row-read-units': value['dependency-row-read-units'],
+    'output-field-count': value['output-field-count'],
+    'total-materialized-field-units': value['total-materialized-field-units'],
+    warnings: value.warnings,
     class: value.class
   }));
   return {
@@ -296,7 +333,10 @@ function queryComplexityEstimates(index, tableWeights) {
           .map(([stage, total]) => [stage, normalizedCoefficient(total)])
           .toSorted(([left], [right]) => left.localeCompare(right))
       ),
-      'computation-pressure-definition': 'Dependency-amortized normalized row-read units; each unique transitive dependency materializes once.',
+      'materialize-all-field-units': normalizedCoefficient([...direct.values()]
+        .reduce((total, value) => total + (value.materializedFieldUnits ?? 0), 0)),
+      'memory-pressure-definition': `Estimated output row units × inferred output fields; this is a relative field-unit estimate, not bytes, and does not model individual field value sizes. A warning is emitted at ${LARGE_MATERIALIZED_OUTPUT_FIELD_UNITS} field-units.`,
+      'computation-pressure-definition': 'Candidate score is the maximum of dependency-amortized row-read units and materialized field-units; dependencies materialize once.',
       'computation-pressure': pressure
     }
   };
@@ -306,9 +346,20 @@ function emptyComplexityEstimate() {
   return {
     reads: new Map(),
     output: new Map(),
+    fields: undefined,
+    outputFieldCount: undefined,
+    materializedFieldUnits: undefined,
     'stage-reads': {},
     class: 'linear-row-reads'
   };
+}
+
+/** @param {Record<string, any>} value */
+function score(value) {
+  return Math.max(
+    value['total-row-read-units'] ?? 0,
+    value['total-materialized-field-units'] ?? 0
+  );
 }
 
 /** @param {Record<string, any>} query */
@@ -417,6 +468,26 @@ function databaseSourceTables(definitions) {
         const table = tables.findLast((candidate) => typeof candidate === 'string');
         if (table) sources.set(source, table);
       }
+    }
+  }
+  return sources;
+}
+
+/** @param {Record<string, any>[]} definitions */
+function databaseSourceFields(definitions) {
+  const sources = new Map();
+  for (const definition of definitions) {
+    if (!isRecord(definition) || typeof definition.name !== 'string') continue;
+    const fields = Array.isArray(definition.select)
+      ? [...new Set(definition.select
+        .filter((field) => isRecord(field) && (typeof field.as === 'string' || typeof field.field === 'string'))
+        .map((field) => typeof field.as === 'string' ? field.as : field.field))]
+      : undefined;
+    if (!fields) continue;
+    sources.set(definition.name, fields);
+    if (!isRecord(definition['stores-by-source'])) continue;
+    for (const source of Object.keys(definition['stores-by-source'])) {
+      sources.set(source, fields);
     }
   }
   return sources;

@@ -899,7 +899,7 @@ test('DLS-VIEW-013 DLS-VIEW-014 DLS-VIEW-015 DLS-SAFE-006 custom views render av
   await page.getByRole('button', { name: 'Table' }).click();
   await hydrateView(page, 'Missing Source');
   await expect(page.getByRole('heading', { name: 'Missing Source' })).toBeVisible();
-  await expect(page.locator('[data-view-availability="unavailable"]')).toHaveText('This view cannot be shown because its data source is unavailable.');
+  await expect(page.locator('[data-view-availability="unavailable"]')).toHaveText('This view cannot be shown because its data query failed.');
   const unavailableSection = page.locator('.page-section').filter({ has: page.getByRole('heading', { name: 'Missing Source' }) });
   await expect(unavailableSection).toContainText('Affected source: missing-source');
 });
