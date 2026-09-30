@@ -31,6 +31,7 @@ test('desktop browser exposes an installable dashboard application', async ({ pa
   await expect(page.locator('meta[name="viewport"]'))
     .toHaveAttribute('content', 'width=device-width, initial-scale=1, viewport-fit=cover');
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', './manifest.webmanifest');
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('crossorigin', 'use-credentials');
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', './apple-touch-icon.png');
   await expect(page.locator('meta[name="application-name"]'))
     .toHaveAttribute('content', 'Central Agentic Ops Dashboard');

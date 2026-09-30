@@ -43,7 +43,7 @@ describe('DLS-CONF-004 scaffold gates', () => {
       '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
     );
     expect(preview).toContain('<link rel="apple-touch-icon" href="./apple-touch-icon.png">');
-    expect(preview).toContain('<link rel="manifest" href="./manifest.webmanifest">');
+    expect(preview).toContain('<link rel="manifest" href="./manifest.webmanifest" crossorigin="use-credentials">');
     expect(preview).toContain('<meta name="application-name" content="Central Agentic Ops Dashboard">');
     expect(preview).toContain('<meta name="theme-color" content="#0d1117">');
     expect(preview).toContain('<meta name="mobile-web-app-capable" content="yes">');

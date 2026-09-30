@@ -9,7 +9,10 @@ const CONTROL_KEYS = ["scope", "inventory", "web", "defaults", "campaigns", "pub
 const SCOPE_KEYS = ["allowed-owners", "allowed-repositories"];
 const INVENTORY_KEYS = ["max-scan-repositories", "cell-count", "cell-index", "batch-size", "batch-index"];
 const WEB_KEYS = ["experimental", "favicon", "host"];
-const HOST_KEYS = ["target", "redis"];
+const HOST_KEYS = ["target", "redis", "cors"];
+const CORS_KEYS = ["allowed-origins", "allow-credentials", "max-age"];
+const CORS_ORIGIN_PATTERN =
+  /^(?:https:\/\/(?:[A-Za-z0-9.-]+|\[[0-9A-Fa-f:.]+\])|http:\/\/(?:localhost|127(?:\.[0-9]{1,3}){3}|\[::1\]))(?::[0-9]{1,5})?\/?$/;
 const TARGET_KEYS = [
   "module", "name", "authentication", "listener", "require-https",
   "trust-platform-proxy", "supports-single-replica", "replicas",
@@ -360,6 +363,7 @@ function validateHost(host, path) {
   }
   validateTarget(host.target, `${path}.target`);
   validateRedis(host.redis, `${path}.redis`);
+  if ("cors" in host) validateCORS(host.cors, `${path}.cors`);
   if (host.redis.module === "generic" &&
       host.redis["single-replica"] === true && host.redis.session !== "serialized") {
     throw new PolicyError(`${path}.redis.single-replica requires a serialized Redis session`);
@@ -380,6 +384,24 @@ function validateHost(host, path) {
   if (redisRequiresSingleReplica && host.target.replicas !== 1) {
     throw new PolicyError(`${path}.target.replicas must be 1 for the Redis module`);
   }
+}
+
+function validateCORS(cors, path) {
+  assertMapping(cors, path);
+  assertKeys(cors, CORS_KEYS, path);
+  if ("allowed-origins" in cors) {
+    assertUniqueStrings(cors["allowed-origins"], `${path}.allowed-origins`, CORS_ORIGIN_PATTERN);
+    if (cors["allowed-origins"].length > 32) {
+      throw new PolicyError(`${path}.allowed-origins accepts at most 32 origins`);
+    }
+  }
+  if ("allow-credentials" in cors) {
+    assertBoolean(cors["allow-credentials"], `${path}.allow-credentials`);
+    if (!("allowed-origins" in cors)) {
+      throw new PolicyError(`${path}.allow-credentials requires allowed-origins`);
+    }
+  }
+  if ("max-age" in cors) assertInteger(cors["max-age"], `${path}.max-age`, 1, 86400);
 }
 
 function validateTarget(target, path) {

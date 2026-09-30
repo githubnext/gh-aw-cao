@@ -890,6 +890,38 @@ API responses use `Cache-Control: no-store`. The dashboard service worker
 excludes `/api/` so query results and event streams are never placed in browser
 caches.
 
+### Cross-origin requests (CORS)
+
+The dashboard is same-origin by default: the server emits no
+`Access-Control-*` headers. The dashboard requests its web app manifest with
+`crossorigin="use-credentials"` so the session cookie is sent, and the hosted
+server answers unauthenticated subresource requests (any `Sec-Fetch-Mode`
+other than `navigate`) with `401` instead of redirecting them to the
+cross-origin GitHub authorize endpoint, which browsers block by CORS. Only
+top-level navigations are redirected to `/auth/login`.
+
+To let another reviewed origin call the server, declare it in
+`control-plane.web.host.cors` in `cao.json` or its host overlay:
+
+```json
+"cors": {
+  "allowed-origins": ["https://tools.example.com"],
+  "allow-credentials": true,
+  "max-age": 600
+}
+```
+
+| Field | Default | Purpose |
+| --- | --- | --- |
+| `allowed-origins` | none | Exact origins echoed in `Access-Control-Allow-Origin`. Wildcards, `null`, paths, user info, and plaintext origins other than loopback are rejected; at most 32. |
+| `allow-credentials` | `false` | Send `Access-Control-Allow-Credentials: true` so listed origins may use the session cookie. Requires `allowed-origins`. |
+| `max-age` | `600` | Preflight cache lifetime in seconds (1-86400). |
+
+Preflights from listed origins are answered with `204` before authentication
+and allow `GET`, `HEAD`, and `POST` with `Content-Type`, `X-CSRF-Token`, and
+`Traceparent` headers. Unlisted origins receive no CORS headers. CORS never
+bypasses authentication, CSRF checks, or host validation.
+
 ## OAuth sign-in troubleshooting
 
 If the OAuth callback shows a sign-in error, select **Sign out and try again**.

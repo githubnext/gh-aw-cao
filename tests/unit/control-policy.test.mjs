@@ -203,6 +203,41 @@ test("control policy validates provider-neutral host and Redis configuration", (
   );
 });
 
+test("control policy validates host CORS configuration", () => {
+  const policy = JSON.parse(minimalPolicy);
+  policy["control-plane"].web = {
+    host: {
+      target: { module: "container" },
+      redis: { module: "render" },
+      cors: {
+        "allowed-origins": ["https://tools.example.com", "http://localhost:5173"],
+        "allow-credentials": true,
+        "max-age": 600,
+      },
+    },
+  };
+  const source = JSON.stringify(policy);
+  assert.equal(validate(source).status, 0);
+  assert.deepEqual(
+    controlSettings(parsePolicy(source), "acme/control").web.host.cors,
+    policy["control-plane"].web.host.cors,
+  );
+
+  for (const [cors, message] of [
+    [{ "allowed-origins": ["*"] }, /allowed-origins has an invalid value/],
+    [{ "allowed-origins": ["http://tools.example.com"] }, /allowed-origins has an invalid value/],
+    [{ "allowed-origins": ["https://tools.example.com/path"] }, /allowed-origins has an invalid value/],
+    [{ "allow-credentials": true }, /allow-credentials requires allowed-origins/],
+    [{ "max-age": 0 }, /max-age must be an integer/],
+    [{ origins: [] }, /cors/],
+  ]) {
+    policy["control-plane"].web.host.cors = cors;
+    const result = validate(JSON.stringify(policy));
+    assert.notEqual(result.status, 0, JSON.stringify(cors));
+    assert.match(result.stderr, message);
+  }
+});
+
 test("control policy rejects inconsistent host capabilities", () => {
   const policy = JSON.parse(minimalPolicy);
   policy["control-plane"].web = {

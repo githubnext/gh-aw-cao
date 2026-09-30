@@ -98,6 +98,7 @@ func NewHostedAppFromEnv(
 		Collector:              collector,
 		WebhookSecret:          webhookSecret,
 		AdminUsers:             adminUsers,
+		CORS:                   host.CORS,
 		Proxy: ProxyPolicy{
 			AllowedHosts:         splitCSV(os.Getenv("CAO_ALLOWED_HOSTS")),
 			RequireHTTPS:         host.Profile.RequiresHTTPS,

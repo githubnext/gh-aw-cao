@@ -275,6 +275,7 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 		Collector:              collector,
 		WebhookSecret:          os.Getenv("CAO_GITHUB_WEBHOOK_SECRET"),
 		AdminUsers:             splitCSV(os.Getenv("CAO_GITHUB_ADMIN_USERS")),
+		CORS:                   host.CORS,
 		Proxy: ProxyPolicy{
 			AllowedHosts:   allowedHosts,
 			RequireHTTPS:   !localSimulation,

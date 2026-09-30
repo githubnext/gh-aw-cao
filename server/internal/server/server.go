@@ -49,24 +49,27 @@ type Config struct {
 	HostProfile            HostProfile
 	SingleReplicaConfirmed bool
 	Proxy                  ProxyPolicy
-	GitHubOAuth            *GitHubOAuthConfig
-	DatabaseQueriesPath    string
-	DashboardQueries       []query.Definition
-	DashboardQueriesPath   string
-	AgentCatalogPath       string
-	MCPContractPath        string
-	MCPEnabled             bool
-	GitHubActionsToken     string
-	GitHubActionsActor     string
-	ActionsRepository      string
-	GitHubAPIURL           string
-	ActionsHTTPClient      *http.Client
-	SourceDirectory        string
-	Reconciler             Reconciler
-	Collector              *CollectorConfig
-	WebhookSecret          string
-	AdminUsers             []string
-	Logger                 *log.Logger
+	// CORS is the reviewed cross-origin policy; the zero value is
+	// same-origin only.
+	CORS                 CORSPolicy
+	GitHubOAuth          *GitHubOAuthConfig
+	DatabaseQueriesPath  string
+	DashboardQueries     []query.Definition
+	DashboardQueriesPath string
+	AgentCatalogPath     string
+	MCPContractPath      string
+	MCPEnabled           bool
+	GitHubActionsToken   string
+	GitHubActionsActor   string
+	ActionsRepository    string
+	GitHubAPIURL         string
+	ActionsHTTPClient    *http.Client
+	SourceDirectory      string
+	Reconciler           Reconciler
+	Collector            *CollectorConfig
+	WebhookSecret        string
+	AdminUsers           []string
+	Logger               *log.Logger
 	// RateLimits overrides inbound request rate limits; the zero value keeps
 	// the production defaults.
 	RateLimits RateLimitConfig
@@ -95,6 +98,11 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 	if err := config.RateLimits.validate(); err != nil {
 		return nil, err
 	}
+	cors, err := config.CORS.normalize()
+	if err != nil {
+		return nil, err
+	}
+	config.CORS = cors
 	profile := config.HostProfile
 	serverLog.Printf("initializing host_profile=%s", profile.Name)
 	if err := validateHostedMode(store, &config); err != nil {
@@ -357,7 +365,7 @@ func (a *App) Handler() http.Handler {
 		}
 		instrumented.ServeHTTP(response, safe)
 	})
-	return securityHeaders(a.preAuthRateLimit(a.requireAccess(a.rateLimit(safeTelemetry))))
+	return securityHeaders(a.preAuthRateLimit(a.cors(a.requireAccess(a.rateLimit(safeTelemetry)))))
 }
 
 type originalHTTPRequestKey struct{}
@@ -533,6 +541,14 @@ func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 				writeError(response, http.StatusUnauthorized, "GitHub authentication is required")
 				return
 			}
+			if !navigationRequest(request) {
+				// Subresource fetches (web app manifest, service worker,
+				// scripts) must not follow a redirect to the cross-origin
+				// GitHub authorize endpoint, which browsers block by CORS.
+				a.logAuthBranch("access.subresource_unauthorized")
+				writeError(response, http.StatusUnauthorized, "GitHub authentication is required")
+				return
+			}
 			a.logAuthBranch("access.login_redirected")
 			http.Redirect(response, request, "/auth/login", http.StatusFound)
 			return
@@ -551,6 +567,15 @@ func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 		request = request.WithContext(context.WithValue(request.Context(), oauthSessionContextKey{}, session))
 		next.ServeHTTP(response, request)
 	})
+}
+
+// navigationRequest reports whether a request is a top-level document
+// navigation that may be redirected to the GitHub login flow. Browsers
+// identify subresource fetches with Sec-Fetch-Mode; clients that omit the
+// header keep the existing redirect behavior.
+func navigationRequest(request *http.Request) bool {
+	mode := request.Header.Get("Sec-Fetch-Mode")
+	return mode == "" || mode == "navigate"
 }
 
 func (a *App) proxyPolicy() ProxyPolicy {

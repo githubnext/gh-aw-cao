@@ -69,6 +69,7 @@ type resolvedHostPolicy struct {
 	RedisURL               string
 	RedisNamespace         string
 	RedisOptions           redisx.Options
+	CORS                   CORSPolicy
 }
 
 type hostPolicyDocument struct {
@@ -80,8 +81,9 @@ type hostPolicyDocument struct {
 }
 
 type hostPolicy struct {
-	Target targetPolicy `json:"target"`
-	Redis  redisPolicy  `json:"redis"`
+	Target targetPolicy       `json:"target"`
+	Redis  redisPolicy        `json:"redis"`
+	CORS   corsPolicyDocument `json:"cors"`
 }
 
 type targetPolicy struct {
@@ -384,6 +386,10 @@ func (policy hostPolicy) resolve(lookup func(string) (string, bool)) (*resolvedH
 	if err := profile.validate(); err != nil {
 		return nil, err
 	}
+	cors, err := policy.CORS.resolve()
+	if err != nil {
+		return nil, err
+	}
 	urlEnv := firstNonempty(policy.Redis.URLEnv, provider.urlEnv)
 	hostEnv := firstNonempty(policy.Redis.HostEnv, provider.hostEnv)
 	portEnv := firstNonempty(policy.Redis.PortEnv, provider.portEnv)
@@ -416,6 +422,7 @@ func (policy hostPolicy) resolve(lookup func(string) (string, bool)) (*resolvedH
 		SingleReplicaConfirmed: !profile.SingleReplica || policy.Target.Replicas == 1,
 		RedisURL:               redisURL,
 		RedisNamespace:         namespace,
+		CORS:                   cors,
 		RedisOptions: redisx.Options{
 			AllowPrivatePlaintext: policy.Redis.AllowPrivatePlaintext,
 			SingleSession:         provider.session == HostRedisSerialized,
