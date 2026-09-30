@@ -96,6 +96,21 @@ describe('canonical dashboard view subscriptions', () => {
     unsubscribe();
   });
 
+  it('keeps the query view identifier distinct from the subscription identifier', () => {
+    vi.stubGlobal('Worker', SubscriptionWorker);
+    const unsubscribe = subscribeCanonicalDashboardView(
+      'page:overview:view:summary', ['summary'], { pages: [] }, () => {}, undefined,
+      { pageId: 'overview', viewId: 'summary' }
+    );
+    expect(SubscriptionWorker.current?.messages.find((message) => message.operation === 'subscribe-canonical-dashboard'))
+      .toMatchObject({
+        subscriptionId: 'page:overview:view:summary',
+        pageId: 'overview',
+        viewId: 'summary'
+      });
+    unsubscribe();
+  });
+
   it('tracks duplicate listener registrations independently', () => {
     vi.stubGlobal('Worker', SubscriptionWorker);
     const listener = vi.fn();

@@ -33,6 +33,7 @@ const pending = new Map();
  *   sourceNames: string[],
  *   context: { githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[], queries?: unknown[] },
  *   pageId?: string,
+ *   viewId?: string,
  *   routeParameters?: Record<string, string>,
  *   queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card', formValues?: Record<string, string|number|boolean> },
  *   pagination?: Record<string, { limit: number, continuationToken?: string }>,
@@ -431,7 +432,7 @@ export function loadDashboardSnapshotMetadata() {
  * @param {{ githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[] }} context
  * @param {(sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void} listener
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
- * @param {{ signal?: AbortSignal, onError?: (error: Error) => void, emitCurrent?: boolean, pageId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options]
+ * @param {{ signal?: AbortSignal, onError?: (error: Error) => void, emitCurrent?: boolean, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options]
  * @returns {() => void}
  */
 export function subscribeCanonicalDashboardView(viewId, sourceNames, context, listener, pagination, options = {}) {
@@ -456,6 +457,7 @@ export function subscribeCanonicalDashboardView(viewId, sourceNames, context, li
       sourceNames: [...sourceNames],
       context,
       pageId: options.pageId,
+      viewId: options.viewId,
       routeParameters: options.routeParameters,
       queryContext: options.queryContext,
       pagination,
@@ -536,6 +538,7 @@ function registerRemoteSubscription(subscription) {
         {
           signal: controller.signal,
           pageId: subscription.pageId,
+          viewId: subscription.viewId,
           routeParameters: subscription.routeParameters,
           queryContext: subscription.queryContext
         }
@@ -584,13 +587,14 @@ function registerRemoteSubscription(subscription) {
   if (subscription.emitCurrent) void query();
 }
 
-/** @param {ViewSubscription} subscription @param {string[]} sourceNames @param {ViewSubscription['context']} context @param {ViewSubscription['pagination']} pagination @param {{ pageId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options] */
+/** @param {ViewSubscription} subscription @param {string[]} sourceNames @param {ViewSubscription['context']} context @param {ViewSubscription['pagination']} pagination @param {{ pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options] */
 function sameSubscription(subscription, sourceNames, context, pagination, options = {}) {
   return sameContext(subscription.context, context)
     && samePagination(subscription.pagination, pagination)
     && sameStringMap(subscription.routeParameters, options.routeParameters)
     && sameQueryContext(subscription.queryContext, options.queryContext)
     && subscription.pageId === options.pageId
+    && subscription.viewId === options.viewId
     && subscription.sourceNames.length === sourceNames.length
     && subscription.sourceNames.every((name, index) => name === sourceNames[index]);
 }
@@ -671,6 +675,7 @@ function registerSubscription(processor, subscription) {
     sourceNames: subscription.sourceNames,
     context: subscription.context,
     pageId: subscription.pageId,
+    viewId: subscription.viewId,
     routeParameters: subscription.routeParameters,
     queryContext: subscription.queryContext,
     pagination: subscription.pagination,

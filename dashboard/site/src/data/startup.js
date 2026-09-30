@@ -197,7 +197,7 @@ export async function startDashboardData(options) {
   /**
    * Subscribes to a bounded source set. The returned promise resolves with the
    * first snapshot; later snapshots are delivered through `pageOptions.onUpdate`.
-   * @param {{ subscriptionId: string, sourceNames: string[], pageOptions: PageLoadOptions & { pageId?: string }, pagination?: Record<string, { limit: number, continuationToken?: string }>, transform?: (sources: DashboardSources) => DashboardSources, errorLabel: string }} options
+   * @param {{ subscriptionId: string, sourceNames: string[], pageOptions: PageLoadOptions & { pageId?: string, viewId?: string }, pagination?: Record<string, { limit: number, continuationToken?: string }>, transform?: (sources: DashboardSources) => DashboardSources, errorLabel: string }} options
    */
   const subscribeSources = (options) => {
     const pageOptions = options.pageOptions;
@@ -231,6 +231,7 @@ export async function startDashboardData(options) {
         {
           signal: pageOptions.signal,
           pageId: pageOptions.pageId,
+          viewId: pageOptions.viewId,
           routeParameters: pageOptions.routeParameters,
           queryContext: pageOptions.queryContext,
           onError: (error) => {
@@ -272,7 +273,7 @@ export async function startDashboardData(options) {
     return subscribeSources({
       subscriptionId: `page:${pageId}:view:${viewId}`,
       sourceNames: [...new Set(sourceNames)],
-      pageOptions: { ...pageOptions, pageId },
+      pageOptions: { ...pageOptions, pageId, viewId },
       pagination: continuationRequests(Object.keys(bindings)),
       transform: (sources) => bindContinuations(pageId, sources, bindings, pageOptions),
       errorLabel: `Unable to update dashboard view ${viewId}`
