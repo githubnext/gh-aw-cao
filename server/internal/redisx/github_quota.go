@@ -7,7 +7,11 @@ import (
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var gitHubQuotaLog = logger.New("cao:redis:githubquota")
 
 // GitHubQuotaState is the persisted state of one independently metered
 // GitHub API quota bucket as read inside an atomic Redis script. Remaining is
@@ -322,11 +326,20 @@ func (s *Store) evalGitHubQuota(
 		return 0, 0, GitHubQuotaState{}, errors.New("github quota bucket key is invalid")
 	}
 	command := append([]string{"EVAL", script, "3"}, s.gitHubQuotaKeys(bucket)...)
+	started := time.Now()
 	value, err := s.Client.Do(ctx, append(command, arguments...)...)
 	if err != nil {
+		gitHubQuotaLog.Printf("quota script failed bucket=%s duration_ms=%d", bucket, time.Since(started).Milliseconds())
 		return 0, 0, GitHubQuotaState{}, fmt.Errorf("update Redis github quota: %w", err)
 	}
-	return parseGitHubQuotaReply(value)
+	code, extra, state, err := parseGitHubQuotaReply(value)
+	if err != nil {
+		gitHubQuotaLog.Printf("quota script returned an invalid reply bucket=%s", bucket)
+		return 0, 0, GitHubQuotaState{}, err
+	}
+	gitHubQuotaLog.Printf("quota script completed bucket=%s code=%d known=%t remaining=%d reserved=%d duration_ms=%d",
+		bucket, code, state.Known, state.Remaining, state.Reserved, time.Since(started).Milliseconds())
+	return code, extra, state, nil
 }
 
 // parseGitHubQuotaReply decodes the shared quota script reply: a result code,

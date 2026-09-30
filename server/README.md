@@ -965,7 +965,15 @@ retains
 token, login, provider message, query string, or other user identifier is
 added to its telemetry. The query engine and ingestion paths
 start dedicated `cao_dashboard.query.execute` and `cao_dashboard.ingest.run`
-spans. MCP requests use the OpenTelemetry MCP semantic conventions, including
+spans. The GitHub API quota service (`internal/githubquota/`) starts
+`cao_githubquota.<operation>` spans (`observe`, `commit`, `reserve`, `release`,
+`park`, `unpark`, `state`, `select`) and records
+`cao_githubquota.operation.count` and `cao_githubquota.operation.duration`
+by operation, bucket App and resource, and a fixed `cao_githubquota.outcome`.
+Per-bucket `cao_githubquota.bucket.remaining`, `.reserved`, `.available`, and
+`.parked` gauges are keyed by App, installation, and resource. Reservation IDs,
+tokens, and free-form parking reasons are never recorded. Its debug logs use the
+`cao:githubquota` and `cao:redis:githubquota` namespaces. MCP requests use the OpenTelemetry MCP semantic conventions, including
 `mcp.method.name`, `mcp.protocol.version`, `gen_ai.operation.name`, and
 `gen_ai.tool.name`; tool arguments, results, session identifiers, untrusted
 tracestate and baggage are never recorded. MCP methods are allowlisted and

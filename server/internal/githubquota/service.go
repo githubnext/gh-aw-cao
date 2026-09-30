@@ -12,6 +12,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"go.opentelemetry.io/otel/attribute"
+
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
@@ -169,50 +171,75 @@ func New(store Store, options Options) (*Service, error) {
 // observation from a newer reset window replaces the recorded window; one
 // from the recorded window never increases remaining quota; one from an older
 // window is ignored.
-func (s *Service) Observe(ctx context.Context, bucket BucketID, observation Observation) error {
-	_, err := s.observe(ctx, bucket, observation, "")
+func (s *Service) Observe(ctx context.Context, bucket BucketID, observation Observation) (err error) {
+	ctx, op := startOperation(ctx, "observe", bucket)
+	defer func() { op.finish(ctx, err) }()
+	_, err = s.observe(ctx, op, bucket, observation, "")
 	return err
 }
 
 // Commit reconciles a reservation with the authoritative observation taken
 // after its work ran. The observation is recorded and the reservation removed
 // in one atomic step, so the consumed capacity is counted exactly once.
-func (s *Service) Commit(ctx context.Context, reservation Reservation, observation Observation) error {
+func (s *Service) Commit(ctx context.Context, reservation Reservation, observation Observation) (err error) {
+	ctx, op := startOperation(ctx, "commit", reservation.Bucket)
+	defer func() { op.finish(ctx, err) }()
 	if reservation.ID == "" {
+		op.outcome = outcomeInvalid
 		return errors.New("github quota commit requires a reservation")
 	}
-	released, err := s.observe(ctx, reservation.Bucket, observation, reservation.ID)
+	released, err := s.observe(ctx, op, reservation.Bucket, observation, reservation.ID)
 	if err != nil {
 		return err
 	}
 	if !released {
+		op.outcome = outcomeExpired
 		quotaLog.Printf("committed reservation had already expired bucket=%s", reservation.Bucket.Normalize())
 	}
 	return nil
 }
 
-func (s *Service) observe(ctx context.Context, bucket BucketID, observation Observation, releaseID string) (bool, error) {
+func (s *Service) observe(
+	ctx context.Context, op *operation, bucket BucketID, observation Observation, releaseID string,
+) (bool, error) {
 	bucket, err := normalizeBucket(bucket)
 	if err != nil {
+		op.outcome = outcomeInvalid
 		return false, err
 	}
+	op.setBucket(bucket)
 	if observation.Limit < 0 || observation.Remaining < 0 || observation.Remaining > observation.Limit {
+		op.outcome = outcomeInvalid
 		return false, errors.New("github quota observation requires 0 <= remaining <= limit")
 	}
 	if observation.ResetAt.IsZero() {
+		op.outcome = outcomeInvalid
 		return false, errors.New("github quota observation requires a reset time")
 	}
-	outcome, released, _, err := s.store.ObserveGitHubQuota(ctx, bucket.storageKey(), redisx.GitHubQuotaObservation{
+	outcome, released, state, err := s.store.ObserveGitHubQuota(ctx, bucket.storageKey(), redisx.GitHubQuotaObservation{
 		Limit:      int64(observation.Limit),
 		Remaining:  int64(observation.Remaining),
 		ResetAt:    observation.ResetAt,
 		ObservedAt: observation.ObservedAt,
 	}, releaseID)
 	if err != nil {
+		quotaLog.Printf("observation failed bucket=%s", bucket)
 		return false, err
 	}
-	if outcome == redisx.GitHubQuotaObservationStale {
+	described := s.describe(bucket, state)
+	recordBucketState(ctx, described)
+	switch outcome {
+	case redisx.GitHubQuotaObservationStale:
+		op.outcome = outcomeStale
 		quotaLog.Printf("ignored stale observation bucket=%s", bucket)
+	case redisx.GitHubQuotaObservationReplaced:
+		op.outcome = outcomeReplaced
+		quotaLog.Printf("observation started reset window bucket=%s remaining=%d limit=%d reset=%s",
+			bucket, described.Remaining, described.Limit, described.ResetAt.Format(time.RFC3339))
+	default:
+		op.outcome = outcomeReconciled
+		quotaLog.Printf("observation reconciled bucket=%s remaining=%d reserved=%d released=%t",
+			bucket, described.Remaining, described.Reserved, released)
 	}
 	return released, nil
 }
@@ -220,29 +247,43 @@ func (s *Service) observe(ctx context.Context, bucket BucketID, observation Obse
 // Reserve atomically reserves capacity in one bucket. It returns an
 // *UnavailableError wrapping ErrParked, ErrExhausted, or ErrUnknown when the
 // bucket cannot admit the request.
-func (s *Service) Reserve(ctx context.Context, bucket BucketID, request ReservationRequest) (Reservation, error) {
-	bucket, err := normalizeBucket(bucket)
+func (s *Service) Reserve(ctx context.Context, bucket BucketID, request ReservationRequest) (_ Reservation, err error) {
+	ctx, op := startOperation(ctx, "reserve", bucket)
+	defer func() { op.finish(ctx, err) }()
+	bucket, err = normalizeBucket(bucket)
 	if err != nil {
+		op.outcome = outcomeInvalid
 		return Reservation{}, err
 	}
+	op.setBucket(bucket)
 	if request.EstimatedCost <= 0 || request.MinimumRemain < 0 || request.TTL < 0 {
+		op.outcome = outcomeInvalid
 		return Reservation{}, errors.New("github quota reservation requires a positive cost and non-negative minimum remain and TTL")
 	}
 	ttl := request.TTL
 	if ttl == 0 {
 		ttl = s.reservationTTL
 	}
+	floor := s.floor(request.MinimumRemain)
+	op.span.SetAttributes(
+		attribute.Int(attributeCost, request.EstimatedCost),
+		attribute.Int(attributeFloor, floor))
 	id, err := newReservationID()
 	if err != nil {
 		return Reservation{}, err
 	}
 	admission, expires, state, err := s.store.ReserveGitHubQuota(
-		ctx, bucket.storageKey(), id, int64(request.EstimatedCost), int64(s.floor(request.MinimumRemain)), ttl)
+		ctx, bucket.storageKey(), id, int64(request.EstimatedCost), int64(floor), ttl)
 	if err != nil {
+		quotaLog.Printf("reservation failed bucket=%s", bucket)
 		return Reservation{}, err
 	}
+	recordBucketState(ctx, s.describe(bucket, state))
 	switch admission {
 	case redisx.GitHubQuotaAdmitted:
+		op.outcome = outcomeAdmitted
+		quotaLog.Printf("reservation admitted bucket=%s cost=%d floor=%d remaining=%d reserved=%d expires=%s",
+			bucket, request.EstimatedCost, floor, state.Remaining, state.Reserved, expires.Format(time.RFC3339))
 		return Reservation{ID: id, Bucket: bucket, Amount: request.EstimatedCost, ExpiresAt: expires}, nil
 	case redisx.GitHubQuotaParked:
 		return Reservation{}, s.unavailable(bucket, StatusParked, state)
@@ -257,58 +298,108 @@ func (s *Service) Reserve(ctx context.Context, bucket BucketID, request Reservat
 
 // Release returns unused reserved capacity. Releasing an already expired or
 // committed reservation is not an error.
-func (s *Service) Release(ctx context.Context, reservation Reservation) error {
+func (s *Service) Release(ctx context.Context, reservation Reservation) (err error) {
+	ctx, op := startOperation(ctx, "release", reservation.Bucket)
+	defer func() { op.finish(ctx, err) }()
 	bucket, err := normalizeBucket(reservation.Bucket)
 	if err != nil {
+		op.outcome = outcomeInvalid
 		return err
 	}
+	op.setBucket(bucket)
 	if reservation.ID == "" {
+		op.outcome = outcomeInvalid
 		return errors.New("github quota release requires a reservation")
 	}
-	_, _, err = s.store.ReleaseGitHubQuota(ctx, bucket.storageKey(), reservation.ID)
-	return err
+	released, state, err := s.store.ReleaseGitHubQuota(ctx, bucket.storageKey(), reservation.ID)
+	if err != nil {
+		quotaLog.Printf("release failed bucket=%s", bucket)
+		return err
+	}
+	recordBucketState(ctx, s.describe(bucket, state))
+	if !released {
+		op.outcome = outcomeExpired
+	}
+	quotaLog.Printf("reservation released bucket=%s amount=%d released=%t reserved=%d",
+		bucket, reservation.Amount, released, state.Reserved)
+	return nil
 }
 
 // Park makes a bucket temporarily unavailable until the supplied instant
 // without changing its recorded quota. Parking only ever extends.
-func (s *Service) Park(ctx context.Context, bucket BucketID, until time.Time, reason string) error {
-	bucket, err := normalizeBucket(bucket)
+func (s *Service) Park(ctx context.Context, bucket BucketID, until time.Time, reason string) (err error) {
+	ctx, op := startOperation(ctx, "park", bucket)
+	defer func() { op.finish(ctx, err) }()
+	bucket, err = normalizeBucket(bucket)
 	if err != nil {
+		op.outcome = outcomeInvalid
 		return err
 	}
+	op.setBucket(bucket)
 	reason = sanitizeReason(reason)
-	extended, _, err := s.store.ParkGitHubQuota(ctx, bucket.storageKey(), until, reason)
+	extended, state, err := s.store.ParkGitHubQuota(ctx, bucket.storageKey(), until, reason)
 	if err != nil {
+		quotaLog.Printf("parking failed bucket=%s", bucket)
 		return err
 	}
+	recordBucketState(ctx, s.describe(bucket, state))
 	if extended {
+		op.outcome = outcomeExtended
 		quotaLog.Printf("parked bucket=%s until=%s reason=%q", bucket, until.UTC().Format(time.RFC3339), reason)
+	} else {
+		op.outcome = outcomeUnchanged
+		quotaLog.Printf("parking not extended bucket=%s parked_until=%s", bucket, state.ParkedUntil.Format(time.RFC3339))
 	}
 	return nil
 }
 
 // Unpark clears a bucket's parking, for example to lift an operator
 // suspension.
-func (s *Service) Unpark(ctx context.Context, bucket BucketID) error {
-	bucket, err := normalizeBucket(bucket)
+func (s *Service) Unpark(ctx context.Context, bucket BucketID) (err error) {
+	ctx, op := startOperation(ctx, "unpark", bucket)
+	defer func() { op.finish(ctx, err) }()
+	bucket, err = normalizeBucket(bucket)
 	if err != nil {
+		op.outcome = outcomeInvalid
 		return err
 	}
-	_, err = s.store.UnparkGitHubQuota(ctx, bucket.storageKey())
-	return err
+	op.setBucket(bucket)
+	state, err := s.store.UnparkGitHubQuota(ctx, bucket.storageKey())
+	if err != nil {
+		quotaLog.Printf("unpark failed bucket=%s", bucket)
+		return err
+	}
+	recordBucketState(ctx, s.describe(bucket, state))
+	quotaLog.Printf("unparked bucket=%s", bucket)
+	return nil
 }
 
 // State reports a bucket's current quota, reservations, parking, and status.
-func (s *Service) State(ctx context.Context, bucket BucketID) (BucketState, error) {
+func (s *Service) State(ctx context.Context, bucket BucketID) (_ BucketState, err error) {
+	ctx, op := startOperation(ctx, "state", bucket)
+	defer func() { op.finish(ctx, err) }()
+	state, err := s.state(ctx, op, bucket)
+	if err == nil {
+		op.span.SetAttributes(attribute.String(attributeStatus, string(state.Status)))
+	}
+	return state, err
+}
+
+func (s *Service) state(ctx context.Context, op *operation, bucket BucketID) (BucketState, error) {
 	bucket, err := normalizeBucket(bucket)
 	if err != nil {
+		op.outcome = outcomeInvalid
 		return BucketState{}, err
 	}
+	op.setBucket(bucket)
 	state, err := s.store.GitHubQuotaSnapshot(ctx, bucket.storageKey())
 	if err != nil {
+		quotaLog.Printf("snapshot failed bucket=%s", bucket)
 		return BucketState{}, err
 	}
-	return s.describe(bucket, state), nil
+	described := s.describe(bucket, state)
+	recordBucketState(ctx, described)
+	return described, nil
 }
 
 // States reports every supplied bucket for operator observability.
@@ -330,27 +421,38 @@ func (s *Service) States(ctx context.Context, buckets []BucketID) ([]BucketState
 // available headroom; ties keep candidate order. Selection does not reserve
 // capacity: callers reserve on the selected bucket, which remains the atomic
 // admission decision.
-func (s *Service) Select(ctx context.Context, candidates []BucketID, requirement Requirement) (BucketID, error) {
+func (s *Service) Select(ctx context.Context, candidates []BucketID, requirement Requirement) (_ BucketID, err error) {
+	ctx, op := startOperation(ctx, "select", BucketID{})
+	defer func() { op.finish(ctx, err) }()
+	op.span.SetAttributes(
+		attribute.Int(attributeCandidates, len(candidates)),
+		attribute.Int(attributeCost, requirement.EstimatedCost))
 	if requirement.EstimatedCost < 0 || requirement.MinimumRemain < 0 {
+		op.outcome = outcomeInvalid
 		return BucketID{}, errors.New("github quota requirement must not be negative")
 	}
 	floor := s.floor(requirement.MinimumRemain)
+	op.span.SetAttributes(attribute.Int(attributeFloor, floor))
 	seen := make(map[BucketID]struct{}, len(candidates))
 	var best *BucketState
 	var denial *UnavailableError
 	for _, candidate := range candidates {
 		bucket, err := normalizeBucket(candidate)
 		if err != nil {
+			op.outcome = outcomeInvalid
 			return BucketID{}, err
 		}
 		if _, duplicate := seen[bucket]; duplicate {
 			continue
 		}
 		seen[bucket] = struct{}{}
-		state, err := s.State(ctx, bucket)
+		snapshot, err := s.store.GitHubQuotaSnapshot(ctx, bucket.storageKey())
 		if err != nil {
+			quotaLog.Printf("selection snapshot failed bucket=%s", bucket)
 			return BucketID{}, err
 		}
+		state := s.describe(bucket, snapshot)
+		recordBucketState(ctx, state)
 		status := state.Status
 		if status != StatusParked && status != StatusUnknown {
 			status = StatusAvailable
@@ -358,6 +460,7 @@ func (s *Service) Select(ctx context.Context, candidates []BucketID, requirement
 				status = StatusExhausted
 			}
 		}
+		quotaLog.Printf("selection candidate bucket=%s status=%s available=%d", bucket, status, state.Available)
 		if status != StatusAvailable {
 			denial = preferDenial(denial, s.unavailableFromState(state, status))
 			continue
@@ -367,11 +470,16 @@ func (s *Service) Select(ctx context.Context, candidates []BucketID, requirement
 		}
 	}
 	if best != nil {
+		op.outcome = outcomeSelected
+		op.setBucket(best.Bucket)
+		quotaLog.Printf("selected bucket=%s available=%d candidates=%d", best.Bucket, best.Available, len(seen))
 		return best.Bucket, nil
 	}
 	if denial == nil {
+		quotaLog.Printf("selection had no candidates")
 		return BucketID{}, ErrNoCandidates
 	}
+	quotaLog.Printf("selection found no usable bucket candidates=%d status=%s", len(seen), denial.Status)
 	return BucketID{}, denial
 }
 
