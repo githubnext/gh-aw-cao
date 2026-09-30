@@ -112,10 +112,10 @@ model QueryMetrics {
   selectCount: int32;
   orderByCount: int32;
   limitCount: int32;
-  pushedDown: string[];
+  pushedDown: string[] | null;
   redisCommands: int32;
   redisRows: int32;
-  fallbackOperations: string[];
+  fallbackOperations: string[] | null;
 }
 @jsonSchema
 model QueryResponse {
@@ -138,7 +138,11 @@ model QueryPlanTooLarge {
 namespace Queries {
   /** Execute Dashboard Language against the active server projection. Up to 256 source names and 8 MiB of request body. */
   @route("/api/v1/query")
-  @post op execute(@body request: QueryRequest):
+  @post op execute(
+    /** Required in hosted mode for every POST; omitted in local bearer mode. */
+    @header("X-CSRF-Token") csrfToken?: string,
+    @body request: QueryRequest
+  ):
     QueryResponse | BadRequest | Unauthorized | Forbidden | QueryPlanTooLarge | TooManyRequests | Unavailable;
 
   /** Server-sent stream: each `data:` line is a RevisionEvent JSON object; `: keepalive` comments arrive every 20 seconds. */

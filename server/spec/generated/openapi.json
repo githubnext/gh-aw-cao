@@ -1698,7 +1698,17 @@
       "post": {
         "operationId": "Queries_execute",
         "description": "Execute Dashboard Language against the active server projection. Up to 256 source names and 8 MiB of request body.",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": false,
+            "description": "Required in hosted mode for every POST; omitted in local bearer mode.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "The request has succeeded.",
@@ -3146,10 +3156,17 @@
             "format": "int32"
           },
           "pushedDown": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "redisCommands": {
             "type": "integer",
@@ -3160,10 +3177,17 @@
             "format": "int32"
           },
           "fallbackOperations": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },

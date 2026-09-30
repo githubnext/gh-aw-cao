@@ -131,10 +131,17 @@
                     "maximum": 2147483647
                 },
                 "pushedDown": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                    "anyOf": [
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
                 },
                 "redisCommands": {
                     "type": "integer",
@@ -147,10 +154,17 @@
                     "maximum": 2147483647
                 },
                 "fallbackOperations": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                    "anyOf": [
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
                 }
             },
             "required": [

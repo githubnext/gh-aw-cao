@@ -27,6 +27,7 @@ test('the generated contract describes the implemented security and wire formats
   assert.ok(query.security.some(entry => 'ApiKeyAuth' in entry))
   assert.ok(query.responses['422'].content['application/json'])
   assert.ok(query.requestBody.content['application/json'])
+  assert.ok(query.parameters.some(parameter => parameter.name === 'X-CSRF-Token'))
   assert.ok(openapi.paths['/api/auth/session'].get.security.some(entry => 'ApiKeyAuth' in entry))
   assert.equal(openapi.paths['/api/health'].get.security, undefined)
   assert.equal(openapi.paths['/api/github/webhook'].post.security, undefined)
@@ -35,6 +36,9 @@ test('the generated contract describes the implemented security and wire formats
   assert.ok(openapi.paths['/api/admin/rebuild'].post.responses['202'])
   assert.ok(openapi.paths['/auth/logout'].post.responses['204'])
   assert.equal(openapi.components.securitySchemes.ApiKeyAuth.name, 'cao_session')
+  for (const field of ['pushedDown', 'fallbackOperations']) {
+    assert.ok(openapi.components.schemas.QueryMetrics.properties[field].anyOf.some(branch => branch.type === 'null'))
+  }
 })
 
 test('structured payload fields stay in sync with Go JSON tags', () => {
