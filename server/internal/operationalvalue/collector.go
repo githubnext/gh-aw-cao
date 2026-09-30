@@ -185,11 +185,11 @@ func Collect(ctx context.Context, config Config) (Result, error) {
 				result.Warnings = append(result.Warnings, rateErr.Error())
 				continue
 			}
-			if remaining <= config.RateLimitReserve {
-				result.Warnings = append(result.Warnings, fmt.Sprintf(
-					"GitHub API core remaining is at or below the reserved %d requests",
-					config.RateLimitReserve,
-				))
+			check := evaluateRateLimitReserve(remaining, config.RateLimitReserve, rateLimitCheckBlocking)
+			if check.warning != "" {
+				result.Warnings = append(result.Warnings, check.warning)
+			}
+			if check.skipAdapter {
 				continue
 			}
 		}
@@ -264,11 +264,12 @@ func Collect(ctx context.Context, config Config) (Result, error) {
 		remaining, rateErr := githubAPIRemaining(ctx, config)
 		if rateErr != nil {
 			result.Warnings = append(result.Warnings, rateErr.Error())
-		} else if remaining < config.RateLimitReserve {
-			result.Warnings = append(result.Warnings, fmt.Sprintf(
-				"operational value crossed the reserved GitHub API floor of %d requests",
-				config.RateLimitReserve,
-			))
+		} else {
+			check := evaluateRateLimitReserve(remaining, config.RateLimitReserve, rateLimitCheckFinal)
+			if check.warning != "" {
+				result.Warnings = append(result.Warnings, check.warning)
+			}
+			collectLog.Printf("rate limit reserve checked point=%s crossed=%t", rateLimitCheckFinal, check.warning != "")
 		}
 	}
 	result.Values = len(values)
@@ -429,6 +430,51 @@ func (b *limitedBuffer) Exceeded() bool {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.exceeded
+}
+
+// rateLimitCheckPoint names where in Collect a GitHub API rate-limit reserve
+// check occurred, stable for logging without exposing the remaining count.
+type rateLimitCheckPoint string
+
+const (
+	rateLimitCheckBlocking rateLimitCheckPoint = "blocking"
+	rateLimitCheckFinal    rateLimitCheckPoint = "final"
+)
+
+// rateLimitReserveCheck is the outcome evaluateRateLimitReserve derives from
+// a remaining-request count and the configured reserve floor.
+type rateLimitReserveCheck struct {
+	warning     string
+	skipAdapter bool
+}
+
+// evaluateRateLimitReserve decides whether the GitHub API core rate limit has
+// crossed the configured reserve floor and, for a blocking check, whether the
+// current adapter must be skipped. It is a pure function so the blocking
+// (<=) and final (<) comparisons are testable independently of the exec.Cmd
+// call githubAPIRemaining performs. The blocking check reserves headroom for
+// the adapter about to run; the final check only reports whether that
+// headroom was crossed after every adapter ran.
+func evaluateRateLimitReserve(remaining, reserve int, point rateLimitCheckPoint) rateLimitReserveCheck {
+	if point == rateLimitCheckBlocking {
+		if remaining <= reserve {
+			return rateLimitReserveCheck{
+				warning: fmt.Sprintf(
+					"GitHub API core remaining is at or below the reserved %d requests", reserve,
+				),
+				skipAdapter: true,
+			}
+		}
+		return rateLimitReserveCheck{}
+	}
+	if remaining < reserve {
+		return rateLimitReserveCheck{
+			warning: fmt.Sprintf(
+				"operational value crossed the reserved GitHub API floor of %d requests", reserve,
+			),
+		}
+	}
+	return rateLimitReserveCheck{}
 }
 
 func githubAPIRemaining(ctx context.Context, config Config) (int, error) {

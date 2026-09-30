@@ -82,6 +82,59 @@ func TestPersistValuesKeepsRetainedValuesWithoutActiveEntry(t *testing.T) {
 	}
 }
 
+func TestEvaluateRateLimitReserveBlockingSkipsAdapterAtOrBelowReserve(t *testing.T) {
+	cases := []struct {
+		name        string
+		remaining   int
+		reserve     int
+		wantWarning bool
+		wantSkip    bool
+	}{
+		{name: "above reserve", remaining: 101, reserve: 100, wantWarning: false, wantSkip: false},
+		{name: "at reserve", remaining: 100, reserve: 100, wantWarning: true, wantSkip: true},
+		{name: "below reserve", remaining: 99, reserve: 100, wantWarning: true, wantSkip: true},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			check := evaluateRateLimitReserve(testCase.remaining, testCase.reserve, rateLimitCheckBlocking)
+			if (check.warning != "") != testCase.wantWarning {
+				t.Fatalf("warning = %q, wantWarning = %t", check.warning, testCase.wantWarning)
+			}
+			if check.skipAdapter != testCase.wantSkip {
+				t.Fatalf("skipAdapter = %t, want %t", check.skipAdapter, testCase.wantSkip)
+			}
+		})
+	}
+}
+
+func TestEvaluateRateLimitReserveFinalOnlyWarnsStrictlyBelowReserve(t *testing.T) {
+	// The final check reports whether the floor was crossed after every
+	// adapter ran; it must never skip an adapter and must use a strict
+	// comparison so exactly-at-reserve does not warn, unlike the blocking
+	// check performed before each adapter.
+	cases := []struct {
+		name        string
+		remaining   int
+		reserve     int
+		wantWarning bool
+	}{
+		{name: "above reserve", remaining: 101, reserve: 100, wantWarning: false},
+		{name: "at reserve", remaining: 100, reserve: 100, wantWarning: false},
+		{name: "below reserve", remaining: 99, reserve: 100, wantWarning: true},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			check := evaluateRateLimitReserve(testCase.remaining, testCase.reserve, rateLimitCheckFinal)
+			if (check.warning != "") != testCase.wantWarning {
+				t.Fatalf("warning = %q, wantWarning = %t", check.warning, testCase.wantWarning)
+			}
+			if check.skipAdapter {
+				t.Fatal("final check must never request skipping an adapter")
+			}
+		})
+	}
+}
+
 func TestDiscoverScriptsFindsAdaptersSortedByCampaign(t *testing.T) {
 	root := t.TempDir()
 	for _, campaign := range []string{"zeta", "alpha"} {
