@@ -1,5 +1,5 @@
 {
-  "source_sha": "b20370bd3ea061baa3707d28cb175bfd263b479a",
+  "source_sha": "42c2b779755ade617b760d6e56ec330ecebf669e",
   "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
@@ -38,7 +38,7 @@
       "worker_run_id": "36658388705",
       "category": "artifact transfer and Pages packaging",
       "evidence_run_ids": [36657997387, 36653323698, 36649101159, 36648890547, 36648633676, 36648478342, 36646927879, 36646895035],
-      "outcome": "no_actionable_improvement: latest 8 comparable successful docs.yml runs kept Pages upload at 4-7s (median 6s, p90 7s), deploy at 9-20s on schedule-triggered deployments (median 14s, p90 19s), and the uploaded github-pages artifact near 30.0 MB; transfer and packaging remain below the 60s/15% threshold, while duplicate workflow_run rebuilds remain the only material waste already tracked under scheduling."
+      "outcome": "no_actionable_improvement: latest 8 comparable successful docs.yml runs kept Pages upload at 4-7s (median 6s, p90 7s), deploy at 9-20s on schedule-triggered deployments (median 14s, p90 19s), and the uploaded github-pages artifact near 30.0 MB; transfer and packaging remain below the 60s/15% threshold, while duplicate workflow_run rebuilds remain the only material waste already tracked under scheduling." 
     },
     {
       "evaluated_at": "2026-09-30T01:44:30Z",
@@ -187,7 +187,7 @@
       "worker_run_id": "36716394299",
       "category": "reusable dashboard generation",
       "evidence_run_ids": [36716310050, 36715347114, 36714890196, 36712268212, 36711776283, 36711471019, 36711357155, 36711314063, 36710799117, 36710018714],
-      "outcome": "no_actionable_improvement: latest 10 successful docs.yml runs in the last 14 days all restored the central-agentic-ops-dashboard cache and skipped dashboard artifact lookup/download, keeping dashboard restore at 1-3s versus a build-job median of 45.5s. The sampled matching CAO Dashboard source run spent 29s in Upgrade fallback activity data and only 3s in Assemble Dashboard Language site, so reusable dashboard generation is not the docs bottleneck. The only material docs waste still visible is the already-open duplicate workflow_run rebuild issue #15029 under scheduling.",
+      "outcome": "no_actionable_improvement: latest 10 successful docs.yml runs in the last 14 days all restored the central-agentic-ops-dashboard cache and skipped dashboard artifact lookup/download, keeping dashboard restore at 1-3s versus a build-job median of 45.5s. The sampled matching CAO Dashboard source run for the same dashboard SHA spent 29s in Upgrade fallback activity data and only 3s in Assemble Dashboard Language site, so reusable dashboard generation is not the docs bottleneck. The only material docs waste still visible is the already-open duplicate workflow_run rebuild issue #15029 under scheduling.",
       "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
     },
     {
@@ -235,6 +235,14 @@
       "category": "Astro documentation generation",
       "evidence_run_ids": [36734924113, 36733706657, 36732262893, 36731701438, 36730699521, 36729417691, 36727642383, 36727220885, 36726963736, 36726042924, 36724870133, 36723915311],
       "outcome": "no_actionable_improvement: latest 12 completed successful docs.yml runs in the last 14 days included 12 comparable successes, with 12 build executions and 5 deploy executions. Queue time stayed at 0s median and p90, workflow execution median was 67.5s (p90 121.8s), build-job median 47s (p90 52.8s), deploy-job median 43s across deploying runs (p90 61.6s), and Build documentation stayed at 13s median (p90 14s). Trusted cache metadata confirmed both the npm package cache and the node_modules restore cache hit on sampled built runs, and the Astro build log for run 36733706657 showed the site build itself completing in 10.50s with pagefind in 291ms and image optimization in 206ms. Astro documentation generation remains below the 60s or 15% threshold, while the only material docs waste still visible remains the already-open duplicate workflow_run rebuild issue #15029.",
+      "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
+    },
+    {
+      "evaluated_at": "2026-09-30T16:05:00Z",
+      "worker_run_id": "36740515268",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [36740743782, 36740343633, 36739998828, 36738710344, 36736893249, 36734924113, 36733706657, 36732262893],
+      "outcome": "no_actionable_improvement: within the latest 20 completed docs.yml runs from the last 14 days, 8 successful runs provided at least five comparable successes and 7 executed the build job. Trusted cache metadata in sampled logs showed node_modules and the cached CAO Dashboard both hitting; Install dependencies, Save node_modules, dashboard lookup, and dashboard artifact download were skipped on built runs. Median full workflow time was 53.5s with p90 98.2s; median build job time was 40s with p90 49.8s; schedule-freshness added 6-10s before built schedule runs; Upload Pages artifact stayed at 5-8s (median 7s, p90 7.9s). Deploy execution on schedule-triggered publishing runs stayed at 13s median, with one 72s outlier driving deploy p90 to 55.0s and full-workflow p90 upward. Artifact transfer and Pages packaging remain below the 60s or 15% threshold, and the only recurring material waste still visible remains the already-recorded same-SHA workflow_run duplicate rebuild fingerprint.",
       "suggestion_fingerprint": "scheduling-skip-workflow_run-when-dashboard-head-matches-current-sha"
     }
   ]
