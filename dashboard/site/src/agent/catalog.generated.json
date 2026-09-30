@@ -629,7 +629,8 @@
         "indexing-daily-workflow-runs",
         "indexing-database-table-counts",
         "indexing-transactions",
-        "ingestion-health"
+        "ingestion-health",
+        "ingestion-queue-sizes"
       ]
     },
     {
@@ -869,8 +870,8 @@
   "queries": [
     {
       "id": "event-base",
-      "intent": "Unify retained run-owned records for entity-events.",
-      "objective": "Establish the retained run-owned event evidence available for event inspection.",
+      "intent": "Project shared event fields before combining run-owned records.",
+      "objective": "Provide the narrow retained event evidence needed for inspection and run import-coverage analysis.",
       "acceptance": "The result unions retained audit, domain, tool, and issue records with their available run identity; an empty or unavailable preview cannot establish zero source activity or complete import coverage.",
       "description": "",
       "parameters": [],
@@ -3018,6 +3019,78 @@
         "requirements": [
           "marketplace-packages"
         ]
+      }
+    },
+    {
+      "id": "ingestion-queued",
+      "intent": "Label current webhook queue depth for the administrator queue chart.",
+      "objective": "Identify webhook collection work waiting in the queue.",
+      "acceptance": "Show the observed queue depth only when collection is configured; missing or unauthorized health data is not zero pending work.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "collection-health"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires collection-health, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "ingestion-inflight",
+      "intent": "Label current in-flight collection tasks for the administrator queue chart.",
+      "objective": "Distinguish leased collection tasks from queued webhook work.",
+      "acceptance": "Show the observed pending task count only when collection is configured; do not infer a count from an unavailable source.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "collection-health"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires collection-health, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "ingestion-backfill",
+      "intent": "Label current queued backfill runs for the administrator queue chart.",
+      "objective": "Identify historical run tasks still awaiting collection.",
+      "acceptance": "Show the observed queued backfill run count only when collection is configured; missing health data does not imply completed backfill.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "collection-health"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires collection-health, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "ingestion-queue-sizes",
+      "intent": "Compare pending webhook and historical backfill work from the administrator-only server snapshot.",
+      "objective": "Spot a growing backlog without confusing in-flight tasks with unprocessed work.",
+      "acceptance": "Queue sizes come only from an authorized collection-health snapshot; unavailable state is not zero.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "ingestion-backfill",
+        "ingestion-inflight",
+        "ingestion-queued"
+      ],
+      "used-by-pages": [
+        "indexing"
+      ],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires collection-health, which the local SQLite projection does not provide."
       }
     },
     {

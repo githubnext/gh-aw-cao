@@ -1,14 +1,67 @@
 [
  {
   "name": "event-base",
-  "intent": "Unify retained run-owned records for entity-events.",
-  "objective": "Establish the retained run-owned event evidence available for event inspection.",
+  "intent": "Project shared event fields before combining run-owned records.",
+  "objective": "Provide the narrow retained event evidence needed for inspection and run import-coverage analysis.",
   "acceptance": "The result unions retained audit, domain, tool, and issue records with their available run identity; an empty or unavailable preview cannot establish zero source activity or complete import coverage.",
   "from": "audits",
   "union": [
    "domains",
    "tools",
    "issues"
+  ],
+  "select": [
+   {
+    "field": "organization"
+   },
+   {
+    "field": "repository"
+   },
+   {
+    "field": "workflow"
+   },
+   {
+    "field": "run"
+   },
+   {
+    "field": "run-attempt"
+   },
+   {
+    "field": "event"
+   },
+   {
+    "field": "event-source"
+   },
+   {
+    "field": "event-type"
+   },
+   {
+    "field": "event-summary"
+   },
+   {
+    "field": "event-status"
+   },
+   {
+    "field": "github-entity-type"
+   },
+   {
+    "field": "safe-output-type"
+   },
+   {
+    "field": "safe-output-url"
+   },
+   {
+    "field": "correlation-id"
+   },
+   {
+    "field": "implementation-pull-request-url"
+   },
+   {
+    "field": "event-timestamp"
+   },
+   {
+    "field": "run-link"
+   }
   ]
  },
  {
@@ -7069,6 +7122,139 @@
   ]
  },
  {
+  "name": "ingestion-queued",
+  "intent": "Label current webhook queue depth for the administrator queue chart.",
+  "objective": "Identify webhook collection work waiting in the queue.",
+  "acceptance": "Show the observed queue depth only when collection is configured; missing or unauthorized health data is not zero pending work.",
+  "from": "collection-health",
+  "filter": {
+   "predicates": [
+    {
+     "field": "configured",
+     "equals": true
+    }
+   ]
+  },
+  "compute": [
+   {
+    "as": "queue",
+    "function": "coalesce",
+    "args": [
+     {
+      "value": "Webhook queue"
+     },
+     {
+      "value": "Webhook queue"
+     }
+    ]
+   }
+  ],
+  "select": [
+   {
+    "field": "queue"
+   },
+   {
+    "field": "queue-depth",
+    "as": "tasks"
+   }
+  ]
+ },
+ {
+  "name": "ingestion-inflight",
+  "intent": "Label current in-flight collection tasks for the administrator queue chart.",
+  "objective": "Distinguish leased collection tasks from queued webhook work.",
+  "acceptance": "Show the observed pending task count only when collection is configured; do not infer a count from an unavailable source.",
+  "from": "collection-health",
+  "filter": {
+   "predicates": [
+    {
+     "field": "configured",
+     "equals": true
+    }
+   ]
+  },
+  "compute": [
+   {
+    "as": "queue",
+    "function": "coalesce",
+    "args": [
+     {
+      "value": "In flight"
+     },
+     {
+      "value": "In flight"
+     }
+    ]
+   }
+  ],
+  "select": [
+   {
+    "field": "queue"
+   },
+   {
+    "field": "pending-tasks",
+    "as": "tasks"
+   }
+  ]
+ },
+ {
+  "name": "ingestion-backfill",
+  "intent": "Label current queued backfill runs for the administrator queue chart.",
+  "objective": "Identify historical run tasks still awaiting collection.",
+  "acceptance": "Show the observed queued backfill run count only when collection is configured; missing health data does not imply completed backfill.",
+  "from": "collection-health",
+  "filter": {
+   "predicates": [
+    {
+     "field": "configured",
+     "equals": true
+    }
+   ]
+  },
+  "compute": [
+   {
+    "as": "queue",
+    "function": "coalesce",
+    "args": [
+     {
+      "value": "Backfill run tasks"
+     },
+     {
+      "value": "Backfill run tasks"
+     }
+    ]
+   }
+  ],
+  "select": [
+   {
+    "field": "queue"
+   },
+   {
+    "field": "backfill-queued-run-tasks",
+    "as": "tasks"
+   }
+  ]
+ },
+ {
+  "name": "ingestion-queue-sizes",
+  "intent": "Compare pending webhook and historical backfill work from the administrator-only server snapshot.",
+  "objective": "Spot a growing backlog without confusing in-flight tasks with unprocessed work.",
+  "acceptance": "Queue sizes come only from an authorized collection-health snapshot; unavailable state is not zero.",
+  "from": "ingestion-queued",
+  "union": [
+   "ingestion-inflight",
+   "ingestion-backfill"
+  ],
+  "select": [
+   {
+    "field": "queue"
+   },
+   {
+    "field": "tasks"
+   }
+  ]
+ },
+ {
   "name": "ingestion-health",
   "intent": "Show the current Redis-backed webhook and collection health snapshot.",
   "objective": "Determine whether the reported collection, webhook, queue, and backfill state warrants inspecting ingestion diagnostics.",
@@ -7091,7 +7277,25 @@
     "field": "dead-letters"
    },
    {
+    "field": "oldest-pending-age"
+   },
+   {
     "field": "backfill"
+   },
+   {
+    "field": "backfill-failures"
+   },
+   {
+    "field": "backfill-queued-run-tasks"
+   },
+   {
+    "field": "webhook-load"
+   },
+   {
+    "field": "collection-load"
+   },
+   {
+    "field": "failure-load"
    },
    {
     "field": "last-projected"

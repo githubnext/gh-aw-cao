@@ -108,6 +108,8 @@
     {
       "name": "ingestion-queued",
       "intent": "Label current webhook queue depth for the administrator queue chart.",
+      "objective": "Identify webhook collection work waiting in the queue.",
+      "acceptance": "Show the observed queue depth only when collection is configured; missing or unauthorized health data is not zero pending work.",
       "from": "collection-health",
       "filter": { "predicates": [{ "field": "configured", "equals": true }] },
       "compute": [{ "as": "queue", "function": "coalesce", "args": [{ "value": "Webhook queue" }, { "value": "Webhook queue" }] }],
@@ -116,6 +118,8 @@
     {
       "name": "ingestion-inflight",
       "intent": "Label current in-flight collection tasks for the administrator queue chart.",
+      "objective": "Distinguish leased collection tasks from queued webhook work.",
+      "acceptance": "Show the observed pending task count only when collection is configured; do not infer a count from an unavailable source.",
       "from": "collection-health",
       "filter": { "predicates": [{ "field": "configured", "equals": true }] },
       "compute": [{ "as": "queue", "function": "coalesce", "args": [{ "value": "In flight" }, { "value": "In flight" }] }],
@@ -124,6 +128,8 @@
     {
       "name": "ingestion-backfill",
       "intent": "Label current queued backfill runs for the administrator queue chart.",
+      "objective": "Identify historical run tasks still awaiting collection.",
+      "acceptance": "Show the observed queued backfill run count only when collection is configured; missing health data does not imply completed backfill.",
       "from": "collection-health",
       "filter": { "predicates": [{ "field": "configured", "equals": true }] },
       "compute": [{ "as": "queue", "function": "coalesce", "args": [{ "value": "Backfill run tasks" }, { "value": "Backfill run tasks" }] }],
