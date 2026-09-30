@@ -28,6 +28,10 @@ let observedRevision = null;
 let observedHealthRevision = null;
 /** @type {string | undefined} */
 let observedEvaluatedAt;
+/** @type {Set<{ onRevision: (revision: number, healthRevision: number | null) => void, onError?: (error: Error) => void }>} */
+const remoteRevisionSubscribers = new Set();
+/** @type {(() => void) | undefined} */
+let stopRemoteRevisionStream;
 
 /**
  * @typedef {{
@@ -235,6 +239,18 @@ export function queryRemoteRepositoryMemory(campaign, path, signal) {
  */
 export function subscribeRemoteRevision(onRevision, onError) {
   if (typeof fetch !== "function" || typeof TextDecoder === "undefined") return () => {};
+  const subscriber = { onRevision, onError };
+  remoteRevisionSubscribers.add(subscriber);
+  if (!stopRemoteRevisionStream) stopRemoteRevisionStream = startRemoteRevisionStream();
+  return () => {
+    remoteRevisionSubscribers.delete(subscriber);
+    if (remoteRevisionSubscribers.size > 0) return;
+    stopRemoteRevisionStream?.();
+    stopRemoteRevisionStream = undefined;
+  };
+}
+
+function startRemoteRevisionStream() {
   const controller = new AbortController();
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let retry;
@@ -253,10 +269,19 @@ export function subscribeRemoteRevision(onRevision, onError) {
         if (payload.revision !== observedRevision) observedEvaluatedAt = undefined;
         observedRevision = payload.revision;
         if (healthRevision !== null) observedHealthRevision = healthRevision;
-        if (changed) onRevision(payload.revision, healthRevision);
+        if (changed) {
+          for (const subscriber of [...remoteRevisionSubscribers]) {
+            if (remoteRevisionSubscribers.has(subscriber)) {
+              subscriber.onRevision(payload.revision, healthRevision);
+            }
+          }
+        }
       }
     } catch (error) {
-      onError?.(error instanceof Error ? error : new Error(String(error)));
+      const failure = error instanceof Error ? error : new Error(String(error));
+      for (const subscriber of [...remoteRevisionSubscribers]) {
+        subscriber.onError?.(failure);
+      }
     }
   };
 
@@ -299,7 +324,10 @@ export function subscribeRemoteRevision(onRevision, onError) {
       if (stopped || controller.signal.aborted) return;
       const errorName = error instanceof Error ? error.name : "UnknownError";
       debugRemoteBackend({ event: "stream-reconnecting", errorName });
-      onError?.(error instanceof Error ? error : new Error(String(error)));
+      const failure = error instanceof Error ? error : new Error(String(error));
+      for (const subscriber of [...remoteRevisionSubscribers]) {
+        subscriber.onError?.(failure);
+      }
       retry = setTimeout(() => void connect(), 1000);
     }
   };
