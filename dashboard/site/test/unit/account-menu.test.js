@@ -6,6 +6,7 @@ import { renderAccountMenu } from '../../src/components/account-menu.js';
 afterEach(() => {
   document.head.innerHTML = '';
   document.body.innerHTML = '';
+  document.cookie = 'cao_csrf=; Max-Age=0; Path=/';
   vi.restoreAllMocks();
 });
 
@@ -26,6 +27,7 @@ describe('hosted GitHub account menu', () => {
 
   it('shows the current login and requests explicit account switching', async () => {
     document.head.innerHTML = '<meta name="cao-auth-mode" content="github">';
+    document.cookie = 'cao_csrf=account-csrf-token; Path=/';
     const navigate = vi.fn();
     const debug = vi.fn();
     const fetchMock = vi.fn()
@@ -52,7 +54,10 @@ describe('hosted GitHub account menu', () => {
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(fetchMock).toHaveBeenLastCalledWith('/auth/switch-account', {
       method: 'POST',
-      headers: { Accept: 'application/json' }
+      headers: {
+        Accept: 'application/json',
+        'X-CSRF-Token': 'account-csrf-token'
+      }
     });
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/auth/login?select_account=1'));
 
@@ -63,7 +68,10 @@ describe('hosted GitHub account menu', () => {
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
     expect(fetchMock).toHaveBeenLastCalledWith('/auth/logout', {
       method: 'POST',
-      headers: { Accept: 'application/json' }
+      headers: {
+        Accept: 'application/json',
+        'X-CSRF-Token': 'account-csrf-token'
+      }
     });
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/auth/logged-out'));
     expect(debug.mock.calls.map(([event]) => event)).toEqual([

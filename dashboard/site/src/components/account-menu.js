@@ -1,3 +1,4 @@
+import { csrfHeaders, usesGitHubAuthentication } from '../auth.js';
 import { h } from '../dom.js';
 import { createDebug } from '../debug.js';
 import { octicon } from '../octicons.js';
@@ -6,10 +7,6 @@ import { createFactoryScope } from './factory-elements.js';
 import { enableDetailsMenuDismissal, renderActionLabel } from './ui-primitives.js';
 
 const debugAuth = createDebug('auth');
-
-function usesGitHubAuthentication() {
-  return document.querySelector('meta[name="cao-auth-mode"]')?.getAttribute('content') === 'github';
-}
 
 /**
  * @param {(event: string) => void} debug
@@ -56,7 +53,7 @@ async function switchAccount(button, debug) {
     try {
       response = await fetch('/auth/switch-account', {
         method: 'POST',
-        headers: { Accept: 'application/json' }
+        headers: csrfHeaders({ Accept: 'application/json' })
       });
     } catch {
       debug('switch.request_failed');
@@ -97,7 +94,7 @@ async function logout(button, debug) {
     try {
       response = await fetch('/auth/logout', {
         method: 'POST',
-        headers: { Accept: 'application/json' }
+        headers: csrfHeaders({ Accept: 'application/json' })
       });
     } catch {
       debug('logout.request_failed');

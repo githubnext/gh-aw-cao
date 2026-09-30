@@ -3,6 +3,7 @@ import {
   dashboardFormDefaultValues,
   resolveDashboardQueryParameters
 } from "./data/queries/view-payload-compiler.js";
+import { csrfHeaders, usesGitHubAuthentication } from "./auth.js";
 import { createDebug } from "./debug.js";
 
 const debugRemoteBackend = createDebug("remote-data-backend");
@@ -78,17 +79,23 @@ function accessToken() {
  * @param {AbortSignal} [signal]
  */
 async function apiRequest(path, init = {}, signal) {
+  const oauth = usesGitHubAuthentication();
+  const token = oauth ? "" : accessToken();
+  const method = (init.method ?? "GET").toUpperCase();
+  const headers = {
+    Accept: "application/json",
+    ...(init.body ? { "Content-Type": "application/json" } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...init.headers,
+  };
   const response = await fetch(apiUrl(path), {
     ...init,
     signal,
     cache: "no-store",
-    credentials: "omit",
-    headers: {
-      Accept: "application/json",
-      ...(init.body ? { "Content-Type": "application/json" } : {}),
-      ...(accessToken() ? { Authorization: `Bearer ${accessToken()}` } : {}),
-      ...init.headers,
-    },
+    credentials: oauth ? "same-origin" : "omit",
+    headers: oauth && !["GET", "HEAD", "OPTIONS"].includes(method)
+      ? csrfHeaders(headers)
+      : headers,
   });
   if (!response.ok) {
     debugRemoteBackend({ event: "request-failed", path, status: response.status });
@@ -236,12 +243,14 @@ export function subscribeRemoteRevision(onRevision, onError) {
 
   const connect = async () => {
     try {
+      const oauth = usesGitHubAuthentication();
+      const token = oauth ? "" : accessToken();
       const response = await fetch(apiUrl("/api/v1/events"), {
         cache: "no-store",
-        credentials: "omit",
+        credentials: oauth ? "same-origin" : "omit",
         headers: {
           Accept: "text/event-stream",
-          ...(accessToken() ? { Authorization: `Bearer ${accessToken()}` } : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         signal: controller.signal,
       });
