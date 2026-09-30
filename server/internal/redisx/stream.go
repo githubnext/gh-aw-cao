@@ -88,6 +88,43 @@ func (s *Store) StreamEnqueue(
 	}
 }
 
+// StreamEnqueueUnique atomically appends one durable stream entry per identity.
+// The identity marker is retained so retries of historical enumeration cannot
+// enqueue the same logical item twice.
+func (s *Store) StreamEnqueueUnique(
+	ctx context.Context, stream, identity string, maxLength int64, fields map[string]string,
+) (bool, error) {
+	if strings.TrimSpace(identity) == "" {
+		return false, errors.New("unique stream entries require an identity")
+	}
+	if len(fields) == 0 {
+		return false, errors.New("stream entries require at least one field")
+	}
+	identityHash := sha256.Sum256([]byte(stream + "\x00" + identity))
+	identityKey := s.Key("stream-identity:" + hex.EncodeToString(identityHash[:]))
+	script := `
+	if redis.call("EXISTS", KEYS[2]) == 1 then return 0 end
+	if ARGV[1] ~= "0" and redis.call("XLEN", KEYS[1]) >= tonumber(ARGV[1]) then return -1 end
+	redis.call("XADD", KEYS[1], "*", unpack(ARGV, 2))
+	redis.call("SET", KEYS[2], "1")
+	return 1`
+	arguments := appendStreamFields([]string{
+		"EVAL", script, "2", s.Key(stream), identityKey, strconv.FormatInt(maxLength, 10),
+	}, fields)
+	value, err := s.Client.Do(ctx, arguments...)
+	if err != nil {
+		return false, err
+	}
+	switch toInt64(value) {
+	case -1:
+		return false, ErrStreamCapacity
+	case 0:
+		return false, nil
+	default:
+		return true, nil
+	}
+}
+
 // DeliveryAdmission reports the durable outcome of an idempotent webhook
 // admission.
 type DeliveryAdmission int

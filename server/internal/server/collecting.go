@@ -217,7 +217,7 @@ func NewCollector(
 	}
 	backfill := collect.Backfill{
 		Store: store, Enrollment: enrollment, Queue: queue,
-		Projector: projector, Lake: lake, Enumerator: client,
+		Projector: projector, Lake: lake, Enumerator: client, RunEnumerator: client,
 	}
 	return &Collector{
 		config:     config,

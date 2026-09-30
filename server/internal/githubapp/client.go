@@ -76,6 +76,13 @@ type Repository struct {
 	Visibility string
 }
 
+// WorkflowRun is the stable run identity needed by historical collection.
+type WorkflowRun struct {
+	ID        int64
+	Attempt   int
+	CreatedAt time.Time
+}
+
 // GitTreeEntry is one entry returned by the Git tree API.
 type GitTreeEntry struct {
 	Path string
@@ -217,6 +224,52 @@ func (c *Client) ListRepositories(ctx context.Context, installationID int64) ([]
 	}
 	appLog.Printf("enumerated installation repositories count=%d", len(repositories))
 	return repositories, nil
+}
+
+// ListWorkflowRuns returns one page of a repository's workflow runs, newest
+// first. The caller owns the persisted page cursor so enumeration can resume
+// after process restarts.
+func (c *Client) ListWorkflowRuns(
+	ctx context.Context, installationID int64, repository string, page, perPage int,
+) ([]WorkflowRun, int, error) {
+	client, owner, name, err := c.repositoryClient(installationID, repository)
+	if err != nil {
+		return nil, 0, err
+	}
+	if page < 1 {
+		page = 1
+	}
+	if perPage < 1 || perPage > 100 {
+		perPage = 100
+	}
+	runs, response, err := client.Actions.ListRepositoryWorkflowRuns(ctx, owner, name, &github.ListWorkflowRunsOptions{
+		ListOptions: github.ListOptions{Page: page, PerPage: perPage},
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("list repository workflow runs: %w", err)
+	}
+	var result []WorkflowRun
+	if runs != nil {
+		for _, run := range runs.WorkflowRuns {
+			if run.GetID() <= 0 {
+				continue
+			}
+			attempt := run.GetRunAttempt()
+			if attempt <= 0 {
+				attempt = 1
+			}
+			result = append(result, WorkflowRun{
+				ID:        run.GetID(),
+				Attempt:   int(attempt),
+				CreatedAt: run.GetCreatedAt().Time,
+			})
+		}
+	}
+	nextPage := 0
+	if response != nil {
+		nextPage = response.NextPage
+	}
+	return result, nextPage, nil
 }
 
 // ValidateRepositoryAccess enumerates the App's complete repository scope and

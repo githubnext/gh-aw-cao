@@ -180,6 +180,43 @@ func TestQueueDebouncesAndLeasesExactlyOnce(t *testing.T) {
 	}
 }
 
+func TestQueueDurablyDeduplicatesRunTasksByRepositoryRunAndAttempt(t *testing.T) {
+	store, ctx := integrationStore(t)
+	queue := Queue{Store: store}
+	task := RunTask{
+		Repository: "Octo/API", InstallationID: 7, RunID: 4242, Attempt: 1,
+		CreatedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+	first, err := queue.EnqueueRun(ctx, task)
+	if err != nil {
+		t.Fatal(err)
+	}
+	duplicate, err := queue.EnqueueRun(ctx, task)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondAttempt := task
+	secondAttempt.Attempt = 2
+	distinctAttempt, err := queue.EnqueueRun(ctx, secondAttempt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !first || duplicate || !distinctAttempt {
+		t.Fatalf("enqueue outcomes first=%t duplicate=%t secondAttempt=%t, want true/false/true",
+			first, duplicate, distinctAttempt)
+	}
+	length, err := store.StreamLength(ctx, runTaskStream)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if length != 2 {
+		t.Fatalf("run-task stream length=%d, want 2", length)
+	}
+	if got := runTaskIdentity("octo/api", task.RunID, task.Attempt); got != "octo/api:4242:1" {
+		t.Fatalf("run-task identity=%q", got)
+	}
+}
+
 func TestQueueReclaimsAbandonedWork(t *testing.T) {
 	store, ctx := integrationStore(t)
 	queue := Queue{Store: store}

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
@@ -16,7 +17,12 @@ import (
 
 var backfillLog = logger.New("cao:collect:backfill")
 
-const backfillStateKey = "collect:backfill"
+const (
+	backfillStateKey     = "collect:backfill"
+	runBackfillCursorKey = "collect:run-backfill-cursors"
+	runBackfillPageSize  = 100
+	runBackfillComplete  = "done"
+)
 
 // Enumerator is the App-level enumeration the cold start needs. It is an
 // interface so tests substitute a fake GitHub API.
@@ -25,34 +31,45 @@ type Enumerator interface {
 	ListRepositories(ctx context.Context, installationID int64) ([]githubapp.Repository, error)
 }
 
+// WorkflowRunEnumerator lists one page of historical workflow runs.
+type WorkflowRunEnumerator interface {
+	ListWorkflowRuns(
+		ctx context.Context, installationID int64, repository string, page, perPage int,
+	) ([]githubapp.WorkflowRun, int, error)
+}
+
 // Backfill performs resumable cold start.
 //
 // It replays the evidence lake first, because a populated lake repopulates an
-// empty canonical database with zero GitHub requests. Enumeration is used only
-// when enrollment must be discovered or repaired.
+// empty canonical database with zero GitHub requests. GitHub enumeration then
+// repairs enrollment and admits durable repository and historical-run tasks.
 type Backfill struct {
-	Store      *redisx.Store
-	Enrollment Enrollment
-	Queue      Queue
-	Projector  Projector
-	Lake       Lake
-	Enumerator Enumerator
+	Store         *redisx.Store
+	Enrollment    Enrollment
+	Queue         Queue
+	Projector     Projector
+	Lake          Lake
+	Enumerator    Enumerator
+	RunEnumerator WorkflowRunEnumerator
 }
 
 // BackfillState is the resumable checkpoint, published for status reporting.
 type BackfillState struct {
-	Phase              string `json:"phase"`
-	StartedAt          string `json:"startedAt,omitempty"`
-	CompletedAt        string `json:"completedAt,omitempty"`
-	Installations      int    `json:"installations"`
-	Repositories       int    `json:"repositories"`
-	QueuedRepositories int    `json:"queuedRepositories"`
-	LakeReplayed       bool   `json:"lakeReplayed"`
-	Revision           int64  `json:"revision,omitempty"`
-	Error              string `json:"error,omitempty"`
+	Phase               string `json:"phase"`
+	StartedAt           string `json:"startedAt,omitempty"`
+	CompletedAt         string `json:"completedAt,omitempty"`
+	Installations       int    `json:"installations"`
+	Repositories        int    `json:"repositories"`
+	QueuedRepositories  int    `json:"queuedRepositories"`
+	QueuedRunTasks      int    `json:"queuedRunTasks"`
+	EnumerationFailures int    `json:"enumerationFailures,omitempty"`
+	LakeReplayed        bool   `json:"lakeReplayed"`
+	Revision            int64  `json:"revision,omitempty"`
+	Error               string `json:"error,omitempty"`
 }
 
-// Run performs cold start: replay, enumerate, seed, and let workers collect.
+// Run performs cold start: replay, enumerate, seed repository tasks, and admit
+// paginated historical workflow-run tasks. It does not process run artifacts.
 func (b Backfill) Run(ctx context.Context) (BackfillState, error) {
 	state := BackfillState{Phase: "replaying", StartedAt: time.Now().UTC().Format(time.RFC3339Nano)}
 	b.publish(ctx, state)
@@ -71,12 +88,13 @@ func (b Backfill) Run(ctx context.Context) (BackfillState, error) {
 	}
 	state.Phase = "enumerating"
 	b.publish(ctx, state)
-	repositories, installations, err := b.enumerate(ctx)
+	repositories, installations, enumerationFailures, err := b.enumerate(ctx)
 	if err != nil {
 		return b.fail(ctx, state, err)
 	}
 	state.Installations = installations
 	state.Repositories = len(repositories)
+	state.EnumerationFailures = enumerationFailures
 	state.Phase = "seeding"
 	b.publish(ctx, state)
 	queued, err := b.seed(ctx, repositories)
@@ -84,10 +102,22 @@ func (b Backfill) Run(ctx context.Context) (BackfillState, error) {
 		return b.fail(ctx, state, err)
 	}
 	state.QueuedRepositories = queued
+	runTasks, runFailures, err := b.enqueueHistoricalRuns(ctx, repositories)
+	if err != nil {
+		return b.fail(ctx, state, err)
+	}
+	state.QueuedRunTasks = runTasks
+	state.EnumerationFailures += runFailures
 	state.Phase = "collecting"
+	if state.EnumerationFailures > 0 {
+		state.Phase = "partial"
+	}
 	state.CompletedAt = time.Now().UTC().Format(time.RFC3339Nano)
 	b.publish(ctx, state)
-	backfillLog.Printf("cold start seeded repositories=%d queued=%d", len(repositories), queued)
+	backfillLog.Printf(
+		"cold start seeded repositories=%d queued=%d run_tasks=%d enumeration_failures=%d",
+		len(repositories), queued, runTasks, state.EnumerationFailures,
+	)
 	return state, nil
 }
 
@@ -109,40 +139,49 @@ func (b Backfill) replay(ctx context.Context) (ingest.Result, error) {
 }
 
 type enrolledRepository struct {
-	name     string
-	pushedAt time.Time
+	name           string
+	pushedAt       time.Time
+	installationID int64
 }
 
-func (b Backfill) enumerate(ctx context.Context) ([]enrolledRepository, int, error) {
+func (b Backfill) enumerate(ctx context.Context) ([]enrolledRepository, int, int, error) {
 	if b.Enumerator == nil {
-		return nil, 0, errors.New("cold start requires GitHub App enumeration")
+		return nil, 0, 0, errors.New("cold start requires GitHub App enumeration")
 	}
 	installations, err := b.Enumerator.ListInstallations(ctx)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, 0, err
 	}
 	var repositories []enrolledRepository
+	failures := 0
 	for _, installation := range installations {
 		if ctx.Err() != nil {
-			return nil, 0, ctx.Err()
+			return nil, 0, failures, ctx.Err()
 		}
 		covered, err := b.Enumerator.ListRepositories(ctx, installation.ID)
 		if err != nil {
+			if ctx.Err() != nil {
+				return nil, 0, failures, ctx.Err()
+			}
 			// One installation that cannot be read must not abort cold start
 			// for the rest; the gap is visible in enrollment coverage.
 			backfillLog.Printf("installation enumeration failed; continuing installation=%d", installation.ID)
+			failures++
 			continue
 		}
 		names, enrolled, skipped := normalizeEnumeratedRepositories(covered)
+		for index := range enrolled {
+			enrolled[index].installationID = installation.ID
+		}
 		if skipped > 0 {
 			backfillLog.Printf("dropped invalid repository names installation=%d skipped=%d", installation.ID, skipped)
 		}
 		repositories = append(repositories, enrolled...)
 		if err := b.Enrollment.AddRepositories(ctx, installation.ID, names); err != nil {
-			return nil, 0, err
+			return nil, 0, failures, err
 		}
 	}
-	return repositories, len(installations), nil
+	return repositories, len(installations), failures, nil
 }
 
 // normalizeEnumeratedRepositories canonicalizes one installation's enumerated
@@ -163,6 +202,153 @@ func normalizeEnumeratedRepositories(covered []githubapp.Repository) (names []st
 		})
 	}
 	return names, repositories, skipped
+}
+
+type runPage struct {
+	repository enrolledRepository
+	nextPage   int
+	runs       []githubapp.WorkflowRun
+}
+
+type pendingRunTask struct {
+	repository enrolledRepository
+	run        githubapp.WorkflowRun
+}
+
+// enqueueHistoricalRuns walks each installation/repository cursor in pages.
+// Each round's runs are enqueued newest-first across repositories, and a
+// repository cursor advances only after every run from that page is durable.
+func (b Backfill) enqueueHistoricalRuns(
+	ctx context.Context, repositories []enrolledRepository,
+) (queued, failures int, err error) {
+	if b.RunEnumerator == nil {
+		return 0, 0, errors.New("historical backfill requires workflow-run enumeration")
+	}
+	pages := make([]runPage, 0, len(repositories))
+	active := make([]enrolledRepository, 0, len(repositories))
+	seen := make(map[string]struct{}, len(repositories))
+	for _, repository := range repositories {
+		identity := strconv.FormatInt(repository.installationID, 10) + ":" + repository.name
+		if repository.installationID <= 0 {
+			continue
+		}
+		if b.Enrollment.Store != nil {
+			owner, err := b.Enrollment.InstallationFor(ctx, repository.name)
+			if err != nil {
+				return queued, failures, err
+			}
+			if owner != repository.installationID {
+				continue
+			}
+		}
+		if _, ok := seen[identity]; ok {
+			continue
+		}
+		seen[identity] = struct{}{}
+		active = append(active, repository)
+	}
+	sort.Slice(active, func(first, second int) bool {
+		if active[first].pushedAt.Equal(active[second].pushedAt) {
+			return active[first].name < active[second].name
+		}
+		return active[first].pushedAt.After(active[second].pushedAt)
+	})
+	if err := b.Queue.Ensure(ctx); err != nil {
+		return 0, 0, err
+	}
+
+	for len(active) > 0 {
+		pages = pages[:0]
+		remaining := make([]enrolledRepository, 0, len(active))
+		for _, repository := range active {
+			if err := ctx.Err(); err != nil {
+				return queued, failures, err
+			}
+			cursor, err := b.Store.HashGet(ctx, runBackfillCursorKey, runBackfillCursorField(repository))
+			if err != nil {
+				return queued, failures, err
+			}
+			if cursor == runBackfillComplete {
+				continue
+			}
+			page := 1
+			if cursor != "" {
+				page, err = strconv.Atoi(cursor)
+				if err != nil || page < 1 {
+					return queued, failures, errors.New("invalid historical run backfill cursor")
+				}
+			}
+			runs, nextPage, err := b.RunEnumerator.ListWorkflowRuns(
+				ctx, repository.installationID, repository.name, page, runBackfillPageSize,
+			)
+			if err != nil {
+				if ctx.Err() != nil {
+					return queued, failures, ctx.Err()
+				}
+				backfillLog.Printf("workflow run enumeration failed; continuing installation=%d", repository.installationID)
+				failures++
+				// Keep this cursor unchanged for the next backfill invocation.
+				continue
+			}
+			if nextPage != 0 && nextPage <= page {
+				return queued, failures, errors.New("workflow run enumeration returned a non-advancing page")
+			}
+			pages = append(pages, runPage{repository: repository, nextPage: nextPage, runs: runs})
+			if nextPage != 0 {
+				remaining = append(remaining, repository)
+			}
+		}
+		active = remaining
+
+		var tasks []pendingRunTask
+		for _, page := range pages {
+			for _, run := range page.runs {
+				tasks = append(tasks, pendingRunTask{repository: page.repository, run: run})
+			}
+		}
+		sort.Slice(tasks, func(first, second int) bool {
+			left, right := tasks[first], tasks[second]
+			if left.run.CreatedAt.Equal(right.run.CreatedAt) {
+				if left.run.ID == right.run.ID {
+					return left.repository.name < right.repository.name
+				}
+				return left.run.ID > right.run.ID
+			}
+			return left.run.CreatedAt.After(right.run.CreatedAt)
+		})
+		for _, pending := range tasks {
+			attempt := pending.run.Attempt
+			if attempt <= 0 {
+				attempt = 1
+			}
+			enqueued, enqueueErr := b.Queue.EnqueueRun(ctx, RunTask{
+				Repository: pending.repository.name, InstallationID: pending.repository.installationID,
+				RunID: pending.run.ID, Attempt: attempt, CreatedAt: pending.run.CreatedAt,
+			})
+			if enqueueErr != nil {
+				return queued, failures, enqueueErr
+			}
+			if enqueued {
+				queued++
+			}
+		}
+		for _, page := range pages {
+			nextCursor := runBackfillComplete
+			if page.nextPage != 0 {
+				nextCursor = strconv.Itoa(page.nextPage)
+			}
+			if err := b.Store.HashSet(
+				ctx, runBackfillCursorKey, runBackfillCursorField(page.repository), nextCursor,
+			); err != nil {
+				return queued, failures, err
+			}
+		}
+	}
+	return queued, failures, nil
+}
+
+func runBackfillCursorField(repository enrolledRepository) string {
+	return strconv.FormatInt(repository.installationID, 10) + ":" + repository.name
 }
 
 // sortByRecency orders enrolled repositories most-recently-pushed first, in
