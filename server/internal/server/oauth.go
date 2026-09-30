@@ -52,13 +52,27 @@ func oauthPageScriptHash(page string) string {
 	return base64.StdEncoding.EncodeToString(sum[:])
 }
 
+func oauthPageStyleHash(page string) string {
+	_, style, found := strings.Cut(page, "<style>")
+	if !found {
+		panic("OAuth page is missing its style")
+	}
+	style, _, found = strings.Cut(style, "</style>")
+	if !found {
+		panic("OAuth page has an unterminated style")
+	}
+	sum := sha256.Sum256([]byte(style))
+	return base64.StdEncoding.EncodeToString(sum[:])
+}
+
 var oauthFailureScriptHash = oauthPageScriptHash(oauthFailureHTML)
+var oauthFailureStyleHash = oauthPageStyleHash(oauthFailureHTML)
 var oauthLoggedOutScriptHash = oauthPageScriptHash(oauthLoggedOutHTML)
 
 func writeOAuthFailure(response http.ResponseWriter, status int, reason string, traceID trace.TraceID) {
 	response.Header().Set("Cache-Control", "no-store")
 	response.Header().Set("Referrer-Policy", "no-referrer")
-	response.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'sha256-"+oauthFailureScriptHash+"'; connect-src 'self'; base-uri 'none'; form-action 'none'")
+	response.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'sha256-"+oauthFailureStyleHash+"'; script-src 'sha256-"+oauthFailureScriptHash+"'; connect-src 'self'; base-uri 'none'; form-action 'none'")
 	response.Header().Set("Content-Type", "text/html; charset=utf-8")
 	response.WriteHeader(status)
 	id := ""

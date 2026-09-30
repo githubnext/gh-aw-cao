@@ -1,15 +1,85 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign-in help · CAO</title></head>
-<body><main>
-<h1>We couldn’t complete your sign-in</h1>
-{{if .AuthorizationFailed}}<p>We couldn’t verify that this GitHub account has access to the dashboard. Sign in with an account that is an active member of an organization or team approved by your dashboard administrator. If you already have access, ask your administrator to check your membership and the dashboard’s allowed organizations and teams; GitHub may also be temporarily unavailable. If a request ID appears below, share it with your administrator to help them investigate.</p>
-{{else}}<p>Try again with an account that has access to this dashboard. If the problem continues, share the request ID below with your dashboard administrator.</p>{{end}}
-<p><button type="button" id="sign-out">Sign out and try again</button></p>
-<noscript><p>Automatic sign-out requires JavaScript. Clear this site’s cookies, then sign in again.</p></noscript>
-<p><a href="https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md#oauth-sign-in-troubleshooting" rel="noreferrer noopener">Sign-in troubleshooting</a></p>
-{{if .TraceID}}<p>Request ID: <code>{{.TraceID}}</code></p>{{end}}
-<p id="recovery-error" role="alert" hidden>Could not sign out. Please try again or clear this site’s cookies before signing in.</p>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign-in help · CAO</title>
+<style>
+:root {
+  color-scheme: light;
+  --canvas: #f6f8fa;
+  --surface: #ffffff;
+  --fg: #1f2328;
+  --muted: #59636e;
+  --border: #d1d9e0;
+  --accent: #0969da;
+  --accent-hover: #0550ae;
+  --danger: #cf222e;
+  --danger-muted: #ffebe9;
+  --focus: #0969da;
+  --shadow: 0 8px 24px #1f23280a;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --canvas: #0d1117;
+    --surface: #151b23;
+    --fg: #f0f6fc;
+    --muted: #9198a1;
+    --border: #3d444d;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --danger: #f85149;
+    --danger-muted: #2d1418;
+    --focus: #58a6ff;
+    --shadow: 0 8px 24px #01040966;
+  }
+}
+* { box-sizing: border-box; }
+body { min-width: 320px; min-height: 100vh; margin: 0; background: var(--canvas); color: var(--fg); font-size: 14px; line-height: 1.5; }
+.page { min-height: 100vh; display: grid; align-content: center; justify-items: center; gap: 24px; padding: 40px 20px; }
+.brand { width: min(100%, 560px); display: flex; align-items: center; gap: 10px; color: var(--fg); font-size: 16px; font-weight: 600; letter-spacing: -.02em; text-decoration: none; }
+.brand-mark { width: 28px; height: 28px; color: var(--accent); }
+.error-card { width: min(100%, 560px); padding: 28px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+.error-heading { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 18px; }
+.error-icon { width: 32px; height: 32px; display: grid; flex: 0 0 32px; place-items: center; border-radius: 50%; background: var(--danger-muted); color: var(--danger); font-size: 18px; font-weight: 700; }
+.eyebrow { margin: 0 0 2px; color: var(--muted); font-size: 12px; font-weight: 600; }
+h1 { margin: 0; font-size: clamp(20px, 4vw, 24px); font-weight: 600; line-height: 1.25; letter-spacing: -.025em; }
+.message { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.65; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 24px; }
+button { min-height: 36px; padding: 7px 14px; border: 1px solid #1f883d; border-radius: 6px; background: #1f883d; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+button:hover:not(:disabled) { border-color: #1a7f37; background: #1a7f37; }
+button:disabled { cursor: wait; opacity: .65; }
+a { color: var(--accent); font-weight: 500; text-decoration: none; }
+a:hover { color: var(--accent-hover); text-decoration: underline; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.request-id { margin: 20px 0 0; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; }
+code { overflow-wrap: anywhere; color: var(--fg); font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; }
+.recovery-error { margin: 16px 0 0; padding: 10px 12px; border: 1px solid var(--danger); border-radius: 6px; color: var(--danger); }
+.recovery-error[hidden] { display: none; }
+.noscript { margin: 16px 0 0; color: var(--muted); font-size: 12px; }
+@media (max-width: 480px) {
+  .page { align-content: start; gap: 20px; padding: 28px 16px; }
+  .error-card { padding: 22px 18px; }
+  .actions { align-items: flex-start; flex-direction: column; gap: 14px; }
+}
+</style>
+</head>
+<body><main class="page">
+<div class="brand">
+<svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M1 3a2 2 0 0 1 2-2h6.5a2 2 0 0 1 2 2v6.5a2 2 0 0 1-2 2H7v4.063C7 16.355 7.644 17 8.438 17H12.5v-2.5a2 2 0 0 1 2-2H21a2 2 0 0 1 2 2V21a2 2 0 0 1-2 2h-6.5a2 2 0 0 1-2-2v-2.5H8.437A2.939 2.939 0 0 1 5.5 15.562V11.5H3a2 2 0 0 1-2-2Zm2-.5a.5.5 0 0 0-.5.5v6.5a.5.5 0 0 0 .5.5h6.5a.5.5 0 0 0 .5-.5V3a.5.5 0 0 0-.5-.5Zm11.5 11.5a.5.5 0 0 0-.5.5V21a.5.5 0 0 0 .5.5H21a.5.5 0 0 0 .5-.5v-6.5a.5.5 0 0 0-.5-.5Z" fill="currentColor"/><path d="m17.143 3.15c.083-.222.406-.222.49 0l.58 1.545c.18.48.565.855 1.049 1.023l1.584.566c.228.081.228.396 0 .477l-1.584.566a1.763 1.719 0 0 0-1.05 1.023l-.58 1.545c-.083.223-.406.223-.489 0l-.58-1.545a1.763 1.719 0 0 0-1.049-1.023l-1.584-.566c-.228-.081-.228-.396 0-.477l1.584-.566a1.763 1.719 0 0 0 1.05-1.023Z" fill="#8250df" stroke="#8250df" stroke-width=".717"/></svg>
+<span>Central Agentic Ops</span>
+</div>
+<section class="error-card" aria-labelledby="error-title">
+<div class="error-heading"><span class="error-icon" aria-hidden="true">!</span><div><p class="eyebrow">Sign-in error</p><h1 id="error-title">We couldn’t complete your sign-in</h1></div></div>
+{{if .AuthorizationFailed}}<p class="message">We couldn’t verify that this GitHub account has access to the dashboard. Sign in with an account that is an active member of an organization or team approved by your dashboard administrator. If you already have access, ask your administrator to check your membership and the dashboard’s allowed organizations and teams; GitHub may also be temporarily unavailable. If a request ID appears below, share it with your administrator to help them investigate.</p>
+{{else}}<p class="message">Try again with an account that has access to this dashboard. If the problem continues, share the request ID below with your dashboard administrator.</p>{{end}}
+<div class="actions"><button type="button" id="sign-out">Sign out and try again</button><a href="https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md#oauth-sign-in-troubleshooting" rel="noreferrer noopener">Sign-in troubleshooting <span aria-hidden="true">→</span></a></div>
+<noscript><p class="noscript">Automatic sign-out requires JavaScript. Clear this site’s cookies, then sign in again.</p></noscript>
+{{if .TraceID}}<p class="request-id">Request ID: <code>{{.TraceID}}</code></p>{{end}}
+<p class="recovery-error" id="recovery-error" role="alert" hidden>Could not sign out. Please try again or clear this site’s cookies before signing in.</p>
+</section>
 </main><script>const button = document.getElementById('sign-out');
 button.addEventListener('click', async () => {
   button.disabled = true;
