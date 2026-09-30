@@ -98,6 +98,56 @@ func TestGenerateIncludesInstallationChangesAndDistribution(t *testing.T) {
 	}
 }
 
+func TestGenerateIssueLifecycleDeliveries(t *testing.T) {
+	scenario := Scenario{Name: "issues", Repositories: 2, EventsPerRepository: 1, IssueEventsPerRepository: 4, Seed: 7}
+	deliveries, err := scenario.Generate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var actions []string
+	for _, delivery := range deliveries {
+		if delivery.Event != "issues" {
+			continue
+		}
+		var payload struct {
+			Action string `json:"action"`
+			Issue  struct {
+				Number   int     `json:"number"`
+				State    string  `json:"state"`
+				ClosedAt *string `json:"closed_at"`
+			} `json:"issue"`
+			Repository struct {
+				FullName string `json:"full_name"`
+			} `json:"repository"`
+		}
+		if err := json.Unmarshal(delivery.Payload, &payload); err != nil {
+			t.Fatal(err)
+		}
+		if payload.Issue.Number != 1 || payload.Repository.FullName == "" {
+			t.Fatalf("invalid issue delivery: %#v", payload)
+		}
+		if payload.Action == "closed" && (payload.Issue.State != "closed" || payload.Issue.ClosedAt == nil) {
+			t.Fatalf("closed issue has no closed status: %#v", payload.Issue)
+		}
+		if payload.Action == "reopened" && (payload.Issue.State != "open" || payload.Issue.ClosedAt != nil) {
+			t.Fatalf("reopened issue retains closed status: %#v", payload.Issue)
+		}
+		actions = append(actions, payload.Action)
+	}
+	want := []string{"opened", "closed", "reopened", "edited", "opened", "closed", "reopened", "edited"}
+	if len(actions) != len(want) {
+		t.Fatalf("got %d issue deliveries, want %d", len(actions), len(want))
+	}
+	for i := range want {
+		if actions[i] != want[i] {
+			t.Fatalf("action %d = %s, want %s", i, actions[i], want[i])
+		}
+	}
+	if _, err := LoadScenario([]byte(`{"name":"too-many","repositories":2,"events_per_repository":500000,"issue_events_per_repository":1}`)); err == nil {
+		t.Fatal("accepted a combined event count over the limit")
+	}
+}
+
 func TestLoadScenarioRejectsUnknownFieldsAndOverlappingWindows(t *testing.T) {
 	for _, input := range []string{
 		`{"name":"x","repositories":1,"unknown":true}`,

@@ -52,7 +52,10 @@ repositories, a five-hour GitHub API outage, recovery rate limiting, signed
 duplicate/replayed deliveries, out-of-order activity, and a delayed delivery
 batch. Scenarios are strict JSON; supported traffic distributions are uniform,
 hot-repository, long-tail, and synchronized. Repository counts are bounded at
-20,000 and generated workflow events at one million.
+20,000 and generated workflow and issue events combined at one million. Set
+`issue_events_per_repository` in a scenario to generate ordered `issues`
+`opened`, `closed`, `reopened`, and `edited` webhook deliveries for each synthetic
+repository; the default is zero.
 
 Start the fake GitHub API in one terminal. `--time-scale 3600` advances one
 scenario hour per wall-clock second:
