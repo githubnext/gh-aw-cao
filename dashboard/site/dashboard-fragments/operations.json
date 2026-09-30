@@ -107,20 +107,26 @@
     },
     {
       "name": "ingestion-queued",
+      "intent": "Label current webhook queue depth for the administrator queue chart.",
       "from": "collection-health",
-      "compute": [{ "as": "queue", "function": "coalesce", "args": [{ "value": "Webhook queue" }] }],
+      "filter": { "predicates": [{ "field": "configured", "equals": true }] },
+      "compute": [{ "as": "queue", "function": "coalesce", "args": [{ "value": "Webhook queue" }, { "value": "Webhook queue" }] }],
       "select": [{ "field": "queue" }, { "field": "queue-depth", "as": "tasks" }]
     },
     {
       "name": "ingestion-inflight",
+      "intent": "Label current in-flight collection tasks for the administrator queue chart.",
       "from": "collection-health",
-      "compute": [{ "as": "queue", "function": "coalesce", "args": [{ "value": "In flight" }] }],
+      "filter": { "predicates": [{ "field": "configured", "equals": true }] },
+      "compute": [{ "as": "queue", "function": "coalesce", "args": [{ "value": "In flight" }, { "value": "In flight" }] }],
       "select": [{ "field": "queue" }, { "field": "pending-tasks", "as": "tasks" }]
     },
     {
       "name": "ingestion-backfill",
+      "intent": "Label current queued backfill runs for the administrator queue chart.",
       "from": "collection-health",
-      "compute": [{ "as": "queue", "function": "coalesce", "args": [{ "value": "Backfill run tasks" }] }],
+      "filter": { "predicates": [{ "field": "configured", "equals": true }] },
+      "compute": [{ "as": "queue", "function": "coalesce", "args": [{ "value": "Backfill run tasks" }, { "value": "Backfill run tasks" }] }],
       "select": [{ "field": "queue" }, { "field": "backfill-queued-run-tasks", "as": "tasks" }]
     },
     {
@@ -1614,20 +1620,6 @@
       "description": "Monitor live server-side collection health, GitHub API usage, CAO Activity ingestion, and retained dashboard transactions.",
       "views": [
         {
-          "id": "ingestion-queue-sizes",
-          "title": "Server collection queues (administrators)",
-          "description": "Current queued webhook work, in-flight tasks, and queued historical backfill runs. Available only to authorized server administrators.",
-          "data": { "source": "ingestion-queue-sizes" },
-          "mark": "chart",
-          "chart": "horizontal-bar",
-          "layout": "full",
-          "empty-message": "Collection queue sizes are available only to server administrators when collection is configured.",
-          "encoding": {
-            "x": { "field": "queue", "type": "nominal", "title": "Queue" },
-            "y": { "field": "tasks", "type": "quantitative", "title": "Tasks" }
-          }
-        },
-        {
           "id": "indexing-database-table-counts",
           "title": "Database table counts",
           "intent": "Compare retained row counts across dashboard database tables.",
@@ -1653,6 +1645,23 @@
               "type": "quantitative",
               "title": "Rows"
             }
+          }
+        },
+        {
+          "id": "ingestion-queue-sizes",
+          "title": "Server collection queues (administrators)",
+          "intent": "Compare the current webhook queue with in-flight work and queued historical backfill runs.",
+          "objective": "Detect a collection backlog or stalled historical backfill.",
+          "acceptance": "Display only authorized server observations; distinguish queue depth from in-flight work and never interpret unavailable or unconfigured state as a zero queue.",
+          "description": "Current queued webhook work, in-flight tasks, and queued historical backfill runs. Available only to authorized server administrators.",
+          "data": { "source": "ingestion-queue-sizes", "limit": 3 },
+          "mark": "chart",
+          "chart": "horizontal-bar",
+          "layout": "full",
+          "empty-message": "Collection queue sizes are available only to server administrators when collection is configured.",
+          "encoding": {
+            "x": { "field": "queue", "type": "nominal", "title": "Queue" },
+            "y": { "field": "tasks", "type": "quantitative", "title": "Tasks" }
           }
         },
         {

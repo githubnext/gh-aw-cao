@@ -37,8 +37,8 @@ func TestIngestionHealthCountersAreBoundedAndNamespaced(t *testing.T) {
 	}
 	if !reflect.DeepEqual(client.command, []string{
 		"EVAL",
-		`local count = redis.call("HINCRBY", KEYS[1], ARGV[1], 1); redis.call("HINCRBY", KEYS[1], "healthRevision", 1); return count`,
-		"1", store.Key(ingestionHealthKey), "webhookReceived",
+		`redis.call("HINCRBY", KEYS[1], ARGV[4], 1); redis.call("HINCRBY", KEYS[1], "healthRevision", 1); ` + loadStep,
+		"2", store.Key(ingestionHealthKey), store.Key("load:webhook"), "1", "60", "480", "webhookReceived",
 	}) {
 		t.Fatalf("unexpected counter command: %#v", client.command)
 	}

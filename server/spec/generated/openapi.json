@@ -2564,6 +2564,14 @@
               "format": "int64"
             }
           },
+          "load": {
+            "type": "object",
+            "unevaluatedProperties": {
+              "type": "number",
+              "format": "double"
+            },
+            "description": "Half-life 60 seconds: each event contributes one unit, decaying by half every minute. Keys are webhook, collection, and failure."
+          },
           "healthRevision": {
             "type": "integer",
             "format": "int64"

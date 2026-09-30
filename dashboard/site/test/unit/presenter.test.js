@@ -1591,6 +1591,15 @@ describe('presenter built-in and custom pages', () => {
           }],
           metadata
         },
+        'ingestion-queue-sizes': {
+          source: 'ingestion-queue-sizes',
+          rows: [
+            { queue: 'Webhook queue', tasks: 12 },
+            { queue: 'In flight', tasks: 3 },
+            { queue: 'Backfill run tasks', tasks: 4 }
+          ],
+          metadata
+        },
         'github-api-usage': {
           source: 'github-api-usage',
           rows: [
@@ -1609,11 +1618,12 @@ describe('presenter built-in and custom pages', () => {
       window.location.hash = '#page-indexing';
       await vi.waitFor(() => expect(rendered.querySelector('[data-page-id="indexing"]')?.hasAttribute('data-page-pending')).toBe(false));
       const page = rendered.querySelector('[data-page-id="indexing"]');
-      expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(6);
+      expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(7);
       expect(page?.querySelectorAll('[data-chart-widget="bar"]')).toHaveLength(2);
       expect(page?.querySelectorAll('[data-view-id="github-api-usage"] [data-chart-widget="line"]')).toHaveLength(1);
       expect(page?.querySelector('[data-view-id="github-api-usage"]')?.textContent).toContain('collector/123/core');
-      expect(page?.querySelectorAll('[data-chart-widget="horizontal-bar"]')).toHaveLength(1);
+      expect(page?.querySelectorAll('[data-chart-widget="horizontal-bar"]')).toHaveLength(2);
+      expect(page?.querySelector('[data-view-id="ingestion-queue-sizes"]')?.textContent).toContain('Backfill run tasks');
       expect(page?.textContent).not.toContain('Local database');
       expect(page?.textContent).toContain('ingest-jsonl');
       expect(page?.querySelector('[data-view-id="ingestion-health-status"]')?.textContent).toContain('healthy');
