@@ -196,7 +196,7 @@ func repositoryLink(repository, apiURL string) *RepositoryLink {
 		api.RawQuery != "" || api.Fragment != "" || api.EscapedPath() != api.Path {
 		return nil
 	}
-	webBase := ""
+	var webBase string
 	switch {
 	case strings.EqualFold(api.Hostname(), "api.github.com") && (api.Path == "" || api.Path == "/"):
 		webBase = "https://github.com"
