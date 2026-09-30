@@ -2,7 +2,7 @@ import { csrfHeaders, usesGitHubAuthentication } from '../auth.js';
 import { h } from '../dom.js';
 import { createDebug } from '../debug.js';
 import { octicon } from '../octicons.js';
-import { effect, state } from '../reactive.js';
+import { batch, effect, state } from '../reactive.js';
 import { createFactoryScope } from './factory-elements.js';
 import { enableDetailsMenuDismissal, renderActionLabel } from './ui-primitives.js';
 
@@ -10,7 +10,7 @@ const debugAuth = createDebug('auth');
 
 /**
  * @param {(event: string) => void} debug
- * @returns {Promise<string>} the logged-in account's login
+ * @returns {Promise<{ login: string, avatarUrl: string | null }>} the logged-in account
  */
 async function loadAccount(debug) {
   debug('session.request_started');
@@ -37,8 +37,19 @@ async function loadAccount(debug) {
     debug('session.payload_invalid');
     throw new Error('GitHub account session has no login');
   }
+  let avatarUrl = null;
+  if (typeof account.avatarUrl === 'string' && account.avatarUrl.length > 0) {
+    try {
+      const parsedAvatarUrl = new URL(account.avatarUrl);
+      if (parsedAvatarUrl.protocol === 'https:' || parsedAvatarUrl.protocol === 'http:') {
+        avatarUrl = parsedAvatarUrl.href;
+      }
+    } catch {
+      avatarUrl = null;
+    }
+  }
   debug('session.available');
-  return account.login;
+  return { login: account.login, avatarUrl };
 }
 
 /**
@@ -126,12 +137,19 @@ export function renderAccountMenu(options = {}) {
   const navigate = options.navigate ?? ((url) => window.location.assign(url));
   const scope = createFactoryScope();
 
-  // `login` and `errorMessage` are the menu's entire visible state; the
-  // effect below is the only place that writes them onto the owned DOM.
   const login = state(/** @type {string | null} */ (null));
+  const avatarUrl = state(/** @type {string | null} */ (null));
+  const avatarLoaded = state(false);
   const errorMessage = state(/** @type {string | null} */ (null));
 
   const loginLabel = h('strong', null, 'GitHub account');
+  const avatarFallback = h('span', { className: 'account-menu-avatar-fallback' }, octicon('person'));
+  const avatarImage = /** @type {HTMLImageElement} */ (h('img', {
+    className: 'account-menu-avatar-image',
+    alt: '',
+    hidden: true,
+    referrerPolicy: 'no-referrer'
+  }));
   const switchButton = /** @type {HTMLButtonElement} */ (h(
     'button',
     { className: 'account-menu-action', type: 'button', 'data-switch-account': '' },
@@ -154,7 +172,8 @@ export function renderAccountMenu(options = {}) {
         'aria-label': 'Open user view',
         title: 'User'
       },
-      octicon('person'),
+      avatarFallback,
+      avatarImage,
       renderActionLabel('GitHub account')
     ),
     h(
@@ -169,13 +188,29 @@ export function renderAccountMenu(options = {}) {
 
   effect(() => {
     const currentLogin = login.get();
+    const currentAvatarUrl = avatarUrl.get();
+    const currentAvatarLoaded = avatarLoaded.get();
     loginLabel.textContent = currentLogin ? `@${currentLogin}` : 'GitHub account';
     menu.hidden = currentLogin === null;
+    const summary = menu.querySelector('summary');
+    if (summary instanceof HTMLElement) {
+      summary.setAttribute('aria-label', currentLogin ? `Open user view for @${currentLogin}` : 'Open user view');
+      summary.title = currentLogin ? `@${currentLogin}` : 'User';
+    }
+    if (currentAvatarUrl) {
+      if (avatarImage.getAttribute('src') !== currentAvatarUrl) avatarImage.src = currentAvatarUrl;
+    } else {
+      avatarImage.removeAttribute('src');
+    }
+    avatarImage.hidden = !currentAvatarUrl || !currentAvatarLoaded;
+    avatarFallback.hidden = currentAvatarLoaded;
     const currentError = errorMessage.get();
     if (currentError) menu.dataset.error = currentError;
     else delete menu.dataset.error;
   }, { signal: scope.signal });
 
+  avatarImage.addEventListener('load', () => avatarLoaded.set(true), { signal: scope.signal });
+  avatarImage.addEventListener('error', () => avatarLoaded.set(false), { signal: scope.signal });
   switchButton.addEventListener('click', () => {
     void switchAccount(switchButton, debug).then((result) => {
       debug('switch.navigation_started');
@@ -206,8 +241,12 @@ export function renderAccountMenu(options = {}) {
   }, { signal: scope.signal });
   queueMicrotask(() => {
     if (document.body) enableDetailsMenuDismissal(document.body, menu, '.account-menu-action');
-    void loadAccount(debug).then((accountLogin) => {
-      login.set(accountLogin);
+    void loadAccount(debug).then((account) => {
+      batch(() => {
+        avatarLoaded.set(false);
+        avatarUrl.set(account.avatarUrl);
+        login.set(account.login);
+      });
     }).catch(() => {
       debug('session.unavailable');
       errorMessage.set('GitHub account session is unavailable');

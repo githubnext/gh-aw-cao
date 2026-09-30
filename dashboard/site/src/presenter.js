@@ -216,7 +216,8 @@ export function renderDashboard(input) {
   const styleEl = h('style', null, getPrimerStyles());
   const skipLink = h('a', { href: '#main-content', className: 'skip-link' }, 'Skip to main content');
 
-  const sidebar = renderDashboardNavigation(pages, sidebarTitle, document.dashboard.navigation, renderAccountMenu());
+  const accountMenu = renderAccountMenu();
+  const sidebar = renderDashboardNavigation(pages, sidebarTitle, document.dashboard.navigation);
   const initialPage = pages.find((page) => page.id !== 'configuration') ?? pages[0];
   const overviewPage = pages.find((page) => page.id === 'overview');
   const initialPageHref = initialPage ? `#page-${encodeURIComponent(initialPage.id)}` : '#main-content';
@@ -229,6 +230,7 @@ export function renderDashboard(input) {
       overviewPageHref: overviewPage ? `#page-${encodeURIComponent(overviewPage.id)}` : initialPageHref,
       dashboardHorizon: dashboardHorizon.element,
       dashboardAppearance,
+      accountMenu,
       githubUrlBase,
       dashboardRepository
     }),
@@ -537,8 +539,6 @@ function inferOrganizationName(sources) {
 function enableResponsiveReportActions(root, signal) {
   const actions = root.querySelector('.report-actions');
   const mobileSlot = root.querySelector('.mobile-nav-menu-actions');
-  const account = root.querySelector('.account-menu');
-  const desktopAccountSlot = root.querySelector('.sidebar-account');
   const desktopSlot = actions?.parentElement;
   const overviewHeader = root.querySelector('.overview-header');
   const mobileHeaderSlot = root.querySelector('.mobile-page-header');
@@ -550,10 +550,6 @@ function enableResponsiveReportActions(root, signal) {
   const placeActions = () => {
     const destination = media.matches ? mobileSlot : desktopSlot;
     if (actions.parentElement !== destination) destination.append(actions);
-    if (account instanceof HTMLElement && desktopAccountSlot instanceof HTMLElement) {
-      const accountDestination = media.matches ? mobileSlot : desktopAccountSlot;
-      if (account.parentElement !== accountDestination) accountDestination.append(account);
-    }
     if (overviewHeader instanceof HTMLElement && mobileHeaderSlot instanceof HTMLElement && headerDesktopSlot) {
       if (media.matches) {
         if (overviewHeader.parentElement !== mobileHeaderSlot) mobileHeaderSlot.prepend(overviewHeader);

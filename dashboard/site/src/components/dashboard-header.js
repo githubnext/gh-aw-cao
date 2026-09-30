@@ -3,7 +3,7 @@ import { octicon } from '../octicons.js';
 import { renderActionLabel } from './ui-primitives.js';
 
 /**
- * @param {{ title: string, description?: string, experimental?: boolean, overviewPageHref: string, dashboardHorizon: HTMLElement, dashboardAppearance: HTMLElement, githubUrlBase: string, dashboardRepository: string | null }} options
+ * @param {{ title: string, description?: string, experimental?: boolean, overviewPageHref: string, dashboardHorizon: HTMLElement, dashboardAppearance: HTMLElement, accountMenu: HTMLElement | null, githubUrlBase: string, dashboardRepository: string | null }} options
  */
 export function renderDashboardHeader(options) {
   return h(
@@ -58,7 +58,8 @@ export function renderDashboardHeader(options) {
               octicon('mark-github'),
               renderActionLabel(options.dashboardRepository)
             )
-          : null
+          : null,
+        options.accountMenu
       )
     )
   );

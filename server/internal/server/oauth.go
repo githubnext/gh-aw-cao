@@ -58,11 +58,17 @@ type githubOAuth struct {
 type oauthSession struct {
 	ID             string    `json:"id"`
 	Login          string    `json:"login"`
+	AvatarURL      string    `json:"avatarUrl,omitempty"`
 	AccessToken    string    `json:"accessToken"`
 	RefreshToken   string    `json:"refreshToken"`
 	AccessExpires  time.Time `json:"accessExpires"`
 	RefreshExpires time.Time `json:"refreshExpires"`
 	CSRFToken      string    `json:"csrfToken"`
+}
+
+type githubAccount struct {
+	Login     string `json:"login"`
+	AvatarURL string `json:"avatar_url"`
 }
 
 type tokenResponse struct {
@@ -219,7 +225,7 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 		writeError(response, http.StatusUnauthorized, "GitHub OAuth exchange failed")
 		return
 	}
-	login, err := oauth.authorizedLogin(request.Context(), tokens.AccessToken)
+	account, err := oauth.authorizedAccount(request.Context(), tokens.AccessToken)
 	if err != nil {
 		serverLog.Printf("oauth authorization failed")
 		oauth.logBranch("callback.authorization_failed")
@@ -241,7 +247,8 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 	now := time.Now().UTC()
 	session := oauthSession{
 		ID:             sessionID,
-		Login:          login,
+		Login:          account.Login,
+		AvatarURL:      account.AvatarURL,
 		AccessToken:    tokens.AccessToken,
 		RefreshToken:   tokens.RefreshToken,
 		AccessExpires:  now.Add(time.Duration(tokens.ExpiresIn) * time.Second),
@@ -300,7 +307,10 @@ func (oauth *githubOAuth) currentAccount(response http.ResponseWriter, request *
 		return
 	}
 	oauth.logBranch("current_account.succeeded")
-	writeJSON(response, http.StatusOK, map[string]string{"login": session.Login})
+	writeJSON(response, http.StatusOK, map[string]string{
+		"login":     session.Login,
+		"avatarUrl": session.AvatarURL,
+	})
 }
 
 func (oauth *githubOAuth) clearRequestSession(response http.ResponseWriter, request *http.Request) error {
@@ -397,8 +407,8 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 	} else {
 		oauth.logBranch("refresh.access_expiry_provided")
 	}
-	login, err := oauth.authorizedLogin(request.Context(), refreshed.AccessToken)
-	if err != nil || !strings.EqualFold(login, session.Login) {
+	account, err := oauth.authorizedAccount(request.Context(), refreshed.AccessToken)
+	if err != nil || !strings.EqualFold(account.Login, session.Login) {
 		if oauth.revokeCredentials(request.Context(), session) != nil {
 			if oauth.queueRevocation(request.Context(), session) != nil {
 				oauth.logBranch("refresh.rejected_revocation_queue_failed")
@@ -413,6 +423,7 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 		oauth.logBranch("refresh.authorization_rejected")
 		return oauthSession{}, false
 	}
+	session.AvatarURL = account.AvatarURL
 	saved, err := oauth.saveSessionIfUnchanged(request.Context(), session, expected)
 	if err != nil {
 		serverLog.Printf("oauth refreshed session save failed")
@@ -519,46 +530,44 @@ func (oauth *githubOAuth) exchange(ctx context.Context, values url.Values) (toke
 	return tokens, nil
 }
 
-func (oauth *githubOAuth) authorizedLogin(ctx context.Context, accessToken string) (string, error) {
-	login, err := oauth.githubLogin(ctx, accessToken)
+func (oauth *githubOAuth) authorizedAccount(ctx context.Context, accessToken string) (githubAccount, error) {
+	account, err := oauth.githubAccount(ctx, accessToken)
 	if err != nil {
 		oauth.logBranch("authorization.identity_failed")
-		return "", err
+		return githubAccount{}, err
 	}
 	for _, org := range oauth.config.AllowedOrganizations {
 		if oauth.orgAuthorized(ctx, accessToken, org) {
 			oauth.logBranch("authorization.organization_allowed")
-			return login, nil
+			return account, nil
 		}
 	}
 	for _, team := range oauth.config.AllowedTeams {
 		parts := strings.Split(team, "/")
-		if len(parts) == 2 && oauth.teamAuthorized(ctx, accessToken, parts[0], parts[1], login) {
+		if len(parts) == 2 && oauth.teamAuthorized(ctx, accessToken, parts[0], parts[1], account.Login) {
 			oauth.logBranch("authorization.team_allowed")
-			return login, nil
+			return account, nil
 		}
 		if len(parts) != 2 {
 			oauth.logBranch("authorization.team_policy_invalid")
 		}
 	}
 	oauth.logBranch("authorization.denied")
-	return "", errors.New("GitHub user is not authorized")
+	return githubAccount{}, errors.New("GitHub user is not authorized")
 }
 
-func (oauth *githubOAuth) githubLogin(ctx context.Context, accessToken string) (string, error) {
-	var payload struct {
-		Login string `json:"login"`
-	}
-	if err := oauth.githubJSON(ctx, http.MethodGet, oauth.config.UserURL, accessToken, nil, &payload); err != nil {
+func (oauth *githubOAuth) githubAccount(ctx context.Context, accessToken string) (githubAccount, error) {
+	var account githubAccount
+	if err := oauth.githubJSON(ctx, http.MethodGet, oauth.config.UserURL, accessToken, nil, &account); err != nil {
 		oauth.logBranch("identity.request_failed")
-		return "", err
+		return githubAccount{}, err
 	}
-	if strings.TrimSpace(payload.Login) == "" {
+	if strings.TrimSpace(account.Login) == "" {
 		oauth.logBranch("identity.login_missing")
-		return "", errors.New("GitHub user response did not include a login")
+		return githubAccount{}, errors.New("GitHub user response did not include a login")
 	}
 	oauth.logBranch("identity.loaded")
-	return payload.Login, nil
+	return account, nil
 }
 
 func (oauth *githubOAuth) orgAuthorized(ctx context.Context, accessToken, org string) bool {

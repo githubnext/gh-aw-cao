@@ -342,7 +342,9 @@ func TestHostedOAuthExposesAndSwitchesCurrentAccount(t *testing.T) {
 	request := azureRequest(t, http.MethodGet, "/api/auth/session")
 	request.AddCookie(sessionCookie)
 	app.Handler().ServeHTTP(current, request)
-	if current.Code != http.StatusOK || !strings.Contains(current.Body.String(), `"login":"octocat"`) {
+	if current.Code != http.StatusOK ||
+		!strings.Contains(current.Body.String(), `"login":"octocat"`) ||
+		!strings.Contains(current.Body.String(), `"avatarUrl":"`+github.URL+`/avatars/octocat.png"`) {
 		t.Fatalf("current account returned %d: %s", current.Code, current.Body.String())
 	}
 
@@ -580,7 +582,10 @@ func fakeGitHub(t *testing.T, options fakeGitHubOptions) *fakeGitHubServer {
 		_ = json.NewEncoder(response).Encode(tokenResponse{AccessToken: "access-old", RefreshToken: "refresh-old", ExpiresIn: options.accessExpiresIn, RefreshTokenExpiresIn: 7200})
 	})
 	mux.HandleFunc("/user", func(response http.ResponseWriter, request *http.Request) {
-		_ = json.NewEncoder(response).Encode(map[string]string{"login": "octocat"})
+		_ = json.NewEncoder(response).Encode(map[string]string{
+			"login":      "octocat",
+			"avatar_url": server.URL + "/avatars/octocat.png",
+		})
 	})
 	mux.HandleFunc("/user/memberships/orgs/example", func(response http.ResponseWriter, request *http.Request) {
 		state := options.membershipState

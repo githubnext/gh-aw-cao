@@ -31,7 +31,10 @@ describe('hosted GitHub account menu', () => {
     const navigate = vi.fn();
     const debug = vi.fn();
     const fetchMock = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({ login: 'octocat-enterprise' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        login: 'octocat-enterprise',
+        avatarUrl: 'https://avatars.githubusercontent.com/u/583231?v=4'
+      }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ loginUrl: '/auth/login?select_account=1' }), { status: 200 }))
       .mockResolvedValueOnce(new Response(null, { status: 204 }));
     vi.stubGlobal('fetch', fetchMock);
@@ -41,11 +44,20 @@ describe('hosted GitHub account menu', () => {
     if (!(menu instanceof HTMLDetailsElement)) throw new Error('account menu was not rendered');
     document.body.append(menu);
     await vi.waitFor(() => expect(menu.hidden).toBe(false));
-    expect(menu.querySelector('summary')?.getAttribute('aria-label')).toBe('Open user view');
+    expect(menu.querySelector('summary')?.getAttribute('aria-label')).toBe('Open user view for @octocat-enterprise');
     expect(menu.querySelector('[role="dialog"]')?.getAttribute('aria-label')).toBe('User');
     expect(menu.textContent).toContain('Account');
     expect(menu.textContent).toContain('@octocat-enterprise');
     expect(menu.textContent).toContain('Log out');
+    const avatar = menu.querySelector('.account-menu-avatar-image');
+    const avatarFallback = menu.querySelector('.account-menu-avatar-fallback');
+    expect(avatar).toBeInstanceOf(HTMLImageElement);
+    if (!(avatar instanceof HTMLImageElement)) throw new Error('account avatar was not rendered');
+    expect(avatar.src).toBe('https://avatars.githubusercontent.com/u/583231?v=4');
+    expect(avatar.hidden).toBe(true);
+    avatar.dispatchEvent(new Event('load'));
+    await vi.waitFor(() => expect(avatar.hidden).toBe(false));
+    expect(avatarFallback?.hasAttribute('hidden')).toBe(true);
 
     const switchButton = menu.querySelector('[data-switch-account]');
     expect(switchButton).toBeInstanceOf(HTMLButtonElement);
@@ -106,6 +118,21 @@ describe('hosted GitHub account menu', () => {
       'session.response_rejected',
       'session.unavailable'
     ]);
+  });
+
+  it('keeps the person icon when the session has no usable avatar URL', async () => {
+    document.head.innerHTML = '<meta name="cao-auth-mode" content="github">';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ login: 'octocat', avatarUrl: 'javascript:alert(1)' }), { status: 200 })
+    ));
+
+    const menu = renderAccountMenu();
+    if (!(menu instanceof HTMLDetailsElement)) throw new Error('account menu was not rendered');
+    document.body.append(menu);
+    await vi.waitFor(() => expect(menu.hidden).toBe(false));
+
+    expect(menu.querySelector('.account-menu-avatar-image')?.hasAttribute('src')).toBe(false);
+    expect(menu.querySelector('.account-menu-avatar-fallback')?.hasAttribute('hidden')).toBe(false);
   });
 
   it('logs invalid null payloads without throwing unclassified errors', async () => {

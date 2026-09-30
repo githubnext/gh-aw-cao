@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
+import { renderDashboardHeader } from '../../src/components/dashboard-header.js';
 import { enableDashboardNavigation, renderDashboardNavigation, syncDashboardNavigationIndicators, syncMobileViewModeToggle } from '../../src/components/dashboard-navigation.js';
 import { buildChartPoints, prepareChartPoints, prepareTableRows } from '../../src/components/view-data.js';
 
@@ -93,6 +94,24 @@ describe('dashboard sidebar', () => {
 
     const dataSection = sidebar.querySelector('[data-nav-section="Data"]');
     expect(dataSection instanceof HTMLDetailsElement && dataSection.open).toBe(false);
+  });
+
+  it('places the hosted account control last in the top-right header actions', () => {
+    const accountMenu = document.createElement('details');
+    accountMenu.className = 'account-menu';
+    const header = renderDashboardHeader({
+      title: 'Overview',
+      overviewPageHref: '#page-overview',
+      dashboardHorizon: document.createElement('div'),
+      dashboardAppearance: document.createElement('details'),
+      accountMenu,
+      githubUrlBase: 'https://github.com',
+      dashboardRepository: 'octo/example'
+    });
+
+    const actions = header.querySelector('.report-actions');
+    expect(actions?.lastElementChild).toBe(accountMenu);
+    expect(header.querySelector('.overview-header + .report-actions > .account-menu')).toBe(accountMenu);
   });
 
   it('groups experimental pages in one explicit section', () => {
@@ -231,20 +250,6 @@ describe('dashboard sidebar', () => {
     });
 
     expect(mobileMenuSummary?.getAttribute('aria-label')).toBe('Select view, updates available and 1 more');
-  });
-
-  it('places the hosted user control at the bottom of the sidebar', () => {
-    const accountControl = document.createElement('details');
-    accountControl.className = 'account-menu';
-    const sidebar = renderDashboardNavigation(
-      [{ id: 'overview', title: 'Overview' }],
-      'Example',
-      undefined,
-      accountControl
-    );
-
-    expect(sidebar.lastElementChild?.classList.contains('sidebar-account')).toBe(true);
-    expect(sidebar.querySelector('.sidebar-account > .account-menu')).toBe(accountControl);
   });
 
   it('cycles the active page view from the mobile header control', () => {

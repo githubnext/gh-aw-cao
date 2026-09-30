@@ -17,9 +17,8 @@ const VIEW_MODE_ICONS = { chart: 'graph', table: 'table', card: 'stack' };
  * @param {Array<Record<string, unknown>>} pages
  * @param {string} title
  * @param {Array<{ label?: string, pages?: string[], experimental?: boolean, placement?: string }> | undefined} navigation
- * @param {HTMLElement | null} accountControl
  */
-export function renderDashboardNavigation(pages, title, navigation, accountControl = null) {
+export function renderDashboardNavigation(pages, title, navigation) {
   const pagesById = new Map(pages.map((page) => [page.id, page]));
   const configuredSections = Array.isArray(navigation) && navigation.length > 0
     ? navigation
@@ -146,8 +145,7 @@ export function renderDashboardNavigation(pages, title, navigation, accountContr
             )]
           : items;
       })
-    ),
-    accountControl ? h('div', { className: 'sidebar-account' }, accountControl) : null
+    )
   );
 }
 
