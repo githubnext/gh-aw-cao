@@ -70,10 +70,15 @@ test('estimates row reads and ranks queries by dependency-amortized pressure', (
     model: 'normalized-upper-bound',
     assumptions: 'Each database table has weight 1; selectivity is 1; query dependencies materialize once per batch.',
     class: 'linear-row-reads',
+    'output-field-count': 2,
     'direct-row-read-units': 3,
     'dependency-row-read-units': 0,
     'total-row-read-units': 3,
     'output-row-units': 1,
+    'direct-materialized-field-units': 2,
+    'dependency-materialized-field-units': 0,
+    'total-materialized-field-units': 2,
+    warnings: [],
     'source-coefficients': { runs: 3 },
     'direct-source-coefficients': { runs: 3 },
     'stage-row-reads': {
@@ -106,10 +111,49 @@ test('formats a bounded markdown complexity ranking', () => {
   assert.match(markdown, /^### Dashboard query complexity/m);
   assert.match(markdown, /\| Rank \| Query \| Used by \| Total \|/);
   assert.match(markdown, /Database table coefficients: `runs` 8, `repositories` 1/);
-  assert.match(markdown, /\| 1 \| `joined` \| `view:joined-view` \| 7 \| 4 \| 3 \| linear \|/);
-  assert.match(markdown, /\| 2 \| `summary` \| `page:overview\/view:summary-card` \| 5 \| 2 \| 3 \| linear \|/);
+  assert.match(markdown, /\| 1 \| `joined` \| `view:joined-view` \| 7 \| 4 \| 3 \| 2 \| 4 \| — \| linear \|/);
+  assert.match(markdown, /\| 2 \| `summary` \| `page:overview\/view:summary-card` \| 5 \| 2 \| 3 \| 1 \| 3 \| — \| linear \|/);
   assert.doesNotMatch(markdown, /\| 3 \| `base`/);
   assert.match(markdown, /Showing 2 of 3 queries/);
+});
+
+test('warns when a wide raw union materializes more field-units than aggregated sources', () => {
+  const runKeys = ['organization', 'repository', 'workflow', 'run', 'run-attempt'];
+  const recordSources = ['audits', 'domains', 'tools', 'issues'];
+  const queries = [
+    { name: 'event-base', from: 'audits', union: recordSources.slice(1) },
+    ...recordSources.map((source) => ({
+      name: `${source}-event-runs`,
+      from: source,
+      aggregate: {
+        by: runKeys,
+        values: [{ field: 'event', as: 'events', reducer: 'count' }]
+      }
+    })),
+    {
+      name: 'event-runs',
+      from: 'audits-event-runs',
+      union: recordSources.slice(1).map((source) => `${source}-event-runs`),
+      aggregate: {
+        by: runKeys,
+        values: [{ field: 'events', as: 'events', reducer: 'sum' }]
+      }
+    }
+  ];
+  const analysis = analyzeDashboardComplexity({
+    dashboard: { queries }
+  });
+  const byName = Object.fromEntries(analysis.inventory.map((query) => [query.name, query]));
+
+  assert.ok(byName['event-base']['output-field-count'] > byName['event-runs']['output-field-count']);
+  assert.ok(byName['event-base']['total-materialized-field-units'] >= 256);
+  assert.match(byName['event-base'].warnings[0], /Potentially large materialized output/);
+  assert.ok(
+    byName['event-base']['total-materialized-field-units']
+      > byName['event-runs']['total-materialized-field-units']
+  );
+  assert.deepEqual(byName['event-runs'].warnings, []);
+  assert.equal(analysis.ranking[0].name, 'event-base');
 });
 
 test('cao dashboard-complexity reports the full graph or one query id', async () => {
