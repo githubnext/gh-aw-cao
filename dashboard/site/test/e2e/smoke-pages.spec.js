@@ -1079,6 +1079,8 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await themeControl.getByRole('button', { name: 'Light' }).click();
   await expect(page.locator('.dashboard-root')).toHaveAttribute('data-theme', 'light');
   expect(await page.evaluate(() => localStorage.getItem('central-agentic-ops.dashboard.theme'))).toBe('light');
+  await page.getByRole('link', { name: 'Overview', exact: true }).first().click();
+  await expect(page).toHaveURL(/#page-overview$/);
   await page.getByRole('link', { name: 'Settings' }).click();
   await expect(page).toHaveURL(/#page-configuration$/);
   await expect(page.getByRole('heading', { name: 'Settings', exact: true, level: 1 })).toBeVisible();
