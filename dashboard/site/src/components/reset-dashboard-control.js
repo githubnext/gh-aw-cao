@@ -3,6 +3,8 @@ import { deleteCanonicalDatabase } from '../data/storage/indexeddb.js';
 import { octicon } from '../octicons.js';
 import { clearScopedStorage } from '../storage-scope.js';
 import { createDebug } from '../debug.js';
+import { effect, state } from '../reactive.js';
+import { createFactoryScope } from './factory-elements.js';
 import { createModalDialog, renderCloseButton, renderLiveRegion } from './ui-primitives.js';
 
 const debug = createDebug('data:reset');
@@ -61,8 +63,15 @@ export function renderResetDashboardControl(options = {}) {
   const storage = options.storage ?? browserStorage();
   const indexedDB = options.indexedDB ?? globalThis.window?.indexedDB;
   const reload = options.reload ?? (() => globalThis.window?.location.reload());
+  const scope = createFactoryScope();
   /** @type {HTMLButtonElement} */
   let trigger;
+
+  // `statusMessage` and `busy` are the dialog's entire visible state; the
+  // effect below is the only place that writes them onto the owned DOM.
+  const statusMessage = state(/** @type {string | null} */ (null));
+  const busy = state(false);
+
   const { dialog, open, close } = createModalDialog({
     className: 'reset-dashboard-dialog',
     ariaLabel: 'Reset dashboard confirmation',
@@ -79,28 +88,32 @@ export function renderResetDashboardControl(options = {}) {
     className: 'reset-dashboard-confirm',
     onClick: async () => {
       if (!storage || !indexedDB) {
-        status.textContent = 'Local browser storage is unavailable.';
+        statusMessage.set('Local browser storage is unavailable.');
         return;
       }
-      confirm.disabled = true;
-      cancel.disabled = true;
-      status.textContent = 'Resetting…';
+      busy.set(true);
+      statusMessage.set('Resetting…');
       try {
         await resetLocalDashboardData(storage, indexedDB, {
           onBlocked: () => {
-            status.textContent = 'Waiting for other open dashboard tabs to close…';
+            statusMessage.set('Waiting for other open dashboard tabs to close…');
           }
         });
         reload();
       } catch (error) {
-        status.textContent = error instanceof Error && error.name === 'IndexedDBDeleteBlockedError'
+        statusMessage.set(error instanceof Error && error.name === 'IndexedDBDeleteBlockedError'
           ? 'Reset timed out because another open dashboard tab is still using local data. Close other tabs and try again.'
-          : 'Could not reset local dashboard data.';
-        confirm.disabled = false;
-        cancel.disabled = false;
+          : 'Could not reset local dashboard data.');
+        busy.set(false);
       }
     }
   }, 'Reset'));
+  effect(() => {
+    status.textContent = statusMessage.get() ?? '';
+    const isBusy = busy.get();
+    confirm.disabled = isBusy;
+    cancel.disabled = isBusy;
+  }, { signal: scope.signal });
   trigger = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button',
     className: 'reset-dashboard-trigger',
@@ -122,5 +135,7 @@ export function renderResetDashboardControl(options = {}) {
     h('footer', { className: 'reset-dashboard-dialog-footer' }, status, cancel, confirm)
   );
   dialog.addEventListener('close', () => trigger.focus());
-  return h('div', { className: 'reset-dashboard-control' }, trigger, dialog);
+  const root = h('div', { className: 'reset-dashboard-control' }, trigger, dialog);
+  scope.bind(root);
+  return root;
 }
