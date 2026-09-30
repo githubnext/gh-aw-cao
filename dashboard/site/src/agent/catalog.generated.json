@@ -2880,6 +2880,8 @@
     {
       "id": "marketplace-registry-options",
       "intent": "Provide distinct authorized registry choices from resolved package records.",
+      "objective": "List the registry choices available in the current authorized marketplace package projection.",
+      "acceptance": "Return distinct registry IDs and names with package counts from resolved records; missing or inaccessible registries must not be inferred from absent rows.",
       "description": "",
       "parameters": [],
       "sources": [
@@ -2899,6 +2901,8 @@
     {
       "id": "marketplace-publisher-options",
       "intent": "Provide distinct publisher choices from resolved package records.",
+      "objective": "List the publisher choices available in the current authorized marketplace package projection.",
+      "acceptance": "Return distinct publishers with package counts from resolved records; an absent publisher is not proof that its packages do not exist.",
       "description": "",
       "parameters": [],
       "sources": [
@@ -2918,6 +2922,8 @@
     {
       "id": "marketplace-ranked",
       "intent": "Order keyword-matched campaign packages by reviewed publisher attestation, public maintenance evidence, local adoption evidence, and public popularity, without treating missing evidence as zero.",
+      "objective": "Present authorized campaign packages in deterministic discovery order using only observable, governed signals.",
+      "acceptance": "Rank verified provenance and known maintenance before observed adoption and public stars, break ties by name and ID, and preserve unknown evidence rather than treating it as zero or verified.",
       "description": "",
       "parameters": [],
       "sources": [
