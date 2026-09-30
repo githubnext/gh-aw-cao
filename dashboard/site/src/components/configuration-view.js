@@ -473,9 +473,9 @@ export function renderConfigurationView(context) {
       description: context.description,
       headingTag: 'h2'
     }),
+    renderAppearanceSetting(),
     renderLocalDataActions(),
     renderSettingsCliActions(),
-    renderAppearanceSetting(),
     renderAutomaticDataUpdatesSetting(),
     isPlainObject(policyDocument)
       ? renderSettingsEditor(policyDocument)

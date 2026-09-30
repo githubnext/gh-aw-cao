@@ -88,6 +88,7 @@ describe('Configuration dashboard view', () => {
     if (!rendered) throw new Error('configuration view did not render');
 
     const theme = rendered.querySelector('.theme-control-options');
+    expect(rendered.children[1]?.querySelector('#configuration-appearance-heading')?.textContent).toBe('Appearance');
     expect(theme?.getAttribute('role')).toBe('group');
     expect(theme?.getAttribute('aria-label')).toBe('Theme');
     expect([...rendered.querySelectorAll('[data-theme-value]')].map((button) => button.textContent))
