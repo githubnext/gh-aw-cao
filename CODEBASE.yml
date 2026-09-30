@@ -173,6 +173,9 @@ components:
   dashboard_collection_credentials:
     path: server/internal/githubapp/
     responsibility: mint short-lived installation tokens and govern per-installation GitHub rate-limit budget
+  github_quota_service:
+    path: server/internal/githubquota/
+    responsibility: coordinate GitHub API quota across replicas for buckets keyed by app, installation, and resource through authoritative observations, expiring atomic Redis reservations, parking, a credential-free provider registry, headroom-based bucket selection, and a bounded 24-hour usage history exposed to administrators through a REST API and the github-quota-usage runtime source
   dashboard_rebuild_control:
     path: server/internal/server/operations.go
     responsibility: coordinate multi-replica rebuilds, stage and validate a fresh generation, atomically activate it, and report operational status

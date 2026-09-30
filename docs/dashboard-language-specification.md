@@ -381,17 +381,20 @@ A campaign groups one orchestrator and one or more workers that execute centrall
 
 The server may expose a bounded operational source through the existing
 authorized query boundary. It is not a database table and is not stored in
-browser IndexedDB. The registered source is:
+browser IndexedDB. The registered sources are:
 
 | Source | One row represents | Fields |
 |---|---|---|
 | `collection-health` | the current CAO webhook and collection health snapshot | `configured`, `health`, `health-revision`, `queue-depth`, `pending-tasks`, `dead-letters`, `backfill`, `last-projected`, `last-webhook-at`, `last-failure-at`, `last-failure-code`, `last-success-at`, `webhook-received`, `webhook-duplicate`, `webhook-admission-failed`, `task-queued`, `task-coalesced`, `collection-succeeded`, `collection-failed`, `collection-retried`, `collection-dead-lettered` |
+| `github-quota-usage` | the peak GitHub API quota usage of one bucket, or the limit-weighted aggregate of every bucket, during one 15-minute slot of the last 24 hours | `observed-at`, `scope`, `bucket`, `app`, `installation`, `resource`, `buckets`, `limit`, `used`, `reserved`, `usage-percent` |
 
-The provider returns exactly one row for an authorized request. Other clients
-receive an unavailable source, and the provider stores no raw error messages or
-credentials in the source. `collection-health` is consumed only through a
-declared Dashboard Language query; view code and UI elements do not fetch or
-derive this data independently.
+The `collection-health` provider returns exactly one row for an authorized
+request. The `github-quota-usage` provider returns one `aggregate` row per
+observed slot and one `bucket` row per observed bucket and slot; `scope`
+distinguishes them. Other clients receive an unavailable source, and the
+providers store no raw error messages or credentials in the source. Runtime
+sources are consumed only through a declared Dashboard Language query; view
+code and UI elements do not fetch or derive this data independently.
 
 - **DLS-SEM-017:** A `metric`, `table`, `list`, or `chart` view `data.source` **MUST** name exactly one Section 5.1 database table, one registered Section 5.4 runtime source, or one declared query. An `element` view `data.sources` **MUST** name one or more unique Section 5.1 database tables, registered Section 5.4 runtime sources, or declared queries. An optional `data.route-field` **MUST** name one field from `data.source`.
 - **DLS-SEM-018:** Each database table **MUST** preserve the grain declared in Section 5.1; duplicated observations **MUST** retain distinct observation identifiers in provenance.

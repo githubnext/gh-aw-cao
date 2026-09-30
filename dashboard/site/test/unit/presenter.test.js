@@ -1335,6 +1335,16 @@ describe('presenter built-in and custom pages', () => {
             backfill: 0
           }],
           metadata
+        },
+        'github-api-usage': {
+          source: 'github-api-usage',
+          rows: [
+            { 'observed-at': '2026-09-02T11:00:00Z', scope: 'aggregate', bucket: 'all buckets', limit: 10000, used: 2500, 'usage-percent': 25 },
+            { 'observed-at': '2026-09-02T12:00:00Z', scope: 'aggregate', bucket: 'all buckets', limit: 10000, used: 4000, 'usage-percent': 40 },
+            { 'observed-at': '2026-09-02T11:00:00Z', scope: 'bucket', bucket: 'collector/123/core', limit: 5000, used: 1000, 'usage-percent': 20 },
+            { 'observed-at': '2026-09-02T12:00:00Z', scope: 'bucket', bucket: 'collector/123/core', limit: 5000, used: 3000, 'usage-percent': 60 }
+          ],
+          metadata
         }
       }
     });
@@ -1344,8 +1354,10 @@ describe('presenter built-in and custom pages', () => {
       window.location.hash = '#page-indexing';
       await vi.waitFor(() => expect(rendered.querySelector('[data-page-id="indexing"]')?.hasAttribute('data-page-pending')).toBe(false));
       const page = rendered.querySelector('[data-page-id="indexing"]');
-      expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(5);
+      expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(6);
       expect(page?.querySelectorAll('[data-chart-widget="bar"]')).toHaveLength(2);
+      expect(page?.querySelectorAll('[data-view-id="github-api-usage"] [data-chart-widget="line"]')).toHaveLength(1);
+      expect(page?.querySelector('[data-view-id="github-api-usage"]')?.textContent).toContain('collector/123/core');
       expect(page?.querySelectorAll('[data-chart-widget="horizontal-bar"]')).toHaveLength(1);
       expect(page?.textContent).not.toContain('Local database');
       expect(page?.textContent).toContain('ingest-jsonl');
