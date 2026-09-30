@@ -1,7 +1,15 @@
 {
-  "source_sha": "d18fc2c1e8c4d462e1df252625914cfcd18bee66",
-  "next_category": "artifact transfer and Pages packaging",
+  "source_sha": "f64488228ac10356f6f57003186851ca70aaf4fb",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
+    {
+      "evaluated_at": "2026-09-30T19:25:30Z",
+      "worker_run_id": "36765232431",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [],
+      "outcome": "incomplete: GitHub Actions API reads for docs.yml runs were rate-limited before at least five comparable successful runs could be collected from the last 14 days, so artifact transfer and Pages packaging could not be re-evaluated safely in this run.",
+      "suggestion_fingerprint": null
+    },
     {
       "evaluated_at": "2026-09-30T18:59:00Z",
       "worker_run_id": "36762157121",
