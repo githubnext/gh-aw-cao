@@ -37,7 +37,7 @@ func NewHostedAppFromEnv(
 	if host.Profile.Listener != HostListenerProcess {
 		return nil, fmt.Errorf("host target module %q does not own a process listener", host.Profile.Name)
 	}
-	return newHostedAppWithPolicy(ctx, host, listen, certFile, keyFile, siteDirectory, dashboardQueriesPath, databaseQueriesPath, logger)
+	return newHostedAppWithPolicy(ctx, host, listen, certFile, keyFile, siteDirectory, dashboardQueriesPath, databaseQueriesPath, logger, len(mcpEnabled) > 0 && mcpEnabled[0])
 }
 
 // NewExternallyHostedAppFromEnv builds an OAuth-protected CAO service without
@@ -55,7 +55,7 @@ func NewExternallyHostedAppFromEnv(
 	if host.Profile.Listener != HostListenerExternal {
 		return nil, fmt.Errorf("host target module %q does not delegate listener ownership to an external host", host.Profile.Name)
 	}
-	return newHostedAppWithPolicy(ctx, host, "", "", "", siteDirectory, dashboardQueriesPath, databaseQueriesPath, logger)
+	return newHostedAppWithPolicy(ctx, host, "", "", "", siteDirectory, dashboardQueriesPath, databaseQueriesPath, logger, false)
 }
 
 func newHostedAppWithPolicy(
@@ -63,6 +63,7 @@ func newHostedAppWithPolicy(
 	host *resolvedHostPolicy,
 	listen, certFile, keyFile, siteDirectory, dashboardQueriesPath, databaseQueriesPath string,
 	logger *log.Logger,
+	mcpEnabled bool,
 ) (*App, error) {
 	if err := validateHostedRedisURL(
 		host.RedisURL,
@@ -118,7 +119,7 @@ func newHostedAppWithPolicy(
 	}
 	config := Config{
 		HostProfile:            host.Profile,
-		MCPEnabled:             len(mcpEnabled) > 0 && mcpEnabled[0],
+		MCPEnabled:             mcpEnabled,
 		HostedMCPRepositoryID:  os.Getenv("CAO_MCP_REPOSITORY_ID"),
 		ActionsRepository:      os.Getenv("CAO_MCP_REPOSITORY"),
 		AgentCatalogPath:       "/app/agent/catalog.json",
