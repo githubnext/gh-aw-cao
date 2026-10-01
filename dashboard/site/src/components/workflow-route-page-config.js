@@ -3,6 +3,9 @@
  */
 
 import { selectNamedComposition } from './route-composition.js';
+import { createDebug } from '../debug.js';
+
+const debugWorkflowRoutePageConfig = createDebug('workflow-route-page-config');
 
 /**
  * @typedef {'workflow-runtime'|'workflow-detail'|'workflow-runs'} WorkflowRoutePageId
@@ -35,6 +38,8 @@ const WORKFLOW_ROUTE_PAGE_CONFIGS = /** @type {Readonly<Record<WorkflowRoutePage
  * @returns {WorkflowRoutePageConfig}
  */
 export function workflowRoutePageConfig(pageId) {
+  const recognized = typeof pageId === 'string' && Object.hasOwn(WORKFLOW_ROUTE_PAGE_CONFIGS, pageId);
+  if (!recognized) debugWorkflowRoutePageConfig({ event: 'page-id-fallback', pageId });
   return selectNamedComposition(
     WORKFLOW_ROUTE_PAGE_CONFIGS,
     pageId,
@@ -53,9 +58,11 @@ const WORKFLOW_ROUTE_PAGE_ID_BY_BODY = /** @type {Readonly<Record<'insights'|'re
  * @returns {WorkflowRoutePageConfig}
  */
 export function workflowRoutePageConfigForBody(body) {
+  const recognized = typeof body === 'string' && Object.hasOwn(WORKFLOW_ROUTE_PAGE_ID_BY_BODY, body);
+  if (!recognized) debugWorkflowRoutePageConfig({ event: 'body-fallback', body });
   return selectNamedComposition(
     WORKFLOW_ROUTE_PAGE_CONFIGS,
-    typeof body === 'string' && Object.hasOwn(WORKFLOW_ROUTE_PAGE_ID_BY_BODY, body)
+    recognized
       ? WORKFLOW_ROUTE_PAGE_ID_BY_BODY[/** @type {'insights'|'reports'|'runs'} */ (body)]
       : 'workflow-detail',
     'workflow-detail'
