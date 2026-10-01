@@ -64,7 +64,7 @@ You need everything in the [prerequisites for the GitHub Actions only deployment
 1. In each token form, select **Only select repositories**, then select exactly the repositories that the helper listed.
 1. When the helper prompts you, paste each token into its `gh secret set` prompt. The helper never accepts tokens as command arguments.
 1. Confirm that `GH_AW_GITHUB_AUTH_MODE` is `pat` and that both repository maps contain every intended repository. Existing App credentials may remain stored; they are inactive in PAT mode. Don't configure the deprecated `GH_AW_GITHUB_TOKEN` secret.
-1. Run the CAO Activity workflow, then the CAO Dashboard workflow. For the remaining steps, see [Deploying the dashboard](deployment-actions.md#deploying-the-dashboard).
+1. Run the CAO Activity workflow. Its first successful default-branch run triggers the CAO Dashboard workflow automatically. For the remaining steps, see [Deploying the dashboard](deployment-actions.md#deploying-the-dashboard).
 1. Before you enable any campaign in `live` mode, validate the credentials. For more information, see [Validating the credentials](#validating-the-credentials).
 
 ## Configuration reference

@@ -44,8 +44,11 @@ The supported control-plane credentials are:
 | 3 | Legacy fine-grained PAT fallback | Repository secret `GH_AW_GITHUB_TOKEN` |
 | 4 | Runtime fallback | Repository-provided `GITHUB_TOKEN` for control-repository operations it can authorize |
 
-`GH_AW_GITHUB_AUTH_MODE` explicitly selects `app` or `pat`; setup writes it only
-after the selected profile is complete. In `pat` mode, read operations and
+`GH_AW_GITHUB_AUTH_MODE` explicitly selects `app` or `pat`. GitHub App setup
+writes `app` as soon as the read App credentials and selected-repository
+installations are verified, so Activity can run while write-App setup is still
+in progress. PAT setup writes `pat` only after the complete selected profile is
+stored. In `pat` mode, read operations and
 cross-repository safe outputs select the owner-scoped secret mapped to their
 exact repository and do not fall through to App credentials or legacy PAT
 secrets. Orchestrator safe outputs targeting the control repository use its
@@ -143,9 +146,9 @@ The CLI reads `control-plane.scope.allowed-repositories` from `.github/workflows
 
 On a GitHub Enterprise Cloud data-residency hostname, export `GH_HOST` before
 running setup. The helper uses that host for repository API calls and all App
-registration, installation, and settings URLs. It omits the Campaigns
-permission from data-residency App manifests because that permission is not
-available on those hosts.
+registration, installation, and settings URLs. On every host, it mints a
+short-lived installation token from the newly created App key and verifies the
+exact selected repositories before completing setup.
 
 Enterprise ownership does not grant repository access or widen CAO policy. The App still has no access until each organization approves a selected-repository installation, and shared control still enforces the exact checked-in allowlist. Confirm the read App has no write permission and install the write App only where approved safe outputs may write. Public Apps are unsupported; replace an earlier public App with private organization- or enterprise-owned Apps after reviewing credential rotation.
 
@@ -245,7 +248,6 @@ Grant only permissions required by installed campaigns. The current full catalog
 | Checks | Read | None | Inspect checks |
 | Contents | Read | Write | Read repositories and create approved changes |
 | Issues | Read | Write | Inspect issues and emit issue or comment safe outputs |
-| Campaigns | Read | None | Inspect campaign evidence |
 | Pull requests | Read | Write | Inspect pull requests and emit approved pull-request outputs |
 | Secret scanning alerts | Read | None | Inspect code-security evidence |
 | Security events | Read | None | Inspect code-security evidence |

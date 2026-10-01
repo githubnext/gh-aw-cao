@@ -209,7 +209,7 @@ Configure a GitHub App or fine-grained PAT profile for every cross-repository sc
 | `GH_AW_GITHUB_READ_APP_PRIVATE_KEY` | With App authentication | Repository secret containing the read-only App private key. |
 | `GH_AW_GITHUB_WRITE_APP_ID` | With write-capable App authentication | Repository variable containing the safe-output and API-gate GitHub App client ID. |
 | `GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY` | With write-capable App authentication | Repository secret containing the safe-output and API-gate App private key. |
-| `GH_AW_GITHUB_AUTH_MODE` | Recommended | Repository variable selecting `app` or `pat`; setup writes it only after the selected profile is complete. |
+| `GH_AW_GITHUB_AUTH_MODE` | Recommended | Repository variable selecting `app` or `pat`; App setup writes it after the read App is verified, while PAT setup writes it after the selected profile is complete. |
 | `GH_AW_GITHUB_READ_PAT_REPOSITORIES` | With owner-scoped PAT authentication | Non-secret JSON repository variable mapping each exact readable repository to its owner-scoped secret name. |
 | `GH_AW_GITHUB_WRITE_PAT_REPOSITORIES` | With owner-scoped PAT authentication | Non-secret JSON repository variable mapping each approved output repository to its owner-scoped secret name. |
 | `GH_AW_GITHUB_READ_PAT_<OWNER>` | With owner-scoped PAT authentication | Read-only fine-grained token for one resource owner; hyphens in the owner are encoded as underscores. |

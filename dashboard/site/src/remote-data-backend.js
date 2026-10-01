@@ -5,6 +5,7 @@ import {
 } from "./data/queries/view-payload-compiler.js";
 import { csrfHeaders, ensureCsrfToken, usesGitHubAuthentication } from "./auth.js";
 import { createDebug } from "./debug.js";
+import { updateRateLimitNotification } from "./rate-limit-notification.js";
 
 const debugRemoteBackend = createDebug("remote-data-backend");
 
@@ -113,6 +114,7 @@ async function apiRequest(path, init = {}, signal) {
       ? csrfHeaders(headers)
       : headers,
   });
+  updateRateLimitNotification(path, response.status);
   if (!response.ok) {
     debugRemoteBackend({ event: "request-failed", path, status: response.status });
     const payload = await response.json().catch(() => null);
@@ -315,6 +317,7 @@ function startRemoteRevisionStream() {
         },
         signal: controller.signal,
       });
+      updateRateLimitNotification("/api/v1/events", response.status);
       if (!response.ok || !response.body) {
         throw new Error(`Dashboard data event stream failed: ${response.status}`);
       }

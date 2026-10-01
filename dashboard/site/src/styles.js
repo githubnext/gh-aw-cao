@@ -518,6 +518,8 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .tooltip-trigger:hover { background: var(--neutral-muted); color: var(--fg); }
 .tooltip-trigger .octicon { width: 14px; height: 14px; }
 .dashboard-current-status .tooltip-trigger { color: var(--success); }
+.dashboard-current-status[hidden] { display: none; }
+.dashboard-current-status-limited .tooltip-trigger { color: var(--attention); }
 .dashboard-current-status-refreshing .tooltip-trigger { color: var(--muted); }
 .dashboard-current-status-refreshing .octicon-sync { animation: dashboard-refresh-spin 1s linear infinite; }
 @keyframes dashboard-refresh-spin { to { transform: rotate(360deg); } }

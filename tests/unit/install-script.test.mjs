@@ -602,7 +602,7 @@ test("streamed install.sh requires an explicit Activity authentication profile",
   const authentication = await import(pathToFileURL(path.join(consumer, "activity", "authentication.mjs")).href);
   assert.throws(
     () => authentication.activityCollectionPlan(settings, { controlRepository: repository }),
-    /GH_AW_GITHUB_AUTH_MODE must explicitly select app or pat/,
+    /GH_AW_GITHUB_AUTH_MODE must explicitly select app or pat.*\.\/cao\.sh setup-auth github-app/s,
   );
 });
 

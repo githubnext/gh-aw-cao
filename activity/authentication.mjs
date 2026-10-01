@@ -185,7 +185,11 @@ export function activityCollectionPlan(controlSettings, {
     throw new Error("GITHUB_REPOSITORY must use OWNER/REPOSITORY form");
   }
   if (!["app", "pat"].includes(authMode)) {
-    throw new Error("GH_AW_GITHUB_AUTH_MODE must explicitly select app or pat for CAO Activity");
+    throw new Error(
+      "GH_AW_GITHUB_AUTH_MODE must explicitly select app or pat for CAO Activity; "
+      + `run ./cao.sh setup-auth github-app --repo ${controlRepository} or `
+      + `./cao.sh setup-auth token --repo ${controlRepository}`,
+    );
   }
 
   const configuredRepositories = controlSettings?.allowed_repositories ?? [];

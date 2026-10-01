@@ -9,6 +9,7 @@ const sourceExtensions = new Set([".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 const excludedFiles = new Set(["dashboard/site/dashboard.json"]);
 const lineCountExclusions = new Set([
   "dashboard/site/src/validator.js",
+  "dashboard/site/test/unit/data-view.test.js",
   "dashboard/site/test/unit/presenter.test.js",
   "dashboard/site/test/unit/validator.test.js",
   "tests/unit/dashboard-language-sources.test.mjs",

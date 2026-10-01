@@ -131,9 +131,10 @@ When enabled on a hosted server, `/mcp` instead requires a per-request GitHub
 Actions bearer token and a signed Actions OIDC token in `X-GitHub-OIDC-Token`.
 The server validates the OIDC issuer, signature, audience, expiry, and allowed
 repository provenance. It confirms that the bearer is an installation token
-with access to that repository, queries its default branch, verifies the signed
-ref and subject against that branch, then probes read access to
-Actions, contents, issues, and pull requests. This identity is scoped to `/mcp`; it
+with access to that repository, queries its stable repository and owner IDs plus
+its default branch, and verifies the signed IDs, ref, and legacy or immutable
+subject against that metadata. It then probes read access to Actions, contents,
+issues, and pull requests. This identity is scoped to `/mcp`; it
 cannot authenticate dashboard JSON APIs or replace hosted browser OAuth
 sessions. Keep both tokens out of logs and URLs.
 
