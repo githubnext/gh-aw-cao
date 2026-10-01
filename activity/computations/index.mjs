@@ -264,7 +264,7 @@ function partition(campaignId, workflow, runs, targetId, membership) {
   };
 }
 
-function queryRuns(name, workflows, runs) {
+function queryRuns(name, workflows, runs, partitionByTarget = false) {
   if (workflows.length === 0) return [];
   return executeQuery({
     name,
@@ -283,7 +283,7 @@ function queryRuns(name, workflows, runs) {
     'order-by': [
       { field: '_campaign-id', direction: 'asc' },
       { field: 'workflowId', direction: 'asc' },
-      { field: 'targetRepository', direction: 'asc' },
+      ...(partitionByTarget ? [{ field: 'targetRepository', direction: 'asc' }] : []),
       { field: '_runtime-date', direction: 'desc' },
       { field: 'githubRunId', direction: 'desc' },
       { field: 'attempt', direction: 'desc' }
@@ -363,7 +363,12 @@ function buildRuntimeHealthInputFromSelection(campaignRows, workflowRows, runs, 
   const eligibleWorkerWorkflows = workflowRows.filter((workflow) => (
     workflow.role === 'worker' && eligibleCampaigns.has(String(workflow.campaignId))
   ));
-  const workerRuns = queryRuns('runtime-health-worker-runs', eligibleWorkerWorkflows, runs);
+  const workerRuns = queryRuns(
+    'runtime-health-worker-runs',
+    eligibleWorkerWorkflows,
+    runs,
+    true
+  );
   const workerRunsByWorkflow = Map.groupBy(workerRuns, (run) => String(run.workflowId));
 
   return {

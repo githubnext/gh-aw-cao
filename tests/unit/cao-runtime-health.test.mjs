@@ -301,6 +301,40 @@ test('runtime-health queries canonical relationships and preserves target-local 
   )), false);
 });
 
+test('runtime-health orders orchestrator runs across target metadata', () => {
+  const workflowId = 'workflow:orchestrator';
+  const data = {
+    campaigns: [{ id: 'campaign:alpha', slug: 'alpha', targets: [] }],
+    repositories: [{ id: 'repository:expected', fullName: 'octo/expected' }],
+    workflows: [{
+      id: workflowId,
+      campaignId: 'campaign:alpha',
+      role: 'orchestrator',
+      state: 'active'
+    }],
+    runs: [
+      run(302, workflowId, 'success', '2026-10-01T10:00:00Z'),
+      run(301, workflowId, 'success', '2026-09-29T07:00:00Z', 'octo/expected')
+    ]
+  };
+
+  const input = buildRuntimeHealthInput(
+    data.campaigns,
+    data.workflows,
+    data.runs,
+    data.repositories
+  );
+  assert.deepEqual(input.campaigns.map((campaign) => ({
+    campaignId: campaign.campaignId,
+    runIds: campaign.orchestratorPartitions[0].runs.map((candidate) => candidate.githubRunId)
+  })), [
+    { campaignId: 'campaign:alpha', runIds: [302, 301] }
+  ]);
+
+  const output = computeRuntimeHealthFromCanonicalData(data);
+  assert.equal(output.result.campaignResults[0].answer, 'yes');
+});
+
 test('runtime-health diagnosis drills from a failure group to bounded canonical evidence', () => {
   const data = fixture();
   Object.assign(data.runs.find((candidate) => candidate.githubRunId === 102), {
