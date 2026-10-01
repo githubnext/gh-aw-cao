@@ -4,11 +4,14 @@ package dashboarddb
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
+
+var ErrIssueStatusAmbiguous = errors.New("issue status observations conflict at the same timestamp")
 
 // Transactions is the data supplied to a dashboard database ingestion.
 // The backend owns how the data is persisted and made available to readers.
@@ -19,6 +22,21 @@ type Transactions struct {
 	Diagnostics      model.Diagnostics
 	RepositoryMemory []byte
 	MemoryFiles      map[string][]byte
+}
+
+// IssueStatusUpdate is a verified status observation for an existing issue.
+// Delivery identifies the event for idempotent application.
+type IssueStatusUpdate struct {
+	Repository, ID, Delivery string
+	InstallationID           int64
+	State, StateReason       string
+	ClosedAt, ObservedAt     string
+}
+
+type IssueStatusResult struct {
+	Applied   bool
+	Duplicate bool
+	Revision  int64
 }
 
 type State struct {
@@ -46,4 +64,5 @@ type Database interface {
 	Current(context.Context) (Reader, error)
 	Ingest(context.Context, Transactions) (State, error)
 	Validate(context.Context, []query.Definition) error
+	ApplyIssueStatus(context.Context, IssueStatusUpdate, time.Duration) (IssueStatusResult, error)
 }

@@ -95,6 +95,13 @@ func (db *DashboardDatabase) Validate(ctx context.Context, definitions []query.D
 	return query.Validate(definitions)
 }
 
+func (db *DashboardDatabase) ApplyIssueStatus(ctx context.Context, update dashboarddb.IssueStatusUpdate, ttl time.Duration) (dashboarddb.IssueStatusResult, error) {
+	applied, duplicate, revision, err := db.Store.ApplyIssueUpdate(ctx, update, ttl)
+	return dashboarddb.IssueStatusResult{
+		Applied: applied, Duplicate: duplicate, Revision: revision,
+	}, err
+}
+
 func sortedDashboardSources(sources map[string]model.Source) []string {
 	names := make([]string, 0, len(sources))
 	for name := range sources {

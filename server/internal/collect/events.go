@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/dashboarddb"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
@@ -41,7 +42,7 @@ type Intent struct {
 	Repositories   []string
 	InstallationID int64
 	Reason         string
-	Issue          redisx.IssueUpdate
+	Issue          dashboarddb.IssueStatusUpdate
 }
 
 type webhookEnvelope struct {
@@ -143,7 +144,7 @@ func parseIssueEvent(envelope webhookEnvelope) Intent {
 		((envelope.Action == "opened" || envelope.Action == "reopened") && state != "OPEN") {
 		return Intent{Kind: IntentIgnore}
 	}
-	update := redisx.IssueUpdate{
+	update := dashboarddb.IssueStatusUpdate{
 		Repository: repository, InstallationID: envelope.Installation.ID,
 		ID:    fmt.Sprintf("github:issue:%s:%d", repository, issue.Number),
 		State: state, ObservedAt: observed.UTC().Format("2006-01-02T15:04:05.000000000Z"),
@@ -260,7 +261,7 @@ type Admitter struct {
 	// database stops reporting repositories that left ingestion scope.
 	Projection ProjectionRequester
 	// Issue updates are applied only to already retained issue rows.
-	IssueStore *redisx.Store
+	IssueDatabase dashboarddb.Database
 }
 
 // ProjectionRequester marks the lake as changed. Projector satisfies it.
@@ -350,7 +351,7 @@ func (a Admitter) AdmitDelivery(
 }
 
 func (a Admitter) admitIssue(ctx context.Context, intent Intent, delivery string, ttl time.Duration) (Admission, error) {
-	if a.IssueStore == nil {
+	if a.IssueDatabase == nil {
 		return Admission{Kind: IntentIgnore}, nil
 	}
 	enrolled, err := a.Enrollment.Enrolled(ctx, intent.Repository)
@@ -366,18 +367,18 @@ func (a Admitter) admitIssue(ctx context.Context, intent Intent, delivery string
 	}
 	update := intent.Issue
 	update.Delivery = delivery
-	updated, duplicate, _, err := a.IssueStore.ApplyIssueUpdate(ctx, update, ttl)
-	if errors.Is(err, redisx.ErrIssueStatusAmbiguous) {
+	result, err := a.IssueDatabase.ApplyIssueStatus(ctx, update, ttl)
+	if errors.Is(err, dashboarddb.ErrIssueStatusAmbiguous) {
 		return Admission{Kind: IntentIssueStatus, Reason: "ambiguous-status"}, nil
 	}
 	if err != nil {
 		return Admission{}, err
 	}
 	reason := ""
-	if !updated && !duplicate {
+	if !result.Applied && !result.Duplicate {
 		reason = "not-applied"
 	}
-	return Admission{Kind: IntentIssueStatus, Applied: updated, Duplicate: duplicate, Reason: reason}, nil
+	return Admission{Kind: IntentIssueStatus, Applied: result.Applied, Duplicate: result.Duplicate, Reason: reason}, nil
 }
 
 // resolveCollectInstallation determines the installation that must own a

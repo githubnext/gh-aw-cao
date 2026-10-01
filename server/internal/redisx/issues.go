@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/dashboarddb"
 )
 
 // Reconsider old observations incrementally; age alone cannot invalidate an
@@ -17,7 +19,7 @@ const issueStatusRetention = 30 * 24 * time.Hour
 
 // ErrIssueStatusAmbiguous means two different status observations have the
 // same GitHub updated_at. A fresh projection must resolve their ordering.
-var ErrIssueStatusAmbiguous = errors.New("issue status observations conflict at the same timestamp")
+var ErrIssueStatusAmbiguous = dashboarddb.ErrIssueStatusAmbiguous
 
 const issueStatusPruneScript = `
 local function prune(overlay, ages, now, generation, prefix, rowSuffix, setSuffix)
@@ -65,14 +67,7 @@ end
 end
 `
 
-// IssueUpdate is an explicitly scoped status observation from a verified issues
-// delivery. It is never used to create an issue or to change its identity.
-type IssueUpdate struct {
-	Repository, ID, Delivery string
-	InstallationID           int64
-	State, StateReason       string
-	ClosedAt, ObservedAt     string
-}
+type IssueUpdate = dashboarddb.IssueStatusUpdate
 
 // ApplyIssueUpdate atomically checks current enrollment, delivery identity and
 // active generation before recording a small identity-keyed status overlay.

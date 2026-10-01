@@ -41,6 +41,12 @@ The boundary consists of the following types and operations:
   database version for query responses, content `DataRevision`, `EvaluatedAt`,
   per-source row `Counts`, and `Available` to indicate whether usable data has
   been ingested.
+- `IssueStatusUpdate` carries a verified, delivery-identified status observation
+  for an existing issue, including repository and installation identity, issue
+  ID, state/reason, closed time, and observation time. It updates status only;
+  it cannot create an issue or change its identity. `IssueStatusResult` reports
+  whether the update was applied or was a duplicate, and the resulting database
+  `Revision`.
 - `Database.Current(ctx)` selects a reader for the currently available data.
   It returns an error if the backend cannot select that data.
 - `Database.Ingest(ctx, transactions)` ingests the supplied transaction set and
@@ -49,6 +55,12 @@ The boundary consists of the following types and operations:
 - `Database.Validate(ctx, definitions)` validates Dashboard Language query
   definitions without performing a query or mutating stored data, and returns
   the context error if the operation was canceled before validation.
+- `Database.ApplyIssueStatus(ctx, update, deliveryTTL)` applies an issue status
+  observation atomically with delivery deduplication and returns its result.
+  A status observation with conflicting values at the same timestamp returns
+  `ErrIssueStatusAmbiguous`, allowing a fresh projection to resolve the order.
+  Updates only affect retained issues and do not create or rewrite canonical
+  issue identities.
 - `Reader.State()` returns the state associated with that reader.
   `Reader.Execute(ctx, definitions, requested, runtime)` executes the requested
   named query definitions against the same selected data and returns their
@@ -60,8 +72,9 @@ The boundary consists of the following types and operations:
   source is resolved by the database backend.
 
 These method contracts are intentionally expressed in terms of logical sources,
-query definitions, and transaction data. Implementations own storage mechanics,
-but must preserve atomic ingestion and the `Reader` state/query consistency
+query definitions, transaction data, and issue status observations.
+Implementations own storage mechanics, but must preserve atomic ingestion and
+issue updates, delivery idempotency, and the `Reader` state/query consistency
 guarantee.
 
 The contract describes the data and behavior required by ingestion and query

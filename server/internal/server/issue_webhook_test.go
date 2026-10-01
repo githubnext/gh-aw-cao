@@ -46,7 +46,8 @@ func TestSignedIssueWebhookRefreshesRetainedSource(t *testing.T) {
 	}
 	app := &App{store: store, webhookSecret: []byte("test-issue-webhook-secret"),
 		reconciler: &Collector{admitter: collect.Admitter{
-			Enrollment: enrollment, Queue: collect.Queue{Store: store}, IssueStore: store,
+			Enrollment: enrollment, Queue: collect.Queue{Store: store},
+			IssueDatabase: &redisx.DashboardDatabase{Store: store},
 		}}}
 	payload := `{"action":"closed","repository":{"full_name":"octo/api"},"installation":{"id":42},
 		"issue":{"number":12,"state":"closed","state_reason":"completed",

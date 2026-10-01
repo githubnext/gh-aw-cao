@@ -159,6 +159,7 @@ func NewCollector(
 		return nil, fmt.Errorf("configure github quota: %w", err)
 	}
 	quotaApp := "github-app-" + strconv.FormatInt(config.AppID, 10)
+	database := &redisx.DashboardDatabase{Store: store}
 	enrollment := collect.Enrollment{Store: store}
 	queue := collect.Queue{Store: store, MaxLength: int64(config.QueueMaxLength)}
 	if config.AdmitOnly {
@@ -173,7 +174,7 @@ func NewCollector(
 			enrollment: enrollment,
 			queue:      queue,
 			backfill:   backfill,
-			admitter:   collect.Admitter{Enrollment: enrollment, Queue: queue, IssueStore: store},
+			admitter:   collect.Admitter{Enrollment: enrollment, Queue: queue, IssueDatabase: database},
 			reporter: collect.Reporter{
 				Enrollment: enrollment, Queue: queue, Backfill: backfill, Store: store,
 			},
@@ -245,7 +246,7 @@ func NewCollector(
 		runner:     runner,
 		projector:  projector,
 		admitter: collect.Admitter{
-			Enrollment: enrollment, Queue: queue, IssueStore: store,
+			Enrollment: enrollment, Queue: queue, IssueDatabase: database,
 			Projection: projector,
 		},
 		backfill: backfill,

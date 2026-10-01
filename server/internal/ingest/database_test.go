@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/dashboarddb"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
@@ -22,6 +23,10 @@ func (db *recordingDatabase) Current(context.Context) (dashboarddb.Reader, error
 
 func (db *recordingDatabase) Validate(_ context.Context, definitions []query.Definition) error {
 	return query.Validate(definitions)
+}
+
+func (db *recordingDatabase) ApplyIssueStatus(context.Context, dashboarddb.IssueStatusUpdate, time.Duration) (dashboarddb.IssueStatusResult, error) {
+	return dashboarddb.IssueStatusResult{}, errors.New("not used")
 }
 
 func (db *recordingDatabase) Ingest(_ context.Context, transactions dashboarddb.Transactions) (dashboarddb.State, error) {
