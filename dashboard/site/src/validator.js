@@ -162,6 +162,7 @@ import { cliActionTemplateFields } from './cli-action-template.js';
 import { compileDashboardQueryTypes } from './query-type-checker.js';
 import { findDeadDashboardQueries } from './query-usage.js';
 import { executeDashboardQueries, resolveDashboardQuerySources } from './data/queries/declarative.js';
+import { SIMULATION_DAYS, simulationDaysSource } from './data/queries/simulation-days.js';
 import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
 
 const debugValidator = createDebug('validator');
@@ -4834,6 +4835,7 @@ function validateViewQueryMaterialization(dashboard, errors) {
       name,
       { source: name, rows: [], metadata }
     ]));
+    querySources[SIMULATION_DAYS] = simulationDaysSource();
 
     dashboard.pages.forEach((page, pageIndex) => {
       const resolvedPage = resolveReusablePageViews(page);

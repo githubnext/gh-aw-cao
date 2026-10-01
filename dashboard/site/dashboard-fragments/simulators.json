@@ -1,0 +1,104 @@
+{
+  "queries": [
+    {
+      "name": "simulator-database-inputs",
+      "subject": "Model daily run volume and 30-day retained detail from user-supplied scenario inputs.",
+      "description": "Each simulated day includes all accumulated run summaries; tools and issues belong only to non-skipped runs and expire after 30 days.",
+      "from": "simulation-days",
+      "parameters": [
+        { "name": "repositories", "type": "number" },
+        { "name": "runs-per-day", "type": "number" },
+        { "name": "tools-per-run", "type": "number" },
+        { "name": "issues-per-run", "type": "number" },
+        { "name": "skip-rate", "type": "number" }
+      ],
+      "compute": [
+        { "as": "runs-daily", "function": "product", "args": [{ "parameter": "repositories" }, { "parameter": "runs-per-day" }] },
+        { "as": "skip-fraction", "function": "quotient", "args": [{ "parameter": "skip-rate" }, { "value": 100 }] },
+        { "as": "active-fraction", "function": "difference", "args": [{ "value": 1 }, { "field": "skip-fraction" }] },
+        { "as": "summary-runs", "function": "product", "args": [{ "field": "day" }, { "field": "runs-daily" }] },
+        { "as": "past-ttl", "function": "greater-than", "args": [{ "field": "day" }, { "value": 30 }] },
+        { "as": "detail-days", "function": "if", "args": [{ "field": "past-ttl" }, { "value": 30 }, { "field": "day" }] },
+        { "as": "detail-runs", "function": "product", "args": [{ "field": "detail-days" }, { "field": "runs-daily" }, { "field": "active-fraction" }] },
+        { "as": "tools-per-run", "function": "literal", "args": [{ "parameter": "tools-per-run" }] },
+        { "as": "issues-per-run", "function": "literal", "args": [{ "parameter": "issues-per-run" }] }
+      ]
+    },
+    {
+      "name": "simulator-run-size",
+      "subject": "Estimate retained run-summary table size at 512 bytes per run.",
+      "from": "simulator-database-inputs",
+      "compute": [
+        { "as": "table", "function": "literal", "args": [{ "value": "Run summaries" }] },
+        { "as": "bytes", "function": "product", "args": [{ "field": "summary-runs" }, { "value": 512 }] }
+      ],
+      "select": [{ "field": "date" }, { "field": "table" }, { "field": "bytes" }]
+    },
+    {
+      "name": "simulator-tool-size",
+      "subject": "Estimate retained tool table size at 256 bytes per tool on non-skipped runs.",
+      "from": "simulator-database-inputs",
+      "compute": [
+        { "as": "table", "function": "literal", "args": [{ "value": "Tools (30-day TTL)" }] },
+        { "as": "bytes", "function": "product", "args": [{ "field": "detail-runs" }, { "field": "tools-per-run" }, { "value": 256 }] }
+      ],
+      "select": [{ "field": "date" }, { "field": "table" }, { "field": "bytes" }]
+    },
+    {
+      "name": "simulator-issue-size",
+      "subject": "Estimate retained issue table size at 512 bytes per issue on non-skipped runs.",
+      "from": "simulator-database-inputs",
+      "compute": [
+        { "as": "table", "function": "literal", "args": [{ "value": "Issues (30-day TTL)" }] },
+        { "as": "bytes", "function": "product", "args": [{ "field": "detail-runs" }, { "field": "issues-per-run" }, { "value": 512 }] }
+      ],
+      "select": [{ "field": "date" }, { "field": "table" }, { "field": "bytes" }]
+    },
+    {
+      "name": "simulator-database-size",
+      "subject": "Plot modeled run-summary, tool, and issue table bytes across the first 30 days.",
+      "description": "Run summaries accumulate; detailed records have a 30-day TTL.",
+      "from": "simulator-run-size",
+      "union": ["simulator-tool-size", "simulator-issue-size"]
+    }
+  ],
+  "pages": [
+    {
+      "id": "simulators",
+      "kind": "custom",
+      "title": "Simulators",
+      "description": "Explore modeled database growth under a 30-day detailed-record retention policy.",
+      "icon": "graph",
+      "experimental": true,
+      "form": {
+        "title": "Database size",
+        "description": "Set a hypothetical daily workload. Skipped runs retain summaries but produce no tools or issues.",
+        "fields": [
+          { "id": "repositories", "label": "Repositories", "control": "slider", "min": 1, "max": 100000, "step": 1, "default": 1000 },
+          { "id": "runs-per-day", "label": "Runs per repository per day", "control": "slider", "min": 1, "max": 100, "step": 1, "default": 10 },
+          { "id": "tools-per-run", "label": "Tools per non-skipped run", "control": "slider", "min": 1, "max": 100, "step": 1, "default": 10 },
+          { "id": "issues-per-run", "label": "Issues per non-skipped run", "control": "slider", "min": 1, "max": 5, "step": 1, "default": 1 },
+          { "id": "skip-rate", "label": "Skipped runs (%)", "control": "slider", "min": 1, "max": 99, "step": 1, "default": 20 }
+        ],
+        "update": { "strategy": "debounce", "delay-ms": 250 }
+      },
+      "views": [
+        {
+          "id": "simulator-database-growth",
+          "title": "Database tables over 30 days",
+          "subject": "Estimated retained size of run, tool, and issue tables.",
+          "description": "Modeled data size, not measured storage: 512 bytes per run summary or issue and 256 bytes per tool. Run summaries persist; tool and issue records expire after 30 days. Indexes, metadata, compression, and other tables are excluded.",
+          "data": { "source": "simulator-database-size" },
+          "mark": "chart",
+          "chart": "line",
+          "layout": "full",
+          "encoding": {
+            "x": { "field": "date", "type": "temporal", "time-unit": "day", "title": "Simulation day" },
+            "y": { "field": "bytes", "type": "quantitative", "aggregate": "sum", "title": "Estimated bytes" },
+            "color": { "field": "table", "type": "nominal", "title": "Table" }
+          }
+        }
+      ]
+    }
+  ]
+}

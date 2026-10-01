@@ -14,6 +14,7 @@ import {
   resolveDashboardQuerySources
 } from './declarative.js';
 import { SYNTHETIC_SOURCE_FIELDS, TABLE_FIELDS } from '../../specification.js';
+import { SIMULATION_DAYS, simulationDaysSource } from './simulation-days.js';
 import { createDebug } from '../../debug.js';
 
 const debugDatabase = createDebug('database');
@@ -40,23 +41,6 @@ const DATABASE_TABLE_SOURCES = new Set([
   'eval-observations',
   'transactions'
 ]);
-const SIMULATION_DAYS = 'simulation-days';
-
-function simulationDaysSource() {
-  return /** @type {import('../../presenter.js').LogicalSourceInput} */ ({
-    source: SIMULATION_DAYS,
-    rows: Array.from({ length: 30 }, (_, index) => ({ day: index + 1 })),
-    metadata: {
-      'source-id': SIMULATION_DAYS,
-      'source-kind': 'synthetic',
-      'as-of': '1970-01-01T00:00:00.000Z',
-      'retrieved-at': '1970-01-01T00:00:00.000Z',
-      availability: 'available',
-      completeness: 'complete',
-      freshness: 'fresh'
-    }
-  });
-}
 /**
  * @param {Record<string, unknown>} sources
  * @param {string} sourceName
@@ -230,10 +214,12 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     filterPlanCount: filterPlans.length,
     storeCount: stores.length
   });
-  const counts = await countCollections(
-    indexedDB,
-    /** @type {typeof import('../storage/indexeddb.js').DATABASE_STORES[number][]} */ (stores)
-  );
+  const counts = stores.length > 0
+    ? await countCollections(
+        indexedDB,
+        /** @type {typeof import('../storage/indexeddb.js').DATABASE_STORES[number][]} */ (stores)
+      )
+    : {};
   const counted = Object.fromEntries(countPlans.map(({ name, source, values, computedLiterals }) => {
     const metadata = queryMetadata(logicalSources, source, source, true);
     return [name, {
@@ -428,9 +414,8 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
   }
   const requested = new Set(sourceNames);
   const databaseRequested = [...requested].filter((name) => (
-    !Object.hasOwn(SYNTHETIC_SOURCE_FIELDS, name) && (DATABASE_TABLE_SOURCES.has(name)
-    || !hasUsableRows(logicalSources[name])
-    )
+    !Object.hasOwn(SYNTHETIC_SOURCE_FIELDS, name)
+    && (DATABASE_TABLE_SOURCES.has(name) || !hasUsableRows(logicalSources[name]))
   ));
   const stores = [...new Set(databaseRequested.flatMap(queryStores))];
   const transactionRequested = stores.includes('transactions');
