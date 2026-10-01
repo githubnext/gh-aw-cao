@@ -1,6 +1,6 @@
 {
-  "source_sha": "3b29f41ce94f344927c053591f8807b9be119f3e",
-  "next_category": "dependency installation and caching",
+  "source_sha": "c149def0b90412294548cd197e21719cc9a17167",
+  "next_category": "Astro documentation generation",
   "evaluations": [
     {
       "evaluated_at": "2026-10-01T13:58:00Z",
@@ -288,6 +288,25 @@
         36903829924
       ],
       "outcome": "no_actionable_improvement: evaluated scheduling, concurrency, and avoidable rebuilds across 12 successful docs.yml runs from 2026-10-01T18:01Z through 2026-10-01T18:58Z, plus comparable successful cao-dashboard.yml run 36903829924. Trusted Actions metadata showed docs full-workflow median 62.0s with p90 102.7s and build-job median 47.5s with p90 63.5s. Build-step medians remained 12.5s for Build documentation, 5.0s for Restore node_modules, 2.0s for Restore cached CAO Dashboard, and 9.0s for Upload Pages artifact. Trusted step metadata verified cache reuse: Install dependencies and Save node_modules were skipped in 11 of 12 runs, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were skipped in all 12 runs, confirming repeated dashboard-cache hits. The sample still shows same-SHA workflow_run duplicates after successful push or schedule builds (4 pairs, duplicate build median 50.5s), but that underlying avoidable-rebuild recommendation is already tracked by open issue #15029 and has not materially changed. The only larger repeated upstream cost remains reusable dashboard generation in cao-dashboard.yml, where successful producer run 36903829924 spent 93s in Upgrade fallback activity data while Assemble Dashboard Language site took 2s and Upload dashboard artifact 9s; that suggestion is already tracked by fingerprint reusable-dashboard-skip-reupgrade-of-validated-activity-cache and open issues #15332 and #15497. No new non-duplicate improvement meets the threshold in this cycle.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-01T19:40:00Z",
+      "worker_run_id": "36915385758",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36915188036,
+        36913858299,
+        36911288935,
+        36911206682,
+        36910759404,
+        36910021712,
+        36909183622,
+        36908793319,
+        36908452230,
+        36907548692
+      ],
+      "outcome": "no_actionable_improvement: evaluated dependency installation and caching across the latest 10 successful docs.yml runs from 2026-10-01T18:32Z through 2026-10-01T19:35Z. Trusted Actions metadata showed 9 comparable build executions and 1 freshness-only schedule skip. Full workflow wall time median was 79.0s with p90 272.0s across comparable runs; build-job median was 46.0s with p90 59.0s; deploy median was 29.0s with p90 199.0s on the 4 runs that actually deployed; schedule-freshness median was 8.0s with p90 11.0s on scheduled runs. Build-step medians across comparable builds were 6.0s Restore node_modules, 13.0s Build documentation, 9.0s Upload Pages artifact, 4.0s Set up Node.js, 6.0s Checkout, and 2.0s Restore cached CAO Dashboard. Trusted step metadata confirmed dependency reuse in every comparable build: Install dependencies and Save node_modules were skipped in all 9 of 9 comparable runs, so the explicit node_modules cache hit every time in this sample, and no dependency-install step contributed material time. The remaining outliers were dominated by Pages deployment variance rather than dependency setup, so this category has no new >=60s or >=15% non-duplicate optimization to recommend.",
       "suggestion_fingerprint": null
     }
   ]
