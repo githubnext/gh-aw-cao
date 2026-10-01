@@ -7,9 +7,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
+
+var checksRedisLog = logger.New("cao:doctor:checks_redis")
 
 const (
 	areaRuntime = "runtime"
@@ -364,6 +367,53 @@ func (d Doctor) checkRedisPersistence(ctx context.Context) Check {
 	}
 }
 
+// clientsClassificationReason names why checkRedisClients reached its
+// status, stable across summary wording changes so it is useful to log
+// without exposing the raw connected or blocked client counts.
+type clientsClassificationReason string
+
+const (
+	clientsReasonBlockedExpected   clientsClassificationReason = "blocked-expected"
+	clientsReasonBlockedUnexpected clientsClassificationReason = "blocked-unexpected"
+	clientsReasonNoneBlocked       clientsClassificationReason = "none-blocked"
+)
+
+// clientsClassification is the status and summary classifyRedisClients
+// derives from Redis's reported client counters and the active profile.
+type clientsClassification struct {
+	status  Status
+	summary string
+	reason  clientsClassificationReason
+}
+
+// classifyRedisClients decides the redis.clients check's outcome from
+// Redis's reported connected and blocked client counts and whether this
+// deployment's profile expects collection workers to be blocked on
+// XREADGROUP. It is a pure function so each path -- blocked clients with and
+// without an active collection profile, and no blocked clients -- is
+// testable without a fake Redis INFO reply.
+func classifyRedisClients(connected, blocked int64, collecting bool) clientsClassification {
+	if blocked > 0 {
+		if collecting {
+			return clientsClassification{
+				status:  StatusPass,
+				summary: fmt.Sprintf("%d of %d clients are blocked, which is expected for waiting collection workers", blocked, connected),
+				reason:  clientsReasonBlockedExpected,
+			}
+		}
+		return clientsClassification{
+			status:  StatusWarn,
+			summary: fmt.Sprintf("%d of %d clients are blocked with no collection workers configured", blocked, connected),
+			reason:  clientsReasonBlockedUnexpected,
+		}
+	}
+	return clientsClassification{
+		status:  StatusPass,
+		summary: fmt.Sprintf("%d client connections, none blocked", connected),
+		reason:  clientsReasonNoneBlocked,
+	}
+}
+
 func (d Doctor) checkRedisClients(ctx context.Context) Check {
 	const id, title = "redis.clients", "Redis clients"
 	if skip, ok := d.storeUnavailable(id, areaRedis, title); ok {
@@ -379,21 +429,11 @@ func (d Doctor) checkRedisClients(ctx context.Context) Check {
 		detail("connected", fmt.Sprint(connected)),
 		detail("blocked", fmt.Sprint(blocked)),
 	}
-	if blocked > 0 {
-		// Collection workers block on XREADGROUP, so a blocked client is
-		// normal in the collection profile and notable in the Actions profile.
-		status := StatusPass
-		summary := fmt.Sprintf("%d of %d clients are blocked, which is expected for waiting collection workers", blocked, connected)
-		if !d.profile().collecting {
-			status = StatusWarn
-			summary = fmt.Sprintf("%d of %d clients are blocked with no collection workers configured", blocked, connected)
-		}
-		return Check{ID: id, Area: areaRedis, Title: title, Status: status, Summary: summary, Details: details}
-	}
+	classification := classifyRedisClients(connected, blocked, d.profile().collecting)
+	checksRedisLog.Printf("redis clients classified status=%s reason=%s", classification.status, classification.reason)
 	return Check{
-		ID: id, Area: areaRedis, Title: title, Status: StatusPass,
-		Summary: fmt.Sprintf("%d client connections, none blocked", connected),
-		Details: details,
+		ID: id, Area: areaRedis, Title: title, Status: classification.status,
+		Summary: classification.summary, Details: details,
 	}
 }
 
