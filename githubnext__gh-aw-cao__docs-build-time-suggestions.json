@@ -1,7 +1,31 @@
 {
   "source_sha": "373101150194fb62f85e04f9fd32365831286f6b",
-  "next_category": "reusable dashboard generation",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-01T09:50:55Z",
+      "worker_run_id": "36845789546",
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        36845361365,
+        36844222887,
+        36843194299,
+        36840744545,
+        36840357406,
+        36839368625,
+        36838357262,
+        36837287923,
+        36834403962,
+        36834043238,
+        36833880168,
+        36833232303,
+        36833029088,
+        36831467909,
+        36831352271
+      ],
+      "outcome": "no_actionable_improvement: the latest 15 completed successful docs.yml runs in the last 14 days again provided sufficient evidence, including 14 comparable build executions and 8 schedule-triggered runs. Trusted docs metadata showed median full workflow wall time 52s with p90 84.6s, median build execution 42s with p90 47.8s, median schedule-freshness execution 9s with p90 10s on schedule runs, and median deploy execution 18s with p90 21.5s on the 6 runs that actually deployed; queue time remained 0s in the available metadata. Comparable build-step medians remained 12s for Build documentation, 5s for Restore node_modules, 1.5s for Restore cached CAO Dashboard, and 8s for Upload Pages artifact. Trusted metadata also showed Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact skipped on every built run, confirming repeated cache hits rather than inferred effectiveness. For the current category, the only qualifying reusable-dashboard bottleneck remains upstream in cao-dashboard.yml and is already represented by suggestion fingerprint reusable-dashboard-skip-reupgrade-of-validated-activity-cache and open issues #15332 and #15497. Current docs-side evidence did not materially change that conclusion or justify a duplicate recommendation.",
+      "suggestion_fingerprint": null
+    },
     {
       "evaluated_at": "2026-10-01T07:54:00Z",
       "worker_run_id": "36832316067",
