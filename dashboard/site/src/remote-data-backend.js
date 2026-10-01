@@ -3,7 +3,7 @@ import {
   dashboardFormDefaultValues,
   resolveDashboardQueryParameters
 } from "./data/queries/view-payload-compiler.js";
-import { csrfHeaders, usesGitHubAuthentication } from "./auth.js";
+import { csrfHeaders, csrfToken, usesGitHubAuthentication } from "./auth.js";
 import { createDebug } from "./debug.js";
 
 const debugRemoteBackend = createDebug("remote-data-backend");
@@ -97,6 +97,10 @@ async function apiRequest(path, init = {}, signal) {
   const oauth = usesGitHubAuthentication();
   const token = oauth ? "" : accessToken();
   const method = (init.method ?? "GET").toUpperCase();
+  if (oauth && !["GET", "HEAD", "OPTIONS"].includes(method) && !csrfToken()) {
+    await apiRequest("/api/auth/session", {}, signal);
+    if (!csrfToken()) throw new Error("GitHub authentication cookie could not be renewed");
+  }
   const headers = {
     Accept: "application/json",
     ...(init.body ? { "Content-Type": "application/json" } : {}),

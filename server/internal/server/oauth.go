@@ -90,6 +90,7 @@ const (
 	sessionCookieName            = "cao_session"
 	csrfCookieName               = "cao_csrf"
 	sessionTTL                   = 30 * 24 * time.Hour
+	csrfCookieTTL               = sessionTTL - 24*time.Hour
 	tokenRefreshSkew             = 5 * time.Minute
 	authorizationRecheckInterval = 5 * time.Minute
 )
@@ -418,6 +419,7 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 	}
 	retained = true
 	oauth.setSessionCookies(response, session)
+	oauth.clearStateCookie(response)
 	serverLog.Printf("oauth callback completed")
 	oauth.logBranch("callback.succeeded")
 	http.Redirect(response, request, "/", http.StatusFound)
@@ -540,6 +542,9 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 			}
 		}
 		oauth.logBranch("session.active")
+		if _, err := request.Cookie(csrfCookieName); err != nil {
+			oauth.setSessionCookies(response, session)
+		}
 		return session, true
 	}
 	if session.RefreshToken == "" || time.Now().UTC().After(session.RefreshExpires) {
@@ -650,6 +655,7 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 	}
 	serverLog.Printf("oauth session refreshed")
 	oauth.logBranch("refresh.succeeded")
+	oauth.setSessionCookies(response, session)
 	return session, true
 }
 
@@ -1130,8 +1136,7 @@ func (oauth *githubOAuth) revocationPrefix() string {
 func (oauth *githubOAuth) setSessionCookies(response http.ResponseWriter, session oauthSession) {
 	http.SetCookie(response, &http.Cookie{Name: sessionCookieName, Value: session.ID, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: int(sessionTTL.Seconds())})
 	// #nosec G124 -- CSRF token must be browser-readable so same-origin fetch requests can mirror it in X-CSRF-Token.
-	http.SetCookie(response, &http.Cookie{Name: csrfCookieName, Value: url.QueryEscape(session.CSRFToken), Path: "/", Secure: true, HttpOnly: false, SameSite: http.SameSiteLaxMode, MaxAge: int(sessionTTL.Seconds())})
-	oauth.clearStateCookie(response)
+	http.SetCookie(response, &http.Cookie{Name: csrfCookieName, Value: url.QueryEscape(session.CSRFToken), Path: "/", Secure: true, HttpOnly: false, SameSite: http.SameSiteLaxMode, MaxAge: int(csrfCookieTTL.Seconds())})
 }
 
 func (oauth *githubOAuth) clearSessionCookies(response http.ResponseWriter) {
