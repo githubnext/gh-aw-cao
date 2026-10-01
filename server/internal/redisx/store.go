@@ -714,8 +714,20 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 		return model.Source{}, metrics, fmt.Errorf("source %q exceeds max input rows", name)
 	}
 	rows := make([]model.Row, 0, len(keys))
-	const batchSize = 1000
+	batchSize := 1000
 	script := `local out = {}; for i,key in ipairs(KEYS) do out[i] = redis.call("HGET", key, "raw"); end; return out`
+	if projectedFields != nil {
+		// Bound each raw reply while keeping the retained working set narrow.
+		// A large collection may span batches, but no one reply can allocate
+		// more than half the query's working-byte budget.
+		batchSize = 32
+		script = fmt.Sprintf(`local out = {}; local bytes = 0; for i,key in ipairs(KEYS) do
+			local raw = redis.call("HGET", key, "raw")
+			if raw then bytes = bytes + #raw end
+			if bytes > %d then return redis.error_reply("source batch exceeds max working bytes") end
+			out[i] = raw
+		end; return out`, query.MaxWorkingBytes/2)
+	}
 	for offset := 0; offset < len(keys); offset += batchSize {
 		end := min(len(keys), offset+batchSize)
 		command := make([]string, 0, 3+end-offset)

@@ -14,7 +14,9 @@ import (
 )
 
 type sourceRowsClient struct {
-	rows []any
+	rows     []any
+	maxBatch int
+	bounded  bool
 }
 
 func (client *sourceRowsClient) Do(_ context.Context, command ...string) (any, error) {
@@ -28,7 +30,17 @@ func (client *sourceRowsClient) Do(_ context.Context, command ...string) (any, e
 		}
 		return keys, nil
 	case "EVAL":
-		return client.rows, nil
+		client.maxBatch = max(client.maxBatch, len(command)-3)
+		client.bounded = client.bounded || strings.Contains(command[1], "source batch exceeds max working bytes")
+		rows := make([]any, 0, len(command)-3)
+		for _, key := range command[3:] {
+			index, err := strconv.Atoi(key)
+			if err != nil {
+				return nil, err
+			}
+			rows = append(rows, client.rows[index])
+		}
+		return rows, nil
 	default:
 		panic("unexpected Redis command")
 	}
@@ -126,6 +138,9 @@ func TestCountAggregateStaysUnderWorkingByteLimit(t *testing.T) {
 	}
 	if metrics.PeakWorkingBytes >= query.MaxWorkingBytes {
 		t.Fatalf("unneeded payload was included in working bytes: %d", metrics.PeakWorkingBytes)
+	}
+	if client.maxBatch > 32 || !client.bounded {
+		t.Fatalf("projected source fetched an unbounded raw batch: max=%d bounded=%v", client.maxBatch, client.bounded)
 	}
 }
 
