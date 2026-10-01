@@ -116,6 +116,7 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 			return nil, err
 		}
 		databaseQueries = append(databaseQueries, parsed...)
+		databaseQueries = append(databaseQueries, rawSourceDefinitions(parsed)...)
 	}
 	if err := validateHostProfile(store, &config); err != nil {
 		return nil, err
@@ -222,6 +223,34 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 		app.mcp = handler
 	}
 	return app, nil
+}
+
+func rawSourceDefinitions(definitions []query.Definition) []query.Definition {
+	var recordQuery *query.Definition
+	declared := make(map[string]bool, len(definitions))
+	for i := range definitions {
+		declared[definitions[i].Name] = true
+		if definitions[i].Name == "run-records" {
+			recordQuery = &definitions[i]
+		}
+	}
+	result := make([]query.Definition, 0, 9)
+	for _, name := range []string{"jobs", "sessions", "events"} {
+		if !declared[name] {
+			result = append(result, query.Definition{Name: name, From: "$" + name})
+		}
+	}
+	if recordQuery != nil {
+		for _, name := range []string{"domains", "tools", "skills", "friction", "audits", "issues"} {
+			if declared[name] {
+				continue
+			}
+			derived := *recordQuery
+			derived.Name, derived.From = name, "$"+name
+			result = append(result, derived)
+		}
+	}
+	return result
 }
 
 //nolint:contextcheck // Startup validation has no request context.
