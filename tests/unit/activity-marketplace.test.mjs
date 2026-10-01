@@ -103,6 +103,17 @@ test("packages carry the README preview published beside their manifest", async 
   assert.equal(result.packages[0]["readme-path"], "demo/README.md");
 });
 
+test("marketplace accepts a pre-minted GitHub App installation token", async () => {
+  const fake = registryFetch();
+  await resolveMarketplace({
+    registries: [registry("official", { auth: { type: "github-app", secret: "APP_TOKEN" } })],
+  }, {
+    fetchImpl: fake.fetchImpl,
+    environment: { APP_TOKEN: "installation-token" },
+  });
+  assert.equal(fake.calls[0].init.headers.Authorization, ["Bearer", "installation-token"].join(" "));
+});
+
 test("marketplace records include public GitHub repository counts but no inferred signals", async () => {
   const fake = registryFetch();
   const result = await resolveMarketplace({

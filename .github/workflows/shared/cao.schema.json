@@ -337,6 +337,15 @@
         {
           "type": "object",
           "additionalProperties": false,
+          "required": ["type", "secret"],
+          "properties": {
+            "type": { "const": "github-app" },
+            "secret": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,127}$" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
           "required": ["type", "app-id-secret", "private-key-secret", "installation-id-secret"],
           "properties": {
             "type": { "const": "github-app" },

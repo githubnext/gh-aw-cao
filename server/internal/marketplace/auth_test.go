@@ -78,6 +78,18 @@ func TestRegistryTokenPATResolvesFromNamedEnvironmentVariable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	func TestRegistryTokenGitHubAppResolvesPremintedInstallationToken(t *testing.T) {
+		registry := Registry{Auth: Auth{Type: AuthGitHubApp, Secret: "APP_TOKEN"}}
+		opts := Options{Env: fakeEnv{"APP_TOKEN": "installation-token"}.lookup}
+		token, err := registryToken(t.Context(), registry, opts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if token != "installation-token" {
+			t.Fatalf("unexpected token: %q", token)
+		}
+	}
 	if token != "pat-value" {
 		t.Fatalf("unexpected token: %q", token)
 	}

@@ -105,7 +105,7 @@ test("control policy schema accepts config-defined campaign and worker catalogs"
   assert.equal(policy["control-plane"].web.experimental, true);
   assert.equal(policy["control-plane"].web.favicon, "./favicon.svg");
   assert.deepEqual(policy["control-plane"].marketplace.registries[0].auth, {
-    type: "pat",
+    type: "github-app",
     secret: "GH_TOKEN",
   });
   assert.equal(schema.$defs.controlCampaigns.additionalProperties.$ref, "#/$defs/campaignPolicy");

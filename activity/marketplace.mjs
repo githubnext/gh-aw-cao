@@ -75,6 +75,7 @@ async function registryToken(registry, { fetchImpl, environment }) {
   if (auth.type === "none") return "";
   if (auth.type === "pat") return secret(environment, auth.secret, "registry PAT");
   if (auth.type !== "github-app") throw new Error("registry authentication type is unsupported");
+  if (auth.secret) return secret(environment, auth.secret, "registry GitHub App token");
   const appId = secret(environment, auth["app-id-secret"], "registry GitHub App id");
   const privateKey = secret(environment, auth["private-key-secret"], "registry GitHub App private key");
   const installationId = secret(environment, auth["installation-id-secret"], "registry GitHub App installation id");

@@ -74,7 +74,8 @@ Registry authentication is scoped to that registry:
 
 - `none` needs no credential.
 - `pat` references one environment secret with `secret`.
-- `github-app` references `app-id-secret`, `private-key-secret`, and
+- `github-app` references either a pre-minted installation token with `secret`,
+  or App credentials with `app-id-secret`, `private-key-secret`, and
   `installation-id-secret`.
 
 Configuration contains secret names, never secret values. Make those referenced

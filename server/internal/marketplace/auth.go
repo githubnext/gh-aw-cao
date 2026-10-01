@@ -54,6 +54,9 @@ func resolveRegistryToken(ctx context.Context, registry Registry, opts Options) 
 	case AuthPAT:
 		return secretValue(opts.env(), registry.Auth.Secret, "registry PAT")
 	case AuthGitHubApp:
+		if registry.Auth.Secret != "" {
+			return secretValue(opts.env(), registry.Auth.Secret, "registry GitHub App token")
+		}
 		return exchangeGitHubAppToken(ctx, registry, opts)
 	default:
 		return "", fmt.Errorf("registry authentication type %q is unsupported", registry.Auth.Type)

@@ -190,8 +190,9 @@ entry to disable it or add public, private, or GitHub Enterprise registries.
 ```
 
 Authentication types are `none`, `pat`, and `github-app`. PAT entries reference
-one environment secret name. GitHub App entries reference `app-id-secret`,
-`private-key-secret`, and `installation-id-secret`. Values stay in the trusted
+one environment secret name. GitHub App entries reference either a pre-minted
+installation token with `secret`, or `app-id-secret`, `private-key-secret`,
+and `installation-id-secret`. Values stay in the trusted
 Activity or hosted resolver and are never published to the dashboard. The
 marketplace is read-only: its action copies
 `./cao.sh add OWNER/REPOSITORY[/PATH]@COMMIT`; it does not execute installation.

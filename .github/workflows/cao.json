@@ -33,7 +33,7 @@
           "repository": "githubnext/gh-aw-cao",
           "ref": "main",
           "auth": {
-            "type": "pat",
+            "type": "github-app",
             "secret": "GH_TOKEN"
           }
         }

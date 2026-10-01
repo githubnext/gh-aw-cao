@@ -16,8 +16,8 @@ is `none`, `pat`, or `github-app`. Authenticated entries contain only environmen
 secret names:
 
 - `pat`: `secret`
-- `github-app`: `app-id-secret`, `private-key-secret`, and
-  `installation-id-secret`
+- `github-app`: either `secret` for a pre-minted installation token, or
+  `app-id-secret`, `private-key-secret`, and `installation-id-secret`
 
 Resolvers read those named secrets only in the trusted Activity or hosted
 backend. Secret values and access tokens are never serialized.

@@ -43,8 +43,9 @@ const REGISTRY_KEYS = ["id", "name", "repository", "path", "ref", "api-url", "au
 const REGISTRY_AUTH_KEYS = {
   none: ["type"],
   pat: ["type", "secret"],
-  "github-app": ["type", "app-id-secret", "private-key-secret", "installation-id-secret"],
 };
+const GITHUB_APP_SECRET_KEYS = ["type", "secret"];
+const GITHUB_APP_CREDENTIAL_KEYS = ["type", "app-id-secret", "private-key-secret", "installation-id-secret"];
 const SECRET_REFERENCE_PATTERN = /^[A-Z][A-Z0-9_]{0,127}$/;
 const SAFE_REGISTRY_PATH_PATTERN = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))[A-Za-z0-9._/-]*$/;
 const REGISTRY_NAME_PATTERN = /^.{1,100}$/s;
@@ -308,7 +309,9 @@ function validateMarketplace(marketplace) {
     }
     const auth = registry.auth ?? { type: "none" };
     assertMapping(auth, `${registryPath}.auth`);
-    const keys = REGISTRY_AUTH_KEYS[auth.type];
+    const keys = auth.type === "github-app"
+      ? ("secret" in auth ? GITHUB_APP_SECRET_KEYS : GITHUB_APP_CREDENTIAL_KEYS)
+      : REGISTRY_AUTH_KEYS[auth.type];
     if (!keys) throw new PolicyError(`${registryPath}.auth.type must be none, pat, or github-app`);
     assertKeys(auth, keys, `${registryPath}.auth`);
     for (const key of keys.filter((key) => key !== "type")) {
