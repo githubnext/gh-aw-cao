@@ -1859,7 +1859,7 @@ describe('presenter built-in and custom pages', () => {
             availability: 'available'
           }
         }
-      })
+      }, ['workflow-inventory', 'workflow-aic-per-run'])
     });
 
     const page = rendered.querySelector('[data-page-name="workflows"]');
