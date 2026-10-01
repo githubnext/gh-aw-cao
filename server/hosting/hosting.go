@@ -81,8 +81,12 @@ func New(ctx context.Context, config Config) (*Service, error) {
 func (s *Service) Start(ctx context.Context) error { return s.app.Start(ctx) }
 
 // Handler returns the complete CAO handler, including its security boundary.
-// Before Start and after Stop it returns 503 for every request.
+// Before Start and after Drain it returns 503 for every request.
 func (s *Service) Handler() http.Handler { return s.handler }
 
-// Stop cancels CAO background tasks after the embedding host drains HTTP.
+// Drain stops admitting requests and ends SSE streams. Call it before the
+// embedding host's http.Server.Shutdown, while the startup context is alive.
+func (s *Service) Drain() { s.app.Drain() }
+
+// Stop cancels and awaits CAO background tasks after the host drains HTTP.
 func (s *Service) Stop() { s.app.Stop() }

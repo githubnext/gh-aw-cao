@@ -323,18 +323,22 @@ func (c *Collector) Admit(ctx context.Context, event GitHubWebhook) (map[string]
 
 // Start launches cold start, in-process workers, and delivery recovery.
 func (c *Collector) Start(ctx context.Context, onProjection func(revision int64)) error {
-	if err := c.queue.Ensure(ctx); err != nil {
+	return c.start(ctx, ctx, onProjection, func(work func()) { go work() })
+}
+
+func (c *Collector) start(startupCtx, ctx context.Context, onProjection func(revision int64), launch func(func())) error {
+	if err := c.queue.Ensure(startupCtx); err != nil {
 		return err
 	}
 	if c.config.AdmitOnly {
 		// Nothing to start: this process only admits deliveries.
 		return nil
 	}
-	go func() {
+	launch(func() {
 		if _, err := c.backfill.Run(ctx); err != nil && ctx.Err() == nil {
 			serverLog.Printf("cold start failed")
 		}
-	}()
+	})
 	for index := 0; index < c.config.Workers; index++ {
 		worker := collect.Worker{
 			Queue:        c.queue,
@@ -345,14 +349,14 @@ func (c *Collector) Start(ctx context.Context, onProjection func(revision int64)
 			Project:      true,
 			OnProjection: onProjection,
 		}
-		go func() {
+		launch(func() {
 			if err := worker.Run(ctx); err != nil && ctx.Err() == nil {
 				serverLog.Printf("collection worker stopped")
 			}
-		}()
+		})
 	}
 	if c.config.RecoverDeliveries {
-		go c.recoverDeliveries(ctx)
+		launch(func() { c.recoverDeliveries(ctx) })
 	}
 	return nil
 }

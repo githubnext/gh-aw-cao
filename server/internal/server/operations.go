@@ -95,8 +95,13 @@ func (a *App) rebuild(response http.ResponseWriter, request *http.Request) {
 		writeError(response, http.StatusServiceUnavailable, "rebuild status is unavailable")
 		return
 	}
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(request.Context()), projectionTimeout)
-	go a.performRebuild(ctx, cancel, token, status)
+	ctx, cancel := a.operationContext(request.Context())
+	if !a.launchTask(func() { a.performRebuild(ctx, cancel, token, status) }) {
+		cancel()
+		a.releaseProjectionLock(request.Context(), token)
+		writeError(response, http.StatusServiceUnavailable, "dashboard service is not running")
+		return
+	}
 	writeJSON(response, http.StatusAccepted, status)
 }
 
@@ -210,8 +215,13 @@ func (a *App) githubWebhook(response http.ResponseWriter, request *http.Request)
 		Event:    event,
 		Payload:  payload,
 	}
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(request.Context()), projectionTimeout)
-	go a.performReconciliation(ctx, cancel, token, eventPayload)
+	ctx, cancel := a.operationContext(request.Context())
+	if !a.launchTask(func() { a.performReconciliation(ctx, cancel, token, eventPayload) }) {
+		cancel()
+		a.releaseProjectionLock(request.Context(), token)
+		writeError(response, http.StatusServiceUnavailable, "dashboard service is not running")
+		return
+	}
 	writeJSON(response, http.StatusAccepted, map[string]any{"accepted": true})
 }
 

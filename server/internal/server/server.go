@@ -92,6 +92,9 @@ type App struct {
 	startMu       sync.Mutex
 	startContext  context.Context
 	stop          context.CancelFunc
+	draining      bool
+	drain         chan struct{}
+	tasks         sync.WaitGroup
 }
 
 func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) {
@@ -193,7 +196,7 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 		store: store, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
 		canonical: canonicalService{store: store}, reconciler: reconciler, memory: memoryResolver,
 		webhookSecret: []byte(config.WebhookSecret), actionsToken: actionsToken, actionsActor: actionsActor,
-		quota: quota,
+		quota: quota, drain: make(chan struct{}),
 	}
 	if config.MCPEnabled {
 		handler, err := app.newMCPHandler()
@@ -214,8 +217,13 @@ func verifyGitHubActionsPermissionsAtStartup(config Config, token string) error 
 
 // Start initializes the projection and background tasks without taking
 // ownership of an HTTP listener. The caller must keep ctx alive while serving
-// and call Stop after the listener has drained.
+// and call Drain before shutting down its HTTP server, then Stop after HTTP
+// requests have drained.
 func (a *App) Start(ctx context.Context) error {
+	return a.start(ctx, ctx)
+}
+
+func (a *App) start(startupCtx, runtimeCtx context.Context) error {
 	if a.config.HostProfile.Listener == HostListenerPlatform {
 		return fmt.Errorf("host profile %q delegates startup to the platform", a.config.HostProfile.Name)
 	}
@@ -224,13 +232,16 @@ func (a *App) Start(ctx context.Context) error {
 	if a.startContext != nil {
 		return errors.New("dashboard service has already started")
 	}
-	if err := ctx.Err(); err != nil {
+	if a.draining {
+		return errors.New("dashboard service has already stopped")
+	}
+	if err := startupCtx.Err(); err != nil {
 		return err
 	}
-	runCtx, cancel := context.WithCancel(ctx)
+	runCtx, cancel := context.WithCancel(runtimeCtx)
 	serverLog.Printf("starting service initial_ingestion=%t", a.config.SourceDirectory != "")
 	if a.config.SourceDirectory != "" {
-		result, err := ingest.Run(runCtx, a.store, a.config.SourceDirectory, ingest.Options{DatabaseQueriesPath: a.config.DatabaseQueriesPath})
+		result, err := ingest.Run(startupCtx, a.store, a.config.SourceDirectory, ingest.Options{DatabaseQueriesPath: a.config.DatabaseQueriesPath})
 		if err != nil {
 			cancel()
 			return fmt.Errorf("initial ingestion failed: %w", err)
@@ -239,40 +250,118 @@ func (a *App) Start(ctx context.Context) error {
 		a.config.Logger.Printf("activated dashboard revision %d", result.Revision)
 	}
 	if collector := a.Collector(); collector != nil {
-		if err := collector.Start(runCtx, a.hub.Broadcast); err != nil {
+		if err := collector.start(startupCtx, runCtx, a.hub.Broadcast, a.startTask); err != nil {
 			cancel()
+			a.tasks.Wait()
 			return fmt.Errorf("start collection: %w", err)
 		}
 		serverLog.Printf("collection profile started workers=%d", a.config.Collector.Workers)
 	}
+	if err := startupCtx.Err(); err != nil {
+		cancel()
+		a.tasks.Wait()
+		return err
+	}
 	if err := runCtx.Err(); err != nil {
 		cancel()
+		a.tasks.Wait()
 		return err
 	}
 	a.startContext = runCtx
 	a.stop = cancel
 	if a.oauth != nil && (a.config.SourceDirectory != "" || a.Collector() != nil) {
-		go a.oauth.runRevocationWorker(runCtx)
+		a.startTask(func() { a.oauth.runRevocationWorker(runCtx) })
 	}
 	return nil
 }
 
-// Stop cancels CAO-owned background tasks. The external host must drain its
-// HTTP listener before stopping the application.
-func (a *App) Stop() {
+// Drain stops admitting requests and ends active SSE streams. The host then
+// calls http.Server.Shutdown to wait for ordinary HTTP requests before Stop.
+func (a *App) Drain() {
 	a.startMu.Lock()
 	defer a.startMu.Unlock()
+	if !a.draining {
+		a.draining = true
+		if a.drain == nil {
+			a.drain = make(chan struct{})
+		}
+		close(a.drain)
+	}
+}
+
+// startTask is called under startMu during startup.
+func (a *App) startTask(work func()) {
+	a.tasks.Add(1)
+	go func() {
+		defer a.tasks.Done()
+		work()
+	}()
+}
+
+// launchTask tracks work admitted by an HTTP request while the service is
+// running. Direct handler users without a started lifecycle retain their
+// existing detached-operation behavior.
+func (a *App) launchTask(work func()) bool {
+	a.startMu.Lock()
+	defer a.startMu.Unlock()
+	if a.startContext != nil && a.startContext.Err() != nil {
+		return false
+	}
+	if a.startContext == nil {
+		go work()
+	} else {
+		a.startTask(work)
+	}
+	return true
+}
+
+func (a *App) operationContext(requestCtx context.Context) (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(requestCtx), projectionTimeout)
+	a.startMu.Lock()
+	runCtx := a.startContext
+	a.startMu.Unlock()
+	if runCtx == nil {
+		return ctx, cancel
+	}
+	stop := context.AfterFunc(runCtx, cancel)
+	return ctx, func() {
+		stop()
+		cancel()
+	}
+}
+
+// Stop cancels and awaits CAO-owned background tasks. The external host must
+// call Drain and wait for HTTP shutdown before calling Stop.
+func (a *App) Stop() {
+	a.Drain()
+	a.startMu.Lock()
 	if a.stop != nil {
 		a.stop()
 	}
+	a.startMu.Unlock()
+	a.tasks.Wait()
 }
 
 func (a *App) requireStarted(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		a.startMu.Lock()
 		ctx := a.startContext
+		draining := a.draining
 		a.startMu.Unlock()
-		if ctx == nil || ctx.Err() != nil {
+		if draining || ctx == nil || ctx.Err() != nil {
+			writeError(response, http.StatusServiceUnavailable, "dashboard service is not running")
+			return
+		}
+		next.ServeHTTP(response, request)
+	})
+}
+
+func (a *App) requireNotDraining(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		a.startMu.Lock()
+		draining := a.draining
+		a.startMu.Unlock()
+		if draining {
 			writeError(response, http.StatusServiceUnavailable, "dashboard service is not running")
 			return
 		}
@@ -284,7 +373,7 @@ func (a *App) Serve(ctx context.Context) error {
 	if a.config.HostProfile.Listener != HostListenerProcess {
 		return fmt.Errorf("host profile %q delegates listener ownership", a.config.HostProfile.Name)
 	}
-	if err := a.Start(ctx); err != nil {
+	if err := a.start(ctx, context.WithoutCancel(ctx)); err != nil {
 		return err
 	}
 	defer a.Stop()
@@ -325,6 +414,7 @@ func (a *App) Serve(ctx context.Context) error {
 	go func() {
 		select {
 		case <-ctx.Done():
+			a.Drain()
 			shutdown, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 			defer cancel()
 			err := httpServer.Shutdown(shutdown)
@@ -433,8 +523,12 @@ func (a *App) Handler() http.Handler {
 		instrumented.ServeHTTP(response, safe)
 	})
 	handler := a.preAuthRateLimit(a.cors(a.requireAccess(a.rateLimit(safeTelemetry))))
-	if a.config.HostProfile.Listener == HostListenerExternal {
+	switch a.config.HostProfile.Listener {
+	case HostListenerExternal:
 		handler = a.requireStarted(handler)
+	case HostListenerProcess:
+		handler = a.requireNotDraining(handler)
+	case HostListenerPlatform:
 	}
 	return securityHeaders(handler)
 }
@@ -814,8 +908,14 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 	defer heartbeat.Stop()
 	poll := time.NewTicker(time.Second)
 	defer poll.Stop()
+	a.startMu.Lock()
+	drain := a.drain
+	a.startMu.Unlock()
 	for {
 		select {
+		case <-drain:
+			serverLog.Printf("event stream drained")
+			return
 		case revision := <-channel:
 			healthRevision, _ := a.ingestionHealthRevision(request.Context(), allowHealth)
 			if revision != lastRevision || healthRevision != lastHealthRevision {

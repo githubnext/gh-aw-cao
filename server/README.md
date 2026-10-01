@@ -242,10 +242,12 @@ profile.
 The `generic` target also accepts `listener: external` for a Go host that owns
 the HTTP server instead of CAO's `Serve` command. Use the public `hosting.New`
 constructor with explicit paths to the built site and query documents, call
-`Start(ctx)` before serving `Handler()`, drain the host's HTTP server before
-`Stop()`, and keep the startup context alive through that drain. `Handler()`
+`Start(ctx)` before serving `Handler()`, then call `Drain()` to stop admitting
+new requests and end SSE streams. Call the host's `http.Server.Shutdown` to
+drain ordinary requests, then `Stop()` to cancel and await CAO background
+tasks. Keep the startup context alive through HTTP shutdown. `Handler()`
 includes all CAO authentication, trusted-host, CSRF, rate-limit, webhook, and
-telemetry middleware; it returns `503` before startup or after cancellation.
+telemetry middleware; it returns `503` before startup or after drain.
 There is no alternate raw router or automatic trust of an embedding host's
 identity headers. The existing process-owned `serve-hosted` and Azure handlers
 do not select this mode.
