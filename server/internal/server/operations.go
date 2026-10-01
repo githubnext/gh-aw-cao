@@ -248,11 +248,8 @@ func (a *App) admitWebhook(
 		a.recordIngestionCounter(request.Context(), "webhookDuplicate")
 		serverLog.Printf("webhook delivery duplicate")
 	} else {
-		if result["reason"] == "ambiguous-status" {
-			a.recordIngestionFailure(request.Context(), "admission")
-		}
-		serverLog.Printf("webhook admission completed kind=%v queued=%v applied=%v reason=%v admitted_at=%s",
-			result["kind"], result["queued"], result["applied"], result["reason"],
+		serverLog.Printf("webhook admission completed kind=%v queued=%v reason=%v admitted_at=%s",
+			result["kind"], result["queued"], result["reason"],
 			time.Now().UTC().Format(time.RFC3339Nano))
 	}
 	writeJSON(response, http.StatusAccepted, payload)

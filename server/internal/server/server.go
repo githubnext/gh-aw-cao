@@ -102,16 +102,20 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 	if config.Database == nil {
 		return nil, errors.New("dashboard Postgres database is required")
 	}
-	var databaseQueries []query.Definition
+	databaseQueries := []query.Definition{{
+		Name: "$records", From: "$domains",
+		Union: []string{"$tools", "$skills", "$friction", "$audits", "$issues"},
+	}}
 	if config.DatabaseQueriesPath != "" {
 		content, err := os.ReadFile(config.DatabaseQueriesPath)
 		if err != nil {
 			return nil, fmt.Errorf("read database queries: %w", err)
 		}
-		databaseQueries, err = query.ParseDefinitions(content)
+		parsed, err := query.ParseDefinitions(content)
 		if err != nil {
 			return nil, err
 		}
+		databaseQueries = append(databaseQueries, parsed...)
 	}
 	if err := validateHostProfile(store, &config); err != nil {
 		return nil, err
@@ -967,6 +971,9 @@ type queryResponse struct {
 }
 
 func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollectionHealth bool) (queryResponse, int, error) {
+	if a.database == nil {
+		return queryResponse{}, http.StatusServiceUnavailable, errors.New("dashboard data is unavailable")
+	}
 	var response queryResponse
 	var status int
 	err := a.database.WithReadTransaction(ctx, func(reader postgresx.SourceReader) error {
@@ -1057,17 +1064,6 @@ type databaseLoader struct {
 }
 
 func (loader *databaseLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
-	if name == "$records" {
-		source := model.Source{Source: name, Rows: []model.Row{}, Metadata: model.Metadata{}}
-		for _, collection := range []string{"domains", "tools", "skills", "friction", "audits", "issues"} {
-			part, _, err := loader.database.LoadSource(loader.ctx, "$"+collection, nil)
-			if err != nil {
-				return model.Source{}, model.Metrics{}, err
-			}
-			source.Rows = append(source.Rows, part.Rows...)
-		}
-		return source, model.Metrics{OutputRows: len(source.Rows)}, nil
-	}
 	if name == collectionHealthSourceName {
 		source, err := loader.app.collectionHealthSource(loader.ctx, loader.allowCollectionHealth)
 		return source, model.Metrics{}, err
@@ -1091,7 +1087,7 @@ func (loader *databaseLoader) LoadSource(name string, definition *query.Definiti
 }
 
 // RuntimeQuerySourceNames lists sources resolved by the server rather than
-// stored as generation-scoped RedisJSON documents.
+// stored as Postgres dashboard entities.
 func RuntimeQuerySourceNames() []string {
 	return []string{collectionHealthSourceName, gitHubQuotaUsageSourceName, marketplace.SourceName}
 }

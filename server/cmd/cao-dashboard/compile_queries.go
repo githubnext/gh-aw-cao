@@ -15,9 +15,10 @@ import (
 )
 
 type queryValidation struct {
-	Name  string `json:"name"`
-	From  string `json:"from"`
-	Valid bool   `json:"valid"`
+	Name   string `json:"name"`
+	From   string `json:"from"`
+	Valid  bool   `json:"valid"`
+	Reason string `json:"reason,omitempty"`
 }
 
 func newCompileQueriesCommand() *cobra.Command {
@@ -35,12 +36,14 @@ func newCompileQueriesCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		if err := query.Validate(definitions); err != nil {
-			return fmt.Errorf("validate dashboard queries: %w", err)
-		}
 		results := make([]queryValidation, 0, len(definitions))
 		for _, definition := range definitions {
-			results = append(results, queryValidation{Name: definition.Name, From: definition.From, Valid: true})
+			result := queryValidation{Name: definition.Name, From: definition.From, Valid: true}
+			if err := query.Validate([]query.Definition{definition}); err != nil {
+				result.Valid = false
+				result.Reason = err.Error()
+			}
+			results = append(results, result)
 		}
 		return renderCompilation(cmd.OutOrStdout(), results, *format)
 	}
@@ -87,17 +90,25 @@ func renderCompilation(out io.Writer, results []queryValidation, format string) 
 	if format != "markdown" {
 		return fmt.Errorf("unsupported report format %q", format)
 	}
+	valid := 0
+	for _, result := range results {
+		if result.Valid {
+			valid++
+		}
+	}
 	if _, err := fmt.Fprintf(out, "### Go query validation (offline)\n\n"+
-		"%d queries passed structural and dependency validation. No database connection or runtime row budget was checked.\n\n"+
-		"| Query | Source | Valid |\n| --- | --- | --- |\n", len(results)); err != nil {
+		"%d queries: %d passed individual Go query validation, %d require unsupported or invalid features. "+
+		"Cross-query dependencies, source availability, and runtime row budgets were not checked.\n\n"+
+		"| Query | Source | Valid | Reason |\n| --- | --- | --- | --- |\n",
+		len(results), valid, len(results)-valid); err != nil {
 		return err
 	}
 	for _, result := range results {
 		cell := func(value string) string {
 			return strings.NewReplacer("|", "\\|", "\n", " ", "\r", " ").Replace(value)
 		}
-		if _, err := fmt.Fprintf(out, "| %s | %s | %t |\n",
-			cell(result.Name), cell(result.From), result.Valid); err != nil {
+		if _, err := fmt.Fprintf(out, "| %s | %s | %t | %s |\n",
+			cell(result.Name), cell(result.From), result.Valid, cell(result.Reason)); err != nil {
 			return err
 		}
 	}

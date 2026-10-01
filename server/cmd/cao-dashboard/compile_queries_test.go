@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
 )
 
 func TestCompileQueriesCommandReadsAllFragmentsAndDatabaseQueries(t *testing.T) {
@@ -61,5 +60,35 @@ func TestCompileQueriesFailsOnMissingInputsAndUnknownFormat(t *testing.T) {
 	}
 	if !strings.Contains(output.String(), `a\|b`) || !strings.Contains(output.String(), "line break") {
 		t.Fatalf("report cells were not escaped: %s", output.String())
+	}
+}
+
+func TestCompileQueriesReportsUnsupportedGoFeatures(t *testing.T) {
+	directory := t.TempDir()
+	fragments := filepath.Join(directory, "fragments")
+	if err := os.Mkdir(fragments, 0750); err != nil {
+		t.Fatal(err)
+	}
+	for path, content := range map[string]string{
+		filepath.Join(directory, "dashboard.json"): `{"queries":[{"name":"unsupported","from":"runs","predict":[{}]}]}`,
+		filepath.Join(directory, "database.json"):  `[]`,
+	} {
+		if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cmd := newCompileQueriesCommand()
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+	cmd.SetArgs([]string{"--dashboard-queries", filepath.Join(directory, "dashboard.json"), "--fragments", fragments, "--database-queries", filepath.Join(directory, "database.json"), "--format", "json"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	var results []queryValidation
+	if err := json.Unmarshal(output.Bytes(), &results); err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 || results[0].Valid || !strings.Contains(results[0].Reason, "prediction") {
+		t.Fatalf("unsupported Go query was not reported: %#v", results)
 	}
 }
