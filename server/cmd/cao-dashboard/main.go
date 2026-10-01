@@ -97,12 +97,12 @@ func resolvePostgresEndpoint(flagValue, envValue string) (string, error) {
 	return "", errors.New("--postgres-url or CAO_POSTGRES_URL is required")
 }
 
-func newPostgresStore(ctx context.Context, flagValue string) (*postgresx.Store, error) {
+func newPostgresStore(ctx context.Context, flagValue, namespace string) (*postgresx.Store, error) {
 	endpoint, err := resolvePostgresEndpoint(flagValue, os.Getenv("CAO_POSTGRES_URL"))
 	if err != nil {
 		return nil, err
 	}
-	store, err := postgresx.New(ctx, endpoint)
+	store, err := postgresx.NewWithNamespace(ctx, endpoint, namespace)
 	if err != nil {
 		return nil, errors.New("postgres is unavailable")
 	}
@@ -520,7 +520,7 @@ func newServeCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		database, err := newPostgresStore(ctx, *postgresURL)
+		database, err := newPostgresStore(ctx, *postgresURL, *redisNamespace)
 		if err != nil {
 			return err
 		}
@@ -594,7 +594,7 @@ func newIngestCommand() *cobra.Command {
 		if err := store.Ping(ctx); err != nil {
 			return errors.New("redis is unavailable")
 		}
-		database, err := newPostgresStore(ctx, *postgresURL)
+		database, err := newPostgresStore(ctx, *postgresURL, *redisNamespace)
 		if err != nil {
 			return err
 		}

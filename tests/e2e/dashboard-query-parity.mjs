@@ -503,10 +503,10 @@ async function waitForServer() {
     }
     await new Promise((resolvePromise) => setTimeout(resolvePromise, 100));
   }
-  throw new Error(`Redis dashboard server did not become ready: ${lastError}`);
+  throw new Error(`Postgres dashboard server did not become ready: ${lastError}`);
 }
 
-async function executeRedisBackend(
+async function executePostgresBackend(
   artifactDirectory,
   dashboardDocumentPath,
   agentFactory,
@@ -554,7 +554,7 @@ async function executeRedisBackend(
       body: JSON.stringify({ sourceNames: names, queries }),
     });
     const payload = await response.json();
-    if (!response.ok) throw new Error(`Redis query failed (${response.status}): ${JSON.stringify(payload)}`);
+    if (!response.ok) throw new Error(`Postgres query failed (${response.status}): ${JSON.stringify(payload)}`);
     const goTools = await callGoMcp("tools/list");
     const nodeTools = await handleMcpRequest({
       headers: {
@@ -619,7 +619,7 @@ async function executeRedisBackend(
       }
       goMcpRows[name] = result.result.structuredContent.rows;
     }
-    return { redis: rowsByQuery(payload.sources, names), goMcp: goMcpRows };
+    return { postgres: rowsByQuery(payload.sources, names), goMcp: goMcpRows };
   } finally {
     child.kill("SIGTERM");
     await Promise.race([
@@ -672,7 +672,7 @@ function compareBackends(results, queries) {
       const { name } = query;
       if (!Object.hasOwn(results[baselineName], name)) continue;
       const baselineRows = results[baselineName][name];
-      if (backend === "redis" && query?.from === "transactions") continue;
+      if (backend === "postgres" && query?.from === "transactions") continue;
       const ordered = (query?.["order-by"]?.length ?? 0) > 0;
       const expected = normalizedParityRows(query, baselineRows, ordered);
       const actual = normalizedParityRows(query, rowsByName[name] ?? [], ordered);
@@ -757,10 +757,10 @@ async function main() {
       },
       queries,
     ));
-    const [browserRows, sqliteRows, redisResult] = await Promise.all([
+    const [browserRows, sqliteRows, postgresResult] = await Promise.all([
       executeBrowserBackend(sources, queries, names),
       executeNodeBackend(installSqliteIndexedDB(sqlitePath), sources, queries, names),
-      executeRedisBackend(
+      executePostgresBackend(
         artifactDirectory,
         resolvedDocumentPath,
         sqliteFactory,
@@ -773,17 +773,28 @@ async function main() {
       "node-indexeddb": nodeRows,
       "playwright-indexeddb": browserRows,
       "sqlite-indexeddb": sqliteRows,
-      redis: redisResult.redis,
     };
-    report.backends = [...Object.keys(results), "cao-named-query", "cao-mcp"];
+    report.backends = [...Object.keys(results), "postgres", "cao-named-query", "cao-mcp"];
     // Server-only sources such as collection health have no local IndexedDB
     // equivalent and are therefore outside the cross-backend parity contract.
     report.mismatches.push(...compareBackends(results, localQueries));
+    // The server executes canonical queries rather than the injected logical
+    // inventory fixtures used by the browser comparison.
+    report.mismatches.push(...compareBackends({
+      "node-indexeddb": rowsByQuery(
+        await loadDatabaseQuerySources(nodeFactory, {}, {
+          queries,
+          sourceNames: names,
+        }),
+        names,
+      ),
+      postgres: postgresResult.postgres,
+    }, localQueries));
     report.mismatches.push(...compareBackends({
       "node-indexeddb": Object.fromEntries(
-        Object.keys(redisResult.goMcp).map((name) => [name, databaseBaseline[name]]),
+        Object.keys(postgresResult.goMcp).map((name) => [name, databaseBaseline[name]]),
       ),
-      "go-mcp": redisResult.goMcp,
+      "go-mcp": postgresResult.goMcp,
     }, localQueries));
     report.backends.push("go-mcp");
     report.status = report.mismatches.length === 0 ? "passed" : "failed";
