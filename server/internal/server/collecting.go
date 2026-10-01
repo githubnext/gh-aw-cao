@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/collect"
+	"github.com/githubnext/gh-aw-cao/server/internal/dashboarddb"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
@@ -142,7 +143,7 @@ const collectionHealthSourceName = "collection-health"
 
 // NewCollector assembles the collection profile from configuration.
 func NewCollector(
-	ctx context.Context, store *redisx.Store, config CollectorConfig, databaseQueriesPath string,
+	ctx context.Context, store *redisx.Store, config CollectorConfig, databaseQueriesPath string, databases ...dashboarddb.Storage,
 ) (*Collector, error) {
 	if err := config.Validate(); err != nil {
 		return nil, err
@@ -229,6 +230,9 @@ func NewCollector(
 		MinInterval:              config.MinProjectionInterval,
 		RetainGenerations:        config.RetainGenerations,
 		InventoryRepositoryLimit: config.InventoryLimit,
+	}
+	if len(databases) > 0 {
+		projector.Database = databases[0]
 	}
 	backfill := collect.Backfill{
 		Store: store, Enrollment: enrollment, Queue: queue,

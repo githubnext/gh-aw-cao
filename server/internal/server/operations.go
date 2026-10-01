@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/dashboarddb"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
@@ -35,12 +36,17 @@ type GitHubWebhook struct {
 
 type DirectoryReconciler struct {
 	Store               *redisx.Store
+	Database            dashboarddb.Storage
 	SourceDirectory     string
 	DatabaseQueriesPath string
 }
 
 func (reconciler DirectoryReconciler) Rebuild(ctx context.Context) (ingest.Result, error) {
-	return ingest.Run(ctx, reconciler.Store, reconciler.SourceDirectory, ingest.Options{
+	database := reconciler.Database
+	if database == nil {
+		database = reconciler.Store
+	}
+	return ingest.Run(ctx, database, reconciler.SourceDirectory, ingest.Options{
 		DatabaseQueriesPath: reconciler.DatabaseQueriesPath,
 		Force:               true,
 	})
@@ -85,7 +91,7 @@ func (a *App) rebuild(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 	started := time.Now().UTC()
-	active, _ := a.store.Active(request.Context())
+	active, _ := a.dashboardDatabase().Active(request.Context())
 	status := rebuildStatus{
 		State: "running", Required: active.Generation == "",
 		StartedAt: started.Format(time.RFC3339Nano),
@@ -340,7 +346,7 @@ func (a *App) readRebuildStatus(ctx context.Context) (rebuildStatus, error) {
 				return rebuildStatus{}, err
 			}
 			if !held {
-				active, err := a.store.Active(ctx)
+				active, err := a.dashboardDatabase().Active(ctx)
 				if err != nil {
 					return rebuildStatus{}, err
 				}
@@ -351,7 +357,7 @@ func (a *App) readRebuildStatus(ctx context.Context) (rebuildStatus, error) {
 		}
 		return status, nil
 	}
-	active, err := a.store.Active(ctx)
+	active, err := a.dashboardDatabase().Active(ctx)
 	if err != nil {
 		return rebuildStatus{}, err
 	}

@@ -20,7 +20,10 @@ type Storage interface {
 	DiscardGeneration(context.Context, string) error
 	PutSource(context.Context, string, model.Source) error
 	PutDiagnostics(context.Context, string, model.Diagnostics) error
+	Diagnostics(context.Context, string) (model.Diagnostics, error)
 	PutRepositoryMemory(context.Context, string, []byte, map[string][]byte) error
+	RepositoryMemoryManifest(context.Context, string) ([]byte, error)
+	RepositoryMemoryFile(context.Context, string, string, string) ([]byte, error)
 	Activate(context.Context, string, string, time.Time, map[string]int) (int64, error)
 	PruneGenerations(context.Context, int) (int, error)
 }

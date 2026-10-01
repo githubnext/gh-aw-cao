@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/dashboarddb"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
@@ -38,6 +39,7 @@ const (
 // what keeps projection cost sublinear in run volume.
 type Projector struct {
 	Store               *redisx.Store
+	Database            dashboarddb.Storage
 	Lake                Lake
 	Enrollment          Enrollment
 	CatalogRoot         string
@@ -172,7 +174,11 @@ func (p Projector) project(ctx context.Context, force bool) (ingest.Result, erro
 	// rewrite an identical canonical dataset. The content-addressed data
 	// revision skips those, which is what keeps a 60-second projection
 	// interval affordable.
-	result, err := ingest.Run(ctx, p.Store, p.Lake.Directory, ingest.Options{
+	database := p.Database
+	if database == nil {
+		database = p.Store
+	}
+	result, err := ingest.Run(ctx, database, p.Lake.Directory, ingest.Options{
 		DatabaseQueriesPath: p.DatabaseQueriesPath,
 		RetainGenerations:   p.RetainGenerations,
 		Force:               force,

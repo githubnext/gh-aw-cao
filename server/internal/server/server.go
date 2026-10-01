@@ -26,6 +26,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/dashboarddb"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
@@ -51,9 +52,12 @@ type Config struct {
 	Proxy                  ProxyPolicy
 	// CORS is the reviewed cross-origin policy; the zero value is
 	// same-origin only.
-	CORS                 CORSPolicy
-	GitHubOAuth          *GitHubOAuthConfig
-	DatabaseQueriesPath  string
+	CORS                CORSPolicy
+	GitHubOAuth         *GitHubOAuthConfig
+	DatabaseQueriesPath string
+	// Database overrides dashboard persistence and query execution. Redis is
+	// used by default; operational features always use the Redis store.
+	Database             dashboarddb.Database
 	DashboardQueries     []query.Definition
 	DashboardQueriesPath string
 	AgentCatalogPath     string
@@ -77,6 +81,7 @@ type Config struct {
 
 type App struct {
 	store         *redisx.Store
+	database      dashboarddb.Database
 	config        Config
 	accessToken   string
 	oauth         *githubOAuth
@@ -92,6 +97,16 @@ type App struct {
 	startMu       sync.Mutex
 	startContext  context.Context
 	stop          context.CancelFunc
+}
+
+func (a *App) dashboardDatabase() dashboarddb.Database {
+	if a.database != nil {
+		return a.database
+	}
+	if a.store != nil {
+		return dashboarddb.NewRedis(a.store)
+	}
+	return nil
 }
 
 func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) {
@@ -118,6 +133,10 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 	if config.Logger == nil {
 		config.Logger = log.Default()
 	}
+	database := config.Database
+	if database == nil && store != nil {
+		database = dashboarddb.NewRedis(store)
+	}
 	var oauth *githubOAuth
 	var accessToken string
 	if profile.Authentication == HostAuthenticationOAuth {
@@ -141,7 +160,7 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 		return nil, err
 	}
 	if config.Collector != nil {
-		collector, err := NewCollector(ctx, store, *config.Collector, config.DatabaseQueriesPath)
+		collector, err := NewCollector(ctx, store, *config.Collector, config.DatabaseQueriesPath, database)
 		if err != nil {
 			return nil, fmt.Errorf("configure collection: %w", err)
 		}
@@ -162,7 +181,7 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 	if reconciler == nil && config.SourceDirectory != "" {
 		reconciler = DirectoryReconciler{
 			Store: store, SourceDirectory: config.SourceDirectory,
-			DatabaseQueriesPath: config.DatabaseQueriesPath,
+			Database: database, DatabaseQueriesPath: config.DatabaseQueriesPath,
 		}
 	}
 	if config.MCPEnabled && profile.Authentication == HostAuthenticationOAuth {
@@ -190,8 +209,8 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 	}
 	serverLog.Printf("initialized host_profile=%s oauth=%t source_ingestion=%t", profile.Name, oauth != nil, config.SourceDirectory != "")
 	app := &App{
-		store: store, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
-		canonical: canonicalService{store: store}, reconciler: reconciler, memory: memoryResolver,
+		store: store, database: database, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
+		canonical: canonicalService{database: database}, reconciler: reconciler, memory: memoryResolver,
 		webhookSecret: []byte(config.WebhookSecret), actionsToken: actionsToken, actionsActor: actionsActor,
 		quota: quota,
 	}
@@ -230,7 +249,7 @@ func (a *App) Start(ctx context.Context) error {
 	runCtx, cancel := context.WithCancel(ctx)
 	serverLog.Printf("starting service initial_ingestion=%t", a.config.SourceDirectory != "")
 	if a.config.SourceDirectory != "" {
-		result, err := ingest.Run(runCtx, a.store, a.config.SourceDirectory, ingest.Options{DatabaseQueriesPath: a.config.DatabaseQueriesPath})
+		result, err := ingest.Run(runCtx, a.database, a.config.SourceDirectory, ingest.Options{DatabaseQueriesPath: a.config.DatabaseQueriesPath})
 		if err != nil {
 			cancel()
 			return fmt.Errorf("initial ingestion failed: %w", err)
@@ -727,7 +746,7 @@ func securityHeaders(next http.Handler) http.Handler {
 func (a *App) health(response http.ResponseWriter, request *http.Request) {
 	ctx, cancel := context.WithTimeout(request.Context(), 3*time.Second)
 	defer cancel()
-	active, activeErr := a.store.Active(ctx)
+	active, activeErr := a.dashboardDatabase().Active(ctx)
 	redisHealthy := a.store.Ping(ctx) == nil
 	status := http.StatusOK
 	if !redisHealthy || activeErr != nil {
@@ -765,7 +784,7 @@ func (a *App) health(response http.ResponseWriter, request *http.Request) {
 func (a *App) readiness(response http.ResponseWriter, request *http.Request) {
 	ctx, cancel := context.WithTimeout(request.Context(), 3*time.Second)
 	defer cancel()
-	active, activeErr := a.store.Active(ctx)
+	active, activeErr := a.dashboardDatabase().Active(ctx)
 	redisHealthy := a.store.Ping(ctx) == nil
 	ready := redisHealthy && activeErr == nil && active.Generation != ""
 	status := http.StatusOK
@@ -800,7 +819,7 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 	}
 	response.Header().Set("Content-Type", "text/event-stream")
 	response.Header().Set("Connection", "keep-alive")
-	active, _ := a.store.Active(request.Context())
+	active, _ := a.dashboardDatabase().Active(request.Context())
 	allowHealth := a.adminAuthorized(request)
 	healthRevision, _ := a.ingestionHealthRevision(request.Context(), allowHealth)
 	writeEvent(response, active.Revision, healthRevision)
@@ -825,7 +844,7 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 				lastHealthRevision = healthRevision
 			}
 		case <-poll.C:
-			active, err := a.store.Active(request.Context())
+			active, err := a.dashboardDatabase().Active(request.Context())
 			healthRevision, healthErr := a.ingestionHealthRevision(request.Context(), allowHealth)
 			if err == nil && healthErr == nil &&
 				(active.Revision != lastRevision || healthRevision != lastHealthRevision) {
@@ -953,7 +972,7 @@ type queryResponse struct {
 }
 
 func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollectionHealth bool) (queryResponse, int, error) {
-	active, err := a.store.Active(ctx)
+	active, err := a.dashboardDatabase().Active(ctx)
 	if err != nil || active.Generation == "" {
 		return queryResponse{}, http.StatusServiceUnavailable, errors.New("dashboard data is unavailable")
 	}
@@ -990,11 +1009,10 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 	}
 	started := time.Now()
 	loader := &generationLoader{
-		ctx: ctx, store: a.store, generation: active.Generation,
+		ctx: ctx, store: a.store, database: a.database, generation: active.Generation,
 		app: a, allowCollectionHealth: allowCollectionHealth,
 	}
-	engine := query.New(loader)
-	sources, metrics, err := engine.Execute(definitions, requested)
+	sources, metrics, err := a.dashboardDatabase().ExecuteQueries(definitions, requested, loader)
 	if err != nil {
 		serverLog.Printf("query failed")
 		return queryResponse{}, http.StatusBadRequest, err
@@ -1021,6 +1039,7 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 type generationLoader struct {
 	ctx                   context.Context
 	store                 *redisx.Store
+	database              dashboarddb.Database
 	generation            string
 	app                   *App
 	allowCollectionHealth bool
@@ -1042,7 +1061,7 @@ func (loader *generationLoader) LoadSource(name string, definition *query.Defini
 		// caller sees an ordinary source, with no secrets ever leaving this call.
 		return marketplaceSource(loader.ctx, loader.store, loader.generation), model.Metrics{}, nil
 	}
-	source, metrics, err := loader.store.LoadSource(loader.ctx, loader.generation, name, definition)
+	source, metrics, err := loader.database.LoadSource(loader.ctx, loader.generation, name, definition)
 	if errors.Is(err, redisx.ErrSourceUnavailable) {
 		return unavailableSource(name), metrics, nil
 	}
@@ -1103,12 +1122,12 @@ func paginate(source model.Source, revision string, page paginationRequest) (mod
 }
 
 func (a *App) diagnostics(response http.ResponseWriter, request *http.Request) {
-	active, err := a.store.Active(request.Context())
+	active, err := a.dashboardDatabase().Active(request.Context())
 	if err != nil || active.Generation == "" {
 		writeError(response, http.StatusServiceUnavailable, "dashboard data is unavailable")
 		return
 	}
-	diagnostics, err := a.store.Diagnostics(request.Context(), active.Generation)
+	diagnostics, err := a.dashboardDatabase().Diagnostics(request.Context(), active.Generation)
 	if err != nil {
 		writeError(response, http.StatusServiceUnavailable, "dashboard diagnostics are unavailable")
 		return
@@ -1118,7 +1137,7 @@ func (a *App) diagnostics(response http.ResponseWriter, request *http.Request) {
 }
 
 func (a *App) refresh(response http.ResponseWriter, request *http.Request) {
-	active, err := a.store.Active(request.Context())
+	active, err := a.dashboardDatabase().Active(request.Context())
 	if err != nil {
 		writeError(response, http.StatusServiceUnavailable, "dashboard data is unavailable")
 		return

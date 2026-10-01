@@ -5,30 +5,29 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/dashboarddb"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
 var canonicalLog = logger.New("cao:server:canonical")
 
 type canonicalService struct {
-	store *redisx.Store
+	database dashboarddb.Database
 }
 
 var errCanonicalEntityNotFound = errors.New("canonical entity was not found")
 
 func (service canonicalService) rows(ctx context.Context, source string) ([]model.Row, error) {
-	active, err := service.store.Active(ctx)
+	active, err := service.database.Active(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if active.Generation == "" {
 		return nil, errors.New("dashboard data is unavailable")
 	}
-	engine := query.New(&generationLoader{ctx: ctx, store: service.store, generation: active.Generation})
-	sources, _, err := engine.Execute(nil, []string{source})
+	sources, _, err := service.database.ExecuteQueries(nil, []string{source}, &generationLoader{ctx: ctx, database: service.database, generation: active.Generation})
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +35,7 @@ func (service canonicalService) rows(ctx context.Context, source string) ([]mode
 }
 
 func (service canonicalService) filteredRows(ctx context.Context, source string, filters map[string]any) ([]model.Row, error) {
-	active, err := service.store.Active(ctx)
+	active, err := service.database.Active(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -54,8 +53,7 @@ func (service canonicalService) filteredRows(ctx context.Context, source string,
 			Predicates: predicates,
 		},
 	}
-	engine := query.New(&generationLoader{ctx: ctx, store: service.store, generation: active.Generation})
-	sources, _, err := engine.Execute([]query.Definition{definition}, []string{definition.Name})
+	sources, _, err := service.database.ExecuteQueries([]query.Definition{definition}, []string{definition.Name}, &generationLoader{ctx: ctx, database: service.database, generation: active.Generation})
 	if err != nil {
 		return nil, err
 	}

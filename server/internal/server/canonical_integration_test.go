@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/dashboarddb"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
@@ -35,7 +36,7 @@ func TestCanonicalAPIQueriesMatchActiveRedisGeneration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	service := canonicalService{store: store}
+	service := canonicalService{database: dashboarddb.NewRedis(store)}
 	repositories, err := service.rows(ctx, "repositories")
 	if err != nil {
 		t.Fatal(err)

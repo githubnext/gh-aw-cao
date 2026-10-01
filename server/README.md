@@ -13,6 +13,15 @@ authenticated host-neutral service profile.
 The browser never connects to Redis and never receives the Redis URL or
 credentials. It communicates only with the same-origin HTTP(S) API.
 
+Dashboard persistence and query validation/execution use the
+`internal/dashboarddb.Database` contract. The default Redis adapter retains
+the existing generation-scoped projection and Go query engine; ingestion accepts
+the corresponding `Storage` contract. `server.Config.Database` can supply a
+different dashboard backend while Redis remains responsible for operational
+sessions, queues, locks, counters, and caches. Implementations must stage a
+complete generation before activation and leave the active generation intact on
+failure. This change does not implement a Postgres backend.
+
 ## Offline query translation report
 
 From `server/`, run `go run ./cmd/cao-dashboard compile-queries` to check every

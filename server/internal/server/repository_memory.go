@@ -90,7 +90,7 @@ func (a *App) repositoryMemoryContent(response http.ResponseWriter, request *htt
 		writeError(response, http.StatusNotFound, "repository-memory file was not found")
 		return
 	}
-	content, err := a.store.RepositoryMemoryFile(request.Context(), generation, campaignID, filePath)
+	content, err := a.dashboardDatabase().RepositoryMemoryFile(request.Context(), generation, campaignID, filePath)
 	if err != nil {
 		if errors.Is(err, redisx.ErrSourceUnavailable) {
 			writeError(response, http.StatusNotFound, "repository-memory file was not found")
@@ -137,11 +137,11 @@ func repositoryMemoryIntegrityFailure(content []byte, expected repositorymemory.
 }
 
 func (a *App) repositoryMemorySnapshot(request *http.Request, campaignID string) (string, repositorymemory.Campaign, error) {
-	active, err := a.store.Active(request.Context())
+	active, err := a.dashboardDatabase().Active(request.Context())
 	if err != nil || active.Generation == "" {
 		return "", repositorymemory.Campaign{}, redisx.ErrSourceUnavailable
 	}
-	content, err := a.store.RepositoryMemoryManifest(request.Context(), active.Generation)
+	content, err := a.dashboardDatabase().RepositoryMemoryManifest(request.Context(), active.Generation)
 	if err != nil {
 		return "", repositorymemory.Campaign{}, err
 	}
