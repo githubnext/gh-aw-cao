@@ -26,6 +26,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/dashboarddb"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
@@ -77,6 +78,7 @@ type Config struct {
 
 type App struct {
 	store         *redisx.Store
+	dashboard     dashboarddb.Database
 	config        Config
 	accessToken   string
 	oauth         *githubOAuth
@@ -191,7 +193,8 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 	serverLog.Printf("initialized host_profile=%s oauth=%t source_ingestion=%t", profile.Name, oauth != nil, config.SourceDirectory != "")
 	app := &App{
 		store: store, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
-		canonical: canonicalService{store: store}, reconciler: reconciler, memory: memoryResolver,
+		canonical: canonicalService{store: store, dashboard: &redisx.DashboardDatabase{Store: store}},
+		dashboard: &redisx.DashboardDatabase{Store: store}, reconciler: reconciler, memory: memoryResolver,
 		webhookSecret: []byte(config.WebhookSecret), actionsToken: actionsToken, actionsActor: actionsActor,
 		quota: quota,
 	}
@@ -993,8 +996,14 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 		ctx: ctx, store: a.store, generation: active.Generation,
 		app: a, allowCollectionHealth: allowCollectionHealth,
 	}
-	engine := query.New(loader)
-	sources, metrics, err := engine.Execute(definitions, requested)
+	database := a.dashboard
+	if database == nil {
+		database = &redisx.DashboardDatabase{Store: a.store}
+	}
+	if err := database.Validate(definitions); err != nil {
+		return queryResponse{}, http.StatusBadRequest, err
+	}
+	sources, metrics, err := database.Execute(ctx, definitions, requested, loader.runtimeSource)
 	if err != nil {
 		serverLog.Printf("query failed")
 		return queryResponse{}, http.StatusBadRequest, err
@@ -1026,27 +1035,23 @@ type generationLoader struct {
 	allowCollectionHealth bool
 }
 
-func (loader *generationLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
+func (loader *generationLoader) runtimeSource(name string, _ *query.Definition) (model.Source, model.Metrics, bool, error) {
 	if name == collectionHealthSourceName {
 		source, err := loader.app.collectionHealthSource(loader.ctx, loader.allowCollectionHealth)
-		return source, model.Metrics{}, err
+		return source, model.Metrics{}, true, err
 	}
 
 	if name == gitHubQuotaUsageSourceName {
 		source, err := loader.app.gitHubQuotaUsageSource(loader.ctx, loader.allowCollectionHealth)
-		return source, model.Metrics{}, err
+		return source, model.Metrics{}, true, err
 	}
 	if name == marketplace.SourceName {
 		// The marketplace catalog is never stored as an ingested Redis source:
 		// it is resolved (and cached) transparently here so every query-engine
 		// caller sees an ordinary source, with no secrets ever leaving this call.
-		return marketplaceSource(loader.ctx, loader.store, loader.generation), model.Metrics{}, nil
+		return marketplaceSource(loader.ctx, loader.store, loader.generation), model.Metrics{}, true, nil
 	}
-	source, metrics, err := loader.store.LoadSource(loader.ctx, loader.generation, name, definition)
-	if errors.Is(err, redisx.ErrSourceUnavailable) {
-		return unavailableSource(name), metrics, nil
-	}
-	return source, metrics, err
+	return model.Source{}, model.Metrics{}, false, nil
 }
 
 // RuntimeQuerySourceNames lists sources resolved by the server rather than

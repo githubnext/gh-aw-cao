@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/dashboarddb"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
@@ -14,7 +15,8 @@ import (
 var canonicalLog = logger.New("cao:server:canonical")
 
 type canonicalService struct {
-	store *redisx.Store
+	store     *redisx.Store
+	dashboard dashboarddb.Database
 }
 
 var errCanonicalEntityNotFound = errors.New("canonical entity was not found")
@@ -27,8 +29,11 @@ func (service canonicalService) rows(ctx context.Context, source string) ([]mode
 	if active.Generation == "" {
 		return nil, errors.New("dashboard data is unavailable")
 	}
-	engine := query.New(&generationLoader{ctx: ctx, store: service.store, generation: active.Generation})
-	sources, _, err := engine.Execute(nil, []string{source})
+	database := service.dashboard
+	if database == nil {
+		database = &redisx.DashboardDatabase{Store: service.store}
+	}
+	sources, _, err := database.Execute(ctx, nil, []string{source}, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -54,8 +59,11 @@ func (service canonicalService) filteredRows(ctx context.Context, source string,
 			Predicates: predicates,
 		},
 	}
-	engine := query.New(&generationLoader{ctx: ctx, store: service.store, generation: active.Generation})
-	sources, _, err := engine.Execute([]query.Definition{definition}, []string{definition.Name})
+	database := service.dashboard
+	if database == nil {
+		database = &redisx.DashboardDatabase{Store: service.store}
+	}
+	sources, _, err := database.Execute(ctx, []query.Definition{definition}, []string{definition.Name}, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -13,6 +13,14 @@ authenticated host-neutral service profile.
 The browser never connects to Redis and never receives the Redis URL or
 credentials. It communicates only with the same-origin HTTP(S) API.
 
+Dashboard call-table persistence is isolated behind `internal/dashboarddb`:
+the database publishes complete snapshots, validates Dashboard Language queries,
+and executes them without exposing Redis generations or indexes. The current
+`internal/redisx/DashboardDatabase` implementation stages and activates Redis
+generations internally. Redis remains responsible for operational locks, queues,
+sessions, counters, and caches; these are not dashboard database records. No
+PostgreSQL backend is configured or implemented.
+
 ## Offline query translation report
 
 From `server/`, run `go run ./cmd/cao-dashboard compile-queries` to check every
