@@ -334,6 +334,10 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 			if err != nil {
 				return nil, metrics, err
 			}
+			operations += loadedMetrics.Operations
+			if operations > MaxOperations {
+				return nil, metrics, fmt.Errorf("query %q exceeds max operations", definition.Name)
+			}
 			mergeMetrics(&metrics, loadedMetrics)
 			available[definition.From] = source
 			residual = residualDefinition(residual, loadedMetrics.PushedDown)

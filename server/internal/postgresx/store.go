@@ -699,9 +699,8 @@ func (s *Store) WithReadTransaction(ctx context.Context, fn func(SourceReader) e
 	return nil
 }
 
-// LoadSource reads source rows with namespace, source name and ordinal predicates
-// in SQL. It deliberately leaves Dashboard Language filter/compute/join/limit
-// semantics and resource accounting to the Go query engine.
+// LoadSource reads source rows from one database snapshot. Safe scalar predicates
+// can narrow the rows fetched by SQL; the Go engine still evaluates the full filter.
 func (s *Store) LoadSource(ctx context.Context, name string, definition *query.Definition) (model.Source, model.Metrics, error) {
 	var source model.Source
 	var metrics model.Metrics
@@ -713,17 +712,18 @@ func (s *Store) LoadSource(ctx context.Context, name string, definition *query.D
 }
 
 func (r *readTransaction) LoadSource(ctx context.Context, name string, definition *query.Definition) (model.Source, model.Metrics, error) {
-	_ = definition
 	s, tx := r.store, r.tx
-	rows, err := tx.QueryContext(ctx, `SELECT positions.ordinal, v.node_id, v.parent_id, v.object_key,
+	conditions, args := sourceCandidates(s.namespace, name, definition)
+	statement := `SELECT positions.ordinal, v.node_id, v.parent_id, v.object_key,
 			v.array_index, v.kind, v.text_value, v.bool_value
 		FROM (
 			SELECT -1::bigint AS ordinal FROM cao_sources WHERE namespace = $1 AND source_name = $2
 			UNION ALL
-			SELECT ordinal FROM cao_source_rows WHERE namespace = $1 AND source_name = $2
+			SELECT ordinal FROM cao_source_rows AS r WHERE namespace = $1 AND source_name = $2` + conditions + `
 		) AS positions
 		LEFT JOIN cao_values AS v ON v.namespace = $1 AND v.source_name = $2 AND v.ordinal = positions.ordinal
-		ORDER BY positions.ordinal, v.node_id`, s.namespace, name)
+		ORDER BY positions.ordinal, v.node_id`
+	rows, err := tx.QueryContext(ctx, statement, args...)
 	if err != nil {
 		return model.Source{}, model.Metrics{}, fmt.Errorf("read postgres source: %w", err)
 	}
@@ -790,7 +790,77 @@ func (r *readTransaction) LoadSource(ctx context.Context, name string, definitio
 	if err = finish(); err != nil {
 		return model.Source{}, model.Metrics{}, fmt.Errorf("decode postgres source: %w", err)
 	}
-	return source, model.Metrics{OutputRows: len(source.Rows)}, nil
+	metrics := model.Metrics{OutputRows: len(source.Rows)}
+	if conditions != "" {
+		var total int
+		if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM cao_source_rows WHERE namespace = $1 AND source_name = $2`, s.namespace, name).Scan(&total); err != nil {
+			return model.Source{}, model.Metrics{}, fmt.Errorf("count postgres source rows: %w", err)
+		}
+		// The SQL test is a necessary condition only: Go still evaluates the
+		// complete filter. Charge omitted rows for both input and filter work.
+		metrics.Operations = 2 * (total - len(source.Rows))
+		metrics.PushedDown = []string{"filter-candidates"}
+	}
+	return source, metrics, nil
+}
+
+// sourceCandidates emits only necessary conditions for direct scalar fields.
+// Missing, null, and container fields stay in the candidate set so Go retains
+// its coercion and optional-field behavior. All user values are bound parameters.
+func sourceCandidates(namespace, name string, definition *query.Definition) (string, []any) {
+	args := []any{namespace, name}
+	if definition == nil || definition.From != name || len(definition.Union) != 0 ||
+		len(definition.Joins) != 0 || definition.Filter == nil {
+		return "", args
+	}
+	var conditions strings.Builder
+	for _, predicate := range definition.Filter.Predicates {
+		if predicate.Optional || predicate.Field == "@time" {
+			continue
+		}
+		var values []any
+		if len(predicate.In) > 0 {
+			values = predicate.In
+		} else if predicate.Includes == "" && predicate.GTE == nil && predicate.LT == nil && predicate.Equals != nil {
+			values = []any{predicate.Equals}
+		} else {
+			continue
+		}
+		texts := make([]string, 0, len(values))
+		for _, value := range values {
+			switch value.(type) {
+			case string, bool, json.Number, float64:
+				texts = append(texts, fmt.Sprint(value))
+			default:
+				texts = nil
+			}
+			if texts == nil {
+				break
+			}
+		}
+		if len(texts) == 0 {
+			continue
+		}
+		args = append(args, predicate.Field)
+		conditions.WriteString(` AND NOT EXISTS (SELECT 1 FROM cao_values AS candidate
+			WHERE candidate.namespace = r.namespace AND candidate.source_name = r.source_name
+			AND candidate.ordinal = r.ordinal AND candidate.parent_id = 0
+			AND candidate.object_key = $`)
+		conditions.WriteString(strconv.Itoa(len(args)))
+		conditions.WriteString(` AND candidate.kind IN ('string', 'number', 'boolean')
+			AND (CASE WHEN candidate.kind = 'boolean' THEN candidate.bool_value::text
+				ELSE candidate.text_value END) COLLATE "C" NOT IN (`)
+		for i, text := range texts {
+			if i > 0 {
+				conditions.WriteByte(',')
+			}
+			args = append(args, text)
+			conditions.WriteByte('$')
+			conditions.WriteString(strconv.Itoa(len(args)))
+		}
+		conditions.WriteString(`))`)
+	}
+	return conditions.String(), args
 }
 
 type valueNode struct {
