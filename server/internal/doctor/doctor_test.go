@@ -228,3 +228,66 @@ func TestStrictModeTreatsWarningsAsFailure(t *testing.T) {
 		t.Fatal("warning did not fail strict report")
 	}
 }
+
+func TestParseScanReplyExtractsCursorAndKeysSkippingNilEntries(t *testing.T) {
+	reply, err := parseScanReply([]any{"42", []any{"cao:test:a", nil, "cao:test:b"}})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if reply.cursor != "42" {
+		t.Fatalf("cursor = %q, want %q", reply.cursor, "42")
+	}
+	if got, want := strings.Join(reply.keys, ","), "cao:test:a,cao:test:b"; got != want {
+		t.Fatalf("keys = %q, want %q", got, want)
+	}
+}
+
+func TestParseScanReplyRejectsWrongShapedReply(t *testing.T) {
+	if _, err := parseScanReply("not-a-reply"); err == nil {
+		t.Fatal("expected an error for a non-array reply")
+	}
+	if _, err := parseScanReply([]any{"0"}); err == nil {
+		t.Fatal("expected an error for a reply missing the key list")
+	}
+	if _, err := parseScanReply([]any{"0", "not-a-list"}); err == nil {
+		t.Fatal("expected an error for a key list that is not an array")
+	}
+}
+
+func TestScanKeysStopsAtLimitAndReportsIncomplete(t *testing.T) {
+	doctor := testDoctor(fakeClient{do: func(arguments ...string) (any, error) {
+		if len(arguments) >= 1 && arguments[0] == "SCAN" {
+			return []any{"7", []any{"cao:test:a", "cao:test:b", "cao:test:c"}}, nil
+		}
+		return nil, fmt.Errorf("unexpected command %v", arguments)
+	}})
+	keys, complete, err := doctor.scanKeys(context.Background(), "cao:test:*", 2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if complete {
+		t.Fatal("expected an incomplete scan once the limit is hit")
+	}
+	if len(keys) != 2 {
+		t.Fatalf("keys = %v, want exactly 2 entries", keys)
+	}
+}
+
+func TestScanKeysCompletesWhenCursorReturnsToZero(t *testing.T) {
+	doctor := testDoctor(fakeClient{do: func(arguments ...string) (any, error) {
+		if len(arguments) >= 1 && arguments[0] == "SCAN" {
+			return []any{"0", []any{"cao:test:a"}}, nil
+		}
+		return nil, fmt.Errorf("unexpected command %v", arguments)
+	}})
+	keys, complete, err := doctor.scanKeys(context.Background(), "cao:test:*", 20000)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !complete {
+		t.Fatal("expected a complete scan when the cursor returns to zero")
+	}
+	if len(keys) != 1 || keys[0] != "cao:test:a" {
+		t.Fatalf("keys = %v, want [cao:test:a]", keys)
+	}
+}

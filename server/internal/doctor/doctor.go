@@ -259,6 +259,36 @@ func infoInt(fields map[string]string, name string) int64 {
 	return value
 }
 
+// scanReply is a decoded Redis SCAN reply: the next cursor to continue from,
+// and the keys found in this batch.
+type scanReply struct {
+	cursor string
+	keys   []string
+}
+
+// parseScanReply decodes a raw SCAN command reply into its cursor and key
+// list. A SCAN reply is a two-element array: the next cursor, then the key
+// list for this batch. It is a pure function so that shape is testable
+// without a fake Redis client wired through Doctor.
+func parseScanReply(value any) (scanReply, error) {
+	items, ok := value.([]any)
+	if !ok || len(items) != 2 {
+		return scanReply{}, errors.New("unexpected SCAN reply")
+	}
+	batch, ok := items[1].([]any)
+	if !ok {
+		return scanReply{}, errors.New("unexpected SCAN key list")
+	}
+	keys := make([]string, 0, len(batch))
+	for _, entry := range batch {
+		if entry == nil {
+			continue
+		}
+		keys = append(keys, fmt.Sprint(entry))
+	}
+	return scanReply{cursor: fmt.Sprint(items[0]), keys: keys}, nil
+}
+
 // scanKeys walks the keyspace for a pattern up to a bounded number of keys.
 //
 // The bound matters: the doctor must never be the reason a production Redis
@@ -271,21 +301,15 @@ func (d Doctor) scanKeys(ctx context.Context, pattern string, limit int) (keys [
 		if err != nil {
 			return keys, false, err
 		}
-		items, ok := value.([]any)
-		if !ok || len(items) != 2 {
-			return keys, false, errors.New("unexpected SCAN reply")
+		reply, err := parseScanReply(value)
+		if err != nil {
+			return keys, false, err
 		}
-		cursor = fmt.Sprint(items[0])
-		batch, ok := items[1].([]any)
-		if !ok {
-			return keys, false, errors.New("unexpected SCAN key list")
-		}
-		for _, entry := range batch {
-			if entry == nil {
-				continue
-			}
-			keys = append(keys, fmt.Sprint(entry))
+		cursor = reply.cursor
+		for _, key := range reply.keys {
+			keys = append(keys, key)
 			if len(keys) >= limit {
+				doctorLog.Printf("redis scan sampled pattern=%s limit=%d", pattern, limit)
 				return keys, false, nil
 			}
 		}
