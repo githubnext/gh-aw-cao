@@ -8,12 +8,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/netip"
+	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 )
 
 var ErrSourceUnavailable = errors.New("postgres source is unavailable")
@@ -66,10 +70,33 @@ func NewWithNamespace(ctx context.Context, dsn, namespace string) (*Store, error
 	if namespace == "" {
 		return nil, errors.New("postgres namespace is required")
 	}
-	db, err := sql.Open("pgx", dsn)
+	config, err := pgx.ParseConfig(dsn)
 	if err != nil {
-		return nil, fmt.Errorf("open postgres: %w", err)
+		return nil, errors.New("invalid postgres connection configuration")
 	}
+	return NewConfig(ctx, config, namespace)
+}
+
+// NewConfig accepts a parsed pgx configuration, including runtime settings
+// such as search_path, after checking every primary and fallback connection.
+func NewConfig(ctx context.Context, config *pgx.ConnConfig, namespaces ...string) (*Store, error) {
+	if config == nil {
+		return nil, errors.New("postgres connection configuration is required")
+	}
+	if len(namespaces) > 1 {
+		return nil, errors.New("postgres store accepts at most one namespace")
+	}
+	namespace := "default"
+	if len(namespaces) == 1 {
+		namespace = namespaces[0]
+	}
+	if namespace == "" {
+		return nil, errors.New("postgres namespace is required")
+	}
+	if err := validateTransport(config); err != nil {
+		return nil, err
+	}
+	db := stdlib.OpenDB(*config.Copy())
 	db.SetMaxOpenConns(4)
 	db.SetMaxIdleConns(2)
 	db.SetConnMaxLifetime(30 * time.Minute)
@@ -97,12 +124,34 @@ func NewWithNamespace(ctx context.Context, dsn, namespace string) (*Store, error
 			diagnostics JSONB NOT NULL
 		)`,
 	} {
-		if _, err = db.ExecContext(ctx, statement); err != nil {
+		if _, err := db.ExecContext(ctx, statement); err != nil {
 			db.Close()
-			return nil, fmt.Errorf("initialize postgres schema: %w", err)
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
+			return nil, errors.New("postgres connection or schema initialization failed")
 		}
 	}
 	return &Store{db: db, namespace: namespace}, nil
+}
+
+func validateTransport(config *pgx.ConnConfig) error {
+	secure := func(host string, tlsEnabled bool) bool {
+		if tlsEnabled || filepath.IsAbs(host) || strings.EqualFold(host, "localhost") {
+			return true
+		}
+		addr, err := netip.ParseAddr(host)
+		return err == nil && addr.IsLoopback()
+	}
+	if !secure(config.Host, config.TLSConfig != nil) {
+		return errors.New("postgres TLS is required for non-loopback connections")
+	}
+	for _, fallback := range config.Fallbacks {
+		if fallback == nil || !secure(fallback.Host, fallback.TLSConfig != nil) {
+			return errors.New("postgres TLS is required for non-loopback fallback connections")
+		}
+	}
+	return nil
 }
 
 func (s *Store) Close() error { return s.db.Close() }

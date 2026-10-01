@@ -2,12 +2,12 @@ package postgresx
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -42,6 +42,50 @@ func TestNamespaceRequired(t *testing.T) {
 	}
 }
 
+func TestConnectionTransport(t *testing.T) {
+	for _, tc := range []struct {
+		name, dsn string
+		allowed   bool
+	}{
+		{"remote default prefer", "postgres://db.example.com/data", false},
+		{"remote prefer fallback", "postgres://db.example.com/data?sslmode=prefer", false},
+		{"remote allow fallback", "postgres://db.example.com/data?sslmode=allow", false},
+		{"remote disable", "postgres://db.example.com/data?sslmode=disable", false},
+		{"remote require", "postgres://db.example.com/data?sslmode=require", true},
+		{"remote verify full", "postgres://db.example.com/data?sslmode=verify-full", true},
+		{"keyword remote disable", "host=db.example.com user=user sslmode=disable", false},
+		{"keyword remote require", "host=db.example.com user=user sslmode=require", true},
+		{"loopback ipv4", "postgres://127.0.0.1:5432/data?sslmode=disable", true},
+		{"loopback ipv6", "postgres://[::1]:5432/data?sslmode=disable", true},
+		{"localhost", "postgres://localhost:5432/data?sslmode=disable", true},
+		{"remote fallback from loopback", "host=127.0.0.1,db.example.com sslmode=disable", false},
+		{"unix socket", "host=/run/postgresql sslmode=disable", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			config, err := pgx.ParseConfig(tc.dsn)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := validateTransport(config); (err == nil) != tc.allowed {
+				t.Fatalf("allowed=%t, transport validation error: %v", tc.allowed, err)
+			}
+		})
+	}
+}
+
+func TestRejectsInsecureDSNWithoutLeakingCredentials(t *testing.T) {
+	secret := "visible-in-error"
+	dsn := "postgres://user:" + secret + "@db.example.com/data?sslmode=prefer"
+	_, err := New(t.Context(), dsn)
+	if err == nil || strings.Contains(err.Error(), secret) || strings.Contains(err.Error(), dsn) {
+		t.Fatalf("insecure DSN not safely rejected: %v", err)
+	}
+	_, err = New(t.Context(), "postgres://user:"+secret+"@[invalid")
+	if err == nil || strings.Contains(err.Error(), secret) {
+		t.Fatalf("malformed DSN not safely rejected: %v", err)
+	}
+}
+
 func TestStoreIntegration(t *testing.T) {
 	url := os.Getenv("POSTGRES_URL")
 	if url == "" {
@@ -49,24 +93,22 @@ func TestStoreIntegration(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
-	admin, err := sql.Open("pgx", url)
+	config, err := pgx.ParseConfig(url)
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := validateTransport(config); err != nil {
+		t.Fatal(err)
+	}
+	admin := stdlib.OpenDB(*config.Copy())
 	defer admin.Close()
 	schema := fmt.Sprintf("cao_postgresx_test_%d", time.Now().UnixNano())
 	if _, err := admin.ExecContext(ctx, "CREATE SCHEMA "+schema); err != nil {
 		t.Fatal(err)
 	}
 	defer admin.ExecContext(context.Background(), "DROP SCHEMA "+schema+" CASCADE")
-	config, err := pgx.ParseConfig(url)
-	if err != nil {
-		t.Fatal(err)
-	}
 	config.RuntimeParams["search_path"] = schema
-	dsn := stdlib.RegisterConnConfig(config)
-	defer stdlib.UnregisterConnConfig(dsn)
-	store, err := New(ctx, dsn)
+	store, err := NewConfig(ctx, config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +160,7 @@ func TestStoreIntegration(t *testing.T) {
 		!reflect.DeepEqual(state.Counts, map[string]int{"$runs": 1, "repositories": 2, "empty": 0}) {
 		t.Fatalf("unexpected state: %+v", state)
 	}
-	tenant, err := New(ctx, dsn, "other-tenant")
+	tenant, err := NewConfig(ctx, config, "other-tenant")
 	if err != nil {
 		t.Fatal(err)
 	}
