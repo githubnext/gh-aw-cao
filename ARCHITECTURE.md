@@ -114,7 +114,7 @@ normalized run and record JSONL; browser ingestion fails closed rather than
 falling back to raw Activity JSONL. Static-browser download, normalization, persistence, and queries run in a
 dedicated Web Worker. The optional Redis profile ingests the same deployed
 dashboard artifact in a Go HTTP(S) server, keeps Redis credentials server-side,
-executes Dashboard Language in Go against generation-scoped RedisJSON documents
+executes Dashboard Language in Go against RedisJSON documents
 and RediSearch indexes, and returns only canonical or explicitly registered
 bounded runtime-source query payloads to the browser. Compatible direct-source
 equality predicates select bounded indexed candidates before the Go engine
@@ -122,12 +122,12 @@ evaluates the full query; other operations use bounded Go fallback. Issue
 status overlays and Upstash's single-session profile retain core Redis hashes.
 Its local mode remains loopback-only. Its host-neutral mode uses
 GitHub OAuth and explicit organization or team authorization, verifies and
-deduplicates GitHub webhooks, and rebuilds through a staged generation before
-atomically changing the active pointer.
+deduplicates GitHub webhooks, and rebuilds the disposable Redis projection
+from verified evidence.
 Redis remains reconstructable from GitHub / gh-aw state and never becomes an
 authority. The same server binary provides a read-only diagnostic check-up
-that inspects the runtime, Redis safety and capacity, the active canonical
-generation, query definitions, and the optional collection profile. It
+that inspects the runtime, Redis safety and capacity, the canonical
+dataset, query definitions, and the optional collection profile. It
 produces the same stable check identifiers and observations as human-readable
 text or versioned JSON, never contacts GitHub or mutates Redis, and requires an
 explicit deep mode before reading every active row.
@@ -318,7 +318,7 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
 - Activity records bounded evidence; it does not determine rollout, outcomes,
   or operational value.
 - JSONL snapshots are authoritative inputs. Actions caches, SQLite, IndexedDB,
-  and Redis generations are disposable transport or query projections, not durable
+  and Redis data are disposable transport or query projections, not durable
   authority.
 - Missing, stale, partial, and zero evidence are distinct states.
 - Computations consume canonical evidence, preserve its quality and provenance,
@@ -441,8 +441,8 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   hardening check, SBOM, or artifact attestations; those guarantees continue
   to apply only to published packages.
 - Browsers and external clients never receive Redis endpoints or credentials.
-  Redis generations are staged and validated before atomic activation; a failed
-  rebuild leaves the previous generation active, and an empty Redis instance is
+  Redis projections are validated before publication; a failed
+  rebuild leaves the previous dataset available, and an empty Redis instance is
   healthy but not ready until rebuilt from authoritative GitHub / gh-aw inputs.
 
 ### Source and generated artifacts
