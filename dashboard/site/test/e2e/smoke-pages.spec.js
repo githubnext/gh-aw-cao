@@ -302,7 +302,7 @@ test('Runs renders a last-week stacked area graph above its responsive table and
   expect(areaGraphChartBox.width).toBeGreaterThan(0);
   expect(areaGraphChartBox.height).toBeGreaterThan(0);
   expect(areaGraphTimelineBox.x).toBeCloseTo(areaGraphChartBox.x + (areaGraphChartBox.width * 0.07), 0);
-  for (const width of [900, 1600]) {
+  for (const width of [390, 1600]) {
     await page.setViewportSize({ width, height: 900 });
     const rendering = await areaGraph.locator('.line-chart-plot').evaluate((plot) => {
       const svg = plot.querySelector('svg');
