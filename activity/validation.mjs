@@ -88,6 +88,18 @@ export async function compileAndCompare(root, execute, expectedVersion) {
     if (initialize.error || initialize.status !== 0) {
       throw new Error(`Unable to initialize isolated compiler checkout: ${commandOutput(initialize) || initialize.error?.message}`);
     }
+    const stage = run(execute, "git", ["add", "--all"], temporaryRoot);
+    if (stage.error || stage.status !== 0) {
+      throw new Error(`Unable to stage isolated compiler checkout: ${commandOutput(stage) || stage.error?.message}`);
+    }
+    const commit = run(execute, "git", [
+      "-c", "user.name=CAO Validator",
+      "-c", "user.email=cao-validator@localhost",
+      "commit", "--quiet", "--no-gpg-sign", "-m", "CAO validation snapshot",
+    ], temporaryRoot);
+    if (commit.error || commit.status !== 0) {
+      throw new Error(`Unable to commit isolated compiler checkout: ${commandOutput(commit) || commit.error?.message}`);
+    }
     const result = run(execute, "gh", [
       "aw", "compile", "--strict", "--validate", "--show-all", "--no-check-update",
       "--schedule-seed", "githubnext/gh-aw-cao", "--dir", WORKFLOW_DIRECTORY,
