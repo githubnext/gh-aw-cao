@@ -34,6 +34,12 @@ func TestNamespaceRequired(t *testing.T) {
 	if _, err := NewWithNamespace(t.Context(), "", ""); err == nil {
 		t.Fatal("empty namespace must fail before attempting a connection")
 	}
+	if _, err := New(t.Context(), "", ""); err == nil {
+		t.Fatal("empty explicit namespace must fail before attempting a connection")
+	}
+	if _, err := New(t.Context(), "", "one", "two"); err == nil {
+		t.Fatal("multiple namespaces must fail before attempting a connection")
+	}
 }
 
 func TestStoreIntegration(t *testing.T) {
@@ -112,7 +118,7 @@ func TestStoreIntegration(t *testing.T) {
 		!reflect.DeepEqual(state.Counts, map[string]int{"$runs": 1, "repositories": 2, "empty": 0}) {
 		t.Fatalf("unexpected state: %+v", state)
 	}
-	tenant, err := NewWithNamespace(ctx, dsn, "other-tenant")
+	tenant, err := New(ctx, dsn, "other-tenant")
 	if err != nil {
 		t.Fatal(err)
 	}

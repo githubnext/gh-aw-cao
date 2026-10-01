@@ -48,8 +48,16 @@ type rowQuerier interface {
 }
 
 // New connects to PostgreSQL and initializes the current-source schema.
-func New(ctx context.Context, dsn string) (*Store, error) {
-	return NewWithNamespace(ctx, dsn, "default")
+// Pass the normalized deployment namespace when sharing a DSN between tenants.
+func New(ctx context.Context, dsn string, namespaces ...string) (*Store, error) {
+	if len(namespaces) > 1 {
+		return nil, errors.New("postgres store accepts at most one namespace")
+	}
+	namespace := "default"
+	if len(namespaces) == 1 {
+		namespace = namespaces[0]
+	}
+	return NewWithNamespace(ctx, dsn, namespace)
 }
 
 // NewWithNamespace isolates dashboard data when deployments share a database.
