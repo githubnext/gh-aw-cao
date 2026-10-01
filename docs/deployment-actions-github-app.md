@@ -30,7 +30,7 @@ You need everything in the [prerequisites for the GitHub Actions only deployment
 | --- | --- |
 | App ownership | Permission to create private GitHub Apps in the owning organization. For several organizations, you need this permission in the enterprise. Public apps aren't supported. |
 | App installation | An organization owner in every enrolled organization who can approve an installation on selected repositories. |
-| Read app permissions | Read-only access to Actions, Checks, Contents, Issues, Campaigns, Pull requests, Secret scanning alerts, Security events, Commit statuses, Vulnerability alerts, and Metadata. No write permissions. On data residency hosts (`*.ghe.com`), omit Campaigns. |
+| Read app permissions | Read-only access to Actions, Checks, Contents, Issues, Pull requests, Secret scanning alerts, Security events, Commit statuses, Vulnerability alerts, and Metadata. No write permissions. |
 | Write app permissions | Write access to Actions, Contents, Issues, and Pull requests. Read access to Administration and Metadata. |
 | Webhooks | Turned off for both apps. |
 
@@ -70,16 +70,16 @@ Grant only the permissions that your installed campaigns need. For more informat
 1. For every installation, select **Only select repositories**.
    - Install the read app on the control repository and on every repository that `.github/workflows/cao.json` allows.
    - Install the write app only on approved safe-output repositories. By default, that's only the control repository.
-   - On a data-residency host, setup fails closed unless the CLI credential can
-     read and verify the exact selected repository membership. Refresh it with
-     `read:user` access rather than relying on manual verification.
+   - Setup uses a short-lived App installation token to verify the exact
+     selected repository membership and fails closed rather than relying on
+     manual verification.
 1. Add the write App's `APP-SLUG[bot]` login to the `on.bots` allowlist of
    every worker workflow that the App may dispatch, then recompile those
    workflow sources. A run whose pre-activation job succeeds while activation
    is skipped has not executed the worker.
 1. Confirm that the helper stored the client IDs as variables and the private keys as secrets. For the names, see [Configuration reference](#configuration-reference). The helper passes private keys to `gh secret set` through standard input, so they are never written to disk or passed as command arguments.
 1. Delete any `GH_AW_GITHUB_READ_PAT`, `GH_AW_GITHUB_WRITE_PAT`, or `GH_AW_GITHUB_TOKEN` secrets. If you leave them in place and an app is misconfigured, CAO silently uses the PAT instead.
-1. Run the CAO Activity workflow, then the CAO Dashboard workflow. For the remaining steps, see [Deploying the dashboard](deployment-actions.md#deploying-the-dashboard).
+1. Run the CAO Activity workflow. Its first successful default-branch run triggers the CAO Dashboard workflow automatically. For the remaining steps, see [Deploying the dashboard](deployment-actions.md#deploying-the-dashboard).
 1. Before you enable any campaign in `live` mode, validate the credentials. For more information, see [Validating the credentials](#validating-the-credentials).
 
 ## Configuration reference

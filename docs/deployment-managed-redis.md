@@ -12,6 +12,13 @@ The hosted server reads non-secret host capabilities from
 variables. Redis provider modules only select conventional environment-variable names
 and consistency constraints;
 they do not add provider SDKs or weaken TLS verification.
+For the generic and managed Redis providers, choose Redis 8 with RedisJSON
+(`JSON.SET`/`JSON.GET`) and RediSearch (`FT.CREATE`/`FT.SEARCH`/`FT.DROPINDEX`)
+enabled. The server stages JSON documents and indexes in a new generation and
+refuses to activate it if either capability is unavailable. The separate Upstash
+provider uses core Redis hashes because Upstash's search API is not RediSearch.
+Before rolling back to a pre-JSON server version, restore a hash-format generation
+or rebuild it with the older server: older binaries cannot read JSON rows.
 To keep hosting settings separate from rollout policy, you can instead use a
 reviewed [deployment-specific host extension](configuration.md#deployment-specific-host-extensions).
 

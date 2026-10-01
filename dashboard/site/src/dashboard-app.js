@@ -342,7 +342,7 @@
         }
         if (snapshot && state === "stale") {
           dashboard.prepend(renderDashboardSnapshotStatus(snapshot));
-        } else if (snapshot) {
+        } else if (snapshot || usesRemoteDataBackend(document)) {
           dashboard.querySelector(".dashboard-horizon")?.after(renderDashboardCurrentStatus(snapshot, {
             refreshing: state === "cached"
           }));

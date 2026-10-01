@@ -32,6 +32,7 @@ describe("remote dashboard data backend", () => {
     });
     expect(new DashboardServerError("failure", "query_plan_too_large", "campaign-inventory")).toBeInstanceOf(Error);
   });
+
   it("activates only for the server-injected backend marker", () => {
     expect(usesRemoteDataBackend(document)).toBe(false);
     const meta = document.createElement("meta");
@@ -110,6 +111,41 @@ describe("remote dashboard data backend", () => {
     expect(init?.headers).toMatchObject({ Authorization: "Bearer test-access-token" });
   });
 
+  it("notifies once for rate-limited requests and clears the notice after recovery", async () => {
+    const limited = () => new Response(JSON.stringify({ error: "rate limit exceeded" }), { status: 429 });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ revision: 1 }), { status: 200 }))
+      .mockResolvedValueOnce(limited())
+      .mockResolvedValueOnce(limited())
+      .mockResolvedValueOnce(new Response(JSON.stringify({ revision: 1, sources: {} }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: "unavailable" }), { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(refreshRemoteDashboard([], { pages: [] })).rejects.toThrow("rate limit exceeded");
+    expect(document.querySelectorAll(".dashboard-notification")).toHaveLength(1);
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain("Dashboard is rate limited");
+
+    await expect(queryRemoteDashboard([], { pages: [] })).rejects.toThrow("rate limit exceeded");
+    expect(document.querySelectorAll(".dashboard-notification")).toHaveLength(1);
+    expect(document.querySelector(".dashboard-notification-exit")).toBeNull();
+
+    await expect(queryRemoteDashboard([], { pages: [] })).resolves.toMatchObject({ sources: {} });
+    expect(document.querySelector(".dashboard-notification-exit")).not.toBeNull();
+    await expect(queryRemoteDashboard([], { pages: [] })).rejects.toThrow("unavailable");
+    expect(document.querySelectorAll(".dashboard-notification:not(.dashboard-notification-exit)")).toHaveLength(0);
+  });
+
+  it("clears a repository-memory rate-limit notice when another memory path succeeds", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(new Response("rate limited", { status: 429 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ campaigns: [] }), { status: 200 })));
+
+    await expect(queryRemoteRepositoryMemory("first", undefined)).rejects.toThrow();
+    expect(document.querySelectorAll(".dashboard-notification:not(.dashboard-notification-exit)")).toHaveLength(1);
+    await expect(queryRemoteRepositoryMemory("second", undefined)).resolves.toEqual({ campaigns: [] });
+    expect(document.querySelectorAll(".dashboard-notification:not(.dashboard-notification-exit)")).toHaveLength(0);
+  });
+
   it("refreshes through the server without asking the browser to ingest data", async () => {
     document.head.innerHTML = '<meta name="cao-auth-mode" content="github">';
     document.cookie = "cao_csrf=oauth-csrf-token; Path=/";
@@ -138,6 +174,60 @@ describe("remote dashboard data backend", () => {
       });
       expect(init?.headers).not.toHaveProperty("Authorization");
     }
+  });
+
+  it("restores a missing CSRF cookie before sending an OAuth mutation", async () => {
+    document.head.innerHTML = '<meta name="cao-auth-mode" content="github">';
+    const fetchMock = vi.fn().mockImplementation((url) => {
+      if (new URL(url, location.href).pathname === "/api/auth/session") {
+        document.cookie = "cao_csrf=renewed-token; Path=/";
+        return Promise.resolve(new Response(JSON.stringify({ login: "octocat" }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify({ revision: 5, sources: {} }), { status: 200 }));
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    await refreshRemoteDashboard([], { pages: [] });
+
+    expect(fetchMock.mock.calls.map(([url]) => new URL(url, location.href).pathname)).toEqual([
+      "/api/auth/session", "/api/v1/refresh", "/api/v1/query",
+    ]);
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({ credentials: "same-origin" });
+    expect(fetchMock.mock.calls[0][1].headers).not.toHaveProperty("X-CSRF-Token");
+    for (const [, init] of fetchMock.mock.calls.slice(1)) {
+      expect(init.headers).toMatchObject({ "X-CSRF-Token": "renewed-token" });
+    }
+  });
+
+  it("notifies when CSRF renewal is rate limited before a mutation", async () => {
+    document.head.innerHTML = '<meta name="cao-auth-mode" content="github">';
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 429 }))
+      .mockImplementationOnce(() => {
+        document.cookie = "cao_csrf=renewed-token; Path=/";
+        return Promise.resolve(new Response(JSON.stringify({ login: "octocat" }), { status: 200 }));
+      })
+      .mockResolvedValueOnce(new Response(JSON.stringify({ revision: 2 }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ revision: 2, sources: {} }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(refreshRemoteDashboard([], { pages: [] }))
+      .rejects.toThrow("GitHub authentication cookie could not be renewed");
+    expect(document.querySelectorAll(".dashboard-notification:not(.dashboard-notification-exit)")).toHaveLength(1);
+    await expect(refreshRemoteDashboard([], { pages: [] })).resolves.toMatchObject({ sources: {} });
+    expect(document.querySelectorAll(".dashboard-notification:not(.dashboard-notification-exit)")).toHaveLength(0);
+  });
+
+  it("does not send a mutation when the missing CSRF cookie cannot be restored", async () => {
+    document.head.innerHTML = '<meta name="cao-auth-mode" content="github">';
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ login: "octocat" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(refreshRemoteDashboard([], { pages: [] }))
+      .rejects.toThrow("GitHub authentication cookie could not be renewed");
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(new URL(fetchMock.mock.calls[0][0], location.href).pathname).toBe("/api/auth/session");
   });
 
   it("resolves repository memory through the authenticated server API", async () => {

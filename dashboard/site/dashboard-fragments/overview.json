@@ -1440,12 +1440,110 @@
       ]
     },
     {
+      "name": "campaign-cost-totals",
+      "subject": "Sum observed AI Credit cost across declared campaign orchestrators and workers.",
+      "objective": "Attribute retained workflow AIC totals to centrally managed campaigns without computing unrelated inventory metrics.",
+      "acceptance": "Sum only orchestrator and worker workflow AIC by campaign; missing run observations contribute zero, not proof of zero actual usage.",
+      "from": "workflows",
+      "joins": [
+        {
+          "source": "workflow-aic-totals",
+          "type": "left",
+          "on": [
+            { "left": "organization", "right": "organization" },
+            { "left": "repository", "right": "repository" },
+            { "left": "workflow", "right": "workflow" }
+          ],
+          "fields": [
+            { "field": "aic", "as": "observed-aic" }
+          ]
+        }
+      ],
+      "filter": {
+        "predicates": [
+          { "field": "workflow-role", "in": ["orchestrator", "worker"] }
+        ]
+      },
+      "compute": [
+        {
+          "as": "aic",
+          "function": "coalesce",
+          "args": [
+            { "field": "observed-aic" },
+            { "value": 0 }
+          ]
+        }
+      ],
+      "aggregate": {
+        "by": ["campaign"],
+        "values": [
+          { "field": "aic", "as": "aic", "reducer": "sum" }
+        ]
+      }
+    },
+    {
       "name": "cost-by-campaign",
       "subject": "Present observed AI Credit cost grouped by centrally managed campaign.",
       "objective": "Identify campaigns whose observed AI Credit usage warrants inspection alongside their run evidence.",
       "acceptance": "Rows preserve native aic values and descending order; investigate fresh campaign runs and snapshot completeness before suggesting a cost intervention, without inferring savings or value.",
       "objective": "Identify campaigns whose observed AI Credit use needs investigation.",
-      "from": "campaign-inventory",
+      "from": "campaigns",
+      "joins": [
+        {
+          "source": "campaign-cost-totals",
+          "type": "left",
+          "on": [
+            { "left": "campaign", "right": "campaign" }
+          ],
+          "fields": [
+            { "field": "aic", "as": "observed-aic" }
+          ]
+        }
+      ],
+      "compute": [
+        {
+          "as": "aic",
+          "function": "coalesce",
+          "args": [
+            { "field": "observed-aic" },
+            { "value": 0 }
+          ]
+        },
+        {
+          "as": "encoded-campaign",
+          "function": "url-encode",
+          "args": [
+            { "field": "campaign" }
+          ]
+        },
+        {
+          "as": "campaign-dashboard-href",
+          "function": "concat",
+          "args": [
+            { "value": "#page-campaign-insights?campaign=" },
+            { "field": "encoded-campaign" }
+          ]
+        },
+        {
+          "as": "campaign-dashboard-label",
+          "function": "concat",
+          "args": [
+            { "value": "View " },
+            { "field": "campaign-name" },
+            { "value": " campaign dashboard" }
+          ]
+        },
+        {
+          "as": "campaign-dashboard-link",
+          "function": "dashboard-link",
+          "args": [
+            { "value": "" },
+            { "field": "campaign-dashboard-href" },
+            { "field": "campaign-dashboard-label" },
+            { "field": "campaign" }
+          ]
+        }
+      ],
       "select": [
         {
           "field": "campaign-name"
@@ -1687,33 +1785,7 @@
       "objective": "Compare observed AI Credit per run across repository workflows with each observed-runs denominator.",
       "acceptance": "aic-per-run is derived from native aic and observed-runs for matching workflows only; missing or zero denominators remain unavailable, and differences are not claimed as efficiency gains.",
       "description": "Observed AI Credit totals divided by observed run attempts for each declared workflow.",
-      "from": "workflow-aic-totals",
-      "joins": [
-        {
-          "source": "workflow-run-totals",
-          "type": "left",
-          "on": [
-            {
-              "left": "organization",
-              "right": "organization"
-            },
-            {
-              "left": "repository",
-              "right": "repository"
-            },
-            {
-              "left": "workflow",
-              "right": "workflow"
-            }
-          ],
-          "fields": [
-            {
-              "field": "runs",
-              "as": "observed-runs"
-            }
-          ]
-        }
-      ],
+      "from": "workflow-aic-run-totals",
       "compute": [
         {
           "as": "aic-per-run",
@@ -1723,7 +1795,7 @@
               "field": "aic"
             },
             {
-              "field": "observed-runs"
+              "field": "runs"
             }
           ]
         },
@@ -1832,7 +1904,8 @@
           "field": "workflow-dashboard-link"
         },
         {
-          "field": "observed-runs"
+          "field": "runs",
+          "as": "observed-runs"
         },
         {
           "field": "aic-per-run"
@@ -1859,6 +1932,7 @@
           "id": "overview-header",
           "title": "How are we doing?",
           "show-title": false,
+          "prompt": "none",
           "description": "Campaign health measures campaigns without current runtime errors; repository coverage measures registered repositories reached by successful worker execution.",
           "data": {
             "sources": [
@@ -1896,6 +1970,8 @@
         {
           "id": "overview-campaigns",
           "title": "Campaigns",
+          "show-title": false,
+          "prompt": "none",
           "subject": "Provide direct navigation to every registered campaign through the same Insights route used by the campaign inventory.",
           "data": {
             "sources": [

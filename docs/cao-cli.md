@@ -101,6 +101,10 @@ Run the same read-only validator locally and in CI:
 
 Validation checks the policy with the production resolver, the installed gh-aw compiler version, strict compilation and generated workflow drift, campaign workflow identity and enablement, `gh aw doctor`, and bounded trust-boundary security rules. GitHub workflow state is reported as unknown when API access is unavailable. Warnings do not fail by default; use `--strict-warnings` to make them fail.
 
+Strict compilation runs against a committed temporary snapshot of the current
+workflow files. Normal uncommitted local edits are still validated, but they do
+not produce an unrelated dirty-working-tree warning from `gh aw`.
+
 Exit code `0` means no validation errors, `1` means validation findings failed the requested threshold, and `2` means the validator itself could not complete. Validation never rewrites workflow artifacts; run `npm run compile:locks` to regenerate stale locks.
 
 ## Run and Watch a Campaign
@@ -113,6 +117,15 @@ gh aw run CAMPAIGN --ref BRANCH \
   --raw-field max_repos="1" \
   --raw-field rollout_percent="100" \
   --raw-field safe_output_mode="review"
+```
+
+CAO Activity and CAO Dashboard are conventional GitHub Actions workflows, not
+Agentic Workflows, so operate them with GitHub CLI instead of `gh aw`:
+
+```bash
+gh workflow run cao-activity.yml
+gh run list --workflow cao-activity.yml
+gh run list --workflow cao-dashboard.yml
 ```
 
 Then use GitHub CLI to find and watch the orchestrator:
@@ -173,8 +186,10 @@ The CLI also exposes evidence used to improve campaigns:
 | --- | --- |
 | `./cao.sh operational-value` | Compute campaign-specific value evidence from the canonical snapshot. |
 | `./cao.sh cluster-problems` | Cluster bounded problem evidence emitted by installed campaigns. |
-| `./cao.sh dashboard-complexity --input FILE` | Rank Dashboard Language queries by estimated computation pressure. |
+| `./cao.sh dashboard-complexity --input FILE [--database FILE]` | Rank Dashboard Language queries by estimated computation pressure. |
 | `./cao.sh prune-dashboard --input FILE` | Report reusable, redundant, and unreferenced dashboard queries and views. |
+
+Without `--database`, `dashboard-complexity` normalizes every canonical database table to weight one. With `--database FILE`, it weights tables by their deployed row counts (normalized to the largest table) read from that downloaded snapshot, giving a more realistic computation-pressure ranking.
 
 Data-pipeline and dashboard-maintainer commands are listed by `./cao.sh --help`. For the full data workflow, see [Dashboard data ingestion](dashboard-data-ingestion.md#use-local-sqlite).
 

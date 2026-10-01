@@ -131,9 +131,10 @@ When enabled on a hosted server, `/mcp` instead requires a per-request GitHub
 Actions bearer token and a signed Actions OIDC token in `X-GitHub-OIDC-Token`.
 The server validates the OIDC issuer, signature, audience, expiry, and allowed
 repository provenance. It confirms that the bearer is an installation token
-with access to that repository, queries its default branch, verifies the signed
-ref and subject against that branch, then probes read access to
-Actions, contents, issues, and pull requests. This identity is scoped to `/mcp`; it
+with access to that repository, queries its stable repository and owner IDs plus
+its default branch, and verifies the signed IDs, ref, and legacy or immutable
+subject against that metadata. It then probes read access to Actions, contents,
+issues, and pull requests. This identity is scoped to `/mcp`; it
 cannot authenticate dashboard JSON APIs or replace hosted browser OAuth
 sessions. Keep both tokens out of logs and URLs.
 
@@ -330,7 +331,11 @@ endpoints require the session-bound `X-CSRF-Token` header. The injected
 dashboard bootstrap adds this header for same-origin browser requests.
 
 When an access token is near expiry, the server uses the refresh token, stores
-rotated token values, and continues the request. If refresh fails or the
+rotated token values, renews both browser cookies, and continues the request.
+The readable CSRF cookie expires one day before the session cookie; if it is
+missing, the dashboard first makes an authenticated read to restore both cookies
+before sending a mutation. A missing session or failed renewal cannot authorize
+a mutation. If refresh fails or the
 refresh token has expired, the session is deleted, cookies are cleared, and the
 client must reauthenticate. Logout revokes both the current access token and
 the current refresh token when GitHub accepts revocation, deletes the Redis

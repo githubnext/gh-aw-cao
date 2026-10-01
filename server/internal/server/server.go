@@ -649,13 +649,14 @@ func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 	})
 }
 
-// navigationRequest reports whether a request is a top-level document
-// navigation that may be redirected to the GitHub login flow. Browsers
-// identify subresource fetches with Sec-Fetch-Mode; clients that omit the
-// header keep the existing redirect behavior.
+// navigationRequest reports whether a request may enter the GitHub login
+// flow. Browsers identify subresources and embedded navigations with Fetch
+// Metadata; clients that omit these headers keep the existing behavior.
 func navigationRequest(request *http.Request) bool {
 	mode := request.Header.Get("Sec-Fetch-Mode")
-	return mode == "" || mode == "navigate"
+	destination := request.Header.Get("Sec-Fetch-Dest")
+	return (mode == "" || mode == "navigate") &&
+		(destination == "" || destination == "document")
 }
 
 func (a *App) proxyPolicy() ProxyPolicy {

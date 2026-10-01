@@ -631,7 +631,7 @@
         ],
         "values": [
           {
-            "field": "event",
+            "field": "table",
             "as": "records",
             "reducer": "count"
           }
@@ -1634,6 +1634,7 @@
           "description": "Rows retained by dashboard database table, including ingestion transactions.",
           "data": {
             "source": "indexing-database-table-counts",
+            "query-context": false,
             "limit": 100
           },
           "mark": "chart",

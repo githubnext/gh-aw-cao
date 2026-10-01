@@ -120,6 +120,27 @@ describe('hosted GitHub account menu', () => {
     ]);
   });
 
+  it('notifies when loading the hosted account is rate limited and clears on recovery', async () => {
+    document.head.innerHTML = '<meta name="cao-auth-mode" content="github">';
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 429 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ login: 'octocat' }), { status: 200 })));
+
+    const limited = renderAccountMenu();
+    if (!(limited instanceof HTMLDetailsElement)) throw new Error('account menu was not rendered');
+    document.body.append(limited);
+    await vi.waitFor(() => expect(limited.dataset.error).toBeTruthy());
+    expect(document.querySelectorAll('.dashboard-notification:not(.dashboard-notification-exit)')).toHaveLength(1);
+    expect(document.querySelector('.dashboard-notification [role="alert"]')?.textContent)
+      .toContain('Dashboard is rate limited');
+
+    const recovered = renderAccountMenu();
+    if (!(recovered instanceof HTMLDetailsElement)) throw new Error('account menu was not rendered');
+    document.body.append(recovered);
+    await vi.waitFor(() => expect(recovered.hidden).toBe(false));
+    expect(document.querySelectorAll('.dashboard-notification:not(.dashboard-notification-exit)')).toHaveLength(0);
+  });
+
   it('keeps the person icon when the session has no usable avatar URL', async () => {
     document.head.innerHTML = '<meta name="cao-auth-mode" content="github">';
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
@@ -157,6 +178,7 @@ describe('hosted GitHub account menu', () => {
 
   it('classifies a null account-switch payload as invalid', async () => {
     document.head.innerHTML = '<meta name="cao-auth-mode" content="github">';
+    document.cookie = 'cao_csrf=account-csrf-token; Path=/';
     const debug = vi.fn();
     vi.stubGlobal('fetch', vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ login: 'octocat' }), { status: 200 }))
@@ -176,6 +198,7 @@ describe('hosted GitHub account menu', () => {
 
   it('logs fixed failure branches without response or error details', async () => {
     document.head.innerHTML = '<meta name="cao-auth-mode" content="github">';
+    document.cookie = 'cao_csrf=account-csrf-token; Path=/';
     const debug = vi.fn();
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ login: 'sensitive-login' }), { status: 200 }))
@@ -214,6 +237,44 @@ describe('hosted GitHub account menu', () => {
     expect(logs).not.toContain('sensitive-login');
     expect(logs).not.toContain('sensitive-switch-response');
     expect(logs).not.toContain('sensitive-network-error');
+  });
+
+  it('recovers an expired CSRF cookie before account actions', async () => {
+    document.head.innerHTML = '<meta name="cao-auth-mode" content="github">';
+    const navigate = vi.fn();
+    const fetchMock = vi.fn().mockImplementation((url) => {
+      if (url === '/api/auth/session') {
+        document.cookie = 'cao_csrf=restored-token; Path=/';
+        return Promise.resolve(new Response(JSON.stringify({ login: 'octocat' }), { status: 200 }));
+      }
+      if (url === '/auth/switch-account') {
+        return Promise.resolve(new Response(JSON.stringify({ loginUrl: '/auth/login?select_account=1' }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(null, { status: 204 }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const menu = renderAccountMenu({ navigate });
+    if (!(menu instanceof HTMLDetailsElement)) throw new Error('account menu was not rendered');
+    document.body.append(menu);
+    await vi.waitFor(() => expect(menu.hidden).toBe(false));
+    document.cookie = 'cao_csrf=; Max-Age=0; Path=/';
+    const switchButton = menu.querySelector('[data-switch-account]');
+    if (!(switchButton instanceof HTMLButtonElement)) throw new Error('account switch button was not rendered');
+    switchButton.click();
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/auth/login?select_account=1'));
+    document.cookie = 'cao_csrf=; Max-Age=0; Path=/';
+    const logoutButton = menu.querySelector('[data-logout]');
+    if (!(logoutButton instanceof HTMLButtonElement)) throw new Error('logout button was not rendered');
+    logoutButton.click();
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/auth/logged-out'));
+
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      '/api/auth/session', '/api/auth/session', '/auth/switch-account',
+      '/api/auth/session', '/auth/logout',
+    ]);
+    expect(fetchMock.mock.calls[2][1].headers).toHaveProperty('X-CSRF-Token', 'restored-token');
+    expect(fetchMock.mock.calls[4][1].headers).toHaveProperty('X-CSRF-Token', 'restored-token');
   });
 
   it('stops reacting to session state once the menu detaches from the document', async () => {

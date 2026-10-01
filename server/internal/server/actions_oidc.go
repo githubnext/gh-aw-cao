@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -23,15 +24,17 @@ const (
 )
 
 type actionsOIDCClaims struct {
-	Issuer     string          `json:"iss"`
-	Audience   json.RawMessage `json:"aud"`
-	Repository string          `json:"repository"`
-	Subject    string          `json:"sub"`
-	Ref        string          `json:"ref"`
-	Actor      string          `json:"actor"`
-	IssuedAt   int64           `json:"iat"`
-	NotBefore  int64           `json:"nbf"`
-	ExpiresAt  int64           `json:"exp"`
+	Issuer            string          `json:"iss"`
+	Audience          json.RawMessage `json:"aud"`
+	Repository        string          `json:"repository"`
+	RepositoryID      string          `json:"repository_id"`
+	RepositoryOwnerID string          `json:"repository_owner_id"`
+	Subject           string          `json:"sub"`
+	Ref               string          `json:"ref"`
+	Actor             string          `json:"actor"`
+	IssuedAt          int64           `json:"iat"`
+	NotBefore         int64           `json:"nbf"`
+	ExpiresAt         int64           `json:"exp"`
 }
 
 func verifyHostedActionsMCP(ctx context.Context, config Config, request *http.Request) (string, error) {
@@ -44,16 +47,21 @@ func verifyHostedActionsMCP(ctx context.Context, config Config, request *http.Re
 	if err != nil {
 		return "", err
 	}
-	if err := verifyActionsTokenRepository(ctx, config, token); err != nil {
-		return "", err
-	}
-	defaultBranch, err := actionsDefaultBranch(ctx, config, token)
+	metadata, err := actionsRepositoryMetadataForToken(ctx, config, token)
 	if err != nil {
 		return "", err
 	}
-	repository := strings.TrimSpace(config.ActionsRepository)
-	ref := "refs/heads/" + defaultBranch
-	if claims.Ref != ref || !strings.EqualFold(claims.Subject, "repo:"+repository+":ref:"+ref) {
+	ref := "refs/heads/" + metadata.DefaultBranch
+	owner, name, err := parseActionsRepository(metadata.FullName)
+	if err != nil {
+		return "", err
+	}
+	legacySubject := "repo:" + metadata.FullName + ":ref:" + ref
+	immutableSubject := "repo:" + owner + "@" + metadata.OwnerID + "/" + name + "@" + metadata.ID + ":ref:" + ref
+	if claims.Ref != ref ||
+		claims.RepositoryID != metadata.ID ||
+		claims.RepositoryOwnerID != metadata.OwnerID ||
+		(claims.Subject != legacySubject && claims.Subject != immutableSubject) {
 		return "", errors.New("GitHub Actions OIDC provenance does not match the repository default branch")
 	}
 	if err := verifyGitHubActionsPermissions(ctx, config, token); err != nil {
@@ -62,14 +70,23 @@ func verifyHostedActionsMCP(ctx context.Context, config Config, request *http.Re
 	return strings.ToLower(claims.Actor), nil
 }
 
-func actionsDefaultBranch(ctx context.Context, config Config, token string) (string, error) {
+type actionsRepositoryMetadata struct {
+	FullName      string
+	ID            string
+	OwnerID       string
+	DefaultBranch string
+}
+
+func actionsRepositoryMetadataForToken(
+	ctx context.Context, config Config, token string,
+) (actionsRepositoryMetadata, error) {
 	owner, name, err := parseActionsRepository(config.ActionsRepository)
 	if err != nil {
-		return "", err
+		return actionsRepositoryMetadata{}, err
 	}
 	baseURL, err := resolveGitHubAPIBaseURL(config.GitHubAPIURL)
 	if err != nil {
-		return "", err
+		return actionsRepositoryMetadata{}, err
 	}
 	client := config.ActionsHTTPClient
 	if client == nil {
@@ -78,7 +95,7 @@ func actionsDefaultBranch(ctx context.Context, config Config, token string) (str
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet,
 		baseURL+"/repos/"+url.PathEscape(owner)+"/"+url.PathEscape(name), nil)
 	if err != nil {
-		return "", errors.New("GitHub Actions default branch check could not be created")
+		return actionsRepositoryMetadata{}, errors.New("GitHub Actions repository identity check could not be created")
 	}
 	request.Header.Set("Accept", "application/vnd.github+json")
 	request.Header.Set("Authorization", "Bearer "+token)
@@ -86,70 +103,31 @@ func actionsDefaultBranch(ctx context.Context, config Config, token string) (str
 	request.Header.Set("User-Agent", "gh-aw-cao-mcp")
 	response, err := client.Do(request)
 	if err != nil {
-		return "", errors.New("GitHub Actions default branch check failed")
+		return actionsRepositoryMetadata{}, errors.New("GitHub Actions repository identity check failed")
 	}
 	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusOK {
-		return "", errors.New("GitHub Actions default branch is unavailable")
+		return actionsRepositoryMetadata{}, errors.New("GitHub Actions repository identity is unavailable")
 	}
 	var repository struct {
+		FullName      string `json:"full_name"`
+		ID            int64  `json:"id"`
 		DefaultBranch string `json:"default_branch"`
+		Owner         struct {
+			ID int64 `json:"id"`
+		} `json:"owner"`
 	}
 	if json.NewDecoder(io.LimitReader(response.Body, 4096)).Decode(&repository) != nil ||
+		!strings.EqualFold(repository.FullName, strings.TrimSpace(config.ActionsRepository)) ||
+		repository.ID <= 0 || repository.Owner.ID <= 0 ||
 		repository.DefaultBranch == "" || len(repository.DefaultBranch) > 255 ||
 		strings.IndexFunc(repository.DefaultBranch, func(r rune) bool { return r <= ' ' || r == '\x7f' }) >= 0 {
-		return "", errors.New("GitHub Actions default branch is invalid")
+		return actionsRepositoryMetadata{}, errors.New("GitHub Actions repository identity is invalid")
 	}
-	return repository.DefaultBranch, nil
-}
-
-// The installation endpoint requires an authenticated installation token,
-// unlike read endpoints that may serve public repositories anonymously.
-func verifyActionsTokenRepository(ctx context.Context, config Config, token string) error {
-	baseURL, err := resolveGitHubAPIBaseURL(config.GitHubAPIURL)
-	if err != nil {
-		return err
-	}
-	client := config.ActionsHTTPClient
-	if client == nil {
-		client = &http.Client{Timeout: 10 * time.Second}
-	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		baseURL+"/installation/repositories?per_page=100", nil)
-	if err != nil {
-		return errors.New("GitHub Actions token identity check could not be created")
-	}
-	request.Header.Set("Accept", "application/vnd.github+json")
-	request.Header.Set("Authorization", "Bearer "+token)
-	request.Header.Set("X-GitHub-Api-Version", actionsGitHubAPIVersion)
-	request.Header.Set("User-Agent", "gh-aw-cao-mcp")
-	response, err := client.Do(request)
-	if err != nil {
-		return errors.New("GitHub Actions token identity check failed")
-	}
-	defer func() { _ = response.Body.Close() }()
-	if response.StatusCode != http.StatusOK {
-		return errors.New("GitHub Actions token is not an authorized installation token")
-	}
-	var accessible struct {
-		Repositories []struct {
-			FullName string `json:"full_name"`
-		} `json:"repositories"`
-	}
-	if json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&accessible) != nil {
-		return errors.New("GitHub Actions token repository list is invalid")
-	}
-	owner, name, err := parseActionsRepository(config.ActionsRepository)
-	if err != nil {
-		return err
-	}
-	expected := owner + "/" + name
-	for _, repository := range accessible.Repositories {
-		if strings.EqualFold(repository.FullName, expected) {
-			return nil
-		}
-	}
-	return errors.New("GitHub Actions token cannot access the configured repository")
+	return actionsRepositoryMetadata{
+		FullName: repository.FullName, ID: strconv.FormatInt(repository.ID, 10),
+		OwnerID: strconv.FormatInt(repository.Owner.ID, 10), DefaultBranch: repository.DefaultBranch,
+	}, nil
 }
 
 func verifyActionsOIDC(ctx context.Context, config Config, token string) (actionsOIDCClaims, error) {

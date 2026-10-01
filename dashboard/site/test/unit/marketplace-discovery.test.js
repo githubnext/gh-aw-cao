@@ -32,9 +32,16 @@ function resolve(context = {}) {
   const compiled = compileDashboardViewPayloadQueries(page, 'marketplace', {
     queries: dashboard.queries, queryContext: context
   });
-  const result = executeDashboardQueries(compiled.queries, sources);
+  const baseResults = executeDashboardQueries(dashboard.queries, sources);
+  const result = {
+    ...baseResults,
+    ...(compiled.queries.length > 0 ? executeDashboardQueries(compiled.queries, { ...sources, ...baseResults }) : {})
+  };
   /** @param {string} source */
-  const rows = (source) => result[compiled.aliases.find((name) => name.includes(`:${source}`)) ?? '']?.rows;
+  const rows = (source) => (
+    result[compiled.aliases.find((name) => name.includes(`:${source}`)) ?? '']
+    ?? result[source]
+  )?.rows;
   return { rows, compiled };
 }
 

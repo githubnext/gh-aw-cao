@@ -314,10 +314,9 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 	for _, name := range order {
 		definition, isQuery := index[name]
 		if !isQuery {
-			queryLog.Printf("loading source")
-			if err := load(name, nil); err != nil {
-				return nil, metrics, err
-			}
+			// Raw inputs are loaded by their consumers (or when requested).
+			// Preloading here retains a second, unprojected copy of each
+			// direct "from" source for the entire query plan.
 			continue
 		}
 		available := make(map[string]model.Source, len(sources)+1)
@@ -355,6 +354,18 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 				return nil, metrics, err
 			}
 			available[join.Source] = sources[join.Source]
+		}
+		if canFilterBeforeJoins(residual) {
+			for _, input := range append([]string{definition.From}, definition.Union...) {
+				source := available[input]
+				operations += len(source.Rows)
+				if operations > MaxOperations {
+					return nil, metrics, fmt.Errorf("query %q exceeds max operations", definition.Name)
+				}
+				source.Rows = filterRows(append([]model.Row(nil), source.Rows...), *residual.Filter)
+				available[input] = source
+			}
+			residual.Filter = nil
 		}
 		workingRows, workingBytes := referencedSize(*definition, available)
 		metrics.PeakWorkingRows = max(metrics.PeakWorkingRows, workingRows)
@@ -422,6 +433,39 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 	}
 	queryLog.Printf("completed outputs=%d operations=%d redis_commands=%d redis_rows=%d", len(output), operations, metrics.RedisCommands, metrics.RedisRows)
 	return output, metrics, nil
+}
+
+func canFilterBeforeJoins(definition Definition) bool {
+	if definition.Filter == nil {
+		return false
+	}
+	for _, join := range definition.Joins {
+		if join.Source == definition.From {
+			return false
+		}
+		for _, union := range definition.Union {
+			if join.Source == union {
+				return false
+			}
+		}
+		for _, field := range join.Fields {
+			name := alias(field)
+			for _, predicate := range definition.Filter.Predicates {
+				if predicate.Field == name || predicate.Field == "@time" &&
+					(name == "observed-at" || name == "started-at" || name == "ended-at") {
+					return false
+				}
+			}
+			if definition.Filter.Search != nil {
+				for _, searchField := range definition.Filter.Search.Fields {
+					if searchField == name {
+						return false
+					}
+				}
+			}
+		}
+	}
+	return true
 }
 
 func referencedSize(definition Definition, sources map[string]model.Source) (int, int64) {
@@ -501,6 +545,9 @@ func residualDefinition(definition Definition, pushed []string) Definition {
 	}
 	if contains("filter") {
 		definition.Filter = nil
+	}
+	if contains("compute") {
+		definition.Compute = nil
 	}
 	if contains("aggregate") {
 		definition.Aggregate = nil

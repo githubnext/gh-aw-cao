@@ -2,6 +2,9 @@ import { h } from '../dom.js';
 import { formatCount } from './count-formatters.js';
 import { effect } from '../reactive.js';
 import { renderReactiveGraphWidget } from './graph-widget.js';
+import { createDebug } from '../debug.js';
+
+const debugFactoryRhythm = createDebug('factory-rhythm');
 
 /** @typedef {{ label: string, date: string, count: number, previous: number, reached: boolean }} RhythmDay */
 /** @typedef {{ rows: () => Record<string, unknown>[], pending?: () => boolean }} RhythmSource */
@@ -12,6 +15,9 @@ import { renderReactiveGraphWidget } from './graph-widget.js';
  * @param {ReactiveScope} scope
  */
 export function renderFactoryRhythm(source, scope) {
+  /** @type {boolean | undefined} */
+  let wasPending;
+  debugFactoryRhythm({ event: 'composed' });
   const rendered = renderReactiveGraphWidget({
     className: 'factory-rhythm',
     headingClassName: 'factory-rhythm-heading',
@@ -60,6 +66,10 @@ export function renderFactoryRhythm(source, scope) {
     const pending = source.pending?.() ?? false;
     rendered.classList.toggle('factory-rhythm-pending', pending);
     rendered.toggleAttribute('aria-busy', pending);
+    if (pending !== wasPending) {
+      wasPending = pending;
+      debugFactoryRhythm({ event: 'pending-changed', pending });
+    }
   }, { signal: scope.signal });
   return rendered;
 }
@@ -93,6 +103,9 @@ function rhythmPayload(source) {
       reached: day.reached
     }];
   });
+  if (days.length !== 7) {
+    debugFactoryRhythm({ event: 'payload-fallback', receivedDayCount: days.length });
+  }
   return {
     days: days.length === 7
       ? days

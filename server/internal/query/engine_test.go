@@ -212,6 +212,69 @@ func TestExecuteRejectsExcessiveWorkingAndRetainedRows(t *testing.T) {
 	})
 }
 
+func TestExecuteFiltersUnionInputsBeforeWorkingByteGuard(t *testing.T) {
+	large := strings.Repeat("x", 1<<20)
+	audits, tools := make([]model.Row, 150), make([]model.Row, 150)
+	for i := range audits {
+		audits[i] = model.Row{"event-status": "info", "event-summary": large}
+		tools[i] = model.Row{"event-status": "info", "event-summary": large}
+	}
+	audits[0] = model.Row{"event-status": "high", "event": "a", "workflow": "review.md", "event-summary": "finding"}
+	tools[0] = model.Row{"event-status": "medium", "event": "b", "workflow": "review.md", "event-summary": "finding"}
+	definition := Definition{
+		Name: "audit-event-summary-buckets", From: "audits", Union: []string{"tools"},
+		Filter: &Filter{Predicates: []Predicate{{Field: "event-status", In: []any{"high", "medium"}}}},
+		Joins: []Join{{
+			Source: "workflows", Type: "left",
+			On:     []JoinKey{{Left: "workflow", Right: "workflow"}},
+			Fields: []SelectedField{{Field: "campaign"}},
+		}},
+		Aggregate: &Aggregate{
+			By:     []string{"campaign", "event-status", "event-summary"},
+			Values: []AggregateValue{{Field: "event", As: "events", Reducer: "count"}},
+		},
+	}
+	results, metrics, err := New(&testLoader{sources: map[string]model.Source{
+		"audits": {Rows: audits}, "tools": {Rows: tools},
+		"workflows": {Rows: []model.Row{{"workflow": "review.md", "campaign": "review"}}},
+	}}).Execute([]Definition{definition}, []string{definition.Name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []model.Row{
+		{"campaign": "review", "event-status": "high", "event-summary": "finding", "events": 1},
+		{"campaign": "review", "event-status": "medium", "event-summary": "finding", "events": 1},
+	}
+	if !reflect.DeepEqual(results[definition.Name].Rows, want) {
+		t.Fatalf("unexpected buckets: %#v", results[definition.Name].Rows)
+	}
+	if metrics.PeakWorkingBytes >= MaxWorkingBytes || metrics.RetainedBytes <= 100<<20 {
+		t.Fatalf("expected filtered working set and retained raw sources: %#v", metrics)
+	}
+}
+
+func TestExecuteDoesNotPrefilterJoinedFields(t *testing.T) {
+	definition := Definition{
+		Name: "joined-filter", From: "audits",
+		Joins: []Join{{
+			Source: "workflows", Type: "left",
+			On:     []JoinKey{{Left: "workflow", Right: "workflow"}},
+			Fields: []SelectedField{{Field: "campaign"}},
+		}},
+		Filter: &Filter{Predicates: []Predicate{{Field: "campaign", Equals: "review"}}},
+	}
+	if canFilterBeforeJoins(definition) {
+		t.Fatal("join-produced campaign cannot be filtered before joining")
+	}
+	results, _, err := New(&testLoader{sources: map[string]model.Source{
+		"audits":    {Rows: []model.Row{{"workflow": "review.md"}}},
+		"workflows": {Rows: []model.Row{{"workflow": "review.md", "campaign": "review"}}},
+	}}).Execute([]Definition{definition}, []string{definition.Name})
+	if err != nil || len(results[definition.Name].Rows) != 1 {
+		t.Fatalf("joined filter changed results: %#v, %v", results, err)
+	}
+}
+
 func TestExecuteDefinitionRejectsRunawayStageBeforeAllocation(t *testing.T) {
 	fields := make([]ComputedField, 128)
 	for index := range fields {

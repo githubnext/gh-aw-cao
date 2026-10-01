@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { renderDashboardCurrentStatus, renderDashboardSnapshotStatus, renderRefreshError } from '../../src/components/refresh-error.js';
+import { updateRateLimitNotification } from '../../src/rate-limit-notification.js';
 
 describe('refresh error', () => {
   it('explains the stale state and retries the refresh', () => {
@@ -60,6 +61,24 @@ describe('refresh error', () => {
     expect(button?.getAttribute('aria-describedby')).toBe(tooltip?.id);
     expect(status.querySelector('.octicon-check-circle-fill')).not.toBeNull();
     expect(tooltip?.textContent).toContain('Dashboard data is current as of');
+  });
+
+  it('reactively shows the sync status icon when hosted requests are rate limited', async () => {
+    const status = renderDashboardCurrentStatus(null);
+    document.body.append(status);
+    expect(status.hidden).toBe(true);
+    updateRateLimitNotification('/api/v1/query', 429);
+    expect(status.hidden).toBe(false);
+    expect(status.querySelector('.octicon-alert')).not.toBeNull();
+    expect(status.querySelector('button')?.getAttribute('aria-label')).toBe('Dashboard is rate limited');
+    expect(status.querySelector('[role="tooltip"]')?.textContent).toContain('Please try again shortly');
+    expect(document.querySelectorAll('.dashboard-notification:not(.dashboard-notification-exit)')).toHaveLength(1);
+
+    updateRateLimitNotification('/api/v1/query', 200);
+    expect(status.hidden).toBe(true);
+    expect(document.querySelectorAll('.dashboard-notification:not(.dashboard-notification-exit)')).toHaveLength(0);
+    status.remove();
+    await vi.waitFor(() => expect(status.isConnected).toBe(false));
   });
 
   it('does not claim cached data exists when the first refresh fails', () => {

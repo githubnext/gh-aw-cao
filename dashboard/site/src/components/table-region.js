@@ -5,6 +5,8 @@
 import { h } from '../dom.js';
 import { createDebug } from '../debug.js';
 import { processRows, processTableSummaries } from '../data-processor.js';
+import { effect, state } from '../reactive.js';
+import { createFactoryScope } from './factory-elements.js';
 import { formatCount } from './count-formatters.js';
 import { renderReactiveTableSummaryRow, renderTableSummaryRow } from './table-summary.js';
 import { renderEmptyTableRow, renderFilterSelect, renderFilterSelectControl, renderLabeledControl, observeLoadMoreBoundary } from './ui-primitives.js';
@@ -331,7 +333,24 @@ function enableTableFilter(region, options, rows) {
   let lazyMatchedRows = /** @type {HTMLTableRowElement[]} */ ([]);
   let lazyShown = 0;
   let continuationToken = options.continuation?.token;
-  let loadingContinuation = false;
+
+  // `more`'s busy/label/error-flag state is this control's entire visible
+  // continuation-load state; the effect below is the only place that writes
+  // it onto the owned `more` button, matching the `createCopyControl`/
+  // `reset-dashboard-control.js` state/effect/createFactoryScope shape for
+  // owned interactive DOM driven by an async flow.
+  const continuationScope = createFactoryScope();
+  continuationScope.bind(region);
+  const continuationBusy = state(false);
+  const continuationLoadFailed = state(false);
+  effect(() => {
+    more.disabled = continuationBusy.get();
+    more.textContent = continuationLoadFailed.get()
+      ? 'Retry loading rows'
+      : options.lazyList ? 'Load more rows' : 'Show all rows';
+    if (continuationLoadFailed.get()) more.dataset.loadError = '';
+    else delete more.dataset.loadError;
+  }, { signal: continuationScope.signal });
   /**
    * @param {HTMLTableRowElement[]} matchedRows
    * @param {number} shown
@@ -434,18 +453,17 @@ function enableTableFilter(region, options, rows) {
    });
   }
   const loadMore = async () => {
-   if (loadingContinuation) return;
+   if (continuationBusy.get()) return;
    if (continuationToken && options.continuation) {
-     loadingContinuation = true;
-     more.disabled = true;
+     continuationBusy.set(true);
      debugTableRegion({ event: 'continuation-load', filterId: options.filterId, outcome: 'requested' });
      try {
        const next = await options.continuation.load(continuationToken);
+       if (continuationScope.signal.aborted) return;
        rows.push(...next.rows);
        refreshFacets();
        continuationToken = next.continuationToken;
-       more.textContent = 'Load more rows';
-       delete more.dataset.loadError;
+       continuationLoadFailed.set(false);
        debugTableRegion({
          event: 'continuation-load',
          filterId: options.filterId,
@@ -454,8 +472,8 @@ function enableTableFilter(region, options, rows) {
          hasMore: Boolean(next.continuationToken)
        });
      } catch (error) {
-       more.textContent = 'Retry loading rows';
-       more.dataset.loadError = '';
+       if (continuationScope.signal.aborted) return;
+       continuationLoadFailed.set(true);
        debugTableRegion({
          event: 'continuation-load',
          filterId: options.filterId,
@@ -464,8 +482,7 @@ function enableTableFilter(region, options, rows) {
        });
        return;
      } finally {
-       loadingContinuation = false;
-       more.disabled = false;
+       if (!continuationScope.signal.aborted) continuationBusy.set(false);
      }
    }
    limit = options.lazyList ? limit + options.pageSize : Number.POSITIVE_INFINITY;

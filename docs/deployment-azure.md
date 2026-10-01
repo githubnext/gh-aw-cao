@@ -34,7 +34,7 @@ The `server/azure/main.bicep` template creates the following resources in one re
 | --- | --- | --- |
 | Azure Functions | Linux Function App on runtime `~4` with `FUNCTIONS_WORKER_RUNTIME=custom`. HTTPS only, TLS 1.2 or later, FTPS off, always on, at least one instance, and a system-assigned managed identity. | Hosts the Go HTTP handler |
 | App Service plan | Elastic Premium `EP1` | Keeps the Function App always on |
-| Azure Managed Redis | `Microsoft.Cache/redisEnterprise`. Default `Balanced_B0` with capacity 1, TLS 1.2, encrypted client protocol, `NoEviction` policy, public network access off, and no Redis modules. | Stores dashboard data, sessions, rate limits, and webhook deduplication records |
+| Azure Managed Redis | `Microsoft.Cache/redisEnterprise`. Default `Balanced_B0` with capacity 1, TLS 1.2, encrypted client protocol, `NoEviction` policy, public network access off, and RedisJSON and RediSearch modules enabled on the database. | Stores dashboard JSON documents and search indexes, sessions, rate limits, and webhook deduplication records |
 | Key Vault | Role-based access control, 90-day soft delete, and purge protection | Stores the OAuth client secret, session secrets, Redis URL, Functions storage connection string, and optional collection secrets |
 | Storage account | `Standard_LRS`, HTTPS only, TLS 1.2, and no public blob access | Stores Azure Functions runtime state only |
 | Application Insights | Optionally linked to a Log Analytics workspace | Collects operational telemetry that contains no secrets |
@@ -171,7 +171,7 @@ The `cao-functions` handler also reads these optional settings.
 Besides the parameters in the deployment command, the template accepts:
 
 - `location` and `hostingPlanName`.
-- `redisSkuName`, from `Balanced_B0` through `MemoryOptimized_M10`, and `redisCapacity`. Size Redis for your data volume and the number of generations that you keep. The server uses only core Redis commands.
+- `redisSkuName`, from `Balanced_B0` through `MemoryOptimized_M10`, and `redisCapacity`. Size Redis for your data volume, search indexes, and retained generations. An existing module-free database must be replaced with one provisioned with RedisJSON and RediSearch before rebuilding its projection.
 - `logAnalyticsWorkspaceResourceId`.
 - The collection parameters. For more information, see [Using the optional collection profile](#using-the-optional-collection-profile).
 

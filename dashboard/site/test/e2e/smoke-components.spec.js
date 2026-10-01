@@ -2,6 +2,32 @@ import { DATABASE_NAME, authoritativeDashboard, buildPresenterModuleUrl, devices
 
 registerSmokeRoutes();
 
+test('hosted rate-limit notice reacts to request recovery without duplicating alerts', async ({ page }) => {
+  const moduleUrl = 'http://dashboard.test/src/rate-limit-notification.js';
+  await page.evaluate(async ({ notifierUrl, statusUrl }) => {
+    const { updateRateLimitNotification } = await import(notifierUrl);
+    const { renderDashboardCurrentStatus } = await import(statusUrl);
+    document.querySelector('#root')?.append(renderDashboardCurrentStatus(null));
+    updateRateLimitNotification('/api/v1/query', 429);
+    updateRateLimitNotification('/api/v1/refresh', 429);
+  }, { notifierUrl: moduleUrl, statusUrl: 'http://dashboard.test/src/components/refresh-error.js' });
+  await expect(page.getByRole('alert')).toHaveCount(1);
+  await expect(page.getByRole('alert')).toHaveText('Dashboard is rate limited. Please try again shortly.');
+  await expect(page.getByRole('button', { name: 'Dashboard is rate limited' })).toBeVisible();
+  await expect(page.locator('.dashboard-current-status .octicon-alert')).toHaveCount(1);
+  await page.evaluate(async (url) => {
+    const { updateRateLimitNotification } = await import(url);
+    updateRateLimitNotification('/api/v1/query', 200);
+  }, moduleUrl);
+  await expect(page.getByRole('alert')).toHaveCount(1);
+  await page.evaluate(async (url) => {
+    const { updateRateLimitNotification } = await import(url);
+    updateRateLimitNotification('/api/v1/refresh', 200);
+  }, moduleUrl);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(page.locator('.dashboard-current-status')).toBeHidden();
+});
+
 test('campaign problem detail renders a responsive full view without a table', async ({ page }) => {
   await page.evaluate(async ({ problemUrl, stylesUrl }) => {
     const [{ renderProblemDetail }, { primerStylesheet }] = await Promise.all([
@@ -78,7 +104,7 @@ test('campaign problem detail renders a responsive full view without a table', a
   await expect(problemDetail.getByRole('heading', { name: 'Failure' })).toBeVisible();
   await expect(problemDetail.getByRole('heading', { name: 'Scope' })).toBeVisible();
   await expect(problemDetail.getByRole('heading', { name: 'Runtime environment' })).toBeVisible();
-  const fixItButton = problemDetail.getByRole('button', { name: 'Fix It' });
+  const fixItButton = problemDetail.getByRole('button', { name: 'Fix it' });
   await expect(fixItButton).toBeVisible();
   const buttonColors = await fixItButton.evaluate((button) => {
     const tokenProbe = document.createElement('span');

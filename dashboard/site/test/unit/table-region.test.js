@@ -417,6 +417,75 @@ describe('renderTableRegion', () => {
     expect(rendered.querySelector('[data-table-more]')?.hasAttribute('hidden')).toBe(true);
   });
 
+  it('disables the load-more button while a continuation load is pending and flags a failed retry', async () => {
+    /** @type {(reason: unknown) => void} */
+    let resolveLoad = () => {};
+    const load = vi.fn(() => new Promise((resolve, reject) => {
+      resolveLoad = reject;
+    }));
+    const rendered = renderTableRegion({
+      tableClassName: 'custom-table',
+      emptyMessage: 'No runs available.',
+      colSpan: 1,
+      headCells: ['Run'],
+      bodyRows: Array.from({ length: 5 }, (_, index) => h('tr', null, h('td', null, String(index + 1)))),
+      filterLabel: 'Filter runs',
+      lazyList: true,
+      pageSize: 5,
+      continuation: { token: 'next-page', totalRows: 10, load }
+    });
+    document.body.append(rendered);
+
+    const more = /** @type {HTMLButtonElement} */ (rendered.querySelector('[data-table-more]'));
+    more.click();
+    await vi.waitFor(() => expect(more.disabled).toBe(true));
+    expect(more.dataset.loadError).toBeUndefined();
+
+    resolveLoad(new Error('network error'));
+    await vi.waitFor(() => expect(more.disabled).toBe(false));
+    expect(more.dataset.loadError).toBe('');
+    expect(more.textContent).toBe('Retry loading rows');
+
+    rendered.remove();
+  });
+
+  it('ignores a continuation load that resolves after the table region is removed', async () => {
+    /** @type {(value: { rows: HTMLTableRowElement[], continuationToken?: string }) => void} */
+    let resolveLoad = () => {};
+    const load = vi.fn(() => new Promise((resolve) => {
+      resolveLoad = resolve;
+    }));
+    const rendered = renderTableRegion({
+      tableClassName: 'custom-table',
+      emptyMessage: 'No runs available.',
+      colSpan: 1,
+      headCells: ['Run'],
+      bodyRows: Array.from({ length: 5 }, (_, index) => h('tr', null, h('td', null, String(index + 1)))),
+      filterLabel: 'Filter runs',
+      lazyList: true,
+      pageSize: 5,
+      continuation: { token: 'next-page', totalRows: 10, load }
+    });
+    document.body.append(rendered);
+
+    const more = /** @type {HTMLButtonElement} */ (rendered.querySelector('[data-table-more]'));
+    more.click();
+    await vi.waitFor(() => expect(load).toHaveBeenCalled());
+    rendered.remove();
+
+    expect(() => {
+      resolveLoad({
+        rows: Array.from({ length: 5 }, (_, index) => h('tr', null, h('td', null, String(index + 6))))
+          .filter((row) => row instanceof HTMLTableRowElement),
+        continuationToken: undefined
+      });
+    }).not.toThrow();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(more.disabled).toBe(true);
+    expect(rendered.querySelectorAll('tbody > tr')).toHaveLength(5);
+  });
+
   it('unloads lazy-list prefix rows without moving the retained rows', async () => {
     const rows = Array.from({ length: 100 }, (_, index) => h(
       'tr',

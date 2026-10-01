@@ -390,7 +390,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await campaignNavigation.getByRole('link', { name: 'Failures' }).click();
   await expect(page).toHaveURL(/#page-campaign-problems\?campaign=ambient-context$/);
   await expect(campaignNavigation.getByRole('link', { name: 'Failures' })).toHaveAttribute('aria-current', 'page');
-  expect(await campaignNavigation.locator('.count-badge').allTextContents()).toEqual(campaignTabBadges);
+  await expect(campaignNavigation.locator('.count-badge')).toHaveText(campaignTabBadges);
   await expect(page.locator('[data-page-id="campaign-problems"] [data-view-id="campaign-current-runtime-problems"]')).toBeVisible();
   const currentCampaignUrl = page.url();
   await campaignNavigation.getByRole('link', { name: 'Failures' }).click();
@@ -443,7 +443,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(campaignIssueView).toContainText('Review worker finding');
   await expect(campaignIssueView.getByRole('listitem')).toHaveCount(1);
   await expect(campaignIssueView).not.toContainText('Review ambient context proposal');
-  expect(await campaignNavigation.locator('.count-badge').allTextContents()).toEqual(campaignTabBadges);
+  await expect(campaignNavigation.locator('.count-badge')).toHaveText(campaignTabBadges);
   await page.getByRole('button', { name: 'Chart' }).click();
   await page.evaluate(() => {
     window.location.hash = '#page-campaign-detail?campaign=ambient-context';

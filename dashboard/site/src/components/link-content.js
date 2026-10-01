@@ -3,7 +3,10 @@
  */
 
 import { h } from '../dom.js';
+import { createDebug } from '../debug.js';
 import { isPlainObject, isSafeHttpsUrl } from './ui-primitives.js';
+
+const debugLinkContent = createDebug('link-content');
 
 /**
  * @typedef {{ href: string, label: string, externalHref?: string }} SafeLink
@@ -53,7 +56,11 @@ export function findLink(row, field) {
       ...(externalHref && externalLabel ? { externalHref } : {})
     };
   }
-  return externalHref && externalLabel ? { href: externalHref, label: externalLabel } : null;
+  if (externalHref && externalLabel) {
+    return { href: externalHref, label: externalLabel };
+  }
+  debugLinkContent({ event: 'link-unresolved', field, hasDashboardHref: Boolean(dashboardHref), hasExternalHref: Boolean(externalHref) });
+  return null;
 }
 
 /**
@@ -134,7 +141,10 @@ export function renderWorkflowRunUrl(value) {
   try {
     const url = new URL(value);
     const match = url.pathname.match(/^\/[^/]+\/[^/]+\/actions\/runs\/([1-9]\d*)\/?$/);
-    if (url.protocol !== 'https:' || url.hostname !== 'github.com' || !match) return null;
+    if (url.protocol !== 'https:' || url.hostname !== 'github.com' || !match) {
+      debugLinkContent({ event: 'workflow-run-url-rejected', protocol: url.protocol, hostname: url.hostname });
+      return null;
+    }
     return renderExternalLink({ href: url.href, label: match[1] });
   } catch {
     return null;
@@ -150,7 +160,10 @@ export function renderShortenedUrl(value) {
   if (typeof value !== 'string') return null;
   try {
     const url = new URL(value);
-    if (url.protocol !== 'https:') return null;
+    if (url.protocol !== 'https:') {
+      debugLinkContent({ event: 'shortened-url-rejected', protocol: url.protocol });
+      return null;
+    }
     const segments = url.pathname.split('/').filter(Boolean);
     const label = segments.length > 1
       ? `${url.origin}/.../${segments.at(-1)}`

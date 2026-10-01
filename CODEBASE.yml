@@ -137,7 +137,7 @@ components:
     responsibility: rebuildable per-browser data projection
   redis_projection:
     path: server/
-    responsibility: disposable generation-scoped dashboard projection using core Redis row sets
+    responsibility: disposable generation-scoped RedisJSON row documents and RediSearch indexes for compatible predicates, with core Redis hashes for issue overlays and Upstash
   dashboard_https_server:
     path: server/
     responsibility: independently resolve compiled app-target and declarative Redis-provider modules from non-secret cao.json, compose and validate their capabilities, ingest deployed artifacts, execute Dashboard Language queries server-side, and serve bounded canonical or explicitly registered runtime-source results
@@ -319,6 +319,7 @@ invariants:
   - "Missing, stale, partial, and zero evidence are distinct states."
   - "Dashboard data operations MUST be declared in Dashboard Language and execute outside the browser main thread: in the data Web Worker for static deployment or in the Go HTTP(S) server for the Redis profile."
   - "In the Redis profile, Dashboard Language queries execute in the Go HTTP(S) server and compatible stages MUST be pushed into Redis before bounded Go fallback."
+  - "General Redis deployments require Redis 8 JSON and Search support; generation-scoped JSON rows and search indexes MUST be staged before activation and reclaimed together, while issue overlays and the single-session Upstash profile retain core Redis hashes."
   - "The local Redis profile MUST bind to loopback, use HTTP by default for localhost debugging, enable HTTPS only with operator-supplied certificate files, and MUST NOT expose Redis endpoints or credentials to browser code."
   - "The hosted Redis profile MUST use GitHub OAuth with explicit organization or team authorization, explicit rebuild administrators, server-side secrets and sessions, and an explicit account-selection flow for switching GitHub identities."
   - "Hosted Redis MUST use TLS by default and Azure Functions MUST always require TLS; private plaintext Redis is allowed only through an explicit opt-in and only for a private IP or single-label service hostname."

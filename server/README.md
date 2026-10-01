@@ -188,7 +188,7 @@ flowchart LR
 | CLI | `cmd/cao-dashboard/` | Implements the `ingest` and `serve` commands and keeps Redis configuration in the server process. |
 | Artifact ingestion | `internal/ingest/` | Validates deployed manifests and hashes, loads run shards before record shards, projects canonical records into logical dashboard sources, and activates complete generations. |
 | Query engine | `internal/query/` | Validates Dashboard Language definitions and executes joins, filters, computed fields, aggregates, temporal series, selection, ordering, and limits under resource budgets. |
-| Redis projection | `internal/redisx/` | Stores source rows and metadata with core Redis commands and atomically publishes the active generation. |
+| Redis projection | `internal/redisx/` | Stores generation-scoped RedisJSON rows and RediSearch indexes (core Redis hashes for issues and Upstash) and atomically publishes the active generation. |
 | HTTP(S)/API server | `internal/server/` | Enforces loopback binding, optionally terminates operator-configured TLS, serves static dashboard assets, handles API requests, and publishes revision events. |
 | Externally hosted service | `hosting/` | Exposes a listener-independent application lifecycle and the complete hosted HTTP handler to other Go HTTP hosts. |
 | Azure Functions profile | `internal/server/azure.go` | Builds the same HTTP handler without starting a listener, validates Azure app settings, requires `rediss://` Redis, and trusts forwarded host/protocol headers only for configured Azure hosts. |
@@ -500,7 +500,7 @@ flowchart LR
   Edge -->|"trusted forwarded host/proto only when allow-listed"| Function
   Function -->|"OAuth code, refresh, membership checks"| GitHubOAuth
   Function -->|"Key Vault references resolved by managed identity"| KeyVault
-  Function -->|"rediss:// core Redis commands"| Redis
+  Function -->|"rediss:// RedisJSON, RediSearch, core commands"| Redis
   Function -->|"runtime binding state"| Storage
   Function -->|"no tokens, no Redis URL, no source records"| Insights
   Operators -->|"reviewed Bicep + secret rotation"| KeyVault
@@ -819,10 +819,9 @@ Known limits, in the order they will be felt at scale:
   Go manifest validation. That is the structural ceiling on projection
   frequency, and it is why `CAO_COLLECT_PROJECTION_INTERVAL` defaults to five
   minutes rather than to seconds.
-- Redis is still an always-on cost, but it is now sized for retained key-value
-  data only. No Redis module is required, so the default Azure SKU is the
-  smallest `Balanced_B0` tier and operators can scale by retained-generation
-  memory rather than by RediSearch availability.
+- Redis is still an always-on cost. Azure Managed Redis enables RedisJSON and
+  RediSearch on its database; size for retained documents and search indexes,
+  including staging and rollback generations.
 - The Elastic Premium Function plan is always-on. It is sized for webhook
   admission, which is constant-time, so the smallest plan that meets the
   tenant's network requirements is the right one.
@@ -841,11 +840,20 @@ Redis is a disposable query projection, not an authoritative data source.
 | `<namespace>:revision-sequence` | Revision counter used by atomic activation. |
 | `<namespace>:g:<generation>` | Source metadata and canonical diagnostics for one generation. |
 | `<namespace>:g:<generation>:source:<hash>:rows` | Set of row keys for one logical source. |
-| `<namespace>:g:<generation>:source:<hash>:row:<id>` | Hash containing the complete JSON row. |
+| `<namespace>:g:<generation>:source:<hash>:row:<id>` | RedisJSON document containing the complete row (hash containing `raw` for issues, Upstash, or older generations). |
+| `<namespace>:g:<generation>:source:<hash>:index` | RediSearch index over eligible JSON string fields; dropped with its generation. |
 
 Source names and row identities are converted to deterministic hashes before
 becoming Redis key fragments. Complete row JSON remains available for bounded
-query-engine execution. Every key is scoped by `--redis-namespace`. The default
+query-engine execution. Local and ordinary hosted Redis deployments require
+Redis 8 with JSON and Search commands; a rebuild is needed to convert an existing
+hash generation into indexed JSON. Missing module support fails ingestion before
+activation, leaving the existing generation intact. The Upstash provider continues
+to use core Redis hashes because its search commands are not RediSearch-compatible.
+An older server binary cannot read a JSON generation; rolling back the binary
+also requires restoring a hash generation or forcing a full rebuild with that
+binary before serving requests.
+Every key is scoped by `--redis-namespace`. The default
 is a stable
 `cao:checkout-<path-hash>` value derived from the absolute checkout/worktree
 path, so separate checkouts using Redis database 0 do not collide. Explicit
@@ -871,19 +879,17 @@ input, join, output, and operator limits remain independently enforced.
 Expensive stages, including sorting, are charged against the operation budget
 before they allocate or run.
 
-For compatible base-source queries, the planner pushes work into Redis:
-
-- exact TAG and numeric/time-range filters;
-- full-text search over indexed text fields;
-- `count`, `distinct-count`, `sum`, `mean`, `min`, and `max` aggregation;
-- a single indexed sort;
-- result limits.
-
-Joins, computed fields, temporal-series projection, multi-field ordering,
-filtered or specialized reducers, and other unsupported pushdown shapes execute
-in bounded Go memory after Redis narrows the source. Query metrics report the
-pushed-down stages, Redis command count, Redis rows returned, fallback stages,
-and total duration.
+Unfiltered, literal-labelled table counts use Redis `SCARD` on the active
+generation's source row-key set. This returns the retained row count without
+fetching or decoding rows, including for sources too large for the query
+engine's working-byte budget. Redis `SCARD` is O(1), not O(0). An empty source
+produces no labelled group. Eligible direct-source string equality and `in` filters use RediSearch to fetch
+at most 5,000 JSON candidate keys; the Go engine still applies every predicate,
+including search, against complete rows. Queries with more candidates, complex
+predicates, joins, issue status overlays, and legacy or Upstash hash generations
+retain the bounded Go path. Filtered counts and joins do not bypass resource
+limits. Query metrics report indexed-candidate selection, Redis command count,
+Redis rows returned, fallback stages, and total duration.
 
 The engine rejects unsupported prediction queries and enforces limits on query
 definitions, joins, predicates, input rows, output rows, and total operations.

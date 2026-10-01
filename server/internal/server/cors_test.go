@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -47,6 +48,75 @@ func TestCORSPolicyRejectsUnsafeOrigins(t *testing.T) {
 	}
 	if _, err := (CORSPolicy{AllowedOrigins: []string{"https://a.example"}, MaxAge: maxCORSMaxAge + 1}).normalize(); err == nil {
 		t.Error("oversized max-age was accepted")
+	}
+}
+
+func TestClassifyCORSRequestNotCrossOrigin(t *testing.T) {
+	policy, err := (CORSPolicy{AllowedOrigins: []string{"https://tools.example.com"}}).normalize()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, mutate := range map[string]func(*http.Request){
+		"no origin header":   func(*http.Request) {},
+		"origin not allowed": func(request *http.Request) { request.Header.Set("Origin", "https://evil.example") },
+		"invalid host":       func(request *http.Request) { request.Header.Set("Origin", "https://tools.example.com") },
+	} {
+		t.Run(name, func(t *testing.T) {
+			request := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/health", nil)
+			mutate(request)
+			validHost := name != "invalid host"
+			if outcome := classifyCORSRequest(request, policy, validHost); outcome != corsOutcomeNotCrossOrigin {
+				t.Fatalf("outcome = %s, want %s", outcome, corsOutcomeNotCrossOrigin)
+			}
+		})
+	}
+}
+
+func TestClassifyCORSRequestPreflight(t *testing.T) {
+	policy, err := (CORSPolicy{AllowedOrigins: []string{"https://tools.example.com"}}).normalize()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name            string
+		requestedMethod string
+		want            corsOutcome
+	}{
+		{"get allowed", http.MethodGet, corsOutcomePreflightAllowed},
+		{"head allowed", http.MethodHead, corsOutcomePreflightAllowed},
+		{"post rejected", http.MethodPost, corsOutcomePreflightRejected},
+		{"delete rejected", http.MethodDelete, corsOutcomePreflightRejected},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequestWithContext(context.Background(), http.MethodOptions, "/api/v1/query", nil)
+			request.Header.Set("Origin", "https://tools.example.com")
+			request.Header.Set("Access-Control-Request-Method", tc.requestedMethod)
+			if outcome := classifyCORSRequest(request, policy, true); outcome != tc.want {
+				t.Fatalf("outcome = %s, want %s", outcome, tc.want)
+			}
+		})
+	}
+}
+
+func TestClassifyCORSRequestSimpleAllowed(t *testing.T) {
+	policy, err := (CORSPolicy{AllowedOrigins: []string{"https://tools.example.com"}}).normalize()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name   string
+		method string
+	}{
+		{"get request", http.MethodGet},
+		{"options without requested method", http.MethodOptions},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequestWithContext(context.Background(), tc.method, "/api/v1/health", nil)
+			request.Header.Set("Origin", "https://tools.example.com")
+			if outcome := classifyCORSRequest(request, policy, true); outcome != corsOutcomeSimpleAllowed {
+				t.Fatalf("outcome = %s, want %s", outcome, corsOutcomeSimpleAllowed)
+			}
+		})
 	}
 }
 
@@ -233,6 +303,32 @@ func TestUnauthenticatedSubresourceIsNotRedirectedToGitHub(t *testing.T) {
 		if response.Code != http.StatusFound || response.Header().Get("Location") != "/auth/login" {
 			t.Fatalf("mode %q: expected login redirect, got %d location=%q",
 				mode, response.Code, response.Header().Get("Location"))
+		}
+	}
+
+	for _, destination := range []string{"iframe", "frame", "object", "embed"} {
+		for _, path := range []string{"/", "/auth/login"} {
+			request := azureRequest(t, http.MethodGet, path)
+			request.Header.Set("Sec-Fetch-Mode", "navigate")
+			request.Header.Set("Sec-Fetch-Dest", destination)
+			response := httptest.NewRecorder()
+			app.Handler().ServeHTTP(response, request)
+			if response.Code != http.StatusUnauthorized || response.Header().Get("Location") != "" ||
+				len(response.Result().Cookies()) != 0 {
+				t.Fatalf("%s with destination %s: expected 401 without redirect or state cookie, got %d headers=%v",
+					path, destination, response.Code, response.Header())
+			}
+		}
+	}
+
+	for _, path := range []string{"/", "/auth/login"} {
+		request := azureRequest(t, http.MethodGet, path)
+		request.Header.Set("Sec-Fetch-Mode", "navigate")
+		request.Header.Set("Sec-Fetch-Dest", "document")
+		response := httptest.NewRecorder()
+		app.Handler().ServeHTTP(response, request)
+		if response.Code != http.StatusFound {
+			t.Fatalf("%s top-level navigation returned %d, want redirect", path, response.Code)
 		}
 	}
 }

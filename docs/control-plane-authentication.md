@@ -40,17 +40,17 @@ to replace that default with the exact repositories approved for safe-output
 writes.
 
 The helper uses `GH_HOST`, or `GITHUB_SERVER_URL` in Actions, for repository,
-App registration, installation, and settings URLs. On GitHub Enterprise Cloud
-data-residency hosts (`*.ghe.com`), it omits the unavailable Campaigns App
-permission from the generated read-App manifest.
+App registration, installation, API, and settings URLs. The generated read-App
+manifest requests only supported repository permissions.
 
-On data-residency hosts, the helper must read the selected repository list for
-each installation and verify every exact repository before setup can complete.
-If the GitHub CLI credential cannot read that membership, setup fails closed.
-Refresh the CLI credential with `read:user` access and retry; do not substitute
-manual inspection for the automated membership check. The first bounded
-workflow run must still prove read access to every intended repository and
-write access only in an approved safe-output repository.
+The helper mints a short-lived installation token from each newly created App
+key to read the selected repository list and verify every exact repository
+before setup can complete. It does not use OAuth-only `/user/installations`
+endpoints. If setup resumes after the process has lost the private key, Actions
+secrets cannot be read back; setup fails closed and directs the operator to use
+`--force` to create and verify a replacement App. The first bounded workflow
+run must still prove read access to every intended repository and write access
+only in an approved safe-output repository.
 
 An organization-owned private App fails closed when policy enrolls a repository owned by another organization.
 
@@ -86,7 +86,7 @@ Use the same separate permission ceilings as the organization-owned Apps:
 | Read App | Install on the control repository and every exact target repository that CAO must inspect, including separate selected-repository installations in each enrolled organization |
 | Write App | Install only on organizations and repositories approved to receive safe outputs |
 
-Keep both Apps private and disable webhooks. Generate one private key for each App only after reviewing its permissions and installations. On a GitHub Enterprise Cloud data-residency host, omit the unavailable Campaigns permission from the read App.
+Keep both Apps private and disable webhooks. Generate one private key for each App only after reviewing its permissions and installations.
 
 The client IDs are not secrets. The command stores them as repository variables and prompts for each PEM private key through `gh secret set`; never put a private key in a command argument. The operator must be able to create Apps for that enterprise and approve each organization installation.
 

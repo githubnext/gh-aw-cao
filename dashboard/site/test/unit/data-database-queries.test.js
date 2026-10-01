@@ -13,7 +13,7 @@ import {
   queryIndexedDatabaseSources
 } from '../../src/data/queries/database.js';
 import { processDataRequest } from '../../src/data-worker.js';
-import { createDashboardQueryBudget, executeDashboardQueries } from '../../src/data/queries/declarative.js';
+import { createDashboardQueryBudget, executeDashboardQueries, resolveDashboardQuerySources } from '../../src/data/queries/declarative.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
 const loadCanonicalViewSources = loadDatabaseQuerySources;
@@ -416,6 +416,26 @@ describe('canonical view sources', () => {
     )));
     expect(nativeCounts).toHaveBeenCalledTimes(required.length - 1);
     expect(collectionReads).not.toHaveBeenCalled();
+  });
+
+  it('does not reload native count dependencies through the canonical query boundary', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+    const requested = ['indexing-database-table-counts'];
+    const dependencies = resolveDashboardQuerySources(dashboardQueries, requested);
+    const native = await queryNativeCountSources(indexedDB, sources, dashboardQueries, dependencies);
+    const nativeNames = new Set(Object.keys(native));
+    const required = resolveDashboardQuerySources(dashboardQueries, requested, nativeNames)
+      .filter((name) => !nativeNames.has(name));
+    const collectionReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');
+    const database = await queryCanonicalViewSources(indexedDB, sources, required);
+    const results = executeDashboardQueries(dashboardQueries, { ...database, ...native }, requested);
+
+    expect(collectionReads.mock.contexts.map((store) => /** @type {IDBObjectStore} */ (store).name))
+      .toEqual(['repositories', 'campaigns', 'operationalValues']);
+    expect(results['indexing-database-table-counts'].rows).toEqual(expect.arrayContaining([
+      { table: 'workflow runs', records: 1 },
+      { table: 'tool events', records: 1 }
+    ]));
   });
 
   it('pushes declarative failed-run predicates into the canonical run index', async () => {

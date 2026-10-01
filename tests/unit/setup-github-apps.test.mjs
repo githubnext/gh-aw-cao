@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { generateKeyPairSync } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -15,13 +16,17 @@ import {
   deriveAppName,
   deriveInstallationTargets,
   deriveWriteInstallationTargets,
+  existingGitHubApp,
+  githubApiUrl,
   githubServerUrl,
   installationIncludesRepository,
   installationIncludesTarget,
   installationInstruction,
   installationTargetInstruction,
   isManifestCode,
+  listInstallationRepositoriesForApp,
   selectedInstallation,
+  setRepositoryAuthenticationMode,
   setRepositoryCredentials,
   validateAppName,
   validateInstallationScope,
@@ -48,14 +53,11 @@ test("GitHub App profiles preserve separate permission ceilings", () => {
   assert.equal(write.permissions.pull_requests, "write");
 });
 
-test("GitHub Enterprise Cloud data-residency manifests omit unsupported campaigns permission", () => {
+test("GitHub App manifests omit the unsupported campaigns permission", () => {
   const read = APP_PROFILES.find((profile) => profile.role === "read");
   assert.ok(read);
-  assert.equal(appPermissionsForServer(read, "https://github.com").campaigns, "read");
-  assert.equal(
-    Object.hasOwn(appPermissionsForServer(read, "https://contoso-aw.ghe.com"), "campaigns"),
-    false,
-  );
+  assert.equal(Object.hasOwn(appPermissionsForServer(read, "https://github.com"), "campaigns"), false);
+  assert.equal(Object.hasOwn(appPermissionsForServer(read, "https://contoso-aw.ghe.com"), "campaigns"), false);
 });
 
 test("GitHub App manifests are private and disable webhooks and OAuth", () => {
@@ -120,11 +122,18 @@ test("GitHub App setup honors GitHub Enterprise Cloud host configuration", () =>
   );
   assert.equal(
     accountInstallationsEndpoint("octo", "https://github.com"),
-    "/user/installations?per_page=100",
+    "/orgs/octo/installations?per_page=100",
   );
   assert.equal(
     accountInstallationsEndpoint("octo", "https://contoso-aw.ghe.com"),
     "/orgs/octo/installations?per_page=100",
+  );
+  assert.equal(githubApiUrl({ GH_HOST: "github.com" }), "https://api.github.com");
+  assert.equal(githubApiUrl({ GH_HOST: "contoso-aw.ghe.com" }), "https://api.contoso-aw.ghe.com");
+  assert.equal(githubApiUrl({ GH_HOST: "github.acme.test" }), "https://github.acme.test/api/v3");
+  assert.equal(
+    githubApiUrl({ GITHUB_API_URL: "https://github.acme.test/api/v3/" }),
+    "https://github.acme.test/api/v3",
   );
 });
 
@@ -176,6 +185,63 @@ test("repository credentials keep the private key out of command arguments", () 
     input: pem,
   });
   assert.equal(calls.flatMap((call) => call.args).includes(pem), false);
+});
+
+test("read App setup activates App authentication independently of the write App", () => {
+  const calls = [];
+  setRepositoryAuthenticationMode("octo/control", (args) => calls.push(args));
+  assert.deepEqual(calls, [[
+    "variable", "set", "GH_AW_GITHUB_AUTH_MODE", "--repo", "octo/control", "--body", "app",
+  ]]);
+});
+
+test("existing Apps resolve by installed client ID after a rename", () => {
+  const app = existingGitHubApp("octo", "cao-octo-control-read", "Iv1.read", {
+    installations: () => [{ appId: "42", clientId: "Iv1.read", slug: "renamed-read-app" }],
+    appBySlug: (slug) => ({
+      id: 42,
+      client_id: "Iv1.read",
+      slug,
+      name: "Renamed Read App",
+      public: false,
+    }),
+  });
+
+  assert.equal(app.slug, "renamed-read-app");
+  assert.equal(app.name, "Renamed Read App");
+  assert.equal(app.installUrl, "https://github.com/apps/renamed-read-app/installations/new");
+});
+
+test("App setup verifies selected repositories with a short-lived installation token", async () => {
+  const calls = [];
+  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const app = {
+    id: "42",
+    pem: privateKey.export({ type: "pkcs8", format: "pem" }),
+  };
+  const fetchImpl = async (url, options) => {
+    calls.push({ url, authorization: options.headers.Authorization });
+    if (url.endsWith("/access_tokens")) {
+      return {
+        ok: true,
+        json: async () => ({ token: "installation-token" }),
+      };
+    }
+    return {
+      ok: true,
+      json: async () => ({ total_count: 1, repositories: [{ full_name: "octo/control" }] }),
+    };
+  };
+
+  assert.deepEqual(
+    await listInstallationRepositoriesForApp(app, "123", { fetchImpl }),
+    ["octo/control"],
+  );
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].url, "https://api.github.com/app/installations/123/access_tokens");
+  assert.match(calls[0].authorization, /^Bearer eyJ/);
+  assert.equal(calls[1].url, "https://api.github.com/installation/repositories?per_page=100&page=1");
+  assert.equal(calls[1].authorization, "Bearer installation-token");
 });
 
 test("organization dry run emits private manifests without requiring GitHub access", (t) => {
@@ -270,6 +336,10 @@ test("App setup validates callback codes and bounded generated names", () => {
   assert.equal(isManifestCode("abc_DEF-123"), true);
   assert.equal(isManifestCode("../bad"), false);
   assert.equal(deriveAppName("githubnext/gh-aw-cao", "read"), "cao-githubnext-gh-aw-cao-read");
+  assert.equal(
+    deriveAppName("octodemo/zava-social-cao-ops-20260929111840", "read"),
+    "cao-octodemo-zava-social-cao-read",
+  );
   assert.ok(deriveAppName("very-long-organization/example-control-repository", "write").length <= 34);
   assert.throws(() => validateAppName("GitHub-control-read", "--read-app-name"), /must not begin with GitHub or Gist/);
   assert.throws(() => validateAppName("gist-control-write", "--write-app-name"), /must not begin with GitHub or Gist/);
@@ -359,5 +429,5 @@ test("App setup fails closed when selected repository membership cannot be read"
       throw new Error("HTTP 403");
     },
     serverUrl: "https://contoso-aw.ghe.com",
-  }), /unable to verify selected repository membership.*read:user access/);
+  }), /unable to verify selected repository membership.*administer App installations/);
 });

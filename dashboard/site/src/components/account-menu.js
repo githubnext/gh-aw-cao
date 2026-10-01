@@ -1,6 +1,7 @@
-import { csrfHeaders, usesGitHubAuthentication } from '../auth.js';
+import { csrfHeaders, ensureCsrfToken, usesGitHubAuthentication } from '../auth.js';
 import { h } from '../dom.js';
 import { createDebug } from '../debug.js';
+import { updateRateLimitNotification } from '../rate-limit-notification.js';
 import { octicon } from '../octicons.js';
 import { batch, effect, state } from '../reactive.js';
 import { createFactoryScope } from './factory-elements.js';
@@ -21,6 +22,7 @@ async function loadAccount(debug) {
     debug('session.request_failed');
     throw new Error('GitHub account session is unavailable');
   }
+  updateRateLimitNotification('/api/auth/session', response.status);
   if (!response.ok) {
     debug('session.response_rejected');
     throw new Error('GitHub account session is unavailable');
@@ -62,10 +64,12 @@ async function switchAccount(busy, debug) {
   try {
     let response;
     try {
+      await ensureCsrfToken();
       response = await fetch('/auth/switch-account', {
         method: 'POST',
         headers: csrfHeaders({ Accept: 'application/json' })
       });
+      updateRateLimitNotification('/auth/switch-account', response.status);
     } catch {
       debug('switch.request_failed');
       throw new Error('Unable to switch GitHub account');
@@ -103,10 +107,12 @@ async function logout(busy, debug) {
   try {
     let response;
     try {
+      await ensureCsrfToken();
       response = await fetch('/auth/logout', {
         method: 'POST',
         headers: csrfHeaders({ Accept: 'application/json' })
       });
+      updateRateLimitNotification('/auth/logout', response.status);
     } catch {
       debug('logout.request_failed');
       throw new Error('Unable to log out');
