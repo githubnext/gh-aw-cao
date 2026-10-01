@@ -9,7 +9,11 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var corsLog = logger.New("cao:server:cors")
 
 // corsHostnamePattern accepts ASCII (punycode) DNS names only. Browsers
 // serialize Origin hosts in ASCII, so Unicode, underscore, empty-label, or
@@ -144,6 +148,48 @@ func (policy CORSPolicy) allows(origin string) bool {
 	return false
 }
 
+// corsOutcome classifies how the cors middleware disposed of one request,
+// so the decision is testable and logged without exposing the request's
+// Origin, Host, or forwarded-header values.
+type corsOutcome string
+
+const (
+	// corsOutcomeNotCrossOrigin covers requests the middleware leaves
+	// entirely unchanged: no Origin header, an origin outside the
+	// allowlist, or a request whose host fails the same validation the
+	// access middleware applies.
+	corsOutcomeNotCrossOrigin corsOutcome = "not-cross-origin"
+	// corsOutcomePreflightRejected is an allowed-origin preflight for a
+	// method the policy never permits.
+	corsOutcomePreflightRejected corsOutcome = "preflight-rejected"
+	// corsOutcomePreflightAllowed is an allowed-origin preflight answered
+	// with the policy's methods, headers, and max-age.
+	corsOutcomePreflightAllowed corsOutcome = "preflight-allowed"
+	// corsOutcomeSimpleAllowed is a non-preflight request from an allowed
+	// origin, forwarded to next with Access-Control-Allow-Origin set.
+	corsOutcomeSimpleAllowed corsOutcome = "simple-allowed"
+)
+
+// classifyCORSRequest applies cors's decision tree over one request against
+// policy and the request's host validity, without touching the response. It
+// is extracted from cors's http.HandlerFunc so the outcome for every
+// combination of origin, method, and host validity is directly testable
+// against a *http.Request, and so the outcome can be logged by name without
+// exposing the request's Origin, Host, or forwarded-header values.
+func classifyCORSRequest(request *http.Request, policy CORSPolicy, validHost bool) corsOutcome {
+	origin := request.Header.Get("Origin")
+	if origin == "" || !policy.allows(origin) || !validHost {
+		return corsOutcomeNotCrossOrigin
+	}
+	if requested := request.Header.Get("Access-Control-Request-Method"); request.Method == http.MethodOptions && requested != "" {
+		if requested != http.MethodGet && requested != http.MethodHead {
+			return corsOutcomePreflightRejected
+		}
+		return corsOutcomePreflightAllowed
+	}
+	return corsOutcomeSimpleAllowed
+}
+
 // cors applies the reviewed cross-origin policy before authentication so a
 // preflight never needs credentials. Requests from origins outside the
 // allowlist receive no Access-Control-* headers and are otherwise unchanged.
@@ -156,26 +202,29 @@ func (a *App) cors(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		headers := response.Header()
 		headers.Add("Vary", "Origin")
-		origin := request.Header.Get("Origin")
-		if origin == "" || !policy.allows(origin) || !a.validCORSRequestHost(request) {
+		outcome := classifyCORSRequest(request, policy, a.validCORSRequestHost(request))
+		corsLog.Printf("cors request classified outcome=%s", outcome)
+		if outcome == corsOutcomeNotCrossOrigin {
 			next.ServeHTTP(response, request)
 			return
 		}
+		origin := request.Header.Get("Origin")
 		headers.Set("Access-Control-Allow-Origin", origin)
-		if requested := request.Header.Get("Access-Control-Request-Method"); request.Method == http.MethodOptions && requested != "" {
+		switch outcome {
+		case corsOutcomePreflightRejected:
 			headers.Add("Vary", "Access-Control-Request-Method")
 			headers.Add("Vary", "Access-Control-Request-Headers")
-			if requested != http.MethodGet && requested != http.MethodHead {
-				response.WriteHeader(http.StatusNoContent)
-				return
-			}
+			response.WriteHeader(http.StatusNoContent)
+		case corsOutcomePreflightAllowed:
+			headers.Add("Vary", "Access-Control-Request-Method")
+			headers.Add("Vary", "Access-Control-Request-Headers")
 			headers.Set("Access-Control-Allow-Methods", corsAllowedMethods)
 			headers.Set("Access-Control-Allow-Headers", corsAllowedHeaders)
 			headers.Set("Access-Control-Max-Age", maxAge)
 			response.WriteHeader(http.StatusNoContent)
-			return
+		default:
+			next.ServeHTTP(response, request)
 		}
-		next.ServeHTTP(response, request)
 	})
 }
 

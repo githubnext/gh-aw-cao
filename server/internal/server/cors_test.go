@@ -50,6 +50,75 @@ func TestCORSPolicyRejectsUnsafeOrigins(t *testing.T) {
 	}
 }
 
+func TestClassifyCORSRequestNotCrossOrigin(t *testing.T) {
+	policy, err := (CORSPolicy{AllowedOrigins: []string{"https://tools.example.com"}}).normalize()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, mutate := range map[string]func(*http.Request){
+		"no origin header":   func(*http.Request) {},
+		"origin not allowed": func(request *http.Request) { request.Header.Set("Origin", "https://evil.example") },
+		"invalid host":       func(request *http.Request) { request.Header.Set("Origin", "https://tools.example.com") },
+	} {
+		t.Run(name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodGet, "/api/v1/health", nil)
+			mutate(request)
+			validHost := name != "invalid host"
+			if outcome := classifyCORSRequest(request, policy, validHost); outcome != corsOutcomeNotCrossOrigin {
+				t.Fatalf("outcome = %s, want %s", outcome, corsOutcomeNotCrossOrigin)
+			}
+		})
+	}
+}
+
+func TestClassifyCORSRequestPreflight(t *testing.T) {
+	policy, err := (CORSPolicy{AllowedOrigins: []string{"https://tools.example.com"}}).normalize()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name            string
+		requestedMethod string
+		want            corsOutcome
+	}{
+		{"get allowed", http.MethodGet, corsOutcomePreflightAllowed},
+		{"head allowed", http.MethodHead, corsOutcomePreflightAllowed},
+		{"post rejected", http.MethodPost, corsOutcomePreflightRejected},
+		{"delete rejected", http.MethodDelete, corsOutcomePreflightRejected},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodOptions, "/api/v1/query", nil)
+			request.Header.Set("Origin", "https://tools.example.com")
+			request.Header.Set("Access-Control-Request-Method", tc.requestedMethod)
+			if outcome := classifyCORSRequest(request, policy, true); outcome != tc.want {
+				t.Fatalf("outcome = %s, want %s", outcome, tc.want)
+			}
+		})
+	}
+}
+
+func TestClassifyCORSRequestSimpleAllowed(t *testing.T) {
+	policy, err := (CORSPolicy{AllowedOrigins: []string{"https://tools.example.com"}}).normalize()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name   string
+		method string
+	}{
+		{"get request", http.MethodGet},
+		{"options without requested method", http.MethodOptions},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(tc.method, "/api/v1/health", nil)
+			request.Header.Set("Origin", "https://tools.example.com")
+			if outcome := classifyCORSRequest(request, policy, true); outcome != corsOutcomeSimpleAllowed {
+				t.Fatalf("outcome = %s, want %s", outcome, corsOutcomeSimpleAllowed)
+			}
+		})
+	}
+}
+
 func TestHostPolicyReadsCORSFromCaoJSON(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "cao.json")
 	document := `{
