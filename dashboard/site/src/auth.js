@@ -29,3 +29,17 @@ export function csrfHeaders(headers = {}, document = globalThis.document) {
   debugAuth({ event: 'csrf-headers-applied', applied });
   return applied ? { ...headers, 'X-CSRF-Token': token } : headers;
 }
+
+/** @param {AbortSignal} [signal] */
+export async function ensureCsrfToken(signal) {
+  if (csrfToken()) return;
+  const response = await fetch('/api/auth/session', {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    headers: { Accept: 'application/json' },
+    signal
+  });
+  if (!response.ok || !csrfToken()) {
+    throw new Error('GitHub authentication cookie could not be renewed');
+  }
+}
