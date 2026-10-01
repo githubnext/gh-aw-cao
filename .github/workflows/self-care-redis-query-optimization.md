@@ -116,6 +116,10 @@ safe-outputs:
       - "dashboard/site/dashboard.json"
       - "dashboard/site/dashboard-fragments/*.json"
       - "dashboard/site/src/data/queries/*.json"
+      - "dashboard/site/test/unit/*.js"
+      - "dashboard/site/test/unit/**/*.js"
+      - "dashboard/site/test/e2e/*.mjs"
+      - "dashboard/site/test/e2e/**/*.mjs"
       - "server/README.md"
 pre-agent-steps:
   - name: Set up Go
