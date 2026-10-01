@@ -75,8 +75,18 @@
   "likely_false_positives": "An async handler that calls `.set()` after `await` but whose component is never removed from the DOM during that async work (e.g. a top-level page-scoped singleton that outlives all navigation) does not need the guard; the rule should only fire when the enclosing scope is created via `createFactoryScope()`/bound to a removable node, i.e. an abort signal is already available in scope but unused after an await preceding a `.set()` call.",
   "autofix_safe": false,
   "existing_plugin_coverage": "No published ESLint rule covers this: it depends on recognizing this repo's specific `reactive.js` state/effect/createFactoryScope convention and its abort-signal idiom, not a generic async/await or React-hooks pattern that an existing plugin (eslint-plugin-react-hooks, eslint-plugin-promise, etc.) targets.",
-  "status": "new",
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36850962649",
+  "status": "ready",
+  "evaluation": {
+    "target_repo": "githubnext/gh-aw-cao",
+    "target_commit": "0a86e6b866a48bab2640f7734dc33544583590f3",
+    "true_positive_count": 7,
+    "false_positive_count": 0,
+    "false_negative_count": 0,
+    "readiness_for_target": "ready",
+    "reason": "Scratch ESLint rule matching the mined pattern found 7 additional unguarded true positives (account-menu.js, cli-actions.js x2, configuration-view.js, reset-dashboard-control.js, data-view.js mobile card-list loadMore) and zero false positives across every createFactoryScope()-bound file with async handlers, correctly leaving the already-guarded ui-primitives.js/table-region.js/data-view.js swimlane loaders unflagged.",
+    "txn_id": "refiner-36857609901-1"
+  },
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36857609901",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-01T11:05:16Z"
+  "last_seen_at": "2026-10-01T12:00:58Z"
 }

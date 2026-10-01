@@ -91,7 +91,17 @@
       "readiness_for_target": "not-applicable",
       "reason": "No execa/execa.sync chmod invocations exist in this repository's JS/TS sources; the unsafe pattern does not occur here (recursive chmod usage in this repo is confined to shell scripts, outside the rule's scope).",
       "txn_id": "refiner-36658147600-1"
+    },
+    {
+      "target_repo": "githubnext/gh-aw-cao",
+      "target_commit": "0a86e6b866a48bab2640f7734dc33544583590f3",
+      "true_positive_count": 0,
+      "false_positive_count": 1,
+      "false_negative_count": 0,
+      "readiness_for_target": "needs-work",
+      "reason": "Re-confirmed unchanged: the sole recursive chmod site, tests/e2e/cao-mcp-container.mjs:89 (chmod -R a+rX on an mkdtemp'd directory holding only a public SQLite fixture copy), remains a false positive since no restricted-mode file is ever written into that directory. All other chmod/chmodSync calls in this repo set a fixed non-recursive mode on one named executable and fall outside the rule's pattern.",
+      "txn_id": "refiner-36857609901-2"
     }
   ],
-  "last_seen_at": "2026-09-30T02:12:38Z"
+  "last_seen_at": "2026-10-01T12:00:58Z"
 }
