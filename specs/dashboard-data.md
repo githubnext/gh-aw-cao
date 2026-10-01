@@ -1989,6 +1989,96 @@ to the canonical query path or an explicit unavailable result.
 **GEN-005** — Superseded and unpublished generations MAY be garbage-collected
 without changing canonical records.
 
+## 31.1 Go server Redis generations
+
+The Go server's Redis database uses a **generation** as a disposable, complete
+projection of the verified dashboard inputs into logical-source rows. This
+applies to both ingestion of Actions-published artifacts and projection of a
+collector evidence lake. It is not a published source generation (Section 20),
+an IndexedDB canonical entity-store transaction, or the browser's daily
+aggregate generation (Section 72). The input artifacts or evidence lake remain
+the authority from which Redis can be rebuilt. Generation identifiers name
+physical snapshots; the content-addressed **data revision** identifies the
+inputs, while the monotonically increasing **revision** identifies a successful
+activation for query responses and refresh notifications. A forced rebuild of
+unchanged inputs therefore creates a new generation and revision without
+changing the data revision.
+
+### 31.1.1 Storage and read boundary
+
+Within one Redis namespace, the active metadata hash records the generation
+identifier, revision, data revision, evaluation time, activation time, and
+per-source row counts. A separate active-generation string identifies the same
+generation for reclamation. The generation hash holds source metadata, row
+format and index descriptions, diagnostics, and repository-memory data.
+Each source has a generation-scoped row-key set and individual row documents;
+eligible JSON sources also have a generation-scoped search index. Issue-status
+overlays and collection health are separately managed operational state, not
+immutable source rows. A sorted registry of generation names, scored by
+registration time, makes old generations discoverable without scanning the
+Redis keyspace.
+
+A query MUST resolve active metadata once and use its generation identifier
+for all ingested source reads in that query. It MUST NOT mix source rows or
+indexes from different generations. An absent active generation or missing
+required source MUST report unavailable rather than silently use a prior,
+partial, or incompatible generation. Activation does not wait for existing
+readers: a query that resolved the previous generation may continue reading
+it during a concurrent activation. The revision returned with results binds
+pagination and refresh to that activation; it is not the generation name or
+the data revision. Operational sources resolved at query time are not part of
+the immutable ingested snapshot.
+
+### 31.1.2 Staging and publication
+
+The ingester MUST verify the input manifest and shard hashes, require
+compacted run shards, construct the logical sources, and reject relationship
+errors or duplicate record identities before publication. When the active
+data revision matches the inputs, normal ingestion SHOULD reuse the active
+generation without advancing its revision; an explicit rebuild MAY force a
+new snapshot.
+
+For a new snapshot, the ingester MUST register a fresh generation before
+writing its source metadata, rows, indexes, diagnostics, and repository
+memory. These writes MUST NOT mutate the active generation. A projection
+MUST NOT publish a partly staged generation. Publication MUST atomically
+advance the revision sequence and replace both the active metadata and
+active-generation pointer. Readers therefore see either the old or the new
+snapshot, never a partially switched pointer. The registry timestamp MUST
+be refreshed immediately before publication so retention grace is measured
+from readiness, not from the start of a potentially long ingest.
+
+If verification or staging fails, the previous active generation MUST keep
+serving. Unpublished staging data SHOULD be removed along with its registry
+entry; interrupted cleanup MUST remain retryable through the registry.
+After publication, failure to reclaim old generations MUST NOT invalidate
+the newly active generation, but MUST remain diagnosable and retryable.
+An uncertain publication result MUST NOT be treated as proof that no pointer
+switch occurred; recovery MUST consult the active metadata before retrying
+or discarding a staging generation.
+
+### 31.1.3 Retention and recovery
+
+Every rebuild duplicates the logical-source projection, so a NoEviction
+Redis deployment MUST reclaim superseded generations rather than grow
+without bound. Reclamation MUST preserve the active generation, a configured
+number of newest registered generations (three by default), and any
+generation still inside the reader grace period (ten minutes by default).
+The count is a minimum, not a hard maximum while grace applies; retention
+does not by itself guarantee that a long-running reader can outlive grace.
+Deleting a generation MUST remove its row documents, row-key sets, search
+indexes, and metadata before forgetting its registry entry, so an
+interrupted deletion can be retried. Retained generations provide possible
+rollback data; retention is not an automatic rollback mechanism and does
+not turn Redis into an authoritative archive.
+
+Conformance tests SHOULD exercise unchanged-input reuse, forced rebuild,
+failed staging and unchanged active reads, atomic activation and revision
+changes, read isolation across activation, grace starting at publication,
+active-generation protection, and eventual removal of old rows and indexes.
+The collector-specific projection obligations are in
+`specs/server-ingestion.md` Section 7.
+
 ---
 
 # 32. Bounded Ingestion

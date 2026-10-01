@@ -166,6 +166,8 @@ Collected evidence MUST be persisted in a durable **evidence lake**.
 ## 7. Projection
 
 Projection converts the evidence lake into an active canonical generation.
+The Redis generation lifecycle and its distinction from the authoritative
+evidence lake are specified in `specs/dashboard-data.md` Section 31.1.
 
 - Projection MUST reuse the Actions profile's ingestion implementation over the
   evidence lake directory. An implementation MUST NOT define a second projector.
