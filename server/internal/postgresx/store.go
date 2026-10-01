@@ -224,23 +224,24 @@ func migrateTrees(ctx context.Context, tx *sql.Tx, selectSQL string, hasOrdinal 
 		if err != nil {
 			return err
 		}
-		items := make([]item, 0, 256)
-		for rows.Next() {
-			v := item{ordinal: -1}
-			if hasOrdinal {
-				err = rows.Scan(&v.namespace, &v.name, &v.ordinal, &v.payload)
-			} else {
-				err = rows.Scan(&v.namespace, &v.name, &v.payload)
+		items, err := func() ([]item, error) {
+			defer func() { _ = rows.Close() }()
+			items := make([]item, 0, 256)
+			for rows.Next() {
+				v := item{ordinal: -1}
+				var scanErr error
+				if hasOrdinal {
+					scanErr = rows.Scan(&v.namespace, &v.name, &v.ordinal, &v.payload)
+				} else {
+					scanErr = rows.Scan(&v.namespace, &v.name, &v.payload)
+				}
+				if scanErr != nil {
+					return nil, scanErr
+				}
+				items = append(items, v)
 			}
-			if err != nil {
-				break
-			}
-			items = append(items, v)
-		}
-		if err == nil {
-			err = rows.Err()
-		}
-		_ = rows.Close()
+			return items, rows.Err()
+		}()
 		if err != nil {
 			return err
 		}
@@ -272,18 +273,18 @@ func migrateState(ctx context.Context, tx *sql.Tx) error {
 		namespace           string
 		counts, diagnostics []byte
 	}
-	var items []item
-	for rows.Next() {
-		var v item
-		if err = rows.Scan(&v.namespace, &v.counts, &v.diagnostics); err != nil {
-			break
+	items, err := func() ([]item, error) {
+		defer func() { _ = rows.Close() }()
+		var items []item
+		for rows.Next() {
+			var v item
+			if scanErr := rows.Scan(&v.namespace, &v.counts, &v.diagnostics); scanErr != nil {
+				return nil, scanErr
+			}
+			items = append(items, v)
 		}
-		items = append(items, v)
-	}
-	if err == nil {
-		err = rows.Err()
-	}
-	_ = rows.Close()
+		return items, rows.Err()
+	}()
 	if err != nil {
 		return err
 	}
@@ -352,6 +353,7 @@ func (s *Store) readState(ctx context.Context, db querier) (State, error) {
 	if err != nil {
 		return State{}, fmt.Errorf("read postgres counts: %w", err)
 	}
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var name string
 		var count int
@@ -363,7 +365,6 @@ func (s *Store) readState(ctx context.Context, db querier) (State, error) {
 	if err == nil {
 		err = rows.Err()
 	}
-	_ = rows.Close()
 	if err != nil {
 		return State{}, fmt.Errorf("read postgres counts: %w", err)
 	}
@@ -466,8 +467,12 @@ func writeCounts(ctx context.Context, tx *sql.Tx, namespace string, counts map[s
 }
 
 func clearDiagnostics(ctx context.Context, tx *sql.Tx, namespace string) error {
-	for _, table := range []string{"cao_diagnostic_counts", "cao_relationship_errors", "cao_duplicate_ids"} {
-		if _, err := tx.ExecContext(ctx, `DELETE FROM `+table+` WHERE namespace = $1`, namespace); err != nil {
+	for _, statement := range []string{
+		`DELETE FROM cao_diagnostic_counts WHERE namespace = $1`,
+		`DELETE FROM cao_relationship_errors WHERE namespace = $1`,
+		`DELETE FROM cao_duplicate_ids WHERE namespace = $1`,
+	} {
+		if _, err := tx.ExecContext(ctx, statement, namespace); err != nil {
 			return err
 		}
 	}
@@ -899,66 +904,62 @@ func (s *Store) readDiagnostics(ctx context.Context, db querier) (model.Diagnost
 	if duplicates {
 		d.DuplicateRecordIDs = map[string][]string{}
 	}
-	rows, err := db.QueryContext(ctx, `SELECT name, count FROM cao_diagnostic_counts WHERE namespace = $1`, s.namespace)
-	if err != nil {
-		return d, err
-	}
-	for rows.Next() {
-		var name string
-		var count int
-		if err = rows.Scan(&name, &count); err != nil {
-			break
+	if err := scanDiagnosticRows(ctx, db, `SELECT name, count FROM cao_diagnostic_counts WHERE namespace = $1`, s.namespace, func(rows *sql.Rows) error {
+		for rows.Next() {
+			var name string
+			var count int
+			if err := rows.Scan(&name, &count); err != nil {
+				return err
+			}
+			d.Counts[name] = count
 		}
-		d.Counts[name] = count
-	}
-	if err == nil {
-		err = rows.Err()
-	}
-	_ = rows.Close()
-	if err != nil {
+		return rows.Err()
+	}); err != nil {
 		return d, err
 	}
-	rows, err = db.QueryContext(ctx, `SELECT message FROM cao_relationship_errors WHERE namespace = $1 ORDER BY ordinal`, s.namespace)
-	if err != nil {
-		return d, err
-	}
-	for rows.Next() {
-		var message string
-		if err = rows.Scan(&message); err != nil {
-			break
+	if err := scanDiagnosticRows(ctx, db, `SELECT message FROM cao_relationship_errors WHERE namespace = $1 ORDER BY ordinal`, s.namespace, func(rows *sql.Rows) error {
+		for rows.Next() {
+			var message string
+			if err := rows.Scan(&message); err != nil {
+				return err
+			}
+			d.RelationshipErrors = append(d.RelationshipErrors, message)
 		}
-		d.RelationshipErrors = append(d.RelationshipErrors, message)
-	}
-	if err == nil {
-		err = rows.Err()
-	}
-	_ = rows.Close()
-	if err != nil {
+		return rows.Err()
+	}); err != nil {
 		return d, err
 	}
-	rows, err = db.QueryContext(ctx, `SELECT name, ordinal, record_id FROM cao_duplicate_ids WHERE namespace = $1 ORDER BY name, ordinal`, s.namespace)
-	if err != nil {
-		return d, err
-	}
-	for rows.Next() {
-		var name, id string
-		var ordinal int64
-		if err = rows.Scan(&name, &ordinal, &id); err != nil {
-			break
+	err = scanDiagnosticRows(ctx, db, `SELECT name, ordinal, record_id FROM cao_duplicate_ids WHERE namespace = $1 ORDER BY name, ordinal`, s.namespace, func(rows *sql.Rows) error {
+		for rows.Next() {
+			var name, id string
+			var ordinal int64
+			if err := rows.Scan(&name, &ordinal, &id); err != nil {
+				return err
+			}
+			switch ordinal {
+			case -2:
+				d.DuplicateRecordIDs[name] = nil
+			case -1:
+				d.DuplicateRecordIDs[name] = []string{}
+			default:
+				d.DuplicateRecordIDs[name] = append(d.DuplicateRecordIDs[name], id)
+			}
 		}
-		if ordinal == -2 {
-			d.DuplicateRecordIDs[name] = nil
-		} else if ordinal == -1 {
-			d.DuplicateRecordIDs[name] = []string{}
-		} else {
-			d.DuplicateRecordIDs[name] = append(d.DuplicateRecordIDs[name], id)
-		}
-	}
-	if err == nil {
-		err = rows.Err()
-	}
-	_ = rows.Close()
+		return rows.Err()
+	})
 	return d, err
+}
+
+func scanDiagnosticRows(ctx context.Context, db querier, statement, namespace string, scan func(*sql.Rows) error) error {
+	rows, err := db.QueryContext(ctx, statement, namespace)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = rows.Close() }()
+	if err := scan(rows); err != nil {
+		return err
+	}
+	return rows.Err()
 }
 
 func decodeJSON(data []byte, dest any) error {
