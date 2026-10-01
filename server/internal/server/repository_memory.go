@@ -25,9 +25,9 @@ func (a *App) repositoryMemoryCampaign(response http.ResponseWriter, request *ht
 		return
 	}
 	var campaign repositorymemory.Campaign
-	err := a.database.WithReadTransaction(request.Context(), func(reader postgresx.SourceReader) error {
+	err := a.database.WithReadTransaction(request.Context(), func(ctx context.Context, reader postgresx.SourceReader) error {
 		var snapshotErr error
-		campaign, snapshotErr = repositoryMemorySnapshot(request.Context(), reader, campaignID)
+		campaign, snapshotErr = repositoryMemorySnapshot(ctx, reader, campaignID)
 		return snapshotErr
 	})
 	if err != nil && a.memory != nil &&
@@ -63,8 +63,8 @@ func (a *App) repositoryMemoryContent(response http.ResponseWriter, request *htt
 		return
 	}
 	var content []byte
-	err := a.database.WithReadTransaction(request.Context(), func(reader postgresx.SourceReader) error {
-		campaign, err := repositoryMemorySnapshot(request.Context(), reader, campaignID)
+	err := a.database.WithReadTransaction(request.Context(), func(ctx context.Context, reader postgresx.SourceReader) error {
+		campaign, err := repositoryMemorySnapshot(ctx, reader, campaignID)
 		if err != nil {
 			return err
 		}
@@ -79,7 +79,7 @@ func (a *App) repositoryMemoryContent(response http.ResponseWriter, request *htt
 			return repositorymemory.ErrNotFound
 		}
 		document, err := reader.LoadDocument(
-			request.Context(), repositorymemory.FilesSource, campaignID+"/"+filePath)
+			ctx, repositorymemory.FilesSource, campaignID+"/"+filePath)
 		if errors.Is(err, postgresx.ErrSourceUnavailable) {
 			return repositorymemory.ErrNotFound
 		}

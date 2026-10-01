@@ -206,7 +206,7 @@ func TestStoreIntegration(t *testing.T) {
 		t.Fatalf("other namespace read: %+v, %v", other, err)
 	}
 	nativeDefinition := []query.Definition{{Name: "raw", From: "$runs"}}
-	err = tenant.WithReadTransaction(ctx, func(reader SourceReader) error {
+	err = tenant.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) error {
 		result, _, supported, err := reader.(NativePlanExecutor).ExecuteNativePlan(ctx, nativeDefinition, []string{"raw"}, []string{"raw"})
 		if err != nil || !supported || result["raw"].Rows[0]["id"] != "other" {
 			t.Errorf("native plan crossed namespaces: %+v supported=%t err=%v", result, supported, err)
@@ -277,7 +277,7 @@ func TestStoreIntegration(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(rawResults["raw"].Rows, raw.Rows) {
 		t.Fatalf("raw query result: %+v, %v", rawResults, err)
 	}
-	err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
+	err = store.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) error {
 		before, err := reader.State(ctx)
 		if err != nil {
 			return err
@@ -359,7 +359,7 @@ func TestStoreIntegration(t *testing.T) {
 		"default", "empty"); err != nil {
 		t.Fatal(err)
 	}
-	err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
+	err = store.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) error {
 		_, _, supported, err := reader.(NativePlanExecutor).ExecuteNativePlan(ctx,
 			[]query.Definition{{Name: "empty-query", From: "empty"}}, []string{"empty-query"}, []string{"empty-query"})
 		if err != nil || supported {

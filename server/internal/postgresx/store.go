@@ -376,7 +376,7 @@ func (s *Store) DeleteNamespace(ctx context.Context) error {
 
 func (s *Store) State(ctx context.Context) (State, error) {
 	var state State
-	err := s.WithReadTransaction(ctx, func(reader SourceReader) (err error) {
+	err := s.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) (err error) {
 		state, err = reader.State(ctx)
 		return err
 	})
@@ -826,13 +826,13 @@ func (b *documentBatch) flush() error {
 }
 
 // WithReadTransaction holds a single repeatable-read snapshot for the callback.
-func (s *Store) WithReadTransaction(ctx context.Context, fn func(SourceReader) error) error {
+func (s *Store) WithReadTransaction(ctx context.Context, fn func(context.Context, SourceReader) error) error {
 	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead})
 	if err != nil {
 		return fmt.Errorf("begin postgres source read: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if err := fn(&readTransaction{store: s, tx: tx}); err != nil {
+	if err := fn(ctx, &readTransaction{store: s, tx: tx}); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -847,7 +847,7 @@ func (s *Store) WithReadTransaction(ctx context.Context, fn func(SourceReader) e
 func (s *Store) LoadSource(ctx context.Context, name string, definition *query.Definition) (model.Source, model.Metrics, error) {
 	var source model.Source
 	var metrics model.Metrics
-	err := s.WithReadTransaction(ctx, func(reader SourceReader) (err error) {
+	err := s.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) (err error) {
 		source, metrics, err = reader.LoadSource(ctx, name, definition)
 		return err
 	})
@@ -857,7 +857,7 @@ func (s *Store) LoadSource(ctx context.Context, name string, definition *query.D
 // LoadDocument reads one source document by its indexed ID.
 func (s *Store) LoadDocument(ctx context.Context, source, id string) (model.Row, error) {
 	var document model.Row
-	err := s.WithReadTransaction(ctx, func(reader SourceReader) (err error) {
+	err := s.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) (err error) {
 		document, err = reader.LoadDocument(ctx, source, id)
 		return err
 	})
@@ -1043,7 +1043,7 @@ func decodeTree(nodes []*valueNode) (any, error) {
 
 func (s *Store) Diagnostics(ctx context.Context) (model.Diagnostics, error) {
 	var diagnostics model.Diagnostics
-	err := s.WithReadTransaction(ctx, func(reader SourceReader) (err error) {
+	err := s.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) (err error) {
 		diagnostics, err = reader.Diagnostics(ctx)
 		return err
 	})

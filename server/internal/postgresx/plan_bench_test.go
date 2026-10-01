@@ -82,7 +82,7 @@ func BenchmarkNativeFilterPlan(b *testing.B) {
 		Name: "picked", From: "jobs", Filter: &query.Filter{Predicates: []query.Predicate{{Field: "runId", Equals: "run-250"}}},
 	}}
 	order := []string{"jobs", "picked"}
-	bench := func(b *testing.B, run func(SourceReader) error) {
+	bench := func(b *testing.B, run func(context.Context, SourceReader) error) {
 		b.ReportAllocs()
 		latencies := make([]time.Duration, 0, b.N)
 		b.ResetTimer()
@@ -101,7 +101,7 @@ func BenchmarkNativeFilterPlan(b *testing.B) {
 		}
 	}
 	b.Run("native", func(b *testing.B) {
-		bench(b, func(reader SourceReader) error {
+		bench(b, func(ctx context.Context, reader SourceReader) error {
 			results, _, supported, err := reader.(NativePlanExecutor).ExecuteNativePlan(ctx, definitions, []string{"picked"}, order)
 			if err == nil && (!supported || len(results["picked"].Rows) != 10) {
 				return fmt.Errorf("native plan did not return 10 rows")
@@ -110,7 +110,7 @@ func BenchmarkNativeFilterPlan(b *testing.B) {
 		})
 	})
 	b.Run("go-fallback", func(b *testing.B) {
-		bench(b, func(reader SourceReader) error {
+		bench(b, func(ctx context.Context, reader SourceReader) error {
 			results, _, err := query.New(readerLoader{reader: reader, ctx: ctx}).Execute(definitions, []string{"picked"})
 			if err == nil && len(results["picked"].Rows) != 10 {
 				return fmt.Errorf("Go evaluator did not return 10 rows")
@@ -119,7 +119,7 @@ func BenchmarkNativeFilterPlan(b *testing.B) {
 		})
 	})
 	b.Run("handwritten-sql", func(b *testing.B) {
-		bench(b, func(reader SourceReader) error {
+		bench(b, func(ctx context.Context, reader SourceReader) error {
 			r := reader.(*readTransaction)
 			rows, err := r.tx.QueryContext(ctx, `SELECT payload FROM cao_source_documents
 				WHERE namespace = $1 AND source_name = $2 AND run_id = $3 AND ordinal >= 0
