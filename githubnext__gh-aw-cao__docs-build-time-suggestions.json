@@ -1,6 +1,6 @@
 {
-  "source_sha": "c8ae292ff3879b123b00b505808e1a7dd8daf532",
-  "next_category": "Astro documentation generation",
+  "source_sha": "90eb49fee721dfe5d4900ca377d4b0373d8a44f8",
+  "next_category": "reusable dashboard generation",
   "evaluations": [
     {
       "evaluated_at": "2026-10-01T13:58:00Z",
@@ -136,6 +136,27 @@
         36870040373
       ],
       "outcome": "no_actionable_improvement: evaluated dependency installation and caching across the latest 10 successful docs.yml runs from 2026-10-01T12:59Z through 2026-10-01T14:54Z. Trusted Actions metadata showed 8 comparable build executions and 2 freshness-only schedule skips. Full workflow wall time median was 71.0s (p90 88.0s) across all 10 successes; comparable build-job median was 48.5s (p90 52.0s) after excluding the two freshness-only no-build runs; schedule-freshness median was 9.0s (p90 10.0s); deploy median was 14.5s (p90 17.0s). Build-step medians across the 8 comparable build executions were 7.0s Checkout, 5.0s Set up Node.js, 6.0s Restore node_modules, 12.5s Build documentation, 2.0s Restore cached CAO Dashboard, and 8.0s Upload Pages artifact. Trusted logs for representative runs 36876575351, 36879847622, and outlier 36868323992 confirmed cache hits for actions/setup-node npm cache, the explicit node_modules cache, and the central-agentic-ops-dashboard cache; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact stayed skipped on every successful build execution. The only material slowdown in this sample was run 36868323992, where Checkout took 77s because the full-history fetch-depth: 0 clone fetched refs slowly before any dependency step started; dependency and dashboard caches still hit. Because dependency installation is already consistently skipped and the repeated remaining cost is not in the evaluated category, no new >=60s or >=15% dependency/caching improvement is actionable without changing a different category.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-01T15:57:26Z",
+      "worker_run_id": "36887841778",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        36887281601,
+        36885835313,
+        36884228845,
+        36881297912,
+        36881055972,
+        36879847622,
+        36878674961,
+        36876575351,
+        36873169133,
+        36871662418,
+        36880983952,
+        36853340265
+      ],
+      "outcome": "no_actionable_improvement: evaluated Astro documentation generation across the latest 10 successful docs.yml runs from 2026-10-01T13:37Z through 2026-10-01T15:49Z. Trusted Actions metadata showed 7 comparable build executions, 6 deploy executions, and 3 freshness-only skips. Full workflow wall time median was 75.5s with p90 91.8s; comparable build-job median was 45.0s with p90 49.4s; deploy median was 12.0s with p90 15.0s; schedule-freshness median was 9.0s with p90 10.0s. Build-step medians across the 7 comparable build executions were 6.0s Checkout, 4.0s Set up Node.js, 5.0s Restore node_modules, 12.0s Build documentation, 2.0s Restore cached CAO Dashboard, and 8.0s Upload Pages artifact. Trusted logs for representative docs run 36876575351 verified cache hits for both npm/node_modules caches and for the central-agentic-ops-dashboard cache, with Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact all skipped. The Astro docs build itself is therefore already a small share of successful build time and does not meet the >=60s or >=15% actionable threshold. Cross-checking recent successful cao-dashboard.yml producer runs 36880983952 and 36853340265 again showed the dominant repeated upstream cost remains reusable dashboard preparation, especially Upgrade fallback activity data at 62-88s plus repeated copying of a 420.1 MiB gh-aw-logs.sqlite and 114 shards totaling 266.3 MiB into the dashboard artifact before upload. That qualifying reusable-dashboard optimization is already represented by suggestion fingerprint reusable-dashboard-skip-reupgrade-of-validated-activity-cache in repository memory, so no new non-duplicate recommendation is actionable in this Astro documentation generation cycle.",
       "suggestion_fingerprint": null
     }
   ]
