@@ -43,6 +43,33 @@ func TestCompileQueriesCommandReadsAllFragmentsAndDatabaseQueries(t *testing.T) 
 	}
 }
 
+func TestSummarizeCompilationLevelsCountsEachLevelIndependently(t *testing.T) {
+	results := []redisx.QueryCompilation{
+		{Name: "a", Level: "full candidate"},
+		{Name: "b", Level: "partial candidate"},
+		{Name: "c", Level: "fallback"},
+		{Name: "d", Level: "fallback"},
+		{Name: "e", Level: "unsupported"},
+	}
+	counts := summarizeCompilationLevels(results)
+	want := map[string]int{"full candidate": 1, "partial candidate": 1, "fallback": 2, "unsupported": 1}
+	if len(counts) != len(want) {
+		t.Fatalf("unexpected level count: got %#v, want %#v", counts, want)
+	}
+	for level, count := range want {
+		if counts[level] != count {
+			t.Fatalf("unexpected count for %q: got %d, want %d", level, counts[level], count)
+		}
+	}
+}
+
+func TestSummarizeCompilationLevelsOnEmptyResultsReturnsEmptyMap(t *testing.T) {
+	counts := summarizeCompilationLevels(nil)
+	if len(counts) != 0 {
+		t.Fatalf("expected no counts for empty results, got %#v", counts)
+	}
+}
+
 func TestCompileQueriesFailsOnMissingInputsAndUnknownFormat(t *testing.T) {
 	_, err := loadCompilationQueries("", filepath.Join(t.TempDir(), "missing"), "database.json")
 	if err == nil {

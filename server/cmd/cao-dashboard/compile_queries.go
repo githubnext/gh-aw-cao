@@ -10,10 +10,13 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/server"
 )
+
+var compileQueriesLog = logger.New("cao:compile-queries")
 
 func newCompileQueriesCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -34,9 +37,25 @@ func newCompileQueriesCommand() *cobra.Command {
 		if err != nil {
 			return fmt.Errorf("compile dashboard queries: %w", err)
 		}
+		counts := summarizeCompilationLevels(results)
+		compileQueriesLog.Printf("compiled queries total=%d full=%d partial=%d fallback=%d unsupported=%d",
+			len(results), counts["full candidate"], counts["partial candidate"], counts["fallback"], counts["unsupported"])
 		return renderCompilation(cmd.OutOrStdout(), results, *format)
 	}
 	return cmd
+}
+
+// summarizeCompilationLevels tallies how many results fall into each
+// redisx.QueryCompilation.Level, so both the markdown report header and the
+// diagnostic log line share one counting pass instead of duplicating it. It
+// is a pure function extracted from renderCompilation so the tally can be
+// unit-tested directly against representative result slices.
+func summarizeCompilationLevels(results []redisx.QueryCompilation) map[string]int {
+	counts := map[string]int{}
+	for _, result := range results {
+		counts[result.Level]++
+	}
+	return counts
 }
 
 func loadCompilationQueries(dashboard, directory, database string) ([]query.Definition, error) {
@@ -79,10 +98,7 @@ func renderCompilation(out io.Writer, results []redisx.QueryCompilation, format 
 	if format != "markdown" {
 		return fmt.Errorf("unsupported report format %q", format)
 	}
-	counts := map[string]int{}
-	for _, result := range results {
-		counts[result.Level]++
-	}
+	counts := summarizeCompilationLevels(results)
 	if _, err := fmt.Fprintf(out, "### Redis native translation (offline)\n\n"+
 		"%d queries: %d full candidates, %d partial candidates, %d Go fallback, %d unsupported by Go.\n\n"+
 		"Candidates are **not** verified native executions: the active Redis generation must have JSON sources and compatible RediSearch indexes. "+
