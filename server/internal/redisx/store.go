@@ -362,9 +362,18 @@ func repositoryMemoryFileField(campaign, path string) string {
 	return "repository-memory:file:" + base64.RawURLEncoding.EncodeToString([]byte(campaign+"\x00"+path))
 }
 
-func (s *Store) PutRepositoryMemory(ctx context.Context, generation string, manifest []byte, files map[string][]byte) error {
+func (s *Store) PutRepositoryMemory(ctx context.Context, generation string, revision int64, manifest []byte, files map[string][]byte) error {
+	key := s.repositoryMemoryRevisionKey(generation)
 	if _, err := s.Client.Do(ctx, "HSET", s.repositoryMemoryRevisionKey(generation), repositoryMemoryManifestField, string(manifest)); err != nil {
 		return fmt.Errorf("write repository-memory manifest: %w", err)
+	}
+	// Incomplete writes must not retain a cache indefinitely.
+	if _, err := s.Client.Do(ctx, "EVAL", `
+if redis.call("HGET", KEYS[1], "key") ~= KEYS[2] then
+  redis.call("EXPIRE", KEYS[2], ARGV[1])
+end
+return 1`, "2", s.Key("repository-memory:current"), key, "604800"); err != nil {
+		return fmt.Errorf("expire incomplete repository-memory cache: %w", err)
 	}
 	commands := make([][]string, 0, redisWriteBatchSize)
 	for key, content := range files {
@@ -386,6 +395,22 @@ func (s *Store) PutRepositoryMemory(ctx context.Context, generation string, mani
 		if _, err := s.Client.DoMany(ctx, commands); err != nil {
 			return fmt.Errorf("write repository-memory files: %w", err)
 		}
+	}
+	script := `
+local previous = redis.call("HGET", KEYS[1], "key")
+local previousRevision = tonumber(redis.call("HGET", KEYS[1], "revision")) or -1
+if previousRevision > tonumber(ARGV[2]) then
+  if previous ~= KEYS[2] then redis.call("EXPIRE", KEYS[2], ARGV[1]) end
+  return 0
+end
+if previous and previous ~= KEYS[2] then
+  redis.call("EXPIRE", previous, ARGV[1])
+end
+redis.call("HSET", KEYS[1], "key", KEYS[2], "revision", ARGV[2])
+redis.call("PERSIST", KEYS[2])
+return 1`
+	if _, err := s.Client.Do(ctx, "EVAL", script, "2", s.Key("repository-memory:current"), key, "604800", strconv.FormatInt(revision, 10)); err != nil {
+		return fmt.Errorf("activate repository-memory cache: %w", err)
 	}
 	return nil
 }

@@ -13,7 +13,10 @@ type marketplaceStoreCommandClient struct {
 }
 
 type repositoryMemoryCommandClient struct {
-	values map[string]string
+	values      map[string]string
+	current     string
+	revision    int64
+	expirations map[string]bool
 }
 
 func (client *repositoryMemoryCommandClient) Do(_ context.Context, command ...string) (any, error) {
@@ -29,6 +32,29 @@ func (client *repositoryMemoryCommandClient) Do(_ context.Context, command ...st
 			return value, nil
 		}
 		return nil, nil
+	case "EXPIRE":
+		client.expirations[command[1]] = true
+		return int64(1), nil
+	case "EVAL":
+		next := command[4]
+		if len(command) == 6 {
+			if client.current != next {
+				client.expirations[next] = true
+			}
+			return int64(1), nil
+		}
+		revision, _ := strconv.ParseInt(command[6], 10, 64)
+		if client.revision > revision {
+			client.expirations[next] = true
+			return int64(0), nil
+		}
+		if client.current != "" && client.current != next {
+			client.expirations[client.current] = true
+		}
+		client.current = next
+		client.revision = revision
+		delete(client.expirations, next)
+		return int64(1), nil
 	}
 	panic("unexpected Redis command")
 }
@@ -43,10 +69,10 @@ func (client *repositoryMemoryCommandClient) DoMany(ctx context.Context, command
 }
 
 func TestRepositoryMemoryRevisionCachePreserved(t *testing.T) {
-	client := &repositoryMemoryCommandClient{values: make(map[string]string)}
+	client := &repositoryMemoryCommandClient{values: make(map[string]string), expirations: make(map[string]bool)}
 	store := NewStore(client, "memory")
 	files := map[string][]byte{"campaign\x00notes.md": []byte("contents")}
-	if err := store.PutRepositoryMemory(t.Context(), "revision", []byte("manifest"), files); err != nil {
+	if err := store.PutRepositoryMemory(t.Context(), "revision", 1, []byte("manifest"), files); err != nil {
 		t.Fatal(err)
 	}
 	if store.repositoryMemoryRevisionKey("revision") != store.Key("g:revision") {
@@ -62,6 +88,23 @@ func TestRepositoryMemoryRevisionCachePreserved(t *testing.T) {
 	}
 	if _, err := store.RepositoryMemoryFile(t.Context(), "another-revision", "campaign", "notes.md"); err != ErrSourceUnavailable {
 		t.Fatalf("missing revision returned %v, want ErrSourceUnavailable", err)
+	}
+	if client.expirations[store.repositoryMemoryRevisionKey("revision")] {
+		t.Fatal("active repository-memory cache must not expire")
+	}
+	if err := store.PutRepositoryMemory(t.Context(), "next", 2, []byte("next manifest"), files); err != nil {
+		t.Fatal(err)
+	}
+	if !client.expirations[store.repositoryMemoryRevisionKey("revision")] ||
+		client.expirations[store.repositoryMemoryRevisionKey("next")] {
+		t.Fatal("superseded cache must expire, active cache must not")
+	}
+	if err := store.PutRepositoryMemory(t.Context(), "revision", 1, []byte("manifest"), files); err != nil {
+		t.Fatal(err)
+	}
+	if client.current != store.repositoryMemoryRevisionKey("next") ||
+		client.expirations[store.repositoryMemoryRevisionKey("next")] {
+		t.Fatal("out-of-order cache write superseded the active revision")
 	}
 }
 

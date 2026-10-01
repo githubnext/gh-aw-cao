@@ -214,7 +214,7 @@ func Run(ctx context.Context, store *postgresx.Store, operational *redisx.Store,
 		return Result{}, err
 	}
 	if operational != nil {
-		if err := operational.PutRepositoryMemory(ctx, dataRevision, memory.Manifest, memory.Files); err != nil {
+		if err := operational.PutRepositoryMemory(ctx, dataRevision, revision, memory.Manifest, memory.Files); err != nil {
 			ingestLog.Printf("repository memory cache update failed")
 		}
 	}
