@@ -34,6 +34,9 @@ test('the generated contract describes the implemented security and wire formats
   assert.ok(openapi.paths['/api/v1/events'].get.responses['200'].content['text/event-stream'])
   assert.ok(openapi.paths['/api/github/webhook'].post.responses['202'])
   assert.ok(openapi.paths['/api/admin/rebuild'].post.responses['202'])
+  for (const schema of ['HealthResponse', 'RebuildStatus']) {
+    assert.equal(openapi.components.schemas[schema].properties.generation, undefined)
+  }
   assert.ok(openapi.paths['/auth/logout'].post.responses['204'])
   assert.equal(openapi.components.securitySchemes.ApiKeyAuth.name, 'cao_session')
   for (const field of ['pushedDown', 'fallbackOperations']) {

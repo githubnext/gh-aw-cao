@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/dashboarddb"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/repositorymemory"
 )
 
@@ -24,7 +24,7 @@ func (a *App) repositoryMemoryCampaign(response http.ResponseWriter, request *ht
 	}
 	_, campaign, err := a.repositoryMemorySnapshot(request, campaignID)
 	if err != nil && a.memory != nil &&
-		(errors.Is(err, errCanonicalEntityNotFound) || errors.Is(err, redisx.ErrSourceUnavailable)) {
+		(errors.Is(err, errCanonicalEntityNotFound) || errors.Is(err, dashboarddb.ErrSourceUnavailable)) {
 		resolved, resolveErr := a.memory.Campaign(request.Context(), campaignID)
 		if resolveErr != nil {
 			writeRepositoryMemoryError(response, resolveErr)
@@ -55,9 +55,9 @@ func (a *App) repositoryMemoryContent(response http.ResponseWriter, request *htt
 		writeError(response, http.StatusBadRequest, "repository-memory file path is invalid")
 		return
 	}
-	generation, campaign, err := a.repositoryMemorySnapshot(request, campaignID)
+	snapshot, campaign, err := a.repositoryMemorySnapshot(request, campaignID)
 	if err != nil && a.memory != nil &&
-		(errors.Is(err, errCanonicalEntityNotFound) || errors.Is(err, redisx.ErrSourceUnavailable)) {
+		(errors.Is(err, errCanonicalEntityNotFound) || errors.Is(err, dashboarddb.ErrSourceUnavailable)) {
 		content, resolveErr := a.memory.Content(request.Context(), campaignID, filePath)
 		if errors.Is(resolveErr, repositorymemory.ErrNotFound) ||
 			(resolveErr == nil && content == nil) {
@@ -90,9 +90,9 @@ func (a *App) repositoryMemoryContent(response http.ResponseWriter, request *htt
 		writeError(response, http.StatusNotFound, "repository-memory file was not found")
 		return
 	}
-	content, err := a.dashboardDatabase().RepositoryMemoryFile(request.Context(), generation, campaignID, filePath)
+	content, err := snapshot.RepositoryMemoryFile(request.Context(), campaignID, filePath)
 	if err != nil {
-		if errors.Is(err, redisx.ErrSourceUnavailable) {
+		if errors.Is(err, dashboarddb.ErrSourceUnavailable) {
 			writeError(response, http.StatusNotFound, "repository-memory file was not found")
 			return
 		}
@@ -136,25 +136,25 @@ func repositoryMemoryIntegrityFailure(content []byte, expected repositorymemory.
 	return "", true
 }
 
-func (a *App) repositoryMemorySnapshot(request *http.Request, campaignID string) (string, repositorymemory.Campaign, error) {
-	active, err := a.dashboardDatabase().Active(request.Context())
-	if err != nil || active.Generation == "" {
-		return "", repositorymemory.Campaign{}, redisx.ErrSourceUnavailable
+func (a *App) repositoryMemorySnapshot(request *http.Request, campaignID string) (dashboarddb.Snapshot, repositorymemory.Campaign, error) {
+	snapshot, err := a.dashboardDatabase().Open(request.Context())
+	if err != nil || !snapshot.State().Available {
+		return nil, repositorymemory.Campaign{}, dashboarddb.ErrSourceUnavailable
 	}
-	content, err := a.dashboardDatabase().RepositoryMemoryManifest(request.Context(), active.Generation)
+	content, err := snapshot.RepositoryMemoryManifest(request.Context())
 	if err != nil {
-		return "", repositorymemory.Campaign{}, err
+		return nil, repositorymemory.Campaign{}, err
 	}
 	var manifest repositorymemory.Manifest
 	if err := json.Unmarshal(content, &manifest); err != nil || manifest.Version != 1 {
-		return "", repositorymemory.Campaign{}, errors.New("repository-memory manifest is invalid")
+		return nil, repositorymemory.Campaign{}, errors.New("repository-memory manifest is invalid")
 	}
 	for _, campaign := range manifest.Campaigns {
 		if campaign.Campaign == campaignID {
-			return active.Generation, campaign, nil
+			return snapshot, campaign, nil
 		}
 	}
-	return active.Generation, repositorymemory.Campaign{}, errCanonicalEntityNotFound
+	return snapshot, repositorymemory.Campaign{}, errCanonicalEntityNotFound
 }
 
 func writeRepositoryMemoryError(response http.ResponseWriter, err error) {

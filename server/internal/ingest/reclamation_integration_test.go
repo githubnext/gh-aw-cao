@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/dashboarddb"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
@@ -43,7 +44,7 @@ func TestGenerationGraceStartsAtActivation(t *testing.T) {
 	ctx, _, client, namespace := ingestTestStore(t, "generation-grace")
 	aging := &ageFirstGeneration{Client: client}
 	store := redisx.NewStore(aging, namespace)
-	result, err := Run(ctx, store, "../../testdata/deployed-subset", Options{
+	_, err := Run(ctx, dashboarddb.NewRedisWithRetention(store, 1), "../../testdata/deployed-subset", Options{
 		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
 		Force:               true,
 	})
@@ -53,7 +54,11 @@ func TestGenerationGraceStartsAtActivation(t *testing.T) {
 	if aging.registryWrites != 2 {
 		t.Fatalf("generation registered %d times, want staging and activation", aging.registryWrites)
 	}
-	score, err := client.Do(ctx, "ZSCORE", namespace+":generations", result.Generation)
+	active, err := store.Active(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	score, err := client.Do(ctx, "ZSCORE", namespace+":generations", active.Generation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +71,7 @@ func TestGenerationGraceStartsAtActivation(t *testing.T) {
 func TestFailedProjectionDiscardsJSONIndexes(t *testing.T) {
 	ctx, _, client, namespace := ingestTestStore(t, "failed-json")
 	store := redisx.NewStore(failFirstRowBatch{client}, namespace)
-	if _, err := Run(ctx, store, "../../testdata/deployed-subset", Options{
+	if _, err := Run(ctx, dashboarddb.NewRedis(store), "../../testdata/deployed-subset", Options{
 		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
 		Force:               true,
 	}); err == nil {
@@ -105,15 +110,18 @@ func TestRepeatedProjectionsReclaimSupersededGenerations(t *testing.T) {
 	ctx, store, client, namespace := ingestTestStore(t, "reclaim")
 	generations := make([]string, 0, 4)
 	for attempt := 0; attempt < 4; attempt++ {
-		result, err := Run(ctx, store, "../../testdata/deployed-subset", Options{
+		_, err := Run(ctx, dashboarddb.NewRedis(store), "../../testdata/deployed-subset", Options{
 			DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
 			Force:               true,
-			RetainGenerations:   1,
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
-		generations = append(generations, result.Generation)
+		active, err := store.Active(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		generations = append(generations, active.Generation)
 	}
 	// Activation must register every generation it writes; otherwise nothing
 	// could ever find a superseded generation to reclaim.
@@ -160,20 +168,24 @@ func TestRepeatedProjectionsReclaimSupersededGenerations(t *testing.T) {
 // would otherwise select it, because dropping it would empty the dashboard.
 func TestReclamationNeverDropsTheActiveGeneration(t *testing.T) {
 	ctx, store, client, namespace := ingestTestStore(t, "reclaim-active")
-	result, err := Run(ctx, store, "../../testdata/deployed-subset", Options{
+	_, err := Run(ctx, dashboarddb.NewRedis(store), "../../testdata/deployed-subset", Options{
 		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
 		Force:               true,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.Do(ctx, "ZADD", namespace+":generations", "1", result.Generation); err != nil {
+	active, err := store.Active(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.Do(ctx, "ZADD", namespace+":generations", "1", active.Generation); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := store.PruneGenerations(ctx, 0); err != nil {
 		t.Fatal(err)
 	}
-	if keyCount(ctx, t, client, namespace+":g:"+result.Generation+"*") == 0 {
+	if keyCount(ctx, t, client, namespace+":g:"+active.Generation+"*") == 0 {
 		t.Fatal("active generation was reclaimed")
 	}
 }
@@ -186,16 +198,13 @@ func TestUnchangedLakeReusesTheActiveGeneration(t *testing.T) {
 	options := Options{
 		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
 	}
-	first, err := Run(ctx, store, "../../testdata/deployed-subset", options)
+	first, err := Run(ctx, dashboarddb.NewRedis(store), "../../testdata/deployed-subset", options)
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := Run(ctx, store, "../../testdata/deployed-subset", options)
+	second, err := Run(ctx, dashboarddb.NewRedis(store), "../../testdata/deployed-subset", options)
 	if err != nil {
 		t.Fatal(err)
-	}
-	if second.Generation != first.Generation {
-		t.Fatalf("unchanged lake wrote a new generation %s, want %s", second.Generation, first.Generation)
 	}
 	if second.Revision != first.Revision {
 		t.Fatalf("unchanged lake advanced the revision to %d, want %d", second.Revision, first.Revision)

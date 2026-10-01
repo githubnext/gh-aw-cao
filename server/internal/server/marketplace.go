@@ -33,7 +33,7 @@ func marketplacePolicyPath() string {
 
 // storeMarketplaceCache adapts *redisx.Store to marketplace.Cache so resolved
 // registries are cached in Redis, isolated by registry id and by the active
-// dashboard data revision (generation).
+// dashboard publication revision.
 type storeMarketplaceCache struct {
 	store *redisx.Store
 }
@@ -55,13 +55,13 @@ func (c storeMarketplaceCache) Set(ctx context.Context, registryID, generation s
 // missing or invalid policy degrades to an empty, "unavailable" source rather
 // than failing the whole query, matching how every other source responds to
 // missing data.
-func marketplaceSource(ctx context.Context, store *redisx.Store, generation string) model.Source {
+func marketplaceSource(ctx context.Context, store *redisx.Store, revision string) model.Source {
 	config, err := marketplace.LoadConfigFile(marketplacePolicyPath())
 	if err != nil {
 		marketplaceLog.Printf("marketplace policy unavailable")
 		return marketplaceUnavailableSource()
 	}
-	result := marketplace.Resolve(ctx, config, generation, storeMarketplaceCache{store: store}, marketplace.Options{})
+	result := marketplace.Resolve(ctx, config, revision, storeMarketplaceCache{store: store}, marketplace.Options{})
 	rows := make([]model.Row, 0, len(result.Packages))
 	for _, pkg := range result.Packages {
 		rows = append(rows, pkg.Row())

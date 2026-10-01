@@ -36,7 +36,7 @@ type GitHubWebhook struct {
 
 type DirectoryReconciler struct {
 	Store               *redisx.Store
-	Database            dashboarddb.Storage
+	Database            dashboarddb.Database
 	SourceDirectory     string
 	DatabaseQueriesPath string
 }
@@ -44,7 +44,7 @@ type DirectoryReconciler struct {
 func (reconciler DirectoryReconciler) Rebuild(ctx context.Context) (ingest.Result, error) {
 	database := reconciler.Database
 	if database == nil {
-		database = reconciler.Store
+		database = dashboarddb.NewRedis(reconciler.Store)
 	}
 	return ingest.Run(ctx, database, reconciler.SourceDirectory, ingest.Options{
 		DatabaseQueriesPath: reconciler.DatabaseQueriesPath,
@@ -61,7 +61,6 @@ type rebuildStatus struct {
 	Required     bool           `json:"required"`
 	StartedAt    string         `json:"startedAt,omitempty"`
 	CompletedAt  string         `json:"completedAt,omitempty"`
-	Generation   string         `json:"generation,omitempty"`
 	Revision     int64          `json:"revision,omitempty"`
 	DataRevision string         `json:"dataRevision,omitempty"`
 	Counts       map[string]int `json:"counts,omitempty"`
@@ -91,9 +90,13 @@ func (a *App) rebuild(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 	started := time.Now().UTC()
-	active, _ := a.dashboardDatabase().Active(request.Context())
+	snapshot, _ := a.dashboardDatabase().Open(request.Context())
+	active := dashboarddb.State{}
+	if snapshot != nil {
+		active = snapshot.State()
+	}
 	status := rebuildStatus{
-		State: "running", Required: active.Generation == "",
+		State: "running", Required: !active.Available,
 		StartedAt: started.Format(time.RFC3339Nano),
 	}
 	if err := a.writeRebuildStatus(request.Context(), status); err != nil {
@@ -120,7 +123,6 @@ func (a *App) performRebuild(ctx context.Context, cancel context.CancelFunc, tok
 	status.State = "succeeded"
 	status.Required = false
 	status.CompletedAt = time.Now().UTC().Format(time.RFC3339Nano)
-	status.Generation = result.Generation
 	status.Revision = result.Revision
 	status.DataRevision = result.DataRevision
 	status.Counts = result.Counts
@@ -346,20 +348,20 @@ func (a *App) readRebuildStatus(ctx context.Context) (rebuildStatus, error) {
 				return rebuildStatus{}, err
 			}
 			if !held {
-				active, err := a.dashboardDatabase().Active(ctx)
+				snapshot, err := a.dashboardDatabase().Open(ctx)
 				if err != nil {
 					return rebuildStatus{}, err
 				}
 				status.State = "interrupted"
-				status.Required = active.Generation == ""
+				status.Required = !snapshot.State().Available
 				status.CompletedAt = time.Now().UTC().Format(time.RFC3339Nano)
 			}
 		}
 		return status, nil
 	}
-	active, err := a.dashboardDatabase().Active(ctx)
+	snapshot, err := a.dashboardDatabase().Open(ctx)
 	if err != nil {
 		return rebuildStatus{}, err
 	}
-	return rebuildStatus{State: "idle", Required: active.Generation == ""}, nil
+	return rebuildStatus{State: "idle", Required: !snapshot.State().Available}, nil
 }

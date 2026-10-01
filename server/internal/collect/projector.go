@@ -39,7 +39,7 @@ const (
 // what keeps projection cost sublinear in run volume.
 type Projector struct {
 	Store               *redisx.Store
-	Database            dashboarddb.Storage
+	Database            dashboarddb.Database
 	Lake                Lake
 	Enrollment          Enrollment
 	CatalogRoot         string
@@ -176,11 +176,10 @@ func (p Projector) project(ctx context.Context, force bool) (ingest.Result, erro
 	// interval affordable.
 	database := p.Database
 	if database == nil {
-		database = p.Store
+		database = dashboarddb.NewRedisWithRetention(p.Store, p.RetainGenerations)
 	}
 	result, err := ingest.Run(ctx, database, p.Lake.Directory, ingest.Options{
 		DatabaseQueriesPath: p.DatabaseQueriesPath,
-		RetainGenerations:   p.RetainGenerations,
 		Force:               force,
 	})
 	if err != nil {

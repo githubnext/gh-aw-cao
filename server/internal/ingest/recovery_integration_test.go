@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/dashboarddb"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
@@ -35,18 +36,18 @@ func TestEmptyRedisRebuildAndFailedReplacementPreservesActiveGeneration(t *testi
 		t.Fatalf("new projection namespace unexpectedly has active data: %#v", before)
 	}
 
-	result, err := Run(ctx, store, "../../testdata/deployed-subset", Options{
+	result, err := Run(ctx, dashboarddb.NewRedis(store), "../../testdata/deployed-subset", Options{
 		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
 		Force:               true,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Generation == "" || result.Revision != 1 || len(result.Counts) == 0 {
+	if result.Revision != 1 || len(result.Counts) == 0 {
 		t.Fatalf("empty Redis was not rebuilt into a valid active generation: %#v", result)
 	}
 
-	if _, err := Run(ctx, store, t.TempDir(), Options{
+	if _, err := Run(ctx, dashboarddb.NewRedis(store), t.TempDir(), Options{
 		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
 		Force:               true,
 	}); err == nil {
@@ -56,7 +57,7 @@ func TestEmptyRedisRebuildAndFailedReplacementPreservesActiveGeneration(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	if after.Generation != result.Generation || after.Revision != result.Revision {
+	if after.Generation == "" || after.Revision != result.Revision {
 		t.Fatalf("failed rebuild replaced active generation: before=%#v after=%#v", result, after)
 	}
 }

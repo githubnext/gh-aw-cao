@@ -140,7 +140,7 @@ components:
     responsibility: disposable generation-scoped RedisJSON row documents and RediSearch indexes for compatible predicates, with core Redis hashes for issue overlays and Upstash
   dashboard_database:
     path: server/internal/dashboarddb/
-    responsibility: separate dashboard generation storage and query validation/execution from operational Redis state, with the Redis projection as the default implementation
+    responsibility: atomically replace complete validated dashboard projections and expose consistent versioned read snapshots and query validation/execution without generation identifiers, separate from operational Redis state; the Redis adapter privately stages generations
   dashboard_https_server:
     path: server/
     responsibility: independently resolve compiled app-target and declarative Redis-provider modules from non-secret cao.json, compose and validate their capabilities, ingest deployed artifacts, execute Dashboard Language queries server-side, and serve bounded canonical or explicitly registered runtime-source results
@@ -317,7 +317,7 @@ invariants:
   - "Activity evidence MUST NOT determine rollout, outcomes, or operational value."
   - "JSONL snapshots are authoritative; caches, SQLite, and IndexedDB are disposable projections."
   - "Local Redis generations are disposable projections activated atomically from verified deployed dashboard artifacts."
-  - "Dashboard database implementations MUST stage complete generations and preserve the active generation on failure; operational sessions, queues, counters, locks, and caches remain in Redis."
+  - "Dashboard database implementations MUST publish complete validated projections atomically and preserve the active snapshot on failure; generation identifiers and lifecycle methods belong only to the Redis adapter, while operational sessions, queues, counters, locks, and caches remain in Redis."
   - "Dashboard ingestion MUST load every run-information shard before record shards; every domain, tool, audit, and issue MUST identify its owning run."
   - "The deployed dashboard artifact MUST NOT contain or manifest raw Activity JSONL; browser ingestion MUST consume compacted normalized run and record JSONL and fail closed when run-information shards are absent."
   - "Normalized Activity shards MUST be JSONL and browser consumers MUST stream bounded record batches without buffering a complete shard."

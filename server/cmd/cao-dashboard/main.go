@@ -14,6 +14,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/dashboarddb"
 	"github.com/githubnext/gh-aw-cao/server/internal/doctor"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	debuglogger "github.com/githubnext/gh-aw-cao/server/internal/logger"
@@ -555,7 +556,7 @@ func newIngestCommand() *cobra.Command {
 		if err := store.Ping(ctx); err != nil {
 			return errors.New("redis is unavailable")
 		}
-		result, err := ingest.Run(ctx, store, resolvedSource, ingest.Options{DatabaseQueriesPath: *databaseQueries})
+		result, err := ingest.Run(ctx, dashboarddb.NewRedis(store), resolvedSource, ingest.Options{DatabaseQueriesPath: *databaseQueries})
 		if err != nil {
 			return err
 		}

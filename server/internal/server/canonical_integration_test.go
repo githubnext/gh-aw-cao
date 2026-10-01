@@ -29,7 +29,7 @@ func TestCanonicalAPIQueriesMatchActiveRedisGeneration(t *testing.T) {
 	store := redisx.NewStore(client, namespace)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	result, err := ingest.Run(ctx, store, "../../testdata/deployed-subset", ingest.Options{
+	_, err = ingest.Run(ctx, dashboarddb.NewRedis(store), "../../testdata/deployed-subset", ingest.Options{
 		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
 		Force:               true,
 	})
@@ -41,7 +41,11 @@ func TestCanonicalAPIQueriesMatchActiveRedisGeneration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	direct, _, err := store.LoadSource(ctx, result.Generation, "repositories", nil)
+	active, err := store.Active(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	direct, _, err := store.LoadSource(ctx, active.Generation, "repositories", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

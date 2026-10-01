@@ -46,6 +46,13 @@ func TestRedisQueryLoaderFailure(t *testing.T) {
 	}
 }
 
+func TestRedisReplacementRequiresDataRevision(t *testing.T) {
+	db := NewRedis(nil)
+	if _, err := db.Replace(t.Context(), Projection{}); err == nil {
+		t.Fatal("missing revision must fail before accessing storage")
+	}
+}
+
 type failingLoader struct{}
 
 func (failingLoader) LoadSource(string, *query.Definition) (model.Source, model.Metrics, error) {

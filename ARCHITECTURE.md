@@ -120,11 +120,13 @@ bounded runtime-source query payloads to the browser. Compatible direct-source
 equality predicates select bounded indexed candidates before the Go engine
 evaluates the full query; other operations use bounded Go fallback. Issue
 status overlays and Upstash's single-session profile retain core Redis hashes.
-The Go server's dashboard database contract owns generation staging, activation,
-source loading, and query validation and execution. The Redis implementation
-adapts the existing projection and Go query engine; a future database can
-replace dashboard persistence without moving operational sessions, queues,
-counters, locks, and caches out of Redis.
+The Go server's dashboard database contract accepts a complete validated
+projection for atomic replacement and exposes versioned, consistent read
+snapshots, source loading, and query validation and execution. It has no
+generation identifiers or lifecycle methods. The Redis adapter privately
+stages and activates generations using the existing projection and Go query
+engine; a future database can replace dashboard persistence without moving
+operational sessions, queues, counters, locks, and caches out of Redis.
 Its local mode remains loopback-only. Its host-neutral mode uses
 GitHub OAuth and explicit organization or team authorization, verifies and
 deduplicates GitHub webhooks, and rebuilds through a staged generation before

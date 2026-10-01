@@ -14,12 +14,15 @@ The browser never connects to Redis and never receives the Redis URL or
 credentials. It communicates only with the same-origin HTTP(S) API.
 
 Dashboard persistence and query validation/execution use the
-`internal/dashboarddb.Database` contract. The default Redis adapter retains
-the existing generation-scoped projection and Go query engine; ingestion accepts
-the corresponding `Storage` contract. `server.Config.Database` can supply a
-different dashboard backend while Redis remains responsible for operational
-sessions, queues, locks, counters, and caches. Implementations must stage a
-complete generation before activation and leave the active generation intact on
+`internal/dashboarddb.Database` contract. Ingestion submits a complete,
+validated projection to `Replace`; callers use `Open` for a consistent,
+versioned read snapshot and the database for query validation and execution.
+The contract exposes no generation identifiers or lifecycle methods. The
+default Redis adapter privately stages and activates generations using the
+existing projection and Go query engine. `server.Config.Database` can supply
+a different dashboard backend while Redis remains responsible for operational
+sessions, queues, locks, counters, and caches. Implementations must atomically
+publish a complete replacement and leave the previous snapshot intact on
 failure. This change does not implement a Postgres backend.
 When introducing another backend, configure it in every server and collection
 worker process; the existing CLI roles still construct the Redis adapter by
@@ -944,7 +947,7 @@ IndexedDB ingestion:
 
 | Endpoint | Purpose |
 | --- | --- |
-| `GET /api/v1/health` | Public readiness exposes only Redis connectivity and data availability; capability-authenticated requests also receive generation/revision and source/row counts. |
+| `GET /api/v1/health` | Public readiness exposes only Redis connectivity and data availability; capability-authenticated requests also receive revision and source/row counts. |
 | `GET /api/health` | Public liveness; an empty Redis instance is healthy and reports `rebuildRequired`. |
 | `GET /api/readiness` | Public readiness; returns 503 until an active generation exists. |
 | `POST /api/v1/query` | Execute requested Dashboard Language queries and return bounded logical sources plus metrics. |

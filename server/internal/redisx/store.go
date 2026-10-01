@@ -23,6 +23,16 @@ const redisWriteBatchSize = 100
 const ingestionHealthKey = "state:ingestion-health"
 const maxIndexedCandidates = 5000
 
+// ActiveGeneration is Redis projection metadata, not a dashboard database API.
+type ActiveGeneration struct {
+	Generation   string
+	Revision     int64
+	DataRevision string
+	EvaluatedAt  time.Time
+	Counts       map[string]int
+	Activated    time.Time
+}
+
 // Only index scalar fields used by common direct-source dashboard filters.
 // Other predicates, substring searches, joins, and issue overlays remain in Go.
 var searchableFields = []string{
@@ -587,17 +597,17 @@ func (s *Store) Key(suffix string) string {
 	return s.namespace + ":" + suffix
 }
 
-func (s *Store) Active(ctx context.Context) (model.ActiveGeneration, error) {
+func (s *Store) Active(ctx context.Context) (ActiveGeneration, error) {
 	value, err := s.Client.Do(ctx, "HGETALL", s.activeKey())
 	if err != nil {
-		return model.ActiveGeneration{}, err
+		return ActiveGeneration{}, err
 	}
 	fields, err := Strings(value)
 	if err != nil {
-		return model.ActiveGeneration{}, err
+		return ActiveGeneration{}, err
 	}
 	if len(fields) == 0 {
-		return model.ActiveGeneration{Counts: map[string]int{}}, nil
+		return ActiveGeneration{Counts: map[string]int{}}, nil
 	}
 	result, malformed := parseActiveGeneration(fields)
 	if malformed > 0 {
@@ -612,8 +622,8 @@ func (s *Store) Active(ctx context.Context) (model.ActiveGeneration, error) {
 // activatedAt field is testable without a fake Redis reply. A field that
 // fails to parse is left at its zero value, matching the prior inline
 // decoding, and counted in the returned malformed total.
-func parseActiveGeneration(fields []string) (model.ActiveGeneration, int) {
-	result := model.ActiveGeneration{Counts: map[string]int{}}
+func parseActiveGeneration(fields []string) (ActiveGeneration, int) {
+	result := ActiveGeneration{Counts: map[string]int{}}
 	malformed := 0
 	for i := 0; i+1 < len(fields); i += 2 {
 		switch fields[i] {

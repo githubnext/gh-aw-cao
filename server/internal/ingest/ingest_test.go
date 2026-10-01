@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/dashboarddb"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
@@ -139,7 +141,7 @@ func TestDeployedSubsetProjectsCanonicalSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sources, err := projectSources(canonical, inventory, definitions)
+	sources, err := projectSources(dashboarddb.NewRedis(nil), canonical, inventory, definitions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,6 +149,23 @@ func TestDeployedSubsetProjectsCanonicalSources(t *testing.T) {
 		if len(sources[name].Rows) == 0 {
 			t.Errorf("projected source %q is empty", name)
 		}
+	}
+}
+
+type failingProjectionDatabase struct {
+	dashboarddb.Database
+}
+
+func (failingProjectionDatabase) Project(query.Definition, map[string]model.Source) (model.Source, error) {
+	return model.Source{}, errors.New("database projection failed")
+}
+
+func TestProjectionUsesConfiguredDatabase(t *testing.T) {
+	database := failingProjectionDatabase{Database: dashboarddb.NewRedis(nil)}
+	_, err := projectSources(database, map[string][]model.Row{}, nil,
+		[]query.Definition{{Name: "runs", From: "$runs"}})
+	if err == nil || !strings.Contains(err.Error(), "database projection failed") {
+		t.Fatalf("projection bypassed database: %v", err)
 	}
 }
 
@@ -171,7 +190,7 @@ func TestProjectsOperationalValuesWithCampaign(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sources, err := projectSources(canonical, map[string]model.Source{}, definitions)
+	sources, err := projectSources(dashboarddb.NewRedis(nil), canonical, map[string]model.Source{}, definitions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +226,7 @@ func TestOperationalValuesProjectionReplacesInventoryRows(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sources, err := projectSources(canonical, inventory, definitions)
+	sources, err := projectSources(dashboarddb.NewRedis(nil), canonical, inventory, definitions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,14 +268,14 @@ func TestProjectsRelationalExperimentEvidenceWithoutInventoryFallback(t *testing
 			withoutEval = append(withoutEval, definition)
 		}
 	}
-	if _, err := projectSources(canonical, nil, withoutEval); err == nil ||
+	if _, err := projectSources(dashboarddb.NewRedis(nil), canonical, nil, withoutEval); err == nil ||
 		!strings.Contains(err.Error(), `missing canonical evidence query "eval-observations"`) {
 		t.Fatalf("expected missing evidence query to fail closed, got %v", err)
 	}
 	inventory := map[string]model.Source{
 		"evals": {Rows: []model.Row{{"eval": "stale-inventory"}}},
 	}
-	sources, err := projectSources(canonical, inventory, definitions)
+	sources, err := projectSources(dashboarddb.NewRedis(nil), canonical, inventory, definitions)
 	if err != nil {
 		t.Fatal(err)
 	}

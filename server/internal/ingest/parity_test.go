@@ -13,6 +13,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/dashboarddb"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 )
 
@@ -117,7 +118,7 @@ func TestEvidenceShardPipelineParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	hosted, err := projectSources(canonical, nil, definitions)
+	hosted, err := projectSources(dashboarddb.NewRedis(nil), canonical, nil, definitions)
 	if err != nil {
 		t.Fatal(err)
 	}

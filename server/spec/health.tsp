@@ -15,7 +15,6 @@ model HealthResponse {
   data: DataState;
   /** Details are present only for an authorized caller. */
   revision?: int64;
-  generation?: string;
   counts?: Record<int32>;
   sourceCount?: int32;
   rowCount?: int32;

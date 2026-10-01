@@ -13,11 +13,19 @@ type dashboardDatabaseFixture struct {
 	dashboarddb.Database
 }
 
-func (dashboardDatabaseFixture) Active(context.Context) (model.ActiveGeneration, error) {
-	return model.ActiveGeneration{Generation: "fixture", Revision: 42}, nil
+func (dashboardDatabaseFixture) Open(context.Context) (dashboarddb.Snapshot, error) {
+	return dashboardSnapshotFixture{}, nil
 }
 
-func (dashboardDatabaseFixture) LoadSource(_ context.Context, _, name string, _ *query.Definition) (model.Source, model.Metrics, error) {
+type dashboardSnapshotFixture struct {
+	dashboarddb.Snapshot
+}
+
+func (dashboardSnapshotFixture) State() dashboarddb.State {
+	return dashboarddb.State{Available: true, Revision: 42}
+}
+
+func (dashboardSnapshotFixture) LoadSource(_ context.Context, name string, _ *query.Definition) (model.Source, model.Metrics, error) {
 	return model.Source{Source: name, Rows: []model.Row{{"id": "sample"}}}, model.Metrics{}, nil
 }
 

@@ -135,7 +135,11 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 	}
 	database := config.Database
 	if database == nil && store != nil {
-		database = dashboarddb.NewRedis(store)
+		retention := 0
+		if config.Collector != nil {
+			retention = config.Collector.RetainGenerations
+		}
+		database = dashboarddb.NewRedisWithRetention(store, retention)
 	}
 	var oauth *githubOAuth
 	var accessToken string
@@ -746,17 +750,17 @@ func securityHeaders(next http.Handler) http.Handler {
 func (a *App) health(response http.ResponseWriter, request *http.Request) {
 	ctx, cancel := context.WithTimeout(request.Context(), 3*time.Second)
 	defer cancel()
-	active, activeErr := a.dashboardDatabase().Active(ctx)
+	active, activeErr := a.dashboardState(ctx)
 	redisHealthy := a.store.Ping(ctx) == nil
 	status := http.StatusOK
 	if !redisHealthy || activeErr != nil {
 		status = http.StatusServiceUnavailable
 	}
-	serverLog.Printf("health status=%d redis=%t data=%t", status, redisHealthy, active.Generation != "")
+	serverLog.Printf("health status=%d redis=%t data=%t", status, redisHealthy, active.Available)
 	payload := map[string]any{
 		"status": "healthy",
 		"redis":  map[string]any{"connected": redisHealthy},
-		"data":   map[string]any{"available": active.Generation != "", "rebuildRequired": active.Generation == ""},
+		"data":   map[string]any{"available": active.Available, "rebuildRequired": !active.Available},
 	}
 	if !redisHealthy {
 		payload["status"] = "unhealthy"
@@ -771,7 +775,6 @@ func (a *App) health(response http.ResponseWriter, request *http.Request) {
 			rowCount += count
 		}
 		payload["revision"] = active.Revision
-		payload["generation"] = active.Generation
 		payload["counts"] = active.Counts
 		payload["sourceCount"] = len(active.Counts)
 		payload["rowCount"] = rowCount
@@ -784,9 +787,9 @@ func (a *App) health(response http.ResponseWriter, request *http.Request) {
 func (a *App) readiness(response http.ResponseWriter, request *http.Request) {
 	ctx, cancel := context.WithTimeout(request.Context(), 3*time.Second)
 	defer cancel()
-	active, activeErr := a.dashboardDatabase().Active(ctx)
+	active, activeErr := a.dashboardState(ctx)
 	redisHealthy := a.store.Ping(ctx) == nil
-	ready := redisHealthy && activeErr == nil && active.Generation != ""
+	ready := redisHealthy && activeErr == nil && active.Available
 	status := http.StatusOK
 	if !ready {
 		status = http.StatusServiceUnavailable
@@ -795,8 +798,8 @@ func (a *App) readiness(response http.ResponseWriter, request *http.Request) {
 		"ready": ready,
 		"redis": map[string]any{"connected": redisHealthy},
 		"data": map[string]any{
-			"available":       active.Generation != "",
-			"rebuildRequired": active.Generation == "",
+			"available":       active.Available,
+			"rebuildRequired": !active.Available,
 		},
 	})
 }
@@ -819,7 +822,7 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 	}
 	response.Header().Set("Content-Type", "text/event-stream")
 	response.Header().Set("Connection", "keep-alive")
-	active, _ := a.dashboardDatabase().Active(request.Context())
+	active, _ := a.dashboardState(request.Context())
 	allowHealth := a.adminAuthorized(request)
 	healthRevision, _ := a.ingestionHealthRevision(request.Context(), allowHealth)
 	writeEvent(response, active.Revision, healthRevision)
@@ -844,7 +847,7 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 				lastHealthRevision = healthRevision
 			}
 		case <-poll.C:
-			active, err := a.dashboardDatabase().Active(request.Context())
+			active, err := a.dashboardState(request.Context())
 			healthRevision, healthErr := a.ingestionHealthRevision(request.Context(), allowHealth)
 			if err == nil && healthErr == nil &&
 				(active.Revision != lastRevision || healthRevision != lastHealthRevision) {
@@ -972,10 +975,11 @@ type queryResponse struct {
 }
 
 func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollectionHealth bool) (queryResponse, int, error) {
-	active, err := a.dashboardDatabase().Active(ctx)
-	if err != nil || active.Generation == "" {
+	snapshot, err := a.dashboardDatabase().Open(ctx)
+	if err != nil || snapshot == nil || !snapshot.State().Available {
 		return queryResponse{}, http.StatusServiceUnavailable, errors.New("dashboard data is unavailable")
 	}
+	active := snapshot.State()
 	evaluatedAt := evaluationTime(active)
 	healthRevision := int64(0)
 	if allowCollectionHealth {
@@ -1008,8 +1012,8 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 		}
 	}
 	started := time.Now()
-	loader := &generationLoader{
-		ctx: ctx, store: a.store, database: a.database, generation: active.Generation,
+	loader := &databaseLoader{
+		ctx: ctx, store: a.store, snapshot: snapshot,
 		app: a, allowCollectionHealth: allowCollectionHealth,
 	}
 	sources, metrics, err := a.dashboardDatabase().ExecuteQueries(definitions, requested, loader)
@@ -1036,16 +1040,15 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 	}, http.StatusOK, nil
 }
 
-type generationLoader struct {
+type databaseLoader struct {
 	ctx                   context.Context
 	store                 *redisx.Store
-	database              dashboarddb.Database
-	generation            string
+	snapshot              dashboarddb.Snapshot
 	app                   *App
 	allowCollectionHealth bool
 }
 
-func (loader *generationLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
+func (loader *databaseLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
 	if name == collectionHealthSourceName {
 		source, err := loader.app.collectionHealthSource(loader.ctx, loader.allowCollectionHealth)
 		return source, model.Metrics{}, err
@@ -1059,9 +1062,9 @@ func (loader *generationLoader) LoadSource(name string, definition *query.Defini
 		// The marketplace catalog is never stored as an ingested Redis source:
 		// it is resolved (and cached) transparently here so every query-engine
 		// caller sees an ordinary source, with no secrets ever leaving this call.
-		return marketplaceSource(loader.ctx, loader.store, loader.generation), model.Metrics{}, nil
+		return marketplaceSource(loader.ctx, loader.store, strconv.FormatInt(loader.snapshot.State().Revision, 10)), model.Metrics{}, nil
 	}
-	source, metrics, err := loader.database.LoadSource(loader.ctx, loader.generation, name, definition)
+	source, metrics, err := loader.snapshot.LoadSource(loader.ctx, name, definition)
 	if errors.Is(err, dashboarddb.ErrSourceUnavailable) {
 		return unavailableSource(name), metrics, nil
 	}
@@ -1122,12 +1125,12 @@ func paginate(source model.Source, revision string, page paginationRequest) (mod
 }
 
 func (a *App) diagnostics(response http.ResponseWriter, request *http.Request) {
-	active, err := a.dashboardDatabase().Active(request.Context())
-	if err != nil || active.Generation == "" {
+	snapshot, err := a.dashboardDatabase().Open(request.Context())
+	if err != nil || snapshot == nil || !snapshot.State().Available {
 		writeError(response, http.StatusServiceUnavailable, "dashboard data is unavailable")
 		return
 	}
-	diagnostics, err := a.dashboardDatabase().Diagnostics(request.Context(), active.Generation)
+	diagnostics, err := snapshot.Diagnostics(request.Context())
 	if err != nil {
 		writeError(response, http.StatusServiceUnavailable, "dashboard diagnostics are unavailable")
 		return
@@ -1137,7 +1140,7 @@ func (a *App) diagnostics(response http.ResponseWriter, request *http.Request) {
 }
 
 func (a *App) refresh(response http.ResponseWriter, request *http.Request) {
-	active, err := a.dashboardDatabase().Active(request.Context())
+	active, err := a.dashboardState(request.Context())
 	if err != nil {
 		writeError(response, http.StatusServiceUnavailable, "dashboard data is unavailable")
 		return
@@ -1150,7 +1153,18 @@ func (a *App) refresh(response http.ResponseWriter, request *http.Request) {
 	})
 }
 
-func evaluationTime(active model.ActiveGeneration) string {
+func (a *App) dashboardState(ctx context.Context) (dashboarddb.State, error) {
+	snapshot, err := a.dashboardDatabase().Open(ctx)
+	if err != nil {
+		return dashboarddb.State{}, err
+	}
+	if snapshot == nil {
+		return dashboarddb.State{}, errors.New("dashboard data is unavailable")
+	}
+	return snapshot.State(), nil
+}
+
+func evaluationTime(active dashboarddb.State) string {
 	if !active.EvaluatedAt.IsZero() {
 		return active.EvaluatedAt.UTC().Format(time.RFC3339Nano)
 	}

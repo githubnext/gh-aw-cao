@@ -2785,9 +2785,6 @@
             "format": "int64",
             "description": "Details are present only for an authorized caller."
           },
-          "generation": {
-            "type": "string"
-          },
           "counts": {
             "type": "object",
             "unevaluatedProperties": {
@@ -3572,9 +3569,6 @@
             "type": "string"
           },
           "completedAt": {
-            "type": "string"
-          },
-          "generation": {
             "type": "string"
           },
           "revision": {

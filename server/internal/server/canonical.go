@@ -20,14 +20,14 @@ type canonicalService struct {
 var errCanonicalEntityNotFound = errors.New("canonical entity was not found")
 
 func (service canonicalService) rows(ctx context.Context, source string) ([]model.Row, error) {
-	active, err := service.database.Active(ctx)
+	snapshot, err := service.database.Open(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if active.Generation == "" {
+	if !snapshot.State().Available {
 		return nil, errors.New("dashboard data is unavailable")
 	}
-	sources, _, err := service.database.ExecuteQueries(nil, []string{source}, &generationLoader{ctx: ctx, database: service.database, generation: active.Generation})
+	sources, _, err := service.database.ExecuteQueries(nil, []string{source}, &databaseLoader{ctx: ctx, snapshot: snapshot})
 	if err != nil {
 		return nil, err
 	}
@@ -35,11 +35,11 @@ func (service canonicalService) rows(ctx context.Context, source string) ([]mode
 }
 
 func (service canonicalService) filteredRows(ctx context.Context, source string, filters map[string]any) ([]model.Row, error) {
-	active, err := service.database.Active(ctx)
+	snapshot, err := service.database.Open(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if active.Generation == "" {
+	if !snapshot.State().Available {
 		return nil, errors.New("dashboard data is unavailable")
 	}
 	predicates := make([]query.Predicate, 0, len(filters))
@@ -53,7 +53,7 @@ func (service canonicalService) filteredRows(ctx context.Context, source string,
 			Predicates: predicates,
 		},
 	}
-	sources, _, err := service.database.ExecuteQueries([]query.Definition{definition}, []string{definition.Name}, &generationLoader{ctx: ctx, database: service.database, generation: active.Generation})
+	sources, _, err := service.database.ExecuteQueries([]query.Definition{definition}, []string{definition.Name}, &databaseLoader{ctx: ctx, snapshot: snapshot})
 	if err != nil {
 		return nil, err
 	}

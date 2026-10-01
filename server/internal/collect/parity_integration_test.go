@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/dashboarddb"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 )
 
@@ -30,7 +31,7 @@ const databaseQueries = "../../../dashboard/site/src/data/queries/database.json"
 // layout.
 func TestProfilesProduceIdenticalCanonicalRecords(t *testing.T) {
 	actionsStore, ctx := integrationStore(t)
-	actions, err := ingest.Run(ctx, actionsStore, publishedSnapshot, ingest.Options{
+	actions, err := ingest.Run(ctx, dashboarddb.NewRedis(actionsStore), publishedSnapshot, ingest.Options{
 		DatabaseQueriesPath: databaseQueries, Force: true,
 	})
 	if err != nil {
