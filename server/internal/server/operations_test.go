@@ -168,6 +168,23 @@ func TestEmptyRedisIsHealthyButNotReady(t *testing.T) {
 	}
 }
 
+func TestHealthReportsPostgresFailureAsUnhealthy(t *testing.T) {
+	database := integrationDatabase(t)
+	if err := database.Close(); err != nil {
+		t.Fatal(err)
+	}
+	app := &App{store: redisx.NewStore(emptyRedisClient{}, "empty-test"), database: database}
+	response := httptest.NewRecorder()
+	app.health(response, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/health", nil))
+	var health map[string]any
+	if err := json.Unmarshal(response.Body.Bytes(), &health); err != nil {
+		t.Fatal(err)
+	}
+	if response.Code != http.StatusServiceUnavailable || health["status"] != "unhealthy" {
+		t.Fatalf("Postgres failure must report unhealthy: status=%d payload=%v", response.Code, health)
+	}
+}
+
 func TestHostedRebuildRequiresExplicitAdministrator(t *testing.T) {
 	var branches []string
 	app := &App{

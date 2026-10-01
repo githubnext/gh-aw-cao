@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"testing"
 	"time"
@@ -13,7 +14,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func TestCanonicalAPIQueriesMatchPostgresIngestion(t *testing.T) {
@@ -42,9 +43,7 @@ func TestCanonicalAPIQueriesMatchPostgresIngestion(t *testing.T) {
 		t.Fatal(err)
 	}
 	config.RuntimeParams["search_path"] = schema
-	dsn := stdlib.RegisterConnConfig(config)
-	defer stdlib.UnregisterConnConfig(dsn)
-	store, err := postgresx.New(ctx, dsn)
+	store, err := postgresx.NewConfig(ctx, config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,5 +109,21 @@ func TestCanonicalAPIQueriesMatchPostgresIngestion(t *testing.T) {
 	_, err = service.entity(ctx, "repositories", "repository:not-found")
 	if err != errCanonicalEntityNotFound {
 		t.Fatal(err)
+	}
+
+	app := &App{database: store, databaseQueries: append([]query.Definition{{
+		Name: "$records", From: "$domains",
+		Union: []string{"$tools", "$skills", "$friction", "$audits", "$issues"},
+	}}, definitions...)}
+	response, status, err := app.executeQuery(ctx, queryRequest{
+		SourceNames: []string{"runs", "overview-runs", "outcomes", "mcp-calls"},
+	}, false)
+	if err != nil || status != http.StatusOK {
+		t.Fatalf("Postgres dashboard query failed: status=%d error=%v", status, err)
+	}
+	for _, name := range []string{"runs", "overview-runs", "outcomes", "mcp-calls"} {
+		if len(response.Sources[name].Rows) != 1 {
+			t.Errorf("Postgres dashboard source %q has %d rows, want 1", name, len(response.Sources[name].Rows))
+		}
 	}
 }

@@ -15,7 +15,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 const deployedSubset = "../../testdata/deployed-subset"
@@ -197,9 +197,7 @@ func ingestTestStore(t *testing.T) (context.Context, *postgresx.Store) {
 		t.Fatal(err)
 	}
 	config.RuntimeParams["search_path"] = schema
-	dsn := stdlib.RegisterConnConfig(config)
-	t.Cleanup(func() { stdlib.UnregisterConnConfig(dsn) })
-	store, err := postgresx.New(ctx, dsn)
+	store, err := postgresx.NewConfig(ctx, config)
 	if err != nil {
 		t.Fatal(err)
 	}

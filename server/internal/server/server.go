@@ -758,7 +758,7 @@ func (a *App) health(response http.ResponseWriter, request *http.Request) {
 		"redis":  map[string]any{"connected": redisHealthy},
 		"data":   map[string]any{"available": active.Ready, "rebuildRequired": !active.Ready},
 	}
-	if !redisHealthy {
+	if status != http.StatusOK {
 		payload["status"] = "unhealthy"
 	}
 	detailsAuthorized := a.authorized(request) || (a.oauth != nil && a.oauth.requestHasSession(request))

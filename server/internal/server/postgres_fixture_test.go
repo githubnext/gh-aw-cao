@@ -11,7 +11,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 // constructorDatabase satisfies New's database requirement where no dashboard data is read.
@@ -39,14 +39,12 @@ func integrationDatabase(t *testing.T) *postgresx.Store {
 		t.Fatal(err)
 	}
 	config.RuntimeParams["search_path"] = schema
-	dsn := stdlib.RegisterConnConfig(config)
-	store, err := postgresx.New(ctx, dsn)
+	store, err := postgresx.NewConfig(ctx, config)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
 		_ = store.Close()
-		stdlib.UnregisterConnConfig(dsn)
 		dropCtx, dropCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer dropCancel()
 		if _, err := admin.ExecContext(dropCtx, "DROP SCHEMA "+schema+" CASCADE"); err != nil {
