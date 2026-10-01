@@ -60,7 +60,6 @@ func TestStoreIntegration(t *testing.T) {
 	}
 	defer store.Close()
 
-	// Start from a known state even when the test database has previous runs.
 	initial, err := store.State(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -73,6 +72,13 @@ func TestStoreIntegration(t *testing.T) {
 	}
 	evaluatedAt := time.Now().UTC().Truncate(time.Microsecond)
 	sources := map[string]model.Source{
+		"$runs": {
+			Source: "$runs",
+			Rows: []model.Row{
+				{"id": "raw-1", "nested": map[string]any{"large": json.Number("9007199254740993")}},
+			},
+			Metadata: model.Metadata{"kind": "canonical"},
+		},
 		"repositories": {
 			Source: "repositories",
 			Rows: []model.Row{
@@ -97,8 +103,12 @@ func TestStoreIntegration(t *testing.T) {
 	}
 	if !state.Ready || state.Revision != revision || state.DataRevision != "test-revision" ||
 		!state.EvaluatedAt.Equal(evaluatedAt) ||
-		!reflect.DeepEqual(state.Counts, map[string]int{"repositories": 2, "empty": 0}) {
+		!reflect.DeepEqual(state.Counts, map[string]int{"$runs": 1, "repositories": 2, "empty": 0}) {
 		t.Fatalf("unexpected state: %+v", state)
+	}
+	raw, _, err := store.LoadSource(ctx, "$runs", nil)
+	if err != nil || !reflect.DeepEqual(raw.Rows, sources["$runs"].Rows) {
+		t.Fatalf("raw canonical source: %+v, %v", raw, err)
 	}
 	loaded, metrics, err := store.LoadSource(ctx, "repositories", &query.Definition{From: "repositories", Limit: intPtr(1)})
 	if err != nil {
@@ -115,6 +125,11 @@ func TestStoreIntegration(t *testing.T) {
 	results, _, err := query.New(sourceLoader{store: store, ctx: ctx}).Execute(definitions, []string{"selected"})
 	if err != nil || len(results["selected"].Rows) != 1 || results["selected"].Rows[0]["id"] != "b" {
 		t.Fatalf("Go query result: %+v, %v", results, err)
+	}
+	rawResults, _, err := query.New(sourceLoader{store: store, ctx: ctx}).Execute(
+		[]query.Definition{{Name: "raw", From: "$runs"}}, []string{"raw"})
+	if err != nil || !reflect.DeepEqual(rawResults["raw"].Rows, raw.Rows) {
+		t.Fatalf("raw query result: %+v, %v", rawResults, err)
 	}
 	empty, _, err := store.LoadSource(ctx, "empty", nil)
 	if err != nil || len(empty.Rows) != 0 {
