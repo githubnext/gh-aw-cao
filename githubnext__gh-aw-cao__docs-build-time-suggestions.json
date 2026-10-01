@@ -1,6 +1,6 @@
 {
   "source_sha": "f3357f049516d676bc1b1dc1ae7ee857ae814da5",
-  "next_category": "dependency installation and caching",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
       "evaluated_at": "2026-10-01T13:58:00Z",
@@ -219,6 +219,23 @@
         36894736186
       ],
       "outcome": "no_actionable_improvement: evaluated scheduling, concurrency, and avoidable rebuilds across the latest 8 successful docs.yml runs from 2026-10-01T16:48Z through 2026-10-01T17:36Z. Trusted Actions metadata showed full workflow wall time median 71.0s with p90 104.0s across all 8 successes; comparable build-job median 50.5s with p90 57.0s across all 8 build executions; schedule-freshness median 8.0s with p90 8.0s across the 4 scheduled runs; and deploy median 22.5s with p90 44.0s across the 4 runs that actually deployed. Build-step medians remained 12.0s for Build documentation, 6.5s for Restore node_modules, 2.5s for Restore cached CAO Dashboard, and 9.0s for Upload Pages artifact. Trusted logs for representative docs run 36900418160 confirmed repeated cache hits for actions/setup-node npm cache, the explicit node_modules cache, and the central-agentic-ops-dashboard cache; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact stayed skipped when build executed. In the current scheduling/concurrency/avoidable-rebuilds category, schedule-freshness already short-circuited stale schedule work in 4 scheduled runs before build and no successful run in the sample rebuilt the same revision redundantly enough to save >=60s by further trigger changes. Cross-checking recent cao-dashboard workflow behavior from workflow source and latest completed runs still points to the standing reusable-dashboard bottleneck upstream rather than docs scheduling: docs.yml reuses central-agentic-ops-dashboard via a cache hit in 2-4s, while packaging and deployment remained below threshold even on slower schedule publishes. That qualifying reusable-dashboard optimization is already represented in repository memory by suggestion fingerprint reusable-dashboard-skip-reupgrade-of-validated-activity-cache, so no new non-duplicate recommendation is actionable in this cycle.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-01T17:55:30Z",
+      "worker_run_id": "36902628154",
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        36902697103,
+        36902158208,
+        36900418160,
+        36899037795,
+        36898662050,
+        36896356098,
+        36895781309,
+        36895031338
+      ],
+      "outcome": "no_actionable_improvement: evaluated reusable dashboard generation with 7 successful docs.yml runs from 2026-10-01T17:01Z through 2026-10-01T17:54Z and 2 comparable successful cao-dashboard.yml producer runs in the same evidence window. Trusted docs metadata showed full workflow wall time median 77.0s with p90 97.0s; comparable build-job median 50.0s with p90 54.0s; schedule-freshness median 7.0s with p90 8.4s; and deploy median 8.0s with p90 21.2s. Build-step medians remained 12.0s for Build documentation, 7.0s for Restore node_modules, 3.0s for Restore cached CAO Dashboard, and 9.0s for Upload Pages artifact, while Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on every sampled successful docs build, confirming cache hits. Cross-checking successful cao-dashboard runs 36895781309 and 36895031338 still showed the dominant repeated upstream cost is Upgrade fallback activity data at 84s and 90s respectively, while Assemble Dashboard Language site took only 2-3s and Upload dashboard artifact 8s. Bounded trusted logs for run 36895781309 also confirmed the producer still recopied a 454.7 MiB gh-aw-logs.sqlite plus 121 activity shards totaling 290.0 MiB into the artifact before uploading a 43.8 MiB archive. That qualifying reusable-dashboard optimization is already represented by suggestion fingerprint reusable-dashboard-skip-reupgrade-of-validated-activity-cache in repository memory, and this run hit GitHub API rate limiting before it could verify whether an open issue already exists or whether source/timing evidence materially changed enough to justify a duplicate. To avoid repeating an unverified suggestion, no new recommendation is actionable in this cycle.",
       "suggestion_fingerprint": null
     }
   ]
