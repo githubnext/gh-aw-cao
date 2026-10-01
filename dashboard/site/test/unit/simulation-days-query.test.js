@@ -96,6 +96,19 @@ describe('simulation-days intrinsic query source', () => {
       .toEqual({ day: 30, date: '2025-01-30T00:00:00.000Z', score: 60 });
   });
 
+  it('keeps other missing worker inputs unavailable', () => {
+    const response = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (
+      processDataRequest({
+        operation: 'execute-dashboard-queries',
+        sources: {},
+        queries: [{ name: 'missing-runs', from: 'runs' }, query],
+        sourceNames: ['missing-runs', 'simulated-series']
+      })
+    );
+    expect(response['missing-runs'].metadata.availability).toBe('unavailable');
+    expect(response['simulated-series'].metadata.availability).toBe('available');
+  });
+
   it('accepts a view querying the intrinsic source through the document validator', () => {
     const document = {
       'language-version': '0.1.0',
