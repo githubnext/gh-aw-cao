@@ -2,14 +2,101 @@ package ingest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
+
+type failFirstRowBatch struct {
+	*redisx.Client
+}
+
+type ageFirstGeneration struct {
+	*redisx.Client
+	registryWrites int
+}
+
+func (client *ageFirstGeneration) Do(ctx context.Context, command ...string) (any, error) {
+	if len(command) >= 4 && command[0] == "ZADD" && strings.HasSuffix(command[1], ":generations") {
+		client.registryWrites++
+		if client.registryWrites == 1 {
+			command[2] = "1"
+		}
+	}
+	return client.Client.Do(ctx, command...)
+}
+
+func (client failFirstRowBatch) DoMany(ctx context.Context, commands [][]string) ([]any, error) {
+	if len(commands) != 0 && len(commands[0]) > 1 && strings.Contains(commands[0][1], "JSON.SET") {
+		return nil, errors.New("injected row write failure")
+	}
+	return client.Client.DoMany(ctx, commands)
+}
+
+func TestGenerationGraceStartsAtActivation(t *testing.T) {
+	ctx, _, client, namespace := ingestTestStore(t, "generation-grace")
+	aging := &ageFirstGeneration{Client: client}
+	store := redisx.NewStore(aging, namespace)
+	result, err := Run(ctx, store, "../../testdata/deployed-subset", Options{
+		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
+		Force:               true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if aging.registryWrites != 2 {
+		t.Fatalf("generation registered %d times, want staging and activation", aging.registryWrites)
+	}
+	score, err := client.Do(ctx, "ZSCORE", namespace+":generations", result.Generation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	milliseconds, err := strconv.ParseInt(fmt.Sprint(score), 10, 64)
+	if err != nil || milliseconds < time.Now().Add(-time.Minute).UnixMilli() {
+		t.Fatalf("generation grace was not refreshed before activation: %v %v", score, err)
+	}
+}
+
+func TestFailedProjectionDiscardsJSONIndexes(t *testing.T) {
+	ctx, _, client, namespace := ingestTestStore(t, "failed-json")
+	store := redisx.NewStore(failFirstRowBatch{client}, namespace)
+	if _, err := Run(ctx, store, "../../testdata/deployed-subset", Options{
+		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
+		Force:               true,
+	}); err == nil {
+		t.Fatal("expected staged row write to fail")
+	}
+	active, err := store.Active(ctx)
+	if err != nil || active.Generation != "" {
+		t.Fatalf("failed projection was activated: %+v %v", active, err)
+	}
+	registered, err := client.Do(ctx, "ZCARD", namespace+":generations")
+	if err != nil || registered != int64(0) {
+		t.Fatalf("failed generation remained registered: %v %v", registered, err)
+	}
+	if count := keyCount(ctx, t, client, namespace+":g:*"); count != 0 {
+		t.Fatalf("failed generation left %d keys", count)
+	}
+	indexes, err := client.Do(ctx, "FT._LIST")
+	if err != nil {
+		t.Fatal(err)
+	}
+	names, err := redisx.Strings(indexes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range names {
+		if strings.HasPrefix(name, namespace+":g:") {
+			t.Fatalf("failed generation left an index: %s", name)
+		}
+	}
+}
 
 // Every projection writes a complete new generation. Without reclamation a
 // deployment that projects frequently exhausts a NoEviction Redis, so this

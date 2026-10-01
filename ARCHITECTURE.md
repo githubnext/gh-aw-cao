@@ -114,11 +114,13 @@ normalized run and record JSONL; browser ingestion fails closed rather than
 falling back to raw Activity JSONL. Static-browser download, normalization, persistence, and queries run in a
 dedicated Web Worker. The optional Redis profile ingests the same deployed
 dashboard artifact in a Go HTTP(S) server, keeps Redis credentials server-side,
-executes Dashboard Language in Go against Redis row sets, and returns only
-canonical or explicitly registered bounded runtime-source query payloads to the
-browser. It deliberately uses only core Redis commands, not RediSearch or other
-Redis modules, so the hosted cost floor is storage capacity rather than module
-support. Its local mode remains loopback-only. Its host-neutral mode uses
+executes Dashboard Language in Go against generation-scoped RedisJSON documents
+and RediSearch indexes, and returns only canonical or explicitly registered
+bounded runtime-source query payloads to the browser. Compatible direct-source
+equality predicates select bounded indexed candidates before the Go engine
+evaluates the full query; other operations use bounded Go fallback. Issue
+status overlays and Upstash's single-session profile retain core Redis hashes.
+Its local mode remains loopback-only. Its host-neutral mode uses
 GitHub OAuth and explicit organization or team authorization, verifies and
 deduplicates GitHub webhooks, and rebuilds through a staged generation before
 atomically changing the active pointer.

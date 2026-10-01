@@ -119,7 +119,7 @@ func TestNativeTableCountRejectsChangedSemantics(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(client.commands, []string{"HGET", "SMEMBERS"}) ||
+			if !reflect.DeepEqual(client.commands, []string{"HGET", "HGET", "SMEMBERS"}) ||
 				len(metrics.PushedDown) != 0 {
 				t.Fatalf("unsafe count pushdown: commands=%v metrics=%+v", client.commands, metrics)
 			}

@@ -29,7 +29,7 @@ For an operational campaign, apply `skills/create-cao-campaign/SKILL.md`. It def
 ## Dashboard contract
 
 - Install Activity and Dashboard together through the root CAO installer. Do not document direct component-manifest installation as complete because it omits canonical runtime materialization.
-- Keep `.github/workflows/cao-dashboard.yml` as the single dashboard builder and optional Pages publisher. It must support manual dispatch and rebuild after changes to CAO policy or dashboard campaign files, always upload the reusable dashboard artifact, honor `control-plane.campaigns.dashboard.deploy` (default `true`) for Pages publication, pass `enablement: false` to `actions/configure-pages`, and must not add a schedule or another enable variable.
+- Keep `.github/workflows/cao-dashboard.yml` as the single dashboard builder and optional Pages publisher. It must support manual dispatch, rebuild after changes to CAO policy or dashboard campaign files, and rebuild after a successful default-branch Activity run. It must always upload the reusable dashboard artifact, honor `control-plane.campaigns.dashboard.deploy` (default `true`) for Pages publication, pass `enablement: false` to `actions/configure-pages`, and must not add a schedule or another enable variable.
 - Keep report source modules under `dashboard/report/`; the CAO materializer preserves those canonical paths in control repositories.
 - Restore the complete collected-data snapshot from the activity cache; do not recreate collection or cache publication in the dashboard builder.
 - Keep the production renderer under `dashboard/site/`; the CAO materializer preserves that canonical path in control repositories.

@@ -14,7 +14,7 @@ The deployment uses the existing host-neutral `serve-hosted` profile:
 
 - The CAO server connects to Upstash over the Redis TCP protocol with TLS.
 - The browser connects only to the CAO server. It never receives the Upstash endpoint or credentials.
-- The server uses core Redis commands and Lua scripts. It doesn't use the Upstash REST API or require Redis modules.
+- This single-session provider retains core Redis hash rows and Lua scripts because Upstash does not offer the RediSearch `FT.*` commands used by the Redis 8 profile. It doesn't use the Upstash REST API or require Redis modules.
 - The Upstash `cao.json` example serializes every Redis operation through one TCP session. If that session is lost, the client fails closed until the process restarts.
 - Each process start uses a fresh internal Redis namespace, so active session and projection state from an earlier TCP session can't reappear after a restart. The encrypted pending-revocation queue uses a stable deployment-scoped prefix so failed GitHub token revocations remain retryable after restart.
 - Upstash stores a disposable projection of the dashboard data, server-side sessions, rate limits, webhook delivery markers, and rebuild coordination state.

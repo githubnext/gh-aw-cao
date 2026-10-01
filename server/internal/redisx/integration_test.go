@@ -47,6 +47,12 @@ func TestRedisStackIntegration(t *testing.T) {
 		}
 	}
 	generation := "integration-" + time.Now().UTC().Format("20060102150405.000000000")
+	t.Cleanup(func() {
+		cleanup, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		_ = store.DropGeneration(cleanup, generation)
+		_ = otherStore.DropGeneration(cleanup, generation)
+	})
 	source := model.Source{
 		Source:   "integration-runs",
 		Rows:     []model.Row{{"id": "1", "conclusion": "success", "duration": 5}},
@@ -102,11 +108,7 @@ func TestRedisStackIntegration(t *testing.T) {
 	}
 }
 
-// Rows are stored as a single raw document. The previous implementation also
-// wrote every scalar field as its own hash field so RediSearch could index it,
-// which doubled a generation's memory to serve a pushdown path no canonical
-// query was eligible for. This guards that the duplication stays gone.
-func TestRowsAreStoredOnlyAsRawDocuments(t *testing.T) {
+func TestRedisJSONSearchIndexAndFallback(t *testing.T) {
 	rawURL := os.Getenv("REDIS_URL")
 	if rawURL == "" {
 		t.Skip("REDIS_URL is not set")
@@ -115,19 +117,21 @@ func TestRowsAreStoredOnlyAsRawDocuments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	namespace, err := NormalizeNamespace("raw-only-" + strconv.FormatInt(time.Now().UnixNano(), 36))
+	namespace, err := NormalizeNamespace("json-search-" + strconv.FormatInt(time.Now().UnixNano(), 36))
 	if err != nil {
 		t.Fatal(err)
 	}
 	store := NewStore(client, namespace)
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	generation := "raw-only"
+	generation := "generation"
 	source := model.Source{
 		Source: "runs",
 		Rows: []model.Row{
-			{"id": "1", "conclusion": "success"},
-			{"id": "2", "conclusion": "failure"},
+			{"id": "1", "conclusion": "success", "workflow-role": "worker", "repositoryFullName": "owner/repo-a"},
+			{"id": "2", "conclusion": "failure", "workflow-role": "orchestrator", "repositoryFullName": "owner/repo-b"},
+			{"id": "3", "conclusion": "failure", "workflow-role": "worker", "repositoryFullName": "owner/repo-a"},
+			{"id": 4, "conclusion": "success", "workflow-role": "worker", "repositoryFullName": "owner/repo-a"},
 		},
 	}
 	if err := store.PutSource(ctx, generation, source); err != nil {
@@ -141,40 +145,64 @@ func TestRowsAreStoredOnlyAsRawDocuments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(keys) != 2 {
-		t.Fatalf("got %d row keys, want 2", len(keys))
+	if len(keys) != 4 {
+		t.Fatalf("got %d row keys, want 4", len(keys))
 	}
 	for _, key := range keys {
-		value, err := client.Do(ctx, "HKEYS", key)
+		value, err := client.Do(ctx, "TYPE", key)
 		if err != nil {
 			t.Fatal(err)
 		}
-		fields, err := Strings(value)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(fields) != 1 || fields[0] != "raw" {
-			t.Fatalf("row %s holds %v, want only the raw document", key, fields)
+		if value != "ReJSON-RL" {
+			t.Fatalf("row has type %v, want RedisJSON", value)
 		}
 	}
-	// Filtering still works: the query engine evaluates the definition.
 	definition := query.Definition{
 		Name: "failures",
 		From: "runs",
-		Filter: &query.Filter{Predicates: []query.Predicate{{
-			Field: "conclusion",
-			In:    []any{"failure"},
-		}}},
+		Filter: &query.Filter{Predicates: []query.Predicate{
+			{Field: "conclusion", In: []any{"failure"}},
+			{Field: "workflow-role", Equals: "worker"},
+		}},
 	}
 	loaded, metrics, err := store.LoadSource(ctx, generation, "runs", &definition)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(loaded.Rows) != 2 {
-		t.Fatalf("got %d rows, want both rows returned for engine evaluation", len(loaded.Rows))
+		t.Fatalf("got %d candidate rows, want two failures", len(loaded.Rows))
 	}
-	if len(metrics.PushedDown) != 0 {
-		t.Fatalf("reported pushed-down operations: %#v", metrics.PushedDown)
+	if len(metrics.PushedDown) != 1 || metrics.PushedDown[0] != "indexed-candidates" || metrics.RedisRows != 2 {
+		t.Fatalf("index not used: %+v", metrics)
+	}
+	results, _, err := query.New(storeQueryLoader{store, ctx}).Execute([]query.Definition{definition}, []string{"failures"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results["failures"].Rows) != 1 || results["failures"].Rows[0]["id"] != "3" {
+		t.Fatalf("residual predicate not applied: %#v", results["failures"].Rows)
+	}
+	byRole := query.Definition{
+		Name: "workers", From: "runs",
+		Filter: &query.Filter{Predicates: []query.Predicate{{Field: "workflow-role", Equals: "worker"}}},
+	}
+	loaded, metrics, err = store.LoadSource(ctx, generation, "runs", &byRole)
+	if err != nil || len(loaded.Rows) != 3 || len(metrics.PushedDown) != 1 {
+		t.Fatalf("hyphenated JSON field was not indexed: rows=%d metrics=%+v err=%v", len(loaded.Rows), metrics, err)
+	}
+	byRepository := query.Definition{
+		Name: "repository-runs", From: "runs",
+		Filter: &query.Filter{Predicates: []query.Predicate{{Field: "repositoryFullName", Equals: "owner/repo-a"}}},
+	}
+	loaded, metrics, err = store.LoadSource(ctx, generation, "runs", &byRepository)
+	if err != nil || len(loaded.Rows) != 3 || len(metrics.PushedDown) != 1 {
+		t.Fatalf("escaped repository tag was not indexed: rows=%d metrics=%+v err=%v", len(loaded.Rows), metrics, err)
+	}
+	unsafe := definition
+	unsafe.Filter = &query.Filter{Predicates: []query.Predicate{{Field: "conclusion", Equals: "unknown"}}}
+	loaded, metrics, err = store.LoadSource(ctx, generation, "runs", &unsafe)
+	if err != nil || len(loaded.Rows) != 4 || len(metrics.PushedDown) != 0 {
+		t.Fatalf("unsupported filter did not fall back: rows=%d metrics=%+v err=%v", len(loaded.Rows), metrics, err)
 	}
 
 	countDefinition := query.Definition{
@@ -191,8 +219,90 @@ func TestRowsAreStoredOnlyAsRawDocuments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(counted.Rows) != 1 || counted.Rows[0]["records"] != 2 ||
+	if len(counted.Rows) != 1 || counted.Rows[0]["records"] != 4 ||
 		countMetrics.RedisRows != 0 || countMetrics.RedisCommands != 2 {
 		t.Fatalf("unexpected Redis native count: rows=%#v metrics=%+v", counted.Rows, countMetrics)
+	}
+	if err := store.DropGeneration(ctx, generation); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.DropGeneration(ctx, generation); err != nil {
+		t.Fatalf("generation cleanup is not idempotent: %v", err)
+	}
+	for _, key := range keys {
+		value, err := client.Do(ctx, "EXISTS", key)
+		if err != nil || value != int64(0) {
+			t.Fatalf("row remains after dropping generation: %v %v", value, err)
+		}
+	}
+	if err := store.PutSource(ctx, "numeric-only", model.Source{
+		Source: "numeric", Rows: []model.Row{{"id": 5, "observed-runs": 1}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	numeric, _, err := store.LoadSource(ctx, "numeric-only", "numeric", nil)
+	if err != nil || len(numeric.Rows) != 1 {
+		t.Fatalf("unindexed JSON source was not readable: %#v %v", numeric.Rows, err)
+	}
+	if err := store.DropGeneration(ctx, "numeric-only"); err != nil {
+		t.Fatalf("unindexed JSON source was not reclaimed: %v", err)
+	}
+}
+
+func TestLegacyAndUpstashHashSourcesRemainReadable(t *testing.T) {
+	rawURL := os.Getenv("REDIS_URL")
+	if rawURL == "" {
+		t.Skip("REDIS_URL is not set")
+	}
+	client, err := New(rawURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := NewProcessIsolatedStore(client, "integration-hash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		cleanup, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		_ = store.DropGeneration(cleanup, "generation")
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	source := model.Source{
+		Source: "runs", Rows: []model.Row{{"id": "1", "conclusion": "success"}, {"id": "2", "conclusion": "failure"}},
+	}
+	if err := store.PutSource(ctx, "generation", source); err != nil {
+		t.Fatal(err)
+	}
+	keys, err := client.Do(ctx, "SMEMBERS", store.sourceSetKey("generation", "runs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	members, err := Strings(keys)
+	if err != nil || len(members) != 2 {
+		t.Fatalf("unexpected row keys: %v %v", members, err)
+	}
+	for _, key := range members {
+		kind, err := client.Do(ctx, "TYPE", key)
+		if err != nil || kind != "hash" {
+			t.Fatalf("Upstash row is not a hash: %v %v", kind, err)
+		}
+	}
+	definition := query.Definition{
+		Name: "failures", From: "runs",
+		Filter: &query.Filter{Predicates: []query.Predicate{{Field: "conclusion", Equals: "failure"}}},
+	}
+	loaded, metrics, err := store.LoadSource(ctx, "generation", "runs", &definition)
+	if err != nil || len(loaded.Rows) != 2 || len(metrics.PushedDown) != 0 {
+		t.Fatalf("Upstash hash fallback failed: rows=%d metrics=%+v err=%v", len(loaded.Rows), metrics, err)
+	}
+	// An earlier deployment has metadata and hash rows but no format marker.
+	if _, err := client.Do(ctx, "HDEL", store.generationKey("generation"), "source:runs:format"); err != nil {
+		t.Fatal(err)
+	}
+	loaded, metrics, err = store.LoadSource(ctx, "generation", "runs", &definition)
+	if err != nil || len(loaded.Rows) != 2 || len(metrics.PushedDown) != 0 {
+		t.Fatalf("legacy hash fallback failed: rows=%d metrics=%+v err=%v", len(loaded.Rows), metrics, err)
 	}
 }

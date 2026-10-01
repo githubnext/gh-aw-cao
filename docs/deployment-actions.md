@@ -70,8 +70,7 @@ For more information, see [Configure authentication](authentication.md).
    1. Click **Run workflow**, then wait for the run to succeed.
 
    The dashboard build fails if no successful Activity run exists. If the run fails, see [Routine monitoring](operations.md#routine-monitoring).
-1. In the left sidebar, click **CAO Dashboard**, then click **Run workflow**.
-1. When the run finishes, open the URL from the `deploy` job. Confirm that the site shows data only from your control repository.
+1. Wait for the automatically triggered **CAO Dashboard** workflow to finish, then open the URL from its `deploy` job. Confirm that the site shows data only from your control repository.
 
 To learn how to read the dashboard, see [Dashboard](dashboard.md) and [Overview](dashboard-overview.md).
 
@@ -84,7 +83,7 @@ The CAO Dashboard workflow runs when you push changes to any of these paths on t
 - `*/dashboard.json`
 - `dashboard/**`
 
-The workflow has no schedule. To publish new evidence automatically, add a schedule or run the workflow after each Activity run.
+The workflow has no schedule. Every successful default-branch Activity run triggers a Dashboard build, so the published site follows the Activity refresh cadence without a second manual dispatch.
 
 ## Configuration reference
 
