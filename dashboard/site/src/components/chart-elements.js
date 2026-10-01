@@ -832,6 +832,9 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
         style: `--line-chart-left: ${lineChartLeft}%;`
       },
       h(
+        'div',
+        { className: 'line-chart-plot' },
+        h(
         'svg',
         {
           viewBox: '0 0 100 42',
@@ -853,13 +856,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
         h(
           'g',
           { className: 'line-chart-y-axis', 'data-chart-axis': 'y', 'aria-hidden': 'true' },
-          ...yTicks.flatMap((value, index) => {
-            const y = LINE_CHART_BOTTOM - ((value / maximum) * LINE_CHART_HEIGHT);
-            return [
-              gridLines[index],
-              h('text', { x: lineChartLeft - 1.5, y: y + 1, 'text-anchor': 'end' }, yTickLabels[index])
-            ];
-          }),
+          ...gridLines,
           h('line', {
             className: 'line-chart-axis',
             x1: lineChartLeft,
@@ -973,11 +970,12 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
               },
               h('title', null, chartPointLabel(point, unit)),
               isAreaChart
-                ? h('circle', {
+                ? h('line', {
                   className: `area-chart-point ${seriesClassName}`,
-                  cx: x,
-                  cy: markY,
-                  r: 1.25
+                  x1: x,
+                  y1: markY,
+                  x2: x + NON_SCALING_POINT_LENGTH,
+                  y2: markY
                 })
                 : isPointChart
                   ? h('circle', {
@@ -1000,7 +998,9 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
               }));
             }) : [])
           ];
-        })
+        }),
+        h('div', { className: 'line-chart-y-labels', 'aria-hidden': 'true' },
+          ...yTickLabels.map((label) => h('span', null, label)))
       ),
       hasWindowHighlight
         ? h('div', { className: 'chart-window-key', 'aria-label': 'Chart window key' },

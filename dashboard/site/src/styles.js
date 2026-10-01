@@ -782,6 +782,13 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .chart-widget svg { width: min(100%, 420px); max-height: 220px; overflow: visible; }
 .area-chart-widget, .line-chart-widget, .dot-chart-widget, .scatter-chart-widget { min-width: 0; overflow: hidden; }
 .area-chart-widget svg, .line-chart-widget svg, .dot-chart-widget svg, .scatter-chart-widget svg { width: 100%; max-height: none; }
+.line-chart-plot { position: relative; width: 100%; }
+.line-chart-plot svg { display: block; }
+.line-chart-y-labels { position: absolute; inset: 0; pointer-events: none; color: var(--muted); font-size: .6875rem; font-variant-numeric: tabular-nums; }
+.line-chart-y-labels span { position: absolute; right: calc(100% - var(--line-chart-left) + 1.5%); transform: translateY(-50%); white-space: nowrap; }
+.line-chart-y-labels span:first-child { top: 9.5238%; }
+.line-chart-y-labels span:nth-child(2) { top: 50%; }
+.line-chart-y-labels span:last-child { top: 90.4762%; }
 .pie-chart-track { stroke: var(--border-muted); }
 .pie-chart-segment { stroke: var(--accent); }
 .pie-chart-total-value { fill: var(--fg); font-size: 5px; font-weight: 700; }
@@ -841,11 +848,10 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .chart-series-12 { stroke: var(--violet); }
 .line-chart-axis { stroke: var(--border); stroke-width: 1; }
 .line-chart-grid { stroke: var(--border-muted); stroke-width: .5; stroke-dasharray: 2 2; }
-.line-chart-y-axis text { fill: var(--muted); font-size: 1.8px; font-variant-numeric: tabular-nums; }
 .histogram-chart-grid { stroke: var(--border-muted); stroke-width: .5; stroke-dasharray: 1.5 2; }
 .line-chart-series { stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
 .area-chart-area { stroke-width: 1; fill-opacity: .52; vector-effect: non-scaling-stroke; }
-.area-chart-point { fill: var(--canvas); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.area-chart-point { stroke-width: 5; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .line-chart-point { stroke-width: var(--chart-point-size, 4px); stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .dot-chart-point, .scatter-chart-point { fill: var(--canvas); stroke-width: 2; vector-effect: non-scaling-stroke; }
 .dot-chart-reference { stroke-width: 1; stroke-dasharray: 4 3; opacity: .72; vector-effect: non-scaling-stroke; }
