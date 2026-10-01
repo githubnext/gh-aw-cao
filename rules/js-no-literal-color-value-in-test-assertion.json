@@ -1,0 +1,61 @@
+{
+  "rule_key": "js-no-literal-color-value-in-test-assertion",
+  "schema_version": 1,
+  "first_seen": "2026-10-01T14:53:00Z",
+  "last_updated": "2026-10-01T14:53:00Z",
+  "status": "candidate",
+  "affected_languages": [
+    "javascript"
+  ],
+  "unsafe_pattern": "A JavaScript/TypeScript test asserts (via assert.match/toMatch/toContain with a regex or exact string) a specific hex color or color-mix() literal value copied out of a themed/visual source file (e.g. docs/components/*.astro dark-mode CSS custom properties), instead of asserting only the structural property (selector exists, variable name defined, contrast ratio computed) that the test is actually meant to guard.",
+  "consequence": "Every time a human or agent retunes the asserted color for a legitimate visual reason (WCAG contrast fix, palette rebalancing), the test breaks even though no regression occurred, forcing a follow-up PR whose only purpose is updating the literal to match the new value. In this repo this happened twice in a 2-week window: PR #15525 tuned dark-mode colors in docs/components/DispatchIllustration.astro and TerminalDemo.astro, which broke two literal-color assertions in tests/unit/docs-accessibility.test.mjs and tests/unit/landing-page-diagram.test.mjs, requiring the separate follow-up PR #15538 to update the regexes to the new literals; then PR #15544 (another contrast retune of the same files, same self-care:accessibility-checker workflow) changed --terminal-syntax-placeholder from #ffbe88 and did not update the still-brittle assertion in tests/unit/landing-page-diagram.test.mjs, so at HEAD (commit 2fefc8f0) `node --test tests/unit/landing-page-diagram.test.mjs` fails: `assert.match(terminal, /--terminal-syntax-placeholder: #ffa657/)` no longer matches the current `#ffbe88` value — a real, currently-failing regression the rule would have caught before merge.",
+  "mechanical_correction": "Replace the literal hex/color-mix value assertion with a structural assertion: assert the CSS custom property or selector is defined with some color value (e.g. /--terminal-syntax-placeholder: #[0-9a-fA-F]{3,8}/ or a capture-group-based contrast check), or compute/assert contrast ratio programmatically (e.g. via a WCAG contrast helper) rather than string-matching the designer's exact chosen value. Where the test's actual intent is 'this token still meets AA contrast', assert that computed property, not the literal.",
+  "likely_false_positives": "Asserting a literal color value is legitimate when the test is specifically about a fixed brand constant that is never expected to change (e.g. a GitHub/Primer base token that is not part of an actively-tuned theme), or when the assertion is paired with a computed contrast-ratio check rather than being the sole guard. The rule should flag literal hex/color-mix matches against files under active visual-design iteration (docs/components/*.astro, src/styles.js) rather than every color literal in the codebase.",
+  "autofix_safe": false,
+  "existing_plugin_coverage": "No published ESLint rule covers this: it requires recognizing brittle golden-value regex assertions tied to a specific pair of source/test files under active design churn, not a generic no-magic-numbers or regex-literal rule that existing plugins (eslint-plugin-jest, eslint-plugin-regexp) target.",
+  "occurrence_count": 3,
+  "repositories": {
+    "githubnext/gh-aw-cao": {
+      "occurrence_count": 3,
+      "evidence": [
+        {
+          "type": "merged_pull_request",
+          "repo": "githubnext/gh-aw-cao",
+          "number": 15525,
+          "title": "Improve dark-mode contrast in docs demos",
+          "detail": "Retuned many color-mix()/hex literals across docs/components/DispatchIllustration.astro and docs/components/TerminalDemo.astro for a real WCAG 2.2 AA contrast fix (axe-core violations), including --terminal-syntax-placeholder: #ffd1a1 -> #ffa657.",
+          "files": [
+            "docs/components/DispatchIllustration.astro",
+            "docs/components/TerminalDemo.astro"
+          ]
+        },
+        {
+          "type": "merged_pull_request",
+          "repo": "githubnext/gh-aw-cao",
+          "number": 15538,
+          "title": "Align documentation contrast assertions with the updated palette",
+          "detail": "Follow-up PR required solely because PR #15525's legitimate color retune broke two literal-value regex assertions; updated tests/unit/docs-accessibility.test.mjs's .repository-copy > small color-mix literal and tests/unit/landing-page-diagram.test.mjs's --terminal-syntax-placeholder literal to match the new values, with no other behavior change.",
+          "files": [
+            "tests/unit/docs-accessibility.test.mjs",
+            "tests/unit/landing-page-diagram.test.mjs"
+          ]
+        },
+        {
+          "type": "merged_pull_request",
+          "repo": "githubnext/gh-aw-cao",
+          "number": 15544,
+          "title": "Improve dark theme contrast in docs hero illustrations",
+          "detail": "A second contrast retune of the same two files (--terminal-syntax-placeholder: #ffa657 -> #ffbe88 and multiple color-mix literals in DispatchIllustration.astro) merged without a corresponding test update, leaving tests/unit/landing-page-diagram.test.mjs's literal-color assertion failing at HEAD; confirmed by running `node --test tests/unit/landing-page-diagram.test.mjs` locally against commit 2fefc8f0 (1 failing test, ERR_ASSERTION on the --terminal-syntax-placeholder literal).",
+          "files": [
+            "docs/components/TerminalDemo.astro",
+            "tests/unit/landing-page-diagram.test.mjs"
+          ]
+        }
+      ],
+      "affected_paths": [
+        "tests/unit/docs-accessibility.test.mjs",
+        "tests/unit/landing-page-diagram.test.mjs"
+      ]
+    }
+  }
+}
