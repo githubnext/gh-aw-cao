@@ -1785,33 +1785,7 @@
       "objective": "Compare observed AI Credit per run across repository workflows with each observed-runs denominator.",
       "acceptance": "aic-per-run is derived from native aic and observed-runs for matching workflows only; missing or zero denominators remain unavailable, and differences are not claimed as efficiency gains.",
       "description": "Observed AI Credit totals divided by observed run attempts for each declared workflow.",
-      "from": "workflow-aic-totals",
-      "joins": [
-        {
-          "source": "workflow-run-totals",
-          "type": "left",
-          "on": [
-            {
-              "left": "organization",
-              "right": "organization"
-            },
-            {
-              "left": "repository",
-              "right": "repository"
-            },
-            {
-              "left": "workflow",
-              "right": "workflow"
-            }
-          ],
-          "fields": [
-            {
-              "field": "runs",
-              "as": "observed-runs"
-            }
-          ]
-        }
-      ],
+      "from": "workflow-aic-run-totals",
       "compute": [
         {
           "as": "aic-per-run",
@@ -1821,7 +1795,7 @@
               "field": "aic"
             },
             {
-              "field": "observed-runs"
+              "field": "runs"
             }
           ]
         },
@@ -1930,7 +1904,8 @@
           "field": "workflow-dashboard-link"
         },
         {
-          "field": "observed-runs"
+          "field": "runs",
+          "as": "observed-runs"
         },
         {
           "field": "aic-per-run"
