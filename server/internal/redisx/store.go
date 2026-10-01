@@ -676,18 +676,14 @@ func (s *Store) Diagnostics(ctx context.Context, generation string) (model.Diagn
 // definition, except for unfiltered literal-labelled table counts, which use
 // the generation's Redis set cardinality without loading row documents.
 //
-// There is deliberately no general query pushdown. It required RediSearch, and
-// therefore a Redis tier with modules, while none of the canonical projection
-// queries were eligible for it: each one joins, unions, computes, or projects
-// columns, and none bounds its result below the search result cap. Evaluating
-// in the engine is the path those queries always took, so removing pushdown
-// removed a second implementation rather than a capability.
+// Other simple count aggregates can discard unrelated fields as rows are
+// decoded; general queries still execute in the bounded Go engine.
 func (s *Store) LoadSource(ctx context.Context, generation, name string, definition *query.Definition) (model.Source, model.Metrics, error) {
 	metadata, err := s.sourceInfo(ctx, generation, name)
 	if err != nil {
 		return model.Source{}, model.Metrics{}, err
 	}
-	if label, field, ok := nativeTableCount(definition); ok {
+	if label, field, ok := nativeTableCount(definition); ok && definition.From == name {
 		value, err := s.Client.Do(ctx, "SCARD", s.sourceSetKey(generation, name))
 		metrics := model.Metrics{RedisCommands: 2, PushedDown: []string{"compute", "aggregate"}}
 		if err != nil {
@@ -702,6 +698,23 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 			rows = append(rows, model.Row{definition.Compute[0].As: label, field: count})
 		}
 		return model.Source{Source: name, Rows: rows, Metadata: metadata}, metrics, nil
+	}
+	var projectedFields map[string]bool
+	if definition != nil && definition.From == name && name != "issues" &&
+		len(definition.Union) == 0 && len(definition.Joins) == 0 &&
+		definition.Filter == nil && len(definition.Compute) == 0 &&
+		definition.TemporalSeries == nil && definition.Aggregate != nil {
+		projectedFields = make(map[string]bool)
+		for _, field := range definition.Aggregate.By {
+			projectedFields[field] = true
+		}
+		for _, value := range definition.Aggregate.Values {
+			if value.Reducer != "count" || value.Filter != nil {
+				projectedFields = nil
+				break
+			}
+			projectedFields[value.Field] = true
+		}
 	}
 	metrics := model.Metrics{FallbackOperations: []string{"query"}, RedisCommands: 1}
 	value, err := s.Client.Do(ctx, "SMEMBERS", s.sourceSetKey(generation, name))
@@ -718,8 +731,20 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 		return model.Source{}, metrics, fmt.Errorf("source %q exceeds max input rows", name)
 	}
 	rows := make([]model.Row, 0, len(keys))
-	const batchSize = 1000
+	batchSize := 1000
 	script := `local out = {}; for i,key in ipairs(KEYS) do out[i] = redis.call("HGET", key, "raw"); end; return out`
+	if projectedFields != nil {
+		// Bound each raw reply while keeping the retained working set narrow.
+		// A large collection may span batches, but no one reply can allocate
+		// more than half the query's working-byte budget.
+		batchSize = 32
+		script = fmt.Sprintf(`local out = {}; local bytes = 0; for i,key in ipairs(KEYS) do
+			local raw = redis.call("HGET", key, "raw")
+			if raw then bytes = bytes + #raw end
+			if bytes > %d then return redis.error_reply("source batch exceeds max working bytes") end
+			out[i] = raw
+		end; return out`, query.MaxWorkingBytes/2)
+	}
 	for offset := 0; offset < len(keys); offset += batchSize {
 		end := min(len(keys), offset+batchSize)
 		command := make([]string, 0, 3+end-offset)
@@ -738,6 +763,15 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 			var row model.Row
 			if err := json.Unmarshal([]byte(raw), &row); err != nil {
 				return model.Source{}, metrics, err
+			}
+			if projectedFields != nil {
+				projected := make(model.Row, len(projectedFields))
+				for field := range projectedFields {
+					if value, ok := row[field]; ok {
+						projected[field] = value
+					}
+				}
+				row = projected
 			}
 			rows = append(rows, row)
 		}

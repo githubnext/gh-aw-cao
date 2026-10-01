@@ -4329,8 +4329,7 @@
       "description": "Observed AI Credit totals divided by observed run attempts for each declared workflow.",
       "parameters": [],
       "sources": [
-        "workflow-aic-totals",
-        "workflow-run-totals"
+        "workflow-aic-run-totals"
       ],
       "used-by-pages": [
         "cost"
@@ -4339,11 +4338,7 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "audits",
-          "domains",
-          "issues",
-          "runs",
-          "tools"
+          "runs"
         ]
       }
     },
