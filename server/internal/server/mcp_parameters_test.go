@@ -115,6 +115,8 @@ func TestMCPDecodesParameterizedComputeOperand(t *testing.T) {
 
 func TestMCPExecutesGeneratedSimulatorQuery(t *testing.T) {
 	app := newMCPTestApp(t, true)
+	app.database = integrationDatabase(t)
+	seedDatabase(t, app.database, map[string]model.Source{})
 	catalog, err := readJSONFile[agentCatalog](testAgentCatalog)
 	if err != nil {
 		t.Fatal(err)
