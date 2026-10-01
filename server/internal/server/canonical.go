@@ -9,24 +9,18 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
 var canonicalLog = logger.New("cao:server:canonical")
 
 type canonicalService struct {
-	store     *redisx.Store
-	dashboard dashboarddb.Database
+	database dashboarddb.Database
 }
 
 var errCanonicalEntityNotFound = errors.New("canonical entity was not found")
 
 func (service canonicalService) rows(ctx context.Context, source string) ([]model.Row, error) {
-	database := service.dashboard
-	if database == nil {
-		database = &redisx.DashboardDatabase{Store: service.store}
-	}
-	reader, err := database.Current(ctx)
+	reader, err := service.database.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -41,11 +35,7 @@ func (service canonicalService) rows(ctx context.Context, source string) ([]mode
 }
 
 func (service canonicalService) filteredRows(ctx context.Context, source string, filters map[string]any) ([]model.Row, error) {
-	database := service.dashboard
-	if database == nil {
-		database = &redisx.DashboardDatabase{Store: service.store}
-	}
-	reader, err := database.Current(ctx)
+	reader, err := service.database.Current(ctx)
 	if err != nil {
 		return nil, err
 	}

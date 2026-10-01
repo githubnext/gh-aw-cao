@@ -191,10 +191,11 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 		store.ConfigureIndexDefinitions(config.DashboardQueries)
 	}
 	serverLog.Printf("initialized host_profile=%s oauth=%t source_ingestion=%t", profile.Name, oauth != nil, config.SourceDirectory != "")
+	database := &redisx.DashboardDatabase{Store: store}
 	app := &App{
 		store: store, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
-		canonical: canonicalService{store: store, dashboard: &redisx.DashboardDatabase{Store: store}},
-		dashboard: &redisx.DashboardDatabase{Store: store}, reconciler: reconciler, memory: memoryResolver,
+		canonical: canonicalService{database: database},
+		dashboard: database, reconciler: reconciler, memory: memoryResolver,
 		webhookSecret: []byte(config.WebhookSecret), actionsToken: actionsToken, actionsActor: actionsActor,
 		quota: quota,
 	}

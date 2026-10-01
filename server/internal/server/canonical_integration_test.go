@@ -35,7 +35,7 @@ func TestCanonicalAPIQueriesMatchActiveRedisGeneration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	service := canonicalService{store: store}
+	service := canonicalService{database: &redisx.DashboardDatabase{Store: store}}
 	repositories, err := service.rows(ctx, "repositories")
 	if err != nil {
 		t.Fatal(err)
