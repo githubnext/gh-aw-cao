@@ -696,8 +696,8 @@ func (s *Store) PutSource(ctx context.Context, generation string, source model.S
 	); err != nil {
 		return err
 	}
-	if format == "json" {
-		schema := []string{"$.id", "AS", "id", "TAG", "CASESENSITIVE"}
+	if format == "json" && len(indexed) > 0 {
+		schema := make([]string, 0, len(indexed)*5)
 		for _, field := range indexed {
 			schema = append(schema, "$."+field, "AS", strings.ReplaceAll(field, "-", "_"), "TAG", "CASESENSITIVE")
 		}

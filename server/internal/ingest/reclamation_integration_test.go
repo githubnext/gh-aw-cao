@@ -17,11 +17,50 @@ type failFirstRowBatch struct {
 	*redisx.Client
 }
 
+type ageFirstGeneration struct {
+	*redisx.Client
+	registryWrites int
+}
+
+func (client *ageFirstGeneration) Do(ctx context.Context, command ...string) (any, error) {
+	if len(command) >= 4 && command[0] == "ZADD" && strings.HasSuffix(command[1], ":generations") {
+		client.registryWrites++
+		if client.registryWrites == 1 {
+			command[2] = "1"
+		}
+	}
+	return client.Client.Do(ctx, command...)
+}
+
 func (client failFirstRowBatch) DoMany(ctx context.Context, commands [][]string) ([]any, error) {
 	if len(commands) != 0 && len(commands[0]) > 1 && strings.Contains(commands[0][1], "JSON.SET") {
 		return nil, errors.New("injected row write failure")
 	}
 	return client.Client.DoMany(ctx, commands)
+}
+
+func TestGenerationGraceStartsAtActivation(t *testing.T) {
+	ctx, _, client, namespace := ingestTestStore(t, "generation-grace")
+	aging := &ageFirstGeneration{Client: client}
+	store := redisx.NewStore(aging, namespace)
+	result, err := Run(ctx, store, "../../testdata/deployed-subset", Options{
+		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
+		Force:               true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if aging.registryWrites != 2 {
+		t.Fatalf("generation registered %d times, want staging and activation", aging.registryWrites)
+	}
+	score, err := client.Do(ctx, "ZSCORE", namespace+":generations", result.Generation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	milliseconds, err := strconv.ParseInt(fmt.Sprint(score), 10, 64)
+	if err != nil || milliseconds < time.Now().Add(-time.Minute).UnixMilli() {
+		t.Fatalf("generation grace was not refreshed before activation: %v %v", score, err)
+	}
 }
 
 func TestFailedProjectionDiscardsJSONIndexes(t *testing.T) {

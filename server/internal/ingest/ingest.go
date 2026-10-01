@@ -245,6 +245,11 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 		return Result{}, fmt.Errorf("stage repository memory: %w", err)
 	}
 	evaluatedAt := sourceEvaluationTime(sources)
+	// Refresh the staging registration so the reclamation grace starts when
+	// this generation is actually ready to become active, not at ingest start.
+	if err := store.TrackGeneration(ctx, generation); err != nil {
+		return Result{}, err
+	}
 	activationStarted = true
 	revision, err := store.Activate(ctx, generation, dataRevision, evaluatedAt, counts)
 	if err != nil {

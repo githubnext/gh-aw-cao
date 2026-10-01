@@ -131,6 +131,7 @@ func TestRedisJSONSearchIndexAndFallback(t *testing.T) {
 			{"id": "1", "conclusion": "success", "workflow-role": "worker", "repositoryFullName": "owner/repo-a"},
 			{"id": "2", "conclusion": "failure", "workflow-role": "orchestrator", "repositoryFullName": "owner/repo-b"},
 			{"id": "3", "conclusion": "failure", "workflow-role": "worker", "repositoryFullName": "owner/repo-a"},
+			{"id": 4, "conclusion": "success", "workflow-role": "worker", "repositoryFullName": "owner/repo-a"},
 		},
 	}
 	if err := store.PutSource(ctx, generation, source); err != nil {
@@ -144,8 +145,8 @@ func TestRedisJSONSearchIndexAndFallback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(keys) != 3 {
-		t.Fatalf("got %d row keys, want 3", len(keys))
+	if len(keys) != 4 {
+		t.Fatalf("got %d row keys, want 4", len(keys))
 	}
 	for _, key := range keys {
 		value, err := client.Do(ctx, "TYPE", key)
@@ -186,7 +187,7 @@ func TestRedisJSONSearchIndexAndFallback(t *testing.T) {
 		Filter: &query.Filter{Predicates: []query.Predicate{{Field: "workflow-role", Equals: "worker"}}},
 	}
 	loaded, metrics, err = store.LoadSource(ctx, generation, "runs", &byRole)
-	if err != nil || len(loaded.Rows) != 2 || len(metrics.PushedDown) != 1 {
+	if err != nil || len(loaded.Rows) != 3 || len(metrics.PushedDown) != 1 {
 		t.Fatalf("hyphenated JSON field was not indexed: rows=%d metrics=%+v err=%v", len(loaded.Rows), metrics, err)
 	}
 	byRepository := query.Definition{
@@ -194,13 +195,13 @@ func TestRedisJSONSearchIndexAndFallback(t *testing.T) {
 		Filter: &query.Filter{Predicates: []query.Predicate{{Field: "repositoryFullName", Equals: "owner/repo-a"}}},
 	}
 	loaded, metrics, err = store.LoadSource(ctx, generation, "runs", &byRepository)
-	if err != nil || len(loaded.Rows) != 2 || len(metrics.PushedDown) != 1 {
+	if err != nil || len(loaded.Rows) != 3 || len(metrics.PushedDown) != 1 {
 		t.Fatalf("escaped repository tag was not indexed: rows=%d metrics=%+v err=%v", len(loaded.Rows), metrics, err)
 	}
 	unsafe := definition
 	unsafe.Filter = &query.Filter{Predicates: []query.Predicate{{Field: "conclusion", Equals: "unknown"}}}
 	loaded, metrics, err = store.LoadSource(ctx, generation, "runs", &unsafe)
-	if err != nil || len(loaded.Rows) != 3 || len(metrics.PushedDown) != 0 {
+	if err != nil || len(loaded.Rows) != 4 || len(metrics.PushedDown) != 0 {
 		t.Fatalf("unsupported filter did not fall back: rows=%d metrics=%+v err=%v", len(loaded.Rows), metrics, err)
 	}
 
@@ -218,7 +219,7 @@ func TestRedisJSONSearchIndexAndFallback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(counted.Rows) != 1 || counted.Rows[0]["records"] != 3 ||
+	if len(counted.Rows) != 1 || counted.Rows[0]["records"] != 4 ||
 		countMetrics.RedisRows != 0 || countMetrics.RedisCommands != 2 {
 		t.Fatalf("unexpected Redis native count: rows=%#v metrics=%+v", counted.Rows, countMetrics)
 	}
@@ -233,6 +234,18 @@ func TestRedisJSONSearchIndexAndFallback(t *testing.T) {
 		if err != nil || value != int64(0) {
 			t.Fatalf("row remains after dropping generation: %v %v", value, err)
 		}
+	}
+	if err := store.PutSource(ctx, "numeric-only", model.Source{
+		Source: "numeric", Rows: []model.Row{{"id": 5, "observed-runs": 1}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	numeric, _, err := store.LoadSource(ctx, "numeric-only", "numeric", nil)
+	if err != nil || len(numeric.Rows) != 1 {
+		t.Fatalf("unindexed JSON source was not readable: %#v %v", numeric.Rows, err)
+	}
+	if err := store.DropGeneration(ctx, "numeric-only"); err != nil {
+		t.Fatalf("unindexed JSON source was not reclaimed: %v", err)
 	}
 }
 
