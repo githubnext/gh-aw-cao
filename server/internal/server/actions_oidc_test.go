@@ -73,6 +73,11 @@ func TestHostedActionsMCPAuthentication(t *testing.T) {
 			response.WriteHeader(http.StatusBadRequest)
 			return
 		}
+		if request.URL.Path == "/installation/repositories" {
+			t.Error("hosted MCP must not use the installation inventory to validate GITHUB_TOKEN")
+			response.WriteHeader(http.StatusForbidden)
+			return
+		}
 		if request.URL.Path == "/repos/githubnext/gh-aw-cao" {
 			if request.Header.Get("Authorization") != "Bearer "+testActionsToken || denyDefaultBranch {
 				response.WriteHeader(http.StatusForbidden)
