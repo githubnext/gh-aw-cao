@@ -1,6 +1,6 @@
 {
-  "source_sha": "f3357f049516d676bc1b1dc1ae7ee857ae814da5",
-  "next_category": "artifact transfer and Pages packaging",
+  "source_sha": "14d07b181ffde1bffb39292f6c6be4185310e832",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
       "evaluated_at": "2026-10-01T13:58:00Z",
@@ -236,6 +236,36 @@
         36895031338
       ],
       "outcome": "no_actionable_improvement: evaluated reusable dashboard generation with 7 successful docs.yml runs from 2026-10-01T17:01Z through 2026-10-01T17:54Z and 2 comparable successful cao-dashboard.yml producer runs in the same evidence window. Trusted docs metadata showed full workflow wall time median 77.0s with p90 97.0s; comparable build-job median 50.0s with p90 54.0s; schedule-freshness median 7.0s with p90 8.4s; and deploy median 8.0s with p90 21.2s. Build-step medians remained 12.0s for Build documentation, 7.0s for Restore node_modules, 3.0s for Restore cached CAO Dashboard, and 9.0s for Upload Pages artifact, while Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on every sampled successful docs build, confirming cache hits. Cross-checking successful cao-dashboard runs 36895781309 and 36895031338 still showed the dominant repeated upstream cost is Upgrade fallback activity data at 84s and 90s respectively, while Assemble Dashboard Language site took only 2-3s and Upload dashboard artifact 8s. Bounded trusted logs for run 36895781309 also confirmed the producer still recopied a 454.7 MiB gh-aw-logs.sqlite plus 121 activity shards totaling 290.0 MiB into the artifact before uploading a 43.8 MiB archive. That qualifying reusable-dashboard optimization is already represented by suggestion fingerprint reusable-dashboard-skip-reupgrade-of-validated-activity-cache in repository memory, and this run hit GitHub API rate limiting before it could verify whether an open issue already exists or whether source/timing evidence materially changed enough to justify a duplicate. To avoid repeating an unverified suggestion, no new recommendation is actionable in this cycle.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-01T18:35:00Z",
+      "worker_run_id": "36907476052",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        36904808466,
+        36904701378,
+        36904461755,
+        36904156901,
+        36903881472,
+        36903678305,
+        36902758340,
+        36902697103,
+        36902158208,
+        36900418160,
+        36899037795,
+        36898662050,
+        36896356098,
+        36896064135,
+        36895344112,
+        36894949235,
+        36894736186,
+        36894460490,
+        36894144864,
+        36904461845,
+        36903829924
+      ],
+      "outcome": "no_actionable_improvement: evaluated artifact transfer and Pages packaging across 19 successful docs.yml runs from 2026-10-01T16:43Z through 2026-10-01T18:11Z, plus 2 comparable successful cao-dashboard.yml producer runs in the same evidence window. Trusted docs metadata showed full workflow median 64.0s with p90 103.0s across all 19 successes; comparable build-job median 48.0s with p90 57.0s across all 19 build executions; schedule-freshness median 0.0s and p90 8.0s across the scheduled runs in the sample; and deploy median 14.5s with p90 27.0s across the 6 runs that actually deployed. Build-step medians remained 12.0s for Build documentation, 5.0s for Restore node_modules, 2.0s for Restore cached CAO Dashboard, and 9.0s for Upload Pages artifact. Trusted logs for representative docs runs 36904808466, 36903881472, and 36904701378 confirmed repeated cache hits for actions/setup-node npm cache, the explicit node_modules cache, and the central-agentic-ops-dashboard cache; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact stayed skipped whenever build executed. Artifact-transfer time inside docs.yml stayed below the action threshold: Upload Pages artifact contributed 8-10s and Deploy Pages 8-27s on deploying runs. Cross-checking successful cao-dashboard runs 36904461845 and 36903829924 showed the dominant repeated upstream cost still sits in reusable dashboard generation, where Upgrade fallback activity data took 54s and 93s while Assemble Dashboard Language site took 5s and 2s, and trusted logs for run 36903829924 confirmed the producer still recopied a 455.3 MiB gh-aw-logs.sqlite plus 121 activity shards totaling 290.3 MiB into the artifact before uploading a 43.9 MiB zip. That repeated qualifying bottleneck is already represented by suggestion fingerprint reusable-dashboard-skip-reupgrade-of-validated-activity-cache in repository memory, so this artifact-transfer cycle found no new non-duplicate improvement meeting the >=60s or >=15% threshold.",
       "suggestion_fingerprint": null
     }
   ]
