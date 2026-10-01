@@ -57,3 +57,11 @@ type Diagnostics struct {
 	RelationshipErrors []string            `json:"relationshipErrors"`
 	DuplicateRecordIDs map[string][]string `json:"duplicateRecordIds"`
 }
+
+// IssueUpdate is a status observation for an already retained issue.
+type IssueUpdate struct {
+	Repository, ID, Delivery string
+	InstallationID           int64
+	State, StateReason       string
+	ClosedAt, ObservedAt     string
+}

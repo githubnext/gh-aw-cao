@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/model"
 )
 
 // Reconsider old observations incrementally; age alone cannot invalidate an
@@ -65,14 +67,8 @@ end
 end
 `
 
-// IssueUpdate is an explicitly scoped status observation from a verified issues
-// delivery. It is never used to create an issue or to change its identity.
-type IssueUpdate struct {
-	Repository, ID, Delivery string
-	InstallationID           int64
-	State, StateReason       string
-	ClosedAt, ObservedAt     string
-}
+// IssueUpdate retains the existing Redis API for dashboard issue observations.
+type IssueUpdate = model.IssueUpdate
 
 // ApplyIssueUpdate atomically checks current enrollment, delivery identity and
 // active generation before recording a small identity-keyed status overlay.

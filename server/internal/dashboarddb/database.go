@@ -31,7 +31,7 @@ type Storage interface {
 // IssueUpdates applies status overlays only to issues retained in the active
 // dashboard generation.
 type IssueUpdates interface {
-	ApplyIssueUpdate(context.Context, redisx.IssueUpdate, time.Duration) (bool, bool, int64, error)
+	ApplyIssueUpdate(context.Context, model.IssueUpdate, time.Duration) (bool, bool, int64, error)
 }
 
 // Database owns dashboard storage and the validation and execution of
@@ -40,7 +40,7 @@ type IssueUpdates interface {
 type Database interface {
 	Storage
 	LoadSource(context.Context, string, string, *query.Definition) (model.Source, model.Metrics, error)
-	ApplyIssueUpdate(context.Context, redisx.IssueUpdate, time.Duration) (bool, bool, int64, error)
+	IssueUpdates
 	ValidateQueries([]query.Definition) error
 	ExecuteQueries([]query.Definition, []string, query.Loader) (map[string]model.Source, model.Metrics, error)
 }

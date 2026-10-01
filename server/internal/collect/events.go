@@ -11,6 +11,7 @@ import (
 
 	"github.com/githubnext/gh-aw-cao/server/internal/dashboarddb"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
@@ -42,7 +43,7 @@ type Intent struct {
 	Repositories   []string
 	InstallationID int64
 	Reason         string
-	Issue          redisx.IssueUpdate
+	Issue          model.IssueUpdate
 }
 
 type webhookEnvelope struct {
@@ -144,7 +145,7 @@ func parseIssueEvent(envelope webhookEnvelope) Intent {
 		((envelope.Action == "opened" || envelope.Action == "reopened") && state != "OPEN") {
 		return Intent{Kind: IntentIgnore}
 	}
-	update := redisx.IssueUpdate{
+	update := model.IssueUpdate{
 		Repository: repository, InstallationID: envelope.Installation.ID,
 		ID:    fmt.Sprintf("github:issue:%s:%d", repository, issue.Number),
 		State: state, ObservedAt: observed.UTC().Format("2006-01-02T15:04:05.000000000Z"),

@@ -21,6 +21,9 @@ different dashboard backend while Redis remains responsible for operational
 sessions, queues, locks, counters, and caches. Implementations must stage a
 complete generation before activation and leave the active generation intact on
 failure. This change does not implement a Postgres backend.
+When introducing another backend, configure it in every server and collection
+worker process; the existing CLI roles still construct the Redis adapter by
+default.
 
 ## Offline query translation report
 
