@@ -505,6 +505,12 @@ func estimateRowsBytes(rows []model.Row, remaining int64) int64 {
 	return total
 }
 
+// EstimateRowsBytes uses the same accounting as the in-memory evaluator.
+// Ingest records this cost so native plans can check the pre-filter input bound.
+func EstimateRowsBytes(rows []model.Row) int64 {
+	return estimateRowsBytes(rows, MaxRetainedBytes)
+}
+
 func estimateValueBytes(value any, depth int) int64 {
 	if depth > 32 {
 		return MaxWorkingBytes + 1

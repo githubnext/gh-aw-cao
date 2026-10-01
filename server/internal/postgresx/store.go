@@ -129,6 +129,17 @@ func initialize(ctx context.Context, db *sql.DB) error {
 			namespace TEXT NOT NULL, source_name TEXT NOT NULL, ordinal BIGINT NOT NULL,
 			PRIMARY KEY (namespace, source_name, ordinal),
 			FOREIGN KEY (namespace, source_name) REFERENCES cao_sources(namespace, source_name) ON DELETE CASCADE)`,
+		`CREATE TABLE IF NOT EXISTS cao_source_documents (
+			namespace TEXT NOT NULL, source_name TEXT NOT NULL, ordinal BIGINT NOT NULL,
+			payload TEXT NOT NULL, id TEXT, run_id TEXT, session_id TEXT,
+			PRIMARY KEY (namespace, source_name, ordinal),
+			FOREIGN KEY (namespace, source_name) REFERENCES cao_sources(namespace, source_name) ON DELETE CASCADE)`,
+		`CREATE INDEX IF NOT EXISTS cao_source_documents_id
+			ON cao_source_documents (namespace, source_name, id) WHERE id IS NOT NULL`,
+		`CREATE INDEX IF NOT EXISTS cao_source_documents_run_id
+			ON cao_source_documents (namespace, source_name, run_id) WHERE run_id IS NOT NULL`,
+		`CREATE INDEX IF NOT EXISTS cao_source_documents_session_id
+			ON cao_source_documents (namespace, source_name, session_id) WHERE session_id IS NOT NULL`,
 		`CREATE TABLE IF NOT EXISTS cao_state (
 			namespace TEXT PRIMARY KEY, revision BIGINT NOT NULL, data_revision TEXT NOT NULL,
 			evaluated_at TIMESTAMPTZ NOT NULL)`,
@@ -157,6 +168,7 @@ func initialize(ctx context.Context, db *sql.DB) error {
 		`ALTER TABLE cao_state ADD COLUMN IF NOT EXISTS diagnostic_counts_present BOOLEAN NOT NULL DEFAULT FALSE`,
 		`ALTER TABLE cao_state ADD COLUMN IF NOT EXISTS relationship_errors_present BOOLEAN NOT NULL DEFAULT FALSE`,
 		`ALTER TABLE cao_state ADD COLUMN IF NOT EXISTS duplicate_ids_present BOOLEAN NOT NULL DEFAULT FALSE`,
+		`ALTER TABLE cao_sources ADD COLUMN IF NOT EXISTS estimated_bytes BIGINT`,
 	} {
 		if _, err = tx.ExecContext(ctx, statement); err != nil {
 			return err
@@ -401,7 +413,8 @@ func (s *Store) Replace(ctx context.Context, sources map[string]model.Source, di
 		if name == "" || (source.Source != "" && source.Source != name) {
 			return 0, fmt.Errorf("invalid postgres source name %q", name)
 		}
-		if _, err = tx.ExecContext(ctx, `INSERT INTO cao_sources (namespace, source_name) VALUES ($1, $2)`, s.namespace, name); err != nil {
+		if _, err = tx.ExecContext(ctx, `INSERT INTO cao_sources (namespace, source_name, estimated_bytes) VALUES ($1, $2, $3)`,
+			s.namespace, name, query.EstimateRowsBytes(source.Rows)); err != nil {
 			return 0, fmt.Errorf("insert postgres source %q: %w", name, err)
 		}
 		var value any
@@ -412,6 +425,10 @@ func (s *Store) Replace(ctx context.Context, sources map[string]model.Source, di
 			return 0, fmt.Errorf("insert metadata for %q: %w", name, err)
 		}
 		sourceRows := rowBatch{ctx: ctx, tx: tx, namespace: s.namespace, name: name}
+		documents := documentBatch{ctx: ctx, tx: tx, namespace: s.namespace, name: name}
+		if err = documents.add(-1, value); err != nil {
+			return 0, fmt.Errorf("insert document metadata for %q: %w", name, err)
+		}
 		for ordinal, row := range source.Rows {
 			if row == nil {
 				return 0, fmt.Errorf("nil row in postgres source %q", name)
@@ -425,9 +442,15 @@ func (s *Store) Replace(ctx context.Context, sources map[string]model.Source, di
 			if err = values.addTree(s.namespace, name, int64(ordinal), value); err != nil {
 				return 0, fmt.Errorf("insert row in %q: %w", name, err)
 			}
+			if err = documents.add(int64(ordinal), value); err != nil {
+				return 0, fmt.Errorf("insert document row in %q: %w", name, err)
+			}
 		}
 		if err = sourceRows.flush(); err != nil {
 			return 0, fmt.Errorf("insert postgres rows in %q: %w", name, err)
+		}
+		if err = documents.flush(); err != nil {
+			return 0, fmt.Errorf("insert postgres documents in %q: %w", name, err)
 		}
 		counts[name] = len(source.Rows)
 	}
@@ -680,6 +703,73 @@ func (b *rowBatch) flush() error {
 		return err
 	}
 	b.ordinals = b.ordinals[:0]
+	return nil
+}
+
+type documentEntry struct {
+	ordinal int64
+	payload string
+	id, runID, sessionID any
+}
+
+type documentBatch struct {
+	ctx             context.Context
+	tx              *sql.Tx
+	namespace, name string
+	entries         []documentEntry
+}
+
+func (b *documentBatch) add(ordinal int64, value any) error {
+	payload, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	entry := documentEntry{ordinal: ordinal, payload: string(payload)}
+	if row, ok := value.(map[string]any); ok {
+		entry.id = documentKey(row["id"])
+		entry.runID = documentKey(row["runId"])
+		entry.sessionID = documentKey(row["sessionId"])
+	}
+	b.entries = append(b.entries, entry)
+	if len(b.entries) >= rowBatchSize {
+		return b.flush()
+	}
+	return nil
+}
+
+func documentKey(value any) any {
+	switch value.(type) {
+	case string, bool, json.Number:
+		return fmt.Sprint(value)
+	default:
+		return nil
+	}
+}
+
+func (b *documentBatch) flush() error {
+	if len(b.entries) == 0 {
+		return nil
+	}
+	var statement strings.Builder
+	statement.WriteString(`INSERT INTO cao_source_documents
+		(namespace, source_name, ordinal, payload, id, run_id, session_id) VALUES `)
+	args := []any{b.namespace, b.name}
+	for i, entry := range b.entries {
+		if i > 0 {
+			statement.WriteByte(',')
+		}
+		statement.WriteString("($1,$2")
+		for column := 0; column < 5; column++ {
+			statement.WriteString(",$")
+			statement.WriteString(strconv.Itoa(3 + i*5 + column))
+		}
+		statement.WriteByte(')')
+		args = append(args, entry.ordinal, entry.payload, entry.id, entry.runID, entry.sessionID)
+	}
+	if _, err := b.tx.ExecContext(b.ctx, statement.String(), args...); err != nil {
+		return err
+	}
+	b.entries = b.entries[:0]
 	return nil
 }
 
