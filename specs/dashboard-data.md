@@ -2195,6 +2195,49 @@ To avoid wasted work without weakening snapshot consistency:
   current generation contract; do not mutate active rows in place merely to
   reduce compute.
 
+#### Reproducible simulation handoff
+
+[`scripts/simulate-redis-generations.py`](../scripts/simulate-redis-generations.py)
+is a Python 3 standard-library-only, deterministic planning simulator. Run
+from the repository root:
+
+```sh
+python3 scripts/simulate-redis-generations.py \
+  --output /tmp/redis-generation-pressure.svg
+python3 scripts/simulate-redis-generations.py \
+  --rows-per-second 2000 --output /tmp/redis-generation-pressure-slow.svg
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/unit -p 'test_generation_pressure.py'
+```
+
+The [default scenario chart](../docs/assets/redis-generation-pressure.svg)
+and [slow-write comparison](../docs/assets/redis-generation-pressure-slow.svg)
+show estimated Redis RSS against an assumed 8 GiB host and five-minute
+rolling *busy fractions*, not measured CPU utilization. The default scenario
+uses one million projected rows, 1 KiB/row, 1.5 RSS multiplier, one completed
+collection per minute, one-minute collection delay, one minute of preparation,
+5,000 complete row writes/second, five-minute polling, ten-minute grace and
+three retained generations over two hours. It prints the exact assumptions,
+successful generation count, peak RSS and busy fractions as JSON.
+
+![Synthetic Redis generation memory and compute-pressure chart](../docs/assets/redis-generation-pressure.svg)
+
+![Synthetic Redis generation pressure with 2,000 row writes per second](../docs/assets/redis-generation-pressure-slow.svg)
+
+The model starts with one complete active generation; arrivals mark the lake
+dirty after collection, idle polling ticks start a projection, completed
+projections activate a new generation, and pruning retains the newest count
+and generations within grace. It models staging memory as linear in write
+progress and worker preparation and Redis writing as separate, serialized
+busy intervals. It does **not** model real webhook queue contention, overlap
+with query workloads, memory allocator fragmentation beyond the input
+factor, compaction working-set size, Redis indexing/cleanup cost, real CPU
+percentages, or failed projections. The next agent should replace the
+assumed row-write rate, effective bytes/row, preparation time and RSS factor
+with observed values from a representative workload; compare peak memory,
+projection duration and lag with actual traces before proposing a cadence
+or capacity change. Generated charts are evidence of the assumptions, not
+measurements or a service-level guarantee.
+
 ---
 
 # 32. Bounded Ingestion
