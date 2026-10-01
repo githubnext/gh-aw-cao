@@ -82,8 +82,21 @@ jobs:
           --health-interval 2s
           --health-timeout 2s
           --health-retries 30
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: cao
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d cao"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 30
     env:
       CAO_STRESS_REDIS_URL: redis://127.0.0.1:6379/0
+      POSTGRES_URL: postgres://postgres@127.0.0.1:5432/cao?sslmode=disable
       CAO_STRESS_REPORT_DIR: ${{ github.workspace }}/.tmp/go-stress
       CAO_STRESS_MAX_P95_MS: "250"
       CAO_STRESS_MIN_RPS: "200"

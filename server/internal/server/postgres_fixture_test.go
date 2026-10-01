@@ -18,7 +18,7 @@ import (
 // constructorDatabase satisfies New's database requirement where no dashboard data is read.
 func constructorDatabase() *postgresx.Store { return &postgresx.Store{} }
 
-func integrationDatabase(t *testing.T) *postgresx.Store {
+func integrationDatabase(t testing.TB) *postgresx.Store {
 	t.Helper()
 	rawURL := os.Getenv("POSTGRES_URL")
 	if rawURL == "" {
