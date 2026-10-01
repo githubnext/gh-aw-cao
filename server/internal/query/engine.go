@@ -1026,9 +1026,9 @@ func computeValue(row model.Row, definition ComputedField) (any, error) {
 		return false, nil
 	case "if":
 		if values[0] == true {
-			return scalarValue(values[1]), nil
+			return values[1], nil
 		}
-		return scalarValue(values[2]), nil
+		return values[2], nil
 	case "array-length":
 		if array, ok := values[0].([]any); ok {
 			return len(array), nil

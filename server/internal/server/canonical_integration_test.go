@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
+	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/jackc/pgx/v5"
@@ -124,6 +125,13 @@ func TestCanonicalAPIQueriesMatchPostgresIngestion(t *testing.T) {
 	for _, name := range []string{"runs", "overview-runs", "outcomes", "mcp-calls"} {
 		if len(response.Sources[name].Rows) != 1 {
 			t.Errorf("Postgres dashboard source %q has %d rows, want 1", name, len(response.Sources[name].Rows))
+		}
+	}
+	if rows := response.Sources["outcomes"].Rows; len(rows) == 1 {
+		outcome := rows[0]
+		if link, ok := outcome["issue-link"].(model.Row); !ok ||
+			link["href"] != "https://github.com/githubnext/gh-aw-cao/issues/42" || outcome["pull-request-link"] != nil {
+			t.Fatalf("outcome issue link was not preserved: %#v", outcome)
 		}
 	}
 }
