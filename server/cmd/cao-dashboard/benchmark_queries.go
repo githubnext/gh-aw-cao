@@ -101,7 +101,7 @@ func benchmarkQueries(ctx context.Context, store *postgresx.Store, source, datab
 	if len(candidates) == 0 {
 		return report, errors.New("no query candidates selected")
 	}
-	result, err := ingest.Run(ctx, store, nil, source, ingest.Options{DatabaseQueriesPath: databasePath})
+	result, err := ingest.Run(ctx, store, source, ingest.Options{DatabaseQueriesPath: databasePath})
 	if err != nil {
 		return report, fmt.Errorf("ingest deployed artifacts: %w", err)
 	}

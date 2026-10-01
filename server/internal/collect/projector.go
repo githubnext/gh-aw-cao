@@ -175,7 +175,7 @@ func (p Projector) project(ctx context.Context, force bool) (ingest.Result, erro
 	// rewrite an identical canonical dataset. The content-addressed data
 	// revision skips those, which is what keeps a 60-second projection
 	// interval affordable.
-	result, err := ingest.Run(ctx, p.Data, p.Store, p.Lake.Directory, ingest.Options{
+	result, err := ingest.Run(ctx, p.Data, p.Lake.Directory, ingest.Options{
 		DatabaseQueriesPath: p.DatabaseQueriesPath,
 		Force:               force,
 	})

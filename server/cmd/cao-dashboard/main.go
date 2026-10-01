@@ -600,7 +600,7 @@ func newIngestCommand() *cobra.Command {
 			return err
 		}
 		defer func() { _ = database.Close() }()
-		result, err := ingest.Run(ctx, database, store, resolvedSource, ingest.Options{DatabaseQueriesPath: *databaseQueries})
+		result, err := ingest.Run(ctx, database, resolvedSource, ingest.Options{DatabaseQueriesPath: *databaseQueries})
 		if err != nil {
 			return err
 		}

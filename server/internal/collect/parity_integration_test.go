@@ -31,9 +31,9 @@ const databaseQueries = "../../../dashboard/site/src/data/queries/database.json"
 // collections and counts, because both run the same projector over the same
 // layout.
 func TestProfilesProduceIdenticalCanonicalRecords(t *testing.T) {
-	actionsStore, ctx := integrationStore(t)
+	_, ctx := integrationStore(t)
 	actionsData := integrationPostgres(t, ctx)
-	actions, err := ingest.Run(ctx, actionsData, actionsStore, publishedSnapshot, ingest.Options{
+	actions, err := ingest.Run(ctx, actionsData, publishedSnapshot, ingest.Options{
 		DatabaseQueriesPath: databaseQueries, Force: true,
 	})
 	if err != nil {

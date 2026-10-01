@@ -192,7 +192,7 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 	}
 	if reconciler == nil && config.SourceDirectory != "" {
 		reconciler = DirectoryReconciler{
-			Store: config.Database, Operational: store, SourceDirectory: config.SourceDirectory,
+			Store: config.Database, SourceDirectory: config.SourceDirectory,
 			DatabaseQueriesPath: config.DatabaseQueriesPath,
 		}
 	}
@@ -294,7 +294,7 @@ func (a *App) start(startupCtx, runtimeCtx context.Context) error {
 	runCtx, cancel := context.WithCancel(runtimeCtx)
 	serverLog.Printf("starting service initial_ingestion=%t", a.config.SourceDirectory != "")
 	if a.config.SourceDirectory != "" {
-		result, err := ingest.Run(startupCtx, a.database, a.store, a.config.SourceDirectory, ingest.Options{DatabaseQueriesPath: a.config.DatabaseQueriesPath})
+		result, err := ingest.Run(startupCtx, a.database, a.config.SourceDirectory, ingest.Options{DatabaseQueriesPath: a.config.DatabaseQueriesPath})
 		if err != nil {
 			cancel()
 			return fmt.Errorf("initial ingestion failed: %w", err)

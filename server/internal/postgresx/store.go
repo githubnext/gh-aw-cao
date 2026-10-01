@@ -41,6 +41,7 @@ type Store struct {
 type SourceReader interface {
 	State(context.Context) (State, error)
 	LoadSource(context.Context, string, *query.Definition) (model.Source, model.Metrics, error)
+	LoadDocument(context.Context, string, string) (model.Row, error)
 	Diagnostics(context.Context) (model.Diagnostics, error)
 }
 
@@ -849,6 +850,16 @@ func (s *Store) LoadSource(ctx context.Context, name string, definition *query.D
 	return source, metrics, err
 }
 
+// LoadDocument reads one source document by its indexed ID.
+func (s *Store) LoadDocument(ctx context.Context, source, id string) (model.Row, error) {
+	var document model.Row
+	err := s.WithReadTransaction(ctx, func(reader SourceReader) (err error) {
+		document, err = reader.LoadDocument(ctx, source, id)
+		return err
+	})
+	return document, err
+}
+
 func (r *readTransaction) LoadSource(ctx context.Context, name string, definition *query.Definition) (model.Source, model.Metrics, error) {
 	_ = definition
 	s, tx := r.store, r.tx
@@ -928,6 +939,24 @@ func (r *readTransaction) LoadSource(ctx context.Context, name string, definitio
 		return model.Source{}, model.Metrics{}, fmt.Errorf("decode postgres source: %w", err)
 	}
 	return source, model.Metrics{OutputRows: len(source.Rows)}, nil
+}
+
+func (r *readTransaction) LoadDocument(ctx context.Context, source, id string) (model.Row, error) {
+	var payload string
+	err := r.tx.QueryRowContext(ctx, `SELECT payload FROM cao_source_documents
+		WHERE namespace = $1 AND source_name = $2 AND id = $3
+		ORDER BY ordinal LIMIT 1`, r.store.namespace, source, id).Scan(&payload)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("%w: %q document %q", ErrSourceUnavailable, source, id)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read postgres source document: %w", err)
+	}
+	var document model.Row
+	if err := decodeJSON([]byte(payload), &document); err != nil {
+		return nil, fmt.Errorf("decode postgres source document: %w", err)
+	}
+	return document, nil
 }
 
 type valueNode struct {
