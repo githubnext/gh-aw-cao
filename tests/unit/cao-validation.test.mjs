@@ -45,9 +45,10 @@ async function fixture({ lock = metadata, policyCampaign = true, declaration = t
   return root;
 }
 
-function compiler({ status = 0, output } = {}) {
+function compiler({ status = 0, output, calls = [] } = {}) {
   return (command, args, options) => {
-    if (command === "git" && args[0] === "init") {
+    calls.push({ command, args });
+    if (command === "git") {
       return { status: 0, stdout: "", stderr: "" };
     }
     if (command === "gh" && args[0] === "aw" && args[1] === "compile") {
@@ -61,7 +62,17 @@ function compiler({ status = 0, output } = {}) {
 test("strict compiler accepts a clean generated workflow set", async () => {
   const root = await fixture({ declaration: false });
   try {
-    assert.deepEqual(await compileAndCompare(root, compiler(), version), []);
+    const calls = [];
+    assert.deepEqual(await compileAndCompare(root, compiler({ calls }), version), []);
+    assert.deepEqual(calls.filter(({ command }) => command === "git").map(({ args }) => args), [
+      ["init", "--quiet"],
+      ["add", "--all"],
+      [
+        "-c", "user.name=CAO Validator",
+        "-c", "user.email=cao-validator@localhost",
+        "commit", "--quiet", "--no-gpg-sign", "-m", "CAO validation snapshot",
+      ],
+    ]);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -248,7 +259,7 @@ test("doctor failures are warnings", () => {
 
 function cleanExecutor() {
   return (command, args) => {
-    if (command === "git" && args[0] === "init") {
+    if (command === "git") {
       return { status: 0, stdout: "", stderr: "" };
     }
     if (command === "gh" && args.join(" ") === "aw version") {
@@ -270,7 +281,6 @@ function cleanExecutor() {
         stderr: "",
       };
     }
-    if (command === "git") return { status: 0, stdout: "https://github.com/acme/control.git\n", stderr: "" };
     throw new Error(`Unexpected command: ${command} ${args.join(" ")}`);
   };
 }
