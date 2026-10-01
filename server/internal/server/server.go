@@ -1062,7 +1062,7 @@ func (loader *generationLoader) LoadSource(name string, definition *query.Defini
 		return marketplaceSource(loader.ctx, loader.store, loader.generation), model.Metrics{}, nil
 	}
 	source, metrics, err := loader.database.LoadSource(loader.ctx, loader.generation, name, definition)
-	if errors.Is(err, redisx.ErrSourceUnavailable) {
+	if errors.Is(err, dashboarddb.ErrSourceUnavailable) {
 		return unavailableSource(name), metrics, nil
 	}
 	return source, metrics, err

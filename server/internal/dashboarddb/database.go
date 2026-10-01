@@ -44,6 +44,10 @@ type Redis struct {
 	*redisx.Store
 }
 
+// ErrSourceUnavailable is returned for absent generation-scoped dashboard
+// sources; Redis's existing sentinel remains compatible with callers.
+var ErrSourceUnavailable = redisx.ErrSourceUnavailable
+
 var _ Database = (*Redis)(nil)
 
 func NewRedis(store *redisx.Store) *Redis {
