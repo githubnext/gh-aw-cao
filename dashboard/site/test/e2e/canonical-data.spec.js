@@ -783,21 +783,21 @@ test('data worker returns the Models & agents run distribution on initial and na
       context
     );
     const navigated = await loadCanonicalDashboardPage(['engines-models-usage'], context);
-    const pageDefinition = context.pages.find((/** @type {any} */ candidate) => candidate.id === 'engines-models');
-    const supplementalView = pageDefinition.views.find((/** @type {any} */ view) => view.id === 'engines-models-aic-insights');
-    const supplementalAlias = dashboardViewAliasName(
+    const pageDefinition = context.pages.find((/** @type {any} */ candidate) => candidate.id === 'cost');
+    const aicView = pageDefinition.views.find((/** @type {any} */ view) => view.id === 'engines-models-aic-insights');
+    const aicAlias = dashboardViewAliasName(
       pageDefinition.id,
-      supplementalView,
-      pageDefinition.views.indexOf(supplementalView),
+      aicView,
+      pageDefinition.views.indexOf(aicView),
       'engines-models-usage'
     );
-    const chartMode = await loadCanonicalDashboardPage(
+    const tableMode = await loadCanonicalDashboardPage(
       ['engines-models-usage'],
       context,
       undefined,
-      { pageId: pageDefinition.id, queryContext: { viewMode: 'chart' } }
+      { pageId: pageDefinition.id, queryContext: { viewMode: 'table' } }
     );
-    return { initial, navigated, supplemental: chartMode[supplementalAlias] };
+    return { initial, navigated, aicTable: tableMode[aicAlias] };
   });
 
   for (const payload of [result.initial, result.navigated]) {
@@ -812,7 +812,7 @@ test('data worker returns the Models & agents run distribution on initial and na
       metadata: { 'source-kind': 'derived', 'query-name': 'engines-models-usage' }
     });
   }
-  expect(result.supplemental).toMatchObject({
+  expect(result.aicTable).toMatchObject({
     rows: [{
       summary: 'copilot / model-b',
       runs: 1,
