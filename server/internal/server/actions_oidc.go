@@ -38,7 +38,7 @@ func verifyHostedActionsMCP(ctx context.Context, config Config, request *http.Re
 	token, ok := bearerToken(request)
 	provenance := request.Header.Get("X-GitHub-OIDC-Token")
 	if !ok || token == "" || provenance == "" {
-		return "", errors.New("Actions token and OIDC provenance are required")
+		return "", errors.New("actions token and OIDC provenance are required")
 	}
 	claims, err := verifyActionsOIDC(ctx, config, provenance)
 	if err != nil {
@@ -88,7 +88,7 @@ func actionsDefaultBranch(ctx context.Context, config Config, token string) (str
 	if err != nil {
 		return "", errors.New("GitHub Actions default branch check failed")
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusOK {
 		return "", errors.New("GitHub Actions default branch is unavailable")
 	}
@@ -127,7 +127,7 @@ func verifyActionsTokenRepository(ctx context.Context, config Config, token stri
 	if err != nil {
 		return errors.New("GitHub Actions token identity check failed")
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusOK {
 		return errors.New("GitHub Actions token is not an authorized installation token")
 	}
@@ -228,9 +228,9 @@ func fetchActionsOIDCKey(ctx context.Context, client *http.Client, keyID string)
 	if err != nil {
 		return nil, err
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusOK {
-		return nil, errors.New("Actions OIDC JWKS is unavailable")
+		return nil, errors.New("actions OIDC JWKS is unavailable")
 	}
 	var jwks struct {
 		Keys []struct {
@@ -263,5 +263,5 @@ func fetchActionsOIDCKey(ctx context.Context, client *http.Client, keyID string)
 		}
 		return &rsa.PublicKey{N: new(big.Int).SetBytes(n), E: int(exponent.Int64())}, nil
 	}
-	return nil, errors.New("Actions OIDC signing key is unknown")
+	return nil, errors.New("actions OIDC signing key is unknown")
 }
