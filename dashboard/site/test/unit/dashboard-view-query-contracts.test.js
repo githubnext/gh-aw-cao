@@ -232,6 +232,7 @@ describe('dashboard view query contracts', () => {
       {
         id: 'cost-per-workflow-run',
         title: 'Cost per workflow run',
+        disclosure: 'supplemental',
         data: { source: 'cost-per-workflow-run' },
         mark: 'chart',
         chart: 'horizontal-bar',
@@ -239,6 +240,23 @@ describe('dashboard view query contracts', () => {
           x: { field: 'workflow' },
           section: { field: 'repository-coordinate' },
           y: { field: 'aic-per-run', unit: 'aic-per-run' }
+        }
+      },
+      {
+        id: 'engines-models-aic-insights',
+        title: 'AIC per observed run',
+        data: { source: 'engines-models-usage' },
+        mark: 'table',
+        layout: 'full-view',
+        'lazy-list': true,
+        encoding: {
+          columns: [
+            { field: 'summary' },
+            { field: 'runs' },
+            { field: 'minimum-aic-per-run' },
+            { field: 'average-aic-per-run' },
+            { field: 'maximum-aic-per-run' }
+          ]
         }
       }
     ]);

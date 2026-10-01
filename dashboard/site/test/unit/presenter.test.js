@@ -1538,7 +1538,7 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelectorAll('[data-chart-widget="pie"]')).toHaveLength(1);
     expect(page?.querySelectorAll('[data-chart-widget="horizontal-bar"]')).toHaveLength(1);
     expect(page?.querySelector('[data-view-id="engines-models-distribution"] + [data-view-id="engines-models-cost"]')).not.toBeNull();
-    expect(page?.querySelector('[data-view-id="engines-models-aic-insights"]')).not.toBeNull();
+    expect(page?.querySelector('[data-view-id="engines-models-aic-insights"]')).toBeNull();
     expect(page?.querySelector('[data-view-id="engines-models-token-insights"]')).not.toBeNull();
     expect([...(page?.querySelectorAll('[data-view-id="engines-models-cost"] .horizontal-bar-chart-label') ?? [])].map((value) => value.textContent))
       .toEqual(['pi / claude-sonnet-5', 'copilot / gpt-5.6-sol']);
@@ -1553,15 +1553,14 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('.view-mode-control')).not.toBeNull();
     expect(page?.textContent).not.toContain('Agent event');
     expect(page?.textContent).not.toContain('Summary');
-    expect(page?.querySelectorAll('tbody tr')).toHaveLength(4);
-    // Regression: the "AIC per observed run" supplemental disclosure must stay visible
-    // when the page defaults to chart mode. A `disclosure: supplemental` table is an
-    // independently-collapsible detail panel, not the page's primary mode-switchable
-    // content, so it must not carry `data-view-mode-content` (which the chart/table/card
-    // view-mode CSS uses to hide non-matching content) or it renders empty once expanded.
+    expect(page?.querySelectorAll('tbody tr')).toHaveLength(2);
     expect(page?.getAttribute('data-view-mode')).toBe('chart');
-    const aicInsights = page?.querySelector('[data-view-id="engines-models-aic-insights"]');
-    expect(aicInsights?.hasAttribute('data-view-mode-content')).toBe(false);
+    const costPage = await activatePage(rendered, 'cost');
+    const aicInsights = costPage?.querySelector('[data-view-id="engines-models-aic-insights"]');
+    expect(aicInsights?.getAttribute('data-view-layout')).toBe('full-view');
+    expect(aicInsights?.hasAttribute('data-view-lazy-list')).toBe(true);
+    expect(aicInsights?.closest('.view-disclosure')).toBeNull();
+    expect(aicInsights?.querySelector('[data-lazy-list]')).not.toBeNull();
     expect(aicInsights?.querySelector('table')).not.toBeNull();
   });
 

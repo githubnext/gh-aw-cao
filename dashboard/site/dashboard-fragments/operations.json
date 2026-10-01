@@ -2020,51 +2020,6 @@
           }
         },
         {
-          "id": "engines-models-aic-insights",
-          "disclosure-label": "AIC per observed run",
-          "description": "Minimum, average, and maximum AIC for each agent and model combination. Blank values mean no run reported AIC.",
-          "data": {
-            "source": "engines-models-usage"
-          },
-          "mark": "table",
-          "disclosure": "supplemental",
-          "controls": "interactive",
-          "empty-message": "No agent or model usage metadata is available.",
-          "layout": "full",
-          "encoding": {
-            "columns": [
-              {
-                "field": "summary",
-                "type": "nominal",
-                "title": "Agent / model"
-              },
-              {
-                "field": "runs",
-                "type": "quantitative",
-                "title": "Observed runs"
-              },
-              {
-                "field": "minimum-aic-per-run",
-                "type": "quantitative",
-                "title": "Minimum AIC",
-                "unit": "aic-per-run"
-              },
-              {
-                "field": "average-aic-per-run",
-                "type": "quantitative",
-                "title": "Average AIC",
-                "unit": "aic-per-run"
-              },
-              {
-                "field": "maximum-aic-per-run",
-                "type": "quantitative",
-                "title": "Maximum AIC",
-                "unit": "aic-per-run"
-              }
-            ]
-          }
-        },
-        {
           "id": "engines-models-token-insights",
           "title": "Token statistics per observed run",
           "description": "Minimum, average, and maximum token counts for each agent and model combination. Telemetry is partial: blank values mean no run reported that token class.",

@@ -2051,6 +2051,7 @@
           "mark": "chart",
           "chart": "horizontal-bar",
           "layout": "full",
+          "disclosure": "supplemental",
           "empty-message": "No workflow AI Credit cost per run was observed.",
           "encoding": {
             "x": {
@@ -2073,6 +2074,51 @@
             "href": {
               "field": "workflow-dashboard-link"
             }
+          }
+        },
+        {
+          "id": "engines-models-aic-insights",
+          "title": "AIC per observed run",
+          "description": "Minimum, average, and maximum AIC for each agent and model combination. Blank values mean no run reported AIC.",
+          "data": {
+            "source": "engines-models-usage"
+          },
+          "mark": "table",
+          "controls": "interactive",
+          "lazy-list": true,
+          "empty-message": "No agent or model usage metadata is available.",
+          "layout": "full-view",
+          "encoding": {
+            "columns": [
+              {
+                "field": "summary",
+                "type": "nominal",
+                "title": "Agent / model"
+              },
+              {
+                "field": "runs",
+                "type": "quantitative",
+                "title": "Observed runs"
+              },
+              {
+                "field": "minimum-aic-per-run",
+                "type": "quantitative",
+                "title": "Minimum AIC",
+                "unit": "aic-per-run"
+              },
+              {
+                "field": "average-aic-per-run",
+                "type": "quantitative",
+                "title": "Average AIC",
+                "unit": "aic-per-run"
+              },
+              {
+                "field": "maximum-aic-per-run",
+                "type": "quantitative",
+                "title": "Maximum AIC",
+                "unit": "aic-per-run"
+              }
+            ]
           }
         }
       ]
