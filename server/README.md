@@ -14,7 +14,7 @@ The browser never connects to Redis and never receives the Redis URL or
 credentials. It communicates only with the same-origin HTTP(S) API.
 
 Dashboard call-table persistence is isolated behind `internal/dashboarddb`:
-the database publishes complete snapshots, validates Dashboard Language queries,
+the database ingests transaction sets, validates Dashboard Language queries,
 and executes them without exposing Redis generations or indexes. The current
 `internal/redisx/DashboardDatabase` implementation stages and activates Redis
 generations internally. Redis remains responsible for operational locks, queues,
