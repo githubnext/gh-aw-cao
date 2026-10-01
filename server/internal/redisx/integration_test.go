@@ -184,7 +184,7 @@ func TestRowsAreStoredOnlyAsRawDocuments(t *testing.T) {
 		}},
 		Aggregate: &query.Aggregate{
 			By:     []string{"table"},
-			Values: []query.AggregateValue{{Field: "id", As: "records", Reducer: "count"}},
+			Values: []query.AggregateValue{{Field: "table", As: "records", Reducer: "count"}},
 		},
 	}
 	counted, countMetrics, err := store.LoadSource(ctx, generation, "runs", &countDefinition)

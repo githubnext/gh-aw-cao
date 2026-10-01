@@ -807,13 +807,18 @@ func nativeTableCount(definition *query.Definition) (any, string, bool) {
 	}
 	computed := definition.Compute[0]
 	value := definition.Aggregate.Values[0]
-	if computed.Function != "literal" || len(computed.Args) != 1 ||
-		computed.Args[0].Field != nil || computed.Args[0].Context != "" ||
-		computed.As == "" || definition.Aggregate.By[0] != computed.As ||
-		value.Reducer != "count" || value.Filter != nil || value.As == "" || value.As == computed.As {
+	if computed.Function != "literal" || len(computed.Args) != 1 {
 		return nil, "", false
 	}
-	return computed.Args[0].Value, value.As, true
+	label, labelOK := computed.Args[0].Value.(string)
+	if computed.Args[0].Field != nil || computed.Args[0].Context != "" ||
+		!labelOK || label == "" ||
+		computed.As == "" || definition.Aggregate.By[0] != computed.As ||
+		value.Field != computed.As || value.Reducer != "count" ||
+		value.Filter != nil || value.As == "" || value.As == computed.As {
+		return nil, "", false
+	}
+	return label, value.As, true
 }
 
 func (s *Store) sourceInfo(ctx context.Context, generation, name string) (model.Metadata, error) {

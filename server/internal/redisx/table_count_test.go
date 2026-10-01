@@ -49,7 +49,7 @@ func TestNativeTableCountUsesRedisCardinality(t *testing.T) {
 		}},
 		Aggregate: &query.Aggregate{
 			By:     []string{"table"},
-			Values: []query.AggregateValue{{Field: "event", As: "records", Reducer: "count"}},
+			Values: []query.AggregateValue{{Field: "table", As: "records", Reducer: "count"}},
 		},
 	}
 	for _, count := range []int{0, 175_000} {
@@ -86,7 +86,7 @@ func TestNativeTableCountRejectsChangedSemantics(t *testing.T) {
 		}},
 		Aggregate: &query.Aggregate{
 			By:     []string{"table"},
-			Values: []query.AggregateValue{{Field: "event", As: "records", Reducer: "count"}},
+			Values: []query.AggregateValue{{Field: "table", As: "records", Reducer: "count"}},
 		},
 	}
 	for name, mutate := range map[string]func(*query.Definition){
@@ -96,10 +96,15 @@ func TestNativeTableCountRejectsChangedSemantics(t *testing.T) {
 		"conditional": func(d *query.Definition) {
 			d.Aggregate.Values[0].Filter = &query.Filter{Predicates: []query.Predicate{{Field: "event", Equals: "call"}}}
 		},
-		"other reducer": func(d *query.Definition) { d.Aggregate.Values[0].Reducer = "sum" },
-		"other group":   func(d *query.Definition) { d.Aggregate.By = []string{"event"} },
-		"other compute": func(d *query.Definition) { d.Compute[0].Function = "format-count" },
-		"union":         func(d *query.Definition) { d.Union = []string{"other"} },
+		"other reducer":  func(d *query.Definition) { d.Aggregate.Values[0].Reducer = "sum" },
+		"nullable field": func(d *query.Definition) { d.Aggregate.Values[0].Field = "event" },
+		"other group":    func(d *query.Definition) { d.Aggregate.By = []string{"event"} },
+		"other compute":  func(d *query.Definition) { d.Compute[0].Function = "format-count" },
+		"empty label":    func(d *query.Definition) { d.Compute[0].Args = []query.Argument{{Value: ""}} },
+		"object label": func(d *query.Definition) {
+			d.Compute[0].Args = []query.Argument{{Value: map[string]any{"table": "tools"}}}
+		},
+		"union": func(d *query.Definition) { d.Union = []string{"other"} },
 	} {
 		t.Run(name, func(t *testing.T) {
 			definition := base
