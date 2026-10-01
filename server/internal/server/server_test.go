@@ -292,7 +292,11 @@ func TestExternallyHostedHandlerRequiresActiveLifecycle(t *testing.T) {
 	if err := app.Start(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	defer app.Stop()
+	defer func() {
+		if err := app.Stop(t.Context()); err != nil {
+			t.Errorf("Stop failed: %v", err)
+		}
+	}()
 	if status := respond(preflight); status != http.StatusNoContent {
 		t.Fatalf("CORS preflight did not work after startup: %d", status)
 	}
@@ -308,7 +312,9 @@ func TestExternallyHostedHandlerRequiresActiveLifecycle(t *testing.T) {
 	if err := app.Start(t.Context()); err == nil {
 		t.Fatal("service started twice")
 	}
-	app.Stop()
+	if err := app.Stop(t.Context()); err != nil {
+		t.Fatal(err)
+	}
 	if status := respond(request("dashboard.example.com")); status != http.StatusServiceUnavailable {
 		t.Fatalf("handler served after shutdown: %d", status)
 	}

@@ -88,5 +88,5 @@ func (s *Service) Handler() http.Handler { return s.handler }
 // embedding host's http.Server.Shutdown, while the startup context is alive.
 func (s *Service) Drain() { s.app.Drain() }
 
-// Stop cancels and awaits CAO background tasks after the host drains HTTP.
-func (s *Service) Stop() { s.app.Stop() }
+// Stop cancels CAO background tasks and waits until they exit or ctx is canceled.
+func (s *Service) Stop(ctx context.Context) error { return s.app.Stop(ctx) }

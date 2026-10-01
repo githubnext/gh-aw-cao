@@ -244,8 +244,10 @@ the HTTP server instead of CAO's `Serve` command. Use the public `hosting.New`
 constructor with explicit paths to the built site and query documents, call
 `Start(ctx)` before serving `Handler()`, then call `Drain()` to stop admitting
 new requests and end SSE streams. Call the host's `http.Server.Shutdown` to
-drain ordinary requests, then `Stop()` to cancel and await CAO background
-tasks. Keep the startup context alive through HTTP shutdown. `Handler()`
+drain ordinary requests, then `Stop(ctx)` to cancel and await CAO background
+tasks. Pass a context with the host's shutdown deadline; it returns the context
+error if tasks have not exited by then. Keep the startup
+context alive through HTTP shutdown. `Handler()`
 includes all CAO authentication, trusted-host, CSRF, rate-limit, webhook, and
 telemetry middleware; it returns `503` before startup or after drain.
 There is no alternate raw router or automatic trust of an embedding host's

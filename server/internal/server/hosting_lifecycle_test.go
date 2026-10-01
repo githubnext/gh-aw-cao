@@ -65,7 +65,9 @@ func TestExternalHTTPServerDrainLifecycle(t *testing.T) {
 	go func() { serveResult <- httpServer.Serve(listener) }()
 	defer func() {
 		_ = httpServer.Close()
-		app.Stop()
+		stopCtx, stopCancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer stopCancel()
+		_ = app.Stop(stopCtx)
 	}()
 
 	baseURL := "http://" + listener.Addr().String()
@@ -201,12 +203,14 @@ func TestExternalHTTPServerDrainLifecycle(t *testing.T) {
 		t.Fatal("ordinary request did not start")
 	}
 	taskCanceled := make(chan struct{})
+	taskFinished := make(chan struct{})
 	releaseTask := make(chan struct{})
 	var taskOnce sync.Once
 	defer taskOnce.Do(func() { close(releaseTask) })
 	taskCtx, taskCancel := app.operationContext(t.Context())
 	defer taskCancel()
 	if !app.launchTask(func() {
+		defer close(taskFinished)
 		<-taskCtx.Done()
 		close(taskCanceled)
 		<-releaseTask
@@ -257,23 +261,36 @@ func TestExternalHTTPServerDrainLifecycle(t *testing.T) {
 		t.Fatal("background task canceled before HTTP drain")
 	default:
 	}
-	stopDone := make(chan struct{})
-	go func() { app.Stop(); close(stopDone) }()
+	stopCtx, stopCancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer stopCancel()
+	stopDone := make(chan error, 1)
+	go func() { stopDone <- app.Stop(stopCtx) }()
 	select {
 	case <-taskCanceled:
 	case <-time.After(2 * time.Second):
 		t.Fatal("Stop did not cancel background task")
 	}
 	select {
-	case <-stopDone:
-		t.Fatal("Stop returned before background task exited")
+	case err := <-stopDone:
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("Stop returned %v before background task exited", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Stop did not honor its cancellation context")
+	}
+	select {
+	case <-taskFinished:
+		t.Fatal("background task exited before it was released")
 	default:
 	}
 	taskOnce.Do(func() { close(releaseTask) })
 	select {
-	case <-stopDone:
+	case <-taskFinished:
 	case <-time.After(2 * time.Second):
-		t.Fatal("Stop did not await background task exit")
+		t.Fatal("background task did not exit")
+	}
+	if err := app.Stop(t.Context()); err != nil {
+		t.Fatalf("Stop failed after background task exited: %v", err)
 	}
 }
 
@@ -288,7 +305,9 @@ func TestProcessDrainKeepsTasksAliveUntilHTTPShutdown(t *testing.T) {
 	if err := app.startContext.Err(); err != nil {
 		t.Fatalf("background tasks canceled before HTTP shutdown: %v", err)
 	}
-	app.Stop()
+	if err := app.Stop(t.Context()); err != nil {
+		t.Fatal(err)
+	}
 	if !errors.Is(app.startContext.Err(), context.Canceled) {
 		t.Fatal("Stop did not cancel background tasks after drain")
 	}

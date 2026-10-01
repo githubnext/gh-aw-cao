@@ -252,19 +252,19 @@ func (a *App) start(startupCtx, runtimeCtx context.Context) error {
 	if collector := a.Collector(); collector != nil {
 		if err := collector.start(startupCtx, runCtx, a.hub.Broadcast, a.startTask); err != nil {
 			cancel()
-			a.tasks.Wait()
+			_ = a.waitTasks(startupCtx)
 			return fmt.Errorf("start collection: %w", err)
 		}
 		serverLog.Printf("collection profile started workers=%d", a.config.Collector.Workers)
 	}
 	if err := startupCtx.Err(); err != nil {
 		cancel()
-		a.tasks.Wait()
+		_ = a.waitTasks(startupCtx)
 		return err
 	}
 	if err := runCtx.Err(); err != nil {
 		cancel()
-		a.tasks.Wait()
+		_ = a.waitTasks(startupCtx)
 		return err
 	}
 	a.startContext = runCtx
@@ -330,16 +330,30 @@ func (a *App) operationContext(requestCtx context.Context) (context.Context, con
 	}
 }
 
-// Stop cancels and awaits CAO-owned background tasks. The external host must
-// call Drain and wait for HTTP shutdown before calling Stop.
-func (a *App) Stop() {
+// Stop cancels CAO-owned background tasks and waits until they exit or ctx is
+// canceled. The external host must call Drain and wait for HTTP shutdown first.
+func (a *App) Stop(ctx context.Context) error {
 	a.Drain()
 	a.startMu.Lock()
 	if a.stop != nil {
 		a.stop()
 	}
 	a.startMu.Unlock()
-	a.tasks.Wait()
+	return a.waitTasks(ctx)
+}
+
+func (a *App) waitTasks(ctx context.Context) error {
+	done := make(chan struct{})
+	go func() {
+		a.tasks.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (a *App) requireStarted(next http.Handler) http.Handler {
@@ -376,7 +390,13 @@ func (a *App) Serve(ctx context.Context) error {
 	if err := a.start(ctx, context.WithoutCancel(ctx)); err != nil {
 		return err
 	}
-	defer a.Stop()
+	defer func() {
+		stopCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := a.Stop(stopCtx); err != nil {
+			serverLog.Printf("background shutdown failed: %v", err)
+		}
+	}()
 	serverLog.Printf("starting server tls=%t", a.config.CertFile != "")
 	var listenConfig net.ListenConfig
 	listener, err := listenConfig.Listen(ctx, "tcp", a.config.Listen)
