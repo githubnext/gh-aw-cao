@@ -53,7 +53,8 @@ export async function runValidateActivityData({
     }
     const { size } = await stat(activityFile);
     if (size === 0) {
-      actionsLog.error`Required activity data file is empty: ${fileName}`;
+      const log = activityFile === activityFiles[0] ? actionsLog.warning : actionsLog.error;
+      log`Required activity data file is empty: ${fileName}`;
       validationFailed = true;
     } else if (activityFile === memoryManifest) {
       try {
