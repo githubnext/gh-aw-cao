@@ -165,7 +165,8 @@ func (s *Store) DropGeneration(ctx context.Context, generation string) error {
 			var responseErr redisResponseError
 			if err != nil && (!errors.As(err, &responseErr) ||
 				!strings.Contains(responseErr.message, "no such index") &&
-					!strings.Contains(responseErr.message, "Unknown Index name")) {
+					!strings.Contains(responseErr.message, "Unknown Index name") &&
+					!strings.Contains(responseErr.message, "Index not found")) {
 				return fmt.Errorf("reclaim generation search index: %w", err)
 			}
 		}

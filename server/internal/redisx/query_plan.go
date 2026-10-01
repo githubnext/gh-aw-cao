@@ -84,7 +84,17 @@ func (s *Store) ExecutePlan(
 	}, metrics, nil
 }
 
-func nativeAggregateCommand(index string, definition query.Definition, indexed []string) ([]string, map[string]string, error) {
+// outputField describes how a Redis aggregate pipeline alias maps back to a
+// Dashboard Language field name, and whether it was populated via a JSONPath
+// LOAD. Under DIALECT 4 (required for TAG value escaping), LOAD returns
+// JSONPath matches as a single-element array rather than unwrapping them, so
+// decodeAggregateRows must know which aliases need unwrapping.
+type outputField struct {
+	name     string
+	fromLoad bool
+}
+
+func nativeAggregateCommand(index string, definition query.Definition, indexed []string) ([]string, map[string]outputField, error) {
 	if len(definition.Union) != 0 || len(definition.Joins) != 0 || definition.Aggregate != nil ||
 		definition.TemporalSeries != nil || len(definition.Predict) != 0 || len(definition.Stores) != 0 ||
 		len(definition.StoresBySource) != 0 {
@@ -106,7 +116,7 @@ func nativeAggregateCommand(index string, definition query.Definition, indexed [
 	}
 	selected := make(map[string]bool, len(definition.Select))
 	loads := make([]string, 0, len(definition.Select)*3)
-	outputFields := make(map[string]string, len(definition.Select))
+	outputFields := make(map[string]outputField, len(definition.Select))
 	for _, field := range definition.Select {
 		if !nativeQueryField.MatchString(field.Field) {
 			return nil, nil, fmt.Errorf("unsupported Redis selected field %q", field.Field)
@@ -116,12 +126,13 @@ func nativeAggregateCommand(index string, definition query.Definition, indexed [
 		if output == "" {
 			output = field.Field
 		}
-		if previous, exists := outputFields[alias]; exists && previous != output {
+		if previous, exists := outputFields[alias]; exists && previous.name != output {
 			return nil, nil, fmt.Errorf("redis field alias collision for %q", field.Field)
 		}
-		outputFields[alias] = output
+		_, isComputed := computed[field.Field]
+		outputFields[alias] = outputField{name: output, fromLoad: !isComputed}
 		selected[field.Field] = true
-		if _, ok := computed[field.Field]; !ok {
+		if !isComputed {
 			loads = append(loads, redisJSONPath(field.Field), "AS", alias)
 		}
 	}
@@ -197,7 +208,7 @@ func nativeSearchExpression(filter *query.Filter, indexed []string) (string, err
 	return strings.Join(parts, " "), nil
 }
 
-func decodeAggregateRows(value any, outputFields map[string]string) ([]model.Row, error) {
+func decodeAggregateRows(value any, outputFields map[string]outputField) ([]model.Row, error) {
 	response, ok := value.([]any)
 	if !ok || len(response) == 0 {
 		return nil, errors.New("invalid FT.AGGREGATE response")
@@ -213,7 +224,7 @@ func decodeAggregateRows(value any, outputFields map[string]string) ([]model.Row
 			alias := fmt.Sprint(fields[index])
 			output, wanted := outputFields[alias]
 			if wanted {
-				row[output] = nativeResultValue(fields[index+1])
+				row[output.name] = nativeResultValue(fields[index+1], output.fromLoad)
 			}
 		}
 		rows = append(rows, row)
@@ -221,12 +232,20 @@ func decodeAggregateRows(value any, outputFields map[string]string) ([]model.Row
 	return rows, nil
 }
 
-func nativeResultValue(value any) any {
+// nativeResultValue decodes a single FT.AGGREGATE result field. Fields loaded
+// through a JSONPath (fromLoad) are unwrapped from the single-element array
+// that DIALECT 4 preserves for scalar JSONPath matches.
+func nativeResultValue(value any, fromLoad bool) any {
 	text := fmt.Sprint(value)
 	if strings.HasPrefix(text, `"`) || strings.HasPrefix(text, "[") || strings.HasPrefix(text, "{") ||
 		text == "true" || text == "false" || text == "null" {
 		var decoded any
 		if json.Unmarshal([]byte(text), &decoded) == nil {
+			if fromLoad {
+				if items, ok := decoded.([]any); ok && len(items) == 1 {
+					return items[0]
+				}
+			}
 			return decoded
 		}
 	}

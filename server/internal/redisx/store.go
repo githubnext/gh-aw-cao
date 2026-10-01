@@ -1013,6 +1013,9 @@ func (s *Store) sourceInfo(ctx context.Context, generation, name string) (model.
 	if raw := fmt.Sprint(value); raw != "" {
 		_ = json.Unmarshal([]byte(raw), &metadata)
 	}
+	if metadata == nil {
+		metadata = model.Metadata{}
+	}
 	return metadata, nil
 }
 
