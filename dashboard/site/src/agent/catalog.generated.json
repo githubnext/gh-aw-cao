@@ -746,7 +746,8 @@
         "cost-by-campaign",
         "cost-by-repository",
         "cost-by-workflow",
-        "cost-per-workflow-run"
+        "cost-per-workflow-run",
+        "engines-models-usage"
       ]
     },
     {
@@ -3499,6 +3500,7 @@
         "runs"
       ],
       "used-by-pages": [
+        "cost",
         "engines-models"
       ],
       "execution": {
