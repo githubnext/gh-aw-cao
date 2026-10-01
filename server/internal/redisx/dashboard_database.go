@@ -21,19 +21,19 @@ type DashboardDatabase struct {
 
 var _ dashboarddb.Database = (*DashboardDatabase)(nil)
 
-func (db *DashboardDatabase) Current(ctx context.Context) (dashboarddb.State, error) {
+func (db *DashboardDatabase) Current(ctx context.Context) (dashboarddb.Reader, error) {
 	active, err := db.Store.Active(ctx)
 	if err != nil {
-		return dashboarddb.State{}, err
+		return nil, err
 	}
 	evaluatedAt := active.EvaluatedAt
 	if evaluatedAt.IsZero() {
 		evaluatedAt = active.Activated
 	}
-	return dashboarddb.State{
+	return &redisDashboardReader{store: db.Store, generation: active.Generation, state: dashboarddb.State{
 		Revision: active.Revision, DataRevision: active.DataRevision,
 		EvaluatedAt: evaluatedAt, Counts: active.Counts, Available: active.Generation != "",
-	}, nil
+	}}, nil
 }
 
 func (db *DashboardDatabase) Replace(ctx context.Context, snapshot dashboarddb.Snapshot) (dashboarddb.State, error) {
@@ -101,15 +101,19 @@ func sortedDashboardSources(sources map[string]model.Source) []string {
 	return names
 }
 
-func (db *DashboardDatabase) Execute(ctx context.Context, definitions []query.Definition, requested []string, runtime dashboarddb.RuntimeSource) (map[string]model.Source, model.Metrics, error) {
-	active, err := db.Store.Active(ctx)
-	if err != nil {
-		return nil, model.Metrics{}, err
-	}
-	if active.Generation == "" {
+type redisDashboardReader struct {
+	store      *Store
+	generation string
+	state      dashboarddb.State
+}
+
+func (reader *redisDashboardReader) State() dashboarddb.State { return reader.state }
+
+func (reader *redisDashboardReader) Execute(ctx context.Context, definitions []query.Definition, requested []string, runtime dashboarddb.RuntimeSource) (map[string]model.Source, model.Metrics, error) {
+	if !reader.state.Available {
 		return nil, model.Metrics{}, ErrSourceUnavailable
 	}
-	return query.New(&dashboardLoader{ctx: ctx, store: db.Store, generation: active.Generation, runtime: runtime}).Execute(definitions, requested)
+	return query.New(&dashboardLoader{ctx: ctx, store: reader.store, generation: reader.generation, runtime: runtime}).Execute(definitions, requested)
 }
 
 type dashboardLoader struct {

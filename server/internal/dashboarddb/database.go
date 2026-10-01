@@ -33,11 +33,17 @@ type State struct {
 // The bool reports whether the source was handled.
 type RuntimeSource func(string, *query.Definition) (model.Source, model.Metrics, bool, error)
 
+// Reader pins one published snapshot so its state and query results agree,
+// even when a replacement is published during a request.
+type Reader interface {
+	State() State
+	Execute(context.Context, []query.Definition, []string, RuntimeSource) (map[string]model.Source, model.Metrics, error)
+}
+
 // Database is independent of Redis generations, indexes, and projections.
 // Replace must not expose a partially published snapshot to concurrent readers.
 type Database interface {
-	Current(context.Context) (State, error)
+	Current(context.Context) (Reader, error)
 	Replace(context.Context, Snapshot) (State, error)
 	Validate([]query.Definition) error
-	Execute(context.Context, []query.Definition, []string, RuntimeSource) (map[string]model.Source, model.Metrics, error)
 }

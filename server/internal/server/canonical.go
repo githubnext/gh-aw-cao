@@ -26,14 +26,14 @@ func (service canonicalService) rows(ctx context.Context, source string) ([]mode
 	if database == nil {
 		database = &redisx.DashboardDatabase{Store: service.store}
 	}
-	active, err := database.Current(ctx)
+	reader, err := database.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if !active.Available {
+	if !reader.State().Available {
 		return nil, errors.New("dashboard data is unavailable")
 	}
-	sources, _, err := database.Execute(ctx, nil, []string{source}, nil)
+	sources, _, err := reader.Execute(ctx, nil, []string{source}, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -45,11 +45,11 @@ func (service canonicalService) filteredRows(ctx context.Context, source string,
 	if database == nil {
 		database = &redisx.DashboardDatabase{Store: service.store}
 	}
-	active, err := database.Current(ctx)
+	reader, err := database.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if !active.Available {
+	if !reader.State().Available {
 		return nil, errors.New("dashboard data is unavailable")
 	}
 	predicates := make([]query.Predicate, 0, len(filters))
@@ -63,7 +63,7 @@ func (service canonicalService) filteredRows(ctx context.Context, source string,
 			Predicates: predicates,
 		},
 	}
-	sources, _, err := database.Execute(ctx, []query.Definition{definition}, []string{definition.Name}, nil)
+	sources, _, err := reader.Execute(ctx, []query.Definition{definition}, []string{definition.Name}, nil)
 	if err != nil {
 		return nil, err
 	}

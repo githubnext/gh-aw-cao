@@ -960,10 +960,11 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 	if database == nil {
 		database = &redisx.DashboardDatabase{Store: a.store}
 	}
-	active, err := database.Current(ctx)
-	if err != nil || !active.Available {
+	reader, err := database.Current(ctx)
+	if err != nil || !reader.State().Available {
 		return queryResponse{}, http.StatusServiceUnavailable, errors.New("dashboard data is unavailable")
 	}
+	active := reader.State()
 	evaluatedAt := active.EvaluatedAt.UTC().Format(time.RFC3339Nano)
 	if active.EvaluatedAt.IsZero() {
 		evaluatedAt = time.Now().UTC().Format(time.RFC3339Nano)
@@ -1006,7 +1007,7 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 	if err := database.Validate(definitions); err != nil {
 		return queryResponse{}, http.StatusBadRequest, err
 	}
-	sources, metrics, err := database.Execute(ctx, definitions, requested, loader.runtimeSource)
+	sources, metrics, err := reader.Execute(ctx, definitions, requested, loader.runtimeSource)
 	if err != nil {
 		serverLog.Printf("query failed")
 		return queryResponse{}, http.StatusBadRequest, err

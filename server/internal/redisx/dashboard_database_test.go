@@ -20,6 +20,39 @@ func (noCommands) DoMany(context.Context, [][]string) ([]any, error) {
 	return nil, errors.New("unexpected Redis commands")
 }
 
+type activeOnce struct{ reads int }
+
+func (client *activeOnce) Do(_ context.Context, args ...string) (any, error) {
+	if args[0] != "HGETALL" || client.reads != 0 {
+		return nil, errors.New("snapshot was read again")
+	}
+	client.reads++
+	return []any{
+		"generation", "pinned", "revision", "1", "counts", "{}",
+		"activatedAt", "2026-01-01T00:00:00Z",
+	}, nil
+}
+
+func (*activeOnce) DoMany(context.Context, [][]string) ([]any, error) {
+	return nil, errors.New("unexpected Redis commands")
+}
+
+func TestDashboardReaderPinsSnapshotForQuery(t *testing.T) {
+	client := &activeOnce{}
+	db := &DashboardDatabase{Store: NewStore(client, "dashboard-test")}
+	reader, err := db.Current(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime := func(name string, _ *query.Definition) (model.Source, model.Metrics, bool, error) {
+		return model.Source{Source: name, Rows: []model.Row{{"id": "1"}}}, model.Metrics{}, true, nil
+	}
+	sources, _, err := reader.Execute(t.Context(), nil, []string{"runtime"}, runtime)
+	if err != nil || client.reads != 1 || len(sources["runtime"].Rows) != 1 || reader.State().Revision != 1 {
+		t.Fatalf("reader did not pin snapshot: sources=%v reads=%d err=%v", sources, client.reads, err)
+	}
+}
+
 func TestDashboardDatabaseRejectsInvalidRevisionBeforeWriting(t *testing.T) {
 	db := &DashboardDatabase{Store: NewStore(noCommands{}, "dashboard-test")}
 	if _, err := db.Replace(t.Context(), dashboarddb.Snapshot{DataRevision: "short"}); err == nil {

@@ -16,8 +16,8 @@ type recordingDatabase struct {
 	writes   int
 }
 
-func (db *recordingDatabase) Current(context.Context) (dashboarddb.State, error) {
-	return db.state, nil
+func (db *recordingDatabase) Current(context.Context) (dashboarddb.Reader, error) {
+	return recordingReader{state: db.state}, nil
 }
 
 func (db *recordingDatabase) Validate(definitions []query.Definition) error {
@@ -37,7 +37,11 @@ func (db *recordingDatabase) Replace(_ context.Context, snapshot dashboarddb.Sna
 	return db.state, nil
 }
 
-func (db *recordingDatabase) Execute(context.Context, []query.Definition, []string, dashboarddb.RuntimeSource) (map[string]model.Source, model.Metrics, error) {
+type recordingReader struct{ state dashboarddb.State }
+
+func (reader recordingReader) State() dashboarddb.State { return reader.state }
+
+func (recordingReader) Execute(context.Context, []query.Definition, []string, dashboarddb.RuntimeSource) (map[string]model.Source, model.Metrics, error) {
 	return nil, model.Metrics{}, errors.New("not used")
 }
 

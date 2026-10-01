@@ -175,10 +175,11 @@ func RunDatabase(ctx context.Context, db dashboarddb.Database, directory string,
 		return Result{}, err
 	}
 	dataRevision := DirectoryRevision(manifest, inventoryContent, memory.Revision)
-	active, err := db.Current(ctx)
+	reader, err := db.Current(ctx)
 	if err != nil {
 		return Result{}, fmt.Errorf("read dashboard database state: %w", err)
 	}
+	active := reader.State()
 	if !options.Force && active.Available && active.DataRevision == dataRevision {
 		ingestLog.Printf("reusing dashboard data revision=%d sources=%d", active.Revision, len(active.Counts))
 		evaluatedAt := active.EvaluatedAt
