@@ -904,7 +904,7 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 		}
 		for _, raw := range rawRows {
 			if raw == "" {
-				return model.Source{}, metrics, errors.New("Redis source row is missing")
+				return model.Source{}, metrics, errors.New("redis source row is missing")
 			}
 			var row model.Row
 			if err := json.Unmarshal([]byte(raw), &row); err != nil {

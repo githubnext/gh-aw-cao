@@ -215,7 +215,7 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 		if err == nil || activationStarted {
 			return
 		}
-		cleanup, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 		defer cancel()
 		if dropErr := store.DiscardGeneration(cleanup, generation); dropErr != nil {
 			ingestLog.Printf("failed generation cleanup incomplete")
