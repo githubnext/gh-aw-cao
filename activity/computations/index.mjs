@@ -4,13 +4,15 @@ import { queryDashboardSourceObservations } from '../../dashboard/site/src/data/
 import { normalize } from '../../dashboard/site/src/data/normalize/index.js';
 import { queryCollection, readCollection } from '../../dashboard/site/src/data/storage/indexeddb.js';
 import { createDebug } from '../debug.mjs';
+import { computeIntelligencePortfolio } from './intelligence.mjs';
 import {
   computeRuntimeHealthPortfolio,
   evaluateRuntimeHealthPartition,
   workerEvaluationState
 } from './runtime-health.mjs';
 
-export const COMPUTATION_NAMES = Object.freeze(['runtime-health']);
+export const COMPUTATION_NAMES = Object.freeze(['intelligence', 'runtime-health']);
+const debugIntelligence = createDebug('computation:intelligence');
 const debugRuntimeHealth = createDebug('computation:runtime-health');
 
 export function hasComputation(name) {
@@ -412,6 +414,27 @@ export function computeRuntimeHealthFromCanonicalData(data, options = {}) {
   };
 }
 
+export function computeIntelligenceFromCanonicalData(data, options = {}) {
+  const startedAt = performance.now();
+  const runtimeHealth = computeRuntimeHealthFromCanonicalData(data, {
+    campaign: options.campaign
+  }).result;
+  const result = computeIntelligencePortfolio(runtimeHealth, {
+    previousResult: options.previousResult
+  });
+  debugIntelligence(
+    'computed %d decision(s) and %d suppression(s) in %d ms',
+    result.decisionCount,
+    result.suppressionCount,
+    performance.now() - startedAt
+  );
+  return {
+    command: 'computation',
+    computation: 'intelligence',
+    result
+  };
+}
+
 export async function queryRuntimeHealth(indexedDB, options = {}) {
   const [storedCampaigns, storedWorkflows, storedRepositories] = await Promise.all([
     readCollection(indexedDB, 'campaigns'),
@@ -478,7 +501,30 @@ export async function queryRuntimeHealth(indexedDB, options = {}) {
   };
 }
 
+async function queryIntelligence(indexedDB, options = {}) {
+  const startedAt = performance.now();
+  const runtimeHealth = await queryRuntimeHealth(indexedDB, {
+    campaign: options.campaign,
+    inventorySources: options.inventorySources
+  });
+  const result = computeIntelligencePortfolio(runtimeHealth.result, {
+    previousResult: options.previousResult
+  });
+  debugIntelligence(
+    'computed %d decision(s) and %d suppression(s) in %d ms',
+    result.decisionCount,
+    result.suppressionCount,
+    performance.now() - startedAt
+  );
+  return {
+    command: 'computation',
+    computation: 'intelligence',
+    result
+  };
+}
+
 export function queryComputation(indexedDB, name, options = {}) {
+  if (name === 'intelligence') return queryIntelligence(indexedDB, options);
   if (name === 'runtime-health') return queryRuntimeHealth(indexedDB, options);
   throw new Error(`Unknown computation: ${name}`);
 }

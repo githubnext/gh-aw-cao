@@ -159,7 +159,8 @@ Derived results MUST be:
 
 - versioned;
 - deterministic for the same inputs and configuration;
-- generation-scoped;
+- identified by collision-resistant input fingerprints over declared
+  dependencies, computation versions, and relevant configuration;
 - partitioned and independently recomputable;
 - bounded;
 - quality- and provenance-preserving;
@@ -537,6 +538,11 @@ through the canonical query boundary.
 Campaigns are bounded executors, not independent portfolio intelligence
 systems.
 
+An implementation MAY deploy shared intelligence before a coordination ledger
+exists. In that phase it MUST stop at advisory Decision publication, MUST NOT
+represent a Decision as acquired or admitted Work, and MUST NOT dispatch a
+worker from the intelligence computation.
+
 Shared intelligence SHOULD own:
 
 - cross-campaign discovery and ranking;
@@ -671,6 +677,10 @@ Implementation SHOULD proceed in this order:
 8. Add authoring-time validation and historical campaign simulation.
 9. Add backtested forecasts, calibrated probabilities, and reviewed adaptive
    recommendations.
+
+The initial ledger-free delivery MAY stop after step 4. Later coordination
+MUST consume the stable Decision contract and input fingerprints rather than
+requiring the intelligence layer to recompute or reinterpret execution state.
 
 ## 15. Conformance checklist
 

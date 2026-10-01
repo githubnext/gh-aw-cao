@@ -158,6 +158,8 @@ Use the gh-like query surface for common questions:
 Check runtime health or query canonical records:
 
 ```bash
+./cao.sh computation intelligence
+./cao.sh computation intelligence --campaign dependabot --previous prior-intelligence.json
 ./cao.sh computation runtime-health --campaign dependabot
 ./cao.sh computation runtime-health --campaign dependabot --diagnose
 
@@ -166,6 +168,12 @@ Check runtime health or query canonical records:
   --where conclusion=failure \
   --limit 20
 ```
+
+The `intelligence` computation fingerprints canonical runtime-health evidence,
+correlates matching failure signals, suppresses ineligible or recovering
+candidates, and emits advisory Decisions. It never dispatches workers or grants
+execution authority. Passing a prior result with `--previous` reuses unchanged
+nonterminal Decisions and suppresses unchanged terminal results.
 
 Render a named dashboard query as an editable agent prompt with the same template as the UI:
 
