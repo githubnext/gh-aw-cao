@@ -32,6 +32,24 @@ the field list is not a projection. Native no-`select` grouped aggregates
 require complete indexed group and measure fields. Other no-`select` queries
 retain full documents through the indexed-candidate/Go path.
 
+## PostgreSQL analytical storage foundation
+
+`internal/analytical` defines snapshot storage, snapshot reading, and query
+execution contracts. `internal/postgresx` implements pooled PostgreSQL
+connectivity, versioned schema initialization, JSONB source storage, bulk `COPY`,
+snapshot validation and atomic activation. The PostgreSQL query executor is
+deliberately limited to an unmodified `from` query; it preserves unknown source
+properties and returns `ErrUnsupportedPlan` for every other plan instead of
+approximating Dashboard Language semantics.
+
+This foundation is not wired to the hosted server or ingestion command.
+Redis-backed hosted reads and operational services remain unchanged; PostgreSQL
+must not become the production query backend until dual-write ingestion, all
+checked-in query operators, differential parity, deployment configuration,
+telemetry, and an explicit rollback path are complete. To run the real storage
+integration test against a local PostgreSQL database, set `POSTGRES_URL` and run
+`go test ./internal/postgresx -run TestSnapshotLifecyclePreservesUnknownSourceProperties`.
+
 ### Debug logging
 
 The server includes the namespace logger helpers from `github/gh-aw`. Debug

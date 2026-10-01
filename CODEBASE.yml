@@ -14,6 +14,7 @@ project:
     - SQLite
     - IndexedDB
     - Redis
+    - PostgreSQL
     - Go
     - Dashboard Language
     - Astro/Starlight
@@ -29,6 +30,8 @@ structure:
   dashboard_data: dashboard/site/src/data/
   dashboard_redis_server: server/
   dashboard_server_contract: server/spec/
+  dashboard_analytical_interfaces: server/internal/analytical/
+  dashboard_postgres_storage: server/internal/postgresx/
   dashboard_coolify_profile: server/coolify/
   dashboard_upstash_profile: server/internal/server/hosted.go
   dashboard_container: server/Dockerfile
@@ -138,6 +141,12 @@ components:
   redis_projection:
     path: server/
     responsibility: disposable generation-scoped RedisJSON row documents and RediSearch indexes for compatible predicates, with core Redis hashes for issue overlays and Upstash
+  postgres_analytical_storage:
+    path: server/internal/postgresx/
+    responsibility: staged PostgreSQL JSONB source snapshots with bulk COPY, validation, transactional activation, cleanup, and exact source pass-through queries; not connected to hosted startup or ingestion
+  analytical_backend_contracts:
+    path: server/internal/analytical/
+    responsibility: backend-neutral snapshot persistence, reading, and query-execution interfaces
   dashboard_https_server:
     path: server/
     responsibility: independently resolve compiled app-target and declarative Redis-provider modules from non-secret cao.json, compose and validate their capabilities, ingest deployed artifacts, execute Dashboard Language queries server-side, and serve bounded canonical or explicitly registered runtime-source results
@@ -319,6 +328,10 @@ invariants:
   - "Missing, stale, partial, and zero evidence are distinct states."
   - "Dashboard data operations MUST be declared in Dashboard Language and execute outside the browser main thread: in the data Web Worker for static deployment or in the Go HTTP(S) server for the Redis profile."
   - "In the Redis profile, Dashboard Language queries execute in the Go HTTP(S) server and compatible stages MUST be pushed into Redis before bounded Go fallback."
+  - "PostgreSQL analytical storage is a staged foundation, not a hosted default; its current SQL executor accepts only an unmodified from query and MUST reject unsupported normalized plans rather than approximate semantics."
+  - "PostgreSQL source rows MUST retain complete JSONB documents and activation MUST be transactional; runtime SQL values MUST use parameters."
+  - "Do not route hosted dashboard queries to PostgreSQL until ingestion dual-write, checked-in query parity, bounded execution, deployment configuration, shadow validation, and rollback are implemented."
+  - "Redis remains responsible for operational coordination and its current analytical backend remains available until PostgreSQL passes migration gates."
   - "General Redis deployments require Redis 8 JSON and Search support; generation-scoped JSON rows and search indexes MUST be staged before activation and reclaimed together, while issue overlays and the single-session Upstash profile retain core Redis hashes."
   - "The local Redis profile MUST bind to loopback, use HTTP by default for localhost debugging, enable HTTPS only with operator-supplied certificate files, and MUST NOT expose Redis endpoints or credentials to browser code."
   - "The hosted Redis profile MUST use GitHub OAuth with explicit organization or team authorization, explicit rebuild administrators, server-side secrets and sessions, and an explicit account-selection flow for switching GitHub identities."

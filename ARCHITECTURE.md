@@ -78,6 +78,7 @@ flowchart LR
     Worker["Browser data Web Worker"]
     IndexedDB["IndexedDB projection"]
     Redis["Redis projection<br/>optional server profile"]
+    PostgreSQL["PostgreSQL analytical store<br/>migration foundation"]
     Query["Dashboard Language queries"]
     GoServer["Go HTTP(S) query server"]
     GitHub["GitHub / gh-aw<br/>authoritative state"]
@@ -95,6 +96,8 @@ flowchart LR
     Worker --> IndexedDB
     IndexedDB --> Query
     Publisher --> GoServer --> Redis
+    Publisher -.->|"staged snapshot-store contract"| PostgreSQL
+    PostgreSQL -.->|"pass-through query only"| GoServer
     GitHub -->|"webhooks + rebuild input"| GoServer
     Redis --> GoServer --> Query
     IndexedDB --> Compute --> Results --> Query
@@ -124,6 +127,27 @@ Its local mode remains loopback-only. Its host-neutral mode uses
 GitHub OAuth and explicit organization or team authorization, verifies and
 deduplicates GitHub webhooks, and rebuilds through a staged generation before
 atomically changing the active pointer.
+
+The PostgreSQL migration introduces backend-neutral analytical contracts in
+`server/internal/analytical` and a pooled PostgreSQL implementation in
+`server/internal/postgresx`. That implementation stores complete source rows as
+JSONB, bulk-loads each source with `COPY`, validates snapshot row counts, and
+switches the active snapshot transactionally. Its SQL executor currently handles
+only an unmodified `from` query, preserving the complete source row; all other
+normalized plans are explicitly unsupported. It is not yet connected to hosted
+startup, ingestion, or the query endpoint. Redis therefore remains the active
+hosted analytical backend and continues to own operational coordination. Do not
+route production queries to PostgreSQL until ingestion dual-write, full query
+coverage, differential parity, bounded execution, and rollback configuration are
+implemented and validated.
+
+The intended responsibility split is PostgreSQL for durable canonical
+analytical snapshots and Dashboard Language execution, and Redis for ephemeral
+sessions, quota reservation, rate limiting, webhook deduplication, leases,
+streams, caches, and coordination. Browser IndexedDB and SQLite are unchanged.
+New PostgreSQL interfaces and storage code use snapshot terminology; the current
+Redis integration remains compatible with its existing deployment and API
+contracts while the migration is staged.
 Redis remains reconstructable from GitHub / gh-aw state and never becomes an
 authority. The same server binary provides a read-only diagnostic check-up
 that inspects the runtime, Redis safety and capacity, the active canonical
