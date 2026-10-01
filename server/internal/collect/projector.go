@@ -16,6 +16,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/operationalvalue"
+	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
@@ -48,6 +49,7 @@ type Projector struct {
 	Budget              *githubapp.Budget
 	WindowDays          int
 	DatabaseQueriesPath string
+	DashboardQueries    []query.Definition
 	// ControlRepository names the control repository used during inventory
 	// discovery.
 	ControlRepository string
@@ -174,6 +176,7 @@ func (p Projector) project(ctx context.Context, force bool) (ingest.Result, erro
 	// interval affordable.
 	result, err := ingest.Run(ctx, p.Store, p.Lake.Directory, ingest.Options{
 		DatabaseQueriesPath: p.DatabaseQueriesPath,
+		DashboardQueries:    p.DashboardQueries,
 		RetainGenerations:   p.RetainGenerations,
 		Force:               force,
 	})

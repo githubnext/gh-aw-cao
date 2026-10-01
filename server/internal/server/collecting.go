@@ -14,6 +14,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
@@ -59,6 +60,7 @@ type CollectorConfig struct {
 	// fails the projection rather than publishing a partial inventory.
 	InventoryLimit    int
 	CollectionTimeout time.Duration
+	DashboardQueries  []query.Definition
 
 	// Workers enables in-process collection workers. Deployments that scale
 	// collection separately leave this zero and run the collect role instead.
@@ -225,6 +227,7 @@ func NewCollector(
 		Budget:                   budget,
 		WindowDays:               config.WindowDays,
 		DatabaseQueriesPath:      databaseQueriesPath,
+		DashboardQueries:         config.DashboardQueries,
 		ControlRepository:        config.ControlRepository,
 		MinInterval:              config.MinProjectionInterval,
 		RetainGenerations:        config.RetainGenerations,

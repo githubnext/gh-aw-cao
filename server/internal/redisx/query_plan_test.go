@@ -2,6 +2,8 @@ package redisx
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -52,6 +54,108 @@ func (*dialectArrayPlanClient) Do(_ context.Context, command ...string) (any, er
 		}
 	}
 	return []any{int64(1), []any{"id", `["3"]`, "label", "failed worker"}}, nil
+}
+
+type materializedPlanClient struct {
+	signature string
+	commands  [][]string
+}
+
+func (client *materializedPlanClient) Do(_ context.Context, command ...string) (any, error) {
+	client.commands = append(client.commands, append([]string(nil), command...))
+	if len(command) >= 3 && command[0] == "HGET" && strings.HasSuffix(command[2], "source:summary:metadata") {
+		return `{"query-signature":"` + client.signature + `","availability":"available"}`, nil
+	}
+	if len(command) >= 3 && command[0] == "HGET" {
+		switch {
+		case strings.HasSuffix(command[2], "source:runs:metadata"):
+			return `{"availability":"available"}`, nil
+		case strings.HasSuffix(command[2], "source:runs:format"):
+			return "json", nil
+		case strings.HasSuffix(command[2], "source:runs:index-schema"):
+			return `[]`, nil
+		}
+	}
+	if len(command) > 0 && command[0] == "FT.AGGREGATE" {
+		return []any{int64(2),
+			[]any{materializedRowField, `[{"label":"first","count":1}]`, materializedPositionField, "0"},
+			[]any{materializedRowField, `[{"label":"second","count":2}]`, materializedPositionField, "1"},
+		}, nil
+	}
+	return nil, fmt.Errorf("unexpected command: %v", command)
+}
+
+func (*materializedPlanClient) DoMany(context.Context, [][]string) ([]any, error) {
+	return nil, errors.New("unexpected pipeline")
+}
+
+func TestExecutePlanLoadsExactMaterializedDefinitionWithRedisQueryEngine(t *testing.T) {
+	definition := query.Definition{
+		Name: "summary", From: "runs", Union: []string{"issues"},
+		Select: []query.SelectedField{{Field: "label"}, {Field: "count"}},
+	}
+	signature, err := query.DefinitionSignature(definition)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := &materializedPlanClient{signature: signature}
+	store := NewStore(client, "test")
+
+	result, metrics, err := store.ExecutePlan(
+		t.Context(), "generation", []query.Definition{definition}, []string{definition.Name},
+		[]string{"runs", "issues", definition.Name}, nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := result[definition.Name].Rows
+	if len(rows) != 2 || rows[0]["label"] != "first" || rows[1]["count"] != 2.0 {
+		t.Fatalf("unexpected materialized rows: %#v", rows)
+	}
+	if !reflect.DeepEqual(metrics.PushedDown, []string{"redis-materialized-query"}) || metrics.RedisRows != 2 {
+		t.Fatalf("unexpected materialized metrics: %+v", metrics)
+	}
+	for _, command := range client.commands {
+		if command[0] == "SMEMBERS" || command[0] == "JSON.GET" || command[0] == "EVAL" {
+			t.Fatalf("materialized plan bypassed Redis query engine: %v", command)
+		}
+	}
+}
+
+func TestExecutePlanRejectsMismatchedMaterializedDefinition(t *testing.T) {
+	stored := query.Definition{Name: "summary", From: "runs", Union: []string{"issues"}}
+	storedSignature, err := query.DefinitionSignature(stored)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := &materializedPlanClient{signature: storedSignature}
+	store := NewStore(client, "test")
+	requested := stored
+	requested.Select = []query.SelectedField{{Field: "id"}}
+
+	_, _, err = store.ExecutePlan(
+		t.Context(), "generation", []query.Definition{requested}, []string{requested.Name},
+		[]string{"runs", "issues", requested.Name}, nil,
+	)
+	if !errors.Is(err, ErrNativePlanUnsupported) {
+		t.Fatalf("signature mismatch should be unsupported, got %v", err)
+	}
+	for _, command := range client.commands {
+		if command[0] == "FT.AGGREGATE" {
+			t.Fatalf("signature mismatch loaded materialized rows: %v", command)
+		}
+	}
+}
+
+func TestPlannedDefinitionsExcludeUnrelatedCatalogEntries(t *testing.T) {
+	definitions := []query.Definition{
+		{Name: "first", From: "runs"},
+		{Name: "second", From: "issues"},
+	}
+	planned := plannedDefinitions(definitions, []string{"runs", "first"})
+	if len(planned) != 1 || planned[0].Name != "first" {
+		t.Fatalf("planned definitions = %#v, want first", planned)
+	}
 }
 
 func TestNativeAggregateCommandUsesTypedFiltersAndReducers(t *testing.T) {
@@ -162,6 +266,35 @@ func TestNativeAggregateCommandAppliesNumericComputations(t *testing.T) {
 }
 
 func (*dialectArrayPlanClient) DoMany(context.Context, [][]string) ([]any, error) { return nil, nil }
+
+type missingSourcePlanClient struct{}
+
+func (*missingSourcePlanClient) Do(_ context.Context, command ...string) (any, error) {
+	if len(command) >= 3 && command[0] == "HGET" && strings.HasSuffix(command[2], ":metadata") {
+		return nil, nil
+	}
+	return nil, fmt.Errorf("unexpected command: %v", command)
+}
+
+func (*missingSourcePlanClient) DoMany(context.Context, [][]string) ([]any, error) {
+	return nil, errors.New("unexpected pipeline")
+}
+
+func TestExecutePlanTreatsMissingInputAsUnsupported(t *testing.T) {
+	store := NewStore(&missingSourcePlanClient{}, "native")
+	definition := query.Definition{
+		Name: "transaction-summary", From: "transactions",
+		Select: []query.SelectedField{{Field: "id"}},
+	}
+
+	_, _, err := store.ExecutePlan(
+		t.Context(), "generation", []query.Definition{definition}, []string{definition.Name},
+		[]string{definition.Name}, nil,
+	)
+	if !errors.Is(err, ErrNativePlanUnsupported) {
+		t.Fatalf("missing input should use compatibility evaluation, got %v", err)
+	}
+}
 
 func TestExecutePlanUnwrapsDialectFourArraysAndToleratesMissingMetadata(t *testing.T) {
 	store := NewStore(&dialectArrayPlanClient{}, "native")

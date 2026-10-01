@@ -141,7 +141,9 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 		return nil, err
 	}
 	if config.Collector != nil {
-		collector, err := NewCollector(ctx, store, *config.Collector, config.DatabaseQueriesPath)
+		collectorConfig := *config.Collector
+		collectorConfig.DashboardQueries = config.DashboardQueries
+		collector, err := NewCollector(ctx, store, collectorConfig, config.DatabaseQueriesPath)
 		if err != nil {
 			return nil, fmt.Errorf("configure collection: %w", err)
 		}
@@ -163,6 +165,7 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 		reconciler = DirectoryReconciler{
 			Store: store, SourceDirectory: config.SourceDirectory,
 			DatabaseQueriesPath: config.DatabaseQueriesPath,
+			DashboardQueries:    config.DashboardQueries,
 		}
 	}
 	if config.MCPEnabled && profile.Authentication == HostAuthenticationOAuth {
@@ -230,7 +233,10 @@ func (a *App) Start(ctx context.Context) error {
 	runCtx, cancel := context.WithCancel(ctx)
 	serverLog.Printf("starting service initial_ingestion=%t", a.config.SourceDirectory != "")
 	if a.config.SourceDirectory != "" {
-		result, err := ingest.Run(runCtx, a.store, a.config.SourceDirectory, ingest.Options{DatabaseQueriesPath: a.config.DatabaseQueriesPath})
+		result, err := ingest.Run(runCtx, a.store, a.config.SourceDirectory, ingest.Options{
+			DatabaseQueriesPath: a.config.DatabaseQueriesPath,
+			DashboardQueries:    a.config.DashboardQueries,
+		})
 		if err != nil {
 			cancel()
 			return fmt.Errorf("initial ingestion failed: %w", err)
@@ -1007,6 +1013,60 @@ type generationLoader struct {
 	generation            string
 	app                   *App
 	allowCollectionHealth bool
+}
+
+type generationLoadOnly struct{ loader *generationLoader }
+
+func (loader generationLoadOnly) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
+	return loader.loader.LoadSource(name, definition)
+}
+
+func (loader *generationLoader) ExecutePlan(
+	definitions []query.Definition, requested, order []string,
+) (map[string]model.Source, model.Metrics, error) {
+	external := map[string]model.Source{}
+	loadExternal := func(name string) error {
+		switch name {
+		case collectionHealthSourceName, gitHubQuotaUsageSourceName, marketplace.SourceName:
+			source, _, err := loader.LoadSource(name, nil)
+			if err != nil {
+				return err
+			}
+			external[name] = source
+		}
+		return nil
+	}
+	planned := make(map[string]bool, len(order))
+	for _, name := range order {
+		planned[name] = true
+		if err := loadExternal(name); err != nil {
+			return nil, model.Metrics{}, err
+		}
+	}
+	for _, definition := range definitions {
+		if !planned[definition.Name] {
+			continue
+		}
+		inputs := append([]string{definition.From}, definition.Union...)
+		for _, join := range definition.Joins {
+			inputs = append(inputs, join.Source)
+		}
+		for _, name := range inputs {
+			if err := loadExternal(name); err != nil {
+				return nil, model.Metrics{}, err
+			}
+		}
+	}
+	result, metrics, err := loader.store.ExecutePlan(
+		loader.ctx, loader.generation, definitions, requested, order, external,
+	)
+	if err == nil || !errors.Is(err, redisx.ErrNativePlanUnsupported) {
+		return result, metrics, err
+	}
+	fallback, fallbackMetrics, fallbackErr := query.New(generationLoadOnly{loader: loader}).Execute(definitions, requested)
+	fallbackMetrics.RedisCommands += metrics.RedisCommands
+	fallbackMetrics.RedisRows += metrics.RedisRows
+	return fallback, fallbackMetrics, fallbackErr
 }
 
 func (loader *generationLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {

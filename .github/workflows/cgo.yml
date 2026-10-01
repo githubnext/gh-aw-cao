@@ -199,7 +199,7 @@ jobs:
             --source ${{ github.workspace }}/server/testdata/deployed-subset
             --access-token ${{ env.DASHBOARD_SERVER_ACCESS_TOKEN }}
             --site ${{ github.workspace }}/dashboard/site/dist
-            --dashboard-queries ${{ github.workspace }}/dashboard/site/dashboard.json
+            --dashboard-queries ${{ github.workspace }}/dashboard/site/src/agent/queries.generated.json
             --database-queries ${{ github.workspace }}/dashboard/site/src/data/queries/database.json
         run: npm run test:e2e:dashboard-server
       - name: Upload integration traces

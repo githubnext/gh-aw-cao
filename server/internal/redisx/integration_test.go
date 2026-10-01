@@ -237,6 +237,38 @@ func TestRedisJSONSearchIndexAndFallback(t *testing.T) {
 		!reflect.DeepEqual(aggregateMetrics.PushedDown, []string{"redis-query-engine"}) {
 		t.Fatalf("aggregate plan was not fully executed in Redis: %+v", aggregateMetrics)
 	}
+	materializedDefinition := query.Definition{
+		Name: "materialized-summary", From: "runs", Union: []string{"issues"},
+		Select: []query.SelectedField{{Field: "label"}, {Field: "count"}},
+	}
+	materializedSignature, err := query.DefinitionSignature(materializedDefinition)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.PutSource(ctx, generation, model.Source{
+		Source: materializedDefinition.Name,
+		Rows: []model.Row{
+			{"label": "first", "count": 1.0},
+			{"label": "second", "count": 2.0},
+		},
+		Metadata: model.Metadata{query.MaterializedSignatureMetadata: materializedSignature},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	materialized, materializedMetrics, err := store.ExecutePlan(
+		ctx, generation, []query.Definition{materializedDefinition}, []string{materializedDefinition.Name},
+		[]string{"runs", "issues", materializedDefinition.Name}, nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	materializedRows := materialized[materializedDefinition.Name].Rows
+	if len(materializedRows) != 2 || materializedRows[0]["label"] != "first" || materializedRows[1]["count"] != 2.0 {
+		t.Fatalf("unexpected materialized Redis rows: %#v", materializedRows)
+	}
+	if !reflect.DeepEqual(materializedMetrics.PushedDown, []string{"redis-materialized-query"}) {
+		t.Fatalf("materialized plan was not loaded through Redis query engine: %+v", materializedMetrics)
+	}
 	byRole := query.Definition{
 		Name: "workers", From: "runs",
 		Filter: &query.Filter{Predicates: []query.Predicate{{Field: "workflow-role", Equals: "worker"}}},

@@ -23,6 +23,12 @@ const redisWriteBatchSize = 100
 const ingestionHealthKey = "state:ingestion-health"
 const maxIndexedCandidates = 5000
 
+const (
+	materializedMarkerField   = "__cao_materialized"
+	materializedPositionField = "__cao_position"
+	materializedRowField      = "__cao_row"
+)
+
 // Only index scalar fields used by common direct-source dashboard filters.
 // Other predicates, substring searches, joins, and issue overlays remain in Go.
 var searchableFields = []string{
@@ -688,12 +694,20 @@ func (s *Store) PutSource(ctx context.Context, generation string, source model.S
 	setKey := s.sourceSetKey(generation, source.Source)
 	format := "hash"
 	var schema []indexField
+	_, materialized := source.Metadata[query.MaterializedSignatureMetadata]
 	if !s.processIsolated && source.Source != "issues" {
 		format = "json"
-		var err error
-		schema, err = indexSchemaForSource(source, s.indexDefinitions)
-		if err != nil {
-			return err
+		if materialized {
+			schema = []indexField{
+				{Name: materializedMarkerField, Alias: materializedMarkerField, Kind: indexFieldTag, Required: true},
+				{Name: materializedPositionField, Alias: materializedPositionField, Kind: indexFieldNumeric, Sortable: true, Required: true},
+			}
+		} else {
+			var err error
+			schema, err = indexSchemaForSource(source, s.indexDefinitions)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	metadata, _ := json.Marshal(source.Metadata)
@@ -736,7 +750,15 @@ func (s *Store) PutSource(ctx context.Context, generation string, source model.S
 		script = `redis.call("JSON.SET", KEYS[1], "$", ARGV[1]); redis.call("SADD", KEYS[2], KEYS[1]); return "OK"`
 	}
 	for rowNumber, row := range source.Rows {
-		data, err := json.Marshal(row)
+		storedRow := row
+		if materialized && format == "json" {
+			storedRow = model.Row{
+				materializedMarkerField:   "1",
+				materializedPositionField: rowNumber,
+				materializedRowField:      row,
+			}
+		}
+		data, err := json.Marshal(storedRow)
 		if err != nil {
 			return fmt.Errorf("encode %s row: %w", source.Source, err)
 		}
@@ -922,6 +944,12 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 			var row model.Row
 			if err := json.Unmarshal([]byte(raw), &row); err != nil {
 				return model.Source{}, metrics, err
+			}
+			if _, materialized := metadata[query.MaterializedSignatureMetadata]; materialized {
+				wrapped, ok := row[materializedRowField].(map[string]any)
+				if ok {
+					row = model.Row(wrapped)
+				}
 			}
 			if projectedFields != nil {
 				projected := make(model.Row, len(projectedFields))

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
+	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
@@ -37,11 +38,13 @@ type DirectoryReconciler struct {
 	Store               *redisx.Store
 	SourceDirectory     string
 	DatabaseQueriesPath string
+	DashboardQueries    []query.Definition
 }
 
 func (reconciler DirectoryReconciler) Rebuild(ctx context.Context) (ingest.Result, error) {
 	return ingest.Run(ctx, reconciler.Store, reconciler.SourceDirectory, ingest.Options{
 		DatabaseQueriesPath: reconciler.DatabaseQueriesPath,
+		DashboardQueries:    reconciler.DashboardQueries,
 		Force:               true,
 	})
 }

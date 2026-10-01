@@ -48,6 +48,7 @@ type Result struct {
 
 type Options struct {
 	DatabaseQueriesPath string
+	DashboardQueries    []query.Definition
 	Force               bool
 	// RetainGenerations bounds how many superseded generations are kept for
 	// rollback. Zero selects redisx.DefaultGenerationRetention.
@@ -162,7 +163,15 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 	if err != nil {
 		return Result{}, err
 	}
-	dataRevision := DirectoryRevision(manifest, inventoryContent, memory.Revision)
+	definitions, err := loadDefinitions(options.DatabaseQueriesPath)
+	if err != nil {
+		return Result{}, err
+	}
+	queryRevision, err := queryDefinitionsRevision(definitions, options.DashboardQueries)
+	if err != nil {
+		return Result{}, err
+	}
+	dataRevision := DirectoryRevision(manifest, inventoryContent, memory.Revision, queryRevision)
 	active, err := store.Active(ctx)
 	if err != nil {
 		return Result{}, fmt.Errorf("read active Redis generation: %w", err)
@@ -193,14 +202,15 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 		}
 	}
 	ingestLog.Printf("loaded canonical shards collections=%d", len(canonical))
-	definitions, err := loadDefinitions(options.DatabaseQueriesPath)
-	if err != nil {
-		return Result{}, err
-	}
 	sources, err := projectSources(canonical, inventory, definitions)
 	if err != nil {
 		return Result{}, err
 	}
+	materialized, err := materializeDashboardQueries(sources, options.DashboardQueries)
+	if err != nil {
+		return Result{}, err
+	}
+	ingestLog.Printf("materialized dashboard queries count=%d", materialized)
 	ingestLog.Printf("projected logical sources count=%d", len(sources))
 	diagnostics := buildDiagnostics(canonical)
 	if err := validateDiagnostics(diagnostics); err != nil {
@@ -760,4 +770,59 @@ func availability(rows []model.Row) string {
 		return "empty"
 	}
 	return "available"
+}
+
+func queryDefinitionsRevision(groups ...[]query.Definition) (string, error) {
+	hasher := sha256.New()
+	for _, definitions := range groups {
+		data, err := json.Marshal(definitions)
+		if err != nil {
+			return "", err
+		}
+		_, _ = hasher.Write(data)
+		_, _ = hasher.Write([]byte{0})
+	}
+	return "sha256:" + hex.EncodeToString(hasher.Sum(nil)), nil
+}
+
+type materializationLoader map[string]model.Source
+
+func (loader materializationLoader) LoadSource(name string, _ *query.Definition) (model.Source, model.Metrics, error) {
+	source, ok := loader[name]
+	if !ok {
+		return model.Source{}, model.Metrics{}, fmt.Errorf("materialization source %q is unavailable", name)
+	}
+	return source, model.Metrics{}, nil
+}
+
+func materializeDashboardQueries(sources map[string]model.Source, definitions []query.Definition) (int, error) {
+	available := make(map[string]bool, len(sources))
+	for name := range sources {
+		available[name] = true
+	}
+	static, names := query.StaticDefinitions(definitions, available)
+	if len(static) == 0 {
+		return 0, nil
+	}
+	result, _, err := query.New(materializationLoader(sources)).Execute(static, names)
+	if err != nil {
+		return 0, fmt.Errorf("materialize dashboard queries: %w", err)
+	}
+	index := make(map[string]query.Definition, len(static))
+	for _, definition := range static {
+		index[definition.Name] = definition
+	}
+	for _, name := range names {
+		source := result[name]
+		signature, err := query.DefinitionSignature(index[name])
+		if err != nil {
+			return 0, fmt.Errorf("sign materialized query %q: %w", name, err)
+		}
+		if source.Metadata == nil {
+			source.Metadata = model.Metadata{}
+		}
+		source.Metadata[query.MaterializedSignatureMetadata] = signature
+		sources[name] = source
+	}
+	return len(names), nil
 }

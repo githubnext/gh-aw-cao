@@ -132,6 +132,31 @@ func TestQueryTransparentlyInjectsMarketplacePackagesWithoutSecretLeakage(t *tes
 	if source.Metadata["availability"] != "available" {
 		t.Fatalf("unexpected availability: %v", source.Metadata["availability"])
 	}
+
+	request = httptest.NewRequestWithContext(
+		t.Context(), http.MethodPost, "https://localhost/api/v1/query",
+		strings.NewReader(`{
+			"sourceNames":["marketplace-ranked"],
+			"queries":[{
+				"name":"marketplace-ranked",
+				"from":"marketplace-packages",
+				"select":[{"field":"package-name"}]
+			}]
+		}`),
+	)
+	request.Header.Set("Content-Type", "application/json")
+	authorize(request)
+	response = httptest.NewRecorder()
+	app.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("dependent query returned %d: %s", response.Code, response.Body.String())
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if rows := result.Sources["marketplace-ranked"].Rows; len(rows) != 1 || rows[0]["package-name"] != "Demo" {
+		t.Fatalf("expected the dependent query to use marketplace packages, got: %#v", rows)
+	}
 }
 
 func TestQueryDegradesMarketplacePackagesToUnavailableWhenThePolicyFileIsMissing(t *testing.T) {

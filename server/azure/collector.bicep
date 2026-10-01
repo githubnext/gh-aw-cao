@@ -304,7 +304,13 @@ resource collectors 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'collector'
           image: collectorImage
           command: ['/app/cao-dashboard']
-          args: ['collect']
+          args: [
+            'collect'
+            '--database-queries'
+            '/app/queries/database.json'
+            '--dashboard-queries'
+            '/app/agent/queries.json'
+          ]
           env: collectionEnvironment
           resources: {
             cpu: json('1.0')
@@ -390,7 +396,13 @@ resource backfill 'Microsoft.App/jobs@2024-03-01' = {
           name: 'backfill'
           image: collectorImage
           command: ['/app/cao-dashboard']
-          args: ['backfill']
+          args: [
+            'backfill'
+            '--database-queries'
+            '/app/queries/database.json'
+            '--dashboard-queries'
+            '/app/agent/queries.json'
+          ]
           env: collectionEnvironment
           resources: {
             cpu: json('1.0')

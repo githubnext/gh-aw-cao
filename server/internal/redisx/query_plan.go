@@ -15,19 +15,28 @@ import (
 
 var nativeQueryField = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]*$`)
 
+var ErrNativePlanUnsupported = errors.New("redis query engine does not support this query plan")
+
 func (s *Store) ExecutePlan(
 	ctx context.Context,
 	generation string,
 	definitions []query.Definition,
-	requested, _ []string,
+	requested, order []string,
 	external map[string]model.Source,
 ) (map[string]model.Source, model.Metrics, error) {
+	definitions = plannedDefinitions(definitions, order)
+	if result, metrics, matched, err := s.materializedPlan(ctx, generation, definitions, requested, external); matched || err != nil {
+		return result, metrics, err
+	}
 	if len(external) != 0 || len(definitions) != 1 || len(requested) != 1 || requested[0] != definitions[0].Name {
-		return nil, model.Metrics{}, errors.New("redis query engine requires one direct-source query")
+		return nil, model.Metrics{}, fmt.Errorf("%w: requires one direct-source query", ErrNativePlanUnsupported)
 	}
 	definition := definitions[0]
 	metrics := model.Metrics{RedisCommands: 1}
 	metadata, err := s.sourceInfo(ctx, generation, definition.From)
+	if errors.Is(err, ErrSourceUnavailable) {
+		return nil, metrics, fmt.Errorf("%w: input source %q is unavailable", ErrNativePlanUnsupported, definition.From)
+	}
 	if err != nil {
 		return nil, metrics, err
 	}
@@ -37,7 +46,7 @@ func (s *Store) ExecutePlan(
 		return nil, metrics, err
 	}
 	if fmt.Sprint(format) != "json" {
-		return nil, metrics, errors.New("redis query engine requires a JSON source")
+		return nil, metrics, fmt.Errorf("%w: requires a JSON source", ErrNativePlanUnsupported)
 	}
 	fields, err := s.Client.Do(ctx, "HGET", s.generationKey(generation), "source:"+definition.From+":index-schema")
 	metrics.RedisCommands++
@@ -67,7 +76,7 @@ func (s *Store) ExecutePlan(
 	}
 	command, outputFields, err := nativeAggregateCommand(s.sourceIndexKey(generation, definition.From), definition, indexed)
 	if err != nil {
-		return nil, metrics, err
+		return nil, metrics, fmt.Errorf("%w: %w", ErrNativePlanUnsupported, err)
 	}
 	value, err := s.Client.Do(ctx, command...)
 	metrics.RedisCommands++
@@ -98,6 +107,120 @@ func (s *Store) ExecutePlan(
 	return map[string]model.Source{
 		definition.Name: {Source: definition.Name, Rows: rows, Metadata: metadata},
 	}, metrics, nil
+}
+
+func plannedDefinitions(definitions []query.Definition, order []string) []query.Definition {
+	planned := make(map[string]bool, len(order))
+	for _, name := range order {
+		planned[name] = true
+	}
+	result := make([]query.Definition, 0, len(definitions))
+	for _, definition := range definitions {
+		if planned[definition.Name] {
+			result = append(result, definition)
+		}
+	}
+	return result
+}
+
+func (s *Store) materializedPlan(
+	ctx context.Context,
+	generation string,
+	definitions []query.Definition,
+	requested []string,
+	external map[string]model.Source,
+) (map[string]model.Source, model.Metrics, bool, error) {
+	index := make(map[string]query.Definition, len(definitions))
+	for _, definition := range definitions {
+		index[definition.Name] = definition
+	}
+	result := make(map[string]model.Source, len(requested))
+	metrics := model.Metrics{}
+	for _, name := range requested {
+		if source, ok := external[name]; ok {
+			result[name] = source
+			continue
+		}
+		definition, isQuery := index[name]
+		if !isQuery {
+			source, loaded, err := s.LoadSource(ctx, generation, name, nil)
+			if err != nil {
+				if errors.Is(err, ErrSourceUnavailable) {
+					return nil, model.Metrics{}, false, nil
+				}
+				return nil, metrics, true, err
+			}
+			mergePlanMetrics(&metrics, loaded)
+			result[name] = source
+			continue
+		}
+		signature, err := query.DefinitionSignature(definition)
+		if err != nil {
+			return nil, metrics, true, err
+		}
+		metadata, err := s.sourceInfo(ctx, generation, name)
+		metrics.RedisCommands++
+		if errors.Is(err, ErrSourceUnavailable) {
+			return nil, model.Metrics{}, false, nil
+		}
+		if err != nil {
+			return nil, metrics, true, err
+		}
+		if metadata[query.MaterializedSignatureMetadata] != signature {
+			return nil, model.Metrics{}, false, nil
+		}
+		source, loaded, err := s.loadMaterializedSource(ctx, generation, name, metadata)
+		mergePlanMetrics(&metrics, loaded)
+		if err != nil {
+			return nil, metrics, true, err
+		}
+		result[name] = source
+		metrics.QueryCount++
+	}
+	metrics.PushedDown = []string{"redis-materialized-query"}
+	for _, source := range result {
+		metrics.OutputRows += len(source.Rows)
+	}
+	return result, metrics, true, nil
+}
+
+func (s *Store) loadMaterializedSource(
+	ctx context.Context, generation, name string, metadata model.Metadata,
+) (model.Source, model.Metrics, error) {
+	command := []string{
+		"FT.AGGREGATE", s.sourceIndexKey(generation, name), "@" + materializedMarkerField + ":{1}",
+		"LOAD", "3", redisJSONPath(materializedRowField), "AS", materializedRowField,
+		"SORTBY", "2", "@" + materializedPositionField, "ASC",
+		"LIMIT", "0", strconv.Itoa(query.MaxOutputRows), "DIALECT", "4",
+	}
+	value, err := s.Client.Do(ctx, command...)
+	metrics := model.Metrics{RedisCommands: 1}
+	if err != nil {
+		return model.Source{}, metrics, fmt.Errorf("load materialized Redis query: %w", err)
+	}
+	decoded, err := decodeAggregateRows(value, map[string]outputField{
+		materializedRowField: {name: materializedRowField, fromLoad: true},
+	})
+	if err != nil {
+		return model.Source{}, metrics, err
+	}
+	rows := make([]model.Row, 0, len(decoded))
+	for _, decodedRow := range decoded {
+		row, ok := decodedRow[materializedRowField].(map[string]any)
+		if !ok {
+			return model.Source{}, metrics, errors.New("invalid materialized Redis query row")
+		}
+		rows = append(rows, model.Row(row))
+	}
+	metrics.RedisRows = len(rows)
+	return model.Source{Source: name, Rows: rows, Metadata: metadata}, metrics, nil
+}
+
+func mergePlanMetrics(target *model.Metrics, source model.Metrics) {
+	target.RedisCommands += source.RedisCommands
+	target.RedisRows += source.RedisRows
+	target.FallbackOperations = append(target.FallbackOperations, source.FallbackOperations...)
+	target.PushedDown = append(target.PushedDown, source.PushedDown...)
 }
 
 // outputField describes how a Redis aggregate pipeline alias maps back to a

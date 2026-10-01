@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.47.16.16243",
-      "templateHash": "16663024274036363741"
+      "templateHash": "109088911642547081"
     }
   },
   "parameters": {
@@ -59,7 +59,7 @@
         "MemoryOptimized_M10"
       ],
       "metadata": {
-        "description": "Redis SKU. The server uses only core key-value commands (HSET/HGET/SMEMBERS/EVAL) and no Redis modules, so the smallest SKU that holds the retained generations is sufficient. Size this from retained dashboard data volume, not from feature requirements."
+        "description": "Redis SKU. Size for retained JSON generations and their search indexes."
       }
     },
     "redisCapacity": {
@@ -67,7 +67,7 @@
       "defaultValue": 1,
       "minValue": 1,
       "metadata": {
-        "description": "Redis capacity. The module-free default uses the smallest capacity; increase only when retained generations need more memory or throughput."
+        "description": "Redis capacity. Increase when retained JSON generations and search indexes need more memory or throughput."
       }
     },
     "allowedHosts": {
@@ -366,7 +366,15 @@
       "properties": {
         "clientProtocol": "Encrypted",
         "clusteringPolicy": "EnterpriseCluster",
-        "evictionPolicy": "NoEviction"
+        "evictionPolicy": "NoEviction",
+        "modules": [
+          {
+            "name": "RedisJSON"
+          },
+          {
+            "name": "RediSearch"
+          }
+        ]
       },
       "dependsOn": [
         "[resourceId('Microsoft.Cache/redisEnterprise', parameters('redisEnterpriseName'))]"
@@ -509,7 +517,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.47.16.16243",
-              "templateHash": "947882728126865901"
+              "templateHash": "14578739477246140979"
             }
           },
           "parameters": {
@@ -877,7 +885,11 @@
                         "/app/cao-dashboard"
                       ],
                       "args": [
-                        "collect"
+                        "collect",
+                        "--database-queries",
+                        "/app/queries/database.json",
+                        "--dashboard-queries",
+                        "/app/agent/queries.json"
                       ],
                       "env": "[variables('collectionEnvironment')]",
                       "resources": {
@@ -965,7 +977,11 @@
                         "/app/cao-dashboard"
                       ],
                       "args": [
-                        "backfill"
+                        "backfill",
+                        "--database-queries",
+                        "/app/queries/database.json",
+                        "--dashboard-queries",
+                        "/app/agent/queries.json"
                       ],
                       "env": "[variables('collectionEnvironment')]",
                       "resources": {

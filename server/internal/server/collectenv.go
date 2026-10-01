@@ -145,7 +145,7 @@ func envBool(name string) bool {
 
 // NewCollectorFromEnv assembles the collection profile for the worker roles,
 // which run the same binary without serving the dashboard.
-func NewCollectorFromEnv(ctx context.Context, databaseQueriesPath string) (*Collector, error) {
+func NewCollectorFromEnv(ctx context.Context, databaseQueriesPath, dashboardQueriesPath string) (*Collector, error) {
 	config, err := CollectorConfigFromEnv()
 	if err != nil {
 		return nil, err
@@ -167,5 +167,10 @@ func NewCollectorFromEnv(ctx context.Context, databaseQueriesPath string) (*Coll
 	if err != nil {
 		return nil, err
 	}
+	definitions, err := ParseDashboardQueries(dashboardQueriesPath)
+	if err != nil {
+		return nil, err
+	}
+	config.DashboardQueries = definitions
 	return NewCollector(ctx, store, *config, databaseQueriesPath)
 }
