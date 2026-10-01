@@ -1332,7 +1332,8 @@
           "title": "Campaign packages for agentic operations",
           "description": "Discover packages from your configured registries. Select a package to review its contents and copy an immutable add command.",
           "data": {
-            "source": "marketplace-packages"
+            "source": "marketplace-packages",
+            "query-context": false
           },
           "mark": "list",
           "list": {

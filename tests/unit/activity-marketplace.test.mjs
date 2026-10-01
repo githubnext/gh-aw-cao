@@ -104,9 +104,9 @@ test("packages carry the README preview published beside their manifest", async 
 });
 
 test("marketplace records include public GitHub repository counts but no inferred signals", async () => {
-  const fake = registryFetch({ manifest: "name: Demo\nverified-publisher: true\n" });
+  const fake = registryFetch();
   const result = await resolveMarketplace({
-    registries: [registry("approved", { "verified-publisher": true })],
+    registries: [registry("approved")],
   }, { fetchImpl: fake.fetchImpl });
   const pkg = result.packages[0];
   assert.equal(pkg.stars, 12);
@@ -271,4 +271,13 @@ test("policy permits removing the official registry and validates registry auth"
       },
     },
   })), /invalid value/);
+  assert.throws(() => parsePolicy(JSON.stringify({
+    version: 1,
+    "gh-aw-version": "v1.0.0",
+    "control-plane": {
+      marketplace: {
+        registries: [registry("private", { "verified-publisher": true })],
+      },
+    },
+  })), /unknown key.*verified-publisher/);
 });

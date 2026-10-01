@@ -17,10 +17,10 @@ var excludedPackageFields = []string{
 func TestRegistryRepositoryCountsAndPackageFields(t *testing.T) {
 	server := newFakeGitHubServer(t, fakeGitHubConfig{
 		manifestPaths:     []string{"one/aw.yml", "two/aw.yml"},
-		manifest:          "name: Demo\nverified-publisher: true\n",
+		manifest:          "name: Demo\n",
 		repositoryPayload: map[string]any{"private": false, "visibility": "public", "stargazers_count": 0, "forks_count": 12},
 	})
-	registry := Registry{ID: "official", Repository: "example/packages", Ref: "main", APIURL: server.baseURL(), VerifiedPublisher: true}
+	registry := Registry{ID: "official", Repository: "example/packages", Ref: "main", APIURL: server.baseURL()}
 	packages, err := ResolveRegistry(t.Context(), registry, 0, Options{HTTPClient: insecureTestClient()})
 	if err != nil || len(packages) != 2 {
 		t.Fatalf("resolve registry: %+v, %v", packages, err)

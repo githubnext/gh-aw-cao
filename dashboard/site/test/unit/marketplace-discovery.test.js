@@ -34,7 +34,7 @@ function resolve() {
   const rows = (source) => (
     result[compiled.aliases.find((name) => name.includes(`:${source}`)) ?? '']
     ?? result[source]
-    ?? sources[source]
+    ?? (source === 'marketplace-packages' ? sources['marketplace-packages'] : undefined)
   )?.rows;
   return { rows, compiled };
 }
@@ -43,10 +43,10 @@ describe('marketplace discovery', () => {
   it('binds the declarative card list directly to marketplace packages without facets or ranking', () => {
     expect(page.views).toHaveLength(1);
     expect(page.views[0]).toMatchObject({
-      mark: 'list', data: { source: 'marketplace-packages' },
+      mark: 'list', data: { source: 'marketplace-packages', 'query-context': false },
       list: { style: 'entity-cards', card: 'marketplace-package-summary' }
     });
-    expect(dashboard.queries.some((query) => query.name.startsWith('marketplace-')
+    expect(dashboard.queries.some((/** @type {{name: string}} */ query) => query.name.startsWith('marketplace-')
       && query.name !== 'marketplace-package-detail')).toBe(false);
     const { rows } = resolve();
     expect(rows('marketplace-packages')?.map((row) => row.id)).toEqual(['one', 'two', 'three']);

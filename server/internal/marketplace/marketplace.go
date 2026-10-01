@@ -74,7 +74,6 @@ type Registry struct {
 	Ref               string `json:"ref"`
 	APIURL            string `json:"api-url,omitempty"`
 	Auth              Auth   `json:"auth,omitempty"`
-	VerifiedPublisher bool   `json:"verified-publisher,omitempty"`
 }
 
 // Config is the parsed control-plane.marketplace policy section.

@@ -150,9 +150,6 @@ function validateRegistry(registry, index) {
   if (!REPOSITORY_PATTERN.test(registry.repository ?? "")) throw new Error(`registry ${registry.id} repository is invalid`);
   if (typeof registry.ref !== "string" || !registry.ref.trim()) throw new Error(`registry ${registry.id} ref is required`);
   if (!SAFE_PATH_PATTERN.test(registry.path ?? "")) throw new Error(`registry ${registry.id} path is invalid`);
-  if (registry["verified-publisher"] !== undefined && typeof registry["verified-publisher"] !== "boolean") {
-    throw new Error(`registry ${registry.id} verified-publisher must be a boolean`);
-  }
   return {
     ...registry,
     path: String(registry.path ?? "").replace(/^\/|\/$/g, ""),
