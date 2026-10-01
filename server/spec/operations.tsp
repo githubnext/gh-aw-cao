@@ -10,7 +10,6 @@ model RebuildStatus {
   required: boolean;
   startedAt?: string;
   completedAt?: string;
-  generation?: string;
   revision?: int64;
   dataRevision?: string;
   counts?: Record<int32>;

@@ -20,8 +20,6 @@ func queryTelemetryAttributes(input queryRequest, result queryResponse) []attrib
 		attribute.Int64("cao_dashboard.query.retained_bytes", metrics.RetainedBytes),
 		attribute.Int("cao_dashboard.query.dependency_depth", metrics.DependencyDepth),
 		attribute.Int("cao_dashboard.query.rate_limit_cost", metrics.RateLimitCost),
-		attribute.Int("cao_dashboard.query.redis_commands", metrics.RedisCommands),
-		attribute.Int("cao_dashboard.query.redis_rows", metrics.RedisRows),
 		attribute.Int("cao_dashboard.query.structure.query_count", metrics.QueryCount),
 		attribute.Int("cao_dashboard.query.structure.union_count", metrics.UnionCount),
 		attribute.Int("cao_dashboard.query.structure.join_count", metrics.JoinCount),

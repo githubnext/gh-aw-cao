@@ -907,7 +907,7 @@
         cancelCommand.complete();
       } else {
         await ensureDashboardPageLoaded(initialDashboardPageId());
-        if (!document.querySelector('meta[name="dashboard-data-backend"][content="redis-http"]')) {
+        if (!document.querySelector('meta[name="dashboard-data-backend"][content="server-http"]')) {
           renderSources({}, "loading");
         }
         const sourceUrl = new URL("./payload-hashes.json", window.location.href).href;

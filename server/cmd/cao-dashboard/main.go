@@ -17,6 +17,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/doctor"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	debuglogger "github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/server"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
@@ -82,6 +83,30 @@ func resolveRedisEndpoint(flagValue, envValue, defaultValue string) (string, red
 		return endpoint, redisEndpointSourceEnv
 	}
 	return defaultValue, redisEndpointSourceDefault
+}
+
+// resolvePostgresEndpoint requires an explicit flag or environment value; never
+// include the endpoint in errors because it can contain credentials.
+func resolvePostgresEndpoint(flagValue, envValue string) (string, error) {
+	if endpoint := strings.TrimSpace(flagValue); endpoint != "" {
+		return endpoint, nil
+	}
+	if endpoint := strings.TrimSpace(envValue); endpoint != "" {
+		return endpoint, nil
+	}
+	return "", errors.New("--postgres-url or CAO_POSTGRES_URL is required")
+}
+
+func newPostgresStore(ctx context.Context, flagValue, namespace string) (*postgresx.Store, error) {
+	endpoint, err := resolvePostgresEndpoint(flagValue, os.Getenv("CAO_POSTGRES_URL"))
+	if err != nil {
+		return nil, err
+	}
+	store, err := postgresx.NewWithNamespace(ctx, endpoint, namespace)
+	if err != nil {
+		return nil, errors.New("postgres is unavailable")
+	}
+	return store, nil
 }
 
 // namespaceDefaultSource identifies which input determined the default value
@@ -460,9 +485,10 @@ func (e actionsEnvironment) present() string {
 func newServeCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "serve",
-		Short: "serve the dashboard from Redis",
+		Short: "serve dashboard data from Postgres with Redis operational state",
 	}
 	redisURL := cmd.Flags().String("redis-url", defaultRedisURL, "server-side Redis URL")
+	postgresURL := cmd.Flags().String("postgres-url", "", "Postgres dashboard entity store URL; defaults to CAO_POSTGRES_URL")
 	redisNamespace, namespaceErr := registerRedisNamespaceFlag(cmd, "Redis key and index namespace")
 	siteDirectory := cmd.Flags().String("site", "../dashboard/site/dist", "built dashboard site directory")
 	listen := cmd.Flags().String("listen", "127.0.0.1:8443", "HTTPS listen address")
@@ -479,6 +505,9 @@ func newServeCommand() *cobra.Command {
 		if namespaceErr != nil {
 			return namespaceErr
 		}
+		if _, err := resolvePostgresEndpoint(*postgresURL, os.Getenv("CAO_POSTGRES_URL")); err != nil {
+			return err
+		}
 		commandLog.Printf("serve flags parsed tls=%t source_ingestion=%t", *cert != "", *source != "")
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
@@ -491,6 +520,11 @@ func newServeCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
+		database, err := newPostgresStore(ctx, *postgresURL, *redisNamespace)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = database.Close() }()
 		definitions, err := server.ParseDashboardQueries(*dashboardQueries)
 		if err != nil {
 			return err
@@ -498,6 +532,7 @@ func newServeCommand() *cobra.Command {
 		actionsEnv := resolveActionsEnvironment(os.Getenv)
 		commandLog.Printf("serve resolved actions environment %s", actionsEnv.present())
 		app, err := server.New(ctx, store, server.Config{
+			Database:             database,
 			Listen:               *listen,
 			SiteDirectory:        *siteDirectory,
 			CertFile:             *cert,
@@ -527,15 +562,19 @@ func newServeCommand() *cobra.Command {
 func newIngestCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ingest [source]",
-		Short: "ingest a deployed dashboard directory into Redis",
+		Short: "ingest a deployed dashboard directory into Postgres",
 	}
 	redisURL := cmd.Flags().String("redis-url", defaultRedisURL, "server-side Redis URL")
+	postgresURL := cmd.Flags().String("postgres-url", "", "Postgres dashboard entity store URL; defaults to CAO_POSTGRES_URL")
 	redisNamespace, namespaceErr := registerRedisNamespaceFlag(cmd, "Redis key and index namespace")
 	source := cmd.Flags().String("source", "", "deployed dashboard directory")
 	databaseQueries := cmd.Flags().String("database-queries", "../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
 	cmd.RunE = func(_ *cobra.Command, args []string) error {
 		if namespaceErr != nil {
 			return namespaceErr
+		}
+		if _, err := resolvePostgresEndpoint(*postgresURL, os.Getenv("CAO_POSTGRES_URL")); err != nil {
+			return err
 		}
 		resolvedSource, sourceOrigin, err := resolveIngestSource(*source, args)
 		if err != nil {
@@ -555,7 +594,12 @@ func newIngestCommand() *cobra.Command {
 		if err := store.Ping(ctx); err != nil {
 			return errors.New("redis is unavailable")
 		}
-		result, err := ingest.Run(ctx, store, resolvedSource, ingest.Options{DatabaseQueriesPath: *databaseQueries})
+		database, err := newPostgresStore(ctx, *postgresURL, *redisNamespace)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = database.Close() }()
+		result, err := ingest.Run(ctx, database, store, resolvedSource, ingest.Options{DatabaseQueriesPath: *databaseQueries})
 		if err != nil {
 			return err
 		}

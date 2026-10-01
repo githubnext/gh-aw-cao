@@ -14,6 +14,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
@@ -219,7 +220,17 @@ func TestResolveQueryLimit(t *testing.T) {
 }
 
 func TestMCPCatalogAndNamedQueryUseSharedData(t *testing.T) {
+	database := integrationDatabase(t)
+	sources := map[string]model.Source{}
+	for _, name := range []string{"runs", "workflows", "run-incomplete-outcomes", "mcp-calls"} {
+		sources[name] = model.Source{
+			Source: name, Rows: []model.Row{},
+			Metadata: model.Metadata{"availability": "available", "completeness": "complete", "freshness": "current"},
+		}
+	}
+	seedDatabase(t, database, sources)
 	app := newMCPTestApp(t, true)
+	app.database = database
 	httpServer := httptest.NewServer(app.Handler())
 	defer httpServer.Close()
 	client := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "1"}, nil)
@@ -323,6 +334,7 @@ func TestHostedMCPConfigurationRequiresRepository(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err := New(context.Background(), &redisx.Store{}, Config{
+		Database:    constructorDatabase(),
 		HostProfile: hostedHostProfile(), Listen: "127.0.0.1:8080",
 		SiteDirectory: site, MCPEnabled: true,
 		Proxy: ProxyPolicy{
@@ -413,7 +425,8 @@ func newMCPTestAppConfig(
 		t.Fatal(err)
 	}
 	app, err := New(context.Background(), redisx.NewStore(client, "test"), Config{
-		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
+		Database: constructorDatabase(),
+		Listen:   "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
 		DashboardQueries: definitions, AgentCatalogPath: testAgentCatalog,
 		MCPContractPath: testMCPContract, MCPEnabled: enabled,
 		GitHubActionsToken: actionsToken, GitHubActionsActor: actionsActor,

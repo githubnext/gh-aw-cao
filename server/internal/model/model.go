@@ -1,7 +1,5 @@
 package model
 
-import "time"
-
 const SchemaVersion = 14
 
 type Row map[string]any
@@ -37,18 +35,7 @@ type Metrics struct {
 	OrderByCount        int      `json:"orderByCount"`
 	LimitCount          int      `json:"limitCount"`
 	PushedDown          []string `json:"pushedDown"`
-	RedisCommands       int      `json:"redisCommands"`
-	RedisRows           int      `json:"redisRows"`
 	FallbackOperations  []string `json:"fallbackOperations"`
-}
-
-type ActiveGeneration struct {
-	Generation   string         `json:"generation"`
-	Revision     int64          `json:"revision"`
-	DataRevision string         `json:"dataRevision,omitempty"`
-	EvaluatedAt  time.Time      `json:"evaluatedAt"`
-	Counts       map[string]int `json:"counts"`
-	Activated    time.Time      `json:"activatedAt"`
 }
 
 type Diagnostics struct {

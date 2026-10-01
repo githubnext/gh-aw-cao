@@ -113,8 +113,6 @@ model QueryMetrics {
   orderByCount: int32;
   limitCount: int32;
   pushedDown: string[] | null;
-  redisCommands: int32;
-  redisRows: int32;
   fallbackOperations: string[] | null;
 }
 @jsonSchema
@@ -136,7 +134,7 @@ model QueryPlanTooLarge {
 @tag("Queries")
 @useAuth(DashboardAuth)
 namespace Queries {
-  /** Execute Dashboard Language against the active server projection. Up to 256 source names and 8 MiB of request body. */
+  /** Execute Dashboard Language against current Postgres dashboard entities. Up to 256 source names and 8 MiB of request body. */
   @route("/api/v1/query")
   @post op execute(
     /** Required in hosted mode for every POST; omitted in local bearer mode. */

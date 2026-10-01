@@ -1,6 +1,7 @@
 package collect
 
 import (
+	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 )
 
 // publishedSnapshot is a real snapshot published by the Activity workflow. The
@@ -30,7 +32,8 @@ const databaseQueries = "../../../dashboard/site/src/data/queries/database.json"
 // layout.
 func TestProfilesProduceIdenticalCanonicalRecords(t *testing.T) {
 	actionsStore, ctx := integrationStore(t)
-	actions, err := ingest.Run(ctx, actionsStore, publishedSnapshot, ingest.Options{
+	actionsData := integrationPostgres(t, ctx)
+	actions, err := ingest.Run(ctx, actionsData, actionsStore, publishedSnapshot, ingest.Options{
 		DatabaseQueriesPath: databaseQueries, Force: true,
 	})
 	if err != nil {
@@ -38,6 +41,7 @@ func TestProfilesProduceIdenticalCanonicalRecords(t *testing.T) {
 	}
 
 	collectionStore, collectionCtx := integrationStore(t)
+	collectionData := integrationPostgres(t, collectionCtx)
 	lake := Lake{Directory: t.TempDir()}
 	if err := lake.Prepare(); err != nil {
 		t.Fatal(err)
@@ -51,7 +55,7 @@ func TestProfilesProduceIdenticalCanonicalRecords(t *testing.T) {
 		t.Fatal("an evidence lake holding collected shards must be projectable")
 	}
 	projector := Projector{
-		Store: collectionStore, Lake: lake,
+		Store: collectionStore, Data: collectionData, Lake: lake,
 		Enrollment:          Enrollment{Store: collectionStore},
 		DatabaseQueriesPath: databaseQueries,
 	}
@@ -108,6 +112,7 @@ func TestProjectionIsCoalesced(t *testing.T) {
 // requests, so recovery does not depend on rate-limit headroom.
 func TestBackfillReplaysWithoutContactingGitHub(t *testing.T) {
 	store, ctx := integrationStore(t)
+	data := integrationPostgres(t, ctx)
 	lake := Lake{Directory: t.TempDir()}
 	if err := lake.Prepare(); err != nil {
 		t.Fatal(err)
@@ -117,7 +122,7 @@ func TestBackfillReplaysWithoutContactingGitHub(t *testing.T) {
 	backfill := Backfill{
 		Store: store, Enrollment: enrollment, Queue: Queue{Store: store},
 		Projector: Projector{
-			Store: store, Lake: lake, Enrollment: enrollment,
+			Store: store, Data: data, Lake: lake, Enrollment: enrollment,
 			DatabaseQueriesPath: databaseQueries,
 		},
 		Lake: lake,
@@ -132,13 +137,27 @@ func TestBackfillReplaysWithoutContactingGitHub(t *testing.T) {
 	if len(result.Counts) == 0 {
 		t.Fatal("expected replay to repopulate canonical collections")
 	}
-	active, err := store.Active(ctx)
+	active, err := data.State(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if active.Revision != result.Revision {
 		t.Fatalf("active revision = %d, want the replayed revision %d", active.Revision, result.Revision)
 	}
+}
+
+func integrationPostgres(t *testing.T, ctx context.Context) *postgresx.Store {
+	t.Helper()
+	dsn := os.Getenv("CAO_TEST_POSTGRES_URL")
+	if dsn == "" {
+		t.Skip("set CAO_TEST_POSTGRES_URL to run Postgres projection integration tests")
+	}
+	store, err := postgresx.New(ctx, dsn)
+	if err != nil {
+		t.Fatal("Postgres is unavailable")
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	return store
 }
 
 // TestBackfillFailsClosedWithoutEnrollment proves cold start does not invent

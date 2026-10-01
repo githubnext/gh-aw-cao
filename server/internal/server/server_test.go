@@ -254,6 +254,7 @@ func TestExternallyHostedModeRequiresExplicitForwardedPeer(t *testing.T) {
 }
 
 func TestExternallyHostedHandlerRequiresActiveLifecycle(t *testing.T) {
+	database := integrationDatabase(t)
 	address, closeRedis := fakeRedis(t)
 	defer closeRedis()
 	client, err := redisx.New("redis://" + address)
@@ -263,6 +264,7 @@ func TestExternallyHostedHandlerRequiresActiveLifecycle(t *testing.T) {
 	profile := hostedHostProfile()
 	profile.Listener = HostListenerExternal
 	app, err := New(t.Context(), redisx.NewStore(client, "external-test"), Config{
+		Database:    database,
 		HostProfile: profile, SiteDirectory: t.TempDir(),
 		Proxy:       ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
 		GitHubOAuth: validOAuthConfig("https://github.test"),
@@ -330,6 +332,7 @@ func TestStartRejectsCanceledContext(t *testing.T) {
 }
 
 func TestEventStreamOutlivesHTTPWriteTimeout(t *testing.T) {
+	database := integrationDatabase(t)
 	address, closeRedis := fakeRedis(t)
 	defer closeRedis()
 	client, err := redisx.New("redis://" + address)
@@ -338,6 +341,7 @@ func TestEventStreamOutlivesHTTPWriteTimeout(t *testing.T) {
 	}
 	app := &App{
 		store: redisx.NewStore(client, "stream-test"), hub: newEventHub(),
+		database:    database,
 		config:      Config{HostProfile: localHostProfile()},
 		accessToken: testAccessToken,
 	}
@@ -378,6 +382,7 @@ func TestEventStreamOutlivesHTTPWriteTimeout(t *testing.T) {
 }
 
 func TestEventStreamSupportsWriterWithoutDeadlineControl(t *testing.T) {
+	database := integrationDatabase(t)
 	address, closeRedis := fakeRedis(t)
 	defer closeRedis()
 	client, err := redisx.New("redis://" + address)
@@ -386,6 +391,7 @@ func TestEventStreamSupportsWriterWithoutDeadlineControl(t *testing.T) {
 	}
 	app := &App{
 		store: redisx.NewStore(client, "stream-test"), hub: newEventHub(),
+		database:    database,
 		config:      Config{HostProfile: localHostProfile()},
 		accessToken: testAccessToken,
 	}
@@ -452,6 +458,7 @@ func TestCurrentDashboardQueriesAreAccepted(t *testing.T) {
 }
 
 func TestAPINeverReturnsRedisCredentials(t *testing.T) {
+	database := integrationDatabase(t)
 	address, closeServer := fakeRedis(t)
 	defer closeServer()
 	client, err := redisx.New("redis://default:super-secret@" + address + "/0")
@@ -471,7 +478,8 @@ func TestAPINeverReturnsRedisCredentials(t *testing.T) {
 		t.Fatal(err)
 	}
 	app, err := New(context.Background(), redisx.NewStore(client, "test"), Config{
-		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
+		Database: database,
+		Listen:   "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -489,6 +497,7 @@ func TestAPINeverReturnsRedisCredentials(t *testing.T) {
 }
 
 func TestAPIResponsesCarryStandardizedTraceIdentifiers(t *testing.T) {
+	database := integrationDatabase(t)
 	previousProvider := otel.GetTracerProvider()
 	t.Cleanup(func() { otel.SetTracerProvider(previousProvider) })
 	t.Setenv("OTEL_SDK_DISABLED", "")
@@ -521,7 +530,8 @@ func TestAPIResponsesCarryStandardizedTraceIdentifiers(t *testing.T) {
 		t.Fatal(err)
 	}
 	app, err := New(context.Background(), redisx.NewStore(client, "test"), Config{
-		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
+		Database: database,
+		Listen:   "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -595,6 +605,10 @@ func TestAzureFunctionsHandlerLogsTelemetryFailureOnceAndKeepsServing(t *testing
 }
 
 func TestRefreshAndQueryReturnAuthoritativeEvaluatedAt(t *testing.T) {
+	database := integrationDatabase(t)
+	seedDatabase(t, database, map[string]model.Source{
+		"runs": {Source: "runs", Rows: []model.Row{}},
+	})
 	address, closeServer := fakeRedis(t)
 	defer closeServer()
 	client, err := redisx.New("redis://" + address)
@@ -614,7 +628,8 @@ func TestRefreshAndQueryReturnAuthoritativeEvaluatedAt(t *testing.T) {
 		t.Fatal(err)
 	}
 	app, err := New(context.Background(), redisx.NewStore(client, "test"), Config{
-		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
+		Database: database,
+		Listen:   "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -646,6 +661,8 @@ func TestRefreshAndQueryReturnAuthoritativeEvaluatedAt(t *testing.T) {
 }
 
 func TestQueryAllowsEmptyReadinessProbe(t *testing.T) {
+	database := integrationDatabase(t)
+	seedDatabase(t, database, nil)
 	address, closeServer := fakeRedis(t)
 	defer closeServer()
 	client, err := redisx.New("redis://" + address)
@@ -665,7 +682,8 @@ func TestQueryAllowsEmptyReadinessProbe(t *testing.T) {
 		t.Fatal(err)
 	}
 	app, err := New(context.Background(), redisx.NewStore(client, "test"), Config{
-		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
+		Database: database,
+		Listen:   "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -697,7 +715,7 @@ func TestQueryAllowsEmptyReadinessProbe(t *testing.T) {
 	if len(result.Sources) != 0 {
 		t.Fatalf("readiness probe returned sources: %#v", result.Sources)
 	}
-	if result.Metrics.DurationMS != 0 || result.Metrics.RedisCommands != 0 || result.Metrics.RedisRows != 0 ||
+	if result.Metrics.DurationMS != 0 || result.Metrics.Operations != 0 || result.Metrics.OutputRows != 0 ||
 		len(result.Metrics.PushedDown) != 0 || len(result.Metrics.FallbackOperations) != 0 {
 		t.Fatalf("readiness probe returned non-zero metrics: %#v", result.Metrics)
 	}
@@ -720,7 +738,8 @@ func TestStaticIndexInjectsBackendMeta(t *testing.T) {
 		t.Fatal(err)
 	}
 	app, err := New(context.Background(), redisx.NewStore(client, "test"), Config{
-		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
+		Database: constructorDatabase(),
+		Listen:   "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -729,12 +748,14 @@ func TestStaticIndexInjectsBackendMeta(t *testing.T) {
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "https://localhost/route", nil)
 	authorize(request)
 	app.Handler().ServeHTTP(response, request)
-	if !strings.Contains(response.Body.String(), `<meta name="dashboard-data-backend" content="redis-http">`) {
+	if !strings.Contains(response.Body.String(), `<meta name="dashboard-data-backend" content="server-http">`) {
 		t.Fatalf("backend meta was not injected: %s", response.Body.String())
 	}
 }
 
 func TestCapabilityTokenProtectsStaticAssetsAndAPI(t *testing.T) {
+	database := integrationDatabase(t)
+	seedDatabase(t, database, nil)
 	address, closeServer := fakeRedis(t)
 	defer closeServer()
 	client, err := redisx.New("redis://" + address)
@@ -746,7 +767,8 @@ func TestCapabilityTokenProtectsStaticAssetsAndAPI(t *testing.T) {
 		t.Fatal(err)
 	}
 	app, err := New(context.Background(), redisx.NewStore(client, "test"), Config{
-		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
+		Database: database,
+		Listen:   "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
 	})
 	if err != nil {
 		t.Fatal(err)

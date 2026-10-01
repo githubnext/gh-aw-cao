@@ -50,7 +50,7 @@ func Validate(definitions []Definition) error {
 		if len(definition.Joins) > MaxJoins {
 			return fmt.Errorf("query %q exceeds max joins", definition.Name)
 		}
-		if len(definition.Union) > 64 || len(definition.Compute) > 128 || len(definition.Select) > 128 || len(definition.OrderBy) > 16 {
+		if len(definition.Union) > 64 || len(definition.Compute) > 128 || len(definition.Select) > 256 || len(definition.OrderBy) > 16 {
 			return fmt.Errorf("query %q exceeds structural resource limits", definition.Name)
 		}
 		if err := validateFilter(definition.Filter); err != nil {
@@ -101,7 +101,7 @@ func Validate(definitions []Definition) error {
 			}
 		}
 		if len(definition.Predict) > 0 {
-			return fmt.Errorf("query %q uses prediction, which is not supported by the local Redis backend", definition.Name)
+			return fmt.Errorf("query %q uses prediction, which is not supported by the dashboard server", definition.Name)
 		}
 
 		if definition.Limit != nil && (*definition.Limit <= 0 || *definition.Limit > MaxOutputRows) {
@@ -121,9 +121,9 @@ func Validate(definitions []Definition) error {
 
 func computeArity(function string) (int, int, bool) {
 	arities := map[string][2]int{
-		"literal": {1, 1}, "coalesce": {2, 8}, "concat": {2, 8}, "lower": {1, 1}, "upper": {1, 1},
+		"literal": {1, 1}, "coalesce": {1, 8}, "concat": {1, 8}, "lower": {1, 1}, "upper": {1, 1},
 		"title-case": {1, 1}, "trim": {1, 1}, "replace-suffix": {3, 3}, "url-encode": {1, 1},
-		"date-day": {1, 1}, "calendar-week-point": {3, 3}, "dashboard-link": {3, 4}, "link-href": {1, 1},
+		"date-day": {1, 1}, "calendar-week-point": {3, 3}, "dashboard-link": {3, 4}, "link-href": {1, 1}, "link": {2, 2},
 		"equals-any": {2, 8}, "greater-than": {2, 2}, "if": {3, 3}, "format-count": {1, 1},
 		"format-percent": {1, 1}, "array-length": {1, 1}, "failure-streak-point": {3, 3},
 		"number": {1, 1}, "positive-integer": {2, 2}, "sum": {2, 8}, "difference": {2, 2},
@@ -436,7 +436,7 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 	for _, source := range output {
 		metrics.OutputRows += len(source.Rows)
 	}
-	queryLog.Printf("completed outputs=%d operations=%d redis_commands=%d redis_rows=%d", len(output), operations, metrics.RedisCommands, metrics.RedisRows)
+	queryLog.Printf("completed outputs=%d operations=%d", len(output), operations)
 	return output, metrics, nil
 }
 
@@ -567,15 +567,13 @@ func residualDefinition(definition Definition, pushed []string) Definition {
 }
 
 func mergeMetrics(target *model.Metrics, incoming model.Metrics) {
-	target.RedisCommands += incoming.RedisCommands
-	target.RedisRows += incoming.RedisRows
 	target.PushedDown = append(target.PushedDown, incoming.PushedDown...)
 	target.FallbackOperations = append(target.FallbackOperations, incoming.FallbackOperations...)
 }
 
 func ExecuteDefinition(definition Definition, sources map[string]model.Source, remaining int) (model.Source, int, []string, error) {
 	if len(definition.Predict) > 0 {
-		return model.Source{}, 0, nil, errors.New("prediction is not supported by the local Redis backend")
+		return model.Source{}, 0, nil, errors.New("prediction is not supported by the dashboard server")
 	}
 	base, ok := sources[definition.From]
 	if !ok {
@@ -1006,6 +1004,12 @@ func computeValue(row model.Row, definition ComputedField) (any, error) {
 		}
 		result["dashboard-href"], result["dashboard-label"] = href, label
 		return result, nil
+	case "link":
+		href, label := text(values[0]), strings.TrimSpace(text(values[1]))
+		if href == "" || label == "" {
+			return nil, nil
+		}
+		return model.Row{"href": href, "label": label}, nil
 	case "link-href":
 		link, ok := values[0].(map[string]any)
 		if !ok {
@@ -1025,9 +1029,9 @@ func computeValue(row model.Row, definition ComputedField) (any, error) {
 		return false, nil
 	case "if":
 		if values[0] == true {
-			return scalarValue(values[1]), nil
+			return values[1], nil
 		}
-		return scalarValue(values[2]), nil
+		return values[2], nil
 	case "array-length":
 		if array, ok := values[0].([]any); ok {
 			return len(array), nil

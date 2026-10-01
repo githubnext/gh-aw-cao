@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
@@ -120,7 +121,20 @@ func newHostedAppWithPolicy(
 	if trustForwarded {
 		trustedProxyPrefixes = append(trustedProxyPrefixes, loopbackProxyPrefixes()...)
 	}
+	postgresURL := strings.TrimSpace(os.Getenv("CAO_POSTGRES_URL"))
+	if postgresURL == "" {
+		return nil, errors.New("CAO_POSTGRES_URL is required")
+	}
+	databaseNamespace := strings.TrimSpace(host.RedisNamespace)
+	if databaseNamespace == "" {
+		databaseNamespace = "hosted-dashboard"
+	}
+	database, err := postgresx.NewWithNamespace(ctx, postgresURL, databaseNamespace)
+	if err != nil {
+		return nil, errors.New("connect to dashboard Postgres failed")
+	}
 	config := Config{
+		Database:               database,
 		HostProfile:            host.Profile,
 		SingleReplicaConfirmed: host.SingleReplicaConfirmed,
 		Listen:                 listen,
@@ -156,7 +170,11 @@ func newHostedAppWithPolicy(
 		},
 		Logger: logger,
 	}
-	return New(ctx, store, config)
+	app, err := New(ctx, store, config)
+	if err != nil {
+		_ = database.Close()
+	}
+	return app, err
 }
 
 // hostedRedisURLRejection classifies why validateHostedRedisURL rejected a

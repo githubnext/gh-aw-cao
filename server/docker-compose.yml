@@ -11,6 +11,23 @@ services:
       timeout: 2s
       retries: 20
     restart: unless-stopped
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cao_dashboard
+      POSTGRES_USER: cao_dashboard
+      POSTGRES_PASSWORD: ${CAO_LOCAL_POSTGRES_PASSWORD:-}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cao_dashboard -d cao_dashboard"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+    restart: unless-stopped
 
 volumes:
   redis-data:
+  postgres-data:

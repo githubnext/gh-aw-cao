@@ -203,7 +203,7 @@ func (a *App) chargeQueryRateLimit(
 
 func queryRateLimitCost(metrics model.Metrics) int {
 	durationCost := int((metrics.DurationMS + 999) / 1000)
-	operationCost := ceilingUnits(metrics.Operations+metrics.RedisRows, 250_000)
+	operationCost := ceilingUnits(metrics.Operations, 250_000)
 	rowCost := ceilingUnits(metrics.PeakWorkingRows, 100_000)
 	memoryCost := ceilingUnits64(metrics.PeakWorkingBytes, 16<<20)
 	cost := max(1, durationCost, operationCost, rowCost, memoryCost)

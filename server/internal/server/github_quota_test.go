@@ -96,6 +96,8 @@ func TestGitHubQuotaUsageReportsUnavailableStore(t *testing.T) {
 }
 
 func TestGitHubQuotaUsageQueryRunsThroughServerQueryEngine(t *testing.T) {
+	database := integrationDatabase(t)
+	seedDatabase(t, database, nil)
 	address, closeServer := fakeRedis(t)
 	defer closeServer()
 	client, err := redisx.New("redis://" + address)
@@ -103,8 +105,9 @@ func TestGitHubQuotaUsageQueryRunsThroughServerQueryEngine(t *testing.T) {
 		t.Fatal(err)
 	}
 	app := &App{
-		store: redisx.NewStore(client, "quota-query-test"),
-		quota: newUsageQuota(t, usageQuotaStore{samples: usageSamples(), now: usageNow}),
+		store:    redisx.NewStore(client, "quota-query-test"),
+		database: database,
+		quota:    newUsageQuota(t, usageQuotaStore{samples: usageSamples(), now: usageNow}),
 	}
 	input := queryRequest{
 		Queries:     []query.Definition{{Name: "github-api-usage", From: gitHubQuotaUsageSourceName}},

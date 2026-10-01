@@ -18,9 +18,9 @@ func TestClassifyRedisMemory(t *testing.T) {
 		remedyEmpty bool
 	}{
 		{
-			name: "evicting policy fails regardless of utilization",
+			name: "evicting policy warns regardless of utilization",
 			used: 100, maximum: 1000, policy: "allkeys-lru",
-			wantStatus: StatusFail, wantReason: memoryReasonEvictingPolicy,
+			wantStatus: StatusWarn, wantReason: memoryReasonEvictingPolicy,
 			summaryHas: "eviction policy",
 		},
 		{
@@ -39,7 +39,7 @@ func TestClassifyRedisMemory(t *testing.T) {
 			name: "moderate utilization under a limit passes",
 			used: 400, maximum: 1000, policy: "noeviction",
 			wantStatus: StatusPass, wantReason: memoryReasonHealthy,
-			summaryHas: "used under a noeviction policy", remedyEmpty: true,
+			summaryHas: "used for operational state", remedyEmpty: true,
 		},
 		{
 			name: "no configured limit warns even at low usage",
@@ -51,7 +51,7 @@ func TestClassifyRedisMemory(t *testing.T) {
 			name: "empty policy with a limit is treated as noeviction",
 			used: 100, maximum: 1000, policy: "",
 			wantStatus: StatusPass, wantReason: memoryReasonHealthy,
-			summaryHas: "used under a noeviction policy", remedyEmpty: true,
+			summaryHas: "used for operational state", remedyEmpty: true,
 		},
 	}
 	for _, testCase := range cases {
