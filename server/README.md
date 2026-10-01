@@ -828,10 +828,11 @@ Known limits, in the order they will be felt at scale:
 
 ## Entity and operational storage
 
-Postgres stores the current dashboard entity sources, their metadata and
-canonical diagnostics, and one revision/evaluation state. An ingestion replaces
-these atomically: failed transactions leave the previous committed state
-untouched. There are no Postgres generations, projections, or snapshots.
+Postgres stores the current dashboard entity sources as native typed fields,
+alongside their metadata, canonical diagnostics, and one revision/evaluation
+state. An ingestion replaces these atomically: failed transactions leave the
+previous committed state untouched. There are no Postgres generations,
+projections, or snapshots.
 Redis remains namespaced operational storage for caches, queues, sessions, and
 it does not hold dashboard entity rows or query indexes.
 Neither store grants control-plane authority. Credentials stay server-side.
@@ -855,9 +856,10 @@ input, join, output, and operator limits remain independently enforced.
 Expensive stages, including sorting, are charged against the operation budget
 before they allocate or run.
 
-Queries load current logical sources from Postgres. The Go engine applies
-selection, joins, aggregation, and limits to complete source documents; Redis
-is not a query backend. Query resource limits remain fail-closed.
+Native SQL reads load current logical sources from Postgres. The Go engine
+applies Dashboard Language selection, joins, aggregation, and limits to
+complete source documents; Redis is not a query backend. Query resource
+limits remain fail-closed.
 
 The engine rejects unsupported prediction queries and enforces limits on query
 definitions, joins, predicates, input rows, output rows, and total operations.
