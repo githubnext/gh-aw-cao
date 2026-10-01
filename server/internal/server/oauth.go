@@ -42,7 +42,7 @@ var oauthFailurePage = template.Must(template.New("oauth-failure").Parse(oauthFa
 
 func oauthPageScriptHash(page string) string {
 	_, script, found := strings.Cut(page, "<script>")
-	if !found || cached.etag == "" {
+	if !found {
 		panic("OAuth page is missing its script")
 	}
 	script, _, found = strings.Cut(script, "</script>")
@@ -241,7 +241,7 @@ func (oauth *githubOAuth) repositoryRoleAuthorized(ctx context.Context, session 
 	entry := repositoryRoleCacheEntry{etag: response.Header.Get("ETag"), expires: time.Now().Add(5 * time.Minute)}
 	switch response.StatusCode {
 	case http.StatusNotModified:
-		if !found {
+		if !found || cached.etag == "" {
 			return false
 		}
 		entry.allowed = cached.allowed
