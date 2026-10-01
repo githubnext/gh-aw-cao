@@ -357,6 +357,7 @@ start() {
     --redis-url "redis://127.0.0.1:$redis_port/0" \
     --redis-namespace "$namespace" \
     --database-queries "$ROOT/dashboard/site/src/data/queries/database.json" \
+    --dashboard-queries "$ROOT/dashboard/site/src/agent/queries.generated.json" \
     >"$LOG_DIR/ingest.log" 2>&1
 
   local storage_connection
