@@ -2,8 +2,14 @@ import 'fake-indexeddb/auto';
 import { describe, expect, it, vi } from 'vitest';
 import { compileDashboardQueryTypes } from '../../src/query-type-checker.js';
 import { processDataRequest } from '../../src/data-worker.js';
+import { tidy } from '../../src/data-operations.js';
 import { loadDatabaseQuerySources, queryDatabaseSources } from '../../src/data/queries/database.js';
 import { executeDashboardQueries, resolveDashboardQuerySources } from '../../src/data/queries/declarative.js';
+import {
+  compileDashboardViewPayloadQueries,
+  dashboardFormDefaultValues,
+  resolveDashboardQueryParameters
+} from '../../src/data/queries/view-payload-compiler.js';
 import { validateDashboardDocument } from '../../src/validator.js';
 import { authoritativeDashboard, authoritativeDashboardSource } from '../authoritative-dashboard.js';
 
@@ -150,5 +156,61 @@ describe('simulation-days intrinsic query source', () => {
       expect(compiled.queryFields.get(name), name).toContain('date');
     }
     expect(validateDashboardDocument(authoritativeDashboardSource)).toMatchObject({ ok: true });
+  });
+
+  it('projects the authored simulator form through the worker view payload with reactive parameter changes', () => {
+    const dashboard = authoritativeDashboard.dashboard;
+    const page = dashboard.pages.find((candidate) => candidate.id === 'simulators');
+    expect(page).toBeDefined();
+    const render = (formValues) => {
+      const compiled = compileDashboardViewPayloadQueries(page, 'simulators', {
+        viewId: 'simulator-database-growth',
+        queries: dashboard.queries,
+        queryContext: { formValues }
+      });
+      expect(compiled.aliases).toHaveLength(1);
+      const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (
+        processDataRequest({
+          operation: 'execute-dashboard-queries',
+          queries: compiled.queries,
+          sourceNames: compiled.aliases,
+          sources: {}
+        })
+      )[compiled.aliases[0]];
+      expect(result.metadata.availability).toBe('available');
+      return result.rows;
+    };
+    const defaults = render({});
+    const byTable = (rows, date, table) => rows.find((row) => row.date === date && row.table === table);
+    expect(defaults).toHaveLength(90);
+    expect(byTable(defaults, '2025-01-01T00:00:00.000Z', 'Run summaries')?.bytes).toBe(5_120_000);
+    expect(byTable(defaults, '2025-01-01T00:00:00.000Z', 'Tools (30-day TTL)')?.bytes).toBe(20_480_000);
+    expect(byTable(defaults, '2025-01-01T00:00:00.000Z', 'Issues (30-day TTL)')?.bytes).toBe(4_096_000);
+    expect(byTable(defaults, '2025-01-30T00:00:00.000Z', 'Run summaries')?.bytes).toBe(153_600_000);
+    expect(byTable(defaults, '2025-01-30T00:00:00.000Z', 'Tools (30-day TTL)')?.bytes).toBe(614_400_000);
+    expect(byTable(defaults, '2025-01-30T00:00:00.000Z', 'Issues (30-day TTL)')?.bytes).toBe(122_880_000);
+
+    const changed = render({ repositories: 2000, 'skip-rate': 50 });
+    expect(byTable(changed, '2025-01-30T00:00:00.000Z', 'Run summaries')?.bytes).toBe(307_200_000);
+    expect(byTable(changed, '2025-01-30T00:00:00.000Z', 'Tools (30-day TTL)')?.bytes).toBe(768_000_000);
+    expect(byTable(changed, '2025-01-30T00:00:00.000Z', 'Issues (30-day TTL)')?.bytes).toBe(153_600_000);
+  });
+
+  it('caps the authored detail-days calculation after the 30-day retention horizon', () => {
+    const dashboard = authoritativeDashboard.dashboard;
+    const page = dashboard.pages.find((candidate) => candidate.id === 'simulators');
+    const definition = dashboard.queries.find((candidate) => candidate.name === 'simulator-database-inputs');
+    expect(page).toBeDefined();
+    expect(definition).toBeDefined();
+    const [resolved] = resolveDashboardQueryParameters(
+      [definition], dashboardFormDefaultValues(page.form)
+    );
+    const rows = tidy(
+      [{ day: 0 }, { day: 30 }, { day: 31 }, { day: 60 }],
+      [{ op: 'compute', values: resolved.compute }]
+    );
+    expect(rows.map((row) => [row['summary-runs'], row['detail-runs']])).toEqual([
+      [0, 0], [300_000, 240_000], [310_000, 240_000], [600_000, 240_000]
+    ]);
   });
 });
