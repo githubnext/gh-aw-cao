@@ -4,7 +4,45 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 )
+
+func TestIssueDeliveryQueuesRepositoryRefresh(t *testing.T) {
+	store, ctx := integrationStore(t)
+	enrollment := Enrollment{Store: store}
+	if err := enrollment.AddRepositories(ctx, 42, []string{"octo/api"}); err != nil {
+		t.Fatal(err)
+	}
+	queue := Queue{Store: store}
+	if err := queue.Ensure(ctx); err != nil {
+		t.Fatal(err)
+	}
+	admitter := Admitter{Enrollment: enrollment, Queue: queue}
+	payload := []byte(`{"action":"closed","installation":{"id":42},"repository":{"full_name":"octo/api"},
+		"issue":{"number":12,"state":"closed","updated_at":"2026-01-02T03:04:06Z",
+		"html_url":"https://github.com/octo/api/issues/12"}}`)
+	first, err := admitter.AdmitDelivery(ctx, "issues", payload, "delivery-1", time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Kind != IntentIssueStatus || !first.Enqueued || first.Duplicate {
+		t.Fatalf("issue delivery did not enqueue refresh: %+v", first)
+	}
+	duplicate, err := admitter.AdmitDelivery(ctx, "issues", payload, "delivery-1", time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !duplicate.Duplicate || duplicate.Enqueued {
+		t.Fatalf("repeated issue delivery was not deduplicated: %+v", duplicate)
+	}
+	depth, err := queue.Depth(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if depth != 1 {
+		t.Fatalf("queue depth = %d, want one durable repository refresh", depth)
+	}
+}
 
 func TestParseEventClassifiesDeliveries(t *testing.T) {
 	cases := []struct {

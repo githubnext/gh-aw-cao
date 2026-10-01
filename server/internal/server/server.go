@@ -1004,7 +1004,7 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 		}
 	}
 	started := time.Now()
-	loader := &generationLoader{
+	loader := &databaseLoader{
 		ctx: ctx, database: a.database, operational: a.store, dataRevision: active.DataRevision,
 		app: a, allowCollectionHealth: allowCollectionHealth,
 	}
@@ -1033,7 +1033,7 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 	}, http.StatusOK, nil
 }
 
-type generationLoader struct {
+type databaseLoader struct {
 	ctx                   context.Context
 	database              *postgresx.Store
 	operational           *redisx.Store
@@ -1042,7 +1042,7 @@ type generationLoader struct {
 	allowCollectionHealth bool
 }
 
-func (loader *generationLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
+func (loader *databaseLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
 	if name == "$records" {
 		source := model.Source{Source: name, Rows: []model.Row{}, Metadata: model.Metadata{}}
 		for _, collection := range []string{"domains", "tools", "skills", "friction", "audits", "issues"} {

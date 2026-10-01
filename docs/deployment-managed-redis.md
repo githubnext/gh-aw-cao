@@ -1,6 +1,6 @@
 ---
 title: Managed Redis in one minute
-description: Connect the hosted CAO dashboard to AWS ElastiCache, Redis Cloud, GCP Memorystore, Railway, Render, or DigitalOcean.
+description: Connect operational Redis alongside Postgres dashboard entity storage on a hosted CAO dashboard.
 sidebar:
   order: 1325
 ---
@@ -12,13 +12,11 @@ The hosted server reads non-secret host capabilities from
 variables. Redis provider modules only select conventional environment-variable names
 and consistency constraints;
 they do not add provider SDKs or weaken TLS verification.
-For the generic and managed Redis providers, choose Redis 8 with RedisJSON
-(`JSON.SET`/`JSON.GET`) and RediSearch (`FT.CREATE`/`FT.SEARCH`/`FT.DROPINDEX`)
-enabled. The server stages JSON documents and indexes in a new generation and
-refuses to activate it if either capability is unavailable. The separate Upstash
-provider uses core Redis hashes because Upstash's search API is not RediSearch.
-Before rolling back to a pre-JSON server version, restore a hash-format generation
-or rebuild it with the older server: older binaries cannot read JSON rows.
+Configure a Postgres connection separately for current dashboard entity storage
+and queries. Redis supports operational caches, queues, sessions, and issue
+status overlays; the server does not store dashboard entities, RediSearch
+indexes, or generations in Redis. Postgres replacements are transactional and
+have no generations, projections, or snapshots.
 To keep hosting settings separate from rollout policy, you can instead use a
 reviewed [deployment-specific host extension](configuration.md#deployment-specific-host-extensions).
 
@@ -274,8 +272,8 @@ curl -fsS https://YOUR_HOST/api/health
 curl -fsS https://YOUR_HOST/api/readiness
 ```
 
-Both endpoints include Redis dependency state. Never use them as process-only
-liveness probes.
+Both endpoints reflect dependency state, including Postgres data readiness and
+Redis operations. Never use them as process-only liveness probes.
 
 ## Provider references
 

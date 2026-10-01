@@ -2,35 +2,54 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
-	"strconv"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 )
 
-func TestCanonicalAPIQueriesMatchActiveRedisGeneration(t *testing.T) {
-	rawURL := os.Getenv("REDIS_URL")
+func TestCanonicalAPIQueriesMatchPostgresIngestion(t *testing.T) {
+	rawURL := os.Getenv("POSTGRES_URL")
 	if rawURL == "" {
-		t.Skip("REDIS_URL is not set")
+		t.Skip("POSTGRES_URL is not set")
 	}
-	client, err := redisx.New(rawURL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	namespace, err := redisx.NormalizeNamespace("canonical-api-" + strconv.FormatInt(time.Now().UnixNano(), 36))
-	if err != nil {
-		t.Fatal(err)
-	}
-	store := redisx.NewStore(client, namespace)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 90*time.Second)
 	defer cancel()
-	result, err := ingest.Run(ctx, store, "../../testdata/deployed-subset", ingest.Options{
+	admin, err := sql.Open("pgx", rawURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer admin.Close()
+	schema := fmt.Sprintf("cao_canonical_test_%d", time.Now().UnixNano())
+	if _, err := admin.ExecContext(ctx, "CREATE SCHEMA "+schema); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		dropCtx, dropCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer dropCancel()
+		_, _ = admin.ExecContext(dropCtx, "DROP SCHEMA "+schema+" CASCADE")
+	}()
+	config, err := pgx.ParseConfig(rawURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config.RuntimeParams["search_path"] = schema
+	dsn := stdlib.RegisterConnConfig(config)
+	defer stdlib.UnregisterConnConfig(dsn)
+	store, err := postgresx.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	result, err := ingest.Run(ctx, store, nil, "../../testdata/deployed-subset", ingest.Options{
 		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
-		Force:               true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -40,12 +59,13 @@ func TestCanonicalAPIQueriesMatchActiveRedisGeneration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	direct, _, err := store.LoadSource(ctx, result.Generation, "repositories", nil)
+	direct, _, err := store.LoadSource(ctx, "repositories", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(repositories) != len(direct.Rows) || len(repositories) == 0 {
-		t.Fatalf("canonical API and Redis generation differ: api=%d redis=%d", len(repositories), len(direct.Rows))
+	if len(repositories) == 0 || len(repositories) != result.Counts["repositories"] ||
+		!reflect.DeepEqual(repositories, direct.Rows) {
+		t.Fatalf("canonical API and Postgres source differ: api=%d postgres=%d", len(repositories), len(direct.Rows))
 	}
 	id := fmt.Sprint(repositories[0]["id"])
 	repository, err := service.entity(ctx, "repositories", id)

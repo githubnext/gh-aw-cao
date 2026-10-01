@@ -28,7 +28,7 @@ func (service canonicalService) rows(ctx context.Context, source string) ([]mode
 	if !active.Ready {
 		return nil, errors.New("dashboard data is unavailable")
 	}
-	engine := query.New(&generationLoader{ctx: ctx, database: service.store})
+	engine := query.New(&databaseLoader{ctx: ctx, database: service.store})
 	sources, _, err := engine.Execute(service.definitions, []string{source})
 	if err != nil {
 		return nil, err
@@ -55,7 +55,7 @@ func (service canonicalService) filteredRows(ctx context.Context, source string,
 			Predicates: predicates,
 		},
 	}
-	engine := query.New(&generationLoader{ctx: ctx, database: service.store})
+	engine := query.New(&databaseLoader{ctx: ctx, database: service.store})
 	definitions := append(append([]query.Definition{}, service.definitions...), definition)
 	sources, _, err := engine.Execute(definitions, []string{definition.Name})
 	if err != nil {

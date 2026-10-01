@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
@@ -271,7 +272,17 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 	if err != nil {
 		return nil, err
 	}
+	postgresURL := strings.TrimSpace(os.Getenv("CAO_POSTGRES_URL"))
+	if postgresURL == "" {
+		return nil, errors.New("azure Functions mode requires CAO_POSTGRES_URL")
+	}
+	database, err := postgresx.New(ctx, postgresURL)
+	if err != nil {
+		return nil, fmt.Errorf("connect to dashboard Postgres: %w", err)
+	}
 	app, err := New(ctx, store, Config{
+		Database:               database,
+		DatabaseQueriesPath:    os.Getenv("CAO_DATABASE_QUERIES"),
 		HostProfile:            profile,
 		SingleReplicaConfirmed: host.SingleReplicaConfirmed,
 		SiteDirectory:          siteDirectory,
@@ -297,6 +308,7 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 		Logger: logger,
 	})
 	if err != nil {
+		_ = database.Close()
 		return nil, err
 	}
 	go app.oauth.runRevocationWorker(context.WithoutCancel(ctx))

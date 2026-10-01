@@ -2,243 +2,207 @@ package ingest
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
+	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
+	"github.com/githubnext/gh-aw-cao/server/internal/query"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 )
 
-type failFirstRowBatch struct {
-	*redisx.Client
-}
+const deployedSubset = "../../testdata/deployed-subset"
+const databaseQueries = "../../../dashboard/site/src/data/queries/database.json"
 
-type ageFirstGeneration struct {
-	*redisx.Client
-	registryWrites int
-}
-
-func (client *ageFirstGeneration) Do(ctx context.Context, command ...string) (any, error) {
-	if len(command) >= 4 && command[0] == "ZADD" && strings.HasSuffix(command[1], ":generations") {
-		client.registryWrites++
-		if client.registryWrites == 1 {
-			command[2] = "1"
-		}
-	}
-	return client.Client.Do(ctx, command...)
-}
-
-func (client failFirstRowBatch) DoMany(ctx context.Context, commands [][]string) ([]any, error) {
-	if len(commands) != 0 && len(commands[0]) > 1 && strings.Contains(commands[0][1], "JSON.SET") {
-		return nil, errors.New("injected row write failure")
-	}
-	return client.Client.DoMany(ctx, commands)
-}
-
-func TestGenerationGraceStartsAtActivation(t *testing.T) {
-	ctx, _, client, namespace := ingestTestStore(t, "generation-grace")
-	aging := &ageFirstGeneration{Client: client}
-	store := redisx.NewStore(aging, namespace)
-	result, err := Run(ctx, store, "../../testdata/deployed-subset", Options{
-		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
-		Force:               true,
-	})
+func TestForcedIngestionAdvancesRevisionWithoutChangingDataRevision(t *testing.T) {
+	ctx, store := ingestTestStore(t)
+	first, err := Run(ctx, store, nil, deployedSubset, Options{DatabaseQueriesPath: databaseQueries})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if aging.registryWrites != 2 {
-		t.Fatalf("generation registered %d times, want staging and activation", aging.registryWrites)
-	}
-	score, err := client.Do(ctx, "ZSCORE", namespace+":generations", result.Generation)
+	second, err := Run(ctx, store, nil, deployedSubset, Options{DatabaseQueriesPath: databaseQueries, Force: true})
 	if err != nil {
 		t.Fatal(err)
 	}
-	milliseconds, err := strconv.ParseInt(fmt.Sprint(score), 10, 64)
-	if err != nil || milliseconds < time.Now().Add(-time.Minute).UnixMilli() {
-		t.Fatalf("generation grace was not refreshed before activation: %v %v", score, err)
+	if second.Revision != first.Revision+1 || second.DataRevision != first.DataRevision ||
+		!reflect.DeepEqual(second.Counts, first.Counts) {
+		t.Fatalf("forced ingestion changed data or did not advance revision: first=%+v second=%+v", first, second)
+	}
+	state, err := store.State(ctx)
+	if err != nil || state.Revision != second.Revision || state.DataRevision != second.DataRevision {
+		t.Fatalf("forced ingestion not reflected in database: %+v, %v", state, err)
 	}
 }
 
-func TestFailedProjectionDiscardsJSONIndexes(t *testing.T) {
-	ctx, _, client, namespace := ingestTestStore(t, "failed-json")
-	store := redisx.NewStore(failFirstRowBatch{client}, namespace)
-	if _, err := Run(ctx, store, "../../testdata/deployed-subset", Options{
-		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
-		Force:               true,
-	}); err == nil {
-		t.Fatal("expected staged row write to fail")
-	}
-	active, err := store.Active(ctx)
-	if err != nil || active.Generation != "" {
-		t.Fatalf("failed projection was activated: %+v %v", active, err)
-	}
-	registered, err := client.Do(ctx, "ZCARD", namespace+":generations")
-	if err != nil || registered != int64(0) {
-		t.Fatalf("failed generation remained registered: %v %v", registered, err)
-	}
-	if count := keyCount(ctx, t, client, namespace+":g:*"); count != 0 {
-		t.Fatalf("failed generation left %d keys", count)
-	}
-	indexes, err := client.Do(ctx, "FT._LIST")
+func TestUnchangedLakeReusesPostgresRevision(t *testing.T) {
+	ctx, store := ingestTestStore(t)
+	options := Options{DatabaseQueriesPath: databaseQueries}
+	first, err := Run(ctx, store, nil, deployedSubset, options)
 	if err != nil {
 		t.Fatal(err)
 	}
-	names, err := redisx.Strings(indexes)
+	second, err := Run(ctx, store, nil, deployedSubset, options)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range names {
-		if strings.HasPrefix(name, namespace+":g:") {
-			t.Fatalf("failed generation left an index: %s", name)
-		}
+	if second.Revision != first.Revision || second.DataRevision != first.DataRevision ||
+		!reflect.DeepEqual(second.Counts, first.Counts) || second.EvaluatedAt != first.EvaluatedAt {
+		t.Fatalf("unchanged lake was not reused: first=%+v second=%+v", first, second)
 	}
 }
 
-// Every projection writes a complete new generation. Without reclamation a
-// deployment that projects frequently exhausts a NoEviction Redis, so this
-// asserts that repeated projections leave a bounded keyspace behind.
-func TestRepeatedProjectionsReclaimSupersededGenerations(t *testing.T) {
-	ctx, store, client, namespace := ingestTestStore(t, "reclaim")
-	generations := make([]string, 0, 4)
-	for attempt := 0; attempt < 4; attempt++ {
-		result, err := Run(ctx, store, "../../testdata/deployed-subset", Options{
-			DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
-			Force:               true,
-			RetainGenerations:   1,
-		})
+func TestChangedInventoryCreatesFreshDataRevision(t *testing.T) {
+	ctx, store := ingestTestStore(t)
+	options := Options{DatabaseQueriesPath: databaseQueries}
+	first, err := Run(ctx, store, nil, deployedSubset, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := scratchDirectory(t)
+	for _, name := range []string{
+		"payload-hashes.json", "inventory-sources.json",
+		"gh-aw-logs-runs/subset.jsonl", "gh-aw-logs-records/subset.jsonl",
+	} {
+		content, err := os.ReadFile(filepath.Join(deployedSubset, name))
 		if err != nil {
 			t.Fatal(err)
 		}
-		generations = append(generations, result.Generation)
-	}
-	// Activation must register every generation it writes; otherwise nothing
-	// could ever find a superseded generation to reclaim.
-	registered, err := client.Do(ctx, "ZCARD", namespace+":generations")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if fmt.Sprint(registered) != strconv.Itoa(len(generations)) {
-		t.Fatalf("registry holds %v generations, want %d", registered, len(generations))
-	}
-	// Reclamation honours a grace period so in-flight readers finish.
-	// Backdating simulates that period having elapsed.
-	for index, generation := range generations {
-		if _, err := client.Do(ctx, "ZADD", namespace+":generations", "XX", strconv.Itoa(index+1), generation); err != nil {
-			t.Fatal(err)
+		if name == "inventory-sources.json" {
+			content = append(content, '\n')
 		}
+		writeTestFile(t, filepath.Join(directory, name), content)
 	}
-	dropped, err := store.PruneGenerations(ctx, 1)
+	second, err := Run(ctx, store, nil, directory, options)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if dropped != len(generations)-1 {
-		t.Fatalf("reclaimed %d generations, want %d", dropped, len(generations)-1)
+	if second.Revision != first.Revision+1 || second.DataRevision == first.DataRevision ||
+		!reflect.DeepEqual(second.Counts, first.Counts) {
+		t.Fatalf("changed inventory did not create a fresh data revision: first=%+v second=%+v", first, second)
 	}
-	active := generations[len(generations)-1]
-	for _, generation := range generations[:len(generations)-1] {
-		if keyCount(ctx, t, client, namespace+":g:"+generation+"*") != 0 {
-			t.Fatalf("superseded generation %s was not reclaimed", generation)
-		}
-	}
-	if keyCount(ctx, t, client, namespace+":g:"+active+"*") == 0 {
-		t.Fatal("active generation was reclaimed")
-	}
-	source, _, err := store.LoadSource(ctx, active, "repositories", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(source.Rows) == 0 {
-		t.Fatal("active generation lost its rows")
+	state, err := store.State(ctx)
+	if err != nil || state.DataRevision != second.DataRevision || state.Revision != second.Revision {
+		t.Fatalf("fresh revision not activated: %+v, %v", state, err)
 	}
 }
 
-// The active generation must survive reclamation even when the retention count
-// would otherwise select it, because dropping it would empty the dashboard.
-func TestReclamationNeverDropsTheActiveGeneration(t *testing.T) {
-	ctx, store, client, namespace := ingestTestStore(t, "reclaim-active")
-	result, err := Run(ctx, store, "../../testdata/deployed-subset", Options{
-		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
-		Force:               true,
-	})
+func TestFailedPostgresReplaceRollsBackIngestedSources(t *testing.T) {
+	ctx, store := ingestTestStore(t)
+	result, err := Run(ctx, store, nil, deployedSubset, Options{DatabaseQueriesPath: databaseQueries})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.Do(ctx, "ZADD", namespace+":generations", "1", result.Generation); err != nil {
+	before, err := store.State(ctx)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.PruneGenerations(ctx, 0); err != nil {
+	repositories, _, err := store.LoadSource(ctx, "repositories", nil)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if keyCount(ctx, t, client, namespace+":g:"+result.Generation+"*") == 0 {
-		t.Fatal("active generation was reclaimed")
+	diagnostics, err := store.Diagnostics(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = store.Replace(ctx, map[string]model.Source{
+		"invalid": {Source: "invalid", Rows: []model.Row{{"bad": make(chan int)}}},
+	}, model.Diagnostics{}, "invalid-revision", time.Now())
+	if err == nil {
+		t.Fatal("expected replacement to fail")
+	}
+	after, err := store.State(ctx)
+	if err != nil || !reflect.DeepEqual(after, before) || after.Revision != result.Revision {
+		t.Fatalf("failed replacement changed active state: before=%+v after=%+v err=%v", before, after, err)
+	}
+	preserved, _, err := store.LoadSource(ctx, "repositories", nil)
+	if err != nil || !reflect.DeepEqual(preserved, repositories) {
+		t.Fatalf("failed replacement lost ingested rows: %v, %v", preserved, err)
+	}
+	afterDiagnostics, err := store.Diagnostics(ctx)
+	if err != nil || !reflect.DeepEqual(afterDiagnostics, diagnostics) {
+		t.Fatalf("failed replacement changed diagnostics: %+v, %v", afterDiagnostics, err)
+	}
+	if _, _, err := store.LoadSource(ctx, "invalid", nil); !errors.Is(err, postgresx.ErrSourceUnavailable) {
+		t.Fatalf("failed replacement exposed incomplete source: %v", err)
 	}
 }
 
-// A projection over an unchanged lake must reuse the active generation. The
-// collection profile projects on a short interval and most collections add
-// nothing, so without this short-circuit steady state would be a full rewrite.
-func TestUnchangedLakeReusesTheActiveGeneration(t *testing.T) {
-	ctx, store, _, _ := ingestTestStore(t, "unchanged")
-	options := Options{
-		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
-	}
-	first, err := Run(ctx, store, "../../testdata/deployed-subset", options)
+func TestIngestedPostgresSourcesSupportDirectQueries(t *testing.T) {
+	ctx, store := ingestTestStore(t)
+	result, err := Run(ctx, store, nil, deployedSubset, Options{DatabaseQueriesPath: databaseQueries})
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := Run(ctx, store, "../../testdata/deployed-subset", options)
+	repositories, metrics, err := store.LoadSource(ctx, "repositories", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if second.Generation != first.Generation {
-		t.Fatalf("unchanged lake wrote a new generation %s, want %s", second.Generation, first.Generation)
+	if len(repositories.Rows) == 0 || len(repositories.Rows) != result.Counts["repositories"] ||
+		metrics.OutputRows != len(repositories.Rows) {
+		t.Fatalf("Postgres direct source disagrees with ingestion: rows=%d metrics=%+v counts=%+v",
+			len(repositories.Rows), metrics, result.Counts)
 	}
-	if second.Revision != first.Revision {
-		t.Fatalf("unchanged lake advanced the revision to %d, want %d", second.Revision, first.Revision)
+	id := repositories.Rows[0]["id"]
+	definitions := []query.Definition{{
+		Name: "selected-repository", From: "repositories",
+		Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: id}}},
+	}}
+	sources, _, err := query.New(ingestSourceLoader{store: store, ctx: ctx}).Execute(definitions, []string{"selected-repository"})
+	if err != nil || len(sources["selected-repository"].Rows) != 1 ||
+		sources["selected-repository"].Rows[0]["id"] != id {
+		t.Fatalf("direct query did not select the ingested repository: %+v, %v", sources, err)
 	}
 }
 
-func ingestTestStore(t *testing.T, label string) (context.Context, *redisx.Store, *redisx.Client, string) {
+type ingestSourceLoader struct {
+	store *postgresx.Store
+	ctx   context.Context
+}
+
+func (loader ingestSourceLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
+	return loader.store.LoadSource(loader.ctx, name, definition)
+}
+
+func ingestTestStore(t *testing.T) (context.Context, *postgresx.Store) {
 	t.Helper()
-	rawURL := os.Getenv("REDIS_URL")
-	if rawURL == "" {
-		t.Skip("REDIS_URL is not set")
+	url := os.Getenv("POSTGRES_URL")
+	if url == "" {
+		t.Skip("POSTGRES_URL is not set")
 	}
-	client, err := redisx.New(rawURL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	namespace, err := redisx.NormalizeNamespace(label + "-" + strconv.FormatInt(time.Now().UnixNano(), 36))
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 90*time.Second)
 	t.Cleanup(cancel)
-	return ctx, redisx.NewStore(client, namespace), client, namespace
-}
-
-func keyCount(ctx context.Context, t *testing.T, client *redisx.Client, pattern string) int {
-	t.Helper()
-	cursor := "0"
-	total := 0
-	for {
-		value, err := client.Do(ctx, "SCAN", cursor, "MATCH", pattern, "COUNT", "500")
-		if err != nil {
-			t.Fatal(err)
-		}
-		page, ok := value.([]any)
-		if !ok || len(page) != 2 {
-			t.Fatalf("unexpected SCAN reply %T", value)
-		}
-		cursor = fmt.Sprint(page[0])
-		keys, _ := page[1].([]any)
-		total += len(keys)
-		if cursor == "0" {
-			return total
-		}
+	admin, err := sql.Open("pgx", url)
+	if err != nil {
+		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = admin.Close() })
+	schema := fmt.Sprintf("cao_ingest_test_%d", time.Now().UnixNano())
+	if _, err := admin.ExecContext(ctx, "CREATE SCHEMA "+schema); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		dropCtx, dropCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer dropCancel()
+		_, _ = admin.ExecContext(dropCtx, "DROP SCHEMA "+schema+" CASCADE")
+	})
+	config, err := pgx.ParseConfig(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config.RuntimeParams["search_path"] = schema
+	dsn := stdlib.RegisterConnConfig(config)
+	t.Cleanup(func() { stdlib.UnregisterConnConfig(dsn) })
+	store, err := postgresx.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	return ctx, store
 }

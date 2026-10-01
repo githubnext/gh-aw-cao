@@ -20,7 +20,7 @@ const (
 
 // staleDataAge is when unchanged canonical data stops looking
 // like a quiet deployment and starts looking like a stalled one. Both profiles
-// project at least daily when healthy.
+// ingest at least daily when healthy.
 const staleDataAge = 24 * time.Hour
 
 func (d Doctor) checkActiveData(ctx context.Context) Check {
@@ -38,6 +38,13 @@ func (d Doctor) checkActiveData(ctx context.Context) Check {
 			Summary: "no canonical data is available; the dashboard has no data to serve",
 			Remedy:  "run `cao-dashboard ingest --source DIRECTORY`, or `cao-dashboard backfill` in the collection profile",
 		}
+		if active.EvaluatedAt.IsZero() {
+			return Check{
+				ID: id, Area: areaData, Title: title, Status: StatusFail,
+				Summary: "current Postgres data has no evaluation time",
+				Remedy:  "reingest from the dashboard artifact",
+			}
+		}
 	}
 	age := d.now().Sub(active.EvaluatedAt)
 	details := []Detail{
@@ -46,7 +53,7 @@ func (d Doctor) checkActiveData(ctx context.Context) Check {
 		detail("evaluatedAt", formatTime(active.EvaluatedAt)),
 		detail("age", humanDuration(age)),
 	}
-	if !active.EvaluatedAt.IsZero() && age > staleDataAge {
+	if age > staleDataAge {
 		return Check{
 			ID: id, Area: areaData, Title: title, Status: StatusWarn,
 			Summary: fmt.Sprintf("canonical data was evaluated %s ago", humanDuration(age)),
@@ -78,7 +85,7 @@ func (d Doctor) checkSchemaVersion(ctx context.Context) Check {
 	diagnostics, err := d.Postgres.Diagnostics(ctx)
 	if err != nil {
 		return Check{
-			ID: id, Area: areaData, Title: title, Status: StatusWarn,
+			ID: id, Area: areaData, Title: title, Status: StatusFail,
 			Summary: "canonical data diagnostics could not be read: " + err.Error(),
 			Remedy:  "reingest the dashboard data and check the Postgres connection",
 		}
@@ -294,7 +301,7 @@ func classifyQueryDefinitionNames(definitions []query.Definition) queryDefinitio
 	return queryDefinitionNames{seen: seen, duplicates: duplicates, unnamed: unnamed}
 }
 
-// checkQueryDefinitions validates the document that drives projection. It is a
+// checkQueryDefinitions validates the document that drives canonical ingestion. It is a
 // file on disk, so it is the easiest part of the system to deploy wrongly.
 func (d Doctor) checkQueryDefinitions(ctx context.Context) Check {
 	const id, title = "query.definitions", "Canonical query definitions"

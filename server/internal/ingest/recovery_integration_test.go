@@ -1,62 +1,48 @@
 package ingest
 
 import (
-	"context"
-	"os"
-	"strconv"
+	"reflect"
 	"testing"
-	"time"
-
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
-func TestEmptyRedisRebuildAndFailedReplacementPreservesActiveGeneration(t *testing.T) {
-	rawURL := os.Getenv("REDIS_URL")
-	if rawURL == "" {
-		t.Skip("REDIS_URL is not set")
-	}
-	client, err := redisx.New(rawURL)
+func TestEmptyPostgresRebuildAndFailedIngestionPreservesCurrentData(t *testing.T) {
+	ctx, store := ingestTestStore(t)
+	before, err := store.State(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	namespace, err := redisx.NormalizeNamespace("recovery-" + strconv.FormatInt(time.Now().UnixNano(), 36))
-	if err != nil {
-		t.Fatal(err)
+	if before.Ready || before.Revision != 0 {
+		t.Fatalf("new Postgres schema unexpectedly has data: %+v", before)
 	}
-	store := redisx.NewStore(client, namespace)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	before, err := store.Active(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if before.Generation != "" {
-		t.Fatalf("new projection namespace unexpectedly has active data: %#v", before)
-	}
-
-	result, err := Run(ctx, store, "../../testdata/deployed-subset", Options{
-		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
-		Force:               true,
+	result, err := Run(ctx, store, nil, deployedSubset, Options{
+		DatabaseQueriesPath: databaseQueries,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Generation == "" || result.Revision != 1 || len(result.Counts) == 0 {
-		t.Fatalf("empty Redis was not rebuilt into a valid active generation: %#v", result)
+	if result.Revision != 1 || result.DataRevision == "" || len(result.Counts) == 0 {
+		t.Fatalf("empty Postgres schema was not ingested: %+v", result)
 	}
-
-	if _, err := Run(ctx, store, t.TempDir(), Options{
-		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
+	active, err := store.State(ctx)
+	if err != nil || !active.Ready || active.Revision != result.Revision || active.DataRevision != result.DataRevision {
+		t.Fatalf("ingestion not activated: %+v, %v", active, err)
+	}
+	original, _, err := store.LoadSource(ctx, "repositories", nil)
+	if err != nil || len(original.Rows) == 0 {
+		t.Fatalf("expected ingested repositories: %+v, %v", original, err)
+	}
+	if _, err := Run(ctx, store, nil, scratchDirectory(t), Options{
+		DatabaseQueriesPath: databaseQueries,
 		Force:               true,
 	}); err == nil {
-		t.Fatal("expected rebuild from an invalid authoritative source to fail")
+		t.Fatal("expected invalid authoritative source to fail")
 	}
-	after, err := store.Active(ctx)
-	if err != nil {
-		t.Fatal(err)
+	after, err := store.State(ctx)
+	if err != nil || !reflect.DeepEqual(after, active) {
+		t.Fatalf("failed ingestion replaced current data: before=%+v after=%+v err=%v", active, after, err)
 	}
-	if after.Generation != result.Generation || after.Revision != result.Revision {
-		t.Fatalf("failed rebuild replaced active generation: before=%#v after=%#v", result, after)
+	preserved, _, err := store.LoadSource(ctx, "repositories", nil)
+	if err != nil || !reflect.DeepEqual(preserved, original) {
+		t.Fatalf("failed ingestion lost current repositories: %+v, %v", preserved, err)
 	}
 }

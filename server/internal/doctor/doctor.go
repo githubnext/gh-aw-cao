@@ -32,7 +32,7 @@ type Doctor struct {
 	RedisURL string
 	// Namespace is the normalized Redis namespace.
 	Namespace string
-	// DatabaseQueriesPath is the canonical projection query document.
+	// DatabaseQueriesPath is the canonical entity query document.
 	DatabaseQueriesPath string
 	// Version is the server build version.
 	Version string
@@ -118,16 +118,6 @@ func (d Doctor) Run(ctx context.Context) Report {
 		d.checkProjectionLock,
 	}
 
-	func (d Doctor) postgresUnavailable(id, area, title string) (Check, bool) {
-		if d.Postgres != nil {
-			return Check{}, false
-		}
-		return Check{
-			ID: id, Area: area, Title: title, Status: StatusFail,
-			Summary: "Postgres is not configured, so this check could not run",
-			Remedy:  "configure the dashboard Postgres connection",
-		}, true
-	}
 	for _, run := range checks {
 		checkCtx, cancel := context.WithTimeout(ctx, d.timeout())
 		begun := time.Now()
@@ -141,6 +131,17 @@ func (d Doctor) Run(ctx context.Context) Report {
 	doctorLog.Printf("check-up completed profile=%s checks=%d status=%s duration_ms=%d",
 		profile.label, report.Summary.Total, report.Summary.Status, report.Summary.DurationMS)
 	return report
+}
+
+func (d Doctor) postgresUnavailable(id, area, title string) (Check, bool) {
+	if d.Postgres != nil {
+		return Check{}, false
+	}
+	return Check{
+		ID: id, Area: area, Title: title, Status: StatusFail,
+		Summary: "Postgres is not configured, so this check could not run",
+		Remedy:  "configure the dashboard Postgres connection",
+	}, true
 }
 
 // profileSelection is what the environment says this process is.

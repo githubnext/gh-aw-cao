@@ -77,7 +77,8 @@ flowchart LR
     Publisher["Dashboard publisher"]
     Worker["Browser data Web Worker"]
     IndexedDB["IndexedDB projection"]
-    Redis["Redis projection<br/>optional server profile"]
+    Postgres["Postgres dashboard entities<br/>optional server profile"]
+    Redis["Redis operational caches,<br/>queues, sessions"]
     Query["Dashboard Language queries"]
     GoServer["Go HTTP(S) query server"]
     GitHub["GitHub / gh-aw<br/>authoritative state"]
@@ -94,9 +95,10 @@ flowchart LR
     Records --> Publisher --> Worker
     Worker --> IndexedDB
     IndexedDB --> Query
-    Publisher --> GoServer --> Redis
+    Publisher --> GoServer --> Postgres
     GitHub -->|"webhooks + rebuild input"| GoServer
-    Redis --> GoServer --> Query
+    GoServer --> Redis
+    Postgres --> GoServer --> Query
     IndexedDB --> Compute --> Results --> Query
     SQLite --> Compute
     Query --> UI
@@ -112,25 +114,22 @@ inside the Activity cache for audits and projection rebuilds. The deployed
 dashboard artifact contains the SQLite projection, inventory, and compacted
 normalized run and record JSONL; browser ingestion fails closed rather than
 falling back to raw Activity JSONL. Static-browser download, normalization, persistence, and queries run in a
-dedicated Web Worker. The optional Redis profile ingests the same deployed
-dashboard artifact in a Go HTTP(S) server, keeps Redis credentials server-side,
-executes Dashboard Language in Go against generation-scoped RedisJSON documents
-and RediSearch indexes, and returns only canonical or explicitly registered
-bounded runtime-source query payloads to the browser. Compatible direct-source
-equality predicates select bounded indexed candidates before the Go engine
-evaluates the full query; other operations use bounded Go fallback. Issue
-status overlays and Upstash's single-session profile retain core Redis hashes.
+dedicated Web Worker. The optional Go server profile ingests the same deployed
+dashboard artifact into Postgres, keeps database credentials server-side,
+executes Dashboard Language in Go against current Postgres sources, and returns
+only canonical or explicitly registered bounded runtime-source query payloads
+to the browser. Redis remains operational storage for caches, queues, sessions,
+and issue status overlays, not dashboard entity storage or query execution.
 Its local mode remains loopback-only. Its host-neutral mode uses
 GitHub OAuth and explicit organization or team authorization, verifies and
-deduplicates GitHub webhooks, and rebuilds through a staged generation before
-atomically changing the active pointer.
-Redis remains reconstructable from GitHub / gh-aw state and never becomes an
+deduplicates GitHub webhooks, and atomically replaces the current Postgres
+sources and state. There are no Postgres generations, snapshots, or separate
+projections. Redis remains reconstructable operational state, not an entity
 authority. The same server binary provides a read-only diagnostic check-up
-that inspects the runtime, Redis safety and capacity, the active canonical
-generation, query definitions, and the optional collection profile. It
-produces the same stable check identifiers and observations as human-readable
-text or versioned JSON, never contacts GitHub or mutates Redis, and requires an
-explicit deep mode before reading every active row.
+that inspects the runtime, Redis operations, Postgres canonical state and
+integrity, query definitions, and the optional collection profile. It
+produces stable check identifiers as text or versioned JSON, never contacts
+GitHub or mutates either store, and requires deep mode to read every source.
 
 Server construction independently resolves an app server target module and a
 declarative Redis provider module, then composes their provider-agnostic
@@ -221,7 +220,7 @@ turn runtime success or output creation into accepted value.
 Package-level `operational-value.mjs` programs compute repository-scoped metric
 records through `cao operational-value`. Activity appends those timestamped
 records to authoritative JSONL before the canonical Operational Value collection
-is rebuilt in SQLite, IndexedDB, and the local Redis projection.
+is rebuilt in SQLite, IndexedDB, and the hosted Postgres entity store.
 Package-level `problem-clustering.mjs` programs read a private Activity SQLite
 snapshot and emit bounded problem records with actionable fix prompts through
 `cao cluster-problems`.
@@ -256,7 +255,7 @@ reconstructable.
 | `<operation>/problem-clustering.mjs` | Optional bounded problem computation installed with its package. |
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
 | `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
-| `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Redis projection, server-side Dashboard Language query engine, externally hosted handler facade, and peer Azure Functions and Coolify deployment profiles. |
+| `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Postgres entity storage, Redis operational state, server-side Dashboard Language query engine, externally hosted handler facade, and peer Azure Functions and Coolify deployment profiles. |
 | `server/spec/` | Editable TypeSpec HTTP and SSE contract with generated OpenAPI 3.1 and JSON Schemas; the contract checks registered server routes and selected payloads. |
 | `dashboard/site/src/data/` | Canonical browser data model, adapters, normalization, storage, and declarative query engine. |
 | `research/` | Executable notebooks and experimental reference runtimes used to validate proposed computation semantics against canonical data; these are not dashboard production code. |
@@ -318,8 +317,8 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
 - Activity records bounded evidence; it does not determine rollout, outcomes,
   or operational value.
 - JSONL snapshots are authoritative inputs. Actions caches, SQLite, IndexedDB,
-  and Redis generations are disposable transport or query projections, not durable
-  authority.
+  are disposable transport or query projections; hosted Postgres holds current
+  dashboard entities, not rollout authority.
 - Missing, stale, partial, and zero evidence are distinct states.
 - Computations consume canonical evidence, preserve its quality and provenance,
   and emit bounded, versioned results; they do not create authority or convert
@@ -440,10 +439,10 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   image is not admitted through the package workflow's vulnerability scans,
   hardening check, SBOM, or artifact attestations; those guarantees continue
   to apply only to published packages.
-- Browsers and external clients never receive Redis endpoints or credentials.
-  Redis generations are staged and validated before atomic activation; a failed
-  rebuild leaves the previous generation active, and an empty Redis instance is
-  healthy but not ready until rebuilt from authoritative GitHub / gh-aw inputs.
+- Browsers and external clients never receive Redis or Postgres endpoints or
+  credentials. Dashboard source replacement is transactional in Postgres; a
+  failed replacement leaves the previous committed data available. An empty
+  Postgres store is not ready until loaded from authoritative inputs.
 
 ### Source and generated artifacts
 
@@ -469,9 +468,9 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
 - **Node.js 24 and ECMAScript modules** implement dependency-light control,
   collection, data, and local tooling.
 - **JSONL** is the bounded evidence interchange; **SQLite** supports local tools
-  and agents; **IndexedDB** supports the static browser dashboard; **Redis**
-  supports the optional disposable server projection with generation-scoped row
-  sets and no module requirement.
+  and agents; **IndexedDB** supports the static browser dashboard; **Postgres**
+  stores current hosted dashboard sources; **Redis** supports operational caches,
+  queues, sessions, and status overlays.
 - **Go** implements the isolated host-neutral HTTP(S) ingestion, reconciliation,
   rebuild, and query service.
 - **Dashboard Language** keeps data operations declarative and off the browser

@@ -148,8 +148,8 @@ func NewCollector(
 	if ops == nil {
 		return nil, errors.New("collection requires Redis")
 	}
-	if !config.AdmitOnly && data == nil {
-		return nil, errors.New("collection projection requires Postgres")
+	if data == nil {
+		return nil, errors.New("collection requires Postgres")
 	}
 	quotaFloor := config.RateLimitFloor
 	if quotaFloor <= 0 {
@@ -174,9 +174,9 @@ func NewCollector(
 			enrollment: enrollment,
 			queue:      queue,
 			backfill:   backfill,
-			admitter:   collect.Admitter{Enrollment: enrollment, Queue: queue, IssueStore: ops},
+			admitter:   collect.Admitter{Enrollment: enrollment, Queue: queue},
 			reporter: collect.Reporter{
-				Enrollment: enrollment, Queue: queue, Backfill: backfill, Store: ops,
+				Enrollment: enrollment, Queue: queue, Backfill: backfill, Store: ops, Data: data,
 			},
 		}, nil
 	}
@@ -246,13 +246,13 @@ func NewCollector(
 		runner:     runner,
 		projector:  projector,
 		admitter: collect.Admitter{
-			Enrollment: enrollment, Queue: queue, IssueStore: ops,
+			Enrollment: enrollment, Queue: queue,
 			Projection: projector,
 		},
 		backfill: backfill,
 		reporter: collect.Reporter{
 			Enrollment: enrollment, Queue: queue, Backfill: backfill,
-			Budget: budget, Store: ops,
+			Budget: budget, Store: ops, Data: data,
 		},
 		replayer: collect.DeliveryReplayer{
 			Store: ops, Client: client, Enabled: config.RecoverDeliveries,
@@ -312,9 +312,6 @@ func (c *Collector) Admit(ctx context.Context, event GitHubWebhook) (map[string]
 		"kind":      string(admission.Kind),
 		"queued":    admission.Enqueued,
 		"duplicate": admission.Duplicate,
-	}
-	if admission.Kind == collect.IntentIssueStatus {
-		result["applied"] = admission.Applied
 	}
 	if admission.Reason != "" {
 		result["reason"] = admission.Reason

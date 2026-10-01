@@ -92,7 +92,7 @@ func TestRedactRedisURLNeverReportsPassword(t *testing.T) {
 	}
 }
 
-func TestRedisMemoryFailsWhenEvictionCanDiscardCanonicalRows(t *testing.T) {
+func TestRedisMemoryWarnsWhenEvictionCanDiscardOperationalState(t *testing.T) {
 	doctor := testDoctor(fakeClient{do: func(arguments ...string) (any, error) {
 		if len(arguments) == 2 && arguments[0] == "INFO" && arguments[1] == "memory" {
 			return "# Memory\r\nused_memory:734003200\r\nmaxmemory:1073741824\r\nmaxmemory_policy:allkeys-lru\r\nmem_fragmentation_ratio:1.10\r\n", nil
@@ -100,8 +100,8 @@ func TestRedisMemoryFailsWhenEvictionCanDiscardCanonicalRows(t *testing.T) {
 		return nil, fmt.Errorf("unexpected command %v", arguments)
 	}})
 	check := doctor.checkRedisMemory(context.Background())
-	if check.Status != StatusFail {
-		t.Fatalf("status = %s, want fail: %+v", check.Status, check)
+	if check.Status != StatusWarn {
+		t.Fatalf("status = %s, want warn: %+v", check.Status, check)
 	}
 	if !strings.Contains(check.Summary, "discarded") {
 		t.Fatalf("summary does not explain the data-loss risk: %s", check.Summary)
@@ -119,8 +119,8 @@ func TestRedisStatsFailsAfterAnyEviction(t *testing.T) {
 	if check.Status != StatusFail {
 		t.Fatalf("status = %s, want fail: %+v", check.Status, check)
 	}
-	if !strings.Contains(check.Remedy, "reproject") {
-		t.Fatalf("remedy does not require restoring canonical data: %s", check.Remedy)
+	if !strings.Contains(check.Remedy, "operational state") {
+		t.Fatalf("remedy does not explain operational data risk: %s", check.Remedy)
 	}
 }
 
@@ -132,6 +132,22 @@ func TestRedisTransportRejectsPlaintextRemoteEndpoint(t *testing.T) {
 	}
 	if !strings.Contains(check.Remedy, "rediss://") {
 		t.Fatalf("remedy does not explain the secure transport: %s", check.Remedy)
+	}
+}
+
+func TestCanonicalChecksRequirePostgresRatherThanRedis(t *testing.T) {
+	doctor := testDoctor(fakeClient{do: func(arguments ...string) (any, error) {
+		return nil, fmt.Errorf("unexpected Redis command %v", arguments)
+	}})
+	for _, check := range []Check{
+		doctor.checkActiveData(context.Background()),
+		doctor.checkSchemaVersion(context.Background()),
+		doctor.checkIntegrity(context.Background()),
+		doctor.checkSources(context.Background()),
+	} {
+		if check.Status != StatusFail || !strings.Contains(check.Summary, "Postgres is not configured") {
+			t.Errorf("%s: expected Postgres configuration failure, got %+v", check.ID, check)
+		}
 	}
 }
 
