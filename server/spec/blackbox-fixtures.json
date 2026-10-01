@@ -1,0 +1,68 @@
+{
+  "oauth": {
+    "loginStatus": 302,
+    "redirectPath": "/login/oauth/authorize",
+    "stateCookie": "cao_oauth_state",
+    "callbackStatus": 302,
+    "sessionCookie": "cao_session",
+    "csrfCookie": "cao_csrf"
+  },
+  "proxyCors": [
+    {
+      "name": "rejected forwarded host",
+      "method": "GET",
+      "path": "/auth/logged-out",
+      "forwardedHost": "untrusted.example.com",
+      "status": 421
+    },
+    {
+      "name": "allowed preflight",
+      "method": "OPTIONS",
+      "path": "/api/v1/events",
+      "origin": "https://tools.example.com",
+      "status": 204,
+      "allowOrigin": "https://tools.example.com"
+    },
+    {
+      "name": "unlisted preflight",
+      "method": "OPTIONS",
+      "path": "/api/v1/events",
+      "origin": "https://untrusted.example.com",
+      "status": 401
+    }
+  ],
+  "static": [
+    {
+      "name": "unauthenticated asset",
+      "path": "/fixture.js",
+      "status": 401
+    },
+    {
+      "name": "authenticated asset",
+      "path": "/fixture.js",
+      "bearer": true,
+      "status": 200,
+      "contentType": "text/javascript"
+    },
+    {
+      "name": "missing asset",
+      "path": "/missing.js",
+      "bearer": true,
+      "status": 404
+    }
+  ],
+  "sse": {
+    "path": "/api/v1/events",
+    "status": 200,
+    "contentType": "text/event-stream",
+    "dataPrefix": "data: ",
+    "separator": "\n\n",
+    "revisionField": "revision"
+  },
+  "mcp": {
+    "path": "/mcp",
+    "disabledStatus": 404,
+    "unauthorizedStatus": 401,
+    "tools": ["cao_catalog", "cao_query"]
+  }
+}
