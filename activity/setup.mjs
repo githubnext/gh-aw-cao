@@ -126,7 +126,7 @@ export function configureDashboardPages({ repository, visibility, execute = spaw
   }
 }
 
-function createTerminalPrompt({ input, output, UsageError }) {
+export function createTerminalPrompt({ input, output, UsageError }) {
   if (!input.isTTY || !output.isTTY) {
     throw new UsageError('cao setup requires an interactive terminal');
   }

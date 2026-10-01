@@ -94,6 +94,7 @@ jobs:
     pre-steps:
       - name: Generate CAO pre-activation GitHub App token
         id: cao_pre_activation_app_token
+        continue-on-error: true
         env:
           CAO_GITHUB_APP_ID: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_READ_APP_ID || '' }}
           CAO_GITHUB_APP_PRIVATE_KEY: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY || '' }}
@@ -139,6 +140,11 @@ jobs:
         env:
           CAO_API_TOKEN: ${{ github.token }}
           GH_TOKEN: ${{ github.token }}
+          CAO_LIVE_AUTH_MODE: ${{ vars.GH_AW_GITHUB_AUTH_MODE }}
+          CAO_LIVE_READ_APP_TOKEN: ${{ steps.cao_pre_activation_app_token.outputs.token != '' }}
+          CAO_LIVE_WRITE_APP: ${{ vars.GH_AW_GITHUB_WRITE_APP_ID != '' && secrets.GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY != '' }}
+          CAO_LIVE_READ_PAT: ${{ vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[inputs.target_repo || github.repository]] != '' || vars.GH_AW_GITHUB_AUTH_MODE == '' && secrets.GH_AW_GITHUB_READ_PAT != '' }}
+          CAO_LIVE_WRITE_PAT: ${{ vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_WRITE_PAT_REPOSITORIES || '{}')[inputs.target_repo || github.repository]] != '' || vars.GH_AW_GITHUB_AUTH_MODE == '' && secrets.GH_AW_GITHUB_WRITE_PAT != '' }}
           GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
           CAO_CAMPAIGN: ${{ github.aw.import-inputs.campaign }}
           CAO_ROLE: ${{ github.aw.import-inputs.role }}

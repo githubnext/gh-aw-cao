@@ -86,7 +86,7 @@ These commands accept multiple campaign slugs:
 ./cao.sh disable dependabot repo-assist
 ```
 
-`mode live` does not widen repository scope, grant target consent, or create credential access. Complete the [live rollout gates](rollout-and-routing.md) separately.
+`mode live` does not widen repository scope, grant target consent, or create credential access. It checks repository variable and secret names when possible. If it can prove a cross-repository App or PAT is absent, an interactive terminal offers the existing `setup-auth` flow; declining or running non-interactively still writes live mode. Inaccessible metadata is treated as unknown, not missing, and does not trigger setup. `mode preview` never checks these credentials. At runtime, admission rejects live work without a selected App or PAT pair with `cao_live_auth_required`; `GITHUB_TOKEN` alone cannot authorize live work. Complete the [live rollout gates](rollout-and-routing.md) separately.
 
 `disable` prevents new starts for the campaign's installed workflows. It does not cancel an active run or replace the [control-plane emergency stop](operations.md#emergency-stop).
 

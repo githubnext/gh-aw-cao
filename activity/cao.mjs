@@ -41,6 +41,7 @@ import { hasComputation, queryComputation } from './computations/index.mjs';
 import {
   confirmExistingPatSecret,
   configureEnterpriseApps,
+  discoverCrossRepoAuth,
   FINE_GRAINED_PAT_PROFILES,
   fineGrainedPatSetupResult,
   formatSetupAuthenticationSummary,
@@ -76,6 +77,7 @@ import { normalizedPhaseBatch, relationshipSafeEvidenceBatch } from './normalize
 import { mergeEvidenceDefinition } from '../dashboard/site/src/data/model/schema.js';
 import { commandHandlers } from './commands/index.mjs';
 import { setupCaoControlPlane } from './setup.mjs';
+import { changeCampaignMode } from './live-mode.mjs';
 import { upgradeGhAwVersion } from './upgrade-gh-aw.mjs';
 
 export { setupCaoControlPlane } from './setup.mjs';
@@ -916,44 +918,15 @@ export async function updateCaoCampaigns(ghAwOptions = [], {
 }
 
 export async function setCaoCampaignMode(mode, campaignNames, {
-  policyPath = DEFAULT_POLICY_PATH
+  policyPath = DEFAULT_POLICY_PATH,
+  ...options
 } = {}) {
-  if (mode !== 'live' && mode !== 'preview') {
-    throw new UsageError('cao mode requires live or preview');
-  }
-  if (!Array.isArray(campaignNames) || campaignNames.length === 0) {
-    throw new UsageError(`cao mode ${mode} requires at least one campaign`);
-  }
-
-  const slug = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-  const invalidCampaign = campaignNames.find((campaignName) => typeof campaignName !== 'string' || !slug.test(campaignName));
-  if (invalidCampaign !== undefined) {
-    throw new UsageError(`Invalid CAO campaign name: ${invalidCampaign}`);
-  }
-
-  const policy = await readCaoPolicy(policyPath, 'mode');
-  const campaigns = policy['control-plane']?.campaigns ?? {};
-  const unknownCampaigns = [...new Set(campaignNames)].filter((campaignName) => !Object.hasOwn(campaigns, campaignName));
-  if (unknownCampaigns.length > 0) {
-    throw new UsageError(`Unknown CAO campaign${unknownCampaigns.length === 1 ? '' : 's'}: ${unknownCampaigns.join(', ')}`);
-  }
-  for (const campaignName of campaignNames) {
-    if (!isMapping(campaigns[campaignName])) {
-      throw new Error(`${policyPath} control-plane campaign ${campaignName} must be an object`);
-    }
-  }
-
-  const policyMode = mode === 'preview' ? 'review' : 'live';
-  for (const campaignName of new Set(campaignNames)) {
-    campaigns[campaignName] = { ...campaigns[campaignName], mode: policyMode };
-  }
-  await writeJsonAtomically(path.resolve(policyPath), policy);
-  return {
-    command: 'mode',
-    mode,
-    campaigns: [...new Set(campaignNames)],
-    policy: policyPath
-  };
+  return changeCampaignMode(mode, campaignNames, {
+    policyPath, ...options, readCaoPolicy, writeJsonAtomically, resolveControlRepository,
+    setupAuthentication: options.setupAuthentication ?? setupCaoAuthentication,
+    discoverAuth: options.discoverAuth ?? discoverCrossRepoAuth,
+    UsageError,
+  });
 }
 
 export async function setCaoCampaignWorkflowsEnabled(action, campaignNames, {

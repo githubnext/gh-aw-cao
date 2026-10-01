@@ -63,6 +63,8 @@ The committed root `aw.yml` intentionally has no `config` block so normal instal
 
 The repository-provided `GITHUB_TOKEN` is not offered by setup as an authentication profile. It remains available for bounded control-repository operations and compatibility when no explicit mode has been configured. Public visibility alone does not make it a reliable credential for another repository's Actions logs, security data, issues, pull requests, or write APIs.
 
+Preview mode does not require App or PAT discovery and may run using `GITHUB_TOKEN`. Enabling live mode checks visible repository credential metadata opportunistically; inaccessible metadata never blocks the CLI or prompts setup. Runtime admission is authoritative: live execution requires the selected read/write App or PAT credentials, and rejects a run with `cao_live_auth_required` before precompute if only `GITHUB_TOKEN` is available. Use `./cao.sh setup-auth github-app` or `./cao.sh setup-auth token` to configure the appropriate scope.
+
 ### Automated App setup
 
 Use this path when the control repository and every target belong to one organization.

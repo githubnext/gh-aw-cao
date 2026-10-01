@@ -33,6 +33,45 @@ export const FINE_GRAINED_PAT_PROFILES = [
 
 export const GITHUB_AUTH_MODE_VARIABLE = 'GH_AW_GITHUB_AUTH_MODE';
 
+export const CrossRepoAuthStatus = Object.freeze({
+  UNKNOWN: 0,
+  ABSENT: 1,
+  PRESENT: 2,
+});
+
+export function discoverCrossRepoAuth(repo, { execute = spawnSync } = {}) {
+  try {
+    const variables = execute('gh', ['variable', 'list', '--repo', repo, '--json', 'name,value'], { encoding: 'utf8' });
+    if (variables.error || variables.status !== 0) return CrossRepoAuthStatus.UNKNOWN;
+    const entries = JSON.parse(variables.stdout);
+    if (!Array.isArray(entries) || entries.some(({ name, value }) => typeof name !== 'string' || typeof value !== 'string')) {
+      return CrossRepoAuthStatus.UNKNOWN;
+    }
+    const values = Object.fromEntries(entries.map(({ name, value }) => [name, value]));
+    const secrets = repositorySecretNames(repo, { execute, failureMessage: (result) => result.stderr });
+    const mode = values[GITHUB_AUTH_MODE_VARIABLE] || '';
+    if (!['', 'app', 'pat', 'workflow-token'].includes(mode)) return CrossRepoAuthStatus.UNKNOWN;
+    const app = mode !== 'pat' && mode !== 'workflow-token'
+      && Boolean(values.GH_AW_GITHUB_READ_APP_ID && values.GH_AW_GITHUB_WRITE_APP_ID
+        && secrets.has('GH_AW_GITHUB_READ_APP_PRIVATE_KEY') && secrets.has('GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY'));
+    let pat = false;
+    if (mode === 'pat') {
+      const read = JSON.parse(values.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}');
+      const write = JSON.parse(values.GH_AW_GITHUB_WRITE_PAT_REPOSITORIES || '{}');
+      if (![read, write].every((map) => map && typeof map === 'object' && !Array.isArray(map))) {
+        return CrossRepoAuthStatus.UNKNOWN;
+      }
+      pat = Boolean(read[repo] && write[repo] && secrets.has(read[repo]) && secrets.has(write[repo]));
+    } else if (mode === '') {
+      pat = secrets.has('GH_AW_GITHUB_READ_PAT') && secrets.has('GH_AW_GITHUB_WRITE_PAT');
+      if (!app && !pat && secrets.has('GH_AW_GITHUB_TOKEN')) return CrossRepoAuthStatus.UNKNOWN;
+    }
+    return app || pat ? CrossRepoAuthStatus.PRESENT : CrossRepoAuthStatus.ABSENT;
+  } catch {
+    return CrossRepoAuthStatus.UNKNOWN;
+  }
+}
+
 export function fineGrainedPatSetupResult(repo, setups) {
   const repositories = Object.fromEntries(FINE_GRAINED_PAT_PROFILES.map((profile) => [
     profile.role,

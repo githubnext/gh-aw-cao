@@ -39,6 +39,7 @@ const ADMISSION_CHECKS = [
   ["Target input", "Any supplied `target_repo` uses the exact `owner/repository` form."],
   ["Mode input", "Any supplied `safe_output_mode` does not exceed the checked-in mode ceiling."],
   ["Run limits", "Any supplied `max_repos` and `rollout_percent` do not exceed checked-in limits."],
+  ["Live authentication", "Live runs require a cross-repository GitHub App or PAT; GITHUB_TOKEN alone is insufficient."],
   ["GitHub API capacity", "The exact credential selected for control precompute has enough primary REST API capacity before activation."],
 ];
 
@@ -231,7 +232,8 @@ function failedAdmissionCheckIndex(reason) {
   if (reason === "target_repo must use owner/repository form") return 6; // Target input
   if (reason === "safe_output_mode exceeds checked-in policy" || reason === "safe_output_mode must be review or live") return 7; // Mode input
   if (reason.startsWith("max_repositories") || reason.startsWith("rollout_percent")) return 8; // Run limits
-  if (reason === "github-api-capacity-insufficient" || reason === "github-api-capacity-unavailable") return 9; // GitHub API capacity
+  if (reason === "cao_live_auth_required") return 9; // Live authentication
+  if (reason === "github-api-capacity-insufficient" || reason === "github-api-capacity-unavailable") return 10; // GitHub API capacity
   return -1;
 }
 
@@ -252,7 +254,9 @@ function writeAdmissionSummary({ authorized, campaignName, role, reason, apiCapa
       ? `Blocked campaign \`${campaignName}\` as \`${role}\` before activation: GitHub REST API capacity is unavailable.`
       : authorized
     ? `Authorized campaign \`${campaignName}\` as \`${role}\`.`
-    : `Skipped campaign \`${campaignName}\` as \`${role}\`: ${reason}`;
+    : reason === "cao_live_auth_required"
+      ? `Blocked campaign \`${campaignName}\` as \`${role}\` in live mode: cao_live_auth_required. Live cross-repository operations require a GitHub App or PAT; GITHUB_TOKEN alone is insufficient. Configure an App or PAT with \`cao setup-auth\`.`
+      : `Skipped campaign \`${campaignName}\` as \`${role}\`: ${reason}`;
   const failedIndex = authorized ? -1 : failedAdmissionCheckIndex(reason);
   const checks = ADMISSION_CHECKS.map(([title, description], index) => (
     `- ${admissionCheckHeading(title, index, authorized, failedIndex)} — ${description}`
@@ -342,6 +346,24 @@ async function applyGithubApiAdmission(result, options) {
   };
 }
 
+function requireLiveAuthentication(result, options) {
+  if (!result.authorized) return result;
+  const live = result.safe_output_mode === "live"
+    || (options.role === "orchestrator"
+      && Object.values(result.target_policies).some(({ mode }) => mode === "live"));
+  if (!live) return result;
+  const selected = environment("CAO_LIVE_AUTH_MODE");
+  const app = selected !== "pat" && selected !== "workflow-token"
+    && environment("CAO_LIVE_READ_APP_TOKEN") === "true"
+    && environment("CAO_LIVE_WRITE_APP") === "true";
+  const pat = (selected === "pat" || selected === "")
+    && environment("CAO_LIVE_READ_PAT") === "true"
+    && environment("CAO_LIVE_WRITE_PAT") === "true";
+  if (app || pat) return result;
+  logDecision("live-authentication", "denied", { reason: "cao_live_auth_required" });
+  return { ...result, authorized: false, reason: "cao_live_auth_required" };
+}
+
 function policyOptions({ normalizeOrchestrator = false } = {}) {
   const role = environment("CAO_ROLE");
   return {
@@ -428,7 +450,7 @@ async function admit() {
     logDecision("effective-policy", effective.authorized ? "authorized" : "denied", {
       reason: effective.reason,
     });
-    result = await applyGithubApiAdmission(effective, options);
+    result = await applyGithubApiAdmission(requireLiveAuthentication(effective, options), options);
     writeFileSync(join(directory, "effective-policy.json"), `${JSON.stringify(result, null, 2)}\n`);
   } catch (error) {
     result = { authorized: false, reason: error.message };

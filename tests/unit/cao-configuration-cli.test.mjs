@@ -17,7 +17,7 @@ import {
   updateCaoCampaigns,
   upgradeGhAw,
 } from "../../activity/cao.mjs";
-import { confirmExistingPatSecret } from "../../activity/authentication.mjs";
+import { confirmExistingPatSecret, CrossRepoAuthStatus, discoverCrossRepoAuth } from "../../activity/authentication.mjs";
 import { configureDashboardPages } from "../../activity/setup.mjs";
 
 // gh-aw writes `gh aw version` output to stderr.
@@ -937,6 +937,89 @@ test("cao mode changes configured campaigns between live and preview atomically"
     assert.equal(policy["control-plane"].campaigns.dependabot.mode, "review");
     assert.equal(policy["control-plane"].campaigns["repo-assist"].mode, "live");
     assert.equal(preview.mode, "preview");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("live credential discovery preserves unknown instead of treating inaccessible metadata as absence", () => {
+  const execute = (_, args) => {
+    if (args[0] === "variable") return { status: 1, stderr: "HTTP 403" };
+    assert.fail("secret discovery must not run after a failed variable lookup");
+  };
+  assert.equal(discoverCrossRepoAuth("acme/control", { execute }), CrossRepoAuthStatus.UNKNOWN);
+  assert.equal(discoverCrossRepoAuth("acme/control", {
+    execute: (_, args) => args[0] === "variable"
+      ? { status: 0, stdout: "not-json" }
+      : { status: 0, stdout: "[]" },
+  }), CrossRepoAuthStatus.UNKNOWN);
+});
+
+test("live credential discovery requires the selected complete App or PAT profile", () => {
+  const discover = (variables, secrets) => discoverCrossRepoAuth("acme/control", {
+    execute: (_, args) => args[0] === "variable"
+      ? { status: 0, stdout: JSON.stringify(Object.entries(variables).map(([name, value]) => ({ name, value }))) }
+      : { status: 0, stdout: JSON.stringify(secrets.map((name) => ({ name }))) },
+  });
+  assert.equal(discover({}, []), CrossRepoAuthStatus.ABSENT);
+  assert.equal(discover({
+    GH_AW_GITHUB_AUTH_MODE: "app",
+    GH_AW_GITHUB_READ_APP_ID: "read",
+    GH_AW_GITHUB_WRITE_APP_ID: "write",
+  }, ["GH_AW_GITHUB_READ_APP_PRIVATE_KEY", "GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY"]), CrossRepoAuthStatus.PRESENT);
+  assert.equal(discover({
+    GH_AW_GITHUB_AUTH_MODE: "pat",
+    GH_AW_GITHUB_READ_PAT_REPOSITORIES: '{"acme/control":"READ"}',
+    GH_AW_GITHUB_WRITE_PAT_REPOSITORIES: '{"acme/control":"WRITE"}',
+  }, ["READ", "WRITE"]), CrossRepoAuthStatus.PRESENT);
+  assert.equal(discover({ GH_AW_GITHUB_AUTH_MODE: "pat" }, ["GH_AW_GITHUB_READ_APP_PRIVATE_KEY"]), CrossRepoAuthStatus.ABSENT);
+  assert.equal(discover({ GH_AW_GITHUB_AUTH_MODE: "pat", GH_AW_GITHUB_READ_PAT_REPOSITORIES: "{" }, []), CrossRepoAuthStatus.UNKNOWN);
+  assert.equal(discover({}, ["GH_AW_GITHUB_TOKEN"]), CrossRepoAuthStatus.UNKNOWN);
+});
+
+test("cao mode discovers credentials only for live and always permits non-interactive promotion", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-mode-auth-"));
+  const policyPath = path.join(root, "cao.json");
+  const original = '{"version":1,"gh-aw-version":"v0.89.17","control-plane":{"campaigns":{"dependabot":{"mode":"review"}}}}\n';
+  const calls = [];
+  const output = { write: (message) => calls.push(message) };
+  const execute = () => ({ status: 0, stdout: "acme/control\n" });
+  const prompt = {
+    confirm: async () => { calls.push("confirm"); return true; },
+    select: async () => { calls.push("select"); return "token"; },
+  };
+  const setupAuthentication = (...args) => calls.push(args);
+  try {
+    await writeFile(policyPath, original);
+    await setCaoCampaignMode("preview", ["dependabot"], {
+      policyPath, execute, prompt, output,
+      discoverAuth: () => assert.fail("preview must not discover authentication"),
+    });
+    assert.deepEqual(calls, []);
+    for (const status of [CrossRepoAuthStatus.PRESENT, CrossRepoAuthStatus.UNKNOWN]) {
+      await setCaoCampaignMode("live", ["dependabot"], {
+        policyPath, execute, prompt, output, discoverAuth: () => status, setupAuthentication,
+      });
+    }
+    assert.deepEqual(calls, []);
+    await setCaoCampaignMode("live", ["dependabot"], {
+      policyPath, execute, input: { isTTY: false }, output,
+      discoverAuth: () => CrossRepoAuthStatus.ABSENT, setupAuthentication,
+    });
+    assert.deepEqual(calls, []);
+    await setCaoCampaignMode("live", ["dependabot"], {
+      policyPath, execute, prompt, output,
+      discoverAuth: () => CrossRepoAuthStatus.ABSENT, setupAuthentication,
+    });
+    assert.deepEqual(calls.slice(0, 2), ["confirm", "select"]);
+    assert.deepEqual(calls[2].slice(0, 2), ["token", ["--repo", "acme/control", "--policy", policyPath]]);
+    calls.length = 0;
+    await setCaoCampaignMode("live", ["dependabot"], {
+      policyPath, execute, prompt: { ...prompt, confirm: async () => false }, output,
+      discoverAuth: () => CrossRepoAuthStatus.ABSENT, setupAuthentication,
+    });
+    assert.match(calls[0], /admission will reject live runs/);
+    assert.equal(JSON.parse(await readFile(policyPath, "utf8"))["control-plane"].campaigns.dependabot.mode, "live");
   } finally {
     await rm(root, { recursive: true, force: true });
   }

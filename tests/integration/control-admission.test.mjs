@@ -112,7 +112,7 @@ test("CAO admission authorizes a declared campaign before activation", () => {
   assert.match(summary, /- ✅ Runtime revision — The control and policy modules/);
   assert.match(summary, /- ✅ Run limits — Any supplied `max_repos`/);
   assert.equal((summary.match(/<details>/g) ?? []).length, 1);
-  assert.equal((summary.match(/^- ✅ /gm) ?? []).length, 10);
+  assert.equal((summary.match(/^- ✅ /gm) ?? []).length, 11);
   assert.equal(admission.schema_version, 1);
   assert.equal(admission.authorized, true);
   assert.equal(admission.reason, "authorized");
@@ -177,6 +177,61 @@ test("CAO admission denies a disabled campaign without failing the workflow", ()
 test("CAO admission denies a requested mode that exceeds checked-in policy and marks Mode input", () => {
   const { result, output, summary } = runAdmission({
     env: { CAO_REQUESTED_MODE: "live" },
+  });
+
+  test("review admission does not inspect live credentials, even with GITHUB_TOKEN only or inaccessible metadata", () => {
+    for (const env of [
+      { GITHUB_TOKEN: "workflow-token" },
+      { CAO_LIVE_AUTH_MODE: "pat", CAO_LIVE_READ_PAT: "unavailable", CAO_LIVE_WRITE_PAT: "unavailable" },
+    ]) {
+      const { output, admission, summary } = runAdmission({ env });
+      assert.equal(output.authorized, "true");
+      assert.equal(admission.authorized, true);
+      assert.doesNotMatch(summary, /cao_live_auth_required/);
+    }
+  });
+
+  test("live admission requires the selected cross-repository credential before precompute", () => {
+    const policy = controlPolicy({ campaignPolicy: { mode: "live" } });
+    const cases = [
+      [{}, false],
+      [{ GITHUB_TOKEN: "workflow-token" }, false],
+      [{ CAO_LIVE_AUTH_MODE: "workflow-token", CAO_LIVE_READ_APP_TOKEN: "true", CAO_LIVE_WRITE_APP: "true" }, false],
+      [{ CAO_LIVE_AUTH_MODE: "app", CAO_LIVE_READ_APP_TOKEN: "true", CAO_LIVE_WRITE_APP: "true" }, true],
+      [{ CAO_LIVE_AUTH_MODE: "pat", CAO_LIVE_READ_PAT: "true", CAO_LIVE_WRITE_PAT: "true" }, true],
+      [{ CAO_LIVE_AUTH_MODE: "pat", CAO_LIVE_READ_APP_TOKEN: "true", CAO_LIVE_WRITE_APP: "true" }, false],
+      [{ CAO_LIVE_AUTH_MODE: "app", CAO_LIVE_READ_PAT: "true", CAO_LIVE_WRITE_PAT: "true" }, false],
+      [{
+        CAO_LIVE_AUTH_MODE: "app", CAO_LIVE_READ_APP_TOKEN: "true", CAO_LIVE_WRITE_APP: "true",
+        CAO_LIVE_READ_PAT: "true", CAO_LIVE_WRITE_PAT: "true",
+      }, true],
+    ];
+    for (const [env, authorized] of cases) {
+      const { output, admission, summary } = runAdmission({ policy, env });
+      assert.equal(output.authorized, String(authorized), JSON.stringify(env));
+      assert.equal(admission.failed_check, authorized ? null : "Live authentication");
+      if (!authorized) {
+        assert.equal(output.reason, "cao_live_auth_required");
+        assert.match(summary, /GITHUB_TOKEN alone is insufficient/);
+        assert.match(summary, /cao setup-auth/);
+        assert.match(summary, /- ❌ Live authentication —/);
+      }
+    }
+  });
+
+  test("manual and older live policies cannot bypass admission, including live target overrides", () => {
+    const policy = controlPolicy({
+      campaignPolicy: { mode: "review", targets: { "acme/target": { mode: "live" } } },
+    });
+    const { output } = runAdmission({ policy });
+    assert.equal(output.reason, "cao_live_auth_required");
+    const narrowed = runAdmission({ policy, env: { CAO_REQUESTED_MODE: "review" } });
+    assert.equal(narrowed.output.authorized, "true");
+    const worker = runAdmission({
+      policy: controlPolicy({ campaignPolicy: { mode: "live" } }),
+      env: { CAO_ROLE: "worker", CAO_WORKER: "update-planner", CAO_TARGET_REPOSITORY: "acme/target" },
+    });
+    assert.equal(worker.output.reason, "cao_live_auth_required");
   });
 
   assert.equal(result.status, 0, result.stderr);
