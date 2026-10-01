@@ -598,10 +598,27 @@ func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 			return
 		}
 		if request.URL.Path == "/mcp" && a.mcp != nil {
-			actor, err := verifyHostedActionsMCP(request.Context(), a.config, request)
+			ctx, span := telemetry.Tracer().Start(request.Context(), "cao_dashboard.auth.mcp")
+			defer span.End()
+			actor, err := verifyHostedActionsMCP(ctx, a.config, request)
 			if err != nil {
 				a.logAuthBranch("access.hosted_actions_rejected")
-				writeError(response, http.StatusUnauthorized, "GitHub Actions MCP authentication is required")
+				var refusal *hostedMCPRefusal
+				code := "authentication_failed"
+				if errors.As(err, &refusal) {
+					code = refusal.code
+				}
+				result := map[string]string{
+					"error": "GitHub Actions MCP authentication is required",
+					"code":  code,
+				}
+				spanContext := span.SpanContext()
+				if spanContext.IsValid() {
+					telemetry.SetResponseTraceHeaders(response, spanContext)
+					result["traceId"] = spanContext.TraceID().String()
+				}
+				serverLog.Printf("hosted MCP authentication rejected code=%s trace_id=%s", code, result["traceId"])
+				writeJSON(response, http.StatusUnauthorized, result)
 				return
 			}
 			a.logAuthBranch("access.hosted_actions_accepted")

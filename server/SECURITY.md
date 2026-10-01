@@ -137,6 +137,11 @@ subject against that metadata. It then probes read access to Actions, contents,
 issues, and pull requests. This identity is scoped to `/mcp`; it
 cannot authenticate dashboard JSON APIs or replace hosted browser OAuth
 sessions. Keep both tokens out of logs and URLs.
+Hosted MCP authentication refusals return a bounded `code` identifying the
+rejected stage (`credentials_missing`, `oidc_invalid`, `repository_unavailable`,
+`provenance_mismatch`, or `permissions_denied`) and, when tracing is active, a
+`traceId` matching the `X-Trace-Id` response header. These diagnostics never
+include tokens or upstream error bodies.
 
 ## HTTP and TLS protections
 

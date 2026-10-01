@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +17,8 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"go.opentelemetry.io/otel"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
 type oidcTestTransport func(*http.Request) (*http.Response, error)
@@ -162,6 +165,22 @@ func TestHostedActionsMCPAuthentication(t *testing.T) {
 			if test.valid && actor != "octocat" {
 				t.Fatalf("actor=%q", actor)
 			}
+			if !test.valid {
+				code := "oidc_invalid"
+				switch test.name {
+				case "wrong repository id", "wrong repository owner id", "wrong subject",
+					"pull request subject", "environment subject", "branch subject", "branch ref", "missing ref":
+					code = "provenance_mismatch"
+				case "invalid permissions":
+					code = "permissions_denied"
+				case "invalid bearer on public repo":
+					code = "repository_unavailable"
+				}
+				var refusal *hostedMCPRefusal
+				if !errors.As(err, &refusal) || refusal.code != code {
+					t.Fatalf("refusal = %v, want code %s", err, code)
+				}
+			}
 		})
 	}
 	if jwks == 0 || probes == 0 {
@@ -224,6 +243,13 @@ func TestHostedActionsMCPAuthentication(t *testing.T) {
 		},
 		oauth: &githubOAuth{}, mcp: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}),
 	}
+	previousProvider := otel.GetTracerProvider()
+	provider := sdktrace.NewTracerProvider()
+	otel.SetTracerProvider(provider)
+	t.Cleanup(func() {
+		otel.SetTracerProvider(previousProvider)
+		_ = provider.Shutdown(t.Context())
+	})
 	handler := app.requireGitHubAccess(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		if request.Context().Value(githubActionsActorContextKey{}) != "octocat" {
 			t.Error("signed actor was not propagated as the rate-limit identity")
@@ -245,12 +271,32 @@ func TestHostedActionsMCPAuthentication(t *testing.T) {
 		t.Fatalf("unauthorized hosted MCP returned %d (redirect=%q), want 401 without OAuth redirect",
 			response.Code, response.Header().Get("Location"))
 	}
+	var missingCredentialBody map[string]string
+	if err := json.Unmarshal(response.Body.Bytes(), &missingCredentialBody); err != nil {
+		t.Fatal(err)
+	}
+	if missingCredentialBody["code"] != "credentials_missing" ||
+		missingCredentialBody["traceId"] == "" ||
+		missingCredentialBody["traceId"] != response.Header().Get("X-Trace-Id") {
+		t.Fatalf("missing credentials 401 diagnostic = %v; trace header = %q",
+			missingCredentialBody, response.Header().Get("X-Trace-Id"))
+	}
 	invalidBearer := makeRequest(good, "invalid-token")
 	invalidBearer.TLS = &tls.ConnectionState{}
 	response = httptest.NewRecorder()
 	handler.ServeHTTP(response, invalidBearer)
 	if response.Code != http.StatusUnauthorized {
 		t.Fatalf("invalid bearer on a public repository returned %d, want 401", response.Code)
+	}
+	var invalidBearerBody map[string]string
+	if err := json.Unmarshal(response.Body.Bytes(), &invalidBearerBody); err != nil {
+		t.Fatal(err)
+	}
+	if invalidBearerBody["code"] != "repository_unavailable" ||
+		invalidBearerBody["traceId"] == "" ||
+		invalidBearerBody["traceId"] != response.Header().Get("X-Trace-Id") {
+		t.Fatalf("invalid bearer 401 diagnostic = %v; trace header = %q",
+			invalidBearerBody, response.Header().Get("X-Trace-Id"))
 	}
 
 	fullApp := newMCPTestApp(t, true)

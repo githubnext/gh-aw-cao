@@ -37,24 +37,32 @@ type actionsOIDCClaims struct {
 	ExpiresAt         int64           `json:"exp"`
 }
 
+type hostedMCPRefusal struct {
+	code string
+	err  error
+}
+
+func (refusal *hostedMCPRefusal) Error() string { return refusal.err.Error() }
+func (refusal *hostedMCPRefusal) Unwrap() error { return refusal.err }
+
 func verifyHostedActionsMCP(ctx context.Context, config Config, request *http.Request) (string, error) {
 	token, ok := bearerToken(request)
 	provenance := request.Header.Get("X-GitHub-OIDC-Token")
 	if !ok || token == "" || provenance == "" {
-		return "", errors.New("actions token and OIDC provenance are required")
+		return "", &hostedMCPRefusal{"credentials_missing", errors.New("actions token and OIDC provenance are required")}
 	}
 	claims, err := verifyActionsOIDC(ctx, config, provenance)
 	if err != nil {
-		return "", err
+		return "", &hostedMCPRefusal{"oidc_invalid", err}
 	}
 	metadata, err := actionsRepositoryMetadataForToken(ctx, config, token)
 	if err != nil {
-		return "", err
+		return "", &hostedMCPRefusal{"repository_unavailable", err}
 	}
 	ref := "refs/heads/" + metadata.DefaultBranch
 	owner, name, err := parseActionsRepository(metadata.FullName)
 	if err != nil {
-		return "", err
+		return "", &hostedMCPRefusal{"repository_unavailable", err}
 	}
 	legacySubject := "repo:" + metadata.FullName + ":ref:" + ref
 	immutableSubject := "repo:" + owner + "@" + metadata.OwnerID + "/" + name + "@" + metadata.ID + ":ref:" + ref
@@ -62,10 +70,10 @@ func verifyHostedActionsMCP(ctx context.Context, config Config, request *http.Re
 		claims.RepositoryID != metadata.ID ||
 		claims.RepositoryOwnerID != metadata.OwnerID ||
 		(claims.Subject != legacySubject && claims.Subject != immutableSubject) {
-		return "", errors.New("GitHub Actions OIDC provenance does not match the repository default branch")
+		return "", &hostedMCPRefusal{"provenance_mismatch", errors.New("GitHub Actions OIDC provenance does not match the repository default branch")}
 	}
 	if err := verifyGitHubActionsPermissions(ctx, config, token); err != nil {
-		return "", err
+		return "", &hostedMCPRefusal{"permissions_denied", err}
 	}
 	return strings.ToLower(claims.Actor), nil
 }
