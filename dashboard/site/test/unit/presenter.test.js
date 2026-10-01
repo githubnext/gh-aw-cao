@@ -231,14 +231,14 @@ describe('semantic view prompt action', () => {
         id: 'semantic-dashboard',
         title: 'Semantic dashboard',
         queries: [
-          { name: 'health', from: 'runs', intent: 'Show health', objective: 'Investigate failures', acceptance: 'Runs pass' }
+          { name: 'health', from: 'runs', subject: 'Show health', objective: 'Investigate failures', acceptance: 'Runs pass' }
         ],
         pages: [{
           id: 'overview', kind: 'custom', title: 'Overview',
           views: [{
             id: 'health-chart', title: 'Health chart', mark: 'chart', chart: 'bar',
             data: { source: 'health' },
-            intent: 'Compare workflow health',
+            subject: 'Compare workflow health',
             encoding: { x: { field: 'workflow', type: 'nominal' }, y: { field: 'count', type: 'quantitative' } }
           }]
         }]
@@ -263,7 +263,7 @@ describe('semantic view prompt action', () => {
     expect(button?.querySelector('.octicon-copilot')).not.toBeNull();
     button?.click();
     const preview = rendered.querySelector('.table-intent-preview')?.textContent ?? '';
-    expect(preview).toContain('Show health\n\nCompare workflow health');
+    expect(preview).toContain('Subject:\nShow health\n\nCompare workflow health');
     expect(preview).toContain('Investigate failures');
     expect(preview).toContain('Runs pass');
     expect(preview).toContain('Named CAO query IDs: health');
@@ -289,7 +289,7 @@ describe('semantic view prompt action', () => {
           languageVersion: '0.1.0',
           dashboard: {
             id: 'prompt-modes', title: 'Prompt modes',
-            queries: annotated ? [{ name: 'runs', intent: 'Show runs', objective: 'Investigate', acceptance: 'Verified' }] : [],
+            queries: annotated ? [{ name: 'runs', subject: 'Show runs', objective: 'Investigate', acceptance: 'Verified' }] : [],
             pages: [{ id: 'overview', kind: 'custom', title: 'Overview', views: [view] }]
           }
         });
@@ -319,7 +319,7 @@ describe('semantic view prompt action', () => {
           id: 'overview', kind: 'custom', title: 'Overview',
           views: [{
             id: 'alert', title: 'Review required', description: 'Investigate the alert.',
-            intent: 'Show an alert.', objective: 'Investigate it.', acceptance: 'Alert resolved.',
+            subject: 'Show an alert.', objective: 'Investigate it.', acceptance: 'Alert resolved.',
             data: { source: 'runs' }, mark: 'callout', callout: { label: 'Alert' }
           }]
         }]

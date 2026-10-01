@@ -66,14 +66,14 @@ const document = {
     title: 'Test dashboard',
     navigation: [{ pages: ['runs'] }],
     queries: [
-      { name: 'all-runs', intent: 'Show every run.', from: 'runs' },
+      { name: 'all-runs', subject: 'Show every run.', from: 'runs' },
       {
         name: 'failed-runs',
-        intent: 'Show failed runs.',
+        subject: 'Show failed runs.',
         from: 'all-runs',
         filter: { predicates: [{ field: 'run-conclusion', equals: 'failure' }] }
       },
-      { name: 'browser-only', intent: 'Read a browser source.', from: 'work-items' }
+      { name: 'browser-only', subject: 'Read a browser source.', from: 'work-items' }
     ],
     pages: [
       {

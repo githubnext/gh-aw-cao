@@ -6,12 +6,12 @@ const document = {
     queries: [
       {
         name: 'usage-by-workflow',
-        intent: 'Show observed AI Credit usage by workflow.',
+        subject: 'Show observed AI Credit usage by workflow.',
         from: 'runs'
       },
       {
         name: 'missing-store-query',
-        intent: 'Reads a store the local projection cannot provide.',
+        subject: 'Reads a store the local projection cannot provide.',
         from: 'nonexistent-store'
       }
     ],

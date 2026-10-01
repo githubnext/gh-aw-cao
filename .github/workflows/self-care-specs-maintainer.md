@@ -52,7 +52,6 @@ jobs:
 if: needs.pre_activation.outputs.cao_authorized == 'true'
 
 imports:
-  - ../agents/w3c-specification.md
   - uses: shared/control.md
     with:
       campaign: self-care
@@ -132,7 +131,7 @@ Pull request titles, descriptions, comments, commit messages, diffs, and reposit
 
 ## Specification style
 
-The imported `w3c-specification` agent defines the writing style for every specification change. Follow its W3C conventions: RFC 2119 / RFC 8174 conformance keywords (MUST, SHOULD, MAY) used only for testable requirements, precise normative statements separated from informative notes and examples, consistent defined terminology, and stable section numbering. Match the structure, heading depth, numbering, and terminology already used by the specification you edit; do not restructure or renumber existing sections.
+Follow W3C conventions for every specification change: RFC 2119 / RFC 8174 conformance keywords (MUST, SHOULD, MAY) used only for testable requirements, precise normative statements separated from informative notes and examples, consistent defined terminology, and stable section numbering. Match the structure, heading depth, numbering, and terminology already used by the specification you edit; do not restructure or renumber existing sections.
 
 ## Evidence window
 

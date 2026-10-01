@@ -36,8 +36,10 @@ needs:
 | `limit` | Bound the number of returned rows. |
 | `predict` | Add a deterministic regression result when a trend needs one. |
 
-Every reusable query has a `name` and an `intent`. The intent records the human
-question behind the query, so future changes preserve its purpose.
+Every reusable query has a `name` and a `subject`. The subject records what its
+data is about or intended to show. Its optional `objective` explains why the query
+exists or what to improve or understand; `acceptance` states the conditions for
+the query to be acceptable. Views use the same three semantic fields.
 
 ## A small query
 
@@ -47,7 +49,7 @@ by workflow, totals the observed credits, and returns the ten largest results.
 ```yaml
 queries:
   - name: highest-aic-workflows
-    intent: Show the workflows with the highest observed AI Credit usage.
+    subject: Show the workflows with the highest observed AI Credit usage.
     from: usage
     aggregate:
       by: [organization, repository, workflow]
@@ -88,7 +90,7 @@ presenter lays fields out automatically and keeps their values in page memory.
 ```yaml
 queries:
   - name: simulated-usage
-    intent: Estimate AIC under an operator-selected multiplier.
+    subject: Estimate AIC under an operator-selected multiplier.
     parameters:
       - { name: multiplier, type: number }
     from: usage

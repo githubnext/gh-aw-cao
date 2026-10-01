@@ -2,7 +2,7 @@
   "queries": [
     {
       "name": "campaign-problem-runs",
-      "intent": "List retained failed runs for campaign problem investigation.",
+      "subject": "List retained failed runs for campaign problem investigation.",
       "objective": "Choose a recent failed campaign run to investigate with its diagnostic evidence.",
       "acceptance": "Each row corresponds to a retained campaign run with a declared failure, startup-failure, stale, or timed-out status and is ordered newest first; absence is not proof of healthy execution or complete ingestion.",
       "description": "Failed campaign runs ordered from newest to oldest with retained diagnostic metadata.",
@@ -33,7 +33,7 @@
     },
     {
       "name": "campaign-problem-run-evidence",
-      "intent": "Attach the current campaign runtime problem summary to each retained failed Run for that partition.",
+      "subject": "Attach the current campaign runtime problem summary to each retained failed Run for that partition.",
       "objective": "Inspect the failure count and problem kind alongside a failed run without inferring its root cause.",
       "acceptance": "Each returned row joins a retained failed run to a runtime problem on campaign, workflow, and runtime repository; the inner join drops unmatched runs, so compare with campaign-problem-runs before interpreting absence as no problem.",
       "description": "Failed campaign runs annotated with the failure-count and problem-kind of their active runtime problem, one row per retained failed Run.",
@@ -71,7 +71,7 @@
     },
     {
       "name": "campaign-problem-latest-target-runs",
-      "intent": "Identify the most recent retained failed Run for each campaign workflow target repository.",
+      "subject": "Identify the most recent retained failed Run for each campaign workflow target repository.",
       "objective": "Select the latest retained failed run identity for each campaign workflow and target partition.",
       "acceptance": "For every returned campaign, workflow, runtime repository, and target repository, latest-target-run agrees with the maximum retained failed run identity in that partition; a missing partition is not a healthy target.",
       "description": "One row per campaign workflow and target repository with its most recent retained failed Run identity.",
@@ -94,7 +94,7 @@
     },
     {
       "name": "campaign-problem-error-groups",
-      "intent": "Cluster retained failed Run evidence by workflow, runtime repository, target repository, and error signature so repeated identical failures for one target collapse into one diagnosable group.",
+      "subject": "Cluster retained failed Run evidence by workflow, runtime repository, target repository, and error signature so repeated identical failures for one target collapse into one diagnosable group.",
       "objective": "Rank repeated target-specific error signatures for investigation without merging unrelated failures.",
       "acceptance": "Occurrence-count and latest-run match retained failed runs grouped by campaign, workflow, repositories, problem kind, and signature; unknown signatures may group together. Counts do not prove a root cause.",
       "description": "One row per distinct target repository and error signature within a campaign runtime problem partition, with an occurrence count and the most recent matching Run identity for follow-up.",
@@ -130,7 +130,7 @@
     },
     {
       "name": "campaign-current-problem-error-groups",
-      "intent": "Keep only the newest error signature for each campaign workflow target repository.",
+      "subject": "Keep only the newest error signature for each campaign workflow target repository.",
       "objective": "Focus investigation on the signature associated with the latest retained failed run per target.",
       "acceptance": "Each returned group joins campaign-problem-latest-target-runs on campaign, workflow, runtime repository, and latest run ID; target repository is not a join key, so verify target identity against underlying runs before claiming one current signature per target.",
       "description": "Current target-specific error groups whose representative Run is the target repository's most recent retained failed Run.",
@@ -168,7 +168,7 @@
     },
     {
       "name": "campaign-problem-items",
-      "intent": "Attach the most recent representative Run evidence to each distinct campaign runtime problem error signature.",
+      "subject": "Attach the most recent representative Run evidence to each distinct campaign runtime problem error signature.",
       "objective": "Open the representative failed run and target for each current campaign problem group.",
       "acceptance": "Check joined run-link, run ID, campaign, workflow, and runtime repository; verify target against run evidence (not a join key). Unobserved orchestrators need inventory review. Missing evidence remains unknown; rollout mode does not authorize policy changes.",
       "description": "Current campaign runtime problems represented by the newest error signature for each target repository, with its effective rollout mode, an occurrence count, the most recent matching failed Run, and a repair prompt.",
@@ -386,7 +386,7 @@
     },
     {
       "name": "campaign-problem-tab-counts",
-      "intent": "Count the current runtime problem items available for each campaign Problems tab.",
+      "subject": "Count the current runtime problem items available for each campaign Problems tab.",
       "objective": "Determine whether the campaign has current retained failure groups requiring review.",
       "acceptance": "For every returned campaign, items equals the number of campaign-problem-items rows in the same horizon; a missing count does not establish zero failures or healthy execution.",
       "description": "One campaign row with the number of current runtime problem groups.",

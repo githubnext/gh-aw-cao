@@ -1868,7 +1868,7 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
     }
 
     const viewPath = `${path}.definition.views[${index}]`;
-    if (view.intent !== undefined) validateStringField(view.intent, `${viewPath}.intent`, true, errors);
+    if (view.subject !== undefined) validateStringField(view.subject, `${viewPath}.subject`, true, errors);
     if (view.objective !== undefined) validateStringField(view.objective, `${viewPath}.objective`, true, errors);
     if (view.acceptance !== undefined) validateStringField(view.acceptance, `${viewPath}.acceptance`, true, errors);
     validateSemanticMetadataLength(view, viewPath, errors);
@@ -2538,8 +2538,8 @@ function validateView(view, viewNode, path, viewIds, errors) {
       `${path}.locked`
     ));
   }
-  if (view.intent !== undefined) {
-    validateStringField(view.intent, `${path}.intent`, true, errors);
+  if (view.subject !== undefined) {
+    validateStringField(view.subject, `${path}.subject`, true, errors);
   }
   if (view.objective !== undefined) validateStringField(view.objective, `${path}.objective`, true, errors);
   if (view.acceptance !== undefined) validateStringField(view.acceptance, `${path}.acceptance`, true, errors);
@@ -4007,7 +4007,7 @@ function validateQueries(queries, queriesNode, errors) {
     }
     validateObjectKeys(queryNode, QUERY_KEYS, path, errors);
     validateRequiredIdentifier(query.name, `${path}.name`, 'query name', errors);
-    validateStringField(query.intent, `${path}.intent`, true, errors);
+    validateStringField(query.subject, `${path}.subject`, true, errors);
     if (query.objective !== undefined) validateStringField(query.objective, `${path}.objective`, true, errors);
     if (query.acceptance !== undefined) validateStringField(query.acceptance, `${path}.acceptance`, true, errors);
     validateSemanticMetadataLength(query, path, errors);
@@ -6402,7 +6402,7 @@ function validateStringField(value, path, required, errors) {
  * @param {ValidationError[]} errors
  */
 function validateSemanticMetadataLength(definition, path, errors) {
-  const fields = ['intent', 'objective', 'acceptance'];
+  const fields = ['subject', 'objective', 'acceptance'];
   if (fields.some((field) => definition[field] !== undefined && typeof definition[field] !== 'string')) return;
   const length = fields.reduce((total, field) => {
     const value = definition[field];
@@ -6411,7 +6411,7 @@ function validateSemanticMetadataLength(definition, path, errors) {
   if (length > 512) {
     errors.push(createError(
       ERROR_CODES.missingOrInvalidRequiredField,
-      `Combined intent, objective, and acceptance must be at most 512 characters (found ${length}); shorten them or offload details to a separate Markdown file in the repository.`,
+      `Combined subject, objective, and acceptance must be at most 512 characters (found ${length}); shorten them or offload details to a separate Markdown file in the repository.`,
       path
     ));
   }

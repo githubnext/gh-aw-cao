@@ -60,7 +60,7 @@ describe('dashboard document validation', () => {
   it('limits combined query semantic metadata to 512 characters', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const query = document.dashboard.queries[0];
-    query.intent = 'a'.repeat(511);
+    query.subject = 'a'.repeat(511);
     query.objective = '😀';
     delete query.acceptance;
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
@@ -71,7 +71,7 @@ describe('dashboard document validation', () => {
       errors: expect.arrayContaining([{
         code: 'DLS-E003',
         path: '$.dashboard.queries[0]',
-        message: 'Combined intent, objective, and acceptance must be at most 512 characters (found 513); shorten them or offload details to a separate Markdown file in the repository.'
+        message: 'Combined subject, objective, and acceptance must be at most 512 characters (found 513); shorten them or offload details to a separate Markdown file in the repository.'
       }])
     });
   });
@@ -82,7 +82,7 @@ describe('dashboard document validation', () => {
       (/** @type {{ views?: unknown[] }} */ page) => page.views?.length
     );
     const view = document.dashboard.pages[pageIndex].views[0];
-    view.intent = 'a'.repeat(256);
+    view.subject = 'a'.repeat(256);
     view.objective = 'b'.repeat(256);
     delete view.acceptance;
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
@@ -93,9 +93,27 @@ describe('dashboard document validation', () => {
       errors: expect.arrayContaining([{
         code: 'DLS-E003',
         path: `$.dashboard.pages[${pageIndex}].views[0]`,
-        message: 'Combined intent, objective, and acceptance must be at most 512 characters (found 513); shorten them or offload details to a separate Markdown file in the repository.'
+        message: 'Combined subject, objective, and acceptance must be at most 512 characters (found 513); shorten them or offload details to a separate Markdown file in the repository.'
       }])
     });
+  });
+
+  it('rejects the former intent field on queries and views', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const pageIndex = document.dashboard.pages.findIndex(
+      (/** @type {{ views?: unknown[] }} */ page) => page.views?.length
+    );
+    document.dashboard.queries[0].intent = 'Old query metadata';
+    document.dashboard.pages[pageIndex].views[0].intent = 'Old view metadata';
+
+    const result = validateDashboardDocument(JSON.stringify(document));
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ path: '$.dashboard.queries[0].intent' }),
+        expect.objectContaining({ path: `$.dashboard.pages[${pageIndex}].views[0].intent` })
+      ]));
+    }
   });
 
   it('reports every oversized query and custom, built-in, or reusable view', () => {
@@ -106,11 +124,11 @@ describe('dashboard document validation', () => {
     const customIndex = document.dashboard.pages.findIndex(
       (/** @type {{ views?: unknown[] }} */ page) => page.views?.length
     );
-    document.dashboard.queries[0].intent = 'a'.repeat(513);
-    document.dashboard.queries[1].intent = 'a'.repeat(513);
-    document.dashboard.views[0].intent = 'a'.repeat(513);
-    document.dashboard.pages[builtInIndex].definition.views[0].intent = 'a'.repeat(513);
-    document.dashboard.pages[customIndex].views[0].intent = 'a'.repeat(513);
+    document.dashboard.queries[0].subject = 'a'.repeat(513);
+    document.dashboard.queries[1].subject = 'a'.repeat(513);
+    document.dashboard.views[0].subject = 'a'.repeat(513);
+    document.dashboard.pages[builtInIndex].definition.views[0].subject = 'a'.repeat(513);
+    document.dashboard.pages[customIndex].views[0].subject = 'a'.repeat(513);
 
     const result = validateDashboardDocument(JSON.stringify(document));
     for (const path of [
@@ -271,7 +289,7 @@ describe('dashboard document validation', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     document.dashboard.queries.push({
       name: 'simulated-usage',
-      intent: 'Simulate AIC under operator-selected assumptions.',
+      subject: 'Simulate AIC under operator-selected assumptions.',
       parameters: [
         { name: 'multiplier', type: 'number' },
         { name: 'enabled', type: 'boolean' },
@@ -443,7 +461,7 @@ describe('dashboard document validation', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     document.dashboard.queries.push({
       name: 'unused-run-query',
-      intent: 'Exercise dead query validation.',
+      subject: 'Exercise dead query validation.',
       from: 'runs'
     });
 
@@ -481,7 +499,7 @@ describe('dashboard document validation', () => {
     if (!summary) throw new Error('Overview value summary is missing.');
 
     expect(summary).toMatchObject({
-      intent: 'Count all observed grader results.',
+      subject: 'Count all observed grader results.',
       from: 'grader-observations',
       aggregate: {
         values: [{ field: 'grader', as: 'value-gains', reducer: 'count' }]
@@ -818,7 +836,7 @@ describe('dashboard document validation', () => {
     expect(firewall.views).toHaveLength(2);
     expect(document.dashboard.queries).toContainEqual(expect.objectContaining({
       name: 'firewall-domain-totals',
-      intent: 'Show each observed firewall domain with the number of runs and total accepted and blocked requests.',
+      subject: 'Show each observed firewall domain with the number of runs and total accepted and blocked requests.',
       from: 'firewall-observations',
       filter: { predicates: [{ field: 'decision', in: ['allowed', 'denied'] }] },
       aggregate: {
@@ -842,7 +860,7 @@ describe('dashboard document validation', () => {
     }));
     expect(document.dashboard.queries).toContainEqual(expect.objectContaining({
       name: 'firewall-most-blocked-domains',
-      intent: 'Highlight the domains with the most blocked firewall requests.',
+      subject: 'Highlight the domains with the most blocked firewall requests.',
       from: 'firewall-domain-totals',
       'order-by': [
         { field: 'blocked', direction: 'desc' },
@@ -853,7 +871,7 @@ describe('dashboard document validation', () => {
     const [mostBlocked, domains] = firewall.views;
     expect(mostBlocked).toMatchObject({
       id: 'security-firewall-most-blocked-domains',
-      intent: 'Prioritize investigation of the most blocked domains and workflows; blocked traffic alone does not justify access.',
+      subject: 'Prioritize investigation of the most blocked domains and workflows; blocked traffic alone does not justify access.',
       objective: 'Refresh firewall evidence; query firewall-domain-workflows with --param domain=DOMAIN. Confirm blocked traffic is needed before proposing egress changes.',
       acceptance: 'Record domain/workflow, time, blocked/allowed counts and disposition (expected denial, unnecessary traffic, justified access). Without fresh evidence, report investigation as incomplete, not zero. Review justified changes with a new snapshot.',
       prompt: 'auto',
@@ -4060,14 +4078,14 @@ dashboard:
   it('DLS-VIEW-034 accepts semantic annotations on all marks and rejects empty values', () => {
     const elementDocument = `language-version: "0.1.0"
 dashboard:
-  id: element-intent
+  id: element-subject
   title: Element Intent
   pages:
     - id: operations
       kind: custom
       views:
         - id: summary
-          intent: Help operators identify workflow states that require attention.
+          subject: Help operators identify workflow states that require attention.
           data:
             sources: [workflows]
           mark: element
@@ -4077,15 +4095,15 @@ dashboard:
 
     const emptyIntent = validateDashboardDocument(
       elementDocument.replace(
-        'intent: Help operators identify workflow states that require attention.',
-        'intent: ""'
+        'subject: Help operators identify workflow states that require attention.',
+        'subject: ""'
       )
     );
     expect(emptyIntent.ok).toBe(false);
     if (!emptyIntent.ok) {
       expect(emptyIntent.errors).toContainEqual(expect.objectContaining({
         code: 'DLS-E003',
-        path: '$.dashboard.pages[0].views[0].intent'
+        path: '$.dashboard.pages[0].views[0].subject'
       }));
     }
 
@@ -4105,8 +4123,8 @@ dashboard:
     );
     expect(nonElementIntent.ok).toBe(true);
     const withSemantics = elementDocument.replace(
-      '          intent: Help operators identify workflow states that require attention.',
-      '          intent: Help operators identify workflow states that require attention.\n          objective: Resolve failing workflows.\n          acceptance: No failing workflows remain.'
+      '          subject: Help operators identify workflow states that require attention.',
+      '          subject: Help operators identify workflow states that require attention.\n          objective: Resolve failing workflows.\n          acceptance: No failing workflows remain.'
     );
     expect(validateDashboardDocument(withSemantics).ok).toBe(true);
     for (const field of ['objective', 'acceptance']) {
@@ -5034,7 +5052,7 @@ dashboard:
   title: Area Charts
   queries:
     - name: area-values
-      intent: Expose AI Credits with a canonical additive field name.
+      subject: Expose AI Credits with a canonical additive field name.
       from: runs
       select:
         - { field: started-at }
@@ -5101,7 +5119,7 @@ dashboard:
   title: Chart Measures
   queries:
     - name: transaction-points
-      intent: Select transaction run counts.
+      subject: Select transaction run counts.
       from: transactions
       select:
         - { field: createdAt, as: created-at }
@@ -5311,7 +5329,7 @@ describe('declarative query validation', () => {
       title: 'Query Dashboard',
       queries: Array.isArray(queries)
         ? queries.map(query => query && typeof query === 'object'
-          ? { intent: 'Preserve the original query request for future modifications.', ...query }
+          ? { subject: 'Preserve the original query request for future modifications.', ...query }
           : query)
         : queries,
       pages: [{
@@ -5578,14 +5596,14 @@ describe('declarative query validation', () => {
     }
   });
 
-  it('requires a non-empty original intent for every query', () => {
-    for (const intent of [undefined, '', 42]) {
-      const result = validateDashboardDocument(queryDocument([{ ...aicQuery, intent }]));
+  it('requires a non-empty original subject for every query', () => {
+    for (const subject of [undefined, '', 42]) {
+      const result = validateDashboardDocument(queryDocument([{ ...aicQuery, subject }]));
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.errors).toContainEqual(expect.objectContaining({
           code: 'DLS-E003',
-          path: '$.dashboard.queries[0].intent'
+          path: '$.dashboard.queries[0].subject'
         }));
       }
     }

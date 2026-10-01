@@ -2,7 +2,7 @@
   "queries": [
     {
       "name": "run-incomplete-outcomes",
-      "intent": "Project retained report-incomplete terminal outcomes as concise run diagnoses.",
+      "subject": "Project retained report-incomplete terminal outcomes as concise run diagnoses.",
       "objective": "Find retained report_incomplete safe outputs that can explain a specific run's incomplete reporting.",
       "acceptance": "Include only matching audit safe_output.created records with run-attempt identity, outcome kind, and recorded diagnosis; absence is not proof that reporting completed.",
       "description": "One retained incomplete-evidence diagnosis per workflow Run when the agent explicitly reported that required evidence or access was unavailable.",
@@ -47,7 +47,7 @@
     },
     {
       "name": "campaign-runs",
-      "intent": "Project workflow runs with campaign attribution and retained failure evidence.",
+      "subject": "Project workflow runs with campaign attribution and retained failure evidence.",
       "objective": "Connect retained run status and failure details to declared campaign/workflow identity for run-level diagnosis.",
       "acceptance": "Expose run and attempt identity, declared attribution, runtime and target repositories, status, failure and incomplete-outcome evidence, timestamps, and drill-down links; do not infer an outcome from runtime success or missing details.",
       "description": "Canonical workflow runs joined to their declared campaign and workflow identity.",
@@ -683,7 +683,7 @@
     },
     {
       "name": "campaign-runtime-health-runs",
-      "intent": "Project only the run and workflow fields required to classify current campaign runtime health.",
+      "subject": "Project only the run and workflow fields required to classify current campaign runtime health.",
       "objective": "Provide the retained run identity, timing, role, dispatch type, repository, and status needed to assess campaign runtime-health groups.",
       "acceptance": "Project the selected fields from overview-runs without converting missing statuses or unattributed workflows into failures; unavailable run history leaves health assessment incomplete.",
       "description": "A bounded runtime-health input that excludes audit outcomes and presentation-only campaign run fields.",
@@ -812,7 +812,7 @@
     },
     {
       "name": "campaign-runtime-health-groups",
-      "intent": "Compute each campaign workflow and runtime repository's latest consecutive failure streak in the selected horizon.",
+      "subject": "Compute each campaign workflow and runtime repository's latest consecutive failure streak in the selected horizon.",
       "objective": "Locate campaign workflow/runtime-repository groups whose most recent retained completed runs have consecutive runtime failures.",
       "acceptance": "Group completed runs by campaign, workflow, role, dispatch type, and runtime repository; failure-count is the latest retained failure streak, not a rate or a claim about runs outside the available horizon.",
       "description": "Current retained failure streaks grouped by campaign workflow and runtime repository, considering only concluded Runs so an in-flight retry cannot mask an active failure streak.",
@@ -884,7 +884,7 @@
     },
     {
       "name": "campaign-runtime-problem-candidates",
-      "intent": "Mark campaign workflow and runtime repository partitions whose latest retained run streak is failing.",
+      "subject": "Mark campaign workflow and runtime repository partitions whose latest retained run streak is failing.",
       "objective": "Flag runtime-health groups with a nonzero latest retained failure streak for focused investigation.",
       "acceptance": "Preserve the group identity and failure-count; has-current-failure reflects only failure-count greater than zero, while absent or incomplete run evidence cannot establish health.",
       "description": "Campaign runtime partitions annotated with whether their current retained streak contains failures.",
@@ -918,7 +918,7 @@
     },
     {
       "name": "campaign-current-runtime-failures",
-      "intent": "Show only campaign workflow and runtime repository partitions whose latest retained run streak is failing.",
+      "subject": "Show only campaign workflow and runtime repository partitions whose latest retained run streak is failing.",
       "objective": "Select failing retained runtime-health partitions for review of their underlying runs.",
       "acceptance": "Return only groups flagged has-current-failure with their identity and streak count in declared order; no rows mean no matching observed streak, not verified healthy operation.",
       "description": "Campaign runtime partitions with one or more consecutive failures after their latest retained success.",
@@ -948,7 +948,7 @@
     },
     {
       "name": "workflow-run-observation-counts",
-      "intent": "Count retained Runs for each workflow identity in the selected horizon.",
+      "subject": "Count retained Runs for each workflow identity in the selected horizon.",
       "objective": "Measure retained run presence by workflow identity to compare with active orchestrator declarations.",
       "acceptance": "Count overview-runs by organization, repository, and workflow; a missing group indicates no retained matching run in the available horizon, not proof of no executions.",
       "description": "One row per organization, repository, and workflow with retained Run counts, safe to join without row multiplication.",
@@ -970,7 +970,7 @@
     },
     {
       "name": "campaign-active-orchestrator-run-presence",
-      "intent": "Count retained Runs for each active campaign orchestrator in the selected horizon.",
+      "subject": "Count retained Runs for each active campaign orchestrator in the selected horizon.",
       "objective": "Compare active orchestrator declarations with retained run observations to identify missing visibility.",
       "acceptance": "Keep only workflows declared active with orchestrator role and expose their identity, runtime repository, and observed-run-count; a zero joined count means no retained match, not necessarily a stopped schedule.",
       "description": "Active campaign orchestrators annotated with retained Run presence.",
@@ -1068,7 +1068,7 @@
     },
     {
       "name": "campaign-unobserved-orchestrator-candidates",
-      "intent": "Mark active campaign orchestrators with no retained Runs in the selected horizon.",
+      "subject": "Mark active campaign orchestrators with no retained Runs in the selected horizon.",
       "objective": "Mark active orchestrators lacking retained run evidence for bounded telemetry or schedule review.",
       "acceptance": "Preserve active orchestrator identity and observed-run-count; is-unobserved marks zero retained matches and must not be interpreted as a runtime failure or evidence that dispatch was expected.",
       "description": "Active orchestrators annotated with whether runtime evidence is absent.",
@@ -1126,7 +1126,7 @@
     },
     {
       "name": "campaign-unobserved-orchestrators",
-      "intent": "Show active campaign orchestrators with no retained Runs in the selected horizon.",
+      "subject": "Show active campaign orchestrators with no retained Runs in the selected horizon.",
       "objective": "List active orchestrator declarations with no retained run observations for follow-up on evidence availability.",
       "acceptance": "Return only is-unobserved candidates with their workflow and repository identity; an empty result does not certify run completeness or scheduler health.",
       "description": "Active campaign orchestrators whose runtime state cannot be established from retained evidence.",
@@ -1142,7 +1142,7 @@
     },
     {
       "name": "campaign-runtime-problems",
-      "intent": "Combine current runtime failures with active orchestrators that have no retained Run evidence.",
+      "subject": "Combine current runtime failures with active orchestrators that have no retained Run evidence.",
       "objective": "Present observed failing streaks and unobserved active orchestrators together, without conflating the two conditions.",
       "acceptance": "Union the two candidate sets with their problem kind and identifying context; missing run evidence remains an observation gap rather than a confirmed runtime failure.",
       "description": "Current campaign runtime problems requiring investigation.",
@@ -1167,7 +1167,7 @@
     },
     {
       "name": "dispatches",
-      "intent": "Select workflow-dispatch runs from campaign-attributed workflow run evidence.",
+      "subject": "Select workflow-dispatch runs from campaign-attributed workflow run evidence.",
       "objective": "Inspect retained workflow_dispatch runs attributed to campaigns before comparing campaign dispatch activity.",
       "acceptance": "Include only campaign-runs with event workflow_dispatch and preserve run, attempt, attribution, status, and time; absence does not establish that no dispatch occurred beyond retained evidence.",
       "description": "Canonical workflow runs whose authoritative trigger is workflow_dispatch.",
@@ -1189,7 +1189,7 @@
     },
     {
       "name": "campaign-dispatch-totals",
-      "intent": "Summarize observed workflow dispatches for each centrally managed campaign.",
+      "subject": "Summarize observed workflow dispatches for each centrally managed campaign.",
       "objective": "Compare retained workflow_dispatch run counts across attributed campaigns.",
       "acceptance": "Count distinct run identifiers per campaign from dispatches; do not treat missing campaign attribution or unretained dispatches as zero actual activity.",
       "description": "Observed workflow-dispatch run totals grouped by campaign.",
@@ -1209,7 +1209,7 @@
     },
     {
       "name": "campaign-workflow-totals",
-      "intent": "Summarize observed workflow and execution totals for each centrally managed campaign.",
+      "subject": "Summarize observed workflow and execution totals for each centrally managed campaign.",
       "objective": "Compare declared orchestrator/worker composition, rollout registration, observed runs, and AI Credit usage by campaign.",
       "acceptance": "Group only orchestrator and worker workflow-inventory rows by campaign; retain workflow count, distinct roles/modes/registration and summed observed runs and AIC, without inferring successful outcomes.",
       "description": "Observed workflow, rollout, run, and AI Credit totals grouped by campaign.",
@@ -1265,7 +1265,7 @@
     },
     {
       "name": "campaign-repository-coverage",
-      "intent": "Count distinct registered target repositories reached by successful worker dispatches for each campaign.",
+      "subject": "Count distinct registered target repositories reached by successful worker dispatches for each campaign.",
       "objective": "Estimate observed campaign target reach from successful worker workflow_dispatch runs joined to registered repositories.",
       "acceptance": "Count distinct matched target-repository values per campaign only for successful worker dispatches; this is observed reach, not verified target outcomes or complete fleet coverage.",
       "description": "Campaign repository coverage derived from successful worker dispatch runs in the selected horizon.",
@@ -1347,7 +1347,7 @@
     },
     {
       "name": "campaign-inventory",
-      "intent": "List centrally managed campaigns with their observed workflow and execution totals.",
+      "subject": "List centrally managed campaigns with their observed workflow and execution totals.",
       "objective": "Compare declared campaigns with retained workflow composition, dispatches, target reach, runs, and AIC to choose an evidence-backed drill-down.",
       "acceptance": "Keep declared campaigns with campaign identity and link plus joined totals; defaulted zero values mean no matching retained evidence and cannot certify no activity, complete coverage, or successful outcomes.",
       "description": "Canonical campaign inventory enriched with observed workflow, rollout, run, repository coverage, and AI Credit totals.",

@@ -1,4 +1,4 @@
-const QUERY_METADATA_KEYS = new Set(['name', 'intent', 'description']);
+const QUERY_METADATA_KEYS = new Set(['name', 'subject', 'description']);
 const CHAIN_PREFIX_KEYS = ['union', 'time', 'joins', 'filter'];
 const QUERY_STAGE_WEIGHTS = {
   from: 20,
@@ -526,7 +526,7 @@ function chainCommonQueryPrefixes(queries) {
     const reusedBy = group.entries.map(({ query }) => query.name);
     const base = {
       name: baseName,
-      intent: `Reuse shared query stages for ${reusedBy.join(', ')}`,
+      subject: `Reuse shared query stages for ${reusedBy.join(', ')}`,
       ...group.prefix
     };
     insertions.push({ index: group.entries[0].index, query: base });

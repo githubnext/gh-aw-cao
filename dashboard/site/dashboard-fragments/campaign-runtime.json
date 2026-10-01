@@ -2,7 +2,7 @@
   "queries": [
     {
       "name": "campaign-operational-value-repository-run-day-totals",
-      "intent": "Summarize concluded campaign run outcomes by repository and UTC day as aligned context for operational-value history.",
+      "subject": "Summarize concluded campaign run outcomes by repository and UTC day as aligned context for operational-value history.",
       "objective": "Identify repository-days with failed or missing concluded run activity to inspect beside operational-value observations.",
       "acceptance": "For each campaign, repository, and UTC started-at day, distinct concluded, successful, and failed attempt counts reconcile to retained completed campaign runs under their declared statuses; other conclusions remain separate, and temporal alignment is not causal evidence.",
       "description": "Daily repository success, failure, and other concluded-run counts for visual association only; these observations do not establish causation.",
@@ -90,7 +90,7 @@
     },
     {
       "name": "campaign-operational-value-repository-run-days",
-      "intent": "Provide daily repository run outcomes as nearby context for operational-value observations.",
+      "subject": "Provide daily repository run outcomes as nearby context for operational-value observations.",
       "objective": "Spot repository-day reliability changes worth checking against the underlying run attempts.",
       "acceptance": "The percent equals 100 times successful-runs divided by concluded-runs for the same repository-day when the denominator exists; zero or missing denominators remain undefined, and the rate is not operational value.",
       "description": "Repository success and failure counts for temporal proximity only, without converting run outcomes into operational value or implying causation.",
@@ -124,7 +124,7 @@
     },
     {
       "name": "campaign-operational-value-run-day-totals",
-      "intent": "Summarize concluded campaign run outcomes by UTC day as aligned context for weighted campaign operational-value history.",
+      "subject": "Summarize concluded campaign run outcomes by UTC day as aligned context for weighted campaign operational-value history.",
       "objective": "Identify campaign-days with changed run-outcome counts for follow-up at repository level.",
       "acceptance": "Each campaign-day's concluded, successful, and failed counts equal sums of its retained repository-day counts; absent repository days are not assumed to be zero, and aggregate run success does not establish operational impact.",
       "description": "Daily campaign-wide success context aggregated from repository run-day counts without implying a causal relationship.",
@@ -155,7 +155,7 @@
     },
     {
       "name": "campaign-operational-value-run-days",
-      "intent": "Provide daily campaign-wide run outcomes as nearby context for weighted operational-value observations.",
+      "subject": "Provide daily campaign-wide run outcomes as nearby context for weighted operational-value observations.",
       "objective": "Compare campaign-day runtime reliability with nearby value observations before selecting days to investigate.",
       "acceptance": "Success rate is successful-runs divided by concluded-runs, expressed as a percent only where the denominator exists; the numerator and denominator remain inspectable, and co-occurrence does not establish causality or operational value.",
       "description": "Campaign success and failure counts for temporal proximity only, without implying a causal relationship.",
@@ -189,7 +189,7 @@
     },
     {
       "name": "campaign-performance-baseline-totals",
-      "intent": "Establish a selected-horizon campaign baseline from concluded run attempts while keeping reliability, unverified production, and efficiency as separate facts.",
+      "subject": "Establish a selected-horizon campaign baseline from concluded run attempts while keeping reliability, unverified production, and efficiency as separate facts.",
       "objective": "Select campaigns whose retained run reliability, output production, or AI Credit efficiency merits closer examination.",
       "acceptance": "Concluded and successful attempts, outputs, and mean AI Credits reconcile to filtered retained runs; absent denominators or costs stay unknown. Produced outputs are unverified, not operational value.",
       "description": "Canonical campaign run attempts aggregated into bounded selected-horizon baseline totals without treating runtime success or produced outputs as operational value.",
@@ -296,7 +296,7 @@
     },
     {
       "name": "campaign-performance-baseline",
-      "intent": "Turn each campaign's selected-horizon baseline totals into deterministic reliability and production signals with an explicit successful-run efficiency fact.",
+      "subject": "Turn each campaign's selected-horizon baseline totals into deterministic reliability and production signals with an explicit successful-run efficiency fact.",
       "objective": "Decide which campaign baseline signal needs run- or output-level verification next.",
       "acceptance": "Success-rate and signal labels follow the retained totals and their explicit denominators; no concluded attempts or output evidence is distinguished from zero verified impact, and AI Credits per successful run remain a separate cost fact rather than a value score.",
       "description": "A bounded, explainable baseline that distinguishes runtime reliability, unverified output production, and AI Credit efficiency.",
@@ -545,7 +545,7 @@
         {
           "id": "campaign-run-status",
           "title": "Workflow run status",
-          "intent": "See the distribution of observed run statuses for this campaign.",
+          "subject": "See the distribution of observed run statuses for this campaign.",
           "objective": "Identify failed or stalled campaign runs that merit inspection.",
           "acceptance": "Any concerning status is checked against the underlying runs; an empty chart is not treated as proof of healthy execution.",
           "description": "Observed workflow conclusions provide the campaign's leading execution signal.",
@@ -574,7 +574,7 @@
         {
           "id": "campaign-failure-reason-distribution",
           "title": "Why these dispatches failed",
-          "intent": "Compare retained failure reasons for this campaign's dispatches.",
+          "subject": "Compare retained failure reasons for this campaign's dispatches.",
           "objective": "Prioritize which failed dispatches need investigation.",
           "acceptance": "A prioritized reason is supported by the linked dispatch evidence; missing reasons remain unknown.",
           "description": "Grouped by the strongest failure reason retained for each dispatch. Select a reason in the table below to open its GitHub Actions evidence.",

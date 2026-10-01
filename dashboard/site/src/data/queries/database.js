@@ -289,7 +289,7 @@ function flattenIndexedRunQuery(index, definition, seen = new Set()) {
   const flattenedParent = flattenIndexedRunQuery(index, parent, seen);
   if (!flattenedParent) return null;
   const operationalParentKeys = Object.keys(flattenedParent)
-    .filter((key) => !['name', 'intent', 'objective', 'acceptance', 'description', 'from', 'filter'].includes(key));
+    .filter((key) => !['name', 'subject', 'objective', 'acceptance', 'description', 'from', 'filter'].includes(key));
   if (operationalParentKeys.length > 0 || (flattenedParent.filter && definition.filter)) return null;
   return {
     ...definition,

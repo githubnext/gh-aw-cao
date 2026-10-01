@@ -22,27 +22,27 @@ describe('semantic view prompts', () => {
   });
 
   const queries = [
-    { name: 'base', from: 'runs', intent: 'Observe runs', acceptance: 'Runs healthy' },
-    { name: 'summary', from: 'base', intent: 'Summarize health', objective: 'Investigate failures' },
-    { name: 'trends', from: 'base', intent: 'Compare trends', objective: 'Identify regressions', acceptance: 'Trend stable' }
+    { name: 'base', from: 'runs', subject: 'Observe runs', acceptance: 'Runs healthy' },
+    { name: 'summary', from: 'base', subject: 'Summarize health', objective: 'Investigate failures' },
+    { name: 'trends', from: 'base', subject: 'Compare trends', objective: 'Identify regressions', acceptance: 'Trend stable' }
   ];
 
   it('composes nested and multiple query annotations before the view without overriding', () => {
     const result = effectiveViewSemantics({
       data: { sources: ['summary', 'trends', 'summary'] },
-      intent: 'Show operational health',
+      subject: 'Show operational health',
       objective: 'Remediate issues',
       acceptance: 'Verified resolution'
     }, queries);
     expect(result).toEqual({
       queryIds: ['base', 'summary', 'trends'],
-      intent: 'Observe runs\n\nSummarize health\n\nCompare trends\n\nShow operational health',
+      subject: 'Observe runs\n\nSummarize health\n\nCompare trends\n\nShow operational health',
       objective: 'Investigate failures\n\nIdentify regressions\n\nRemediate issues',
       acceptance: 'Runs healthy\n\nTrend stable\n\nVerified resolution'
     });
   });
 
-  it('defines intent, objective, and acceptance on every dashboard chart', () => {
+  it('defines subject, objective, and acceptance on every dashboard chart', () => {
     /** @type {Array<{ pageId: string, view: Record<string, unknown> }>} */
     const charts = [];
     /** @param {any} container @param {string} pageId */
@@ -57,7 +57,7 @@ describe('semantic view prompts', () => {
     }
     expect(charts.length).toBeGreaterThan(0);
     const missing = charts.flatMap(({ pageId, view }) =>
-      ['intent', 'objective', 'acceptance']
+      ['subject', 'objective', 'acceptance']
         .filter((field) => typeof view[field] !== 'string' || !view[field].trim())
         .map((field) => `${pageId}/${view.id}: ${field}`));
     expect(missing).toEqual([]);

@@ -226,7 +226,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Tooltip | `label`, `description`, `icon` |
 | `defaults` | `scope`, `time`, `filters` |
 | Unit definition | `name`, `symbol`, `significant`, `format` |
-| Query definition | `name`, `intent`, `objective`, `acceptance`, `description`, `parameters`, `from`, `union`, `time`, `joins`, `filter`, `compute`, `temporal-series`, `aggregate`, `predict`, `select`, `order-by`, `limit` |
+| Query definition | `name`, `subject`, `objective`, `acceptance`, `description`, `parameters`, `from`, `union`, `time`, `joins`, `filter`, `compute`, `temporal-series`, `aggregate`, `predict`, `select`, `order-by`, `limit` |
 | Query parameter | `name`, `type` |
 | Query `joins` entry | `source`, `type`, `on`, `fields` |
 | Query join key | `left`, `right` |
@@ -251,7 +251,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Navigation section | `label`, `pages`, `experimental`, `placement` |
 | Page section | `id`, `title`, `description`, `layout`, `views`, `count-source`, `count-sources`, `count-field`, `count-label` |
 | Custom page `route` | `hash-query-parameter`, `navigation-page`, `title-format`, `tabs-class-name`, `tab`, `tabs` |
-| View | `id`, `title`, `show-title`, `description`, `intent`, `objective`, `acceptance`, `locked`, `data`, `mark`, `element`, `config`, `callout`, `chart`, `metric`, `list`, `tree`, `layout`, `disclosure`, `controls`, `lazy-list`, `column-summaries`, `empty-message`, `title-link`, `encoding` |
+| View | `id`, `title`, `show-title`, `description`, `subject`, `objective`, `acceptance`, `locked`, `data`, `mark`, `element`, `config`, `callout`, `chart`, `metric`, `list`, `tree`, `layout`, `disclosure`, `controls`, `lazy-list`, `column-summaries`, `empty-message`, `title-link`, `encoding` |
 | View `data` | `source` or `sources`, `scope`, `time`, `filters`, `arguments`, `limit`, `order-by` |
 | View data argument | `name`, `field` |
 | View `config` | `body`, `sections`, `labels`, `measure-source`, `empty-message` |
@@ -422,7 +422,7 @@ code and UI elements do not fetch or derive this data independently.
 
 `dashboard.queries`, when present, declares reusable query results. A query is a closed, structured projection over Section 5.1 database tables, registered Section 5.4 runtime sources, or earlier queries; it contains no SQL text, scripts, callbacks, templates, or general-purpose expressions.
 
-Each query retains a non-empty `intent` containing the original natural-language specification that led to the query. This authoring metadata gives future dashboard modifications the requested outcome behind the current clauses; it does not affect execution or presentation.
+Each query retains a non-empty `subject` describing what its data is about or intended to show. The optional `objective` explains why the query exists or what to improve or understand, and `acceptance` states the conditions that make it acceptable. This authoring metadata does not affect execution or presentation.
 
 A query may declare typed scalar `parameters`. Parameter references are inert,
 tagged values resolved from the active page form before the query graph enters
@@ -432,7 +432,7 @@ source, field, join, reducer, limit, or other query structure.
 ```yaml
 queries:
   - name: workflow-aic-totals
-    intent: Summarize observed AI Credit usage by declared workflow.
+    subject: Summarize observed AI Credit usage by declared workflow.
     description: Observed AI Credit totals for each declared workflow.
     from: usage
     aggregate:
@@ -442,7 +442,7 @@ queries:
           as: aic
           reducer: sum
   - name: workflow-inventory
-    intent: List declared workflows with their observed AI Credit totals.
+    subject: List declared workflows with their observed AI Credit totals.
     from: workflows
     joins:
       - source: workflow-aic-totals
@@ -474,7 +474,7 @@ An aggregate value may declare a `filter` containing `predicates`. This filter s
 ```yaml
 queries:
   - name: domain-and-blocked-request-counts
-    intent: Count all domain observations and sum firewall-blocked requests by repository.
+    subject: Count all domain observations and sum firewall-blocked requests by repository.
     from: domains
     aggregate:
       by: [organization, repository]
@@ -542,7 +542,7 @@ The following JSON uses `run` as a numeric sequence, fits one trend per workflow
     "queries": [
       {
         "name": "workflow-aic-predictions",
-        "intent": "Compare observed workflow AIC with a linear trend.",
+        "subject": "Compare observed workflow AIC with a linear trend.",
         "from": "usage",
         "predict": [
           {
@@ -591,7 +591,7 @@ The transform preserves source-row order and measure declaration or map-property
 
 #### 5.5.4 Normative Query Requirements
 
-- **DLS-QUERY-001:** `queries`, when present, **MUST** be a non-empty sequence of mappings. Each query **MUST** declare a `name` matching the canonical identifier pattern in **DLS-DOC-005**, a non-empty `intent` containing its original natural-language specification, and one `from` input; **MAY** declare non-empty `objective` and `acceptance` semantic annotations, `description`, `parameters`, `union`, `time`, `joins`, `filter`, `compute`, `temporal-series`, `aggregate`, `predict`, `select`, `order-by`, and `limit`; and **MUST NOT** declare any other key. The combined `intent`, `objective`, and `acceptance` of each query **MUST NOT** exceed 512 Unicode characters. Query execution **MUST** treat semantic annotations as inert metadata.
+- **DLS-QUERY-001:** `queries`, when present, **MUST** be a non-empty sequence of mappings. Each query **MUST** declare a `name` matching the canonical identifier pattern in **DLS-DOC-005**, a non-empty `subject` describing what its data is about or intended to show, and one `from` input; **MAY** declare non-empty `objective` and `acceptance` semantic annotations, `description`, `parameters`, `union`, `time`, `joins`, `filter`, `compute`, `temporal-series`, `aggregate`, `predict`, `select`, `order-by`, and `limit`; and **MUST NOT** declare any other key. The combined `subject`, `objective`, and `acceptance` of each query **MUST NOT** exceed 512 Unicode characters. Query execution **MUST** treat semantic annotations as inert metadata.
 - **DLS-QUERY-002:** A query `name` **MUST** be unique among queries and **MUST NOT** shadow a Section 5.1 database table or registered Section 5.4 runtime source. A declared query name **MAY** be used wherever a view selects data.
 - **DLS-QUERY-003:** `from`, every `union[]`, and every `joins[].source` **MUST** name one Section 5.1 database table, registered Section 5.4 runtime source, or query declared earlier in the sequence. Forward references, self references, and cycles **MUST** be rejected. `union`, when present, **MUST** be a non-empty sequence; its rows are appended in declaration order, fields from every unioned table, runtime source, or query are available to later clauses, and a field absent from one row has a null value for query operations.
 - **DLS-QUERY-004:** Clause execution order **MUST** be `from`, then `union` in declaration order, then `joins` in declaration order, then `filter`, `compute` in declaration order, `temporal-series`, `aggregate`, `predict` in declaration order, `select`, `order-by`, and finally `limit`.
@@ -633,7 +633,7 @@ the URL or persistent browser storage.
     "queries": [
       {
         "name": "simulated-usage",
-        "intent": "Estimate observed AIC under an operator-selected multiplier.",
+        "subject": "Estimate observed AIC under an operator-selected multiplier.",
         "parameters": [
           { "name": "multiplier", "type": "number" },
           { "name": "include-live", "type": "boolean" },
@@ -1023,7 +1023,7 @@ For pages that opt in to `filter-bar: true`, the presenter renders a filter bar 
 
 ### 11.1 Syntax and View Classes
 
-A custom page contains a non-empty `views` sequence. Each view has one `data` mapping and one mark. Data marks use an `encoding`; named UI elements use `element`. Any view may declare `intent`, `objective`, and `acceptance` semantic metadata. These annotations compose with those of its named query dependencies; they are not rendered verbatim as visible or accessible content. Any view, including any chart type, may declare `prompt` as `auto` (the default), `none`, or `always`. `auto` enables the shared prompt button when all three effective semantic values are available; `none` hides it; `always` shows it even if semantic values are incomplete. On charts this is a subtle Octicon button to the right of the title, with an accessible "Fix it" label that includes the chart title. The shared prompt-preview action uses the composed values, without per-view action configuration.
+A custom page contains a non-empty `views` sequence. Each view has one `data` mapping and one mark. Data marks use an `encoding`; named UI elements use `element`. Any view may declare `subject`, `objective`, and `acceptance` semantic metadata. These annotations compose with those of its named query dependencies; they are not rendered verbatim as visible or accessible content. Any view, including any chart type, may declare `prompt` as `auto` (the default), `none`, or `always`. `auto` enables the shared prompt button when all three effective semantic values are available; `none` hides it; `always` shows it even if semantic values are incomplete. On charts this is a subtle Octicon button to the right of the title, with an accessible "Fix it" label that includes the chart title. The shared prompt-preview action uses the composed values, without per-view action configuration.
 
 Any view may include the optional Boolean `locked` authoring hint. When `true`, an agent evolving the dashboard should preserve the view and modify it only to correct bugs. `locked` does not affect presentation, accessibility, data processing, or validation of the view's other fields.
 
@@ -1212,9 +1212,9 @@ Disclosure changes presentation only. It does not change data processing, data s
 - **DLS-VIEW-043:** A presenter rendering an independently loading named element **MUST** mount its page shell before its declared source queries settle, **MUST** bind each declared source independently, and **MUST** limit pending presentation to widgets that consume an unresolved source. A page projection **MUST NOT** produce view aliases for unrequested sources, and a later result **MUST NOT** replace another view's binding for the same database table or query.
 - **DLS-VIEW-032:** A `chart` view **MUST NOT** declare `table` or render a companion data table. Row-level evidence **MUST** use a separate `table` view.
 - **DLS-VIEW-033:** A swimlane presenter **MUST** expose persistent text labels for every lane and readable time labels on its primary axis. Each isolated observation or contiguous observation range **MUST** be focusable and have an accessible name containing its category, observation count, and exact timestamp or timestamp range. It **MUST NOT** rely on color alone.
-- **DLS-VIEW-034:** Any view **MAY** declare non-empty `intent`, `objective`, and `acceptance` semantic annotations: respectively what the view shows, what an operator should accomplish, and what constitutes success. The combined annotations of each view **MUST NOT** exceed 512 Unicode characters, independently of its queries; longer details belong in a separate Markdown file in the repository. These fields are metadata, not authored UI behavior. For each field, a presenter **MUST** concatenate annotations from every named query used by the view (including transitive named-query dependencies in reference order, once per query), followed by the view's own annotation; view annotations **MUST NOT** override query annotations. A view **MAY** declare `prompt` as `auto`, `none`, or `always`; omission defaults to `auto`. In `auto`, a view with all three effective fields **MUST** offer the shared prompt-preview action and missing fields **MUST NOT** enable it. In `none`, the action **MUST NOT** appear; in `always`, it **MUST** appear even with incomplete fields. These modes apply to every chart type and other view marks without an authored action declaration. The prompt **MUST** identify the page and view, include the effective annotations, named query IDs for fresh `cao query` / `cao query-info` or `cao_query` calls, relevant parameters, filters and scope, and bounded, explicitly untrusted current evidence.
+- **DLS-VIEW-034:** Any view **MAY** declare non-empty `subject`, `objective`, and `acceptance` semantic annotations: respectively what the view data is about or intended to show, why the view exists or what to improve or understand, and the conditions that make the view acceptable. The combined annotations of each view **MUST NOT** exceed 512 Unicode characters, independently of its queries; longer details belong in a separate Markdown file in the repository. These fields are metadata, not authored UI behavior. For each field, a presenter **MUST** concatenate annotations from every named query used by the view (including transitive named-query dependencies in reference order, once per query), followed by the view's own annotation; view annotations **MUST NOT** override query annotations. A view **MAY** declare `prompt` as `auto`, `none`, or `always`; omission defaults to `auto`. In `auto`, a view with all three effective fields **MUST** offer the shared prompt-preview action and missing fields **MUST NOT** enable it. In `none`, the action **MUST NOT** appear; in `always`, it **MUST** appear even with incomplete fields. These modes apply to every chart type and other view marks without an authored action declaration. The prompt **MUST** identify the page and view, include the effective annotations, named query IDs for fresh `cao query` / `cao query-info` or `cao_query` calls, relevant parameters, filters and scope, and bounded, explicitly untrusted current evidence.
 
-The view/query prompt template lives in `dashboard/site/src/semantic-view-prompt.js`, separate from semantic composition in `view-semantics.js`, so intent, objective, and acceptance can be evaluated and improved independently. The CLI command `./cao.sh prompt QUERY_ID` renders the same template with the selected query's own intent, objective, and acceptance; its dependency-first named query IDs provide context for requerying, not additional tasks. A bounded preview can be included from an explicit `--database FILE`. The prompt starts with a CAO improvement goal spanning ROI, cost, operational value, reliability, and velocity; references `/analyze-cao`; labels bounded evidence “This is a preview of the data. Requery for full data.” or explains that no preview was supplied; and ends with “Create a PR with the changes.”
+The view/query prompt template lives in `dashboard/site/src/semantic-view-prompt.js`, separate from semantic composition in `view-semantics.js`, so subject, objective, and acceptance can be evaluated and improved independently. The CLI command `./cao.sh prompt QUERY_ID` renders the same template with the selected query's own subject, objective, and acceptance; its dependency-first named query IDs provide context for requerying, not additional tasks. A bounded preview can be included from an explicit `--database FILE`. The prompt starts with a CAO improvement goal spanning ROI, cost, operational value, reliability, and velocity; references `/analyze-cao`; labels bounded evidence “This is a preview of the data. Requery for full data.” or explains that no preview was supplied; and ends with “Create a PR with the changes.”
 - **DLS-VIEW-035:** `locked`, when present, **MUST** be Boolean. When `true`, an agent evolving the dashboard **SHOULD NOT** modify the view except to correct bugs. A presenter **MUST** treat `locked` as inert authoring metadata and **MUST NOT** let it alter presentation, accessibility, data processing, or other view semantics.
 - **DLS-VIEW-036:** A `table` view **MAY** declare `tree` with distinct canonical `id-field` and `parent-field` values declared by its selected source. A tree table **MUST** use `controls: static`. Its presenter **MUST** order every available parent before its children, expose hierarchy depth in an accessible tree grid, and indent the first encoded column by depth. A row with an empty or unavailable parent **MUST** be treated as a root; a cycle **MUST NOT** prevent any row from rendering.
 - **DLS-VIEW-037:** A presenter **MAY** cluster a dense scatter chart before rendering, provided clustering preserves every color series when the rendered-point budget permits and caps rendered points at a documented implementation limit. Clustering **MUST** run outside the main browser thread when workers are available. While clustering is pending, the chart **MUST** expose visible progress with `status` semantics; each rendered cluster **MUST** expose its observation count in its accessible name.
@@ -1315,7 +1315,7 @@ In the table, “accept” means validation succeeds; “reject” means validat
 | DLS-VIEW-001–006 | T-VIEW-001 | 3 | Validate custom structure and every allowed mark/channel combination. |
 | DLS-VIEW-007–015, DLS-VIEW-025, DLS-UNIT-001–004 | T-VIEW-002 | 3 | Validate fields, types, link-compatible `href`, units and compact duration formatting, time units, ordering, exclusions, operation order, exposed context, and link labels. |
 | DLS-VIEW-016–021 | T-VIEW-003 | 3 | Validate disclosure vocabulary, one-to-four essential views, initial collapsed state, accessible controls, source order, and unchanged semantic output. |
-| DLS-VIEW-022–024, DLS-VIEW-026–037 | T-VIEW-004 | 3 | Validate named element dispatch, explicit field display treatments, complete ordered custom-page section layouts, route allocation, title links, rejection of chart data tables, tree-table hierarchy, swimlane accessibility, bounded scatter clustering progress, and inert element intent and view-lock hints. |
+| DLS-VIEW-022–024, DLS-VIEW-026–037 | T-VIEW-004 | 3 | Validate named element dispatch, explicit field display treatments, complete ordered custom-page section layouts, route allocation, title links, rejection of chart data tables, tree-table hierarchy, swimlane accessibility, bounded scatter clustering progress, and inert element subject and view-lock hints. |
 | DLS-VAL-001–005 | T-VAL-001 | 1–3 | Verify rejection, coded path-specific errors, semantic checks, progressive-disclosure bounds, and secret redaction. |
 | DLS-SAFE-001–006, DLS-SAFE-012, DLS-SAFE-015 | T-SAFE-001 | 3 | Exercise safe YAML, inert content, outcome-HTML allowlisting, prompt-context serialization, HTTPS links, secrets, and authorization boundaries. |
 | DLS-SAFE-007–010 | T-SAFE-002 | 3 | Inspect names, textual alternatives, labels, and non-color semantics. |
@@ -1499,7 +1499,7 @@ dashboard:
 - Added declarative operation Marketplace cards using reusable card templates, responsive entity-card grids, row-selected icons, and worker-executed queries.
 - Added the attention-first `signal-list` Home presentation, four-state Work display mapping, and composed `insights-overview` element with explicit outcome, AIC, detection, and experiment evidence boundaries.
 - Aligned page icons with the presenter's canonical Octicon set and defined the icon-only, tooltip-backed horizon control.
-- Added declarative `dashboard.queries` query results in Section 5.5 with required original-specification `intent` metadata, constrained equality joins, an allowlisted computed-field vocabulary, static output schemas, documented resource limits, composed data states, and worker-only execution through **DLS-QUERY-001** to **DLS-QUERY-019**, and revised Section 1.2, **DLS-VIEW-011**, and Appendix C.3 accordingly. `queries` is an optional additive key, so conforming `"0.1.0"` documents without queries remain valid and the language version is unchanged.
+- Added declarative `dashboard.queries` query results in Section 5.5 with required original-specification `subject` metadata, constrained equality joins, an allowlisted computed-field vocabulary, static output schemas, documented resource limits, composed data states, and worker-only execution through **DLS-QUERY-001** to **DLS-QUERY-019**, and revised Section 1.2, **DLS-VIEW-011**, and Appendix C.3 accordingly. `queries` is an optional additive key, so conforming `"0.1.0"` documents without queries remain valid and the language version is unchanged.
 - Added first-class `predict` query transforms with Vega-aligned `linear`, `log`, `exp`, `pow`, `quad`, and `poly` regression methods, grouped and multivariate linear fitting, forecast rows, static output fields, and worker-only execution through **DLS-QUERY-021** to **DLS-QUERY-023**.
 - Added bounded aggregate-local `filter` predicates for conditional query aggregation, with deterministic per-group execution, explicit empty and null semantics, static validation, and operation-budget accounting through **DLS-QUERY-024** and **DLS-QUERY-025**.
 

@@ -97,7 +97,7 @@ describe("dashboard app page-chunk debug logging", () => {
       }
       return new Response(JSON.stringify({
         page: { id: "overview", views: [{ data: { source: "observations" }, prompt: "auto" }] },
-        queries: [{ name: "observations", from: "runs", intent: "Inspect runs" }]
+        queries: [{ name: "observations", from: "runs", subject: "Inspect runs" }]
       }), { status: 200 });
     }));
     vi.resetModules();
