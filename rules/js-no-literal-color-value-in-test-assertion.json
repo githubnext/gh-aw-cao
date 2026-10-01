@@ -2,7 +2,7 @@
   "rule_key": "js-no-literal-color-value-in-test-assertion",
   "schema_version": 1,
   "first_seen": "2026-10-01T14:53:00Z",
-  "last_updated": "2026-10-01T18:58:42Z",
+  "last_updated": "2026-10-01T18:01:14Z",
   "status": "needs-work",
   "affected_languages": [
     "javascript"
@@ -70,15 +70,15 @@
   },
   "evaluation": {
     "target_repo": "githubnext/gh-aw-cao",
-    "target_commit": "3b29f41ce94f344927c053591f8807b9be119f3e",
+    "target_commit": "90eb49fee721dfe5d4900ca377d4b0373d8a44f8",
     "true_positive_count": 1,
     "false_positive_count": 11,
     "false_negative_count": 0,
     "readiness_for_target": "needs-work",
-    "reason": "Re-confirmed unchanged on current HEAD (3b29f41, shallow checkout; no changes to docs/components/TerminalDemo.astro or tests/unit/landing-page-diagram.test.mjs since prior evaluation). The confirmed true positive and the same 11 stable non-churning literal color assertions remain present verbatim. No classification change; readiness remains needs-work pending a churn-scoped or directory-restricted implementation.",
-    "txn_id": "refiner-36910513233-1"
+    "reason": "Scratch rule flagging any regex-literal hex/color-mix assertion found 15 sites across 3 files; only tests/unit/landing-page-diagram.test.mjs:305 (the mined --terminal-syntax-placeholder churn pair, currently failing) is a true positive. 11 other sites are stable, non-actively-tuned literals the mined likely_false_positives description explicitly excludes. Needs a file-scope restriction (docs/components/*.astro under active contrast churn) before adoption.",
+    "txn_id": "refiner-36887337909-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36910513233",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36901317392",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-01T18:58:42Z"
+  "last_seen_at": "2026-10-01T18:01:14Z"
 }
