@@ -956,11 +956,18 @@ type queryResponse struct {
 }
 
 func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollectionHealth bool) (queryResponse, int, error) {
-	active, err := a.store.Active(ctx)
-	if err != nil || active.Generation == "" {
+	database := a.dashboard
+	if database == nil {
+		database = &redisx.DashboardDatabase{Store: a.store}
+	}
+	active, err := database.Current(ctx)
+	if err != nil || !active.Available {
 		return queryResponse{}, http.StatusServiceUnavailable, errors.New("dashboard data is unavailable")
 	}
-	evaluatedAt := evaluationTime(active)
+	evaluatedAt := active.EvaluatedAt.UTC().Format(time.RFC3339Nano)
+	if active.EvaluatedAt.IsZero() {
+		evaluatedAt = time.Now().UTC().Format(time.RFC3339Nano)
+	}
 	healthRevision := int64(0)
 	if allowCollectionHealth {
 		_, events, healthErr := a.store.IngestionHealth(ctx)
@@ -993,12 +1000,8 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 	}
 	started := time.Now()
 	loader := &generationLoader{
-		ctx: ctx, store: a.store, generation: active.Generation,
+		ctx: ctx, store: a.store, generation: strconv.FormatInt(active.Revision, 10),
 		app: a, allowCollectionHealth: allowCollectionHealth,
-	}
-	database := a.dashboard
-	if database == nil {
-		database = &redisx.DashboardDatabase{Store: a.store}
 	}
 	if err := database.Validate(definitions); err != nil {
 		return queryResponse{}, http.StatusBadRequest, err

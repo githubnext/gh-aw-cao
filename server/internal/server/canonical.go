@@ -22,16 +22,16 @@ type canonicalService struct {
 var errCanonicalEntityNotFound = errors.New("canonical entity was not found")
 
 func (service canonicalService) rows(ctx context.Context, source string) ([]model.Row, error) {
-	active, err := service.store.Active(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if active.Generation == "" {
-		return nil, errors.New("dashboard data is unavailable")
-	}
 	database := service.dashboard
 	if database == nil {
 		database = &redisx.DashboardDatabase{Store: service.store}
+	}
+	active, err := database.Current(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !active.Available {
+		return nil, errors.New("dashboard data is unavailable")
 	}
 	sources, _, err := database.Execute(ctx, nil, []string{source}, nil)
 	if err != nil {
@@ -41,11 +41,15 @@ func (service canonicalService) rows(ctx context.Context, source string) ([]mode
 }
 
 func (service canonicalService) filteredRows(ctx context.Context, source string, filters map[string]any) ([]model.Row, error) {
-	active, err := service.store.Active(ctx)
+	database := service.dashboard
+	if database == nil {
+		database = &redisx.DashboardDatabase{Store: service.store}
+	}
+	active, err := database.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if active.Generation == "" {
+	if !active.Available {
 		return nil, errors.New("dashboard data is unavailable")
 	}
 	predicates := make([]query.Predicate, 0, len(filters))
@@ -58,10 +62,6 @@ func (service canonicalService) filteredRows(ctx context.Context, source string,
 		Filter: &query.Filter{
 			Predicates: predicates,
 		},
-	}
-	database := service.dashboard
-	if database == nil {
-		database = &redisx.DashboardDatabase{Store: service.store}
 	}
 	sources, _, err := database.Execute(ctx, []query.Definition{definition}, []string{definition.Name}, nil)
 	if err != nil {
