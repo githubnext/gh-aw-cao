@@ -39,7 +39,8 @@ func TestCollectionHealthSourceReportsBackfillProgress(t *testing.T) {
 	source := collectionHealthSource(collect.Status{
 		Configured: true, Health: "recovering", Backfill: "partial",
 		BackfillFailures: 2, BackfillRunTasks: 17, OldestPending: "23s",
-		Load: map[string]float64{"webhook": 2.5, "collection": 1.5, "failure": 0.5},
+		Load:     map[string]float64{"webhook": 2.5, "collection": 1.5, "failure": 0.5},
+		Counters: map[string]int64{"webhookReceived": 23, "collectionSucceeded": 11},
 	})
 	if got := source.Rows[0]["backfill"]; got != "partial" {
 		t.Fatalf("backfill phase = %v, want partial", got)
@@ -55,6 +56,9 @@ func TestCollectionHealthSourceReportsBackfillProgress(t *testing.T) {
 	}
 	if got := source.Rows[0]["webhook-load"]; got != 2.5 {
 		t.Fatalf("webhook load = %v, want 2.5", got)
+	}
+	if source.Rows[0]["webhook-received"] != int64(23) || source.Rows[0]["collection-succeeded"] != int64(11) {
+		t.Fatalf("Redis counters were not exposed to the admin dashboard: %+v", source.Rows[0])
 	}
 }
 

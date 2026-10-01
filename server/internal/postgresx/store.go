@@ -93,7 +93,11 @@ func NewConfig(ctx context.Context, config *pgx.ConnConfig, namespaces ...string
 	if err := validateTransport(config); err != nil {
 		return nil, err
 	}
-	db := stdlib.OpenDB(*config.Copy())
+	config, err := instrumentConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("configure postgres telemetry: %w", err)
+	}
+	db := stdlib.OpenDB(*config)
 	db.SetMaxOpenConns(4)
 	db.SetMaxIdleConns(2)
 	db.SetConnMaxLifetime(30 * time.Minute)

@@ -781,6 +781,9 @@ current outstanding work and cumulative backfill admissions as clearly labeled
 horizontal bars and shows these loads to administrators. In the
 default profile the endpoint reports `{"configured": false}` rather than
 failing.
+The existing Redis-backed ingestion counters remain available in the
+administrator-only `collection-health` dashboard source; OTLP metrics do not
+replace them.
 
 ### Diagnose a deployment
 
@@ -1117,7 +1120,15 @@ rejected, concurrent, and failed rechecks from revoked, queued, or failed
 callback credential cleanup. No account, membership, token, cookie, or provider
 message is attached to these signals. The query engine and ingestion paths
 start dedicated `cao_dashboard.query.execute` and `cao_dashboard.ingest.run`
-spans. The GitHub API quota service (`internal/githubquota/`) starts
+spans. Every Postgres statement emits a child `cao_dashboard.postgres.query`
+client span and `cao_dashboard.postgres.query.count` (unit `{query}`) and
+`cao_dashboard.postgres.query.duration` (seconds) metrics. Duration measures
+statement execution after acquiring a connection, not pool wait or row
+decoding. Only fixed `db.operation.name` (`select`, `insert`, `update`,
+`delete`, `copy`, or `other`) and `cao_dashboard.postgres.outcome` (`success`
+or `error`) values are recorded; SQL, parameters, error messages, source
+names, and database connection details are excluded. Existing pgx tracers
+are preserved. The GitHub API quota service (`internal/githubquota/`) starts
 `cao_githubquota.<operation>` spans (`observe`, `commit`, `reserve`, `release`,
 `park`, `unpark`, `state`, `select`, `usage`) and records
 `cao_githubquota.operation.count` and `cao_githubquota.operation.duration`
