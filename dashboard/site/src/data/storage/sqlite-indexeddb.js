@@ -628,11 +628,12 @@ class SqliteIDBDatabase {
 
   /** @param {string} storeName */
   records(storeName) {
-    return this.connection.prepare(`
+    const query = sql`
       SELECT record_key, value
       FROM __idb_records
-      WHERE database_name = ? AND store_name = ?
-    `).all(this.name, storeName).map((row) => ({
+      WHERE database_name = ${this.name} AND store_name = ${storeName}
+    `;
+    return this.connection.prepare(query.text).all(...query.values).map((row) => ({
       key: JSON.parse(String(/** @type {{ record_key: string }} */ (row).record_key)),
       value: JSON.parse(String(/** @type {{ value: string }} */ (row).value))
     }));

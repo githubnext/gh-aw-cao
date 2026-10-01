@@ -1,6 +1,8 @@
 /**
  * Build SQLite statements with bound values. Identifiers must be explicitly
- * marked; values are never interpolated into SQL text.
+ * marked; values are never interpolated into SQL text. This prevents SQL
+ * injection, not HTML injection: render returned strings as text or sanitize
+ * them separately at the DOM boundary.
  */
 const IDENTIFIER = Symbol('sql identifier');
 
