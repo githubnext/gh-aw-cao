@@ -4219,6 +4219,27 @@
       }
     },
     {
+      "id": "campaign-cost-totals",
+      "subject": "Sum observed AI Credit cost across declared campaign orchestrators and workers.",
+      "objective": "Attribute retained workflow AIC totals to centrally managed campaigns without computing unrelated inventory metrics.",
+      "acceptance": "Sum only orchestrator and worker workflow AIC by campaign; missing run observations contribute zero, not proof of zero actual usage.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "workflow-aic-totals",
+        "workflows"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
       "id": "cost-by-campaign",
       "subject": "Present observed AI Credit cost grouped by centrally managed campaign.",
       "objective": "Identify campaigns whose observed AI Credit use needs investigation.",
@@ -4226,7 +4247,8 @@
       "description": "",
       "parameters": [],
       "sources": [
-        "campaign-inventory"
+        "campaign-cost-totals",
+        "campaigns"
       ],
       "used-by-pages": [
         "cost"
@@ -4235,13 +4257,8 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "audits",
           "campaigns",
-          "domains",
-          "issues",
-          "repositories",
           "runs",
-          "tools",
           "workflows"
         ]
       }
