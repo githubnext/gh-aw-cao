@@ -30,7 +30,7 @@ catalog. Never rely on a hard-coded list or silently select or install one.
 ## Discover the Catalog
 
 1. Verify GitHub authentication with `gh auth status`.
-2. Resolve the current default-branch commit for `githubnext/gh-aw-cao` once. Use that immutable commit for every manifest, declaration, README, and workflow inspected during this decision so the recommendation cannot mix catalog revisions.
+2. Resolve the default-branch commit for `githubnext/gh-aw-cao` once. Use it for every manifest, declaration, README, and workflow inspected to prevent mixed-revision recommendations.
 3. Enumerate top-level directories at that commit. A candidate operational campaign must contain both `aw.yml` and `cao.json` in the same directory.
 4. Parse each candidate's `aw.yml` as YAML and `cao.json` as JSON. Do not infer metadata with regular expressions. Exclude campaigns with `private: true`; label campaigns with `experimental: true` clearly.
 5. Read each remaining campaign's manifest description, README, CAO declaration, orchestrator source, and worker sources from the same commit. Derive outcomes and tradeoffs from those files rather than campaign names.
