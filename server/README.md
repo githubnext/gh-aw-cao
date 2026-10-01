@@ -60,23 +60,23 @@ definitions; raw canonical `id` joins and the `runId`/`sessionId` drilldown
 routes motivate the first three hot-key indexes. This is **not** a traffic
 sample, so weighted native coverage remains unmeasured. With a disposable
 Postgres database, run `POSTGRES_URL=... go test ./internal/postgresx -run '^$'
--bench '^BenchmarkNativeFilterPlan$' -benchmem -benchtime=30x -count=1` from
+-bench '^BenchmarkNativeFilterPlan$' -benchmem -benchtime=100x -count=1` from
 `server/` to compare full repeatable-read query paths. On a local AMD EPYC
-9V74 with 5,000 synthetic jobs, one run measured:
+9V74 with 5,000 synthetic jobs and 100 repetitions per path, one run measured:
 
 | Path | Mean | p50 | p95 | Go allocations |
 | --- | ---: | ---: | ---: | ---: |
-| Native filtered plan | 1.048 ms | 993 µs | 1,382 µs | 28,547 B/op |
-| Bounded Go evaluator | 46.393 ms | 45,340 µs | 52,570 µs | 13,554,745 B/op |
-| Hand-written SQL row retrieval | 0.489 ms | 471 µs | 621 µs | 3,850 B/op |
+| Native filtered plan | 1.034 ms | 1,003 µs | 1,319 µs | 28,483 B/op |
+| Bounded Go evaluator | 53.468 ms | 49,584 µs | 64,369 µs | 13,554,614 B/op |
+| Hand-written SQL row retrieval | 0.482 ms | 471 µs | 533 µs | 3,835 B/op |
 
 `EXPLAIN (ANALYZE, BUFFERS)` for the hand-written filtered retrieval reported
 an index scan on `cao_source_documents_run_id`, three shared buffer hits and
-0.051 ms execution (including its ordinal sort). The 10 matching JSON
+0.054 ms execution (including its ordinal sort). The 10 matching JSON
 documents totaled 820 payload bytes versus 136,680 text bytes in the
 unfiltered legacy EAV values; these are payload sizes, **not** actual wire
-byte counts. Dual-format ingestion took 1.40 s for 5,000 rows. The native
-p95 here is **2.23×** the hand-written retrieval (which does not enforce
+byte counts. Dual-format ingestion took 1.04 s for 5,000 rows. The native
+p95 here is **2.47×** the hand-written retrieval (which does not enforce
 plan budgets or build metadata), above the 1.25× goal. Join/aggregate/sorted
 table/page benchmarks, end-to-end HTTP p50/p95, production weighted
 coverage, and a COPY-based ingestion cost comparison remain to be measured.
