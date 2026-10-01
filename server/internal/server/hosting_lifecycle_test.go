@@ -26,6 +26,7 @@ func TestExternalHTTPServerDrainLifecycle(t *testing.T) {
 	profile := hostedHostProfile()
 	profile.Listener = HostListenerExternal
 	app, err := New(t.Context(), redisx.NewStore(client, "external-lifecycle"), Config{
+		Database:      integrationDatabase(t),
 		HostProfile:   profile,
 		SiteDirectory: t.TempDir(),
 		Proxy: ProxyPolicy{
@@ -107,7 +108,7 @@ func TestExternalHTTPServerDrainLifecycle(t *testing.T) {
 		}
 	}
 
-	checkAndClose(request("/api/health"), http.StatusServiceUnavailable)
+	checkAndClose(request("/auth/logged-out"), http.StatusServiceUnavailable)
 	preflight := request("/api/v1/events")
 	preflight.Method = http.MethodOptions
 	preflight.Header.Set("Origin", "https://tools.example.com")
@@ -124,11 +125,11 @@ func TestExternalHTTPServerDrainLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	checkAndClose(request("/api/health"), http.StatusOK)
-	invalidHost := request("/api/health")
+	checkAndClose(request("/auth/logged-out"), http.StatusOK)
+	invalidHost := request("/auth/logged-out")
 	invalidHost.Header.Set("X-Forwarded-Host", "attacker.example.com")
 	checkAndClose(invalidHost, http.StatusMisdirectedRequest)
-	invalidProtocol := request("/api/health")
+	invalidProtocol := request("/auth/logged-out")
 	invalidProtocol.Header.Set("X-Forwarded-Proto", "http")
 	checkAndClose(invalidProtocol, http.StatusMisdirectedRequest)
 	invalidPreflight := request("/api/v1/events")
@@ -185,7 +186,7 @@ func TestExternalHTTPServerDrainLifecycle(t *testing.T) {
 		t.Fatalf("initial event = %q, %v", line, err)
 	}
 
-	slowRequest := request("/api/health")
+	slowRequest := request("/auth/logged-out")
 	slowRequest.Header.Set("X-Test-Slow", "1")
 	slowResult := make(chan int, 1)
 	slowError := make(chan error, 1)
@@ -219,7 +220,7 @@ func TestExternalHTTPServerDrainLifecycle(t *testing.T) {
 	}
 
 	app.Drain()
-	checkAndClose(request("/api/health"), http.StatusServiceUnavailable)
+	checkAndClose(request("/auth/logged-out"), http.StatusServiceUnavailable)
 	checkAndClose(preflight, http.StatusServiceUnavailable)
 	streamDone := make(chan error, 1)
 	go func() {
