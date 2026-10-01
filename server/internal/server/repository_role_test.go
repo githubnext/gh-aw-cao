@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -71,7 +72,9 @@ func TestRepositoryRoleAuthorizationCachesAndRevalidatesETag(t *testing.T) {
 func TestRepositoryRoleAuthorizationFailClosedAndQueryAvailability(t *testing.T) {
 	role := "maintain"
 	status := http.StatusOK
+	var calls atomic.Int32
 	api := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
 		response.WriteHeader(status)
 		_, _ = response.Write([]byte(`{"role_name":"` + role + `"}`))
 	}))
@@ -136,6 +139,43 @@ func TestRepositoryRoleAuthorizationFailClosedAndQueryAvailability(t *testing.T)
 				if got := result.Sources[name].Metadata["availability"]; got != want {
 					t.Errorf("%s availability=%v, want %s", name, got, want)
 				}
+			}
+			if test.status == http.StatusNotFound || test.status == http.StatusServiceUnavailable {
+				app.adminAuthorized(request)
+				want := int32(4)
+				if test.status == http.StatusServiceUnavailable {
+					want = 5
+				}
+				if calls.Load() != want {
+					t.Errorf("permission denial was not cached: calls=%d", calls.Load())
+				}
+			}
+		})
+	}
+}
+
+func TestRepositoryRoleLoginRequestsPrivateRepositoryScope(t *testing.T) {
+	for _, test := range []struct {
+		name, want string
+		repository bool
+	}{
+		{"ordinary hosted login", "read:org", false},
+		{"repository role login", "read:org repo", true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			oauth := newGitHubOAuth(GitHubOAuthConfig{
+				SessionSecret:   strings.Repeat("s", 32),
+				AuthURL:         "https://github.com/login/oauth/authorize",
+				RepositoryScope: test.repository,
+			}, nil)
+			response := httptest.NewRecorder()
+			oauth.login(response, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil))
+			location, err := url.Parse(response.Header().Get("Location"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := location.Query().Get("scope"); got != test.want {
+				t.Errorf("OAuth scope=%q, want %q", got, test.want)
 			}
 		})
 	}

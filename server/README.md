@@ -756,6 +756,13 @@ private-key file rather than reading it.
 | `CAO_COLLECT_QUEUE_MAX_LENGTH` | admission backpressure limit for outstanding collection tasks (default 200 000); tasks are never trimmed |
 | `CAO_COLLECT_ADMIT_ONLY` | admit deliveries without collecting; requires no private key |
 
+When a control repository is configured, hosted OAuth requests the GitHub
+`repo` scope in addition to `read:org` so repository roles can be checked on
+private repositories. This grants the dashboard's OAuth token access to the
+user's private repositories; existing sessions must sign out and sign back in
+to consent to the additional scope. Without a control repository, hosted OAuth
+continues to request only `read:org`.
+
 ### Admission-only front ends
 
 A process that only receives webhooks does not need collection credentials.

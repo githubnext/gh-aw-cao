@@ -109,6 +109,7 @@ type GitHubOAuthConfig struct {
 	OrgMembershipURL        string
 	TeamMembershipURL       string
 	RepositoryPermissionURL string
+	RepositoryScope         bool
 	RevokeURL               string
 	HTTPClient              *http.Client
 	RevocationKeyPrefix     string
@@ -215,6 +216,23 @@ func (oauth *githubOAuth) repositoryRoleAuthorized(ctx context.Context, session 
 	}
 	oauth.roleMu.Unlock()
 
+	cache := func(entry repositoryRoleCacheEntry) {
+		oauth.roleMu.Lock()
+		defer oauth.roleMu.Unlock()
+		if oauth.roles == nil {
+			oauth.roles = make(map[string]repositoryRoleCacheEntry)
+		}
+		for cacheKey, value := range oauth.roles {
+			if time.Now().After(value.expires) && cacheKey != key {
+				delete(oauth.roles, cacheKey)
+			}
+		}
+		oauth.roles[key] = entry
+	}
+	denyTemporarily := func() bool {
+		cache(repositoryRoleCacheEntry{expires: time.Now().Add(10 * time.Second)})
+		return false
+	}
 	endpoint := oauth.config.RepositoryPermissionURL
 	for placeholder, value := range map[string]string{
 		"{owner}": owner, "{repo}": name, "{user}": session.Login,
@@ -223,7 +241,7 @@ func (oauth *githubOAuth) repositoryRoleAuthorized(ctx context.Context, session 
 	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil) // #nosec G704 -- endpoint is server-side OAuth configuration and repository is validated server-side policy.
 	if err != nil {
-		return false
+		return denyTemporarily()
 	}
 	request.Header.Set("Accept", "application/vnd.github+json")
 	request.Header.Set("Authorization", "Bearer "+session.AccessToken)
@@ -232,7 +250,7 @@ func (oauth *githubOAuth) repositoryRoleAuthorized(ctx context.Context, session 
 	}
 	response, err := oauth.client.Do(request) // #nosec G704 -- endpoint is server-side OAuth configuration, not a request parameter.
 	if err != nil {
-		return false
+		return denyTemporarily()
 	}
 	defer func() {
 		_, _ = io.Copy(io.Discard, response.Body)
@@ -242,7 +260,7 @@ func (oauth *githubOAuth) repositoryRoleAuthorized(ctx context.Context, session 
 	switch response.StatusCode {
 	case http.StatusNotModified:
 		if !found || cached.etag == "" {
-			return false
+			return denyTemporarily()
 		}
 		entry.allowed = cached.allowed
 		if entry.etag == "" {
@@ -254,24 +272,16 @@ func (oauth *githubOAuth) repositoryRoleAuthorized(ctx context.Context, session 
 			RoleName   string `json:"role_name"`
 		}
 		if json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&role) != nil {
-			return false
+			return denyTemporarily()
 		}
 		entry.allowed = role.Permission == "admin" || role.Permission == "maintain" ||
 			role.RoleName == "admin" || role.RoleName == "maintain"
+	case http.StatusNotFound:
+		entry.allowed = false
 	default:
-		return false
+		return denyTemporarily()
 	}
-	oauth.roleMu.Lock()
-	if oauth.roles == nil {
-		oauth.roles = make(map[string]repositoryRoleCacheEntry)
-	}
-	for cacheKey, value := range oauth.roles {
-		if time.Now().After(value.expires) && cacheKey != key {
-			delete(oauth.roles, cacheKey)
-		}
-	}
-	oauth.roles[key] = entry
-	oauth.roleMu.Unlock()
+	cache(entry)
 	return entry.allowed
 }
 
@@ -346,6 +356,9 @@ func (oauth *githubOAuth) login(response http.ResponseWriter, request *http.Requ
 	values.Set("redirect_uri", oauth.config.RedirectURL)
 	values.Set("state", state)
 	values.Set("scope", "read:org")
+	if oauth.config.RepositoryScope {
+		values.Set("scope", "read:org repo")
+	}
 	if request.URL.Query().Get("select_account") == "1" {
 		oauth.logBranch("login.account_selection_requested")
 		values.Set("prompt", "select_account")

@@ -123,6 +123,7 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 	var accessToken string
 	if profile.Authentication == HostAuthenticationOAuth {
 		oauth = newGitHubOAuth(*config.GitHubOAuth, store)
+		oauth.config.RepositoryScope = config.AdminRepository != ""
 	} else {
 		accessToken = strings.TrimSpace(config.AccessToken)
 		if accessToken == "" {

@@ -346,6 +346,8 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   authorization, limits rebuild and diagnostic access to explicitly listed
   administrators or the configured control repository's admin/maintainers
   (permission checks cache for five minutes with ETag revalidation), verifies
+  roles for private repositories by requesting OAuth `repo` scope only when a
+  control repository is configured, and
   webhook signatures, deduplicates deliveries, and coordinates bounded
   request-independent rebuilds through Redis so multiple stateless replicas
   cannot replace the projection concurrently. Its client exposes the active

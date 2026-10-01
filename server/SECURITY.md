@@ -34,6 +34,8 @@ Administrative rebuilds and collection/quota diagnostics additionally require
 an explicit GitHub login in `CAO_GITHUB_ADMIN_USERS` or an admin/maintain role
 on the configured `CAO_COLLECT_CONTROL_REPOSITORY`. Repository permission
 checks fail closed and cache results for five minutes with ETag revalidation.
+When this repository-role path is configured, OAuth requests `repo` scope to
+support private control repositories; tokens remain encrypted server-side.
 Mutating browser requests require the session-bound CSRF token. The webhook
 route is exempt from browser authentication only because it independently
 requires a valid `X-Hub-Signature-256` signature and delivery identity.
