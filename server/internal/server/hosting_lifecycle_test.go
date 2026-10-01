@@ -334,22 +334,6 @@ func TestStopClosesOnlyOwnedDatabaseAfterTasksFinish(t *testing.T) {
 		default:
 			close(releaseTask)
 		}
-
-		func TestHostedServeStartupFailureClosesOwnedDatabase(t *testing.T) {
-			database := integrationDatabase(t)
-			app := &App{
-				database: database, ownedDatabase: database,
-				config: Config{HostProfile: localHostProfile()},
-			}
-			ctx, cancel := context.WithCancel(t.Context())
-			cancel()
-			if err := app.Serve(ctx); !errors.Is(err, context.Canceled) {
-				t.Fatalf("Serve with canceled startup = %v", err)
-			}
-			if _, err := database.State(t.Context()); err == nil {
-				t.Fatal("Serve left hosted pool open after startup failure")
-			}
-		}
 	}()
 	app.startTask(func() {
 		<-app.drain
@@ -380,5 +364,21 @@ func TestStopClosesOnlyOwnedDatabaseAfterTasksFinish(t *testing.T) {
 	}
 	if _, err := callerDatabase.State(t.Context()); err != nil {
 		t.Fatalf("caller-owned pool closed: %v", err)
+	}
+}
+
+func TestHostedServeStartupFailureClosesOwnedDatabase(t *testing.T) {
+	database := integrationDatabase(t)
+	app := &App{
+		database: database, ownedDatabase: database,
+		config: Config{HostProfile: localHostProfile()},
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if err := app.Serve(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Serve with canceled startup = %v", err)
+	}
+	if _, err := database.State(t.Context()); err == nil {
+		t.Fatal("Serve left hosted pool open after startup failure")
 	}
 }
