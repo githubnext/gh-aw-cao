@@ -384,7 +384,10 @@ func TestOAuthRestoresExpiredCSRFCookieBeforeSessionExpiry(t *testing.T) {
 	empty := httptest.NewRecorder()
 	request = azureRequest(t, http.MethodGet, "/api/auth/session")
 	request.AddCookie(sessionCookie)
-	request.AddCookie(&http.Cookie{Name: csrfCookieName, Value: ""})
+	request.AddCookie(&http.Cookie{
+		Name: csrfCookieName, Value: "", Secure: true,
+		HttpOnly: true, SameSite: http.SameSiteLaxMode,
+	})
 	app.Handler().ServeHTTP(empty, request)
 	if empty.Code != http.StatusOK || firstCookie(t, empty.Result(), csrfCookieName).Value != csrfCookie.Value {
 		t.Fatal("authenticated read did not replace an empty CSRF cookie")
