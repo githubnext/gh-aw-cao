@@ -207,6 +207,20 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 		return Result{}, err
 	}
 	generation := time.Now().UTC().Format("20060102T150405.000000000Z") + "-" + dataRevision[len(dataRevision)-12:]
+	if err := store.TrackGeneration(ctx, generation); err != nil {
+		return Result{}, err
+	}
+	activationStarted := false
+	defer func() {
+		if err == nil || activationStarted {
+			return
+		}
+		cleanup, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if dropErr := store.DiscardGeneration(cleanup, generation); dropErr != nil {
+			ingestLog.Printf("failed generation cleanup incomplete")
+		}
+	}()
 	counts := map[string]int{}
 	for _, name := range sortedSourceNames(sources) {
 		source := sources[name]
@@ -231,6 +245,7 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 		return Result{}, fmt.Errorf("stage repository memory: %w", err)
 	}
 	evaluatedAt := sourceEvaluationTime(sources)
+	activationStarted = true
 	revision, err := store.Activate(ctx, generation, dataRevision, evaluatedAt, counts)
 	if err != nil {
 		return Result{}, err
@@ -241,9 +256,7 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 	// without this a frequently projecting deployment exhausts memory and
 	// every subsequent write fails. A reclamation failure must not invalidate
 	// the generation that was just activated.
-	if err := store.TrackGeneration(ctx, generation); err != nil {
-		ingestLog.Printf("generation tracking failed; reclamation may lag")
-	} else if _, err := store.PruneGenerations(ctx, options.RetainGenerations); err != nil {
+	if _, err := store.PruneGenerations(ctx, options.RetainGenerations); err != nil {
 		ingestLog.Printf("generation reclamation failed")
 	}
 	return Result{

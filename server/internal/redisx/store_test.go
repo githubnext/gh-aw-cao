@@ -59,6 +59,38 @@ func (loader storeQueryLoader) LoadSource(name string, definition *query.Definit
 	return loader.store.LoadSource(loader.ctx, "generation", name, definition)
 }
 
+func TestIndexedPredicateRequiresSafeStringEquality(t *testing.T) {
+	rows := []model.Row{
+		{"conclusion": "success", "state": "open", "mode": true},
+		{"conclusion": "failure", "state": nil, "mode": "true"},
+	}
+	fields := indexedStringFields(rows)
+	if !reflect.DeepEqual(fields, []string{"conclusion", "state"}) {
+		t.Fatalf("unexpected indexed fields: %v", fields)
+	}
+	for _, test := range []struct {
+		name   string
+		filter query.Filter
+		want   string
+	}{
+		{"equality", query.Filter{Predicates: []query.Predicate{{Field: "conclusion", Equals: "failure"}}}, "@conclusion:{failure}"},
+		{"alternatives", query.Filter{Predicates: []query.Predicate{{Field: "conclusion", In: []any{"success", "failure"}}}}, "@conclusion:{success|failure}"},
+		{"escaped coordinate", query.Filter{Predicates: []query.Predicate{{Field: "state", Equals: "owner/repo-name"}}}, `@state:{owner\/repo\-name}`},
+		{"unindexed", query.Filter{Predicates: []query.Predicate{{Field: "mode", Equals: "true"}}}, ""},
+		{"missing unknown", query.Filter{Predicates: []query.Predicate{{Field: "state", Equals: "unknown"}}}, ""},
+		{"optional", query.Filter{Predicates: []query.Predicate{{Field: "state", Equals: "open", Optional: true}}}, ""},
+		{"injection", query.Filter{Predicates: []query.Predicate{{Field: "state", Equals: "open|*"}}}, ""},
+		{"mixed types", query.Filter{Predicates: []query.Predicate{{Field: "state", In: []any{"open", true}}}}, ""},
+		{"substring", query.Filter{Predicates: []query.Predicate{{Field: "state", Includes: "pen"}}}, ""},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := indexedPredicate(&test.filter, fields); got != test.want {
+				t.Fatalf("expression = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
 func TestCountAggregateProjectsLargeToolRows(t *testing.T) {
 	event := map[string]any{
 		"organization": "example", "repository": "repo", "workflow": "worker",

@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -20,6 +21,77 @@ import (
 
 const redisWriteBatchSize = 100
 const ingestionHealthKey = "state:ingestion-health"
+const maxIndexedCandidates = 5000
+
+// Only index scalar fields used by common direct-source dashboard filters.
+// Other predicates, substring searches, joins, and issue overlays remain in Go.
+var searchableFields = []string{
+	"campaign-mode", "conclusion", "event", "lifecycle-state", "mode", "outcome-state",
+	"repositoryFullName", "rollout-mode", "run-conclusion", "run-status", "state", "status",
+	"verification-state", "workflow-role",
+}
+
+var searchTag = regexp.MustCompile(`^[a-zA-Z0-9_/-]+$`)
+
+func indexedStringFields(rows []model.Row) []string {
+	var fields []string
+	for _, field := range searchableFields {
+		found, valid := false, true
+		for _, row := range rows {
+			value := row[field]
+			if value == nil {
+				continue
+			}
+			text, ok := value.(string)
+			if !ok {
+				valid = false
+				break
+			}
+			found = found || text != ""
+		}
+		if found && valid {
+			fields = append(fields, field)
+		}
+	}
+	return fields
+}
+
+func indexedPredicate(filter *query.Filter, fields []string) string {
+	for _, predicate := range filter.Predicates {
+		if predicate.Optional || predicate.Includes != "" || predicate.GTE != nil || predicate.LT != nil {
+			continue
+		}
+		if !containsField(fields, predicate.Field) {
+			continue
+		}
+		values := predicate.In
+		if len(values) == 0 {
+			values = []any{predicate.Equals}
+		}
+		tags := make([]string, 0, len(values))
+		for _, value := range values {
+			text, ok := value.(string)
+			if !ok || text == "unknown" || len(text) > 128 || !searchTag.MatchString(text) {
+				tags = nil
+				break
+			}
+			tags = append(tags, strings.NewReplacer("/", `\/`, "-", `\-`).Replace(text))
+		}
+		if len(tags) != 0 {
+			return "@" + strings.ReplaceAll(predicate.Field, "-", "_") + ":{" + strings.Join(tags, "|") + "}"
+		}
+	}
+	return ""
+}
+
+func containsField(fields []string, field string) bool {
+	for _, candidate := range fields {
+		if candidate == field {
+			return true
+		}
+	}
+	return false
+}
 
 var ingestionCounterNames = map[string]struct{}{
 	"webhookReceived":        {},
@@ -602,15 +674,39 @@ func (s *Store) Activate(ctx context.Context, generation, dataRevision string, e
 
 // PutSource stages one source's rows.
 //
-// Rows are stored as a single raw JSON document per key plus a set of the keys
-// in the source. Nothing else is written: the previous implementation also
-// wrote every scalar field as its own hash field purely so RediSearch could
-// index it, which doubled the memory a generation occupied to serve a pushdown
-// path that no canonical query was eligible for.
+// Redis 8 stores rows as JSON documents and indexes eligible string fields
+// without duplicating the documents. Issue overlays and Upstash's
+// single-session provider retain the core Redis hash representation.
 func (s *Store) PutSource(ctx context.Context, generation string, source model.Source) error {
 	redisLog.Printf("staging source rows=%d", len(source.Rows))
 	prefix := s.rowPrefix(generation, source.Source)
 	setKey := s.sourceSetKey(generation, source.Source)
+	format := "hash"
+	var indexed []string
+	if !s.processIsolated && source.Source != "issues" {
+		format = "json"
+		indexed = indexedStringFields(source.Rows)
+	}
+	metadata, _ := json.Marshal(source.Metadata)
+	fields, _ := json.Marshal(indexed)
+	if _, err := s.Client.Do(ctx, "HSET", s.generationKey(generation),
+		"source:"+source.Source+":metadata", string(metadata),
+		"source:"+source.Source+":format", format,
+		"source:"+source.Source+":indexed-fields", string(fields),
+	); err != nil {
+		return err
+	}
+	if format == "json" {
+		schema := []string{"$.id", "AS", "id", "TAG", "CASESENSITIVE"}
+		for _, field := range indexed {
+			schema = append(schema, "$."+field, "AS", strings.ReplaceAll(field, "-", "_"), "TAG", "CASESENSITIVE")
+		}
+		command := append([]string{"FT.CREATE", s.sourceIndexKey(generation, source.Source),
+			"ON", "JSON", "PREFIX", "1", prefix, "SCHEMA"}, schema...)
+		if _, err := s.Client.Do(ctx, command...); err != nil {
+			return fmt.Errorf("create Redis JSON search index: %w", err)
+		}
+	}
 	commands := make([][]string, 0, redisWriteBatchSize)
 	flush := func(rowNumber int) error {
 		if len(commands) == 0 {
@@ -623,6 +719,9 @@ func (s *Store) PutSource(ctx context.Context, generation string, source model.S
 		return nil
 	}
 	script := `redis.call("HSET", KEYS[1], "raw", ARGV[1]); redis.call("SADD", KEYS[2], KEYS[1]); return "OK"`
+	if format == "json" {
+		script = `redis.call("JSON.SET", KEYS[1], "$", ARGV[1]); redis.call("SADD", KEYS[2], KEYS[1]); return "OK"`
+	}
 	for rowNumber, row := range source.Rows {
 		data, err := json.Marshal(row)
 		if err != nil {
@@ -637,12 +736,6 @@ func (s *Store) PutSource(ctx context.Context, generation string, source model.S
 		}
 	}
 	if err := flush(len(source.Rows) - 1); err != nil {
-		return err
-	}
-	metadata, _ := json.Marshal(source.Metadata)
-	if _, err := s.Client.Do(ctx, "HSET", s.generationKey(generation),
-		"source:"+source.Source+":metadata", string(metadata),
-	); err != nil {
 		return err
 	}
 	return nil
@@ -676,8 +769,9 @@ func (s *Store) Diagnostics(ctx context.Context, generation string) (model.Diagn
 // definition, except for unfiltered literal-labelled table counts, which use
 // the generation's Redis set cardinality without loading row documents.
 //
-// Other simple count aggregates can discard unrelated fields as rows are
-// decoded; general queries still execute in the bounded Go engine.
+// Eligible direct-source equality predicates use a bounded search index to
+// choose candidate documents; the Go engine still evaluates the full filter.
+// Other simple count aggregates discard unrelated fields as rows are decoded.
 func (s *Store) LoadSource(ctx context.Context, generation, name string, definition *query.Definition) (model.Source, model.Metrics, error) {
 	metadata, err := s.sourceInfo(ctx, generation, name)
 	if err != nil {
@@ -699,6 +793,11 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 		}
 		return model.Source{Source: name, Rows: rows, Metadata: metadata}, metrics, nil
 	}
+	formatValue, err := s.Client.Do(ctx, "HGET", s.generationKey(generation), "source:"+name+":format")
+	if err != nil {
+		return model.Source{}, model.Metrics{}, err
+	}
+	jsonRows := formatValue == "json"
 	var projectedFields map[string]bool
 	if definition != nil && definition.From == name && name != "issues" &&
 		len(definition.Union) == 0 && len(definition.Joins) == 0 &&
@@ -716,15 +815,55 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 			projectedFields[value.Field] = true
 		}
 	}
-	metrics := model.Metrics{FallbackOperations: []string{"query"}, RedisCommands: 1}
-	value, err := s.Client.Do(ctx, "SMEMBERS", s.sourceSetKey(generation, name))
-	metrics.RedisCommands++
-	if err != nil {
-		return model.Source{}, metrics, err
+	metrics := model.Metrics{FallbackOperations: []string{"query"}, RedisCommands: 2}
+	var keys []string
+	if jsonRows && name != "issues" && definition != nil && definition.From == name &&
+		len(definition.Union) == 0 && len(definition.Joins) == 0 && definition.Filter != nil {
+		fields, err := s.Client.Do(ctx, "HGET", s.generationKey(generation), "source:"+name+":indexed-fields")
+		metrics.RedisCommands++
+		if err != nil {
+			return model.Source{}, metrics, err
+		}
+		var indexed []string
+		if fields != nil {
+			if err := json.Unmarshal([]byte(fmt.Sprint(fields)), &indexed); err != nil {
+				return model.Source{}, metrics, err
+			}
+		}
+		if expression := indexedPredicate(definition.Filter, indexed); expression != "" {
+			value, err := s.Client.Do(ctx, "FT.SEARCH", s.sourceIndexKey(generation, name),
+				expression, "NOCONTENT", "LIMIT", "0", strconv.Itoa(maxIndexedCandidates))
+			metrics.RedisCommands++
+			if err != nil {
+				return model.Source{}, metrics, err
+			}
+			results, ok := value.([]any)
+			if !ok || len(results) == 0 {
+				return model.Source{}, metrics, errors.New("invalid Redis search response")
+			}
+			total, ok := results[0].(int64)
+			if !ok || total < 0 {
+				return model.Source{}, metrics, errors.New("invalid Redis search count")
+			}
+			if total <= maxIndexedCandidates {
+				keys, err = Strings(results[1:])
+				if err != nil || len(keys) != int(total) {
+					return model.Source{}, metrics, errors.New("invalid Redis search rows")
+				}
+				metrics.PushedDown = append(metrics.PushedDown, "indexed-candidates")
+			}
+		}
 	}
-	keys, err := Strings(value)
-	if err != nil {
-		return model.Source{}, metrics, err
+	if keys == nil {
+		value, err := s.Client.Do(ctx, "SMEMBERS", s.sourceSetKey(generation, name))
+		metrics.RedisCommands++
+		if err != nil {
+			return model.Source{}, metrics, err
+		}
+		keys, err = Strings(value)
+		if err != nil {
+			return model.Source{}, metrics, err
+		}
 	}
 	sort.Strings(keys)
 	if len(keys) > query.MaxInputRows {
@@ -732,18 +871,22 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 	}
 	rows := make([]model.Row, 0, len(keys))
 	batchSize := 1000
-	script := `local out = {}; for i,key in ipairs(KEYS) do out[i] = redis.call("HGET", key, "raw"); end; return out`
-	if projectedFields != nil {
-		// Bound each raw reply while keeping the retained working set narrow.
-		// A large collection may span batches, but no one reply can allocate
-		// more than half the query's working-byte budget.
+	readRow := `redis.call("HGET", key, "raw")`
+	if jsonRows {
+		readRow = `redis.call("JSON.GET", key)`
+	}
+	script := `local out = {}; for i,key in ipairs(KEYS) do out[i] = ` + readRow + `; end; return out`
+	if projectedFields != nil || jsonRows {
+		// Bound replies for JSON documents and projected hash rows. A large
+		// collection may span batches, but no one reply can allocate more than
+		// half the query's working-byte budget.
 		batchSize = 32
 		script = fmt.Sprintf(`local out = {}; local bytes = 0; for i,key in ipairs(KEYS) do
-			local raw = redis.call("HGET", key, "raw")
+			local raw = %s
 			if raw then bytes = bytes + #raw end
 			if bytes > %d then return redis.error_reply("source batch exceeds max working bytes") end
 			out[i] = raw
-		end; return out`, query.MaxWorkingBytes/2)
+		end; return out`, readRow, query.MaxWorkingBytes/2)
 	}
 	for offset := 0; offset < len(keys); offset += batchSize {
 		end := min(len(keys), offset+batchSize)
@@ -760,6 +903,9 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 			return model.Source{}, metrics, err
 		}
 		for _, raw := range rawRows {
+			if raw == "" {
+				return model.Source{}, metrics, errors.New("Redis source row is missing")
+			}
 			var row model.Row
 			if err := json.Unmarshal([]byte(raw), &row); err != nil {
 				return model.Source{}, metrics, err
@@ -901,6 +1047,9 @@ func (s *Store) sourceSetKey(generation, source string) string {
 }
 func (s *Store) rowPrefix(generation, source string) string {
 	return s.generationKey(generation) + ":source:" + safeName(source) + ":row:"
+}
+func (s *Store) sourceIndexKey(generation, source string) string {
+	return s.generationKey(generation) + ":source:" + safeName(source) + ":index"
 }
 func (s *Store) issueStatusKey() string    { return s.Key("issue-status") }
 func (s *Store) issueStatusAgeKey() string { return s.Key("issue-status:updated") }

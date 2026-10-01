@@ -2,6 +2,7 @@ package redisx
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -32,6 +33,16 @@ func (s *Store) TrackGeneration(ctx context.Context, generation string) error {
 		return fmt.Errorf("track generation: %w", err)
 	}
 	return nil
+}
+
+// DiscardGeneration removes a failed, unactivated staging generation and its
+// registry entry. If interrupted, the registry retains it for later pruning.
+func (s *Store) DiscardGeneration(ctx context.Context, generation string) error {
+	if err := s.DropGeneration(ctx, generation); err != nil {
+		return err
+	}
+	_, err := s.Client.Do(ctx, "ZREM", s.generationsKey(), generation)
+	return err
 }
 
 // trackedGeneration is one generation's registry entry: its name and when it
@@ -145,6 +156,19 @@ func (s *Store) DropGeneration(ctx context.Context, generation string) error {
 		return err
 	}
 	for _, source := range sources {
+		format, err := s.Client.Do(ctx, "HGET", s.generationKey(generation), "source:"+source+":format")
+		if err != nil {
+			return fmt.Errorf("read generation row format: %w", err)
+		}
+		if format == "json" {
+			_, err := s.Client.Do(ctx, "FT.DROPINDEX", s.sourceIndexKey(generation, source))
+			var responseErr redisResponseError
+			if err != nil && (!errors.As(err, &responseErr) ||
+				!strings.Contains(responseErr.message, "no such index") &&
+					!strings.Contains(responseErr.message, "Unknown Index name")) {
+				return fmt.Errorf("reclaim generation search index: %w", err)
+			}
+		}
 		setKey := s.sourceSetKey(generation, source)
 		members, err := s.Client.Do(ctx, "SMEMBERS", setKey)
 		if err != nil {
