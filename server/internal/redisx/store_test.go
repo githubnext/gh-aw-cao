@@ -2,6 +2,7 @@ package redisx
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"testing"
 	"time"
@@ -86,7 +87,7 @@ func TestRepositoryMemoryRevisionCachePreserved(t *testing.T) {
 	if err != nil || string(file) != "contents" {
 		t.Fatalf("read repository-memory file = %q, %v", file, err)
 	}
-	if _, err := store.RepositoryMemoryFile(t.Context(), "another-revision", "campaign", "notes.md"); err != ErrSourceUnavailable {
+	if _, err := store.RepositoryMemoryFile(t.Context(), "another-revision", "campaign", "notes.md"); !errors.Is(err, ErrSourceUnavailable) {
 		t.Fatalf("missing revision returned %v, want ErrSourceUnavailable", err)
 	}
 	if client.expirations[store.repositoryMemoryRevisionKey("revision")] {

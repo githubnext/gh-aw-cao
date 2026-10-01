@@ -8,10 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
-	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/jackc/pgx/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 )
 
 // constructorDatabase satisfies New's database requirement where no dashboard data is read.

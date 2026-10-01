@@ -270,6 +270,7 @@ func sourceEvaluationTime(sources map[string]model.Source) time.Time {
 	return latest
 }
 
+//nolint:unparam // Test callers use one fixture; the helper accepts arbitrary query paths.
 func loadDefinitions(path string) ([]query.Definition, error) {
 	if path == "" {
 		return nil, errors.New("database query path is required")

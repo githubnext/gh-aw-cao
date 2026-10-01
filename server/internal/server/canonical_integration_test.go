@@ -4,18 +4,20 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	_ "github.com/jackc/pgx/v5/stdlib"
+
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	"github.com/jackc/pgx/v5"
-	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func TestCanonicalAPIQueriesMatchPostgresIngestion(t *testing.T) {
@@ -29,7 +31,7 @@ func TestCanonicalAPIQueriesMatchPostgresIngestion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer admin.Close()
+	defer func() { _ = admin.Close() }()
 	schema := fmt.Sprintf("cao_canonical_test_%d", time.Now().UnixNano())
 	if _, err := admin.ExecContext(ctx, "CREATE SCHEMA "+schema); err != nil {
 		t.Fatal(err)
@@ -48,7 +50,7 @@ func TestCanonicalAPIQueriesMatchPostgresIngestion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 	result, err := ingest.Run(ctx, store, nil, "../../testdata/deployed-subset", ingest.Options{
 		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
 	})
@@ -108,7 +110,7 @@ func TestCanonicalAPIQueriesMatchPostgresIngestion(t *testing.T) {
 		t.Fatalf("canonical filter did not match ingested repository: %+v, %v", matching, err)
 	}
 	_, err = service.entity(ctx, "repositories", "repository:not-found")
-	if err != errCanonicalEntityNotFound {
+	if !errors.Is(err, errCanonicalEntityNotFound) {
 		t.Fatal(err)
 	}
 

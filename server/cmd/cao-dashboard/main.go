@@ -524,7 +524,7 @@ func newServeCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		defer database.Close()
+		defer func() { _ = database.Close() }()
 		definitions, err := server.ParseDashboardQueries(*dashboardQueries)
 		if err != nil {
 			return err
@@ -598,7 +598,7 @@ func newIngestCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		defer database.Close()
+		defer func() { _ = database.Close() }()
 		result, err := ingest.Run(ctx, database, store, resolvedSource, ingest.Options{DatabaseQueriesPath: *databaseQueries})
 		if err != nil {
 			return err

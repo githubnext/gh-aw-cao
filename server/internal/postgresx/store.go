@@ -14,10 +14,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
-	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
 
 var ErrSourceUnavailable = errors.New("postgres source is unavailable")
@@ -125,7 +126,7 @@ func NewConfig(ctx context.Context, config *pgx.ConnConfig, namespaces ...string
 		)`,
 	} {
 		if _, err := db.ExecContext(ctx, statement); err != nil {
-			db.Close()
+			_ = db.Close()
 			if ctx.Err() != nil {
 				return nil, ctx.Err()
 			}
@@ -190,7 +191,7 @@ func (s *Store) Replace(ctx context.Context, sources map[string]model.Source, di
 	if err != nil {
 		return 0, fmt.Errorf("begin postgres replacement: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	if _, err = tx.ExecContext(ctx, `INSERT INTO cao_state (namespace, revision, data_revision, evaluated_at, counts, diagnostics)
 		VALUES ($1, 0, '', 'epoch'::timestamptz, '{}'::jsonb, '{}'::jsonb) ON CONFLICT (namespace) DO NOTHING`, s.namespace); err != nil {
 		return 0, fmt.Errorf("initialize postgres state: %w", err)
@@ -260,7 +261,7 @@ func (s *Store) WithReadTransaction(ctx context.Context, fn func(SourceReader) e
 	if err != nil {
 		return fmt.Errorf("begin postgres source read: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	if err := fn(&readTransaction{store: s, tx: tx}); err != nil {
 		return err
 	}
@@ -300,6 +301,7 @@ func (r *readTransaction) LoadSource(ctx context.Context, name string, definitio
 	if err != nil {
 		return model.Source{}, model.Metrics{}, fmt.Errorf("read postgres rows: %w", err)
 	}
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var payload []byte
 		if err = rows.Scan(&payload); err != nil {
@@ -315,7 +317,6 @@ func (r *readTransaction) LoadSource(ctx context.Context, name string, definitio
 	if err == nil {
 		err = rows.Err()
 	}
-	rows.Close()
 	if err != nil {
 		return model.Source{}, model.Metrics{}, fmt.Errorf("decode postgres rows: %w", err)
 	}

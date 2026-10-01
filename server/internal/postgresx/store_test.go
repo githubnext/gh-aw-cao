@@ -11,10 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
-	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
 
 func TestDecodeJSONPreservesNumbers(t *testing.T) {
@@ -101,18 +102,18 @@ func TestStoreIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	admin := stdlib.OpenDB(*config.Copy())
-	defer admin.Close()
+	defer func() { _ = admin.Close() }()
 	schema := fmt.Sprintf("cao_postgresx_test_%d", time.Now().UnixNano())
 	if _, err := admin.ExecContext(ctx, "CREATE SCHEMA "+schema); err != nil {
 		t.Fatal(err)
 	}
-	defer admin.ExecContext(context.Background(), "DROP SCHEMA "+schema+" CASCADE")
+	defer func() { _, _ = admin.ExecContext(context.Background(), "DROP SCHEMA "+schema+" CASCADE") }()
 	config.RuntimeParams["search_path"] = schema
 	store, err := NewConfig(ctx, config)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	initial, err := store.State(ctx)
 	if err != nil {
@@ -164,7 +165,7 @@ func TestStoreIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer tenant.Close()
+	defer func() { _ = tenant.Close() }()
 	tenantState, err := tenant.State(ctx)
 	if err != nil || tenantState.Ready {
 		t.Fatalf("other namespace should be unready: %+v, %v", tenantState, err)

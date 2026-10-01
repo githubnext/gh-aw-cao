@@ -11,11 +11,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	_ "github.com/jackc/pgx/v5/stdlib"
+
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	"github.com/jackc/pgx/v5"
-	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 const deployedSubset = "../../testdata/deployed-subset"
@@ -70,6 +71,7 @@ func TestChangedInventoryCreatesFreshDataRevision(t *testing.T) {
 		"payload-hashes.json", "inventory-sources.json",
 		"gh-aw-logs-runs/subset.jsonl", "gh-aw-logs-records/subset.jsonl",
 	} {
+		// #nosec G304 -- these fixture names are fixed within the checked-in deployed subset.
 		content, err := os.ReadFile(filepath.Join(deployedSubset, name))
 		if err != nil {
 			t.Fatal(err)
