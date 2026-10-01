@@ -1,6 +1,6 @@
 {
   "source_sha": "373101150194fb62f85e04f9fd32365831286f6b",
-  "next_category": "Astro documentation generation",
+  "next_category": "reusable dashboard generation",
   "evaluations": [
     {
       "evaluated_at": "2026-10-01T07:54:00Z",
@@ -634,6 +634,28 @@
         36821274586
       ],
       "outcome": "no_actionable_improvement: latest 20 completed successful docs.yml runs in the last 14 days again provided sufficient evidence, including 20 successful runs and 18 comparable build executions. Trusted docs metadata showed median full workflow wall time 52.5s with p90 85.0s, median queue time 3.0s with p90 4.0s, median build execution 41.5s with p90 49.0s, and median deploy execution 15.0s with p90 18.0s on the 14 runs that actually deployed. Trusted build-step metadata and sampled logs for run 36833880168 confirmed cache hits for actions/setup-node npm cache, node_modules, and central-agentic-ops-dashboard, with Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact skipped when build executed. Comparable build-step medians remained 13.0s for Build documentation, 5.0s for Restore node_modules, 2.0s for Restore cached CAO Dashboard, and 8.0s for Upload Pages artifact, while the sampled upload still transferred a 41.9 MB Pages artifact in about 7.2s. Cross-checking recent successful cao-dashboard.yml producer runs 36838104733, 36834177725, 36823056929, 36821930198, and 36821274586 shows the dominant repeated upstream cost is still activity-cache upgrade work, not docs-side dependency installation or caching. Because docs-side caches are consistently hitting and the only qualifying >=60s repeated improvement remains the already-recorded reusable-dashboard suggestion fingerprint reusable-dashboard-skip-reupgrade-of-validated-activity-cache, no new non-duplicate dependency-installation-and-caching recommendation is actionable in this cycle.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-01T09:15:00Z",
+      "worker_run_id": "36842919627",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        36840744545,
+        36840357406,
+        36839368625,
+        36838357262,
+        36837287923,
+        36834403962,
+        36834043238,
+        36833880168,
+        36833232303,
+        36833029088,
+        36831467909,
+        36831352271,
+        36831198485
+      ],
+      "outcome": "no_actionable_improvement: latest 13 completed successful docs.yml runs in the last 14 days provided sufficient evidence, including 11 comparable build executions and 6 schedule-triggered runs. Trusted docs metadata showed median full workflow wall time 52s with p90 85s, median build execution 42s with p90 49s, median deploy execution 18s with p90 18s on the 4 schedule runs that deployed, and median schedule-freshness execution 8.5s with p90 10s. Trusted build logs for representative run 36833880168 confirmed cache hits for actions/setup-node npm cache, the explicit node_modules cache, and the central-agentic-ops-dashboard cache on built runs, with Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact skipped whenever build executed. Build documentation remained 13s median and 13s p90, far below the >=60s or >=15% actionable threshold, while the repeated qualifying bottleneck remains upstream reusable dashboard generation already represented by suggestion fingerprint reusable-dashboard-skip-reupgrade-of-validated-activity-cache and open issues #15332 and #15497. In the same trusted logs, docs builds also restored both a 305.8 MB setup-node npm cache and a 297.1 MB node_modules cache before skipping npm ci, showing redundant dependency cache downloads but only about 5s median restore time, so this observation does not change the Astro-category no-op decision.",
       "suggestion_fingerprint": null
     }
   ]
