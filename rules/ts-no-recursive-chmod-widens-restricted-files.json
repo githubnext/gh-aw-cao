@@ -101,7 +101,17 @@
       "readiness_for_target": "needs-work",
       "reason": "Re-confirmed unchanged: the sole recursive chmod site, tests/e2e/cao-mcp-container.mjs:89 (chmod -R a+rX on an mkdtemp'd directory holding only a public SQLite fixture copy), remains a false positive since no restricted-mode file is ever written into that directory. All other chmod/chmodSync calls in this repo set a fixed non-recursive mode on one named executable and fall outside the rule's pattern.",
       "txn_id": "refiner-36887337909-3"
+    },
+    {
+      "target_repo": "githubnext/gh-aw-cao",
+      "target_commit": "fd290fabcc4372ded10e74e11fbce23b35f09644",
+      "true_positive_count": 0,
+      "false_positive_count": 1,
+      "false_negative_count": 0,
+      "readiness_for_target": "needs-work",
+      "reason": "Re-confirmed unchanged on current HEAD (fd290fa): the sole recursive-chmod call in this repository's JS/TS sources remains tests/e2e/cao-mcp-container.mjs:89, still a false positive since no restricted-mode file is ever written into that mkdtemp'd fixture directory. No new occurrences, no change in classification since the prior evaluation.",
+      "txn_id": "refiner-36937455628-1"
     }
   ],
-  "last_seen_at": "2026-10-01T16:04:26Z"
+  "last_seen_at": "2026-10-01T22:52:00Z"
 }
