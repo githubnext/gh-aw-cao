@@ -263,6 +263,11 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 	if dependencyJoins > MaxDependencyJoins {
 		return nil, model.Metrics{}, fmt.Errorf("query dependency path exceeds max joins of %d", MaxDependencyJoins)
 	}
+	if executor, ok := e.loader.(PlanExecutor); ok {
+		result, metrics, err := executor.ExecutePlan(definitions, requested, order)
+		metrics.DependencyDepth = max(metrics.DependencyDepth, dependencyDepth)
+		return result, metrics, err
+	}
 	sources := map[string]model.Source{}
 	metrics := model.Metrics{DependencyDepth: dependencyDepth}
 	operations := 0

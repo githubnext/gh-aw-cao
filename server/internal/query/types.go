@@ -191,6 +191,10 @@ type Loader interface {
 	LoadSource(name string, definition *Definition) (model.Source, model.Metrics, error)
 }
 
+type PlanExecutor interface {
+	ExecutePlan(definitions []Definition, requested, order []string) (map[string]model.Source, model.Metrics, error)
+}
+
 type Options struct {
 	MaxOperations int
 }

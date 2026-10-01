@@ -2,6 +2,7 @@ package query
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -21,6 +22,37 @@ func (loader *testLoader) LoadSource(name string, _ *Definition) (model.Source, 
 	}
 	source.Source = name
 	return source, model.Metrics{}, nil
+}
+
+type planTestLoader struct {
+	executed bool
+}
+
+func (loader *planTestLoader) LoadSource(string, *Definition) (model.Source, model.Metrics, error) {
+	return model.Source{}, model.Metrics{}, errors.New("load source must not run for a native query plan")
+}
+
+func (loader *planTestLoader) ExecutePlan(_ []Definition, requested, _ []string) (map[string]model.Source, model.Metrics, error) {
+	loader.executed = true
+	return map[string]model.Source{
+		requested[0]: {Source: requested[0], Rows: []model.Row{{"id": "redis"}}},
+	}, model.Metrics{PushedDown: []string{"query-plan"}}, nil
+}
+
+func TestEngineDelegatesWholePlanToNativeExecutor(t *testing.T) {
+	loader := &planTestLoader{}
+	definition := Definition{Name: "native", From: "runs"}
+
+	result, metrics, err := New(loader).Execute([]Definition{definition}, []string{"native"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !loader.executed || result["native"].Rows[0]["id"] != "redis" {
+		t.Fatalf("native plan was not executed: result=%#v executed=%v", result, loader.executed)
+	}
+	if !reflect.DeepEqual(metrics.PushedDown, []string{"query-plan"}) || len(metrics.FallbackOperations) != 0 {
+		t.Fatalf("unexpected native plan metrics: %+v", metrics)
+	}
 }
 
 func TestExecuteDefinitionPipeline(t *testing.T) {

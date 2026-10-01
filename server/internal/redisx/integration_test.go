@@ -182,6 +182,30 @@ func TestRedisJSONSearchIndexAndFallback(t *testing.T) {
 	if len(results["failures"].Rows) != 1 || results["failures"].Rows[0]["id"] != "3" {
 		t.Fatalf("residual predicate not applied: %#v", results["failures"].Rows)
 	}
+	limit := 1
+	nativeDefinition := definition
+	nativeDefinition.Name = "native-failures"
+	nativeDefinition.Compute = []query.ComputedField{{
+		As: "label", Function: "literal", Args: []query.Argument{{Value: "failed worker"}},
+	}}
+	nativeDefinition.Select = []query.SelectedField{{Field: "id"}, {Field: "label"}}
+	nativeDefinition.OrderBy = []query.OrderField{{Field: "id", Direction: "desc"}}
+	nativeDefinition.Limit = &limit
+	native, nativeMetrics, err := store.ExecutePlan(
+		ctx, generation, []query.Definition{nativeDefinition}, []string{nativeDefinition.Name},
+		[]string{"runs", nativeDefinition.Name}, nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(native[nativeDefinition.Name].Rows) != 1 || native[nativeDefinition.Name].Rows[0]["id"] != "3" ||
+		native[nativeDefinition.Name].Rows[0]["label"] != "failed worker" {
+		t.Fatalf("unexpected Redis-native rows: %#v", native[nativeDefinition.Name].Rows)
+	}
+	if len(nativeMetrics.FallbackOperations) != 0 ||
+		len(nativeMetrics.PushedDown) != 1 || nativeMetrics.PushedDown[0] != "redis-query-engine" {
+		t.Fatalf("query plan was not fully executed in Redis: %+v", nativeMetrics)
+	}
 	byRole := query.Definition{
 		Name: "workers", From: "runs",
 		Filter: &query.Filter{Predicates: []query.Predicate{{Field: "workflow-role", Equals: "worker"}}},
