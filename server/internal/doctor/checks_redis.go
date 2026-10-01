@@ -203,6 +203,56 @@ func memoryLimitLabel(maximum int64) string {
 	return humanBytes(maximum)
 }
 
+// statsClassificationReason names why checkRedisStats reached its status,
+// stable across summary wording changes so it is useful to log without
+// exposing the raw evicted-key or rejected-connection counts.
+type statsClassificationReason string
+
+const (
+	statsReasonEvictedKeys         statsClassificationReason = "evicted-keys"
+	statsReasonRejectedConnections statsClassificationReason = "rejected-connections"
+	statsReasonHealthy             statsClassificationReason = "healthy"
+)
+
+// statsClassification is the status, summary, and remedy classifyRedisStats
+// derives from Redis's reported operational counters.
+type statsClassification struct {
+	status  Status
+	summary string
+	remedy  string
+	reason  statsClassificationReason
+}
+
+// classifyRedisStats decides the redis.stats check's outcome from Redis's
+// reported eviction and rejection counters alone. It is a pure function so
+// each path -- evicted keys and rejected connections -- is testable without
+// a fake Redis INFO reply. Evicted keys are checked first, matching the
+// prior inline behavior: an eviction is the more consequential signal
+// because it means canonical rows may already be missing.
+func classifyRedisStats(evicted, rejected int64) statsClassification {
+	if evicted > 0 {
+		return statsClassification{
+			status:  StatusFail,
+			summary: fmt.Sprintf("Redis has evicted %d keys; the canonical generation may be incomplete", evicted),
+			remedy:  "set noeviction, then reproject from authoritative evidence; changing the policy does not restore rows already lost",
+			reason:  statsReasonEvictedKeys,
+		}
+	}
+	if rejected > 0 {
+		return statsClassification{
+			status:  StatusWarn,
+			summary: fmt.Sprintf("Redis has rejected %d connections since startup", rejected),
+			remedy:  "inspect connection limits and client churn; rejected connections make reads and projections intermittently fail",
+			reason:  statsReasonRejectedConnections,
+		}
+	}
+	return statsClassification{
+		status:  StatusPass,
+		summary: "no evicted keys or rejected connections since startup",
+		reason:  statsReasonHealthy,
+	}
+}
+
 // checkRedisStats reports damage and pressure that may no longer be visible in
 // the current memory snapshot. In particular, a past eviction means canonical
 // rows may already be missing even if the policy has since been corrected.
@@ -226,26 +276,11 @@ func (d Doctor) checkRedisStats(ctx context.Context) Check {
 		detail("keyspaceHits", fields["keyspace_hits"]),
 		detail("keyspaceMisses", fields["keyspace_misses"]),
 	}
-	if evicted > 0 {
-		return Check{
-			ID: id, Area: areaRedis, Title: title, Status: StatusFail,
-			Summary: fmt.Sprintf("Redis has evicted %d keys; the canonical generation may be incomplete", evicted),
-			Details: details,
-			Remedy:  "set noeviction, then reproject from authoritative evidence; changing the policy does not restore rows already lost",
-		}
-	}
-	if rejected > 0 {
-		return Check{
-			ID: id, Area: areaRedis, Title: title, Status: StatusWarn,
-			Summary: fmt.Sprintf("Redis has rejected %d connections since startup", rejected),
-			Details: details,
-			Remedy:  "inspect connection limits and client churn; rejected connections make reads and projections intermittently fail",
-		}
-	}
+	classification := classifyRedisStats(evicted, rejected)
+	doctorLog.Printf("redis stats classified status=%s reason=%s", classification.status, classification.reason)
 	return Check{
-		ID: id, Area: areaRedis, Title: title, Status: StatusPass,
-		Summary: "no evicted keys or rejected connections since startup",
-		Details: details,
+		ID: id, Area: areaRedis, Title: title, Status: classification.status,
+		Summary: classification.summary, Details: details, Remedy: classification.remedy,
 	}
 }
 

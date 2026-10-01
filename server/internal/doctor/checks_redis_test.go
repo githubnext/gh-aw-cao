@@ -199,6 +199,57 @@ func TestClassifyRedisPersistence(t *testing.T) {
 	}
 }
 
+func TestClassifyRedisStats(t *testing.T) {
+	cases := []struct {
+		name        string
+		evicted     int64
+		rejected    int64
+		wantStatus  Status
+		wantReason  statsClassificationReason
+		summaryHas  string
+		remedyEmpty bool
+	}{
+		{
+			name:    "evicted keys fail regardless of rejected connections",
+			evicted: 5, rejected: 3,
+			wantStatus: StatusFail, wantReason: statsReasonEvictedKeys,
+			summaryHas: "evicted 5 keys",
+		},
+		{
+			name:    "rejected connections warn when there are no evicted keys",
+			evicted: 0, rejected: 2,
+			wantStatus: StatusWarn, wantReason: statsReasonRejectedConnections,
+			summaryHas: "rejected 2 connections",
+		},
+		{
+			name:    "no evictions or rejections passes",
+			evicted: 0, rejected: 0,
+			wantStatus: StatusPass, wantReason: statsReasonHealthy,
+			summaryHas: "no evicted keys or rejected connections", remedyEmpty: true,
+		},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			got := classifyRedisStats(testCase.evicted, testCase.rejected)
+			if got.status != testCase.wantStatus {
+				t.Fatalf("status = %s, want %s", got.status, testCase.wantStatus)
+			}
+			if got.reason != testCase.wantReason {
+				t.Fatalf("reason = %s, want %s", got.reason, testCase.wantReason)
+			}
+			if !strings.Contains(got.summary, testCase.summaryHas) {
+				t.Fatalf("summary = %q, want it to contain %q", got.summary, testCase.summaryHas)
+			}
+			if testCase.remedyEmpty && got.remedy != "" {
+				t.Fatalf("remedy = %q, want empty for a passing check", got.remedy)
+			}
+			if !testCase.remedyEmpty && got.remedy == "" {
+				t.Fatalf("remedy is empty, want a remedy for status %s", got.status)
+			}
+		})
+	}
+}
+
 func TestForeignNamespacesOf(t *testing.T) {
 	cases := []struct {
 		name      string
