@@ -1072,11 +1072,26 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
   const continuation = context.continuation;
   let token = continuation?.token ?? '';
   let renderedCount = initialRows.length;
-  let loading = false;
+  // `boundary`'s load-state/hidden attributes are this control's entire
+  // visible continuation-load state; the effect below is the only place
+  // that writes them, matching the `table-region.js`/`reset-dashboard-control.js`
+  // state/effect/createFactoryScope shape for owned interactive DOM driven
+  // by an async flow.
+  const boundaryScope = createFactoryScope();
+  boundaryScope.bind(boundary);
+  const loadState = state(/** @type {{ phase: 'idle'|'loading'|'error'|'complete', hidden: boolean }} */ ({
+    phase: 'idle',
+    hidden: false
+  }));
+  effect(() => {
+    const current = loadState.get();
+    boundary.dataset.loadState = current.phase;
+    boundary.hidden = current.hidden;
+  }, { signal: boundaryScope.signal });
   const loadMore = async () => {
-    if (loading || renderedCount >= rowLimit || (renderedCount >= availableRows.length && !token)) return;
-    loading = true;
-    boundary.dataset.loadState = 'loading';
+    if (loadState.get().phase === 'loading' || renderedCount >= rowLimit
+        || (renderedCount >= availableRows.length && !token)) return;
+    loadState.set({ phase: 'loading', hidden: false });
     try {
       let nextToken = token;
       if (renderedCount >= availableRows.length && token && continuation) {
@@ -1096,13 +1111,11 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
       }));
       renderedCount += nextRows.length;
       token = renderedCount < rowLimit ? nextToken : '';
-      boundary.hidden = renderedCount >= availableRows.length && !token;
-      boundary.dataset.loadState = boundary.hidden ? 'complete' : 'idle';
+      const hidden = renderedCount >= availableRows.length && !token;
+      loadState.set({ phase: hidden ? 'complete' : 'idle', hidden });
     } catch {
-      boundary.dataset.loadState = 'error';
+      loadState.set({ phase: 'error', hidden: false });
       list.addEventListener('scroll', () => void loadMore(), { once: true });
-    } finally {
-      loading = false;
     }
   };
   observeLoadMoreBoundary(globalThis.IntersectionObserver, boundary, () => void loadMore(), {
