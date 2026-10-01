@@ -82,7 +82,7 @@ func actionsDefaultBranch(ctx context.Context, config Config, token string) (str
 	}
 	request.Header.Set("Accept", "application/vnd.github+json")
 	request.Header.Set("Authorization", "Bearer "+token)
-	request.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+	request.Header.Set("X-GitHub-Api-Version", actionsGitHubAPIVersion)
 	request.Header.Set("User-Agent", "gh-aw-cao-mcp")
 	response, err := client.Do(request)
 	if err != nil {
@@ -121,7 +121,7 @@ func verifyActionsTokenRepository(ctx context.Context, config Config, token stri
 	}
 	request.Header.Set("Accept", "application/vnd.github+json")
 	request.Header.Set("Authorization", "Bearer "+token)
-	request.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+	request.Header.Set("X-GitHub-Api-Version", actionsGitHubAPIVersion)
 	request.Header.Set("User-Agent", "gh-aw-cao-mcp")
 	response, err := client.Do(request)
 	if err != nil {

@@ -69,6 +69,11 @@ func TestHostedActionsMCPAuthentication(t *testing.T) {
 			}}})
 			return
 		}
+		if request.Header.Get("X-GitHub-Api-Version") != actionsGitHubAPIVersion {
+			t.Errorf("GitHub API version = %q, want %q", request.Header.Get("X-GitHub-Api-Version"), actionsGitHubAPIVersion)
+			response.WriteHeader(http.StatusBadRequest)
+			return
+		}
 		if request.URL.Path == "/installation/repositories" {
 			if request.Header.Get("Authorization") != "Bearer "+testActionsToken {
 				response.WriteHeader(http.StatusUnauthorized)

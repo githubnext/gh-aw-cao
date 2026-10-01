@@ -15,6 +15,8 @@ import (
 
 var actionsAuthLog = logger.New("cao:server:actions-auth")
 
+const actionsGitHubAPIVersion = "2026-03-10"
+
 type githubPermissionProbe struct {
 	name string
 	path string
@@ -76,7 +78,7 @@ func verifyGitHubActionsPermissions(ctx context.Context, config Config, token st
 		}
 		request.Header.Set("Accept", "application/vnd.github+json")
 		request.Header.Set("Authorization", "Bearer "+token)
-		request.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+		request.Header.Set("X-GitHub-Api-Version", actionsGitHubAPIVersion)
 		request.Header.Set("User-Agent", "gh-aw-cao-mcp")
 		response, err := client.Do(request)
 		if err != nil {
