@@ -131,7 +131,7 @@ func newHostedAppWithPolicy(
 		AgentCatalogPath:       agentCatalogPath,
 		MCPContractPath:        mcpContractPath,
 		MCPEnabled:             mcpEnabled,
-		ActionsRepository:      hostedActionsRepository(mcpEnabled, os.Getenv("CAO_MCP_ACTIONS_REPOSITORY"), "/app/source-repository"),
+		ActionsRepository:      strings.TrimSpace(os.Getenv("CAO_MCP_ACTIONS_REPOSITORY")),
 		DatabaseQueriesPath:    databaseQueriesPath,
 		SourceDirectory:        sourceDirectory,
 		Collector:              collector,

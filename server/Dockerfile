@@ -10,16 +10,7 @@ RUN sed -i \
       's#https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/#https://registry.npmjs.org/#' \
       dashboard/site/package-lock.json \
     && npm --prefix dashboard/site ci
-RUN --mount=type=bind,source=.,target=/source,readonly \
-    tar --exclude=./.git -C /source -cf - . | tar -C /workspace -xf -
-RUN --mount=type=bind,source=.git/config,target=/tmp/source-git-config,readonly \
-    node -e 'const fs = require("node:fs"); \
-      const config = fs.readFileSync("/tmp/source-git-config", "utf8"); \
-      const section = config.match(/^\[remote "origin"\]\r?\n((?:^[^\[].*\r?\n?)*)/m); \
-      const url = section?.[1].match(/^\s*url\s*=\s*(\S+)\s*$/m)?.[1]; \
-      const repository = url?.match(/^(?:https:\/\/(?:[^@/]+@)?github\.com\/|ssh:\/\/git@github\.com\/|git@github\.com:)([a-z0-9-]+)\/([a-z0-9_.-]+?)(?:\.git)?\/?$/i); \
-      if (!repository) throw new Error("GitHub origin repository is required for hosted MCP"); \
-      fs.writeFileSync("/workspace/source-repository", repository[1] + "/" + repository[2]);'
+COPY . .
 RUN printf '%s' "${CAO_PROFILE}" | grep -Eq '^cao(\.[a-z0-9-]+)?\.json$' \
     && policy="../../.github/workflows/${CAO_PROFILE}" \
     && if echo "${REVISION}" | grep -Eq '^[0-9a-f]{40}$'; then \
@@ -68,7 +59,6 @@ COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/src/data/q
 COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/src/agent/catalog.generated.json /app/agent/catalog.json
 COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/src/agent/queries.generated.json /app/agent/queries.json
 COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/src/agent/mcp-contract.json /app/agent/mcp-contract.json
-COPY --from=dashboard-build --chown=cao:cao /workspace/source-repository /app/source-repository
 COPY --from=dashboard-build --chown=cao:cao /workspace/.github/workflows/cao.json /app/.github/workflows/cao.json
 COPY --from=dashboard-build --chown=cao:cao /workspace/.github/workflows/cao.coolify.json /app/.github/workflows/cao.coolify.json
 

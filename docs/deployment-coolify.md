@@ -153,7 +153,7 @@ The `server/coolify/compose.yml` file reads the following variables.
 | `CAO_GITHUB_ALLOWED_TEAMS` | At least one of these two | No | Teams, in `ORGANIZATION/TEAM-SLUG` format, whose active members can sign in. |
 | `CAO_GITHUB_ADMIN_USERS` | Yes | No | GitHub usernames that can start rebuilds. |
 | `CAO_GITHUB_WEBHOOK_SECRET` | Yes | Yes | Secret for verifying webhook signatures. At least 32 characters. |
-| `CAO_MCP_ACTIONS_REPOSITORY` | No. Defaults to the checked-out GitHub origin. | No | Exact GitHub repository whose Actions OIDC provenance and read-scoped token can access `/mcp`. Override the detected source only when deliberately authorizing a different repository. |
+| `CAO_MCP_ACTIONS_REPOSITORY` | Yes | No | Exact `OWNER/REPO` GitHub repository selected as this Coolify resource's Git source; only its Actions OIDC provenance and read-scoped token can access `/mcp`. |
 | `SOURCE_COMMIT` | Set by Coolify. | No | Commit SHA embedded in the image and reported as the build version. Enable **Include Source Commit in Build**. |
 
 ### Setting the variables in Coolify
@@ -171,10 +171,11 @@ Set these required variables:
 - `CAO_SESSION_SECRET`
 - `CAO_GITHUB_ADMIN_USERS`
 - `CAO_GITHUB_WEBHOOK_SECRET`
+- `CAO_MCP_ACTIONS_REPOSITORY`
 
 Also set `REDIS_URL`, and at least one of `CAO_GITHUB_ALLOWED_ORGS` or `CAO_GITHUB_ALLOWED_TEAMS`. Coolify doesn't mark them **Required**, because Compose leaves them empty by default, but the server refuses to serve requests without them.
 
-The MCP repository default is derived at build time from the checked-out Git origin. The build requires a GitHub origin in `.git/config` and copies only its `OWNER/REPO` identity into the runtime image, not the Git configuration or credentials. If the origin is unavailable or invalid, the build fails rather than trusting a different repository.
+Set `CAO_MCP_ACTIONS_REPOSITORY` to the repository configured in this Coolify resource's Git source, including its owner. Coolify does not expose that repository identity as a documented Compose variable, so the setting is required rather than falling back to the catalog's repository or reading potentially credential-bearing Git metadata into the build.
 
 Follow these rules when you add the values.
 

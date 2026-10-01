@@ -1,5 +1,4 @@
 .git
-!.git/config
 .github/aw
 .cao-dashboard-traces
 .tmp
