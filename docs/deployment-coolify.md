@@ -148,14 +148,14 @@ The `server/coolify/compose.yml` file reads the following variables.
 | `CAO_ALLOWED_HOSTS` | Yes | No | Comma-separated list of public host names. |
 | `CAO_TRUSTED_PROXY_CIDRS` | Yes | No | Exact private CIDR of the Coolify proxy network. |
 | `CAO_GITHUB_CLIENT_ID` | Yes | No | Client ID of the OAuth app. |
-| `CAO_GITHUB_CLIENT_SECRET` | Yes | Yes | Client secret of the OAuth app. |
+| `CAO_GITHUB_CLIENT_SECRET_ROTATED` | Yes | Yes | Client secret of the OAuth app. Compose maps it to the server's `CAO_GITHUB_CLIENT_SECRET` runtime variable. |
 | `CAO_GITHUB_REDIRECT_URL` | Yes | No | `https://PUBLIC-HOST/auth/callback` |
-| `CAO_SESSION_SECRET` | Yes | Yes | Session key. At least 32 characters. |
+| `CAO_SESSION_SECRET_ROTATED` | Yes | Yes | Session key. At least 32 characters. Compose maps it to the server's `CAO_SESSION_SECRET` runtime variable. |
 | `CAO_SESSION_SECRET_PREVIOUS` | No | Yes | Previous session key, used during rotation. |
 | `CAO_GITHUB_ALLOWED_ORGS` | At least one of these two | No | Organizations whose active members can sign in. |
 | `CAO_GITHUB_ALLOWED_TEAMS` | At least one of these two | No | Teams, in `ORGANIZATION/TEAM-SLUG` format, whose active members can sign in. |
 | `CAO_GITHUB_ADMIN_USERS` | Yes | No | GitHub usernames that can start rebuilds. |
-| `CAO_GITHUB_WEBHOOK_SECRET` | Yes | Yes | Secret for verifying webhook signatures. At least 32 characters. |
+| `CAO_GITHUB_WEBHOOK_SECRET_ROTATED` | Yes | Yes | Secret for verifying webhook signatures. At least 32 characters. Compose maps it to the server's `CAO_GITHUB_WEBHOOK_SECRET` runtime variable. |
 | `CAO_MCP_ACTIONS_REPOSITORY` | Yes | No | Exact `OWNER/REPO` GitHub repository selected as this Coolify resource's Git source; only its Actions OIDC provenance and read-scoped token can access `/mcp`. |
 | `SOURCE_COMMIT` | Set by Coolify. | No | Commit SHA embedded in the image and reported as the build version. Enable **Include Source Commit in Build**. |
 
@@ -170,28 +170,33 @@ Set these required variables:
 - `CAO_ALLOWED_HOSTS`
 - `CAO_TRUSTED_PROXY_CIDRS`
 - `CAO_GITHUB_CLIENT_ID`
-- `CAO_GITHUB_CLIENT_SECRET`
+- `CAO_GITHUB_CLIENT_SECRET_ROTATED`
 - `CAO_GITHUB_REDIRECT_URL`
-- `CAO_SESSION_SECRET`
+- `CAO_SESSION_SECRET_ROTATED`
 - `CAO_GITHUB_ADMIN_USERS`
-- `CAO_GITHUB_WEBHOOK_SECRET`
+- `CAO_GITHUB_WEBHOOK_SECRET_ROTATED`
 - `CAO_MCP_ACTIONS_REPOSITORY`
 
-Also set `REDIS_URL`, and at least one of `CAO_GITHUB_ALLOWED_ORGS` or `CAO_GITHUB_ALLOWED_TEAMS`. Coolify doesn't mark them **Required**, because Compose leaves them empty by default, but the server refuses to serve requests without them.
+Also set `REDIS_URL`, `CAO_GITHUB_CLIENT_SECRET_ROTATED`,
+`CAO_SESSION_SECRET_ROTATED`, `CAO_GITHUB_WEBHOOK_SECRET_ROTATED`, and at least
+one of `CAO_GITHUB_ALLOWED_ORGS` or `CAO_GITHUB_ALLOWED_TEAMS`. Compose leaves
+these runtime secrets empty during the image-build phase so Coolify does not
+expose them as Docker build arguments. The server fails closed at startup when
+any required runtime value is absent.
 
 Set `CAO_MCP_ACTIONS_REPOSITORY` to the repository configured in this Coolify resource's Git source, including its owner. Coolify does not expose that repository identity as a documented Compose variable, so the setting is required rather than falling back to the catalog's repository or reading potentially credential-bearing Git metadata into the build.
 
 Follow these rules when you add the values.
 
-- **Store credentials as Coolify secrets.** `CAO_POSTGRES_URL`, `REDIS_URL`, `CAO_GITHUB_CLIENT_SECRET`, `CAO_SESSION_SECRET`, `CAO_SESSION_SECRET_PREVIOUS`, and `CAO_GITHUB_WEBHOOK_SECRET` are credentials. Never commit them to the repository, paste them into `.env.example`, or echo them in a build or deployment log.
-- **Generate the two server-side secrets yourself.** `CAO_SESSION_SECRET` and `CAO_GITHUB_WEBHOOK_SECRET` must each be at least 32 characters. Generate each one separately, and don't reuse one value for both.
+- **Store credentials as Coolify secrets.** `CAO_POSTGRES_URL`, `REDIS_URL`, `CAO_GITHUB_CLIENT_SECRET_ROTATED`, `CAO_SESSION_SECRET_ROTATED`, `CAO_SESSION_SECRET_PREVIOUS`, and `CAO_GITHUB_WEBHOOK_SECRET_ROTATED` are credentials. Never commit them to the repository, paste them into `.env.example`, or echo them in a build or deployment log.
+- **Generate the two server-side secrets yourself.** `CAO_SESSION_SECRET_ROTATED` and `CAO_GITHUB_WEBHOOK_SECRET_ROTATED` must each be at least 32 characters. Generate each one separately, and don't reuse one value for both.
 
   ```bash
   openssl rand -hex 32
   ```
 
-  Use the same `CAO_GITHUB_WEBHOOK_SECRET` value in the GitHub webhook configuration. A webhook secret is required even when you don't send webhooks.
-- **Take the OAuth values from your OAuth app.** `CAO_GITHUB_CLIENT_ID` and `CAO_GITHUB_CLIENT_SECRET` come from the GitHub OAuth app that you registered, and `CAO_GITHUB_REDIRECT_URL` must exactly match that app's **Authorization callback URL**, `https://PUBLIC-HOST/auth/callback`.
+  Use the same `CAO_GITHUB_WEBHOOK_SECRET_ROTATED` value in the GitHub webhook configuration. A webhook secret is required even when you don't send webhooks.
+- **Take the OAuth values from your OAuth app.** `CAO_GITHUB_CLIENT_ID` and `CAO_GITHUB_CLIENT_SECRET_ROTATED` come from the GitHub OAuth app that you registered, and `CAO_GITHUB_REDIRECT_URL` must exactly match that app's **Authorization callback URL**, `https://PUBLIC-HOST/auth/callback`.
 - **Enable Runtime.** The server reads every operator-provided variable at startup, so each one needs the **Runtime** scope. Coolify injects `SOURCE_COMMIT` into the build when **Include Source Commit in Build** is enabled.
 - **Leave managed variables alone.** Coolify shows `CAO_SOURCE_DIRECTORY` as **Managed**, because `compose.yml` pins it to `/app/source`, the read-only mount of the artifact volume. Don't override it. `CAO_POLICY_PATH` is set the same way.
 - **Duplicate the values for Preview if you use preview deployments.** Coolify keeps **Production** and **Preview** values separate, so a preview deployment fails on the same required variables until you set them again for **Preview**. Give each preview its own `REDIS_NAMESPACE`, artifact volume, host name, OAuth app, and secrets. Sharing a namespace or session secret with production lets a preview build read and write production sessions and data. If you don't use preview deployments, turn them off instead of copying production credentials.

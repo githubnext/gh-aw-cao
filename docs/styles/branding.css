@@ -59,7 +59,8 @@
 }
 
 .right-group .theme-toggle:focus-visible,
-.right-group .social-icons a:focus-visible {
+.right-group .social-icons a:focus-visible,
+button[data-open-modal]:focus-visible {
   outline: 3px solid #1f6feb;
   outline-offset: 3px;
   border-radius: 0.5rem;
@@ -86,7 +87,8 @@
 }
 
 :root[data-theme="dark"] .right-group .theme-toggle:focus-visible,
-:root[data-theme="dark"] .right-group .social-icons a:focus-visible {
+:root[data-theme="dark"] .right-group .social-icons a:focus-visible,
+:root[data-theme="dark"] button[data-open-modal]:focus-visible {
   outline-color: #79c0ff;
 }
 

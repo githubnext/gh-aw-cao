@@ -30,14 +30,14 @@ services:
       CAO_ALLOWED_HOSTS: ${CAO_ALLOWED_HOSTS:?Configure the public dashboard host}
       CAO_TRUSTED_PROXY_CIDRS: ${CAO_TRUSTED_PROXY_CIDRS:?Configure the exact Coolify proxy network CIDR}
       CAO_GITHUB_CLIENT_ID: ${CAO_GITHUB_CLIENT_ID:?Configure the GitHub OAuth client ID}
-      CAO_GITHUB_CLIENT_SECRET: ${CAO_GITHUB_CLIENT_SECRET:?Configure the GitHub OAuth client secret}
+      CAO_GITHUB_CLIENT_SECRET: ${CAO_GITHUB_CLIENT_SECRET_ROTATED:-}
       CAO_GITHUB_REDIRECT_URL: ${CAO_GITHUB_REDIRECT_URL:?Configure the OAuth callback URL}
-      CAO_SESSION_SECRET: ${CAO_SESSION_SECRET:?Configure the session secret}
+      CAO_SESSION_SECRET: ${CAO_SESSION_SECRET_ROTATED:-}
       CAO_SESSION_SECRET_PREVIOUS: ${CAO_SESSION_SECRET_PREVIOUS:-}
       CAO_GITHUB_ALLOWED_ORGS: ${CAO_GITHUB_ALLOWED_ORGS:-}
       CAO_GITHUB_ALLOWED_TEAMS: ${CAO_GITHUB_ALLOWED_TEAMS:-}
       CAO_GITHUB_ADMIN_USERS: ${CAO_GITHUB_ADMIN_USERS:?Configure at least one administrator}
-      CAO_GITHUB_WEBHOOK_SECRET: ${CAO_GITHUB_WEBHOOK_SECRET:?Configure the webhook secret}
+      CAO_GITHUB_WEBHOOK_SECRET: ${CAO_GITHUB_WEBHOOK_SECRET_ROTATED:-}
       CAO_MCP_ACTIONS_REPOSITORY: ${CAO_MCP_ACTIONS_REPOSITORY:?Configure the GitHub repository selected as this Coolify resource's source}
       CAO_SOURCE_DIRECTORY: /app/source
       CAO_BUILD_VERSION: ${SOURCE_COMMIT:-unknown}
