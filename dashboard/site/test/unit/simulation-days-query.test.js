@@ -160,8 +160,9 @@ describe('simulation-days intrinsic query source', () => {
 
   it('projects the authored simulator form through the worker view payload with reactive parameter changes', () => {
     const dashboard = authoritativeDashboard.dashboard;
-    const page = dashboard.pages.find((candidate) => candidate.id === 'simulators');
+    const page = dashboard.pages.find((/** @type {{ id?: string }} */ candidate) => candidate.id === 'simulators');
     expect(page).toBeDefined();
+    /** @param {Record<string, number>} formValues */
     const render = (formValues) => {
       const compiled = compileDashboardViewPayloadQueries(page, 'simulators', {
         viewId: 'simulator-database-growth',
@@ -181,6 +182,7 @@ describe('simulation-days intrinsic query source', () => {
       return result.rows;
     };
     const defaults = render({});
+    /** @param {Record<string, unknown>[]} rows @param {string} date @param {string} table */
     const byTable = (rows, date, table) => rows.find((row) => row.date === date && row.table === table);
     expect(defaults).toHaveLength(90);
     expect(byTable(defaults, '2025-01-01T00:00:00.000Z', 'Run summaries')?.bytes).toBe(5_120_000);
@@ -198,12 +200,14 @@ describe('simulation-days intrinsic query source', () => {
 
   it('caps the authored detail-days calculation after the 30-day retention horizon', () => {
     const dashboard = authoritativeDashboard.dashboard;
-    const page = dashboard.pages.find((candidate) => candidate.id === 'simulators');
-    const definition = dashboard.queries.find((candidate) => candidate.name === 'simulator-database-inputs');
+    const page = dashboard.pages.find((/** @type {{ id?: string }} */ candidate) => candidate.id === 'simulators');
+    const definition = dashboard.queries.find(
+      (/** @type {{ name?: string }} */ candidate) => candidate.name === 'simulator-database-inputs'
+    );
     expect(page).toBeDefined();
     expect(definition).toBeDefined();
-    const [resolved] = resolveDashboardQueryParameters(
-      [definition], dashboardFormDefaultValues(page.form)
+    const [resolved] = /** @type {Array<{ compute: import('../../src/data-operations.js').ComputedField[] }>} */ (
+      resolveDashboardQueryParameters([definition], dashboardFormDefaultValues(page.form))
     );
     const rows = tidy(
       [{ day: 0 }, { day: 30 }, { day: 31 }, { day: 60 }],
@@ -212,5 +216,19 @@ describe('simulation-days intrinsic query source', () => {
     expect(rows.map((row) => [row['summary-runs'], row['detail-runs']])).toEqual([
       [0, 0], [300_000, 240_000], [310_000, 240_000], [600_000, 240_000]
     ]);
+    /** @param {string} queryName */
+    const tableBytes = (queryName) => {
+      const table = dashboard.queries.find(
+        (/** @type {{ name?: string }} */ candidate) => candidate.name === queryName
+      );
+      expect(table).toBeDefined();
+      return tidy(rows, [{
+        op: 'compute',
+        values: /** @type {import('../../src/data-operations.js').ComputedField[]} */ (table.compute)
+      }]).map((row) => row.bytes);
+    };
+    expect(tableBytes('simulator-run-size')).toEqual([0, 153_600_000, 158_720_000, 307_200_000]);
+    expect(tableBytes('simulator-tool-size')).toEqual([0, 614_400_000, 614_400_000, 614_400_000]);
+    expect(tableBytes('simulator-issue-size')).toEqual([0, 122_880_000, 122_880_000, 122_880_000]);
   });
 });
