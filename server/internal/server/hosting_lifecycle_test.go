@@ -220,6 +220,15 @@ func TestExternalHTTPServerDrainLifecycle(t *testing.T) {
 	}
 
 	app.Drain()
+	postDrainTask := make(chan struct{}, 1)
+	if app.launchTask(func() { postDrainTask <- struct{}{} }) {
+		t.Fatal("draining service admitted a background task")
+	}
+	select {
+	case <-postDrainTask:
+		t.Fatal("background task ran after drain")
+	default:
+	}
 	checkAndClose(request("/auth/logged-out"), http.StatusServiceUnavailable)
 	checkAndClose(preflight, http.StatusServiceUnavailable)
 	streamDone := make(chan error, 1)

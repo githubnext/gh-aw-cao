@@ -98,7 +98,9 @@ type App struct {
 	stop            context.CancelFunc
 	draining        bool
 	drain           chan struct{}
-	tasks           sync.WaitGroup
+	taskMu          sync.Mutex
+	taskCount       int
+	tasksDone       chan struct{}
 }
 
 func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) {
@@ -299,20 +301,17 @@ func (a *App) start(startupCtx, runtimeCtx context.Context) error {
 	}
 	if collector := a.Collector(); collector != nil {
 		if err := collector.start(startupCtx, runCtx, a.hub.Broadcast, a.startTask); err != nil {
-			cancel()
-			_ = a.waitTasks(startupCtx)
+			a.cancelAndWaitTasks(cancel, startupCtx)
 			return fmt.Errorf("start collection: %w", err)
 		}
 		serverLog.Printf("collection profile started workers=%d", a.config.Collector.Workers)
 	}
 	if err := startupCtx.Err(); err != nil {
-		cancel()
-		_ = a.waitTasks(startupCtx)
+		a.cancelAndWaitTasks(cancel, startupCtx)
 		return err
 	}
 	if err := runCtx.Err(); err != nil {
-		cancel()
-		_ = a.waitTasks(startupCtx)
+		a.cancelAndWaitTasks(cancel, startupCtx)
 		return err
 	}
 	a.startContext = runCtx
@@ -328,6 +327,10 @@ func (a *App) start(startupCtx, runtimeCtx context.Context) error {
 func (a *App) Drain() {
 	a.startMu.Lock()
 	defer a.startMu.Unlock()
+	a.drainLocked()
+}
+
+func (a *App) drainLocked() {
 	if !a.draining {
 		a.draining = true
 		if a.drain == nil {
@@ -339,11 +342,25 @@ func (a *App) Drain() {
 
 // startTask is called under startMu during startup.
 func (a *App) startTask(work func()) {
-	a.tasks.Add(1)
+	a.taskMu.Lock()
+	if a.taskCount == 0 {
+		a.tasksDone = make(chan struct{})
+	}
+	a.taskCount++
+	a.taskMu.Unlock()
 	go func() {
-		defer a.tasks.Done()
+		defer a.finishTask()
 		work()
 	}()
+}
+
+func (a *App) finishTask() {
+	a.taskMu.Lock()
+	defer a.taskMu.Unlock()
+	a.taskCount--
+	if a.taskCount == 0 {
+		close(a.tasksDone)
+	}
 }
 
 // launchTask tracks work admitted by an HTTP request while the service is
@@ -352,7 +369,7 @@ func (a *App) startTask(work func()) {
 func (a *App) launchTask(work func()) bool {
 	a.startMu.Lock()
 	defer a.startMu.Unlock()
-	if a.startContext != nil && a.startContext.Err() != nil {
+	if a.draining || (a.startContext != nil && a.startContext.Err() != nil) {
 		return false
 	}
 	if a.startContext == nil {
@@ -381,8 +398,8 @@ func (a *App) operationContext(requestCtx context.Context) (context.Context, con
 // Stop cancels CAO-owned background tasks and waits until they exit or ctx is
 // canceled. The external host must call Drain and wait for HTTP shutdown first.
 func (a *App) Stop(ctx context.Context) error {
-	a.Drain()
 	a.startMu.Lock()
+	a.drainLocked()
 	if a.stop != nil {
 		a.stop()
 	}
@@ -391,16 +408,27 @@ func (a *App) Stop(ctx context.Context) error {
 }
 
 func (a *App) waitTasks(ctx context.Context) error {
-	done := make(chan struct{})
-	go func() {
-		a.tasks.Wait()
-		close(done)
-	}()
+	a.taskMu.Lock()
+	if a.taskCount == 0 {
+		a.taskMu.Unlock()
+		return nil
+	}
+	done := a.tasksDone
+	a.taskMu.Unlock()
 	select {
 	case <-done:
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
+	}
+}
+
+func (a *App) cancelAndWaitTasks(cancel context.CancelFunc, parent context.Context) {
+	cancel()
+	ctx, waitCancel := context.WithTimeout(context.WithoutCancel(parent), 5*time.Second)
+	defer waitCancel()
+	if err := a.waitTasks(ctx); err != nil {
+		serverLog.Printf("background startup cleanup failed: %v", err)
 	}
 }
 
