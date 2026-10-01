@@ -26,10 +26,24 @@ The Agentic Workflow definitions remain in the control repository. Target reposi
 
 | Workflow | Role |
 | --- | --- |
-| [`dependabot`](../.github/workflows/dependabot.md) | Daily orchestrator workflow that discovers, ranks, and selects repositories. |
+| [`dependabot`](../.github/workflows/dependabot.md) | Hourly orchestrator workflow that discovers, ranks, and selects repositories. |
 | [Dependabot / Update Planner](../.github/workflows/dependabot-update-planner.md) | Repository-scoped worker that maintains one durable plan and bounded, PR-sized child tasks. |
 
 The orchestrator workflow can dispatch no more than 50 worker workflows in one run. Each worker workflow handles one target repository and uses only its declared issue, refresh-comment, or `noop` safe outputs.
+
+## Intelligence declaration
+
+[`intelligence.json`](intelligence.json) declares the Campaign's
+repository-native problem, eligible opportunity, outcome evidence, schedule,
+overlap identity, output policy, maturation, deduplication, stop conditions,
+and operational-value definition. Installation places the Campaign-owned copy
+at `.github/workflows/dependabot.intelligence.json`, where Activity inventory
+can preserve it on the canonical Campaign record.
+
+The declaration is descriptive evidence. It does not enable the Campaign,
+enroll repositories, grant credentials, promote review work to live, or
+authorize outputs. `backoff` remains undeclared until the Campaign has an
+explicit reviewed backoff contract.
 
 ## Install
 

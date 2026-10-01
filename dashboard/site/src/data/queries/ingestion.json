@@ -244,6 +244,7 @@
         "inventoryWarnings": { "fields": ["campaign-inventory-warnings", "package-inventory-warnings"], "default": 0 },
         "workers": { "fields": ["campaign-workers", "package-workers"], "default": [] },
         "targets": { "fields": ["campaign-targets", "package-targets"], "default": [] },
+        "intelligenceDeclaration": { "fields": ["campaign-intelligence-declaration", "package-intelligence-declaration"], "default": null },
         "minVersion": { "fields": ["campaign-min-version", "package-min-version"], "default": "" },
         "version": { "fields": ["campaign-version", "package-version"], "default": "unknown" },
         "currentVersion": { "fields": ["campaign-current-version", "package-current-version"], "default": "unknown" },

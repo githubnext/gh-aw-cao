@@ -304,6 +304,7 @@ export async function main(actions = {}) {
         path: campaignPath,
         name: bundle.name,
         description: bundle.description,
+        intelligenceDeclaration: bundle.intelligenceDeclaration ?? null,
         workflows: members.map((workflow) => ({
           sourcePath: workflow.path.replace(/\.lock\.yml$/, ".md"),
           lockPath: workflow.path,

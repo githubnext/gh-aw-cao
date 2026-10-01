@@ -21,7 +21,7 @@ The current measure contract is:
 ```json
 {
   "measureId": "portfolio-decisions",
-  "measureVersion": "1.1.0"
+  "measureVersion": "1.2.0"
 }
 ```
 
@@ -110,6 +110,12 @@ Each Decision references the compiled Campaign intelligence contract used for
 that evaluation. The fingerprint therefore changes when declared Campaign
 semantics change.
 
+Campaign-authored semantics arrive through the normalized
+`intelligenceDeclaration` on the canonical Campaign record. The compiled
+contract exposes the declaration version and Campaign identity separately from
+the 17 semantic fields. See [Intelligence](intelligence.md#author-a-campaign-declaration)
+for the authoring and installation format.
+
 Decision quality combines:
 
 - runtime-health availability and provenance;
@@ -182,7 +188,7 @@ The result contains:
 ```json
 {
   "measureId": "portfolio-decisions",
-  "measureVersion": "1.1.0",
+  "measureVersion": "1.2.0",
   "inputFingerprint": "sha256:...",
   "evidenceQuality": {},
   "evaluatedDecisionClasses": ["protect"],

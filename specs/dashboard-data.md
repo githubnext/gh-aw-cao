@@ -417,6 +417,17 @@ normalize to `unknown`. The campaign slug remains the stable identity, and a
 refresh MUST enrich the existing Campaign record rather than create a
 version-specific Campaign.
 
+Campaign inventory inputs MAY also report a normalized
+`campaign-intelligence-declaration` object from the Campaign-owned
+`.github/workflows/<campaign>.intelligence.json` resource. The canonical
+Campaign record MUST preserve that envelope as `intelligenceDeclaration`
+without reinterpreting Campaign descriptions, READMEs, workflow execution, or
+policy as semantic declarations. The database projection MUST return the same
+object without field loss. A malformed, mismatched, unsupported, or conflicting
+declaration MUST fail inventory construction closed. The declaration is
+descriptive evidence and MUST NOT grant rollout, target, credential, tool, or
+write authority.
+
 Workflow inventory inputs SHALL continue to report `gh-aw-version`,
 `gh-aw-current-version`, and `gh-aw-update-state` as compiler evidence.
 Repository maintenance projections MUST group that evidence by canonical

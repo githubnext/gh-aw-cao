@@ -1,8 +1,15 @@
 import { createHash } from 'node:crypto';
+import {
+  CAMPAIGN_INTELLIGENCE_FIELDS,
+  canonicalIntelligenceValue,
+  normalizeCampaignIntelligenceDeclaration
+} from '../campaign-intelligence.mjs';
+
+export { canonicalIntelligenceValue } from '../campaign-intelligence.mjs';
 
 export const CAMPAIGN_INTELLIGENCE_CONTRACT = Object.freeze({
   id: 'campaign-intelligence-contract',
-  version: '1.0.0'
+  version: '1.1.0'
 });
 
 export const DECISION_FEEDBACK_CONTRACT = Object.freeze({
@@ -28,44 +35,10 @@ export const DECISION_FEEDBACK_DISPOSITIONS = Object.freeze([
 const FEEDBACK_DISPOSITIONS = new Set(DECISION_FEEDBACK_DISPOSITIONS);
 const MAX_FEEDBACK_RECORDS = 1_000;
 const MAX_TEXT_LENGTH = 4_000;
-const SEMANTIC_FIELDS = Object.freeze([
-  'repositoryNativeProblem',
-  'eligibleOpportunity',
-  'intendedOutcome',
-  'outcomeAttainmentEvidence',
-  'targetPopulation',
-  'interventionClass',
-  'triggerAndSchedule',
-  'scheduleRationale',
-  'maxDetectionDelay',
-  'resourceEnvelope',
-  'overlapIdentity',
-  'outputApprovalPolicy',
-  'maturationPeriod',
-  'deduplication',
-  'backoff',
-  'stopConditions',
-  'operationalValueDefinition'
-]);
-
 function isPlainObject(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const prototype = Object.getPrototypeOf(value);
   return prototype === Object.prototype || prototype === null;
-}
-
-export function canonicalIntelligenceValue(value) {
-  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value)) throw new TypeError('Intelligence inputs must contain finite JSON numbers');
-    return value;
-  }
-  if (Array.isArray(value)) return value.map(canonicalIntelligenceValue);
-  if (!isPlainObject(value)) throw new TypeError('Intelligence inputs must contain plain JSON objects');
-  return Object.fromEntries(Object.keys(value).sort().map((key) => {
-    if (value[key] === undefined) throw new TypeError('Intelligence inputs must not contain undefined values');
-    return [key, canonicalIntelligenceValue(value[key])];
-  }));
 }
 
 export function intelligenceFingerprint(value) {
@@ -242,9 +215,16 @@ export function compileCampaignIntelligenceContracts(campaigns, workflows) {
   return campaigns.map((campaign) => {
     if (!isPlainObject(campaign)) throw new TypeError('Campaign intelligence inputs must be objects');
     const campaignId = requiredString(campaign.id, 'campaign.id');
-    const declared = isPlainObject(campaign.intelligenceContract)
-      ? campaign.intelligenceContract
-      : {};
+    const declaration = campaign.intelligenceDeclaration === undefined
+      || campaign.intelligenceDeclaration === null
+      ? null
+      : normalizeCampaignIntelligenceDeclaration(campaign.intelligenceDeclaration, {
+          expectedCampaign: requiredString(campaign.slug, 'campaign.slug'),
+          label: `Campaign ${campaignId} intelligence declaration`
+        });
+    const declared = declaration?.fields ?? (
+      isPlainObject(campaign.intelligenceContract) ? campaign.intelligenceContract : {}
+    );
     const relevantWorkflows = workflows.filter((workflow) => (
       String(workflow.campaignId ?? '') === campaignId
     ));
@@ -280,21 +260,25 @@ export function compileCampaignIntelligenceContracts(campaigns, workflows) {
       stopConditions: declaredValue(declared, 'stopConditions'),
       operationalValueDefinition: declaredValue(declared, 'operationalValueDefinition')
     };
-    const declaredFieldCount = SEMANTIC_FIELDS.filter((field) => semantic[field] !== null).length;
+    const declaredFieldCount = CAMPAIGN_INTELLIGENCE_FIELDS
+      .filter((field) => semantic[field] !== null).length;
     const provenanceSources = [campaign, ...relevantWorkflows]
       .map((record) => record?.provenance?.source)
       .filter(Boolean);
+    if (declaration) provenanceSources.push('campaign-intelligence-declaration');
     const quality = normalizeEvidenceQuality({
       availability: 'available',
-      completeness: declaredFieldCount === SEMANTIC_FIELDS.length ? 'complete' : 'partial',
+      completeness: declaredFieldCount === CAMPAIGN_INTELLIGENCE_FIELDS.length
+        ? 'complete'
+        : 'partial',
       freshness: {
         state: 'unknown',
         observedAt: latestObservedAt([campaign, ...relevantWorkflows])
       },
       coverage: {
-        state: declaredFieldCount === SEMANTIC_FIELDS.length ? 'complete' : 'partial',
+        state: declaredFieldCount === CAMPAIGN_INTELLIGENCE_FIELDS.length ? 'complete' : 'partial',
         numerator: declaredFieldCount,
-        denominator: SEMANTIC_FIELDS.length
+        denominator: CAMPAIGN_INTELLIGENCE_FIELDS.length
       },
       maturity: 'unknown',
       provenance: {
@@ -309,12 +293,17 @@ export function compileCampaignIntelligenceContracts(campaigns, workflows) {
       contractVersion: CAMPAIGN_INTELLIGENCE_CONTRACT.version,
       campaignId,
       campaignSlug: nullableString(campaign.slug, 'campaign.slug'),
+      declaration: declaration ? {
+        contractVersion: declaration.contractVersion,
+        campaign: declaration.campaign
+      } : null,
       ...semantic,
       authorityContext: {
         mode: nullableString(campaign.mode, 'campaign.mode'),
         enabled: typeof campaign.enabled === 'boolean' ? campaign.enabled : null,
         maxRepositories: numericEvidence(campaign.maxRepositories),
-        rolloutPercent: numericEvidence(campaign.rolloutPercent)
+        rolloutPercent: numericEvidence(campaign.rolloutPercent),
+        targets: explicitTargets
       },
       workflows: workflowContracts,
       quality

@@ -8,3 +8,6 @@ includes:
   - operational-value/dependabot-update-planner.mjs
   - .github/workflows/dependabot.md
   - .github/workflows/dependabot-update-planner.md
+resources:
+  - source: intelligence.json
+    destination: .github/workflows/dependabot.intelligence.json

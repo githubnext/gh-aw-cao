@@ -7,6 +7,9 @@ import {
   normalizeDecisionFeedback,
   normalizeEvidenceQuality
 } from '../../activity/computations/intelligence-contracts.mjs';
+import {
+  CAMPAIGN_INTELLIGENCE_DECLARATION
+} from '../../activity/campaign-intelligence.mjs';
 import { computeIntelligencePortfolio } from '../../activity/computations/intelligence.mjs';
 
 function runtimeHealth() {
@@ -138,12 +141,26 @@ test('campaign intelligence contracts are deterministic and honor declared seman
     'stopConditions',
     'operationalValueDefinition'
   ].map((field) => [field, { declared: field }]));
-  const input = campaign({ intelligenceContract: declared });
+  const input = campaign({
+    intelligenceDeclaration: {
+      contractVersion: CAMPAIGN_INTELLIGENCE_DECLARATION.version,
+      campaign: 'maintenance',
+      fields: declared
+    }
+  });
   const first = compileCampaignIntelligenceContracts([input], [workflow()]);
   const second = compileCampaignIntelligenceContracts([structuredClone(input)], [workflow()]);
 
   assert.deepEqual(second, first);
   assert.equal(first[0].quality.completeness, 'complete');
+  assert.deepEqual(first[0].declaration, {
+    contractVersion: CAMPAIGN_INTELLIGENCE_DECLARATION.version,
+    campaign: 'maintenance'
+  });
+  assert.deepEqual(first[0].quality.provenance.sources, [
+    'campaign-intelligence-declaration',
+    'inventory'
+  ]);
   assert.deepEqual(first[0].repositoryNativeProblem, {
     declared: 'repositoryNativeProblem'
   });

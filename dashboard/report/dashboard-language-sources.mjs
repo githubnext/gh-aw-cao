@@ -657,6 +657,10 @@ function campaignRows(inventory = {}, controlSettings = {}, generatedAt) {
     const bundle = bundles.get(id)
       || [...bundles.values()].find((candidate) => candidate.id === id)
       || {};
+    const installed = registered.get(id) || {};
+    const intelligenceDeclaration = bundle.intelligenceDeclaration
+      || installed.intelligenceDeclaration
+      || null;
     const policy = controlSettings.campaigns?.[id] || {};
     const workers = Object.entries(policy.worker_policies || {}).map(([workflow, worker]) => ({
       id: worker.worker || workflow,
@@ -688,6 +692,7 @@ function campaignRows(inventory = {}, controlSettings = {}, generatedAt) {
       "campaign-inventory-warnings": inventoryWarnings,
       "campaign-workers": workers,
       "campaign-targets": targets,
+      "campaign-intelligence-declaration": intelligenceDeclaration,
       "campaign-min-version": bundle.minVersion || "",
       "campaign-version": bundle.version || "unknown",
       "campaign-current-version": bundle.currentVersion || "unknown",

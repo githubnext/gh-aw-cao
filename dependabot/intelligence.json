@@ -1,0 +1,91 @@
+{
+  "contractVersion": "1.0.0",
+  "campaign": "dependabot",
+  "fields": {
+    "repositoryNativeProblem": {
+      "statement": "Authorized repositories can retain open Dependabot security alerts, blocked dependency updates, and unresolved Dependabot pull-request backlog.",
+      "evidence": [
+        "Dependabot security-alert lifecycle records",
+        "Dependabot-authored pull-request lifecycle records",
+        "Repository dependency manifests, lockfiles, configuration, and CI evidence"
+      ]
+    },
+    "eligibleOpportunity": {
+      "identity": "One authorized repository with an open Dependabot security alert, dependency-access blocker, actionable update, stale or conflicted Dependabot pull request, lockfile drift, or actionable Dependabot configuration failure.",
+      "predicate": "The repository is explicitly within CAO policy scope and the campaign can acquire enough current dependency evidence to produce one bounded repository plan.",
+      "missingEvidence": "Unavailable or incomplete lifecycle or repository evidence is missing, not an eligible zero."
+    },
+    "intendedOutcome": {
+      "statement": "Reduce the repository's open Dependabot security-alert backlog while retaining critical/high alerts and open Dependabot pull requests as separate diagnostics.",
+      "primaryMetric": {
+        "id": "open-security-alert-count",
+        "direction": "decrease",
+        "unit": "alerts"
+      },
+      "actorIndependence": "Count outcome movement regardless of whether an agent, maintainer, Dependabot, or another system produced it."
+    },
+    "outcomeAttainmentEvidence": {
+      "definitionPath": "dependabot/operational-value/dependabot-update-planner.mjs",
+      "schemaVersion": 3,
+      "evaluationMode": "baseline-comparable",
+      "metrics": [
+        "open-security-alert-count",
+        "open-high-critical-alert-count",
+        "open-dependabot-pr-count"
+      ],
+      "zeroRule": "Complete lifecycle evidence with no alert or Dependabot pull request open at the cutoff records zero.",
+      "missingRule": "Inaccessible, truncated, malformed, or incomplete lifecycle evidence records missing rather than zero."
+    },
+    "targetPopulation": {
+      "scope": "Repositories explicitly authorized by the reviewed CAO control policy.",
+      "eligibility": "Repositories with readable dependency surfaces and evidence of Dependabot security risk, update blockage, maintenance backlog, or configuration failure."
+    },
+    "interventionClass": "dependency-maintenance-planning",
+    "triggerAndSchedule": {
+      "schedule": "hourly",
+      "manualTrigger": "workflow_dispatch",
+      "manualScope": "At most one fully qualified, allowlisted target repository per explicit target_repo input."
+    },
+    "scheduleRationale": "Hourly evaluation bounds discovery delay for newly observable security and dependency-maintenance conditions while repository-scoped deduplication prevents duplicate durable plans.",
+    "maxDetectionDelay": {
+      "value": 1,
+      "unit": "hour",
+      "appliesTo": "Conditions visible to the hourly canonical acquisition path."
+    },
+    "overlapIdentity": {
+      "domain": "dependency-maintenance",
+      "opportunityKey": "Authorized repository plus open Dependabot alert, update, access, pull-request, lockfile, or configuration condition."
+    },
+    "outputApprovalPolicy": {
+      "review": "Create or refresh review evidence in the control repository.",
+      "live": "Create or refresh one durable repository-scoped planning issue in the authorized target repository.",
+      "pullRequests": "The campaign never creates or changes a pull request.",
+      "authority": "This declaration does not grant review or live authority."
+    },
+    "maturationPeriod": {
+      "value": 0,
+      "unit": "days",
+      "source": "dependabot-update-planner operational-value evidence window"
+    },
+    "deduplication": {
+      "identity": "One durable Dependabot planning issue per target repository.",
+      "recovery": "Repository memory and canonical markers recover the existing issue before creating another."
+    },
+    "stopConditions": {
+      "conditions": [
+        "No recognized Dependabot security risk, access gap, update, lockfile, pull-request, or configuration work remains.",
+        "Required evidence is incomplete, unavailable, or outside authorized scope."
+      ],
+      "missingEvidenceBehavior": "Report incomplete or no-op; do not claim outcome attainment."
+    },
+    "operationalValueDefinition": {
+      "path": "dependabot/operational-value/dependabot-update-planner.mjs",
+      "schemaVersion": 3,
+      "primaryMetric": "open-security-alert-count",
+      "diagnosticMetrics": [
+        "open-high-critical-alert-count",
+        "open-dependabot-pr-count"
+      ]
+    }
+  }
+}

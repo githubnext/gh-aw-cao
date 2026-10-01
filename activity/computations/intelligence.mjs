@@ -11,7 +11,7 @@ export { intelligenceFingerprint } from './intelligence-contracts.mjs';
 
 export const INTELLIGENCE_MEASURE = Object.freeze({
   id: 'portfolio-decisions',
-  version: '1.1.0'
+  version: '1.2.0'
 });
 
 const TERMINAL_DISPOSITIONS = new Set([

@@ -655,6 +655,9 @@ function campaignRows(inventory, controlSettings, generatedAt, latestCampaignCom
       || [...bundles.values()].find((candidate) => candidate.id === id)
       || {};
     const installed = registered.get(id) || {};
+    const intelligenceDeclaration = bundle.intelligenceDeclaration
+      || installed.intelligenceDeclaration
+      || null;
     const repository = campaignRepository(installed) || campaignRepository(bundle);
     const installedRevision = String(installed.resolvedCommit || bundle.version || "").trim();
     const latestRevision = String(latestCampaignCommits[repository] || "").trim();
@@ -689,6 +692,7 @@ function campaignRows(inventory, controlSettings, generatedAt, latestCampaignCom
       "campaign-inventory-warnings": inventoryWarnings,
       "campaign-workers": workers,
       "campaign-targets": targets,
+      "campaign-intelligence-declaration": intelligenceDeclaration,
       "campaign-min-version": bundle.minVersion || "",
       "campaign-version": shortRevision(installedRevision) || "unknown",
       "campaign-current-version": shortRevision(latestRevision) || "unknown",

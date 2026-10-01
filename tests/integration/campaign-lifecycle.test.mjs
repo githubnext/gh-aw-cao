@@ -53,6 +53,7 @@ const softwareDevelopmentPracticesCampaignSource = focusedCampaignSource("softwa
 const activityExpectedFiles = [
   "activity/actions-context.mjs",
   "activity/actions-log.mjs",
+  "activity/campaign-intelligence.mjs",
   "activity/cao.mjs",
   "activity/cli-usage.mjs",
   "activity/commands/activity-stats.mjs",
@@ -636,6 +637,7 @@ test("gh aw update replaces workflows and restores campaign-owned assets after c
 
     const removedFiles = [
       "dependabot/operational-value.mjs",
+      ".github/workflows/dependabot.intelligence.json",
       ".github/workflows/dependabot-update-planner.md",
       ".github/workflows/shared/control.md",
     ];

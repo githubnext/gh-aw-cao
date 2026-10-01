@@ -4,9 +4,11 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { setActionsGlobals } from "./actions-context.mjs";
 import { actionsLog as log } from "./actions-log.mjs";
+import { normalizeCampaignIntelligenceDeclaration } from "./campaign-intelligence.mjs";
 import { compilerVersionFromLock } from "./version.mjs";
 
 const CAMPAIGN_OWNERSHIP_DIRECTORY = ".github/aw/campaigns";
+const INSTALLED_INTELLIGENCE_SUFFIX = ".intelligence.json";
 
 function normalizeNewlines(source) {
   return source.replaceAll("\r\n", "\n");
@@ -96,6 +98,45 @@ function installedCampaignRecords(root) {
     });
 }
 
+function readIntelligenceDeclaration(filePath, expectedCampaign = null) {
+  let value;
+  try {
+    value = JSON.parse(readFileSync(filePath, "utf8"));
+  } catch (error) {
+    throw new TypeError(`Unable to parse Campaign intelligence declaration ${filePath}: ${error.message}`);
+  }
+  return normalizeCampaignIntelligenceDeclaration(value, {
+    expectedCampaign,
+    label: `Campaign intelligence declaration ${filePath}`,
+  });
+}
+
+function installedIntelligenceDeclarations(workflowDirectory) {
+  return new Map(readdirSync(workflowDirectory, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(INSTALLED_INTELLIGENCE_SUFFIX))
+    .map((entry) => {
+      const campaign = entry.name.slice(0, -INSTALLED_INTELLIGENCE_SUFFIX.length);
+      const declaration = readIntelligenceDeclaration(
+        path.join(workflowDirectory, entry.name),
+        campaign,
+      );
+      return [campaign, declaration];
+    }));
+}
+
+function resolveIntelligenceDeclaration(campaign, sourceDeclaration, installedDeclaration) {
+  if (sourceDeclaration && sourceDeclaration.campaign !== campaign) {
+    throw new TypeError(
+      `Campaign intelligence declaration ${sourceDeclaration.campaign} does not match ${campaign}`,
+    );
+  }
+  if (sourceDeclaration && installedDeclaration
+      && JSON.stringify(sourceDeclaration) !== JSON.stringify(installedDeclaration)) {
+    throw new TypeError(`Campaign intelligence declarations conflict for ${campaign}`);
+  }
+  return sourceDeclaration || installedDeclaration || null;
+}
+
 function ownershipByCampaignId(records) {
   const grouped = new Map();
   for (const record of records) {
@@ -113,9 +154,11 @@ export function sourceRevision(source) {
 export function discoverInventory(root = path.resolve(process.env.REPORT_ROOT || ".")) {
   const workflowDirectory = path.join(root, ".github/workflows");
   const policyPath = path.join(workflowDirectory, "cao.json");
+  const installedDeclarations = installedIntelligenceDeclarations(workflowDirectory);
   const manifests = findFiles(root, "aw.yml").map((manifestPath) => {
     const source = normalizeNewlines(readFileSync(manifestPath, "utf8"));
     const readmePath = path.join(path.dirname(manifestPath), "README.md");
+    const intelligencePath = path.join(path.dirname(manifestPath), "intelligence.json");
     return {
       path: relative(root, manifestPath),
       name: scalar(source, "name"),
@@ -124,6 +167,9 @@ export function discoverInventory(root = path.resolve(process.env.REPORT_ROOT ||
       experimental: scalar(source, "experimental") === "true",
       readmePath: existsSync(readmePath) ? relative(root, readmePath) : "",
       readme: existsSync(readmePath) ? normalizeNewlines(readFileSync(readmePath, "utf8")) : "",
+      intelligenceDeclaration: existsSync(intelligencePath)
+        ? readIntelligenceDeclaration(intelligencePath)
+        : null,
       includes: manifestIncludes(source),
     };
   });
@@ -165,24 +211,32 @@ export function discoverInventory(root = path.resolve(process.env.REPORT_ROOT ||
     });
   const workflowById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
   const assignedWorkers = new Set(workflows.flatMap((workflow) => workflow.workers));
-  const bundles = workflows.filter((workflow) => workflow.role === "orchestrator").map((orchestrator) => ({
-    id: orchestrator.id,
-    name: orchestrator.campaign?.name || orchestrator.name,
-    description: orchestrator.campaign?.description || orchestrator.description,
-    minVersion: orchestrator.campaign?.minVersion || "",
-    experimental: orchestrator.campaign?.experimental === true,
-    readmePath: orchestrator.campaign?.readmePath || "",
-    readme: orchestrator.campaign?.readme || "",
-    workflow: orchestrator.sourcePath,
-    source: orchestrator.source,
-    version: orchestrator.version,
-    controlCampaign: orchestrator.controlCampaign,
-    maxAiCredits: orchestrator.maxAiCredits,
-    compiled: orchestrator.compiled,
-    issueLabels: orchestrator.issueLabels,
-    workers: orchestrator.workers.map((workerId) => workflowById.get(workerId)).filter(Boolean),
-    missingWorkers: orchestrator.workers.filter((workerId) => !workflowById.has(workerId)),
-  }));
+  const bundles = workflows.filter((workflow) => workflow.role === "orchestrator").map((orchestrator) => {
+    const campaign = orchestrator.controlCampaign || orchestrator.id;
+    return {
+      id: orchestrator.id,
+      name: orchestrator.campaign?.name || orchestrator.name,
+      description: orchestrator.campaign?.description || orchestrator.description,
+      minVersion: orchestrator.campaign?.minVersion || "",
+      experimental: orchestrator.campaign?.experimental === true,
+      readmePath: orchestrator.campaign?.readmePath || "",
+      readme: orchestrator.campaign?.readme || "",
+      intelligenceDeclaration: resolveIntelligenceDeclaration(
+        campaign,
+        orchestrator.campaign?.intelligenceDeclaration,
+        installedDeclarations.get(campaign),
+      ),
+      workflow: orchestrator.sourcePath,
+      source: orchestrator.source,
+      version: orchestrator.version,
+      controlCampaign: orchestrator.controlCampaign,
+      maxAiCredits: orchestrator.maxAiCredits,
+      compiled: orchestrator.compiled,
+      issueLabels: orchestrator.issueLabels,
+      workers: orchestrator.workers.map((workerId) => workflowById.get(workerId)).filter(Boolean),
+      missingWorkers: orchestrator.workers.filter((workerId) => !workflowById.has(workerId)),
+    };
+  });
   const campaignNames = new Map(bundles.map((bundle) => [bundle.controlCampaign || bundle.id, bundle.name]));
   const installedById = ownershipByCampaignId(installedCampaignRecords(root));
   let policy = {};
@@ -191,11 +245,20 @@ export function discoverInventory(root = path.resolve(process.env.REPORT_ROOT ||
   } catch {
     policy = {};
   }
-  const campaigns = Object.keys(policy["control-plane"]?.campaigns || {}).sort().map((id) => ({
-    id,
-    name: campaignNames.get(id) || id,
-    ...(installedById.get(id) || {}),
-  }));
+  const campaigns = Object.keys(policy["control-plane"]?.campaigns || {}).sort().map((id) => {
+    const bundle = bundles.find((candidate) => (candidate.controlCampaign || candidate.id) === id);
+    const intelligenceDeclaration = resolveIntelligenceDeclaration(
+      id,
+      bundle?.intelligenceDeclaration,
+      installedDeclarations.get(id),
+    );
+    return {
+      id,
+      name: campaignNames.get(id) || id,
+      ...(installedById.get(id) || {}),
+      ...(intelligenceDeclaration ? { intelligenceDeclaration } : {}),
+    };
+  });
   const standalone = workflows.filter((workflow) => workflow.role === "standalone" && !assignedWorkers.has(workflow.id));
   const lockOnly = readdirSync(workflowDirectory, { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith(".lock.yml"))

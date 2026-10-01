@@ -221,6 +221,7 @@
       { "field": "inventoryWarnings", "as": "campaign-inventory-warnings" },
       { "field": "workers", "as": "campaign-workers" },
       { "field": "targets", "as": "campaign-targets" },
+      { "field": "intelligenceDeclaration", "as": "campaign-intelligence-declaration" },
       { "field": "minVersion", "as": "campaign-min-version" },
       { "field": "version", "as": "campaign-version" },
       { "field": "currentVersion", "as": "campaign-current-version" },

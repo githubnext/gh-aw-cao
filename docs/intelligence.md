@@ -106,6 +106,49 @@ report `partial` completeness. A partial contract can support operational
 warnings, but it cannot justify claims about expected value, outcome
 attainment, schedule fitness, or Campaign overlap.
 
+## Author a Campaign declaration
+
+Place `intelligence.json` next to the Campaign's `aw.yml`:
+
+```json
+{
+  "contractVersion": "1.0.0",
+  "campaign": "dependabot",
+  "fields": {
+    "intendedOutcome": {
+      "statement": "Reduce open dependency security risk."
+    },
+    "stopConditions": {
+      "conditions": ["No actionable dependency-maintenance work remains."]
+    }
+  }
+}
+```
+
+Install it as a Campaign-owned resource:
+
+```yaml
+resources:
+  - source: intelligence.json
+    destination: .github/workflows/dependabot.intelligence.json
+```
+
+The envelope is strict:
+
+- `campaign` must match the lowercase Campaign slug;
+- `contractVersion` must be supported;
+- `fields` may contain only the 17 defined semantic fields;
+- unknown values must be omitted, not declared as `null`; and
+- the catalog and installed copies must be canonically identical.
+
+Malformed, mismatched, or conflicting declarations fail inventory construction
+closed. The declaration is descriptive evidence only; placing `mode`, targets,
+credentials, or output authority in it cannot widen reviewed CAO policy.
+
+The Dependabot Campaign is the initial evidence-grounded pilot. Its declaration
+references the existing operational-value definition and preserves `backoff`
+as unknown because no explicit backoff contract has been authored.
+
 ## Evidence quality
 
 Every Campaign contract, Decision, and portfolio result preserves normalized

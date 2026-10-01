@@ -199,6 +199,15 @@ test("discovers public workflow registry metadata and disabled state", async () 
     const installedCampaignRevision = "1".repeat(40);
     const latestCampaignRevision = "2".repeat(40);
     const generatedAt = "2026-09-17T00:00:00Z";
+    const intelligenceDeclaration = {
+      contractVersion: "1.0.0",
+      campaign: "operations",
+      fields: {
+        intendedOutcome: {
+          statement: "Reduce unresolved operational work.",
+        },
+      },
+    };
     const sources = buildInventoryDashboardSources({
       repository: "acme/control",
       generatedAt,
@@ -208,6 +217,7 @@ test("discovers public workflow registry metadata and disabled state", async () 
           name: "Operations",
           campaign: "acme/catalog/operations",
           resolvedCommit: installedCampaignRevision,
+          intelligenceDeclaration,
         }],
         workflows: [{
           id: "control-agent",
@@ -262,6 +272,17 @@ test("discovers public workflow registry metadata and disabled state", async () 
       latest: latestCampaignRevision.slice(0, 12),
       state: "update-available",
     });
+    assert.deepEqual(
+      sources.campaigns.rows[0]["campaign-intelligence-declaration"],
+      intelligenceDeclaration,
+    );
+    const canonical = normalize(
+      queryDashboardSourceObservations(sources).observations,
+    );
+    assert.deepEqual(
+      canonical.campaigns[0].intelligenceDeclaration,
+      intelligenceDeclaration,
+    );
     assert.deepEqual(sources.workflows.rows.map((row) => ({
       repository: `${row.organization}/${row.repository}`,
       workflow: row.workflow,

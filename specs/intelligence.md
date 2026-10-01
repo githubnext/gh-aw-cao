@@ -1,7 +1,7 @@
 ---
 title: Central Agentic Ops Intelligence Specification
 description: Summary requirements for proactive portfolio intelligence, decision synthesis, campaign design validation, and bounded execution in Central Agentic Ops.
-version: 0.2.0
+version: 0.3.0
 status: Working Draft
 editors:
   - GitHub Next
@@ -9,7 +9,7 @@ editors:
 
 # Central Agentic Ops Intelligence Specification
 
-**Version:** 0.2.0
+**Version:** 0.3.0
 **Status:** Working Draft
 **Latest Version:** https://github.com/githubnext/gh-aw-cao/blob/main/specs/intelligence.md
 **Editors:** GitHub Next
@@ -200,9 +200,13 @@ A compiled campaign intelligence contract MUST include:
 ```json
 {
   "contractId": "campaign-intelligence-contract:...",
-  "contractVersion": "1.0.0",
+  "contractVersion": "1.1.0",
   "campaignId": "campaign:dependabot",
   "campaignSlug": "dependabot",
+  "declaration": {
+    "contractVersion": "1.0.0",
+    "campaign": "dependabot"
+  },
   "repositoryNativeProblem": null,
   "eligibleOpportunity": null,
   "intendedOutcome": null,
@@ -242,6 +246,47 @@ An absent field MUST be represented as `null` or a typed `missing` state. An
 empty default supplied by an adapter MUST NOT be interpreted as an
 authoritative observation of zero eligible opportunities, targets, schedules,
 cost, attention, or outcomes.
+
+### 4.2 Campaign-owned declaration
+
+A catalog Campaign MAY declare its semantic intelligence fields in an
+`intelligence.json` file adjacent to its `aw.yml`. The Campaign manifest MUST
+install that file as a Campaign-owned resource at:
+
+```text
+.github/workflows/<campaign>.intelligence.json
+```
+
+The declaration envelope MUST use this shape:
+
+```json
+{
+  "contractVersion": "1.0.0",
+  "campaign": "dependabot",
+  "fields": {
+    "intendedOutcome": {},
+    "outcomeAttainmentEvidence": {},
+    "stopConditions": {}
+  }
+}
+```
+
+`campaign` MUST exactly match the canonical lowercase Campaign slug. `fields`
+MUST contain only the semantic fields defined by Section 4. A semantic field
+whose value is unknown MUST be omitted rather than declared as `null`.
+Declarations with an unsupported version, unknown field, empty field set,
+non-finite number, undefined value, mismatched Campaign identity, or conflicting
+source and installed copy MUST fail closed.
+
+The source and installed declaration MUST normalize to the same canonical JSON
+value. Canonical inventory MUST preserve the normalized envelope on the
+Campaign record as `intelligenceDeclaration`. The compiled intelligence
+contract MUST preserve its declaration version and Campaign identity, and its
+input fingerprint MUST change when any declared semantic value changes.
+
+The declaration is Campaign-owned descriptive evidence. It MUST NOT appear in
+`cao.json`, replace policy, enable a Campaign or worker, enroll a target,
+promote review work to live, grant credentials, or authorize a safe output.
 
 ## 5. Evidence quality
 
@@ -550,7 +595,7 @@ A decision result MUST include:
 ```json
 {
   "measureId": "portfolio-decisions",
-  "measureVersion": "1.0.0",
+  "measureVersion": "1.2.0",
   "decisionId": "schedule-fitness:optimization",
   "decisionClass": "optimize",
   "state": "decide-soon",
@@ -845,6 +890,17 @@ A conforming implementation:
 - [Operational-Value History Reconstruction Specification](operational-value-history.md)
 
 ## 17. Change log
+
+### Version 0.3.0 — Working Draft
+
+- Defined the Campaign-owned `intelligence.json` authoring envelope and
+  installed control-repository location.
+- Required strict identity, version, field, canonical-value, and duplicate
+  validation.
+- Required canonical Campaign records and compiled contracts to preserve the
+  normalized declaration without granting authority.
+- Bumped the compiled Campaign contract to `1.1.0` and portfolio Decisions to
+  `1.2.0` for declaration provenance and explicit authority-context targets.
 
 ### Version 0.2.0 — Working Draft
 
