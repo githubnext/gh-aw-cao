@@ -3,6 +3,7 @@ import {
   dashboardFormDefaultValues,
   resolveDashboardQueryParameters
 } from "./data/queries/view-payload-compiler.js";
+import { resolveDashboardQuerySources } from "./data/queries/declarative.js";
 import { csrfHeaders, ensureCsrfToken, usesGitHubAuthentication } from "./auth.js";
 import { createDebug } from "./debug.js";
 import { updateRateLimitNotification } from "./rate-limit-notification.js";
@@ -161,9 +162,15 @@ function remoteQueryPayload(sourceNames, context, pagination, options = {}) {
     ...dashboardFormDefaultValues(pageForm),
     ...(options.queryContext?.formValues ?? {})
   };
+  const required = new Set(resolveDashboardQuerySources(context.queries ?? [], sourceNames));
+  const scopedQueries = (context.queries ?? []).filter((definition) => (
+    definition && typeof definition === "object"
+      && typeof (/** @type {Record<string, unknown>} */ (definition)).name === "string"
+      && required.has(/** @type {{ name: string }} */ (definition).name)
+  ));
   return {
     sourceNames,
-    queries: resolveDashboardQueryParameters(context.queries ?? [], formValues),
+    queries: resolveDashboardQueryParameters(scopedQueries, formValues),
     compiledQueries: viewPayload.queries,
     aliases: viewPayload.aliases,
     replacedSources: viewPayload.replacedSources,

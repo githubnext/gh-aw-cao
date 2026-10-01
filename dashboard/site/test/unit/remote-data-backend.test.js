@@ -8,6 +8,7 @@ import {
   subscribeRemoteRevision,
   usesRemoteDataBackend,
 } from "../../src/remote-data-backend.js";
+import { authoritativeDashboard } from "../authoritative-dashboard.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -109,6 +110,50 @@ describe("remote dashboard data backend", () => {
     expect(request.compiledQueries.at(-1).compute[0].args[1]).toEqual({ value: 3 });
     expect(JSON.stringify(request)).not.toMatch(/redis|credential|password/i);
     expect(init?.headers).toMatchObject({ Authorization: "Bearer test-access-token" });
+  });
+
+  it("does not resolve unrelated simulator parameters while querying another page", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      revision: 4,
+      sources: { runs: { source: "runs", rows: [], metadata: {} } },
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    await queryRemoteDashboard(["runs"], {
+      pages: [{ id: "runs", views: [{ id: "inventory", data: { source: "runs" } }] }],
+      queries: [
+        { name: "run-counts", from: "runs" },
+        {
+          name: "simulator",
+          from: "simulation-days",
+          parameters: [{ name: "repositories", type: "number" }],
+          compute: [{ as: "size", function: "product", args: [{ field: "day" }, { parameter: "repositories" }] }],
+        },
+      ],
+      views: [],
+    }, undefined, { pageId: "runs" });
+    const request = JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body));
+    expect(request.queries).toEqual([]);
+    expect(request.sourceNames).toEqual(["runs"]);
+  });
+
+  it("sends the authored simulator graph with only scalar form values", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      revision: 4,
+      sources: { "simulator-database-size": { source: "simulator-database-size", rows: [], metadata: {} } },
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    await queryRemoteDashboard(["simulator-database-size"], authoritativeDashboard.dashboard, undefined, {
+      pageId: "simulators",
+      queryContext: { formValues: { repositories: 2000 } },
+    });
+    const request = JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body));
+    expect(request.queries.map((/** @type {{ name: string }} */ query) => query.name)).toEqual([
+      "simulator-database-inputs", "simulator-run-size", "simulator-tool-size",
+      "simulator-issue-size", "simulator-database-size",
+    ]);
+    expect(request.queries[0].compute[0].args).toEqual([{ value: 2000 }, { value: 10 }]);
+    expect(request.compiledQueries.length).toBeGreaterThan(0);
+    expect(request.queries.every((/** @type {unknown} */ query) => !JSON.stringify(query).includes('"parameter"'))).toBe(true);
   });
 
   it("notifies once for rate-limited requests and clears the notice after recovery", async () => {
