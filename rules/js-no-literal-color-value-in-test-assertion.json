@@ -2,7 +2,7 @@
   "rule_key": "js-no-literal-color-value-in-test-assertion",
   "schema_version": 1,
   "first_seen": "2026-10-01T14:53:00Z",
-  "last_updated": "2026-10-01T16:04:26Z",
+  "last_updated": "2026-10-01T18:01:14Z",
   "status": "needs-work",
   "affected_languages": [
     "javascript"
@@ -13,10 +13,10 @@
   "likely_false_positives": "Asserting a literal color value is legitimate when the test is specifically about a fixed brand constant that is never expected to change (e.g. a GitHub/Primer base token that is not part of an actively-tuned theme), or when the assertion is paired with a computed contrast-ratio check rather than being the sole guard. The rule should flag literal hex/color-mix matches against files under active visual-design iteration (docs/components/*.astro, src/styles.js) rather than every color literal in the codebase.",
   "autofix_safe": false,
   "existing_plugin_coverage": "No published ESLint rule covers this: it requires recognizing brittle golden-value regex assertions tied to a specific pair of source/test files under active design churn, not a generic no-magic-numbers or regex-literal rule that existing plugins (eslint-plugin-jest, eslint-plugin-regexp) target.",
-  "occurrence_count": 3,
+  "occurrence_count": 4,
   "repositories": {
     "githubnext/gh-aw-cao": {
-      "occurrence_count": 3,
+      "occurrence_count": 4,
       "evidence": [
         {
           "type": "merged_pull_request",
@@ -50,6 +50,16 @@
             "docs/components/TerminalDemo.astro",
             "tests/unit/landing-page-diagram.test.mjs"
           ]
+        },
+        {
+          "type": "merged_pull_request",
+          "repo": "githubnext/gh-aw-cao",
+          "number": 15598,
+          "title": "Split workflow contract tests by area and fix stale assertions",
+          "detail": "Fixed two stale unit assertions reported by the Workflow contracts check (referencing #15576), including updating the terminal color assertion to match the current accessible dark-theme color -- a repeat of the same literal-color-vs-structural-assertion churn previously mined from PRs #15525/#15538/#15544.",
+          "files": [
+            "tests/unit/landing-page-diagram.test.mjs"
+          ]
         }
       ],
       "affected_paths": [
@@ -68,7 +78,7 @@
     "reason": "Scratch rule flagging any regex-literal hex/color-mix assertion found 15 sites across 3 files; only tests/unit/landing-page-diagram.test.mjs:305 (the mined --terminal-syntax-placeholder churn pair, currently failing) is a true positive. 11 other sites are stable, non-actively-tuned literals the mined likely_false_positives description explicitly excludes. Needs a file-scope restriction (docs/components/*.astro under active contrast churn) before adoption.",
     "txn_id": "refiner-36887337909-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36887337909",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36901317392",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-01T16:04:26Z"
+  "last_seen_at": "2026-10-01T18:01:14Z"
 }
