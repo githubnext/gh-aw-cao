@@ -184,7 +184,7 @@ describe('dashboard view query contracts', () => {
     }]);
   });
 
-  it('renders the Cost page with concise titles and a workflow bar chart in the Data section', () => {
+  it('places the Cost page in the Data section', () => {
     const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'cost');
     const dataSection = dashboard.navigation.find(
       (/** @type {Record<string, unknown>} */ section) => section.label === 'Data'
@@ -194,6 +194,84 @@ describe('dashboard view query contracts', () => {
     expect(page).toMatchObject({
       icon: 'credit-card'
     });
+  });
+
+  it('computes campaign cost without inventory, dispatch, or coverage dependencies', () => {
+      const cost = queriesByName.get('cost-by-campaign');
+      const totals = queriesByName.get('campaign-cost-totals');
+      expect(cost?.from).toBe('campaigns');
+      expect(cost?.joins?.map((/** @type {{ source: string }} */ join) => join.source)).toEqual(['campaign-cost-totals']);
+      expect(totals?.from).toBe('workflows');
+      expect(totals?.joins?.map((/** @type {{ source: string }} */ join) => join.source)).toEqual(['workflow-aic-totals']);
+
+      const sources = {
+        ...databaseTables,
+        campaigns: {
+          source: 'campaigns', metadata,
+          rows: [
+            { campaign: 'beta', 'campaign-name': 'Beta' },
+            { campaign: 'alpha & one', 'campaign-name': 'Alpha & One' },
+            { campaign: 'empty', 'campaign-name': 'Empty' }
+          ]
+        },
+        workflows: {
+          source: 'workflows', metadata,
+          rows: [
+            { organization: 'org', repository: 'repo', workflow: 'one.md', campaign: 'alpha & one', 'workflow-role': 'orchestrator' },
+            { organization: 'org', repository: 'repo', workflow: 'two.md', campaign: 'alpha & one', 'workflow-role': 'worker' },
+            { organization: 'org', repository: 'repo', workflow: 'three.md', campaign: 'beta', 'workflow-role': 'worker' },
+            { organization: 'org', repository: 'repo', workflow: 'four.md', campaign: 'beta', 'workflow-role': 'standalone' }
+          ]
+        },
+        runs: {
+          source: 'runs', metadata,
+          rows: [
+            { organization: 'org', repository: 'repo', workflow: 'one.md', run: '1', 'run-attempt': 1, 'aic-total': 3 },
+            { organization: 'org', repository: 'repo', workflow: 'one.md', run: '1', 'run-attempt': 2, 'aic-total': 5 },
+            { organization: 'org', repository: 'repo', workflow: 'three.md', run: '2', 'run-attempt': 1, 'aic-total': 2 },
+            { organization: 'org', repository: 'repo', workflow: 'four.md', run: '3', 'run-attempt': 1, 'aic-total': 100 }
+          ]
+        }
+      };
+      const results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+        operation: 'execute-dashboard-queries', queries,
+        sourceNames: ['cost-by-campaign', 'campaign-inventory'],
+        sources
+      }));
+      expect(results['cost-by-campaign'].rows).toEqual([
+        {
+          'campaign-name': 'Alpha & One',
+          'campaign-dashboard-link': {
+            'dashboard-href': '#page-campaign-insights?campaign=alpha%20%26%20one',
+            'dashboard-label': 'View Alpha & One campaign dashboard'
+          },
+          aic: 8
+        },
+        {
+          'campaign-name': 'Beta',
+          'campaign-dashboard-link': {
+            'dashboard-href': '#page-campaign-insights?campaign=beta',
+            'dashboard-label': 'View Beta campaign dashboard'
+          },
+          aic: 2
+        },
+        {
+          'campaign-name': 'Empty',
+          'campaign-dashboard-link': {
+            'dashboard-href': '#page-campaign-insights?campaign=empty',
+            'dashboard-label': 'View Empty campaign dashboard'
+          },
+          aic: 0
+        }
+      ]);
+      expect(results['cost-by-campaign'].rows.map((row) => row.aic))
+        .toEqual(results['campaign-inventory'].rows
+          .sort((a, b) => Number(b.aic) - Number(a.aic))
+          .map((row) => row.aic));
+  });
+
+  it('renders the Cost page with concise titles and a workflow bar chart', () => {
+    const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'cost');
     expect(viewsOf(page)).toMatchObject([
       {
         id: 'cost-by-campaign',

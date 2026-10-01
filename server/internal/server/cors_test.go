@@ -304,4 +304,30 @@ func TestUnauthenticatedSubresourceIsNotRedirectedToGitHub(t *testing.T) {
 				mode, response.Code, response.Header().Get("Location"))
 		}
 	}
+
+	for _, destination := range []string{"iframe", "frame", "object", "embed"} {
+		for _, path := range []string{"/", "/auth/login"} {
+			request := azureRequest(t, http.MethodGet, path)
+			request.Header.Set("Sec-Fetch-Mode", "navigate")
+			request.Header.Set("Sec-Fetch-Dest", destination)
+			response := httptest.NewRecorder()
+			app.Handler().ServeHTTP(response, request)
+			if response.Code != http.StatusUnauthorized || response.Header().Get("Location") != "" ||
+				len(response.Result().Cookies()) != 0 {
+				t.Fatalf("%s with destination %s: expected 401 without redirect or state cookie, got %d headers=%v",
+					path, destination, response.Code, response.Header())
+			}
+		}
+	}
+
+	for _, path := range []string{"/", "/auth/login"} {
+		request := azureRequest(t, http.MethodGet, path)
+		request.Header.Set("Sec-Fetch-Mode", "navigate")
+		request.Header.Set("Sec-Fetch-Dest", "document")
+		response := httptest.NewRecorder()
+		app.Handler().ServeHTTP(response, request)
+		if response.Code != http.StatusFound {
+			t.Fatalf("%s top-level navigation returned %d, want redirect", path, response.Code)
+		}
+	}
 }

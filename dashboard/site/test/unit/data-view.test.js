@@ -1370,6 +1370,44 @@ describe('data view renderer', () => {
     expect(load).toHaveBeenCalledTimes(2);
   });
 
+  it('stops writing the mobile card continuation load state once its boundary is detached', async () => {
+    const intersect = stubIntersectionObserver();
+    const load = vi.fn().mockRejectedValue(new Error('worker unavailable'));
+    const rendered = renderDataView('table', {
+      pageId: 'events',
+      title: 'Events',
+      view: {
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view',
+        encoding: { columns: [{ field: 'event', type: 'nominal' }] }
+      },
+      sourceName: 'events',
+      rows: Array.from({ length: 25 }, (_, index) => ({ event: `event-${index + 1}` })),
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String,
+      continuation: { token: 'page-2', totalRows: 26, load }
+    });
+    const boundary = /** @type {HTMLElement} */ (rendered?.querySelector('[data-card-list-boundary]'));
+    document.body.append(/** @type {HTMLElement} */ (rendered));
+
+    intersect(boundary);
+    await vi.waitFor(() => expect(boundary.dataset.loadState).toBe('error'));
+
+    rendered?.remove();
+    await Promise.resolve();
+    boundary.dataset.loadState = 'untouched';
+    intersect(boundary);
+    await Promise.resolve();
+    expect(boundary.dataset.loadState).toBe('untouched');
+  });
+
   it('omits table facets for columns with filtering disabled', () => {
     const rendered = renderDataView('table', {
       pageId: 'repositories',
