@@ -32,6 +32,7 @@ describe("remote dashboard data backend", () => {
     });
     expect(new DashboardServerError("failure", "query_plan_too_large", "campaign-inventory")).toBeInstanceOf(Error);
   });
+
   it("activates only for the server-injected backend marker", () => {
     expect(usesRemoteDataBackend(document)).toBe(false);
     const meta = document.createElement("meta");
@@ -108,6 +109,30 @@ describe("remote dashboard data backend", () => {
     expect(request.compiledQueries.at(-1).compute[0].args[1]).toEqual({ value: 3 });
     expect(JSON.stringify(request)).not.toMatch(/redis|credential|password/i);
     expect(init?.headers).toMatchObject({ Authorization: "Bearer test-access-token" });
+  });
+
+  it("notifies once for rate-limited requests and clears the notice after recovery", async () => {
+    const limited = () => new Response(JSON.stringify({ error: "rate limit exceeded" }), { status: 429 });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ revision: 1 }), { status: 200 }))
+      .mockResolvedValueOnce(limited())
+      .mockResolvedValueOnce(limited())
+      .mockResolvedValueOnce(new Response(JSON.stringify({ revision: 1, sources: {} }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: "unavailable" }), { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(refreshRemoteDashboard([], { pages: [] })).rejects.toThrow("rate limit exceeded");
+    expect(document.querySelectorAll(".dashboard-notification")).toHaveLength(1);
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain("Dashboard is rate limited");
+
+    await expect(queryRemoteDashboard([], { pages: [] })).rejects.toThrow("rate limit exceeded");
+    expect(document.querySelectorAll(".dashboard-notification")).toHaveLength(1);
+    expect(document.querySelector(".dashboard-notification-exit")).toBeNull();
+
+    await expect(queryRemoteDashboard([], { pages: [] })).resolves.toMatchObject({ sources: {} });
+    expect(document.querySelector(".dashboard-notification-exit")).not.toBeNull();
+    await expect(queryRemoteDashboard([], { pages: [] })).rejects.toThrow("unavailable");
+    expect(document.querySelectorAll(".dashboard-notification:not(.dashboard-notification-exit)")).toHaveLength(0);
   });
 
   it("refreshes through the server without asking the browser to ingest data", async () => {

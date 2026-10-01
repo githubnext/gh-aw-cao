@@ -5,6 +5,7 @@ import {
 } from "./data/queries/view-payload-compiler.js";
 import { csrfHeaders, ensureCsrfToken, usesGitHubAuthentication } from "./auth.js";
 import { createDebug } from "./debug.js";
+import { publishNotification } from "./notification-service.js";
 
 const debugRemoteBackend = createDebug("remote-data-backend");
 
@@ -32,6 +33,27 @@ let observedEvaluatedAt;
 const remoteRevisionSubscribers = new Set();
 /** @type {(() => void) | undefined} */
 let stopRemoteRevisionStream;
+const rateLimitedPaths = new Set();
+/** @type {ReturnType<typeof publishNotification> | undefined} */
+let rateLimitNotification;
+
+/** @param {string} path @param {number} status */
+function updateRateLimitNotification(path, status) {
+  if (status === 429) {
+    rateLimitedPaths.add(path);
+    rateLimitNotification ??= publishNotification({
+      message: "Dashboard is rate limited. Please try again shortly.",
+      tone: "error",
+      duration: 0,
+    });
+  } else if (status >= 200 && status < 300) {
+    rateLimitedPaths.delete(path);
+    if (rateLimitedPaths.size === 0) {
+      rateLimitNotification?.dismiss();
+      rateLimitNotification = undefined;
+    }
+  }
+}
 
 /**
  * @typedef {{
@@ -113,6 +135,7 @@ async function apiRequest(path, init = {}, signal) {
       ? csrfHeaders(headers)
       : headers,
   });
+  updateRateLimitNotification(path, response.status);
   if (!response.ok) {
     debugRemoteBackend({ event: "request-failed", path, status: response.status });
     const payload = await response.json().catch(() => null);
@@ -315,6 +338,7 @@ function startRemoteRevisionStream() {
         },
         signal: controller.signal,
       });
+      updateRateLimitNotification("/api/v1/events", response.status);
       if (!response.ok || !response.body) {
         throw new Error(`Dashboard data event stream failed: ${response.status}`);
       }
