@@ -314,10 +314,9 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 	for _, name := range order {
 		definition, isQuery := index[name]
 		if !isQuery {
-			queryLog.Printf("loading source")
-			if err := load(name, nil); err != nil {
-				return nil, metrics, err
-			}
+			// Raw inputs are loaded by their consumers (or when requested).
+			// Preloading here retains a second, unprojected copy of each
+			// direct "from" source for the entire query plan.
 			continue
 		}
 		available := make(map[string]model.Source, len(sources)+1)

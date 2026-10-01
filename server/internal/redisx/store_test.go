@@ -2,10 +2,132 @@ package redisx
 
 import (
 	"context"
+	"encoding/json"
+	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
+
+type sourceRowsClient struct {
+	rows []any
+}
+
+func (client *sourceRowsClient) Do(_ context.Context, command ...string) (any, error) {
+	switch command[0] {
+	case "HGET":
+		return `{"availability":"available"}`, nil
+	case "SMEMBERS":
+		keys := make([]any, len(client.rows))
+		for i := range keys {
+			keys[i] = strconv.Itoa(i)
+		}
+		return keys, nil
+	case "EVAL":
+		return client.rows, nil
+	default:
+		panic("unexpected Redis command")
+	}
+}
+
+func (*sourceRowsClient) DoMany(context.Context, [][]string) ([]any, error) {
+	return nil, nil
+}
+
+type storeQueryLoader struct {
+	store *Store
+	ctx   context.Context
+}
+
+func (loader storeQueryLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
+	return loader.store.LoadSource(loader.ctx, "generation", name, definition)
+}
+
+func TestCountAggregateProjectsLargeToolRows(t *testing.T) {
+	event := map[string]any{
+		"organization": "example", "repository": "repo", "workflow": "worker",
+		"run": "1", "run-attempt": "1", "event": "created",
+		"payload": "unrelated tool details",
+	}
+	raw, err := json.Marshal(event)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := &sourceRowsClient{rows: []any{string(raw), string(raw)}}
+	store := NewStore(client, "count-test")
+	definition := query.Definition{
+		Name: "tool-event-runs", From: "tools",
+		Aggregate: &query.Aggregate{
+			By:     []string{"organization", "repository", "workflow", "run", "run-attempt"},
+			Values: []query.AggregateValue{{Field: "event", As: "events", Reducer: "count"}},
+		},
+	}
+	source, _, err := store.LoadSource(t.Context(), "generation", "tools", &definition)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := source.Rows[0]["payload"]; ok {
+		t.Fatal("unneeded tool payload was retained")
+	}
+	result, _, err := query.New(storeQueryLoader{store, t.Context()}).Execute([]query.Definition{definition}, []string{definition.Name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []model.Row{{"organization": "example", "repository": "repo", "workflow": "worker",
+		"run": "1", "run-attempt": "1", "events": 2}}
+	if !reflect.DeepEqual(result[definition.Name].Rows, want) {
+		t.Fatalf("unexpected count rows: %#v", result[definition.Name].Rows)
+	}
+
+	withFilter := definition
+	withFilter.Filter = &query.Filter{Predicates: []query.Predicate{{Field: "payload", Equals: "unrelated tool details"}}}
+	source, _, err = store.LoadSource(t.Context(), "generation", "tools", &withFilter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if source.Rows[0]["payload"] != event["payload"] {
+		t.Fatal("filtered query lost a required field")
+	}
+}
+
+func TestCountAggregateStaysUnderWorkingByteLimit(t *testing.T) {
+	event := map[string]any{
+		"organization": "example", "repository": "repo", "workflow": "worker",
+		"run": "1", "run-attempt": "1", "event": "created",
+		"payload": strings.Repeat("x", 1<<20),
+	}
+	raw, err := json.Marshal(event)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := &sourceRowsClient{rows: make([]any, 260)}
+	for i := range client.rows {
+		client.rows[i] = string(raw)
+	}
+	store := NewStore(client, "count-limit-test")
+	definition := query.Definition{
+		Name: "tool-event-runs", From: "tools",
+		Aggregate: &query.Aggregate{
+			By:     []string{"organization", "repository", "workflow", "run", "run-attempt"},
+			Values: []query.AggregateValue{{Field: "event", As: "events", Reducer: "count"}},
+		},
+	}
+	result, metrics, err := query.New(storeQueryLoader{store, t.Context()}).Execute(
+		[]query.Definition{definition}, []string{definition.Name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result[definition.Name].Rows) != 1 || result[definition.Name].Rows[0]["events"] != 260 {
+		t.Fatalf("unexpected count: %#v", result[definition.Name].Rows)
+	}
+	if metrics.PeakWorkingBytes >= query.MaxWorkingBytes {
+		t.Fatalf("unneeded payload was included in working bytes: %d", metrics.PeakWorkingBytes)
+	}
+}
 
 // marketplaceStoreCommandClient is a minimal fake CommandClient, mirroring the
 // fake used in rate_limit_test.go, that records the last command issued and

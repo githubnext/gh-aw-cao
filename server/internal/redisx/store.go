@@ -675,18 +675,30 @@ func (s *Store) Diagnostics(ctx context.Context, generation string) (model.Diagn
 // LoadSource reads a source's rows and lets the query engine evaluate the
 // definition.
 //
-// There is deliberately no query pushdown. Pushdown required RediSearch, and
-// therefore a Redis tier with modules, while none of the canonical projection
-// queries were eligible for it: each one joins, unions, computes, or projects
-// columns, and none bounds its result below the search result cap. Evaluating
-// in the engine is the path those queries always took, so removing pushdown
-// removed a second implementation rather than a capability.
+// There is no Redis query pushdown. Simple count aggregates can discard
+// unrelated fields as each row is decoded, before the engine groups the rows.
 func (s *Store) LoadSource(ctx context.Context, generation, name string, definition *query.Definition) (model.Source, model.Metrics, error) {
 	metadata, err := s.sourceInfo(ctx, generation, name)
 	if err != nil {
 		return model.Source{}, model.Metrics{}, err
 	}
-	_ = definition
+	var projectedFields map[string]bool
+	if definition != nil && definition.From == name && name != "issues" &&
+		len(definition.Union) == 0 && len(definition.Joins) == 0 &&
+		definition.Filter == nil && len(definition.Compute) == 0 &&
+		definition.TemporalSeries == nil && definition.Aggregate != nil {
+		projectedFields = make(map[string]bool)
+		for _, field := range definition.Aggregate.By {
+			projectedFields[field] = true
+		}
+		for _, value := range definition.Aggregate.Values {
+			if value.Reducer != "count" || value.Filter != nil {
+				projectedFields = nil
+				break
+			}
+			projectedFields[value.Field] = true
+		}
+	}
 	metrics := model.Metrics{FallbackOperations: []string{"query"}, RedisCommands: 1}
 	value, err := s.Client.Do(ctx, "SMEMBERS", s.sourceSetKey(generation, name))
 	metrics.RedisCommands++
@@ -722,6 +734,15 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 			var row model.Row
 			if err := json.Unmarshal([]byte(raw), &row); err != nil {
 				return model.Source{}, metrics, err
+			}
+			if projectedFields != nil {
+				projected := make(model.Row, len(projectedFields))
+				for field := range projectedFields {
+					if value, ok := row[field]; ok {
+						projected[field] = value
+					}
+				}
+				row = projected
 			}
 			rows = append(rows, row)
 		}
