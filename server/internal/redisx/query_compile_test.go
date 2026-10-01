@@ -12,8 +12,8 @@ func TestCompileQueriesClassifiesNativePartialFallbackAndUnsupported(t *testing.
 	definitions := []query.Definition{
 		{Name: "native", From: "runs", Select: []query.SelectedField{{Field: "id"}}},
 		{Name: "partial", From: "runs", Filter: &query.Filter{Predicates: []query.Predicate{
-			{Field: "status", Equals: "failure"},
-		}}, Joins: []query.Join{{Source: "jobs", On: []query.JoinKey{{Left: "id", Right: "run"}}}}},
+			{Field: "status", Equals: "failure"}, {Field: "title", Includes: "timeout"},
+		}}},
 		{Name: "dependent", From: "native", Select: []query.SelectedField{{Field: "id"}}},
 		{Name: "unsupported", From: "runs", Predict: []json.RawMessage{json.RawMessage(`{}`)}},
 	}

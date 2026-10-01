@@ -16,9 +16,9 @@ credentials. It communicates only with the same-origin HTTP(S) API.
 ## Offline query translation report
 
 From `server/`, run `go run ./cmd/cao-dashboard compile-queries` to check every
-query in `dashboard/site/dashboard-fragments/` and the canonical database
-projection query file. Use `--format json` for machine-readable results, or
-`--fragments` and `--database-queries` to inspect other query documents. The
+query in `dashboard/site/dashboard.json`, `dashboard/site/dashboard-fragments/`,
+and the canonical database projection query file. Use `--format json` for
+machine-readable results, or the three query-path flags to inspect other documents. The
 report distinguishes full `FT.AGGREGATE` candidates, partial Redis candidates,
 Go fallback, and definitions unsupported by the Go query engine. This is an
 offline compilation check, not a runtime performance measurement: native

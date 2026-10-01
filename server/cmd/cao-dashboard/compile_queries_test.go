@@ -18,9 +18,10 @@ func TestCompileQueriesCommandReadsAllFragmentsAndDatabaseQueries(t *testing.T) 
 		t.Fatal(err)
 	}
 	for path, content := range map[string]string{
-		filepath.Join(fragments, "one.json"): `{"queries":[{"name":"alpha","from":"runs","select":[{"field":"id"}]}]}`,
-		filepath.Join(fragments, "two.json"): `{"queries":[{"name":"beta","from":"alpha","select":[{"field":"id"}]}]}`,
-		filepath.Join(directory, "database.json"): `[{"name":"gamma","from":"jobs","select":[{"field":"id"}]}]`,
+		filepath.Join(directory, "dashboard.json"): `{"dashboard":{"queries":[{"name":"root","from":"runs","select":[{"field":"id"}]}]}}`,
+		filepath.Join(fragments, "one.json"):       `{"queries":[{"name":"alpha","from":"runs","select":[{"field":"id"}]}]}`,
+		filepath.Join(fragments, "two.json"):       `{"queries":[{"name":"beta","from":"alpha","select":[{"field":"id"}]}]}`,
+		filepath.Join(directory, "database.json"):  `[{"name":"gamma","from":"jobs","select":[{"field":"id"}]}]`,
 	} {
 		if err := os.WriteFile(path, []byte(content), 0600); err != nil {
 			t.Fatal(err)
@@ -29,7 +30,7 @@ func TestCompileQueriesCommandReadsAllFragmentsAndDatabaseQueries(t *testing.T) 
 	cmd := newCompileQueriesCommand()
 	var output bytes.Buffer
 	cmd.SetOut(&output)
-	cmd.SetArgs([]string{"--fragments", fragments, "--database-queries", filepath.Join(directory, "database.json"), "--format", "json"})
+	cmd.SetArgs([]string{"--dashboard-queries", filepath.Join(directory, "dashboard.json"), "--fragments", fragments, "--database-queries", filepath.Join(directory, "database.json"), "--format", "json"})
 	if err := cmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
@@ -37,13 +38,13 @@ func TestCompileQueriesCommandReadsAllFragmentsAndDatabaseQueries(t *testing.T) 
 	if err := json.Unmarshal(output.Bytes(), &results); err != nil {
 		t.Fatal(err)
 	}
-	if len(results) != 3 || results[0].Name != "alpha" || results[1].Level != "fallback" || results[2].Name != "gamma" {
+	if len(results) != 4 || results[0].Name != "alpha" || results[1].Level != "fallback" || results[2].Name != "gamma" || results[3].Name != "root" {
 		t.Fatalf("unexpected compilation report: %#v", results)
 	}
 }
 
 func TestCompileQueriesFailsOnMissingInputsAndUnknownFormat(t *testing.T) {
-	_, err := loadCompilationQueries(filepath.Join(t.TempDir(), "missing"), "database.json")
+	_, err := loadCompilationQueries("", filepath.Join(t.TempDir(), "missing"), "database.json")
 	if err == nil {
 		t.Fatal("missing fragments directory must fail closed")
 	}

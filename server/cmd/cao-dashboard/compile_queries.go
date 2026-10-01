@@ -22,10 +22,11 @@ func newCompileQueriesCommand() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 	fragments := cmd.Flags().String("fragments", "../dashboard/site/dashboard-fragments", "dashboard query fragments directory")
+	dashboard := cmd.Flags().String("dashboard-queries", "../dashboard/site/dashboard.json", "root dashboard query document")
 	database := cmd.Flags().String("database-queries", "../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
 	format := cmd.Flags().String("format", "markdown", "report format: markdown or json")
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
-		definitions, err := loadCompilationQueries(*fragments, *database)
+		definitions, err := loadCompilationQueries(*dashboard, *fragments, *database)
 		if err != nil {
 			return err
 		}
@@ -38,12 +39,15 @@ func newCompileQueriesCommand() *cobra.Command {
 	return cmd
 }
 
-func loadCompilationQueries(directory, database string) ([]query.Definition, error) {
+func loadCompilationQueries(dashboard, directory, database string) ([]query.Definition, error) {
+	definitions, err := server.ParseDashboardQueries(dashboard)
+	if err != nil {
+		return nil, fmt.Errorf("read %s: %w", dashboard, err)
+	}
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		return nil, fmt.Errorf("read dashboard fragments: %w", err)
 	}
-	var definitions []query.Definition
 	for _, entry := range entries {
 		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
 			continue
