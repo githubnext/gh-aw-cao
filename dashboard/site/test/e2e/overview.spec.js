@@ -151,7 +151,8 @@ test.beforeEach(async ({ page, context }) => {
 });
 
 test('declarative Overview views preserve desktop and mobile behavior', async ({ page }) => {
-  expect(overviewPage.views.every((view) => view['show-title'] === false && view.prompt === 'none')).toBe(true);
+  expect(overviewPage.views.every((/** @type {{ 'show-title'?: boolean, prompt?: string }} */ view) =>
+    view['show-title'] === false && view.prompt === 'none')).toBe(true);
   /** @param {Record<string, unknown>} pageDefinition */
   const render = async (pageDefinition) => {
     await page.evaluate(async ({ documentModel, sourceData, presenterModuleUrl }) => {
