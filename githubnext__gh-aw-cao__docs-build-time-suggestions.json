@@ -1,6 +1,6 @@
 {
-  "source_sha": "fd290fabcc4372ded10e74e11fbce23b35f09644",
-  "next_category": 1,
+  "source_sha": "aac661b2acf3d1bcd3585c19c40a13bc6eb99095",
+  "next_category": 2,
   "evaluations": [
     {
       "evaluated_at": "2026-10-01T13:58:00Z",
@@ -441,6 +441,26 @@
       "category": "dependency installation and caching",
       "evidence_run_ids": [],
       "outcome": "incomplete: GitHub Actions run metadata could not be collected because the available GitHub API credential was already rate limited before run analysis began"
+    },
+    {
+      "evaluated_at": "2026-10-01T23:59:00Z",
+      "worker_run_id": "36942901424",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36942903113,
+        36942536188,
+        36941361943,
+        36940386558,
+        36938511203,
+        36937094395,
+        36935770005,
+        36934700001,
+        36932500812,
+        36931064885,
+        36942640668
+      ],
+      "outcome": "no_actionable_improvement: evaluated dependency installation and caching across the latest 10 successful docs.yml runs from 2026-10-01T21:48Z through 2026-10-01T23:50Z, plus comparable successful cao-dashboard.yml producer run 36942640668. Trusted Actions metadata showed 10 successful docs runs within the 14-day window, satisfying the minimum sample gate, but only 2 comparable successful build executions because 8 successful scheduled runs short-circuited after schedule-freshness. Successful docs full-workflow wall time median was 13.0s with p90 45.7s across all 10 successes; comparable build-job median was 44.5s with p90 51.3s across runs 36931064885 and 36942903113; schedule-freshness median was 8.0s with p90 9.2s across the 9 successful schedule-freshness jobs; deploy median was 16.0s across the single deploying success. Step timings in the comparable build executions stayed small and stable: Checkout 6-7s, Set up Node.js 3-6s, Restore node_modules 4-8s, Build documentation 10-12s, Restore cached CAO Dashboard 1-4s, and Upload Pages artifact 7-10s. Trusted step metadata confirmed dependency reuse on both successful build executions: Install dependencies and Save node_modules were skipped, proving node_modules cache hits rather than inferred reuse, and representative trusted logs from docs run 36942903113 also showed the CAO dashboard cache hit because Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped. Cross-checking successful CAO Dashboard producer run 36942640668 showed the repeated qualifying upstream bottleneck is still reusable-dashboard preparation rather than dependency installation: Restore collected activity data logged a successful cache restore, but Upgrade fallback activity data still took 97s while Assemble Dashboard Language site took 4s and Upload dashboard artifact took 9s; bounded trusted logs also confirmed repeated copying of a 483.8 MiB SQLite file plus 127 shards totaling 308.5 MiB into the artifact before uploading a 46.6 MiB archive. That larger reusable-dashboard optimization is already represented by suggestion fingerprint reusable-dashboard-skip-reupgrade-of-validated-activity-cache in repository memory, while no new dependency-installation or caching change in docs.yml meets the >=60s or >=15% threshold. Repository issues are disabled, so the terminal result is a no-op rather than a duplicate issue.",
+      "suggestion_fingerprint": null
     }
   ]
 }
