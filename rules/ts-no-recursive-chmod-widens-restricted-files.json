@@ -71,15 +71,16 @@
   "existing_plugin_coverage": "None found in eslint-plugin-security or typescript-eslint recommended configs; this is a repo-specific security pattern not covered by a published rule.",
   "status": "needs-work",
   "evaluation": {
-    "target_repo": "github/gh-aw-firewall",
-    "target_commit": "6dd6157b374c3a0927618ac99e211899e6d17e7e",
-    "true_positive_count": 2,
-    "false_positive_count": 4,
-    "false_negative_count": 1,
-    "reason": "Re-confirmed on current HEAD (6dd6157): implementation, flagged lines, and classification outcome are byte-for-byte unchanged since the prior evaluation. Same 4 false positives (sessionState, squid-preserved-dir, both diagnostics-dir sites) and same false negative (artifact-permissions.ts docker-exec shell-string 'chmod -R a+rwX /fix' on auditDir) persist. Still needs directory-provenance narrowing plus a shell-string chmod matcher before adoption.",
-    "txn_id": "refiner-36601303276-1"
+    "target_repo": "githubnext/gh-aw-cao",
+    "target_commit": "16880fe59ce0073fbb7fed5a55581cd3b58053f2",
+    "true_positive_count": 0,
+    "false_positive_count": 1,
+    "false_negative_count": 0,
+    "readiness_for_target": "needs-work",
+    "reason": "Re-confirmed unchanged on HEAD 16880fe59ce0073fbb7fed5a55581cd3b58053f2: sole recursive chmod call (cao-mcp-container.mjs:89) remains a false positive.",
+    "txn_id": "refiner-36924441841-2"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36601303276",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36924441841",
   "last_updated_target_repo": "github/gh-aw-firewall",
   "additional_target_evaluations": [
     {
@@ -103,5 +104,6 @@
       "txn_id": "refiner-36887337909-3"
     }
   ],
-  "last_seen_at": "2026-10-01T16:04:26Z"
+  "last_seen_at": "2026-10-01T16:04:26Z",
+  "last_updated": "2026-10-01T20:57:11Z"
 }
