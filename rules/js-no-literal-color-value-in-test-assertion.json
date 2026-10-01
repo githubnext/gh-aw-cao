@@ -81,15 +81,15 @@
   },
   "evaluation": {
     "target_repo": "githubnext/gh-aw-cao",
-    "target_commit": "fd290fabcc4372ded10e74e11fbce23b35f09644",
-    "true_positive_count": 0,
-    "false_positive_count": 12,
+    "target_commit": "90eb49fee721dfe5d4900ca377d4b0373d8a44f8",
+    "true_positive_count": 1,
+    "false_positive_count": 11,
     "false_negative_count": 0,
     "readiness_for_target": "needs-work",
-    "reason": "Re-confirmed on current HEAD (since 5th mined occurrence PR #15604): tests/unit/landing-page-diagram.test.mjs:304-305 now asserts #953800/#ffd8b8 and the full test file passes (9/9) -- the previously-cited failing regression has since been fixed by a literal-sync PR and is no longer reproducible as an active failure. A naive scratch rule still flags 16 sites across 3 files in tests/unit; only the 2 --terminal-syntax-placeholder lines match the mined active-churn pattern, and the other 14 are stable literals outside the mined pattern. Still blocked on scoping to the specific actively-tuned property/file pair before adoption.",
-    "txn_id": "refiner-36937455628-2"
+    "reason": "Scratch rule flagging any regex-literal hex/color-mix assertion found 15 sites across 3 files; only tests/unit/landing-page-diagram.test.mjs:305 (the mined --terminal-syntax-placeholder churn pair, currently failing) is a true positive. 11 other sites are stable, non-actively-tuned literals the mined likely_false_positives description explicitly excludes. Needs a file-scope restriction (docs/components/*.astro under active contrast churn) before adoption.",
+    "txn_id": "refiner-36887337909-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36937455628",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36901317392",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-01T22:52:00Z"
+  "last_seen_at": "2026-10-01T19:03:40Z"
 }
