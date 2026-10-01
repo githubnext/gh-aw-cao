@@ -28,12 +28,19 @@ type Storage interface {
 	PruneGenerations(context.Context, int) (int, error)
 }
 
+// IssueUpdates applies status overlays only to issues retained in the active
+// dashboard generation.
+type IssueUpdates interface {
+	ApplyIssueUpdate(context.Context, redisx.IssueUpdate, time.Duration) (bool, bool, int64, error)
+}
+
 // Database owns dashboard storage and the validation and execution of
 // Dashboard Language queries. The loader can supply request-scoped runtime
 // sources without persisting them in the dashboard database.
 type Database interface {
 	Storage
 	LoadSource(context.Context, string, string, *query.Definition) (model.Source, model.Metrics, error)
+	ApplyIssueUpdate(context.Context, redisx.IssueUpdate, time.Duration) (bool, bool, int64, error)
 	ValidateQueries([]query.Definition) error
 	ExecuteQueries([]query.Definition, []string, query.Loader) (map[string]model.Source, model.Metrics, error)
 }
@@ -46,7 +53,10 @@ type Redis struct {
 
 // ErrSourceUnavailable is returned for absent generation-scoped dashboard
 // sources; Redis's existing sentinel remains compatible with callers.
-var ErrSourceUnavailable = redisx.ErrSourceUnavailable
+var (
+	ErrSourceUnavailable    = redisx.ErrSourceUnavailable
+	ErrIssueStatusAmbiguous = redisx.ErrIssueStatusAmbiguous
+)
 
 var _ Database = (*Redis)(nil)
 

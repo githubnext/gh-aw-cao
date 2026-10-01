@@ -143,13 +143,17 @@ const collectionHealthSourceName = "collection-health"
 
 // NewCollector assembles the collection profile from configuration.
 func NewCollector(
-	ctx context.Context, store *redisx.Store, config CollectorConfig, databaseQueriesPath string, databases ...dashboarddb.Storage,
+	ctx context.Context, store *redisx.Store, config CollectorConfig, databaseQueriesPath string, databases ...dashboarddb.Database,
 ) (*Collector, error) {
 	if err := config.Validate(); err != nil {
 		return nil, err
 	}
 	if store == nil {
 		return nil, errors.New("collection requires Redis")
+	}
+	issueStore := dashboarddb.Database(dashboarddb.NewRedis(store))
+	if len(databases) > 0 && databases[0] != nil {
+		issueStore = databases[0]
 	}
 	quotaFloor := config.RateLimitFloor
 	if quotaFloor <= 0 {
@@ -174,7 +178,7 @@ func NewCollector(
 			enrollment: enrollment,
 			queue:      queue,
 			backfill:   backfill,
-			admitter:   collect.Admitter{Enrollment: enrollment, Queue: queue, IssueStore: store},
+			admitter:   collect.Admitter{Enrollment: enrollment, Queue: queue, IssueStore: issueStore},
 			reporter: collect.Reporter{
 				Enrollment: enrollment, Queue: queue, Backfill: backfill, Store: store,
 			},
@@ -249,7 +253,7 @@ func NewCollector(
 		runner:     runner,
 		projector:  projector,
 		admitter: collect.Admitter{
-			Enrollment: enrollment, Queue: queue, IssueStore: store,
+			Enrollment: enrollment, Queue: queue, IssueStore: issueStore,
 			Projection: projector,
 		},
 		backfill: backfill,

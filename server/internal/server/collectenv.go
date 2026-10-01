@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/dashboarddb"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
 
@@ -145,7 +146,7 @@ func envBool(name string) bool {
 
 // NewCollectorFromEnv assembles the collection profile for the worker roles,
 // which run the same binary without serving the dashboard.
-func NewCollectorFromEnv(ctx context.Context, databaseQueriesPath string) (*Collector, error) {
+func NewCollectorFromEnv(ctx context.Context, databaseQueriesPath string, databases ...dashboarddb.Database) (*Collector, error) {
 	config, err := CollectorConfigFromEnv()
 	if err != nil {
 		return nil, err
@@ -167,5 +168,5 @@ func NewCollectorFromEnv(ctx context.Context, databaseQueriesPath string) (*Coll
 	if err != nil {
 		return nil, err
 	}
-	return NewCollector(ctx, store, *config, databaseQueriesPath)
+	return NewCollector(ctx, store, *config, databaseQueriesPath, databases...)
 }

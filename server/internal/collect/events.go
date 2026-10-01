@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/dashboarddb"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
@@ -260,7 +261,7 @@ type Admitter struct {
 	// database stops reporting repositories that left ingestion scope.
 	Projection ProjectionRequester
 	// Issue updates are applied only to already retained issue rows.
-	IssueStore *redisx.Store
+	IssueStore dashboarddb.IssueUpdates
 }
 
 // ProjectionRequester marks the lake as changed. Projector satisfies it.
@@ -367,7 +368,7 @@ func (a Admitter) admitIssue(ctx context.Context, intent Intent, delivery string
 	update := intent.Issue
 	update.Delivery = delivery
 	updated, duplicate, _, err := a.IssueStore.ApplyIssueUpdate(ctx, update, ttl)
-	if errors.Is(err, redisx.ErrIssueStatusAmbiguous) {
+	if errors.Is(err, dashboarddb.ErrIssueStatusAmbiguous) {
 		return Admission{Kind: IntentIssueStatus, Reason: "ambiguous-status"}, nil
 	}
 	if err != nil {
