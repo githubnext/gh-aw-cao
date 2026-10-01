@@ -126,3 +126,76 @@ func TestCachedPackageDoesNotPublishLegacySignalFields(t *testing.T) {
 		t.Fatalf("cached repository count was lost: %v", dto)
 	}
 }
+
+func TestDecodeRepositorySignals(t *testing.T) {
+	intp := func(value int) *int { return &value }
+	cases := []struct {
+		name        string
+		body        string
+		wantStars   *int
+		wantForks   *int
+		wantOutcome repositorySignalsOutcome
+	}{
+		{
+			name:        "confirmed public repository",
+			body:        `{"private":false,"visibility":"public","stargazers_count":9,"forks_count":5}`,
+			wantStars:   intp(9),
+			wantForks:   intp(5),
+			wantOutcome: repositorySignalsOutcomeConfirmed,
+		},
+		{
+			name:        "private repository",
+			body:        `{"private":true,"visibility":"private","stargazers_count":9,"forks_count":5}`,
+			wantOutcome: repositorySignalsOutcomeNotPublic,
+		},
+		{
+			name:        "internal visibility",
+			body:        `{"private":false,"visibility":"internal","stargazers_count":9,"forks_count":5}`,
+			wantOutcome: repositorySignalsOutcomeNotPublic,
+		},
+		{
+			name:        "missing visibility field",
+			body:        `{"private":false,"stargazers_count":9,"forks_count":5}`,
+			wantOutcome: repositorySignalsOutcomeNotPublic,
+		},
+		{
+			name:        "missing private field",
+			body:        `{"visibility":"public","stargazers_count":9,"forks_count":5}`,
+			wantOutcome: repositorySignalsOutcomeNotPublic,
+		},
+		{
+			name:        "negative count",
+			body:        `{"private":false,"visibility":"public","stargazers_count":-1,"forks_count":5}`,
+			wantOutcome: repositorySignalsOutcomeInvalidCounts,
+		},
+		{
+			name:        "non-integer count",
+			body:        `{"private":false,"visibility":"public","stargazers_count":1.5,"forks_count":5}`,
+			wantOutcome: repositorySignalsOutcomeInvalidCounts,
+		},
+		{
+			name:        "missing forks field",
+			body:        `{"private":false,"visibility":"public","stargazers_count":9}`,
+			wantOutcome: repositorySignalsOutcomeInvalidCounts,
+		},
+		{
+			name:        "malformed json",
+			body:        `{not json`,
+			wantOutcome: repositorySignalsOutcomeDecodeFailed,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			stars, forks, outcome := decodeRepositorySignals([]byte(tc.body))
+			if outcome != tc.wantOutcome {
+				t.Fatalf("outcome = %s, want %s", outcome, tc.wantOutcome)
+			}
+			if (stars == nil) != (tc.wantStars == nil) || (stars != nil && *stars != *tc.wantStars) {
+				t.Fatalf("stars = %v, want %v", stars, tc.wantStars)
+			}
+			if (forks == nil) != (tc.wantForks == nil) || (forks != nil && *forks != *tc.wantForks) {
+				t.Fatalf("forks = %v, want %v", forks, tc.wantForks)
+			}
+		})
+	}
+}

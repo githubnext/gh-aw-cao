@@ -215,22 +215,45 @@ func repositoryCounts(ctx context.Context, opts Options, url, token string) (*in
 	defer func() { _ = response.Body.Close() }()
 	body, err := io.ReadAll(io.LimitReader(response.Body, maxRepositorySignalBytes+1))
 	if err != nil || len(body) > maxRepositorySignalBytes {
+		resolveLog.Printf("repository signals request failed stage=read-body")
 		return nil, nil
 	}
+	stars, forks, outcome := decodeRepositorySignals(body)
+	resolveLog.Printf("repository signals decoded outcome=%s", outcome)
+	return stars, forks
+}
+
+// repositorySignalsOutcome names why decodeRepositorySignals did or did not
+// confirm public star and fork counts, stable across response shape changes
+// so it is useful to log without exposing the counts or visibility value.
+type repositorySignalsOutcome string
+
+const (
+	repositorySignalsOutcomeConfirmed     repositorySignalsOutcome = "confirmed"
+	repositorySignalsOutcomeNotPublic     repositorySignalsOutcome = "not-public"
+	repositorySignalsOutcomeInvalidCounts repositorySignalsOutcome = "invalid-counts"
+	repositorySignalsOutcomeDecodeFailed  repositorySignalsOutcome = "decode-failed"
+)
+
+// decodeRepositorySignals parses a GitHub repository API response body and
+// decides whether it confirms a public repository with valid, non-negative
+// star and fork counts. It is a pure function so each outcome (malformed
+// JSON, a private/internal/unknown-visibility repository, or an invalid
+// count) is testable without a fake GitHub HTTP server.
+func decodeRepositorySignals(body []byte) (*int, *int, repositorySignalsOutcome) {
 	var repo map[string]any
 	if err := json.Unmarshal(body, &repo); err != nil {
-		return nil, nil
+		return nil, nil, repositorySignalsOutcomeDecodeFailed
 	}
 	if private, ok := repo["private"].(bool); !ok || private || repo["visibility"] != "public" {
-		return nil, nil
+		return nil, nil, repositorySignalsOutcomeNotPublic
 	}
-
 	stars, starsOK := nonnegativeCount(repo["stargazers_count"])
 	forks, forksOK := nonnegativeCount(repo["forks_count"])
 	if !starsOK || !forksOK {
-		return nil, nil
+		return nil, nil, repositorySignalsOutcomeInvalidCounts
 	}
-	return stars, forks
+	return stars, forks, repositorySignalsOutcomeConfirmed
 }
 
 func nonnegativeCount(raw any) (*int, bool) {
