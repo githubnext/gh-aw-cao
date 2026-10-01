@@ -1,6 +1,9 @@
 import { renderFactoryElement } from './factory-elements.js';
 import { renderFactoryStation } from './factory-station.js';
 import { renderReactiveGrid } from './reactive-grid.js';
+import { createDebug } from '../debug.js';
+
+const debugFactoryFloor = createDebug('factory-floor');
 
 /** @typedef {{ rows: () => Record<string, unknown>[], pending: () => boolean, unavailable: () => boolean }} SourceBinding */
 /** @typedef {Record<string, SourceBinding>} SourceBindings */
@@ -57,6 +60,7 @@ export function renderFactoryFloor(sources, animateNumbers, scope, roleNames, se
     });
     return { id, definition, source, element: station.element };
   });
+  debugFactoryFloor({ event: 'composed', stationCount: stations.length, animate: animateNumbers });
 
   return renderReactiveGrid({
     className: stations.length <= 2 ? 'factory-floor factory-floor-compact' : 'factory-floor',
@@ -92,9 +96,20 @@ export const FLOOR_DEFAULT_SOURCES = {
  * @param {import('./ui-elements.js').ElementRenderContext} context
  */
 export function renderFactoryFloorElement(context) {
-  const selectedStations = Array.isArray(context.elementConfig?.stations)
-    ? /** @type {FactoryStationId[]} */ (context.elementConfig.stations.filter((station) => station === 'campaigns' || station === 'repositories'))
+  const configuredStations = Array.isArray(context.elementConfig?.stations) ? context.elementConfig.stations : null;
+  const selectedStations = configuredStations
+    ? /** @type {FactoryStationId[]} */ (configuredStations.filter((station) => station === 'campaigns' || station === 'repositories'))
     : /** @type {FactoryStationId[]} */ (['campaigns', 'repositories']);
+  if (configuredStations && selectedStations.length !== configuredStations.length) {
+    debugFactoryFloor({
+      event: 'station-config-filtered',
+      pageId: context.pageId,
+      viewId: context.viewId,
+      configuredCount: configuredStations.length,
+      selectedCount: selectedStations.length
+    });
+  }
+  debugFactoryFloor({ event: 'element-selected', pageId: context.pageId, viewId: context.viewId, stations: selectedStations.join(',') });
   return renderFactoryElement(
     context,
     FLOOR_DEFAULT_SOURCES,
