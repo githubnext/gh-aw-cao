@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { randomBytes } from "node:crypto";
+import { createSign, randomBytes } from "node:crypto";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { createServer } from "node:http";
 import { spawnSync } from "node:child_process";
@@ -26,7 +26,6 @@ export const APP_PROFILES = Object.freeze([
       checks: "read",
       contents: "read",
       issues: "read",
-      campaigns: "read",
       pull_requests: "read",
       secret_scanning_alerts: "read",
       security_events: "read",
@@ -101,7 +100,8 @@ export function deriveAppName(repo, role) {
   const [owner, name] = splitRepo(repo);
   const suffix = `-${role}`;
   const base = `cao-${owner}-${name}`.toLowerCase().replaceAll(/[^a-z0-9-]/g, "-");
-  return `${base.slice(0, APP_NAME_MAX_LENGTH - suffix.length)}${suffix}`;
+  const prefix = base.slice(0, APP_NAME_MAX_LENGTH - suffix.length).replace(/-+$/, "");
+  return `${prefix}${suffix}`;
 }
 
 export function validateAppName(name, flag) {
@@ -194,14 +194,17 @@ export function isDataResidencyServer(serverUrl = githubServerUrl()) {
 }
 
 export function appPermissionsForServer(profile, serverUrl = githubServerUrl()) {
-  if (!isDataResidencyServer(serverUrl)) return profile.permissions;
-  const { campaigns: _unsupported, ...permissions } = profile.permissions;
-  return permissions;
+  new URL(serverUrl);
+  return profile.permissions;
 }
 
 export function setRepositoryCredentials(profile, app, repo, runner = runGh) {
   runner(["variable", "set", profile.variable, "--repo", repo, "--body", app.clientId]);
   runner(["secret", "set", profile.secret, "--repo", repo], { input: app.pem });
+}
+
+export function setRepositoryAuthenticationMode(repo, runner = runGh) {
+  runner(["variable", "set", AUTH_MODE_VARIABLE, "--repo", repo, "--body", "app"]);
 }
 
 function splitRepo(repo) {
@@ -302,9 +305,19 @@ export function appInstallationUrl(owner, slug, serverUrl = githubServerUrl()) {
 }
 
 export function accountInstallationsEndpoint(owner, serverUrl = githubServerUrl()) {
-  return isDataResidencyServer(serverUrl)
-    ? `/orgs/${owner}/installations?per_page=100`
-    : "/user/installations?per_page=100";
+  new URL(serverUrl);
+  return `/orgs/${owner}/installations?per_page=100`;
+}
+
+export function githubApiUrl(environment = process.env) {
+  if (environment.GITHUB_API_URL?.trim()) {
+    return environment.GITHUB_API_URL.trim().replace(/\/+$/, "");
+  }
+  const serverUrl = githubServerUrl(environment);
+  const hostname = new URL(serverUrl).hostname;
+  if (hostname === "github.com") return "https://api.github.com";
+  if (hostname.endsWith(".ghe.com")) return `https://api.${hostname}`;
+  return `${serverUrl}/api/v3`;
 }
 
 function exchangeManifestCode(code, owner) {
@@ -330,31 +343,26 @@ function exchangeManifestCode(code, owner) {
   };
 }
 
-function existingGitHubApp(owner, name, clientId) {
-  if (isDataResidencyServer()) {
-    const installation = listAccountInstallations(owner).find(
-      (candidate) => candidate.clientId === clientId,
+export function existingGitHubApp(owner, name, clientId, {
+  installations = listAccountInstallations,
+  appBySlug = (slug) => JSON.parse(runGh(["api", `/apps/${slug}`])),
+} = {}) {
+  const installation = installations(owner).find(
+    (candidate) => candidate.clientId === clientId,
+  );
+  if (!installation?.slug) {
+    throw new Error(
+      `stored credentials do not match an installed GitHub App owned by ${owner}; `
+      + `install it from ${githubServerUrl()}/organizations/${owner}/settings/installations `
+      + "or use --force to create a replacement",
     );
-    if (!installation?.slug) {
-      throw new Error(
-        `stored credentials do not match an installed GitHub App owned by ${owner}; `
-        + "install it from the organization App settings or use --force to create a replacement",
-      );
-    }
-    return {
-      id: installation.appId,
-      clientId: installation.clientId,
-      slug: installation.slug,
-      name,
-      installUrl: appInstallationUrl(owner, installation.slug),
-    };
   }
-  const payload = JSON.parse(runGh(["api", `/apps/${name}`]));
+  const payload = appBySlug(installation.slug);
   if (payload.client_id !== clientId || !payload.slug) {
-    throw new Error(`stored credentials do not match GitHub App ${name}`);
+    throw new Error(`stored credentials do not match GitHub App ${name} (${installation.slug})`);
   }
-  if (payload.public) {
-    throw new Error(`GitHub App ${name} is public; CAO requires private Apps`);
+  if (payload.public === true) {
+    throw new Error(`GitHub App ${payload.name || installation.slug} is public; CAO requires private Apps`);
   }
   return {
     id: String(payload.id ?? ""),
@@ -490,15 +498,64 @@ function matchingInstallation(app, owner) {
   ));
 }
 
-function listInstallationRepositories(installationId) {
-  const output = runGh([
-    "api",
-    `/user/installations/${installationId}/repositories?per_page=100`,
-    "--paginate",
-    "--jq",
-    ".repositories[].full_name",
-  ]);
-  return output.split("\n").filter(Boolean);
+function createAppJwt(app, now = Date.now()) {
+  if (!app.id || !app.pem) {
+    throw new Error("the GitHub App ID and private key are required to verify selected repositories");
+  }
+  const issuedAt = Math.floor(now / 1000) - 60;
+  const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({
+    iat: issuedAt,
+    exp: issuedAt + 9 * 60,
+    iss: app.id,
+  })).toString("base64url");
+  const unsigned = `${header}.${payload}`;
+  const signer = createSign("RSA-SHA256");
+  signer.update(unsigned);
+  signer.end();
+  return `${unsigned}.${signer.sign(app.pem, "base64url")}`;
+}
+
+async function githubJson(fetchImpl, url, options, label) {
+  const response = await fetchImpl(url, options);
+  if (!response.ok) {
+    const detail = (await response.text()).trim();
+    throw new Error(`${label} failed with HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
+  }
+  return response.json();
+}
+
+export async function listInstallationRepositoriesForApp(app, installationId, {
+  fetchImpl = fetch,
+  apiUrl = githubApiUrl(),
+} = {}) {
+  const appJwt = createAppJwt(app);
+  const tokenPayload = await githubJson(fetchImpl, `${apiUrl}/app/installations/${installationId}/access_tokens`, {
+    method: "POST",
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${appJwt}`,
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+  }, "GitHub App installation token creation");
+  if (!tokenPayload.token) {
+    throw new Error("GitHub returned an incomplete installation access token");
+  }
+
+  const repositories = [];
+  for (let page = 1; ; page += 1) {
+    const payload = await githubJson(fetchImpl, `${apiUrl}/installation/repositories?per_page=100&page=${page}`, {
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${tokenPayload.token}`,
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    }, "GitHub App repository verification");
+    const pageRepositories = payload.repositories ?? [];
+    repositories.push(...pageRepositories.map(({ full_name: fullName }) => fullName).filter(Boolean));
+    if (pageRepositories.length < 100 || repositories.length >= (payload.total_count ?? repositories.length)) break;
+  }
+  return repositories;
 }
 
 export function validateInstallationScope(installation, owner) {
@@ -519,15 +576,17 @@ export function installationTargetInstruction(target) {
   return `Choose "${target.owner}", choose "Only select repositories", select ${repositories}, and save.`;
 }
 
-export function installationIncludesRepository(installation, repo, listRepositories = listInstallationRepositories) {
+export function installationIncludesRepository(installation, repo, listRepositories) {
   const [owner] = splitRepo(repo);
   validateInstallationScope(installation, owner);
-  return listRepositories(installation.id).some((name) => name.toLowerCase() === repo.toLowerCase());
+  if (!listRepositories) throw new Error("a selected-repository verifier is required");
+  return listRepositories(installation.id, owner).some((name) => name.toLowerCase() === repo.toLowerCase());
 }
 
-export function installationIncludesTarget(installation, target, listRepositories = listInstallationRepositories) {
+export function installationIncludesTarget(installation, target, listRepositories) {
   validateInstallationScope(installation, target.owner);
-  const selected = new Set(listRepositories(installation.id).map((repository) => repository.toLowerCase()));
+  if (!listRepositories) throw new Error("a selected-repository verifier is required");
+  const selected = new Set(listRepositories(installation.id, target.owner).map((repository) => repository.toLowerCase()));
   return target.repositories.every((repository) => selected.has(`${target.owner}/${repository}`.toLowerCase()));
 }
 
@@ -545,10 +604,10 @@ export function selectedInstallation(app, target, {
       ? installation
       : undefined;
   } catch (error) {
-    if (isDataResidencyServer(serverUrl) && error?.message) {
+    if (error?.message) {
       throw new Error(
         `unable to verify selected repository membership for ${app.name || app.slug} on ${target.owner}: `
-        + `${error.message}. Refresh the GitHub CLI credential with read:user access and retry`,
+        + `${error.message}. Ensure the GitHub CLI user can administer App installations for ${target.owner} and retry`,
       );
     }
     throw error;
@@ -567,7 +626,7 @@ async function waitForInstallation(app, target) {
   let lastError;
   while (Date.now() < deadline) {
     try {
-      const installation = selectedInstallation(app, target);
+      const installation = await selectedInstallationForSetup(app, target);
       if (installation) {
         console.error(`Selected-repository GitHub App installation ${installation.id} detected for ${target.owner}.`);
         return installation;
@@ -588,7 +647,7 @@ async function waitForInstallation(app, target) {
 async function ensureInstallations(app, targets, openBrowser, firstInstallationAlreadyOpen = false) {
   const installations = [];
   for (const [index, target] of targets.entries()) {
-    const existing = selectedInstallation(app, target);
+    const existing = await selectedInstallationForSetup(app, target);
     if (existing) {
       console.error(`Selected-repository GitHub App installation ${existing.id} already covers ${target.owner}; skipping.`);
       installations.push(existing);
@@ -600,6 +659,27 @@ async function ensureInstallations(app, targets, openBrowser, firstInstallationA
     installations.push(await waitForInstallation(app, target));
   }
   return installations;
+}
+
+async function selectedInstallationForSetup(app, target) {
+  const installation = matchingInstallation(app, target.owner);
+  if (!installation) return undefined;
+  try {
+    if (!app.pem) {
+      throw new Error(
+        "the stored private key cannot be read back from Actions secrets; use --force to create and verify a replacement App",
+      );
+    }
+    const repositories = await listInstallationRepositoriesForApp(app, installation.id);
+    return installationIncludesTarget(installation, target, () => repositories)
+      ? installation
+      : undefined;
+  } catch (error) {
+    if (error.name === "InstallationScopeError") throw error;
+    throw new Error(
+      `unable to verify selected repository membership for ${app.name || app.slug} on ${target.owner}: ${error.message}`,
+    );
+  }
 }
 
 function printHelp() {
@@ -675,26 +755,30 @@ async function main() {
   for (const profile of APP_PROFILES) {
     const profileInstallationTargets = installationTargets[profile.role];
     const complete = state.variables.has(profile.variable) && state.secrets.has(profile.secret);
+    let app;
     if (complete && !options.force) {
-      const app = existingGitHubApp(target.owner, appNames[profile.role], repositoryVariableValue(repo, profile.variable));
-      await ensureInstallations(app, profileInstallationTargets, options.openBrowser);
-      continue;
+      app = existingGitHubApp(target.owner, appNames[profile.role], repositoryVariableValue(repo, profile.variable));
+    } else {
+      if (state.variables.has(profile.variable) !== state.secrets.has(profile.secret)) {
+        console.error(`${profile.label} App credentials are incomplete; creating a replacement pair.`);
+      }
+      app = await createGitHubApp({
+        owner: target.owner,
+        name: appNames[profile.role],
+        homepageUrl: target.homepageUrl,
+        description: `Central Agentic Ops ${profile.label} App for ${repo}`,
+        permissions: appPermissionsForServer(profile),
+        openBrowser: options.openBrowser,
+      });
+      setRepositoryCredentials(profile, app, repo);
+      console.error(`Set repository variable ${profile.variable}.`);
+      console.error(`Set repository secret ${profile.secret}.`);
     }
-    if (state.variables.has(profile.variable) !== state.secrets.has(profile.secret)) {
-      console.error(`${profile.label} App credentials are incomplete; creating a replacement pair.`);
+    await ensureInstallations(app, profileInstallationTargets, options.openBrowser, !complete || options.force);
+    if (profile.role === "read") {
+      setRepositoryAuthenticationMode(repo);
+      console.error(`Read-only GitHub App credentials and Activity authentication mode are configured for ${repo}.`);
     }
-    const app = await createGitHubApp({
-      owner: target.owner,
-      name: appNames[profile.role],
-      homepageUrl: target.homepageUrl,
-      description: `Central Agentic Ops ${profile.label} App for ${repo}`,
-      permissions: appPermissionsForServer(profile),
-      openBrowser: options.openBrowser,
-    });
-    setRepositoryCredentials(profile, app, repo);
-    console.error(`Set repository variable ${profile.variable}.`);
-    console.error(`Set repository secret ${profile.secret}.`);
-    await ensureInstallations(app, profileInstallationTargets, options.openBrowser, true);
   }
 
   const finalState = repositoryState(repo);
@@ -703,7 +787,6 @@ async function main() {
       throw new Error(`credential verification failed for the ${profile.label} App`);
     }
   }
-  runGh(["variable", "set", AUTH_MODE_VARIABLE, "--repo", repo, "--body", "app"]);
   console.error(`Both GitHub App credential pairs are configured for ${repo}.`);
 }
 

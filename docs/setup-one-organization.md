@@ -50,10 +50,9 @@ For both browser flows:
 3. Select only the repositories printed in the terminal.
 4. Finish the installation and return to the terminal.
 
-Setup verifies the exact selected repository membership. On a data-residency
-host, refresh the GitHub CLI credential with `read:user` access if verification
-fails; setup does not accept a manual-verification fallback. The write App
-defaults to the control repository so review outputs have an approved
+Setup verifies the exact selected repository membership with a short-lived App
+installation token and does not accept a manual-verification fallback. The
+write App defaults to the control repository so review outputs have an approved
 destination. Ensure every dispatched worker admits the write App's
 `APP-SLUG[bot]` login.
 
