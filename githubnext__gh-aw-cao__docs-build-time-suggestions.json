@@ -1,6 +1,6 @@
 {
-  "source_sha": "f8a0ad3f9c9954509d41feb5f7dd4a00e587506d",
-  "next_category": "artifact transfer and Pages packaging",
+  "source_sha": "7d96454b784b44a4d100226259ee047e0d23b6a7",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
       "evaluated_at": "2026-10-01T03:20:00Z",
@@ -541,6 +541,40 @@
         36801623274
       ],
       "outcome": "no_actionable_improvement: latest 20 completed successful docs.yml runs in the last 14 days again show docs-side caching is healthy and the only qualifying repeated cost is the already-recorded reusable-dashboard preparation bottleneck. Trusted docs metadata showed 20 successful runs with 18 build executions and 4 deploying schedules; median full workflow duration was 51.5s (p90 82.6s), median queue time 3.0s (p90 5.0s), median build-job duration 42.0s (p90 49.4s), median deploy-job duration 16.0s (p90 18.0s), and median schedule-freshness duration 6.0s (p90 8.0s). Across all 18 built docs runs, Install dependencies and Save node_modules were skipped, confirming node_modules cache hits, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were also skipped after Restore cached CAO Dashboard, confirming dashboard cache hits from trusted metadata rather than syntax inference. Step medians stayed small at 5s Restore node_modules, 12s Build documentation, 2s Restore cached CAO Dashboard, and 7.5s Upload Pages artifact. Cross-checking successful cao-dashboard producer runs 36815044481, 36812614544, 36812300612, 36805571709, and 36801623274 still showed the dominant repeated upstream cost is Upgrade fallback activity data at 68-71s in the newest three runs and 43-67s in the older two, while Install dashboard build dependencies took 4-9s, Assemble Dashboard Language site 2-6s, Upload dashboard artifact 5-7s, and cache refresh 8-11s. Bounded logs for run 36815044481 confirmed that after a cache restore of ~114 MB, the workflow still re-ingested and rehashed activity data, then validated a 395.5 MiB gh-aw-logs.sqlite and recopied that SQLite plus 110 shards / 250.5 MiB into the dashboard artifact before upload. That reusable-dashboard bottleneck is already represented by suggestion fingerprint reusable-dashboard-skip-reupgrade-of-validated-activity-cache and prior issue #15332, and the current evidence has not materially changed enough to justify a duplicate recommendation.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-01T04:59:45Z",
+      "worker_run_id": "36817370445",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        36817122614,
+        36815539215,
+        36815205351,
+        36814535539,
+        36814473008,
+        36813929444,
+        36812804815,
+        36812777101,
+        36812460790,
+        36811209869,
+        36809628212,
+        36808956299,
+        36808654332,
+        36807518120,
+        36807162387,
+        36805696697,
+        36804863665,
+        36802750818,
+        36801815999,
+        36800369457,
+        36815044481,
+        36812614544,
+        36812300612,
+        36805571709,
+        36801623274
+      ],
+      "outcome": "no_actionable_improvement: latest 20 completed successful docs.yml runs in the last 14 days still show docs-side artifact transfer and Pages packaging below threshold. Trusted metadata showed 20 successful runs with 18 build executions and 2 schedule-freshness skips; median full workflow duration was 51.5s (p90 82.0s), median queue time 0.0s, median build-job duration 43.0s (p90 51.0s), and median deploy-job duration 17.0s (p90 19.0s) on the 7 schedule deployments. Across built runs, median step timings stayed small at 5s Restore node_modules, 12s Build documentation, 2s Restore cached CAO Dashboard, and 7s Upload Pages artifact, with Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact skipped whenever build ran because trusted cache-hit metadata showed the dashboard and npm caches restoring successfully. Bounded logs confirmed the uploaded Pages artifact is only about 38.6 MiB median after compression even though it contains the docs site plus the cached dashboard. Cross-checking recent successful cao-dashboard producer runs 36815044481, 36812614544, 36812300612, 36805571709, and 36801623274 still showed the larger repeated upstream cost is reusable-dashboard preparation: Upgrade fallback activity data repeatedly consumed 43-71s before the workflow recopied a validated ~383-396 MiB SQLite plus 105-110 shards / ~239-251 MiB into the dashboard artifact, while docs-side upload and deploy stayed far below the >=60s or >=15% action threshold. That qualifying improvement is already represented by suggestion fingerprint reusable-dashboard-skip-reupgrade-of-validated-activity-cache, so no new non-duplicate artifact-transfer recommendation is actionable.",
       "suggestion_fingerprint": null
     }
   ]
