@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/bits"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -529,7 +530,7 @@ func ExecuteDefinition(definition Definition, sources map[string]model.Source, r
 		return model.Source{}, 0, nil, fmt.Errorf("input source %q is unavailable", definition.From)
 	}
 	if sourceUnavailable(base) {
-		return unavailableResult(definition, definition.From), 0, nil, nil
+		return unavailableResult(definition, queryInputCause(definition.From, base)), 0, nil, nil
 	}
 	rows := cloneRows(base.Rows)
 	for _, union := range definition.Union {
@@ -538,7 +539,7 @@ func ExecuteDefinition(definition Definition, sources map[string]model.Source, r
 			return model.Source{}, 0, nil, fmt.Errorf("union source %q is unavailable", union)
 		}
 		if sourceUnavailable(source) {
-			return unavailableResult(definition, union), 0, nil, nil
+			return unavailableResult(definition, queryInputCause(union, source)), 0, nil, nil
 		}
 		rows = append(rows, cloneRows(source.Rows)...)
 	}
@@ -655,6 +656,23 @@ func sortCost(rows int) int {
 
 func sourceUnavailable(source model.Source) bool {
 	return source.Metadata["availability"] == "unavailable"
+}
+
+var querySourceName = regexp.MustCompile(`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?::[a-z][a-z0-9]*(?:-[a-z0-9]+)*)*$`)
+
+func queryInputCause(input string, source model.Source) string {
+	var code, cause string
+	switch upstream := source.Metadata["query-error"].(type) {
+	case map[string]string:
+		code, cause = upstream["code"], upstream["source"]
+	case map[string]any:
+		code, _ = upstream["code"].(string)
+		cause, _ = upstream["source"].(string)
+	}
+	if code == "input-unavailable" && len(cause) <= 256 && querySourceName.MatchString(cause) {
+		return cause
+	}
+	return input
 }
 
 func unavailableResult(definition Definition, input string) model.Source {

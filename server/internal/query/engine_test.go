@@ -406,6 +406,27 @@ func TestUnavailablePrimaryInputIdentifiesDependency(t *testing.T) {
 	}
 }
 
+func TestUnavailablePrimaryInputTracesRootCause(t *testing.T) {
+	for _, upstream := range []any{
+		map[string]string{"code": "input-unavailable", "source": "mcp-calls"},
+		map[string]any{"code": "input-unavailable", "source": "mcp-calls"},
+	} {
+		result, _, _, err := ExecuteDefinition(Definition{Name: "mcp-top-tools", From: "view:mcps:mcp-top-tools:root"}, map[string]model.Source{
+			"view:mcps:mcp-top-tools:root": {
+				Metadata: model.Metadata{"availability": "unavailable", "query-error": upstream},
+			},
+		}, MaxOperations)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := result.Metadata["query-error"]; !reflect.DeepEqual(got, map[string]string{
+			"code": "input-unavailable", "source": "mcp-calls",
+		}) {
+			t.Fatalf("unavailable root cause = %#v", got)
+		}
+	}
+}
+
 func TestPredictionFailsClosed(t *testing.T) {
 	definitionsJSON := `[{"name":"forecast","from":"runs","predict":[{"field":"y","on":"x","as":"p"}]}]`
 	var definitions []Definition

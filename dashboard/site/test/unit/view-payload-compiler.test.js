@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
 import { tidy } from '../../src/data-operations.js';
 import { executeDashboardQueries } from '../../src/data/queries/declarative.js';
+import { renderCustomViewStateDetails } from '../../src/components/view-chrome.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 import {
   compileDashboardViewPayloadQueries,
@@ -20,7 +21,7 @@ const metadata = {
 
 it('traces an unavailable MCP view alias through its scoped query graph to the missing source', () => {
   const dashboard = authoritativeDashboard.dashboard;
-  const page = dashboard.pages.find((candidate) => candidate.id === 'mcps');
+  const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'mcps');
   const payload = compileDashboardViewPayloadQueries(page, 'mcps', {
     queries: dashboard.queries,
     views: dashboard.views,
@@ -33,6 +34,9 @@ it('traces an unavailable MCP view alias through its scoped query graph to the m
   }, payload.aliases)[alias];
   expect(unavailable.metadata.availability).toBe('unavailable');
   expect(unavailable.metadata['query-error']).toEqual({ code: 'input-unavailable', source: 'mcp-calls' });
+  expect(renderCustomViewStateDetails(
+    'mcp-top-tools', [], unavailable.metadata['query-error'], unavailable.metadata['query-diagnostic']
+  ).map((detail) => detail.textContent)).toContain('Unavailable query dependency: mcp-calls');
 
   const empty = executeDashboardQueries(payload.queries, {
     'mcp-calls': { source: 'mcp-calls', rows: [], metadata: { ...metadata, availability: 'empty' } }

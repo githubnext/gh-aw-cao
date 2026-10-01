@@ -707,6 +707,7 @@ function materializeDashboardQuery(definition, sources, defect, budget) {
       const rootSource = isPlainObject(upstream)
         && upstream.code === 'input-unavailable'
         && typeof upstream.source === 'string'
+        && upstream.source.length <= 256
         && /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?::[a-z][a-z0-9]*(?:-[a-z0-9]+)*)*$/.test(upstream.source)
         ? upstream.source : unavailable.name;
       return unavailableResult(definition, composedMetadata(definition.name, inputs, 0), failure, rootSource);
