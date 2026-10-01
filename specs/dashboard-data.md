@@ -2139,6 +2139,62 @@ neither is a service-level bound. Measure actual `N`, `B`, `C`, `T`, Redis
 peak memory and oldest-unpublished evidence age on a representative retained
 corpus before setting capacity or freshness targets.
 
+For **host sizing**, the example's 3.81 GiB is Redis *allocated dataset
+memory*, not host RAM. As a sensitivity calculation, if Redis process RSS is
+1.5 times that allocation during staging, its peak is about 5.7 GiB; an
+8 GiB Redis host would have only about 2.3 GiB left for the OS, buffers and
+other services. This 1.5 factor is an assumption, not a measured fragmentation
+ratio. The Azure collector profile provisions each worker with 1 vCPU and a
+2 GiB memory limit (`server/azure/collector.bicep`). The ingester currently
+holds all canonical rows, then constructs logical-source rows, before writing
+them to Redis (`server/internal/ingest/ingest.go`); Node compaction can add
+another process working set. There is **no proven upper bound** on its peak
+RSS from `N` or `B` alone. For one million records, a 2 GiB worker should
+be treated as *at risk of out-of-memory failure* until a representative
+rebuild demonstrates otherwise. Managed Redis and collector containers have
+separate memory budgets; when colocated, add their measured peak RSS and
+allow OS headroom instead of comparing `B` with total host RAM.
+
+For **compute pressure**, let `q` be the *sustained measured rate* of complete
+Redis row writes (including set insertion and indexing). Even before input
+compaction, validation, Go projection and reclamation, writing `N` rows takes
+at least `N / q`. For the example's million rows, an **assumed** 5,000
+rows/second takes at least 200 seconds; 2,000 rows/second takes at least
+500 seconds. Neither rate is a benchmark or a recommended target. At twelve
+changed-data attempts per hour, the first assumption alone occupies roughly
+40 minutes per hour of Redis write capacity (67% duty cycle) *before* old-row
+deletion and query traffic; the
+second cannot sustain a five-minute cadence at all. The collector's 1-vCPU
+worker separately pays for recompaction, hash verification (the lake is
+rehash-read by the Activity CLI and again by the Go manifest validator),
+canonicalization and serialization. If total projection wall time approaches
+five minutes, the worker has little capacity for concurrent collection and
+new observations wait for later projection cycles. Thus **12 changed-data
+generations per hour is an aggressive ceiling, not an acceptable default
+throughput target** for a million-row corpus without load measurements.
+
+To avoid wasted work without weakening snapshot consistency:
+
+* Already implemented: per-repository webhook task coalescing, a dirty marker,
+  a distributed projection lease, and a configurable polling interval
+  (`CAO_COLLECT_PROJECTION_INTERVAL`, five minutes by default) keep projections
+  off the webhook request path; a matching data revision skips Redis rewriting
+  but **does not** skip full-lake recompaction and verification.
+* For deployments that miss memory or freshness budgets, first measure
+  collection-to-activation lag, elapsed time for compaction/validation and
+  staging, input bytes reread, per-worker peak RSS, Redis `used_memory`,
+  process RSS and reclamation time under realistic concurrent query load.
+  Increase the projection interval only if a larger freshness lag is
+  acceptable; this reduces repeated whole-lake scans and maximum rewrite
+  frequency but cannot make a single oversized generation fit.
+* Future optimization requires a separately reviewed consistency design:
+  persist verified content revisions so unchanged lakes avoid repeat scans,
+  reuse unchanged partition materializations, or replace whole-dataset copies
+  with incremental/versioned partitions while preserving atomic publication,
+  query snapshot isolation and recovery. None of these is implemented by the
+  current generation contract; do not mutate active rows in place merely to
+  reduce compute.
+
 ---
 
 # 32. Bounded Ingestion
