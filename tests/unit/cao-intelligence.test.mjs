@@ -7,6 +7,7 @@ import {
   computeIntelligencePortfolio,
   intelligenceFingerprint
 } from '../../activity/computations/intelligence.mjs';
+import { DECISION_FEEDBACK_CONTRACT } from '../../activity/computations/intelligence-contracts.mjs';
 import {
   COMPUTATION_NAMES,
   computeIntelligenceFromCanonicalData,
@@ -61,6 +62,21 @@ function errorGroup(workflowId, targetRepositoryId, count, runId, overrides = {}
       attempt: 1
     }],
     ...overrides
+  };
+}
+
+function feedback(decision, disposition, overrides = {}) {
+  return {
+    contractVersion: DECISION_FEEDBACK_CONTRACT.version,
+    records: [{
+      decisionId: decision.decisionId,
+      inputFingerprint: decision.inputFingerprint,
+      disposition,
+      observedAt: '2026-09-23T10:00:00Z',
+      actor: 'operator:octocat',
+      authority: 'control-repository-review',
+      ...overrides
+    }]
   };
 }
 
@@ -121,13 +137,14 @@ test('intelligence reuses unchanged Decisions and suppresses unchanged terminal 
   assert.deepEqual(reused.reusedDecisionIds, [initial.decisions[0].decisionId]);
 
   const terminal = structuredClone(initial);
-  terminal.decisions[0].disposition = 'accepted';
   const suppressed = computeIntelligencePortfolio(runtimeHealth(), {
-    previousResult: terminal
+    previousResult: terminal,
+    feedback: feedback(initial.decisions[0], 'accepted')
   });
   assert.equal(suppressed.decisionCount, 0);
   assert.equal(suppressed.suppressions[0].rule, 'unchanged-terminal-result');
   assert.equal(suppressed.suppressions[0].relatedDecisionId, initial.decisions[0].decisionId);
+  assert.equal(suppressed.feedback.appliedCount, 1);
 });
 
 test('changed evidence preserves Decision identity but changes its input fingerprint', () => {
@@ -181,6 +198,8 @@ test('intelligence is registered and computes from canonical runtime-health evid
   assert.equal(output.computation, 'intelligence');
   assert.equal(output.result.decisionCount, 1);
   assert.equal(output.result.decisions[0].decisionClass, 'protect');
+  assert.equal(output.result.campaignContractCount, 1);
+  assert.equal(output.result.campaignContracts[0].campaignId, 'campaign:inventory:maintenance');
 });
 
 test('fingerprints are canonical and reject non-JSON values', () => {
@@ -196,6 +215,7 @@ test('cao computation intelligence accepts prior output and rejects unsupported 
   const root = await mkdtemp(path.join(os.tmpdir(), 'cao-intelligence-'));
   const inventory = path.join(root, 'inventory-sources.json');
   const previous = path.join(root, 'previous.json');
+  const feedbackPath = path.join(root, 'feedback.json');
   await writeFile(inventory, JSON.stringify({
     campaigns: {
       rows: [{
@@ -226,26 +246,37 @@ test('cao computation intelligence accepts prior output and rejects unsupported 
       metadata: { 'as-of': '2026-09-22T10:00:00Z' }
     }
   }));
-  await writeFile(previous, JSON.stringify(computeIntelligencePortfolio(runtimeHealth())));
+  const database = path.join(root, 'activity.sqlite');
+  const prior = computeIntelligencePortfolio(runtimeHealth());
+  await writeFile(previous, JSON.stringify(prior));
+  await writeFile(
+    feedbackPath,
+    JSON.stringify(feedback(prior.decisions[0], 'deferred'))
+  );
 
   const output = await runCli([
     'computation',
     'intelligence',
     '--database',
-    path.join(root, 'activity.sqlite'),
+    database,
     '--inventory',
     inventory,
     '--previous',
-    previous
+    previous,
+    '--feedback',
+    feedbackPath
   ]);
   assert.equal(output.computation, 'intelligence');
   assert.equal(output.result.agentInvocations, 0);
+  assert.equal(output.result.feedback.contractVersion, DECISION_FEEDBACK_CONTRACT.version);
+  assert.equal(output.result.feedback.recordCount, 1);
+  assert.equal(output.result.feedback.unmatchedCount, 1);
   await assert.rejects(
     runCli([
       'computation',
       'intelligence',
       '--database',
-      path.join(root, 'activity.sqlite'),
+      database,
       '--inventory',
       inventory,
       '--campaign',

@@ -1,8 +1,17 @@
-import { createHash } from 'node:crypto';
+import {
+  CAMPAIGN_INTELLIGENCE_CONTRACT,
+  DECISION_FEEDBACK_CONTRACT,
+  intelligenceFingerprint,
+  normalizeDecisionFeedback,
+  normalizeEvidenceQuality,
+  stableIntelligenceId
+} from './intelligence-contracts.mjs';
+
+export { intelligenceFingerprint } from './intelligence-contracts.mjs';
 
 export const INTELLIGENCE_MEASURE = Object.freeze({
   id: 'portfolio-decisions',
-  version: '1.0.0'
+  version: '1.1.0'
 });
 
 const TERMINAL_DISPOSITIONS = new Set([
@@ -15,34 +24,8 @@ const TERMINAL_DISPOSITIONS = new Set([
 const DEFAULT_ACT_NOW_FAILURE_COUNT = 3;
 const EVIDENCE_REFERENCE_LIMIT = 50;
 
-function canonicalValue(value) {
-  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value)) throw new TypeError('Intelligence inputs must contain finite JSON numbers');
-    return value;
-  }
-  if (Array.isArray(value)) return value.map(canonicalValue);
-  if (!value || typeof value !== 'object') throw new TypeError('Intelligence inputs must be JSON values');
-  const prototype = Object.getPrototypeOf(value);
-  if (prototype !== Object.prototype && prototype !== null) {
-    throw new TypeError('Intelligence inputs must contain plain objects');
-  }
-  return Object.fromEntries(Object.keys(value).sort().map((key) => {
-    if (value[key] === undefined) throw new TypeError('Intelligence inputs must not contain undefined values');
-    return [key, canonicalValue(value[key])];
-  }));
-}
-
-function canonicalJSON(value) {
-  return JSON.stringify(canonicalValue(value));
-}
-
-export function intelligenceFingerprint(value) {
-  return `sha256:${createHash('sha256').update(canonicalJSON(value)).digest('hex')}`;
-}
-
 function stableId(prefix, value) {
-  return `${prefix}:${intelligenceFingerprint(value).slice('sha256:'.length, 'sha256:'.length + 24)}`;
+  return stableIntelligenceId(prefix, value);
 }
 
 function partitionKey(value) {
@@ -159,15 +142,60 @@ function previousResult(value) {
       throw new TypeError('Previous intelligence result contains an invalid Decision');
     }
   }
+  if (result.feedback !== undefined) normalizeDecisionFeedback(result.feedback);
   return result;
 }
 
-function decisionDisposition(decision) {
-  const disposition = decision?.disposition ?? decision?.feedback?.disposition;
-  return typeof disposition === 'string' ? disposition : null;
+function selectedCampaignContracts(runtimeHealth, campaignContracts) {
+  if (!Array.isArray(campaignContracts)) {
+    throw new TypeError('Campaign intelligence contracts must be an array');
+  }
+  const evaluatedCampaignIds = new Set((runtimeHealth.campaignResults ?? [])
+    .map((result) => String(result.campaignId ?? ''))
+    .filter(Boolean));
+  const contracts = campaignContracts
+    .filter((contract) => evaluatedCampaignIds.has(String(contract?.campaignId ?? '')))
+    .sort((left, right) => String(left.campaignId).localeCompare(String(right.campaignId)));
+  for (const contract of contracts) {
+    if (!contract || typeof contract !== 'object' || Array.isArray(contract)
+        || typeof contract.campaignId !== 'string'
+        || typeof contract.contractId !== 'string'
+        || typeof contract.inputFingerprint !== 'string') {
+      throw new TypeError('Campaign intelligence contract is invalid');
+    }
+  }
+  return contracts;
 }
 
-function buildDecision(signals, inputFingerprint, actNowFailureCount) {
+function combinedFeedback(prior, suppliedFeedback) {
+  const previous = normalizeDecisionFeedback(prior?.feedback);
+  const supplied = normalizeDecisionFeedback(suppliedFeedback);
+  const byId = new Map([...previous.records, ...supplied.records].map((record) => [
+    record.feedbackId,
+    record
+  ]));
+  return [...byId.values()].sort((left, right) => (
+    left.observedAt.localeCompare(right.observedAt)
+    || left.feedbackId.localeCompare(right.feedbackId)
+  ));
+}
+
+function latestFeedback(records) {
+  return records.at(-1) ?? null;
+}
+
+function decisionIdentity(signals) {
+  const campaignId = signals[0].campaignId;
+  const errorKey = signals[0].errorKey;
+  return {
+    decisionClass: 'protect',
+    subject: { campaignId },
+    operation: 'investigate-runtime-failure',
+    correlationKey: `${campaignId}\0${errorKey}`
+  };
+}
+
+function buildDecision(signals, inputFingerprint, actNowFailureCount, campaignContract, feedback) {
   const campaignId = signals[0].campaignId;
   const errorKey = signals[0].errorKey;
   const workflowIds = [...new Set(signals.map((signal) => signal.workflowId))].sort();
@@ -176,22 +204,51 @@ function buildDecision(signals, inputFingerprint, actNowFailureCount) {
     .filter(Boolean))]
     .sort();
   const correlationKey = `${campaignId}\0${errorKey}`;
-  const decisionIdentity = {
-    decisionClass: 'protect',
-    subject: { campaignId },
-    operation: 'investigate-runtime-failure',
-    correlationKey
-  };
   const totalFailures = signals.reduce((total, signal) => total + signal.failureCount, 0);
   const totalRunAttempts = signals.reduce(
     (total, signal) => total + signal.distinctRunAttemptCount,
     0
   );
   const state = totalFailures >= actNowFailureCount ? 'act-now' : 'decide-soon';
+  const evidenceReferenceCount = new Set(signals.flatMap(
+    (signal) => signal.evidenceReferences
+  )).size;
+  const attributedSignalCount = signals.filter((signal) => signal.targetRepositoryId !== null).length;
+  const quality = {
+    ...normalizeEvidenceQuality({
+      availability: 'available',
+      completeness: campaignContract?.quality?.completeness ?? 'partial',
+      freshness: {
+        state: 'unknown',
+        observedAt: latestTimestamp(signals)
+      },
+      coverage: {
+        state: 'partial',
+        numerator: signals.length,
+        denominator: null
+      },
+      maturity: campaignContract?.quality?.maturity ?? 'unknown',
+      provenance: {
+        state: evidenceReferenceCount > 0 ? 'available' : 'missing',
+        sources: [
+          'runtime-health',
+          ...(campaignContract ? [CAMPAIGN_INTELLIGENCE_CONTRACT.id] : [])
+        ]
+      },
+      attributionCoverage: {
+        state: attributedSignalCount === signals.length ? 'complete' : 'partial',
+        numerator: attributedSignalCount,
+        denominator: signals.length
+      },
+      contradictionState: 'unknown'
+    }),
+    correlationRule: 'exact-campaign-and-runtime-error-key',
+    evidenceReferenceCount
+  };
   return {
     measureId: INTELLIGENCE_MEASURE.id,
     measureVersion: INTELLIGENCE_MEASURE.version,
-    decisionId: stableId('runtime-health-decision', decisionIdentity),
+    decisionId: stableId('runtime-health-decision', decisionIdentity(signals)),
     inputFingerprint,
     decisionClass: 'protect',
     state,
@@ -238,13 +295,7 @@ function buildDecision(signals, inputFingerprint, actNowFailureCount) {
       probability: null,
       note: 'No model-generated probability is used.'
     },
-    quality: {
-      evidenceAvailability: 'available',
-      correlationRule: 'exact-campaign-and-runtime-error-key',
-      evidenceReferenceCount: new Set(signals.flatMap(
-        (signal) => signal.evidenceReferences
-      )).size
-    },
+    quality,
     sensitivity: [{
       parameter: 'actNowFailureCount',
       value: actNowFailureCount,
@@ -259,6 +310,11 @@ function buildDecision(signals, inputFingerprint, actNowFailureCount) {
     evidenceReferences: [...new Set(signals.flatMap(
       (signal) => signal.evidenceReferences
     ))].sort().slice(0, EVIDENCE_REFERENCE_LIMIT),
+    campaignContract: campaignContract ? {
+      contractId: campaignContract.contractId,
+      inputFingerprint: campaignContract.inputFingerprint
+    } : null,
+    feedback,
     decisionTrace: {
       inputs: signals.map((signal) => ({
         signalId: signal.signalId,
@@ -300,6 +356,16 @@ export function computeIntelligencePortfolio(runtimeHealth, options = {}) {
     String(decision.decisionId),
     decision
   ]));
+  const campaignContracts = selectedCampaignContracts(
+    runtimeHealth,
+    options.campaignContracts ?? []
+  );
+  const contractByCampaign = new Map(campaignContracts.map((contract) => [
+    contract.campaignId,
+    contract
+  ]));
+  const feedbackRecords = combinedFeedback(prior, options.feedback);
+  const feedbackByDecision = Map.groupBy(feedbackRecords, (record) => record.decisionId);
   const suppressions = [];
   const actionable = [];
   const signals = runtimeHealthSignals(runtimeHealth);
@@ -326,31 +392,52 @@ export function computeIntelligencePortfolio(runtimeHealth, options = {}) {
   ));
   const decisions = [];
   const reusedDecisionIds = [];
+  const currentDecisionIds = new Set();
+  const appliedFeedbackIds = new Set();
+  const staleFeedbackIds = new Set();
   for (const [, groupSignals] of [...groups.entries()].sort(([left], [right]) => (
     left.localeCompare(right)
   ))) {
+    const campaignContract = contractByCampaign.get(groupSignals[0].campaignId) ?? null;
     const inputFingerprint = intelligenceFingerprint({
       measureId: INTELLIGENCE_MEASURE.id,
       measureVersion: INTELLIGENCE_MEASURE.version,
       actNowFailureCount,
+      campaignContractFingerprint: campaignContract?.inputFingerprint ?? null,
       signals: groupSignals.map((signal) => ({
         signalId: signal.signalId,
         inputFingerprint: signal.inputFingerprint
       }))
     });
-    const candidate = buildDecision(groupSignals, inputFingerprint, actNowFailureCount);
+    const decisionId = stableId('runtime-health-decision', decisionIdentity(groupSignals));
+    currentDecisionIds.add(decisionId);
+    const decisionFeedback = feedbackByDecision.get(decisionId) ?? [];
+    const matchingFeedback = decisionFeedback.filter((record) => (
+      record.inputFingerprint === inputFingerprint
+    ));
+    for (const record of decisionFeedback) {
+      if (record.inputFingerprint !== inputFingerprint) staleFeedbackIds.add(record.feedbackId);
+    }
+    const feedback = latestFeedback(matchingFeedback);
+    if (feedback) appliedFeedbackIds.add(feedback.feedbackId);
+    const candidate = buildDecision(
+      groupSignals,
+      inputFingerprint,
+      actNowFailureCount,
+      campaignContract,
+      feedback
+    );
     const previous = priorById.get(candidate.decisionId);
+    if (feedback && TERMINAL_DISPOSITIONS.has(feedback.disposition)) {
+      suppressions.push(suppression(
+        groupSignals[0],
+        'unchanged-terminal-result',
+        'Reconsider when the input fingerprint changes.',
+        candidate.decisionId
+      ));
+      continue;
+    }
     if (previous?.inputFingerprint === inputFingerprint) {
-      const disposition = decisionDisposition(previous);
-      if (disposition && TERMINAL_DISPOSITIONS.has(disposition)) {
-        suppressions.push(suppression(
-          groupSignals[0],
-          'unchanged-terminal-result',
-          'Reconsider when the input fingerprint changes.',
-          candidate.decisionId
-        ));
-        continue;
-      }
       decisions.push(candidate);
       reusedDecisionIds.push(candidate.decisionId);
       continue;
@@ -370,24 +457,60 @@ export function computeIntelligencePortfolio(runtimeHealth, options = {}) {
   ));
   suppressions.sort((left, right) => left.suppressionId.localeCompare(right.suppressionId));
   reusedDecisionIds.sort();
+  const unmatchedFeedbackIds = feedbackRecords
+    .filter((record) => !currentDecisionIds.has(record.decisionId))
+    .map((record) => record.feedbackId)
+    .sort();
+  const evidenceQuality = normalizeEvidenceQuality({
+    availability: 'available',
+    completeness: campaignContracts.length === 0
+      ? 'missing'
+      : campaignContracts.every((contract) => contract.quality.completeness === 'complete')
+        ? 'complete'
+        : 'partial',
+    freshness: { state: 'unknown', observedAt: latestTimestamp(signals) },
+    coverage: {
+      state: campaignContracts.length > 0 ? 'partial' : 'missing',
+      numerator: campaignContracts.length,
+      denominator: null
+    },
+    maturity: 'unknown',
+    provenance: {
+      state: signals.length > 0 ? 'available' : 'missing',
+      sources: [
+        'runtime-health',
+        ...(campaignContracts.length > 0 ? [CAMPAIGN_INTELLIGENCE_CONTRACT.id] : [])
+      ]
+    },
+    attributionCoverage: { state: 'unknown', numerator: null, denominator: null },
+    contradictionState: 'unknown'
+  });
   return {
     measureId: INTELLIGENCE_MEASURE.id,
     measureVersion: INTELLIGENCE_MEASURE.version,
     inputFingerprint: intelligenceFingerprint({
       runtimeHealthMeasureVersion: runtimeHealth.measureVersion,
       signalFingerprints: signals.map((signal) => signal.inputFingerprint),
-      previousTerminalDispositions: [...priorById.values()]
-        .map((decision) => ({
-          decisionId: decision.decisionId,
-          inputFingerprint: decision.inputFingerprint,
-          disposition: decisionDisposition(decision)
-        }))
-        .filter((decision) => decision.disposition !== null)
-        .sort((left, right) => String(left.decisionId).localeCompare(String(right.decisionId))),
+      campaignContractFingerprints: campaignContracts.map((contract) => contract.inputFingerprint),
+      feedbackIds: feedbackRecords.map((record) => record.feedbackId),
       actNowFailureCount
     }),
+    evidenceQuality,
     evaluatedDecisionClasses: ['protect'],
     agentInvocations: 0,
+    campaignContractCount: campaignContracts.length,
+    campaignContracts,
+    feedback: {
+      contractId: DECISION_FEEDBACK_CONTRACT.id,
+      contractVersion: DECISION_FEEDBACK_CONTRACT.version,
+      recordCount: feedbackRecords.length,
+      appliedCount: appliedFeedbackIds.size,
+      staleCount: staleFeedbackIds.size,
+      unmatchedCount: unmatchedFeedbackIds.length,
+      staleFeedbackIds: [...staleFeedbackIds].sort(),
+      unmatchedFeedbackIds,
+      records: feedbackRecords
+    },
     signalCount: signals.length,
     correlatedCandidateCount: groups.size,
     decisionCount: decisions.length,

@@ -159,7 +159,7 @@ Check runtime health or query canonical records:
 
 ```bash
 ./cao.sh computation intelligence
-./cao.sh computation intelligence --campaign dependabot --previous prior-intelligence.json
+./cao.sh computation intelligence --campaign dependabot --previous prior-intelligence.json --feedback decision-feedback.json
 ./cao.sh computation runtime-health --campaign dependabot
 ./cao.sh computation runtime-health --campaign dependabot --diagnose
 
@@ -173,7 +173,34 @@ The `intelligence` computation fingerprints canonical runtime-health evidence,
 correlates matching failure signals, suppresses ineligible or recovering
 candidates, and emits advisory Decisions. It never dispatches workers or grants
 execution authority. Passing a prior result with `--previous` reuses unchanged
-nonterminal Decisions and suppresses unchanged terminal results.
+nonterminal Decisions. A versioned `--feedback` file binds dispositions to a
+Decision ID and input fingerprint; unchanged terminal Decisions are suppressed,
+while stale feedback remains inspectable and cannot affect changed evidence.
+
+The result also includes partial Campaign intelligence contracts compiled from
+declared canonical inventory. Undeclared problem, outcome, schedule, overlap,
+attention, and operational-value fields remain `null`; descriptions and READMEs
+are not reinterpreted as those contracts.
+
+Feedback uses this shape:
+
+```json
+{
+  "contractVersion": "1.0.0",
+  "records": [{
+    "decisionId": "runtime-health-decision:...",
+    "inputFingerprint": "sha256:...",
+    "disposition": "deferred",
+    "observedAt": "2026-10-01T11:00:00Z",
+    "actor": "operator:octocat",
+    "authority": "control-repository-review"
+  }]
+}
+```
+
+Allowed dispositions are `accepted`, `rejected`, `deferred`, `superseded`,
+`recovered`, `expired`, and `unresolved`. Feedback never grants execution
+authority.
 
 Render a named dashboard query as an editable agent prompt with the same template as the UI:
 
