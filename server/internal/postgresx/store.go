@@ -720,17 +720,21 @@ func (r *readTransaction) LoadSource(ctx context.Context, name string, definitio
 		args = append(args, limit)
 		selection = ` ORDER BY ordinal LIMIT $` + strconv.Itoa(len(args))
 	}
-	statement := `SELECT positions.ordinal, v.node_id, v.parent_id, v.object_key,
+	var statement strings.Builder
+	statement.WriteString(`SELECT positions.ordinal, v.node_id, v.parent_id, v.object_key,
 			v.array_index, v.kind, v.text_value, v.bool_value
 		FROM (
 			SELECT -1::bigint AS ordinal FROM cao_sources WHERE namespace = $1 AND source_name = $2
 			UNION ALL
 			SELECT ordinal FROM (SELECT ordinal FROM cao_source_rows AS r
-				WHERE namespace = $1 AND source_name = $2` + conditions + selection + `) AS selected
+				WHERE namespace = $1 AND source_name = $2`)
+	statement.WriteString(conditions)
+	statement.WriteString(selection)
+	statement.WriteString(`) AS selected
 		) AS positions
 		LEFT JOIN cao_values AS v ON v.namespace = $1 AND v.source_name = $2 AND v.ordinal = positions.ordinal
-		ORDER BY positions.ordinal, v.node_id`
-	rows, err := tx.QueryContext(ctx, statement, args...)
+		ORDER BY positions.ordinal, v.node_id`)
+	rows, err := tx.QueryContext(ctx, statement.String(), args...)
 	if err != nil {
 		return model.Source{}, model.Metrics{}, fmt.Errorf("read postgres source: %w", err)
 	}
@@ -851,11 +855,12 @@ func sourceCandidates(namespace, name string, definition *query.Definition) (str
 			continue
 		}
 		var values []any
-		if len(predicate.In) > 0 {
+		switch {
+		case len(predicate.In) > 0:
 			values = predicate.In
-		} else if predicate.Includes == "" && predicate.GTE == nil && predicate.LT == nil && predicate.Equals != nil {
+		case predicate.Includes == "" && predicate.GTE == nil && predicate.LT == nil && predicate.Equals != nil:
 			values = []any{predicate.Equals}
-		} else {
+		default:
 			continue
 		}
 		texts := make([]string, 0, len(values))
