@@ -44,7 +44,7 @@ requires an `Authorization: Bearer` capability for protected `/api/` routes;
 hosted mode requires an authorized `cao_session` cookie and `X-CSRF-Token` on
 mutations. Health/readiness are public, while the webhook authenticates the raw
 body using `X-Hub-Signature-256`. Collection and quota endpoints require an
-admin-authorized session in hosted mode. Hosted-only `/auth/` routes do not exist
+an explicitly listed administrator or control-repository admin/maintainer session in hosted mode. Hosted-only `/auth/` routes do not exist
 in the local profile. `302` OAuth callback failures return an HTML error page,
 not the JSON error body used by ordinary API endpoints. Limits and runtime
 authorization rules are enforced by the implementation, not by JSON Schema.

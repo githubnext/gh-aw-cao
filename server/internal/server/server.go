@@ -69,6 +69,7 @@ type Config struct {
 	Collector            *CollectorConfig
 	WebhookSecret        string
 	AdminUsers           []string
+	AdminRepository      string
 	Logger               *log.Logger
 	// RateLimits overrides inbound request rate limits; the zero value keeps
 	// the production defaults.
@@ -679,6 +680,10 @@ func (a *App) adminAuthorized(request *http.Request) bool {
 			a.logAuthBranch("admin.allowed")
 			return true
 		}
+	}
+	if a.config.AdminRepository != "" && a.oauth.repositoryRoleAuthorized(request.Context(), session, a.config.AdminRepository) {
+		a.logAuthBranch("admin.repository_allowed")
+		return true
 	}
 	a.logAuthBranch("admin.denied")
 	return false

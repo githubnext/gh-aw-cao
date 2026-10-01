@@ -74,6 +74,11 @@ func validateHostedMode(store *redisx.Store, config *Config) error {
 	if config.GitHubOAuth == nil {
 		return errors.New("hosted mode requires GitHub OAuth configuration")
 	}
+	if config.AdminRepository != "" {
+		if _, _, err := parseActionsRepository(config.AdminRepository); err != nil {
+			return errors.New("administrative repository must be in owner/repository form")
+		}
+	}
 	if err := config.GitHubOAuth.validate(); err != nil {
 		return err
 	}
@@ -279,6 +284,7 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 		Collector:              collector,
 		WebhookSecret:          os.Getenv("CAO_GITHUB_WEBHOOK_SECRET"),
 		AdminUsers:             splitCSV(os.Getenv("CAO_GITHUB_ADMIN_USERS")),
+		AdminRepository:        strings.TrimSpace(os.Getenv("CAO_COLLECT_CONTROL_REPOSITORY")),
 		CORS:                   host.CORS,
 		Proxy: ProxyPolicy{
 			AllowedHosts:   allowedHosts,

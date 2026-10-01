@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -41,7 +42,7 @@ var oauthFailurePage = template.Must(template.New("oauth-failure").Parse(oauthFa
 
 func oauthPageScriptHash(page string) string {
 	_, script, found := strings.Cut(page, "<script>")
-	if !found {
+	if !found || cached.etag == "" {
 		panic("OAuth page is missing its script")
 	}
 	script, _, found = strings.Cut(script, "</script>")
@@ -95,21 +96,22 @@ const (
 )
 
 type GitHubOAuthConfig struct {
-	ClientID              string
-	ClientSecret          string
-	RedirectURL           string
-	SessionSecret         string
-	PreviousSessionSecret string
-	AllowedOrganizations  []string
-	AllowedTeams          []string
-	AuthURL               string
-	TokenURL              string
-	UserURL               string
-	OrgMembershipURL      string
-	TeamMembershipURL     string
-	RevokeURL             string
-	HTTPClient            *http.Client
-	RevocationKeyPrefix   string
+	ClientID                string
+	ClientSecret            string
+	RedirectURL             string
+	SessionSecret           string
+	PreviousSessionSecret   string
+	AllowedOrganizations    []string
+	AllowedTeams            []string
+	AuthURL                 string
+	TokenURL                string
+	UserURL                 string
+	OrgMembershipURL        string
+	TeamMembershipURL       string
+	RepositoryPermissionURL string
+	RevokeURL               string
+	HTTPClient              *http.Client
+	RevocationKeyPrefix     string
 }
 
 type githubOAuth struct {
@@ -119,6 +121,14 @@ type githubOAuth struct {
 	key    []byte
 	keys   map[string][]byte
 	log    func(string)
+	roleMu sync.Mutex
+	roles  map[string]repositoryRoleCacheEntry
+}
+
+type repositoryRoleCacheEntry struct {
+	allowed bool
+	etag    string
+	expires time.Time
 }
 
 type oauthSession struct {
@@ -182,10 +192,87 @@ func (config *GitHubOAuthConfig) validate() error {
 	if config.TeamMembershipURL == "" {
 		config.TeamMembershipURL = "https://api.github.com/orgs/{org}/teams/{team}/memberships/{user}"
 	}
+	if config.RepositoryPermissionURL == "" {
+		config.RepositoryPermissionURL = "https://api.github.com/repos/{owner}/{repo}/collaborators/{user}/permission"
+	}
 	if config.RevokeURL == "" {
 		config.RevokeURL = "https://api.github.com/applications/{client_id}/token"
 	}
 	return nil
+}
+
+func (oauth *githubOAuth) repositoryRoleAuthorized(ctx context.Context, session oauthSession, repository string) bool {
+	owner, name, err := parseActionsRepository(repository)
+	if err != nil || session.ID == "" || session.Login == "" || session.AccessToken == "" {
+		return false
+	}
+	key := session.ID + ":" + strings.ToLower(repository)
+	oauth.roleMu.Lock()
+	cached, found := oauth.roles[key]
+	if found && time.Now().Before(cached.expires) {
+		oauth.roleMu.Unlock()
+		return cached.allowed
+	}
+	oauth.roleMu.Unlock()
+
+	endpoint := oauth.config.RepositoryPermissionURL
+	for placeholder, value := range map[string]string{
+		"{owner}": owner, "{repo}": name, "{user}": session.Login,
+	} {
+		endpoint = strings.ReplaceAll(endpoint, placeholder, url.PathEscape(value))
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil) // #nosec G704 -- endpoint is server-side OAuth configuration and repository is validated server-side policy.
+	if err != nil {
+		return false
+	}
+	request.Header.Set("Accept", "application/vnd.github+json")
+	request.Header.Set("Authorization", "Bearer "+session.AccessToken)
+	if found && cached.etag != "" {
+		request.Header.Set("If-None-Match", cached.etag)
+	}
+	response, err := oauth.client.Do(request) // #nosec G704 -- endpoint is server-side OAuth configuration, not a request parameter.
+	if err != nil {
+		return false
+	}
+	defer func() {
+		_, _ = io.Copy(io.Discard, response.Body)
+		_ = response.Body.Close()
+	}()
+	entry := repositoryRoleCacheEntry{etag: response.Header.Get("ETag"), expires: time.Now().Add(5 * time.Minute)}
+	switch response.StatusCode {
+	case http.StatusNotModified:
+		if !found {
+			return false
+		}
+		entry.allowed = cached.allowed
+		if entry.etag == "" {
+			entry.etag = cached.etag
+		}
+	case http.StatusOK:
+		var role struct {
+			Permission string `json:"permission"`
+			RoleName   string `json:"role_name"`
+		}
+		if json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&role) != nil {
+			return false
+		}
+		entry.allowed = role.Permission == "admin" || role.Permission == "maintain" ||
+			role.RoleName == "admin" || role.RoleName == "maintain"
+	default:
+		return false
+	}
+	oauth.roleMu.Lock()
+	if oauth.roles == nil {
+		oauth.roles = make(map[string]repositoryRoleCacheEntry)
+	}
+	for cacheKey, value := range oauth.roles {
+		if time.Now().After(value.expires) && cacheKey != key {
+			delete(oauth.roles, cacheKey)
+		}
+	}
+	oauth.roles[key] = entry
+	oauth.roleMu.Unlock()
+	return entry.allowed
 }
 
 func newGitHubOAuth(config GitHubOAuthConfig, store *redisx.Store) *githubOAuth {

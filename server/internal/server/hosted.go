@@ -109,8 +109,9 @@ func newHostedAppWithPolicy(
 		return nil, errors.New("CAO_GITHUB_WEBHOOK_SECRET must contain at least 32 characters")
 	}
 	adminUsers := splitCSV(os.Getenv("CAO_GITHUB_ADMIN_USERS"))
-	if len(adminUsers) == 0 {
-		return nil, errors.New("CAO_GITHUB_ADMIN_USERS requires at least one GitHub login")
+	adminRepository := strings.TrimSpace(os.Getenv("CAO_COLLECT_CONTROL_REPOSITORY"))
+	if len(adminUsers) == 0 && adminRepository == "" {
+		return nil, errors.New("hosted administration requires CAO_GITHUB_ADMIN_USERS or CAO_COLLECT_CONTROL_REPOSITORY")
 	}
 	trustedProxyPrefixes, err := parseTrustedProxyPrefixes(os.Getenv("CAO_TRUSTED_PROXY_CIDRS"))
 	if err != nil {
@@ -137,6 +138,7 @@ func newHostedAppWithPolicy(
 		Collector:              collector,
 		WebhookSecret:          webhookSecret,
 		AdminUsers:             adminUsers,
+		AdminRepository:        adminRepository,
 		CORS:                   host.CORS,
 		Proxy: ProxyPolicy{
 			AllowedHosts:         splitCSV(os.Getenv("CAO_ALLOWED_HOSTS")),

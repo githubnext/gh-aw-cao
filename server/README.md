@@ -273,7 +273,7 @@ settings:
 | `CAO_SESSION_SECRET` | Current session encryption/signing secret of at least 32 characters. |
 | `CAO_SESSION_SECRET_PREVIOUS` | Optional previous session secret retained only during controlled rotation. |
 | `CAO_GITHUB_ALLOWED_ORGS`, `CAO_GITHUB_ALLOWED_TEAMS` | Explicit authorization policy. |
-| `CAO_GITHUB_ADMIN_USERS` | Required comma-separated GitHub logins allowed to trigger rebuilds. |
+| `CAO_GITHUB_ADMIN_USERS` | Optional comma-separated GitHub logins allowed to administer the server; required when no control repository is configured. |
 | `CAO_GITHUB_WEBHOOK_SECRET` | Required GitHub webhook signature secret of at least 32 characters. |
 | `CAO_SOURCE_DIRECTORY` | Required authoritative deployed gh-aw artifact directory used by rebuild/reconciliation. |
 
@@ -746,7 +746,7 @@ private-key file rather than reading it.
 | `CAO_COLLECT_PRIVATE_KEY` / `CAO_COLLECT_PRIVATE_KEY_FILE` | App private key in PEM form |
 | `CAO_COLLECT_LAKE_DIRECTORY` | evidence lake directory, shared by workers |
 | `CAO_COLLECT_CATALOG_ROOT` | directory containing `activity/cao.mjs` |
-| `CAO_COLLECT_CONTROL_REPOSITORY` | control repository used for inventory discovery |
+| `CAO_COLLECT_CONTROL_REPOSITORY` | control repository used for inventory discovery and hosted admin/maintainer role checks; permission results are cached for five minutes and revalidated using GitHub ETags |
 | `CAO_COLLECT_WORKERS` | in-process workers; zero when workers scale separately |
 | `CAO_COLLECT_RATE_LIMIT_FLOOR` | requests reserved per installation |
 | `CAO_COLLECT_PROJECTION_INTERVAL` | minimum interval between projections (default 5 minutes) |

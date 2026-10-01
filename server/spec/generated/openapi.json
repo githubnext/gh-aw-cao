@@ -29,7 +29,7 @@
     "/api/admin/collection/status": {
       "get": {
         "operationId": "Operations_collectionStatus",
-        "description": "Administrator-only; returns not-configured when no collector is active.",
+        "description": "Explicit administrator or control-repository admin/maintainer only; returns not-configured when no collector is active.",
         "parameters": [],
         "responses": {
           "200": {
@@ -116,7 +116,7 @@
     "/api/admin/rebuild": {
       "post": {
         "operationId": "Operations_rebuild",
-        "description": "Start a distributed, asynchronous rebuild; local bearer or hosted admin session and CSRF on hosted mutations.",
+        "description": "Start a distributed, asynchronous rebuild; local bearer or hosted explicitly listed administrator or control-repository admin/maintainer session, and CSRF on hosted mutations.",
         "parameters": [
           {
             "name": "X-CSRF-Token",
@@ -1250,7 +1250,7 @@
     "/api/v1/github-quota/usage": {
       "get": {
         "operationId": "Operations_quotaUsage",
-        "description": "Administrator-only retained GitHub API usage; does not expose credentials.",
+        "description": "Explicit administrator or control-repository admin/maintainer only; does not expose credentials.",
         "parameters": [],
         "responses": {
           "200": {

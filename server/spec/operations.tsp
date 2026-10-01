@@ -84,7 +84,7 @@ namespace Operations {
   ): { @statusCode code: 202; @body body: WebhookAcknowledgement } |
     BadRequest | Unauthorized | Conflict | Unavailable;
 
-  /** Start a distributed, asynchronous rebuild; local bearer or hosted admin session and CSRF on hosted mutations. */
+  /** Start a distributed, asynchronous rebuild; local bearer or hosted explicitly listed administrator or control-repository admin/maintainer session, and CSRF on hosted mutations. */
   @useAuth(DashboardAuth)
   @route("/api/admin/rebuild")
   @post op rebuild(@header("X-CSRF-Token") csrfToken?: string):
@@ -95,7 +95,7 @@ namespace Operations {
   @route("/api/admin/rebuild/status")
   @get op rebuildStatus(): RebuildStatus | Unauthorized | Unavailable;
 
-  /** Administrator-only; returns not-configured when no collector is active. */
+  /** Explicit administrator or control-repository admin/maintainer only; returns not-configured when no collector is active. */
   @useAuth(DashboardAuth)
   @route("/api/admin/collection/status")
   @get op collectionStatus(): CollectionStatus | Unauthorized | Forbidden | Unavailable;
@@ -105,7 +105,7 @@ namespace Operations {
   @route("/api/v1/ingestion/health")
   @get op ingestionHealth(): CollectionStatus | Unauthorized | Forbidden | Unavailable;
 
-  /** Administrator-only retained GitHub API usage; does not expose credentials. */
+  /** Explicit administrator or control-repository admin/maintainer only; does not expose credentials. */
   @useAuth(DashboardAuth)
   @route("/api/v1/github-quota/usage")
   @get op quotaUsage(): QuotaUsage | Unauthorized | Forbidden | Unavailable;
