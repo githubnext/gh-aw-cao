@@ -351,6 +351,24 @@ func validateTransport(config *pgx.ConnConfig) error {
 }
 
 func (s *Store) Close() error { return s.db.Close() }
+
+// DeleteNamespace removes only this store's data. Benchmark callers use it to
+// discard a unique per-run namespace without affecting other consumers.
+func (s *Store) DeleteNamespace(ctx context.Context) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err = tx.ExecContext(ctx, `DELETE FROM cao_sources WHERE namespace = $1`, s.namespace); err != nil {
+		return err
+	}
+	if _, err = tx.ExecContext(ctx, `DELETE FROM cao_state WHERE namespace = $1`, s.namespace); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 func (s *Store) State(ctx context.Context) (State, error) {
 	var state State
 	err := s.WithReadTransaction(ctx, func(reader SourceReader) (err error) {
