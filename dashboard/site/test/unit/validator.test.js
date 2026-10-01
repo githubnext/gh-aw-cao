@@ -37,6 +37,20 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
+  it('accepts only true as the UX-only query simulator marker', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const queryIndex = document.dashboard.queries.findIndex((/** @type {{ name: string }} */ query) => query.name === 'simulator-database-inputs');
+    expect(queryIndex).toBeGreaterThanOrEqual(0);
+    expect(document.dashboard.queries[queryIndex].simulator).toBe(true);
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    document.dashboard.queries[queryIndex].simulator = false;
+    const result = validateDashboardDocument(JSON.stringify(document));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: `$.dashboard.queries[${queryIndex}].simulator` })
+    ]));
+  });
+
   it('validates optional view title visibility without removing the accessible title', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const overview = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'overview');

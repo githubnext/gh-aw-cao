@@ -136,18 +136,21 @@ describe("agent catalog", () => {
     ]);
   });
 
-  it("withholds synthetic simulator queries and their pages from agent transports", () => {
+  it("withholds marked and synthetic simulator queries and their pages from agent transports", () => {
     const simulator = {
       dashboard: {
-        navigation: [{ pages: ["simulators", "insights"] }],
+        navigation: [{ pages: ["simulators", "ux", "insights"] }],
         queries: [
           { name: "ordinary", from: "runs" },
+          { name: "ux-only", from: "runs", simulator: true },
+          { name: "ux-dependent", from: "ux-only" },
           { name: "daily", from: "simulation-days" },
           { name: "growth", from: "daily" },
           { name: "combined", from: "ordinary", union: ["growth"] },
         ],
         pages: [
           { id: "simulators", title: "Simulators", views: [{ data: { source: "growth" } }] },
+          { id: "ux", title: "UX", views: [{ data: { source: "ux-dependent" } }] },
           { id: "insights", title: "Insights", views: [{ data: { source: "ordinary" } }] },
         ],
       },
@@ -156,6 +159,8 @@ describe("agent catalog", () => {
     expect(describeQuery(simulator, "daily")).toBe(null);
     expect(describeQuery(simulator, "growth")).toBe(null);
     expect(describeQuery(simulator, "combined")).toBe(null);
+    expect(describeQuery(simulator, "ux-only")).toBe(null);
+    expect(describeQuery(simulator, "ux-dependent")).toBe(null);
     expect(listPages(simulator).map((page) => page.id)).toEqual(["insights"]);
     expect(listQueries(authoritativeDashboard).some((query) => query.id.startsWith("simulator-"))).toBe(false);
     expect(listPages(authoritativeDashboard).some((page) => page.id === "simulators")).toBe(false);
