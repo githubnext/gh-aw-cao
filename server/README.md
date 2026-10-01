@@ -24,7 +24,13 @@ Go fallback, and definitions unsupported by the Go query engine. This is an
 offline compilation check, not a runtime performance measurement: native
 candidates still need compatible RedisJSON sources and RediSearch indexes in
 the active generation. The deployed query-cost workflow includes this report
-in its pull-request comment and artifact.
+in its pull-request comment and artifact. JSON reports also include the
+normalized result shape, known source and transient field requirements, native
+candidate prefix, fallback suffix, and Redis command names. A preserving shape
+means the complete RedisJSON document is retained, including unknown fields;
+the field list is not a projection. Native no-`select` grouped aggregates
+require complete indexed group and measure fields. Other no-`select` queries
+retain full documents through the indexed-candidate/Go path.
 
 ### Debug logging
 

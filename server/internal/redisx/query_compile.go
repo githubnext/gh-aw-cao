@@ -11,11 +11,19 @@ import (
 // running generation. A candidate still requires a JSON source and compatible
 // indexed field types in the active generation.
 type QueryCompilation struct {
-	Name   string `json:"name"`
-	From   string `json:"from"`
-	Level  string `json:"level"`
-	Native string `json:"native"`
-	Reason string `json:"reason,omitempty"`
+	Name            string                    `json:"name"`
+	From            string                    `json:"from"`
+	Level           string                    `json:"level"`
+	Native          string                    `json:"native"`
+	Reason          string                    `json:"reason,omitempty"`
+	ResultShape     query.ResultShape         `json:"resultShape"`
+	RequiredFields  query.FieldSet            `json:"requiredFields"`
+	SourceFields    query.FieldSet            `json:"sourceFields"`
+	TransientFields query.FieldSet            `json:"transientFields"`
+	JoinFields      map[string]query.FieldSet `json:"joinFields,omitempty"`
+	NativePrefix    []string                  `json:"nativePrefix"`
+	FallbackSuffix  []string                  `json:"fallbackSuffix"`
+	RedisCommands   []string                  `json:"redisCommands"`
 }
 
 // CompileQueries checks each definition against the same FT.AGGREGATE compiler
@@ -38,7 +46,13 @@ func CompileQueries(definitions []query.Definition, runtimeSources ...string) ([
 	}
 	results := make([]QueryCompilation, 0, len(definitions))
 	for _, definition := range definitions {
-		result := QueryCompilation{Name: definition.Name, From: definition.From, Level: "fallback", Native: "none"}
+		plan := query.Normalize(definition)
+		result := QueryCompilation{
+			Name: definition.Name, From: definition.From, Level: "fallback", Native: "none",
+			ResultShape: plan.ResultShape, RequiredFields: plan.RequiredFields,
+			SourceFields: plan.SourceFields, TransientFields: plan.TransientFields, JoinFields: plan.JoinFields,
+			NativePrefix: []string{}, FallbackSuffix: []string{}, RedisCommands: []string{},
+		}
 		validationError := query.Validate([]query.Definition{definition})
 		switch {
 		case validationError != nil:
@@ -57,6 +71,7 @@ func CompileQueries(definitions []query.Definition, runtimeSources ...string) ([
 			}
 			if err == nil {
 				result.Level, result.Native = "full candidate", "FT.AGGREGATE"
+				result.RedisCommands = []string{"FT.AGGREGATE"}
 			} else {
 				result.Reason = err.Error()
 			}
@@ -65,10 +80,27 @@ func CompileQueries(definitions []query.Definition, runtimeSources ...string) ([
 				indexedPredicate(definition.Filter, inferredIndexNames(definition)) != "" &&
 				result.Level == "fallback" {
 				result.Level, result.Native = "partial candidate", "FT.SEARCH candidate selection"
+				result.NativePrefix = append(result.NativePrefix, "indexed-candidates")
+				result.RedisCommands = []string{"FT.SEARCH", "JSON.GET"}
 			}
 			if label, _, ok := nativeTableCount(&definition); ok && label != "" &&
 				result.Level == "fallback" {
 				result.Level, result.Native = "partial candidate", "SCARD"
+				result.NativePrefix = append(result.NativePrefix, "compute", "aggregate")
+				result.RedisCommands = []string{"SCARD"}
+			}
+		}
+		for _, stage := range plan.Stages {
+			if stage.Operator == "from" {
+				continue
+			}
+			if result.Level == "full candidate" {
+				result.NativePrefix = append(result.NativePrefix, stage.Operator)
+			} else if result.Level != "unsupported" {
+				if result.Native == "SCARD" && (stage.Operator == "compute" || stage.Operator == "aggregate") {
+					continue
+				}
+				result.FallbackSuffix = append(result.FallbackSuffix, stage.Operator)
 			}
 		}
 		results = append(results, result)

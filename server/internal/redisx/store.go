@@ -811,6 +811,91 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 		return model.Source{}, model.Metrics{}, err
 	}
 	jsonRows := formatValue == "json"
+	schemaCommands := 0
+	if jsonRows && definition != nil && definition.From == name && name != "issues" &&
+		len(definition.Union) == 0 && len(definition.Joins) == 0 &&
+		definition.Filter == nil && len(definition.Compute) == 0 &&
+		definition.Aggregate != nil && len(definition.Aggregate.By) > 0 &&
+		definition.TemporalSeries == nil && len(definition.Select) == 0 &&
+		len(definition.OrderBy) == 0 && definition.Limit == nil {
+		schemaCommands++
+		schema, err := s.Client.Do(ctx, "HGET", s.generationKey(generation), "source:"+name+":index-schema")
+		if err != nil {
+			return model.Source{}, model.Metrics{RedisCommands: 3}, err
+		}
+		var fields []indexField
+		if schema != nil && json.Unmarshal([]byte(fmt.Sprint(schema)), &fields) == nil {
+			eligible := true
+			for _, field := range definition.Aggregate.By {
+				indexed, ok := findPipelineField(fields, nil, field)
+				if !ok || !indexed.Required {
+					eligible = false
+				}
+			}
+			for _, value := range definition.Aggregate.Values {
+				indexed, ok := findPipelineField(fields, nil, value.Field)
+				if !ok || !indexed.Required {
+					eligible = false
+				}
+			}
+			if eligible {
+				command, output, compileErr := nativeAggregateCommand(s.sourceIndexKey(generation, name), *definition, fields)
+				if compileErr == nil {
+					cardinality, err := s.Client.Do(ctx, "SCARD", s.sourceSetKey(generation, name))
+					if err != nil {
+						return model.Source{}, model.Metrics{RedisCommands: 4}, err
+					}
+					inputRows, err := strconv.Atoi(fmt.Sprint(cardinality))
+					if err != nil || inputRows < 0 {
+						return model.Source{}, model.Metrics{RedisCommands: 4}, errors.New("invalid Redis source cardinality")
+					}
+					if inputRows > query.MaxInputRows {
+						schemaCommands++
+					} else {
+						value, err := s.Client.Do(ctx, command...)
+						metrics := model.Metrics{RedisCommands: 5, PushedDown: []string{"aggregate"}}
+						if err != nil {
+							return model.Source{}, metrics, err
+						}
+						reply, ok := value.([]any)
+						if !ok || len(reply) == 0 {
+							return model.Source{}, metrics, errors.New("invalid Redis aggregate response")
+						}
+						total, ok := reply[0].(int64)
+						if !ok || total < 0 || total > query.MaxOutputRows {
+							return model.Source{}, metrics, errors.New("Redis aggregate exceeds max output rows")
+						}
+						rows, err := decodeAggregateRows(value, output)
+						if err != nil || len(rows) != int(total) {
+							return model.Source{}, metrics, errors.New("incomplete Redis aggregate response")
+						}
+						type keyedRow struct {
+							key string
+							row model.Row
+						}
+						ordered := make([]keyedRow, len(rows))
+						for i, row := range rows {
+							values := make([]any, len(definition.Aggregate.By))
+							for n, field := range definition.Aggregate.By {
+								values[n] = row[field]
+							}
+							data, err := json.Marshal(values)
+							if err != nil {
+								return model.Source{}, metrics, err
+							}
+							ordered[i] = keyedRow{key: string(data), row: row}
+						}
+						sort.SliceStable(ordered, func(i, j int) bool { return ordered[i].key < ordered[j].key })
+						for i, item := range ordered {
+							rows[i] = item.row
+						}
+						metrics.RedisRows = len(rows)
+						return model.Source{Source: name, Rows: rows, Metadata: metadata}, metrics, nil
+					}
+				}
+			}
+		}
+	}
 	var projectedFields map[string]bool
 	if definition != nil && definition.From == name && name != "issues" &&
 		len(definition.Union) == 0 && len(definition.Joins) == 0 &&
@@ -828,7 +913,7 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 			projectedFields[value.Field] = true
 		}
 	}
-	metrics := model.Metrics{FallbackOperations: []string{"query"}, RedisCommands: 2}
+	metrics := model.Metrics{FallbackOperations: []string{"query"}, RedisCommands: 2 + schemaCommands}
 	var keys []string
 	if jsonRows && name != "issues" && definition != nil && definition.From == name &&
 		len(definition.Union) == 0 && len(definition.Joins) == 0 && definition.Filter != nil {

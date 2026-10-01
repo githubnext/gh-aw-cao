@@ -52,6 +52,9 @@ func TestNormalizePreservesUnknownFieldsUntilClosedProjection(t *testing.T) {
 	if !reflect.DeepEqual(plan.SourceFields, FieldSet{"actor", "run", "status"}) {
 		t.Fatalf("order-by after select cannot demand the removed input column: %v", plan.SourceFields)
 	}
+	if !reflect.DeepEqual(plan.JoinFields["actors"], FieldSet{"id", "name"}) {
+		t.Fatalf("join right-side keys and projections were lost: %v", plan.JoinFields)
+	}
 	definition.Select = nil
 	plan = Normalize(definition)
 	if plan.ResultShape.Mode != PreserveInput || !reflect.DeepEqual(plan.ResultShape.Added,

@@ -153,14 +153,27 @@ func TestNativeAggregateCommandDoesNotInferOutputFromRequiredFields(t *testing.T
 func TestNativeAggregateCommandRejectsCountOfOptionalField(t *testing.T) {
 	definition := query.Definition{
 		Name: "counts", From: "runs",
-		Aggregate: &query.Aggregate{Values: []query.AggregateValue{{Field: "optional", As: "count", Reducer: "count"}}},
+		Aggregate: &query.Aggregate{By: []string{"workflow"}, Values: []query.AggregateValue{{Field: "optional", As: "count", Reducer: "count"}}},
 		Select:    []query.SelectedField{{Field: "count"}},
 	}
 	_, _, err := nativeAggregateCommand("runs-index", definition, []indexField{
+		{Name: "workflow", Alias: "workflow", Kind: indexFieldTag},
 		{Name: "optional", Alias: "optional", Kind: indexFieldTag},
 	})
 	if err == nil || !strings.Contains(err.Error(), "unsupported Redis reducer") {
 		t.Fatalf("optional-field count should fail closed, got %v", err)
+	}
+
+}
+
+func TestNativeAggregateCommandFallsBackForPreservedRowsAndEmptyGlobalGroup(t *testing.T) {
+	for _, definition := range []query.Definition{
+		{From: "runs", Filter: &query.Filter{Predicates: []query.Predicate{{Field: "status", Equals: "success"}}}},
+		{From: "runs", Aggregate: &query.Aggregate{Values: []query.AggregateValue{{Field: "id", As: "count", Reducer: "count"}}}},
+	} {
+		if _, _, err := nativeAggregateCommand("runs-index", definition, nil); err == nil {
+			t.Fatalf("native compiler discarded source fields or empty-group behavior: %+v", definition)
+		}
 	}
 }
 

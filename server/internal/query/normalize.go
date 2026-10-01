@@ -36,19 +36,20 @@ type StageFields struct {
 // temporarily to evaluate the query. A preserving shape requires full source
 // documents even if SourceFields names only a few known columns.
 type NormalizedQuery struct {
-	Source          string          `json:"source"`
-	Filter          *Filter         `json:"filter,omitempty"`
-	Computes        []ComputedField `json:"computes,omitempty"`
-	Aggregate       *Aggregate      `json:"aggregate,omitempty"`
-	TemporalSeries  *TemporalSeries `json:"temporal-series,omitempty"`
-	Order           []OrderField    `json:"order,omitempty"`
-	Limit           *int            `json:"limit,omitempty"`
-	RequiredFields  FieldSet        `json:"required-fields,omitempty"`
-	SourceFields    FieldSet        `json:"source-fields,omitempty"`
-	TransientFields FieldSet        `json:"transient-fields,omitempty"`
-	OutputFields    FieldSet        `json:"output-fields,omitempty"`
-	ResultShape     ResultShape     `json:"result-shape"`
-	Stages          []StageFields   `json:"stages"`
+	Source          string              `json:"source"`
+	Filter          *Filter             `json:"filter,omitempty"`
+	Computes        []ComputedField     `json:"computes,omitempty"`
+	Aggregate       *Aggregate          `json:"aggregate,omitempty"`
+	TemporalSeries  *TemporalSeries     `json:"temporal-series,omitempty"`
+	Order           []OrderField        `json:"order,omitempty"`
+	Limit           *int                `json:"limit,omitempty"`
+	RequiredFields  FieldSet            `json:"required-fields,omitempty"`
+	SourceFields    FieldSet            `json:"source-fields,omitempty"`
+	JoinFields      map[string]FieldSet `json:"join-fields,omitempty"`
+	TransientFields FieldSet            `json:"transient-fields,omitempty"`
+	OutputFields    FieldSet            `json:"output-fields,omitempty"`
+	ResultShape     ResultShape         `json:"result-shape"`
+	Stages          []StageFields       `json:"stages"`
 }
 
 func sortedFields(fields map[string]bool) FieldSet {
@@ -96,12 +97,22 @@ func Normalize(definition Definition) NormalizedQuery {
 	}
 	for _, join := range definition.Joins {
 		required, produced := map[string]bool{}, map[string]bool{}
+		right := map[string]bool{}
 		for _, key := range join.On {
 			required[key.Left] = true
+			right[key.Right] = true
 		}
 		for _, field := range join.Fields {
 			produced[alias(field)] = true
+			right[field.Field] = true
 		}
+		if plan.JoinFields == nil {
+			plan.JoinFields = map[string]FieldSet{}
+		}
+		for _, field := range plan.JoinFields[join.Source] {
+			right[field] = true
+		}
+		plan.JoinFields[join.Source] = sortedFields(right)
 		stages = append(stages, stage{name: "join", requires: required, produces: produced})
 		for _, field := range join.Fields {
 			plan.ResultShape.Added = append(plan.ResultShape.Added, ResultField{Field: field.Field, As: alias(field)})

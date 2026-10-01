@@ -78,6 +78,18 @@ func (s *Store) ExecutePlan(
 	if err != nil {
 		return nil, metrics, err
 	}
+	response, ok := value.([]any)
+	if !ok || len(response) == 0 {
+		return nil, metrics, errors.New("invalid Redis aggregate response")
+	}
+	total, ok := response[0].(int64)
+	expected := total
+	if definition.Limit != nil {
+		expected = min(expected, int64(*definition.Limit))
+	}
+	if !ok || total < 0 || expected != int64(len(rows)) {
+		return nil, metrics, errors.New("incomplete Redis aggregate response")
+	}
 	metadata["source-id"] = definition.Name
 	metadata["source-kind"] = "database-query"
 	metadata["availability"] = "available"
@@ -125,6 +137,13 @@ func nativeAggregateCommand(index string, definition query.Definition, indexed [
 	plan := query.Normalize(definition)
 	if plan.ResultShape.Mode == query.PreserveInput {
 		return nil, nil, errors.New("redis aggregate pipeline cannot preserve full source documents")
+	}
+	if definition.Aggregate != nil && len(definition.Aggregate.By) == 0 {
+		// Go emits one zero-count group even when the source is empty.
+		return nil, nil, errors.New("redis aggregate pipeline cannot preserve empty global groups")
+	}
+	if definition.Limit != nil && *definition.Limit > 10_000 {
+		return nil, nil, errors.New("redis aggregate pipeline cannot return more than 10000 rows")
 	}
 	computed := make(map[string]query.ComputedField, len(definition.Compute))
 	for _, field := range definition.Compute {
@@ -255,6 +274,11 @@ func nativeAggregateCommand(index string, definition query.Definition, indexed [
 	limit := query.MaxOutputRows
 	if definition.Limit != nil {
 		limit = *definition.Limit
+	}
+	// RediSearch defaults to MAXAGGREGATERESULTS=10000. Never silently
+	// return a truncated result when a query asks for more.
+	if limit > 10_000 {
+		limit = 10_000
 	}
 	command = append(command, "LIMIT", "0", strconv.Itoa(limit), "DIALECT", "4")
 	return command, outputFields, nil

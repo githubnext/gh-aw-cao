@@ -56,7 +56,7 @@ func TestRedisStackIntegration(t *testing.T) {
 	})
 	source := model.Source{
 		Source:   "integration-runs",
-		Rows:     []model.Row{{"id": "1", "conclusion": "success", "duration": 5}},
+		Rows:     []model.Row{{"id": "1", "conclusion": "success", "duration": 5, "future-field": map[string]any{"nested": true}}},
 		Metadata: model.Metadata{"availability": "available"},
 	}
 	if err := store.PutSource(ctx, generation, source); err != nil {
@@ -99,6 +99,22 @@ func TestRedisStackIntegration(t *testing.T) {
 	}
 	if len(loaded.Rows) != 1 || loaded.Rows[0]["conclusion"] != "success" {
 		t.Fatalf("unexpected Redis rows: %#v", loaded.Rows)
+	}
+	preserveDefinition := query.Definition{
+		Name: "full-row", From: "integration-runs",
+		Filter: &query.Filter{Predicates: []query.Predicate{{Field: "conclusion", Equals: "success"}}},
+	}
+	candidates, _, err := store.LoadSource(ctx, generation, "integration-runs", &preserveDefinition)
+	if err != nil {
+		t.Fatal(err)
+	}
+	preserved, _, _, err := query.ExecuteDefinition(preserveDefinition,
+		map[string]model.Source{"integration-runs": candidates}, query.MaxOperations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if field, ok := preserved.Rows[0]["future-field"].(map[string]any); !ok || field["nested"] != true {
+		t.Fatalf("no-select query discarded a future source field: %#v", preserved.Rows)
 	}
 	otherLoaded, _, err := otherStore.LoadSource(ctx, generation, "integration-runs", nil)
 	if err != nil {
@@ -236,6 +252,25 @@ func TestRedisJSONSearchIndexAndFallback(t *testing.T) {
 	if len(aggregateMetrics.FallbackOperations) != 0 ||
 		!reflect.DeepEqual(aggregateMetrics.PushedDown, []string{"redis-query-engine"}) {
 		t.Fatalf("aggregate plan was not fully executed in Redis: %+v", aggregateMetrics)
+	}
+	grouped := query.Definition{
+		Name: "native-grouped", From: "runs",
+		Aggregate: &query.Aggregate{By: []string{"conclusion"}, Values: []query.AggregateValue{
+			{Field: "conclusion", As: "runs", Reducer: "count"},
+			{Field: "duration", As: "mean-duration", Reducer: "mean"},
+		}},
+	}
+	groupedResult, groupedMetrics, err := query.New(storeQueryLoader{store, ctx}).Execute(
+		[]query.Definition{grouped}, []string{grouped.Name},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	groupedRows := groupedResult[grouped.Name].Rows
+	if !reflect.DeepEqual(groupedMetrics.PushedDown, []string{"aggregate"}) ||
+		len(groupedRows) != 2 || groupedRows[0]["conclusion"] != "failure" ||
+		groupedRows[0]["runs"] != 2.0 || groupedRows[0]["mean-duration"] != 2.5 {
+		t.Fatalf("no-select aggregate did not execute natively: %+v %#v", groupedMetrics, groupedRows)
 	}
 	byRole := query.Definition{
 		Name: "workers", From: "runs",
