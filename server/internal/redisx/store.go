@@ -11,7 +11,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var storeLog = logger.New("cao:redis:store")
 
 const redisWriteBatchSize = 100
 const ingestionHealthKey = "state:ingestion-health"
@@ -325,19 +329,18 @@ func (s *Store) RecordIngestionHealthEvent(ctx context.Context, event, code stri
 	return err
 }
 
-// IngestionHealth returns the bounded health fields persisted by the
-// collection pipeline.
-func (s *Store) IngestionHealth(ctx context.Context) (map[string]int64, map[string]string, error) {
-	value, err := s.Client.Do(ctx, "HGETALL", s.Key(ingestionHealthKey))
-	if err != nil {
-		return nil, nil, err
-	}
-	fields, err := Strings(value)
-	if err != nil {
-		return nil, nil, err
-	}
-	counters := make(map[string]int64, len(ingestionCounterNames))
-	events := make(map[string]string, 5)
+// parseIngestionHealthFields classifies one flat HGETALL field/value sequence
+// into bounded ingestion counters and fixed health events, applying the same
+// precedence IngestionHealth previously checked inline: a recognized counter
+// name, then a recognized event field, otherwise the field is ignored. It is
+// a pure function extracted from IngestionHealth so every branch — a valid
+// counter, a negative or non-numeric counter value, a recognized event, and
+// an unrecognized field name — is testable without a Redis client. An error
+// is returned as soon as a recognized counter has an invalid value, mirroring
+// IngestionHealth's previous fail-fast behavior.
+func parseIngestionHealthFields(fields []string) (counters map[string]int64, events map[string]string, err error) {
+	counters = make(map[string]int64, len(ingestionCounterNames))
+	events = make(map[string]string, 5)
 	for index := 0; index+1 < len(fields); index += 2 {
 		name, value := fields[index], fields[index+1]
 		if _, ok := ingestionCounterNames[name]; ok {
@@ -353,6 +356,25 @@ func (s *Store) IngestionHealth(ctx context.Context) (map[string]int64, map[stri
 			events[name] = value
 		}
 	}
+	return counters, events, nil
+}
+
+// IngestionHealth returns the bounded health fields persisted by the
+// collection pipeline.
+func (s *Store) IngestionHealth(ctx context.Context) (map[string]int64, map[string]string, error) {
+	value, err := s.Client.Do(ctx, "HGETALL", s.Key(ingestionHealthKey))
+	if err != nil {
+		return nil, nil, err
+	}
+	fields, err := Strings(value)
+	if err != nil {
+		return nil, nil, err
+	}
+	counters, events, err := parseIngestionHealthFields(fields)
+	if err != nil {
+		return nil, nil, err
+	}
+	storeLog.Printf("ingestion health read counters=%d events=%d", len(counters), len(events))
 	return counters, events, nil
 }
 
