@@ -94,6 +94,62 @@ func TestNativeAggregateCommandUsesTypedFiltersAndReducers(t *testing.T) {
 	}
 }
 
+func TestNativeAggregateCommandDerivesNoSelectShapeWithoutMutatingDefinition(t *testing.T) {
+	definition := query.Definition{
+		Name: "summary", From: "runs",
+		Aggregate: &query.Aggregate{
+			By: []string{"workflow", "conclusion"},
+			Values: []query.AggregateValue{
+				{Field: "id", As: "run-count", Reducer: "count"},
+				{Field: "duration", As: "total-duration", Reducer: "sum"},
+			},
+		},
+		OrderBy: []query.OrderField{{Field: "run-count", Direction: "desc"}},
+	}
+	command, output, err := nativeAggregateCommand("runs-index", definition, []indexField{
+		{Name: "workflow", Alias: "workflow", Kind: indexFieldTag, Required: true},
+		{Name: "conclusion", Alias: "conclusion", Kind: indexFieldTag, Required: true},
+		{Name: "id", Alias: "id", Kind: indexFieldTag, Required: true},
+		{Name: "duration", Alias: "duration", Kind: indexFieldNumeric, Required: true},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(definition.Select) != 0 {
+		t.Fatalf("native planning mutated authored select: %+v", definition.Select)
+	}
+	want := map[string]string{
+		"workflow": "workflow", "conclusion": "conclusion",
+		"run_count": "run-count", "total_duration": "total-duration",
+	}
+	for key, name := range want {
+		if output[key].name != name {
+			t.Fatalf("missing closed aggregate field %q: %+v", name, output)
+		}
+	}
+	if len(output) != len(want) || !strings.Contains(strings.Join(command, "\x00"), "GROUPBY\x002\x00@workflow\x00@conclusion") {
+		t.Fatalf("incorrect aggregate plan: %v %+v", command, output)
+	}
+}
+
+func TestNativeAggregateCommandDoesNotInferOutputFromRequiredFields(t *testing.T) {
+	definition := query.Definition{
+		From: "runs", Filter: &query.Filter{Predicates: []query.Predicate{{Field: "status", Equals: "failed"}}},
+		Aggregate: &query.Aggregate{By: []string{"workflow"}, Values: []query.AggregateValue{{
+			Field: "duration", As: "total", Reducer: "sum",
+		}}},
+		Select: []query.SelectedField{{Field: "workflow"}},
+	}
+	_, output, err := nativeAggregateCommand("runs-index", definition, []indexField{
+		{Name: "status", Alias: "status", Kind: indexFieldTag},
+		{Name: "workflow", Alias: "workflow", Kind: indexFieldTag},
+		{Name: "duration", Alias: "duration", Kind: indexFieldNumeric},
+	})
+	if err != nil || len(output) != 1 || output["workflow"].name != "workflow" {
+		t.Fatalf("temporary fields leaked into result: %+v, %v", output, err)
+	}
+}
+
 func TestNativeAggregateCommandRejectsCountOfOptionalField(t *testing.T) {
 	definition := query.Definition{
 		Name: "counts", From: "runs",

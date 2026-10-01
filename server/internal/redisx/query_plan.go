@@ -122,8 +122,9 @@ func nativeAggregateCommand(index string, definition query.Definition, indexed [
 	if err != nil {
 		return nil, nil, err
 	}
-	if len(definition.Select) == 0 {
-		return nil, nil, errors.New("redis query engine requires an explicit projection")
+	plan := query.Normalize(definition)
+	if plan.ResultShape.Mode == query.PreserveInput {
+		return nil, nil, errors.New("redis aggregate pipeline cannot preserve full source documents")
 	}
 	computed := make(map[string]query.ComputedField, len(definition.Compute))
 	for _, field := range definition.Compute {
@@ -132,12 +133,17 @@ func nativeAggregateCommand(index string, definition query.Definition, indexed [
 		}
 		computed[field.As] = field
 	}
-	selected := make(map[string]bool, len(definition.Select))
-	outputFields := make(map[string]outputField, len(definition.Select))
+	outputFields := make(map[string]outputField)
 	command := []string{"FT.AGGREGATE", index, search}
-	loads := make([]string, 0, len(definition.Select)*3)
+	projection := definition.Select
+	if len(projection) == 0 {
+		for _, field := range plan.ResultShape.Fields {
+			projection = append(projection, query.SelectedField{Field: field.Field, As: field.As})
+		}
+	}
+	loads := make([]string, 0, len(projection)*3)
 	if definition.Aggregate == nil {
-		for _, field := range definition.Select {
+		for _, field := range projection {
 			if _, isComputed := computed[field.Field]; !isComputed {
 				loads = append(loads, redisJSONPath(field.Field), "AS", nativeFieldAlias(field.Field))
 			}
@@ -189,7 +195,7 @@ func nativeAggregateCommand(index string, definition query.Definition, indexed [
 			available[value.As] = outputField{name: value.As, numeric: true}
 		}
 	}
-	for _, field := range definition.Select {
+	for _, field := range projection {
 		if !nativeQueryField.MatchString(field.Field) {
 			return nil, nil, fmt.Errorf("unsupported Redis selected field %q", field.Field)
 		}
@@ -222,11 +228,13 @@ func nativeAggregateCommand(index string, definition query.Definition, indexed [
 		outputFields[alias] = outputField{
 			name: output, fromLoad: fromLoad, numeric: numeric, boolean: boolean,
 		}
-		selected[field.Field] = true
 	}
 	for _, field := range definition.OrderBy {
-		if !selected[field.Field] {
-			return nil, nil, fmt.Errorf("redis ordering field %q must be projected", field.Field)
+		if _, present := outputFields[nativeFieldAlias(field.Field)]; !present ||
+			outputFields[nativeFieldAlias(field.Field)].name != field.Field {
+			// Dashboard Language sorts after select. A field removed or
+			// renamed by select cannot be sorted by the native pipeline.
+			return nil, nil, fmt.Errorf("redis ordering field %q is not present after select", field.Field)
 		}
 	}
 	if len(definition.OrderBy) != 0 {
