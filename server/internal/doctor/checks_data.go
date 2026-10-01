@@ -38,12 +38,12 @@ func (d Doctor) checkActiveData(ctx context.Context) Check {
 			Summary: "no canonical data is available; the dashboard has no data to serve",
 			Remedy:  "run `cao-dashboard ingest --source DIRECTORY`, or `cao-dashboard backfill` in the collection profile",
 		}
-		if active.EvaluatedAt.IsZero() {
-			return Check{
-				ID: id, Area: areaData, Title: title, Status: StatusFail,
-				Summary: "current Postgres data has no evaluation time",
-				Remedy:  "reingest from the dashboard artifact",
-			}
+	}
+	if active.EvaluatedAt.IsZero() {
+		return Check{
+			ID: id, Area: areaData, Title: title, Status: StatusFail,
+			Summary: "current Postgres data has no evaluation time",
+			Remedy:  "reingest from the dashboard artifact",
 		}
 	}
 	age := d.now().Sub(active.EvaluatedAt)
