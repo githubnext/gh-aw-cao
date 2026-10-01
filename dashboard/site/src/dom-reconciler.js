@@ -1,8 +1,11 @@
 import { syncDomProperties } from './dom.js';
+import { createDebug } from './debug.js';
 
 /**
  * @typedef {{ nodes: Node[], index: number }} NodeQueue
  */
+
+const debugDomReconciler = createDebug('dom-reconciler');
 
 /**
  * Reconciles a rendered shadow tree into an owned DOM subtree. The algorithm
@@ -10,10 +13,27 @@ import { syncDomProperties } from './dom.js';
  * keyed and compatible unkeyed nodes are consumed in order, then moved into
  * place while only changed attributes, character data, or positions are mutated.
  *
+ * This is the public entry point: it logs exactly once per call, covering the
+ * whole recursive reconciliation triggered by one render boundary. Nested
+ * descendant reconciliation reuses the unlogged `reconcileChildNodes` so log
+ * volume tracks render boundaries rather than tree depth or node count.
+ *
  * @param {Node} currentParent
  * @param {Node} desiredParent
  */
 export function reconcileChildren(currentParent, desiredParent) {
+  const startedAt = Date.now();
+  const counts = { reused: 0, inserted: 0, removed: 0 };
+  reconcileChildNodes(currentParent, desiredParent, counts);
+  debugDomReconciler({ ...counts, durationMs: Date.now() - startedAt });
+}
+
+/**
+ * @param {Node} currentParent
+ * @param {Node} desiredParent
+ * @param {{ reused: number, inserted: number, removed: number }} counts
+ */
+function reconcileChildNodes(currentParent, desiredParent, counts) {
   /** @type {Map<string, NodeQueue>} */
   const keyedChildren = new Map();
   /** @type {Map<string, NodeQueue>} */
@@ -37,10 +57,12 @@ export function reconcileChildren(currentParent, desiredParent) {
     if (current) {
       const nextCursor = current === cursor ? current.nextSibling : cursor;
       if (current !== cursor) currentParent.insertBefore(current, cursor);
-      reconcileNode(current, desired);
+      reconcileNode(current, desired, counts);
       cursor = nextCursor;
+      counts.reused += 1;
     } else {
       currentParent.insertBefore(desired, cursor);
+      counts.inserted += 1;
     }
 
     desired = nextDesired;
@@ -50,6 +72,7 @@ export function reconcileChildren(currentParent, desiredParent) {
     const next = cursor.nextSibling;
     currentParent.removeChild(cursor);
     cursor = next;
+    counts.removed += 1;
   }
 }
 
@@ -81,8 +104,9 @@ function takeFromQueue(queues, key) {
 /**
  * @param {Node} current
  * @param {Node} desired
+ * @param {{ reused: number, inserted: number, removed: number }} counts
  */
-function reconcileNode(current, desired) {
+function reconcileNode(current, desired, counts) {
   if (current.nodeType === Node.TEXT_NODE || current.nodeType === Node.COMMENT_NODE) {
     if (current.nodeValue !== desired.nodeValue) current.nodeValue = desired.nodeValue;
     return;
@@ -91,7 +115,7 @@ function reconcileNode(current, desired) {
 
   reconcileAttributes(current, desired);
   syncDomProperties(current, desired);
-  reconcileChildren(current, desired);
+  reconcileChildNodes(current, desired, counts);
 }
 
 /**
