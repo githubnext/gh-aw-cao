@@ -502,6 +502,9 @@ func residualDefinition(definition Definition, pushed []string) Definition {
 	if contains("filter") {
 		definition.Filter = nil
 	}
+	if contains("compute") {
+		definition.Compute = nil
+	}
 	if contains("aggregate") {
 		definition.Aggregate = nil
 	}

@@ -673,9 +673,10 @@ func (s *Store) Diagnostics(ctx context.Context, generation string) (model.Diagn
 }
 
 // LoadSource reads a source's rows and lets the query engine evaluate the
-// definition.
+// definition, except for unfiltered literal-labelled table counts, which use
+// the generation's Redis set cardinality without loading row documents.
 //
-// There is deliberately no query pushdown. Pushdown required RediSearch, and
+// There is deliberately no general query pushdown. It required RediSearch, and
 // therefore a Redis tier with modules, while none of the canonical projection
 // queries were eligible for it: each one joins, unions, computes, or projects
 // columns, and none bounds its result below the search result cap. Evaluating
@@ -686,7 +687,22 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 	if err != nil {
 		return model.Source{}, model.Metrics{}, err
 	}
-	_ = definition
+	if label, field, ok := nativeTableCount(definition); ok {
+		value, err := s.Client.Do(ctx, "SCARD", s.sourceSetKey(generation, name))
+		metrics := model.Metrics{RedisCommands: 2, PushedDown: []string{"compute", "aggregate"}}
+		if err != nil {
+			return model.Source{}, metrics, err
+		}
+		count, err := strconv.Atoi(fmt.Sprint(value))
+		if err != nil || count < 0 {
+			return model.Source{}, metrics, errors.New("invalid Redis source cardinality")
+		}
+		rows := []model.Row{}
+		if count > 0 {
+			rows = append(rows, model.Row{definition.Compute[0].As: label, field: count})
+		}
+		return model.Source{Source: name, Rows: rows, Metadata: metadata}, metrics, nil
+	}
 	metrics := model.Metrics{FallbackOperations: []string{"query"}, RedisCommands: 1}
 	value, err := s.Client.Do(ctx, "SMEMBERS", s.sourceSetKey(generation, name))
 	metrics.RedisCommands++
@@ -780,6 +796,24 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 	metrics.RedisRows = len(rows)
 	redisLog.Printf("loaded source rows=%d mode=fallback", len(rows))
 	return model.Source{Source: name, Rows: rows, Metadata: metadata}, metrics, nil
+}
+
+func nativeTableCount(definition *query.Definition) (any, string, bool) {
+	if definition == nil || len(definition.Union) != 0 || len(definition.Joins) != 0 ||
+		definition.Filter != nil || definition.TemporalSeries != nil || len(definition.Predict) != 0 ||
+		len(definition.Compute) != 1 || definition.Aggregate == nil ||
+		len(definition.Aggregate.By) != 1 || len(definition.Aggregate.Values) != 1 {
+		return nil, "", false
+	}
+	computed := definition.Compute[0]
+	value := definition.Aggregate.Values[0]
+	if computed.Function != "literal" || len(computed.Args) != 1 ||
+		computed.Args[0].Field != nil || computed.Args[0].Context != "" ||
+		computed.As == "" || definition.Aggregate.By[0] != computed.As ||
+		value.Reducer != "count" || value.Filter != nil || value.As == "" || value.As == computed.As {
+		return nil, "", false
+	}
+	return computed.Args[0].Value, value.As, true
 }
 
 func (s *Store) sourceInfo(ctx context.Context, generation, name string) (model.Metadata, error) {

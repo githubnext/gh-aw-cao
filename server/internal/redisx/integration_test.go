@@ -176,4 +176,23 @@ func TestRowsAreStoredOnlyAsRawDocuments(t *testing.T) {
 	if len(metrics.PushedDown) != 0 {
 		t.Fatalf("reported pushed-down operations: %#v", metrics.PushedDown)
 	}
+
+	countDefinition := query.Definition{
+		Name: "runs-table-count", From: "runs",
+		Compute: []query.ComputedField{{
+			As: "table", Function: "literal", Args: []query.Argument{{Value: "workflow runs"}},
+		}},
+		Aggregate: &query.Aggregate{
+			By:     []string{"table"},
+			Values: []query.AggregateValue{{Field: "id", As: "records", Reducer: "count"}},
+		},
+	}
+	counted, countMetrics, err := store.LoadSource(ctx, generation, "runs", &countDefinition)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(counted.Rows) != 1 || counted.Rows[0]["records"] != 2 ||
+		countMetrics.RedisRows != 0 || countMetrics.RedisCommands != 2 {
+		t.Fatalf("unexpected Redis native count: rows=%#v metrics=%+v", counted.Rows, countMetrics)
+	}
 }

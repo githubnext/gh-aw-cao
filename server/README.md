@@ -871,19 +871,14 @@ input, join, output, and operator limits remain independently enforced.
 Expensive stages, including sorting, are charged against the operation budget
 before they allocate or run.
 
-For compatible base-source queries, the planner pushes work into Redis:
-
-- exact TAG and numeric/time-range filters;
-- full-text search over indexed text fields;
-- `count`, `distinct-count`, `sum`, `mean`, `min`, and `max` aggregation;
-- a single indexed sort;
-- result limits.
-
-Joins, computed fields, temporal-series projection, multi-field ordering,
-filtered or specialized reducers, and other unsupported pushdown shapes execute
-in bounded Go memory after Redis narrows the source. Query metrics report the
-pushed-down stages, Redis command count, Redis rows returned, fallback stages,
-and total duration.
+Unfiltered, literal-labelled table counts use Redis `SCARD` on the active
+generation's source row-key set. This returns the retained row count without
+fetching or decoding rows, including for sources too large for the query
+engine's working-byte budget. Redis `SCARD` is O(1), not O(0). An empty source
+produces no labelled group. Filtered counts, joins, and other queries still
+load source rows and execute in bounded Go memory; they do not bypass resource
+limits. Query metrics report pushed-down stages, Redis command count, Redis
+rows returned, fallback stages, and total duration.
 
 The engine rejects unsupported prediction queries and enforces limits on query
 definitions, joins, predicates, input rows, output rows, and total operations.
