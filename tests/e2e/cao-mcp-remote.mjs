@@ -59,12 +59,8 @@ test('hosted MCP lists tools, inspects the catalog, and executes a named query',
     return payload.result;
   }
 
-  const initialized = await call('initialize', {
-    protocolVersion,
-    capabilities: {},
-    clientInfo: { name: 'cao-remote-integration', version: '1' }
-  });
-  assert.equal(initialized.protocolVersion, protocolVersion);
+  const discovered = await call('server/discover');
+  assert.ok(discovered.supportedVersions.includes(protocolVersion));
 
   const listed = await call('tools/list');
   assert.deepEqual(listed.tools.map(({ name }) => name), ['cao_catalog', 'cao_query']);
