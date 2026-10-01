@@ -64,6 +64,25 @@ it('keeps a relative-time query scoped even when the view opts out of global con
   })).toBe(true);
 });
 
+it('compiles view aliases for element views when query-context is false', () => {
+  const page = {
+    views: [{
+      id: 'controls',
+      mark: 'element',
+      element: 'custom-controls',
+      data: { sources: ['options'], 'query-context': false }
+    }]
+  };
+  const payload = compileDashboardViewPayloadQueries(page, 'custom', {
+    queries: [{ name: 'options', from: 'packages' }],
+    sourceNames: ['options']
+  });
+
+  expect(payload.aliases).toEqual(['view:custom:controls:options']);
+  expect(payload.queries).toHaveLength(1);
+  expect(payload.queries[0].name).toBe('view:custom:controls:options');
+});
+
 it('compiles distinct aliases when two views filter the same source differently', () => {
   const page = {
     views: [

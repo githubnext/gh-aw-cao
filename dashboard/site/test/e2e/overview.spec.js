@@ -151,6 +151,8 @@ test.beforeEach(async ({ page, context }) => {
 });
 
 test('declarative Overview views preserve desktop and mobile behavior', async ({ page }) => {
+  expect(overviewPage.views.every((/** @type {{ 'show-title'?: boolean, prompt?: string }} */ view) =>
+    view['show-title'] === false && view.prompt === 'none')).toBe(true);
   /** @param {Record<string, unknown>} pageDefinition */
   const render = async (pageDefinition) => {
     await page.evaluate(async ({ documentModel, sourceData, presenterModuleUrl }) => {
@@ -184,6 +186,8 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     const factory = await render(overviewPage);
 
     await expect(factory).toBeVisible();
+    await expect(factory.locator(':scope > .custom-view > :is(h3, h4)')).toHaveCount(0);
+    await expect(factory.locator('.semantic-prompt-action, .chart-prompt-action')).toHaveCount(0);
     await expect(factory.locator(':scope > [data-view-id="overview-header"]')).toHaveClass(/factory-intro/);
     await expect(factory.locator(':scope > [data-view-id="overview-floor"]')).toHaveClass(/factory-floor/);
     const campaigns = factory.locator(':scope > [data-view-id="overview-campaigns"]');

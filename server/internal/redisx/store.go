@@ -673,14 +673,31 @@ func (s *Store) Diagnostics(ctx context.Context, generation string) (model.Diagn
 }
 
 // LoadSource reads a source's rows and lets the query engine evaluate the
-// definition.
+// definition, except for unfiltered literal-labelled table counts, which use
+// the generation's Redis set cardinality without loading row documents.
 //
-// There is no Redis query pushdown. Simple count aggregates can discard
-// unrelated fields as each row is decoded, before the engine groups the rows.
+// Other simple count aggregates can discard unrelated fields as rows are
+// decoded; general queries still execute in the bounded Go engine.
 func (s *Store) LoadSource(ctx context.Context, generation, name string, definition *query.Definition) (model.Source, model.Metrics, error) {
 	metadata, err := s.sourceInfo(ctx, generation, name)
 	if err != nil {
 		return model.Source{}, model.Metrics{}, err
+	}
+	if label, field, ok := nativeTableCount(definition); ok && definition.From == name {
+		value, err := s.Client.Do(ctx, "SCARD", s.sourceSetKey(generation, name))
+		metrics := model.Metrics{RedisCommands: 2, PushedDown: []string{"compute", "aggregate"}}
+		if err != nil {
+			return model.Source{}, metrics, err
+		}
+		count, err := strconv.Atoi(fmt.Sprint(value))
+		if err != nil || count < 0 {
+			return model.Source{}, metrics, errors.New("invalid Redis source cardinality")
+		}
+		rows := []model.Row{}
+		if count > 0 {
+			rows = append(rows, model.Row{definition.Compute[0].As: label, field: count})
+		}
+		return model.Source{Source: name, Rows: rows, Metadata: metadata}, metrics, nil
 	}
 	var projectedFields map[string]bool
 	if definition != nil && definition.From == name && name != "issues" &&
@@ -813,6 +830,29 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 	metrics.RedisRows = len(rows)
 	redisLog.Printf("loaded source rows=%d mode=fallback", len(rows))
 	return model.Source{Source: name, Rows: rows, Metadata: metadata}, metrics, nil
+}
+
+func nativeTableCount(definition *query.Definition) (any, string, bool) {
+	if definition == nil || len(definition.Union) != 0 || len(definition.Joins) != 0 ||
+		definition.Filter != nil || definition.TemporalSeries != nil || len(definition.Predict) != 0 ||
+		len(definition.Compute) != 1 || definition.Aggregate == nil ||
+		len(definition.Aggregate.By) != 1 || len(definition.Aggregate.Values) != 1 {
+		return nil, "", false
+	}
+	computed := definition.Compute[0]
+	value := definition.Aggregate.Values[0]
+	if computed.Function != "literal" || len(computed.Args) != 1 {
+		return nil, "", false
+	}
+	label, labelOK := computed.Args[0].Value.(string)
+	if computed.Args[0].Field != nil || computed.Args[0].Context != "" ||
+		!labelOK || label == "" ||
+		computed.As == "" || definition.Aggregate.By[0] != computed.As ||
+		value.Field != computed.As || value.Reducer != "count" ||
+		value.Filter != nil || value.As == "" || value.As == computed.As {
+		return nil, "", false
+	}
+	return label, value.As, true
 }
 
 func (s *Store) sourceInfo(ctx context.Context, generation, name string) (model.Metadata, error) {

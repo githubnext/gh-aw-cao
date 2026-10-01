@@ -8023,7 +8023,7 @@
    ],
    "values": [
     {
-     "field": "event",
+     "field": "table",
      "as": "records",
      "reducer": "count"
     }
