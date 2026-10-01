@@ -21,20 +21,11 @@ action only copies the canonical command:
 
 Review the command and run it separately from a trusted checkout.
 
-Use the Registry, Publisher, Verification, Maintenance, and Installation
-dropdowns to narrow the package list. Keyword search matches package names
-and descriptions; sorting offers relevance (reviewed verification, maintenance,
-observed adoption, then public stars), observed control-plane adoption, recent
-maintenance, public stars, or name. Equal ranks break ties by package name and
-stable identity. Semantic matching is disabled until an approved,
-permission-aware index and relevance tests exist.
+The marketplace presents a declarative list of package cards from the
+resolved marketplace table, without search, filters, or ranking controls.
 
-Package cards and details label evidence provenance and observation time.
-`unknown` means evidence is absent or cannot safely be disclosed; it does not
-mean zero or that a repository is unmaintained. Public stars and forks are
-shown only when GitHub confirms public visibility. Installation indicates
-records observed in the current control repository, not target reach or
-cross-organization totals.
+Public stars and forks are shown only when GitHub confirms public visibility.
+Missing repository data does not imply zero stars or forks.
 
 ## Configure registries
 
@@ -53,7 +44,6 @@ registry wins.
           "name": "Official CAO catalog",
           "repository": "githubnext/gh-aw-cao",
           "ref": "main",
-          "verified-publisher": true,
           "auth": { "type": "none" }
         },
         {
@@ -77,9 +67,6 @@ registry wins.
 The official registry is ordinary configuration. Remove its entry to omit it,
 or replace it with public, private, or GitHub Enterprise registries. Registry
 IDs must be unique and stable.
-The optional `verified-publisher` flag is a reviewed control-repository
-attestation about that registry's publisher, not a GitHub Verified Partner
-badge or a self-declared package-manifest claim.
 
 ## Authenticate private registries
 
@@ -124,6 +111,4 @@ Check, in order:
 4. that package manifests use supported gh-aw package metadata; and
 5. registry order when a duplicate package is resolved from an earlier entry.
 
-An installation indicator is evidence from installed gh-aw campaign records
-when available; it is not an installation control or progress state. Package
-installation and rollout policy remain separate reviewed operations.
+Package installation and rollout policy remain separate reviewed operations.

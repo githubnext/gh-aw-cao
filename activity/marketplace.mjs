@@ -7,7 +7,6 @@ const INTERNAL_PACKAGES = new Set(["activity", "dashboard"]);
 const MAX_MANIFEST_BYTES = 256 * 1024;
 const MAX_README_BYTES = 256 * 1024;
 const MAX_PACKAGES_PER_REGISTRY = 500;
-const MAINTENANCE_WINDOW_MS = 180 * 24 * 60 * 60 * 1000;
 
 function base64url(value) {
   return Buffer.from(value).toString("base64url");
@@ -140,18 +139,8 @@ export function parsePackageManifest(source, coordinates) {
     "readme-path": readmePath,
     source: sourceCoordinate,
     "add-command": `./cao.sh add ${sourceCoordinate}`,
-    "verification-status": coordinates.signals?.verificationStatus ?? "unknown",
-    "verification-source": coordinates.signals?.verificationSource ?? "unknown",
-    "maintenance-status": coordinates.signals?.maintenanceStatus ?? "unknown",
-    "maintenance-source": coordinates.signals?.maintenanceSource ?? "unknown",
-    "last-maintained-at": coordinates.signals?.lastMaintainedAt ?? "",
-    stars: coordinates.signals?.stars ?? null,
-    forks: coordinates.signals?.forks ?? null,
-    "popularity-source": coordinates.signals?.popularitySource ?? "unknown",
-    "signals-observed-at": coordinates.signals?.observedAt ?? "",
-    "installation-status": "unknown",
-    "adoption-count": null,
-    "adoption-source": "unknown",
+    stars: coordinates.repositoryCounts?.stars ?? null,
+    forks: coordinates.repositoryCounts?.forks ?? null,
   };
 }
 
@@ -161,9 +150,6 @@ function validateRegistry(registry, index) {
   if (!REPOSITORY_PATTERN.test(registry.repository ?? "")) throw new Error(`registry ${registry.id} repository is invalid`);
   if (typeof registry.ref !== "string" || !registry.ref.trim()) throw new Error(`registry ${registry.id} ref is required`);
   if (!SAFE_PATH_PATTERN.test(registry.path ?? "")) throw new Error(`registry ${registry.id} path is invalid`);
-  if (registry["verified-publisher"] !== undefined && typeof registry["verified-publisher"] !== "boolean") {
-    throw new Error(`registry ${registry.id} verified-publisher must be a boolean`);
-  }
   return {
     ...registry,
     path: String(registry.path ?? "").replace(/^\/|\/$/g, ""),
@@ -221,17 +207,9 @@ async function resolveRegistry(registry, precedence, options) {
   const commitPayload = await commitResponse.json();
   const commit = String(commitPayload.sha ?? "");
   if (!COMMIT_PATTERN.test(commit)) throw new Error("registry ref did not resolve to a commit");
-  const observedAt = new Date(options.now?.() ?? Date.now()).toISOString();
-  const signals = {
-    verificationStatus: registry["verified-publisher"] === true ? "verified" : "unknown",
-    verificationSource: registry["verified-publisher"] === true ? "control-policy" : "unknown",
-    maintenanceStatus: "unknown",
-    maintenanceSource: "unknown",
-    lastMaintainedAt: "",
+  const repositoryCounts = {
     stars: null,
     forks: null,
-    popularitySource: "unknown",
-    observedAt,
   };
   try {
     const response = await githubRequest(options.fetchImpl, `${base}/repos/${repositoryPath}`, token);
@@ -239,16 +217,8 @@ async function resolveRegistry(registry, precedence, options) {
     if (repository.private === false && repository.visibility === "public") {
       if (Number.isSafeInteger(repository.stargazers_count) && repository.stargazers_count >= 0
         && Number.isSafeInteger(repository.forks_count) && repository.forks_count >= 0) {
-        signals.stars = repository.stargazers_count;
-        signals.forks = repository.forks_count;
-        signals.popularitySource = "github-public-repository";
-      }
-      const maintained = commitPayload.commit?.committer?.date;
-      const maintainedAt = typeof maintained === "string" ? Date.parse(maintained) : NaN;
-      if (Number.isFinite(maintainedAt) && maintainedAt <= Date.parse(observedAt)) {
-        signals.lastMaintainedAt = new Date(maintainedAt).toISOString();
-        signals.maintenanceStatus = Date.parse(observedAt) - maintainedAt <= MAINTENANCE_WINDOW_MS ? "active" : "stale";
-        signals.maintenanceSource = "github-repository";
+        repositoryCounts.stars = repository.stargazers_count;
+        repositoryCounts.forks = repository.forks_count;
       }
     }
   } catch {
@@ -294,7 +264,7 @@ async function resolveRegistry(registry, precedence, options) {
       resolvedCommit: commit,
       readme,
       readmePath: readme ? readmeEntry.path : "",
-      signals,
+      repositoryCounts,
     });
   })).then((packages) => packages.filter(Boolean));
 }
@@ -332,19 +302,5 @@ export async function resolveMarketplace(marketplace, options = {}) {
       seen.add(coordinate);
       return true;
     });
-  if (Array.isArray(options.installedRecords) && typeof options.controlRepository === "string" && REPOSITORY_PATTERN.test(options.controlRepository)) {
-    const installed = new Set(options.installedRecords
-      .filter((record) => COMMIT_PATTERN.test(record?.resolvedCommit ?? ""))
-      .map((record) => String(record.source ?? "").split("@", 1)[0].toLowerCase()));
-    for (const entry of ordered) {
-      if (!installed.has(entry.id)) {
-        entry["installation-status"] = "not-installed";
-      } else {
-        entry["installation-status"] = "installed";
-        entry["adoption-count"] = 1;
-      }
-      entry["adoption-source"] = "local-gh-aw-records";
-    }
-  }
   return { packages: ordered, diagnostics };
 }

@@ -35,12 +35,7 @@ describe('entity card templates', () => {
       subtitle: { field: 'package-description' },
       details: [
         { field: 'publisher', title: 'By' },
-        { field: 'installation-status', title: 'Installed here' },
-        { field: 'stars', title: 'Public stars' },
-        { field: 'verification-source', title: 'Verification source' },
-        { field: 'maintenance-source', title: 'Maintenance source' },
-        { field: 'popularity-source', title: 'Popularity source' },
-        { field: 'signals-observed-at', title: 'Signals observed' }
+        { field: 'forks', title: 'Public forks' }
       ]
     });
     expect(templates['marketplace-package-summary'].actions).toBeUndefined();
@@ -59,12 +54,9 @@ describe('entity card templates', () => {
     expect(dashboard.navigation.find(
       (/** @type {Record<string, any>} */ section) => section.label === 'Maintenance'
     )?.pages).toContain('marketplace');
+    expect(pages.marketplace.views).toHaveLength(1);
     expect(pages.marketplace.views[0]).toMatchObject({
-      element: 'marketplace-controls',
-      data: { sources: ['marketplace-registry-options', 'marketplace-publisher-options'], 'query-context': false }
-    });
-    expect(pages.marketplace.views[1]).toMatchObject({
-      data: { source: 'marketplace-ranked' },
+      data: { source: 'marketplace-packages' },
       list: {
         style: 'entity-cards',
         appearance: 'marketplace',

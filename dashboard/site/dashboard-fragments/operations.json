@@ -1,111 +1,6 @@
 {
   "queries": [
     {
-      "name": "marketplace-registry-options",
-      "subject": "Provide distinct authorized registry choices from resolved package records.",
-      "objective": "List the registry choices available in the current authorized marketplace package projection.",
-      "acceptance": "Return distinct registry IDs and names with package counts from resolved records; missing or inaccessible registries must not be inferred from absent rows.",
-      "from": "marketplace-packages",
-      "aggregate": { "by": ["registry-id", "registry-name"], "values": [{ "field": "id", "as": "packages", "reducer": "count" }] },
-      "order-by": [{ "field": "registry-name", "direction": "asc" }]
-    },
-    {
-      "name": "marketplace-publisher-options",
-      "subject": "Provide distinct publisher choices from resolved package records.",
-      "objective": "List the publisher choices available in the current authorized marketplace package projection.",
-      "acceptance": "Return distinct publishers with package counts from resolved records; an absent publisher is not proof that its packages do not exist.",
-      "from": "marketplace-packages",
-      "aggregate": { "by": ["publisher"], "values": [{ "field": "id", "as": "packages", "reducer": "count" }] },
-      "order-by": [{ "field": "publisher", "direction": "asc" }]
-    },
-    {
-      "name": "marketplace-ranked",
-      "subject": "Order keyword-matched campaign packages by reviewed publisher attestation, public maintenance evidence, local adoption evidence, and public popularity, without treating missing evidence as zero.",
-      "objective": "Present authorized campaign packages in deterministic discovery order using only observable, governed signals.",
-      "acceptance": "Rank verified provenance and known maintenance before observed adoption and public stars, break ties by name and ID, and preserve unknown evidence rather than treating it as zero or verified.",
-      "from": "marketplace-packages",
-      "compute": [
-        {
-          "as": "verified-publisher",
-          "function": "equals-any",
-          "args": [{ "field": "verification-status" }, { "value": "verified" }]
-        },
-        {
-          "as": "recently-maintained",
-          "function": "equals-any",
-          "args": [{ "field": "maintenance-status" }, { "value": "active" }]
-        },
-        {
-          "as": "maintenance-unavailable",
-          "function": "equals-any",
-          "args": [{ "field": "maintenance-status" }, { "value": "unknown" }]
-        },
-        {
-          "as": "verification-rank",
-          "function": "if",
-          "args": [
-            { "field": "verified-publisher" },
-            { "value": 1 },
-            { "value": 0 }
-          ]
-        },
-        {
-          "as": "maintenance-unknown-rank",
-          "function": "if",
-          "args": [{ "field": "maintenance-unavailable" }, { "value": 1 }, { "value": 0 }]
-        },
-        {
-          "as": "maintenance-rank",
-          "function": "if",
-          "args": [
-            { "field": "recently-maintained" },
-            { "value": 2 },
-            { "field": "maintenance-unknown-rank" }
-          ]
-        },
-        {
-          "as": "adoption-observed",
-          "function": "coalesce",
-          "args": [{ "field": "adoption-count" }, { "value": -1 }]
-        },
-        {
-          "as": "stars-observed",
-          "function": "coalesce",
-          "args": [{ "field": "stars" }, { "value": -1 }]
-        },
-        {
-          "as": "adoption-missing",
-          "function": "equals-any",
-          "args": [{ "field": "adoption-observed" }, { "value": -1 }]
-        },
-        {
-          "as": "stars-missing",
-          "function": "equals-any",
-          "args": [{ "field": "stars-observed" }, { "value": -1 }]
-        },
-        {
-          "as": "adoption-evidence-rank",
-          "function": "if",
-          "args": [{ "field": "adoption-missing" }, { "value": 0 }, { "value": 1 }]
-        },
-        {
-          "as": "stars-evidence-rank",
-          "function": "if",
-          "args": [{ "field": "stars-missing" }, { "value": 0 }, { "value": 1 }]
-        }
-      ],
-      "order-by": [
-        { "field": "verification-rank", "direction": "desc" },
-        { "field": "maintenance-rank", "direction": "desc" },
-        { "field": "adoption-evidence-rank", "direction": "desc" },
-        { "field": "adoption-count", "direction": "desc" },
-        { "field": "stars-evidence-rank", "direction": "desc" },
-        { "field": "stars", "direction": "desc" },
-        { "field": "package-name", "direction": "asc" },
-        { "field": "id", "direction": "asc" }
-      ]
-    },
-    {
       "name": "ingestion-queued",
       "subject": "Label the shared collection task queue depth for the administrator queue chart.",
       "objective": "Identify total ready and scheduled collection work, including backfill tasks.",
@@ -1433,23 +1328,12 @@
       "description": "Find campaign packages to extend your agentic operations.",
       "views": [
         {
-          "id": "marketplace-controls",
-          "title": "Find packages",
-          "data": {
-            "sources": ["marketplace-registry-options", "marketplace-publisher-options"],
-            "query-context": false
-          },
-          "mark": "element",
-          "element": "marketplace-controls",
-          "subject": "Bind accessible discovery controls to subscribed worker query parameters without querying or deriving package rows in the UI.",
-          "layout": "full"
-        },
-        {
           "id": "marketplace-packages",
           "title": "Campaign packages for agentic operations",
           "description": "Discover packages from your configured registries. Select a package to review its contents and copy an immutable add command.",
           "data": {
-            "source": "marketplace-ranked"
+            "source": "marketplace-packages",
+            "query-context": false
           },
           "mark": "list",
           "list": {

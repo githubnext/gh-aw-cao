@@ -107,8 +107,7 @@ export const VIEW_ELEMENT_VALUES = [
   'factory-floor',
   'all-campaign-memory',
   'link-button-list',
-  'markdown',
-  'marketplace-controls'
+  'markdown'
 ];
 export const VIEW_CHART_VALUES = ['area', 'bar', 'dot', 'heatmap', 'histogram', 'horizontal-bar', 'line', 'pie', 'scatter', 'swimlane'];
 export const VIEW_METRIC_KEYS = ['style', 'icon', 'tone', 'navigation-page', 'animate'];
@@ -444,7 +443,7 @@ export const TABLE_VALUES = [
 const RUN_RECORD_FIELDS = ['id', 'organization', 'repository', 'workflow', 'run', 'run-attempt', 'event', 'event-timestamp', 'event-source', 'event-type', 'event-summary', 'event-status', 'code', 'request-count', 'correlation-id', 'payload-ref', 'mcp-server', 'mcp-tool', 'safe-output-type', 'github-entity-type', 'number', 'source-sequence', 'observed-at', 'run-link', 'target-repo', 'target-organization', 'target-repository', 'target-workflow-path', 'optimizer-run-attempt', 'optimizer-workflow-path', 'optimizer-workflow-name', 'claim-run-id', 'claim-run-attempt', 'actor', 'source-provenance', 'opportunity-id', 'opportunity-kind', 'assignment-run', 'experiment', 'evidence-window-start', 'evidence-window-end', 'evidence-state', 'evidence-confidence', 'cost-grain', 'evidence-provenance', 'attributable-run-ids', 'intervention-id', 'lifecycle-observation-id', 'previous-intervention-state', 'intervention-state', 'previous-recommendation-disposition', 'recommendation-disposition', 'supersedes-intervention-id', 'superseded-by-intervention-id', 'recommendation-churn-count', 'recommendation-churn-rate', 'control-variant', 'optimized-variant', 'proposed-savings-aic', 'missing-reason', 'safe-output-id', 'safe-output-url', 'implementation-change-id', 'implementation-pull-request-url', 'implementation-run-ids', 'accepted-at', 'implementation-started-at', 'implementation-completed-at', 'rejected-at', 'superseded-at'];
 
 export const TABLE_FIELDS = {
-  'marketplace-packages': ['id', 'registry-id', 'registry-name', 'registry-precedence', 'package-name', 'package-description', 'publisher', 'repository', 'repository-link', 'path', 'package-ref', 'resolved-commit', 'package-version', 'package-icon', 'package-artwork', 'package-contents', 'package-readme', 'package-readme-path', 'package-source', 'add-command', 'verification-status', 'verification-source', 'maintenance-status', 'maintenance-source', 'last-maintained-at', 'stars', 'forks', 'popularity-source', 'signals-observed-at', 'installation-status', 'adoption-count', 'adoption-source'],
+  'marketplace-packages': ['id', 'registry-id', 'registry-name', 'registry-precedence', 'package-name', 'package-description', 'publisher', 'repository', 'repository-link', 'path', 'package-ref', 'resolved-commit', 'package-version', 'package-icon', 'package-artwork', 'package-contents', 'package-readme', 'package-readme-path', 'package-source', 'add-command', 'stars', 'forks'],
   organizations: ['organization', 'organization-name', 'observed-at', 'organization-link'],
   campaigns: ['id', 'campaign', 'campaign-name', 'campaign-description', 'campaign-icon', 'campaign-mode', 'campaign-enabled', 'campaign-registration', 'campaign-max-repositories', 'campaign-rollout-percent', 'campaign-monthly-ai-credit-budget', 'campaign-aic-allowance', 'campaign-worker-count', 'campaign-inventory-warnings', 'campaign-workers', 'campaign-targets', 'campaign-min-version', 'campaign-version', 'campaign-current-version', 'campaign-update-state', 'campaign-experimental', 'campaign-readme-path', 'campaign-readme', 'observed-at', 'campaign-link'],
   repositories: ['id', 'organization', 'repository', 'repository-name', 'repository-coordinate', 'rollout-mode', 'observed-at', 'organization-link', 'repository-link'],

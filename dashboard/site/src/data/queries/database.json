@@ -184,18 +184,8 @@
       { "field": "readmePath", "as": "package-readme-path" },
       { "field": "sourceCoordinate", "as": "package-source" },
       { "field": "addCommand", "as": "add-command" },
-      { "field": "verificationStatus", "as": "verification-status" },
-      { "field": "verificationSource", "as": "verification-source" },
-      { "field": "maintenanceStatus", "as": "maintenance-status" },
-      { "field": "maintenanceSource", "as": "maintenance-source" },
-      { "field": "lastMaintainedAt", "as": "last-maintained-at" },
       { "field": "stars" },
       { "field": "forks" },
-      { "field": "popularitySource", "as": "popularity-source" },
-      { "field": "signalsObservedAt", "as": "signals-observed-at" },
-      { "field": "installationStatus", "as": "installation-status" },
-      { "field": "adoptionCount", "as": "adoption-count" },
-      { "field": "adoptionSource", "as": "adoption-source" },
       { "field": "observedAt", "as": "observed-at" }
     ]
   },

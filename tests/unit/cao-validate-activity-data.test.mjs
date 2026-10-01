@@ -46,10 +46,12 @@ test("validates restored activity data and creates a fallback memory manifest", 
   }
 });
 
-test("rejects missing, empty, and shardless restored activity data", async () => {
+test("warns about an empty database but rejects incomplete restored activity data", async (t) => {
   const root = mkdtempSync(path.join(tmpdir(), "cao-validate-activity-invalid-"));
   const shards = path.join(root, "gh-aw-logs-shards");
   const memoryManifest = path.join(root, "memory", "manifest.json");
+  const messages = [];
+  t.mock.method(console, "log", (message) => messages.push(message));
   try {
     await mkdir(shards);
     writeFileSync(path.join(root, "gh-aw-logs.sqlite"), "");
@@ -68,6 +70,8 @@ test("rejects missing, empty, and shardless restored activity data", async () =>
       option,
       rejectUnknownOptions,
     }), /Restored activity data validation failed/);
+    assert.ok(messages.includes("::warning::Required activity data file is empty: gh-aw-logs.sqlite"));
+    assert.ok(messages.includes("::error::Required activity data file is missing: missing-inventory.json"));
   } finally {
     await rm(root, { recursive: true, force: true });
   }

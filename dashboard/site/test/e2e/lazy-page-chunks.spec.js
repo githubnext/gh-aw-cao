@@ -331,15 +331,8 @@ test('marketplace page renders canonical package cards after ingestion', async (
   await expect(packageCard.getByRole('button', { name: 'Add' })).toHaveCount(0);
   await expect(marketplace).not.toContainText('Unable to load this page.');
 
-  const controls = marketplace.locator('.marketplace-controls');
-  await expect(controls.getByRole('combobox', { name: 'Registry' })).toContainText('Official CAO catalog');
-  await controls.getByRole('searchbox', { name: 'Search packages by keyword' }).fill('dependabot');
-  await controls.getByRole('button', { name: 'Search' }).click();
-  await expect(packageCards).toHaveCount(1);
-  await expect(packageCards.locator('.issue-list-card-title')).toHaveText(['Dependabot']);
-  await expect(controls.getByRole('combobox', { name: 'Registry' })).toContainText('Official CAO catalog');
-  await controls.getByRole('searchbox', { name: 'Search packages by keyword' }).fill('');
-  await controls.getByRole('button', { name: 'Search' }).click();
+  await expect(marketplace.locator('.marketplace-controls')).toHaveCount(0);
+  await expect(marketplace.getByRole('searchbox')).toHaveCount(0);
   await expect(packageCards).toHaveCount(3);
 
   for (let navigation = 0; navigation < 3; navigation += 1) {
