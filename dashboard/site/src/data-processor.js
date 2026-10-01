@@ -1,6 +1,7 @@
 import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
 import { queryDashboardSourceObservations } from './data/queries/ingestion.js';
+import { resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { normalize } from './data/normalize/index.js';
 import { batch } from './reactive.js';
 import { publishNotification } from './notification-service.js';
@@ -527,7 +528,7 @@ function registerRemoteSubscription(subscription) {
   const controller = new AbortController();
   /** @type {{ revision: number, healthRevision: number | null } | null} */
   let queuedUpdate = null;
-  const query = async () => {
+  const query = async (refreshDecayingLoad = false) => {
     if (!active || subscription.remoteQueryRunning) return;
     subscription.remoteQueryRunning = true;
     try {
@@ -546,7 +547,7 @@ function registerRemoteSubscription(subscription) {
       if (!active || subscriptions.get(subscription.id) !== subscription) return;
       subscription.remoteRevision = result.revision;
       subscription.remoteHealthRevision = result.healthRevision;
-      enqueueSubscriptionUpdate(subscription, result.sources, result.revision);
+      enqueueSubscriptionUpdate(subscription, result.sources, refreshDecayingLoad ? null : result.revision);
     } catch (error) {
       if (!active) return;
       const failure = error instanceof Error ? error : new Error(String(error));
@@ -579,8 +580,13 @@ function registerRemoteSubscription(subscription) {
       }
     }
   });
+  const refreshesLoad = resolveDashboardQuerySources(
+    subscription.context.queries ?? [], subscription.sourceNames
+  ).includes('collection-health');
+  const loadTimer = refreshesLoad ? setInterval(() => { void query(true); }, 30_000) : null;
   subscription.remoteStop = () => {
     active = false;
+    if (loadTimer !== null) clearInterval(loadTimer);
     stopEvents();
     controller.abort();
   };

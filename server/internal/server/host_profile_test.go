@@ -36,6 +36,7 @@ func TestBuiltInHostProfilesDeclareExpectedCapabilities(t *testing.T) {
 		{localHostProfile(), HostAuthenticationBearer, HostListenerProcess, HostRedisPooled, true},
 		{hostedHostProfile(), HostAuthenticationOAuth, HostListenerProcess, HostRedisPooled, true},
 		{azureFunctionsHostProfile(), HostAuthenticationOAuth, HostListenerPlatform, HostRedisPooled, true},
+		{func() HostProfile { p := hostedHostProfile(); p.Listener = HostListenerExternal; return p }(), HostAuthenticationOAuth, HostListenerExternal, HostRedisPooled, true},
 		{upstashHostProfile(), HostAuthenticationOAuth, HostListenerProcess, HostRedisSerialized, false},
 	}
 	for _, test := range tests {
@@ -112,6 +113,24 @@ func TestHostProfileRejectsInconsistentCapabilities(t *testing.T) {
 			value := base
 			value.Authentication = HostAuthenticationBearer
 			value.Listener = HostListenerPlatform
+			return value
+		}(),
+		func() HostProfile {
+			value := base
+			value.Authentication = HostAuthenticationBearer
+			value.Listener = HostListenerExternal
+			return value
+		}(),
+		func() HostProfile {
+			value := base
+			value.Listener = HostListenerExternal
+			value.RequiresHTTPS = false
+			return value
+		}(),
+		func() HostProfile {
+			value := base
+			value.Listener = HostListenerExternal
+			value.TrustsPlatformProxy = true
 			return value
 		}(),
 	}
@@ -240,7 +259,15 @@ func TestClassifyHostProfileRejectionOrdersChecksAndReportsReason(t *testing.T) 
 			config:          Config{Listen: "127.0.0.1:8080"},
 			storeConfigured: true,
 			reportsSession:  true,
-			want:            hostProfileRejectionReasonPlatformListener,
+			want:            hostProfileRejectionReasonDelegatedListener,
+		},
+		{
+			name:            "external listener rejects process configuration",
+			profile:         func() HostProfile { p := valid; p.Listener = HostListenerExternal; return p }(),
+			config:          Config{CertFile: "server.pem"},
+			storeConfigured: true,
+			reportsSession:  true,
+			want:            hostProfileRejectionReasonDelegatedListener,
 		},
 		{
 			name:            "accepted configuration reports none",
@@ -361,5 +388,12 @@ func TestPlatformHostProfileCannotServeProcessListener(t *testing.T) {
 	if err := app.Serve(t.Context()); err == nil ||
 		!strings.Contains(err.Error(), "delegates listener ownership") {
 		t.Fatalf("platform profile opened a process listener: %v", err)
+	}
+	profile := hostedHostProfile()
+	profile.Listener = HostListenerExternal
+	app.config.HostProfile = profile
+	if err := app.Serve(t.Context()); err == nil ||
+		!strings.Contains(err.Error(), "delegates listener ownership") {
+		t.Fatalf("external profile opened a process listener: %v", err)
 	}
 }

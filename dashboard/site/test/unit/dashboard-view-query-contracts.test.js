@@ -779,6 +779,38 @@ describe('dashboard view query contracts', () => {
     expect(SERVER_SOURCE_VALUES).toContain('collection-health');
     expect(queries.find((/** @type {{ name: string }} */ query) => query.name === 'ingestion-health')?.from)
       .toBe('collection-health');
+    const sourceNames = ['ingestion-queue-sizes'];
+    const available = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries',
+      queries,
+      sourceNames,
+      sources: {
+        'collection-health': {
+          source: 'collection-health',
+          metadata: { ...metadata, availability: 'available' },
+          rows: [{ configured: true, 'queue-depth': 8, 'pending-tasks': 2, 'backfill-queued-run-tasks': 13 }]
+        }
+      }
+    }));
+    expect(available['ingestion-queue-sizes'].rows).toEqual([
+      { queue: 'Ready and scheduled', tasks: 8 },
+      { queue: 'In flight', tasks: 2 },
+      { queue: 'Backfill admitted (total)', tasks: 13 }
+    ]);
+    const unconfigured = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries', queries, sourceNames,
+      sources: {
+        'collection-health': {
+          source: 'collection-health', metadata: { ...metadata, availability: 'available' },
+          rows: [{ configured: false, 'queue-depth': 0, 'pending-tasks': 0, 'backfill-queued-run-tasks': 0 }]
+        }
+      }
+    }));
+    expect(unconfigured['ingestion-queue-sizes'].rows).toEqual([]);
+    const denied = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries', queries, sourceNames, sources: {}
+    }));
+    expect(denied['ingestion-queue-sizes'].metadata.availability).toBe('unavailable');
   });
 
   it('registers GitHub quota usage as a server-owned query source', () => {
@@ -812,7 +844,7 @@ describe('dashboard view query contracts', () => {
     const requested = [...new Set(dashboard.pages.flatMap((/** @type {Record<string, unknown>} */ page) => viewsOf(page).flatMap(sourceNamesOf)))]
       .filter((name) => queryNames.has(name));
     const workerRequested = requested.filter((name) => !requiresServerSource(name));
-    expect(requested.filter((name) => requiresServerSource(name)).sort()).toEqual(['github-api-usage', 'ingestion-health']);
+    expect(requested.filter((name) => requiresServerSource(name)).sort()).toEqual(['github-api-usage', 'ingestion-health', 'ingestion-queue-sizes']);
     const results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries,

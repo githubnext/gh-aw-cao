@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"go.opentelemetry.io/otel"
 
@@ -232,6 +234,197 @@ func TestHostedModesCannotDisableHTTPS(t *testing.T) {
 	config.Proxy = ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}}
 	if err := validateHostedMode(&redisx.Store{}, &config); err == nil {
 		t.Fatal("Azure Functions mode accepted disabled HTTPS enforcement")
+	}
+}
+
+func TestExternallyHostedModeRequiresExplicitForwardedPeer(t *testing.T) {
+	config := Config{
+		HostProfile: func() HostProfile {
+			profile := hostedHostProfile()
+			profile.Listener = HostListenerExternal
+			return profile
+		}(),
+		Proxy:       ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true, TrustForwarded: true},
+		GitHubOAuth: validOAuthConfig("https://github.test"),
+	}
+	if err := validateHostedMode(&redisx.Store{}, &config); err == nil ||
+		!strings.Contains(err.Error(), "explicit trusted proxy CIDRs") {
+		t.Fatalf("external handler accepted untrusted forwarded headers: %v", err)
+	}
+}
+
+func TestExternallyHostedHandlerRequiresActiveLifecycle(t *testing.T) {
+	address, closeRedis := fakeRedis(t)
+	defer closeRedis()
+	client, err := redisx.New("redis://" + address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	profile := hostedHostProfile()
+	profile.Listener = HostListenerExternal
+	app, err := New(t.Context(), redisx.NewStore(client, "external-test"), Config{
+		HostProfile: profile, SiteDirectory: t.TempDir(),
+		Proxy:       ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
+		GitHubOAuth: validOAuthConfig("https://github.test"),
+		CORS:        CORSPolicy{AllowedOrigins: []string{"https://tools.example.com"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := app.Handler()
+	request := func(host string) *http.Request {
+		return httptest.NewRequestWithContext(t.Context(), http.MethodGet, "https://"+host+"/api/health", nil)
+	}
+	respond := func(req *http.Request) int {
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, req)
+		return response.Code
+	}
+	if status := respond(request("dashboard.example.com")); status != http.StatusServiceUnavailable {
+		t.Fatalf("handler served before startup: %d", status)
+	}
+	preflight := httptest.NewRequestWithContext(t.Context(), http.MethodOptions, "https://dashboard.example.com/api/v1/events", nil)
+	preflight.Header.Set("Origin", "https://tools.example.com")
+	preflight.Header.Set("Access-Control-Request-Method", http.MethodGet)
+	if status := respond(preflight); status != http.StatusServiceUnavailable {
+		t.Fatalf("CORS preflight bypassed startup: %d", status)
+	}
+	if err := app.Start(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	defer app.Stop()
+	if status := respond(preflight); status != http.StatusNoContent {
+		t.Fatalf("CORS preflight did not work after startup: %d", status)
+	}
+	if status := respond(request("dashboard.example.com")); status != http.StatusOK {
+		t.Fatalf("handler did not serve after startup: %d", status)
+	}
+	if status := respond(request("wrong.example.com")); status != http.StatusMisdirectedRequest {
+		t.Fatalf("handler accepted a different host: %d", status)
+	}
+	if status := respond(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://dashboard.example.com/api/health", nil)); status != http.StatusMisdirectedRequest {
+		t.Fatalf("handler accepted plaintext request: %d", status)
+	}
+	if err := app.Start(t.Context()); err == nil {
+		t.Fatal("service started twice")
+	}
+	app.Stop()
+	if status := respond(request("dashboard.example.com")); status != http.StatusServiceUnavailable {
+		t.Fatalf("handler served after shutdown: %d", status)
+	}
+	if status := respond(preflight); status != http.StatusServiceUnavailable {
+		t.Fatalf("CORS preflight bypassed shutdown: %d", status)
+	}
+}
+
+func TestStartRejectsCanceledContext(t *testing.T) {
+	app := &App{config: Config{HostProfile: hostedHostProfile()}}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if err := app.Start(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("starting canceled service returned %v", err)
+	}
+	if app.startContext != nil {
+		t.Fatal("canceled service recorded an active lifecycle")
+	}
+}
+
+func TestEventStreamOutlivesHTTPWriteTimeout(t *testing.T) {
+	address, closeRedis := fakeRedis(t)
+	defer closeRedis()
+	client, err := redisx.New("redis://" + address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := &App{
+		store: redisx.NewStore(client, "stream-test"), hub: newEventHub(),
+		config:      Config{HostProfile: localHostProfile()},
+		accessToken: testAccessToken,
+	}
+	server := httptest.NewUnstartedServer(app.Handler())
+	server.Config.WriteTimeout = 50 * time.Millisecond
+	server.Start()
+	defer server.Close()
+
+	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL+"/api/v1/events", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Authorization", "Bearer "+testAccessToken)
+	remote := &http.Client{Timeout: 2 * time.Second}
+	response, err := remote.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("stream returned %d", response.StatusCode)
+	}
+	reader := bufio.NewReader(response.Body)
+	if _, err := reader.ReadString('\n'); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(125 * time.Millisecond)
+	app.hub.Broadcast(2)
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			t.Fatalf("event stream ended after HTTP write timeout: %v", err)
+		}
+		if strings.Contains(line, `"revision":2`) {
+			break
+		}
+	}
+}
+
+func TestEventStreamSupportsWriterWithoutDeadlineControl(t *testing.T) {
+	address, closeRedis := fakeRedis(t)
+	defer closeRedis()
+	client, err := redisx.New("redis://" + address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := &App{
+		store: redisx.NewStore(client, "stream-test"), hub: newEventHub(),
+		config:      Config{HostProfile: localHostProfile()},
+		accessToken: testAccessToken,
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	request := httptest.NewRequestWithContext(ctx, http.MethodGet, "http://localhost/api/v1/events", nil)
+	authorize(request)
+	response := &flushNotifyingRecorder{ResponseRecorder: httptest.NewRecorder(), flushed: make(chan struct{}, 1)}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		app.Handler().ServeHTTP(response, request)
+	}()
+	select {
+	case <-response.flushed:
+	case <-time.After(2 * time.Second):
+		t.Fatal("writer without deadline control did not flush an event")
+	}
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("event stream did not stop after cancellation")
+	}
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "data:") {
+		t.Fatalf("writer without deadline control did not stream: status=%d", response.Code)
+	}
+}
+
+type flushNotifyingRecorder struct {
+	*httptest.ResponseRecorder
+	flushed chan struct{}
+}
+
+func (recorder *flushNotifyingRecorder) Flush() {
+	recorder.ResponseRecorder.Flush()
+	select {
+	case recorder.flushed <- struct{}{}:
+	default:
 	}
 }
 

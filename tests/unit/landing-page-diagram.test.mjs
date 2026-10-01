@@ -15,7 +15,7 @@ const astroConfig = readFileSync("astro.config.mjs", "utf8");
 test("landing page presents the product through real operational surfaces", () => {
   assert.match(landingPage, /text: Explore CAO[\s\S]*?link: \/gh-aw-cao\/architecture-at-a-glance\//);
   assert.match(landingPage, /text: Get started[\s\S]*?link: \/gh-aw-cao\/setup-quickstarts\//);
-  assert.match(landingPage, /text: Dashboard[\s\S]*?link: https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao/);
+  assert.match(landingPage, /text: Sample Dashboard[\s\S]*?link: https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao/);
   assert.doesNotMatch(headerLinks, /label: "Dashboard"/);
   assert.match(landingPage, /title: Central Agentic Ops \(CAO\)/);
   assert.match(landingPage, /Hyperscale Agentic Campaigns\.<br \/>Centralized Control Planes\./);

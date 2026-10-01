@@ -38,7 +38,8 @@ func TestCollectionHealthSourceIsAvailableOnlyToAuthorizedReaders(t *testing.T) 
 func TestCollectionHealthSourceReportsBackfillProgress(t *testing.T) {
 	source := collectionHealthSource(collect.Status{
 		Configured: true, Health: "recovering", Backfill: "partial",
-		BackfillFailures: 2, BackfillRunTasks: 17,
+		BackfillFailures: 2, BackfillRunTasks: 17, OldestPending: "23s",
+		Load: map[string]float64{"webhook": 2.5, "collection": 1.5, "failure": 0.5},
 	})
 	if got := source.Rows[0]["backfill"]; got != "partial" {
 		t.Fatalf("backfill phase = %v, want partial", got)
@@ -48,6 +49,12 @@ func TestCollectionHealthSourceReportsBackfillProgress(t *testing.T) {
 	}
 	if got := source.Rows[0]["backfill-queued-run-tasks"]; got != 17 {
 		t.Fatalf("backfill queued run tasks = %v, want 17", got)
+	}
+	if got := source.Rows[0]["oldest-pending-age"]; got != "23s" {
+		t.Fatalf("oldest pending age = %v, want 23s", got)
+	}
+	if got := source.Rows[0]["webhook-load"]; got != 2.5 {
+		t.Fatalf("webhook load = %v, want 2.5", got)
 	}
 }
 

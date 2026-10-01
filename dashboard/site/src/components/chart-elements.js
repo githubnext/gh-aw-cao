@@ -10,6 +10,9 @@ import { createFactoryScope } from './factory-elements.js';
 import { binHistogramValues } from './histogram.js';
 import { renderSafeLink } from './link-content.js';
 import { renderEmptyMessage, renderLegendList } from './ui-primitives.js';
+import { createDebug } from '../debug.js';
+
+const debugChartElements = createDebug('chart-elements');
 
 const MAX_LINE_POINT_SIZE = 6;
 const MIN_LINE_POINT_SIZE = 2;
@@ -475,7 +478,9 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
   const pieData = chartType === 'pie' ? pieSummary ?? pieChartEntries(points) : null;
   const entryCount = pieData ? pieData.entries.length : points.length;
   const minimumEntries = ['bar', 'heatmap', 'horizontal-bar', 'pie', 'scatter'].includes(chartType) ? 1 : 2;
+  debugChartElements({ event: 'render', chartType, entryCount, seriesCount: series.length });
   if (entryCount < minimumEntries && chartType !== 'swimlane') {
+    debugChartElements({ event: 'empty-state', chartType, reason: entryCount === 0 ? 'no-data' : 'insufficient-data', entryCount });
     return renderChartWidgetEmptyState(
       chartType,
       entryCount === 0 ? 'No data is available for this visualization.' : 'Not enough data to show this visualization.'
@@ -624,6 +629,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
 
   if (chartType === 'horizontal-bar') {
     if (points.length > MAX_HORIZONTAL_BARS) {
+      debugChartElements({ event: 'bar-limit-exceeded', chartType, pointCount: points.length, limit: MAX_HORIZONTAL_BARS });
       return renderChartWidgetEmptyState(
         chartType,
         `Horizontal bar charts support at most ${MAX_HORIZONTAL_BARS} bars.`

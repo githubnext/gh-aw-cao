@@ -89,7 +89,9 @@ func applyTargetModuleOverrides(module hostTargetModule, policy targetPolicy) (h
 	}
 	module.requireHTTPS = true
 	if policy.RequireHTTPS != nil {
-		module.requireHTTPS = *policy.RequireHTTPS
+		if !*policy.RequireHTTPS {
+			return hostTargetModule{}, errors.New("configured host target module cannot disable HTTPS")
+		}
 	}
 	if policy.TrustPlatformProxy != nil {
 		module.trustPlatformProxy = *policy.TrustPlatformProxy

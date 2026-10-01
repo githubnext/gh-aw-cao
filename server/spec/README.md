@@ -39,7 +39,7 @@ event types, respectively; do not infer Redis storage or MCP internals from them
    Run `go -C server test ./...` when changing the implementation. The
    `server-spec` job in `.github/workflows/cgo.yml` runs on server changes.
 
-The Go server has **two deployment profiles**: the loopback local profile
+The Go server has **two authentication profiles**: the loopback local profile
 requires an `Authorization: Bearer` capability for protected `/api/` routes;
 hosted mode requires an authorized `cao_session` cookie and `X-CSRF-Token` on
 mutations. Health/readiness are public, while the webhook authenticates the raw
@@ -48,3 +48,8 @@ admin-authorized session in hosted mode. Hosted-only `/auth/` routes do not exis
 in the local profile. `302` OAuth callback failures return an HTML error page,
 not the JSON error body used by ordinary API endpoints. Limits and runtime
 authorization rules are enforced by the implementation, not by JSON Schema.
+In hosted mode, CAO may own the HTTP listener or supply its complete handler
+to an external Go host. Before startup and after shutdown, the externally
+hosted handler returns a `503` error body even for health/readiness. The host
+must preserve SSE flushing and must not impose a finite whole-request timeout
+on `/api/v1/events`.

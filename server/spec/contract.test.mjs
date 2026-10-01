@@ -76,6 +76,13 @@ test('selected JSON Schemas and nullable responses are emitted', () => {
   )
   const campaign = openapi.paths['/api/v1/memory/{campaign}'].get.responses['200'].content['application/json'].schema
   assert.ok(campaign.anyOf.some(branch => branch.type === 'null'))
-  assert.equal(openapi.paths['/api/health'].get.responses['503'].content['application/json'].schema.$ref,
-    '#/components/schemas/HealthResponse')
+  for (const [path, response] of [
+    ['/api/health', 'HealthResponse'],
+    ['/api/v1/health', 'HealthResponse'],
+    ['/api/readiness', 'ReadinessResponse']
+  ]) {
+    const schema = openapi.paths[path].get.responses['503'].content['application/json'].schema
+    assert.ok(schema.anyOf.some(branch => branch.$ref === `#/components/schemas/${response}`), path)
+    assert.ok(schema.anyOf.some(branch => branch.required?.includes('error')), path)
+  }
 })

@@ -145,7 +145,7 @@ namespace Queries {
   ):
     QueryResponse | BadRequest | Unauthorized | Forbidden | QueryPlanTooLarge | TooManyRequests | Unavailable;
 
-  /** Server-sent stream: each `data:` line is a RevisionEvent JSON object; `: keepalive` comments arrive every 20 seconds. */
+  /** Server-sent stream: each `data:` line is a RevisionEvent JSON object; `: keepalive` comments arrive every 20 seconds. HTTP hosts must support flushing and must not impose a finite whole-request timeout on this route. */
   @route("/api/v1/events")
   @get op events(): {
     @header contentType: "text/event-stream";

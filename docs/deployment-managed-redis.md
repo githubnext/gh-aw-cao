@@ -82,6 +82,42 @@ Hosted startup requires this modular `web.host` policy. Flat host objects,
 | `azure-functions` | Azure Functions' platform-owned listener and trusted platform proxy. |
 | `generic` | A new platform with explicit reviewed capabilities. |
 
+### Externally owned Go HTTP listener
+
+For an HTTP server that owns its own socket and shutdown, select the
+`generic` target with `authentication: "github-oauth"` and
+`listener: "external"` in a reviewed host extension; keep the Redis module
+independent:
+
+```json
+{
+  "target": {
+    "module": "generic",
+    "name": "external-host",
+    "authentication": "github-oauth",
+    "listener": "external"
+  },
+  "redis": { "module": "redis-cloud", "tls": { "mode": "required" } }
+}
+```
+
+The public `server/hosting` package accepts built-site and query-document
+paths, then offers `New`, `Start`, `Handler`, and `Stop`. Start CAO before
+admitting requests; shut down and drain the HTTP server before calling `Stop`.
+Only the host owns the socket and TLS certificates: a CAO process listen address
+or TLS files are rejected. The host must pass the complete handler unchanged;
+CAO still verifies OAuth, session/CSRF, webhook signatures, request hosts, and
+rate limits. Direct requests require HTTPS, or the host can use a trusted
+private proxy with `CAO_TRUSTED_PROXY_CIDRS` and an exact `CAO_ALLOWED_HOSTS`
+allowlist. Forwarded headers from other peers are rejected.
+
+Preserve the root paths and streaming support, including `http.Flusher` and
+response deadline control. `/api/v1/events` is long-lived, so a global
+whole-request timeout cannot encompass it; apply bounded deadlines to ordinary
+routes instead. Bound concurrent connections and streams at the host because
+per-request rate limiting alone does not cap active streams. Public package
+builds require no host framework or private dependency.
+
 ### Example compositions
 
 Coolify and other container platforms pair the `container` target with any
