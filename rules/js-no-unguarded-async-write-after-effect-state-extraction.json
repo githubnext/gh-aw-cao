@@ -1,0 +1,82 @@
+{
+  "rule_key": "js-no-unguarded-async-write-after-effect-state-extraction",
+  "language": "javascript",
+  "additional_languages": [],
+  "unsafe_pattern": "An async event handler (button onClick, IntersectionObserver callback, etc.) that is refactored from direct DOM mutation into a `state()` value written from an `effect()`, but the post-await `.set(...)` calls inside the async callback are not guarded by the component's `createFactoryScope().signal.aborted` check before writing. Two of five near-identical refactors merged in this window ( #15434 account-menu, #15475 configuration-view) omitted the guard that the other three (#15419 ui-primitives, #15463 table-region, #15483 data-view) added for the same busy/status-state extraction.",
+  "consequence": "If the component unmounts (user navigates away) while the awaited async work (clipboard copy, OAuth switch/logout fetch, diagnostics collection) is still pending, the callback resumes after await and calls `.set()` on reactive state whose effect still writes to now-detached DOM nodes. This is at minimum a wasted write to disposed state and, if the effect's cleanup already ran, a null/stale-reference write; the exact bug class the sibling PRs' tests (`ignores a continuation load that resolves after ... removed`, `stops writing ... once its boundary is detached`) were added specifically to catch and prevent.",
+  "mechanical_correction": "After every `await` inside an async handler that subsequently calls `state.set(...)`, check `if (scope.signal.aborted) return;` (or the component's equivalent abort signal) before performing the write, mirroring the guard already present in #15419, #15463, and #15483.",
+  "evidence": [
+    {
+      "type": "merged_pull_request",
+      "repo": "githubnext/gh-aw-cao",
+      "number": 15419,
+      "title": "Extract createCopyControl run state into reactive state and effect",
+      "detail": "Added `if (scope.signal.aborted) return;` immediately after `await copyTextToClipboard(...)` and before the subsequent `busy.set(false)`/`copyState.set(...)` writes.",
+      "files": [
+        "dashboard/site/src/components/ui-primitives.js"
+      ]
+    },
+    {
+      "type": "merged_pull_request",
+      "repo": "githubnext/gh-aw-cao",
+      "number": 15463,
+      "title": "Extract table-region continuation-load busy state into reactive state and effect",
+      "detail": "Added `if (continuationScope.signal.aborted) return;` after the awaited `options.continuation.load(...)` call in both the success and catch paths, and guarded the `finally` block's `continuationBusy.set(false)` with the same check. Added two regression tests: one asserting the button stays disabled and no error dataset is set once removed, another asserting a stale resolution after removal does not reinsert rows.",
+      "files": [
+        "dashboard/site/src/components/table-region.js",
+        "dashboard/site/test/unit/table-region.test.js"
+      ]
+    },
+    {
+      "type": "merged_pull_request",
+      "repo": "githubnext/gh-aw-cao",
+      "number": 15483,
+      "title": "Extract mobile card-list continuation busy state into reactive state and effect",
+      "detail": "Wrapped the continuation-load state in `state()`/`effect()` bound to `boundaryScope.signal`; regression test 'stops writing the mobile card continuation load state once its boundary is detached' explicitly asserts a post-removal async resolution does not mutate `boundary.dataset.loadState`.",
+      "files": [
+        "dashboard/site/src/components/data-view.js",
+        "dashboard/site/test/unit/data-view.test.js"
+      ]
+    },
+    {
+      "type": "merged_pull_request",
+      "repo": "githubnext/gh-aw-cao",
+      "number": 15434,
+      "title": "Extract account-menu switch/logout busy state into reactive state and effect",
+      "detail": "Same busy-state extraction pattern (`switchBusy`/`logoutBusy` state + single effect writing `switchButton.disabled`/`logoutButton.disabled`) applied to two awaited fetch-based handlers (`switchAccount`, `logout`), but neither handler checks any abort/detached signal before its post-await `busy.set(false)` write; no regression test for a post-unmount resolution was added, unlike the sibling PRs.",
+      "files": [
+        "dashboard/site/src/components/account-menu.js"
+      ]
+    },
+    {
+      "type": "merged_pull_request",
+      "repo": "githubnext/gh-aw-cao",
+      "number": 15475,
+      "title": "Extract configuration-view diagnostics busy state into reactive state and effect",
+      "detail": "Same extraction pattern applied to the awaited `collectFullDiagnostics()` + `copyTextToClipboard(...)` handler; `diagnosticsBusy.set(false)`/`diagnosticsStatusText.set(...)` in the try/catch/finally body have no abort-signal guard despite the component already owning a `createFactoryScope()` (`scope`) used for its other effect, and despite the nearly identical `createCopyControl` (#15419, merged in the same window) adding the guard for the same copy-to-clipboard flow.",
+      "files": [
+        "dashboard/site/src/components/configuration-view.js"
+      ]
+    }
+  ],
+  "occurrence_count": 5,
+  "affected_paths": [
+    "dashboard/site/src/components/ui-primitives.js",
+    "dashboard/site/src/components/table-region.js",
+    "dashboard/site/src/components/data-view.js",
+    "dashboard/site/src/components/account-menu.js",
+    "dashboard/site/src/components/configuration-view.js"
+  ],
+  "syntactic_constructs": [
+    "async () => { ... await ...; ...State.set(...); } inside an onClick/observer callback",
+    "createFactoryScope() + state() + effect({ signal: scope.signal }) component shape (reactive.js, factory-elements.js)",
+    "missing `if (scope.signal.aborted) return;` directly after an awaited call and before a subsequent `.set()`"
+  ],
+  "likely_false_positives": "An async handler that calls `.set()` after `await` but whose component is never removed from the DOM during that async work (e.g. a top-level page-scoped singleton that outlives all navigation) does not need the guard; the rule should only fire when the enclosing scope is created via `createFactoryScope()`/bound to a removable node, i.e. an abort signal is already available in scope but unused after an await preceding a `.set()` call.",
+  "autofix_safe": false,
+  "existing_plugin_coverage": "No published ESLint rule covers this: it depends on recognizing this repo's specific `reactive.js` state/effect/createFactoryScope convention and its abort-signal idiom, not a generic async/await or React-hooks pattern that an existing plugin (eslint-plugin-react-hooks, eslint-plugin-promise, etc.) targets.",
+  "status": "new",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36850962649",
+  "last_updated_target_repo": "githubnext/gh-aw-cao",
+  "last_seen_at": "2026-10-01T11:05:16Z"
+}
