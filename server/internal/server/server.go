@@ -438,13 +438,13 @@ func (a *App) Serve(ctx context.Context) error {
 	if err := a.start(ctx, context.WithoutCancel(ctx)); err != nil {
 		return err
 	}
-	defer func() {
-		stopCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer func(ctx context.Context) {
+		stopCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
 		if err := a.Stop(stopCtx); err != nil {
 			serverLog.Printf("background shutdown failed: %v", err)
 		}
-	}()
+	}(ctx)
 	serverLog.Printf("starting server tls=%t", a.config.CertFile != "")
 	var listenConfig net.ListenConfig
 	listener, err := listenConfig.Listen(ctx, "tcp", a.config.Listen)
@@ -479,7 +479,7 @@ func (a *App) Serve(ctx context.Context) error {
 	serveDone := make(chan struct{})
 	shutdownResult := make(chan error, 1)
 	defer close(serveDone)
-	go func() {
+	go func(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			a.Drain()
@@ -492,7 +492,7 @@ func (a *App) Serve(ctx context.Context) error {
 			shutdownResult <- err
 		case <-serveDone:
 		}
-	}()
+	}(ctx)
 	err = httpServer.Serve(servingListener)
 	if errors.Is(err, http.ErrServerClosed) {
 		return <-shutdownResult
