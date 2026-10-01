@@ -65,6 +65,12 @@ func TestStoreIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if initial.Ready || initial.Revision != 0 || len(initial.Counts) != 0 {
+		t.Fatalf("fresh store state: %+v", initial)
+	}
+	if _, _, err := store.LoadSource(ctx, "missing", nil); !errors.Is(err, ErrSourceUnavailable) {
+		t.Fatalf("missing source error: %v", err)
+	}
 	evaluatedAt := time.Now().UTC().Truncate(time.Microsecond)
 	sources := map[string]model.Source{
 		"repositories": {
