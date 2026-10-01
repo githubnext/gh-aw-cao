@@ -11,9 +11,9 @@ import (
 )
 
 type recordingDatabase struct {
-	state    dashboarddb.State
-	snapshot dashboarddb.Snapshot
-	writes   int
+	state        dashboarddb.State
+	transactions dashboarddb.Transactions
+	writes       int
 }
 
 func (db *recordingDatabase) Current(context.Context) (dashboarddb.Reader, error) {
@@ -24,14 +24,14 @@ func (db *recordingDatabase) Validate(definitions []query.Definition) error {
 	return query.Validate(definitions)
 }
 
-func (db *recordingDatabase) Replace(_ context.Context, snapshot dashboarddb.Snapshot) (dashboarddb.State, error) {
-	db.snapshot = snapshot
+func (db *recordingDatabase) Ingest(_ context.Context, transactions dashboarddb.Transactions) (dashboarddb.State, error) {
+	db.transactions = transactions
 	db.writes++
 	db.state = dashboarddb.State{
-		Revision: int64(db.writes), DataRevision: snapshot.DataRevision,
-		EvaluatedAt: snapshot.EvaluatedAt, Counts: map[string]int{}, Available: true,
+		Revision: int64(db.writes), DataRevision: transactions.DataRevision,
+		EvaluatedAt: transactions.EvaluatedAt, Counts: map[string]int{}, Available: true,
 	}
-	for name, source := range snapshot.Sources {
+	for name, source := range transactions.Sources {
 		db.state.Counts[name] = len(source.Rows)
 	}
 	return db.state, nil
@@ -56,13 +56,13 @@ func TestRunDatabasePublishesAndReusesCallTables(t *testing.T) {
 		if result.Revision != 1 || result.DataRevision == "" || db.writes != 1 {
 			t.Fatalf("unexpected publication state: result=%+v writes=%d", result, db.writes)
 		}
-		if len(db.snapshot.Sources["runs"].Rows) == 0 || len(db.snapshot.Sources["tools"].Rows) == 0 {
+		if len(db.transactions.Sources["runs"].Rows) == 0 || len(db.transactions.Sources["tools"].Rows) == 0 {
 			t.Fatal("canonical call tables were not published")
 		}
-		if db.snapshot.Diagnostics.SchemaVersion != model.SchemaVersion {
+		if db.transactions.Diagnostics.SchemaVersion != model.SchemaVersion {
 			t.Fatal("diagnostics were not published with the snapshot")
 		}
-		if len(db.snapshot.RepositoryMemory) == 0 {
+		if len(db.transactions.RepositoryMemory) == 0 {
 			t.Fatal("repository memory was not published with the snapshot")
 		}
 	}

@@ -231,7 +231,7 @@ func RunDatabase(ctx context.Context, db dashboarddb.Database, directory string,
 		counts[name] = len(source.Rows)
 	}
 	evaluatedAt := sourceEvaluationTime(sources)
-	state, err := db.Replace(ctx, dashboarddb.Snapshot{
+	state, err := db.Ingest(ctx, dashboarddb.Transactions{
 		DataRevision: dataRevision, EvaluatedAt: evaluatedAt,
 		Sources: sources, Diagnostics: diagnostics,
 		RepositoryMemory: memory.Manifest, MemoryFiles: memory.Files,

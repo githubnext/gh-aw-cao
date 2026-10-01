@@ -55,7 +55,7 @@ func TestDashboardReaderPinsSnapshotForQuery(t *testing.T) {
 
 func TestDashboardDatabaseRejectsInvalidRevisionBeforeWriting(t *testing.T) {
 	db := &DashboardDatabase{Store: NewStore(noCommands{}, "dashboard-test")}
-	if _, err := db.Replace(t.Context(), dashboarddb.Snapshot{DataRevision: "short"}); err == nil {
+	if _, err := db.Ingest(t.Context(), dashboarddb.Transactions{DataRevision: "short"}); err == nil {
 		t.Fatal("invalid revision should fail without staging a generation")
 	}
 }

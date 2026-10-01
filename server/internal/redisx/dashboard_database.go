@@ -36,11 +36,11 @@ func (db *DashboardDatabase) Current(ctx context.Context) (dashboarddb.Reader, e
 	}}, nil
 }
 
-func (db *DashboardDatabase) Replace(ctx context.Context, snapshot dashboarddb.Snapshot) (dashboarddb.State, error) {
-	if len(snapshot.DataRevision) < 12 {
+func (db *DashboardDatabase) Ingest(ctx context.Context, transactions dashboarddb.Transactions) (dashboarddb.State, error) {
+	if len(transactions.DataRevision) < 12 {
 		return dashboarddb.State{}, errors.New("dashboard data revision is invalid")
 	}
-	generation := time.Now().UTC().Format("20060102T150405.000000000Z") + "-" + snapshot.DataRevision[len(snapshot.DataRevision)-12:]
+	generation := time.Now().UTC().Format("20060102T150405.000000000Z") + "-" + transactions.DataRevision[len(transactions.DataRevision)-12:]
 	if err := db.Store.TrackGeneration(ctx, generation); err != nil {
 		return dashboarddb.State{}, err
 	}
@@ -57,25 +57,25 @@ func (db *DashboardDatabase) Replace(ctx context.Context, snapshot dashboarddb.S
 			redisLog.Printf("failed generation cleanup incomplete")
 		}
 	}()
-	counts := make(map[string]int, len(snapshot.Sources))
-	for _, name := range sortedDashboardSources(snapshot.Sources) {
-		source := snapshot.Sources[name]
+	counts := make(map[string]int, len(transactions.Sources))
+	for _, name := range sortedDashboardSources(transactions.Sources) {
+		source := transactions.Sources[name]
 		if err := db.Store.PutSource(ctx, generation, source); err != nil {
 			return dashboarddb.State{}, fmt.Errorf("stage dashboard source: %w", err)
 		}
 		counts[name] = len(source.Rows)
 	}
-	if err := db.Store.PutDiagnostics(ctx, generation, snapshot.Diagnostics); err != nil {
+	if err := db.Store.PutDiagnostics(ctx, generation, transactions.Diagnostics); err != nil {
 		return dashboarddb.State{}, fmt.Errorf("stage diagnostics: %w", err)
 	}
-	if err := db.Store.PutRepositoryMemory(ctx, generation, snapshot.RepositoryMemory, snapshot.MemoryFiles); err != nil {
+	if err := db.Store.PutRepositoryMemory(ctx, generation, transactions.RepositoryMemory, transactions.MemoryFiles); err != nil {
 		return dashboarddb.State{}, fmt.Errorf("stage repository memory: %w", err)
 	}
 	if err := db.Store.TrackGeneration(ctx, generation); err != nil {
 		return dashboarddb.State{}, err
 	}
 	activationStarted = true
-	revision, err := db.Store.Activate(ctx, generation, snapshot.DataRevision, snapshot.EvaluatedAt, counts)
+	revision, err := db.Store.Activate(ctx, generation, transactions.DataRevision, transactions.EvaluatedAt, counts)
 	if err != nil {
 		return dashboarddb.State{}, err
 	}
@@ -83,8 +83,8 @@ func (db *DashboardDatabase) Replace(ctx context.Context, snapshot dashboarddb.S
 		redisLog.Printf("generation reclamation failed")
 	}
 	return dashboarddb.State{
-		Revision: revision, DataRevision: snapshot.DataRevision,
-		EvaluatedAt: snapshot.EvaluatedAt, Counts: counts, Available: true,
+		Revision: revision, DataRevision: transactions.DataRevision,
+		EvaluatedAt: transactions.EvaluatedAt, Counts: counts, Available: true,
 	}, nil
 }
 

@@ -10,9 +10,9 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
 
-// Snapshot is a complete, validated set of dashboard sources to publish.
-// The backend owns atomic replacement and any indexes needed for querying.
-type Snapshot struct {
+// Transactions is the data supplied to a dashboard database ingestion.
+// The backend owns how the data is persisted and made available to readers.
+type Transactions struct {
 	DataRevision     string
 	EvaluatedAt      time.Time
 	Sources          map[string]model.Source
@@ -41,9 +41,9 @@ type Reader interface {
 }
 
 // Database is independent of Redis generations, indexes, and projections.
-// Replace must not expose a partially published snapshot to concurrent readers.
+// Ingest must not expose partially ingested data to concurrent readers.
 type Database interface {
 	Current(context.Context) (Reader, error)
-	Replace(context.Context, Snapshot) (State, error)
+	Ingest(context.Context, Transactions) (State, error)
 	Validate([]query.Definition) error
 }
