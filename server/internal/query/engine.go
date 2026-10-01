@@ -573,7 +573,7 @@ func mergeMetrics(target *model.Metrics, incoming model.Metrics) {
 
 func ExecuteDefinition(definition Definition, sources map[string]model.Source, remaining int) (model.Source, int, []string, error) {
 	if len(definition.Predict) > 0 {
-		return model.Source{}, 0, nil, errors.New("prediction is not supported by the local Redis backend")
+		return model.Source{}, 0, nil, errors.New("prediction is not supported by the dashboard server")
 	}
 	base, ok := sources[definition.From]
 	if !ok {
