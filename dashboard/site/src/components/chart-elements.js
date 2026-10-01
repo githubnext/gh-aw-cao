@@ -998,7 +998,8 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
               }));
             }) : [])
           ];
-        }),
+        })
+        ),
         h('div', { className: 'line-chart-y-labels', 'aria-hidden': 'true' },
           ...yTickLabels.map((label) => h('span', null, label)))
       ),

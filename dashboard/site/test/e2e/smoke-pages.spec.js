@@ -291,7 +291,7 @@ test('Runs renders a last-week stacked area graph above its responsive table and
   await expect(areaGraph.locator('.area-chart-area')).toHaveCount(2);
   await expect(areaGraph.locator('.chart-legend-area')).toContainText('failure');
   await expect(areaGraph.locator('.chart-legend-area')).toContainText('success');
-  await expect(areaGraph.locator('.line-chart-y-axis text')).toHaveText(['100', '50', '0']);
+  await expect(areaGraph.locator('.line-chart-y-labels span')).toHaveText(['100', '50', '0']);
   await expect(areaGraph.locator('[data-chart-widget="area"]')).toHaveAttribute('style', '--line-chart-left: 7%;');
   const areaGraphHeadingBox = await areaGraph.getByRole('heading', { name: 'Runs in the last week' }).boundingBox();
   const areaGraphChartBox = await areaGraph.locator('[data-chart-widget="area"] svg').boundingBox();
@@ -302,6 +302,34 @@ test('Runs renders a last-week stacked area graph above its responsive table and
   expect(areaGraphChartBox.width).toBeGreaterThan(0);
   expect(areaGraphChartBox.height).toBeGreaterThan(0);
   expect(areaGraphTimelineBox.x).toBeCloseTo(areaGraphChartBox.x + (areaGraphChartBox.width * 0.07), 0);
+  for (const width of [900, 1600]) {
+    await page.setViewportSize({ width, height: 900 });
+    const rendering = await areaGraph.locator('.line-chart-plot').evaluate((plot) => {
+      const svg = plot.querySelector('svg');
+      const topLabel = plot.querySelector('.line-chart-y-labels span');
+      const xLabel = plot.parentElement?.querySelector('.timeline-chart-axis span');
+      const dot = plot.querySelector('.area-chart-point');
+      const grid = plot.querySelector('.line-chart-grid');
+      if (!svg || !topLabel || !xLabel || !dot || !grid) throw new Error('Expected stacked chart labels and marks');
+      const svgBox = svg.getBoundingClientRect();
+      const labelBox = topLabel.getBoundingClientRect();
+      return {
+        fontSize: getComputedStyle(topLabel).fontSize,
+        xFontSize: getComputedStyle(xLabel).fontSize,
+        dotWidth: getComputedStyle(dot).strokeWidth,
+        dotVectorEffect: getComputedStyle(dot).vectorEffect,
+        labelBottom: labelBox.top + labelBox.height / 2,
+        gridY: svgBox.top + Number(grid.getAttribute('y1')) * svgBox.height / 42,
+        labelRight: labelBox.right,
+        axisX: svgBox.left + Number(grid.getAttribute('x1')) * svgBox.width / 100
+      };
+    });
+    expect(rendering.fontSize).toBe(rendering.xFontSize);
+    expect(rendering.dotWidth).toBe('5px');
+    expect(rendering.dotVectorEffect).toBe('non-scaling-stroke');
+    expect(rendering.labelBottom).toBeCloseTo(rendering.gridY, 0);
+    expect(rendering.labelRight).toBeLessThan(rendering.axisX);
+  }
   await page.getByRole('button', { name: 'Table', exact: true }).click();
   await expect(table).toBeVisible();
   await expect(table.locator('tbody > tr')).toHaveCount(25);

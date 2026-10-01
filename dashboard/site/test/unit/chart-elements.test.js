@@ -638,7 +638,7 @@ describe('chart element helpers', () => {
     expect(line.querySelector('.line-chart-series')?.getAttribute('style')).toContain('--chart-entry-index: 0');
     expect(line.querySelector('.line-chart-point')?.getAttribute('style')).toContain('--chart-point-size: 6px');
     expect(line.querySelector('.chart-point')?.getAttribute('style')).toContain('--chart-entry-index: 0');
-    expect([...line.querySelectorAll('.line-chart-y-axis text')].map((tick) => tick.textContent)).toEqual(['3', '1.50', '0']);
+    expect([...line.querySelectorAll('.line-chart-y-labels span')].map((tick) => tick.textContent)).toEqual(['3', '1.50', '0']);
     expect(line.querySelector('[data-chart-axis="y"]')).not.toBeNull();
     expect([...line.querySelectorAll('.timeline-chart-axis span')].map((tick) => tick.textContent)).toEqual([
       'Aug 29',
@@ -699,7 +699,7 @@ describe('chart element helpers', () => {
       { x: '2026-08-30', y: 500_000, color: null }
     ], [{ name: 'value', className: 'chart-series-1' }]);
 
-    expect([...chart.querySelectorAll('.line-chart-y-axis text')].map((tick) => tick.textContent))
+    expect([...chart.querySelectorAll('.line-chart-y-labels span')].map((tick) => tick.textContent))
       .toEqual(['1M', '500K', '0']);
   });
 
@@ -737,7 +737,7 @@ describe('chart element helpers', () => {
       significant: 2
     });
 
-    expect([...currencyChart.querySelectorAll('.line-chart-y-axis text')].map((tick) => tick.textContent))
+    expect([...currencyChart.querySelectorAll('.line-chart-y-labels span')].map((tick) => tick.textContent))
       .toEqual(['$9,999.00', '$4,999.50', '$0.00']);
     expect(currencyChart.getAttribute('style')).toBe('--line-chart-left: 15%;');
     expect(unitChart.getAttribute('style')).toBe('--line-chart-left: 15%;');
@@ -761,6 +761,8 @@ describe('chart element helpers', () => {
     expect(chart.querySelector('svg')?.getAttribute('aria-label')).toBe('Stacked area chart with 4 points');
     expect(chart.querySelectorAll('path.area-chart-area')).toHaveLength(2);
     expect(chart.querySelectorAll('.area-chart-point')).toHaveLength(4);
+    expect(chart.querySelectorAll('line.area-chart-point')).toHaveLength(4);
+    expect(chart.querySelector('.line-chart-y-labels')?.getAttribute('aria-hidden')).toBe('true');
     expect(chart.querySelector('[data-chart-series="review"]')?.getAttribute('d'))
       .toBe('M 10 24.4 L 100 10.8 L 100 38 L 10 38 Z');
     expect(chart.querySelector('[data-chart-series="triage"]')?.getAttribute('d'))
