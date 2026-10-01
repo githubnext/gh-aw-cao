@@ -53,11 +53,11 @@ async function loadAccount(debug) {
 }
 
 /**
- * @param {HTMLButtonElement} button
+ * @param {import('../reactive.js').State<boolean>} busy
  * @param {(event: string) => void} debug
  */
-async function switchAccount(button, debug) {
-  button.disabled = true;
+async function switchAccount(busy, debug) {
+  busy.set(true);
   debug('switch.request_started');
   try {
     let response;
@@ -89,16 +89,16 @@ async function switchAccount(button, debug) {
     debug('switch.succeeded');
     return result.loginUrl;
   } finally {
-    button.disabled = false;
+    busy.set(false);
   }
 }
 
 /**
- * @param {HTMLButtonElement} button
+ * @param {import('../reactive.js').State<boolean>} busy
  * @param {(event: string) => void} debug
  */
-async function logout(button, debug) {
-  button.disabled = true;
+async function logout(busy, debug) {
+  busy.set(true);
   debug('logout.request_started');
   try {
     let response;
@@ -117,7 +117,7 @@ async function logout(button, debug) {
     }
     debug('logout.succeeded');
   } finally {
-    button.disabled = false;
+    busy.set(false);
   }
 }
 
@@ -141,6 +141,12 @@ export function renderAccountMenu(options = {}) {
   const avatarUrl = state(/** @type {string | null} */ (null));
   const avatarLoaded = state(false);
   const errorMessage = state(/** @type {string | null} */ (null));
+  // `switchBusy`/`logoutBusy` are each action button's entire visible run
+  // state; the effect below is the only place that writes them onto the
+  // owned button nodes, matching the `reset-dashboard-control.js` and
+  // `createCopyControl` state/effect/createFactoryScope shape.
+  const switchBusy = state(false);
+  const logoutBusy = state(false);
 
   const loginLabel = h('strong', null, 'GitHub account');
   const avatarFallback = h('span', { className: 'account-menu-avatar-fallback' }, octicon('person'));
@@ -204,6 +210,8 @@ export function renderAccountMenu(options = {}) {
     }
     avatarImage.hidden = !currentAvatarUrl || !currentAvatarLoaded;
     avatarFallback.hidden = currentAvatarLoaded;
+    switchButton.disabled = switchBusy.get();
+    logoutButton.disabled = logoutBusy.get();
     const currentError = errorMessage.get();
     if (currentError) menu.dataset.error = currentError;
     else delete menu.dataset.error;
@@ -212,7 +220,7 @@ export function renderAccountMenu(options = {}) {
   avatarImage.addEventListener('load', () => avatarLoaded.set(true), { signal: scope.signal });
   avatarImage.addEventListener('error', () => avatarLoaded.set(false), { signal: scope.signal });
   switchButton.addEventListener('click', () => {
-    void switchAccount(switchButton, debug).then((result) => {
+    void switchAccount(switchBusy, debug).then((result) => {
       debug('switch.navigation_started');
       try {
         navigate(result);
@@ -226,7 +234,7 @@ export function renderAccountMenu(options = {}) {
     });
   }, { signal: scope.signal });
   logoutButton.addEventListener('click', () => {
-    void logout(logoutButton, debug).then(() => {
+    void logout(logoutBusy, debug).then(() => {
       debug('logout.navigation_started');
       try {
         navigate('/auth/logged-out');
