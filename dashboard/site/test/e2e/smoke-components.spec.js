@@ -78,7 +78,7 @@ test('campaign problem detail renders a responsive full view without a table', a
   await expect(problemDetail.getByRole('heading', { name: 'Failure' })).toBeVisible();
   await expect(problemDetail.getByRole('heading', { name: 'Scope' })).toBeVisible();
   await expect(problemDetail.getByRole('heading', { name: 'Runtime environment' })).toBeVisible();
-  const fixItButton = problemDetail.getByRole('button', { name: 'Fix It' });
+  const fixItButton = problemDetail.getByRole('button', { name: 'Fix it' });
   await expect(fixItButton).toBeVisible();
   const buttonColors = await fixItButton.evaluate((button) => {
     const tokenProbe = document.createElement('span');
