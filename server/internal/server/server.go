@@ -1240,6 +1240,43 @@ type databaseLoader struct {
 	allowCollectionHealth bool
 }
 
+// sourceOnlyLoader keeps the original bounded Go evaluator available for any
+// complete plan outside the native compiler's proven semantic subset.
+type sourceOnlyLoader struct{ loader *databaseLoader }
+
+func (only sourceOnlyLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
+	return only.loader.LoadSource(name, definition)
+}
+
+func (loader *databaseLoader) ExecutePlan(definitions []query.Definition, requested, order []string) (map[string]model.Source, model.Metrics, error) {
+	if native, ok := loader.database.(postgresx.NativePlanExecutor); ok {
+		runtime := map[string]bool{}
+		for _, name := range RuntimeQuerySourceNames() {
+			runtime[name] = true
+		}
+		registered := false
+		for _, name := range order {
+			if runtime[name] {
+				registered = true
+				break
+			}
+			for _, definition := range definitions {
+				if definition.Name == name && runtime[definition.From] {
+					registered = true
+					break
+				}
+			}
+		}
+		if !registered {
+			result, metrics, supported, err := native.ExecuteNativePlan(loader.ctx, definitions, requested, order)
+			if supported {
+				return result, metrics, err
+			}
+		}
+	}
+	return query.New(sourceOnlyLoader{loader: loader}).Execute(definitions, requested)
+}
+
 func (loader *databaseLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
 	if name == simulationDaysSourceName {
 		return simulationDaysSource(), model.Metrics{}, nil

@@ -707,8 +707,8 @@ func (b *rowBatch) flush() error {
 }
 
 type documentEntry struct {
-	ordinal int64
-	payload string
+	ordinal              int64
+	payload              string
 	id, runID, sessionID any
 }
 
@@ -738,12 +738,10 @@ func (b *documentBatch) add(ordinal int64, value any) error {
 }
 
 func documentKey(value any) any {
-	switch value.(type) {
-	case string, bool, json.Number:
-		return fmt.Sprint(value)
-	default:
+	if value == nil {
 		return nil
 	}
+	return fmt.Sprint(value)
 }
 
 func (b *documentBatch) flush() error {

@@ -116,15 +116,20 @@ normalized run and record JSONL; browser ingestion fails closed rather than
 falling back to raw Activity JSONL. Static-browser download, normalization, persistence, and queries run in a
 dedicated Web Worker. The optional Go server profile ingests the same deployed
 dashboard artifact into Postgres, keeps database credentials server-side,
-executes Dashboard Language in Go against current Postgres sources, and returns
+executes supported bounded Dashboard Language query paths as parameterized SQL
+in the request's repeatable-read transaction, falls back to the bounded Go
+evaluator for other shapes, and returns
 only canonical or explicitly registered bounded runtime-source query payloads
 to the browser. Redis remains operational storage for caches, queues, and
 sessions, not dashboard entity storage or query execution.
 Its local mode remains loopback-only. Its host-neutral mode uses
 GitHub OAuth and explicit organization or team authorization, verifies and
 deduplicates GitHub webhooks, and atomically replaces the current Postgres
-sources and state. There are no Postgres generations, snapshots, or separate
-projections. Redis remains reconstructable operational state, not an entity
+sources and state. A lossless JSON-text document and indexed drilldown keys
+are written atomically alongside the existing per-value representation until
+its callers and migration have been proven. There are no persistent Postgres
+generations or separate derived projections. Redis remains reconstructable
+operational state, not an entity
 authority. The same server binary provides a read-only diagnostic check-up
 that inspects the runtime, Redis operations, Postgres canonical state and
 integrity, query definitions, and the optional collection profile. It

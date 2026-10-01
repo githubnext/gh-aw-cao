@@ -361,9 +361,18 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 			available[join.Source] = sources[join.Source]
 		}
 		if canFilterBeforeJoins(residual) {
+			inputRows := 0
+			for _, input := range append([]string{definition.From}, definition.Union...) {
+				inputRows += len(available[input].Rows)
+			}
+			if inputRows > MaxInputRows {
+				return nil, metrics, fmt.Errorf("query %q exceeds max input rows", definition.Name)
+			}
 			for _, input := range append([]string{definition.From}, definition.Union...) {
 				source := available[input]
-				operations += len(source.Rows)
+				// FROM and FILTER both visit the original rows, including those
+				// rejected before the rest of the plan executes.
+				operations += 2 * len(source.Rows)
 				if operations > MaxOperations {
 					return nil, metrics, fmt.Errorf("query %q exceeds max operations", definition.Name)
 				}

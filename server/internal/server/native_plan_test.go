@@ -1,0 +1,140 @@
+package server
+
+import (
+	"encoding/json"
+	"reflect"
+	"strings"
+	"testing"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
+	"github.com/githubnext/gh-aw-cao/server/internal/query"
+)
+
+func TestNativePlanDifferential(t *testing.T) {
+	store := integrationDatabase(t)
+	seedDatabase(t, store, map[string]model.Source{
+		"$jobs": {
+			Source: "$jobs",
+			Rows: []model.Row{
+				{"id": "one", "runId": "run-1", "value": json.Number("1e1000000"), "nested": map[string]any{"n": json.Number("9007199254740993")}},
+				{"id": "two", "runId": "run-2", "value": nil},
+				{"id": "three", "runId": "run-1", "nested": []any{nil, json.Number("1.25")}},
+				{"id": "four", "runId": "unknown"},
+			},
+			Metadata: model.Metadata{"source-id": "$jobs", "availability": "available", "row-count": 4},
+		},
+		"$other": {Source: "$other", Rows: []model.Row{{"id": "one"}, {"id": "one"}}},
+	})
+	base := query.Definition{Name: "jobs", From: "$jobs"}
+	for _, test := range []struct {
+		name       string
+		definition query.Definition
+		native     bool
+	}{
+		{"filtered projection", query.Definition{
+			Name: "pick", From: "jobs",
+			Filter: &query.Filter{Predicates: []query.Predicate{{Field: "runId", Equals: "run-1"}}},
+			Select: []query.SelectedField{{Field: "id"}, {Field: "value"}, {Field: "nested"}, {Field: "missing"}, {Field: "runId", As: "run"}},
+		}, true},
+		{"nil and missing projection", query.Definition{
+			Name: "pick", From: "jobs", Select: []query.SelectedField{{Field: "id"}, {Field: "value"}, {Field: "missing"}},
+		}, true},
+		{"indexed exact id", query.Definition{
+			Name: "pick", From: "jobs", Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: "two"}}},
+		}, true},
+		{"empty", query.Definition{
+			Name: "pick", From: "jobs", Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: "absent"}}},
+		}, true},
+		{"unknown matches null", query.Definition{
+			Name: "pick", From: "jobs", Filter: &query.Filter{Predicates: []query.Predicate{{Field: "value", Equals: "unknown"}}},
+		}, false},
+		{"optional", query.Definition{
+			Name: "pick", From: "jobs", Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: "one", Optional: true}}},
+		}, false},
+		{"case insensitive search", query.Definition{
+			Name: "pick", From: "jobs", Filter: &query.Filter{Search: &query.Search{Fields: []string{"id"}, Query: "ONE"}},
+		}, false},
+		{"stable sort", query.Definition{Name: "pick", From: "jobs", OrderBy: []query.OrderField{{Field: "id", Direction: "desc"}}}, false},
+		{"untrusted field", query.Definition{
+			Name: "pick", From: "jobs", Filter: &query.Filter{Predicates: []query.Predicate{{Field: `id"); DROP TABLE cao_sources; --`, Equals: "one"}}},
+		}, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			definitions := []query.Definition{base, test.definition}
+			err := store.WithReadTransaction(t.Context(), func(reader postgresx.SourceReader) error {
+				loader := &databaseLoader{ctx: t.Context(), database: reader}
+				native, metrics, err := query.New(loader).Execute(definitions, []string{"pick"})
+				if err != nil {
+					return err
+				}
+				fallback, fallbackMetrics, err := query.New(sourceOnlyLoader{loader: loader}).Execute(definitions, []string{"pick"})
+				if err != nil {
+					return err
+				}
+				if !reflect.DeepEqual(native, fallback) {
+					t.Errorf("native/fallback mismatch: native=%#v fallback=%#v", native, fallback)
+				}
+				if test.native {
+					if len(metrics.PushedDown) == 0 || len(metrics.FallbackOperations) != 0 {
+						t.Errorf("expected native plan, metrics=%+v", metrics)
+					}
+					if metrics.Operations < fallbackMetrics.Operations {
+						t.Errorf("native operation count undercharged: native=%d fallback=%d", metrics.Operations, fallbackMetrics.Operations)
+					}
+				} else if len(metrics.PushedDown) != 0 {
+					t.Errorf("unsupported shape must fall back: %+v", metrics)
+				}
+				return nil
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+	t.Run("duplicate join keys", func(t *testing.T) {
+		definitions := []query.Definition{base, {
+			Name: "pick", From: "jobs", Joins: []query.Join{{
+				Source: "$other", On: []query.JoinKey{{Left: "id", Right: "id"}},
+				Fields: []query.SelectedField{{Field: "id", As: "other"}},
+			}},
+		}}
+		err := store.WithReadTransaction(t.Context(), func(reader postgresx.SourceReader) error {
+			loader := &databaseLoader{ctx: t.Context(), database: reader}
+			_, _, err := query.New(loader).Execute(definitions, []string{"pick"})
+			if err == nil || !strings.Contains(err.Error(), "more than one row per join key") {
+				t.Errorf("duplicate join must fail in fallback: %v", err)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	})
+}
+
+func TestNativePlanRejectsUnfilteredExcessBeforePredicate(t *testing.T) {
+	store := integrationDatabase(t)
+	rows := make([]model.Row, query.MaxInputRows+1)
+	for i := range rows {
+		rows[i] = model.Row{}
+	}
+	seedDatabase(t, store, map[string]model.Source{"$jobs": {
+		Source: "$jobs", Rows: rows,
+	}})
+	definitions := []query.Definition{{Name: "pick", From: "$jobs",
+		Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: "absent"}}}}}
+	err := store.WithReadTransaction(t.Context(), func(reader postgresx.SourceReader) error {
+		loader := &databaseLoader{ctx: t.Context(), database: reader}
+		for _, engine := range []*query.Engine{query.New(loader), query.New(sourceOnlyLoader{loader: loader})} {
+			_, _, err := engine.Execute(definitions, []string{"pick"})
+			if err == nil || !strings.Contains(err.Error(), "max input rows") {
+				t.Errorf("pre-filter input bound was bypassed: %v", err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}

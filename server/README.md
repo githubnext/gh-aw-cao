@@ -6,7 +6,8 @@ OpenAPI 3.1 and selected JSON Schemas; consult it before changing server routes.
 The `server/` module is an optional backend for running the Central Agentic Ops
 dashboard with server-owned persistence and query execution. It ingests the
 same compacted data published with the deployed dashboard, stores current
-logical entity sources in Postgres, executes Dashboard Language queries in Go,
+logical entity sources in Postgres, executes proven simple Dashboard Language
+plans in Postgres and other plans in the bounded Go evaluator,
 and serves the built dashboard either over loopback HTTP or through an
 authenticated host-neutral service profile. Redis handles operational caches,
 queues, and sessions; it does not hold or query dashboard entities.
@@ -21,8 +22,37 @@ query in `dashboard/site/dashboard.json`, `dashboard/site/dashboard-fragments/`,
 and the canonical database query file. Use `--format json` for
 machine-readable results, or the query-path flags to inspect other documents.
 Legacy Redis translation candidates in this offline report do not describe
-the runtime Postgres execution path. Hosted queries load Postgres sources
-and apply the Go query engine's resource bounds.
+the runtime Postgres execution path. Hosted queries validate Dashboard Language,
+then attempt a native plan within the request's repeatable-read transaction.
+Unsupported shapes use the bounded Go evaluator in that same transaction.
+
+### Native query slice
+
+`internal/postgresx/plan.go` runs a complete single-source query, optionally
+through one passthrough alias, when its only operations are exact equality on
+`id`, `runId`, or `sessionId` (with string arguments other than `unknown`),
+projection, and a query limit. SQL binds source names, values, and projected
+field paths; it never accepts SQL identifiers or SQL text from requests. Rows
+are returned in source ordinal order. Missing fields and JSON null are distinct
+in projections, and numbers retain their original JSON lexemes. SQL counts the
+unfiltered input before filtering, charges both FROM and FILTER for rejected
+rows, and checks the input, operation, output, retained-row, and memory budgets.
+The first read after upgrading an existing database uses the Go evaluator until
+the next successful ingestion installs the new documents.
+
+This is a first vertical slice, **not** full PostgreSQL query coverage. Joins,
+aggregation, computation, ranges, optional/unknown predicates, searching,
+explicit ordering, multiple requested outputs, deeper query DAGs, and HTTP
+continuation pagination still use the bounded Go path. The persisted
+`cao_source_documents` table duplicates the existing EAV rows for now: it has
+lossless JSON text (not JSONB, which cannot represent huge exponents) and
+indexed hot keys for canonical drilldowns. Both representations are replaced
+atomically with the revision and diagnostics; EAV cannot be removed until
+all callers, unsupported shapes, and upgrades have migrated. Future work must
+profile real query traffic and storage costs before extending indexes, move
+eligible joins/aggregations/sorting/pages to SQL with differential tests, and
+bulk-ingest rather than writing both formats. No traffic-coverage or p95 target
+is claimed without a measured production workload.
 
 ### Debug logging
 
@@ -178,9 +208,9 @@ with `benchstat` and inspect profiles with `go tool pprof` or
 flowchart LR
   Artifact["Deployed dashboard artifact<br/>inventory + run JSONL + record JSONL"]
   Ingest["Go ingester<br/>verify, parse, project"]
-  Postgres["Postgres<br/>current entity sources"]
+  Postgres["Postgres<br/>current entity sources + indexed documents"]
   Redis["Redis<br/>operational state"]
-  API["Go HTTP(S) server<br/>bounded query engine"]
+  API["Go HTTP(S) server<br/>native plans + bounded fallback"]
   Browser["Dashboard browser app<br/>render bounded view payloads"]
 
   Artifact --> Ingest
@@ -199,8 +229,8 @@ flowchart LR
 | --- | --- | --- |
 | CLI | `cmd/cao-dashboard/` | Implements the `ingest` and `serve` commands and keeps Postgres and Redis configuration in the server process. |
 | Artifact ingestion | `internal/ingest/` | Validates deployed manifests and hashes, loads run shards before record shards, and builds canonical logical sources. |
-| Query engine | `internal/query/` | Validates Dashboard Language definitions and executes joins, filters, computed fields, aggregates, temporal series, selection, ordering, and limits under resource budgets. |
-| Postgres entity storage | `internal/postgresx/` | Transactionally replaces current sources, diagnostics, and revision; reads complete source documents for bounded Go queries. |
+| Query engine | `internal/query/` | Validates Dashboard Language definitions, delegates complete supported paths to a plan executor, and applies bounded Go evaluation to other shapes. |
+| Postgres entity storage | `internal/postgresx/` | Transactionally replaces current sources, diagnostics, revision and indexed lossless documents; executes supported SQL plans under the same repeatable-read snapshot as fallback. |
 | Redis operations | `internal/redisx/` | Supports caches, queues, and sessions. |
 | HTTP(S)/API server | `internal/server/` | Enforces loopback binding, optionally terminates operator-configured TLS, serves static dashboard assets, handles API requests, and publishes revision events. |
 | Externally hosted service | `hosting/` | Exposes a listener-independent application lifecycle and the complete hosted HTTP handler to other Go HTTP hosts. |
