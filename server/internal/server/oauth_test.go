@@ -96,6 +96,9 @@ func TestAzureOAuthLoginCallbackAndAuthorizedAPI(t *testing.T) {
 	if csrfCookie.HttpOnly || !csrfCookie.Secure {
 		t.Fatalf("csrf cookie has unexpected flags: %#v", csrfCookie)
 	}
+	if csrfCookie.MaxAge != int(csrfCookieTTL.Seconds()) || sessionCookie.MaxAge != int(sessionTTL.Seconds()) {
+		t.Fatal("CSRF cookie must expire before the session cookie")
+	}
 
 	unauthorized := httptest.NewRecorder()
 	request = azureRequest(t, http.MethodPost, "/api/v1/refresh")
@@ -296,6 +299,14 @@ func TestAzureOAuthRefreshRotationLogoutAndRefreshFailure(t *testing.T) {
 	if refreshed.Code != http.StatusOK {
 		t.Fatalf("refresh rotation request returned %d: %s", refreshed.Code, refreshed.Body.String())
 	}
+	if renewed := firstCookie(t, refreshed.Result(), sessionCookieName); renewed.Value != sessionCookie.Value ||
+		renewed.MaxAge != int(sessionTTL.Seconds()) || !renewed.HttpOnly || !renewed.Secure {
+		t.Fatal("token refresh did not renew the secure session cookie")
+	}
+	if renewed := firstCookie(t, refreshed.Result(), csrfCookieName); renewed.Value != csrfCookie.Value ||
+		renewed.MaxAge != int(csrfCookieTTL.Seconds()) || renewed.HttpOnly || !renewed.Secure {
+		t.Fatal("token refresh did not renew the browser-readable CSRF cookie")
+	}
 
 	logout := httptest.NewRecorder()
 	request = azureRequest(t, http.MethodPost, "/auth/logout")
@@ -322,6 +333,9 @@ func TestAzureOAuthRefreshRotationLogoutAndRefreshFailure(t *testing.T) {
 	if failed.Code != http.StatusUnauthorized {
 		t.Fatalf("refresh failure returned %d: %s", failed.Code, failed.Body.String())
 	}
+	if firstCookie(t, failed.Result(), sessionCookieName).MaxAge >= 0 {
+		t.Fatal("failed token refresh renewed a revoked session")
+	}
 
 	removedGitHub := fakeGitHub(t, fakeGitHubOptions{
 		membershipState:          "active",
@@ -340,8 +354,39 @@ func TestAzureOAuthRefreshRotationLogoutAndRefreshFailure(t *testing.T) {
 	if removed.Code != http.StatusUnauthorized {
 		t.Fatalf("removed member refresh returned %d: %s", removed.Code, removed.Body.String())
 	}
+
 	if !removedGitHub.sawRevocation("access-new") {
 		t.Fatalf("removed member's refreshed token was not revoked: %#v", removedGitHub.revoked)
+	}
+}
+
+func TestOAuthRestoresExpiredCSRFCookieBeforeSessionExpiry(t *testing.T) {
+	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
+	app := newAzureTestApp(t, github.URL)
+	sessionCookie, csrfCookie := callbackSession(t, app)
+
+	recovery := httptest.NewRecorder()
+	request := azureRequest(t, http.MethodGet, "/api/auth/session")
+	request.AddCookie(sessionCookie)
+	app.Handler().ServeHTTP(recovery, request)
+	if recovery.Code != http.StatusOK {
+		t.Fatalf("CSRF recovery returned %d: %s", recovery.Code, recovery.Body.String())
+	}
+	if renewed := firstCookie(t, recovery.Result(), csrfCookieName); renewed.Value != csrfCookie.Value ||
+		renewed.MaxAge != int(csrfCookieTTL.Seconds()) {
+		t.Fatal("authenticated read did not restore the missing CSRF cookie")
+	}
+	if renewed := firstCookie(t, recovery.Result(), sessionCookieName); renewed.Value != sessionCookie.Value ||
+		renewed.MaxAge != int(sessionTTL.Seconds()) {
+		t.Fatal("CSRF recovery did not renew the matching session cookie")
+	}
+
+	denied := httptest.NewRecorder()
+	request = azureRequest(t, http.MethodPost, "/api/v1/refresh")
+	request.AddCookie(sessionCookie)
+	app.Handler().ServeHTTP(denied, request)
+	if denied.Code != http.StatusForbidden {
+		t.Fatalf("missing CSRF header bypassed mutation protection: %d", denied.Code)
 	}
 }
 

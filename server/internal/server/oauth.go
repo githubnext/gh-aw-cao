@@ -90,7 +90,7 @@ const (
 	sessionCookieName            = "cao_session"
 	csrfCookieName               = "cao_csrf"
 	sessionTTL                   = 30 * 24 * time.Hour
-	csrfCookieTTL               = sessionTTL - 24*time.Hour
+	csrfCookieTTL                = sessionTTL - 24*time.Hour
 	tokenRefreshSkew             = 5 * time.Minute
 	authorizationRecheckInterval = 5 * time.Minute
 )
