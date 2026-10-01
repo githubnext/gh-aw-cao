@@ -35,7 +35,6 @@ describe('entity card templates', () => {
       subtitle: { field: 'package-description' },
       details: [
         { field: 'publisher', title: 'By' },
-        { field: 'stars', title: 'Public stars' },
         { field: 'forks', title: 'Public forks' }
       ]
     });
