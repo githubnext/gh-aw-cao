@@ -1,5 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 import { createDebug } from '../../debug.js';
+import { identifier, sql } from './sql.js';
 
 const debug = createDebug('sqlite-indexeddb');
 
@@ -64,7 +65,8 @@ function clearRelationalEvidence(connection, databaseName, store) {
   for (const name of store ? [store] : Object.keys(RELATIONAL_STORES)) {
     if (!Object.hasOwn(RELATIONAL_STORES, name)) continue;
     const table = name.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
-    connection.prepare(`DELETE FROM ${table} WHERE database_name = ?`).run(databaseName);
+    const query = sql`DELETE FROM ${identifier(table)} WHERE database_name = ${databaseName}`;
+    connection.prepare(query.text).run(...query.values);
   }
 }
 
@@ -626,11 +628,12 @@ class SqliteIDBDatabase {
 
   /** @param {string} storeName */
   records(storeName) {
-    return this.connection.prepare(`
+    const query = sql`
       SELECT record_key, value
       FROM __idb_records
-      WHERE database_name = ? AND store_name = ?
-    `).all(this.name, storeName).map((row) => ({
+      WHERE database_name = ${this.name} AND store_name = ${storeName}
+    `;
+    return this.connection.prepare(query.text).all(...query.values).map((row) => ({
       key: JSON.parse(String(/** @type {{ record_key: string }} */ (row).record_key)),
       value: JSON.parse(String(/** @type {{ value: string }} */ (row).value))
     }));

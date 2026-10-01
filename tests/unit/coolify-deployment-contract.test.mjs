@@ -57,6 +57,18 @@ test("Coolify Compose builds the checked-out source without deployment credentia
     "${CAO_POSTGRES_URL:?Configure the PostgreSQL connection URL}",
   );
   assert.equal(
+    dashboard.environment.CAO_GITHUB_CLIENT_SECRET,
+    "${CAO_GITHUB_CLIENT_SECRET_ROTATED:?Configure the rotated GitHub OAuth client secret}",
+  );
+  assert.equal(
+    dashboard.environment.CAO_SESSION_SECRET,
+    "${CAO_SESSION_SECRET_ROTATED:?Configure the rotated session secret}",
+  );
+  assert.equal(
+    dashboard.environment.CAO_GITHUB_WEBHOOK_SECRET,
+    "${CAO_GITHUB_WEBHOOK_SECRET_ROTATED:?Configure the rotated webhook secret}",
+  );
+  assert.equal(
     dashboard.environment.CAO_MCP_ACTIONS_REPOSITORY,
     "${CAO_MCP_ACTIONS_REPOSITORY:?Configure the GitHub repository selected as this Coolify resource's source}",
   );

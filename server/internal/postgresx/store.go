@@ -222,7 +222,15 @@ func migrateTrees(ctx context.Context, tx *sql.Tx, selectSQL string, hasOrdinal 
 	if hasOrdinal {
 		cursor = "cao_rows_cursor"
 	}
-	if _, err := tx.ExecContext(ctx, `DECLARE `+cursor+` NO SCROLL CURSOR FOR `+selectSQL); err != nil {
+	declare, _, err := postgresSQL(`DECLARE {} NO SCROLL CURSOR FOR `+selectSQL, sqlIdentifier(cursor))
+	if err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, declare); err != nil {
+		return err
+	}
+	fetch, _, err := postgresSQL(`FETCH FORWARD 256 FROM {}`, sqlIdentifier(cursor))
+	if err != nil {
 		return err
 	}
 	batch := valueBatch{ctx: ctx, tx: tx}
@@ -232,7 +240,7 @@ func migrateTrees(ctx context.Context, tx *sql.Tx, selectSQL string, hasOrdinal 
 		payload         []byte
 	}
 	for {
-		rows, err := tx.QueryContext(ctx, `FETCH FORWARD 256 FROM `+cursor)
+		rows, err := tx.QueryContext(ctx, fetch)
 		if err != nil {
 			return err
 		}
@@ -270,7 +278,11 @@ func migrateTrees(ctx context.Context, tx *sql.Tx, selectSQL string, hasOrdinal 
 			}
 		}
 	}
-	if _, err := tx.ExecContext(ctx, `CLOSE `+cursor); err != nil {
+	closeCursor, _, err := postgresSQL(`CLOSE {}`, sqlIdentifier(cursor))
+	if err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, closeCursor); err != nil {
 		return err
 	}
 	return batch.flush()
@@ -361,7 +373,11 @@ func (s *Store) readState(ctx context.Context, db querier) (State, error) {
 	if err != nil {
 		return State{}, fmt.Errorf("read postgres state: %w", err)
 	}
-	rows, err := db.QueryContext(ctx, `SELECT source_name, count FROM cao_counts WHERE namespace = $1`, s.namespace)
+	countSQL, args, err := postgresSQL(`SELECT source_name, count FROM cao_counts WHERE namespace = {}`, s.namespace)
+	if err != nil {
+		return State{}, err
+	}
+	rows, err := db.QueryContext(ctx, countSQL, args...)
 	if err != nil {
 		return State{}, fmt.Errorf("read postgres counts: %w", err)
 	}
@@ -398,7 +414,11 @@ func (s *Store) Replace(ctx context.Context, sources map[string]model.Source, di
 	if err = tx.QueryRowContext(ctx, `SELECT revision FROM cao_state WHERE namespace = $1 FOR UPDATE`, s.namespace).Scan(&revision); err != nil {
 		return 0, fmt.Errorf("lock postgres state: %w", err)
 	}
-	if _, err = tx.ExecContext(ctx, `DELETE FROM cao_sources WHERE namespace = $1`, s.namespace); err != nil {
+	deleteSQL, deleteArgs, err := postgresSQL(`DELETE FROM cao_sources WHERE namespace = {}`, s.namespace)
+	if err != nil {
+		return 0, err
+	}
+	if _, err = tx.ExecContext(ctx, deleteSQL, deleteArgs...); err != nil {
 		return 0, fmt.Errorf("clear postgres sources: %w", err)
 	}
 	names := make([]string, 0, len(sources))
@@ -413,8 +433,13 @@ func (s *Store) Replace(ctx context.Context, sources map[string]model.Source, di
 		if name == "" || (source.Source != "" && source.Source != name) {
 			return 0, fmt.Errorf("invalid postgres source name %q", name)
 		}
-		if _, err = tx.ExecContext(ctx, `INSERT INTO cao_sources (namespace, source_name) VALUES ($1, $2)`,
-			s.namespace, name); err != nil {
+		insertSQL, insertArgs, buildErr := postgresSQL(
+			`INSERT INTO cao_sources (namespace, source_name) VALUES ({}, {})`, s.namespace, name,
+		)
+		if buildErr != nil {
+			return 0, buildErr
+		}
+		if _, err = tx.ExecContext(ctx, insertSQL, insertArgs...); err != nil {
 			return 0, fmt.Errorf("insert postgres source %q: %w", name, err)
 		}
 		var value any

@@ -13,6 +13,7 @@ import {
 import { mergeRetainedRecords, RETENTION_WINDOW_DAYS } from './retention.js';
 import { SQLITE_INDEXEDDB_METADATA_SCHEMA } from './sqlite-indexeddb.js';
 import { createDebug } from '../../debug.js';
+import { identifier, sql } from './sql.js';
 
 const debug = createDebug('sqlite-doctor');
 
@@ -301,7 +302,8 @@ async function backupDatabase(filename, checkedAt) {
  */
 function writeCanonicalDatabase(connection, batch, transactions) {
   for (const table of ['__idb_records', '__idb_indexes', '__idb_stores']) {
-    connection.prepare(`DELETE FROM ${table} WHERE database_name = ?`).run(DATABASE_NAME);
+    const query = sql`DELETE FROM ${identifier(table)} WHERE database_name = ${DATABASE_NAME}`;
+    connection.prepare(query.text).run(...query.values);
   }
   connection.prepare('DELETE FROM __idb_databases WHERE name = ?').run(DATABASE_NAME);
   connection.prepare('INSERT INTO __idb_databases (name, version) VALUES (?, ?)').run(
