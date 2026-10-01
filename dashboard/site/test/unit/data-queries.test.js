@@ -1295,7 +1295,7 @@ describe('declarative dashboard queries', () => {
     const derived = executeDashboardQueries(
       dashboardQueries,
       { ...emptyRunRecordSources, campaigns, repositories, workflows: queryWorkflows, runs, audits: events, outcomes, usage },
-      ['entity-workflows', 'repository-activity', 'workflow-inventory', 'campaign-repository-coverage', 'campaign-inventory']
+      ['entity-workflows', 'repository-activity', 'workflow-inventory', 'workflow-aic-per-run', 'campaign-repository-coverage', 'campaign-inventory']
     );
 
     expect(derived['entity-workflows'].rows).toEqual([
@@ -1318,6 +1318,15 @@ describe('declarative dashboard queries', () => {
       expect.objectContaining({ workflow: 'b.md', runs: 0, 'successful-runs': 0, 'failed-runs': 0, 'aic-per-run': null, ingestion: null }),
       expect.objectContaining({ workflow: 'c.md', runs: 1, 'successful-runs': 1, 'failed-runs': 0, 'aic-per-run': 0, ingestion: '100%' })
     ]);
+    expect(derived['workflow-aic-per-run'].rows).toEqual(
+      derived['workflow-inventory'].rows
+        .filter((row) => row['has-observed-runs'])
+        .map((row) => ({
+          'workflow-label': row['workflow-label'],
+          'workflow-link': row['workflow-link'],
+          'aic-per-run': row['aic-per-run']
+        }))
+    );
     expect(derived['campaign-repository-coverage'].rows).toEqual([{
       campaign: 'aw-doctor',
       'covered-repositories': 1
@@ -1338,6 +1347,43 @@ describe('declarative dashboard queries', () => {
       'covered-repositories': 1,
       aic: 10,
     }]);
+  });
+
+  it('computes workflow AIC averages without loading imported-event coverage', () => {
+    const required = resolveDashboardQuerySources(dashboardQueries, ['workflow-aic-per-run']);
+    expect(required).toContain('runs');
+    expect(required).toContain('workflows');
+    expect(required).not.toContain('run-import-status');
+    expect(required).not.toContain('audits');
+    expect(required).not.toContain('domains');
+    expect(required).not.toContain('tools');
+    expect(required).not.toContain('issues');
+
+    const derived = executeDashboardQueries(dashboardQueries, {
+      workflows: {
+        source: 'workflows',
+        rows: [
+          { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', 'workflow-name': 'A' },
+          { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'b.md' }
+        ],
+        metadata: metadata('workflows')
+      },
+      runs: {
+        source: 'runs',
+        rows: [
+          { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1, 'aic-total': 4 },
+          { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 2, 'aic-total': 6 },
+          { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'b.md', run: '2', 'run-attempt': 1 },
+          { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'undeclared.md', run: '3', 'run-attempt': 1, 'aic-total': 100 }
+        ],
+        metadata: metadata('runs')
+      }
+    }, ['workflow-aic-per-run']);
+
+    expect(derived['workflow-aic-per-run'].rows).toEqual([
+      expect.objectContaining({ 'workflow-label': 'githubnext/gh-aw-cao:a.md', 'aic-per-run': 5 }),
+      expect.objectContaining({ 'workflow-label': 'githubnext/gh-aw-cao:b.md', 'aic-per-run': 0 })
+    ]);
   });
 
   it('includes rerun attempts in workflow run counts and average AIC', () => {

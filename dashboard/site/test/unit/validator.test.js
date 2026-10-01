@@ -1214,9 +1214,10 @@ describe('dashboard document validation', () => {
     expect(document.dashboard.queries.find((/** @type {{ name: string }} */ query) =>
       query.name === 'workflow-aic-per-run'
     )).toMatchObject({
-      from: 'workflow-inventory',
+      from: 'workflows',
+      joins: [{ source: 'workflow-aic-run-totals', type: 'left' }],
       filter: {
-        predicates: [{ field: 'has-observed-runs', equals: true }]
+        predicates: [{ field: 'observed-runs', gte: 1 }]
       }
     });
     expect(page.definition.views.find((/** @type {{ id: string }} */ view) =>

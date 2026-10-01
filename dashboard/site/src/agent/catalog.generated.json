@@ -2934,14 +2934,34 @@
       }
     },
     {
+      "id": "workflow-aic-run-totals",
+      "subject": "Summarize observed run attempts and AI Credits for workflow cost comparison.",
+      "objective": "Count retained run attempts and recorded AI Credits without loading imported-event coverage.",
+      "acceptance": "Group observed run attempts by organization, repository, and workflow; count distinct run and attempt identities and sum recorded AI Credits, without inferring complete telemetry.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
       "id": "workflow-aic-per-run",
       "subject": "List declared workflows with observed runs and their average AI Credit cost per run.",
       "objective": "Identify workflows with observed run AIC averages worth investigating alongside run evidence.",
-      "acceptance": "Include only workflow inventory rows marked as having observed runs, retaining their reported averages and missing telemetry; inspect underlying runs and separate outcome evidence before inferring waste or benefit.",
+      "acceptance": "Include only declared workflows with observed run attempts, retaining their reported averages and missing telemetry; inspect underlying runs and separate outcome evidence before inferring waste or benefit.",
       "description": "Workflow AI Credit averages limited to workflows with at least one observed run.",
       "parameters": [],
       "sources": [
-        "workflow-inventory"
+        "workflow-aic-run-totals",
+        "workflows"
       ],
       "used-by-pages": [
         "workflows"
@@ -2950,11 +2970,7 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "audits",
-          "domains",
-          "issues",
           "runs",
-          "tools",
           "workflows"
         ]
       }
