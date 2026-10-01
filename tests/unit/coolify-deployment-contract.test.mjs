@@ -53,6 +53,10 @@ test("Coolify Compose builds the checked-out source without deployment credentia
   ]);
   assert.equal(dashboard.environment.CAO_SOURCE_DIRECTORY, "/app/source");
   assert.equal(
+    dashboard.environment.CAO_MCP_ACTIONS_REPOSITORY,
+    "${CAO_MCP_ACTIONS_REPOSITORY:-githubnext/gh-aw-cao}",
+  );
+  assert.equal(
     dashboard.environment.CAO_POLICY_PATH,
     "/app/.github/workflows/cao.coolify.json",
   );
