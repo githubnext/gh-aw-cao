@@ -3,11 +3,14 @@
  */
 
 import { h } from '../dom.js';
+import { createDebug } from '../debug.js';
 import { isPlainObject, isSafeHttpsUrl } from './ui-primitives.js';
 
 /**
  * @typedef {{ href: string, label: string, externalHref?: string }} SafeLink
  */
+
+const debugLinkContent = createDebug('link-content');
 
 /**
  * @param {Array<Record<string, unknown>>} rows
@@ -200,14 +203,27 @@ export function renderWorkflowRunLink(row, label, trailingContent) {
  * @returns {SafeLink | null}
  */
 export function resolveTitleLink(row, config) {
-  if (!isPlainObject(config)) return null;
+  if (!isPlainObject(config)) {
+    debugLinkContent({ event: 'title-link-rejected', reason: 'config-not-object' });
+    return null;
+  }
   const hrefField = config['href-field'];
   const identifierField = config['identifier-field'];
-  if (typeof hrefField !== 'string' || typeof identifierField !== 'string') return null;
+  if (typeof hrefField !== 'string' || typeof identifierField !== 'string') {
+    debugLinkContent({ event: 'title-link-rejected', reason: 'config-fields-missing' });
+    return null;
+  }
   const link = findLink(row, hrefField);
   const value = row[identifierField];
   const identifier = typeof value === 'string' || typeof value === 'number' ? String(value).trim() : '';
-  if (!link || identifier.length === 0 || identifier.length > 100) return null;
+  if (!link || identifier.length === 0 || identifier.length > 100) {
+    debugLinkContent({
+      event: 'title-link-rejected',
+      reason: !link ? 'no-link' : 'identifier-invalid',
+      identifierLength: identifier.length
+    });
+    return null;
+  }
   return {
     href: link.externalHref ?? link.href,
     label: `Open #${identifier} on GitHub`
