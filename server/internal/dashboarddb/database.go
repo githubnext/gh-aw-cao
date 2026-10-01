@@ -1,0 +1,59 @@
+// Package dashboarddb defines the persistence and query boundary for dashboard
+// data. Operational state (sessions, queues, counters and caches) stays in Redis.
+package dashboarddb
+
+import (
+	"context"
+	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/query"
+	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+)
+
+// Storage stages complete generations and activates them only after ingestion
+// succeeds. Implementations must preserve the previous active generation on
+// staging or activation failure.
+type Storage interface {
+	Active(context.Context) (model.ActiveGeneration, error)
+	TrackGeneration(context.Context, string) error
+	DiscardGeneration(context.Context, string) error
+	PutSource(context.Context, string, model.Source) error
+	PutDiagnostics(context.Context, string, model.Diagnostics) error
+	PutRepositoryMemory(context.Context, string, []byte, map[string][]byte) error
+	Activate(context.Context, string, string, time.Time, map[string]int) (int64, error)
+	PruneGenerations(context.Context, int) (int, error)
+}
+
+// Database owns dashboard storage and the validation and execution of
+// Dashboard Language queries. The loader can supply request-scoped runtime
+// sources without persisting them in the dashboard database.
+type Database interface {
+	Storage
+	LoadSource(context.Context, string, string, *query.Definition) (model.Source, model.Metrics, error)
+	ValidateQueries([]query.Definition) error
+	ExecuteQueries([]query.Definition, []string, query.Loader) (map[string]model.Source, model.Metrics, error)
+}
+
+// Redis implements Database using the existing generation-scoped Redis store.
+// The same store remains available separately for operational features.
+type Redis struct {
+	*redisx.Store
+}
+
+var _ Database = (*Redis)(nil)
+
+func NewRedis(store *redisx.Store) *Redis {
+	return &Redis{Store: store}
+}
+
+func (*Redis) ValidateQueries(definitions []query.Definition) error {
+	return query.Validate(definitions)
+}
+
+func (db *Redis) ExecuteQueries(definitions []query.Definition, requested []string, loader query.Loader) (map[string]model.Source, model.Metrics, error) {
+	if err := db.ValidateQueries(definitions); err != nil {
+		return nil, model.Metrics{}, err
+	}
+	return query.New(loader).Execute(definitions, requested)
+}

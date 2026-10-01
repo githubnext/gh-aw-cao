@@ -20,6 +20,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-aw-cao/server/internal/dashboarddb"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
@@ -129,7 +130,7 @@ func DirectoryRevision(manifest Manifest, inventory []byte, additionalRevisions 
 	return "sha256:" + hex.EncodeToString(hasher.Sum(nil))
 }
 
-func Run(ctx context.Context, store *redisx.Store, directory string, options Options) (result Result, err error) {
+func Run(ctx context.Context, store dashboarddb.Storage, directory string, options Options) (result Result, err error) {
 	ingestLog.Printf("starting ingestion")
 	ctx, span := telemetry.Tracer().Start(ctx, telemetry.SpanIngestRun)
 	defer func() {
