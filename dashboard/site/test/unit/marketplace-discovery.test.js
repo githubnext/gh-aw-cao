@@ -34,6 +34,7 @@ function resolve() {
   const rows = (source) => (
     result[compiled.aliases.find((name) => name.includes(`:${source}`)) ?? '']
     ?? result[source]
+    ?? sources[source]
   )?.rows;
   return { rows, compiled };
 }
