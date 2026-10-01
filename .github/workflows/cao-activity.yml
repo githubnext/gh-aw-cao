@@ -386,14 +386,21 @@ jobs:
             cp "$first_weights" "$RUNNER_TEMP/cao-activity/drain3_weights.json"
           fi
           node --input-type=module <<'EOF'
-          import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+          import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
           import path from "node:path";
           import { mergeInventoryDashboardSources } from "./activity/inventory-sources.mjs";
           const root = `${process.env.RUNNER_TEMP}/cao-activity-fragments`;
-          const fragments = readdirSync(root, { withFileTypes: true })
-            .filter((entry) => entry.isDirectory())
-            .map((entry) => path.join(root, entry.name, "inventory-sources.json"))
-            .map((file) => JSON.parse(readFileSync(file, "utf8")));
+          const directFragment = path.join(root, "inventory-sources.json");
+          const fragmentFiles = existsSync(directFragment)
+            ? [directFragment]
+            : readdirSync(root, { withFileTypes: true })
+              .filter((entry) => entry.isDirectory())
+              .map((entry) => path.join(root, entry.name, "inventory-sources.json"))
+              .filter((file) => existsSync(file));
+          if (fragmentFiles.length === 0) {
+            throw new Error("No owner-scoped inventory fragments were downloaded");
+          }
+          const fragments = fragmentFiles.map((file) => JSON.parse(readFileSync(file, "utf8")));
           const merged = mergeInventoryDashboardSources(fragments);
           writeFileSync(`${process.env.RUNNER_TEMP}/cao-activity/inventory-sources.json`, `${JSON.stringify(merged, null, 2)}\n`);
           EOF
