@@ -55,11 +55,11 @@ func TestHostedActionsMCPAuthentication(t *testing.T) {
 		ExpiresAt: time.Now().Add(4 * time.Minute).Unix(),
 	}
 	denied := ""
-	installedRepository := "githubnext/gh-aw-cao"
 	defaultBranch := "main"
 	denyDefaultBranch := false
 	probes := 0
 	jwks := 0
+	installationInventoryChecks := 0
 	api := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		if request.URL.Path == "/.well-known/jwks" {
 			jwks++
@@ -76,13 +76,8 @@ func TestHostedActionsMCPAuthentication(t *testing.T) {
 			return
 		}
 		if request.URL.Path == "/installation/repositories" {
-			if request.Header.Get("Authorization") != "Bearer "+testActionsToken {
-				response.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-			_ = json.NewEncoder(response).Encode(map[string]any{"repositories": []any{
-				map[string]string{"full_name": installedRepository},
-			}})
+			installationInventoryChecks++
+			response.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 		if request.URL.Path == "/repos/githubnext/gh-aw-cao" {
@@ -129,32 +124,30 @@ func TestHostedActionsMCPAuthentication(t *testing.T) {
 		change     func(*actionsOIDCClaims)
 		bearer     string
 		permission string
-		installed  string
 		valid      bool
 	}{
-		{"valid immutable subject", nil, testActionsToken, "", "", true},
+		{"valid immutable subject", nil, testActionsToken, "", true},
 		{"valid legacy subject", func(c *actionsOIDCClaims) {
 			c.Subject = "repo:githubnext/gh-aw-cao:ref:refs/heads/main"
-		}, testActionsToken, "", "", true},
-		{"wrong audience", func(c *actionsOIDCClaims) { c.Audience = json.RawMessage(`"https://other.example"`) }, testActionsToken, "", "", false},
+		}, testActionsToken, "", true},
+		{"wrong audience", func(c *actionsOIDCClaims) { c.Audience = json.RawMessage(`"https://other.example"`) }, testActionsToken, "", false},
 		{"multiple audiences", func(c *actionsOIDCClaims) {
 			c.Audience = json.RawMessage(`["https://cao.githubnext.com","https://other.example"]`)
-		}, testActionsToken, "", "", false},
-		{"wrong issuer", func(c *actionsOIDCClaims) { c.Issuer = "https://other.example" }, testActionsToken, "", "", false},
-		{"wrong repository", func(c *actionsOIDCClaims) { c.Repository = "attacker/repo" }, testActionsToken, "", "", false},
-		{"wrong repository id", func(c *actionsOIDCClaims) { c.RepositoryID = "1" }, testActionsToken, "", "", false},
-		{"wrong repository owner id", func(c *actionsOIDCClaims) { c.RepositoryOwnerID = "1" }, testActionsToken, "", "", false},
-		{"wrong subject", func(c *actionsOIDCClaims) { c.Subject = "repo:attacker/repo:ref:refs/heads/main" }, testActionsToken, "", "", false},
-		{"pull request subject", func(c *actionsOIDCClaims) { c.Subject = "repo:githubnext/gh-aw-cao:pull_request" }, testActionsToken, "", "", false},
-		{"environment subject", func(c *actionsOIDCClaims) { c.Subject = "repo:githubnext/gh-aw-cao:environment:production" }, testActionsToken, "", "", false},
-		{"branch subject", func(c *actionsOIDCClaims) { c.Subject = "repo:githubnext/gh-aw-cao:ref:refs/heads/feature" }, testActionsToken, "", "", false},
-		{"branch ref", func(c *actionsOIDCClaims) { c.Ref = "refs/heads/feature" }, testActionsToken, "", "", false},
-		{"missing ref", func(c *actionsOIDCClaims) { c.Ref = "" }, testActionsToken, "", "", false},
-		{"expired", func(c *actionsOIDCClaims) { c.ExpiresAt = time.Now().Add(-time.Minute).Unix() }, testActionsToken, "", "", false},
-		{"future", func(c *actionsOIDCClaims) { c.NotBefore = time.Now().Add(time.Minute).Unix() }, testActionsToken, "", "", false},
-		{"invalid permissions", nil, testActionsToken, "issues", "", false},
-		{"invalid bearer on public repo", nil, "wrong-token", "", "", false},
-		{"token for another repository", nil, testActionsToken, "", "attacker/repo", false},
+		}, testActionsToken, "", false},
+		{"wrong issuer", func(c *actionsOIDCClaims) { c.Issuer = "https://other.example" }, testActionsToken, "", false},
+		{"wrong repository", func(c *actionsOIDCClaims) { c.Repository = "attacker/repo" }, testActionsToken, "", false},
+		{"wrong repository id", func(c *actionsOIDCClaims) { c.RepositoryID = "1" }, testActionsToken, "", false},
+		{"wrong repository owner id", func(c *actionsOIDCClaims) { c.RepositoryOwnerID = "1" }, testActionsToken, "", false},
+		{"wrong subject", func(c *actionsOIDCClaims) { c.Subject = "repo:attacker/repo:ref:refs/heads/main" }, testActionsToken, "", false},
+		{"pull request subject", func(c *actionsOIDCClaims) { c.Subject = "repo:githubnext/gh-aw-cao:pull_request" }, testActionsToken, "", false},
+		{"environment subject", func(c *actionsOIDCClaims) { c.Subject = "repo:githubnext/gh-aw-cao:environment:production" }, testActionsToken, "", false},
+		{"branch subject", func(c *actionsOIDCClaims) { c.Subject = "repo:githubnext/gh-aw-cao:ref:refs/heads/feature" }, testActionsToken, "", false},
+		{"branch ref", func(c *actionsOIDCClaims) { c.Ref = "refs/heads/feature" }, testActionsToken, "", false},
+		{"missing ref", func(c *actionsOIDCClaims) { c.Ref = "" }, testActionsToken, "", false},
+		{"expired", func(c *actionsOIDCClaims) { c.ExpiresAt = time.Now().Add(-time.Minute).Unix() }, testActionsToken, "", false},
+		{"future", func(c *actionsOIDCClaims) { c.NotBefore = time.Now().Add(time.Minute).Unix() }, testActionsToken, "", false},
+		{"invalid permissions", nil, testActionsToken, "issues", false},
+		{"invalid bearer on public repo", nil, "wrong-token", "", false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			modified := claims
@@ -162,10 +155,6 @@ func TestHostedActionsMCPAuthentication(t *testing.T) {
 				test.change(&modified)
 			}
 			denied = test.permission
-			installedRepository = "githubnext/gh-aw-cao"
-			if test.installed != "" {
-				installedRepository = test.installed
-			}
 			actor, err := verifyHostedActionsMCP(t.Context(), config, makeRequest(sign(modified), test.bearer))
 			if (err == nil) != test.valid {
 				t.Fatalf("actor=%q error=%v, want valid=%t", actor, err, test.valid)
@@ -178,7 +167,9 @@ func TestHostedActionsMCPAuthentication(t *testing.T) {
 	if jwks == 0 || probes == 0 {
 		t.Fatalf("expected JWKS and permission probes: jwks=%d probes=%d", jwks, probes)
 	}
-	installedRepository = "githubnext/gh-aw-cao"
+	if installationInventoryChecks != 0 {
+		t.Fatalf("made %d unsupported installation inventory checks", installationInventoryChecks)
+	}
 	for _, test := range []struct {
 		name          string
 		defaultBranch string
@@ -210,7 +201,6 @@ func TestHostedActionsMCPAuthentication(t *testing.T) {
 		})
 	}
 	denied = ""
-	installedRepository = "githubnext/gh-aw-cao"
 	defaultBranch, denyDefaultBranch = "main", false
 	good := sign(claims)
 	tampered := good[:len(good)-3] + "abc"

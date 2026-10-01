@@ -47,9 +47,6 @@ func verifyHostedActionsMCP(ctx context.Context, config Config, request *http.Re
 	if err != nil {
 		return "", err
 	}
-	if err := verifyActionsTokenRepository(ctx, config, token); err != nil {
-		return "", err
-	}
 	metadata, err := actionsRepositoryMetadataForToken(ctx, config, token)
 	if err != nil {
 		return "", err
@@ -131,51 +128,6 @@ func actionsRepositoryMetadataForToken(
 		FullName: repository.FullName, ID: strconv.FormatInt(repository.ID, 10),
 		OwnerID: strconv.FormatInt(repository.Owner.ID, 10), DefaultBranch: repository.DefaultBranch,
 	}, nil
-}
-
-// The installation inventory binds the bearer to the configured repository;
-// repository-specific read endpoints can also succeed for unrelated tokens on public repositories.
-func verifyActionsTokenRepository(ctx context.Context, config Config, token string) error {
-	baseURL, err := resolveGitHubAPIBaseURL(config.GitHubAPIURL)
-	if err != nil {
-		return err
-	}
-	client := config.ActionsHTTPClient
-	if client == nil {
-		client = &http.Client{Timeout: 10 * time.Second}
-	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		baseURL+"/installation/repositories?per_page=100", nil)
-	if err != nil {
-		return errors.New("GitHub Actions token identity check could not be created")
-	}
-	request.Header.Set("Accept", "application/vnd.github+json")
-	request.Header.Set("Authorization", "Bearer "+token)
-	request.Header.Set("X-GitHub-Api-Version", actionsGitHubAPIVersion)
-	request.Header.Set("User-Agent", "gh-aw-cao-mcp")
-	response, err := client.Do(request)
-	if err != nil {
-		return errors.New("GitHub Actions token identity check failed")
-	}
-	defer func() { _ = response.Body.Close() }()
-	if response.StatusCode != http.StatusOK {
-		return errors.New("GitHub Actions token is not an authorized installation token")
-	}
-	var accessible struct {
-		Repositories []struct {
-			FullName string `json:"full_name"`
-		} `json:"repositories"`
-	}
-	if json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&accessible) != nil {
-		return errors.New("GitHub Actions token repository list is invalid")
-	}
-	expected := strings.TrimSpace(config.ActionsRepository)
-	for _, repository := range accessible.Repositories {
-		if strings.EqualFold(repository.FullName, expected) {
-			return nil
-		}
-	}
-	return errors.New("GitHub Actions token cannot access the configured repository")
 }
 
 func verifyActionsOIDC(ctx context.Context, config Config, token string) (actionsOIDCClaims, error) {
