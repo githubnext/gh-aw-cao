@@ -74,6 +74,14 @@ The bounded handoff by which a coordinator starts a worker with one selected tar
 
 The runtime and provider integration used to execute an AI agent. The engine is selected in workflow frontmatter and is distinct from the agent's reasoning role, the workflow being executed, and the campaign being supervised. See the canonical gh-aw definition of [Engine](https://github.github.com/gh-aw/reference/glossary/#engine).
 
+## External hosting
+
+The explicit `generic` HTTP target with `listener: external` that lets a separately owned Go host embed CAO without duplicating its authentication, policy, or ingestion logic. The public `server/hosting/` facade exposes only `New`, `Start`, the complete `http.Handler`, and `Stop`; CAO keeps OAuth, session/CSRF authorization, webhook verification, proxy trust, rate limits, Redis, and background-task cancellation, while the host owns the HTTP listener and must drain it before CAO stops. External hosting introduces no runtime-loaded modules or rollout authority.
+
+## GitHub quota service
+
+The CAO-side authority in `server/internal/githubquota` that coordinates GitHub API rate-limit quota across replicas. A bucket is one independently metered quota identified by GitHub App identity, installation, and rate-limit resource, never by a token; admission requires remaining minus reserved minus cost to stay at or above a requested floor, and administrators read 24-hour peak usage through the `github-quota-usage` runtime source. Existing collection budgets do not use this service yet.
+
 ## History campaign
 
 The single campaign selected for historical operational-value reconstruction in one collector invocation, as defined by the operational-value history protocol. Its adapter supplies historical evaluations at earlier scheduled cadence instants in addition to the current observation every campaign adapter provides; the reconstruction orchestrator schedules, validates, retains, deduplicates, retires, and publishes these observations without reinterpreting or recomputing a supplied metric value. See [Operational-Value History Reconstruction Specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/operational-value-history.md).
