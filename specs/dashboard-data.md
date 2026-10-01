@@ -345,7 +345,7 @@ These generation rules also apply to hosted server deployments. Remote
 exposure, authentication, live GitHub collection, and webhook delivery are
 governed by their deployment and server contracts, not by this storage profile.
 
-## 5.3 Redis dashboard query materialization
+### 5.2.1 Redis dashboard query materialization
 
 The Redis server profile SHALL treat the generated Dashboard Language query
 catalog (`dashboard/site/src/agent/queries.generated.json`) as an input to
@@ -390,7 +390,7 @@ or malformed indexed results MUST be reported rather than disguised as
 unsupported plans. Materialization MUST NOT change query results, row order,
 source availability, or authorization.
 
-### 5.3.1 Conformance strategy
+#### 5.2.1.1 Conformance strategy
 
 Conformance SHALL be tested at both the query boundary and a real Redis 8
 generation boundary:
@@ -428,6 +428,8 @@ requirements, not a claim that all such cases are already automated. Run
 Redis 8 to include the Redis-dependent cases; `go test ./...` without
 `REDIS_URL` skips them. The dashboard query parity and server end-to-end
 checks supplement, but do not replace, these generation-boundary assertions.
+
+### 5.2.2 Browser and SQLite implementation details
 
 `gh-aw-cao-dashboard-data` is the logical database name. Every implemented
 store uses `id` as its key path. The implemented secondary indexes are:
