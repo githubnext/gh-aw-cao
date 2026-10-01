@@ -310,6 +310,7 @@ func TestProcessDrainKeepsTasksAliveUntilHTTPShutdown(t *testing.T) {
 	if err := app.start(startupCtx, context.WithoutCancel(startupCtx)); err != nil {
 		t.Fatal(err)
 	}
+
 	cancelStartup()
 	app.Drain()
 	if err := app.startContext.Err(); err != nil {
@@ -320,5 +321,64 @@ func TestProcessDrainKeepsTasksAliveUntilHTTPShutdown(t *testing.T) {
 	}
 	if !errors.Is(app.startContext.Err(), context.Canceled) {
 		t.Fatal("Stop did not cancel background tasks after drain")
+	}
+}
+
+func TestStopClosesOnlyOwnedDatabaseAfterTasksFinish(t *testing.T) {
+	database := integrationDatabase(t)
+	app := &App{database: database, ownedDatabase: database, drain: make(chan struct{})}
+	releaseTask := make(chan struct{})
+	defer func() {
+		select {
+		case <-releaseTask:
+		default:
+			close(releaseTask)
+		}
+
+		func TestHostedServeStartupFailureClosesOwnedDatabase(t *testing.T) {
+			database := integrationDatabase(t)
+			app := &App{
+				database: database, ownedDatabase: database,
+				config: Config{HostProfile: localHostProfile()},
+			}
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+			if err := app.Serve(ctx); !errors.Is(err, context.Canceled) {
+				t.Fatalf("Serve with canceled startup = %v", err)
+			}
+			if _, err := database.State(t.Context()); err == nil {
+				t.Fatal("Serve left hosted pool open after startup failure")
+			}
+		}
+	}()
+	app.startTask(func() {
+		<-app.drain
+		<-releaseTask
+	})
+	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
+	defer cancel()
+	if err := app.Stop(ctx); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("Stop while task runs = %v", err)
+	}
+	if _, err := database.State(t.Context()); err != nil {
+		t.Fatalf("pool closed while task was running: %v", err)
+	}
+	close(releaseTask)
+	if err := app.Stop(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.State(t.Context()); err == nil {
+		t.Fatal("owned pool remained open after Stop")
+	}
+	if err := app.Stop(t.Context()); err != nil {
+		t.Fatalf("repeated Stop failed: %v", err)
+	}
+	callerDatabase := integrationDatabase(t)
+	caller := &App{database: callerDatabase, drain: make(chan struct{})}
+	if err := caller.Stop(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := callerDatabase.State(t.Context()); err != nil {
+		t.Fatalf("caller-owned pool closed: %v", err)
 	}
 }

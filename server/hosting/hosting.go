@@ -88,5 +88,7 @@ func (s *Service) Handler() http.Handler { return s.handler }
 // embedding host's http.Server.Shutdown, while the startup context is alive.
 func (s *Service) Drain() { s.app.Drain() }
 
-// Stop cancels CAO background tasks and waits until they exit or ctx is canceled.
+// Stop cancels CAO background tasks and waits until they exit before closing
+// the hosted PostgreSQL pool. If ctx expires, the pool stays open; retry Stop
+// after tasks finish. Drain the HTTP host before calling Stop.
 func (s *Service) Stop(ctx context.Context) error { return s.app.Stop(ctx) }

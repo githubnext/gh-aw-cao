@@ -239,14 +239,37 @@ constructor with explicit paths to the built site and query documents, call
 `Start(ctx)` before serving `Handler()`, then call `Drain()` to stop admitting
 new requests and end SSE streams. Call the host's `http.Server.Shutdown` to
 drain ordinary requests, then `Stop(ctx)` to cancel and await CAO background
-tasks. Pass a context with the host's shutdown deadline; it returns the context
-error if tasks have not exited by then. Keep the startup
+tasks and close the hosted PostgreSQL pool. Pass a context with the host's
+shutdown deadline; if it expires before tasks exit, the pool remains open and
+`Stop` may be retried with a fresh context. Databases supplied to `server.New`
+remain caller-owned. Keep the startup
 context alive through HTTP shutdown. `Handler()`
 includes all CAO authentication, trusted-host, CSRF, rate-limit, webhook, and
 telemetry middleware; it returns `503` before startup or after drain.
 There is no alternate raw router or automatic trust of an embedding host's
 identity headers. The existing process-owned `serve-hosted` and Azure handlers
 do not select this mode.
+
+SSE streams share one PostgreSQL revision observation per replica while any
+clients are connected. Authorized streams also share the Redis ingestion-health
+observation. Each replica polls the durable state so updates originating on
+another replica are delivered even without a local notification; local updates
+are broadcast immediately. `Drain` still ends active streams.
+
+`CAO_SSE_MEASURE=1 POSTGRES_URL=... go test ./internal/server -run
+^TestSSEFanoutMeasurements$ -count=1 -v` measures connections, PostgreSQL
+committed transactions per second (an approximate query-rate proxy), Go heap,
+and stream drain against disposable PostgreSQL. On one local PostgreSQL instance
+with a simulated Redis server, pre-change measurements for 1/12 clients on one
+replica were 4/6 connections and 2.8/16.2 transactions per second; for 2/24
+clients on two replicas, 7/8 connections and 5.0/28.4 transactions per second.
+After shared observation, the same scenarios measured 4/5 connections and
+3.6/5.8 transactions per second, and 7/8 connections and 5.6/9.4 transactions
+per second. Heap after the 12-client and 24-client sampling windows was
+2,615,304/3,364,256 bytes before and 2,102,776/2,840,400 bytes after.
+Active-stream drain completed in 394/656 microseconds for 12/24 clients after
+the change (the original harness only timed drain after closing its clients).
+These are local observations, not performance budgets.
 Generic OAuth targets cannot disable HTTPS in policy; Azure's explicit local
 simulation is a separate platform-only case.
 

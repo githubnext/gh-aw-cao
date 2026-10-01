@@ -80,6 +80,9 @@ type Config struct {
 type App struct {
 	store           *redisx.Store
 	database        *postgresx.Store
+	ownedDatabase   *postgresx.Store
+	closeDatabase   sync.Once
+	closeError      error
 	databaseQueries []query.Definition
 	config          Config
 	accessToken     string
@@ -404,7 +407,22 @@ func (a *App) Stop(ctx context.Context) error {
 		a.stop()
 	}
 	a.startMu.Unlock()
-	return a.waitTasks(ctx)
+	if a.hub != nil {
+		a.hub.shutdown()
+	}
+	if err := a.waitTasks(ctx); err != nil {
+		return err
+	}
+	if a.hub != nil {
+		if err := a.hub.wait(ctx); err != nil {
+			return err
+		}
+	}
+	if a.ownedDatabase != nil {
+		a.closeDatabase.Do(func() { a.closeError = a.ownedDatabase.Close() })
+		return a.closeError
+	}
+	return nil
 }
 
 func (a *App) waitTasks(ctx context.Context) error {
@@ -463,9 +481,6 @@ func (a *App) Serve(ctx context.Context) error {
 	if a.config.HostProfile.Listener != HostListenerProcess {
 		return fmt.Errorf("host profile %q delegates listener ownership", a.config.HostProfile.Name)
 	}
-	if err := a.start(ctx, context.WithoutCancel(ctx)); err != nil {
-		return err
-	}
 	defer func(ctx context.Context) {
 		stopCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
@@ -473,6 +488,9 @@ func (a *App) Serve(ctx context.Context) error {
 			serverLog.Printf("background shutdown failed: %v", err)
 		}
 	}(ctx)
+	if err := a.start(ctx, context.WithoutCancel(ctx)); err != nil {
+		return err
+	}
 	serverLog.Printf("starting server tls=%t", a.config.CertFile != "")
 	var listenConfig net.ListenConfig
 	listener, err := listenConfig.Listen(ctx, "tcp", a.config.Listen)
@@ -989,20 +1007,21 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 	}
 	response.Header().Set("Content-Type", "text/event-stream")
 	response.Header().Set("Connection", "keep-alive")
-	active, _ := a.database.State(request.Context())
 	allowHealth := a.adminAuthorized(request)
+	channel := a.hub.Subscribe(a, allowHealth)
+	if channel == nil {
+		return
+	}
+	defer a.hub.Unsubscribe(channel)
+	active, _ := a.database.State(request.Context())
 	healthRevision, _ := a.ingestionHealthRevision(request.Context(), allowHealth)
 	writeEvent(response, active.Revision, healthRevision)
 	flusher.Flush()
 	lastRevision := active.Revision
 	lastHealthRevision := healthRevision
-	channel := a.hub.Subscribe()
 	serverLog.Printf("event stream subscribed")
-	defer a.hub.Unsubscribe(channel)
 	heartbeat := time.NewTicker(20 * time.Second)
 	defer heartbeat.Stop()
-	poll := time.NewTicker(time.Second)
-	defer poll.Stop()
 	a.startMu.Lock()
 	drain := a.drain
 	a.startMu.Unlock()
@@ -1011,22 +1030,18 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 		case <-drain:
 			serverLog.Printf("event stream drained")
 			return
-		case revision := <-channel:
-			healthRevision, _ := a.ingestionHealthRevision(request.Context(), allowHealth)
-			if revision != lastRevision || healthRevision != lastHealthRevision {
-				writeEvent(response, revision, healthRevision)
-				flusher.Flush()
-				lastRevision = revision
-				lastHealthRevision = healthRevision
+		case observation, ok := <-channel:
+			if !ok {
+				return
 			}
-		case <-poll.C:
-			active, err := a.database.State(request.Context())
-			healthRevision, healthErr := a.ingestionHealthRevision(request.Context(), allowHealth)
-			if err == nil && healthErr == nil &&
-				(active.Revision != lastRevision || healthRevision != lastHealthRevision) {
-				writeEvent(response, active.Revision, healthRevision)
+			healthRevision := int64(0)
+			if allowHealth {
+				healthRevision = observation.healthRevision
+			}
+			if observation.revision != lastRevision || healthRevision != lastHealthRevision {
+				writeEvent(response, observation.revision, healthRevision)
 				flusher.Flush()
-				lastRevision = active.Revision
+				lastRevision = observation.revision
 				lastHealthRevision = healthRevision
 			}
 		case <-heartbeat.C:
@@ -1445,34 +1460,140 @@ func writeError(response http.ResponseWriter, status int, message string) {
 
 type eventHub struct {
 	mu      sync.Mutex
-	clients map[chan int64]struct{}
+	clients map[chan eventObservation]bool
+	current eventObservation
+	cancel  context.CancelFunc
+	wake    chan struct{}
+	workers sync.WaitGroup
+	stopped bool
+	done    chan struct{}
 }
 
-func newEventHub() *eventHub { return &eventHub{clients: map[chan int64]struct{}{}} }
+type eventObservation struct {
+	revision       int64
+	healthRevision int64
+}
 
-func (hub *eventHub) Subscribe() chan int64 {
+func newEventHub() *eventHub {
+	return &eventHub{clients: map[chan eventObservation]bool{}, wake: make(chan struct{}, 1)}
+}
+
+func (hub *eventHub) Subscribe(app *App, allowHealth bool) chan eventObservation {
 	hub.mu.Lock()
 	defer hub.mu.Unlock()
-	channel := make(chan int64, 1)
-	hub.clients[channel] = struct{}{}
+	if hub.stopped {
+		return nil
+	}
+	channel := make(chan eventObservation, 1)
+	hub.clients[channel] = allowHealth
+	if hub.cancel == nil {
+		ctx, cancel := context.WithCancel(context.Background())
+		hub.cancel = cancel
+		hub.workers.Add(1)
+		go hub.observe(ctx, app)
+	}
 	return channel
 }
 
-func (hub *eventHub) Unsubscribe(channel chan int64) {
+func (hub *eventHub) Unsubscribe(channel chan eventObservation) {
 	hub.mu.Lock()
 	defer hub.mu.Unlock()
 	delete(hub.clients, channel)
 	close(channel)
+	if len(hub.clients) == 0 && hub.cancel != nil {
+		hub.cancel()
+		hub.cancel = nil
+	}
 }
 
 func (hub *eventHub) Broadcast(revision int64) {
 	hub.mu.Lock()
 	defer hub.mu.Unlock()
+	hub.current.revision = revision
+	hub.publishLocked()
+	select {
+	case hub.wake <- struct{}{}:
+	default:
+	}
+}
+
+func (hub *eventHub) publishLocked() {
 	for channel := range hub.clients {
 		select {
-		case channel <- revision:
+		case channel <- hub.current:
 		default:
+			// A slow stream needs the latest state, not every intermediate revision.
+			select {
+			case <-channel:
+			default:
+			}
+			select {
+			case channel <- hub.current:
+			default:
+			}
 		}
+	}
+}
+
+func (hub *eventHub) observe(ctx context.Context, app *App) {
+	defer hub.workers.Done()
+	poll := time.NewTicker(time.Second)
+	defer poll.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-poll.C:
+		case <-hub.wake:
+		}
+		hub.mu.Lock()
+		needsHealth := false
+		for _, allowed := range hub.clients {
+			needsHealth = needsHealth || allowed
+		}
+		hub.mu.Unlock()
+		active, err := app.database.State(ctx)
+		if err != nil {
+			continue
+		}
+		healthRevision, healthErr := app.ingestionHealthRevision(ctx, needsHealth)
+		hub.mu.Lock()
+		if ctx.Err() == nil {
+			changed := hub.current.revision != active.Revision ||
+				(needsHealth && healthErr == nil && hub.current.healthRevision != healthRevision)
+			if healthErr == nil && changed {
+				hub.current = eventObservation{revision: active.Revision, healthRevision: healthRevision}
+				hub.publishLocked()
+			}
+		}
+		hub.mu.Unlock()
+	}
+}
+
+func (hub *eventHub) shutdown() {
+	hub.mu.Lock()
+	defer hub.mu.Unlock()
+	if hub.stopped {
+		return
+	}
+	hub.stopped = true
+	if hub.cancel != nil {
+		hub.cancel()
+		hub.cancel = nil
+	}
+	hub.done = make(chan struct{})
+	go func() {
+		hub.workers.Wait()
+		close(hub.done)
+	}()
+}
+
+func (hub *eventHub) wait(ctx context.Context) error {
+	select {
+	case <-hub.done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 

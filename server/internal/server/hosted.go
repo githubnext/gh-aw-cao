@@ -173,6 +173,8 @@ func newHostedAppWithPolicy(
 	app, err := New(ctx, store, config)
 	if err != nil {
 		_ = database.Close()
+	} else {
+		app.ownedDatabase = database
 	}
 	return app, err
 }

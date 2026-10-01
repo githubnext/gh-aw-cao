@@ -3,16 +3,86 @@ package server
 import (
 	"bufio"
 	"database/sql"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
+
+func TestSSEFanoutAcrossReplicasAndDrain(t *testing.T) {
+	database := integrationDatabase(t)
+	address, closeRedis := fakeRedis(t)
+	defer closeRedis()
+	client, err := redisx.New("redis://" + address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	type stream struct {
+		response *http.Response
+		reader   *bufio.Reader
+	}
+	var apps []*App
+	var streams []stream
+	for range 2 {
+		app := &App{
+			store: redisx.NewStore(client, "sse-replica"), hub: newEventHub(),
+			database: database, drain: make(chan struct{}),
+			config: Config{HostProfile: localHostProfile()}, accessToken: testAccessToken,
+		}
+		apps = append(apps, app)
+		server := httptest.NewServer(app.Handler())
+		defer server.Close()
+		for range 3 {
+			request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL+"/api/v1/events", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			request.Header.Set("Authorization", "Bearer "+testAccessToken)
+			response, err := (&http.Client{Timeout: 4 * time.Second}).Do(request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = response.Body.Close() }()
+			reader := bufio.NewReader(response.Body)
+			if _, err := reader.ReadString('\n'); err != nil {
+				t.Fatal(err)
+			}
+			streams = append(streams, stream{response: response, reader: reader})
+		}
+	}
+	seedDatabase(t, database, map[string]model.Source{})
+	apps[0].hub.Broadcast(1)
+	for _, stream := range streams {
+		for {
+			line, err := stream.reader.ReadString('\n')
+			if err != nil {
+				t.Fatalf("cross-replica stream did not receive update: %v", err)
+			}
+			if strings.Contains(line, `"revision":1`) {
+				break
+			}
+		}
+	}
+	for _, app := range apps {
+		app.Drain()
+	}
+	for _, stream := range streams {
+		if _, err := stream.reader.ReadString('\n'); err == nil {
+			// Blank line from the last data frame is allowed.
+			if _, err := stream.reader.ReadString('\n'); err == nil {
+				t.Fatal("stream continued after drain")
+			}
+		}
+	}
+}
 
 // TestSSEFanoutMeasurements compares connected-stream cost across process-local
 // replicas. Run with POSTGRES_URL and CAO_SSE_MEASURE=1 against disposable data.
@@ -86,20 +156,26 @@ func TestSSEFanoutMeasurements(t *testing.T) {
 			}
 			runtime.ReadMemStats(&after)
 			drainStart := time.Now()
+			if perReplica == 12 {
+				for _, app := range apps {
+					app.Drain()
+				}
+				for _, resp := range streams {
+					if _, err := io.Copy(io.Discard, resp.Body); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			drainDuration := time.Since(drainStart)
 			for _, resp := range streams {
 				_ = resp.Body.Close()
 			}
-			t.Logf("replicas=%d clients=%d connections=%d transactions_per_second=%.1f heap_before=%d heap_after=%d close_duration=%s",
-				replicas, replicas*perReplica, connections, float64(end-start)/5, before.HeapAlloc, after.HeapAlloc, time.Since(drainStart))
+			t.Logf("replicas=%d clients=%d connections=%d transactions_per_second=%.1f heap_before=%d heap_after=%d drain_duration=%s",
+				replicas, replicas*perReplica, connections, float64(end-start)/5, before.HeapAlloc, after.HeapAlloc, drainDuration)
 			transport.CloseIdleConnections()
-		}
-		drainStart := time.Now()
-		for _, app := range apps {
-			app.Drain()
 		}
 		for _, server := range servers {
 			server.Close()
 		}
-		t.Logf("replicas=%d drain_duration=%s", replicas, time.Since(drainStart))
 	}
 }
