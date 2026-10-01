@@ -542,7 +542,8 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 			}
 		}
 		oauth.logBranch("session.active")
-		if _, err := request.Cookie(csrfCookieName); err != nil {
+		csrfCookie, err := request.Cookie(csrfCookieName)
+		if err != nil || csrfCookie.Value == "" {
 			oauth.setSessionCookies(response, session)
 		}
 		return session, true
