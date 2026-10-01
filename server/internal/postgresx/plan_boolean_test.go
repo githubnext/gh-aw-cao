@@ -107,7 +107,7 @@ func TestNativeScalarFilterMatchesEvaluator(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
+		err = store.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) error {
 			got, _, supported, err := reader.(NativePlanExecutor).ExecuteNativePlan(
 				ctx, definitions, []string{"picked"}, []string{"picked"})
 			if err != nil {

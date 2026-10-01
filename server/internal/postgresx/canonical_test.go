@@ -71,7 +71,7 @@ func TestCanonicalNumericIDRetainsNativeLexeme(t *testing.T) {
 	fields, values, extension, ok, err := canonicalRow(model.Row{"id": lexeme})
 	if err != nil || !ok || extension != "" ||
 		!reflect.DeepEqual(fields, []string{"id"}) ||
-		values[0] != string(lexeme) || values[len(values)-1] != "number" {
+		values[0] != string(lexeme) || values[len(values)-8] != "number" {
 		t.Fatalf("numeric ID representation: fields=%v values=%v extension=%q ok=%t err=%v",
 			fields, values, extension, ok, err)
 	}

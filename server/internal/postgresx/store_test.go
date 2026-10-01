@@ -192,7 +192,7 @@ func TestStoreIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
+	err = store.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) error {
 		definitions := []query.Definition{{
 			Name: "by-status", From: "$runs",
 			Filter: &query.Filter{Predicates: []query.Predicate{{Field: "status", Equals: "completed"}}},
@@ -271,7 +271,7 @@ func TestStoreIntegration(t *testing.T) {
 		Scan(&numericID, &idKind); err != nil || numericID != "1e1000000" || idKind != "number" {
 		t.Fatalf("numeric ID native storage: id=%q kind=%q err=%v", numericID, idKind, err)
 	}
-	err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
+	err = store.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) error {
 		defs := []query.Definition{{
 			Name: "selected-run", From: "$runs",
 			Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: "raw-1"}}},
@@ -687,7 +687,7 @@ func TestStoreIntegration(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(decoded.Rows, []model.Row{linkOnly}) {
 		t.Fatalf("typed row lost identifier or link without booleans: %+v err=%v", decoded, err)
 	}
-	err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
+	err = store.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) error {
 		defs := []query.Definition{{Name: "all-sessions", From: "$sessions"}}
 		result, _, supported, planErr := reader.(NativePlanExecutor).ExecuteNativePlan(ctx, defs,
 			[]string{"all-sessions"}, []string{"all-sessions"})
@@ -908,7 +908,7 @@ func TestCanonicalProducerDifferentialIntegration(t *testing.T) {
 	richSelection := []query.Definition{{Name: "rich-link", From: "$graderObservations",
 		Filter: &query.Filter{Predicates: []query.Predicate{{Field: "graderId", Equals: "grader:2"}}},
 		Select: []query.SelectedField{{Field: "runLink"}, {Field: "attributableRunIds"}}}}
-	err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
+	err = store.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) error {
 		result, _, supported, planErr := reader.(NativePlanExecutor).ExecuteNativePlan(ctx,
 			richSelection, []string{"rich-link"}, []string{"rich-link"})
 		if planErr != nil || !supported || !reflect.DeepEqual(result["rich-link"].Rows,
@@ -925,7 +925,7 @@ func TestCanonicalProducerDifferentialIntegration(t *testing.T) {
 			Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: id}}},
 			Select: []query.SelectedField{{Field: "value"}, {Field: "answer"},
 				{Field: "evalResult"}, {Field: "costGrain"}}}}
-		err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
+		err = store.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) error {
 			native, _, supported, nativeErr := reader.(NativePlanExecutor).ExecuteNativePlan(ctx,
 				defs, []string{"mixed"}, []string{"mixed"})
 			plain, _, plainErr := query.New(readerLoader{reader: reader, ctx: ctx}).Execute(defs, []string{"mixed"})
@@ -943,7 +943,7 @@ func TestCanonicalProducerDifferentialIntegration(t *testing.T) {
 	for _, value := range []string{"inconclusive", "2.50"} {
 		defs := []query.Definition{{Name: "by-value", From: "$audits",
 			Filter: &query.Filter{Predicates: []query.Predicate{{Field: "value", Equals: value}}}}}
-		err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
+		err = store.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) error {
 			native, _, supported, nativeErr := reader.(NativePlanExecutor).ExecuteNativePlan(ctx,
 				defs, []string{"by-value"}, []string{"by-value"})
 			plain, _, plainErr := query.New(readerLoader{reader: reader, ctx: ctx}).Execute(defs, []string{"by-value"})
@@ -964,7 +964,7 @@ func TestCanonicalProducerDifferentialIntegration(t *testing.T) {
 		Select: []query.SelectedField{{Field: "metrics"}, {Field: "value"}, {Field: "runLink"},
 			{Field: "attributableRunIds"}, {Field: "included"}, {Field: "threshold"}},
 	}}
-	err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
+	err = store.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) error {
 		plain, _, plainErr := query.New(readerLoader{reader: reader, ctx: ctx}).Execute(definitions, []string{"grader:1"})
 		native, _, supported, nativeErr := reader.(NativePlanExecutor).ExecuteNativePlan(ctx,
 			definitions, []string{"grader:1"}, []string{"grader:1"})
