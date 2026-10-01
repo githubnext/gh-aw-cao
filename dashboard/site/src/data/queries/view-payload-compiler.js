@@ -4,6 +4,7 @@
  */
 
 import { createDebug } from '../../debug.js';
+import { resolveDashboardQuerySources } from './declarative.js';
 
 const debugViewPayloadCompiler = createDebug('view-payload-compiler');
 
@@ -49,8 +50,21 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
     ...dashboardFormDefaultValues(payload.form),
     ...(options.queryContext?.formValues ?? {})
   };
-  const resolvedQueries = resolveDashboardQueryParameters(options.queries, formValues);
   const views = Array.isArray(payload.views) ? payload.views : [];
+  const activeViews = views.filter((view, index) => {
+    if (options.viewId) return isPlainObject(view) && (view.id ?? `view-${index + 1}`) === options.viewId;
+    return !options.queryContext?.viewMode || viewMatchesMode(view, options.queryContext.viewMode);
+  });
+  const requestedSources = options.sourceNames ? new Set(options.sourceNames) : null;
+  const relevantSources = activeViews.flatMap(getViewSources)
+    .filter((source) => !requestedSources || requestedSources.has(source));
+  const required = new Set(resolveDashboardQuerySources(options.queries, relevantSources));
+  const scopedDefinitions = Array.isArray(options.queries)
+    ? options.queries.filter((definition) => (
+        isPlainObject(definition) && typeof definition.name === 'string' && required.has(definition.name)
+      ))
+    : options.queries;
+  const resolvedQueries = resolveDashboardQueryParameters(scopedDefinitions, formValues);
   const routeParameterName = typeof payload.route?.['hash-query-parameter'] === 'string'
     ? payload.route['hash-query-parameter']
     : '';
@@ -64,7 +78,6 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
   /** @type {Array<Record<string, unknown>>} */
   const queries = [];
   const replacedSources = new Set();
-  const requestedSources = options.sourceNames ? new Set(options.sourceNames) : null;
 
   views.forEach((view, viewIndex) => {
     if (options.viewId && (!isPlainObject(view)

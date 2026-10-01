@@ -22,17 +22,6 @@ describe('renderRouteTabSet', () => {
       ]
     });
 
-    describe('renderPageTabs', () => {
-      it('renders a declarative tab without requiring a route value', () => {
-        const rendered = renderPageTabs({
-          currentTab: 'database-size',
-          tabs: [{ id: 'database-size', label: 'Database size', icon: 'database', page: 'simulators' }]
-        });
-        expect(rendered.querySelector('[aria-current="page"]')?.textContent).toBe('Database size');
-        expect(rendered.querySelector('a')?.getAttribute('href')).toBe('#page-simulators');
-      });
-    });
-
     expect(rendered.getAttribute('aria-label')).toBe('Reusable route tabs');
     expect(rendered.dataset.routeTabsCurrent).toBe('reports');
     expect(rendered.querySelector('[aria-current="page"]')?.textContent).toBe('Reports');
@@ -48,5 +37,17 @@ describe('renderRouteTabSet', () => {
       routeTitle: 'Dependabot',
       routeDescription: 'Operational activity for the Dependabot campaign.'
     });
+
+  });
+});
+
+describe('renderPageTabs', () => {
+  it('renders a declarative tab without requiring a route value', () => {
+    const rendered = renderPageTabs({
+      currentTab: 'database-size',
+      tabs: [{ id: 'database-size', label: 'Database size', icon: 'database', page: 'simulators' }]
+    });
+    expect(rendered.querySelector('[aria-current="page"]')?.textContent).toBe('Database size');
+    expect(rendered.querySelector('a')?.getAttribute('href')).toBe('#page-simulators');
   });
 });

@@ -93,13 +93,15 @@
           "id": "simulator-database-growth",
           "title": "Database tables over 30 days",
           "subject": "Estimated retained size of run, tool, and issue tables.",
+          "objective": "Compare hypothetical table growth under different workload and skip-rate inputs.",
+          "acceptance": "Thirty modeled daily points per table use the authored byte-per-record assumptions, with run summaries retained and detailed records limited to 30 days; no point is presented as observed storage.",
           "description": "Modeled data size, not measured storage: 512 bytes per run summary or issue and 256 bytes per tool. Run summaries persist; tool and issue records expire after 30 days. Indexes, metadata, compression, and other tables are excluded.",
           "data": { "source": "simulator-database-size" },
           "mark": "chart",
           "chart": "line",
           "layout": "full",
           "encoding": {
-            "x": { "field": "date", "type": "temporal", "time-unit": "day", "title": "Simulation day" },
+            "x": { "field": "date", "type": "temporal", "time-unit": "day", "format": "human-friendly-timestamp", "title": "Simulation day" },
             "y": { "field": "bytes", "type": "quantitative", "aggregate": "max", "title": "Estimated bytes" },
             "color": { "field": "table", "type": "nominal", "title": "Table" }
           }

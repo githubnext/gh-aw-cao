@@ -397,10 +397,10 @@ sources are consumed only through a declared Dashboard Language query; view
 code and UI elements do not fetch or derive this data independently.
 
 - **DLS-SEM-016a:** `simulation-days` is a built-in synthetic query input, not
-  a canonical table or provider source. It **MUST** yield exactly 31 rows with
-  numeric `day` values from 0 through 30 in order and a temporal `date` field
-  of ISO UTC midnight timestamps from `2026-01-01T00:00:00.000Z` through
-  `2026-01-31T00:00:00.000Z` (a fixed, deterministic plotting axis).
+  a canonical table or provider source. It **MUST** yield exactly 30 rows with
+  numeric `day` values from 1 through 30 in order and a temporal `date` field
+  of ISO UTC midnight timestamps from `2025-01-01T00:00:00.000Z` through
+  `2025-01-30T00:00:00.000Z` (a fixed, deterministic plotting axis).
   The query worker **MUST** materialize it without reading canonical storage,
   regardless of page identity or supplied logical sources. Queries **MAY**
   use `from: simulation-days` and derive additional fields through ordinary

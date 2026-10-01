@@ -4,9 +4,9 @@ export const SIMULATION_DAYS = 'simulation-days';
 export function simulationDaysSource() {
   return /** @type {import('../../presenter.js').LogicalSourceInput} */ ({
     source: SIMULATION_DAYS,
-    rows: Array.from({ length: 31 }, (_, day) => ({
-      day,
-      date: new Date(Date.UTC(2026, 0, day + 1)).toISOString()
+    rows: Array.from({ length: 30 }, (_, index) => ({
+      day: index + 1,
+      date: new Date(Date.UTC(2025, 0, index + 1)).toISOString()
     })),
     metadata: {
       'source-id': SIMULATION_DAYS,

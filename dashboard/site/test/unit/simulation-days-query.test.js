@@ -41,14 +41,16 @@ describe('simulation-days intrinsic query source', () => {
       { 'simulation-days': { rows: [{ day: 999 }], metadata: { availability: 'available' } } },
       ['simulation-days']
     ))['simulation-days'];
-    expect(source.rows).toEqual(Array.from({ length: 31 }, (_, day) => ({
-      day, date: new Date(Date.UTC(2026, 0, day + 1)).toISOString()
+    expect(source.rows).toEqual(Array.from({ length: 30 }, (_, index) => ({
+      day: index + 1, date: new Date(Date.UTC(2025, 0, index + 1)).toISOString()
     })));
     expect(source.metadata).toMatchObject({ 'source-kind': 'synthetic', availability: 'available' });
     const projected = executeDashboardQueries([query], { 'simulation-days': source }, ['simulated-series']);
     expect(projected['simulated-series'].rows).toEqual(
-      Array.from({ length: 31 }, (_, day) => ({
-        day, date: new Date(Date.UTC(2026, 0, day + 1)).toISOString(), score: day * 2
+      Array.from({ length: 30 }, (_, index) => ({
+        day: index + 1,
+        date: new Date(Date.UTC(2025, 0, index + 1)).toISOString(),
+        score: (index + 1) * 2
       }))
     );
     const loaded = await loadDatabaseQuerySources(
@@ -70,13 +72,28 @@ describe('simulation-days intrinsic query source', () => {
           sourceNames: ['simulated-series']
         })
       );
-      expect(response['simulated-series'].rows).toHaveLength(31);
+      expect(response['simulated-series'].rows).toHaveLength(30);
       expect(response['simulated-series'].rows[0])
-        .toEqual({ day: 0, date: '2026-01-01T00:00:00.000Z', score: 0 });
+        .toEqual({ day: 1, date: '2025-01-01T00:00:00.000Z', score: 2 });
       expect(open).not.toHaveBeenCalled();
     } finally {
       open.mockRestore();
     }
+  });
+
+  it('resolves the intrinsic when executing a declared graph without supplied sources', () => {
+    const response = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (
+      processDataRequest({
+        operation: 'execute-dashboard-queries',
+        sources: {},
+        queries: [query],
+        sourceNames: ['simulated-series']
+      })
+    );
+    expect(response['simulated-series'].metadata.availability).toBe('available');
+    expect(response['simulated-series'].rows).toHaveLength(30);
+    expect(response['simulated-series'].rows[29])
+      .toEqual({ day: 30, date: '2025-01-30T00:00:00.000Z', score: 60 });
   });
 
   it('accepts a view querying the intrinsic source through the document validator', () => {
