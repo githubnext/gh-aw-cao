@@ -319,6 +319,7 @@ invariants:
   - "Activity evidence MUST NOT determine rollout, outcomes, or operational value."
   - "JSONL snapshots are authoritative; caches, SQLite, and IndexedDB are disposable projections."
   - "The hosted Postgres store holds current dashboard entity sources, diagnostics, and revision; replacement is transactional and does not create generations or persistent derived projections."
+  - "Registered canonical Postgres sources map known fields to native columns with explicit presence tracking; open attributes alone belong in JSON extensions, and mapped fields MUST NOT be duplicated there. Historical representations MUST be migrated transactionally or block startup without data loss, not retained as normal readers."
   - "The hosted query plan executor MUST bind values and namespace, admit only proven equivalent complete paths, enforce pre-filter input and resource bounds, and fall back to bounded Go evaluation for unsupported semantics or older committed revisions."
   - "Dashboard ingestion MUST load every run-information shard before record shards; every domain, tool, audit, and issue MUST identify its owning run."
   - "The deployed dashboard artifact MUST NOT contain or manifest raw Activity JSONL; browser ingestion MUST consume compacted normalized run and record JSONL and fail closed when run-information shards are absent."

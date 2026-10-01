@@ -3,6 +3,7 @@ package postgresx
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -57,15 +58,23 @@ func simplePlan(definitions []query.Definition, requested, order []string) (stri
 			}
 			seenFields := map[string]bool{}
 			for _, predicate := range definition.Filter.Predicates {
+				value, stringValue := predicate.Equals.(string)
+				_, isBoolean := predicate.Equals.(bool)
 				switch predicate.Field {
 				case "id", "runId", "sessionId":
+					if !stringValue {
+						return "", nil, false
+					}
 				default:
-					if !isCanonicalSource(raw) || !isCanonicalTextField(predicate.Field) {
+					if !isCanonicalSource(raw) ||
+						!(isCanonicalTextField(predicate.Field) && stringValue ||
+							isCanonicalBoolean(predicate.Field) && isBoolean ||
+							isCanonicalNumber(predicate.Field) && (stringValue || isQueryNumber(predicate.Equals))) {
 						return "", nil, false
 					}
 				}
-				value, stringValue := predicate.Equals.(string)
-				if seenFields[predicate.Field] || !stringValue || value == "unknown" || predicate.Optional ||
+
+				if seenFields[predicate.Field] || (stringValue && value == "unknown") || predicate.Optional ||
 					len(predicate.In) != 0 || predicate.Includes != "" ||
 					predicate.GTE != nil || predicate.LT != nil {
 					return "", nil, false
@@ -78,32 +87,50 @@ func simplePlan(definitions []query.Definition, requested, order []string) (stri
 	return raw, path, true
 }
 
+func isQueryNumber(value any) bool {
+	switch value.(type) {
+	case int, int64, float64, json.Number:
+		return true
+	default:
+		return false
+	}
+}
+
 func (r *readTransaction) ExecuteNativePlan(ctx context.Context, definitions []query.Definition, requested, order []string) (map[string]model.Source, model.Metrics, bool, error) {
 	raw, path, supported := simplePlan(definitions, requested, order)
 	if !supported {
 		return nil, model.Metrics{}, false, nil
 	}
 	var baseBytes sql.NullInt64
-	var metadataText string
+	var metadataText sql.NullString
 	var baseCount int
 	var canonical bool
 	err := r.tx.QueryRowContext(ctx, `SELECT c.count, s.estimated_bytes, d.payload, s.is_canonical
 		FROM cao_sources AS s
 		JOIN cao_counts AS c ON c.namespace = s.namespace AND c.source_name = s.source_name
-		JOIN cao_source_documents AS d ON d.namespace = s.namespace AND d.source_name = s.source_name AND d.ordinal = -1
+		LEFT JOIN cao_source_documents AS d ON d.namespace = s.namespace AND d.source_name = s.source_name
+			AND d.ordinal = -1 AND NOT s.is_canonical
 		WHERE s.namespace = $1 AND s.source_name = $2`, r.store.namespace, raw).
 		Scan(&baseCount, &baseBytes, &metadataText, &canonical)
-	if errors.Is(err, sql.ErrNoRows) || (err == nil && !baseBytes.Valid) {
-		// An older committed revision has only EAV rows. The next replacement
-		// will populate documents atomically; until then retain the old reader.
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, model.Metrics{}, false, nil
 	}
 	if err != nil {
 		return nil, model.Metrics{}, true, fmt.Errorf("read postgres plan input: %w", err)
 	}
+	if !baseBytes.Valid {
+		return nil, model.Metrics{}, true, errors.New("incomplete postgres source")
+	}
 	var metadata model.Metadata
-	if err := decodeJSON([]byte(metadataText), &metadata); err != nil {
-		return nil, model.Metrics{}, true, errors.New("invalid postgres source metadata")
+	if canonical {
+		metadata, err = readCanonicalMetadata(ctx, r.tx, r.store.namespace, raw)
+	} else if isCanonicalSource(raw) || !metadataText.Valid {
+		return nil, model.Metrics{}, true, errors.New("incomplete postgres source metadata")
+	} else {
+		err = decodeJSON([]byte(metadataText.String), &metadata)
+	}
+	if err != nil {
+		return nil, model.Metrics{}, true, fmt.Errorf("invalid postgres source metadata: %w", err)
 	}
 	if metadata["availability"] == "unavailable" || baseCount < 0 || baseBytes.Int64 < 0 {
 		return nil, model.Metrics{}, false, nil
@@ -160,10 +187,10 @@ func (r *readTransaction) ExecuteNativePlan(ctx context.Context, definitions []q
 		if !canonical {
 			where, args = documentFilter(r.store.namespace, raw, definition.Filter)
 		}
-		filters := map[string]string{}
+		filters := map[string]any{}
 		if definition.Filter != nil {
 			for _, predicate := range definition.Filter.Predicates {
-				filters[predicate.Field] = predicate.Equals.(string)
+				filters[predicate.Field] = predicate.Equals
 			}
 		}
 		if definition.Filter != nil {

@@ -146,14 +146,32 @@ func TestStoreIntegration(t *testing.T) {
 					"organizationLink": map[string]any{"href": "https://github.com/githubnext"},
 					"githubId":         json.Number("9007199254740993"),
 					"githubRunId":      "00123", "attempt": json.Number("9007199254740993"),
+					"provenance": map[string]any{
+						"source": "gh-aw-logs", "sourceId": "run-1",
+						"observedAt":     "2026-01-02T03:04:05.123456789-07:00",
+						"sourceRevision": "v1",
+					},
+					"tokenUsage": map[string]any{"by_model": map[string]any{
+						"gpt-test": map[string]any{"reasoning_tokens": json.Number("23")}}},
 					"sequence": nil, "createdAt": "2026-01-02T03:04:05.123456789-07:00", "nested": map[string]any{
 						"large":       json.Number("9007199254740993"),
 						"array":       []any{map[string]any{"deep": []any{json.Number("1.2345678901234567890123456789"), nil, true}}, []any{}, map[string]any{}},
 						"unusual/key": json.Number("1e1000000"),
 					}},
 			},
-			Metadata: model.Metadata{"kind": "canonical"},
+			Metadata: model.Metadata{
+				"kind": "canonical", "source-id": "$runs", "source-revision": "revision-1",
+				"availability": "available", "row-count": 1,
+			},
 		},
+		"$jobs": {
+			Source: "$jobs",
+			Rows: []model.Row{
+				{}, {}, {"id": json.Number("1e1000000")}, {},
+				{"id": "42"}, {},
+			},
+		},
+		"$events": {Source: "$events", Metadata: model.Metadata{"row-count": nil, "availability": nil}},
 		"repositories": {
 			Source: "repositories",
 			Rows: []model.Row{
@@ -195,7 +213,7 @@ func TestStoreIntegration(t *testing.T) {
 	}
 	if !state.Ready || state.Revision != revision || state.DataRevision != "test-revision" ||
 		!state.EvaluatedAt.Equal(evaluatedAt) ||
-		!reflect.DeepEqual(state.Counts, map[string]int{"$runs": 1, "repositories": 2, "empty": 0, "deep": 1, "bulk": 1100}) {
+		!reflect.DeepEqual(state.Counts, map[string]int{"$runs": 1, "$jobs": 6, "$events": 0, "repositories": 2, "empty": 0, "deep": 1, "bulk": 1100}) {
 		t.Fatalf("unexpected state: %+v", state)
 	}
 	tenant, err := NewConfig(ctx, config, "other-tenant")
@@ -233,6 +251,20 @@ func TestStoreIntegration(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(raw.Rows, sources["$runs"].Rows) {
 		t.Fatalf("raw canonical source: %+v, %v", raw, err)
 	}
+	jobs, _, err := store.LoadSource(ctx, "$jobs", nil)
+	if err != nil || !reflect.DeepEqual(jobs.Rows, sources["$jobs"].Rows) {
+		t.Fatalf("sparse canonical source with numeric IDs: %+v, %v", jobs, err)
+	}
+	events, _, err := store.LoadSource(ctx, "$events", nil)
+	if err != nil || !reflect.DeepEqual(events.Metadata, sources["$events"].Metadata) {
+		t.Fatalf("null canonical metadata: %+v, %v", events, err)
+	}
+	var numericID, idKind string
+	if err := store.db.QueryRowContext(ctx, `SELECT id, id_kind FROM cao_canonical_rows
+		WHERE namespace = $1 AND source_name = '$jobs' AND ordinal = 2`, "default").
+		Scan(&numericID, &idKind); err != nil || numericID != "1e1000000" || idKind != "number" {
+		t.Fatalf("numeric ID native storage: id=%q kind=%q err=%v", numericID, idKind, err)
+	}
 	err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
 		defs := []query.Definition{{
 			Name: "selected-run", From: "$runs",
@@ -241,7 +273,7 @@ func TestStoreIntegration(t *testing.T) {
 				{Field: "runId"}, {Field: "createdAt"}, {Field: "attempt"},
 				{Field: "sequence"}, {Field: "enabled"}, {Field: "githubId"},
 				{Field: "githubRunId"}, {Field: "organizationLink"},
-				{Field: "nested"}, {Field: "missingValue"},
+				{Field: "provenance"}, {Field: "nested"}, {Field: "missingValue"},
 			},
 		}}
 		result, _, supported, planErr := reader.(NativePlanExecutor).ExecuteNativePlan(ctx, defs,
@@ -251,6 +283,7 @@ func TestStoreIntegration(t *testing.T) {
 			"attempt": json.Number("9007199254740993"), "sequence": nil, "enabled": true,
 			"githubId": json.Number("9007199254740993"), "githubRunId": "00123",
 			"organizationLink": map[string]any{"href": "https://github.com/githubnext"},
+			"provenance":       sources["$runs"].Rows[0]["provenance"],
 			"nested":           sources["$runs"].Rows[0]["nested"],
 		}
 		if planErr != nil || !supported || !reflect.DeepEqual(result["selected-run"].Rows, []model.Row{want}) {
@@ -275,8 +308,20 @@ func TestStoreIntegration(t *testing.T) {
 	assertNativeSchema(t, ctx, store.db)
 	var documents int
 	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM cao_source_documents
-		WHERE namespace = $1 AND source_name = $2`, "default", "$runs").Scan(&documents); err != nil || documents != 1 {
-		t.Fatalf("canonical row was duplicated in documents: count=%d err=%v", documents, err)
+		WHERE namespace = $1 AND source_name = $2`, "default", "$runs").Scan(&documents); err != nil || documents != 0 {
+		t.Fatalf("canonical source retained metadata or row documents: count=%d err=%v", documents, err)
+	}
+	var metadataExtension, sourceID, sourceRevision, availability string
+	var metadataPresent []string
+	if err := store.db.QueryRowContext(ctx, `SELECT metadata_extension::text,
+		metadata_present, metadata_source_id, metadata_source_revision, metadata_availability
+		FROM cao_sources WHERE namespace = $1 AND source_name = '$runs'`, "default").
+		Scan(&metadataExtension, &metadataPresent, &sourceID, &sourceRevision, &availability); err != nil ||
+		metadataExtension != `{"kind":"canonical"}` ||
+		!reflect.DeepEqual(metadataPresent, []string{"availability", "row-count", "source-id", "source-revision"}) ||
+		sourceID != "$runs" || sourceRevision != "revision-1" || availability != "available" {
+		t.Fatalf("native canonical metadata: extension=%s present=%v source=%s revision=%s availability=%s err=%v",
+			metadataExtension, metadataPresent, sourceID, sourceRevision, availability, err)
 	}
 	var canonicalRows int
 	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM cao_canonical_rows
@@ -306,8 +351,22 @@ func TestStoreIntegration(t *testing.T) {
 	if err := store.db.QueryRowContext(ctx, `SELECT organization_href, extension::text
 		FROM cao_canonical_rows WHERE namespace = $1 AND source_name = '$runs' AND ordinal = 0`,
 		"default").Scan(&href, &extension); err != nil ||
-		href != "https://github.com/githubnext" || strings.Contains(extension, "organizationLink") {
-		t.Fatalf("known link was not native-only: href=%q extension=%q err=%v", href, extension, err)
+		href != "https://github.com/githubnext" ||
+		strings.Contains(extension, "organizationLink") || strings.Contains(extension, "tokenUsage") ||
+		strings.Contains(extension, "provenance") {
+		t.Fatalf("known link/token usage not native-only: href=%q extension=%q err=%v", href, extension, err)
+	}
+	var provenanceSource, provenanceID, provenanceRaw, provenanceRevision string
+	var provenancePresent []string
+	if err := store.db.QueryRowContext(ctx, `SELECT provenance_source, provenance_source_id,
+		provenance_observed_at_raw, provenance_source_revision, provenance_present
+		FROM cao_canonical_rows WHERE namespace = 'default' AND source_name = '$runs' AND ordinal = 0`).
+		Scan(&provenanceSource, &provenanceID, &provenanceRaw, &provenanceRevision, &provenancePresent); err != nil ||
+		provenanceSource != "gh-aw-logs" || provenanceID != "run-1" ||
+		provenanceRaw != "2026-01-02T03:04:05.123456789-07:00" || provenanceRevision != "v1" ||
+		!reflect.DeepEqual(provenancePresent, []string{"observedAt", "source", "sourceId", "sourceRevision"}) {
+		t.Fatalf("native provenance: %q %q %q %q %v err=%v",
+			provenanceSource, provenanceID, provenanceRaw, provenanceRevision, provenancePresent, err)
 	}
 	var attemptRaw, githubIDRaw sql.NullString
 	var nativeAttempt, nativeGithubID string
@@ -322,9 +381,8 @@ func TestStoreIntegration(t *testing.T) {
 	}
 	var exactNumber, textFallback bool
 	if err := store.db.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM cao_values
-		WHERE namespace = $1 AND kind = 'number' AND numeric_value = $2::numeric)`,
-		"default", "9007199254740993").Scan(&exactNumber); err != nil || !exactNumber {
-		t.Fatalf("large integer missing native numeric representation: %v, %v", exactNumber, err)
+		WHERE namespace = $1)`, "default").Scan(&exactNumber); err != nil || exactNumber {
+		t.Fatalf("new sources retained EAV nodes: %v, %v", exactNumber, err)
 	}
 	if err := store.db.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM cao_canonical_rows
 		WHERE namespace = $1 AND extension::text LIKE '%1e1000000%')`,
@@ -438,58 +496,79 @@ func TestStoreIntegration(t *testing.T) {
 	err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
 		_, _, supported, err := reader.(NativePlanExecutor).ExecuteNativePlan(ctx,
 			[]query.Definition{{Name: "empty-query", From: "empty"}}, []string{"empty-query"}, []string{"empty-query"})
-		if err != nil || supported {
-			t.Errorf("older EAV-only revision must use fallback: supported=%t err=%v", supported, err)
+		if err == nil || !supported || !strings.Contains(err.Error(), "incomplete postgres source metadata") {
+			t.Errorf("missing schemaless metadata must fail closed: supported=%t err=%v", supported, err)
 		}
 		return nil
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if legacy, _, err := store.LoadSource(ctx, "empty", nil); err != nil || len(legacy.Rows) != 0 {
-		t.Fatalf("EAV fallback lost older source: %+v err=%v", legacy, err)
+	if _, _, err := store.LoadSource(ctx, "empty", nil); err == nil {
+		t.Fatal("document-only source with deleted metadata must fail closed")
 	}
-	// A previous revision's complete document-backed source is converted on
-	// reopen without retaining either EAV nodes or duplicate row documents.
-	_, err = store.Replace(ctx, map[string]model.Source{"$jobs": {
-		Source: "$jobs", Rows: []model.Row{{"id": "old", "status": "completed", "createdAt": "invalid"}},
-		Metadata: model.Metadata{"source-id": "$jobs"},
-	}}, diagnostics, "legacy", evaluatedAt)
+	// Unsupported known fields fail the whole transaction without hiding
+	// their source in a generic EAV/document fallback.
+	beforeInvalid, err := store.State(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	fallbacks, err := store.StorageFallbacks(ctx)
-	if err != nil || fallbacks["$jobs"] != "known timestamp createdAt has invalid format" {
-		t.Fatalf("unsupported canonical shape fell back without diagnostics: %+v err=%v", fallbacks, err)
+	if _, err = store.Replace(ctx, map[string]model.Source{"$jobs": {
+		Source: "$jobs", Rows: []model.Row{{"id": "bad", "createdAt": "invalid"}},
+	}}, diagnostics, "invalid", evaluatedAt); err == nil {
+		t.Fatal("unsupported known timestamp was silently stored")
 	}
-	err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
-		defs := []query.Definition{{Name: "legacy-status", From: "$jobs",
-			Filter: &query.Filter{Predicates: []query.Predicate{{Field: "status", Equals: "completed"}}}}}
-		_, _, supported, planErr := reader.(NativePlanExecutor).ExecuteNativePlan(ctx, defs,
-			[]string{"legacy-status"}, []string{"legacy-status"})
-		if planErr != nil || supported {
-			t.Errorf("legacy fallback cannot claim typed field pushdown: supported=%t err=%v", supported, planErr)
-		}
-		result, _, evalErr := query.New(readerLoader{reader: reader, ctx: ctx}).Execute(defs, []string{"legacy-status"})
-		if evalErr != nil || !reflect.DeepEqual(result["legacy-status"].Rows, []model.Row{{
-			"id": "old", "status": "completed", "createdAt": "invalid",
-		}}) {
-			t.Errorf("Go fallback lost canonical rows: %+v err=%v", result, evalErr)
-		}
-		return nil
-	})
+	if _, err = store.Replace(ctx, map[string]model.Source{"$runs": {
+		Source: "$runs", Rows: []model.Row{{"id": "bad"}},
+		Metadata: model.Metadata{"row-count": 2},
+	}}, diagnostics, "invalid-metadata", evaluatedAt); err == nil {
+		t.Fatal("inconsistent native row-count was silently stored")
+	}
+	afterInvalid, err := store.State(ctx)
+	if err != nil || !reflect.DeepEqual(beforeInvalid, afterInvalid) {
+		t.Fatalf("invalid replacement changed committed state: before=%+v after=%+v err=%v", beforeInvalid, afterInvalid, err)
+	}
+	// Simulate a committed pre-document EAV-only source and migrate it on
+	// reopening; the legacy reader remains usable until migration succeeds.
+	tx, err := store.db.BeginTx(ctx, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.db.ExecContext(ctx, `UPDATE cao_source_documents SET payload = $1
-		WHERE namespace = $2 AND source_name = '$jobs' AND ordinal = 0`,
-		`{"id":"old","createdAt":"2026-01-02T03:04:05Z"}`, "default"); err != nil {
+	if _, err = tx.ExecContext(ctx, `INSERT INTO cao_sources (namespace, source_name)
+		VALUES ('default', '$jobs')`); err != nil {
 		t.Fatal(err)
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO cao_counts (namespace, source_name, count)
+		VALUES ('default', '$jobs', 1)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO cao_source_rows (namespace, source_name, ordinal)
+		VALUES ('default', '$jobs', 0)`); err != nil {
+		t.Fatal(err)
+	}
+	legacyBatch := valueBatch{ctx: ctx, tx: tx}
+	if err = legacyBatch.addTree("default", "$jobs", -1, map[string]any{"source-id": "$jobs"}); err != nil {
+		t.Fatal(err)
+	}
+	if err = legacyBatch.addTree("default", "$jobs", 0, map[string]any{
+		"id": "old", "createdAt": "2026-01-02T03:04:05Z",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err = legacyBatch.flush(); err != nil {
+		t.Fatal(err)
+	}
+	if err = tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	legacy, _, err := store.LoadSource(ctx, "$jobs", nil)
+	if err != nil || !reflect.DeepEqual(legacy.Rows, []model.Row{{"id": "old", "createdAt": "2026-01-02T03:04:05Z"}}) {
+		t.Fatalf("pre-document EAV reader lost data: %+v err=%v", legacy, err)
 	}
 	if err := initialize(ctx, store.db); err != nil {
 		t.Fatal(err)
 	}
-	fallbacks, err = store.StorageFallbacks(ctx)
+	fallbacks, err := store.StorageFallbacks(ctx)
 	if err != nil || len(fallbacks) != 0 {
 		t.Fatalf("backfilled source retained fallback warning: %+v err=%v", fallbacks, err)
 	}
@@ -512,6 +591,53 @@ func TestStoreIntegration(t *testing.T) {
 	}
 	if err := initialize(ctx, store.db); err != nil {
 		t.Fatalf("backfill is not idempotent: %v", err)
+	}
+	// Malformed historical EAV records must remain readable, not be partly
+	// promoted and deleted when their known shape cannot be represented.
+	tx, err = store.db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO cao_sources (namespace, source_name)
+		VALUES ('default', '$sessions')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO cao_counts (namespace, source_name, count)
+		VALUES ('default', '$sessions', 1)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO cao_source_rows (namespace, source_name, ordinal)
+		VALUES ('default', '$sessions', 0)`); err != nil {
+		t.Fatal(err)
+	}
+	invalidBatch := valueBatch{ctx: ctx, tx: tx}
+	if err = invalidBatch.addTree("default", "$sessions", -1, map[string]any{}); err != nil {
+		t.Fatal(err)
+	}
+	if err = invalidBatch.addTree("default", "$sessions", 0,
+		map[string]any{"id": "old-bad", "createdAt": "not-a-timestamp"}); err != nil {
+		t.Fatal(err)
+	}
+	if err = invalidBatch.flush(); err != nil {
+		t.Fatal(err)
+	}
+	if err = tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	if err := initialize(ctx, store.db); err != nil {
+		t.Fatal(err)
+	}
+	fallbacks, err = store.StorageFallbacks(ctx)
+	if err != nil || fallbacks["$sessions"] != "known timestamp createdAt has invalid format" {
+		t.Fatalf("historical unsupported shape lacked fallback diagnostic: %+v err=%v", fallbacks, err)
+	}
+	if malformed, _, err := store.LoadSource(ctx, "$sessions", nil); err != nil ||
+		!reflect.DeepEqual(malformed.Rows, []model.Row{{"id": "old-bad", "createdAt": "not-a-timestamp"}}) {
+		t.Fatalf("historical EAV source lost after failed promotion: %+v err=%v", malformed, err)
+	}
+	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM cao_canonical_rows
+		WHERE namespace = 'default' AND source_name = '$sessions'`).Scan(&documents); err != nil || documents != 0 {
+		t.Fatalf("failed historical promotion left partial native rows: count=%d err=%v", documents, err)
 	}
 	if _, err := store.db.ExecContext(ctx, `UPDATE cao_counts SET count = count + 1
 		WHERE namespace = $1 AND source_name = '$jobs'`, "default"); err != nil {
@@ -565,6 +691,281 @@ func TestStoreIntegration(t *testing.T) {
 
 func intPtr(n int) *int { return &n }
 
+func TestLegacyEAVBatchMigrationIntegration(t *testing.T) {
+	url := os.Getenv("POSTGRES_URL")
+	if url == "" {
+		t.Skip("POSTGRES_URL is unset")
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	config, err := pgx.ParseConfig(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	admin := stdlib.OpenDB(*config.Copy())
+	defer func() { _ = admin.Close() }()
+	schema := fmt.Sprintf("cao_postgresx_eav_batch_%d", time.Now().UnixNano())
+	if _, err := admin.ExecContext(ctx, "CREATE SCHEMA "+schema); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _, _ = admin.ExecContext(context.Background(), "DROP SCHEMA "+schema+" CASCADE") }()
+	config.RuntimeParams["search_path"] = schema
+	store, err := NewConfig(ctx, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	tx, err := store.db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, statement := range []string{
+		`INSERT INTO cao_state (namespace, revision, data_revision, evaluated_at)
+			VALUES ('default', 1, 'legacy', now())`,
+		`INSERT INTO cao_sources (namespace, source_name) VALUES ('default', '$runs')`,
+		`INSERT INTO cao_counts (namespace, source_name, count) VALUES ('default', '$runs', 260)`,
+	} {
+		if _, err = tx.ExecContext(ctx, statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+	values := valueBatch{ctx: ctx, tx: tx}
+	positions := rowBatch{ctx: ctx, tx: tx, namespace: "default", name: "$runs"}
+	if err = values.addTree("default", "$runs", -1, map[string]any{"source-id": "$runs"}); err != nil {
+		t.Fatal(err)
+	}
+	for i := int64(0); i < 260; i++ {
+		if err = positions.add(i); err != nil {
+			t.Fatal(err)
+		}
+		if err = values.addTree("default", "$runs", i, map[string]any{
+			"id": fmt.Sprintf("run:%d", i), "attempt": json.Number(strconv.FormatInt(i, 10)),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err = positions.flush(); err != nil {
+		t.Fatal(err)
+	}
+	if err = values.flush(); err != nil {
+		t.Fatal(err)
+	}
+	if err = tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	if err := initialize(ctx, store.db); err != nil {
+		t.Fatal(err)
+	}
+	loaded, _, err := store.LoadSource(ctx, "$runs", nil)
+	if err != nil || len(loaded.Rows) != 260 ||
+		loaded.Rows[0]["attempt"] != json.Number("0") ||
+		loaded.Rows[259]["attempt"] != json.Number("259") {
+		t.Fatalf("EAV migration lost batch boundary: rows=%d err=%v", len(loaded.Rows), err)
+	}
+	for _, table := range []string{"cao_values", "cao_source_rows"} {
+		var count int
+		if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM `+table+
+			` WHERE namespace = 'default' AND source_name = '$runs'`).Scan(&count); err != nil || count != 0 {
+			t.Fatalf("legacy %s persisted after successful migration: count=%d err=%v", table, count, err)
+		}
+	}
+}
+
+func TestCanonicalProducerDifferentialIntegration(t *testing.T) {
+	url := os.Getenv("POSTGRES_URL")
+	if url == "" {
+		t.Skip("POSTGRES_URL is unset")
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	config, err := pgx.ParseConfig(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	admin := stdlib.OpenDB(*config.Copy())
+	defer func() { _ = admin.Close() }()
+	schema := fmt.Sprintf("cao_postgresx_producers_%d", time.Now().UnixNano())
+	if _, err := admin.ExecContext(ctx, "CREATE SCHEMA "+schema); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _, _ = admin.ExecContext(context.Background(), "DROP SCHEMA "+schema+" CASCADE") }()
+	config.RuntimeParams["search_path"] = schema
+	store, err := NewConfig(ctx, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	input := []model.Row{
+		{"id": "observation:1", "runId": "run:1", "graderId": "grader:1",
+			"experimentId": "experiment:1", "auditId": "audit:1", "value": json.Number("1e3"),
+			"threshold": nil, "included": false, "firstObservedAt": "2026-10-01T12:00:00Z",
+			"runLink":            "https://github.com/org/repo/actions/runs/1",
+			"metrics":            []any{map[string]any{"value": json.Number("1e3")}},
+			"provenance":         map[string]any{"source": "gh-aw"},
+			"attributableRunIds": []any{"run:1", "run:2"}},
+		{"id": "observation:2", "runId": "run:2", "graderId": "grader:2",
+			"runLink": map[string]any{"href": "https://github.com/org/repo/actions/runs/2",
+				"relation": "run", "label": "Run 2"},
+			"attributableRunIds": []any{}, "included": nil, "value": json.Number("0.000100")},
+	}
+	sources := map[string]model.Source{
+		"$graderObservations": {
+			Source: "$graderObservations", Rows: input, Metadata: model.Metadata{"source-id": "$graderObservations"},
+		},
+		"$campaigns": {
+			Source: "$campaigns", Rows: []model.Row{{
+				"id": "campaign:1", "maxRepositories": json.Number("12"),
+				"inventoryWarnings": json.Number("0"), "experimental": false,
+				"workers": []any{map[string]any{"name": "worker", "index": json.Number("1")}},
+				"targets": []any{map[string]any{"repository": "org/repo"}},
+				"campaignLink": map[string]any{"href": "https://github.com/org/repo",
+					"relation": "campaign", "label": "Campaign"},
+			}},
+		},
+		"$marketplacePackages": {
+			Source: "$marketplacePackages", Rows: []model.Row{{
+				"id": "marketplace:1", "registryId": "primary", "registryPrecedence": json.Number("0"),
+				"contents": []any{map[string]any{"path": "worker.md"}}, "stars": json.Number("42"),
+			}},
+		},
+		"$audits": {
+			Source: "$audits", Rows: []model.Row{{
+				"id": "audit:1", "value": "inconclusive",
+				"answer":     map[string]any{"result": "UNKNOWN"},
+				"evalResult": []any{"YES", "NO"},
+				"costGrain":  map[string]any{"unit": "invocation", "count": json.Number("2")},
+			}, {
+				"id": "audit:2", "value": json.Number("2.50"),
+				"answer": "YES", "evalResult": "pass", "costGrain": "run",
+			}},
+		},
+	}
+	fixture, err := os.ReadFile("../../testdata/deployed-subset/gh-aw-logs-runs/subset.jsonl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var deployed struct {
+		Collection string    `json:"collection"`
+		Record     model.Row `json:"record"`
+	}
+	if err := decodeJSON([]byte(strings.Split(string(fixture), "\n")[1]), &deployed); err != nil ||
+		deployed.Collection != "campaigns" {
+		t.Fatalf("deployed canonical fixture: collection=%q err=%v", deployed.Collection, err)
+	}
+	campaigns := sources["$campaigns"]
+	campaigns.Rows = append(campaigns.Rows, deployed.Record)
+	sources["$campaigns"] = campaigns
+	if _, err := store.Replace(ctx, sources, model.Diagnostics{}, "producer", time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	var stored int
+	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM cao_canonical_rows
+		WHERE namespace = 'default' AND source_name = '$graderObservations'
+		AND extension IS NULL AND (run_href IS NOT NULL OR run_href_json IS NOT NULL) AND grader_id IS NOT NULL
+		AND attributable_run_ids IS NOT NULL`).Scan(&stored); err != nil || stored != 2 {
+		t.Fatalf("producer fields not native: count=%d err=%v", stored, err)
+	}
+	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM cao_canonical_rows
+		WHERE namespace = 'default' AND source_name = '$campaigns'
+		AND id = 'campaign:dashboard' AND extension IS NULL`).Scan(&stored); err != nil || stored != 1 {
+		t.Fatalf("fully known deployed fixture retained JSON extension: count=%d err=%v", stored, err)
+	}
+	for _, table := range []string{"cao_values", "cao_source_rows"} {
+		if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM `+table+` WHERE namespace = 'default'`).
+			Scan(&stored); err != nil || stored != 0 {
+			t.Fatalf("canonical EAV duplication in %s: count=%d err=%v", table, stored, err)
+		}
+	}
+	var documents int
+	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM cao_source_documents
+		WHERE namespace = 'default' AND source_name = '$graderObservations'`).
+		Scan(&documents); err != nil || documents != 0 {
+		t.Fatalf("canonical source duplicated in documents: count=%d err=%v", documents, err)
+	}
+	loaded, _, err := store.LoadSource(ctx, "$graderObservations", nil)
+	if err != nil || !reflect.DeepEqual(loaded.Rows, input) {
+		t.Fatalf("native producer roundtrip: %+v err=%v", loaded, err)
+	}
+	for _, name := range []string{"$campaigns", "$marketplacePackages", "$audits"} {
+		loaded, _, err := store.LoadSource(ctx, name, nil)
+		if err != nil || !reflect.DeepEqual(loaded.Rows, sources[name].Rows) {
+			t.Errorf("%s native structured roundtrip: %+v err=%v", name, loaded, err)
+		}
+	}
+	richSelection := []query.Definition{{Name: "rich-link", From: "$graderObservations",
+		Filter: &query.Filter{Predicates: []query.Predicate{{Field: "graderId", Equals: "grader:2"}}},
+		Select: []query.SelectedField{{Field: "runLink"}, {Field: "attributableRunIds"}}}}
+	err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
+		result, _, supported, planErr := reader.(NativePlanExecutor).ExecuteNativePlan(ctx,
+			richSelection, []string{"rich-link"}, []string{"rich-link"})
+		if planErr != nil || !supported || !reflect.DeepEqual(result["rich-link"].Rows,
+			[]model.Row{{"runLink": input[1]["runLink"], "attributableRunIds": []any{}}}) {
+			t.Errorf("rich link/empty array selection: %+v supported=%t err=%v", result, supported, planErr)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"audit:1", "audit:2"} {
+		defs := []query.Definition{{Name: "mixed", From: "$audits",
+			Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: id}}},
+			Select: []query.SelectedField{{Field: "value"}, {Field: "answer"},
+				{Field: "evalResult"}, {Field: "costGrain"}}}}
+		err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
+			native, _, supported, nativeErr := reader.(NativePlanExecutor).ExecuteNativePlan(ctx,
+				defs, []string{"mixed"}, []string{"mixed"})
+			plain, _, plainErr := query.New(readerLoader{reader: reader, ctx: ctx}).Execute(defs, []string{"mixed"})
+			if nativeErr != nil || plainErr != nil || !supported ||
+				!reflect.DeepEqual(native["mixed"].Rows, plain["mixed"].Rows) {
+				t.Errorf("%s mixed known evidence selection differs: native=%+v Go=%+v supported=%t errs=%v/%v",
+					id, native, plain, supported, nativeErr, plainErr)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, value := range []string{"inconclusive", "2.50"} {
+		defs := []query.Definition{{Name: "by-value", From: "$audits",
+			Filter: &query.Filter{Predicates: []query.Predicate{{Field: "value", Equals: value}}}}}
+		err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
+			native, _, supported, nativeErr := reader.(NativePlanExecutor).ExecuteNativePlan(ctx,
+				defs, []string{"by-value"}, []string{"by-value"})
+			plain, _, plainErr := query.New(readerLoader{reader: reader, ctx: ctx}).Execute(defs, []string{"by-value"})
+			if nativeErr != nil || plainErr != nil || !supported ||
+				!reflect.DeepEqual(native["by-value"].Rows, plain["by-value"].Rows) {
+				t.Errorf("%q mixed value filter differs: native=%+v Go=%+v supported=%t errs=%v/%v",
+					value, native, plain, supported, nativeErr, plainErr)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	definitions := []query.Definition{{
+		Name: "grader:1", From: "$graderObservations",
+		Filter: &query.Filter{Predicates: []query.Predicate{{Field: "graderId", Equals: "grader:1"}}},
+		Select: []query.SelectedField{{Field: "metrics"}, {Field: "value"}, {Field: "runLink"},
+			{Field: "attributableRunIds"}, {Field: "included"}, {Field: "threshold"}},
+	}}
+	err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
+		plain, _, plainErr := query.New(readerLoader{reader: reader, ctx: ctx}).Execute(definitions, []string{"grader:1"})
+		native, _, supported, nativeErr := reader.(NativePlanExecutor).ExecuteNativePlan(ctx,
+			definitions, []string{"grader:1"}, []string{"grader:1"})
+		if plainErr != nil || nativeErr != nil || !supported || !reflect.DeepEqual(plain["grader:1"].Rows, native["grader:1"].Rows) {
+			t.Errorf("producer query differs: Go=%+v native=%+v supported=%t err=%v/%v",
+				plain, native, supported, plainErr, nativeErr)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 type sourceLoader struct {
 	store *Store
 	ctx   context.Context
@@ -590,7 +991,8 @@ func assertNativeSchema(t *testing.T, ctx context.Context, db *sql.DB) {
 		WHERE table_schema = current_schema() AND table_name IN
 		('cao_sources', 'cao_source_rows', 'cao_state', 'cao_values', 'cao_counts',
 		 'cao_diagnostic_counts', 'cao_relationship_errors', 'cao_duplicate_ids')
-		AND (data_type IN ('json', 'jsonb') OR column_name IN ('metadata', 'payload', 'diagnostics'))`).Scan(&count)
+		AND ((data_type IN ('json', 'jsonb') AND column_name <> 'metadata_extension')
+			OR column_name IN ('metadata', 'payload', 'diagnostics'))`).Scan(&count)
 	if err != nil || count != 0 {
 		t.Fatalf("legacy JSON columns remain: count=%d err=%v", count, err)
 	}
@@ -600,6 +1002,13 @@ func assertNativeSchema(t *testing.T, ctx context.Context, db *sql.DB) {
 		AND column_name = 'numeric_value' AND data_type = 'numeric')`).Scan(&nativeNumeric)
 	if err != nil || !nativeNumeric {
 		t.Fatalf("missing native numeric column: %v, %v", nativeNumeric, err)
+	}
+	var inventoryJSON bool
+	err = db.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM information_schema.columns
+		WHERE table_schema = current_schema() AND table_name = 'cao_source_documents'
+		AND column_name = 'payload' AND data_type = 'json')`).Scan(&inventoryJSON)
+	if err != nil || !inventoryJSON {
+		t.Fatalf("schemaless inventory lacks JSON document storage: %v, %v", inventoryJSON, err)
 	}
 }
 
@@ -668,6 +1077,220 @@ func TestLegacyMigrationFailureRollsBack(t *testing.T) {
 		t.Fatalf("retry lost legacy metadata: %+v, %v", source, err)
 	}
 }
+
+func TestCanonicalExtensionColumnUpgrade(t *testing.T) {
+	url := os.Getenv("POSTGRES_URL")
+	if url == "" {
+		t.Skip("POSTGRES_URL is unset")
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 45*time.Second)
+	defer cancel()
+	config, err := pgx.ParseConfig(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	admin := stdlib.OpenDB(*config.Copy())
+	defer func() { _ = admin.Close() }()
+	schema := fmt.Sprintf("cao_canonical_upgrade_%d", time.Now().UnixNano())
+	if _, err := admin.ExecContext(ctx, "CREATE SCHEMA "+schema); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _, _ = admin.ExecContext(context.Background(), "DROP SCHEMA "+schema+" CASCADE") }()
+	config.RuntimeParams["search_path"] = schema
+	old, err := NewConfig(ctx, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var booleanIndexes int
+	if err := old.db.QueryRowContext(ctx, `SELECT count(*) FROM pg_indexes
+		WHERE schemaname = current_schema() AND tablename = 'cao_canonical_rows'
+		AND indexname IN ('cao_canonical_rows_enabled', 'cao_canonical_rows_is_pull_request')
+		AND (indexdef LIKE '%(namespace, source_name, enabled)%'
+			OR indexdef LIKE '%(namespace, source_name, is_pull_request)%')`).
+		Scan(&booleanIndexes); err != nil || booleanIndexes != 2 {
+		t.Fatalf("native boolean indexes: count=%d err=%v", booleanIndexes, err)
+	}
+	input := make([]model.Row, 270)
+	for i := range input {
+		input[i] = model.Row{"id": fmt.Sprintf("run-%d", i), "status": "completed", "runId": nil}
+	}
+	if _, err := old.Replace(ctx, map[string]model.Source{
+		"$runs": {Source: "$runs", Rows: input, Metadata: model.Metadata{"version": json.Number("1")}},
+		"$jobs": {Source: "$jobs", Rows: []model.Row{{"id": "job-1"}}},
+	}, model.Diagnostics{}, "old", time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	prior, _, err := old.LoadSource(ctx, "$runs", nil)
+	if err != nil || !reflect.DeepEqual(prior.Metadata, model.Metadata{"version": json.Number("1")}) {
+		t.Fatalf("new canonical metadata storage: %+v, %v", prior.Metadata, err)
+	}
+	_ = old.Close()
+	legacy := stdlib.OpenDB(*config.Copy())
+	defer func() { _ = legacy.Close() }()
+	// Model the prior branch's table with canonical rows and extension fields
+	// that were not yet represented by physical columns.
+	for _, statement := range []string{
+		`INSERT INTO cao_source_documents (namespace, source_name, ordinal, payload)
+			VALUES ('default', '$runs', -1,
+				'{"version":1,"source-id":"$runs","source-revision":"old","availability":"available","row-count":270}'::json)`,
+		`INSERT INTO cao_source_documents (namespace, source_name, ordinal, payload)
+			VALUES ('default', '$jobs', -1, 'null'::json)`,
+		`ALTER TABLE cao_sources
+			DROP COLUMN metadata_extension, DROP COLUMN metadata_present,
+			DROP COLUMN metadata_source_id, DROP COLUMN metadata_source_revision,
+			DROP COLUMN metadata_availability, DROP COLUMN metadata_row_count_null,
+			DROP COLUMN metadata_migrated`,
+		`UPDATE cao_canonical_rows SET extension = '{}'::json WHERE extension IS NULL`,
+		`ALTER TABLE cao_canonical_rows ALTER COLUMN extension SET NOT NULL`,
+		`ALTER TABLE cao_canonical_rows
+			DROP COLUMN agent_id, DROP COLUMN failure_message,
+			DROP COLUMN evidence_window_start, DROP COLUMN evidence_window_start_raw,
+			DROP COLUMN attributable_run_ids, DROP COLUMN events_truncated,
+			DROP COLUMN value, DROP COLUMN value_raw, DROP COLUMN value_text,
+			DROP COLUMN value_kind, DROP COLUMN answer_json, DROP COLUMN id_kind`,
+		`ALTER TABLE cao_canonical_rows
+			DROP COLUMN provenance_source, DROP COLUMN provenance_source_id,
+			DROP COLUMN provenance_observed_at, DROP COLUMN provenance_observed_at_raw,
+			DROP COLUMN provenance_source_revision, DROP COLUMN provenance_present,
+			DROP COLUMN provenance_null, ADD COLUMN provenance JSON`,
+		`UPDATE cao_canonical_rows SET
+			provenance = json_build_object('source', 'legacy', 'sourceId', 'source-' || ordinal,
+				'observedAt', '2026-09-01T10:11:12.123456789-07:00',
+				'sourceRevision', 'v1'),
+			present = array_append(present, 'provenance')
+			WHERE source_name = '$runs'`,
+		`UPDATE cao_canonical_rows SET extension = json_build_object(
+			'agentId', 'agent-' || ordinal, 'failureMessage', null,
+			'evidenceWindowStart', '2026-09-01T10:11:12.123456789Z',
+			'attributableRunIds', json_build_array('run-' || ordinal),
+			'eventsTruncated', true, 'value', 'text evidence',
+			'answer', json_build_object('nested', true),
+			'openEvidence', json_build_object('source', 'old'))
+			WHERE source_name = '$runs'`,
+	} {
+		if _, err := legacy.ExecContext(ctx, statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := legacy.ExecContext(ctx, `UPDATE cao_canonical_rows SET
+		extension = (extension::jsonb || '{"status":"failed"}'::jsonb)::json
+		WHERE namespace = 'default' AND source_name = '$runs' AND ordinal = 269`); err != nil {
+		t.Fatal(err)
+	}
+	if partial, err := NewConfig(ctx, config); err == nil {
+		_ = partial.Close()
+		t.Fatal("conflicting last batch must roll back the entire upgrade")
+	}
+	var retained string
+	var added bool
+	if err := legacy.QueryRowContext(ctx, `SELECT extension::text FROM cao_canonical_rows
+		WHERE namespace = 'default' AND source_name = '$runs' AND ordinal = 0`).Scan(&retained); err != nil ||
+		!strings.Contains(retained, `"agentId"`) {
+		t.Fatalf("failed batch migration rewrote earlier rows: extension=%s err=%v", retained, err)
+	}
+	if err := legacy.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM information_schema.columns
+		WHERE table_schema = current_schema() AND table_name = 'cao_canonical_rows'
+		AND column_name = 'agent_id')`).Scan(&added); err != nil || added {
+		t.Fatalf("failed batch migration retained schema changes: added=%t err=%v", added, err)
+	}
+	var count int
+	if err := legacy.QueryRowContext(ctx, `SELECT count(*) FROM cao_source_documents
+		WHERE namespace = 'default' AND source_name = '$runs'`).Scan(&count); err != nil || count != 1 {
+		t.Fatalf("failed batch migration removed old metadata document: count=%d err=%v", count, err)
+	}
+	if _, err := legacy.ExecContext(ctx, `UPDATE cao_canonical_rows SET
+		extension = (extension::jsonb - 'status')::json
+		WHERE namespace = 'default' AND source_name = '$runs' AND ordinal = 269`); err != nil {
+		t.Fatal(err)
+	}
+	upgraded, err := NewConfig(ctx, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = upgraded.Close() }()
+	source, _, err := upgraded.LoadSource(ctx, "$runs", nil)
+	if err != nil || len(source.Rows) != len(input) {
+		t.Fatalf("upgraded canonical source: %d rows, %v", len(source.Rows), err)
+	}
+	if !reflect.DeepEqual(source.Metadata, model.Metadata{
+		"version": json.Number("1"), "source-id": "$runs", "source-revision": "old",
+		"availability": "available", "row-count": json.Number("270"),
+	}) {
+		t.Fatalf("metadata changed on upgrade: %#v", source.Metadata)
+	}
+	for i, row := range source.Rows {
+		if row["id"] != input[i]["id"] || row["runId"] != nil || row["status"] != "completed" ||
+			row["agentId"] != fmt.Sprintf("agent-%d", i) || row["failureMessage"] != nil ||
+			row["evidenceWindowStart"] != "2026-09-01T10:11:12.123456789Z" ||
+			row["eventsTruncated"] != true || row["value"] != "text evidence" ||
+			!reflect.DeepEqual(row["provenance"], map[string]any{
+				"source": "legacy", "sourceId": fmt.Sprintf("source-%d", i),
+				"observedAt": "2026-09-01T10:11:12.123456789-07:00", "sourceRevision": "v1",
+			}) ||
+			!reflect.DeepEqual(row["attributableRunIds"], []any{fmt.Sprintf("run-%d", i)}) ||
+			!reflect.DeepEqual(row["answer"], map[string]any{"nested": true}) ||
+			!reflect.DeepEqual(row["openEvidence"], map[string]any{"source": "old"}) {
+			t.Fatalf("upgraded row %d lost a field: %#v", i, row)
+		}
+	}
+	var extension string
+	var agent, valueText string
+	if err := legacy.QueryRowContext(ctx, `SELECT extension::text, agent_id, value_text
+		FROM cao_canonical_rows WHERE namespace = 'default' AND source_name = '$runs'
+		AND ordinal = 269`).Scan(&extension, &agent, &valueText); err != nil ||
+		extension != `{"openEvidence":{"source":"old"}}` || agent != "agent-269" || valueText != "text evidence" {
+		t.Fatalf("native field relocation: extension=%s agent=%s value=%s err=%v", extension, agent, valueText, err)
+	}
+	if err := legacy.QueryRowContext(ctx, `SELECT count(*) FROM cao_canonical_rows
+		WHERE namespace = 'default' AND source_name = '$runs'`).Scan(&count); err != nil || count != len(input) {
+		t.Fatalf("upgrade changed row count: %d, %v", count, err)
+	}
+	if err := legacy.QueryRowContext(ctx, `SELECT count(*) FROM cao_source_documents
+		WHERE namespace = 'default' AND source_name = '$runs'`).Scan(&count); err != nil || count != 0 {
+		t.Fatalf("upgrade retained a canonical metadata document: %d, %v", count, err)
+	}
+	if err := legacy.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM information_schema.columns
+		WHERE table_schema = current_schema() AND table_name = 'cao_canonical_rows'
+		AND column_name = 'provenance')`).Scan(&added); err != nil || added {
+		t.Fatalf("upgrade retained legacy provenance JSON column: present=%t err=%v", added, err)
+	}
+	var hasExtension bool
+	if err := legacy.QueryRowContext(ctx, `SELECT extension IS NOT NULL FROM cao_canonical_rows
+		WHERE namespace = 'default' AND source_name = '$jobs' AND ordinal = 0`).Scan(&hasExtension); err != nil || hasExtension {
+		t.Fatalf("upgrade did not null old empty extension: present=%t err=%v", hasExtension, err)
+	}
+	_ = upgraded.Close()
+	reopened, err := NewConfig(ctx, config)
+	if err != nil {
+		t.Fatalf("second upgrade must be idempotent: %v", err)
+	}
+	_ = reopened.Close()
+	if _, err := legacy.ExecContext(ctx, `UPDATE cao_canonical_rows
+		SET extension = '{"status":"failed","openEvidence":true}'::json
+		WHERE namespace = 'default' AND source_name = '$runs' AND ordinal = 0`); err != nil {
+		t.Fatal(err)
+	}
+	if reopened, err := NewConfig(ctx, config); err == nil {
+		_ = reopened.Close()
+		t.Fatal("conflicting native/extension field must abort upgrade")
+	}
+	var status string
+	if err := legacy.QueryRowContext(ctx, `SELECT status, extension::text
+		FROM cao_canonical_rows WHERE namespace = 'default' AND source_name = '$runs'
+		AND ordinal = 0`).Scan(&status, &extension); err != nil ||
+		status != "completed" || !strings.Contains(extension, `"status":"failed"`) {
+		t.Fatalf("failed upgrade changed existing record: status=%s extension=%s err=%v", status, extension, err)
+	}
+	if _, err := legacy.ExecContext(ctx, `UPDATE cao_sources
+		SET metadata_extension = '{"source-id":"shadow"}'::json
+		WHERE namespace = 'default' AND source_name = '$runs'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := upgraded.LoadSource(ctx, "$runs", nil); err == nil {
+		t.Fatal("known metadata in extension must fail closed")
+	}
+}
+
 func TestLegacyJSONBMigrationAllTenants(t *testing.T) {
 	url := os.Getenv("POSTGRES_URL")
 	if url == "" {
