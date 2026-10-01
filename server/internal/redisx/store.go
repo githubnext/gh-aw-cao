@@ -114,9 +114,10 @@ var ingestionLoadNames = map[string]string{
 var ErrSourceUnavailable = errors.New("redis source is unavailable")
 
 type Store struct {
-	Client          CommandClient
-	namespace       string
-	processIsolated bool
+	Client           CommandClient
+	namespace        string
+	processIsolated  bool
+	indexDefinitions []query.Definition
 }
 
 type CommandClient interface {
@@ -168,6 +169,10 @@ func NewProcessIsolatedStore(client CommandClient, namespace string) (*Store, er
 
 func (s *Store) ProcessIsolated() bool {
 	return s != nil && s.processIsolated
+}
+
+func (s *Store) ConfigureIndexDefinitions(definitions []query.Definition) {
+	s.indexDefinitions = append([]query.Definition(nil), definitions...)
 }
 
 func (s *Store) Ping(ctx context.Context) error {
@@ -682,27 +687,35 @@ func (s *Store) PutSource(ctx context.Context, generation string, source model.S
 	prefix := s.rowPrefix(generation, source.Source)
 	setKey := s.sourceSetKey(generation, source.Source)
 	format := "hash"
-	var indexed []string
+	var schema []indexField
 	if !s.processIsolated && source.Source != "issues" {
 		format = "json"
-		indexed = indexedStringFields(source.Rows)
+		var err error
+		schema, err = indexSchemaForSource(source, s.indexDefinitions)
+		if err != nil {
+			return err
+		}
 	}
 	metadata, _ := json.Marshal(source.Metadata)
+	indexed := make([]string, 0, len(schema))
+	for _, field := range schema {
+		if field.Kind == indexFieldTag {
+			indexed = append(indexed, field.Name)
+		}
+	}
 	fields, _ := json.Marshal(indexed)
+	schemaMetadata, _ := json.Marshal(schema)
 	if _, err := s.Client.Do(ctx, "HSET", s.generationKey(generation),
 		"source:"+source.Source+":metadata", string(metadata),
 		"source:"+source.Source+":format", format,
 		"source:"+source.Source+":indexed-fields", string(fields),
+		"source:"+source.Source+":index-schema", string(schemaMetadata),
 	); err != nil {
 		return err
 	}
-	if format == "json" && len(indexed) > 0 {
-		schema := make([]string, 0, len(indexed)*5)
-		for _, field := range indexed {
-			schema = append(schema, "$."+field, "AS", strings.ReplaceAll(field, "-", "_"), "TAG", "CASESENSITIVE")
-		}
+	if format == "json" && len(schema) > 0 {
 		command := append([]string{"FT.CREATE", s.sourceIndexKey(generation, source.Source),
-			"ON", "JSON", "PREFIX", "1", prefix, "SCHEMA"}, schema...)
+			"ON", "JSON", "PREFIX", "1", prefix, "SCHEMA"}, redisIndexSchema(schema)...)
 		if _, err := s.Client.Do(ctx, command...); err != nil {
 			return fmt.Errorf("create Redis JSON search index: %w", err)
 		}

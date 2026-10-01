@@ -185,6 +185,9 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 			return nil, fmt.Errorf("configure github quota: %w", err)
 		}
 	}
+	if store != nil {
+		store.ConfigureIndexDefinitions(config.DashboardQueries)
+	}
 	serverLog.Printf("initialized host_profile=%s oauth=%t source_ingestion=%t", profile.Name, oauth != nil, config.SourceDirectory != "")
 	app := &App{
 		store: store, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),

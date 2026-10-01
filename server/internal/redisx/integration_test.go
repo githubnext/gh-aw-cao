@@ -3,6 +3,7 @@ package redisx
 import (
 	"context"
 	"os"
+	"reflect"
 	"strconv"
 	"testing"
 	"time"
@@ -125,13 +126,27 @@ func TestRedisJSONSearchIndexAndFallback(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	generation := "generation"
+	aggregateDefinition := query.Definition{
+		Name: "duration-summary", From: "runs",
+		Filter: &query.Filter{Predicates: []query.Predicate{{Field: "duration", GTE: 2, LT: 4}}},
+		Aggregate: &query.Aggregate{
+			By: []string{"conclusion"},
+			Values: []query.AggregateValue{
+				{Field: "conclusion", As: "runs", Reducer: "count"},
+				{Field: "duration", As: "mean-duration", Reducer: "mean"},
+			},
+		},
+		Select:  []query.SelectedField{{Field: "conclusion"}, {Field: "runs"}, {Field: "mean-duration"}},
+		OrderBy: []query.OrderField{{Field: "mean-duration", Direction: "desc"}},
+	}
+	store.ConfigureIndexDefinitions([]query.Definition{aggregateDefinition})
 	source := model.Source{
 		Source: "runs",
 		Rows: []model.Row{
-			{"id": "1", "conclusion": "success", "workflow-role": "worker", "repositoryFullName": "owner/repo-a"},
-			{"id": "2", "conclusion": "failure", "workflow-role": "orchestrator", "repositoryFullName": "owner/repo-b"},
-			{"id": "3", "conclusion": "failure", "workflow-role": "worker", "repositoryFullName": "owner/repo-a"},
-			{"id": 4, "conclusion": "success", "workflow-role": "worker", "repositoryFullName": "owner/repo-a"},
+			{"id": "1", "conclusion": "success", "duration": 1.0, "workflow-role": "worker", "repositoryFullName": "owner/repo-a"},
+			{"id": "2", "conclusion": "failure", "duration": 2.0, "workflow-role": "orchestrator", "repositoryFullName": "owner/repo-b"},
+			{"id": "3", "conclusion": "failure", "duration": 3.0, "workflow-role": "worker", "repositoryFullName": "owner/repo-a"},
+			{"id": 4, "conclusion": "success", "duration": 4.0, "workflow-role": "worker", "repositoryFullName": "owner/repo-a"},
 		},
 	}
 	if err := store.PutSource(ctx, generation, source); err != nil {
@@ -205,6 +220,22 @@ func TestRedisJSONSearchIndexAndFallback(t *testing.T) {
 	if len(nativeMetrics.FallbackOperations) != 0 ||
 		len(nativeMetrics.PushedDown) != 1 || nativeMetrics.PushedDown[0] != "redis-query-engine" {
 		t.Fatalf("query plan was not fully executed in Redis: %+v", nativeMetrics)
+	}
+	aggregated, aggregateMetrics, err := store.ExecutePlan(
+		ctx, generation, []query.Definition{aggregateDefinition}, []string{aggregateDefinition.Name},
+		[]string{"runs", aggregateDefinition.Name}, nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	aggregateRows := aggregated[aggregateDefinition.Name].Rows
+	if len(aggregateRows) != 1 || aggregateRows[0]["conclusion"] != "failure" ||
+		aggregateRows[0]["runs"] != 2.0 || aggregateRows[0]["mean-duration"] != 2.5 {
+		t.Fatalf("unexpected Redis-native aggregate rows: %#v", aggregateRows)
+	}
+	if len(aggregateMetrics.FallbackOperations) != 0 ||
+		!reflect.DeepEqual(aggregateMetrics.PushedDown, []string{"redis-query-engine"}) {
+		t.Fatalf("aggregate plan was not fully executed in Redis: %+v", aggregateMetrics)
 	}
 	byRole := query.Definition{
 		Name: "workers", From: "runs",
