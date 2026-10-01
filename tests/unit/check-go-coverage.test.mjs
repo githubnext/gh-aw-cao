@@ -27,3 +27,12 @@ test("ignores tests and other directories but fails closed on missing coverage",
   ]);
   assert.throws(() => checkGoCoverage(["server/internal/foo/a.go"], "mode: atomic\nbad line"), /Invalid Go coverage/);
 });
+
+test("merges repeated coverpkg blocks from separate test packages", () => {
+  const repeated = `${profile}github.com/githubnext/gh-aw-cao/server/internal/foo/a.go:1.1,3.2 3 0
+github.com/githubnext/gh-aw-cao/server/internal/foo/a.go:4.1,5.2 1 1
+`;
+  assert.deepEqual(checkGoCoverage(["server/internal/foo/a.go"], repeated), [
+    { file: "server/internal/foo/a.go", total: 4, covered: 4, passed: true },
+  ]);
+});

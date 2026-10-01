@@ -6,19 +6,26 @@ const modulePrefix = "github.com/githubnext/gh-aw-cao/server/";
 const minimumPercent = 80;
 
 export function checkGoCoverage(changedFiles, profile) {
-  const files = new Map();
+  const blocks = new Map();
   for (const line of profile.split(/\r?\n/).slice(1)) {
     if (!line) continue;
-    const match = /^(.+):\d+\.\d+,\d+\.\d+ (\d+) (\d+)$/.exec(line);
+    const match = /^(.+):(\d+\.\d+,\d+\.\d+) (\d+) (\d+)$/.exec(line);
     if (!match || !match[1].startsWith(modulePrefix)) {
       throw new Error(`Invalid Go coverage profile entry: ${line}`);
     }
     const file = `server/${match[1].slice(modulePrefix.length)}`;
-    const statements = Number(match[2]);
-    const count = Number(match[3]);
+    const key = `${file}:${match[2]}`;
+    const statements = Number(match[3]);
+    const count = Number(match[4]);
+    const previous = blocks.get(key);
+    if (previous && previous.statements !== statements) throw new Error(`Inconsistent Go coverage block: ${key}`);
+    blocks.set(key, { file, statements, covered: count > 0 || (previous?.covered ?? false) });
+  }
+  const files = new Map();
+  for (const { file, statements, covered } of blocks.values()) {
     const totals = files.get(file) ?? { total: 0, covered: 0 };
     totals.total += statements;
-    if (count > 0) totals.covered += statements;
+    if (covered) totals.covered += statements;
     files.set(file, totals);
   }
 
