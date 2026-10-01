@@ -1,5 +1,5 @@
 {
-  "source_sha": "90eb49fee721dfe5d4900ca377d4b0373d8a44f8",
+  "source_sha": "354297857f1eeb0a527942cd3d8966e107e89214",
   "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
@@ -85,7 +85,7 @@
         36840440976,
         36838104733
       ],
-      "outcome": "no_actionable_improvement: latest 16 completed successful docs.yml runs in the last 14 days again provided sufficient evidence, including 14 comparable build executions and 10 schedule-triggered runs. Trusted docs metadata showed median full workflow wall time 57.5s with p90 88.5s, median queue time 3.0s with p90 4.0s, median build execution 41.0s with p90 49.0s, median schedule-freshness execution 7.0s with p90 8.5s on schedule runs, and median deploy execution 21.5s with p90 27.9s on the 4 runs that actually deployed. Comparable build-step medians remained 12.0s for Build documentation, 5.0s for Restore node_modules, 2.0s for Restore cached CAO Dashboard, and 8.0s for Upload Pages artifact. Trusted logs for representative docs run 36833880168 confirmed repeated cache hits for actions/setup-node (~292 MB npm cache), the explicit node_modules cache (~283 MB), and the central-agentic-ops-dashboard cache (~31 MB); Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact stayed skipped whenever build executed. In the current scheduling/concurrency/avoidable-rebuilds category, the freshness guard already skipped 2 of the latest 10 successful scheduled runs with same-SHA no-op completions around 11-13s, and the remaining successful workflow_run and push executions were tied to new default-branch heads rather than duplicate same-SHA rebuilds. Cross-checking recent successful cao-dashboard producer runs still showed the dominant repeated upstream cost is reusable-dashboard cache preparation, with Upgrade fallback activity data taking 46-88s while Assemble Dashboard Language site stayed at 2-5s and Upload dashboard artifact at 5-8s; bounded trusted logs for run 36853340265 also confirmed that producer still recopied a validated 420.1 MiB gh-aw-logs.sqlite plus 114 activity shards totaling 266.3 MiB into the dashboard artifact before upload. That reusable-dashboard bottleneck remains the only repeated qualifying optimization, but it is already represented by suggestion fingerprint reusable-dashboard-skip-reupgrade-of-validated-activity-cache in repository memory and open issues #15332 and #15497, so no new non-duplicate recommendation is actionable in this scheduling/concurrency/avoidable-rebuilds cycle.",
+      "outcome": "no_actionable_improvement: latest 16 completed successful docs.yml runs in the last 14 days again provided sufficient evidence, including 14 comparable build executions and 10 schedule-triggered runs. Trusted Actions metadata showed median full workflow wall time 57.5s with p90 88.5s, median queue time 3.0s with p90 4.0s, median build execution 41.0s with p90 49.0s, median schedule-freshness execution 7.0s with p90 8.5s on schedule runs, and median deploy execution 21.5s with p90 27.9s on the 4 runs that actually deployed. Comparable build-step medians remained 12.0s for Build documentation, 5.0s for Restore node_modules, 2.0s for Restore cached CAO Dashboard, and 8.0s for Upload Pages artifact. Trusted logs for representative docs run 36833880168 confirmed repeated cache hits for actions/setup-node (~292 MB npm cache), the explicit node_modules cache (~283 MB), and the central-agentic-ops-dashboard cache (~31 MB); Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact stayed skipped whenever build executed. In the current scheduling/concurrency/avoidable-rebuilds category, the freshness guard already skipped 2 of the latest 10 successful scheduled runs with same-SHA no-op completions around 11-13s, and the remaining successful workflow_run and push executions were tied to new default-branch heads rather than duplicate same-SHA rebuilds. Cross-checking recent successful cao-dashboard producer runs still showed the dominant repeated upstream cost is reusable-dashboard cache preparation, with Upgrade fallback activity data taking 46-88s while Assemble Dashboard Language site stayed at 2-5s and Upload dashboard artifact at 5-8s; bounded trusted logs for run 36853340265 also confirmed that producer still recopied a validated 420.1 MiB gh-aw-logs.sqlite plus 114 activity shards totaling 266.3 MiB into the dashboard artifact before upload. That reusable-dashboard bottleneck remains the only repeated qualifying optimization, but it is already represented by suggestion fingerprint reusable-dashboard-skip-reupgrade-of-validated-activity-cache in repository memory and open issues #15332 and #15497, so no new non-duplicate recommendation is actionable in this scheduling/concurrency/avoidable-rebuilds cycle.",
       "suggestion_fingerprint": null
     },
     {
@@ -165,6 +165,23 @@
       "category": "reusable dashboard generation",
       "evidence_run_ids": [],
       "outcome": "incomplete: GitHub API rate limit was already exhausted before trusted run metadata for the latest 20 completed docs.yml runs could be collected. Workflow source review confirms the next suggestion category remains reusable dashboard generation, and repository memory plus open issues #15332 and #15497 already capture the standing actionable optimization to skip redundant fallback activity-data re-upgrade when restored dashboard inputs already validate. This run could not refresh timing medians/p90s or verify materially changed evidence, so no new non-duplicate recommendation could be issued.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-01T16:58:00Z",
+      "worker_run_id": "36895368675",
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        36895344112,
+        36894949235,
+        36894736186,
+        36894460490,
+        36894144864,
+        36893463267,
+        36895031338,
+        36894144853
+      ],
+      "outcome": "no_actionable_improvement: evaluated reusable dashboard generation with 6 successful docs.yml runs from 2026-10-01T16:38Z through 2026-10-01T16:53Z and 2 comparable successful cao-dashboard.yml producer runs in the same evidence window. Trusted docs metadata showed full workflow median 56.0s and p90 97.5s across the 6 successes; comparable build-job median 43.0s and p90 51.0s across all 6 build executions; schedule-freshness median 8.5s and p90 9.9s across the 2 scheduled runs; deploy median 30.0s and p90 69.6s across the 2 runs that actually deployed. Build-step medians in docs.yml remained 5.0s Checkout, 4.0s Set up Node.js, 5.0s Restore node_modules, 13.0s Build documentation, 2.0s Restore cached CAO Dashboard, and 9.0s Upload Pages artifact. Trusted step metadata confirmed cache-hit behavior in every sampled docs build: Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on all 6 runs, so docs.yml consistently reused the cached dashboard artifact. Cross-checking successful cao-dashboard runs 36895031338 and 36894144853 still showed the dominant repeated upstream cost is Upgrade fallback activity data at 90s and 80s respectively, while Assemble Dashboard Language site took only 3-6s and Upload dashboard artifact 7-8s. That repeated qualifying bottleneck is already represented by the recorded reusable-dashboard suggestion fingerprint reusable-dashboard-skip-reupgrade-of-validated-activity-cache and the open issue references noted in memory, so this cycle found no materially changed evidence that justifies a duplicate recommendation.",
       "suggestion_fingerprint": null
     }
   ]
