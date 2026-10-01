@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
@@ -132,7 +131,11 @@ func (r *readTransaction) ExecuteNativePlan(ctx context.Context, definitions []q
 			metrics.Operations += inputCount
 			metrics.PushedDown = append(metrics.PushedDown, "filter")
 			if len(definition.Filter.Predicates) != 0 {
-				err := r.tx.QueryRowContext(ctx, `SELECT count(*) FROM cao_source_documents WHERE `+where, args...).Scan(&currentCount)
+				statement, values, buildErr := postgresSQL(`SELECT count(*) FROM cao_source_documents WHERE `+where, args...)
+				if buildErr != nil {
+					return nil, metrics, true, fmt.Errorf("compile postgres plan count: %w", buildErr)
+				}
+				err := r.tx.QueryRowContext(ctx, statement, values...).Scan(&currentCount)
 				if err != nil {
 					return nil, metrics, true, fmt.Errorf("count postgres plan rows: %w", err)
 				}
@@ -199,13 +202,13 @@ func queryMetadata(base model.Metadata, name string, count int) model.Metadata {
 
 func documentFilter(namespace, name string, filter *query.Filter) (string, []any) {
 	args := []any{namespace, name}
-	where := `namespace = $1 AND source_name = $2 AND ordinal >= 0`
+	where := `namespace = {} AND source_name = {} AND ordinal >= 0`
 	if filter != nil {
 		for _, predicate := range filter.Predicates {
 			// This map is a fixed field whitelist, never a client SQL identifier.
 			column := map[string]string{"id": "id", "runId": "run_id", "sessionId": "session_id"}[predicate.Field]
-			args = append(args, predicate.Equals)
-			where += " AND " + column + " = $" + strconv.Itoa(len(args))
+			args = append(args, sqlIdentifier(column), predicate.Equals)
+			where += " AND {} = {}"
 		}
 	}
 	return where, args
@@ -214,6 +217,7 @@ func documentFilter(namespace, name string, filter *query.Filter) (string, []any
 func (r *readTransaction) documentRows(ctx context.Context, where string, args []any, selectFields []query.SelectedField,
 	count int, remainingBytes int64, queryID string) ([]model.Row, error) {
 	var statement strings.Builder
+	values := make([]any, 0, len(selectFields)+len(args)+1)
 	statement.WriteString("SELECT ")
 	if len(selectFields) == 0 {
 		statement.WriteString("payload")
@@ -222,18 +226,20 @@ func (r *readTransaction) documentRows(ctx context.Context, where string, args [
 			if i != 0 {
 				statement.WriteByte(',')
 			}
-			args = append(args, field.Field)
-			statement.WriteString("json_extract_path(payload::json, $")
-			statement.WriteString(strconv.Itoa(len(args)))
-			statement.WriteString(")::text")
+			values = append(values, field.Field)
+			statement.WriteString("json_extract_path(payload::json, {})::text")
 		}
 	}
 	statement.WriteString(" FROM cao_source_documents WHERE ")
 	statement.WriteString(where)
-	statement.WriteString(" ORDER BY ordinal LIMIT $")
-	args = append(args, count+1)
-	statement.WriteString(strconv.Itoa(len(args)))
-	rows, err := r.tx.QueryContext(ctx, statement.String(), args...)
+	statement.WriteString(" ORDER BY ordinal LIMIT {}")
+	values = append(values, args...)
+	values = append(values, count+1)
+	text, bound, err := postgresSQL(statement.String(), values...)
+	if err != nil {
+		return nil, fmt.Errorf("compile postgres plan rows: %w", err)
+	}
+	rows, err := r.tx.QueryContext(ctx, text, bound...)
 	if err != nil {
 		return nil, fmt.Errorf("read postgres plan rows: %w", err)
 	}

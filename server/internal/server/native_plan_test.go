@@ -52,6 +52,10 @@ func TestNativePlanDifferential(t *testing.T) {
 		{"bound client value", query.Definition{
 			Name: "pick", From: "jobs", Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: `one' OR TRUE --`}}},
 		}, true},
+		{"bound projected field", query.Definition{
+			Name: "pick", From: "jobs",
+			Select: []query.SelectedField{{Field: "id"}, {Field: `value'); DROP TABLE cao_sources; -- {}`}},
+		}, true},
 		{"empty", query.Definition{
 			Name: "pick", From: "jobs", Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: "absent"}}},
 		}, true},
