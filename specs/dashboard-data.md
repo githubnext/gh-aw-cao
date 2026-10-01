@@ -2079,6 +2079,66 @@ active-generation protection, and eventual removal of old rows and indexes.
 The collector-specific projection obligations are in
 `specs/server-ingestion.md` Section 7.
 
+### 31.1.4 Capacity and freshness estimate under continuous webhooks
+
+These are **planning estimates, not measured throughput or a freshness
+guarantee**. Let `N` be the number of *projected source rows* (a canonical
+record can appear in multiple logical sources), `B` the measured Redis bytes
+per complete generation including row documents, row-key sets, indexes and
+metadata, `R` the retained-generation count, `G` the reader grace, `I` the
+projection polling interval, and `T` the elapsed time to recompact, verify,
+project, stage and activate. Measure `B` as the change in Redis memory used
+after staging one representative generation; raw JSON size alone omits key,
+index and allocator overhead. Operational keys, Redis process overhead and
+the Go/Node ingestion working sets are additional.
+
+* **Memory:** after steady-state reclamation, roughly
+  `B × max(R, ceil(G / P))` is retained, where `P` is the actual interval
+  between *successful, changed-data* activations; staging the next complete
+  generation can add another `B`. This assumes similar generation sizes and
+  completed pruning. Grace and retention are combined, not added. Failed or
+  delayed reclamation, fragmentation, indexes under construction and any
+  concurrent workload require further headroom; with NoEviction, exceeding
+  the limit fails writes rather than discarding old data.
+* **Compute and I/O:** each collector projection recompacts and hashes the
+  retained input corpus even if the content revision is unchanged. A changed
+  revision additionally parses the compacted shards, constructs the complete
+  canonical and logical-source datasets, and stages about `N` row writes
+  (each row write also adds a set member and may update a search index);
+  reclamation eventually removes approximately `N` old rows per replaced
+  generation. This is whole-dataset work, **not** work proportional to the
+  number of webhooks. If the data revision is unchanged, the full Redis
+  rewrite and revision increment are skipped, but compaction and input hash
+  verification have already cost I/O and CPU.
+* **Visibility lag:** a webhook is first queued and collected per repository,
+  then the next polling tick sees a dirty projection marker. Let `C` be time
+  from webhook receipt to successful collection, including queueing and
+  retries. With a successful projection that includes that collection, lag
+  from receipt to active query visibility is approximately `C + W + T`,
+  where `W` is wait for a projection start (between zero and `I` if the
+  projector is idle; about `I / 2` for arrivals uniformly distributed
+  between ticks). Evidence collected after a projection's input cutoff waits
+  for a later cycle. If `T` exceeds `I`, ticks coalesce while projection is
+  busy and the effective successful activation rate cannot exceed about
+  `1 / max(I, T)`; queueing, failures and repeated retries can make lag
+  arbitrarily larger. The configured projection timeout (25 minutes by
+  default) is a failure limit, **not** a freshness bound.
+
+For an **illustrative, unbenchmarked** deployment with `N = 1,000,000`
+projected rows and `B / N = 1 KiB` of effective Redis memory per row, one
+generation uses about 0.95 GiB. With the current defaults (`I = 5 minutes`,
+`R = 3`, `G = 10 minutes`) and a changed activation every five minutes, three
+generations consume about 2.86 GiB at rest and a fourth staging generation
+can raise that to about 3.81 GiB **before** the extra headroom above. At
+most 12 successful changed-data projections per hour at this cadence rewrite
+about 12 million projected rows per hour, plus old-row reclamation and input
+recompaction. If `C = 1 minute` and `T = 2 minutes` in this hypothetical
+case, average visibility lag is about 5.5 minutes (`1 + 2.5 + 2`), and an
+idle-projector upper-end tick wait yields about 8 minutes (`1 + 5 + 2`);
+neither is a service-level bound. Measure actual `N`, `B`, `C`, `T`, Redis
+peak memory and oldest-unpublished evidence age on a representative retained
+corpus before setting capacity or freshness targets.
+
 ---
 
 # 32. Bounded Ingestion
