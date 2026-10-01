@@ -2,7 +2,7 @@
   "rule_key": "js-no-literal-color-value-in-test-assertion",
   "schema_version": 1,
   "first_seen": "2026-10-01T14:53:00Z",
-  "last_updated": "2026-10-01T18:01:14Z",
+  "last_updated": "2026-10-01T19:03:40Z",
   "status": "needs-work",
   "affected_languages": [
     "javascript"
@@ -13,10 +13,10 @@
   "likely_false_positives": "Asserting a literal color value is legitimate when the test is specifically about a fixed brand constant that is never expected to change (e.g. a GitHub/Primer base token that is not part of an actively-tuned theme), or when the assertion is paired with a computed contrast-ratio check rather than being the sole guard. The rule should flag literal hex/color-mix matches against files under active visual-design iteration (docs/components/*.astro, src/styles.js) rather than every color literal in the codebase.",
   "autofix_safe": false,
   "existing_plugin_coverage": "No published ESLint rule covers this: it requires recognizing brittle golden-value regex assertions tied to a specific pair of source/test files under active design churn, not a generic no-magic-numbers or regex-literal rule that existing plugins (eslint-plugin-jest, eslint-plugin-regexp) target.",
-  "occurrence_count": 4,
+  "occurrence_count": 5,
   "repositories": {
     "githubnext/gh-aw-cao": {
-      "occurrence_count": 4,
+      "occurrence_count": 5,
       "evidence": [
         {
           "type": "merged_pull_request",
@@ -60,6 +60,17 @@
           "files": [
             "tests/unit/landing-page-diagram.test.mjs"
           ]
+        },
+        {
+          "type": "merged_pull_request",
+          "repo": "githubnext/gh-aw-cao",
+          "number": 15604,
+          "title": "Separate documentation contract steps and refresh docs assertions",
+          "detail": "Single-line literal-only updates to tests/unit/docs-accessibility.test.mjs (1/-1) and tests/unit/landing-page-diagram.test.mjs (1/-1) to re-sync the same two brittle color-literal assertions after another dark-mode palette retune; no other test behavior changed.",
+          "files": [
+            "tests/unit/docs-accessibility.test.mjs",
+            "tests/unit/landing-page-diagram.test.mjs"
+          ]
         }
       ],
       "affected_paths": [
@@ -80,5 +91,5 @@
   },
   "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36901317392",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-01T18:01:14Z"
+  "last_seen_at": "2026-10-01T19:03:40Z"
 }
