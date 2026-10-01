@@ -509,8 +509,12 @@ func (r *readTransaction) canonicalPlanRows(ctx context.Context, raw string, fil
 						} else {
 							row[key] = nil
 						}
+						found = true
 						break
 					}
+				}
+				if found {
+					continue
 				}
 				for i, field := range canonicalIdentifiers {
 					if key == field.key {
@@ -894,24 +898,24 @@ func readCanonicalData(ctx context.Context, tx *sql.Tx, namespace, name string, 
 					row[field.key] = nil
 				}
 			}
-			for i, field := range canonicalBooleans {
-				if known[field.key] {
-					if booleanValues[i].Valid {
-						row[field.key] = booleanValues[i].Bool
-					} else {
-						row[field.key] = nil
-					}
-					for i, field := range canonicalIdentifiers {
-						if known[field.key] {
-							row[field.key] = decodeCanonicalIdentifier(identifierValues[2*i], identifierValues[2*i+1])
-						}
-					}
-					for i, field := range canonicalLinks {
-						if known[field.key] {
-							row[field.key] = decodeCanonicalLink(linkValues[i])
-						}
-					}
+		}
+		for i, field := range canonicalBooleans {
+			if known[field.key] {
+				if booleanValues[i].Valid {
+					row[field.key] = booleanValues[i].Bool
+				} else {
+					row[field.key] = nil
 				}
+			}
+		}
+		for i, field := range canonicalIdentifiers {
+			if known[field.key] {
+				row[field.key] = decodeCanonicalIdentifier(identifierValues[2*i], identifierValues[2*i+1])
+			}
+		}
+		for i, field := range canonicalLinks {
+			if known[field.key] {
+				row[field.key] = decodeCanonicalLink(linkValues[i])
 			}
 		}
 		out = append(out, row)

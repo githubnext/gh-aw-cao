@@ -21,6 +21,14 @@ must not be treated as permanently schemaless. The normalizer merges arbitrary
 names and row objects (even names beginning with `$` when unregistered) are
 caller-supplied and genuinely schemaless. The PostgreSQL store must never copy
 a native field into an extension or its legacy row representation.
+Startup converts complete document-backed canonical sources transactionally;
+an EAV-only revision stays readable until the next replacement. A source whose
+known fields cannot be mapped without loss retains its legacy representation
+and records a storage fallback reason rather than coercing values. Remaining
+producer-known fields must be catalogued and mapped before the generic
+canonical fallback can be removed; remove the legacy row/document path once
+EAV-only revisions have been replaced and all supported canonical sources
+round-trip through native columns plus genuine extensions.
 
 The compiled `generated/openapi.json` is OpenAPI **3.1** and can be consumed by
 another server implementation. `generated/schemas/` contains JSON Schema 2020-12

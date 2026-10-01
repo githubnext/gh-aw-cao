@@ -452,7 +452,7 @@ func TestStoreIntegration(t *testing.T) {
 	// A previous revision's complete document-backed source is converted on
 	// reopen without retaining either EAV nodes or duplicate row documents.
 	_, err = store.Replace(ctx, map[string]model.Source{"$jobs": {
-		Source: "$jobs", Rows: []model.Row{{"id": "old", "createdAt": "invalid"}},
+		Source: "$jobs", Rows: []model.Row{{"id": "old", "status": "completed", "createdAt": "invalid"}},
 		Metadata: model.Metadata{"source-id": "$jobs"},
 	}}, diagnostics, "legacy", evaluatedAt)
 	if err != nil {
@@ -469,6 +469,12 @@ func TestStoreIntegration(t *testing.T) {
 			[]string{"legacy-status"}, []string{"legacy-status"})
 		if planErr != nil || supported {
 			t.Errorf("legacy fallback cannot claim typed field pushdown: supported=%t err=%v", supported, planErr)
+		}
+		result, _, evalErr := query.New(readerLoader{reader: reader, ctx: ctx}).Execute(defs, []string{"legacy-status"})
+		if evalErr != nil || !reflect.DeepEqual(result["legacy-status"].Rows, []model.Row{{
+			"id": "old", "status": "completed", "createdAt": "invalid",
+		}}) {
+			t.Errorf("Go fallback lost canonical rows: %+v err=%v", result, evalErr)
 		}
 		return nil
 	})
@@ -513,6 +519,47 @@ func TestStoreIntegration(t *testing.T) {
 	}
 	if _, _, err := store.LoadSource(ctx, "$jobs", nil); err == nil {
 		t.Fatal("incomplete typed source was silently returned")
+	}
+	_, err = store.Replace(ctx, map[string]model.Source{"$events": {
+		Source: "$events", Rows: []model.Row{}, Metadata: model.Metadata{"source-id": "$events"},
+	}}, diagnostics, "empty-canonical", evaluatedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	emptyCanonical, _, err := store.LoadSource(ctx, "$events", nil)
+	if err != nil || emptyCanonical.Rows == nil || len(emptyCanonical.Rows) != 0 {
+		t.Fatalf("typed empty collection became null: %+v err=%v", emptyCanonical, err)
+	}
+	serialized, err := json.Marshal(emptyCanonical)
+	if err != nil || !strings.Contains(string(serialized), `"rows":[]`) {
+		t.Fatalf("typed empty rows JSON: %s err=%v", serialized, err)
+	}
+	linkOnly := model.Row{
+		"id": "session-without-booleans", "githubId": json.Number("9007199254740993"),
+		"organizationLink": map[string]any{"href": "https://github.com/githubnext"},
+	}
+	_, err = store.Replace(ctx, map[string]model.Source{"$sessions": {
+		Source: "$sessions", Rows: []model.Row{linkOnly}, Metadata: model.Metadata{},
+	}}, diagnostics, "identifier-link-without-boolean", evaluatedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, _, err := store.LoadSource(ctx, "$sessions", nil)
+	if err != nil || !reflect.DeepEqual(decoded.Rows, []model.Row{linkOnly}) {
+		t.Fatalf("typed row lost identifier or link without booleans: %+v err=%v", decoded, err)
+	}
+	err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
+		defs := []query.Definition{{Name: "all-sessions", From: "$sessions"}}
+		result, _, supported, planErr := reader.(NativePlanExecutor).ExecuteNativePlan(ctx, defs,
+			[]string{"all-sessions"}, []string{"all-sessions"})
+		if planErr != nil || !supported || !reflect.DeepEqual(result["all-sessions"].Rows, []model.Row{linkOnly}) {
+			t.Errorf("native plan lost identifier or link without booleans: %+v supported=%t err=%v",
+				result, supported, planErr)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 

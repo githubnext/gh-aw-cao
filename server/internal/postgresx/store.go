@@ -1005,6 +1005,9 @@ func (r *readTransaction) LoadSource(ctx context.Context, name string, definitio
 			if !typed || !expected.Valid || expected.Int64 != int64(len(canonical)) {
 				return model.Source{}, model.Metrics{}, errors.New("incomplete postgres canonical source")
 			}
+			if canonical == nil {
+				canonical = []model.Row{}
+			}
 			var metadataText string
 			if readErr = tx.QueryRowContext(ctx, `SELECT payload FROM cao_source_documents
 				WHERE namespace = $1 AND source_name = $2 AND ordinal = -1`, s.namespace, name).Scan(&metadataText); readErr != nil {

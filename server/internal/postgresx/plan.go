@@ -86,12 +86,13 @@ func (r *readTransaction) ExecuteNativePlan(ctx context.Context, definitions []q
 	var baseBytes sql.NullInt64
 	var metadataText string
 	var baseCount int
-	err := r.tx.QueryRowContext(ctx, `SELECT c.count, s.estimated_bytes, d.payload
+	var canonical bool
+	err := r.tx.QueryRowContext(ctx, `SELECT c.count, s.estimated_bytes, d.payload, s.is_canonical
 		FROM cao_sources AS s
 		JOIN cao_counts AS c ON c.namespace = s.namespace AND c.source_name = s.source_name
 		JOIN cao_source_documents AS d ON d.namespace = s.namespace AND d.source_name = s.source_name AND d.ordinal = -1
 		WHERE s.namespace = $1 AND s.source_name = $2`, r.store.namespace, raw).
-		Scan(&baseCount, &baseBytes, &metadataText)
+		Scan(&baseCount, &baseBytes, &metadataText, &canonical)
 	if errors.Is(err, sql.ErrNoRows) || (err == nil && !baseBytes.Valid) {
 		// An older committed revision has only EAV rows. The next replacement
 		// will populate documents atomically; until then retain the old reader.
@@ -120,10 +121,9 @@ func (r *readTransaction) ExecuteNativePlan(ctx context.Context, definitions []q
 			return nil, model.Metrics{}, true, err
 		}
 	}
-	if canonicalCount != 0 && canonicalCount != baseCount {
+	if (canonical && canonicalCount != baseCount) || (!canonical && canonicalCount != 0) {
 		return nil, model.Metrics{}, true, errors.New("incomplete postgres canonical source")
 	}
-	canonical := canonicalCount != 0
 	if !canonical {
 		for _, definition := range path {
 			if definition.Filter == nil {
@@ -155,7 +155,11 @@ func (r *readTransaction) ExecuteNativePlan(ctx context.Context, definitions []q
 		metrics.Operations += inputCount // FROM is charged even for rows rejected by a later filter.
 		metrics.QueryCount++
 		metrics.PushedDown = append(metrics.PushedDown, "from")
-		where, args := documentFilter(r.store.namespace, raw, definition.Filter)
+		var where string
+		var args []any
+		if !canonical {
+			where, args = documentFilter(r.store.namespace, raw, definition.Filter)
+		}
 		filters := map[string]string{}
 		if definition.Filter != nil {
 			for _, predicate := range definition.Filter.Predicates {
@@ -173,11 +177,22 @@ func (r *readTransaction) ExecuteNativePlan(ctx context.Context, definitions []q
 					err = r.tx.QueryRowContext(ctx, `SELECT count(*) FROM cao_canonical_rows WHERE `+canonicalWhere,
 						canonicalArgs...).Scan(&currentCount)
 				} else {
-					statement, values, buildErr := postgresSQL(`SELECT count(*) FROM cao_source_documents WHERE `+where, args...)
-					if buildErr != nil {
-						return nil, metrics, true, fmt.Errorf("compile postgres plan count: %w", buildErr)
+					var id, runID, sessionID any
+					if value, ok := filters["id"]; ok {
+						id = value
 					}
-					err = r.tx.QueryRowContext(ctx, statement, values...).Scan(&currentCount)
+					if value, ok := filters["runId"]; ok {
+						runID = value
+					}
+					if value, ok := filters["sessionId"]; ok {
+						sessionID = value
+					}
+					err = r.tx.QueryRowContext(ctx, `SELECT count(*) FROM cao_source_documents
+						WHERE namespace = $1 AND source_name = $2 AND ordinal >= 0
+							AND ($3::text IS NULL OR id = $3)
+							AND ($4::text IS NULL OR run_id = $4)
+							AND ($5::text IS NULL OR session_id = $5)`,
+						r.store.namespace, raw, id, runID, sessionID).Scan(&currentCount)
 				}
 				if err != nil {
 					return nil, metrics, true, fmt.Errorf("count postgres plan rows: %w", err)
