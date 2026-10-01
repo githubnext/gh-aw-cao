@@ -96,7 +96,7 @@ func TestMCPBindsSimulatorOperandsInDependencies(t *testing.T) {
 			}
 		})
 	}
-	if _, _, _, err := runtime.bindParameters(final.Name, runtime.catalog.Queries[1], nil); err == nil || !strings.Contains(err.Error(), "Missing") {
+	if _, _, _, err := runtime.bindParameters(final.Name, runtime.catalog.Queries[1], nil); err == nil || !strings.Contains(err.Error(), "missing") {
 		t.Fatalf("missing operand: %v", err)
 	}
 }

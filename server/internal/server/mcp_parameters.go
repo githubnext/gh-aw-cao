@@ -47,7 +47,7 @@ func (runtime *mcpRuntime) bindParameters(id string, entry agentQuery, input any
 		}
 	}
 	if len(parameters) > runtime.contract.Limits.MaxParameters || len(declared) > runtime.contract.Limits.MaxParameters {
-		return nil, nil, nil, fmt.Errorf("At most %d query parameters are accepted", runtime.contract.Limits.MaxParameters)
+		return nil, nil, nil, fmt.Errorf("at most %d query parameters are accepted", runtime.contract.Limits.MaxParameters)
 	}
 	resolved := map[string]any{}
 	for name := range parameters {
@@ -61,7 +61,7 @@ func (runtime *mcpRuntime) bindParameters(id string, entry agentQuery, input any
 			if label == "" {
 				label = "none"
 			}
-			return nil, nil, nil, fmt.Errorf("Unknown parameter %q for query %s; declared parameters: %s", name, id, label)
+			return nil, nil, nil, fmt.Errorf("unknown parameter %q for query %s; declared parameters: %s", name, id, label)
 		}
 	}
 	filters := []query.Predicate{}
@@ -69,7 +69,7 @@ func (runtime *mcpRuntime) bindParameters(id string, entry agentQuery, input any
 		raw, supplied := parameters[name]
 		if !supplied {
 			if parameter.Required || parameter.Type != "" {
-				return nil, nil, nil, fmt.Errorf("Missing required parameter %q", name)
+				return nil, nil, nil, fmt.Errorf("missing required parameter %q", name)
 			}
 			continue
 		}
@@ -81,25 +81,25 @@ func (runtime *mcpRuntime) bindParameters(id string, entry agentQuery, input any
 				(parameter.Schema.Minimum != nil && (math.IsNaN(*parameter.Schema.Minimum) || math.IsInf(*parameter.Schema.Minimum, 0) || number < *parameter.Schema.Minimum)) ||
 				(parameter.Schema.Maximum != nil && (math.IsNaN(*parameter.Schema.Maximum) || math.IsInf(*parameter.Schema.Maximum, 0) || number > *parameter.Schema.Maximum)) ||
 				(parameter.Schema.Minimum != nil && parameter.Schema.Maximum != nil && *parameter.Schema.Minimum > *parameter.Schema.Maximum) {
-				return nil, nil, nil, fmt.Errorf("Parameter %q must be a finite number within its declared range", name)
+				return nil, nil, nil, fmt.Errorf("parameter %q must be a finite number within its declared range", name)
 			}
 			if step := parameter.Schema.MultipleOf; step != nil {
 				quotient := number / *step
 				if math.IsNaN(*step) || math.IsInf(*step, 0) || *step <= 0 || math.Abs(quotient-math.Round(quotient)) > 1e-9 {
-					return nil, nil, nil, fmt.Errorf("Parameter %q must match its declared step", name)
+					return nil, nil, nil, fmt.Errorf("parameter %q must match its declared step", name)
 				}
 			}
 			value = number
 		case "string":
 			text, ok := raw.(string)
 			if !ok || len(text) > runtime.contract.Limits.MaxParameterLength {
-				return nil, nil, nil, fmt.Errorf("Parameter %q must be a bounded string", name)
+				return nil, nil, nil, fmt.Errorf("parameter %q must be a bounded string", name)
 			}
 			value = text
 		case "boolean":
 			boolean, ok := raw.(bool)
 			if !ok {
-				return nil, nil, nil, fmt.Errorf("Parameter %q must be a boolean", name)
+				return nil, nil, nil, fmt.Errorf("parameter %q must be a boolean", name)
 			}
 			value = boolean
 		case "":
@@ -107,13 +107,13 @@ func (runtime *mcpRuntime) bindParameters(id string, entry agentQuery, input any
 			case string, float64, bool:
 				value = fmt.Sprint(raw)
 			default:
-				return nil, nil, nil, fmt.Errorf("Parameter %q must be a string, number, or boolean", name)
+				return nil, nil, nil, fmt.Errorf("parameter %q must be a string, number, or boolean", name)
 			}
 			if len(value.(string)) > runtime.contract.Limits.MaxParameterLength {
-				return nil, nil, nil, fmt.Errorf("Parameter %q exceeds %d characters", name, runtime.contract.Limits.MaxParameterLength)
+				return nil, nil, nil, fmt.Errorf("parameter %q exceeds %d characters", name, runtime.contract.Limits.MaxParameterLength)
 			}
 		default:
-			return nil, nil, nil, fmt.Errorf("Unsupported parameter type for %q", name)
+			return nil, nil, nil, fmt.Errorf("unsupported parameter type for %q", name)
 		}
 		if parameter.Schema.Enum != nil && !slices.ContainsFunc(parameter.Schema.Enum, func(candidate any) bool {
 			switch parameter.Type {
@@ -130,7 +130,7 @@ func (runtime *mcpRuntime) bindParameters(id string, entry agentQuery, input any
 				return false
 			}
 		}) {
-			return nil, nil, nil, fmt.Errorf("Parameter %q must match its declared enum", name)
+			return nil, nil, nil, fmt.Errorf("parameter %q must match its declared enum", name)
 		}
 		resolved[name] = value
 		if parameter.Field != "" && supplied {
@@ -156,7 +156,7 @@ func (runtime *mcpRuntime) bindParameters(id string, entry agentQuery, input any
 				}
 				value, ok := resolved[argument.Parameter]
 				if !ok || declared[argument.Parameter].Type == "" {
-					return nil, nil, nil, fmt.Errorf("Missing or invalid operand parameter %q", argument.Parameter)
+					return nil, nil, nil, fmt.Errorf("missing or invalid operand parameter %q", argument.Parameter)
 				}
 				bound[i].Compute[j].Args[k] = query.Argument{Value: value}
 			}
@@ -221,11 +221,11 @@ func bindPredicateOperand(operand any, values map[string]any) (any, error) {
 	}
 	name, valid := reference["parameter"].(string)
 	if !valid || len(reference) != 1 || name == "" {
-		return nil, errors.New("Unsupported predicate operand")
+		return nil, errors.New("unsupported predicate operand")
 	}
 	value, exists := values[name]
 	if !exists {
-		return nil, fmt.Errorf("Missing operand parameter %q", name)
+		return nil, fmt.Errorf("missing operand parameter %q", name)
 	}
 	return value, nil
 }
