@@ -62,11 +62,19 @@ func TestDashboardDatabaseRejectsInvalidRevisionBeforeWriting(t *testing.T) {
 
 func TestDashboardDatabaseValidatesQueries(t *testing.T) {
 	db := &DashboardDatabase{}
-	if err := db.Validate([]query.Definition{{Name: "q", From: "runs"}}); err != nil {
+	if err := db.Validate(t.Context(), []query.Definition{{Name: "q", From: "runs"}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Validate([]query.Definition{{Name: "q"}}); err == nil {
+	if err := db.Validate(t.Context(), []query.Definition{{Name: "q"}}); err == nil {
 		t.Fatal("query without a source must be rejected")
+	}
+}
+
+func TestDashboardDatabaseValidationHonorsCanceledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if err := (&DashboardDatabase{}).Validate(ctx, []query.Definition{{Name: "q", From: "runs"}}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Validate error = %v, want context.Canceled", err)
 	}
 }
 

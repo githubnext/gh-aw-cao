@@ -20,7 +20,7 @@ func (db *recordingDatabase) Current(context.Context) (dashboarddb.Reader, error
 	return recordingReader{state: db.state}, nil
 }
 
-func (db *recordingDatabase) Validate(definitions []query.Definition) error {
+func (db *recordingDatabase) Validate(_ context.Context, definitions []query.Definition) error {
 	return query.Validate(definitions)
 }
 

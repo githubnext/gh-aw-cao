@@ -46,8 +46,9 @@ The boundary consists of the following types and operations:
 - `Database.Ingest(ctx, transactions)` ingests the supplied transaction set and
   returns the resulting `State`. It must make a complete ingestion visible
   atomically: concurrent readers must not observe partial transaction data.
-- `Database.Validate(definitions)` validates Dashboard Language query
-  definitions without performing a query or mutating stored data.
+- `Database.Validate(ctx, definitions)` validates Dashboard Language query
+  definitions without performing a query or mutating stored data, and returns
+  the context error if the operation was canceled before validation.
 - `Reader.State()` returns the state associated with that reader.
   `Reader.Execute(ctx, definitions, requested, runtime)` executes the requested
   named query definitions against the same selected data and returns their

@@ -88,7 +88,10 @@ func (db *DashboardDatabase) Ingest(ctx context.Context, transactions dashboardd
 	}, nil
 }
 
-func (db *DashboardDatabase) Validate(definitions []query.Definition) error {
+func (db *DashboardDatabase) Validate(ctx context.Context, definitions []query.Definition) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	return query.Validate(definitions)
 }
 

@@ -1005,7 +1005,7 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 		ctx: ctx, store: a.store, generation: strconv.FormatInt(active.Revision, 10),
 		app: a, allowCollectionHealth: allowCollectionHealth,
 	}
-	if err := database.Validate(definitions); err != nil {
+	if err := database.Validate(ctx, definitions); err != nil {
 		return queryResponse{}, http.StatusBadRequest, err
 	}
 	sources, metrics, err := reader.Execute(ctx, definitions, requested, loader.runtimeSource)

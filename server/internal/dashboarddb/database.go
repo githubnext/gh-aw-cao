@@ -45,5 +45,5 @@ type Reader interface {
 type Database interface {
 	Current(context.Context) (Reader, error)
 	Ingest(context.Context, Transactions) (State, error)
-	Validate([]query.Definition) error
+	Validate(context.Context, []query.Definition) error
 }
