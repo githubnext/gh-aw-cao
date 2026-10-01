@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -16,6 +17,17 @@ import (
 var actionsAuthLog = logger.New("cao:server:actions-auth")
 
 const actionsGitHubAPIVersion = "2026-03-10"
+
+func hostedActionsRepository(enabled bool, configured, sourcePath string) string {
+	if repository := strings.TrimSpace(configured); repository != "" || !enabled {
+		return repository
+	}
+	source, err := os.ReadFile(sourcePath)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(source))
+}
 
 type githubPermissionProbe struct {
 	name string

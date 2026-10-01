@@ -1,6 +1,35 @@
 package server
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestHostedActionsRepository(t *testing.T) {
+	sourcePath := filepath.Join(t.TempDir(), "source-repository")
+	if err := os.WriteFile(sourcePath, []byte("other-owner/installed-cao\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name       string
+		enabled    bool
+		configured string
+		sourcePath string
+		want       string
+	}{
+		{"source origin", true, "", sourcePath, "other-owner/installed-cao"},
+		{"explicit override", true, "authorized/other", sourcePath, "authorized/other"},
+		{"missing origin fails closed", true, "", sourcePath + ".missing", ""},
+		{"MCP disabled", false, "", sourcePath, ""},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := hostedActionsRepository(test.enabled, test.configured, test.sourcePath); got != test.want {
+				t.Fatalf("hostedActionsRepository() = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
 
 func TestParseActionsRepository(t *testing.T) {
 	for _, test := range []struct {

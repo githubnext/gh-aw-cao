@@ -18,6 +18,9 @@ test("Coolify image is multi-stage, non-root, versioned, and health checked", as
   assert.match(dockerfile, /ARG CAO_PROFILE=cao\.json/);
   assert.match(dockerfile, /ARG VERSION=dev/);
   assert.match(dockerfile, /ARG REVISION=unknown/);
+  assert.match(dockerfile, /tar --exclude=\.\/\.git -C \/source -cf - \./);
+  assert.match(dockerfile, /--mount=type=bind,source=\.git\/config,target=\/tmp\/source-git-config,readonly/);
+  assert.match(dockerfile, /COPY --from=dashboard-build --chown=cao:cao \/workspace\/source-repository \/app\/source-repository/);
   assert.match(dockerfile, /org\.opencontainers\.image\.revision="\$\{REVISION\}"/);
   assert.match(dockerfile, /COPY --from=dashboard-build/);
   assert.match(
@@ -54,7 +57,7 @@ test("Coolify Compose builds the checked-out source without deployment credentia
   assert.equal(dashboard.environment.CAO_SOURCE_DIRECTORY, "/app/source");
   assert.equal(
     dashboard.environment.CAO_MCP_ACTIONS_REPOSITORY,
-    "${CAO_MCP_ACTIONS_REPOSITORY:-githubnext/gh-aw-cao}",
+    "${CAO_MCP_ACTIONS_REPOSITORY:-}",
   );
   assert.equal(
     dashboard.environment.CAO_POLICY_PATH,
