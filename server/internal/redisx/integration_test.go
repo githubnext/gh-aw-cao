@@ -272,6 +272,29 @@ func TestRedisJSONSearchIndexAndFallback(t *testing.T) {
 		groupedRows[0]["runs"] != 2.0 || groupedRows[0]["mean-duration"] != 2.5 {
 		t.Fatalf("no-select aggregate did not execute natively: %+v %#v", groupedMetrics, groupedRows)
 	}
+	tagDefinition := query.Definition{
+		Name: "tag-summary", From: "tag-groups",
+		Aggregate: &query.Aggregate{By: []string{"status"}, Values: []query.AggregateValue{
+			{Field: "id", As: "count", Reducer: "count"},
+		}},
+	}
+	store.ConfigureIndexDefinitions([]query.Definition{aggregateDefinition, tagDefinition})
+	if err := store.PutSource(ctx, generation, model.Source{
+		Source: "tag-groups", Rows: []model.Row{{"id": "1", "status": "true"}, {"id": "2", "status": "null"}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	tagResult, tagMetrics, err := query.New(storeQueryLoader{store, ctx}).Execute(
+		[]query.Definition{tagDefinition}, []string{tagDefinition.Name},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tags := tagResult[tagDefinition.Name].Rows
+	if !reflect.DeepEqual(tagMetrics.PushedDown, []string{"aggregate"}) ||
+		len(tags) != 2 || tags[0]["status"] != "null" || tags[1]["status"] != "true" {
+		t.Fatalf("native TAG groups lost text types: %+v %#v", tagMetrics, tags)
+	}
 	byRole := query.Definition{
 		Name: "workers", From: "runs",
 		Filter: &query.Filter{Predicates: []query.Predicate{{Field: "workflow-role", Equals: "worker"}}},

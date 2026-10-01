@@ -122,6 +122,7 @@ type outputField struct {
 	fromLoad bool
 	numeric  bool
 	boolean  bool
+	tag      bool
 }
 
 func nativeAggregateCommand(index string, definition query.Definition, indexed []indexField) ([]string, map[string]outputField, error) {
@@ -157,7 +158,7 @@ func nativeAggregateCommand(index string, definition query.Definition, indexed [
 	projection := definition.Select
 	if len(projection) == 0 {
 		for _, field := range plan.ResultShape.Fields {
-			projection = append(projection, query.SelectedField{Field: field.Field, As: field.As})
+			projection = append(projection, query.SelectedField(field))
 		}
 	}
 	loads := make([]string, 0, len(projection)*3)
@@ -194,6 +195,7 @@ func nativeAggregateCommand(index string, definition query.Definition, indexed [
 			group = append(group, "@"+field.Alias)
 			available[name] = outputField{
 				name: name, numeric: field.Kind == indexFieldNumeric, boolean: computedBooleans[name],
+				tag: field.Kind == indexFieldTag && !computedBooleans[name],
 			}
 		}
 		command = append(command, "GROUPBY", strconv.Itoa(len(group)))
@@ -226,6 +228,7 @@ func nativeAggregateCommand(index string, definition query.Definition, indexed [
 		fromLoad := false
 		numeric := false
 		boolean := false
+		tag := false
 		if definition.Aggregate == nil {
 			_, isComputed := computed[field.Field]
 			fromLoad = !isComputed
@@ -240,12 +243,13 @@ func nativeAggregateCommand(index string, definition query.Definition, indexed [
 			}
 			numeric = availableField.numeric
 			boolean = availableField.boolean
+			tag = availableField.tag
 		}
 		if previous, exists := outputFields[alias]; exists && previous.name != output {
 			return nil, nil, fmt.Errorf("redis field alias collision for %q", field.Field)
 		}
 		outputFields[alias] = outputField{
-			name: output, fromLoad: fromLoad, numeric: numeric, boolean: boolean,
+			name: output, fromLoad: fromLoad, numeric: numeric, boolean: boolean, tag: tag,
 		}
 	}
 	for _, field := range definition.OrderBy {
@@ -485,6 +489,10 @@ func decodeAggregateRows(value any, outputFields map[string]outputField) ([]mode
 			alias := fmt.Sprint(fields[index])
 			output, wanted := outputFields[alias]
 			if wanted {
+				if output.tag {
+					row[output.name] = fmt.Sprint(fields[index+1])
+					continue
+				}
 				row[output.name] = nativeResultValue(
 					fields[index+1], output.fromLoad, output.numeric, output.boolean,
 				)

@@ -849,7 +849,9 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 					if err != nil || inputRows < 0 {
 						return model.Source{}, model.Metrics{RedisCommands: 4}, errors.New("invalid Redis source cardinality")
 					}
-					if inputRows > query.MaxInputRows {
+					// Without a Redis cursor, at most one group per input
+					// document must fit in a single aggregate reply.
+					if inputRows > 10_000 {
 						schemaCommands++
 					} else {
 						value, err := s.Client.Do(ctx, command...)
@@ -863,7 +865,7 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 						}
 						total, ok := reply[0].(int64)
 						if !ok || total < 0 || total > query.MaxOutputRows {
-							return model.Source{}, metrics, errors.New("Redis aggregate exceeds max output rows")
+							return model.Source{}, metrics, errors.New("redis aggregate exceeds max output rows")
 						}
 						rows, err := decodeAggregateRows(value, output)
 						if err != nil || len(rows) != int(total) {

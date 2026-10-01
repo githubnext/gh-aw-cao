@@ -150,6 +150,16 @@ func TestNativeAggregateCommandDoesNotInferOutputFromRequiredFields(t *testing.T
 	}
 }
 
+func TestDecodeAggregateRowsPreservesTagGroupsAsText(t *testing.T) {
+	for _, label := range []string{"true", "false", "null", "123"} {
+		rows, err := decodeAggregateRows([]any{int64(1), []any{"status", label}},
+			map[string]outputField{"status": {name: "status", tag: true}})
+		if err != nil || len(rows) != 1 || rows[0]["status"] != label {
+			t.Fatalf("TAG group %q changed type: %#v, %v", label, rows, err)
+		}
+	}
+}
+
 func TestNativeAggregateCommandRejectsCountOfOptionalField(t *testing.T) {
 	definition := query.Definition{
 		Name: "counts", From: "runs",
@@ -163,7 +173,6 @@ func TestNativeAggregateCommandRejectsCountOfOptionalField(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "unsupported Redis reducer") {
 		t.Fatalf("optional-field count should fail closed, got %v", err)
 	}
-
 }
 
 func TestNativeAggregateCommandFallsBackForPreservedRowsAndEmptyGlobalGroup(t *testing.T) {
