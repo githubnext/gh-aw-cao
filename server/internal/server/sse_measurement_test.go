@@ -12,9 +12,10 @@ import (
 	"testing"
 	"time"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
+
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
-	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func TestSSEFanoutAcrossReplicasAndDrain(t *testing.T) {
