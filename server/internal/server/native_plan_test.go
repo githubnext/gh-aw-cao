@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"net/http"
 	"reflect"
 	"strings"
 	"testing"
@@ -21,8 +22,10 @@ func TestNativePlanDifferential(t *testing.T) {
 				{"id": "two", "runId": "run-2", "value": nil},
 				{"id": "three", "runId": "run-1", "nested": []any{nil, json.Number("1.25")}},
 				{"id": "four", "runId": "unknown"},
+				{"id": json.Number("1e1000000"), "runId": "run-3"},
+				{"runId": "run-3"},
 			},
-			Metadata: model.Metadata{"source-id": "$jobs", "availability": "available", "row-count": 4},
+			Metadata: model.Metadata{"source-id": "$jobs", "availability": "available", "row-count": 6},
 		},
 		"$other": {Source: "$other", Rows: []model.Row{{"id": "one"}, {"id": "one"}}},
 	})
@@ -43,11 +46,20 @@ func TestNativePlanDifferential(t *testing.T) {
 		{"indexed exact id", query.Definition{
 			Name: "pick", From: "jobs", Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: "two"}}},
 		}, true},
+		{"huge exponent lexeme", query.Definition{
+			Name: "pick", From: "jobs", Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: "1e1000000"}}},
+		}, true},
+		{"bound client value", query.Definition{
+			Name: "pick", From: "jobs", Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: `one' OR TRUE --`}}},
+		}, true},
 		{"empty", query.Definition{
 			Name: "pick", From: "jobs", Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: "absent"}}},
 		}, true},
 		{"unknown matches null", query.Definition{
-			Name: "pick", From: "jobs", Filter: &query.Filter{Predicates: []query.Predicate{{Field: "value", Equals: "unknown"}}},
+			Name: "pick", From: "jobs", Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: "unknown"}}},
+		}, false},
+		{"null matches missing", query.Definition{
+			Name: "pick", From: "jobs", Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: nil}}},
 		}, false},
 		{"optional", query.Definition{
 			Name: "pick", From: "jobs", Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: "one", Optional: true}}},
@@ -119,6 +131,7 @@ func TestNativePlanRejectsUnfilteredExcessBeforePredicate(t *testing.T) {
 	for i := range rows {
 		rows[i] = model.Row{}
 	}
+
 	seedDatabase(t, store, map[string]model.Source{"$jobs": {
 		Source: "$jobs", Rows: rows,
 	}})
@@ -136,5 +149,36 @@ func TestNativePlanRejectsUnfilteredExcessBeforePredicate(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestNativePlanUsesExistingHTTPPaginationContract(t *testing.T) {
+	store := integrationDatabase(t)
+	seedDatabase(t, store, map[string]model.Source{"$jobs": {
+		Source: "$jobs", Rows: []model.Row{
+			{"id": "first", "runId": "run-1"},
+			{"id": "second", "runId": "run-1"},
+			{"id": "third", "runId": "run-2"},
+		},
+	}})
+	app := &App{database: store, databaseQueries: []query.Definition{{Name: "jobs", From: "$jobs"}}}
+	input := queryRequest{
+		SourceNames: []string{"pick"},
+		CompiledQueries: []query.Definition{{Name: "pick", From: "jobs",
+			Filter: &query.Filter{Predicates: []query.Predicate{{Field: "runId", Equals: "run-1"}}}}},
+		Pagination: map[string]paginationRequest{"pick": {Limit: 1}},
+	}
+	first, status, err := app.executeQuery(t.Context(), input, false)
+	if err != nil || status != http.StatusOK || len(first.Sources["pick"].Rows) != 1 ||
+		first.Sources["pick"].Rows[0]["id"] != "first" ||
+		first.Sources["pick"].Metadata["total-row-count"] != 2 ||
+		first.Sources["pick"].ContinuationToken == "" || len(first.Metrics.PushedDown) == 0 {
+		t.Fatalf("first page through native query: %+v status=%d err=%v", first, status, err)
+	}
+	input.Pagination["pick"] = paginationRequest{Limit: 1, ContinuationToken: first.Sources["pick"].ContinuationToken}
+	second, status, err := app.executeQuery(t.Context(), input, false)
+	if err != nil || status != http.StatusOK || len(second.Sources["pick"].Rows) != 1 ||
+		second.Sources["pick"].Rows[0]["id"] != "second" || second.Sources["pick"].ContinuationToken != "" {
+		t.Fatalf("second page through native query: %+v status=%d err=%v", second, status, err)
 	}
 }

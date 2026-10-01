@@ -199,6 +199,17 @@ func TestStoreIntegration(t *testing.T) {
 	if other, _, err := tenant.LoadSource(ctx, "$runs", nil); err != nil || other.Rows[0]["id"] != "other" {
 		t.Fatalf("other namespace read: %+v, %v", other, err)
 	}
+	nativeDefinition := []query.Definition{{Name: "raw", From: "$runs"}}
+	err = tenant.WithReadTransaction(ctx, func(reader SourceReader) error {
+		result, _, supported, err := reader.(NativePlanExecutor).ExecuteNativePlan(ctx, nativeDefinition, []string{"raw"}, []string{"raw"})
+		if err != nil || !supported || result["raw"].Rows[0]["id"] != "other" {
+			t.Errorf("native plan crossed namespaces: %+v supported=%t err=%v", result, supported, err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	raw, _, err := store.LoadSource(ctx, "$runs", nil)
 	if err != nil || !reflect.DeepEqual(raw.Rows, sources["$runs"].Rows) {
 		t.Fatalf("raw canonical source: %+v, %v", raw, err)
@@ -215,6 +226,11 @@ func TestStoreIntegration(t *testing.T) {
 			len(bulk.Rows), bulkMetrics, bulk.Metadata, err)
 	}
 	assertNativeSchema(t, ctx, store.db)
+	var documents int
+	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM cao_source_documents
+		WHERE namespace = $1 AND source_name = $2`, "default", "$runs").Scan(&documents); err != nil || documents != 2 {
+		t.Fatalf("missing atomic source documents: count=%d err=%v", documents, err)
+	}
 	var exactNumber, textFallback bool
 	if err := store.db.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM cao_values
 		WHERE namespace = $1 AND kind = 'number' AND numeric_value = $2::numeric)`,
@@ -270,6 +286,10 @@ func TestStoreIntegration(t *testing.T) {
 		if before.Revision != again.Revision || !reflect.DeepEqual(stillOld["raw"].Rows, raw.Rows) {
 			t.Fatalf("query read mixed revisions: before=%+v after=%+v rows=%+v", before, again, stillOld)
 		}
+		native, _, supported, err := reader.(NativePlanExecutor).ExecuteNativePlan(ctx, nativeDefinition, []string{"raw"}, []string{"raw"})
+		if err != nil || !supported || !reflect.DeepEqual(native["raw"].Rows, raw.Rows) {
+			t.Fatalf("native plan read mixed revisions: %+v supported=%t err=%v", native, supported, err)
+		}
 		return nil
 	})
 	if err != nil {
@@ -310,12 +330,35 @@ func TestStoreIntegration(t *testing.T) {
 	if _, _, err := store.LoadSource(ctx, "repositories", nil); err != nil {
 		t.Fatalf("failed replacement lost source: %v", err)
 	}
+	var stillDocuments int
+	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM cao_source_documents
+		WHERE namespace = $1 AND source_name = $2`, "default", "repositories").Scan(&stillDocuments); err != nil || stillDocuments != 3 {
+		t.Fatalf("failed replacement changed indexed documents: count=%d err=%v", stillDocuments, err)
+	}
 	revision, err = store.Replace(ctx, map[string]model.Source{"empty": sources["empty"]}, diagnostics, "next", evaluatedAt)
 	if err != nil || revision != state.Revision+1 {
 		t.Fatalf("second replacement: %d, %v", revision, err)
 	}
 	if _, _, err := store.LoadSource(ctx, "repositories", nil); !errors.Is(err, ErrSourceUnavailable) {
 		t.Fatalf("removed source error: %v", err)
+	}
+	if _, err := store.db.ExecContext(ctx, `DELETE FROM cao_source_documents WHERE namespace = $1 AND source_name = $2`,
+		"default", "empty"); err != nil {
+		t.Fatal(err)
+	}
+	err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
+		_, _, supported, err := reader.(NativePlanExecutor).ExecuteNativePlan(ctx,
+			[]query.Definition{{Name: "empty-query", From: "empty"}}, []string{"empty-query"}, []string{"empty-query"})
+		if err != nil || supported {
+			t.Errorf("older EAV-only revision must use fallback: supported=%t err=%v", supported, err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if legacy, _, err := store.LoadSource(ctx, "empty", nil); err != nil || len(legacy.Rows) != 0 {
+		t.Fatalf("EAV fallback lost older source: %+v err=%v", legacy, err)
 	}
 }
 

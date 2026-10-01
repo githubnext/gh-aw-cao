@@ -413,8 +413,8 @@ func (s *Store) Replace(ctx context.Context, sources map[string]model.Source, di
 		if name == "" || (source.Source != "" && source.Source != name) {
 			return 0, fmt.Errorf("invalid postgres source name %q", name)
 		}
-		if _, err = tx.ExecContext(ctx, `INSERT INTO cao_sources (namespace, source_name, estimated_bytes) VALUES ($1, $2, $3)`,
-			s.namespace, name, query.EstimateRowsBytes(source.Rows)); err != nil {
+		if _, err = tx.ExecContext(ctx, `INSERT INTO cao_sources (namespace, source_name) VALUES ($1, $2)`,
+			s.namespace, name); err != nil {
 			return 0, fmt.Errorf("insert postgres source %q: %w", name, err)
 		}
 		var value any
@@ -426,6 +426,7 @@ func (s *Store) Replace(ctx context.Context, sources map[string]model.Source, di
 		}
 		sourceRows := rowBatch{ctx: ctx, tx: tx, namespace: s.namespace, name: name}
 		documents := documentBatch{ctx: ctx, tx: tx, namespace: s.namespace, name: name}
+		var estimatedBytes int64
 		if err = documents.add(-1, value); err != nil {
 			return 0, fmt.Errorf("insert document metadata for %q: %w", name, err)
 		}
@@ -436,6 +437,7 @@ func (s *Store) Replace(ctx context.Context, sources map[string]model.Source, di
 			if value, err = normalize(row); err != nil {
 				return 0, fmt.Errorf("normalize row in %q: %w", name, err)
 			}
+			estimatedBytes += query.EstimateRowsBytes([]model.Row{value.(map[string]any)})
 			if err = sourceRows.add(int64(ordinal)); err != nil {
 				return 0, fmt.Errorf("insert postgres row in %q: %w", name, err)
 			}
@@ -451,6 +453,10 @@ func (s *Store) Replace(ctx context.Context, sources map[string]model.Source, di
 		}
 		if err = documents.flush(); err != nil {
 			return 0, fmt.Errorf("insert postgres documents in %q: %w", name, err)
+		}
+		if _, err = tx.ExecContext(ctx, `UPDATE cao_sources SET estimated_bytes = $1
+			WHERE namespace = $2 AND source_name = $3`, estimatedBytes, s.namespace, name); err != nil {
+			return 0, fmt.Errorf("update postgres source size in %q: %w", name, err)
 		}
 		counts[name] = len(source.Rows)
 	}

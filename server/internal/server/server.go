@@ -1261,9 +1261,18 @@ func (loader *databaseLoader) ExecutePlan(definitions []query.Definition, reques
 				break
 			}
 			for _, definition := range definitions {
-				if definition.Name == name && runtime[definition.From] {
+				if definition.Name != name {
+					continue
+				}
+				if runtime[definition.From] {
 					registered = true
 					break
+				}
+				for _, source := range definition.Union {
+					registered = registered || runtime[source]
+				}
+				for _, join := range definition.Joins {
+					registered = registered || runtime[join.Source]
 				}
 			}
 		}

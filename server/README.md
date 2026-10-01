@@ -38,7 +38,8 @@ in projections, and numbers retain their original JSON lexemes. SQL counts the
 unfiltered input before filtering, charges both FROM and FILTER for rejected
 rows, and checks the input, operation, output, retained-row, and memory budgets.
 The first read after upgrading an existing database uses the Go evaluator until
-the next successful ingestion installs the new documents.
+a changed artifact or a forced ingestion installs the new documents; an
+unchanged-revision no-op does not backfill them.
 
 This is a first vertical slice, **not** full PostgreSQL query coverage. Joins,
 aggregation, computation, ranges, optional/unknown predicates, searching,
@@ -53,6 +54,32 @@ profile real query traffic and storage costs before extending indexes, move
 eligible joins/aggregations/sorting/pages to SQL with differential tests, and
 bulk-ingest rather than writing both formats. No traffic-coverage or p95 target
 is claimed without a measured production workload.
+
+The declared dashboard corpus has 169 view queries and 21 database-source
+definitions; raw canonical `id` joins and the `runId`/`sessionId` drilldown
+routes motivate the first three hot-key indexes. This is **not** a traffic
+sample, so weighted native coverage remains unmeasured. With a disposable
+Postgres database, run `POSTGRES_URL=... go test ./internal/postgresx -run '^$'
+-bench '^BenchmarkNativeFilterPlan$' -benchmem -benchtime=30x -count=1` from
+`server/` to compare full repeatable-read query paths. On a local AMD EPYC
+9V74 with 5,000 synthetic jobs, one run measured:
+
+| Path | Mean | p50 | p95 | Go allocations |
+| --- | ---: | ---: | ---: | ---: |
+| Native filtered plan | 1.048 ms | 993 µs | 1,382 µs | 28,547 B/op |
+| Bounded Go evaluator | 46.393 ms | 45,340 µs | 52,570 µs | 13,554,745 B/op |
+| Hand-written SQL row retrieval | 0.489 ms | 471 µs | 621 µs | 3,850 B/op |
+
+`EXPLAIN (ANALYZE, BUFFERS)` for the hand-written filtered retrieval reported
+an index scan on `cao_source_documents_run_id`, three shared buffer hits and
+0.051 ms execution (including its ordinal sort). The 10 matching JSON
+documents totaled 820 payload bytes versus 136,680 text bytes in the
+unfiltered legacy EAV values; these are payload sizes, **not** actual wire
+byte counts. Dual-format ingestion took 1.40 s for 5,000 rows. The native
+p95 here is **2.23×** the hand-written retrieval (which does not enforce
+plan budgets or build metadata), above the 1.25× goal. Join/aggregate/sorted
+table/page benchmarks, end-to-end HTTP p50/p95, production weighted
+coverage, and a COPY-based ingestion cost comparison remain to be measured.
 
 ### Debug logging
 

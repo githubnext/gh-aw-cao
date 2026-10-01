@@ -320,8 +320,8 @@ func TestPrefilterChargesRejectedRowsAndChecksOriginalInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if metrics.Operations < 4 {
-		t.Fatalf("FROM and FILTER must charge both input rows: %+v", metrics)
+	if metrics.Operations != 5 {
+		t.Fatalf("FROM, FILTER and residual FROM must charge their input rows: %+v", metrics)
 	}
 	rows := make([]model.Row, MaxInputRows+1)
 	for i := range rows {
