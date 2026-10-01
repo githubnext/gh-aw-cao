@@ -3,10 +3,15 @@
  */
 
 import { h } from '../dom.js';
+import { createDebug } from '../debug.js';
 import { renderActiveStateBadge, renderGraderStatusBadge, renderModeBadge, renderStatusBadge } from './badge.js';
 import { renderShortenedUrl, renderWorkflowRunUrl } from './link-content.js';
 import { formatHumanFriendlyTimestamp, formatNumber, formatString, stringOrFallback } from '../view-formatters.js';
 import { formatUtcDateTime, formatMediumUtcDateTimeWithSuffix, renderDigest, renderMissingValue } from './ui-primitives.js';
+
+const debugCellDisplay = createDebug('cell-display');
+
+const KNOWN_DISPLAYS = new Set(['mode', 'active-state', 'status', 'grader-status', 'label', 'ref', 'digest']);
 
 /**
  * @param {unknown} display
@@ -19,7 +24,14 @@ import { formatUtcDateTime, formatMediumUtcDateTimeWithSuffix, renderDigest, ren
  */
 export function renderCellDisplay(display, value, toText, unit = null, type, format) {
   if (value == null || value === '') {
-    return format === 'workflow-relative-path' ? renderMissingValue() : '';
+    if (format === 'workflow-relative-path') {
+      debugCellDisplay({ event: 'missing-value-rendered', format });
+      return renderMissingValue();
+    }
+    return '';
+  }
+  if (typeof display === 'string' && display && !KNOWN_DISPLAYS.has(display)) {
+    debugCellDisplay({ event: 'display-unmatched', display, type });
   }
   if (display === 'mode') return renderModeBadge(value);
   if (display === 'active-state') return renderActiveStateBadge(value);
@@ -28,7 +40,10 @@ export function renderCellDisplay(display, value, toText, unit = null, type, for
   if (display === 'label') return formatLabel(value);
   if (display === 'ref') return h('span', { className: 'ref-label' }, toText(value));
   if (display === 'digest') return renderDigest(value) ?? 'unavailable';
-  if (type === 'quantitative' && !Number.isFinite(Number(value))) return '';
+  if (type === 'quantitative' && !Number.isFinite(Number(value))) {
+    debugCellDisplay({ event: 'quantitative-unparseable', type });
+    return '';
+  }
   if (type === 'temporal' && typeof value === 'string' && Number.isFinite(Date.parse(value))) {
     const text = format === 'human-friendly-timestamp'
       ? formatHumanFriendlyTimestamp(value)
