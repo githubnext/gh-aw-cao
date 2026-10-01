@@ -36,6 +36,7 @@ export function renderDeclaredRouteTabs(options) {
       debugRouteTabs({ event: 'cleared', parameter: options.routeParameter });
       return;
     }
+
     const query = `?${encodeURIComponent(options.routeParameter)}=${encodeURIComponent(value)}`;
     root.replaceChildren(renderRouteTabSet({
       className: options.className ?? 'route-tabs',
@@ -53,6 +54,25 @@ export function renderDeclaredRouteTabs(options) {
 
   bindRouteChangeListener(root, options.routeParameter, render);
   return root;
+}
+
+/**
+ * Renders declared tabs whose destinations are dashboard pages rather than
+ * values of a route-bound entity.
+ * @param {{ currentTab: string, tabs: DeclaredRouteTab[], className?: string }} options
+ */
+export function renderPageTabs(options) {
+  return h('div', { className: 'route-tab-navigation' }, renderRouteTabSet({
+    className: options.className ?? 'route-tabs',
+    ariaLabel: 'Page views',
+    currentTab: options.currentTab,
+    tabs: options.tabs.map((tab) => ({
+      id: tab.id,
+      label: tab.label,
+      icon: tab.icon,
+      href: `#page-${encodeURIComponent(tab.page)}`
+    }))
+  }));
 }
 
 /**

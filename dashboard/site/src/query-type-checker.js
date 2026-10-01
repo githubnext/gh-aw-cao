@@ -407,7 +407,7 @@ function resolveInput(input, symbols, compiled) {
     return {
       fields: names ? new Map(names.map((name) => [
         name,
-        Object.hasOwn(SYNTHETIC_SOURCE_FIELDS, input) ? 'numeric' : intrinsicType(name)
+        Object.hasOwn(SYNTHETIC_SOURCE_FIELDS, input) && name === 'day' ? 'numeric' : intrinsicType(name)
       ])) : undefined,
       tables: new Set([input]),
       rowTables: new Set([input])

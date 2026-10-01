@@ -214,6 +214,7 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     filterPlanCount: filterPlans.length,
     storeCount: stores.length
   });
+  /** @type {Record<string, number>} */
   const counts = stores.length > 0
     ? await countCollections(
         indexedDB,
@@ -423,6 +424,7 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
     stores.filter((name) => name !== 'transactions')
   );
   const databaseStartedAt = monotonicNow();
+  /** @type {[Record<string, Record<string, unknown>[]>, Record<string, unknown>[]]} */
   const [collections, transactions] = await Promise.all([
     collectionStores.length > 0 ? readCollections(indexedDB, collectionStores) : {},
     transactionRequested ? readTransactions(indexedDB) : []

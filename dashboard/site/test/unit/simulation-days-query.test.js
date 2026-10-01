@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import 'fake-indexeddb/auto';
+import { describe, expect, it, vi } from 'vitest';
 import { compileDashboardQueryTypes } from '../../src/query-type-checker.js';
+import { processDataRequest } from '../../src/data-worker.js';
 import { loadDatabaseQuerySources, queryDatabaseSources } from '../../src/data/queries/database.js';
 import { executeDashboardQueries, resolveDashboardQuerySources } from '../../src/data/queries/declarative.js';
 import { validateDashboardDocument } from '../../src/validator.js';
@@ -9,7 +11,7 @@ const query = {
   subject: 'A synthetic day series for an interactive simulation.',
   from: 'simulation-days',
   compute: [{ as: 'score', function: 'product', args: [{ field: 'day' }, { value: 2 }] }],
-  select: [{ field: 'day' }, { field: 'score' }],
+  select: [{ field: 'day' }, { field: 'date' }, { field: 'score' }],
   'order-by': [{ field: 'day' }]
 };
 
@@ -20,7 +22,7 @@ describe('simulation-days intrinsic query source', () => {
     ]);
     expect(compileDashboardQueryTypes([query])).toMatchObject({
       errors: [],
-      queryFields: new Map([['simulated-series', ['day', 'score']]])
+      queryFields: new Map([['simulated-series', ['day', 'date', 'score']]])
     });
     expect(compileDashboardQueryTypes([{
       name: 'bad-days', from: 'simulation-days',
@@ -39,17 +41,42 @@ describe('simulation-days intrinsic query source', () => {
       { 'simulation-days': { rows: [{ day: 999 }], metadata: { availability: 'available' } } },
       ['simulation-days']
     ))['simulation-days'];
-    expect(source.rows).toEqual(Array.from({ length: 30 }, (_, index) => ({ day: index + 1 })));
+    expect(source.rows).toEqual(Array.from({ length: 31 }, (_, day) => ({
+      day, date: new Date(Date.UTC(2026, 0, day + 1)).toISOString()
+    })));
     expect(source.metadata).toMatchObject({ 'source-kind': 'synthetic', availability: 'available' });
     const projected = executeDashboardQueries([query], { 'simulation-days': source }, ['simulated-series']);
     expect(projected['simulated-series'].rows).toEqual(
-      Array.from({ length: 30 }, (_, index) => ({ day: index + 1, score: (index + 1) * 2 }))
+      Array.from({ length: 31 }, (_, day) => ({
+        day, date: new Date(Date.UTC(2026, 0, day + 1)).toISOString(), score: day * 2
+      }))
     );
     const loaded = await loadDatabaseQuerySources(
       /** @type {IDBFactory} */ (/** @type {unknown} */ (indexedDB)),
       {}, { queries: [query], sourceNames: ['simulated-series'] }
     );
-    expect(loaded['simulated-series'].rows).toEqual(projected['simulated-series'].rows);
+    expect(/** @type {import('../../src/presenter.js').LogicalSourceInput} */ (loaded['simulated-series']).rows)
+      .toEqual(projected['simulated-series'].rows);
+  });
+
+  it('resolves a worker query graph with no canonical database access', async () => {
+    const open = vi.spyOn(indexedDB, 'open');
+    try {
+      const response = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (
+        await processDataRequest({
+          operation: 'load-dashboard-query-sources',
+          sources: {},
+          queries: [query],
+          sourceNames: ['simulated-series']
+        })
+      );
+      expect(response['simulated-series'].rows).toHaveLength(31);
+      expect(response['simulated-series'].rows[0])
+        .toEqual({ day: 0, date: '2026-01-01T00:00:00.000Z', score: 0 });
+      expect(open).not.toHaveBeenCalled();
+    } finally {
+      open.mockRestore();
+    }
   });
 
   it('accepts a view querying the intrinsic source through the document validator', () => {
@@ -62,10 +89,13 @@ describe('simulation-days intrinsic query source', () => {
         pages: [{
           id: 'simulator', kind: 'custom', title: 'Simulator',
           views: [{
-            id: 'day-count',
+            id: 'daily-projection',
             data: { source: 'simulated-series' },
-            mark: 'metric',
-            encoding: { value: { field: 'day', aggregate: 'count' } }
+            mark: 'chart',
+            encoding: {
+              x: { field: 'date', type: 'temporal', 'time-unit': 'day' },
+              y: { field: 'score', aggregate: 'max', type: 'quantitative' }
+            }
           }]
         }]
       }

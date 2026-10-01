@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { renderRouteTabSet } from '../../src/components/route-tab-set.js';
+import { renderPageTabs } from '../../src/components/route-tabs.js';
 
 describe('renderRouteTabSet', () => {
   it('renders a reusable tab set with one current tab', () => {
@@ -19,6 +20,17 @@ describe('renderRouteTabSet', () => {
         },
         { id: 'reports', label: 'Reports', icon: 'issue', href: '#page-reports' }
       ]
+    });
+
+    describe('renderPageTabs', () => {
+      it('renders a declarative tab without requiring a route value', () => {
+        const rendered = renderPageTabs({
+          currentTab: 'database-size',
+          tabs: [{ id: 'database-size', label: 'Database size', icon: 'database', page: 'simulators' }]
+        });
+        expect(rendered.querySelector('[aria-current="page"]')?.textContent).toBe('Database size');
+        expect(rendered.querySelector('a')?.getAttribute('href')).toBe('#page-simulators');
+      });
     });
 
     expect(rendered.getAttribute('aria-label')).toBe('Reusable route tabs');
