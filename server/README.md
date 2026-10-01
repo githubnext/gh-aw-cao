@@ -6,7 +6,7 @@ OpenAPI 3.1 and selected JSON Schemas; consult it before changing server routes.
 The `server/` module is an optional backend for running the Central Agentic Ops
 dashboard with server-owned persistence and query execution. It ingests the
 same compacted data published with the deployed dashboard, materializes
-generation-scoped logical sources in Redis, executes Dashboard Language queries
+logical sources in Redis, executes Dashboard Language queries
 in Go, and serves the built dashboard either over loopback HTTP or through an
 authenticated host-neutral service profile.
 
@@ -205,14 +205,14 @@ flowchart LR
 | Component | Location | Responsibility |
 | --- | --- | --- |
 | CLI | `cmd/cao-dashboard/` | Implements the `ingest` and `serve` commands and keeps Redis configuration in the server process. |
-| Artifact ingestion | `internal/ingest/` | Validates deployed manifests and hashes, loads run shards before record shards, projects canonical records into logical dashboard sources, and activates complete generations. |
+| Artifact ingestion | `internal/ingest/` | Validates deployed manifests and hashes, loads run shards before record shards, and projects canonical records into logical dashboard sources. |
 | Query engine | `internal/query/` | Validates Dashboard Language definitions and executes joins, filters, computed fields, aggregates, temporal series, selection, ordering, and limits under resource budgets. |
-| Redis projection | `internal/redisx/` | Stores generation-scoped RedisJSON rows and RediSearch indexes (core Redis hashes for issues and Upstash) and atomically publishes the active generation. |
+| Redis projection | `internal/redisx/` | Stores RedisJSON rows and RediSearch indexes (core Redis hashes for issues and Upstash) for the canonical dataset. |
 | HTTP(S)/API server | `internal/server/` | Enforces loopback binding, optionally terminates operator-configured TLS, serves static dashboard assets, handles API requests, and publishes revision events. |
 | Externally hosted service | `hosting/` | Exposes a listener-independent application lifecycle and the complete hosted HTTP handler to other Go HTTP hosts. |
 | Azure Functions profile | `internal/server/azure.go` | Builds the same HTTP handler without starting a listener, validates Azure app settings, requires `rediss://` Redis, and trusts forwarded host/protocol headers only for configured Azure hosts. |
 | GitHub OAuth sessions | `internal/server/oauth.go` | Implements the GitHub OAuth authorization-code flow, active organization/team authorization, refresh-token rotation, server-side encrypted sessions in Redis, logout revocation, and CSRF protection for mutating requests. |
-| Shared API model | `internal/model/` | Defines logical sources, active-generation metadata, diagnostics, and query metrics. |
+| Shared API model | `internal/model/` | Defines logical sources, dataset metadata, diagnostics, and query metrics. |
 | Telemetry | `internal/telemetry/` | Configures OpenTelemetry trace and metric providers from standard `OTEL_*` environment variables, exposes the server's tracer, and writes W3C trace/span id response headers. |
 | Local Redis | `docker-compose.yml` | Runs plain Redis on `127.0.0.1:6379`. |
 | Coolify container profile | `Dockerfile`, `coolify/compose.yml` | Builds the dashboard and Go service into a non-root image and runs `serve-hosted` behind an explicitly trusted Coolify TLS proxy. |
@@ -585,10 +585,10 @@ The ingestion sequence is:
 7. Atomically update the namespaced active pointer and increment the namespaced
    active revision only after the generation is complete.
 
-An ingestion with the same artifact revision reuses the active generation.
-Failure before activation leaves the previous active generation available.
+An ingestion with the same artifact revision reuses the existing dataset.
+A failed ingestion must not publish incomplete data.
 
-The active generation also records an authoritative `evaluatedAt` timestamp
+The dataset metadata also records an authoritative `evaluatedAt` timestamp
 derived from the latest canonical row or source metadata timestamp. Relative
 dashboard time windows use this value rather than browser wall-clock time.
 
@@ -769,7 +769,6 @@ private-key file rather than reading it.
 | `CAO_COLLECT_WORKERS` | in-process workers; zero when workers scale separately |
 | `CAO_COLLECT_RATE_LIMIT_FLOOR` | requests reserved per installation |
 | `CAO_COLLECT_PROJECTION_INTERVAL` | minimum interval between projections (default 5 minutes) |
-| `CAO_COLLECT_RETAIN_GENERATIONS` | superseded canonical generations kept for rollback (default 3) |
 | `CAO_COLLECT_INVENTORY_LIMIT` | optional cap on enrolled repositories; exceeding it fails the projection |
 | `CAO_COLLECT_RECOVER_DELIVERIES` | replay failed webhook deliveries to close gaps |
 | `CAO_COLLECT_QUEUE_MAX_LENGTH` | admission backpressure limit for outstanding collection tasks (default 200 000); tasks are never trimmed |

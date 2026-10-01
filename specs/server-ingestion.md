@@ -165,26 +165,23 @@ Collected evidence MUST be persisted in a durable **evidence lake**.
 
 ## 7. Projection
 
-Projection converts the evidence lake into an active canonical generation.
+Projection converts the evidence lake into the canonical Redis dataset.
 
 - Projection MUST reuse the Actions profile's ingestion implementation over the
   evidence lake directory. An implementation MUST NOT define a second projector.
 - Projection MUST be coalesced: an implementation MUST collapse collections that
-  complete within a configured debounce window into a single generation.
-- A generation MUST be staged and then activated atomically. A failed projection
-  MUST leave the previously active generation serving.
+  complete within a configured debounce window into a single projection.
+- A failed projection MUST NOT publish incomplete or inconsistent data.
 - Relationship errors and duplicate record identities MUST fail the projection
-  rather than activate a generation known to be inconsistent.
-- On successful activation the implementation MUST increment the revision and
+  rather than publish data known to be inconsistent.
+- On successful publication the implementation MUST increment the revision and
   notify connected clients through the existing revision channel.
 - Projection MUST short-circuit when the lake's content-addressed data revision
-  already matches the active generation. A collection re-enumerates a window and
+  already matches the stored dataset. A collection re-enumerates a window and
   usually adds nothing, so rewriting an identical dataset would be the dominant
   steady-state cost. An explicit operator rebuild MAY bypass this short-circuit.
-- An implementation MUST reclaim superseded generations, retaining a bounded
-  number for rollback and honouring a grace period so in-flight reads complete.
-  Every projection writes a complete new generation; without reclamation a
-  no-eviction store exhausts memory and every subsequent write fails.
+- An implementation MUST bound the storage consumed by projections, including
+  failed writes. A no-eviction store must not accumulate obsolete datasets.
 - Inventory discovery MUST NOT silently truncate the enrolled repository set. An
   implementation MAY enforce a configured bound, but exceeding it MUST fail the
   projection rather than publish a partial inventory.
@@ -324,8 +321,8 @@ count.
   the repository or delivery they concern. A deployment MUST route these records
   and the process's telemetry to a durable sink.
 - The server MUST provide a read-only check-up that reports the selected
-  profile, Redis connectivity and safety posture, active-generation status,
-  canonical integrity, query-definition validity, generation reclamation,
+  profile, Redis connectivity and safety posture, dataset status,
+  canonical integrity, query-definition validity, projection storage,
   and, when collection is configured, enrollment, queue, cold-start,
   rate-limit, evidence-lake, and tooling state.
 - Each check MUST have a stable machine-readable identifier, severity,
@@ -335,7 +332,7 @@ count.
   contents unnecessarily, or report tokens, passwords, private keys, webhook
   secrets, payload contents, or prompts. Dependency checks MUST be bounded so
   an unavailable surface cannot hang the full report.
-- Expensive checks that read the full active generation MUST be explicit and
+- Expensive checks that read the full dataset MUST be explicit and
   MUST use the production source-loading path and its fail-closed row bounds.
 
 ## 13. Reliability simulator
