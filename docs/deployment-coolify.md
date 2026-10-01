@@ -177,7 +177,12 @@ Set these required variables:
 - `CAO_GITHUB_WEBHOOK_SECRET_ROTATED`
 - `CAO_MCP_ACTIONS_REPOSITORY`
 
-Also set `REDIS_URL`, and at least one of `CAO_GITHUB_ALLOWED_ORGS` or `CAO_GITHUB_ALLOWED_TEAMS`. Coolify doesn't mark them **Required**, because Compose leaves them empty by default, but the server refuses to serve requests without them.
+Also set `REDIS_URL`, `CAO_GITHUB_CLIENT_SECRET_ROTATED`,
+`CAO_SESSION_SECRET_ROTATED`, `CAO_GITHUB_WEBHOOK_SECRET_ROTATED`, and at least
+one of `CAO_GITHUB_ALLOWED_ORGS` or `CAO_GITHUB_ALLOWED_TEAMS`. Compose leaves
+these runtime secrets empty during the image-build phase so Coolify does not
+expose them as Docker build arguments. The server fails closed at startup when
+any required runtime value is absent.
 
 Set `CAO_MCP_ACTIONS_REPOSITORY` to the repository configured in this Coolify resource's Git source, including its owner. Coolify does not expose that repository identity as a documented Compose variable, so the setting is required rather than falling back to the catalog's repository or reading potentially credential-bearing Git metadata into the build.
 

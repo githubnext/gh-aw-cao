@@ -58,15 +58,15 @@ test("Coolify Compose builds the checked-out source without deployment credentia
   );
   assert.equal(
     dashboard.environment.CAO_GITHUB_CLIENT_SECRET,
-    "${CAO_GITHUB_CLIENT_SECRET_ROTATED:?Configure the rotated GitHub OAuth client secret}",
+    "${CAO_GITHUB_CLIENT_SECRET_ROTATED:-}",
   );
   assert.equal(
     dashboard.environment.CAO_SESSION_SECRET,
-    "${CAO_SESSION_SECRET_ROTATED:?Configure the rotated session secret}",
+    "${CAO_SESSION_SECRET_ROTATED:-}",
   );
   assert.equal(
     dashboard.environment.CAO_GITHUB_WEBHOOK_SECRET,
-    "${CAO_GITHUB_WEBHOOK_SECRET_ROTATED:?Configure the rotated webhook secret}",
+    "${CAO_GITHUB_WEBHOOK_SECRET_ROTATED:-}",
   );
   assert.equal(
     dashboard.environment.CAO_MCP_ACTIONS_REPOSITORY,
