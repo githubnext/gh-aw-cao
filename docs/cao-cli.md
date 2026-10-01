@@ -169,6 +169,11 @@ Check runtime health or query canonical records:
   --limit 20
 ```
 
+For the computation model and result semantics, see
+[Intelligence](intelligence.md),
+[Runtime Health Computation](computation-runtime-health.md), and
+[Portfolio Intelligence Computation](computation-intelligence.md).
+
 The `intelligence` computation fingerprints canonical runtime-health evidence,
 correlates matching failure signals, suppresses ineligible or recovering
 candidates, and emits advisory Decisions. It never dispatches workers or grants
