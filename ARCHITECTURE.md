@@ -180,7 +180,7 @@ revocation retries survive restart; server-side collection is not available in
 this profile. The default hosted and Azure
 profiles retain their ordinary pooled Redis behavior.
 
-The Redis profile acquires evidence through exactly one of two mutually
+The Go server profile acquires evidence through exactly one of two mutually
 exclusive ingestion profiles. By default the Activity workflow collects
 evidence in GitHub Actions and publishes a snapshot that the server ingests.
 As an alternative, the server itself collects evidence from GitHub App

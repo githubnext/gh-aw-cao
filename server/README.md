@@ -492,10 +492,10 @@ invalid, expired, and unauthenticated requests cannot bypass Redis enforcement.
 > validated against your organization's Azure, GitHub, compliance, monitoring,
 > incident-response, and data-retention requirements before live use.
 
-The Azure Functions profile keeps the dashboard browser isolated from Redis,
-GitHub tokens, refresh tokens, Redis access keys, and Key Vault secret values.
+The Azure Functions profile keeps the dashboard browser isolated from Postgres,
+Redis, GitHub tokens, refresh tokens, database credentials, and Key Vault secret values.
 The Function App is the only public application boundary and the only component
-that talks to GitHub APIs, Key Vault references, and Azure Managed Redis.
+that talks to GitHub APIs, Key Vault references, Postgres, and Azure Managed Redis.
 
 ```mermaid
 flowchart LR
@@ -504,7 +504,8 @@ flowchart LR
   Function["Function App<br/>Go dashboard HTTP handler<br/>GitHub OAuth sessions + CSRF"]
   GitHubOAuth["GitHub OAuth + API<br/>login, refresh, org/team membership"]
   KeyVault["Azure Key Vault<br/>OAuth secret, session secret, Redis URL"]
-  Redis["Azure Managed Redis<br/>TLS<br/>derived dashboard projection"]
+  Postgres["Postgres<br/>current dashboard entities"]
+  Redis["Azure Managed Redis<br/>TLS<br/>operational state"]
   Storage["Functions storage account<br/>runtime state only"]
   Insights["Application Insights<br/>non-secret operational telemetry"]
   Operators["Control-plane operators<br/>deploy Bicep + rotate secrets"]
@@ -514,13 +515,14 @@ flowchart LR
   Function -->|"OAuth code, refresh, membership checks"| GitHubOAuth
   Function -->|"Key Vault references resolved by managed identity"| KeyVault
   Function -->|"rediss:// operational commands"| Redis
+  Function -->|"entity source reads/writes"| Postgres
   Function -->|"runtime binding state"| Storage
   Function -->|"no tokens, no Redis URL, no source records"| Insights
   Operators -->|"reviewed Bicep + secret rotation"| KeyVault
   Operators -->|"deploy package + app settings"| Function
 
   classDef boundary fill:#eef6ff,stroke:#0969da,stroke-width:2px;
-  class Function,KeyVault,Redis boundary;
+  class Function,KeyVault,Postgres,Redis boundary;
 ```
 
 Primary actors and responsibilities:
@@ -533,8 +535,10 @@ Primary actors and responsibilities:
   scale in, or terminate long-lived SSE requests.
 - **GitHub OAuth/API**: issues expiring access/refresh tokens and confirms
   organization/team membership; GitHub tokens never leave the server.
-- **Redis**: stores disposable, namespaced dashboard projections; it is not an
-  authority or source of truth.
+- **Postgres**: stores the current dashboard entity sources and diagnostics;
+  replacement is transactional, without generations or snapshots.
+- **Redis**: stores operational queues, caches, sessions, and overlays, not
+  dashboard entities.
 - **Control-plane operator**: reviews Bicep/app settings, keeps Key Vault
   mandatory, rotates credentials, and validates compliance evidence.
 
@@ -1079,7 +1083,7 @@ the Function App itself never imports an Azure Monitor SDK.
 - Every other remote Redis connection requires `rediss://`, standard
   certificate-chain and hostname verification, and TLS 1.2 or newer. Azure
   always requires this path. There is no insecure skip-verification option.
-- Redis namespaces isolate this server's keys and indexes, but are not a
+- Redis namespaces isolate this server's operational keys, but are not a
   substitute for dedicated Redis credentials with narrow ACL key patterns or a
   dedicated Redis database or instance.
 - The HTTP(S) server sets content-type, frame, referrer, permissions, and
@@ -1089,7 +1093,7 @@ the Function App itself never imports an Azure Monitor SDK.
 - Deployed artifact paths and SHA-256 hashes are validated before parsing.
 - Static files are served only from the configured built-site directory, with
   SPA fallback to that directory's `index.html`.
-- Missing Redis, data, manifests, shards, projections, or diagnostics fail
+- Missing Redis, Postgres data, manifests, shards, or diagnostics fail
   closed.
 
 The local capability profile is not suitable for remote or multi-user
@@ -1172,7 +1176,7 @@ hosting:
 - Keep HTTPS-only Functions, TLS-only Redis, disabled FTPS, disabled Redis
   public network access, storage HTTPS enforcement, Key Vault soft delete, and
   non-secret Bicep outputs enabled for compliance review.
-- Treat the Redis projection as disposable derived state. Compliance evidence
+- Treat the Postgres entity store as rebuildable from authoritative inputs. Compliance evidence
   comes from the checked-in Bicep, GitHub OAuth authorization policy, Key Vault
   access controls, Azure activity logs, Application Insights without secrets,
   and the CAO source artifacts that feed Redis.

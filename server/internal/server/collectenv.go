@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 )
 
 var collectEnvLog = logger.New("cao:server:collectenv")
@@ -86,7 +87,6 @@ func CollectorConfigFromEnv() (*CollectorConfig, error) {
 		RateLimitFloor:        envInt("CAO_COLLECT_RATE_LIMIT_FLOOR"),
 		Workers:               envInt("CAO_COLLECT_WORKERS"),
 		QueueMaxLength:        envInt("CAO_COLLECT_QUEUE_MAX_LENGTH"),
-		RetainGenerations:     envInt("CAO_COLLECT_RETAIN_GENERATIONS"),
 		InventoryLimit:        envInt("CAO_COLLECT_INVENTORY_LIMIT"),
 		MinProjectionInterval: envDuration("CAO_COLLECT_PROJECTION_INTERVAL"),
 		CollectionTimeout:     envDuration("CAO_COLLECT_TIMEOUT"),
@@ -167,5 +167,17 @@ func NewCollectorFromEnv(ctx context.Context, databaseQueriesPath string) (*Coll
 	if err != nil {
 		return nil, err
 	}
-	return NewCollector(ctx, store, *config, databaseQueriesPath)
+	postgresURL := strings.TrimSpace(os.Getenv("CAO_POSTGRES_URL"))
+	if postgresURL == "" {
+		return nil, errors.New("CAO_POSTGRES_URL is required")
+	}
+	database, err := postgresx.New(ctx, postgresURL)
+	if err != nil {
+		return nil, errors.New("connect to dashboard Postgres failed")
+	}
+	collector, err := NewCollector(ctx, store, database, *config, databaseQueriesPath)
+	if err != nil {
+		_ = database.Close()
+	}
+	return collector, err
 }

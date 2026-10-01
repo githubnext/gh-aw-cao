@@ -405,7 +405,7 @@ flows:
     - computation_projection
     - dashboard_language_queries
     - dashboard_ui
-  activity_dashboard_redis:
+  activity_dashboard_postgres:
     - gh_aw_logs
     - activity_jsonl_shards
     - activity_run_information_shards
