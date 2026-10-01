@@ -117,6 +117,7 @@ const TABLE_ROW_LIMIT = Symbol('table-row-limit');
 const NAVIGATION_INDEX_STATE_KEY = 'centralAgenticOpsNavigationIndex';
 const SCROLL_TOP_STATE_KEY = 'centralAgenticOpsScrollTop';
 const SCROLL_PAGE_ID_STATE_KEY = 'centralAgenticOpsScrollPageId';
+const SCROLL_PERSISTENCE_DELAY_MS = 250;
 /** @type {WeakMap<HTMLElement, () => void>} */
 const dashboardDisposals = new WeakMap();
 
@@ -1284,7 +1285,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   /** @type {string | undefined} */
   let pendingScrollPageId;
   /** @type {number | null} */
-  let scrollPersistenceFrame = null;
+  let scrollPersistenceTimer = null;
   let cancelPendingScrollPersistence = () => {};
   const disposeNavigation = () => {
     activationRevision += 1;
@@ -1322,8 +1323,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   };
   cancelPendingScrollPersistence = () => {
     const view = root.ownerDocument.defaultView;
-    if (scrollPersistenceFrame !== null) view?.cancelAnimationFrame?.(scrollPersistenceFrame);
-    scrollPersistenceFrame = null;
+    if (scrollPersistenceTimer !== null) view?.clearTimeout(scrollPersistenceTimer);
+    scrollPersistenceTimer = null;
   };
   const commitScrollTop = () => {
     cancelPendingScrollPersistence();
@@ -1338,12 +1339,12 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   };
   const persistScrollTop = () => {
     const view = root.ownerDocument.defaultView;
-    if (!view || scrollPersistenceFrame !== null) return;
-    if (typeof view.requestAnimationFrame !== 'function') return commitScrollTop();
-    scrollPersistenceFrame = view.requestAnimationFrame(() => {
-      scrollPersistenceFrame = null;
+    if (!view) return;
+    cancelPendingScrollPersistence();
+    scrollPersistenceTimer = view.setTimeout(() => {
+      scrollPersistenceTimer = null;
       if (!navigationOwner.signal.aborted) commitScrollTop();
-    });
+    }, SCROLL_PERSISTENCE_DELAY_MS);
   };
   if (pageScroller instanceof HTMLElement) {
     pageScroller.addEventListener('scroll', persistScrollTop, { passive: true, signal: navigationOwner.signal });
