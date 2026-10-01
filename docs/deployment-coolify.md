@@ -11,7 +11,7 @@ description: Run the Central Agentic Ops dashboard server as a hardened containe
 The Coolify deployment runs the same Go dashboard server as [the Azure deployment](deployment-azure.md), packaged as a container image that runs as a non-root user. The container starts with the `serve-hosted` command.
 
 - The Coolify proxy is the only way into the container. It terminates public TLS.
-- The container reads a verified dashboard artifact from a read-only volume and loads it into Redis.
+- The container reads a verified dashboard artifact from a read-only volume, stores dashboard rows in PostgreSQL, and uses Redis for operational state.
 - Users sign in with GitHub OAuth. Only active members of GitHub organizations or teams that you allow can access the dashboard.
 
 The Coolify deployment is an alternative to the Azure deployment. It doesn't replace, change, or weaken the Azure deployment.
@@ -23,13 +23,14 @@ The Coolify deployment is an alternative to the Azure deployment. It doesn't rep
 | Coolify | A self-hosted Coolify instance that can run Docker Compose resources. Its proxy must terminate TLS for a public host name that you control. |
 | Container runtime | Docker on the Coolify server, with enough CPU, memory, and disk to build and run the image. |
 | Source access | A Coolify GitHub App with read access to this repository and webhook delivery enabled. |
+| PostgreSQL | A PostgreSQL service on the Coolify private network. CAO stores dashboard rows there. |
 | Redis | A Redis service on the Coolify private network, or an external Redis service that uses TLS, such as [Upstash Redis](deployment-upstash.md). No Redis modules are required. Set the eviction policy to `noeviction`, and size memory for the number of data generations that you keep. |
 | Artifact volume | A named Docker volume, managed by Coolify, that contains a complete and verified dashboard payload. |
 | GitHub OAuth app | An OAuth app with the callback URL `https://PUBLIC-HOST/auth/callback`. |
 | Webhook secret | A secret of at least 32 characters. The server requires one even if you don't use webhooks. |
 | Deployment automation | A Git-backed Coolify resource configured for automatic deployments from the protected `main` branch. |
 
-The running container needs outbound access only to Redis and to the GitHub OAuth and API endpoints.
+The running container needs outbound access only to PostgreSQL, Redis, and the GitHub OAuth and API endpoints.
 
 ## Deploying the dashboard
 
@@ -39,6 +40,7 @@ In the following steps, replace `PUBLIC-HOST` with the public host name of your 
 1. In the resource's advanced settings, enable **Include Source Commit in Build**. Coolify then provides `SOURCE_COMMIT`, which the Compose build embeds in the image labels and exposes as the server build version.
 
 1. Register a GitHub OAuth app. Set its **Authorization callback URL** to `https://PUBLIC-HOST/auth/callback`. For more information, see [Creating an OAuth app](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app) in the GitHub documentation.
+1. Create a PostgreSQL service in Coolify on the same private network as the dashboard. Copy its internal connection URL and store it as the dashboard resource's secret `CAO_POSTGRES_URL`. The database resource name, such as `cao-postgres`, is only a label and must not be substituted for the host in the connection URL.
 1. Create a Redis service in Coolify on the same private network as the dashboard, or use an external `rediss://` endpoint. To use Upstash, follow [Deploying the dashboard with Upstash Redis](deployment-upstash.md), select the `upstash` Redis module with `target.replicas: 1`, and keep the Coolify resource at exactly one replica.
 1. Review `.github/workflows/cao.coolify.json`. This CAO deployment profile
    extends the authoritative `cao.json` rollout policy with only the
@@ -139,6 +141,7 @@ The `server/coolify/compose.yml` file reads the following variables.
 | Variable | Required | Secret | Description |
 | --- | --- | --- | --- |
 | `CAO_ARTIFACT_VOLUME` | Yes | No | Existing Coolify volume that contains the verified payload. It is mounted read-only at `/app/source`. |
+| `CAO_POSTGRES_URL` | Yes | Yes | Internal PostgreSQL connection URL copied from the Coolify database resource. |
 | `REDIS_URL` | Yes | Yes | Redis URL selected by `control-plane.web.host.redis.url-env`. Use `rediss://` when possible. |
 | `REDIS_NAMESPACE` | No. Defaults to `coolify-dashboard`. | No | Prefix selected by `control-plane.web.host.redis.namespace-env`. |
 | `CAO_POLICY_PATH` | Set by Compose. | No | Points at the baked-in `cao.coolify.json` deployment profile, which extends `cao.json`. |
@@ -163,6 +166,7 @@ Coolify marks a variable **Required** when `compose.yml` declares it with the `$
 Set these required variables:
 
 - `CAO_ARTIFACT_VOLUME`
+- `CAO_POSTGRES_URL`
 - `CAO_ALLOWED_HOSTS`
 - `CAO_TRUSTED_PROXY_CIDRS`
 - `CAO_GITHUB_CLIENT_ID`
@@ -179,7 +183,7 @@ Set `CAO_MCP_ACTIONS_REPOSITORY` to the repository configured in this Coolify re
 
 Follow these rules when you add the values.
 
-- **Store credentials as Coolify secrets.** `REDIS_URL`, `CAO_GITHUB_CLIENT_SECRET`, `CAO_SESSION_SECRET`, `CAO_SESSION_SECRET_PREVIOUS`, and `CAO_GITHUB_WEBHOOK_SECRET` are credentials. Never commit them to the repository, paste them into `.env.example`, or echo them in a build or deployment log.
+- **Store credentials as Coolify secrets.** `CAO_POSTGRES_URL`, `REDIS_URL`, `CAO_GITHUB_CLIENT_SECRET`, `CAO_SESSION_SECRET`, `CAO_SESSION_SECRET_PREVIOUS`, and `CAO_GITHUB_WEBHOOK_SECRET` are credentials. Never commit them to the repository, paste them into `.env.example`, or echo them in a build or deployment log.
 - **Generate the two server-side secrets yourself.** `CAO_SESSION_SECRET` and `CAO_GITHUB_WEBHOOK_SECRET` must each be at least 32 characters. Generate each one separately, and don't reuse one value for both.
 
   ```bash
