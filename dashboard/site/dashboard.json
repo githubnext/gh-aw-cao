@@ -1077,7 +1077,8 @@
           "operational-value",
           "friction",
           "skills",
-          "steering"
+          "steering",
+          "simulators"
         ]
       },
       {

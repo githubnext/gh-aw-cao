@@ -647,8 +647,10 @@ export const SERVER_SOURCE_FIELDS = {
   ]
 };
 
-export const QUERY_SOURCE_VALUES = [...TABLE_VALUES, ...SERVER_SOURCE_VALUES];
-export const QUERY_SOURCE_FIELDS = { ...TABLE_FIELDS, ...SERVER_SOURCE_FIELDS };
+export const SYNTHETIC_SOURCE_FIELDS = { 'simulation-days': ['day'] };
+
+export const QUERY_SOURCE_VALUES = [...TABLE_VALUES, ...SERVER_SOURCE_VALUES, ...Object.keys(SYNTHETIC_SOURCE_FIELDS)];
+export const QUERY_SOURCE_FIELDS = { ...TABLE_FIELDS, ...SERVER_SOURCE_FIELDS, ...SYNTHETIC_SOURCE_FIELDS };
 
 export const TEMPORAL_FIELD_NAMES = [
   'observed-at',

@@ -1090,7 +1090,8 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     'Operational Value',
     'Friction',
     'Skills',
-    'Steering'
+    'Steering',
+    'Simulators'
   ]);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   await expect(page.locator('.account-menu')).toHaveCount(0);
