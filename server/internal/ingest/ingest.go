@@ -21,6 +21,7 @@ import (
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/repositorymemory"
@@ -39,7 +40,6 @@ const projectionBatchSize = 25_000
 var ingestLog = logger.New("cao:ingest")
 
 type Result struct {
-	Generation   string         `json:"generation"`
 	Revision     int64          `json:"revision"`
 	DataRevision string         `json:"dataRevision"`
 	EvaluatedAt  string         `json:"evaluatedAt"`
@@ -49,9 +49,6 @@ type Result struct {
 type Options struct {
 	DatabaseQueriesPath string
 	Force               bool
-	// RetainGenerations bounds how many superseded generations are kept for
-	// rollback. Zero selects redisx.DefaultGenerationRetention.
-	RetainGenerations int
 }
 
 type Manifest map[string]string
@@ -129,7 +126,7 @@ func DirectoryRevision(manifest Manifest, inventory []byte, additionalRevisions 
 	return "sha256:" + hex.EncodeToString(hasher.Sum(nil))
 }
 
-func Run(ctx context.Context, store *redisx.Store, directory string, options Options) (result Result, err error) {
+func Run(ctx context.Context, store *postgresx.Store, operational *redisx.Store, directory string, options Options) (result Result, err error) {
 	ingestLog.Printf("starting ingestion")
 	ctx, span := telemetry.Tracer().Start(ctx, telemetry.SpanIngestRun)
 	defer func() {
@@ -163,22 +160,18 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 		return Result{}, err
 	}
 	dataRevision := DirectoryRevision(manifest, inventoryContent, memory.Revision)
-	active, err := store.Active(ctx)
+	active, err := store.State(ctx)
 	if err != nil {
-		return Result{}, fmt.Errorf("read active Redis generation: %w", err)
+		return Result{}, fmt.Errorf("read dashboard database state: %w", err)
 	}
-	if !options.Force && active.Generation != "" && active.DataRevision == dataRevision {
-		ingestLog.Printf("reusing active generation revision=%d sources=%d", active.Revision, len(active.Counts))
+	if !options.Force && active.Ready && active.DataRevision == dataRevision {
+		ingestLog.Printf("reusing dashboard data revision=%d sources=%d", active.Revision, len(active.Counts))
 		evaluatedAt := active.EvaluatedAt
-		if evaluatedAt.IsZero() {
-			evaluatedAt = active.Activated
-		}
 		if evaluatedAt.IsZero() {
 			evaluatedAt = time.Unix(0, 0).UTC()
 		}
-		span.SetAttributes(attribute.Bool("cao_dashboard.ingest.reused_generation", true))
 		return Result{
-			Generation: active.Generation, Revision: active.Revision,
+			Revision:     active.Revision,
 			DataRevision: dataRevision, EvaluatedAt: evaluatedAt.UTC().Format(time.RFC3339Nano),
 			Counts: active.Counts,
 		}, nil
@@ -193,34 +186,14 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 		}
 	}
 	ingestLog.Printf("loaded canonical shards collections=%d", len(canonical))
-	definitions, err := loadDefinitions(options.DatabaseQueriesPath)
-	if err != nil {
-		return Result{}, err
+	sources := inventory
+	for name, rows := range canonical {
+		sources["$"+name] = model.Source{Source: "$" + name, Rows: rows, Metadata: model.Metadata{}}
 	}
-	sources, err := projectSources(canonical, inventory, definitions)
-	if err != nil {
-		return Result{}, err
-	}
-	ingestLog.Printf("projected logical sources count=%d", len(sources))
 	diagnostics := buildDiagnostics(canonical)
 	if err := validateDiagnostics(diagnostics); err != nil {
 		return Result{}, err
 	}
-	generation := time.Now().UTC().Format("20060102T150405.000000000Z") + "-" + dataRevision[len(dataRevision)-12:]
-	if err := store.TrackGeneration(ctx, generation); err != nil {
-		return Result{}, err
-	}
-	activationStarted := false
-	defer func() {
-		if err == nil || activationStarted {
-			return
-		}
-		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
-		defer cancel()
-		if dropErr := store.DiscardGeneration(cleanup, generation); dropErr != nil {
-			ingestLog.Printf("failed generation cleanup incomplete")
-		}
-	}()
 	counts := map[string]int{}
 	for _, name := range sortedSourceNames(sources) {
 		source := sources[name]
@@ -232,40 +205,22 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 		source.Metadata["source-revision"] = dataRevision
 		source.Metadata["availability"] = availability(source.Rows)
 		source.Metadata["row-count"] = len(source.Rows)
-		if err := store.PutSource(ctx, generation, source); err != nil {
-			return Result{}, fmt.Errorf("stage generation %s: %w", generation, err)
-		}
-		ingestLog.Printf("staged source rows=%d", len(source.Rows))
+		sources[name] = source
 		counts[name] = len(source.Rows)
 	}
-	if err := store.PutDiagnostics(ctx, generation, diagnostics); err != nil {
-		return Result{}, fmt.Errorf("stage diagnostics: %w", err)
-	}
-	if err := store.PutRepositoryMemory(ctx, generation, memory.Manifest, memory.Files); err != nil {
-		return Result{}, fmt.Errorf("stage repository memory: %w", err)
-	}
 	evaluatedAt := sourceEvaluationTime(sources)
-	// Refresh the staging registration so the reclamation grace starts when
-	// this generation is actually ready to become active, not at ingest start.
-	if err := store.TrackGeneration(ctx, generation); err != nil {
-		return Result{}, err
-	}
-	activationStarted = true
-	revision, err := store.Activate(ctx, generation, dataRevision, evaluatedAt, counts)
+	revision, err := store.Replace(ctx, sources, diagnostics, dataRevision, evaluatedAt)
 	if err != nil {
 		return Result{}, err
 	}
-	ingestLog.Printf("activated generation revision=%d sources=%d", revision, len(counts))
-	// Every projection writes a complete new generation, so reclaiming
-	// superseded ones is part of activation. Redis is configured NoEviction:
-	// without this a frequently projecting deployment exhausts memory and
-	// every subsequent write fails. A reclamation failure must not invalidate
-	// the generation that was just activated.
-	if _, err := store.PruneGenerations(ctx, options.RetainGenerations); err != nil {
-		ingestLog.Printf("generation reclamation failed")
+	if operational != nil {
+		if err := operational.PutRepositoryMemory(ctx, dataRevision, revision, memory.Manifest, memory.Files); err != nil {
+			ingestLog.Printf("repository memory cache update failed")
+		}
 	}
+	ingestLog.Printf("stored dashboard data revision=%d sources=%d", revision, len(counts))
 	return Result{
-		Generation: generation, Revision: revision, DataRevision: dataRevision,
+		Revision: revision, DataRevision: dataRevision,
 		EvaluatedAt: evaluatedAt.Format(time.RFC3339Nano), Counts: counts,
 	}, nil
 }
@@ -315,6 +270,7 @@ func sourceEvaluationTime(sources map[string]model.Source) time.Time {
 	return latest
 }
 
+//nolint:unparam // Test callers use one fixture; the helper accepts arbitrary query paths.
 func loadDefinitions(path string) ([]query.Definition, error) {
 	if path == "" {
 		return nil, errors.New("database query path is required")

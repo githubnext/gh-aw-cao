@@ -20,6 +20,8 @@ import (
 )
 
 func TestMCPToolCallsEmitSemanticSpansWithoutContent(t *testing.T) {
+	database := integrationDatabase(t)
+	seedDatabase(t, database, nil)
 	previousProvider := otel.GetTracerProvider()
 	previousPropagator := otel.GetTextMapPropagator()
 	exporter := tracetest.NewInMemoryExporter()
@@ -36,6 +38,7 @@ func TestMCPToolCallsEmitSemanticSpansWithoutContent(t *testing.T) {
 	})
 
 	app := newMCPTestApp(t, true)
+	app.database = database
 	httpServer := httptest.NewServer(app.Handler())
 	defer httpServer.Close()
 	client := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "1"}, nil)

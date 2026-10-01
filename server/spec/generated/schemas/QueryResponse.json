@@ -143,16 +143,6 @@
                         }
                     ]
                 },
-                "redisCommands": {
-                    "type": "integer",
-                    "minimum": -2147483648,
-                    "maximum": 2147483647
-                },
-                "redisRows": {
-                    "type": "integer",
-                    "minimum": -2147483648,
-                    "maximum": 2147483647
-                },
                 "fallbackOperations": {
                     "anyOf": [
                         {
@@ -189,8 +179,6 @@
                 "orderByCount",
                 "limitCount",
                 "pushedDown",
-                "redisCommands",
-                "redisRows",
                 "fallbackOperations"
             ]
         },

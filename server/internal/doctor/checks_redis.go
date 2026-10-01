@@ -50,11 +50,10 @@ func (d Doctor) checkRedisConnectivity(ctx context.Context) Check {
 	status, summary := StatusPass, fmt.Sprintf("Redis answered PING in %s", elapsed.Round(time.Millisecond))
 	remedy := ""
 	if elapsed > time.Second {
-		// Every read the dashboard serves crosses this link, so a slow round
-		// trip is a user-visible latency floor, not a curiosity.
+		// Operational queues and sessions depend on this connection.
 		status = StatusWarn
 		summary = fmt.Sprintf("Redis answered PING slowly, in %s", elapsed.Round(time.Millisecond))
-		remedy = "check network path and region placement; every dashboard read crosses this link"
+		remedy = "check network path and region placement; sessions and queues depend on this link"
 	}
 	return Check{
 		ID: id, Area: areaRedis, Title: title, Status: status, Summary: summary, Remedy: remedy,
@@ -93,11 +92,7 @@ func (d Doctor) checkRedisServer(ctx context.Context) Check {
 	}
 }
 
-// checkRedisMemory is the most consequential Redis check.
-//
-// The canonical database is held entirely in Redis and every projection writes
-// a complete new generation. Under an eviction policy Redis silently discards
-// rows, which the dashboard renders as missing data rather than as an error.
+// checkRedisMemory inspects capacity for operational caches, queues, and sessions.
 func (d Doctor) checkRedisMemory(ctx context.Context) Check {
 	const id, title = "redis.memory", "Redis memory and eviction policy"
 	if skip, ok := d.storeUnavailable(id, areaRedis, title); ok {
@@ -157,9 +152,9 @@ type memoryClassification struct {
 func classifyRedisMemory(used, maximum int64, policy string) memoryClassification {
 	if policy != "" && policy != "noeviction" {
 		return memoryClassification{
-			status:  StatusFail,
-			summary: fmt.Sprintf("eviction policy is %q; canonical rows can be discarded without an error", policy),
-			remedy:  "set maxmemory-policy to noeviction so a full instance fails writes instead of silently dropping rows",
+			status:  StatusWarn,
+			summary: fmt.Sprintf("eviction policy is %q; sessions or queued work may be discarded", policy),
+			remedy:  "review eviction policy and isolate operational queues and sessions from evictable caches",
 			reason:  memoryReasonEvictingPolicy,
 		}
 	}
@@ -168,21 +163,21 @@ func classifyRedisMemory(used, maximum int64, policy string) memoryClassificatio
 		if utilization >= 0.95 {
 			return memoryClassification{
 				status:  StatusFail,
-				summary: fmt.Sprintf("memory is %.1f%% used; the next projection will probably fail", 100*utilization),
-				remedy:  "scale the instance or lower CAO_COLLECT_RETAIN_GENERATIONS so fewer superseded generations are kept",
+				summary: fmt.Sprintf("memory is %.1f%% used; operational writes may fail", 100*utilization),
+				remedy:  "scale the Redis instance or reduce cache pressure",
 				reason:  memoryReasonCriticalUtilization,
 			}
 		}
 		if utilization >= 0.80 {
 			return memoryClassification{
 				status:  StatusWarn,
-				summary: fmt.Sprintf("memory is %.1f%% used; a projection writes a full additional generation", 100*utilization),
-				remedy:  "headroom below one generation risks a failed projection; scale up or reduce retention",
+				summary: fmt.Sprintf("memory is %.1f%% used; operational writes have limited headroom", 100*utilization),
+				remedy:  "scale the Redis instance or reduce cache pressure",
 				reason:  memoryReasonHighUtilization,
 			}
 		}
 	}
-	summary := fmt.Sprintf("%s used under a noeviction policy", humanBytes(used))
+	summary := fmt.Sprintf("%s used for operational state", humanBytes(used))
 	if maximum <= 0 {
 		// Without a limit Redis grows until the host runs out, which fails far
 		// less gracefully than a configured limit.
@@ -233,8 +228,8 @@ func classifyRedisStats(evicted, rejected int64) statsClassification {
 	if evicted > 0 {
 		return statsClassification{
 			status:  StatusFail,
-			summary: fmt.Sprintf("Redis has evicted %d keys; the canonical generation may be incomplete", evicted),
-			remedy:  "set noeviction, then reproject from authoritative evidence; changing the policy does not restore rows already lost",
+			summary: fmt.Sprintf("Redis has evicted %d keys; sessions or queued work may be incomplete", evicted),
+			remedy:  "inspect eviction policy and restore affected operational state as needed",
 			reason:  statsReasonEvictedKeys,
 		}
 	}
@@ -242,7 +237,7 @@ func classifyRedisStats(evicted, rejected int64) statsClassification {
 		return statsClassification{
 			status:  StatusWarn,
 			summary: fmt.Sprintf("Redis has rejected %d connections since startup", rejected),
-			remedy:  "inspect connection limits and client churn; rejected connections make reads and projections intermittently fail",
+			remedy:  "inspect connection limits and client churn; rejected connections interrupt sessions and queues",
 			reason:  statsReasonRejectedConnections,
 		}
 	}
@@ -254,8 +249,7 @@ func classifyRedisStats(evicted, rejected int64) statsClassification {
 }
 
 // checkRedisStats reports damage and pressure that may no longer be visible in
-// the current memory snapshot. In particular, a past eviction means canonical
-// rows may already be missing even if the policy has since been corrected.
+// the current memory snapshot. A past eviction may have affected operational state.
 func (d Doctor) checkRedisStats(ctx context.Context) Check {
 	const id, title = "redis.stats", "Redis operational counters"
 	if skip, ok := d.storeUnavailable(id, areaRedis, title); ok {
@@ -314,7 +308,7 @@ func classifyRedisPersistence(lastSave string, aofEnabled bool, aofLastWrite str
 		return persistenceClassification{
 			status:  StatusWarn,
 			summary: "the last background save did not succeed",
-			remedy:  "inspect the Redis log; a restart would lose the canonical database and require a rebuild",
+			remedy:  "inspect the Redis log; a restart may lose queued work or sessions",
 			reason:  persistenceReasonBackgroundSaveFailed,
 		}
 	}
@@ -333,9 +327,7 @@ func classifyRedisPersistence(lastSave string, aofEnabled bool, aofLastWrite str
 	}
 }
 
-// checkRedisPersistence reports whether a restart would lose the canonical
-// database. Losing it is recoverable -- the evidence lake or a published
-// snapshot can repopulate it -- but only if the operator knows to do that.
+// checkRedisPersistence reports whether a restart could lose operational state.
 func (d Doctor) checkRedisPersistence(ctx context.Context) Check {
 	const id, title = "redis.persistence", "Redis persistence"
 	if skip, ok := d.storeUnavailable(id, areaRedis, title); ok {

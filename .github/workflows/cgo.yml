@@ -82,8 +82,21 @@ jobs:
           --health-interval 2s
           --health-timeout 2s
           --health-retries 30
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: cao
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d cao"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 30
     env:
       CAO_STRESS_REDIS_URL: redis://127.0.0.1:6379/0
+      POSTGRES_URL: postgres://postgres@127.0.0.1:5432/cao?sslmode=disable
       CAO_STRESS_REPORT_DIR: ${{ github.workspace }}/.tmp/go-stress
       CAO_STRESS_MAX_P95_MS: "250"
       CAO_STRESS_MIN_RPS: "200"
@@ -144,7 +157,7 @@ jobs:
           retention-days: 14
 
   redis-dashboard-integration:
-    name: Redis dashboard integration
+    name: Postgres dashboard integration
     runs-on: ubuntu-latest
     timeout-minutes: 35
     services:
@@ -157,9 +170,24 @@ jobs:
           --health-interval 2s
           --health-timeout 2s
           --health-retries 30
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: cao
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d cao"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 30
     env:
       REDIS_URL: redis://127.0.0.1:6379/0
       CAO_SIMULATOR_REDIS_URL: redis://127.0.0.1:6379/0
+      POSTGRES_URL: postgres://postgres@127.0.0.1:5432/cao?sslmode=disable
+      CAO_POSTGRES_URL: postgres://postgres@127.0.0.1:5432/cao?sslmode=disable
+      CAO_TEST_POSTGRES_URL: postgres://postgres@127.0.0.1:5432/cao?sslmode=disable
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -181,7 +209,7 @@ jobs:
         run: |
           npm ci
           npm --prefix dashboard/site ci
-      - name: Go tests with Redis
+      - name: Go tests with Redis and Postgres
         run: go -C server test ./...
       - name: Build dashboard and server
         run: |
@@ -212,7 +240,7 @@ jobs:
           retention-days: 14
 
   redis-dashboard-comment:
-    name: Report Go Redis dashboard page results
+    name: Report Go Postgres dashboard page results
     if: >-
       always() &&
       github.event_name == 'pull_request' &&
@@ -231,7 +259,7 @@ jobs:
         with:
           name: dashboard-server-integration
           path: dashboard-server-results
-      - name: Comment with Go Redis dashboard page results
+      - name: Comment with Go Postgres dashboard page results
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           INTEGRATION_RESULT: ${{ needs.redis-dashboard-integration.result }}
@@ -247,7 +275,7 @@ jobs:
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
             const body = [
               marker,
-              `**Go Redis dashboard integration: ${passed ? 'PASSED' : 'FAILED'}**`,
+              `**Go Postgres dashboard integration: ${passed ? 'PASSED' : 'FAILED'}**`,
               '',
               '<details><summary><b>Per-page results</b></summary>',
               '',

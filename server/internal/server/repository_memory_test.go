@@ -15,6 +15,8 @@ import (
 )
 
 func TestRepositoryMemoryHandlers(t *testing.T) {
+	database := integrationDatabase(t)
+	seedDatabase(t, database, nil)
 	content := []byte("# Context\n")
 	sum := sha256.Sum256(content)
 	manifest, err := json.Marshal(repositorymemory.Manifest{
@@ -35,7 +37,7 @@ func TestRepositoryMemoryHandlers(t *testing.T) {
 		t.Fatal(err)
 	}
 	client := &repositoryMemoryClient{manifest: manifest, content: content}
-	app := &App{store: redisx.NewStore(client, "test")}
+	app := &App{store: redisx.NewStore(client, "test"), database: database}
 
 	list := httptest.NewRecorder()
 	listRequest := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/memory/security-review", nil)
@@ -58,8 +60,10 @@ func TestRepositoryMemoryHandlers(t *testing.T) {
 }
 
 func TestRepositoryMemoryHandlersRejectInvalidAndMissingRequests(t *testing.T) {
+	database := integrationDatabase(t)
+	seedDatabase(t, database, nil)
 	manifest := []byte(`{"version":1,"campaigns":[]}`)
-	app := &App{store: redisx.NewStore(&repositoryMemoryClient{manifest: manifest}, "test")}
+	app := &App{store: redisx.NewStore(&repositoryMemoryClient{manifest: manifest}, "test"), database: database}
 
 	invalid := httptest.NewRecorder()
 	invalidRequest := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/memory/INVALID", nil)
@@ -79,11 +83,14 @@ func TestRepositoryMemoryHandlersRejectInvalidAndMissingRequests(t *testing.T) {
 }
 
 func TestRepositoryMemoryHandlerReportsConcurrentRefresh(t *testing.T) {
+	database := integrationDatabase(t)
+	seedDatabase(t, database, nil)
 	store := redisx.NewStore(
 		&repositoryMemoryClient{manifest: []byte(`{"version":1,"campaigns":[]}`)}, "test")
 	app := &App{
-		store:  store,
-		memory: &repositorymemory.RemoteResolver{Cache: store},
+		store:    store,
+		database: database,
+		memory:   &repositorymemory.RemoteResolver{Cache: store},
 	}
 	response := httptest.NewRecorder()
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/memory/example", nil)
@@ -144,6 +151,8 @@ func TestRepositoryMemoryIntegrityFailureIsCaseInsensitiveForSHA256(t *testing.T
 }
 
 func TestRepositoryMemoryContentRejectsIntegrityFailure(t *testing.T) {
+	database := integrationDatabase(t)
+	seedDatabase(t, database, nil)
 	content := []byte("# Context\n")
 	manifest, err := json.Marshal(repositorymemory.Manifest{
 		Version: 1,
@@ -163,7 +172,7 @@ func TestRepositoryMemoryContentRejectsIntegrityFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	client := &repositoryMemoryClient{manifest: manifest, content: content}
-	app := &App{store: redisx.NewStore(client, "test")}
+	app := &App{store: redisx.NewStore(client, "test"), database: database}
 
 	response := httptest.NewRecorder()
 	request := httptest.NewRequestWithContext(
@@ -184,14 +193,6 @@ type repositoryMemoryClient struct {
 
 func (c *repositoryMemoryClient) Do(_ context.Context, arguments ...string) (any, error) {
 	switch arguments[0] {
-	case "HGETALL":
-		return []any{
-			"generation", "g1",
-			"revision", "1",
-			"counts", "{}",
-			"activatedAt", "2026-01-01T00:00:00Z",
-			"evaluatedAt", "2026-01-01T00:00:00Z",
-		}, nil
 	case "HGET":
 		if strings.HasSuffix(arguments[2], "manifest") {
 			return string(c.manifest), nil

@@ -106,6 +106,32 @@ func TestExecuteDefinitionPipeline(t *testing.T) {
 	}
 }
 
+func TestDashboardComputedFieldsAcceptSingleArgumentAndLinks(t *testing.T) {
+	definition := Definition{
+		Name: "dashboard", From: "records",
+		Compute: []ComputedField{
+			{As: "run", Function: "concat", Args: []Argument{fieldArgument("id")}},
+			{As: "label", Function: "coalesce", Args: []Argument{fieldArgument("title")}},
+			{As: "external-link", Function: "link", Args: []Argument{fieldArgument("href"), fieldArgument("title")}},
+		},
+	}
+	sources, _, err := New(&testLoader{sources: map[string]model.Source{
+		"records": {Rows: []model.Row{
+			{"id": "42", "title": "View issue", "href": "https://github.example/issues/42"},
+			{"id": "43", "title": "", "href": "https://github.example/issues/43"},
+		}},
+	}}).Execute([]Definition{definition}, []string{"dashboard"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := sources["dashboard"].Rows
+	if len(rows) != 2 || rows[0]["run"] != "42" || rows[0]["label"] != "View issue" ||
+		!reflect.DeepEqual(rows[0]["external-link"], model.Row{"href": "https://github.example/issues/42", "label": "View issue"}) ||
+		rows[1]["external-link"] != nil {
+		t.Fatalf("unexpected dashboard computed fields: %#v", rows)
+	}
+}
+
 func TestExecuteReportsPrivacyPreservingStructureAndPerformanceMetrics(t *testing.T) {
 	limit := 1
 	definition := Definition{

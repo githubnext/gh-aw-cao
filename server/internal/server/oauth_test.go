@@ -31,6 +31,7 @@ func TestAzureModeRequiresCompleteGitHubOAuthPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = New(context.Background(), redisx.NewStore(client, "test"), Config{
+		Database:      constructorDatabase(),
 		HostProfile:   azureFunctionsHostProfile(),
 		SiteDirectory: site,
 		AccessToken:   testAccessToken,
@@ -42,6 +43,7 @@ func TestAzureModeRequiresCompleteGitHubOAuthPolicy(t *testing.T) {
 	}
 
 	_, err = New(context.Background(), redisx.NewStore(client, "test"), Config{
+		Database:      constructorDatabase(),
 		HostProfile:   azureFunctionsHostProfile(),
 		SiteDirectory: site,
 		Proxy:         ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
@@ -60,6 +62,7 @@ func TestAzureModeRequiresCompleteGitHubOAuthPolicy(t *testing.T) {
 func TestAzureOAuthLoginCallbackAndAuthorizedAPI(t *testing.T) {
 	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
 	app := newAzureTestApp(t, github.URL)
+	app.database = integrationDatabase(t)
 
 	login := httptest.NewRecorder()
 	request := azureRequest(t, http.MethodGet, "/auth/login")
@@ -210,6 +213,7 @@ func TestOAuthRevalidationPersistsAuthorizationFreshness(t *testing.T) {
 func TestOAuthRefreshReconcilesConcurrentAuthorizationRecheck(t *testing.T) {
 	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: -60, refreshSucceeds: true})
 	app := newAzureTestApp(t, github.URL)
+	app.database = integrationDatabase(t)
 	cookie, csrf := callbackSession(t, app)
 	github.onUserRequest = func() {
 		current, sealed, err := app.oauth.loadSessionRecord(t.Context(), cookie.Value)
@@ -288,6 +292,7 @@ func TestOAuthRevokesCallbackCredentialsAfterClientCancellation(t *testing.T) {
 func TestAzureOAuthRefreshRotationLogoutAndRefreshFailure(t *testing.T) {
 	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: -60, refreshSucceeds: true})
 	app := newAzureTestApp(t, github.URL)
+	app.database = integrationDatabase(t)
 	sessionCookie, csrfCookie := callbackSession(t, app)
 
 	refreshed := httptest.NewRecorder()
@@ -363,6 +368,7 @@ func TestAzureOAuthRefreshRotationLogoutAndRefreshFailure(t *testing.T) {
 func TestOAuthRestoresExpiredCSRFCookieBeforeSessionExpiry(t *testing.T) {
 	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
 	app := newAzureTestApp(t, github.URL)
+	app.database = integrationDatabase(t)
 	sessionCookie, csrfCookie := callbackSession(t, app)
 
 	recovery := httptest.NewRecorder()
@@ -617,6 +623,7 @@ func TestHostedOAuthLoggedOutPageRequiresExplicitLogin(t *testing.T) {
 func TestHostedOAuthLogsBranchesWithoutCredentialValues(t *testing.T) {
 	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
 	app := newAzureTestApp(t, github.URL)
+	app.database = integrationDatabase(t)
 	var branches []string
 	app.oauth.log = func(branch string) {
 		branches = append(branches, branch)
@@ -863,6 +870,7 @@ func newAzureTestApp(t *testing.T, githubURL string) *App {
 		t.Fatal(err)
 	}
 	config := Config{
+		Database:      constructorDatabase(),
 		HostProfile:   azureFunctionsHostProfile(),
 		SiteDirectory: site,
 		Proxy:         ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},

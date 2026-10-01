@@ -43,7 +43,7 @@ const populatedViews = [
 test("deployed shards populate server-backed dashboard views", async ({ context, page }) => {
   await page.goto(`/?access_token=${accessToken}`);
   await expect(page).toHaveURL("http://127.0.0.1:8443/");
-  await expect(page.locator('meta[name="dashboard-data-backend"]')).toHaveAttribute("content", "redis-http");
+  await expect(page.locator('meta[name="dashboard-data-backend"]')).toHaveAttribute("content", "server-http");
   const headers = { Authorization: `Bearer ${accessToken}` };
 
   const health = await context.request.get("/api/v1/health", { headers });
@@ -52,13 +52,13 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
   expect(healthPayload.redis).toEqual({ connected: true });
   expect(healthPayload.revision).toBeGreaterThan(0);
   expect(healthPayload.counts).toMatchObject({
-    repositories: 1,
-    workflows: 1,
-    runs: 1,
-    domains: 1,
-    tools: 1,
-    audits: 1,
-    issues: 1,
+    $repositories: 1,
+    $workflows: 1,
+    $runs: 1,
+    $domains: 1,
+    $tools: 1,
+    $audits: 1,
+    $issues: 1,
   });
   expect(JSON.stringify(healthPayload)).not.toMatch(/redis:\/\/|password|credential/i);
 
@@ -93,7 +93,7 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
   }
 });
 
-  test("every dashboard page resolves its queries against the Go Redis server", async ({ context, page }) => {
+  test("every dashboard page resolves its queries against the Go Postgres server", async ({ context, page }) => {
     test.setTimeout(1_600_000);
     const outputDirectory = resolve("test-results/dashboard-server");
     await mkdir(outputDirectory, { recursive: true });
@@ -107,7 +107,7 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
       };
       page.on("response", onInitialResponse);
       await page.goto(`/?access_token=${accessToken}`);
-      await expect(page.locator('meta[name="dashboard-data-backend"]')).toHaveAttribute("content", "redis-http");
+      await expect(page.locator('meta[name="dashboard-data-backend"]')).toHaveAttribute("content", "server-http");
       await expect(page.locator('[data-page-id="overview"]')).not.toHaveAttribute("aria-busy", "true", { timeout: 30_000 });
       page.off("response", onInitialResponse);
       const dashboardResponse = await context.request.get("/dashboard.json");
@@ -202,7 +202,7 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
     } finally {
       const passed = results.filter((result) => result.status === "passed").length;
       const summary = [
-        "### Go Redis dashboard page checks",
+        "### Go Postgres dashboard page checks",
         "",
         `**${blocker || results.some((result) => result.status !== "passed") ? "FAILED" : "PASSED"}** — ${passed}/${results.length} pages passed.`,
         ...(blocker ? ["", `Setup failed: ${blocker.replaceAll("\n", " ")}`] : []),
@@ -218,5 +218,5 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
     }
     expect(blocker, "Dashboard setup must succeed").toBeUndefined();
     expect(results.length, "Every declared page must be assessed").toBeGreaterThan(0);
-    expect(results.filter((result) => result.status !== "passed"), "Every Go Redis dashboard page must load").toEqual([]);
+    expect(results.filter((result) => result.status !== "passed"), "Every Go Postgres dashboard page must load").toEqual([]);
 });

@@ -10,6 +10,7 @@ import (
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
@@ -193,11 +194,15 @@ type Reporter struct {
 	Backfill   Backfill
 	Budget     *githubapp.Budget
 	Store      *redisx.Store
+	Data       *postgresx.Store
 }
 
 // Snapshot reads current collection status.
 func (r Reporter) Snapshot(ctx context.Context) (Status, error) {
 	status := Status{Configured: true}
+	if r.Data == nil {
+		return status, errors.New("collection status requires Postgres")
+	}
 	coverage, err := r.Enrollment.Coverage(ctx)
 	if err != nil {
 		return status, err
@@ -239,9 +244,12 @@ func (r Reporter) Snapshot(ctx context.Context) (Status, error) {
 	status.Backfill = state.Phase
 	status.BackfillFailures = state.EnumerationFailures
 	status.BackfillRunTasks = state.QueuedRunTasks
-	active, err := r.Store.Active(ctx)
-	if err == nil && !active.Activated.IsZero() {
-		status.LastProjected = active.Activated.UTC().Format(time.RFC3339Nano)
+	active, err := r.Data.State(ctx)
+	if err != nil {
+		return status, err
+	}
+	if active.Ready && !active.EvaluatedAt.IsZero() {
+		status.LastProjected = active.EvaluatedAt.UTC().Format(time.RFC3339Nano)
 	}
 	if r.Budget != nil {
 		installations, err := r.Enrollment.Installations(ctx)

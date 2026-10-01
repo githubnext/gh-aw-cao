@@ -55,7 +55,7 @@ func (a *App) repositoryMemoryContent(response http.ResponseWriter, request *htt
 		writeError(response, http.StatusBadRequest, "repository-memory file path is invalid")
 		return
 	}
-	generation, campaign, err := a.repositoryMemorySnapshot(request, campaignID)
+	dataRevision, campaign, err := a.repositoryMemorySnapshot(request, campaignID)
 	if err != nil && a.memory != nil &&
 		(errors.Is(err, errCanonicalEntityNotFound) || errors.Is(err, redisx.ErrSourceUnavailable)) {
 		content, resolveErr := a.memory.Content(request.Context(), campaignID, filePath)
@@ -90,7 +90,7 @@ func (a *App) repositoryMemoryContent(response http.ResponseWriter, request *htt
 		writeError(response, http.StatusNotFound, "repository-memory file was not found")
 		return
 	}
-	content, err := a.store.RepositoryMemoryFile(request.Context(), generation, campaignID, filePath)
+	content, err := a.store.RepositoryMemoryFile(request.Context(), dataRevision, campaignID, filePath)
 	if err != nil {
 		if errors.Is(err, redisx.ErrSourceUnavailable) {
 			writeError(response, http.StatusNotFound, "repository-memory file was not found")
@@ -137,11 +137,11 @@ func repositoryMemoryIntegrityFailure(content []byte, expected repositorymemory.
 }
 
 func (a *App) repositoryMemorySnapshot(request *http.Request, campaignID string) (string, repositorymemory.Campaign, error) {
-	active, err := a.store.Active(request.Context())
-	if err != nil || active.Generation == "" {
+	active, err := a.database.State(request.Context())
+	if err != nil || !active.Ready {
 		return "", repositorymemory.Campaign{}, redisx.ErrSourceUnavailable
 	}
-	content, err := a.store.RepositoryMemoryManifest(request.Context(), active.Generation)
+	content, err := a.store.RepositoryMemoryManifest(request.Context(), active.DataRevision)
 	if err != nil {
 		return "", repositorymemory.Campaign{}, err
 	}
@@ -151,10 +151,10 @@ func (a *App) repositoryMemorySnapshot(request *http.Request, campaignID string)
 	}
 	for _, campaign := range manifest.Campaigns {
 		if campaign.Campaign == campaignID {
-			return active.Generation, campaign, nil
+			return active.DataRevision, campaign, nil
 		}
 	}
-	return active.Generation, repositorymemory.Campaign{}, errCanonicalEntityNotFound
+	return active.DataRevision, repositorymemory.Campaign{}, errCanonicalEntityNotFound
 }
 
 func writeRepositoryMemoryError(response http.ResponseWriter, err error) {

@@ -32,6 +32,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/marketplace"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/repositorymemory"
@@ -54,6 +55,7 @@ type Config struct {
 	CORS                 CORSPolicy
 	GitHubOAuth          *GitHubOAuthConfig
 	DatabaseQueriesPath  string
+	Database             *postgresx.Store
 	DashboardQueries     []query.Definition
 	DashboardQueriesPath string
 	AgentCatalogPath     string
@@ -76,25 +78,46 @@ type Config struct {
 }
 
 type App struct {
-	store         *redisx.Store
-	config        Config
-	accessToken   string
-	oauth         *githubOAuth
-	hub           *eventHub
-	canonical     canonicalService
-	reconciler    Reconciler
-	memory        *repositorymemory.RemoteResolver
-	webhookSecret []byte
-	mcp           http.Handler
-	actionsToken  string
-	actionsActor  string
-	quota         *githubquota.Service
-	startMu       sync.Mutex
-	startContext  context.Context
-	stop          context.CancelFunc
+	store           *redisx.Store
+	database        *postgresx.Store
+	databaseQueries []query.Definition
+	config          Config
+	accessToken     string
+	oauth           *githubOAuth
+	hub             *eventHub
+	canonical       canonicalService
+	reconciler      Reconciler
+	memory          *repositorymemory.RemoteResolver
+	webhookSecret   []byte
+	mcp             http.Handler
+	actionsToken    string
+	actionsActor    string
+	quota           *githubquota.Service
+	startMu         sync.Mutex
+	startContext    context.Context
+	stop            context.CancelFunc
 }
 
 func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) {
+	if config.Database == nil {
+		return nil, errors.New("dashboard Postgres database is required")
+	}
+	databaseQueries := []query.Definition{{
+		Name: "$records", From: "$domains",
+		Union: []string{"$tools", "$skills", "$friction", "$audits", "$issues"},
+	}}
+	if config.DatabaseQueriesPath != "" {
+		content, err := os.ReadFile(config.DatabaseQueriesPath)
+		if err != nil {
+			return nil, fmt.Errorf("read database queries: %w", err)
+		}
+		parsed, err := query.ParseDefinitions(content)
+		if err != nil {
+			return nil, err
+		}
+		databaseQueries = append(databaseQueries, parsed...)
+		databaseQueries = append(databaseQueries, rawSourceDefinitions(parsed)...)
+	}
 	if err := validateHostProfile(store, &config); err != nil {
 		return nil, err
 	}
@@ -141,7 +164,7 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 		return nil, err
 	}
 	if config.Collector != nil {
-		collector, err := NewCollector(ctx, store, *config.Collector, config.DatabaseQueriesPath)
+		collector, err := NewCollector(ctx, store, config.Database, *config.Collector, config.DatabaseQueriesPath)
 		if err != nil {
 			return nil, fmt.Errorf("configure collection: %w", err)
 		}
@@ -161,7 +184,7 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 	}
 	if reconciler == nil && config.SourceDirectory != "" {
 		reconciler = DirectoryReconciler{
-			Store: store, SourceDirectory: config.SourceDirectory,
+			Store: config.Database, Operational: store, SourceDirectory: config.SourceDirectory,
 			DatabaseQueriesPath: config.DatabaseQueriesPath,
 		}
 	}
@@ -185,13 +208,10 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 			return nil, fmt.Errorf("configure github quota: %w", err)
 		}
 	}
-	if store != nil {
-		store.ConfigureIndexDefinitions(config.DashboardQueries)
-	}
 	serverLog.Printf("initialized host_profile=%s oauth=%t source_ingestion=%t", profile.Name, oauth != nil, config.SourceDirectory != "")
 	app := &App{
-		store: store, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
-		canonical: canonicalService{store: store}, reconciler: reconciler, memory: memoryResolver,
+		store: store, database: config.Database, databaseQueries: databaseQueries, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
+		canonical: canonicalService{store: config.Database, definitions: databaseQueries}, reconciler: reconciler, memory: memoryResolver,
 		webhookSecret: []byte(config.WebhookSecret), actionsToken: actionsToken, actionsActor: actionsActor,
 		quota: quota,
 	}
@@ -203,6 +223,34 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 		app.mcp = handler
 	}
 	return app, nil
+}
+
+func rawSourceDefinitions(definitions []query.Definition) []query.Definition {
+	var recordQuery *query.Definition
+	declared := make(map[string]bool, len(definitions))
+	for i := range definitions {
+		declared[definitions[i].Name] = true
+		if definitions[i].Name == "run-records" {
+			recordQuery = &definitions[i]
+		}
+	}
+	result := make([]query.Definition, 0, 9)
+	for _, name := range []string{"jobs", "sessions", "events"} {
+		if !declared[name] {
+			result = append(result, query.Definition{Name: name, From: "$" + name})
+		}
+	}
+	if recordQuery != nil {
+		for _, name := range []string{"domains", "tools", "skills", "friction", "audits", "issues"} {
+			if declared[name] {
+				continue
+			}
+			derived := *recordQuery
+			derived.Name, derived.From = name, "$"+name
+			result = append(result, derived)
+		}
+	}
+	return result
 }
 
 //nolint:contextcheck // Startup validation has no request context.
@@ -230,7 +278,7 @@ func (a *App) Start(ctx context.Context) error {
 	runCtx, cancel := context.WithCancel(ctx)
 	serverLog.Printf("starting service initial_ingestion=%t", a.config.SourceDirectory != "")
 	if a.config.SourceDirectory != "" {
-		result, err := ingest.Run(runCtx, a.store, a.config.SourceDirectory, ingest.Options{DatabaseQueriesPath: a.config.DatabaseQueriesPath})
+		result, err := ingest.Run(runCtx, a.database, a.store, a.config.SourceDirectory, ingest.Options{DatabaseQueriesPath: a.config.DatabaseQueriesPath})
 		if err != nil {
 			cancel()
 			return fmt.Errorf("initial ingestion failed: %w", err)
@@ -727,19 +775,19 @@ func securityHeaders(next http.Handler) http.Handler {
 func (a *App) health(response http.ResponseWriter, request *http.Request) {
 	ctx, cancel := context.WithTimeout(request.Context(), 3*time.Second)
 	defer cancel()
-	active, activeErr := a.store.Active(ctx)
+	active, activeErr := a.database.State(ctx)
 	redisHealthy := a.store.Ping(ctx) == nil
 	status := http.StatusOK
 	if !redisHealthy || activeErr != nil {
 		status = http.StatusServiceUnavailable
 	}
-	serverLog.Printf("health status=%d redis=%t data=%t", status, redisHealthy, active.Generation != "")
+	serverLog.Printf("health status=%d redis=%t data=%t", status, redisHealthy, active.Ready)
 	payload := map[string]any{
 		"status": "healthy",
 		"redis":  map[string]any{"connected": redisHealthy},
-		"data":   map[string]any{"available": active.Generation != "", "rebuildRequired": active.Generation == ""},
+		"data":   map[string]any{"available": active.Ready, "rebuildRequired": !active.Ready},
 	}
-	if !redisHealthy {
+	if status != http.StatusOK {
 		payload["status"] = "unhealthy"
 	}
 	detailsAuthorized := a.authorized(request) || (a.oauth != nil && a.oauth.requestHasSession(request))
@@ -752,7 +800,6 @@ func (a *App) health(response http.ResponseWriter, request *http.Request) {
 			rowCount += count
 		}
 		payload["revision"] = active.Revision
-		payload["generation"] = active.Generation
 		payload["counts"] = active.Counts
 		payload["sourceCount"] = len(active.Counts)
 		payload["rowCount"] = rowCount
@@ -765,9 +812,9 @@ func (a *App) health(response http.ResponseWriter, request *http.Request) {
 func (a *App) readiness(response http.ResponseWriter, request *http.Request) {
 	ctx, cancel := context.WithTimeout(request.Context(), 3*time.Second)
 	defer cancel()
-	active, activeErr := a.store.Active(ctx)
+	active, activeErr := a.database.State(ctx)
 	redisHealthy := a.store.Ping(ctx) == nil
-	ready := redisHealthy && activeErr == nil && active.Generation != ""
+	ready := redisHealthy && activeErr == nil && active.Ready
 	status := http.StatusOK
 	if !ready {
 		status = http.StatusServiceUnavailable
@@ -776,8 +823,8 @@ func (a *App) readiness(response http.ResponseWriter, request *http.Request) {
 		"ready": ready,
 		"redis": map[string]any{"connected": redisHealthy},
 		"data": map[string]any{
-			"available":       active.Generation != "",
-			"rebuildRequired": active.Generation == "",
+			"available":       active.Ready,
+			"rebuildRequired": !active.Ready,
 		},
 	})
 }
@@ -800,7 +847,7 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 	}
 	response.Header().Set("Content-Type", "text/event-stream")
 	response.Header().Set("Connection", "keep-alive")
-	active, _ := a.store.Active(request.Context())
+	active, _ := a.database.State(request.Context())
 	allowHealth := a.adminAuthorized(request)
 	healthRevision, _ := a.ingestionHealthRevision(request.Context(), allowHealth)
 	writeEvent(response, active.Revision, healthRevision)
@@ -825,7 +872,7 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 				lastHealthRevision = healthRevision
 			}
 		case <-poll.C:
-			active, err := a.store.Active(request.Context())
+			active, err := a.database.State(request.Context())
 			healthRevision, healthErr := a.ingestionHealthRevision(request.Context(), allowHealth)
 			if err == nil && healthErr == nil &&
 				(active.Revision != lastRevision || healthRevision != lastHealthRevision) {
@@ -953,8 +1000,25 @@ type queryResponse struct {
 }
 
 func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollectionHealth bool) (queryResponse, int, error) {
-	active, err := a.store.Active(ctx)
-	if err != nil || active.Generation == "" {
+	if a.database == nil {
+		return queryResponse{}, http.StatusServiceUnavailable, errors.New("dashboard data is unavailable")
+	}
+	var response queryResponse
+	var status int
+	err := a.database.WithReadTransaction(ctx, func(reader postgresx.SourceReader) error {
+		var queryErr error
+		response, status, queryErr = a.executeQueryWithReader(ctx, input, allowCollectionHealth, reader)
+		return queryErr
+	})
+	if err != nil && status == 0 {
+		status = http.StatusServiceUnavailable
+	}
+	return response, status, err
+}
+
+func (a *App) executeQueryWithReader(ctx context.Context, input queryRequest, allowCollectionHealth bool, reader postgresx.SourceReader) (queryResponse, int, error) {
+	active, err := reader.State(ctx)
+	if err != nil || !active.Ready {
 		return queryResponse{}, http.StatusServiceUnavailable, errors.New("dashboard data is unavailable")
 	}
 	evaluatedAt := evaluationTime(active)
@@ -972,9 +1036,10 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 			Metrics: model.Metrics{PushedDown: []string{}, FallbackOperations: []string{}},
 		}, http.StatusOK, nil
 	}
-	definitions := append([]query.Definition{}, a.config.DashboardQueries...)
+	definitions := append([]query.Definition{}, a.databaseQueries...)
+	definitions = append(definitions, a.config.DashboardQueries...)
 	if len(input.Queries) > 0 {
-		definitions = append([]query.Definition{}, input.Queries...)
+		definitions = append(append([]query.Definition{}, a.databaseQueries...), input.Queries...)
 	}
 	definitions = append(definitions, input.CompiledQueries...)
 	resolveQueryContext(definitions, evaluatedAt)
@@ -989,8 +1054,8 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 		}
 	}
 	started := time.Now()
-	loader := &generationLoader{
-		ctx: ctx, store: a.store, generation: active.Generation,
+	loader := &databaseLoader{
+		ctx: ctx, database: reader, operational: a.store, dataRevision: active.DataRevision,
 		app: a, allowCollectionHealth: allowCollectionHealth,
 	}
 	engine := query.New(loader)
@@ -1011,22 +1076,23 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 		sources[name] = paginated
 	}
 	metrics.DurationMS = time.Since(started).Milliseconds()
-	serverLog.Printf("query completed sources=%d duration_ms=%d redis_commands=%d redis_rows=%d", len(sources), metrics.DurationMS, metrics.RedisCommands, metrics.RedisRows)
+	serverLog.Printf("query completed sources=%d duration_ms=%d", len(sources), metrics.DurationMS)
 	return queryResponse{
 		Revision: active.Revision, HealthRevision: healthRevision,
 		EvaluatedAt: evaluatedAt, Sources: sources, Metrics: metrics,
 	}, http.StatusOK, nil
 }
 
-type generationLoader struct {
+type databaseLoader struct {
 	ctx                   context.Context
-	store                 *redisx.Store
-	generation            string
+	database              postgresx.SourceReader
+	operational           *redisx.Store
+	dataRevision          string
 	app                   *App
 	allowCollectionHealth bool
 }
 
-func (loader *generationLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
+func (loader *databaseLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
 	if name == simulationDaysSourceName {
 		return simulationDaysSource(), model.Metrics{}, nil
 	}
@@ -1043,17 +1109,17 @@ func (loader *generationLoader) LoadSource(name string, definition *query.Defini
 		// The marketplace catalog is never stored as an ingested Redis source:
 		// it is resolved (and cached) transparently here so every query-engine
 		// caller sees an ordinary source, with no secrets ever leaving this call.
-		return marketplaceSource(loader.ctx, loader.store, loader.generation), model.Metrics{}, nil
+		return marketplaceSource(loader.ctx, loader.operational, loader.dataRevision), model.Metrics{}, nil
 	}
-	source, metrics, err := loader.store.LoadSource(loader.ctx, loader.generation, name, definition)
-	if errors.Is(err, redisx.ErrSourceUnavailable) {
+	source, metrics, err := loader.database.LoadSource(loader.ctx, name, definition)
+	if errors.Is(err, postgresx.ErrSourceUnavailable) {
 		return unavailableSource(name), metrics, nil
 	}
 	return source, metrics, err
 }
 
 // RuntimeQuerySourceNames lists sources resolved by the server rather than
-// stored as generation-scoped RedisJSON documents.
+// stored as Postgres dashboard entities.
 func RuntimeQuerySourceNames() []string {
 	return []string{collectionHealthSourceName, gitHubQuotaUsageSourceName, marketplace.SourceName, simulationDaysSourceName}
 }
@@ -1106,12 +1172,12 @@ func paginate(source model.Source, revision string, page paginationRequest) (mod
 }
 
 func (a *App) diagnostics(response http.ResponseWriter, request *http.Request) {
-	active, err := a.store.Active(request.Context())
-	if err != nil || active.Generation == "" {
+	active, err := a.database.State(request.Context())
+	if err != nil || !active.Ready {
 		writeError(response, http.StatusServiceUnavailable, "dashboard data is unavailable")
 		return
 	}
-	diagnostics, err := a.store.Diagnostics(request.Context(), active.Generation)
+	diagnostics, err := a.database.Diagnostics(request.Context())
 	if err != nil {
 		writeError(response, http.StatusServiceUnavailable, "dashboard diagnostics are unavailable")
 		return
@@ -1121,7 +1187,7 @@ func (a *App) diagnostics(response http.ResponseWriter, request *http.Request) {
 }
 
 func (a *App) refresh(response http.ResponseWriter, request *http.Request) {
-	active, err := a.store.Active(request.Context())
+	active, err := a.database.State(request.Context())
 	if err != nil {
 		writeError(response, http.StatusServiceUnavailable, "dashboard data is unavailable")
 		return
@@ -1134,14 +1200,11 @@ func (a *App) refresh(response http.ResponseWriter, request *http.Request) {
 	})
 }
 
-func evaluationTime(active model.ActiveGeneration) string {
+func evaluationTime(active postgresx.State) string {
 	if !active.EvaluatedAt.IsZero() {
 		return active.EvaluatedAt.UTC().Format(time.RFC3339Nano)
 	}
-	if active.Activated.IsZero() {
-		return time.Now().UTC().Format(time.RFC3339Nano)
-	}
-	return active.Activated.UTC().Format(time.RFC3339Nano)
+	return time.Now().UTC().Format(time.RFC3339Nano)
 }
 
 func resolveQueryContext(definitions []query.Definition, evaluatedAt string) {
@@ -1200,7 +1263,7 @@ func (a *App) serveIndex(response http.ResponseWriter, accessToken string) {
 		return
 	}
 	html := string(content)
-	injections := `<meta name="dashboard-data-backend" content="redis-http">`
+	injections := `<meta name="dashboard-data-backend" content="server-http">`
 	if a.oauth != nil {
 		injections += `<meta name="cao-auth-mode" content="github">`
 		injections += `<script>const m=document.cookie.match(/(?:^|;\s*)cao_csrf=([^;]+)/);if(m){const c=decodeURIComponent(m[1]);const f=window.fetch.bind(window);window.fetch=(i,n={})=>{const u=typeof i==="string"?i:i.url;if(u&&new URL(u,location.href).origin===location.origin){const h=new Headers(n.headers||{});if(!h.has("X-CSRF-Token"))h.set("X-CSRF-Token",c);n={...n,headers:h};}return f(i,n);};}</script>`
