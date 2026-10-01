@@ -10,10 +10,13 @@ import (
 
 	"github.com/spf13/cobra"
 
+	debuglogger "github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/server"
 )
+
+var compileQueriesLog = debuglogger.New("cao:dashboard:queries")
 
 func newCompileQueriesCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -34,11 +37,18 @@ func newCompileQueriesCommand() *cobra.Command {
 		if err != nil {
 			return fmt.Errorf("compile dashboard queries: %w", err)
 		}
+		counts := summarizeCompilationLevels(results)
+		compileQueriesLog.Printf("compiled queries total=%d full=%d partial=%d fallback=%d unsupported=%d",
+			len(results), counts["full candidate"], counts["partial candidate"], counts["fallback"], counts["unsupported"])
 		return renderCompilation(cmd.OutOrStdout(), results, *format)
 	}
 	return cmd
 }
 
+// loadCompilationQueries reads the root dashboard query document, every
+// ".json" fragment in directory, and the canonical database projection
+// queries, in that order. Fragment directory entries are read in the order
+// returned by os.ReadDir, which is sorted by filename.
 func loadCompilationQueries(dashboard, directory, database string) ([]query.Definition, error) {
 	definitions, err := server.ParseDashboardQueries(dashboard)
 	if err != nil {
@@ -48,6 +58,7 @@ func loadCompilationQueries(dashboard, directory, database string) ([]query.Defi
 	if err != nil {
 		return nil, fmt.Errorf("read dashboard fragments: %w", err)
 	}
+	fragmentFiles := 0
 	for _, entry := range entries {
 		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
 			continue
@@ -58,6 +69,7 @@ func loadCompilationQueries(dashboard, directory, database string) ([]query.Defi
 			return nil, fmt.Errorf("read %s: %w", path, err)
 		}
 		definitions = append(definitions, part...)
+		fragmentFiles++
 	}
 	databaseDefinitions, err := server.ParseDashboardQueries(database)
 	if err != nil {
@@ -67,7 +79,19 @@ func loadCompilationQueries(dashboard, directory, database string) ([]query.Defi
 	if len(definitions) == 0 {
 		return nil, fmt.Errorf("no dashboard queries found")
 	}
+	compileQueriesLog.Printf("loaded dashboard queries total=%d fragment_files=%d", len(definitions), fragmentFiles)
 	return definitions, nil
+}
+
+// summarizeCompilationLevels counts compilation results by their Level, so
+// both the report renderer and callers that only need totals share one
+// counting pass.
+func summarizeCompilationLevels(results []redisx.QueryCompilation) map[string]int {
+	counts := map[string]int{}
+	for _, result := range results {
+		counts[result.Level]++
+	}
+	return counts
 }
 
 func renderCompilation(out io.Writer, results []redisx.QueryCompilation, format string) error {
@@ -79,10 +103,7 @@ func renderCompilation(out io.Writer, results []redisx.QueryCompilation, format 
 	if format != "markdown" {
 		return fmt.Errorf("unsupported report format %q", format)
 	}
-	counts := map[string]int{}
-	for _, result := range results {
-		counts[result.Level]++
-	}
+	counts := summarizeCompilationLevels(results)
 	if _, err := fmt.Fprintf(out, "### Redis native translation (offline)\n\n"+
 		"%d queries: %d full candidates, %d partial candidates, %d Go fallback, %d unsupported by Go.\n\n"+
 		"Candidates are **not** verified native executions: the active Redis generation must have JSON sources and compatible RediSearch indexes. "+

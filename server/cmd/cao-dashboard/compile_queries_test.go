@@ -59,3 +59,22 @@ func TestCompileQueriesFailsOnMissingInputsAndUnknownFormat(t *testing.T) {
 		t.Fatalf("report cells were not escaped: %s", output.String())
 	}
 }
+
+func TestSummarizeCompilationLevelsCountsEachLevel(t *testing.T) {
+	counts := summarizeCompilationLevels([]redisx.QueryCompilation{
+		{Name: "a", Level: "full candidate"},
+		{Name: "b", Level: "fallback"},
+		{Name: "c", Level: "fallback"},
+		{Name: "d", Level: "unsupported"},
+	})
+	if counts["full candidate"] != 1 || counts["fallback"] != 2 || counts["unsupported"] != 1 || counts["partial candidate"] != 0 {
+		t.Fatalf("unexpected level counts: %#v", counts)
+	}
+}
+
+func TestSummarizeCompilationLevelsHandlesEmptyResults(t *testing.T) {
+	counts := summarizeCompilationLevels(nil)
+	if len(counts) != 0 {
+		t.Fatalf("expected no counts for empty results, got: %#v", counts)
+	}
+}
