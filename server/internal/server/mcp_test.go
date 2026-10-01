@@ -317,7 +317,7 @@ func TestMCPCatalogAndNamedQueryUseSharedData(t *testing.T) {
 	}
 }
 
-func TestHostedMCPConfigurationFailsClosed(t *testing.T) {
+func TestHostedMCPConfigurationRequiresRepository(t *testing.T) {
 	site := t.TempDir()
 	if err := os.WriteFile(filepath.Join(site, "index.html"), []byte("<html></html>"), 0o600); err != nil {
 		t.Fatal(err)
@@ -330,8 +330,8 @@ func TestHostedMCPConfigurationFailsClosed(t *testing.T) {
 		},
 		GitHubOAuth: validOAuthConfig("https://github.test"),
 	})
-	if err == nil || err.Error() != "MCP is available only in local bearer-authenticated mode" {
-		t.Fatalf("hosted mode returned %v, want MCP rejection", err)
+	if err == nil || !strings.Contains(err.Error(), "hosted MCP requires an Actions repository") {
+		t.Fatalf("hosted mode returned %v, want repository rejection", err)
 	}
 }
 

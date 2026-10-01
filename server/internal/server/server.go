@@ -165,8 +165,10 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 			DatabaseQueriesPath: config.DatabaseQueriesPath,
 		}
 	}
-	if config.MCPEnabled && profile.Authentication != HostAuthenticationBearer {
-		return nil, errors.New("MCP is available only in local bearer-authenticated mode")
+	if config.MCPEnabled && profile.Authentication == HostAuthenticationOAuth {
+		if _, _, err := parseActionsRepository(config.ActionsRepository); err != nil {
+			return nil, fmt.Errorf("hosted MCP requires an Actions repository: %w", err)
+		}
 	}
 	actionsToken, actionsActor, err := githubActionsMCPIdentity(config, accessToken)
 	if err != nil {
@@ -590,6 +592,18 @@ func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 			strings.HasPrefix(request.URL.Path, "/auth/callback") {
 			a.logAuthBranch("access.public_allowed")
 			next.ServeHTTP(response, request)
+			return
+		}
+		if request.URL.Path == "/mcp" && a.mcp != nil {
+			actor, err := verifyHostedActionsMCP(request.Context(), a.config, request)
+			if err != nil {
+				a.logAuthBranch("access.hosted_actions_rejected")
+				writeError(response, http.StatusUnauthorized, "GitHub Actions MCP authentication is required")
+				return
+			}
+			a.logAuthBranch("access.hosted_actions_accepted")
+			next.ServeHTTP(response, request.WithContext(context.WithValue(
+				request.Context(), githubActionsActorContextKey{}, actor)))
 			return
 		}
 		var session oauthSession

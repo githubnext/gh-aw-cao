@@ -27,6 +27,9 @@ func NewHostedAppFromEnv(
 	siteDirectory string,
 	dashboardQueriesPath string,
 	databaseQueriesPath string,
+	mcpEnabled bool,
+	agentCatalogPath string,
+	mcpContractPath string,
 	logger *log.Logger,
 ) (*App, error) {
 	host, err := loadHostPolicyFromEnv()
@@ -36,7 +39,7 @@ func NewHostedAppFromEnv(
 	if host.Profile.Listener != HostListenerProcess {
 		return nil, fmt.Errorf("host target module %q does not own a process listener", host.Profile.Name)
 	}
-	return newHostedAppWithPolicy(ctx, host, listen, certFile, keyFile, siteDirectory, dashboardQueriesPath, databaseQueriesPath, logger)
+	return newHostedAppWithPolicy(ctx, host, listen, certFile, keyFile, siteDirectory, dashboardQueriesPath, databaseQueriesPath, logger, mcpEnabled, agentCatalogPath, mcpContractPath)
 }
 
 // NewExternallyHostedAppFromEnv builds an OAuth-protected CAO service without
@@ -54,7 +57,7 @@ func NewExternallyHostedAppFromEnv(
 	if host.Profile.Listener != HostListenerExternal {
 		return nil, fmt.Errorf("host target module %q does not delegate listener ownership to an external host", host.Profile.Name)
 	}
-	return newHostedAppWithPolicy(ctx, host, "", "", "", siteDirectory, dashboardQueriesPath, databaseQueriesPath, logger)
+	return newHostedAppWithPolicy(ctx, host, "", "", "", siteDirectory, dashboardQueriesPath, databaseQueriesPath, logger, false, "", "")
 }
 
 func newHostedAppWithPolicy(
@@ -62,6 +65,8 @@ func newHostedAppWithPolicy(
 	host *resolvedHostPolicy,
 	listen, certFile, keyFile, siteDirectory, dashboardQueriesPath, databaseQueriesPath string,
 	logger *log.Logger,
+	mcpEnabled bool,
+	agentCatalogPath, mcpContractPath string,
 ) (*App, error) {
 	if err := validateHostedRedisURL(
 		host.RedisURL,
@@ -123,6 +128,10 @@ func newHostedAppWithPolicy(
 		KeyFile:                keyFile,
 		SiteDirectory:          siteDirectory,
 		DashboardQueries:       definitions,
+		AgentCatalogPath:       agentCatalogPath,
+		MCPContractPath:        mcpContractPath,
+		MCPEnabled:             mcpEnabled,
+		ActionsRepository:      strings.TrimSpace(os.Getenv("CAO_MCP_ACTIONS_REPOSITORY")),
 		DatabaseQueriesPath:    databaseQueriesPath,
 		SourceDirectory:        sourceDirectory,
 		Collector:              collector,

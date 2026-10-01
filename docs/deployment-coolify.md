@@ -113,7 +113,8 @@ its health check.
 
 The Compose service enables the read-only `/mcp` endpoint alongside the dashboard.
 The `Hosted MCP integration` workflow verifies the deployed endpoint against
-`https://cao.githubnext.com/mcp` after changes to `main` and on manual dispatch.
+`https://cao.githubnext.com/mcp` after changes to the repository's default
+branch and on manual dispatch from that branch.
 It uses a GitHub Actions token with read access to Actions, contents, issues,
 and pull requests plus a short-lived Actions OIDC token with audience
 `https://cao.githubnext.com`. It lists tools, inspects the catalog, and runs a
@@ -152,6 +153,7 @@ The `server/coolify/compose.yml` file reads the following variables.
 | `CAO_GITHUB_ALLOWED_TEAMS` | At least one of these two | No | Teams, in `ORGANIZATION/TEAM-SLUG` format, whose active members can sign in. |
 | `CAO_GITHUB_ADMIN_USERS` | Yes | No | GitHub usernames that can start rebuilds. |
 | `CAO_GITHUB_WEBHOOK_SECRET` | Yes | Yes | Secret for verifying webhook signatures. At least 32 characters. |
+| `CAO_MCP_ACTIONS_REPOSITORY` | Yes | No | Exact GitHub repository whose Actions OIDC provenance and read-scoped token can access `/mcp` (for this deployment, `githubnext/gh-aw-cao`). |
 | `SOURCE_COMMIT` | Set by Coolify. | No | Commit SHA embedded in the image and reported as the build version. Enable **Include Source Commit in Build**. |
 
 ### Setting the variables in Coolify
@@ -169,6 +171,7 @@ Set these required variables:
 - `CAO_SESSION_SECRET`
 - `CAO_GITHUB_ADMIN_USERS`
 - `CAO_GITHUB_WEBHOOK_SECRET`
+- `CAO_MCP_ACTIONS_REPOSITORY`
 
 Also set `REDIS_URL`, and at least one of `CAO_GITHUB_ALLOWED_ORGS` or `CAO_GITHUB_ALLOWED_TEAMS`. Coolify doesn't mark them **Required**, because Compose leaves them empty by default, but the server refuses to serve requests without them.
 

@@ -1305,8 +1305,9 @@ expose the local bearer capability or grant access to other APIs. The hosted
 and a GitHub Actions OIDC token in `X-GitHub-OIDC-Token`. Mint the OIDC token
 with `id-token: write` and the audience `https://cao.githubnext.com`; grant
 the Actions token `actions: read`, `contents: read`, `issues: read`, and
-`pull-requests: read`. The server verifies the OIDC provenance and repository
-identity and checks the Actions token's repository read permissions before
+`pull-requests: read`. The server queries the repository's default branch and
+verifies the signed OIDC source ref and subject against it, along with repository
+identity and the Actions token's repository read permissions, before
 serving MCP requests. Keep both tokens in the Actions process environment,
 never in a URL, commit, or log. Browser access continues to use the hosted
 GitHub OAuth session.

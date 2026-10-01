@@ -398,11 +398,10 @@ func newServeHostedCommand() *cobra.Command {
 	siteDirectory := cmd.Flags().String("site", "../dashboard/site/dist", "built dashboard site directory")
 	databaseQueries := cmd.Flags().String("database-queries", "../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
 	dashboardQueries := cmd.Flags().String("dashboard-queries", "../dashboard/site/dashboard.json", "default dashboard query document")
+	agentCatalog := cmd.Flags().String("agent-catalog", "../dashboard/site/src/agent/catalog.generated.json", "materialized read-only agent catalog")
+	mcpContract := cmd.Flags().String("mcp-contract", "../dashboard/site/src/agent/mcp-contract.json", "shared MCP tool contract")
 	mcpEnabled := cmd.Flags().Bool("mcp-enabled", false, "serve the read-only MCP endpoint at /mcp")
 	cmd.RunE = func(*cobra.Command, []string) error {
-		if *mcpEnabled {
-			return errors.New("MCP is not available in hosted mode")
-		}
 		commandLog.Printf("serve-hosted flags parsed tls=%s", resolveHostedTLSMode(*cert))
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
@@ -413,6 +412,7 @@ func newServeHostedCommand() *cobra.Command {
 		defer closeTelemetry()
 		app, err := server.NewHostedAppFromEnv(
 			ctx, *listen, *cert, *key, *siteDirectory, *dashboardQueries, *databaseQueries,
+			*mcpEnabled, *agentCatalog, *mcpContract,
 			log.New(os.Stderr, "cao-dashboard: ", log.LstdFlags),
 		)
 		if err != nil {

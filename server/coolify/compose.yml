@@ -17,6 +17,11 @@ services:
       - /app/dashboard.json
       - --database-queries
       - /app/queries/database.json
+      - --mcp-enabled
+      - --agent-catalog
+      - /app/agent/catalog.json
+      - --mcp-contract
+      - /app/agent/mcp-contract.json
     environment:
       REDIS_URL: ${REDIS_URL:-}
       REDIS_NAMESPACE: ${REDIS_NAMESPACE:-coolify-dashboard}
@@ -32,6 +37,7 @@ services:
       CAO_GITHUB_ALLOWED_TEAMS: ${CAO_GITHUB_ALLOWED_TEAMS:-}
       CAO_GITHUB_ADMIN_USERS: ${CAO_GITHUB_ADMIN_USERS:?Configure at least one administrator}
       CAO_GITHUB_WEBHOOK_SECRET: ${CAO_GITHUB_WEBHOOK_SECRET:?Configure the webhook secret}
+      CAO_MCP_ACTIONS_REPOSITORY: ${CAO_MCP_ACTIONS_REPOSITORY:?Configure the GitHub Actions repository allowed to use MCP}
       CAO_SOURCE_DIRECTORY: /app/source
       CAO_BUILD_VERSION: ${SOURCE_COMMIT:-unknown}
     expose:
