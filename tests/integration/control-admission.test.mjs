@@ -9,6 +9,7 @@ import { controlPolicy, controlProgram } from "../helpers/control-precompute.mjs
 const program = controlProgram();
 
 function runAdmission({
+  command = "admit",
   policy = controlPolicy(),
   policyFailure = false,
   rateLimit = 5000,
@@ -45,7 +46,7 @@ esac
   chmodSync(mockGh, 0o755);
 
   try {
-    const result = spawnSync("node", [program, "admit"], {
+    const result = spawnSync("node", [program, command], {
       encoding: "utf8",
       env: {
         ...process.env,
@@ -69,7 +70,8 @@ esac
     });
     return {
       result,
-      admission: JSON.parse(readFileSync(join(directory, "cao", "admission.json"), "utf8")),
+      admission: command === "admit"
+        ? JSON.parse(readFileSync(join(directory, "cao", "admission.json"), "utf8")) : null,
       output: Object.fromEntries(
         readFileSync(githubOutput, "utf8")
           .trim()
@@ -198,7 +200,9 @@ test("CAO admission denies a requested mode that exceeds checked-in policy and m
       [{ GITHUB_TOKEN: "workflow-token" }, false],
       [{ CAO_LIVE_AUTH_MODE: "workflow-token", CAO_LIVE_READ_APP_TOKEN: "true", CAO_LIVE_WRITE_APP: "true" }, false],
       [{ CAO_LIVE_AUTH_MODE: "app", CAO_LIVE_READ_APP_TOKEN: "true", CAO_LIVE_WRITE_APP: "true" }, true],
-      [{ CAO_LIVE_AUTH_MODE: "pat", CAO_LIVE_READ_PAT: "true", CAO_LIVE_WRITE_PAT: "true" }, true],
+      [{
+        CAO_LIVE_AUTH_MODE: "pat", CAO_LIVE_READ_PAT: "true", CAO_LIVE_WRITE_PAT: "true",
+      }, true],
       [{ CAO_LIVE_AUTH_MODE: "pat", CAO_LIVE_READ_APP_TOKEN: "true", CAO_LIVE_WRITE_APP: "true" }, false],
       [{ CAO_LIVE_AUTH_MODE: "app", CAO_LIVE_READ_PAT: "true", CAO_LIVE_WRITE_PAT: "true" }, false],
       [{
@@ -222,6 +226,80 @@ test("CAO admission denies a requested mode that exceeds checked-in policy and m
   test("manual and older live policies cannot bypass admission, including live target overrides", () => {
     const policy = controlPolicy({
       campaignPolicy: { mode: "review", targets: { "acme/target": { mode: "live" } } },
+    });
+
+    test("live workers require target-scoped read and write App tokens, not control-repository tokens", () => {
+      const policy = controlPolicy({ campaignPolicy: { mode: "live" } });
+      const worker = {
+        CAO_ROLE: "worker", CAO_WORKER: "update-planner", CAO_TARGET_REPOSITORY: "acme/target",
+        CAO_REQUESTED_MODE: "live", CAO_LIVE_AUTH_MODE: "app",
+        CAO_LIVE_READ_APP_TOKEN: "true", CAO_LIVE_WRITE_APP: "true",
+      };
+      for (const capabilities of [
+        {},
+        { CAO_LIVE_TARGET_READ_APP: "true" },
+        { CAO_LIVE_TARGET_WRITE_APP: "true" },
+      ]) {
+        const { output } = runAdmission({ policy, env: { ...worker, ...capabilities } });
+        assert.equal(output.reason, "cao_live_auth_required");
+      }
+      const { output } = runAdmission({ policy, env: {
+        ...worker, CAO_LIVE_TARGET_READ_APP: "true", CAO_LIVE_TARGET_WRITE_APP: "true",
+      } });
+      assert.equal(output.authorized, "true");
+    });
+
+    test("PAT orchestrator accepts a target-only write map but each worker requires its target secrets", () => {
+      const policy = controlPolicy({ campaignPolicy: { mode: "live" } });
+      const orchestrator = runAdmission({ policy, env: {
+        CAO_LIVE_AUTH_MODE: "pat", CAO_LIVE_READ_PAT: "true", CAO_LIVE_WRITE_PAT: "true",
+        CAO_LIVE_WRITE_PAT_MAP: '{"acme/target":"GH_AW_GITHUB_WRITE_PAT_ACME"}',
+      } });
+      assert.equal(orchestrator.output.authorized, "true");
+      for (const [write, expected] of [["false", "false"], ["true", "true"]]) {
+        const worker = runAdmission({ policy, env: {
+          CAO_ROLE: "worker", CAO_WORKER: "update-planner", CAO_TARGET_REPOSITORY: "acme/target",
+          CAO_LIVE_AUTH_MODE: "pat", CAO_LIVE_READ_PAT: "true", CAO_LIVE_WRITE_PAT: write,
+        } });
+        assert.equal(worker.output.authorized, expected);
+      }
+      const malformed = runAdmission({ policy, env: {
+        CAO_LIVE_AUTH_MODE: "pat", CAO_LIVE_READ_PAT: "true", CAO_LIVE_WRITE_PAT_MAP: "{",
+      } });
+      assert.equal(malformed.output.reason, "cao_live_auth_required");
+    });
+
+    test("live PAT preflight selects exact target secret names without reading credentials during review", () => {
+      const policy = controlPolicy({ campaignPolicy: { mode: "live" }, scope: {
+        "allowed-repositories": ["acme/control", "acme/target"],
+      } });
+      const env = {
+        CAO_LIVE_AUTH_MODE: "pat",
+        CAO_LIVE_READ_PAT_MAP: '{"acme/control":"GH_AW_GITHUB_READ_PAT_ACME","acme/target":"GH_AW_GITHUB_READ_PAT_ACME"}',
+        CAO_LIVE_WRITE_PAT_MAP: '{"acme/target":"GH_AW_GITHUB_WRITE_PAT_ACME"}',
+      };
+      const orchestrator = runAdmission({ command: "live-auth-scope", policy, env });
+      assert.equal(orchestrator.output.live, "true");
+      assert.equal(orchestrator.output.read_pat_name, "GH_AW_GITHUB_READ_PAT_ACME");
+      assert.equal(orchestrator.output.write_pat_name, "GH_AW_GITHUB_WRITE_PAT_ACME");
+      const worker = runAdmission({ command: "live-auth-scope", policy, env: {
+        ...env, CAO_ROLE: "worker", CAO_WORKER: "update-planner", CAO_TARGET_REPOSITORY: "acme/target",
+      } });
+      assert.equal(worker.output.write_pat_name, "GH_AW_GITHUB_WRITE_PAT_ACME");
+      const unmapped = runAdmission({ command: "live-auth-scope", policy, env: {
+        ...env, CAO_ROLE: "worker", CAO_WORKER: "update-planner", CAO_TARGET_REPOSITORY: "acme/unmapped",
+      } });
+      assert.equal(unmapped.output.live, "false");
+      assert.equal(unmapped.output.write_pat_name, "");
+      const review = runAdmission({ command: "live-auth-scope", policy, env: {
+        ...env, CAO_REQUESTED_MODE: "review", CAO_LIVE_READ_PAT_MAP: "{", CAO_LIVE_WRITE_PAT_MAP: "{",
+      } });
+      assert.deepEqual(review.output, { live: "false", read_pat_name: "", write_pat_name: "" });
+      const malformed = runAdmission({ command: "live-auth-scope", policy, env: {
+        ...env, CAO_LIVE_WRITE_PAT_MAP: "{",
+      } });
+      assert.equal(malformed.output.live, "true");
+      assert.equal(malformed.output.write_pat_name, "");
     });
     const { output } = runAdmission({ policy });
     assert.equal(output.reason, "cao_live_auth_required");

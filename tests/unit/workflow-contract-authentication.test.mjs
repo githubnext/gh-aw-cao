@@ -178,6 +178,31 @@ test("authentication prefers an optional GitHub App and retains bounded fallback
   assert.match(authentication, /does not support `COPILOT_GITHUB_TOKEN` inference fallback/);
 });
 
+test("live worker admission verifies target-scoped Apps and defers PAT map parsing outside preview", () => {
+  const control = workflow("shared/control.md");
+  assert.match(control, /name: Resolve live authentication scope[\s\S]*?control\.main\(\{ core, github, context, exec, io, getOctokit \}, \['live-auth-scope'\]\)/);
+  const scope = control.slice(control.indexOf("name: Resolve live target credential scope"),
+    control.indexOf("name: Evaluate Central Agentic Ops admission"));
+  assert.match(scope, /env\.CAO_ROLE == 'worker' && steps\.cao_auth_scope\.outputs\.live == 'true'/);
+  assert.match(scope, /CAO_LIVE_TARGET: \$\{\{ inputs\.target_repo \}\}/);
+  for (const [role, permission] of [["read", "read"], ["write", "write"]]) {
+    assert.match(scope, new RegExp(`name: Verify live target ${role} App installation[\\s\\S]*?repositories: \\$\\{\\{ steps\\.cao_live_target_scope\\.outputs\\.repository \\}\\}[\\s\\S]*?permission-(?:actions|contents): ${permission}`));
+  }
+  assert.match(scope, /permission-issues: write\s+permission-pull-requests: write/);
+  assert.match(control, /CAO_LIVE_TARGET_READ_APP: \$\{\{ steps\.cao_live_target_read_app\.outputs\.token != '' \}\}/);
+  assert.match(control, /CAO_LIVE_TARGET_WRITE_APP: \$\{\{ steps\.cao_live_target_write_app\.outputs\.token != '' \}\}/);
+  for (const workflowId of ["dependabot", "dependabot-update-planner"]) {
+    const lock = workflow(`${workflowId}.lock.yml`);
+    assert.match(lock, /if: \$\{\{ env\.CAO_ROLE == 'worker' && steps\.cao_auth_scope\.outputs\.live == 'true' \}\}/);
+    assert.doesNotMatch(lock, /github\.aw\.import-inputs/);
+  }
+  for (const role of ["READ", "WRITE"]) {
+    assert.match(control, new RegExp(`CAO_LIVE_${role}_PAT: \\$\\{\\{ steps\\.cao_auth_scope\\.outputs\\.live == 'true' && secrets\\[steps\\.cao_auth_scope\\.outputs\\.${role.toLowerCase()}_pat_name\\] != '' \\}\\}`));
+  }
+  assert.doesNotMatch(control.slice(control.indexOf("name: Evaluate Central Agentic Ops admission"),
+    control.indexOf("name: Run CAO control precompute")), /fromJSON/);
+});
+
 test("CAO workflows bind GitHub tools to exact declared read permissions", () => {
   const permissionInputs = new Map([
     ["actions", "read_actions"],

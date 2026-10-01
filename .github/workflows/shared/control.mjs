@@ -353,15 +353,69 @@ function requireLiveAuthentication(result, options) {
       && Object.values(result.target_policies).some(({ mode }) => mode === "live"));
   if (!live) return result;
   const selected = environment("CAO_LIVE_AUTH_MODE");
+  const worker = options.role === "worker";
   const app = selected !== "pat" && selected !== "workflow-token"
-    && environment("CAO_LIVE_READ_APP_TOKEN") === "true"
-    && environment("CAO_LIVE_WRITE_APP") === "true";
+    && (worker ? environment("CAO_LIVE_TARGET_READ_APP") === "true"
+      && environment("CAO_LIVE_TARGET_WRITE_APP") === "true"
+      : environment("CAO_LIVE_READ_APP_TOKEN") === "true"
+      && environment("CAO_LIVE_WRITE_APP") === "true");
   const pat = (selected === "pat" || selected === "")
     && environment("CAO_LIVE_READ_PAT") === "true"
     && environment("CAO_LIVE_WRITE_PAT") === "true";
   if (app || pat) return result;
   logDecision("live-authentication", "denied", { reason: "cao_live_auth_required" });
   return { ...result, authorized: false, reason: "cao_live_auth_required" };
+}
+
+function patMap(value) {
+  try {
+    const map = JSON.parse(value);
+    if (!map || typeof map !== "object" || Array.isArray(map)) return {};
+    return map;
+  } catch {
+    return {};
+  }
+}
+
+async function liveAuthScope() {
+  const options = policyOptions({ normalizeOrchestrator: true });
+  const workflowSha = environment("GITHUB_WORKFLOW_SHA");
+  let outputs = { live: false, read_pat_name: "", write_pat_name: "" };
+  try {
+    if (!SHA_PATTERN.test(workflowSha)) throw new ControlError("invalid workflow revision");
+    const source = await decodeRepositoryFile(options.controlRepository, POLICY_PATH, workflowSha);
+    const policy = effectivePolicy(parsePolicy(source), options);
+    const live = policy.authorized && (policy.safe_output_mode === "live"
+      || (options.role === "orchestrator"
+        && Object.values(policy.target_policies).some(({ mode }) => mode === "live")));
+    if (!live) return writeActionsOutputs(outputs);
+    if (options.role === "worker" && (!options.targetRepository
+      || !policy.allowed_owners.some((owner) => options.targetRepository.split("/")[0].toLowerCase() === owner.toLowerCase())
+      || (policy.allowed_repositories.length > 0 && !policy.allowed_repositories.some(
+        (repository) => repository.toLowerCase() === options.targetRepository.toLowerCase(),
+      )))) return writeActionsOutputs(outputs);
+    outputs = { ...outputs, live: true };
+    const selected = environment("CAO_LIVE_AUTH_MODE");
+    if (selected === "pat") {
+      const read = patMap(environment("CAO_LIVE_READ_PAT_MAP"));
+      const write = patMap(environment("CAO_LIVE_WRITE_PAT_MAP"));
+      const readRepo = options.targetRepository || options.controlRepository;
+      const writeRepo = options.role === "worker" ? options.targetRepository
+        : Object.keys(write).find((repo) => policy.allowed_repositories.length > 0
+          ? policy.allowed_repositories.some((allowed) => allowed.toLowerCase() === repo.toLowerCase())
+          : policy.allowed_owners.some((owner) => repo.split("/")[0].toLowerCase() === owner.toLowerCase()));
+      const readName = read[readRepo];
+      const writeName = writeRepo ? write[writeRepo] : undefined;
+      if (/^GH_AW_GITHUB_READ_PAT_[A-Z0-9_]+$/.test(readName ?? "")) outputs.read_pat_name = readName;
+      if (/^GH_AW_GITHUB_WRITE_PAT_[A-Z0-9_]+$/.test(writeName ?? "")) outputs.write_pat_name = writeName;
+    } else if (selected === "") {
+      outputs.read_pat_name = "GH_AW_GITHUB_READ_PAT";
+      outputs.write_pat_name = "GH_AW_GITHUB_WRITE_PAT";
+    }
+  } catch {
+    // Admission reports authoritative policy errors; failed preflight cannot grant auth.
+  }
+  writeActionsOutputs(outputs);
 }
 
 function policyOptions({ normalizeOrchestrator = false } = {}) {
@@ -1077,6 +1131,7 @@ export async function main(actionsOrArguments = {}, maybeArguments = undefined) 
     if (command === "admit" && args.length === 0) {
       return await withLogGroup("Central Agentic Ops admission", admit);
     }
+    if (command === "live-auth-scope" && args.length === 0) return await liveAuthScope();
     if (command === "precompute" && args.length === 0) {
       return await withLogGroup("Central Agentic Ops precompute", precompute);
     }

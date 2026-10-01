@@ -980,13 +980,14 @@ test("live credential discovery requires the selected complete App or PAT profil
 test("cao mode discovers credentials only for live and always permits non-interactive promotion", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-mode-auth-"));
   const policyPath = path.join(root, "cao.json");
-  const original = '{"version":1,"gh-aw-version":"v0.89.17","control-plane":{"campaigns":{"dependabot":{"mode":"review"}}}}\n';
+  const original = '{"version":1,"gh-aw-version":"v0.89.17","control-plane":{"scope":{"allowed-repositories":["acme/target"]},"campaigns":{"dependabot":{"mode":"review"}}}}\n';
   const calls = [];
   const output = { write: (message) => calls.push(message) };
   const execute = () => ({ status: 0, stdout: "acme/control\n" });
   const prompt = {
     confirm: async () => { calls.push("confirm"); return true; },
     select: async () => { calls.push("select"); return "token"; },
+    text: async () => { calls.push("text"); return "acme/target"; },
   };
   const setupAuthentication = (...args) => calls.push(args);
   try {
@@ -1011,8 +1012,22 @@ test("cao mode discovers credentials only for live and always permits non-intera
       policyPath, execute, prompt, output,
       discoverAuth: () => CrossRepoAuthStatus.ABSENT, setupAuthentication,
     });
-    assert.deepEqual(calls.slice(0, 2), ["confirm", "select"]);
-    assert.deepEqual(calls[2].slice(0, 2), ["token", ["--repo", "acme/control", "--policy", policyPath]]);
+    assert.deepEqual(calls.slice(0, 3), ["confirm", "select", "text"]);
+    assert.deepEqual(calls[3].slice(0, 2), ["token", [
+      "--repo", "acme/control", "--policy", policyPath, "--write-repository", "acme/target",
+    ]]);
+    calls.length = 0;
+    await assert.rejects(setCaoCampaignMode("live", ["dependabot"], {
+      policyPath, execute, prompt: { ...prompt, text: async () => "acme/unapproved" }, output,
+      discoverAuth: () => CrossRepoAuthStatus.ABSENT, setupAuthentication,
+    }), /Write repository must be in the control policy scope/);
+    assert.deepEqual(calls, ["confirm", "select"]);
+    calls.length = 0;
+    await setCaoCampaignMode("live", ["dependabot"], {
+      policyPath, execute, prompt: { ...prompt, text: async () => "" }, output,
+      discoverAuth: () => CrossRepoAuthStatus.ABSENT, setupAuthentication,
+    });
+    assert.deepEqual(calls, ["confirm", "select", "Live mode enabled without PAT setup; admission will reject live runs until target write credentials are configured.\n"]);
     calls.length = 0;
     await setCaoCampaignMode("live", ["dependabot"], {
       policyPath, execute, prompt: { ...prompt, confirm: async () => false }, output,

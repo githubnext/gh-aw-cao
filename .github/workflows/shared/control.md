@@ -134,6 +134,77 @@ jobs:
           echo "runtime=$runtime" >> "$GITHUB_OUTPUT"
           echo "[cao] Control runtime resolved."
 
+      - name: Resolve live authentication scope
+        id: cao_auth_scope
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          CAO_CAMPAIGN: ${{ github.aw.import-inputs.campaign }}
+          CAO_ROLE: ${{ github.aw.import-inputs.role }}
+          CAO_WORKER: ${{ github.aw.import-inputs.worker }}
+          CAO_TARGET_REPOSITORY: ${{ inputs.target_repo || '' }}
+          CAO_REQUESTED_MODE: ${{ inputs.safe_output_mode || '' }}
+          CAO_LIVE_AUTH_MODE: ${{ vars.GH_AW_GITHUB_AUTH_MODE }}
+          CAO_LIVE_READ_PAT_MAP: ${{ vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES }}
+          CAO_LIVE_WRITE_PAT_MAP: ${{ vars.GH_AW_GITHUB_WRITE_PAT_REPOSITORIES }}
+          CAO_CONTROL_RUNTIME: ${{ steps.cao_control_source.outputs.runtime }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const control = await import(process.env.CAO_CONTROL_RUNTIME);
+            await control.main({ core, github, context, exec, io, getOctokit }, ['live-auth-scope']);
+
+      - name: Resolve live target credential scope
+        id: cao_live_target_scope
+        if: ${{ env.CAO_ROLE == 'worker' && steps.cao_auth_scope.outputs.live == 'true' }}
+        continue-on-error: true
+        env:
+          CAO_LIVE_TARGET: ${{ inputs.target_repo }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$CAO_LIVE_TARGET" =~ ^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$ ]]; then
+            echo "Live target must use OWNER/REPOSITORY form" >&2
+            exit 1
+          fi
+          echo "owner=${CAO_LIVE_TARGET%%/*}" >> "$GITHUB_OUTPUT"
+          echo "repository=${CAO_LIVE_TARGET#*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify live target read App installation
+        id: cao_live_target_read_app
+        env:
+          CAO_LIVE_APP_ID: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_AUTH_MODE != 'workflow-token' && vars.GH_AW_GITHUB_READ_APP_ID || '' }}
+          CAO_LIVE_APP_KEY: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_AUTH_MODE != 'workflow-token' && secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY || '' }}
+        if: ${{ steps.cao_live_target_scope.outcome == 'success' && env.CAO_LIVE_APP_ID != '' && env.CAO_LIVE_APP_KEY != '' }}
+        continue-on-error: true
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.GH_AW_GITHUB_READ_APP_ID }}
+          private-key: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
+          owner: ${{ steps.cao_live_target_scope.outputs.owner }}
+          repositories: ${{ steps.cao_live_target_scope.outputs.repository }}
+          github-api-url: ${{ github.api_url }}
+          permission-actions: read
+          permission-contents: read
+
+      - name: Verify live target write App installation
+        id: cao_live_target_write_app
+        env:
+          CAO_LIVE_APP_ID: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_AUTH_MODE != 'workflow-token' && vars.GH_AW_GITHUB_WRITE_APP_ID || '' }}
+          CAO_LIVE_APP_KEY: ${{ vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && vars.GH_AW_GITHUB_AUTH_MODE != 'workflow-token' && secrets.GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY || '' }}
+        if: ${{ steps.cao_live_target_scope.outcome == 'success' && env.CAO_LIVE_APP_ID != '' && env.CAO_LIVE_APP_KEY != '' }}
+        continue-on-error: true
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.GH_AW_GITHUB_WRITE_APP_ID }}
+          private-key: ${{ secrets.GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY }}
+          owner: ${{ steps.cao_live_target_scope.outputs.owner }}
+          repositories: ${{ steps.cao_live_target_scope.outputs.repository }}
+          github-api-url: ${{ github.api_url }}
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
+
       - name: Evaluate Central Agentic Ops admission
         id: cao_admission
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -143,8 +214,10 @@ jobs:
           CAO_LIVE_AUTH_MODE: ${{ vars.GH_AW_GITHUB_AUTH_MODE }}
           CAO_LIVE_READ_APP_TOKEN: ${{ steps.cao_pre_activation_app_token.outputs.token != '' }}
           CAO_LIVE_WRITE_APP: ${{ vars.GH_AW_GITHUB_WRITE_APP_ID != '' && secrets.GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY != '' }}
-          CAO_LIVE_READ_PAT: ${{ vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[inputs.target_repo || github.repository]] != '' || vars.GH_AW_GITHUB_AUTH_MODE == '' && secrets.GH_AW_GITHUB_READ_PAT != '' }}
-          CAO_LIVE_WRITE_PAT: ${{ vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_WRITE_PAT_REPOSITORIES || '{}')[inputs.target_repo || github.repository]] != '' || vars.GH_AW_GITHUB_AUTH_MODE == '' && secrets.GH_AW_GITHUB_WRITE_PAT != '' }}
+          CAO_LIVE_TARGET_READ_APP: ${{ steps.cao_live_target_read_app.outputs.token != '' }}
+          CAO_LIVE_TARGET_WRITE_APP: ${{ steps.cao_live_target_write_app.outputs.token != '' }}
+          CAO_LIVE_READ_PAT: ${{ steps.cao_auth_scope.outputs.live == 'true' && secrets[steps.cao_auth_scope.outputs.read_pat_name] != '' }}
+          CAO_LIVE_WRITE_PAT: ${{ steps.cao_auth_scope.outputs.live == 'true' && secrets[steps.cao_auth_scope.outputs.write_pat_name] != '' }}
           GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
           CAO_CAMPAIGN: ${{ github.aw.import-inputs.campaign }}
           CAO_ROLE: ${{ github.aw.import-inputs.role }}

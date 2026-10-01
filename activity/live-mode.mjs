@@ -6,6 +6,7 @@ import { createTerminalPrompt } from './setup.mjs';
 export async function assistLiveMode({
   repository,
   policyPath,
+  allowedRepositories = [],
   execute = spawnSync,
   input = process.stdin,
   output = process.stderr,
@@ -27,7 +28,25 @@ export async function assistLiveMode({
         { label: 'Fine-grained PATs', value: 'token' },
       ]);
       if (!['github-app', 'token'].includes(profile)) throw new UsageError('Invalid authentication setup choice');
-      setupAuthentication(profile, ['--repo', repository, '--policy', policyPath], { execute });
+      const arguments_ = ['--repo', repository, '--policy', policyPath];
+      if (profile === 'token') {
+        const destinations = [...new Set([repository, ...allowedRepositories])];
+        const answer = await interactive.text(
+          `Write repositories (comma-separated, choose only approved destinations from ${destinations.join(', ')})`,
+        );
+        const selected = [...new Set(answer.split(',').map((value) => value.trim()).filter(Boolean))];
+        if (selected.length === 0) {
+          output.write('Live mode enabled without PAT setup; admission will reject live runs until target write credentials are configured.\n');
+          return;
+        }
+        for (const target of selected) {
+          if (!destinations.some((candidate) => candidate.toLowerCase() === target.toLowerCase())) {
+            throw new UsageError(`Write repository must be in the control policy scope: ${target}`);
+          }
+          arguments_.push('--write-repository', target);
+        }
+      }
+      setupAuthentication(profile, arguments_, { execute });
     } else {
       output.write('Live mode enabled without cross-repository credentials; admission will reject live runs until a GitHub App or PAT is configured.\n');
     }
@@ -82,7 +101,10 @@ export async function changeCampaignMode(mode, campaignNames, {
     } catch {
       // Repository discovery is opportunistic; admission checks the run itself.
     }
-    await assistLiveMode({ repository, policyPath, execute, input, output, prompt, discoverAuth, setupAuthentication, UsageError });
+    await assistLiveMode({
+      repository, policyPath, allowedRepositories: policy['control-plane']?.scope?.['allowed-repositories'] ?? [],
+      execute, input, output, prompt, discoverAuth, setupAuthentication, UsageError,
+    });
   }
   const policyMode = mode === 'preview' ? 'review' : 'live';
   for (const campaignName of new Set(campaignNames)) {
