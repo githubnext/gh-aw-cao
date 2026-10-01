@@ -34,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        area: [activity, dashboard, workflows, tooling, documentation]
+        area: [activity, dashboard, workflows, tooling]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -75,8 +75,12 @@ jobs:
           npm run typecheck:cao
           npm run test:integration
           npm run test:load
-          npm run check:svg
           npm run compile
+      - name: Run documentation unit contracts
+        run: npm run test:unit:area -- documentation
+      - name: Build and validate documentation
+        run: |
+          npm run check:svg
           npm run docs:build
       - name: Check patch formatting
         run: git diff --check

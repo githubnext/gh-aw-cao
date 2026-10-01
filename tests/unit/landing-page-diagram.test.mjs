@@ -302,5 +302,5 @@ test("landing terminal uses accessible CSS motion without a JavaScript player", 
   assert.match(terminal, /class="syntax-string"/);
   assert.match(terminal, /class="syntax-placeholder"/);
   assert.match(terminal, /--terminal-syntax-placeholder: #953800/);
-  assert.match(terminal, /--terminal-syntax-placeholder: #ffd0a8/);
+  assert.match(terminal, /--terminal-syntax-placeholder: #ffd8b8/);
 });
