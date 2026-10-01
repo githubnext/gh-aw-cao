@@ -15,22 +15,44 @@ def simulate(args):
     webhook = args.webhook_seconds
     delay = args.collection_seconds
     prepare = args.prepare_seconds
-    write = args.rows / args.rows_per_second
-    generation_gib = args.rows * args.bytes_per_row / 1024**3
+    timeout = getattr(args, "timeout_minutes", 25) * 60
+    repositories = getattr(args, "repositories", 0)
+    runs_per_repo_day = getattr(args, "runs_per_repo_day", 2)
+    tools_per_run = getattr(args, "tools_per_run", 50)
+    issues_per_run = getattr(args, "issues_per_run", 1)
+    issue_updates_per_issue = getattr(args, "issue_updates_per_issue", 1)
+    retention_days = getattr(args, "retention_days", 30)
+    daily_runs = repositories * runs_per_repo_day
+    rows = (repositories + daily_runs * retention_days *
+            (1 + tools_per_run + issues_per_run)) if repositories else args.rows
+    write = rows / args.rows_per_second
+    generation_gib = rows * args.bytes_per_row / 1024**3
     activations = [0]  # Begin with an existing complete generation.
     dirty = False
     job = None
     peak_rss = 0.0
     series = []
     completed = 0
+    timed_out = 0
+    collected_runs = 0
     for now in range(0, duration + 1, step):
         # Constant arrivals become visible to projection only after collection.
-        if now >= delay and (now - delay) % webhook == 0:
+        if repositories:
+            observed = max(0, math.floor((now - delay) * daily_runs / 86400))
+            if observed > collected_runs:
+                dirty = True
+                collected_runs = observed
+        elif now >= delay and (now - delay) % webhook == 0:
             dirty = True
-        if job is not None and now >= job + prepare + write:
-            activations.append(now)
-            completed += 1
-            job = None
+        if job is not None:
+            if now >= job + prepare + write and job + prepare + write <= job + timeout:
+                activations.append(now)
+                completed += 1
+                job = None
+            elif now >= job + timeout:
+                timed_out += 1
+                dirty = True
+                job = None
         # Like PruneGenerations, keep the newest R AND anything within grace.
         while len(activations) > args.retain and now - activations[0] >= grace:
             activations.pop(0)
@@ -46,16 +68,28 @@ def simulate(args):
         series.append((now / 3600, rss, worker_busy, redis_busy))
     return series, {
         "assumptions": {
-            "rows": args.rows,
+            "rows": rows,
+            "repositories": repositories,
+            "runs_per_repo_day": runs_per_repo_day if repositories else None,
+            "tools_per_run": tools_per_run if repositories else None,
+            "issues_per_run": issues_per_run if repositories else None,
+            "issue_updates_per_issue": issue_updates_per_issue if repositories else None,
+            "retention_days": retention_days if repositories else None,
+            "runs_per_day": daily_runs if repositories else None,
+            "issues_per_day": daily_runs * issues_per_run if repositories else None,
+            "issue_status_updates_per_day": daily_runs * issues_per_run *
+            issue_updates_per_issue if repositories else None,
             "bytes_per_row": args.bytes_per_row,
             "rows_per_second": args.rows_per_second,
             "prepare_seconds": prepare,
             "poll_minutes": args.poll_minutes,
+            "timeout_minutes": timeout / 60,
             "grace_minutes": args.grace_minutes,
             "retained": args.retain,
             "redis_rss_factor": args.rss_factor,
         },
         "completed_generations": completed,
+        "timed_out_projections": timed_out,
         "peak_redis_rss_gib": round(peak_rss, 3),
         "redis_host_gib": args.redis_host_gib,
         "worker_busy_fraction": round(sum(row[2] for row in series) / len(series), 3),
@@ -142,22 +176,33 @@ def main():
     parser.add_argument("--output", required=True, type=Path, help="destination SVG path")
     parser.add_argument("--hours", type=int, default=2)
     parser.add_argument("--rows", type=int, default=1_000_000)
+    parser.add_argument("--repositories", type=int, default=0,
+                        help="fleet mode: derive retained rows and run arrivals from repositories")
+    parser.add_argument("--runs-per-repo-day", type=int, default=2)
+    parser.add_argument("--tools-per-run", type=int, default=50)
+    parser.add_argument("--issues-per-run", type=int, default=1)
+    parser.add_argument("--issue-updates-per-issue", type=int, default=1)
+    parser.add_argument("--retention-days", type=int, default=30)
     parser.add_argument("--bytes-per-row", type=int, default=1024)
     parser.add_argument("--rows-per-second", type=int, default=5000)
     parser.add_argument("--prepare-seconds", type=int, default=60)
     parser.add_argument("--webhook-seconds", type=int, default=60)
     parser.add_argument("--collection-seconds", type=int, default=60)
     parser.add_argument("--poll-minutes", type=int, default=5)
+    parser.add_argument("--timeout-minutes", type=int, default=25)
     parser.add_argument("--grace-minutes", type=int, default=10)
     parser.add_argument("--retain", type=int, default=3)
     parser.add_argument("--rss-factor", type=float, default=1.5)
     parser.add_argument("--redis-host-gib", type=float, default=8)
     args = parser.parse_args()
     for name in ("hours", "rows", "bytes_per_row", "rows_per_second",
-                 "webhook_seconds", "poll_minutes", "retain"):
+                 "webhook_seconds", "poll_minutes", "retain", "runs_per_repo_day",
+                 "retention_days", "timeout_minutes"):
         if getattr(args, name) <= 0:
             parser.error(f"--{name.replace('_', '-')} must be positive")
-    for name in ("prepare_seconds", "collection_seconds", "grace_minutes"):
+    for name in ("prepare_seconds", "collection_seconds", "grace_minutes",
+                 "repositories", "tools_per_run", "issues_per_run",
+                 "issue_updates_per_issue"):
         if getattr(args, name) < 0:
             parser.error(f"--{name.replace('_', '-')} must be non-negative")
     for name in ("rss_factor", "redis_host_gib"):

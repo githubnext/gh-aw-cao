@@ -2206,6 +2206,9 @@ python3 scripts/simulate-redis-generations.py \
   --output /tmp/redis-generation-pressure.svg
 python3 scripts/simulate-redis-generations.py \
   --rows-per-second 2000 --output /tmp/redis-generation-pressure-slow.svg
+python3 scripts/simulate-redis-generations.py \
+  --repositories 10000 --hours 8 \
+  --output /tmp/redis-generation-pressure-10k.svg
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/unit -p 'test_generation_pressure.py'
 ```
 
@@ -2223,12 +2226,46 @@ successful generation count, peak RSS and busy fractions as JSON.
 
 ![Synthetic Redis generation pressure with 2,000 row writes per second](../docs/assets/redis-generation-pressure-slow.svg)
 
+The [10,000-repository scenario](../docs/assets/redis-generation-pressure-10k.svg)
+assumes two runs per repository per day, 50 tool calls and one issue per
+run, one issue-status update per issue, and **30 days of fully populated
+retained data at time zero**. This is 20,000 runs, 1,000,000 tool calls,
+20,000 issue rows and 20,000 issue-status updates per day. It counts
+`10,000 + 30 × 20,000 × (1 + 50 + 1) = 31,210,000` projected
+source rows per generation, *before* any additional logical-source
+fan-out. The issue-status update follows the separate Redis overlay
+admission path (`server/internal/collect/events.go` and
+`server/internal/redisx/issues.go`); it does **not** add a new issue
+row or trigger a generation rebuild by itself. Overlay memory and
+per-update Redis CPU are not estimated here.
+
+![Synthetic generation pressure at 10,000 repositories](../docs/assets/redis-generation-pressure-10k.svg)
+
+At the **same unbenchmarked** 1 KiB/effective row, 5,000 row writes/second
+and 1.5 Redis RSS multiplier, a single generation is about 29.8 GiB
+allocated (about 44.7 GiB estimated RSS), and writing it takes at least
+104 minutes before source compaction or cleanup. With the current default
+25-minute projection timeout, this illustrative eight-hour scenario
+**completes zero generations**, retries 19 times, and reaches about 55 GiB
+estimated Redis RSS during partially completed staging before simulated
+cleanup. Even the already-active generation alone needs about 45 GiB RSS,
+so the 8 GiB reference host cannot run this scenario: the plotted timeout
+cycles are an optimistic what-if, not feasible operations on that host.
+Fleet runs are spread uniformly over the day,
+collected after a fixed one-minute delay and mark projection dirty.
+The script uses aggregated counts, not 10,000 simulated repositories,
+actual source-row sizes, run-by-run replay or real measured throughput.
+Substitute measured row fan-out, retention, Redis memory and sustained
+write rate before using these results for infrastructure sizing.
+
 The model starts with one complete active generation; arrivals mark the lake
 dirty after collection, idle polling ticks start a projection, completed
 projections activate a new generation, and pruning retains the newest count
-and generations within grace. It models staging memory as linear in write
-progress and worker preparation and Redis writing as separate, serialized
-busy intervals. It does **not** model real webhook queue contention, overlap
+and generations within grace. Timed-out projections discard staging in the
+model and re-mark the lake dirty; real cleanup can fail. It models staging
+memory as linear in write progress and worker preparation and Redis writing
+as separate, serialized busy intervals. It does **not** model real webhook
+queue contention, overlap
 with query workloads, memory allocator fragmentation beyond the input
 factor, compaction working-set size, Redis indexing/cleanup cost, real CPU
 percentages, or failed projections. The next agent should replace the
