@@ -72,14 +72,14 @@
   "status": "needs-work",
   "evaluation": {
     "target_repo": "github/gh-aw-firewall",
-    "target_commit": "a670a5ddae98c518467a144d1a365d0ed5ab2eb5",
+    "target_commit": "6dd6157b374c3a0927618ac99e211899e6d17e7e",
     "true_positive_count": 2,
     "false_positive_count": 4,
     "false_negative_count": 1,
-    "reason": "Re-confirmed on current HEAD (a670a5d): implementation, flagged lines, and classification outcome are unchanged since the prior evaluation (the 0o600 writer function relocated from main-action.ts to src/commands/main-action.ts in an unrelated refactor, logic identical). Same 4 false positives (sessionState, squid-preserved-dir, both diagnostics-dir sites) and same false negative (artifact-permissions.ts docker-exec shell-string 'chmod -R a+rwX /fix' on auditDir) persist. Still needs directory-provenance narrowing plus a shell-string chmod matcher before adoption.",
-    "txn_id": "refiner-36801433759-1"
+    "reason": "Re-confirmed on current HEAD (6dd6157): implementation, flagged lines, and classification outcome are byte-for-byte unchanged since the prior evaluation. Same 4 false positives (sessionState, squid-preserved-dir, both diagnostics-dir sites) and same false negative (artifact-permissions.ts docker-exec shell-string 'chmod -R a+rwX /fix' on auditDir) persist. Still needs directory-provenance narrowing plus a shell-string chmod matcher before adoption.",
+    "txn_id": "refiner-36601303276-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36801433759",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36601303276",
   "last_updated_target_repo": "github/gh-aw-firewall",
   "additional_target_evaluations": [
     {
@@ -93,5 +93,5 @@
       "txn_id": "refiner-36658147600-1"
     }
   ],
-  "last_seen_at": "2026-10-01T01:36:43Z"
+  "last_seen_at": "2026-09-30T02:12:38Z"
 }
