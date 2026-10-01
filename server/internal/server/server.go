@@ -1064,6 +1064,9 @@ type databaseLoader struct {
 }
 
 func (loader *databaseLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
+	if name == simulationDaysSourceName {
+		return simulationDaysSource(), model.Metrics{}, nil
+	}
 	if name == collectionHealthSourceName {
 		source, err := loader.app.collectionHealthSource(loader.ctx, loader.allowCollectionHealth)
 		return source, model.Metrics{}, err
@@ -1089,7 +1092,7 @@ func (loader *databaseLoader) LoadSource(name string, definition *query.Definiti
 // RuntimeQuerySourceNames lists sources resolved by the server rather than
 // stored as Postgres dashboard entities.
 func RuntimeQuerySourceNames() []string {
-	return []string{collectionHealthSourceName, gitHubQuotaUsageSourceName, marketplace.SourceName}
+	return []string{collectionHealthSourceName, gitHubQuotaUsageSourceName, marketplace.SourceName, simulationDaysSourceName}
 }
 
 func unavailableSource(name string) model.Source {

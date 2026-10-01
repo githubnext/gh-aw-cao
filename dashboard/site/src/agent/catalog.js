@@ -27,6 +27,7 @@ const RUN_RECORD_SOURCES = ['audits', 'domains', 'issues', 'tools'];
  */
 const LOCAL_SOURCES = new Set([
   ...RUN_RECORD_SOURCES,
+  'simulation-days',
   ...(Array.isArray(databaseQueries) ? databaseQueries : [])
     .filter((query) => isPlainObject(query)
       && typeof query.name === 'string'
@@ -43,7 +44,7 @@ const LOCAL_SOURCES = new Set([
 
 /**
  * @typedef {{ id: string, subject: string, objective?: string, acceptance?: string, description: string,
- *   parameters: Array<{ name: string, field: string }>,
+ *   parameters: Array<{ name: string, field?: string, type?: string, required?: boolean, schema?: Record<string, unknown> }>,
  *   sources: string[], ['used-by-pages']: string[],
  *   execution: { local: boolean, backend?: string, requirements?: string[], reason?: string } }} AgentQueryEntry
  */
@@ -384,12 +385,10 @@ function computeQueriesForPage(document, pageId) {
 }
 
 /**
- * Returns the parameters that pages bind when they read one query. Dashboard
- * queries are parameterless projections; pages narrow them with route values
- * and view arguments, so those bindings are the parameters an agent can supply.
+ * Returns query operands and page-bound row filters available to agents.
  * @param {unknown} document
  * @param {string} queryId
- * @returns {Array<{ name: string, field: string }>}
+ * @returns {Array<{ name: string, field?: string, type?: string, required?: boolean, schema?: Record<string, unknown> }>}
  */
 export function queryParameters(document, queryId) {
   return memoize(document, `query-parameters:${text(queryId)}`, () => computeQueryParameters(document, queryId));
@@ -398,12 +397,22 @@ export function queryParameters(document, queryId) {
 /**
  * @param {unknown} document
  * @param {string} queryId
- * @returns {Array<{ name: string, field: string }>}
+ * @returns {Array<{ name: string, field?: string, type?: string, required?: boolean, schema?: Record<string, unknown> }>}
  */
 function computeQueryParameters(document, queryId) {
   const id = text(queryId);
-  /** @type {Map<string, { name: string, field: string }>} */
+  /** @type {Map<string, { name: string, field?: string, type?: string, required?: boolean, schema?: Record<string, unknown> }>} */
   const parameters = new Map();
+  const index = queryIndex(document);
+  const dependencies = new Set();
+  const pending = [id];
+  while (pending.length) {
+    const name = pending.pop();
+    if (!name || dependencies.has(name)) continue;
+    dependencies.add(name);
+    const definition = index.get(name);
+    if (definition) pending.push(...queryInputNames(definition));
+  }
   for (const page of agentFacingPages(document)) {
     const routeParameter = text(page.route?.['hash-query-parameter']);
     for (const view of pageViews(document, page)) {
@@ -419,9 +428,42 @@ function computeQueryParameters(document, queryId) {
       }
     }
   }
+  for (const name of dependencies) {
+    const definition = index.get(name);
+    for (const parameter of Array.isArray(definition?.parameters) ? definition.parameters : []) {
+      if (!isPlainObject(parameter) || !text(parameter.name) || !['number', 'string', 'boolean'].includes(parameter.type)) continue;
+      const formField = agentFacingPages(document).flatMap((page) => (
+        pageViews(document, page).some((view) => viewQueryNames(view).some((source) => (
+          source === id || queryDependsOn(index, source, id)
+        )))
+          ? pageParameters(page).filter((entry) => entry.name === parameter.name)
+          : []
+      ))[0];
+      parameters.set(parameter.name, {
+        name: parameter.name,
+        type: parameter.type,
+        required: true,
+        ...(formField ? { schema: formField.schema } : {})
+      });
+    }
+  }
   return [...parameters.values()].toSorted((left, right) => left.name.localeCompare(right.name));
 }
 
+/** @param {Map<string, Record<string, any>>} index @param {string} source @param {string} target */
+function queryDependsOn(index, source, target) {
+  const pending = [source];
+  const seen = new Set();
+  while (pending.length) {
+    const name = pending.pop();
+    if (name === target) return true;
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    const query = index.get(name);
+    if (query) pending.push(...queryInputNames(/** @type {any} */ (query)));
+  }
+  return false;
+}
 /**
  * Resolves the transitive source dependencies of one named query and reports
  * whether the local SQLite projection can materialize them.

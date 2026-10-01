@@ -923,6 +923,9 @@ func computeRows(rows []model.Row, fields []ComputedField) ([]model.Row, error) 
 func computeValue(row model.Row, definition ComputedField) (any, error) {
 	values := make([]any, len(definition.Args))
 	for i, argument := range definition.Args {
+		if argument.Parameter != "" {
+			return nil, fmt.Errorf("unresolved query parameter %q", argument.Parameter)
+		}
 		if argument.Field != nil {
 			values[i] = row[*argument.Field]
 		} else {

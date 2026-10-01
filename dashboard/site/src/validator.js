@@ -162,6 +162,7 @@ import { cliActionTemplateFields } from './cli-action-template.js';
 import { compileDashboardQueryTypes } from './query-type-checker.js';
 import { findDeadDashboardQueries } from './query-usage.js';
 import { executeDashboardQueries, resolveDashboardQuerySources } from './data/queries/declarative.js';
+import { SIMULATION_DAYS, simulationDaysSource } from './data/queries/simulation-days.js';
 import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
 
 const debugValidator = createDebug('validator');
@@ -2270,13 +2271,6 @@ function validateRouteTabs(route, routePath, errors) {
     }
     return;
   }
-  if (route['hash-query-parameter'] === undefined) {
-    errors.push(createError(
-      ERROR_CODES.missingOrInvalidRequiredField,
-      'route tabs require hash-query-parameter.',
-      `${routePath}.tabs`
-    ));
-  }
   if (!Array.isArray(route.tabs) || route.tabs.length === 0 || route.tabs.length > MAX_PAGE_ROUTE_TABS) {
     errors.push(createError(
       ERROR_CODES.missingOrInvalidRequiredField,
@@ -2349,10 +2343,10 @@ function validateCustomPage(page, pageNode, path, errors) {
       ));
     } else {
       validateObjectKeys(getValueNodeByKey(pageNode, 'route'), PAGE_ROUTE_KEYS, routePath, errors);
-      if (page.route['hash-query-parameter'] === undefined && page.route['navigation-page'] === undefined) {
+      if (page.route['hash-query-parameter'] === undefined && page.route['navigation-page'] === undefined && page.route.tabs === undefined) {
         errors.push(createError(
           ERROR_CODES.missingOrInvalidRequiredField,
-          'route must declare hash-query-parameter or navigation-page.',
+          'route must declare hash-query-parameter, navigation-page, or tabs.',
           routePath
         ));
       }
@@ -4830,10 +4824,12 @@ function validateViewQueryMaterialization(dashboard, errors) {
       freshness: 'fresh',
       availability: 'empty'
     };
+    /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */
     const querySources = Object.fromEntries(QUERY_SOURCE_VALUES.map((name) => [
       name,
       { source: name, rows: [], metadata }
     ]));
+    querySources[SIMULATION_DAYS] = simulationDaysSource();
 
     dashboard.pages.forEach((page, pageIndex) => {
       const resolvedPage = resolveReusablePageViews(page);

@@ -179,7 +179,8 @@ describe('dashboard view query contracts', () => {
         'operational-value',
         'friction',
         'skills',
-        'steering'
+        'steering',
+        'simulators'
       ]
     }]);
   });

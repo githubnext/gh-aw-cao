@@ -10,6 +10,43 @@ import {
 } from '../../src/agent/query-executor.js';
 import { loadDatabaseQuerySources } from '../../src/data/queries/database.js';
 import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
+import { authoritativeDashboard } from '../authoritative-dashboard.js';
+
+const simulatorInputs = {
+  repositories: 2,
+  'runs-per-day': 3,
+  'tools-per-run': 4,
+  'issues-per-run': 1,
+  'skip-rate': 50
+};
+
+it('executes bounded parameterized simulator queries without an IndexedDB source', async () => {
+  const result = await executeNamedQuery({
+    indexedDB,
+    document: authoritativeDashboard,
+    queryId: 'simulator-database-size',
+    parameters: simulatorInputs
+  });
+  expect(result.rows).toHaveLength(90);
+  expect(result.rows[0]).toMatchObject({ table: 'Run summaries', bytes: 3072 });
+  expect(result.rows[30]).toMatchObject({ table: 'Tools (30-day TTL)', bytes: 3072 });
+  expect(result.metadata.parameters).toEqual(simulatorInputs);
+});
+
+it('rejects omitted, unknown and out-of-range simulator operands', async () => {
+  for (const parameters of [
+    {},
+    { ...simulatorInputs, repositories: 100001 },
+    { ...simulatorInputs, repositories: '2' },
+    { ...simulatorInputs, 'skip-rate': 'Infinity' },
+    { ...simulatorInputs, unknown: 1 }
+  ]) {
+    await expect(executeNamedQuery({
+      indexedDB, document: authoritativeDashboard,
+      queryId: 'simulator-database-size', parameters
+    })).rejects.toThrow(NamedQueryError);
+  }
+});
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
 

@@ -8,6 +8,7 @@ import {
   QUERY_NUMERIC_REDUCER_VALUES,
   QUERY_SOURCE_FIELDS,
   QUERY_SOURCE_VALUES,
+  SYNTHETIC_SOURCE_FIELDS,
   TEMPORAL_FIELD_NAMES,
   TEXT_COMPUTE_FUNCTIONS
 } from './specification.js';
@@ -404,7 +405,10 @@ function resolveInput(input, symbols, compiled) {
   if (QUERY_SOURCE_VALUES.includes(input)) {
     const names = QUERY_SOURCE_FIELDS[/** @type {keyof typeof QUERY_SOURCE_FIELDS} */ (input)];
     return {
-      fields: names ? new Map(names.map((name) => [name, intrinsicType(name)])) : undefined,
+      fields: names ? new Map(names.map((name) => [
+        name,
+        Object.hasOwn(SYNTHETIC_SOURCE_FIELDS, input) && name === 'day' ? 'numeric' : intrinsicType(name)
+      ])) : undefined,
       tables: new Set([input]),
       rowTables: new Set([input])
     };

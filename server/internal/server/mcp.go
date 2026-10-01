@@ -70,8 +70,17 @@ type agentQuery struct {
 }
 
 type queryParameter struct {
-	Name  string `json:"name"`
-	Field string `json:"field"`
+	Name     string `json:"name"`
+	Field    string `json:"field,omitempty"`
+	Type     string `json:"type,omitempty"`
+	Required bool   `json:"required,omitempty"`
+	Schema   struct {
+		Minimum    *float64 `json:"minimum,omitempty"`
+		Maximum    *float64 `json:"maximum,omitempty"`
+		MultipleOf *float64 `json:"multipleOf,omitempty"`
+		Enum       []any    `json:"enum,omitempty"`
+		Default    any      `json:"default,omitempty"`
+	} `json:"schema,omitempty"`
 }
 
 type mcpRuntime struct {
@@ -248,7 +257,7 @@ func (runtime *mcpRuntime) callQuery(ctx context.Context, args map[string]any) (
 	if err != nil {
 		return nil, err
 	}
-	filters, parameterValues, err := runtime.queryFilters(catalogQuery, args["parameters"])
+	definitions, filters, parameterValues, err := runtime.bindParameters(id, catalogQuery, args["parameters"])
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +273,7 @@ func (runtime *mcpRuntime) callQuery(ctx context.Context, args map[string]any) (
 			},
 		}, nil
 	}
-	definition, ok := findDefinition(runtime.app.config.DashboardQueries, id)
+	definition, ok := findDefinition(definitions, id)
 	if !ok {
 		return nil, fmt.Errorf("Unknown dashboard query: %s", id) //nolint:staticcheck // Shared MCP error contract uses sentence capitalization.
 	}
@@ -278,7 +287,7 @@ func (runtime *mcpRuntime) callQuery(ctx context.Context, args map[string]any) (
 		bounded.Filter = &query.Filter{Predicates: filters}
 	}
 	input := queryRequest{
-		Aliases: []string{alias}, Queries: runtime.app.config.DashboardQueries,
+		Aliases: []string{alias}, Queries: definitions,
 		CompiledQueries: []query.Definition{cloned, bounded},
 	}
 	queryCtx, span := telemetry.Tracer().Start(ctx, telemetry.SpanQueryExecute)
@@ -368,55 +377,6 @@ func (runtime *mcpRuntime) queryLimit(value any) (int, error) {
 		return 0, err
 	}
 	return limit, nil
-}
-
-func (runtime *mcpRuntime) queryFilters(entry agentQuery, value any) ([]query.Predicate, map[string]string, error) {
-	if value == nil {
-		return nil, nil, nil
-	}
-	parameters, ok := value.(map[string]any)
-	if !ok {
-		return nil, nil, errors.New("cao_query parameters must be an object")
-	}
-	if len(parameters) > runtime.contract.Limits.MaxParameters {
-		return nil, nil, fmt.Errorf("At most %d query parameters are accepted", runtime.contract.Limits.MaxParameters) //nolint:staticcheck // Shared MCP error contract uses sentence capitalization.
-	}
-	declared := make(map[string]string, len(entry.Parameters))
-	for _, parameter := range entry.Parameters {
-		declared[parameter.Name] = parameter.Field
-	}
-	filters := make([]query.Predicate, 0, len(parameters))
-	resolved := make(map[string]string, len(parameters))
-	for name, raw := range parameters {
-		field, ok := declared[name]
-		if !ok {
-			known := make([]string, 0, len(declared))
-			for candidate := range declared {
-				known = append(known, candidate)
-			}
-			slices.Sort(known)
-			label := strings.Join(known, ", ")
-			if label == "" {
-				label = "none"
-			}
-			return nil, nil, fmt.Errorf("Unknown parameter %q for query %s; declared parameters: %s", name, entry.ID, label) //nolint:staticcheck // Shared MCP error contract uses sentence capitalization.
-		}
-		var text string
-		switch raw := raw.(type) {
-		case string:
-			text = raw
-		case float64, bool:
-			text = fmt.Sprint(raw)
-		default:
-			return nil, nil, fmt.Errorf("Parameter %q must be a string, number, or boolean", name) //nolint:staticcheck // Shared MCP error contract uses sentence capitalization.
-		}
-		if len(text) > runtime.contract.Limits.MaxParameterLength {
-			return nil, nil, fmt.Errorf("Parameter %q exceeds %d characters", name, runtime.contract.Limits.MaxParameterLength) //nolint:staticcheck // Shared MCP error contract uses sentence capitalization.
-		}
-		filters = append(filters, query.Predicate{Field: field, Equals: text})
-		resolved[name] = text
-	}
-	return filters, resolved, nil
 }
 
 func (runtime *mcpRuntime) findQuery(id string) (agentQuery, bool) {

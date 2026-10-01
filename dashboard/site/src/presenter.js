@@ -33,7 +33,7 @@ import { renderDashboardHeader } from './components/dashboard-header.js';
 import { renderAccountMenu } from './components/account-menu.js';
 import { renderDashboardFooter } from './components/dashboard-footer.js';
 import { renderDashboardFrame } from './components/dashboard-frame.js';
-import { declaredRouteTabs, renderDeclaredRouteTabs } from './components/route-tabs.js';
+import { declaredRouteTabs, renderDeclaredRouteTabs, renderPageTabs } from './components/route-tabs.js';
 import { buildChartPoints, prepareChartPoints, prepareTableRows, toViewText } from './components/view-data.js';
 import { enableDashboardKeyboardNavigation, updateWithViewTransition } from './components/dashboard-interactions.js';
 import { enablePullRefresh } from './components/pull-refresh.js';
@@ -1033,7 +1033,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       }, { signal: binding.signal });
     }
   }
-  const routeTabs = routeParameter ? declaredRouteTabs(page.route) : null;
+  const routeTabs = declaredRouteTabs(page.route);
   const renderedRouteTabs = routeTabs && routeParameter
     ? renderDeclaredRouteTabs({
       routeParameter,
@@ -1041,7 +1041,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       tabs: routeTabs.tabs,
       className: routeTabs.className
     })
-    : null;
+    : routeTabs ? renderPageTabs(routeTabs) : null;
   const pageClassName = typeof page['class-name'] === 'string' && page['class-name'].length > 0
     ? ` ${page['class-name']}`
     : '';

@@ -13,6 +13,7 @@
 
 import { PREDICTION_METHODS, tidy } from '../../data-operations.js';
 import { createDebug } from '../../debug.js';
+import { SIMULATION_DAYS, simulationDaysSource } from './simulation-days.js';
 
 const debugQuery = createDebug('data:query');
 
@@ -576,11 +577,14 @@ export function executeDashboardQueries(definitions, sources, requested, options
   /** @type {Record<string, LogicalSourceInput>} */
   const compiled = Object.create(null);
   const visiting = new Set();
-  const names = requested ? new Set(requested) : index.keys();
+  const names = new Set(requested ?? index.keys());
+  const inputs = resolveDashboardQuerySources(definitions, names).includes(SIMULATION_DAYS)
+    ? { ...sources, [SIMULATION_DAYS]: simulationDaysSource() }
+    : sources;
   for (const name of names) {
     if (!index.has(name)) continue;
     defineLazyProperty(derived, name, () => {
-      compileDashboardQuery(name, index, sources, defects, queryBudget(), compiled, visiting);
+      compileDashboardQuery(name, index, inputs, defects, queryBudget(), compiled, visiting);
       const page = options.pagination?.[name];
       if (!page) return compiled[name];
       const required = new Set(resolveDashboardQuerySources(definitions, [name]));

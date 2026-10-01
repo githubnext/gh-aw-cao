@@ -11,7 +11,8 @@
 
 import { createDebug } from '../debug.js';
 import { loadDatabaseQuerySources } from '../data/queries/database.js';
-import { DASHBOARD_QUERY_LIMITS } from '../data/queries/declarative.js';
+import { DASHBOARD_QUERY_LIMITS, resolveDashboardQuerySources } from '../data/queries/declarative.js';
+import { resolveDashboardQueryParameters } from '../data/queries/view-payload-compiler.js';
 import { describeQuery, queryExecutionRequirements, queryParameters } from './catalog.js';
 import mcpContract from './mcp-contract.json' with { type: 'json' };
 
@@ -47,18 +48,23 @@ function isPlainObject(value) {
  * @param {unknown} document
  * @param {string} queryId
  * @param {unknown} parameters
- * @returns {Array<{ name: string, field: string, value: string }>}
+ * @returns {Array<{ name: string, field?: string, value: string|number|boolean, type?: string }>}
  */
 export function resolveNamedQueryParameters(document, queryId, parameters) {
-  if (parameters === undefined || parameters === null) return [];
-  if (!isPlainObject(parameters)) {
+  if (parameters !== undefined && parameters !== null && !isPlainObject(parameters)) {
     throw new NamedQueryError('Query parameters must be an object of name/value pairs');
   }
-  const entries = Object.entries(parameters);
+  const entries = Object.entries(parameters ?? {});
   if (entries.length > MAX_NAMED_QUERY_PARAMETERS) {
     throw new NamedQueryError(`At most ${MAX_NAMED_QUERY_PARAMETERS} query parameters are accepted`);
   }
   const declared = new Map(queryParameters(document, queryId).map((parameter) => [parameter.name, parameter]));
+  const supplied = new Set(entries.map(([name]) => name));
+  for (const parameter of declared.values()) {
+    if (parameter.required && !supplied.has(parameter.name)) {
+      throw new NamedQueryError(`Query ${queryId} requires parameter "${parameter.name}"`);
+    }
+  }
   return entries.map(([name, value]) => {
     const parameter = declared.get(name);
     if (!parameter) {
@@ -68,11 +74,22 @@ export function resolveNamedQueryParameters(document, queryId, parameters) {
     if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') {
       throw new NamedQueryError(`Parameter "${name}" must be a string, number, or boolean`);
     }
-    const text = String(value);
-    if (text.length > MAX_NAMED_QUERY_PARAMETER_LENGTH) {
+    const input = String(value);
+    if (input.length > MAX_NAMED_QUERY_PARAMETER_LENGTH) {
       throw new NamedQueryError(`Parameter "${name}" exceeds ${MAX_NAMED_QUERY_PARAMETER_LENGTH} characters`);
     }
-    return { name: parameter.name, field: parameter.field, value: text };
+    if (!parameter.type) return { name: parameter.name, field: parameter.field, value: input };
+    const typed = value;
+    const schema = parameter.schema ?? {};
+    if (typeof typed !== parameter.type
+        || (parameter.type === 'number' && (typeof typed !== 'number' || !Number.isFinite(typed)
+          || typeof schema.minimum === 'number' && typed < schema.minimum
+          || typeof schema.maximum === 'number' && typed > schema.maximum
+          || typeof schema.multipleOf === 'number' && Math.abs(typed / schema.multipleOf - Math.round(typed / schema.multipleOf)) > 1e-9))
+        || (Array.isArray(schema.enum) && !schema.enum.includes(typed))) {
+      throw new NamedQueryError(`Invalid value for query parameter "${name}"`);
+    }
+    return { name: parameter.name, type: parameter.type, value: typed };
   });
 }
 
@@ -144,7 +161,8 @@ export async function executeNamedQuery({ indexedDB, document, queryId, paramete
     debugQueryExecutor({ query: id, outcome: 'unknown-query' });
     throw new NamedQueryError(`Unknown dashboard query: ${id}`);
   }
-  const filters = resolveNamedQueryParameters(document, id, parameters);
+  const resolvedParameters = resolveNamedQueryParameters(document, id, parameters);
+  const filters = resolvedParameters.filter((parameter) => parameter.field);
   const maxRows = resolveLimit(limit);
   const execution = queryExecutionRequirements(document, id);
   if (!execution.local) {
@@ -170,10 +188,15 @@ export async function executeNamedQuery({ indexedDB, document, queryId, paramete
     && Array.isArray(document.dashboard.queries)
     ? document.dashboard.queries
     : [];
-  const bounded = compileBoundedQueries(id, /** @type {Array<Record<string, unknown>>} */ (queries), filters, maxRows);
+  const required = new Set(resolveDashboardQuerySources(queries, [id]));
+  const scoped = queries.filter((query) => isPlainObject(query) && typeof query.name === 'string' && required.has(query.name));
+  const operandValues = Object.fromEntries(resolvedParameters.filter((parameter) => parameter.type)
+    .map((parameter) => [parameter.name, parameter.value]));
+  const resolved = /** @type {Array<Record<string, unknown>>} */ (resolveDashboardQueryParameters(scoped, operandValues));
+  const bounded = compileBoundedQueries(id, resolved, /** @type {Array<{field:string,value:string}>} */ (filters), maxRows);
   const sources = await loadDatabaseQuerySources(indexedDB, {}, {
     sourceNames: [bounded.alias],
-    queries: [...queries, ...bounded.queries]
+    queries: [...resolved, ...bounded.queries]
   });
   const source = /** @type {{ rows?: unknown, metadata?: unknown } | undefined} */ (sources[bounded.alias]);
   signal?.throwIfAborted?.();
@@ -202,8 +225,8 @@ export async function executeNamedQuery({ indexedDB, document, queryId, paramete
       'as-of': metadata['as-of'] ?? '',
       'returned-rows': rows.length,
       limit: maxRows,
-      ...(filters.length > 0
-        ? { parameters: Object.fromEntries(filters.map((filter) => [filter.name, filter.value])) }
+      ...(resolvedParameters.length > 0
+        ? { parameters: Object.fromEntries(resolvedParameters.map((parameter) => [parameter.name, parameter.value])) }
         : {})
     }
   };
