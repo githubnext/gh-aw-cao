@@ -118,6 +118,23 @@ function queryIndex(document) {
   return new Map(queryDefinitions(document).map((query) => [text(query.name), query]));
 }
 
+/** @param {unknown} document @param {string} queryId */
+function usesSimulationDays(document, queryId) {
+  const index = queryIndex(document);
+  const pending = [queryId];
+  const visited = new Set();
+  while (pending.length) {
+    const name = pending.pop();
+    if (name === undefined) break;
+    if (name === 'simulation-days') return true;
+    if (visited.has(name)) continue;
+    visited.add(name);
+    const definition = index.get(name);
+    if (definition) pending.push(...queryInputNames(definition));
+  }
+  return false;
+}
+
 /**
  * Returns the page identifiers reachable from the declared navigation.
  * @param {unknown} navigation
@@ -179,6 +196,7 @@ function computeAgentFacingPages(document) {
   const unique = new Map();
   for (const page of pages) {
     if (!isAgentFacingPage(page, navigationPages)) continue;
+    if (pageViews(document, page).some((view) => viewQueryNames(view).some((name) => usesSimulationDays(document, name)))) continue;
     const pageId = text(page.id);
     if (unique.has(pageId)) continue;
     unique.set(pageId, page);
@@ -534,7 +552,7 @@ function computeListQueries(document) {
       pagesByQuery.set(name, [...(pagesByQuery.get(name) ?? []), text(page.id)]);
     }
   }
-  return queryDefinitions(document).map((query) => {
+  return queryDefinitions(document).filter((query) => !usesSimulationDays(document, text(query.name))).map((query) => {
     const id = text(query.name);
     const execution = queryExecutionRequirements(document, id);
     return {

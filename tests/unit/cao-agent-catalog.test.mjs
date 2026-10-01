@@ -53,11 +53,11 @@ test("cao queries lists named dashboard queries as JSON", async () => {
   assert.ok(query.subject.length > 0);
 });
 
-test("every named query defines its own objective and verifiable acceptance", async () => {
-  const { dashboard } = await loadAgentDashboardDocument();
-  for (const query of dashboard.queries) {
+test("every agent-facing query defines its own objective and verifiable acceptance", async () => {
+  const { queries } = await readAgentCatalog();
+  for (const query of queries) {
     for (const field of ["subject", "objective", "acceptance"]) {
-      assert.ok(typeof query[field] === "string" && query[field].trim(), `${query.name} needs ${field}`);
+      assert.ok(typeof query[field] === "string" && query[field].trim(), `${query.id} needs ${field}`);
     }
   }
 });

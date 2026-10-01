@@ -26,6 +26,7 @@ import {
 } from "../../dashboard/site/src/data/storage/sqlite-indexeddb.js";
 import { loadDashboardSourceSync } from "../../dashboard/report/bundle-dashboards.mjs";
 import {
+  listQueries,
   queryExecutionRequirements,
 } from "../../dashboard/site/src/agent/catalog.js";
 import {
@@ -252,6 +253,7 @@ function representativeSources() {
 
 function dashboardQueries() {
   const { document } = loadDashboardSourceSync(dashboardPath);
+  const exposed = new Set(listQueries(document).map((query) => query.id));
   const resolveContext = (value) => {
     if (Array.isArray(value)) return value.map(resolveContext);
     if (!value || typeof value !== "object") return value;
@@ -263,7 +265,7 @@ function dashboardQueries() {
   // Ingestion receipts describe each backend's own writes, so their values are
   // intentionally backend-local rather than cross-backend query results.
   return resolveContext(document.dashboard.queries).filter(
-    (query) => query.from !== "transactions",
+    (query) => query.from !== "transactions" && exposed.has(query.name),
   );
 }
 

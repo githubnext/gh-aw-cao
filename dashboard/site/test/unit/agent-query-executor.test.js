@@ -10,6 +10,15 @@ import {
 } from '../../src/agent/query-executor.js';
 import { loadDatabaseQuerySources } from '../../src/data/queries/database.js';
 import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
+import { authoritativeDashboard } from '../authoritative-dashboard.js';
+
+it('rejects simulator-only queries at the named-query boundary', async () => {
+  await expect(executeNamedQuery({
+    indexedDB,
+    document: authoritativeDashboard,
+    queryId: 'simulator-database-size'
+  })).rejects.toThrow(NamedQueryError);
+});
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
 

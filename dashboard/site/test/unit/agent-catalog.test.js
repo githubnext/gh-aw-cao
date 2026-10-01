@@ -136,6 +136,31 @@ describe("agent catalog", () => {
     ]);
   });
 
+  it("withholds synthetic simulator queries and their pages from agent transports", () => {
+    const simulator = {
+      dashboard: {
+        navigation: [{ pages: ["simulators", "insights"] }],
+        queries: [
+          { name: "ordinary", from: "runs" },
+          { name: "daily", from: "simulation-days" },
+          { name: "growth", from: "daily" },
+          { name: "combined", from: "ordinary", union: ["growth"] },
+        ],
+        pages: [
+          { id: "simulators", title: "Simulators", views: [{ data: { source: "growth" } }] },
+          { id: "insights", title: "Insights", views: [{ data: { source: "ordinary" } }] },
+        ],
+      },
+    };
+    expect(listQueries(simulator).map((query) => query.id)).toEqual(["ordinary"]);
+    expect(describeQuery(simulator, "daily")).toBe(null);
+    expect(describeQuery(simulator, "growth")).toBe(null);
+    expect(describeQuery(simulator, "combined")).toBe(null);
+    expect(listPages(simulator).map((page) => page.id)).toEqual(["insights"]);
+    expect(listQueries(authoritativeDashboard).some((query) => query.id.startsWith("simulator-"))).toBe(false);
+    expect(listPages(authoritativeDashboard).some((page) => page.id === "simulators")).toBe(false);
+  });
+
   it("exposes one catalog for every transport", () => {
     const catalog = agentCatalog(document);
     expect(Object.keys(catalog).sort()).toEqual([
