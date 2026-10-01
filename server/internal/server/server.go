@@ -1190,7 +1190,7 @@ func (a *App) executeQueryWithReader(ctx context.Context, input queryRequest, al
 		definitions = append(append([]query.Definition{}, a.databaseQueries...), input.Queries...)
 	}
 	definitions = append(definitions, input.CompiledQueries...)
-	resolveQueryContext(definitions, evaluatedAt)
+	ResolveQueryContext(definitions, evaluatedAt)
 	replaced := map[string]bool{}
 	for _, name := range input.ReplacedSources {
 		replaced[name] = true
@@ -1355,7 +1355,8 @@ func evaluationTime(active postgresx.State) string {
 	return time.Now().UTC().Format(time.RFC3339Nano)
 }
 
-func resolveQueryContext(definitions []query.Definition, evaluatedAt string) {
+// ResolveQueryContext binds the ingestion evaluation time to dashboard queries.
+func ResolveQueryContext(definitions []query.Definition, evaluatedAt string) {
 	for definitionIndex := range definitions {
 		for computedIndex := range definitions[definitionIndex].Compute {
 			for argumentIndex := range definitions[definitionIndex].Compute[computedIndex].Args {

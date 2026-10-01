@@ -53,7 +53,7 @@
     "test:e2e:dashboard-query-parity": "node tests/e2e/dashboard-query-parity.mjs",
     "test:e2e:dashboard-deployed": "playwright test --config=tests/playwright/configs/dashboard-deployed.config.mjs",
     "test:performance:dashboard-queries": "playwright test --config=tests/playwright/configs/dashboard-query-performance.config.mjs",
-    "test:performance:dashboard-query-cost": "node --expose-gc --test tests/performance/dashboard-query-cost.test.mjs",
+    "test:performance:dashboard-query-cost": "node --test tests/performance/dashboard-query-cost.test.mjs",
     "test:e2e:dashboard-ingestion": "playwright test --config=tests/playwright/configs/dashboard-ingestion.config.mjs",
     "test:stress:dashboard": "playwright test --config=tests/playwright/configs/dashboard-massive-scale.config.mjs",
     "test:memory:dashboard-overview": "playwright test --config=tests/playwright/configs/dashboard-overview-memory.config.mjs",

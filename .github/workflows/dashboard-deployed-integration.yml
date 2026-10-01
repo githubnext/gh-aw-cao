@@ -16,6 +16,9 @@ on:
       - dashboard/site/src/source-*.js
       - server/cmd/cao-dashboard/**
       - server/internal/query/**
+      - server/internal/ingest/**
+      - server/internal/postgresx/**
+      - server/internal/server/**
       - server/internal/redisx/**
       - package.json
       - package-lock.json
@@ -25,6 +28,7 @@ on:
       - tests/e2e/dashboard-query-performance.spec.mjs
       - tests/e2e/dashboard-view-assessment.mjs
       - tests/helpers/dashboard-query-cost.mjs
+      - tests/helpers/dashboard-query-cost-report.mjs
       - tests/performance/dashboard-query-cost.test.mjs
       - tests/playwright/configs/dashboard-query-performance.config.mjs
   workflow_dispatch:
@@ -122,9 +126,25 @@ jobs:
           retention-days: 14
 
   query-cost:
-    name: Measure deployed query cost
+    name: Measure deployed Postgres query cost
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: cao
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d cao"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 30
+    env:
+      CAO_POSTGRES_URL: postgres://postgres@127.0.0.1:5432/cao?sslmode=disable
+      DASHBOARD_SERVER_BINARY: ${{ github.workspace }}/.tmp/cao-dashboard
     permissions:
       contents: read
     steps:
@@ -137,33 +157,27 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci --ignore-scripts
-      - name: Download deployed snapshot
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - name: Build production query engine
+        run: |
+          mkdir -p .tmp
+          go -C server build -o ../.tmp/cao-dashboard ./cmd/cao-dashboard
+      - name: Download deployed artifacts
         run: npm run dashboard:data:download
       - name: Measure query cost
         id: benchmark
         continue-on-error: true
         run: npm run test:performance:dashboard-query-cost
-      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
-        if: always()
-        with:
-          go-version-file: server/go.mod
-          cache-dependency-path: server/go.sum
-      - name: Compile Redis query translation report
-        id: compile
-        if: always()
-        continue-on-error: true
-        run: |
-          mkdir -p test-results/dashboard-query-cost
-          go -C server run ./cmd/cao-dashboard compile-queries \
-            > test-results/dashboard-query-cost/native-translation.md
-      - name: Record query analysis outcomes
+      - name: Record benchmark outcome
         if: always()
         env:
           BENCHMARK_OUTCOME: ${{ steps.benchmark.outcome }}
-          COMPILE_OUTCOME: ${{ steps.compile.outcome }}
         run: |
           mkdir -p test-results/dashboard-query-cost
-          printf 'benchmark=%s\ncompile=%s\n' "$BENCHMARK_OUTCOME" "$COMPILE_OUTCOME" \
+          printf 'benchmark=%s\n' "$BENCHMARK_OUTCOME" \
             > test-results/dashboard-query-cost/status.txt
       - name: Upload query cost report
         if: always()
@@ -174,7 +188,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
       - name: Fail when query analysis fails
-        if: steps.benchmark.outcome != 'success' || steps.compile.outcome != 'success'
+        if: steps.benchmark.outcome != 'success'
         run: exit 1
 
   query-performance-comment:
@@ -295,8 +309,6 @@ jobs:
             const fs = require('fs')
             const marker = '<!-- dashboard-query-cost-results -->'
             const summaryPath = 'query-cost-results/summary.md'
-            const translationPath = 'query-cost-results/native-translation.md'
-            const hasTranslation = fs.existsSync(translationPath) && fs.statSync(translationPath).size > 0
             const maxSummaryLength = 30000
             let summary = fs.existsSync(summaryPath)
               ? fs.readFileSync(summaryPath, 'utf8').trim()
@@ -304,34 +316,20 @@ jobs:
             if (summary.length > maxSummaryLength) {
               summary = `${summary.slice(0, maxSummaryLength)}\n\n_Report truncated; see the uploaded artifact for the full report._`
             }
-            let translation = hasTranslation
-              ? fs.readFileSync(translationPath, 'utf8').trim()
-              : 'No Redis translation report was produced.'
-            if (translation.length > maxSummaryLength) {
-              translation = `${translation.slice(0, maxSummaryLength)}\n\n_Report truncated; see the uploaded artifact for the full report._`
-            }
             const runUrl =
               `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
             const status = fs.existsSync('query-cost-results/status.txt')
               ? fs.readFileSync('query-cost-results/status.txt', 'utf8')
               : ''
             const benchmarkOK = status.includes('benchmark=success')
-            const compileOK = status.includes('compile=success')
-            const outcome = [
-              benchmarkOK ? 'Query cost benchmark passed.' : 'Query cost benchmark failed or did not complete.',
-              compileOK ? 'Redis translation report compiled.' : 'Redis translation compilation failed or did not complete.',
-            ].join(' ')
+            const outcome = benchmarkOK
+              ? 'Postgres/Go query cost benchmark passed.'
+              : 'Postgres/Go query cost benchmark failed or did not complete.'
             const body = [
               marker,
               '<details><summary><b>Dashboard query cost report</b></summary>',
               '',
               summary,
-              '',
-              '</details>',
-              '',
-              '<details><summary><b>Redis native translation</b></summary>',
-              '',
-              translation,
               '',
               '</details>',
               '',

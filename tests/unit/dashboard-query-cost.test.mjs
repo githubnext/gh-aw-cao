@@ -4,6 +4,7 @@ import test from "node:test";
 import { parse } from "yaml";
 import { estimateRetainedBytes, selectCostlyQueries } from "../helpers/dashboard-query-cost.mjs";
 import { authoritativeDashboard as dashboardDocument } from "../helpers/authoritative-dashboard.mjs";
+import { postgresQueryCostMarkdown } from "../helpers/dashboard-query-cost-report.mjs";
 
 const CANDIDATE_LIMIT = 10;
 
@@ -36,18 +37,33 @@ test("retained byte estimate counts shared rows once", () => {
   assert.ok(estimateRetainedBytes([row, { ...row }]) > estimateRetainedBytes([row, row]));
 });
 
-test("deployed integration runs the headless query cost benchmark", async () => {
+test("deployed integration runs the Postgres-backed Go query cost benchmark", async () => {
   const workflow = await readFile(".github/workflows/dashboard-deployed-integration.yml", "utf8");
   assert.match(workflow, /tests\/performance\/dashboard-query-cost\.test\.mjs/);
   assert.match(workflow, /tests\/helpers\/dashboard-query-cost\.mjs/);
   assert.match(workflow, /run: npm run dashboard:data:download/);
   assert.match(workflow, /run: npm run test:performance:dashboard-query-cost/);
+  assert.match(workflow, /image: postgres:16-alpine/);
+  assert.match(workflow, /go -C server build -o \.\.\/\.tmp\/cao-dashboard/);
   assert.match(workflow, /name: dashboard-query-cost\n/);
   const manifest = JSON.parse(await readFile("package.json", "utf8"));
   assert.equal(
     manifest.scripts["test:performance:dashboard-query-cost"],
-    "node --expose-gc --test tests/performance/dashboard-query-cost.test.mjs",
+    "node --test tests/performance/dashboard-query-cost.test.mjs",
   );
+});
+
+test("Postgres query cost report includes Go measurements", () => {
+  const report = {
+    records: 42,
+    measurements: [{
+      query: "test-query", rows: 2, "duration-ms": 1.25,
+      metrics: { operations: 12, peakWorkingRows: 7, retainedBytes: 128 },
+    }],
+  };
+  const markdown = postgresQueryCostMarkdown(report, [{ name: "test-query", rank: 1 }]);
+  assert.match(markdown, /Postgres \+ Go/);
+  assert.match(markdown, /\| `test-query` \| 1 \| 2 \| 12 \| 1\.25 \| 7 \| 128 \|/);
 });
 
 test("deployed integration reports the query cost report in a pull request comment", async () => {

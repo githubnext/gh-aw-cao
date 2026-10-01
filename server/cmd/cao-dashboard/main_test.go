@@ -566,7 +566,7 @@ func TestActionsEnvironmentPresentReportsPresenceNotValues(t *testing.T) {
 }
 
 func TestRootCommandRegistersEverySubcommand(t *testing.T) {
-	want := []string{"backfill", "collect", "compile-queries", "doctor", "ingest", "serve", "serve-hosted", "simulate-api", "simulate-webhooks"}
+	want := []string{"backfill", "benchmark-queries", "collect", "compile-queries", "doctor", "ingest", "serve", "serve-hosted", "simulate-api", "simulate-webhooks"}
 	root := newRootCommand()
 
 	got := make([]string, 0, len(want))
