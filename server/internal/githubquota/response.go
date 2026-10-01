@@ -56,22 +56,38 @@ func ParseResponse(header http.Header, statusCode int, now time.Time) ResponseQu
 	if statusCode < http.StatusBadRequest {
 		return result
 	}
-	if retryAfter, ok := parseRetryAfter(header.Get("Retry-After"), now); ok {
-		result.ParkUntil = retryAfter
-		result.ParkReason = ParkReasonRetryAfter
-		if statusCode == http.StatusForbidden || statusCode == http.StatusTooManyRequests {
-			result.ParkReason = ParkReasonSecondaryRateLimit
-		}
-		return result
-	}
-	// A 429 without Retry-After and with primary quota left is a secondary
-	// rate limit. A 403 alone is ambiguous with authorization failures, so it
-	// parks only when it carries Retry-After.
-	if statusCode == http.StatusTooManyRequests && (!result.HasObservation || result.Observation.Remaining > 0) {
-		result.ParkUntil = now.Add(SecondaryRateLimitBackoff)
-		result.ParkReason = ParkReasonSecondaryRateLimit
+	retryAfter, hasRetryAfter := parseRetryAfter(header.Get("Retry-After"), now)
+	result.ParkUntil, result.ParkReason = parkDecision(
+		statusCode, retryAfter, hasRetryAfter, result.HasObservation, result.Observation.Remaining, now)
+	if result.ParkReason != "" {
+		quotaLog.Printf("response parked status=%d reason=%s", statusCode, result.ParkReason)
 	}
 	return result
+}
+
+// parkDecision classifies one error-status GitHub response into a parking
+// instruction, applying the same Retry-After-versus-secondary-rate-limit
+// precedence ParseResponse previously computed inline. It is a pure function
+// extracted from ParseResponse so each precedence rule is independently
+// testable without constructing an http.Header.
+//
+// A 429 without Retry-After and with primary quota left is a secondary rate
+// limit. A 403 alone is ambiguous with authorization failures, so it parks
+// only when it carries Retry-After.
+func parkDecision(
+	statusCode int, retryAfter time.Time, hasRetryAfter, hasObservation bool, remaining int, now time.Time,
+) (time.Time, string) {
+	if hasRetryAfter {
+		reason := ParkReasonRetryAfter
+		if statusCode == http.StatusForbidden || statusCode == http.StatusTooManyRequests {
+			reason = ParkReasonSecondaryRateLimit
+		}
+		return retryAfter, reason
+	}
+	if statusCode == http.StatusTooManyRequests && (!hasObservation || remaining > 0) {
+		return now.Add(SecondaryRateLimitBackoff), ParkReasonSecondaryRateLimit
+	}
+	return time.Time{}, ""
 }
 
 func parseRetryAfter(value string, now time.Time) (time.Time, bool) {
