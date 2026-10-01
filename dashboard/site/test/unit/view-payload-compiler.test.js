@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
 import { tidy } from '../../src/data-operations.js';
 import { executeDashboardQueries } from '../../src/data/queries/declarative.js';
+import { authoritativeDashboard } from '../authoritative-dashboard.js';
 import {
   compileDashboardViewPayloadQueries,
   dashboardViewAliasName
@@ -16,6 +17,29 @@ const metadata = {
   completeness: 'complete',
   freshness: 'fresh'
 };
+
+it('traces an unavailable MCP view alias through its scoped query graph to the missing source', () => {
+  const dashboard = authoritativeDashboard.dashboard;
+  const page = dashboard.pages.find((candidate) => candidate.id === 'mcps');
+  const payload = compileDashboardViewPayloadQueries(page, 'mcps', {
+    queries: dashboard.queries,
+    views: dashboard.views,
+    viewId: 'mcp-top-tools',
+    sourceNames: ['mcp-top-tools']
+  });
+  const alias = payload.aliases[0];
+  const unavailable = executeDashboardQueries(payload.queries, {
+    'mcp-calls': { source: 'mcp-calls', rows: [], metadata: { ...metadata, availability: 'unavailable' } }
+  }, payload.aliases)[alias];
+  expect(unavailable.metadata.availability).toBe('unavailable');
+  expect(unavailable.metadata['query-error']).toEqual({ code: 'input-unavailable', source: 'mcp-calls' });
+
+  const empty = executeDashboardQueries(payload.queries, {
+    'mcp-calls': { source: 'mcp-calls', rows: [], metadata: { ...metadata, availability: 'empty' } }
+  }, payload.aliases)[alias];
+  expect(empty.metadata.availability).toBe('empty');
+  expect(empty.metadata['query-error']).toBeUndefined();
+});
 
 it('compiles distinct aliases when two views filter the same source differently', () => {
   const page = {

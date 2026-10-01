@@ -1114,7 +1114,7 @@ describe('declarative dashboard queries', () => {
       '$.dashboard.queries[mcp-top-tools]: input source "mcp-tool-totals" is unavailable.'
     );
     expect(unavailable.metadata['query-error']).toEqual({
-      code: 'input-unavailable', source: 'mcp-tool-totals'
+      code: 'input-unavailable', source: 'mcp-calls'
     });
   });
 

@@ -703,7 +703,13 @@ function materializeDashboardQuery(definition, sources, defect, budget) {
     if (unavailable) {
       status = 'unavailable';
       failure = `input source "${unavailable.name}" is unavailable`;
-      return unavailableResult(definition, composedMetadata(definition.name, inputs, 0), failure, unavailable.name);
+      const upstream = unavailable.source?.metadata?.['query-error'];
+      const rootSource = isPlainObject(upstream)
+        && upstream.code === 'input-unavailable'
+        && typeof upstream.source === 'string'
+        && /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?::[a-z][a-z0-9]*(?:-[a-z0-9]+)*)*$/.test(upstream.source)
+        ? upstream.source : unavailable.name;
+      return unavailableResult(definition, composedMetadata(definition.name, inputs, 0), failure, rootSource);
     }
 
     const effectiveSources = { ...sources };
