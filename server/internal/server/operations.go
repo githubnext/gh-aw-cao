@@ -14,7 +14,6 @@ import (
 
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
 const (
@@ -36,13 +35,12 @@ type GitHubWebhook struct {
 
 type DirectoryReconciler struct {
 	Store               *postgresx.Store
-	Operational         *redisx.Store
 	SourceDirectory     string
 	DatabaseQueriesPath string
 }
 
 func (reconciler DirectoryReconciler) Rebuild(ctx context.Context) (ingest.Result, error) {
-	return ingest.Run(ctx, reconciler.Store, reconciler.Operational, reconciler.SourceDirectory, ingest.Options{
+	return ingest.Run(ctx, reconciler.Store, reconciler.SourceDirectory, ingest.Options{
 		DatabaseQueriesPath: reconciler.DatabaseQueriesPath,
 		Force:               true,
 	})

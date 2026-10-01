@@ -42,6 +42,7 @@ type Store struct {
 type SourceReader interface {
 	State(context.Context) (State, error)
 	LoadSource(context.Context, string, *query.Definition) (model.Source, model.Metrics, error)
+	LoadDocument(context.Context, string, string) (model.Row, error)
 	Diagnostics(context.Context) (model.Diagnostics, error)
 }
 
@@ -571,7 +572,7 @@ func (s *Store) DeleteNamespace(ctx context.Context) error {
 
 func (s *Store) State(ctx context.Context) (State, error) {
 	var state State
-	err := s.WithReadTransaction(ctx, func(reader SourceReader) (err error) {
+	err := s.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) (err error) {
 		state, err = reader.State(ctx)
 		return err
 	})
@@ -1271,13 +1272,13 @@ func migrateCanonicalMetadata(ctx context.Context, tx *sql.Tx) error {
 }
 
 // WithReadTransaction holds a single repeatable-read snapshot for the callback.
-func (s *Store) WithReadTransaction(ctx context.Context, fn func(SourceReader) error) error {
+func (s *Store) WithReadTransaction(ctx context.Context, fn func(context.Context, SourceReader) error) error {
 	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead})
 	if err != nil {
 		return fmt.Errorf("begin postgres source read: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if err := fn(&readTransaction{store: s, tx: tx}); err != nil {
+	if err := fn(ctx, &readTransaction{store: s, tx: tx}); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -1292,11 +1293,21 @@ func (s *Store) WithReadTransaction(ctx context.Context, fn func(SourceReader) e
 func (s *Store) LoadSource(ctx context.Context, name string, definition *query.Definition) (model.Source, model.Metrics, error) {
 	var source model.Source
 	var metrics model.Metrics
-	err := s.WithReadTransaction(ctx, func(reader SourceReader) (err error) {
+	err := s.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) (err error) {
 		source, metrics, err = reader.LoadSource(ctx, name, definition)
 		return err
 	})
 	return source, metrics, err
+}
+
+// LoadDocument reads one source document by its indexed ID.
+func (s *Store) LoadDocument(ctx context.Context, source, id string) (model.Row, error) {
+	var document model.Row
+	err := s.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) (err error) {
+		document, err = reader.LoadDocument(ctx, source, id)
+		return err
+	})
+	return document, err
 }
 
 func (r *readTransaction) LoadSource(ctx context.Context, name string, definition *query.Definition) (model.Source, model.Metrics, error) {
@@ -1455,6 +1466,24 @@ func (r *readTransaction) LoadSource(ctx context.Context, name string, definitio
 	return source, model.Metrics{OutputRows: len(source.Rows)}, nil
 }
 
+func (r *readTransaction) LoadDocument(ctx context.Context, source, id string) (model.Row, error) {
+	var payload string
+	err := r.tx.QueryRowContext(ctx, `SELECT payload FROM cao_source_documents
+		WHERE namespace = $1 AND source_name = $2 AND id = $3
+		ORDER BY ordinal LIMIT 1`, r.store.namespace, source, id).Scan(&payload)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("%w: %q document %q", ErrSourceUnavailable, source, id)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read postgres source document: %w", err)
+	}
+	var document model.Row
+	if err := decodeJSON([]byte(payload), &document); err != nil {
+		return nil, fmt.Errorf("decode postgres source document: %w", err)
+	}
+	return document, nil
+}
+
 type valueNode struct {
 	id            int64
 	parent, index sql.NullInt64
@@ -1535,7 +1564,7 @@ func decodeTree(nodes []*valueNode) (any, error) {
 
 func (s *Store) Diagnostics(ctx context.Context) (model.Diagnostics, error) {
 	var diagnostics model.Diagnostics
-	err := s.WithReadTransaction(ctx, func(reader SourceReader) (err error) {
+	err := s.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) (err error) {
 		diagnostics, err = reader.Diagnostics(ctx)
 		return err
 	})

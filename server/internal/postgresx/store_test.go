@@ -183,6 +183,9 @@ func TestStoreIntegration(t *testing.T) {
 		"empty": {Source: "empty", Rows: []model.Row{}, Metadata: model.Metadata{"origin": "inventory"}},
 		"deep":  {Source: "deep", Rows: []model.Row{{"nested": deep}}, Metadata: model.Metadata{"nested": deep}},
 		"bulk":  {Source: "bulk", Rows: bulkRows},
+		"documents": {Source: "documents", Rows: []model.Row{
+			{"id": "doc-1", "content": "document contents"},
+		}},
 	}
 	diagnostics := model.Diagnostics{SchemaVersion: model.SchemaVersion, Counts: map[string]int{"repositories": 2}, RelationshipErrors: []string{"test diagnostic"}, DuplicateRecordIDs: map[string][]string{"present-empty": {}, "duplicates": {"a", "b"}}}
 	revision, err := store.Replace(ctx, sources, diagnostics, "test-revision", evaluatedAt)
@@ -213,7 +216,7 @@ func TestStoreIntegration(t *testing.T) {
 	}
 	if !state.Ready || state.Revision != revision || state.DataRevision != "test-revision" ||
 		!state.EvaluatedAt.Equal(evaluatedAt) ||
-		!reflect.DeepEqual(state.Counts, map[string]int{"$runs": 1, "$jobs": 6, "$events": 0, "repositories": 2, "empty": 0, "deep": 1, "bulk": 1100}) {
+		!reflect.DeepEqual(state.Counts, map[string]int{"$runs": 1, "$jobs": 6, "$events": 0, "repositories": 2, "empty": 0, "deep": 1, "bulk": 1100, "documents": 1}) {
 		t.Fatalf("unexpected state: %+v", state)
 	}
 	tenant, err := NewConfig(ctx, config, "other-tenant")
@@ -228,6 +231,9 @@ func TestStoreIntegration(t *testing.T) {
 	if _, _, err := tenant.LoadSource(ctx, "$runs", nil); !errors.Is(err, ErrSourceUnavailable) {
 		t.Fatalf("other namespace leaked raw source: %v", err)
 	}
+	if _, err := tenant.LoadDocument(ctx, "documents", "doc-1"); !errors.Is(err, ErrSourceUnavailable) {
+		t.Fatalf("other namespace leaked source document: %v", err)
+	}
 	if _, err := tenant.Replace(ctx, map[string]model.Source{"$runs": {
 		Source: "$runs", Rows: []model.Row{{"id": "other"}}, Metadata: model.Metadata{},
 	}}, model.Diagnostics{}, "other", evaluatedAt); err != nil {
@@ -237,7 +243,7 @@ func TestStoreIntegration(t *testing.T) {
 		t.Fatalf("other namespace read: %+v, %v", other, err)
 	}
 	nativeDefinition := []query.Definition{{Name: "raw", From: "$runs"}}
-	err = tenant.WithReadTransaction(ctx, func(reader SourceReader) error {
+	err = tenant.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) error {
 		result, _, supported, err := reader.(NativePlanExecutor).ExecuteNativePlan(ctx, nativeDefinition, []string{"raw"}, []string{"raw"})
 		if err != nil || !supported || result["raw"].Rows[0]["id"] != "other" {
 			t.Errorf("native plan crossed namespaces: %+v supported=%t err=%v", result, supported, err)
@@ -298,6 +304,13 @@ func TestStoreIntegration(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(deepSource.Rows, sources["deep"].Rows) ||
 		!reflect.DeepEqual(deepSource.Metadata, sources["deep"].Metadata) {
 		t.Fatalf("deeply nested source: %+v, %v", deepSource, err)
+	}
+	document, err := store.LoadDocument(ctx, "documents", "doc-1")
+	if err != nil || document["content"] != "document contents" {
+		t.Fatalf("source document: %+v, %v", document, err)
+	}
+	if _, err := store.LoadDocument(ctx, "documents", "missing"); !errors.Is(err, ErrSourceUnavailable) {
+		t.Fatalf("missing source document error: %v", err)
 	}
 	bulk, bulkMetrics, err := store.LoadSource(ctx, "bulk", nil)
 	if err != nil || bulkMetrics.OutputRows != len(bulkRows) || bulk.Metadata != nil ||
@@ -411,7 +424,7 @@ func TestStoreIntegration(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(rawResults["raw"].Rows, raw.Rows) {
 		t.Fatalf("raw query result: %+v, %v", rawResults, err)
 	}
-	err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
+	err = store.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) error {
 		before, err := reader.State(ctx)
 		if err != nil {
 			return err
@@ -493,7 +506,7 @@ func TestStoreIntegration(t *testing.T) {
 		"default", "empty"); err != nil {
 		t.Fatal(err)
 	}
-	err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
+	err = store.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) error {
 		_, _, supported, err := reader.(NativePlanExecutor).ExecuteNativePlan(ctx,
 			[]query.Definition{{Name: "empty-query", From: "empty"}}, []string{"empty-query"}, []string{"empty-query"})
 		if err == nil || !supported || !strings.Contains(err.Error(), "incomplete postgres source metadata") {

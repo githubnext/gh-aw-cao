@@ -2,7 +2,6 @@ package redisx
 
 import (
 	"context"
-	"errors"
 	"strconv"
 	"testing"
 	"time"
@@ -11,102 +10,6 @@ import (
 type marketplaceStoreCommandClient struct {
 	getValue any
 	command  []string
-}
-
-type repositoryMemoryCommandClient struct {
-	values      map[string]string
-	current     string
-	revision    int64
-	expirations map[string]bool
-}
-
-func (client *repositoryMemoryCommandClient) Do(_ context.Context, command ...string) (any, error) {
-	key := command[1] + "\x00" + command[2]
-	switch command[0] {
-	case "HSET":
-		for i := 2; i+1 < len(command); i += 2 {
-			client.values[command[1]+"\x00"+command[i]] = command[i+1]
-		}
-		return int64(1), nil
-	case "HGET":
-		if value, ok := client.values[key]; ok {
-			return value, nil
-		}
-		return nil, nil
-	case "EXPIRE":
-		client.expirations[command[1]] = true
-		return int64(1), nil
-	case "EVAL":
-		next := command[4]
-		if len(command) == 6 {
-			if client.current != next {
-				client.expirations[next] = true
-			}
-			return int64(1), nil
-		}
-		revision, _ := strconv.ParseInt(command[6], 10, 64)
-		if client.revision > revision {
-			client.expirations[next] = true
-			return int64(0), nil
-		}
-		if client.current != "" && client.current != next {
-			client.expirations[client.current] = true
-		}
-		client.current = next
-		client.revision = revision
-		delete(client.expirations, next)
-		return int64(1), nil
-	}
-	panic("unexpected Redis command")
-}
-
-func (client *repositoryMemoryCommandClient) DoMany(ctx context.Context, commands [][]string) ([]any, error) {
-	for _, command := range commands {
-		if _, err := client.Do(ctx, command...); err != nil {
-			return nil, err
-		}
-	}
-	return nil, nil
-}
-
-func TestRepositoryMemoryRevisionCachePreserved(t *testing.T) {
-	client := &repositoryMemoryCommandClient{values: make(map[string]string), expirations: make(map[string]bool)}
-	store := NewStore(client, "memory")
-	files := map[string][]byte{"campaign\x00notes.md": []byte("contents")}
-	if err := store.PutRepositoryMemory(t.Context(), "revision", 1, []byte("manifest"), files); err != nil {
-		t.Fatal(err)
-	}
-	if store.repositoryMemoryRevisionKey("revision") != store.Key("g:revision") {
-		t.Fatal("repository-memory key layout changed")
-	}
-	manifest, err := store.RepositoryMemoryManifest(t.Context(), "revision")
-	if err != nil || string(manifest) != "manifest" {
-		t.Fatalf("read repository-memory manifest = %q, %v", manifest, err)
-	}
-	file, err := store.RepositoryMemoryFile(t.Context(), "revision", "campaign", "notes.md")
-	if err != nil || string(file) != "contents" {
-		t.Fatalf("read repository-memory file = %q, %v", file, err)
-	}
-	if _, err := store.RepositoryMemoryFile(t.Context(), "another-revision", "campaign", "notes.md"); !errors.Is(err, ErrSourceUnavailable) {
-		t.Fatalf("missing revision returned %v, want ErrSourceUnavailable", err)
-	}
-	if client.expirations[store.repositoryMemoryRevisionKey("revision")] {
-		t.Fatal("active repository-memory cache must not expire")
-	}
-	if err := store.PutRepositoryMemory(t.Context(), "next", 2, []byte("next manifest"), files); err != nil {
-		t.Fatal(err)
-	}
-	if !client.expirations[store.repositoryMemoryRevisionKey("revision")] ||
-		client.expirations[store.repositoryMemoryRevisionKey("next")] {
-		t.Fatal("superseded cache must expire, active cache must not")
-	}
-	if err := store.PutRepositoryMemory(t.Context(), "revision", 1, []byte("manifest"), files); err != nil {
-		t.Fatal(err)
-	}
-	if client.current != store.repositoryMemoryRevisionKey("next") ||
-		client.expirations[store.repositoryMemoryRevisionKey("next")] {
-		t.Fatal("out-of-order cache write superseded the active revision")
-	}
 }
 
 func (client *marketplaceStoreCommandClient) Do(_ context.Context, command ...string) (any, error) {

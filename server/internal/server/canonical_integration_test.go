@@ -51,7 +51,7 @@ func TestCanonicalAPIQueriesMatchPostgresIngestion(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = store.Close() }()
-	result, err := ingest.Run(ctx, store, nil, "../../testdata/deployed-subset", ingest.Options{
+	result, err := ingest.Run(ctx, store, "../../testdata/deployed-subset", ingest.Options{
 		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
 	})
 	if err != nil {

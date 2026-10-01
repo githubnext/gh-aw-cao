@@ -12,9 +12,10 @@ import (
 	"testing"
 	"time"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
+
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
-	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func TestSSEFanoutAcrossReplicasAndDrain(t *testing.T) {
@@ -29,8 +30,8 @@ func TestSSEFanoutAcrossReplicasAndDrain(t *testing.T) {
 		response *http.Response
 		reader   *bufio.Reader
 	}
-	var apps []*App
-	var streams []stream
+	apps := make([]*App, 0, 2)
+	streams := make([]stream, 0, 6)
 	for range 2 {
 		app := &App{
 			store: redisx.NewStore(client, "sse-replica"), hub: newEventHub(),
@@ -114,7 +115,10 @@ func TestSSEFanoutMeasurements(t *testing.T) {
 			servers[i] = httptest.NewServer(apps[i].Handler())
 		}
 		for _, perReplica := range []int{1, 12} {
-			streams := make([]*http.Response, 0, replicas*perReplica)
+			type stream struct {
+				response *http.Response
+			}
+			streams := make([]stream, 0, replicas*perReplica)
 			transport := &http.Transport{MaxIdleConnsPerHost: replicas * perReplica}
 			httpClient := &http.Client{Transport: transport, Timeout: 10 * time.Second}
 			for _, server := range servers {
@@ -128,10 +132,11 @@ func TestSSEFanoutMeasurements(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
+					defer func() { _ = resp.Body.Close() }()
 					if _, err := bufio.NewReader(resp.Body).ReadString('\n'); err != nil {
 						t.Fatal(err)
 					}
-					streams = append(streams, resp)
+					streams = append(streams, stream{response: resp})
 				}
 			}
 			runtime.GC()
@@ -160,15 +165,15 @@ func TestSSEFanoutMeasurements(t *testing.T) {
 				for _, app := range apps {
 					app.Drain()
 				}
-				for _, resp := range streams {
-					if _, err := io.Copy(io.Discard, resp.Body); err != nil {
+				for _, stream := range streams {
+					if _, err := io.Copy(io.Discard, stream.response.Body); err != nil {
 						t.Fatal(err)
 					}
 				}
 			}
 			drainDuration := time.Since(drainStart)
-			for _, resp := range streams {
-				_ = resp.Body.Close()
+			for _, stream := range streams {
+				_ = stream.response.Body.Close()
 			}
 			t.Logf("replicas=%d clients=%d connections=%d transactions_per_second=%.1f heap_before=%d heap_after=%d drain_duration=%s",
 				replicas, replicas*perReplica, connections, float64(end-start)/5, before.HeapAlloc, after.HeapAlloc, drainDuration)

@@ -192,7 +192,7 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 	}
 	if reconciler == nil && config.SourceDirectory != "" {
 		reconciler = DirectoryReconciler{
-			Store: config.Database, Operational: store, SourceDirectory: config.SourceDirectory,
+			Store: config.Database, SourceDirectory: config.SourceDirectory,
 			DatabaseQueriesPath: config.DatabaseQueriesPath,
 		}
 	}
@@ -294,7 +294,7 @@ func (a *App) start(startupCtx, runtimeCtx context.Context) error {
 	runCtx, cancel := context.WithCancel(runtimeCtx)
 	serverLog.Printf("starting service initial_ingestion=%t", a.config.SourceDirectory != "")
 	if a.config.SourceDirectory != "" {
-		result, err := ingest.Run(startupCtx, a.database, a.store, a.config.SourceDirectory, ingest.Options{DatabaseQueriesPath: a.config.DatabaseQueriesPath})
+		result, err := ingest.Run(startupCtx, a.database, a.config.SourceDirectory, ingest.Options{DatabaseQueriesPath: a.config.DatabaseQueriesPath})
 		if err != nil {
 			cancel()
 			return fmt.Errorf("initial ingestion failed: %w", err)
@@ -1008,7 +1008,7 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "text/event-stream")
 	response.Header().Set("Connection", "keep-alive")
 	allowHealth := a.adminAuthorized(request)
-	channel := a.hub.Subscribe(a, allowHealth)
+	channel := a.hub.Subscribe(request.Context(), a, allowHealth)
 	if channel == nil {
 		return
 	}
@@ -1168,7 +1168,7 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 	}
 	var response queryResponse
 	var status int
-	err := a.database.WithReadTransaction(ctx, func(reader postgresx.SourceReader) error {
+	err := a.database.WithReadTransaction(ctx, func(ctx context.Context, reader postgresx.SourceReader) error {
 		var queryErr error
 		response, status, queryErr = a.executeQueryWithReader(ctx, input, allowCollectionHealth, reader)
 		return queryErr
@@ -1525,7 +1525,7 @@ func newEventHub() *eventHub {
 	return &eventHub{clients: map[chan eventObservation]bool{}, wake: make(chan struct{}, 1)}
 }
 
-func (hub *eventHub) Subscribe(app *App, allowHealth bool) chan eventObservation {
+func (hub *eventHub) Subscribe(ctx context.Context, app *App, allowHealth bool) chan eventObservation {
 	hub.mu.Lock()
 	defer hub.mu.Unlock()
 	if hub.stopped {
@@ -1534,7 +1534,7 @@ func (hub *eventHub) Subscribe(app *App, allowHealth bool) chan eventObservation
 	channel := make(chan eventObservation, 1)
 	hub.clients[channel] = allowHealth
 	if hub.cancel == nil {
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(context.WithoutCancel(ctx))
 		hub.cancel = cancel
 		hub.workers.Add(1)
 		go hub.observe(ctx, app)

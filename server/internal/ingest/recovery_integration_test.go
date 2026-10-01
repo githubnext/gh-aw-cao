@@ -14,7 +14,7 @@ func TestEmptyPostgresRebuildAndFailedIngestionPreservesCurrentData(t *testing.T
 	if before.Ready || before.Revision != 0 {
 		t.Fatalf("new Postgres schema unexpectedly has data: %+v", before)
 	}
-	result, err := Run(ctx, store, nil, deployedSubset, Options{
+	result, err := Run(ctx, store, deployedSubset, Options{
 		DatabaseQueriesPath: databaseQueries,
 	})
 	if err != nil {
@@ -31,7 +31,7 @@ func TestEmptyPostgresRebuildAndFailedIngestionPreservesCurrentData(t *testing.T
 	if err != nil || len(original.Rows) == 0 {
 		t.Fatalf("expected ingested repositories: %+v, %v", original, err)
 	}
-	if _, err := Run(ctx, store, nil, scratchDirectory(t), Options{
+	if _, err := Run(ctx, store, scratchDirectory(t), Options{
 		DatabaseQueriesPath: databaseQueries,
 		Force:               true,
 	}); err == nil {
