@@ -1,7 +1,7 @@
 ---
 title: Central Agentic Ops Dashboard Data Architecture Specification
 description: Canonical data model, ingestion, IndexedDB persistence, consistency, recovery, and scale requirements for the gh-aw-cao dashboard.
-version: 1.8.1
+version: 1.9.0
 status: Working Draft
 editors:
   - GitHub Next
@@ -9,11 +9,11 @@ editors:
 
 # Central Agentic Ops Dashboard Data Architecture Specification
 
-**Version:** 1.8.1
+**Version:** 1.9.0
 **Status:** Working Draft
 **Repository:** `githubnext/gh-aw-cao`
 **Target implementation:** Dashboard data subsystem
-**Date:** 2026-09-24
+**Date:** 2026-10-01
 
 Implementers changing canonical data, ingestion, storage, or query execution
 should read `docs/dashboard-data-model.md` first, then this specification and
@@ -341,8 +341,93 @@ Node.js dashboard preview server. It SHALL:
 * keep active browser views subscribed to generation changes and return fresh,
   bounded query payloads after successful ingestion.
 
-This profile is for local testing. Remote exposure, GitHub authentication, live
-GitHub querying, and webhook-driven ingestion are outside this version.
+These generation rules also apply to hosted server deployments. Remote
+exposure, authentication, live GitHub collection, and webhook delivery are
+governed by their deployment and server contracts, not by this storage profile.
+
+## 5.3 Redis dashboard query materialization
+
+The Redis server profile SHALL treat the generated Dashboard Language query
+catalog (`dashboard/site/src/agent/queries.generated.json`) as an input to
+generation construction, distinct from the canonical database projection
+queries (`dashboard/site/src/data/queries/database.json`). The same catalog
+SHALL be supplied to ingestion and to the serving query planner. Collection,
+backfill, and hosted ingestion SHALL use the same definitions.
+
+After verifying the deployed artifact and projecting its canonical collections
+into logical sources, ingestion SHALL select queries whose entire dependency
+graph can be evaluated from those sources. A query is ineligible if a compute
+argument requires runtime context, if it depends (through `from`, `union`, or
+`joins`) on an ineligible query, or if an external source is not available
+during ingestion. In particular, collection health, GitHub quota usage, and
+marketplace data are runtime-owned, not facts to freeze into a generation.
+Eligible queries SHALL be evaluated by the Dashboard Language query engine in
+dependency order, with the resulting rows staged as named sources alongside
+the projected logical sources. Dynamic or unavailable-input queries SHALL
+remain available for bounded request-time evaluation; they MUST NOT be
+represented by fabricated materialized results. Failure to evaluate an
+eligible query SHALL fail generation construction, not silently omit it.
+
+The data revision used to decide whether an active generation can be reused
+SHALL include the database and dashboard query definitions in addition to the
+deployed data inputs. A definition change SHALL require a new generation even
+when the deployed payloads are unchanged. Each materialized source SHALL carry
+`query-signature`, a SHA-256 digest of the serialized definition. In Redis 8,
+its rows SHALL be stored as RedisJSON documents with a generation-scoped
+RediSearch index. Each document preserves the whole result row in `__cao_row`
+and its order in `__cao_position`, marked by `__cao_materialized`. A failed
+evaluation, staging write, or index creation MUST NOT activate a partial
+generation; the previously active generation remains readable.
+
+At request time the planner SHALL use a materialized source only when its
+stored signature matches the requested definition exactly. Matching rows
+SHALL be retrieved with `FT.AGGREGATE`, preserving stored order and the
+query's bounded output limit; a materialized hit MUST NOT scan source sets or
+rerun the Dashboard Language operations in Go. For missing materialization,
+changed definitions, dynamic inputs, or unsupported native query shapes, the
+server SHALL use its bounded compatibility evaluator. Operational Redis errors
+or malformed indexed results MUST be reported rather than disguised as
+unsupported plans. Materialization MUST NOT change query results, row order,
+source availability, or authorization.
+
+### 5.3.1 Conformance strategy
+
+Conformance SHALL be tested at both the query boundary and a real Redis 8
+generation boundary:
+
+* Selection tests SHALL exercise direct and transitive runtime-context
+  dependencies, unavailable sources, joins, and unions; eligible dependent
+  queries SHALL execute in dependency order, and ineligible queries SHALL
+  remain unmaterialized.
+* Determinism tests SHALL show identical definitions produce the same
+  signature, definition changes alter the signature, and changed database or
+  dashboard definitions invalidate generation reuse without changing the
+  deployed payloads.
+* Real-Redis ingestion tests SHALL stage the generated catalog with a
+  representative deployed artifact, verify indexed RedisJSON results and
+  stable row order through `FT.AGGREGATE`, and compare the returned rows and
+  business metadata with the ordinary query engine for the same inputs,
+  excluding generation-specific signature and revision fields. Empty results
+  and multi-query requests SHALL be included.
+* Planner tests SHALL prove an exact-signature hit uses the Redis query engine
+  without row-set scans, a missing or mismatched signature takes the bounded
+  compatibility path, and runtime-owned inputs are evaluated at request time.
+  Injected Redis command failures and malformed indexed rows SHALL propagate
+  as errors rather than silently falling back.
+* Activation tests SHALL interrupt evaluation, row staging, and index creation
+  and confirm that no partial generation becomes active and the previous
+  generation remains queryable. End-to-end tests SHALL compare dashboard query
+  payloads from Redis with canonical Dashboard Language results after refresh.
+
+The focused Go suites in `server/internal/query/`,
+`server/internal/ingest/`, and `server/internal/redisx/` cover selection,
+staging, signature matching, native reads, and Redis integration; the broader
+cross-engine parity and injected-failure cases above remain conformance
+requirements, not a claim that all such cases are already automated. Run
+`REDIS_URL=redis://127.0.0.1:6379/0 go test ./...` from `server/` against
+Redis 8 to include the Redis-dependent cases; `go test ./...` without
+`REDIS_URL` skips them. The dashboard query parity and server end-to-end
+checks supplement, but do not replace, these generation-boundary assertions.
 
 `gh-aw-cao-dashboard-data` is the logical database name. Every implemented
 store uses `id` as its key path. The implemented secondary indexes are:
@@ -3842,6 +3927,13 @@ or broaden the partition.
 ---
 
 # 74. Change Log
+
+## Version 1.9.0 — Redis dashboard query materialization
+
+* Defined static-query eligibility, definition-sensitive generation identity,
+  signed indexed RedisJSON results, exact-match reads, and bounded fallbacks.
+* Specified unit, Redis integration, parity, and failure-path conformance
+  checks for materialization and atomic activation.
 
 ## Version 1.8.0 — Indexed run aggregate pushdown and worker heap budgets
 
