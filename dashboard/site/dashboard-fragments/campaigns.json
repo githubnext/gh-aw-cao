@@ -2,7 +2,7 @@
   "queries": [
     {
       "name": "audit-event-summary-buckets",
-      "intent": "Aggregate high- and medium-severity audit events with the same severity and summary by workflow.",
+      "subject": "Aggregate high- and medium-severity audit events with the same severity and summary by workflow.",
       "objective": "Select recurring high- or medium-severity audit summaries for run-level investigation.",
       "acceptance": "Each bucket's event count is traceable to retained audit or tool observations with the same campaign, severity, workflow, and summary; missing workflow attribution stays unknown, and a count alone does not verify impact.",
       "description": "High- and medium-severity audit event counts grouped by severity, workflow, and shared summary.",
@@ -113,7 +113,7 @@
     },
     {
       "name": "campaign-workflows",
-      "intent": "List campaign-owned orchestrator and worker workflows with database-backed execution totals.",
+      "subject": "List campaign-owned orchestrator and worker workflows with database-backed execution totals.",
       "objective": "Choose an active campaign workflow whose observed execution warrants inspection.",
       "acceptance": "Listed workflows match active declared orchestrator or worker inventory entries; runs and AI Credits agree with the selected-horizon inventory, and absence is not evidence of disabled authority or no executions. Rollout mode is context, not permission to change policy.",
       "description": "Campaign workflows projected from the canonical workflow inventory.",
@@ -191,7 +191,7 @@
     },
     {
       "name": "campaign-reports",
-      "intent": "Project retained outcomes into campaign-addressable report evidence.",
+      "subject": "Project retained outcomes into campaign-addressable report evidence.",
       "objective": "Identify a campaign report whose durable outcome record needs follow-up.",
       "acceptance": "Each report's campaign, title, source link, observation time, and disposition match its retained outcome; missing status is labeled unknown rather than accepted or resolved, and report production is not verified impact.",
       "description": "Campaign outcome reports with database-backed disposition fields.",
@@ -268,7 +268,7 @@
     },
     {
       "name": "campaign-worker-issues",
-      "intent": "Project issue outcomes created by campaign worker workflows.",
+      "subject": "Project issue outcomes created by campaign worker workflows.",
       "objective": "Choose a campaign worker issue whose current recorded disposition needs review.",
       "acceptance": "Every included issue outcome joins a declared worker on organization, repository, and workflow and retains its issue, run, and status evidence; missing closing details remain unknown and closure is not proof of resolution.",
       "description": "Campaign-addressable issue outcomes restricted to declared worker workflows.",
@@ -402,7 +402,7 @@
     },
     {
       "name": "campaign-issue-tab-counts",
-      "intent": "Count the retained worker issues available for each campaign Reports tab.",
+      "subject": "Count the retained worker issues available for each campaign Reports tab.",
       "objective": "Decide whether a campaign has retained worker issue reports to inspect.",
       "acceptance": "For each returned campaign, items equals the number of rows in campaign-worker-issues for that campaign in the same horizon; missing campaigns are not treated as zero issues or verified resolution.",
       "description": "One campaign row with the number of retained issue outcomes produced by campaign workers.",
@@ -422,7 +422,7 @@
     },
     {
       "name": "campaign-readme-orchestrators",
-      "intent": "Resolve one repository link for each campaign README from its declared orchestrator workflow.",
+      "subject": "Resolve one repository link for each campaign README from its declared orchestrator workflow.",
       "objective": "Locate the declared orchestrator repository to contextualize a campaign README.",
       "acceptance": "Each returned campaign and repository link traces to a declared orchestrator workflow; missing or multiple declarations are reported as uncertain rather than inventing a canonical repository.",
       "from": "workflows",
@@ -445,7 +445,7 @@
     },
     {
       "name": "campaign-readme-details",
-      "intent": "Present retained campaign README content with its repository-relative link context.",
+      "subject": "Present retained campaign README content with its repository-relative link context.",
       "objective": "Open the campaign's retained README in its declared repository context before relying on its guidance.",
       "acceptance": "The README text and path match the campaign record and any repository link resolves through a declared orchestrator; absent content or repository linkage remains unavailable, not inferred.",
       "from": "campaigns",
@@ -484,7 +484,7 @@
     },
     {
       "name": "campaign-memory-campaigns",
-      "intent": "Provide the registered campaigns whose repository memory can be browsed together.",
+      "subject": "Provide the registered campaigns whose repository memory can be browsed together.",
       "objective": "Choose a registered campaign for repository-memory inspection.",
       "acceptance": "Each campaign identity and display name matches the retained campaign registry in the selected scope; listing a campaign does not establish that memory observations exist or are complete.",
       "description": "Registered campaigns ordered for the all-campaign repository-memory browser.",
@@ -523,7 +523,7 @@
           {
             "id": "campaigns-dispatches",
             "title": "Dispatches by campaign",
-            "intent": "Compare observed dispatch volume across managed campaigns.",
+            "subject": "Compare observed dispatch volume across managed campaigns.",
             "objective": "Identify campaigns to inspect for unexpectedly high or low activity.",
             "acceptance": "The comparison uses the selected horizon and does not equate dispatch count with successful outcomes.",
             "description": "The share of observed dispatches handled by each centrally managed campaign.",
@@ -556,7 +556,7 @@
           {
             "id": "campaigns-repository-coverage",
             "title": "Repository coverage by campaign",
-            "intent": "Compare registered repositories reached by successful worker dispatches across campaigns.",
+            "subject": "Compare registered repositories reached by successful worker dispatches across campaigns.",
             "objective": "Find campaigns whose observed reach needs closer inspection.",
             "acceptance": "Coverage is interpreted within the selected horizon, not as proof that every eligible repository has been reached.",
             "description": "Distinct registered repositories reached by successful worker dispatches in the selected horizon.",
@@ -676,7 +676,7 @@
         {
           "id": "campaign-memory-browser",
           "title": "Campaign memory",
-          "intent": "Let operators browse published repository memory from every registered campaign without leaving this page.",
+          "subject": "Let operators browse published repository memory from every registered campaign without leaving this page.",
           "data": {
             "sources": [
               "campaign-memory-campaigns"
@@ -1065,7 +1065,7 @@
         {
           "id": "campaign-issue-status",
           "title": "Generated issue status",
-          "intent": "See the current disposition of retained campaign-generated issues.",
+          "subject": "See the current disposition of retained campaign-generated issues.",
           "objective": "Identify open issues or closing reasons that warrant review.",
           "acceptance": "Disposition is verified against the retained issue records; closed issues are not assumed to represent resolved outcomes.",
           "description": "Current split of retained issue outcomes generated by this campaign by open state or closing reason.",
@@ -1206,7 +1206,7 @@
         {
           "id": "campaign-repository-workflows",
           "title": "Workflows by repository",
-          "intent": "Compare distinct campaign workflows associated with each repository.",
+          "subject": "Compare distinct campaign workflows associated with each repository.",
           "objective": "Identify repositories whose workflow distribution merits inspection.",
           "acceptance": "Counts reflect observed campaign workflows, not authorization or complete coverage.",
           "description": "Distribution of campaign workflows across associated repositories.",
@@ -1347,7 +1347,7 @@
         {
           "id": "campaign-report-status",
           "title": "Report status",
-          "intent": "See the disposition of retained campaign reports.",
+          "subject": "See the disposition of retained campaign reports.",
           "objective": "Identify reports that need follow-up in their durable output records.",
           "acceptance": "The reported status is checked against its source record and is not treated as verified impact.",
           "description": "The disposition of durable outputs is the leading outcome signal for this campaign.",

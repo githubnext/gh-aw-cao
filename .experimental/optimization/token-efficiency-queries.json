@@ -3,7 +3,7 @@
   "queries": [
     {
       "name": "optimization-retained-outcomes",
-      "intent": "List retained AW Optimization audits and recommendations without presenting proposed savings or context changes as realized value.",
+      "subject": "List retained AW Optimization audits and recommendations without presenting proposed savings or context changes as realized value.",
       "from": "outcomes",
       "filter": {
         "predicates": [
@@ -22,7 +22,7 @@
     },
     {
       "name": "token-efficiency-run-cost-candidates",
-      "intent": "Normalize observed Run-level AI Credit so missing or invalid cost evidence can fail closed.",
+      "subject": "Normalize observed Run-level AI Credit so missing or invalid cost evidence can fail closed.",
       "from": "usage",
       "compute": [
         {
@@ -62,7 +62,7 @@
     },
     {
       "name": "token-efficiency-run-costs",
-      "intent": "Aggregate valid observed AI Credit for each target workflow Run without synthesizing total tokens.",
+      "subject": "Aggregate valid observed AI Credit for each target workflow Run without synthesizing total tokens.",
       "from": "token-efficiency-run-cost-candidates",
       "aggregate": {
         "by": [
@@ -158,7 +158,7 @@
     },
     {
       "name": "token-efficiency-run-cost-readiness",
-      "intent": "Require every observed invocation in a Run to have authoritative AIC before that Run can enter optimization comparison or prioritization.",
+      "subject": "Require every observed invocation in a Run to have authoritative AIC before that Run can enter optimization comparison or prioritization.",
       "from": "token-efficiency-run-costs",
       "compute": [
         {
@@ -177,7 +177,7 @@
     },
     {
       "name": "token-efficiency-complete-run-costs",
-      "intent": "Fail closed to exact Runs whose invocation AIC coverage is complete.",
+      "subject": "Fail closed to exact Runs whose invocation AIC coverage is complete.",
       "from": "token-efficiency-run-cost-readiness",
       "filter": {
         "predicates": [
@@ -190,7 +190,7 @@
     },
     {
       "name": "token-efficiency-run-attempt-evidence",
-      "intent": "Collapse Run attempts conservatively so reruns become explicit ambiguous evidence instead of expanding or failing the fleet query.",
+      "subject": "Collapse Run attempts conservatively so reruns become explicit ambiguous evidence instead of expanding or failing the fleet query.",
       "from": "runs",
       "aggregate": {
         "by": [
@@ -245,7 +245,7 @@
     },
     {
       "name": "token-efficiency-accepted-target-outcomes",
-      "intent": "Count distinct authoritative accepted safe-output outcomes at exact target workflow Run grain.",
+      "subject": "Count distinct authoritative accepted safe-output outcomes at exact target workflow Run grain.",
       "from": "outcomes",
       "filter": {
         "predicates": [
@@ -273,7 +273,7 @@
     },
     {
       "name": "token-efficiency-run-assignment-outcomes",
-      "intent": "Attach authoritative accepted target-outcome counts to exact experiment assignments without inferring acceptance from operational-value scores.",
+      "subject": "Attach authoritative accepted target-outcome counts to exact experiment assignments without inferring acceptance from operational-value scores.",
       "from": "experiment-assignments",
       "joins": [
         {
@@ -322,7 +322,7 @@
     },
     {
       "name": "token-efficiency-mature-grader-candidates",
-      "intent": "Retain included mature accepted outcomes and declaratively test evaluator and measurement completeness.",
+      "subject": "Retain included mature accepted outcomes and declaratively test evaluator and measurement completeness.",
       "from": "grader-observations",
       "filter": {
         "predicates": [
@@ -477,7 +477,7 @@
     },
     {
       "name": "token-efficiency-mature-graders",
-      "intent": "Fail closed to mature accepted outcomes with a present evaluator, finite value, and supported direction.",
+      "subject": "Fail closed to mature accepted outcomes with a present evaluator, finite value, and supported direction.",
       "from": "token-efficiency-mature-grader-candidates",
       "filter": {
         "predicates": [
@@ -490,7 +490,7 @@
     },
     {
       "name": "token-efficiency-accepted-run-outcomes",
-      "intent": "Count mature accepted outcomes at Run, experiment, variant, evaluator, and direction grain.",
+      "subject": "Count mature accepted outcomes at Run, experiment, variant, evaluator, and direction grain.",
       "from": "token-efficiency-mature-graders",
       "aggregate": {
         "by": [
@@ -519,7 +519,7 @@
     },
     {
       "name": "token-efficiency-mature-run-values",
-      "intent": "Fail closed to Runs with at least one accepted, mature operational-value grader observation before deriving portfolio readiness.",
+      "subject": "Fail closed to Runs with at least one accepted, mature operational-value grader observation before deriving portfolio readiness.",
       "from": "token-efficiency-mature-graders",
       "filter": {
         "predicates": [
@@ -547,7 +547,7 @@
     },
     {
       "name": "token-efficiency-assignment-runs",
-      "intent": "Join included experiment assignments to exact Run cost, reliability, and mature accepted-outcome evidence.",
+      "subject": "Join included experiment assignments to exact Run cost, reliability, and mature accepted-outcome evidence.",
       "from": "runs",
       "joins": [
         {
@@ -786,7 +786,7 @@
     },
     {
       "name": "token-efficiency-variant-candidates",
-      "intent": "Aggregate cost, accepted outcomes, reliability, quality, evaluator identity, and sample size per experiment variant.",
+      "subject": "Aggregate cost, accepted outcomes, reliability, quality, evaluator identity, and sample size per experiment variant.",
       "from": "token-efficiency-assignment-runs",
       "aggregate": {
         "by": [
@@ -847,7 +847,7 @@
     },
     {
       "name": "token-efficiency-variant-readiness",
-      "intent": "Evaluate minimum exact Run and accepted-outcome sample sizes before comparison.",
+      "subject": "Evaluate minimum exact Run and accepted-outcome sample sizes before comparison.",
       "from": "token-efficiency-variant-candidates",
       "compute": [
         {
@@ -878,7 +878,7 @@
     },
     {
       "name": "token-efficiency-variant-samples",
-      "intent": "Fail closed to variants with at least two exact Runs and accepted outcomes under one evaluator and direction.",
+      "subject": "Fail closed to variants with at least two exact Runs and accepted outcomes under one evaluator and direction.",
       "from": "token-efficiency-variant-readiness",
       "filter": {
         "predicates": [
@@ -917,7 +917,7 @@
     },
     {
       "name": "token-efficiency-interventions",
-      "intent": "Project append-only token-efficiency intervention lifecycle observations from canonical audit records.",
+      "subject": "Project append-only token-efficiency intervention lifecycle observations from canonical audit records.",
       "from": "audits",
       "filter": {
         "predicates": [
@@ -1081,7 +1081,7 @@
     },
     {
       "name": "token-efficiency-applied-intervention-candidates",
-      "intent": "Collapse complete applied intervention observations to one bounded experiment and control-variant grain.",
+      "subject": "Collapse complete applied intervention observations to one bounded experiment and control-variant grain.",
       "from": "token-efficiency-interventions",
       "filter": {
         "predicates": [
@@ -1124,7 +1124,7 @@
     },
     {
       "name": "token-efficiency-applied-interventions",
-      "intent": "Fail closed to applied experiment cohorts with exactly one optimized variant.",
+      "subject": "Fail closed to applied experiment cohorts with exactly one optimized variant.",
       "from": "token-efficiency-applied-intervention-candidates",
       "filter": {
         "predicates": [
@@ -1137,7 +1137,7 @@
     },
     {
       "name": "token-efficiency-supported-run-smells",
-      "intent": "Retain only audit-produced smell evidence that maps to a closed token-efficiency opportunity kind, then collapse it at exact Run grain.",
+      "subject": "Retain only audit-produced smell evidence that maps to a closed token-efficiency opportunity kind, then collapse it at exact Run grain.",
       "from": "agent-smells",
       "filter": {
         "predicates": [
@@ -1184,7 +1184,7 @@
     },
     {
       "name": "token-efficiency-active-experiment-interventions",
-      "intent": "Conservatively identify target workflow experiments with any retained active or applied intervention evidence so duplicate optimizer assignments fail closed.",
+      "subject": "Conservatively identify target workflow experiments with any retained active or applied intervention evidence so duplicate optimizer assignments fail closed.",
       "from": "token-efficiency-interventions",
       "filter": {
         "predicates": [
@@ -1225,7 +1225,7 @@
     },
     {
       "name": "token-efficiency-prioritization-run-evidence",
-      "intent": "Join one matured operational-value opportunity to exact Run smell, lifecycle, invocation-cost, accepted-outcome, quality, and reliability evidence without crossing Run grain.",
+      "subject": "Join one matured operational-value opportunity to exact Run smell, lifecycle, invocation-cost, accepted-outcome, quality, and reliability evidence without crossing Run grain.",
       "from": "operational-values",
       "joins": [
         {
@@ -1963,7 +1963,7 @@
     },
     {
       "name": "token-efficiency-portfolio-candidate-evaluation",
-      "intent": "Attach conservative active-intervention state to exact evidence-backed Run candidates and derive fail-closed readiness signals.",
+      "subject": "Attach conservative active-intervention state to exact evidence-backed Run candidates and derive fail-closed readiness signals.",
       "from": "token-efficiency-prioritization-run-evidence",
       "joins": [
         {
@@ -2639,7 +2639,7 @@
     },
     {
       "name": "token-efficiency-portfolio-candidates",
-      "intent": "Classify exact evidence-backed Run candidates and order them by measured AIC, then repository, workflow, assignment Run, and candidate identity. candidate-readiness is ready only at 21, the sum of every gate score in token-efficiency-portfolio-candidate-evaluation (8 readiness-head + 8 readiness-tail + 4 readiness-run + 1 graded-score); update this threshold alongside candidate-readiness whenever a gate score is added or removed.",
+      "subject": "Classify exact evidence-backed Run candidates and order them by measured AIC, then repository, workflow, assignment Run, and candidate identity. candidate-readiness is ready only at 21, the sum of every gate score in token-efficiency-portfolio-candidate-evaluation (8 readiness-head + 8 readiness-tail + 4 readiness-run + 1 graded-score); update this threshold alongside candidate-readiness whenever a gate score is added or removed.",
       "from": "token-efficiency-portfolio-candidate-evaluation",
       "compute": [
         {
@@ -3085,7 +3085,7 @@
     },
     {
       "name": "token-efficiency-optimizer-assignments",
-      "intent": "Expose only mature, evaluator-backed, non-duplicate exact Run candidates in deterministic measured-AIC priority order for bounded orchestrator dispatch.",
+      "subject": "Expose only mature, evaluator-backed, non-duplicate exact Run candidates in deterministic measured-AIC priority order for bounded orchestrator dispatch.",
       "from": "token-efficiency-portfolio-candidates",
       "filter": {
         "predicates": [
@@ -3125,7 +3125,7 @@
     },
     {
       "name": "token-efficiency-portfolio-status-summary",
-      "intent": "Summarize eligible and incomplete exact Run candidates without treating measured AIC as proof of avoidable waste.",
+      "subject": "Summarize eligible and incomplete exact Run candidates without treating measured AIC as proof of avoidable waste.",
       "from": "token-efficiency-portfolio-candidates",
       "aggregate": {
         "by": [
@@ -3148,7 +3148,7 @@
     },
     {
       "name": "token-efficiency-comparison-candidates",
-      "intent": "Compare complete applied interventions only when control and optimized samples share one evaluator and grading direction.",
+      "subject": "Compare complete applied interventions only when control and optimized samples share one evaluator and grading direction.",
       "from": "token-efficiency-variant-samples",
       "joins": [
         {
@@ -3525,7 +3525,7 @@
     },
     {
       "name": "token-efficiency-comparisons",
-      "intent": "Fail closed to evaluator-compatible control and optimized samples, then expose their declarative progress or regression classification.",
+      "subject": "Fail closed to evaluator-compatible control and optimized samples, then expose their declarative progress or regression classification.",
       "from": "token-efficiency-comparison-candidates",
       "filter": {
         "predicates": [
@@ -3548,7 +3548,7 @@
     },
     {
       "name": "token-efficiency-progress-summary",
-      "intent": "Count distinct applied interventions by declaratively derived progress or regression status.",
+      "subject": "Count distinct applied interventions by declaratively derived progress or regression status.",
       "from": "token-efficiency-comparisons",
       "aggregate": {
         "by": [

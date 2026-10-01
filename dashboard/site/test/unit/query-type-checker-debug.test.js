@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 /** @param {Record<string, unknown>} value */
-const query = (value) => ({ intent: 'Exercise static query reference checking.', ...value });
+const query = (value) => ({ subject: 'Exercise static query reference checking.', ...value });
 
 const definitions = [
   query({ name: 'usage-by-workflow', from: 'usage' }),

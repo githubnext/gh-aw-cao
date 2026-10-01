@@ -15,7 +15,7 @@ export async function runPrompt({ options, positional, indexedDB, rejectUnknownO
   const dependencies = effectiveViewSemantics({ data: { source: positional } }, document.dashboard.queries);
   const semantics = {
     queryIds: dependencies.queryIds,
-    intent: query.intent,
+    subject: query.subject,
     objective: query.objective ?? "",
     acceptance: query.acceptance ?? ""
   };

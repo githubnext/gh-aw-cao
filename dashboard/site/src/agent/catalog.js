@@ -42,7 +42,7 @@ const LOCAL_SOURCES = new Set([
  */
 
 /**
- * @typedef {{ id: string, intent: string, objective?: string, acceptance?: string, description: string,
+ * @typedef {{ id: string, subject: string, objective?: string, acceptance?: string, description: string,
  *   parameters: Array<{ name: string, field: string }>,
  *   sources: string[], ['used-by-pages']: string[],
  *   execution: { local: boolean, backend?: string, requirements?: string[], reason?: string } }} AgentQueryEntry
@@ -539,7 +539,7 @@ function computeListQueries(document) {
     const execution = queryExecutionRequirements(document, id);
     return {
       id,
-      intent: text(query.intent),
+      subject: text(query.subject),
       ...(query.objective ? { objective: text(query.objective) } : {}),
       ...(query.acceptance ? { acceptance: text(query.acceptance) } : {}),
       description: text(query.description),

@@ -39,8 +39,6 @@ var ingestionLoadNames = map[string]string{
 	"collectionFailed":    "failure",
 }
 
-const ingestionLoadHalfLife = time.Minute
-
 var ErrSourceUnavailable = errors.New("redis source is unavailable")
 
 type Store struct {

@@ -214,7 +214,7 @@ index f9d0973..ab95854 100644
        if (isPlainObject(view)) {
          const semantics = effectiveViewSemantics(view, queries);
          if (view.prompt === 'always' || (view.prompt !== 'none'
-           && semantics.intent && semantics.objective && semantics.acceptance)) {
+           && semantics.subject && semantics.objective && semantics.acceptance)) {
            const selectedSources = Object.fromEntries(getViewSources(view).flatMap((sourceName, sourceIndex) => {
 -            const source = sources[resolveViewSourceName(sources, page.id, view, index, sourceName, sourceIndex)];
 +            const source = viewSources[resolveViewSourceName(viewSources, page.id, view, index, sourceName, sourceIndex)];

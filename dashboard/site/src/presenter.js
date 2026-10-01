@@ -828,7 +828,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       if (isPlainObject(view)) {
         const semantics = effectiveViewSemantics(view, queries);
         if (view.prompt === 'always' || (view.prompt !== 'none'
-          && semantics.intent && semantics.objective && semantics.acceptance)) {
+          && semantics.subject && semantics.objective && semantics.acceptance)) {
           const selectedSources = Object.fromEntries(getViewSources(view).flatMap((sourceName, sourceIndex) => {
             const source = viewSources[resolveViewSourceName(viewSources, page.id, view, index, sourceName, sourceIndex)];
             return source ? [[sourceName, source]] : [];

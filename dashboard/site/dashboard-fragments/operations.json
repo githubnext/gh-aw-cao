@@ -2,7 +2,7 @@
   "queries": [
     {
       "name": "marketplace-registry-options",
-      "intent": "Provide distinct authorized registry choices from resolved package records.",
+      "subject": "Provide distinct authorized registry choices from resolved package records.",
       "objective": "List the registry choices available in the current authorized marketplace package projection.",
       "acceptance": "Return distinct registry IDs and names with package counts from resolved records; missing or inaccessible registries must not be inferred from absent rows.",
       "from": "marketplace-packages",
@@ -11,7 +11,7 @@
     },
     {
       "name": "marketplace-publisher-options",
-      "intent": "Provide distinct publisher choices from resolved package records.",
+      "subject": "Provide distinct publisher choices from resolved package records.",
       "objective": "List the publisher choices available in the current authorized marketplace package projection.",
       "acceptance": "Return distinct publishers with package counts from resolved records; an absent publisher is not proof that its packages do not exist.",
       "from": "marketplace-packages",
@@ -20,7 +20,7 @@
     },
     {
       "name": "marketplace-ranked",
-      "intent": "Order keyword-matched campaign packages by reviewed publisher attestation, public maintenance evidence, local adoption evidence, and public popularity, without treating missing evidence as zero.",
+      "subject": "Order keyword-matched campaign packages by reviewed publisher attestation, public maintenance evidence, local adoption evidence, and public popularity, without treating missing evidence as zero.",
       "objective": "Present authorized campaign packages in deterministic discovery order using only observable, governed signals.",
       "acceptance": "Rank verified provenance and known maintenance before observed adoption and public stars, break ties by name and ID, and preserve unknown evidence rather than treating it as zero or verified.",
       "from": "marketplace-packages",
@@ -107,7 +107,7 @@
     },
     {
       "name": "ingestion-queued",
-      "intent": "Label the shared collection task queue depth for the administrator queue chart.",
+      "subject": "Label the shared collection task queue depth for the administrator queue chart.",
       "objective": "Identify total ready and scheduled collection work, including backfill tasks.",
       "acceptance": "Show the observed shared queue depth only when collection is configured; missing or unauthorized health data is not zero pending work.",
       "from": "collection-health",
@@ -117,7 +117,7 @@
     },
     {
       "name": "ingestion-inflight",
-      "intent": "Label current in-flight collection tasks for the administrator queue chart.",
+      "subject": "Label current in-flight collection tasks for the administrator queue chart.",
       "objective": "Distinguish leased collection tasks from work awaiting collection.",
       "acceptance": "Show the observed pending task count only when collection is configured; do not infer a count from an unavailable source.",
       "from": "collection-health",
@@ -127,7 +127,7 @@
     },
     {
       "name": "ingestion-backfill",
-      "intent": "Label cumulative backfill run admissions for the administrator ingestion chart.",
+      "subject": "Label cumulative backfill run admissions for the administrator ingestion chart.",
       "objective": "Compare historically admitted run tasks with current outstanding work without treating admissions as a live backlog.",
       "acceptance": "Show the cumulative run task admissions only when collection is configured; this value does not decrease as tasks complete and missing health data does not imply completed backfill.",
       "from": "collection-health",
@@ -137,7 +137,7 @@
     },
     {
       "name": "ingestion-queue-sizes",
-      "intent": "Compare current shared queue pressure, in-flight tasks, and cumulative historical backfill admissions from the administrator-only server snapshot.",
+      "subject": "Compare current shared queue pressure, in-flight tasks, and cumulative historical backfill admissions from the administrator-only server snapshot.",
       "objective": "Spot a growing backlog without treating past backfill admissions as outstanding work.",
       "acceptance": "Current queue sizes and cumulative admissions come only from an authorized collection-health snapshot; unavailable state is not zero.",
       "from": "ingestion-queued",
@@ -146,7 +146,7 @@
     },
     {
       "name": "ingestion-health",
-      "intent": "Show the current Redis-backed webhook and collection health snapshot.",
+      "subject": "Show the current Redis-backed webhook and collection health snapshot.",
       "objective": "Determine whether the reported collection, webhook, queue, and backfill state warrants inspecting ingestion diagnostics.",
       "acceptance": "Report the observed health, queue, failure, success, and projection timestamps together; verify freshness and configuration before calling collection healthy, and treat missing state as unknown rather than zero.",
       "from": "collection-health",
@@ -181,7 +181,7 @@
     },
     {
       "name": "github-api-usage",
-      "intent": "Show retained GitHub API quota usage per bucket and in aggregate over the last 24 hours.",
+      "subject": "Show retained GitHub API quota usage per bucket and in aggregate over the last 24 hours.",
       "objective": "Determine whether any GitHub App installation or the CAO fleet as a whole is approaching its GitHub API rate limit.",
       "acceptance": "Report peak usage percentages with their limits, used, and reserved counts; treat a slot without observations as unknown rather than idle, and never infer credentials from bucket identity.",
       "from": "github-quota-usage",
@@ -201,14 +201,14 @@
     },
     {
       "name": "marketplace-package-detail",
-      "intent": "Expose normalized marketplace package records for source-coordinate lookup by the detail view.",
+      "subject": "Expose normalized marketplace package records for source-coordinate lookup by the detail view.",
       "objective": "Locate the resolver-produced package record for a source coordinate supplied by the consuming view.",
       "acceptance": "Use the returned package-source, registry, ref, and resolved-commit fields when inspecting a matching record; the query itself does not filter by coordinate, and an absent match is not proof of package nonexistence or approval.",
       "from": "marketplace-packages"
     },
     {
       "name": "friction-by-workflow",
-      "intent": "Rank workflows by observed gh-aw audit friction AI Credit totals for investigation.",
+      "subject": "Rank workflows by observed gh-aw audit friction AI Credit totals for investigation.",
       "objective": "Identify which repository and workflow combinations have the largest measured friction totals in retained observations.",
       "acceptance": "Compare friction-aic and distinct runs with the underlying measurement states and attribution evidence; do not equate a ranking with avoidable cost or a validated saving.",
       "description": "Total gh-aw audit friction cost grouped by repository and workflow.",
@@ -283,7 +283,7 @@
     },
     {
       "name": "friction-observations",
-      "intent": "List retained gh-aw audit friction measurements with their run context and attribution totals.",
+      "subject": "List retained gh-aw audit friction measurements with their run context and attribution totals.",
       "objective": "Trace each reported friction measurement to a run and distinguish counted, suppressed, and unattributed occurrences.",
       "acceptance": "Preserve native AIC, total-run AIC, measurement state, timestamps, links, and occurrence counts; missing or unattributed evidence remains uncertain, not a verified opportunity for savings.",
       "description": "Newest friction measurements first, preserving the native audit values and uncertainty state.",
@@ -366,7 +366,7 @@
     },
     {
       "name": "indexing-daily-records",
-      "intent": "Aggregate records committed from CAO Activity by ingestion UTC day.",
+      "subject": "Aggregate records committed from CAO Activity by ingestion UTC day.",
       "objective": "Expose the observed daily committed-record totals for ingestion diagnostics.",
       "acceptance": "Each returned UTC day sums committedRecords from the selected ingestion transaction kinds; absent days or low totals alone do not establish missing source records.",
       "from": "transactions",
@@ -413,7 +413,7 @@
     },
     {
       "name": "indexing-daily-workflow-runs",
-      "intent": "Aggregate workflow runs ingested from CAO Activity by UTC day.",
+      "subject": "Aggregate workflow runs ingested from CAO Activity by UTC day.",
       "objective": "Expose the observed daily raw-run totals from ingestion transactions.",
       "acceptance": "Each returned UTC day sums rawRuns from the selected ingestion transaction kinds; transaction volume is not a count of distinct retained runs or proof of source coverage.",
       "from": "transactions",
@@ -460,7 +460,7 @@
     },
     {
       "name": "indexing-campaigns-table-count",
-      "intent": "Count retained campaigns rows in the dashboard database.",
+      "subject": "Count retained campaigns rows in the dashboard database.",
       "objective": "Provide the retained campaigns row count for the table-count diagnostic.",
       "acceptance": "Label the result campaigns and count campaign rows in the current database; absence or zero does not establish completeness or expected campaign coverage.",
       "from": "campaigns",
@@ -490,7 +490,7 @@
     },
     {
       "name": "indexing-repositories-table-count",
-      "intent": "Count retained repositories rows in the dashboard database.",
+      "subject": "Count retained repositories rows in the dashboard database.",
       "objective": "Provide the retained repositories row count for the table-count diagnostic.",
       "acceptance": "Label the result repositories and count repository rows in the current database; absence or zero does not establish completeness or expected repository coverage.",
       "from": "repositories",
@@ -520,7 +520,7 @@
     },
     {
       "name": "indexing-workflows-table-count",
-      "intent": "Count retained workflows rows in the dashboard database.",
+      "subject": "Count retained workflows rows in the dashboard database.",
       "objective": "Provide the retained workflows row count for the table-count diagnostic.",
       "acceptance": "Label the result workflows and count workflow rows in the current database; absence or zero does not establish completeness or expected workflow coverage.",
       "from": "workflows",
@@ -550,7 +550,7 @@
     },
     {
       "name": "indexing-runs-table-count",
-      "intent": "Count retained workflow runs rows in the dashboard database.",
+      "subject": "Count retained workflow runs rows in the dashboard database.",
       "objective": "Provide the retained workflow runs row count for the table-count diagnostic.",
       "acceptance": "Label the result workflow runs and count run rows in the current database; absence or zero does not establish completeness or expected execution volume.",
       "from": "runs",
@@ -580,7 +580,7 @@
     },
     {
       "name": "indexing-domains-table-count",
-      "intent": "Count retained network domains rows in the dashboard database.",
+      "subject": "Count retained network domains rows in the dashboard database.",
       "objective": "Provide the retained network domains row count for the table-count diagnostic.",
       "acceptance": "Label the result network domains and count domain event rows in the current database; absence or zero does not prove no network activity.",
       "from": "domains",
@@ -610,7 +610,7 @@
     },
     {
       "name": "indexing-tools-table-count",
-      "intent": "Count retained tool events rows in the dashboard database.",
+      "subject": "Count retained tool events rows in the dashboard database.",
       "objective": "Provide the retained tool events row count for the table-count diagnostic.",
       "acceptance": "Label the result tool events and count tool event rows in the current database; absence or zero does not prove no tool use.",
       "from": "tools",
@@ -640,7 +640,7 @@
     },
     {
       "name": "indexing-audits-table-count",
-      "intent": "Count retained audit events rows in the dashboard database.",
+      "subject": "Count retained audit events rows in the dashboard database.",
       "objective": "Provide the retained audit events row count for the table-count diagnostic.",
       "acceptance": "Label the result audit events and count audit event rows in the current database; absence or zero does not prove no audit findings.",
       "from": "audits",
@@ -670,7 +670,7 @@
     },
     {
       "name": "indexing-issues-table-count",
-      "intent": "Count retained issue events rows in the dashboard database.",
+      "subject": "Count retained issue events rows in the dashboard database.",
       "objective": "Provide the retained issue events row count for the table-count diagnostic.",
       "acceptance": "Label the result issue events and count issue event rows in the current database; absence or zero does not prove no issues exist.",
       "from": "issues",
@@ -700,7 +700,7 @@
     },
     {
       "name": "indexing-operational-values-table-count",
-      "intent": "Count retained operational values rows in the dashboard database.",
+      "subject": "Count retained operational values rows in the dashboard database.",
       "objective": "Provide the retained operational values row count for the table-count diagnostic.",
       "acceptance": "Label the result operational values and count operational-value rows in the current database; absence or zero does not imply zero value or an evaluated outcome.",
       "from": "operational-values",
@@ -730,7 +730,7 @@
     },
     {
       "name": "indexing-transactions-table-count",
-      "intent": "Count retained ingestion transactions rows in the dashboard database.",
+      "subject": "Count retained ingestion transactions rows in the dashboard database.",
       "objective": "Provide the retained ingestion transactions row count for the table-count diagnostic.",
       "acceptance": "Label the result ingestion transactions and count transaction IDs in the current database; absence or zero does not establish whether upstream ingestion ran.",
       "from": "transactions",
@@ -760,7 +760,7 @@
     },
     {
       "name": "indexing-database-table-counts",
-      "intent": "Count retained canonical dashboard database rows by table.",
+      "subject": "Count retained canonical dashboard database rows by table.",
       "objective": "Compare the retained table row counts to identify tables needing further ingestion or coverage investigation.",
       "acceptance": "Union the named table-count projections and report their table labels and counts; check source availability, retention, and separate transaction evidence before interpreting an empty or small table as an ingestion defect.",
       "from": "indexing-campaigns-table-count",
@@ -788,7 +788,7 @@
     },
     {
       "name": "indexing-transactions",
-      "intent": "Prepare retained ingestion transactions for card presentation.",
+      "subject": "Prepare retained ingestion transactions for card presentation.",
       "objective": "Expose transaction identity, kind, timestamp, committed-record count, and payload hash for ingestion traceability.",
       "acceptance": "Projected fields match retained transactions without implying successful upstream coverage from a committed count or hash alone; missing transactions require a freshness and availability check.",
       "from": "transactions",
@@ -815,7 +815,7 @@
     },
     {
       "name": "engines-models-usage",
-      "intent": "Summarize run-level AIC and token usage by agent and model identifiers without treating unavailable telemetry as zero.",
+      "subject": "Summarize run-level AIC and token usage by agent and model identifiers without treating unavailable telemetry as zero.",
       "objective": "Locate agent and model combinations whose observed per-run AIC or token usage merits checking against individual runs.",
       "acceptance": "Report run counts and native minimum, mean, and maximum values only for reported metrics; inspect underlying runs for per-metric telemetry coverage and context before comparing combinations, and infer neither efficiency nor outcome value from usage alone.",
       "description": "Observed workflow runs grouped by agent ID and model ID. Each AIC and token statistic uses only runs that reported that metric.",
@@ -1014,7 +1014,7 @@
     },
     {
       "name": "skill-invocations",
-      "intent": "Select observed skill invocations for skill usage analytics.",
+      "subject": "Select observed skill invocations for skill usage analytics.",
       "objective": "Expose skill event identity, scope, invocation counts, and failed counts for downstream usage analysis.",
       "acceptance": "Keep each observed event and its repository/workflow attribution with native counts; missing records or failed counts alone do not establish whether a skill was useful or available.",
       "from": "skills",
@@ -1046,7 +1046,7 @@
     },
     {
       "name": "skill-invocations-by-skill",
-      "intent": "Rank skills by their observed invocation count.",
+      "subject": "Rank skills by their observed invocation count.",
       "objective": "Identify skills with the highest observed invocation totals for follow-up inspection.",
       "acceptance": "Sum observed invocation counts by skill and retain the rank as a usage description; do not equate popularity with effectiveness or infer unobserved invocations.",
       "from": "skill-invocations",
@@ -1075,7 +1075,7 @@
     },
     {
       "name": "skill-invocations-by-workflow-totals",
-      "intent": "Rank workflows by their observed skill invocation count.",
+      "subject": "Rank workflows by their observed skill invocation count.",
       "objective": "Produce repository-scoped workflow invocation totals for downstream skill-usage comparison.",
       "acceptance": "Sum observed invocation counts by organization, repository, and workflow; totals describe recorded usage only, not success or expected adoption.",
       "from": "skill-invocations",
@@ -1096,7 +1096,7 @@
     },
     {
       "name": "skill-invocations-by-workflow",
-      "intent": "Present workflow skill invocation totals with drill-through navigation to the workflow dashboard.",
+      "subject": "Present workflow skill invocation totals with drill-through navigation to the workflow dashboard.",
       "objective": "Expose observed workflow skill invocation totals with a link to inspect each workflow.",
       "acceptance": "Each projected workflow coordinate, link, and invocation total traces to the grouped source; using a link to investigate does not establish that usage caused an outcome.",
       "from": "skill-invocations-by-workflow-totals",
@@ -1201,7 +1201,7 @@
     },
     {
       "name": "skill-workflow-totals",
-      "intent": "Count observed invocations for each skill and workflow.",
+      "subject": "Count observed invocations for each skill and workflow.",
       "objective": "Produce skill-by-workflow invocation totals for the downstream inventory.",
       "acceptance": "Sum observed invocation counts by skill, organization, repository, and workflow; missing combinations are not evidence that a skill could not run.",
       "from": "skill-invocations",
@@ -1223,7 +1223,7 @@
     },
     {
       "name": "skill-workflow-inventory",
-      "intent": "List observed skills by workflow with drill-through navigation to the workflow dashboard.",
+      "subject": "List observed skills by workflow with drill-through navigation to the workflow dashboard.",
       "objective": "Identify observed skill/workflow combinations and provide a workflow link for inspecting their runs.",
       "acceptance": "Show the repository, workflow, skill, link, and observed invocation total from the grouped evidence; an absent row does not prove non-use, and a high count does not prove effectiveness.",
       "from": "skill-workflow-totals",
@@ -1353,7 +1353,7 @@
     },
     {
       "name": "experiment-assignment-coverage",
-      "intent": "Count observed run assignments for each experiment and workflow without inferring a completion target.",
+      "subject": "Count observed run assignments for each experiment and workflow without inferring a completion target.",
       "objective": "Expose assignment counts by experiment and workflow for investigating observed experiment coverage.",
       "acceptance": "Count retained assignment rows in each experiment/workflow group, not distinct runs; do not invent a target, infer missing assignments from absent groups, or treat assignments as eval or grader outcomes.",
       "from": "experiment-assignments",
@@ -1379,7 +1379,7 @@
     },
     {
       "name": "eval-yes-no-status",
-      "intent": "Select explicit YES/NO eval answers while retaining unknown results only in the underlying evidence collection.",
+      "subject": "Select explicit YES/NO eval answers while retaining unknown results only in the underlying evidence collection.",
       "objective": "Expose explicitly answered eval observations for comparison with their underlying run evidence.",
       "acceptance": "Return only recorded YES and NO answers; excluded unknowns must not be interpreted as NO, absent evals as YES, or an eval answer as a validated operational outcome.",
       "from": "eval-observations",
@@ -1389,7 +1389,7 @@
     },
     {
       "name": "grader-status-ledger",
-      "intent": "Report explicit grader pass/fail observations without inferring current state from prior runs.",
+      "subject": "Report explicit grader pass/fail observations without inferring current state from prior runs.",
       "objective": "Distinguish explicit per-observation grader pass and fail verdicts from unknown statuses.",
       "acceptance": "Map only pass/passed to YES and fail/failed to NO, leaving all other statuses unknown; preserve run-level evidence and do not infer current success, causation, or policy authority from a prior verdict.",
       "from": "grader-observations",
@@ -1441,7 +1441,7 @@
           },
           "mark": "element",
           "element": "marketplace-controls",
-          "intent": "Bind accessible discovery controls to subscribed worker query parameters without querying or deriving package rows in the UI.",
+          "subject": "Bind accessible discovery controls to subscribed worker query parameters without querying or deriving package rows in the UI.",
           "layout": "full"
         },
         {
@@ -1628,7 +1628,7 @@
         {
           "id": "indexing-database-table-counts",
           "title": "Database table counts",
-          "intent": "Compare retained row counts across dashboard database tables.",
+          "subject": "Compare retained row counts across dashboard database tables.",
           "objective": "Identify missing or unexpectedly sized data tables for ingestion review.",
           "acceptance": "Counts are used as ingestion diagnostics, not as proof of source completeness.",
           "description": "Rows retained by dashboard database table, including ingestion transactions.",
@@ -1656,7 +1656,7 @@
         {
           "id": "ingestion-queue-sizes",
           "title": "Server collection workload (administrators)",
-          "intent": "Compare the current shared collection queue and in-flight work with cumulative historical backfill admissions.",
+          "subject": "Compare the current shared collection queue and in-flight work with cumulative historical backfill admissions.",
           "objective": "Detect a collection backlog while distinguishing the historical volume of backfill work.",
           "acceptance": "Display only authorized server observations; backfill admissions are cumulative, not an outstanding queue, and unavailable or unconfigured state is not zero.",
           "description": "Ready and scheduled work includes webhook and backfill tasks; in-flight tasks are leased. Backfill admitted is a cumulative total, not a current backlog. Available only to server administrators.",
@@ -1711,7 +1711,7 @@
         {
           "id": "github-api-usage",
           "title": "GitHub API usage",
-          "intent": "Track the share of GitHub API quota consumed by each CAO bucket over the last 24 hours.",
+          "subject": "Track the share of GitHub API quota consumed by each CAO bucket over the last 24 hours.",
           "objective": "Spot GitHub App installations approaching their rate limit before collection or other GitHub-backed work is throttled.",
           "acceptance": "Each point is the peak observed usage in the hour; usage is read against the bucket's reset window and parking state, and a missing point means no observation rather than zero usage.",
           "description": "Peak hourly percentage of GitHub API quota used per App installation and resource, with the limit-weighted total across all buckets.",
@@ -1731,7 +1731,7 @@
         {
           "id": "indexing-size",
           "title": "Indexed data over time",
-          "intent": "Track new Activity records retained by the dashboard each day.",
+          "subject": "Track new Activity records retained by the dashboard each day.",
           "objective": "Spot changes in ingestion volume that may need investigation.",
           "acceptance": "An apparent gap is checked against ingestion evidence before attributing it to missing source activity.",
           "description": "New workflow runs and records retained from CAO Activity each day.",
@@ -1758,7 +1758,7 @@
         {
           "id": "indexing-workflow-runs",
           "title": "Workflow runs indexed",
-          "intent": "Track new workflow runs retained from Activity each day.",
+          "subject": "Track new workflow runs retained from Activity each day.",
           "objective": "Identify days with unexpected changes in indexed run volume.",
           "acceptance": "Changes are compared with ingestion and source evidence, not interpreted as workflow health alone.",
           "description": "New workflow runs retained from CAO Activity each day.",
@@ -1838,7 +1838,7 @@
         {
           "id": "skills-most-invoked",
           "title": "Most invoked skills",
-          "intent": "Rank skills by observed invocation count.",
+          "subject": "Rank skills by observed invocation count.",
           "objective": "Choose heavily used skills for closer usage review.",
           "acceptance": "Counts describe recorded invocations, not successful use or operational value.",
           "description": "Skills ranked by observed invocation count.",
@@ -1872,7 +1872,7 @@
         {
           "id": "skills-by-workflow",
           "title": "Skill invocations per workflow",
-          "intent": "Compare observed skill invocation counts across workflows.",
+          "subject": "Compare observed skill invocation counts across workflows.",
           "objective": "Identify workflows whose skill usage warrants inspection.",
           "acceptance": "Counts are checked against workflow evidence before drawing conclusions about effectiveness.",
           "description": "Workflows ranked by their observed skill invocation count.",
@@ -1960,7 +1960,7 @@
         {
           "id": "engines-models-distribution",
           "title": "Agent and model distribution",
-          "intent": "Compare observed run counts by agent and model combination.",
+          "subject": "Compare observed run counts by agent and model combination.",
           "objective": "Identify the combinations to examine in run-level evidence.",
           "acceptance": "The distribution describes observed usage only, not quality or model preference.",
           "description": "Distribution of observed workflow runs by agent and model combination.",
@@ -1987,7 +1987,7 @@
         {
           "id": "engines-models-cost",
           "title": "Average AIC per run",
-          "intent": "Compare observed average AI Credit cost per run by agent and model combination.",
+          "subject": "Compare observed average AI Credit cost per run by agent and model combination.",
           "objective": "Identify combinations whose cost merits further review.",
           "acceptance": "Cost differences are interpreted alongside underlying run evidence, not as proof of efficiency or causality.",
           "description": "Average AI Credit cost per observed workflow run by agent and model combination.",
@@ -2182,7 +2182,7 @@
         {
           "id": "friction-by-workflow",
           "title": "Friction cost by workflow",
-          "intent": "Compare measured friction AI Credit cost across workflows.",
+          "subject": "Compare measured friction AI Credit cost across workflows.",
           "objective": "Prioritize workflows for review of avoidable cost evidence.",
           "acceptance": "A cost is treated as a measured signal, not a confirmed saving until the supporting evidence is reviewed.",
           "description": "The share of measured avoidable AI Credit cost attributed to each workflow.",
@@ -2307,7 +2307,7 @@
           {
             "id": "operational-value-history",
             "title": "Operational value over time",
-            "intent": "Track retained repository observations by package-defined operational value ID.",
+            "subject": "Track retained repository observations by package-defined operational value ID.",
             "objective": "Identify changes in a value's native measure worth investigating.",
             "acceptance": "Values are interpreted with their declared units, direction, and maturity; an interim observation is not claimed as a verified outcome.",
             "description": "Each line tracks one package-defined value ID across retained repository observations.",
@@ -2512,7 +2512,7 @@
         {
           "id": "experiments-assignment-chart",
           "title": "Observed assignments by workflow and experiment",
-          "intent": "Compare retained experiment assignments across workflows and experiments.",
+          "subject": "Compare retained experiment assignments across workflows and experiments.",
           "objective": "Identify assignment coverage that needs inspection before interpreting experimental evidence.",
           "acceptance": "An assignment count is treated as observation coverage, not as an experiment result or effect.",
           "data": {

@@ -1,11 +1,11 @@
-const FIELDS = ['intent', 'objective', 'acceptance'];
+const FIELDS = ['subject', 'objective', 'acceptance'];
 
 /**
  * Compose semantic annotations from named query dependencies and a view.
  * Query IDs are returned in dependency-first reference order, without duplicates.
  * @param {Record<string, unknown>} view
  * @param {Array<Record<string, unknown>>} queries
- * @returns {{ queryIds: string[], intent: string, objective: string, acceptance: string }}
+ * @returns {{ queryIds: string[], subject: string, objective: string, acceptance: string }}
  */
 export function effectiveViewSemantics(view, queries) {
   const byName = new Map(queries
@@ -31,7 +31,7 @@ export function effectiveViewSemantics(view, queries) {
     if (Array.isArray(data.sources)) data.sources.forEach(visit);
   }
   const annotations = [...referenced, view];
-  return /** @type {{ queryIds: string[], intent: string, objective: string, acceptance: string }} */ ({
+  return /** @type {{ queryIds: string[], subject: string, objective: string, acceptance: string }} */ ({
     queryIds: referenced.map((query) => String(query.name)),
     ...Object.fromEntries(FIELDS.map((field) => [field, annotations
       .map((item) => item[field])

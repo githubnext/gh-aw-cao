@@ -226,7 +226,7 @@ test('scores compute-equivalent queries modulo field mappings', () => {
       const clone = {
         ...structuredClone(query),
         name: `${query.name}-clone-${index}`,
-        intent: `Cloned intent ${index}`,
+        subject: `Cloned subject ${index}`,
         description: `Cloned description ${index}`
       };
       assert.deepEqual(
@@ -349,7 +349,7 @@ test('extracts shared query prefixes into reusable JSON query chains', () => {
   assert.deepEqual(document.dashboard.queries, [
     {
       name: 'failure-run-base',
-      intent: 'Reuse shared query stages for failed-run-cost, failed-run-duration',
+      subject: 'Reuse shared query stages for failed-run-cost, failed-run-duration',
       from: 'runs',
       filter: { predicates: [{ field: 'conclusion', equals: 'failure' }] }
     },
