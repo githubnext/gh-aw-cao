@@ -61,7 +61,7 @@ export const USAGE = `Usage:
   cao query QUERY_ID [--database FILE] [--dashboard FILE] [--param NAME=VALUE...] [--limit COUNT]
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao mcp [--database FILE] [--dashboard FILE] [--host HOST] [--port PORT]
-  cao computation intelligence [--database FILE] [--inventory FILE] [--campaign SLUG] [--previous FILE]
+  cao computation intelligence [--database FILE] [--inventory FILE] [--campaign SLUG] [--previous FILE] [--feedback FILE]
   cao computation runtime-health [--database FILE] [--inventory FILE] [--campaign SLUG] [--diagnose]
   cao operational-value [--database FILE] [--root DIRECTORY] [--output FILE] [--timestamp TIME] [--repository OWNER/REPO] [--campaign SLUG] [--retention-days DAYS|all] [--history-campaign SLUG] [--max-github-api-rate-limit LIMIT]
   cao cluster-problems [--database FILE] [--root DIRECTORY] [--timestamp TIME]
@@ -81,7 +81,7 @@ Query local CAO data as JSON. Download the deployed snapshot before querying:
   cao prune-dashboard --input dashboard.json --output dashboard.pruned.json
   cao issue-status --input-dir .cao/gh-aw-logs-shards --graphql-cost-budget 25 --graphql-min-remaining 500
   cao computation intelligence
-  cao computation intelligence --campaign dependabot --previous prior-intelligence.json
+  cao computation intelligence --campaign dependabot --previous prior-intelligence.json --feedback decision-feedback.json
   cao computation runtime-health
   cao computation runtime-health --campaign dependabot
   cao computation runtime-health --campaign dependabot --diagnose

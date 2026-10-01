@@ -4,6 +4,7 @@ import { queryDashboardSourceObservations } from '../../dashboard/site/src/data/
 import { normalize } from '../../dashboard/site/src/data/normalize/index.js';
 import { queryCollection, readCollection } from '../../dashboard/site/src/data/storage/indexeddb.js';
 import { createDebug } from '../debug.mjs';
+import { compileCampaignIntelligenceContracts } from './intelligence-contracts.mjs';
 import { computeIntelligencePortfolio } from './intelligence.mjs';
 import {
   computeRuntimeHealthPortfolio,
@@ -425,7 +426,9 @@ export function computeIntelligenceFromCanonicalData(data, options = {}) {
     campaign: options.campaign
   }).result;
   const result = computeIntelligencePortfolio(runtimeHealth, {
-    previousResult: options.previousResult
+    campaignContracts: compileCampaignIntelligenceContracts(data.campaigns, data.workflows),
+    previousResult: options.previousResult,
+    feedback: options.feedback
   });
   debugIntelligence(
     'computed %d decision(s) and %d suppression(s) in %d ms',
@@ -440,18 +443,26 @@ export function computeIntelligenceFromCanonicalData(data, options = {}) {
   };
 }
 
-export async function queryRuntimeHealth(indexedDB, options = {}) {
+async function readRuntimeHealthInventory(indexedDB, inventorySources) {
   const [storedCampaigns, storedWorkflows, storedRepositories] = await Promise.all([
     readCollection(indexedDB, 'campaigns'),
     readCollection(indexedDB, 'workflows'),
     readCollection(indexedDB, 'repositories')
   ]);
-  const inventory = options.inventorySources
-    ? normalize(queryDashboardSourceObservations(options.inventorySources).observations)
+  const inventory = inventorySources
+    ? normalize(queryDashboardSourceObservations(inventorySources).observations)
     : { campaigns: [], workflows: [], repositories: [] };
-  const campaigns = mergeRecords(storedCampaigns, inventory.campaigns);
-  const workflows = mergeRecords(storedWorkflows, inventory.workflows);
-  const repositories = mergeRecords(storedRepositories, inventory.repositories);
+  return {
+    campaigns: mergeRecords(storedCampaigns, inventory.campaigns),
+    workflows: mergeRecords(storedWorkflows, inventory.workflows),
+    repositories: mergeRecords(storedRepositories, inventory.repositories)
+  };
+}
+
+export async function queryRuntimeHealth(indexedDB, options = {}) {
+  const canonicalInventory = options.canonicalInventory
+    ?? await readRuntimeHealthInventory(indexedDB, options.inventorySources);
+  const { campaigns, workflows, repositories } = canonicalInventory;
   if (campaigns.length === 0) {
     throw new Error('Runtime health requires canonical Campaign inventory.');
   }
@@ -508,12 +519,21 @@ export async function queryRuntimeHealth(indexedDB, options = {}) {
 
 async function queryIntelligence(indexedDB, options = {}) {
   const startedAt = performance.now();
+  const canonicalInventory = await readRuntimeHealthInventory(
+    indexedDB,
+    options.inventorySources
+  );
   const runtimeHealth = await queryRuntimeHealth(indexedDB, {
     campaign: options.campaign,
-    inventorySources: options.inventorySources
+    canonicalInventory
   });
   const result = computeIntelligencePortfolio(runtimeHealth.result, {
-    previousResult: options.previousResult
+    campaignContracts: compileCampaignIntelligenceContracts(
+      canonicalInventory.campaigns,
+      canonicalInventory.workflows
+    ),
+    previousResult: options.previousResult,
+    feedback: options.feedback
   });
   debugIntelligence(
     'computed %d decision(s) and %d suppression(s) in %d ms',
