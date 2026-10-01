@@ -6,6 +6,25 @@ import { root, stepBlock, workflow } from "./workflow-contract.helpers.mjs";
 
 // SelfCare workers that audit and improve the dashboard.
 
+test("SelfCare Redis query optimization requires synthetic measurements and engine parity", () => {
+  const source = workflow("self-care-redis-query-optimization.md");
+  const compiled = workflow("self-care-redis-query-optimization.lock.yml");
+  const orchestrator = workflow("self-care.md");
+
+  assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: redis-query-optimization/);
+  assert.match(source, /safe_output_mode` is `live`/);
+  assert.match(source, /skip-if-match: 'is:pr is:open "gh-aw-workflow-id: self-care-redis-query-optimization" in:body'/);
+  assert.match(source, /real Redis Stack\/RedisJSON\/RediSearch/);
+  assert.match(source, /deterministic, seeded synthetic source rows/);
+  assert.match(source, /baseline p50 and p95 latency/);
+  assert.match(source, /optimized Redis path against the Go query engine on identical synthetic inputs/);
+  assert.match(source, /browser's Dashboard Language query engine/);
+  assert.match(source, /same benchmark after the change with unchanged fixtures/);
+  assert.match(source, /draft: true/);
+  assert.match(compiled, /self-care-redis-query-optimization/);
+  assert.match(orchestrator, /self-care-redis-query-optimization/);
+});
+
 test("SelfCare agent discoverability audits bounded access-path routing", () => {
   const source = workflow("self-care-agent-discoverability.md");
 
