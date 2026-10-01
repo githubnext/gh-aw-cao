@@ -91,3 +91,50 @@ func TestIngestionHealthRejectsInvalidCounterValues(t *testing.T) {
 		t.Fatal("negative counter was accepted")
 	}
 }
+
+func TestParseIngestionHealthFieldsClassifiesCountersEventsAndUnknownFields(t *testing.T) {
+	counters, events, err := parseIngestionHealthFields([]string{
+		"webhookReceived", "5", "collectionFailed", "2",
+		"lastFailureAt", "2026-09-29T00:00:00Z", "lastFailureCode", "collection",
+		"unexpected", "ignored",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(counters, map[string]int64{"webhookReceived": 5, "collectionFailed": 2}) {
+		t.Fatalf("unexpected counters: %#v", counters)
+	}
+	if !reflect.DeepEqual(events, map[string]string{
+		"lastFailureAt":   "2026-09-29T00:00:00Z",
+		"lastFailureCode": "collection",
+	}) {
+		t.Fatalf("unexpected health events: %#v", events)
+	}
+}
+
+func TestParseIngestionHealthFieldsRejectsNonNumericAndNegativeCounters(t *testing.T) {
+	if _, _, err := parseIngestionHealthFields([]string{"taskQueued", "not-a-number"}); err == nil {
+		t.Fatal("non-numeric counter was accepted")
+	}
+	if _, _, err := parseIngestionHealthFields([]string{"taskQueued", "-1"}); err == nil {
+		t.Fatal("negative counter was accepted")
+	}
+}
+
+func TestParseIngestionHealthFieldsHandlesEmptyAndOddLengthInput(t *testing.T) {
+	counters, events, err := parseIngestionHealthFields(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(counters) != 0 || len(events) != 0 {
+		t.Fatalf("expected empty results for nil input, got counters=%#v events=%#v", counters, events)
+	}
+	// A trailing unpaired field name is ignored rather than causing a panic.
+	counters, events, err = parseIngestionHealthFields([]string{"webhookReceived", "1", "dangling"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if counters["webhookReceived"] != 1 || len(events) != 0 {
+		t.Fatalf("unexpected result for odd-length input: counters=%#v events=%#v", counters, events)
+	}
+}
