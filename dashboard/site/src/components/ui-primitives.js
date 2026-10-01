@@ -5,6 +5,8 @@
 import { h } from '../dom.js';
 import { createDebug } from '../debug.js';
 import { octicon } from '../octicons.js';
+import { effect, state } from '../reactive.js';
+import { createFactoryScope } from './factory-elements.js';
 
 const debugUiPrimitives = createDebug('ui-primitives');
 
@@ -932,6 +934,16 @@ export function createCopyControl(options) {
     failureText = 'Copy unavailable.',
     trackState = false
   } = options;
+  const scope = createFactoryScope();
+
+  // `busy`/`statusText`/`copyState` are this control's entire visible run
+  // state; the effect below is the only place that writes them onto the
+  // owned `button`/`status` nodes, matching the `reset-dashboard-control.js`
+  // state/effect/createFactoryScope shape for owned interactive DOM.
+  const busy = state(false);
+  const statusText = state('');
+  const copyState = state(/** @type {'success' | 'error' | null} */ (null));
+
   const status = /** @type {HTMLOutputElement} */ (h('output', { className: statusClassName, 'aria-live': 'polite' }));
   const button = /** @type {HTMLButtonElement} */ (h(
     'button',
@@ -940,24 +952,33 @@ export function createCopyControl(options) {
       className: buttonClassName,
       onClick: async () => {
         if (trackState) {
-          button.disabled = true;
-          status.textContent = '';
+          busy.set(true);
+          statusText.set('');
         }
         const copied = await copyTextToClipboard(getContent());
+        if (scope.signal.aborted) return;
         if (trackState) {
-          button.disabled = false;
-          button.setAttribute('data-copy-state', copied ? 'success' : 'error');
+          busy.set(false);
+          copyState.set(copied ? 'success' : 'error');
         }
-        status.textContent = copied ? successText : failureText;
+        statusText.set(copied ? successText : failureText);
       }
     },
     octicon('copy'),
     label
   ));
+  effect(() => {
+    status.textContent = statusText.get();
+    if (trackState) button.disabled = busy.get();
+    const nextCopyState = copyState.get();
+    if (nextCopyState) button.setAttribute('data-copy-state', nextCopyState);
+    else button.removeAttribute('data-copy-state');
+  }, { signal: scope.signal });
   const reset = () => {
-    status.textContent = '';
-    button.removeAttribute('data-copy-state');
+    statusText.set('');
+    copyState.set(null);
   };
+  scope.bind(button);
   return { button, status, reset };
 }
 
