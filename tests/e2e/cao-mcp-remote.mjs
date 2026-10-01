@@ -51,7 +51,7 @@ test('hosted MCP lists tools, inspects the catalog, and executes a named query',
       signal: AbortSignal.timeout(20_000)
     });
     if (response.status === 401) {
-      const refusal = await response.json();
+      const refusal = await response.json().catch(() => ({}));
       const codes = new Set(['credentials_missing', 'oidc_invalid', 'repository_unavailable', 'provenance_mismatch', 'permissions_denied', 'authentication_failed']);
       const code = codes.has(refusal.code) ? refusal.code : 'unknown';
       const trace = response.headers.get('x-trace-id');
