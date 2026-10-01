@@ -99,7 +99,8 @@ test("Actions lint issue reporter uses GraphQL issue APIs", () => {
 
 test("workflow contracts isolate authenticated campaign lifecycle checks", () => {
   const campaignScripts = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).scripts;
-  const campaignLifecycleTest = readFileSync(join(root, "tests", "integration", "campaign-lifecycle.test.mjs"), "utf8");
+  const campaignLifecycleTest = readFileSync(join(root, "tests", "integration", "campaign-lifecycle.test.mjs"), "utf8")
+    .replaceAll("\r\n", "\n");
   assert.match(campaignScripts["test:integration"], /control-failure\.test\.mjs/);
   assert.doesNotMatch(campaignScripts["test:integration"], /campaign-lifecycle/);
   assert.match(campaignScripts["test:campaign-lifecycle"], /campaign-lifecycle\.test\.mjs/);
@@ -109,13 +110,27 @@ test("workflow contracts isolate authenticated campaign lifecycle checks", () =>
 
   const source = workflow("workflow-contracts.yml");
   const jobs = generatedJobs(source);
+  const unit = jobs.get("unit")?.block ?? "";
   const contracts = jobs.get("test")?.block ?? "";
   const operationalValue = jobs.get("dependabot-operational-value")?.block ?? "";
   const campaignLifecycle = jobs.get("campaign-lifecycle")?.block ?? "";
 
   assert.match(source, /pull_request:\n    paths-ignore:\n      - \.github\/workflows\/cid\.yml\n      - dashboard\/site\/\*\*/);
   assert.match(source, /push:\n    branches: \[main\]\n    paths-ignore:\n      - \.github\/workflows\/cid\.yml\n      - dashboard\/site\/\*\*/);
-  assert.match(contracts, /npm run check/);
+  assert.match(unit, /area: \[activity, dashboard, workflows, tooling, documentation\]/);
+  assert.match(unit, /uses: \.\/\.github\/actions\/setup-gh-aw/);
+  assert.match(unit, /npm run test:unit:area -- \$\{\{ matrix\.area \}\}/);
+  assert.doesNotMatch(unit, /GH_TOKEN|CENTRAL_AGENTIC_OPS_CAMPAIGN_SOURCE|test:campaign-lifecycle/);
+  assert.match(contracts, /needs: unit/);
+  assert.match(contracts, /if: \$\{\{ !cancelled\(\) \}\}/);
+  assert.match(contracts, /UNIT_RESULT: \$\{\{ needs\.unit\.result \}\}/);
+  for (const command of [
+    "lint", "typecheck:cao", "test:integration", "test:load",
+    "check:svg", "compile", "docs:build",
+  ]) {
+    assert.ok(contracts.includes(`npm run ${command}\n`), `missing ${command} from contract checks`);
+  }
+  assert.doesNotMatch(contracts, /npm run (?:check|test:unit)(?:\s|$)/);
   assert.doesNotMatch(contracts, /GH_TOKEN|CENTRAL_AGENTIC_OPS_CAMPAIGN_SOURCE|test:campaign-lifecycle/);
   assert.match(operationalValue, /name: Dependabot operational value integration/);
   assert.match(operationalValue, /permissions:\n\s+contents: read\n\s+issues: read/);
