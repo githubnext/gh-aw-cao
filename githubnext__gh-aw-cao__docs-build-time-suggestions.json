@@ -1,6 +1,6 @@
 {
-  "source_sha": "a4a96dfbb3d457b99151761876831b8dc4a72485",
-  "next_category": "artifact transfer and Pages packaging",
+  "source_sha": "09ef9784db987690db165bd5a9c22f1a40452a1f",
+  "next_category": "reusable dashboard generation",
   "evaluations": [
     {
       "evaluated_at": "2026-10-01T13:58:00Z",
@@ -354,6 +354,14 @@
         36917691238
       ],
       "outcome": "no_actionable_improvement: evaluated reusable dashboard generation across 12 successful docs.yml runs from 2026-10-01T19:33Z through 2026-10-01T20:51Z and 2 comparable successful cao-dashboard.yml producer runs in the same evidence window. Trusted Actions metadata showed docs full-workflow median 52.0s with p90 89.8s and queue time median/p90 0.0s. Comparable successful docs build-job median was 44.5s with p90 51.3s; schedule-freshness median 7.0s with p90 8.5s on 6 scheduled runs; deploy median 24.5s with p90 29.0s on 4 runs that actually deployed. Build-step medians across 10 comparable build executions were 13.0s for Build documentation, 5.0s for Restore node_modules, 2.0s for Restore cached CAO Dashboard, and 9.0s for Upload Pages artifact. Trusted logs for docs run 36924536193 verified repeated cache hits for actions/setup-node npm cache, the explicit node_modules cache, and the central-agentic-ops-dashboard cache; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on all 10 sampled successful docs build executions, showing docs.yml already reuses the dashboard artifact effectively. Cross-checking successful cao-dashboard producer runs 36921581104 and 36917691238 still showed the dominant repeated upstream cost is Upgrade fallback activity data at 69s and 75s respectively, while Assemble Dashboard Language site took 5s and Upload dashboard artifact 7s. Bounded trusted logs for run 36921581104 also confirmed the producer still recopied a 474.9 MiB gh-aw-logs.sqlite plus 126 activity shards totaling 303.1 MiB into the dashboard artifact before uploading a 45.7 MiB archive. That qualifying reusable-dashboard optimization is already represented by suggestion fingerprint reusable-dashboard-skip-reupgrade-of-validated-activity-cache in repository memory, and repository issues are disabled, so no new non-duplicate recommendation is actionable in this cycle.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-01T21:26:50Z",
+      "worker_run_id": "36928423127",
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [],
+      "outcome": "incomplete: workflow scope was authorized for githubnext/gh-aw-cao in live mode, and workflow source inspection again shows docs.yml reuses the central-agentic-ops-dashboard cache while cao-dashboard.yml still contains the repeated fallback-activity upgrade and large artifact-copy path previously identified. However, GitHub API rate limiting prevented collecting the latest 20 completed docs.yml runs, verifying at least five comparable successful runs in the last 14 days from trusted Actions metadata, and refreshing median/p90 timing evidence or cache-hit verification for this cycle. Repository issues are disabled, so even if materially changed evidence were found, create_issue would not be a valid delivery path here. No new non-duplicate actionable recommendation could be issued in this run.",
       "suggestion_fingerprint": null
     }
   ]
