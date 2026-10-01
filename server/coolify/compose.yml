@@ -23,6 +23,7 @@ services:
       - --mcp-contract
       - /app/agent/mcp-contract.json
     environment:
+      DATABASE_URL: ${DATABASE_URL:-}
       REDIS_URL: ${REDIS_URL:-}
       REDIS_NAMESPACE: ${REDIS_NAMESPACE:-coolify-dashboard}
       CAO_POLICY_PATH: /app/.github/workflows/cao.coolify.json

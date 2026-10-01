@@ -367,7 +367,10 @@ published package as its deployment input.
 
 - `CAO_ARTIFACT_VOLUME` as the name of an existing Coolify-managed volume;
 - the public host and the exact private CIDR of Coolify's proxy network;
-- OAuth, session, webhook, and Redis credentials supplied as Coolify secrets.
+- OAuth, session, webhook, and Redis credentials supplied as Coolify secrets;
+- `DATABASE_URL` set to the PostgreSQL resource's private connection URL when
+  deploying a server revision with PostgreSQL support. Keep this value secret;
+  the variable remains optional while Redis serves canonical dashboard data.
 
 Configure the resource through the Coolify GitHub App, select protected `main`,
 set the Compose file to `server/coolify/compose.yml`, enable automatic
