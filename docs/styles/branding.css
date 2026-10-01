@@ -126,6 +126,13 @@
   color: inherit;
 }
 
+:root[data-theme="dark"] .sl-markdown-content :where(.expressive-code, .astro-code) .syntax-command,
+:root[data-theme="dark"] .sl-markdown-content :where(.expressive-code, .astro-code) .syntax-option,
+:root[data-theme="dark"] .sl-markdown-content :where(.expressive-code, .astro-code) .syntax-url,
+:root[data-theme="dark"] .sl-markdown-content :where(.expressive-code, .astro-code) .branch {
+  color: #d2a8ff !important;
+}
+
 :root[data-theme="dark"] .starlight-aside--caution .sl-markdown-content code:not(:where(.not-content *)),
 :root[data-theme="dark"] .starlight-aside--caution code:not(:where(.not-content *)) {
   color: #f0f3f8;
