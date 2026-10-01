@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
 type blackboxFixtures struct {
@@ -36,11 +38,12 @@ type blackboxFixtures struct {
 		AllowOrigin   string `json:"allowOrigin"`
 	} `json:"proxyCors"`
 	Static []struct {
-		Name        string `json:"name"`
-		Path        string `json:"path"`
-		Authorized  bool   `json:"bearer"`
-		Status      int    `json:"status"`
-		ContentType string `json:"contentType"`
+		Name         string `json:"name"`
+		Path         string `json:"path"`
+		Authorized   bool   `json:"bearer"`
+		Status       int    `json:"status"`
+		ContentType  string `json:"contentType"`
+		BodyContains string `json:"bodyContains"`
 	} `json:"static"`
 	SSE struct {
 		Path          string `json:"path"`
@@ -50,6 +53,11 @@ type blackboxFixtures struct {
 		Separator     string `json:"separator"`
 		RevisionField string `json:"revisionField"`
 	} `json:"sse"`
+	Hosting struct {
+		BeforeStartStatus int `json:"beforeStartStatus"`
+		ActiveStatus      int `json:"activeStatus"`
+		AfterDrainStatus  int `json:"afterDrainStatus"`
+	} `json:"hosting"`
 	MCP struct {
 		Path               string   `json:"path"`
 		DisabledStatus     int      `json:"disabledStatus"`
@@ -148,14 +156,24 @@ func TestBlackboxStaticAssets(t *testing.T) {
 			if fixture.ContentType != "" && !strings.HasPrefix(response.Header().Get("Content-Type"), fixture.ContentType) {
 				t.Fatalf("content type = %q", response.Header().Get("Content-Type"))
 			}
+			if !strings.Contains(response.Body.String(), fixture.BodyContains) {
+				t.Fatalf("body does not contain %q", fixture.BodyContains)
+			}
 		})
 	}
 }
 
 func TestBlackboxSSEFramingAndDisconnect(t *testing.T) {
 	fixture := loadBlackboxFixtures(t).SSE
+	address, closeRedis := fakeRedis(t)
+	defer closeRedis()
+	redisClient, err := redisx.New("redis://" + address)
+	if err != nil {
+		t.Fatal(err)
+	}
 	app := &App{
 		database: integrationDatabase(t), hub: newEventHub(),
+		store: redisx.NewStore(redisClient, "blackbox-stream"),
 		config: Config{HostProfile: localHostProfile()}, accessToken: testAccessToken,
 	}
 	server := httptest.NewServer(app.Handler())
@@ -218,7 +236,7 @@ func TestBlackboxMCP(t *testing.T) {
 	defer server.Close()
 	client := mcp.NewClient(&mcp.Implementation{Name: "contract-test", Version: "1"}, nil)
 	session, err := client.Connect(t.Context(), &mcp.StreamableClientTransport{
-		Endpoint: server.URL + fixture.Path,
+		Endpoint:   server.URL + fixture.Path,
 		HTTPClient: &http.Client{Transport: bearerTransport{token: testAccessToken, base: http.DefaultTransport}},
 	}, &mcp.ClientSessionOptions{ProtocolVersion: "2026-07-28"})
 	if err != nil {

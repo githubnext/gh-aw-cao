@@ -16,6 +16,17 @@ Canonical entity rows and GitHub webhook event bodies are deliberately open
 objects because their fields are owned by the canonical data schema and GitHub
 event types, respectively; do not infer Redis storage or MCP internals from them.
 
+`blackbox-fixtures.json` records observable behavior outside the covered
+TypeSpec operations: OAuth redirects and cookie attributes, trusted-proxy and
+CORS decisions, SSE frame bytes, static asset fallback, and MCP discovery.
+`go -C server test ./internal/server -run TestBlackbox` exercises those fixtures
+through the complete HTTP handler (the SSE case needs `POSTGRES_URL` and skips
+without it). The other server tests exercise hosted listener startup/drain and
+additional edge cases. These fixtures are not an OpenAPI extension and do not
+describe OAuth tokens or MCP protocol internals. Reuse the existing
+`SourceReader` and `hosting.Service` seams when testing another implementation;
+add a new port only when a second implementation or parity test needs one.
+
 ## Spec-writer workflow
 
 1. Read the appropriate domain `.tsp` file, the registered handlers in

@@ -16,6 +16,7 @@ import (
 )
 
 func TestExternalHTTPServerDrainLifecycle(t *testing.T) {
+	fixture := loadBlackboxFixtures(t).Hosting
 	address, closeRedis := fakeRedis(t)
 	defer closeRedis()
 	client, err := redisx.New("redis://" + address)
@@ -108,7 +109,7 @@ func TestExternalHTTPServerDrainLifecycle(t *testing.T) {
 		}
 	}
 
-	checkAndClose(request("/auth/logged-out"), http.StatusServiceUnavailable)
+	checkAndClose(request("/auth/logged-out"), fixture.BeforeStartStatus)
 	preflight := request("/api/v1/events")
 	preflight.Method = http.MethodOptions
 	preflight.Header.Set("Origin", "https://tools.example.com")
@@ -125,7 +126,7 @@ func TestExternalHTTPServerDrainLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	checkAndClose(request("/auth/logged-out"), http.StatusOK)
+	checkAndClose(request("/auth/logged-out"), fixture.ActiveStatus)
 	invalidHost := request("/auth/logged-out")
 	invalidHost.Header.Set("X-Forwarded-Host", "attacker.example.com")
 	checkAndClose(invalidHost, http.StatusMisdirectedRequest)
@@ -229,7 +230,7 @@ func TestExternalHTTPServerDrainLifecycle(t *testing.T) {
 		t.Fatal("background task ran after drain")
 	default:
 	}
-	checkAndClose(request("/auth/logged-out"), http.StatusServiceUnavailable)
+	checkAndClose(request("/auth/logged-out"), fixture.AfterDrainStatus)
 	checkAndClose(preflight, http.StatusServiceUnavailable)
 	streamDone := make(chan error, 1)
 	go func() {
