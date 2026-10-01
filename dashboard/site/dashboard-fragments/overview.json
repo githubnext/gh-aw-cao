@@ -1932,6 +1932,7 @@
           "id": "overview-header",
           "title": "How are we doing?",
           "show-title": false,
+          "prompt": "none",
           "description": "Campaign health measures campaigns without current runtime errors; repository coverage measures registered repositories reached by successful worker execution.",
           "data": {
             "sources": [
@@ -1969,6 +1970,8 @@
         {
           "id": "overview-campaigns",
           "title": "Campaigns",
+          "show-title": false,
+          "prompt": "none",
           "subject": "Provide direct navigation to every registered campaign through the same Insights route used by the campaign inventory.",
           "data": {
             "sources": [
