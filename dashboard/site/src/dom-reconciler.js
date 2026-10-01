@@ -1,8 +1,11 @@
 import { syncDomProperties } from './dom.js';
+import { createDebug } from './debug.js';
 
 /**
  * @typedef {{ nodes: Node[], index: number }} NodeQueue
  */
+
+const debugReconciler = createDebug('dom-reconciler');
 
 /**
  * Reconciles a rendered shadow tree into an owned DOM subtree. The algorithm
@@ -10,10 +13,26 @@ import { syncDomProperties } from './dom.js';
  * keyed and compatible unkeyed nodes are consumed in order, then moved into
  * place while only changed attributes, character data, or positions are mutated.
  *
+ * This is the public entry point; it logs once per call for the immediate
+ * child list, while nested reconciliation of descendant subtrees (which can
+ * recurse many times per call) reuses the unlogged internal implementation
+ * so debug output stays proportional to render boundaries, not tree depth.
+ *
  * @param {Node} currentParent
  * @param {Node} desiredParent
  */
 export function reconcileChildren(currentParent, desiredParent) {
+  const startedAt = Date.now();
+  const stats = reconcileChildNodes(currentParent, desiredParent);
+  debugReconciler({ ...stats, durationMs: Date.now() - startedAt });
+}
+
+/**
+ * @param {Node} currentParent
+ * @param {Node} desiredParent
+ * @returns {{ reused: number, inserted: number, removed: number }}
+ */
+function reconcileChildNodes(currentParent, desiredParent) {
   /** @type {Map<string, NodeQueue>} */
   const keyedChildren = new Map();
   /** @type {Map<string, NodeQueue>} */
@@ -24,6 +43,8 @@ export function reconcileChildren(currentParent, desiredParent) {
     addToQueue(key === null ? unkeyedChildren : keyedChildren, key ?? nodeTypeKey(child), child);
   }
 
+  let reused = 0;
+  let inserted = 0;
   let cursor = currentParent.firstChild;
   let desired = desiredParent.firstChild;
   while (desired) {
@@ -35,22 +56,28 @@ export function reconcileChildren(currentParent, desiredParent) {
     );
 
     if (current) {
+      reused += 1;
       const nextCursor = current === cursor ? current.nextSibling : cursor;
       if (current !== cursor) currentParent.insertBefore(current, cursor);
       reconcileNode(current, desired);
       cursor = nextCursor;
     } else {
+      inserted += 1;
       currentParent.insertBefore(desired, cursor);
     }
 
     desired = nextDesired;
   }
 
+  let removed = 0;
   while (cursor) {
     const next = cursor.nextSibling;
     currentParent.removeChild(cursor);
+    removed += 1;
     cursor = next;
   }
+
+  return { reused, inserted, removed };
 }
 
 /**
@@ -91,7 +118,7 @@ function reconcileNode(current, desired) {
 
   reconcileAttributes(current, desired);
   syncDomProperties(current, desired);
-  reconcileChildren(current, desired);
+  reconcileChildNodes(current, desired);
 }
 
 /**
