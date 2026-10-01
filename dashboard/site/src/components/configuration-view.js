@@ -290,34 +290,44 @@ function renderSettingsEditor(policyDocument) {
     onClick: () => draft.set(cloneDocument(original))
   }, 'Discard changes');
   const diagnosticsStatus = /** @type {HTMLOutputElement} */ (renderLiveRegion('output', 'configuration-copy-status'));
+  // `diagnosticsBusy`/`diagnosticsStatusText` are the diagnostics button's
+  // entire visible run state; the effect below is the only place that writes
+  // them onto the owned button/status nodes, matching the
+  // `reset-dashboard-control.js` and `createCopyControl` state/effect shape.
+  const diagnosticsBusy = state(false);
+  const diagnosticsStatusText = state('');
   const diagnosticsButton = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button',
     className: 'configuration-diagnostics-button',
     onClick: async () => {
-      diagnosticsButton.disabled = true;
-      diagnosticsStatus.textContent = 'Collecting diagnostics…';
+      diagnosticsBusy.set(true);
+      diagnosticsStatusText.set('Collecting diagnostics…');
       debugConfigurationView('diagnostics collection started');
       const startedAt = Date.now();
       try {
         const report = await collectFullDiagnostics();
         const copied = await copyTextToClipboard(JSON.stringify(report, null, 2));
-        diagnosticsStatus.textContent = copied ? 'Diagnostics copied.' : 'Diagnostics collected; copy unavailable.';
+        diagnosticsStatusText.set(copied ? 'Diagnostics copied.' : 'Diagnostics collected; copy unavailable.');
         debugConfigurationView('diagnostics collection finished', { status: 'success', copied, durationMs: Date.now() - startedAt });
       } catch (error) {
         const message = errorMessage(error);
-        diagnosticsStatus.textContent = `Unable to collect diagnostics: ${message}`;
+        diagnosticsStatusText.set(`Unable to collect diagnostics: ${message}`);
         debugConfigurationView('diagnostics collection finished', {
           status: 'error',
           errorName: error instanceof Error ? error.name : 'Error',
           durationMs: Date.now() - startedAt
         });
       } finally {
-        diagnosticsButton.disabled = false;
+        diagnosticsBusy.set(false);
       }
     }
   }, 'Collect diagnostics'));
 
   const scope = createFactoryScope();
+  effect(() => {
+    diagnosticsButton.disabled = diagnosticsBusy.get();
+    diagnosticsStatus.textContent = diagnosticsStatusText.get();
+  }, { signal: scope.signal });
   let lastModified = false;
   effect(() => {
     const currentDraft = draft.get();
