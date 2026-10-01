@@ -21,11 +21,15 @@ type QueryCompilation struct {
 // CompileQueries checks each definition against the same FT.AGGREGATE compiler
 // used at runtime. Inferred fields are only an optimistic schema: the report
 // must not claim that a query actually executes natively on a live generation.
-func CompileQueries(definitions []query.Definition) ([]QueryCompilation, error) {
+func CompileQueries(definitions []query.Definition, runtimeSources ...string) ([]QueryCompilation, error) {
 	if len(definitions) == 0 || len(definitions) > 2048 {
 		return nil, fmt.Errorf("expected between 1 and 2048 dashboard queries")
 	}
 	names := make(map[string]bool, len(definitions))
+	runtime := make(map[string]bool, len(runtimeSources))
+	for _, source := range runtimeSources {
+		runtime[source] = true
+	}
 	for _, definition := range definitions {
 		if names[definition.Name] {
 			return nil, fmt.Errorf("duplicate query %q", definition.Name)
@@ -42,6 +46,8 @@ func CompileQueries(definitions []query.Definition) ([]QueryCompilation, error) 
 			result.Reason = validationError.Error()
 		case names[definition.From]:
 			result.Reason = "query dependency requires Go execution"
+		case runtime[definition.From]:
+			result.Reason = "server runtime source is not a RedisJSON index"
 		case definition.From == "issues":
 			result.Reason = "issue overlays require Go execution"
 		default:

@@ -15,9 +15,10 @@ func TestCompileQueriesClassifiesNativePartialFallbackAndUnsupported(t *testing.
 			{Field: "status", Equals: "failure"}, {Field: "title", Includes: "timeout"},
 		}}},
 		{Name: "dependent", From: "native", Select: []query.SelectedField{{Field: "id"}}},
+		{Name: "runtime", From: "collection-health", Select: []query.SelectedField{{Field: "id"}}},
 		{Name: "unsupported", From: "runs", Predict: []json.RawMessage{json.RawMessage(`{}`)}},
 	}
-	results, err := CompileQueries(definitions)
+	results, err := CompileQueries(definitions, "collection-health")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +28,7 @@ func TestCompileQueriesClassifiesNativePartialFallbackAndUnsupported(t *testing.
 	}
 	for name, expected := range map[string]string{
 		"native": "full candidate", "partial": "partial candidate",
-		"dependent": "fallback", "unsupported": "unsupported",
+		"dependent": "fallback", "runtime": "fallback", "unsupported": "unsupported",
 	} {
 		if levels[name] != expected {
 			t.Errorf("%s: got %q, want %q", name, levels[name], expected)

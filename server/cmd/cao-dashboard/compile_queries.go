@@ -30,7 +30,7 @@ func newCompileQueriesCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		results, err := redisx.CompileQueries(definitions)
+		results, err := redisx.CompileQueries(definitions, server.RuntimeQuerySourceNames()...)
 		if err != nil {
 			return fmt.Errorf("compile dashboard queries: %w", err)
 		}
