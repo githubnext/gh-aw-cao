@@ -77,9 +77,10 @@ func (runtime *mcpRuntime) bindParameters(id string, entry agentQuery, input any
 		switch parameter.Type {
 		case "number":
 			number, ok := raw.(float64)
-			if !ok || math.IsNaN(number) || math.IsInf(number, 0) || parameter.Schema.Minimum == nil || parameter.Schema.Maximum == nil ||
-				math.IsNaN(*parameter.Schema.Minimum) || math.IsNaN(*parameter.Schema.Maximum) || math.IsInf(*parameter.Schema.Minimum, 0) || math.IsInf(*parameter.Schema.Maximum, 0) ||
-				*parameter.Schema.Minimum > *parameter.Schema.Maximum || number < *parameter.Schema.Minimum || number > *parameter.Schema.Maximum {
+			if !ok || math.IsNaN(number) || math.IsInf(number, 0) ||
+				(parameter.Schema.Minimum != nil && (math.IsNaN(*parameter.Schema.Minimum) || math.IsInf(*parameter.Schema.Minimum, 0) || number < *parameter.Schema.Minimum)) ||
+				(parameter.Schema.Maximum != nil && (math.IsNaN(*parameter.Schema.Maximum) || math.IsInf(*parameter.Schema.Maximum, 0) || number > *parameter.Schema.Maximum)) ||
+				(parameter.Schema.Minimum != nil && parameter.Schema.Maximum != nil && *parameter.Schema.Minimum > *parameter.Schema.Maximum) {
 				return nil, nil, nil, fmt.Errorf("Parameter %q must be a finite number within its declared range", name)
 			}
 			if step := parameter.Schema.MultipleOf; step != nil {
@@ -113,6 +114,23 @@ func (runtime *mcpRuntime) bindParameters(id string, entry agentQuery, input any
 			}
 		default:
 			return nil, nil, nil, fmt.Errorf("Unsupported parameter type for %q", name)
+		}
+		if parameter.Schema.Enum != nil && !slices.ContainsFunc(parameter.Schema.Enum, func(candidate any) bool {
+			switch parameter.Type {
+			case "number":
+				item, ok := candidate.(float64)
+				return ok && item == value
+			case "boolean":
+				item, ok := candidate.(bool)
+				return ok && item == value
+			case "string":
+				item, ok := candidate.(string)
+				return ok && item == value
+			default:
+				return false
+			}
+		}) {
+			return nil, nil, nil, fmt.Errorf("Parameter %q must match its declared enum", name)
 		}
 		resolved[name] = value
 		if parameter.Field != "" && supplied {

@@ -78,7 +78,8 @@ type queryParameter struct {
 		Minimum    *float64 `json:"minimum,omitempty"`
 		Maximum    *float64 `json:"maximum,omitempty"`
 		MultipleOf *float64 `json:"multipleOf,omitempty"`
-		Default    *float64 `json:"default,omitempty"`
+		Enum       []any    `json:"enum,omitempty"`
+		Default    any      `json:"default,omitempty"`
 	} `json:"schema,omitempty"`
 }
 

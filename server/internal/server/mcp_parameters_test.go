@@ -119,6 +119,7 @@ func TestMCPExecutesGeneratedSimulatorQuery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	runtime := &mcpRuntime{app: app, catalog: catalog}
 	runtime.contract.Limits.MaxParameters = 16
 	runtime.contract.Limits.MaxParameterLength = 256
@@ -148,5 +149,62 @@ func TestMCPExecutesGeneratedSimulatorQuery(t *testing.T) {
 		if !found {
 			t.Fatalf("simulator did not compute expected run summary %v", firstRun)
 		}
+	}
+}
+
+func TestMCPParameterOptionalBoundsAndEnums(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		schema string
+		value  any
+		valid  bool
+	}{
+		{"number without bounds", `{"type":"number","default":3}`, float64(123), true},
+		{"finite number required", `{"type":"number"}`, math.NaN(), false},
+		{"minimum only accepts", `{"type":"number","minimum":2}`, float64(20), true},
+		{"minimum only rejects", `{"type":"number","minimum":2}`, float64(1), false},
+		{"maximum only accepts", `{"type":"number","maximum":5}`, float64(-20), true},
+		{"maximum only rejects", `{"type":"number","maximum":5}`, float64(6), false},
+		{"number enum accepts", `{"type":"number","enum":[1,3,5]}`, float64(3), true},
+		{"number enum rejects", `{"type":"number","enum":[1,3,5]}`, float64(2), false},
+		{"string enum accepts", `{"type":"string","enum":["small","large"],"default":"small"}`, "large", true},
+		{"string enum rejects", `{"type":"string","enum":["small","large"]}`, "medium", false},
+		{"boolean enum accepts", `{"type":"boolean","enum":[true],"default":true}`, true, true},
+		{"boolean enum rejects", `{"type":"boolean","enum":[true]}`, false, false},
+		{"empty enum rejects", `{"type":"string","enum":[]}`, "anything", false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var parameter queryParameter
+			if err := json.Unmarshal([]byte(`{"name":"choice","required":true,"schema":`+test.schema+`}`), &parameter); err != nil {
+				t.Fatal(err)
+			}
+			var specification struct {
+				Type string `json:"type"`
+			}
+			if err := json.Unmarshal([]byte(test.schema), &specification); err != nil {
+				t.Fatal(err)
+			}
+			parameter.Type = specification.Type
+			entry := agentQuery{ID: "operand", Parameters: []queryParameter{parameter}}
+			runtime := &mcpRuntime{
+				app: &App{config: Config{DashboardQueries: []query.Definition{{
+					Name: "operand", From: "simulation-days",
+					Compute: []query.ComputedField{{As: "choice", Function: "literal", Args: []query.Argument{{Parameter: "choice"}}}},
+				}}}},
+				catalog: agentCatalog{Queries: []agentQuery{entry}},
+			}
+			runtime.contract.Limits.MaxParameters = 8
+			runtime.contract.Limits.MaxParameterLength = 128
+			definitions, _, _, err := runtime.bindParameters(entry.ID, entry, map[string]any{"choice": test.value})
+			if (err == nil) != test.valid {
+				t.Fatalf("bindParameters() error = %v, want valid %t", err, test.valid)
+			}
+			if test.valid && definitions[0].Compute[0].Args[0].Value != test.value {
+				t.Fatalf("resolved value = %v, want %v", definitions[0].Compute[0].Args[0].Value, test.value)
+			}
+			if _, _, _, err := runtime.bindParameters(entry.ID, entry, nil); err == nil {
+				t.Fatal("missing explicitly required operand accepted")
+			}
+		})
 	}
 }
