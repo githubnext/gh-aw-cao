@@ -349,7 +349,10 @@ describe('dashboard DOM provenance', () => {
     expect(overviewBefore?.querySelector('.factory-intro')).not.toBeNull();
 
     expect(rendered.querySelector('[data-page-id="overview"]')).toBe(overviewBefore);
-    expect(rendered.querySelector('.factory-floor')).not.toBeNull();
+    const floor = rendered.querySelector('[data-view-id="overview-floor"]');
+    expect(floor?.classList.contains('factory-floor')).toBe(true);
+    expect(floor?.querySelector('.semantic-prompt-heading')).toBeNull();
+    expect(floor?.querySelector('.semantic-prompt-action')).toBeNull();
     expect(rendered.querySelector('[data-view-id="overview-campaigns"]')).not.toBeNull();
     expect(loadPageSources).not.toHaveBeenCalledWith('maintenance', expect.anything());
     disposeDashboard(rendered);

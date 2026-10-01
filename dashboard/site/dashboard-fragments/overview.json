@@ -1873,6 +1873,8 @@
         {
           "id": "overview-floor",
           "title": "Campaign overview",
+          "show-title": false,
+          "prompt": "none",
           "subject": "Show the registered campaign and repository inventory while preserving their investigation routes.",
           "data": {
             "sources": [
