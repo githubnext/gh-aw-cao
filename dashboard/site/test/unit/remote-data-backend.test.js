@@ -135,6 +135,17 @@ describe("remote dashboard data backend", () => {
     expect(document.querySelectorAll(".dashboard-notification:not(.dashboard-notification-exit)")).toHaveLength(0);
   });
 
+  it("clears a repository-memory rate-limit notice when another memory path succeeds", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(new Response("rate limited", { status: 429 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ campaigns: [] }), { status: 200 })));
+
+    await expect(queryRemoteRepositoryMemory("first", undefined)).rejects.toThrow();
+    expect(document.querySelectorAll(".dashboard-notification:not(.dashboard-notification-exit)")).toHaveLength(1);
+    await expect(queryRemoteRepositoryMemory("second", undefined)).resolves.toEqual({ campaigns: [] });
+    expect(document.querySelectorAll(".dashboard-notification:not(.dashboard-notification-exit)")).toHaveLength(0);
+  });
+
   it("refreshes through the server without asking the browser to ingest data", async () => {
     document.head.innerHTML = '<meta name="cao-auth-mode" content="github">';
     document.cookie = "cao_csrf=oauth-csrf-token; Path=/";
@@ -174,6 +185,7 @@ describe("remote dashboard data backend", () => {
       }
       return Promise.resolve(new Response(JSON.stringify({ revision: 5, sources: {} }), { status: 200 }));
     });
+
     vi.stubGlobal("fetch", fetchMock);
 
     await refreshRemoteDashboard([], { pages: [] });
@@ -186,6 +198,25 @@ describe("remote dashboard data backend", () => {
     for (const [, init] of fetchMock.mock.calls.slice(1)) {
       expect(init.headers).toMatchObject({ "X-CSRF-Token": "renewed-token" });
     }
+  });
+
+  it("notifies when CSRF renewal is rate limited before a mutation", async () => {
+    document.head.innerHTML = '<meta name="cao-auth-mode" content="github">';
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 429 }))
+      .mockImplementationOnce(() => {
+        document.cookie = "cao_csrf=renewed-token; Path=/";
+        return Promise.resolve(new Response(JSON.stringify({ login: "octocat" }), { status: 200 }));
+      })
+      .mockResolvedValueOnce(new Response(JSON.stringify({ revision: 2 }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ revision: 2, sources: {} }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(refreshRemoteDashboard([], { pages: [] }))
+      .rejects.toThrow("GitHub authentication cookie could not be renewed");
+    expect(document.querySelectorAll(".dashboard-notification:not(.dashboard-notification-exit)")).toHaveLength(1);
+    await expect(refreshRemoteDashboard([], { pages: [] })).resolves.toMatchObject({ sources: {} });
+    expect(document.querySelectorAll(".dashboard-notification:not(.dashboard-notification-exit)")).toHaveLength(0);
   });
 
   it("does not send a mutation when the missing CSRF cookie cannot be restored", async () => {

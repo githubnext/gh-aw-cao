@@ -33,22 +33,23 @@ let observedEvaluatedAt;
 const remoteRevisionSubscribers = new Set();
 /** @type {(() => void) | undefined} */
 let stopRemoteRevisionStream;
-const rateLimitedPaths = new Set();
+const rateLimitedPolicies = new Set();
 /** @type {ReturnType<typeof publishNotification> | undefined} */
 let rateLimitNotification;
 
 /** @param {string} path @param {number} status */
 function updateRateLimitNotification(path, status) {
+  const policy = path === "/api/v1/query" ? "query" : "general";
   if (status === 429) {
-    rateLimitedPaths.add(path);
+    rateLimitedPolicies.add(policy);
     rateLimitNotification ??= publishNotification({
       message: "Dashboard is rate limited. Please try again shortly.",
       tone: "error",
       duration: 0,
     });
   } else if (status >= 200 && status < 300) {
-    rateLimitedPaths.delete(path);
-    if (rateLimitedPaths.size === 0) {
+    rateLimitedPolicies.delete(policy);
+    if (rateLimitedPolicies.size === 0) {
       rateLimitNotification?.dismiss();
       rateLimitNotification = undefined;
     }
@@ -119,7 +120,9 @@ async function apiRequest(path, init = {}, signal) {
   const oauth = usesGitHubAuthentication();
   const token = oauth ? "" : accessToken();
   const method = (init.method ?? "GET").toUpperCase();
-  if (oauth && !["GET", "HEAD", "OPTIONS"].includes(method)) await ensureCsrfToken(signal);
+  if (oauth && !["GET", "HEAD", "OPTIONS"].includes(method)) {
+    await ensureCsrfToken(signal, (status) => updateRateLimitNotification("/api/auth/session", status));
+  }
   const headers = {
     Accept: "application/json",
     ...(init.body ? { "Content-Type": "application/json" } : {}),

@@ -30,8 +30,8 @@ export function csrfHeaders(headers = {}, document = globalThis.document) {
   return applied ? { ...headers, 'X-CSRF-Token': token } : headers;
 }
 
-/** @param {AbortSignal} [signal] */
-export async function ensureCsrfToken(signal) {
+/** @param {AbortSignal} [signal] @param {(status: number) => void} [onResponse] */
+export async function ensureCsrfToken(signal, onResponse) {
   if (csrfToken()) return;
   const response = await fetch('/api/auth/session', {
     cache: 'no-store',
@@ -39,6 +39,7 @@ export async function ensureCsrfToken(signal) {
     headers: { Accept: 'application/json' },
     signal
   });
+  onResponse?.(response.status);
   if (!response.ok || !csrfToken()) {
     throw new Error('GitHub authentication cookie could not be renewed');
   }
