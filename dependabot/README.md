@@ -36,9 +36,10 @@ The orchestrator workflow can dispatch no more than 50 worker workflows in one r
 [`intelligence.json`](intelligence.json) declares the Campaign's
 repository-native problem, eligible opportunity, outcome evidence, schedule,
 overlap identity, output policy, maturation, deduplication, stop conditions,
-and operational-value definition. Installation places the Campaign-owned copy
-at `.github/workflows/dependabot.intelligence.json`, where Activity inventory
-can preserve it on the canonical Campaign record.
+and operational-value definition. After gh-aw installs the Campaign, the
+trusted CAO materializer places the Campaign-owned copy at
+`.github/cao/intelligence/dependabot.json`, where Activity inventory can
+preserve it on the canonical Campaign record.
 
 The declaration is descriptive evidence. It does not enable the Campaign,
 enroll repositories, grant credentials, promote review work to live, or

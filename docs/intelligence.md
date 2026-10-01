@@ -125,12 +125,11 @@ Place `intelligence.json` next to the Campaign's `aw.yml`:
 }
 ```
 
-Install it as a Campaign-owned resource:
+After gh-aw installs or updates the Campaign, run the standard CAO materializer.
+It copies the declaration from the reviewed Campaign revision to:
 
-```yaml
-resources:
-  - source: intelligence.json
-    destination: .github/workflows/dependabot.intelligence.json
+```text
+.github/cao/intelligence/dependabot.json
 ```
 
 The envelope is strict:

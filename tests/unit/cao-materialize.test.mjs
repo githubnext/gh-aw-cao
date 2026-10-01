@@ -81,9 +81,11 @@ test("CAO materialization preserves canonical source paths", () => {
     materializeCaoFromSource("dependabot", sourceRoot, destination);
     const staleRootFile = path.join(destination, "activity", "removed-runtime.mjs");
     const staleCampaignFile = path.join(destination, "dependabot", "removed-runtime.mjs");
+    const intelligenceDeclaration = path.join(destination, ".github", "cao", "intelligence", "dependabot.json");
     writeFileSync(staleRootFile, "stale");
     mkdirSync(path.dirname(staleCampaignFile), { recursive: true });
     writeFileSync(staleCampaignFile, "stale");
+    writeFileSync(intelligenceDeclaration, "stale");
 
     materializeCaoFromSource("root", sourceRoot, destination);
     materializeCaoFromSource("dependabot", sourceRoot, destination);
@@ -97,6 +99,10 @@ test("CAO materialization preserves canonical source paths", () => {
     assert.ok(existsSync(path.join(destination, "dashboard", "site", "package.json")));
     assert.ok(existsSync(path.join(destination, "skills", "setup-cao", "SKILL.md")));
     assert.ok(existsSync(path.join(destination, "dependabot", "cao.json")));
+    assert.equal(
+      readFileSync(intelligenceDeclaration, "utf8"),
+      readFileSync(path.join(sourceRoot, "dependabot", "intelligence.json"), "utf8"),
+    );
     assert.ok(existsSync(path.join(destination, ".github", "actions", "setup-cao-runtime", "action.yml")));
     assert.ok(existsSync(path.join(destination, ".github", "cao", "instructions.md")));
     assert.ok(existsSync(path.join(destination, ".github", "workflows", "shared", "activity-cache.md")));

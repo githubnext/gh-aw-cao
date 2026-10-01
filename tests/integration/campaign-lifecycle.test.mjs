@@ -637,7 +637,7 @@ test("gh aw update replaces workflows and restores campaign-owned assets after c
 
     const removedFiles = [
       "dependabot/operational-value.mjs",
-      ".github/workflows/dependabot.intelligence.json",
+      ".github/cao/intelligence/dependabot.json",
       ".github/workflows/dependabot-update-planner.md",
       ".github/workflows/shared/control.md",
     ];

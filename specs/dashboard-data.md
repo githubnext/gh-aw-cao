@@ -419,7 +419,7 @@ version-specific Campaign.
 
 Campaign inventory inputs MAY also report a normalized
 `campaign-intelligence-declaration` object from the Campaign-owned
-`.github/workflows/<campaign>.intelligence.json` resource. The canonical
+`.github/cao/intelligence/<campaign>.json` materialized declaration. The canonical
 Campaign record MUST preserve that envelope as `intelligenceDeclaration`
 without reinterpreting Campaign descriptions, READMEs, workflow execution, or
 policy as semantic declarations. The database projection MUST return the same

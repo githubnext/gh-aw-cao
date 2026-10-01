@@ -8,7 +8,7 @@ import { normalizeCampaignIntelligenceDeclaration } from "./campaign-intelligenc
 import { compilerVersionFromLock } from "./version.mjs";
 
 const CAMPAIGN_OWNERSHIP_DIRECTORY = ".github/aw/campaigns";
-const INSTALLED_INTELLIGENCE_SUFFIX = ".intelligence.json";
+const INSTALLED_INTELLIGENCE_DIRECTORY = ".github/cao/intelligence";
 
 function normalizeNewlines(source) {
   return source.replaceAll("\r\n", "\n");
@@ -111,13 +111,15 @@ function readIntelligenceDeclaration(filePath, expectedCampaign = null) {
   });
 }
 
-function installedIntelligenceDeclarations(workflowDirectory) {
-  return new Map(readdirSync(workflowDirectory, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith(INSTALLED_INTELLIGENCE_SUFFIX))
+function installedIntelligenceDeclarations(root) {
+  const directory = path.join(root, INSTALLED_INTELLIGENCE_DIRECTORY);
+  if (!existsSync(directory)) return new Map();
+  return new Map(readdirSync(directory, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
     .map((entry) => {
-      const campaign = entry.name.slice(0, -INSTALLED_INTELLIGENCE_SUFFIX.length);
+      const campaign = entry.name.slice(0, -".json".length);
       const declaration = readIntelligenceDeclaration(
-        path.join(workflowDirectory, entry.name),
+        path.join(directory, entry.name),
         campaign,
       );
       return [campaign, declaration];
@@ -154,7 +156,7 @@ export function sourceRevision(source) {
 export function discoverInventory(root = path.resolve(process.env.REPORT_ROOT || ".")) {
   const workflowDirectory = path.join(root, ".github/workflows");
   const policyPath = path.join(workflowDirectory, "cao.json");
-  const installedDeclarations = installedIntelligenceDeclarations(workflowDirectory);
+  const installedDeclarations = installedIntelligenceDeclarations(root);
   const manifests = findFiles(root, "aw.yml").map((manifestPath) => {
     const source = normalizeNewlines(readFileSync(manifestPath, "utf8"));
     const readmePath = path.join(path.dirname(manifestPath), "README.md");

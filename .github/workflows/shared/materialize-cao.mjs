@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -199,6 +199,15 @@ function copyTrackedResource(sourceRoot, repositoryRoot, resource) {
   }
 }
 
+function materializeCampaignIntelligence(campaign, repositoryRoot) {
+  const source = path.join(repositoryRoot, campaign, 'intelligence.json');
+  const destination = path.join(repositoryRoot, '.github', 'cao', 'intelligence', `${campaign}.json`);
+  rmSync(destination, { force: true });
+  if (!existsSync(source)) return;
+  mkdirSync(path.dirname(destination), { recursive: true });
+  cpSync(source, destination, { force: true });
+}
+
 function removeUndeployedRootResources(sourceRoot, repositoryRoot) {
   const portableSkills = readdirSync(path.join(sourceRoot, 'skills'));
   for (const skill of portableSkills) {
@@ -231,6 +240,7 @@ export function materializeCaoFromSource(campaign, sourceRoot, repositoryRoot) {
   const resources = campaign === 'root' ? rootResources : [campaign];
   validateResources(sourceRoot, resources);
   for (const resource of resources) copyTrackedResource(sourceRoot, repositoryRoot, resource);
+  if (campaign !== 'root') materializeCampaignIntelligence(campaign, repositoryRoot);
   if (campaign === 'root') removeUndeployedRootResources(sourceRoot, repositoryRoot);
   return resources;
 }
@@ -289,6 +299,7 @@ export async function materializeCao(campaign = 'root', repositoryRoot = process
     for (const plan of plans) {
       for (const resource of plan.resources) copyResource(plan.sourceRoot, repositoryRoot, resource);
     }
+    if (campaign !== 'root') materializeCampaignIntelligence(campaign, repositoryRoot);
     if (campaign === 'root') removeUndeployedRootResources(plans[0].sourceRoot, repositoryRoot);
     return {
       campaign,

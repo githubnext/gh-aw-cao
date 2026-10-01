@@ -286,14 +286,7 @@ test("operational campaigns install declarations matching their workflow identit
     const declaration = JSON.parse(readFileSync(join(root, campaignName, "cao.json"), "utf8"));
     const manifest = parse(readFileSync(join(root, campaignName, "aw.yml"), "utf8"));
     assert.equal(declaration.campaign, campaignName);
-    if (campaignName === "dependabot") {
-      assert.deepEqual(manifest.resources, [{
-        source: "intelligence.json",
-        destination: ".github/workflows/dependabot.intelligence.json",
-      }], campaignName);
-    } else {
-      assert.equal(manifest.resources, undefined, campaignName);
-    }
+    assert.equal(manifest.resources, undefined, campaignName);
     assert.ok(existsSync(join(root, campaignName, "cao.json")), campaignName);
 
     const orchestrator = workflow(`${declaration.orchestrator}.md`);

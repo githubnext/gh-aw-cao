@@ -9,11 +9,13 @@ test("projects installed campaign revisions and local compiler metadata", async 
   const root = await mkdtemp(path.join(os.tmpdir(), "activity-inventory-"));
   const workflows = path.join(root, ".github", "workflows");
   const campaigns = path.join(root, ".github", "aw", "campaigns");
+  const intelligence = path.join(root, ".github", "cao", "intelligence");
   const sourceRevision = "1".repeat(40);
   const campaignRevision = "2".repeat(40);
   try {
     await mkdir(workflows, { recursive: true });
     await mkdir(campaigns, { recursive: true });
+    await mkdir(intelligence, { recursive: true });
     await writeFile(path.join(workflows, "cao.json"), JSON.stringify({
       "control-plane": {
         campaigns: {
@@ -36,7 +38,7 @@ source: githubnext/gh-aw-cao@${sourceRevision}
       },
     };
     await writeFile(
-      path.join(workflows, "dependabot.intelligence.json"),
+      path.join(intelligence, "dependabot.json"),
       JSON.stringify(intelligenceDeclaration),
     );
     await writeFile(
@@ -74,9 +76,11 @@ source: githubnext/gh-aw-cao@${sourceRevision}
 test("discovers source declarations and rejects conflicting installed copies", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "activity-intelligence-"));
   const workflows = path.join(root, ".github", "workflows");
+  const intelligence = path.join(root, ".github", "cao", "intelligence");
   const campaign = path.join(root, "maintenance");
   try {
     await mkdir(workflows, { recursive: true });
+    await mkdir(intelligence, { recursive: true });
     await mkdir(campaign, { recursive: true });
     await writeFile(path.join(workflows, "cao.json"), JSON.stringify({
       "control-plane": {
@@ -114,7 +118,7 @@ imports:
       "Reduce unresolved maintenance work.",
     );
 
-    await writeFile(path.join(workflows, "maintenance.intelligence.json"), JSON.stringify({
+    await writeFile(path.join(intelligence, "maintenance.json"), JSON.stringify({
       contractVersion: "1.0.0",
       campaign: "maintenance",
       fields: {

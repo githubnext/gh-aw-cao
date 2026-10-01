@@ -250,11 +250,12 @@ cost, attention, or outcomes.
 ### 4.2 Campaign-owned declaration
 
 A catalog Campaign MAY declare its semantic intelligence fields in an
-`intelligence.json` file adjacent to its `aw.yml`. The Campaign manifest MUST
-install that file as a Campaign-owned resource at:
+`intelligence.json` file adjacent to its `aw.yml`. After gh-aw installs or
+updates the Campaign, the trusted CAO materializer MUST copy that file from the
+exact reviewed Campaign revision to:
 
 ```text
-.github/workflows/<campaign>.intelligence.json
+.github/cao/intelligence/<campaign>.json
 ```
 
 The declaration envelope MUST use this shape:
@@ -278,7 +279,7 @@ Declarations with an unsupported version, unknown field, empty field set,
 non-finite number, undefined value, mismatched Campaign identity, or conflicting
 source and installed copy MUST fail closed.
 
-The source and installed declaration MUST normalize to the same canonical JSON
+The source and materialized declaration MUST normalize to the same canonical JSON
 value. Canonical inventory MUST preserve the normalized envelope on the
 Campaign record as `intelligenceDeclaration`. The compiled intelligence
 contract MUST preserve its declaration version and Campaign identity, and its
