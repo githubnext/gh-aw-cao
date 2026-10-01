@@ -80,11 +80,11 @@ func renderCompilation(out io.Writer, results []redisx.QueryCompilation, format 
 		counts[result.Level]++
 	}
 	if _, err := fmt.Fprintf(out, "### Redis native translation (offline)\n\n"+
-		"%d queries: %d full candidates, %d partial candidates, %d Go fallback.\n\n"+
+		"%d queries: %d full candidates, %d partial candidates, %d Go fallback, %d unsupported by Go.\n\n"+
 		"Candidates are **not** verified native executions: the active Redis generation must have JSON sources and compatible RediSearch indexes. "+
 		"Partial candidates can still execute remaining operations in Go; no Redis connection or runtime row budget was checked.\n\n"+
 		"| Query | Source | Level | Redis primitive | Limitation |\n| --- | --- | --- | --- | --- |\n",
-		len(results), counts["full candidate"], counts["partial candidate"], counts["fallback"]); err != nil {
+		len(results), counts["full candidate"], counts["partial candidate"], counts["fallback"], counts["unsupported"]); err != nil {
 		return err
 	}
 	for _, result := range results {

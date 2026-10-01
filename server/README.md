@@ -13,6 +13,19 @@ authenticated host-neutral service profile.
 The browser never connects to Redis and never receives the Redis URL or
 credentials. It communicates only with the same-origin HTTP(S) API.
 
+## Offline query translation report
+
+From `server/`, run `go run ./cmd/cao-dashboard compile-queries` to check every
+query in `dashboard/site/dashboard-fragments/` and the canonical database
+projection query file. Use `--format json` for machine-readable results, or
+`--fragments` and `--database-queries` to inspect other query documents. The
+report distinguishes full `FT.AGGREGATE` candidates, partial Redis candidates,
+Go fallback, and definitions unsupported by the Go query engine. This is an
+offline compilation check, not a runtime performance measurement: native
+candidates still need compatible RedisJSON sources and RediSearch indexes in
+the active generation. The deployed query-cost workflow includes this report
+in its pull-request comment and artifact.
+
 ### Debug logging
 
 The server includes the namespace logger helpers from `github/gh-aw`. Debug

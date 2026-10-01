@@ -22,17 +22,24 @@ type QueryCompilation struct {
 // used at runtime. Inferred fields are only an optimistic schema: the report
 // must not claim that a query actually executes natively on a live generation.
 func CompileQueries(definitions []query.Definition) ([]QueryCompilation, error) {
-	if err := query.Validate(definitions); err != nil {
-		return nil, err
+	if len(definitions) == 0 || len(definitions) > 2048 {
+		return nil, fmt.Errorf("expected between 1 and 2048 dashboard queries")
 	}
 	names := make(map[string]bool, len(definitions))
 	for _, definition := range definitions {
+		if names[definition.Name] {
+			return nil, fmt.Errorf("duplicate query %q", definition.Name)
+		}
 		names[definition.Name] = true
 	}
 	results := make([]QueryCompilation, 0, len(definitions))
 	for _, definition := range definitions {
 		result := QueryCompilation{Name: definition.Name, From: definition.From, Level: "fallback", Native: "none"}
+		validationError := query.Validate([]query.Definition{definition})
 		switch {
+		case validationError != nil:
+			result.Level = "unsupported"
+			result.Reason = validationError.Error()
 		case names[definition.From]:
 			result.Reason = "query dependency requires Go execution"
 		case definition.From == "issues":
@@ -47,7 +54,7 @@ func CompileQueries(definitions []query.Definition) ([]QueryCompilation, error) 
 			} else {
 				result.Reason = err.Error()
 			}
-			if definition.Filter != nil && len(definition.Filter.Predicates) > 0 &&
+			if fields != nil && definition.Filter != nil && len(definition.Filter.Predicates) > 0 &&
 				len(definition.Union) == 0 && len(definition.Joins) == 0 &&
 				indexedPredicate(definition.Filter, inferredIndexNames(definition)) != "" &&
 				result.Level == "fallback" {
