@@ -445,14 +445,16 @@ async function queryLiveDashboard(
     const dailyAggregateSourceNames = new Set(Object.keys(dailyAggregateSources));
     const required = resolveDashboardQuerySources(
       context.queries,
-      nonNativeRequested.filter((name) => !dailyAggregateSourceNames.has(name))
+      nonNativeRequested.filter((name) => !dailyAggregateSourceNames.has(name)),
+      nativeSourceNames
     );
+    const databaseRequired = required.filter((name) => !nativeSourceNames.has(name));
     /** @type {{ databaseMs: number, projectionMs: number, totalMs: number, recordsRead: number, stores: string[] } | undefined} */
     let databaseMetrics;
     const databasePayload = await queryDatabaseSources(
       indexedDB,
       dashboard.logicalSources,
-      required,
+      databaseRequired,
       { onMetrics: (metrics) => { databaseMetrics = metrics; } }
     );
     const page = pageId
