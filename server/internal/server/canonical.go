@@ -14,7 +14,7 @@ import (
 var canonicalLog = logger.New("cao:server:canonical")
 
 type canonicalService struct {
-	store *postgresx.Store
+	store       *postgresx.Store
 	definitions []query.Definition
 }
 

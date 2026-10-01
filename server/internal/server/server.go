@@ -78,24 +78,24 @@ type Config struct {
 }
 
 type App struct {
-	store         *redisx.Store
-	database      *postgresx.Store
+	store           *redisx.Store
+	database        *postgresx.Store
 	databaseQueries []query.Definition
-	config        Config
-	accessToken   string
-	oauth         *githubOAuth
-	hub           *eventHub
-	canonical     canonicalService
-	reconciler    Reconciler
-	memory        *repositorymemory.RemoteResolver
-	webhookSecret []byte
-	mcp           http.Handler
-	actionsToken  string
-	actionsActor  string
-	quota         *githubquota.Service
-	startMu       sync.Mutex
-	startContext  context.Context
-	stop          context.CancelFunc
+	config          Config
+	accessToken     string
+	oauth           *githubOAuth
+	hub             *eventHub
+	canonical       canonicalService
+	reconciler      Reconciler
+	memory          *repositorymemory.RemoteResolver
+	webhookSecret   []byte
+	mcp             http.Handler
+	actionsToken    string
+	actionsActor    string
+	quota           *githubquota.Service
+	startMu         sync.Mutex
+	startContext    context.Context
+	stop            context.CancelFunc
 }
 
 func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) {
@@ -1043,6 +1043,17 @@ type generationLoader struct {
 }
 
 func (loader *generationLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
+	if name == "$records" {
+		source := model.Source{Source: name, Rows: []model.Row{}, Metadata: model.Metadata{}}
+		for _, collection := range []string{"domains", "tools", "skills", "friction", "audits", "issues"} {
+			part, _, err := loader.database.LoadSource(loader.ctx, "$"+collection, nil)
+			if err != nil {
+				return model.Source{}, model.Metrics{}, err
+			}
+			source.Rows = append(source.Rows, part.Rows...)
+		}
+		return source, model.Metrics{OutputRows: len(source.Rows)}, nil
+	}
 	if name == collectionHealthSourceName {
 		source, err := loader.app.collectionHealthSource(loader.ctx, loader.allowCollectionHealth)
 		return source, model.Metrics{}, err

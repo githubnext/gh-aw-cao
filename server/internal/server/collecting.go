@@ -255,7 +255,7 @@ func NewCollector(
 			Budget: budget, Store: ops,
 		},
 		replayer: collect.DeliveryReplayer{
-			Store: store, Client: client, Enabled: config.RecoverDeliveries,
+			Store: ops, Client: client, Enabled: config.RecoverDeliveries,
 		},
 	}, nil
 }

@@ -171,7 +171,7 @@ func Run(ctx context.Context, store *postgresx.Store, operational *redisx.Store,
 			evaluatedAt = time.Unix(0, 0).UTC()
 		}
 		return Result{
-			Revision: active.Revision,
+			Revision:     active.Revision,
 			DataRevision: dataRevision, EvaluatedAt: evaluatedAt.UTC().Format(time.RFC3339Nano),
 			Counts: active.Counts,
 		}, nil

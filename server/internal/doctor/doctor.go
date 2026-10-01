@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
@@ -22,9 +23,10 @@ var doctorLog = logger.New("cao:doctor")
 // Every field the checks need is injected rather than read from a package
 // global, so a test can drive the whole report deterministically.
 type Doctor struct {
-	// Store is the namespaced Redis store to inspect. A nil store limits the
-	// report to the checks that need no Redis.
+	// Store is the namespaced Redis store for operational caches, queues, and sessions.
 	Store *redisx.Store
+	// Postgres is the dashboard entity store used for data and query checks.
+	Postgres *postgresx.Store
 	// RedisURL is the configured endpoint. It is redacted before it reaches
 	// the report, so a URL carrying a password never appears in output.
 	RedisURL string
@@ -99,11 +101,10 @@ func (d Doctor) Run(ctx context.Context) Report {
 		d.checkRedisClients,
 		d.checkRedisTransport,
 		d.checkRedisNamespace,
-		d.checkActiveGeneration,
+		d.checkActiveData,
 		d.checkSchemaVersion,
 		d.checkIntegrity,
 		d.checkSources,
-		d.checkGenerations,
 		d.checkQueryDefinitions,
 		d.checkSourceReads,
 		d.checkCollectionProfile,
@@ -115,6 +116,17 @@ func (d Doctor) Run(ctx context.Context) Report {
 		d.checkLake,
 		d.checkTooling,
 		d.checkProjectionLock,
+	}
+
+	func (d Doctor) postgresUnavailable(id, area, title string) (Check, bool) {
+		if d.Postgres != nil {
+			return Check{}, false
+		}
+		return Check{
+			ID: id, Area: area, Title: title, Status: StatusFail,
+			Summary: "Postgres is not configured, so this check could not run",
+			Remedy:  "configure the dashboard Postgres connection",
+		}, true
 	}
 	for _, run := range checks {
 		checkCtx, cancel := context.WithTimeout(ctx, d.timeout())
