@@ -4,13 +4,16 @@ import { queryDashboardSourceObservations } from '../../dashboard/site/src/data/
 import { normalize } from '../../dashboard/site/src/data/normalize/index.js';
 import { queryCollection, readCollection } from '../../dashboard/site/src/data/storage/indexeddb.js';
 import { createDebug } from '../debug.mjs';
+import { compileCampaignIntelligenceContracts } from './intelligence-contracts.mjs';
+import { computeIntelligencePortfolio } from './intelligence.mjs';
 import {
   computeRuntimeHealthPortfolio,
   evaluateRuntimeHealthPartition,
   workerEvaluationState
 } from './runtime-health.mjs';
 
-export const COMPUTATION_NAMES = Object.freeze(['runtime-health']);
+export const COMPUTATION_NAMES = Object.freeze(['intelligence', 'runtime-health']);
+const debugIntelligence = createDebug('computation:intelligence');
 const debugRuntimeHealth = createDebug('computation:runtime-health');
 
 export function hasComputation(name) {
@@ -262,7 +265,7 @@ function partition(campaignId, workflow, runs, targetId, membership) {
   };
 }
 
-function queryRuns(name, workflows, runs) {
+function queryRuns(name, workflows, runs, partitionByTarget = false) {
   if (workflows.length === 0) return [];
   return executeQuery({
     name,
@@ -281,7 +284,7 @@ function queryRuns(name, workflows, runs) {
     'order-by': [
       { field: '_campaign-id', direction: 'asc' },
       { field: 'workflowId', direction: 'asc' },
-      { field: 'targetRepository', direction: 'asc' },
+      ...(partitionByTarget ? [{ field: 'targetRepository', direction: 'asc' }] : []),
       { field: '_runtime-date', direction: 'desc' },
       { field: 'githubRunId', direction: 'desc' },
       { field: 'attempt', direction: 'desc' }
@@ -361,7 +364,12 @@ function buildRuntimeHealthInputFromSelection(campaignRows, workflowRows, runs, 
   const eligibleWorkerWorkflows = workflowRows.filter((workflow) => (
     workflow.role === 'worker' && eligibleCampaigns.has(String(workflow.campaignId))
   ));
-  const workerRuns = queryRuns('runtime-health-worker-runs', eligibleWorkerWorkflows, runs);
+  const workerRuns = queryRuns(
+    'runtime-health-worker-runs',
+    eligibleWorkerWorkflows,
+    runs,
+    true
+  );
   const workerRunsByWorkflow = Map.groupBy(workerRuns, (run) => String(run.workflowId));
 
   return {
@@ -412,18 +420,49 @@ export function computeRuntimeHealthFromCanonicalData(data, options = {}) {
   };
 }
 
-export async function queryRuntimeHealth(indexedDB, options = {}) {
+export function computeIntelligenceFromCanonicalData(data, options = {}) {
+  const startedAt = performance.now();
+  const runtimeHealth = computeRuntimeHealthFromCanonicalData(data, {
+    campaign: options.campaign
+  }).result;
+  const result = computeIntelligencePortfolio(runtimeHealth, {
+    campaignContracts: compileCampaignIntelligenceContracts(data.campaigns, data.workflows),
+    previousResult: options.previousResult,
+    feedback: options.feedback
+  });
+  debugIntelligence(
+    'computed %d decision(s) and %d suppression(s) in %d ms',
+    result.decisionCount,
+    result.suppressionCount,
+    performance.now() - startedAt
+  );
+  return {
+    command: 'computation',
+    computation: 'intelligence',
+    result
+  };
+}
+
+async function readRuntimeHealthInventory(indexedDB, inventorySources) {
   const [storedCampaigns, storedWorkflows, storedRepositories] = await Promise.all([
     readCollection(indexedDB, 'campaigns'),
     readCollection(indexedDB, 'workflows'),
     readCollection(indexedDB, 'repositories')
   ]);
-  const inventory = options.inventorySources
-    ? normalize(queryDashboardSourceObservations(options.inventorySources).observations)
+  const inventory = inventorySources
+    ? normalize(queryDashboardSourceObservations(inventorySources).observations)
     : { campaigns: [], workflows: [], repositories: [] };
-  const campaigns = mergeRecords(storedCampaigns, inventory.campaigns);
-  const workflows = mergeRecords(storedWorkflows, inventory.workflows);
-  const repositories = mergeRecords(storedRepositories, inventory.repositories);
+  return {
+    campaigns: mergeRecords(storedCampaigns, inventory.campaigns),
+    workflows: mergeRecords(storedWorkflows, inventory.workflows),
+    repositories: mergeRecords(storedRepositories, inventory.repositories)
+  };
+}
+
+export async function queryRuntimeHealth(indexedDB, options = {}) {
+  const canonicalInventory = options.canonicalInventory
+    ?? await readRuntimeHealthInventory(indexedDB, options.inventorySources);
+  const { campaigns, workflows, repositories } = canonicalInventory;
   if (campaigns.length === 0) {
     throw new Error('Runtime health requires canonical Campaign inventory.');
   }
@@ -478,7 +517,39 @@ export async function queryRuntimeHealth(indexedDB, options = {}) {
   };
 }
 
+async function queryIntelligence(indexedDB, options = {}) {
+  const startedAt = performance.now();
+  const canonicalInventory = await readRuntimeHealthInventory(
+    indexedDB,
+    options.inventorySources
+  );
+  const runtimeHealth = await queryRuntimeHealth(indexedDB, {
+    campaign: options.campaign,
+    canonicalInventory
+  });
+  const result = computeIntelligencePortfolio(runtimeHealth.result, {
+    campaignContracts: compileCampaignIntelligenceContracts(
+      canonicalInventory.campaigns,
+      canonicalInventory.workflows
+    ),
+    previousResult: options.previousResult,
+    feedback: options.feedback
+  });
+  debugIntelligence(
+    'computed %d decision(s) and %d suppression(s) in %d ms',
+    result.decisionCount,
+    result.suppressionCount,
+    performance.now() - startedAt
+  );
+  return {
+    command: 'computation',
+    computation: 'intelligence',
+    result
+  };
+}
+
 export function queryComputation(indexedDB, name, options = {}) {
+  if (name === 'intelligence') return queryIntelligence(indexedDB, options);
   if (name === 'runtime-health') return queryRuntimeHealth(indexedDB, options);
   throw new Error(`Unknown computation: ${name}`);
 }

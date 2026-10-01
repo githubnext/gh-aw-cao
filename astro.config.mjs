@@ -270,6 +270,19 @@ export default defineConfig({
           ],
         },
         {
+          label: "Intelligence",
+          items: [
+            { label: "Overview", link: "/intelligence/" },
+            {
+              label: "Computations",
+              items: [
+                { label: "Runtime health", link: "/computation-runtime-health/" },
+                { label: "Portfolio decisions", link: "/computation-intelligence/" },
+              ],
+            },
+          ],
+        },
+        {
           label: "Deploy",
           items: [
             { label: "Deployment options", link: "/deployment/" },

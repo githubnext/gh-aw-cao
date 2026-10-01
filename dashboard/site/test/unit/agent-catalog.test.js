@@ -106,6 +106,21 @@ describe("agent catalog", () => {
     expect(queryParameters(document, "configuration-policy")).toEqual([]);
   });
 
+  it("publishes the simulator form bounds for transitive named-query operands", () => {
+    const growth = describeQuery(authoritativeDashboard, "simulator-database-size");
+    expect(growth?.parameters).toHaveLength(5);
+    expect(growth?.parameters.find((parameter) => parameter.name === "repositories")).toMatchObject({
+      name: "repositories",
+      type: "number",
+      required: true,
+      schema: { type: "number", minimum: 1, maximum: 100000, multipleOf: 1 }
+    });
+    expect(queryExecutionRequirements(authoritativeDashboard, "simulator-database-size")).toMatchObject({
+      local: true, requirements: ["simulation-days"]
+    });
+    expect(listPages(authoritativeDashboard).some((page) => page.id === "simulators")).toBe(true);
+  });
+
   it("resolves transitive source requirements", () => {
     const execution = queryExecutionRequirements(document, "usage-by-workflow");
     expect(execution.local).toBe(true);

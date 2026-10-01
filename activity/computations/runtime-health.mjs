@@ -123,11 +123,19 @@ export function evaluateRuntimeHealthPartition(partition) {
     else orderedRuns.push(run);
   }
   for (let index = 1; index < orderedRuns.length; index += 1) {
-    if (compareRequiredRunOrder(
-      /** @type {Record<string, unknown> & { runDate: string }} */ (orderedRuns[index - 1]),
-      /** @type {Record<string, unknown> & { runDate: string }} */ (orderedRuns[index])
-    ) > 0) {
-      throw new TypeError('partition.runs must be ordered newest-first by run date, GitHub run ID, and attempt');
+    const previous = /** @type {Record<string, unknown> & { runDate: string }} */ (
+      orderedRuns[index - 1]
+    );
+    const current = /** @type {Record<string, unknown> & { runDate: string }} */ (
+      orderedRuns[index]
+    );
+    if (compareRequiredRunOrder(previous, current) > 0) {
+      throw new TypeError(
+        'partition.runs must be ordered newest-first by run date, GitHub run ID, and attempt; '
+        + `${String(previous.id)} (${previous.runDate}, ${String(previous.githubRunId)}, `
+        + `${String(previous.attempt)}) appeared before ${String(current.id)} `
+        + `(${current.runDate}, ${String(current.githubRunId)}, ${String(current.attempt)})`
+      );
     }
   }
 

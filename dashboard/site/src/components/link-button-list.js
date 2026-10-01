@@ -4,6 +4,9 @@ import { bindFactorySources, createFactoryScope } from './factory-elements.js';
 import { text } from './count-formatters.js';
 import { findLink, renderSafeLink } from './link-content.js';
 import { renderIconSpan } from './ui-primitives.js';
+import { createDebug } from '../debug.js';
+
+const debugLinkButtonList = createDebug('link-button-list');
 
 /**
  * Renders one declared source as a compact list of navigation buttons.
@@ -15,6 +18,7 @@ export function renderLinkButtonList(context) {
   const bindings = bindFactorySources(context.sources, [sourceName], context);
   const scope = createFactoryScope();
   const source = bindings[sourceName];
+  debugLinkButtonList({ event: 'initialized', sourceName });
   const labelField = text(context.elementConfig?.['label-field']);
   const labelBadgeField = text(context.elementConfig?.['label-badge-field']);
   const linkField = text(context.elementConfig?.['link-field']);
@@ -102,9 +106,16 @@ export function renderLinkButtonList(context) {
     skeleton,
     empty
   );
+  let previousCount = -1;
+  /** @type {boolean | undefined} */
+  let previousPending;
   effect(() => {
     items.items = source.rows();
     items.render();
+    if (items.items.length !== previousCount) {
+      debugLinkButtonList({ event: 'items-updated', count: items.items.length });
+      previousCount = items.items.length;
+    }
     if (labelBadgeField) {
       const nextKeys = new Set(items.items.map(rowKey));
       for (const key of [...labelBadgesByKey.keys()]) {
@@ -119,6 +130,10 @@ export function renderLinkButtonList(context) {
       });
     }
     const pending = source.pending();
+    if (pending !== previousPending) {
+      debugLinkButtonList({ event: 'pending-changed', pending });
+      previousPending = pending;
+    }
     const hasRows = items.items.length > 0;
     list.hidden = !hasRows;
     skeleton.hidden = !pending;

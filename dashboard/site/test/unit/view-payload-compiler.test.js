@@ -184,6 +184,36 @@ it('fails closed when a required form parameter has no default or runtime value'
   })).toThrow('requires form parameter "multiplier"');
 });
 
+it('resolves parameters only in the selected view query dependency graph', () => {
+  const definitions = [
+    { name: 'chosen', from: 'runs' },
+    {
+      name: 'unrelated',
+      from: 'simulation-days',
+      parameters: [{ name: 'multiplier', type: 'number' }],
+      compute: [{
+        as: 'score',
+        function: 'product',
+        args: [{ field: 'day' }, { parameter: 'multiplier' }]
+      }]
+    }
+  ];
+  const page = {
+    views: [
+      { id: 'selected', data: { source: 'chosen' } },
+      { id: 'other', data: { source: 'unrelated' } }
+    ]
+  };
+  expect(() => compileDashboardViewPayloadQueries(page, 'tests', {
+    queries: definitions,
+    viewId: 'selected'
+  })).not.toThrow();
+  expect(() => compileDashboardViewPayloadQueries(page, 'tests', {
+    queries: definitions,
+    viewId: 'other'
+  })).toThrow('requires form parameter "multiplier"');
+});
+
 it('compiles only the independently requested view payload', () => {
   const page = {
     views: [

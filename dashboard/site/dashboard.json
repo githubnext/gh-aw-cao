@@ -1013,7 +1013,8 @@
           "operational-value",
           "friction",
           "skills",
-          "steering"
+          "steering",
+          "simulators"
         ]
       },
       {
@@ -1049,6 +1050,7 @@
     "dashboard-fragments/campaign-insights.json",
     "dashboard-fragments/inventory.json",
     "dashboard-fragments/operations.json",
+    "dashboard-fragments/simulators.json",
     "dashboard-fragments/overview.json",
     "dashboard-fragments/overview-attention.json",
     "dashboard-fragments/entities.json"

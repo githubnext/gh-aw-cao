@@ -13,7 +13,8 @@ import {
   executeDashboardQueries,
   resolveDashboardQuerySources
 } from './declarative.js';
-import { TABLE_FIELDS } from '../../specification.js';
+import { SYNTHETIC_SOURCE_FIELDS, TABLE_FIELDS } from '../../specification.js';
+import { SIMULATION_DAYS, simulationDaysSource } from './simulation-days.js';
 import { createDebug } from '../../debug.js';
 
 const debugDatabase = createDebug('database');
@@ -213,10 +214,13 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     filterPlanCount: filterPlans.length,
     storeCount: stores.length
   });
-  const counts = await countCollections(
-    indexedDB,
-    /** @type {typeof import('../storage/indexeddb.js').DATABASE_STORES[number][]} */ (stores)
-  );
+  /** @type {Record<string, number>} */
+  const counts = stores.length > 0
+    ? await countCollections(
+        indexedDB,
+        /** @type {typeof import('../storage/indexeddb.js').DATABASE_STORES[number][]} */ (stores)
+      )
+    : {};
   const counted = Object.fromEntries(countPlans.map(({ name, source, values, computedLiterals }) => {
     const metadata = queryMetadata(logicalSources, source, source, true);
     return [name, {
@@ -411,8 +415,8 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
   }
   const requested = new Set(sourceNames);
   const databaseRequested = [...requested].filter((name) => (
-    DATABASE_TABLE_SOURCES.has(name)
-    || !hasUsableRows(logicalSources[name])
+    !Object.hasOwn(SYNTHETIC_SOURCE_FIELDS, name)
+    && (DATABASE_TABLE_SOURCES.has(name) || !hasUsableRows(logicalSources[name]))
   ));
   const stores = [...new Set(databaseRequested.flatMap(queryStores))];
   const transactionRequested = stores.includes('transactions');
@@ -420,8 +424,9 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
     stores.filter((name) => name !== 'transactions')
   );
   const databaseStartedAt = monotonicNow();
+  /** @type {[Record<string, Record<string, unknown>[]>, Record<string, unknown>[]]} */
   const [collections, transactions] = await Promise.all([
-    readCollections(indexedDB, collectionStores),
+    collectionStores.length > 0 ? readCollections(indexedDB, collectionStores) : {},
     transactionRequested ? readTransactions(indexedDB) : []
   ]);
   const databaseMs = monotonicNow() - databaseStartedAt;
@@ -429,6 +434,10 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
   /** @type {Record<string, import('../../presenter.js').LogicalSourceInput>} */
   const result = {};
   for (const name of requested) {
+    if (name === SIMULATION_DAYS) {
+      result[name] = simulationDaysSource();
+      continue;
+    }
     const logical = /** @type {import('../../presenter.js').LogicalSourceInput | undefined} */ (sources[name]);
     if (logical
         && !DATABASE_TABLE_SOURCES.has(name)

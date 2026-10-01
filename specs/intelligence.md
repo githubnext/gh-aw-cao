@@ -1,7 +1,7 @@
 ---
 title: Central Agentic Ops Intelligence Specification
 description: Summary requirements for proactive portfolio intelligence, decision synthesis, campaign design validation, and bounded execution in Central Agentic Ops.
-version: 0.1.0
+version: 0.2.0
 status: Working Draft
 editors:
   - GitHub Next
@@ -9,7 +9,7 @@ editors:
 
 # Central Agentic Ops Intelligence Specification
 
-**Version:** 0.1.0
+**Version:** 0.2.0
 **Status:** Working Draft
 **Latest Version:** https://github.com/githubnext/gh-aw-cao/blob/main/specs/intelligence.md
 **Editors:** GitHub Next
@@ -159,7 +159,8 @@ Derived results MUST be:
 
 - versioned;
 - deterministic for the same inputs and configuration;
-- generation-scoped;
+- identified by collision-resistant input fingerprints over declared
+  dependencies, computation versions, and relevant configuration;
 - partitioned and independently recomputable;
 - bounded;
 - quality- and provenance-preserving;
@@ -192,6 +193,56 @@ Unknown contract fields MUST remain unknown. An implementation MUST NOT infer a
 measurable outcome from workflow execution, issue creation, recommendation
 production, or campaign adoption alone.
 
+### 4.1 Ledger-free campaign contract
+
+A compiled campaign intelligence contract MUST include:
+
+```json
+{
+  "contractId": "campaign-intelligence-contract:...",
+  "contractVersion": "1.0.0",
+  "campaignId": "campaign:dependabot",
+  "campaignSlug": "dependabot",
+  "repositoryNativeProblem": null,
+  "eligibleOpportunity": null,
+  "intendedOutcome": null,
+  "outcomeAttainmentEvidence": null,
+  "targetPopulation": null,
+  "interventionClass": null,
+  "triggerAndSchedule": null,
+  "scheduleRationale": null,
+  "maxDetectionDelay": null,
+  "resourceEnvelope": {},
+  "overlapIdentity": null,
+  "outputApprovalPolicy": null,
+  "maturationPeriod": null,
+  "deduplication": null,
+  "backoff": null,
+  "stopConditions": null,
+  "operationalValueDefinition": null,
+  "authorityContext": {},
+  "workflows": [],
+  "quality": {},
+  "inputFingerprint": "sha256:..."
+}
+```
+
+`contractId` MUST be stable for the canonical Campaign identity.
+`inputFingerprint` MUST cover the declared semantic fields, descriptive
+authority context, bounded workflow envelopes, and quality state.
+
+Policy mode, rollout limits, targets, budgets, and workflow ceilings MAY be
+copied into descriptive contract fields when they are explicit canonical
+facts. They MUST NOT be interpreted as permission to execute. A campaign
+description or README MUST NOT be reclassified as a problem statement,
+intended outcome, success condition, overlap identity, or operational-value
+definition unless the source declares that meaning.
+
+An absent field MUST be represented as `null` or a typed `missing` state. An
+empty default supplied by an adapter MUST NOT be interpreted as an
+authoritative observation of zero eligible opportunities, targets, schedules,
+cost, attention, or outcomes.
+
 ## 5. Evidence quality
 
 Every measure, forecast, and decision MUST independently report:
@@ -219,6 +270,46 @@ Numeric evidence MUST distinguish:
 Exhausting possible sources MUST NOT convert missing evidence to zero.
 Incomplete totals MUST expose both their measured numerator and eligible
 denominator.
+
+### 5.1 Normalized quality contract
+
+Every ledger-free intelligence result and Decision MUST carry a normalized
+quality object equivalent to:
+
+```json
+{
+  "contractId": "evidence-quality",
+  "contractVersion": "1.0.0",
+  "availability": "available",
+  "completeness": "partial",
+  "freshness": {
+    "state": "unknown",
+    "observedAt": "2026-10-01T10:00:00.000Z"
+  },
+  "coverage": {
+    "state": "partial",
+    "numerator": 3,
+    "denominator": null
+  },
+  "maturity": "unknown",
+  "provenance": {
+    "state": "available",
+    "sources": ["runtime-health"]
+  },
+  "attributionCoverage": {
+    "state": "partial",
+    "numerator": 2,
+    "denominator": 3
+  },
+  "contradictionState": "unknown"
+}
+```
+
+A producer MUST mark a dimension `malformed` when supplied values violate its
+contract. It MUST NOT claim `fresh` or `stale` without a valid observation
+time and an applicable freshness rule. A missing denominator MUST remain
+`null`; it MUST NOT be replaced with the measured numerator to manufacture
+complete coverage.
 
 ## 6. Measure families
 
@@ -537,6 +628,11 @@ through the canonical query boundary.
 Campaigns are bounded executors, not independent portfolio intelligence
 systems.
 
+An implementation MAY deploy shared intelligence before a coordination ledger
+exists. In that phase it MUST stop at advisory Decision publication, MUST NOT
+represent a Decision as acquired or admitted Work, and MUST NOT dispatch a
+worker from the intelligence computation.
+
 Shared intelligence SHOULD own:
 
 - cross-campaign discovery and ranking;
@@ -654,6 +750,47 @@ Evaluation SHOULD include:
 Before-and-after movement MUST be described as association unless a qualified
 causal design supports a stronger claim.
 
+### 13.1 Decision feedback contract
+
+Ledger-free Decision feedback MUST use a versioned envelope:
+
+```json
+{
+  "contractVersion": "1.0.0",
+  "records": [
+    {
+      "decisionId": "runtime-health-decision:...",
+      "inputFingerprint": "sha256:...",
+      "disposition": "accepted",
+      "observedAt": "2026-10-01T11:00:00.000Z",
+      "actor": "operator:octocat",
+      "authority": "control-repository-review",
+      "selectedAlternativeId": null,
+      "rationale": null,
+      "actualCost": null,
+      "outcomeDisposition": null,
+      "operationalValueMovement": null,
+      "unexpectedEffects": null,
+      "forecastAccuracy": null
+    }
+  ]
+}
+```
+
+Allowed dispositions are `accepted`, `rejected`, `deferred`, `superseded`,
+`recovered`, `expired`, and `unresolved`.
+
+Feedback MUST bind to both the stable Decision identity and the exact input
+fingerprint. Feedback for an older fingerprint MUST remain inspectable but
+MUST NOT suppress or alter a Decision produced from changed evidence.
+`accepted`, `rejected`, `superseded`, `recovered`, and `expired` are terminal
+for unchanged evidence. `deferred` and `unresolved` are nonterminal.
+
+An accepted recommendation MUST NOT be represented as an accepted outcome or
+operational-value attainment unless those dispositions are independently
+recorded. Feedback is descriptive evidence and MUST NOT grant admission,
+dispatch, rollout, repository, credential, or write authority.
+
 ## 14. Delivery sequence
 
 Implementation SHOULD proceed in this order:
@@ -671,6 +808,10 @@ Implementation SHOULD proceed in this order:
 8. Add authoring-time validation and historical campaign simulation.
 9. Add backtested forecasts, calibrated probabilities, and reviewed adaptive
    recommendations.
+
+The initial ledger-free delivery MAY stop after step 4. Later coordination
+MUST consume the stable Decision contract and input fingerprints rather than
+requiring the intelligence layer to recompute or reinterpret execution state.
 
 ## 15. Conformance checklist
 
@@ -704,6 +845,14 @@ A conforming implementation:
 - [Operational-Value History Reconstruction Specification](operational-value-history.md)
 
 ## 17. Change log
+
+### Version 0.2.0 — Working Draft
+
+- Added versioned ledger-free Campaign intelligence contracts.
+- Added a normalized evidence-quality contract that fails malformed dimensions
+  closed and preserves unknown coverage.
+- Added fingerprint-bound Decision feedback with explicit terminal and
+  nonterminal dispositions.
 
 ### Version 0.1.0 — Working Draft
 

@@ -1027,6 +1027,9 @@ type generationLoader struct {
 }
 
 func (loader *generationLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
+	if name == simulationDaysSourceName {
+		return simulationDaysSource(), model.Metrics{}, nil
+	}
 	if name == collectionHealthSourceName {
 		source, err := loader.app.collectionHealthSource(loader.ctx, loader.allowCollectionHealth)
 		return source, model.Metrics{}, err
@@ -1052,7 +1055,7 @@ func (loader *generationLoader) LoadSource(name string, definition *query.Defini
 // RuntimeQuerySourceNames lists sources resolved by the server rather than
 // stored as generation-scoped RedisJSON documents.
 func RuntimeQuerySourceNames() []string {
-	return []string{collectionHealthSourceName, gitHubQuotaUsageSourceName, marketplace.SourceName}
+	return []string{collectionHealthSourceName, gitHubQuotaUsageSourceName, marketplace.SourceName, simulationDaysSourceName}
 }
 
 func unavailableSource(name string) model.Source {

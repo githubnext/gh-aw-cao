@@ -81,6 +81,8 @@ const activityExpectedFiles = [
   "activity/commands/setup-auth.mjs",
   "activity/commands/update.mjs",
   "activity/collect-logs.sh",
+  "activity/computations/intelligence-contracts.mjs",
+  "activity/computations/intelligence.mjs",
   "activity/computations/index.mjs",
   "activity/computations/runtime-health.mjs",
   "activity/control-settings.mjs",

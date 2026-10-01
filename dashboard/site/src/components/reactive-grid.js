@@ -1,5 +1,8 @@
 import { h, keyed } from '../dom.js';
 import { effect } from '../reactive.js';
+import { createDebug } from '../debug.js';
+
+const debugReactiveGrid = createDebug('reactive-grid');
 
 /**
  * Renders a keyed grid whose items own their updates while the grid owns
@@ -27,12 +30,21 @@ export function renderReactiveGrid(options) {
     items
   );
   const root = h('section', { className: rootClassName }, list);
+  debugReactiveGrid({ event: 'initialized', hasActiveClassName: Boolean(options.activeClassName) });
+  /** @type {boolean | undefined} */
+  let previousActive;
 
   effect(() => {
     items.items = options.items();
     items.render();
+    debugReactiveGrid({ event: 'items-updated', count: items.items.length });
+    const active = options.active?.() ?? false;
     if (options.activeClassName) {
-      root.classList.toggle(options.activeClassName, options.active?.() ?? false);
+      root.classList.toggle(options.activeClassName, active);
+    }
+    if (active !== previousActive) {
+      debugReactiveGrid({ event: 'active-changed', active });
+      previousActive = active;
     }
     const ariaLabel = options.ariaLabel?.();
     if (ariaLabel) root.setAttribute('aria-label', ariaLabel);

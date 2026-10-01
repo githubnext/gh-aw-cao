@@ -587,8 +587,9 @@ Work, not only total repository count.
 
 Implementations SHOULD migrate in this order:
 
-1. Add PostgreSQL Work, Attempt, Lease, event, outbox, and cursor tables.
-2. Add fingerprinted intelligence results and stable Decision identities.
+1. Add fingerprinted intelligence results and stable Decision identities,
+   publishing advisory Decisions without admission or dispatch.
+2. Add PostgreSQL Work, Attempt, Lease, event, outbox, and cursor tables.
 3. Shadow-admit Work without dispatch and compare it with existing direct
    dispatch selections.
 4. Enable queue-driven dispatch for one low-risk review-only campaign.
