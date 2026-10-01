@@ -10,17 +10,27 @@ const actualStorage = /** @type {typeof import('../../src/data/storage/indexeddb
 const upsertCanonicalBatch = vi.fn(
   /** @type {(...parameters: unknown[]) => Promise<unknown>} */ (actualStorage.upsertCanonicalBatch)
 );
+const upsertCanonicalBatchWithConnection = vi.fn(
+  /** @type {(...parameters: unknown[]) => Promise<unknown>} */ (actualStorage.upsertCanonicalBatchWithConnection)
+);
+const maintainCanonicalDatabase = vi.fn(
+  /** @type {(...parameters: unknown[]) => Promise<unknown>} */ (actualStorage.maintainCanonicalDatabase)
+);
 const readCanonicalBatch = vi.fn(
   /** @type {(...parameters: unknown[]) => Promise<unknown>} */ (actualStorage.readCanonicalBatch)
 );
 vi.mock('../../src/data/storage/indexeddb.js', async () => ({
   ...actualStorage,
+  maintainCanonicalDatabase: (/** @type {unknown[]} */ ...parameters) => maintainCanonicalDatabase(...parameters),
   readCanonicalBatch: (/** @type {unknown[]} */ ...parameters) => readCanonicalBatch(...parameters),
-  upsertCanonicalBatch: (/** @type {unknown[]} */ ...parameters) => upsertCanonicalBatch(...parameters)
+  upsertCanonicalBatch: (/** @type {unknown[]} */ ...parameters) => upsertCanonicalBatch(...parameters),
+  upsertCanonicalBatchWithConnection: (/** @type {unknown[]} */ ...parameters) =>
+    upsertCanonicalBatchWithConnection(...parameters)
 }));
 
-const { ingestDashboardSources } = await import('../../src/data/ingest/coordinator.js');
+const { ingestDashboardSources, ingestNormalizedJsonl } = await import('../../src/data/ingest/coordinator.js');
 const { DATABASE_NAME } = actualStorage;
+const { CANONICAL_SCHEMA_VERSION } = await import('../../src/data/model/schema.js');
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
 
@@ -69,6 +79,16 @@ beforeEach(async () => {
   debug.mockClear();
   readCanonicalBatch.mockClear();
   upsertCanonicalBatch.mockClear();
+  upsertCanonicalBatchWithConnection.mockClear();
+  upsertCanonicalBatchWithConnection.mockImplementation(
+    /** @type {(...parameters: unknown[]) => Promise<unknown>} */ (
+      actualStorage.upsertCanonicalBatchWithConnection
+    )
+  );
+  maintainCanonicalDatabase.mockClear();
+  maintainCanonicalDatabase.mockImplementation(
+    /** @type {(...parameters: unknown[]) => Promise<unknown>} */ (actualStorage.maintainCanonicalDatabase)
+  );
   upsertCanonicalBatch.mockImplementation(
     /** @type {(...parameters: unknown[]) => Promise<unknown>} */ (actualStorage.upsertCanonicalBatch)
   );
@@ -139,6 +159,59 @@ describe('canonical ingestion termination', () => {
       'retrying canonical write after quota pressure',
       expect.objectContaining({ attempt: 1 })
     );
+  });
+
+  it('reclaims storage and retries streamed writes after quota errors', async () => {
+    upsertCanonicalBatchWithConnection.mockImplementationOnce(async (...parameters) => {
+      const [database, batch, options] =
+        /** @type {Parameters<typeof actualStorage.upsertCanonicalBatchWithConnection>} */ (parameters);
+      await actualStorage.upsertCanonicalBatchWithConnection(database, {
+        ...batch,
+        runs: batch.runs.slice(0, 2)
+      }, options);
+      throw quotaExceededError();
+    });
+    const storage = /** @type {StorageManager} */ (/** @type {unknown} */ ({
+      estimate: vi.fn().mockResolvedValue({
+        usage: 1_000_000,
+        quota: 2_000_000,
+        usageDetails: { indexedDB: 1_000_000 }
+      })
+    }));
+    async function* chunks() {
+      yield `${JSON.stringify({
+        kind: 'metadata',
+        schemaVersion: CANONICAL_SCHEMA_VERSION,
+        ingestionVersion: 4,
+        phase: 'runs',
+        records: 4
+      })}\n`;
+      for (let index = 0; index < 4; index += 1) {
+        yield `${JSON.stringify({
+          kind: 'record',
+          collection: 'runs',
+          record: { id: `run:${index}` }
+        })}\n`;
+      }
+    }
+
+    await expect(ingestNormalizedJsonl(indexedDB, chunks(), {
+      payloadIdentity: 'a'.repeat(64),
+      payloadScope: 'https://example.test/gh-aw-logs-runs/quota.jsonl',
+      expectedPhase: 'runs',
+      storage,
+      deferMaintenance: true
+    })).resolves.toMatchObject({ updated: true, committedRecords: 4 });
+
+    expect(maintainCanonicalDatabase).toHaveBeenCalledWith(indexedDB, expect.objectContaining({
+      maxDatabaseBytes: 900_000,
+      usageBytes: 1_000_000
+    }));
+    expect(upsertCanonicalBatchWithConnection).toHaveBeenCalledTimes(2);
+    expect(upsertCanonicalBatchWithConnection.mock.calls[1]?.[2]).toEqual(
+      expect.objectContaining({ batchSize: 2 })
+    );
+    expect(await actualStorage.readCollection(indexedDB, 'runs')).toHaveLength(4);
   });
 
   it('stops rewriting when reported database usage never drops below the cap', async () => {
