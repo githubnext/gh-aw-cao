@@ -118,7 +118,8 @@ func benchmarkQueries(ctx context.Context, store *postgresx.Store, source, datab
 	if err != nil {
 		return report, fmt.Errorf("parse dashboard queries: %w", err)
 	}
-	definitions := append(database, dashboard...)
+	definitions := append([]query.Definition{}, database...)
+	definitions = append(definitions, dashboard...)
 	server.ResolveQueryContext(definitions, result.EvaluatedAt)
 	defined := make(map[string]bool, len(dashboard))
 	for _, definition := range dashboard {
