@@ -3065,6 +3065,17 @@
             ],
             "description": "Owning repository relationship; indexed with namespace and source."
           },
+          "targetRepositoryId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional worker target repository; indexed with namespace and source, distinct from the execution repository."
+          },
           "workflowId": {
             "anyOf": [
               {

@@ -22,7 +22,8 @@ var canonicalFields = []struct {
 	key, column string
 }{
 	{"id", "id"}, {"runId", "run_id"}, {"sessionId", "session_id"},
-	{"repositoryId", "repository_id"}, {"workflowId", "workflow_id"},
+	{"repositoryId", "repository_id"}, {"targetRepositoryId", "target_repository_id"},
+	{"workflowId", "workflow_id"},
 	{"status", "status"}, {"conclusion", "conclusion"}, {"event", "event"},
 	{"owner", "owner"}, {"repository", "repository"}, {"name", "name"},
 	{"fullName", "full_name"}, {"path", "path"}, {"visibility", "visibility"},

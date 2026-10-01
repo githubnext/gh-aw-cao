@@ -42,6 +42,8 @@ model CanonicalRow {
   sessionId?: string | null;
   /** Owning repository relationship; indexed with namespace and source. */
   repositoryId?: string | null;
+  /** Optional worker target repository; indexed with namespace and source, distinct from the execution repository. */
+  targetRepositoryId?: string | null;
   /** Owning workflow relationship; indexed with namespace and source. */
   workflowId?: string | null;
   owner?: string | null;
