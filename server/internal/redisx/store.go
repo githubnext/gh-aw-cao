@@ -6,92 +6,15 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
-	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
 
 const redisWriteBatchSize = 100
 const ingestionHealthKey = "state:ingestion-health"
-const maxIndexedCandidates = 5000
-
-// Only index scalar fields used by common direct-source dashboard filters.
-// Other predicates, substring searches, joins, and issue overlays remain in Go.
-var searchableFields = []string{
-	"campaign-mode", "conclusion", "event", "lifecycle-state", "mode", "outcome-state",
-	"repositoryFullName", "rollout-mode", "run-conclusion", "run-status", "state", "status",
-	"verification-state", "workflow-role",
-}
-
-var searchTag = regexp.MustCompile(`^[a-zA-Z0-9_/-]+$`)
-
-func indexedStringFields(rows []model.Row) []string {
-	var fields []string
-	for _, field := range searchableFields {
-		found, valid := false, true
-		for _, row := range rows {
-			value := row[field]
-			if value == nil {
-				continue
-			}
-			text, ok := value.(string)
-			if !ok {
-				valid = false
-				break
-			}
-			found = found || text != ""
-		}
-		if found && valid {
-			fields = append(fields, field)
-		}
-	}
-	return fields
-}
-
-func indexedPredicate(filter *query.Filter, fields []string) string {
-	for _, predicate := range filter.Predicates {
-		if predicate.Optional || predicate.Includes != "" || predicate.GTE != nil || predicate.LT != nil {
-			continue
-		}
-		if !containsField(fields, predicate.Field) {
-			continue
-		}
-		values := predicate.In
-		if len(values) == 0 {
-			values = []any{predicate.Equals}
-		}
-		tags := make([]string, 0, len(values))
-		for _, value := range values {
-			text, ok := value.(string)
-			if !ok || text == "unknown" || len(text) > 128 || !searchTag.MatchString(text) {
-				tags = nil
-				break
-			}
-			tags = append(tags, strings.NewReplacer("/", `\/`, "-", `\-`).Replace(text))
-		}
-		if len(tags) != 0 {
-			return "@" + strings.ReplaceAll(predicate.Field, "-", "_") + ":{" + strings.Join(tags, "|") + "}"
-		}
-	}
-	return ""
-}
-
-func containsField(fields []string, field string) bool {
-	for _, candidate := range fields {
-		if candidate == field {
-			return true
-		}
-	}
-	return false
-}
 
 var ingestionCounterNames = map[string]struct{}{
 	"webhookReceived":        {},
@@ -114,10 +37,9 @@ var ingestionLoadNames = map[string]string{
 var ErrSourceUnavailable = errors.New("redis source is unavailable")
 
 type Store struct {
-	Client           CommandClient
-	namespace        string
-	processIsolated  bool
-	indexDefinitions []query.Definition
+	Client          CommandClient
+	namespace       string
+	processIsolated bool
 }
 
 type CommandClient interface {
@@ -169,10 +91,6 @@ func NewProcessIsolatedStore(client CommandClient, namespace string) (*Store, er
 
 func (s *Store) ProcessIsolated() bool {
 	return s != nil && s.processIsolated
-}
-
-func (s *Store) ConfigureIndexDefinitions(definitions []query.Definition) {
-	s.indexDefinitions = append([]query.Definition(nil), definitions...)
 }
 
 func (s *Store) Ping(ctx context.Context) error {
@@ -445,7 +363,7 @@ func repositoryMemoryFileField(campaign, path string) string {
 }
 
 func (s *Store) PutRepositoryMemory(ctx context.Context, generation string, manifest []byte, files map[string][]byte) error {
-	if _, err := s.Client.Do(ctx, "HSET", s.generationKey(generation), repositoryMemoryManifestField, string(manifest)); err != nil {
+	if _, err := s.Client.Do(ctx, "HSET", s.repositoryMemoryRevisionKey(generation), repositoryMemoryManifestField, string(manifest)); err != nil {
 		return fmt.Errorf("write repository-memory manifest: %w", err)
 	}
 	commands := make([][]string, 0, redisWriteBatchSize)
@@ -455,7 +373,7 @@ func (s *Store) PutRepositoryMemory(ctx context.Context, generation string, mani
 			return errors.New("repository-memory file key is invalid")
 		}
 		commands = append(commands, []string{
-			"HSET", s.generationKey(generation), repositoryMemoryFileField(campaign, path), string(content),
+			"HSET", s.repositoryMemoryRevisionKey(generation), repositoryMemoryFileField(campaign, path), string(content),
 		})
 		if len(commands) == cap(commands) {
 			if _, err := s.Client.DoMany(ctx, commands); err != nil {
@@ -473,7 +391,7 @@ func (s *Store) PutRepositoryMemory(ctx context.Context, generation string, mani
 }
 
 func (s *Store) RepositoryMemoryManifest(ctx context.Context, generation string) ([]byte, error) {
-	value, err := s.Client.Do(ctx, "HGET", s.generationKey(generation), repositoryMemoryManifestField)
+	value, err := s.Client.Do(ctx, "HGET", s.repositoryMemoryRevisionKey(generation), repositoryMemoryManifestField)
 	if err != nil {
 		return nil, err
 	}
@@ -484,7 +402,7 @@ func (s *Store) RepositoryMemoryManifest(ctx context.Context, generation string)
 }
 
 func (s *Store) RepositoryMemoryFile(ctx context.Context, generation, campaign, path string) ([]byte, error) {
-	value, err := s.Client.Do(ctx, "HGET", s.generationKey(generation), repositoryMemoryFileField(campaign, path))
+	value, err := s.Client.Do(ctx, "HGET", s.repositoryMemoryRevisionKey(generation), repositoryMemoryFileField(campaign, path))
 	if err != nil {
 		return nil, err
 	}
@@ -552,9 +470,8 @@ func marketplaceCacheKey(registryID, generation string) string {
 }
 
 // CachedMarketplaceRegistry returns one registry's cached, already-normalized
-// package list for the given dashboard data revision (generation), or nil if
-// no entry is cached. The cache key is derived from both registryID and
-// generation so results never leak across registries or across revisions.
+// package list for the given data revision, or nil if no entry is cached.
+// The cache key isolates both registry identity and revision.
 func (s *Store) CachedMarketplaceRegistry(ctx context.Context, registryID, generation string) ([]byte, error) {
 	value, err := s.Client.Do(ctx, "GET", s.Key("marketplace:registry:"+marketplaceCacheKey(registryID, generation)))
 	if err != nil || value == nil {
@@ -564,7 +481,7 @@ func (s *Store) CachedMarketplaceRegistry(ctx context.Context, registryID, gener
 }
 
 // CacheMarketplaceRegistry stores one registry's normalized package list for
-// ttl, isolated by registryID and generation. content must already be safe to
+// ttl, isolated by registryID and revision. content must already be safe to
 // serve to clients: callers must never cache raw secrets or access tokens.
 func (s *Store) CacheMarketplaceRegistry(
 	ctx context.Context, registryID, generation string, content []byte, ttl time.Duration,
@@ -587,572 +504,8 @@ func (s *Store) Key(suffix string) string {
 	return s.namespace + ":" + suffix
 }
 
-func (s *Store) Active(ctx context.Context) (model.ActiveGeneration, error) {
-	value, err := s.Client.Do(ctx, "HGETALL", s.activeKey())
-	if err != nil {
-		return model.ActiveGeneration{}, err
-	}
-	fields, err := Strings(value)
-	if err != nil {
-		return model.ActiveGeneration{}, err
-	}
-	if len(fields) == 0 {
-		return model.ActiveGeneration{Counts: map[string]int{}}, nil
-	}
-	result, malformed := parseActiveGeneration(fields)
-	if malformed > 0 {
-		redisLog.Printf("active generation fields malformed=%d", malformed)
-	}
-	return result, nil
-}
-
-// parseActiveGeneration decodes an HGETALL ... reply, which alternates field
-// and value strings, into an ActiveGeneration. It is a pure function so
-// Active's decoding of a malformed revision, evaluatedAt, counts, or
-// activatedAt field is testable without a fake Redis reply. A field that
-// fails to parse is left at its zero value, matching the prior inline
-// decoding, and counted in the returned malformed total.
-func parseActiveGeneration(fields []string) (model.ActiveGeneration, int) {
-	result := model.ActiveGeneration{Counts: map[string]int{}}
-	malformed := 0
-	for i := 0; i+1 < len(fields); i += 2 {
-		switch fields[i] {
-		case "generation":
-			result.Generation = fields[i+1]
-		case "revision":
-			revision, err := strconv.ParseInt(fields[i+1], 10, 64)
-			if err != nil {
-				malformed++
-				continue
-			}
-			result.Revision = revision
-		case "dataRevision":
-			result.DataRevision = fields[i+1]
-		case "evaluatedAt":
-			evaluatedAt, err := time.Parse(time.RFC3339Nano, fields[i+1])
-			if err != nil {
-				malformed++
-				continue
-			}
-			result.EvaluatedAt = evaluatedAt
-		case "counts":
-			if err := json.Unmarshal([]byte(fields[i+1]), &result.Counts); err != nil {
-				malformed++
-			}
-		case "activatedAt":
-			activated, err := time.Parse(time.RFC3339Nano, fields[i+1])
-			if err != nil {
-				malformed++
-				continue
-			}
-			result.Activated = activated
-		}
-	}
-	return result, malformed
-}
-
-func (s *Store) Activate(ctx context.Context, generation, dataRevision string, evaluatedAt time.Time, counts map[string]int) (int64, error) {
-	redisLog.Printf("activating generation sources=%d", len(counts))
-	data, _ := json.Marshal(counts)
-	activationTime := time.Now().UTC()
-	activated := activationTime.Format(time.RFC3339Nano)
-	// The issue overlay is keyed by identity independently of generations;
-	// activation never scans or copies issue status.
-	script := fmt.Sprintf(issueStatusPruneScript, int64(issueStatusRetention.Seconds())) +
-		`prune(KEYS[4], KEYS[5], tonumber(ARGV[6]), ARGV[1], ARGV[7], ARGV[8], ARGV[9]); local revision = redis.call("INCR", KEYS[3]); redis.call("HSET", KEYS[1], "generation", ARGV[1], "revision", revision, "dataRevision", ARGV[2], "evaluatedAt", ARGV[3], "counts", ARGV[4], "activatedAt", ARGV[5]); redis.call("SET", KEYS[2], ARGV[1]); return revision`
-	value, err := s.Client.Do(
-		ctx, "EVAL", script, "5", s.activeKey(), s.activeGenerationKey(), s.revisionSequenceKey(),
-		s.issueStatusKey(), s.issueStatusAgeKey(),
-		generation, dataRevision, evaluatedAt.UTC().Format(time.RFC3339Nano), string(data), activated,
-		strconv.FormatInt(activationTime.Unix(), 10),
-		s.namespace+":g:", ":source:"+safeName("issues")+":row:", ":source:"+safeName("issues")+":rows",
-	)
-	if err != nil {
-		return 0, fmt.Errorf("activate Redis generation: %w", err)
-	}
-	revision, ok := value.(int64)
-	if !ok {
-		return 0, errors.New("activate Redis generation returned an invalid revision")
-	}
-	return revision, nil
-}
-
-// PutSource stages one source's rows.
-//
-// Redis 8 stores rows as JSON documents and indexes eligible string fields
-// without duplicating the documents. Issue overlays and Upstash's
-// single-session provider retain the core Redis hash representation.
-func (s *Store) PutSource(ctx context.Context, generation string, source model.Source) error {
-	redisLog.Printf("staging source rows=%d", len(source.Rows))
-	prefix := s.rowPrefix(generation, source.Source)
-	setKey := s.sourceSetKey(generation, source.Source)
-	format := "hash"
-	var schema []indexField
-	if !s.processIsolated && source.Source != "issues" {
-		format = "json"
-		var err error
-		schema, err = indexSchemaForSource(source, s.indexDefinitions)
-		if err != nil {
-			return err
-		}
-	}
-	metadata, _ := json.Marshal(source.Metadata)
-	indexed := make([]string, 0, len(schema))
-	for _, field := range schema {
-		if field.Kind == indexFieldTag {
-			indexed = append(indexed, field.Name)
-		}
-	}
-	fields, _ := json.Marshal(indexed)
-	schemaMetadata, _ := json.Marshal(schema)
-	if _, err := s.Client.Do(ctx, "HSET", s.generationKey(generation),
-		"source:"+source.Source+":metadata", string(metadata),
-		"source:"+source.Source+":format", format,
-		"source:"+source.Source+":indexed-fields", string(fields),
-		"source:"+source.Source+":index-schema", string(schemaMetadata),
-	); err != nil {
-		return err
-	}
-	if format == "json" && len(schema) > 0 {
-		command := append([]string{"FT.CREATE", s.sourceIndexKey(generation, source.Source),
-			"ON", "JSON", "PREFIX", "1", prefix, "SCHEMA"}, redisIndexSchema(schema)...)
-		if _, err := s.Client.Do(ctx, command...); err != nil {
-			return fmt.Errorf("create Redis JSON search index: %w", err)
-		}
-	}
-	commands := make([][]string, 0, redisWriteBatchSize)
-	flush := func(rowNumber int) error {
-		if len(commands) == 0 {
-			return nil
-		}
-		if _, err := s.Client.DoMany(ctx, commands); err != nil {
-			return fmt.Errorf("write %s rows through %d: %w", source.Source, rowNumber, err)
-		}
-		commands = commands[:0]
-		return nil
-	}
-	script := `redis.call("HSET", KEYS[1], "raw", ARGV[1]); redis.call("SADD", KEYS[2], KEYS[1]); return "OK"`
-	if format == "json" {
-		script = `redis.call("JSON.SET", KEYS[1], "$", ARGV[1]); redis.call("SADD", KEYS[2], KEYS[1]); return "OK"`
-	}
-	for rowNumber, row := range source.Rows {
-		data, err := json.Marshal(row)
-		if err != nil {
-			return fmt.Errorf("encode %s row: %w", source.Source, err)
-		}
-		key := prefix + rowID(row, rowNumber)
-		commands = append(commands, []string{"EVAL", script, "2", key, setKey, string(data)})
-		if len(commands) == cap(commands) {
-			if err := flush(rowNumber); err != nil {
-				return err
-			}
-		}
-	}
-	if err := flush(len(source.Rows) - 1); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (s *Store) PutDiagnostics(ctx context.Context, generation string, diagnostics model.Diagnostics) error {
-	data, err := json.Marshal(diagnostics)
-	if err != nil {
-		return err
-	}
-	_, err = s.Client.Do(ctx, "HSET", s.generationKey(generation), "diagnostics", string(data))
-	return err
-}
-
-func (s *Store) Diagnostics(ctx context.Context, generation string) (model.Diagnostics, error) {
-	value, err := s.Client.Do(ctx, "HGET", s.generationKey(generation), "diagnostics")
-	if err != nil {
-		return model.Diagnostics{}, err
-	}
-	if value == nil {
-		return model.Diagnostics{}, errors.New("diagnostics are unavailable")
-	}
-	var diagnostics model.Diagnostics
-	if err := json.Unmarshal([]byte(fmt.Sprint(value)), &diagnostics); err != nil {
-		return model.Diagnostics{}, err
-	}
-	return diagnostics, nil
-}
-
-// LoadSource reads a source's rows and lets the query engine evaluate the
-// definition, except for unfiltered literal-labelled table counts, which use
-// the generation's Redis set cardinality without loading row documents.
-//
-// Eligible direct-source equality predicates use a bounded search index to
-// choose candidate documents; the Go engine still evaluates the full filter.
-// Other simple count aggregates discard unrelated fields as rows are decoded.
-func (s *Store) LoadSource(ctx context.Context, generation, name string, definition *query.Definition) (model.Source, model.Metrics, error) {
-	metadata, err := s.sourceInfo(ctx, generation, name)
-	if err != nil {
-		return model.Source{}, model.Metrics{}, err
-	}
-	if label, field, ok := nativeTableCount(definition); ok && definition.From == name {
-		value, err := s.Client.Do(ctx, "SCARD", s.sourceSetKey(generation, name))
-		metrics := model.Metrics{RedisCommands: 2, PushedDown: []string{"compute", "aggregate"}}
-		if err != nil {
-			return model.Source{}, metrics, err
-		}
-		count, err := strconv.Atoi(fmt.Sprint(value))
-		if err != nil || count < 0 {
-			return model.Source{}, metrics, errors.New("invalid Redis source cardinality")
-		}
-		rows := []model.Row{}
-		if count > 0 {
-			rows = append(rows, model.Row{definition.Compute[0].As: label, field: count})
-		}
-		return model.Source{Source: name, Rows: rows, Metadata: metadata}, metrics, nil
-	}
-	formatValue, err := s.Client.Do(ctx, "HGET", s.generationKey(generation), "source:"+name+":format")
-	if err != nil {
-		return model.Source{}, model.Metrics{}, err
-	}
-	jsonRows := formatValue == "json"
-	schemaCommands := 0
-	if jsonRows && definition != nil && definition.From == name && name != "issues" &&
-		len(definition.Union) == 0 && len(definition.Joins) == 0 &&
-		definition.Filter == nil && len(definition.Compute) == 0 &&
-		definition.Aggregate != nil && len(definition.Aggregate.By) > 0 &&
-		definition.TemporalSeries == nil && len(definition.Select) == 0 &&
-		len(definition.OrderBy) == 0 && definition.Limit == nil {
-		schemaCommands++
-		schema, err := s.Client.Do(ctx, "HGET", s.generationKey(generation), "source:"+name+":index-schema")
-		if err != nil {
-			return model.Source{}, model.Metrics{RedisCommands: 3}, err
-		}
-		var fields []indexField
-		if schema != nil && json.Unmarshal([]byte(fmt.Sprint(schema)), &fields) == nil {
-			eligible := true
-			for _, field := range definition.Aggregate.By {
-				indexed, ok := findPipelineField(fields, nil, field)
-				if !ok || !indexed.Required {
-					eligible = false
-				}
-			}
-			for _, value := range definition.Aggregate.Values {
-				indexed, ok := findPipelineField(fields, nil, value.Field)
-				if !ok || !indexed.Required {
-					eligible = false
-				}
-			}
-			if eligible {
-				command, output, compileErr := nativeAggregateCommand(s.sourceIndexKey(generation, name), *definition, fields)
-				if compileErr == nil {
-					cardinality, err := s.Client.Do(ctx, "SCARD", s.sourceSetKey(generation, name))
-					if err != nil {
-						return model.Source{}, model.Metrics{RedisCommands: 4}, err
-					}
-					inputRows, err := strconv.Atoi(fmt.Sprint(cardinality))
-					if err != nil || inputRows < 0 {
-						return model.Source{}, model.Metrics{RedisCommands: 4}, errors.New("invalid Redis source cardinality")
-					}
-					// Without a Redis cursor, at most one group per input
-					// document must fit in a single aggregate reply.
-					if inputRows > 10_000 {
-						schemaCommands++
-					} else {
-						value, err := s.Client.Do(ctx, command...)
-						metrics := model.Metrics{RedisCommands: 5, PushedDown: []string{"aggregate"}}
-						if err != nil {
-							return model.Source{}, metrics, err
-						}
-						reply, ok := value.([]any)
-						if !ok || len(reply) == 0 {
-							return model.Source{}, metrics, errors.New("invalid Redis aggregate response")
-						}
-						total, ok := reply[0].(int64)
-						if !ok || total < 0 || total > query.MaxOutputRows {
-							return model.Source{}, metrics, errors.New("redis aggregate exceeds max output rows")
-						}
-						rows, err := decodeAggregateRows(value, output)
-						if err != nil || len(rows) != int(total) {
-							return model.Source{}, metrics, errors.New("incomplete Redis aggregate response")
-						}
-						type keyedRow struct {
-							key string
-							row model.Row
-						}
-						ordered := make([]keyedRow, len(rows))
-						for i, row := range rows {
-							values := make([]any, len(definition.Aggregate.By))
-							for n, field := range definition.Aggregate.By {
-								values[n] = row[field]
-							}
-							data, err := json.Marshal(values)
-							if err != nil {
-								return model.Source{}, metrics, err
-							}
-							ordered[i] = keyedRow{key: string(data), row: row}
-						}
-						sort.SliceStable(ordered, func(i, j int) bool { return ordered[i].key < ordered[j].key })
-						for i, item := range ordered {
-							rows[i] = item.row
-						}
-						metrics.RedisRows = len(rows)
-						return model.Source{Source: name, Rows: rows, Metadata: metadata}, metrics, nil
-					}
-				}
-			}
-		}
-	}
-	var projectedFields map[string]bool
-	if definition != nil && definition.From == name && name != "issues" &&
-		len(definition.Union) == 0 && len(definition.Joins) == 0 &&
-		definition.Filter == nil && len(definition.Compute) == 0 &&
-		definition.TemporalSeries == nil && definition.Aggregate != nil {
-		projectedFields = make(map[string]bool)
-		for _, field := range definition.Aggregate.By {
-			projectedFields[field] = true
-		}
-		for _, value := range definition.Aggregate.Values {
-			if value.Reducer != "count" || value.Filter != nil {
-				projectedFields = nil
-				break
-			}
-			projectedFields[value.Field] = true
-		}
-	}
-	metrics := model.Metrics{FallbackOperations: []string{"query"}, RedisCommands: 2 + schemaCommands}
-	var keys []string
-	if jsonRows && name != "issues" && definition != nil && definition.From == name &&
-		len(definition.Union) == 0 && len(definition.Joins) == 0 && definition.Filter != nil {
-		fields, err := s.Client.Do(ctx, "HGET", s.generationKey(generation), "source:"+name+":indexed-fields")
-		metrics.RedisCommands++
-		if err != nil {
-			return model.Source{}, metrics, err
-		}
-		var indexed []string
-		if fields != nil {
-			if err := json.Unmarshal([]byte(fmt.Sprint(fields)), &indexed); err != nil {
-				return model.Source{}, metrics, err
-			}
-		}
-		if expression := indexedPredicate(definition.Filter, indexed); expression != "" {
-			value, err := s.Client.Do(ctx, "FT.SEARCH", s.sourceIndexKey(generation, name),
-				expression, "NOCONTENT", "LIMIT", "0", strconv.Itoa(maxIndexedCandidates))
-			metrics.RedisCommands++
-			if err != nil {
-				return model.Source{}, metrics, err
-			}
-			results, ok := value.([]any)
-			if !ok || len(results) == 0 {
-				return model.Source{}, metrics, errors.New("invalid Redis search response")
-			}
-			total, ok := results[0].(int64)
-			if !ok || total < 0 {
-				return model.Source{}, metrics, errors.New("invalid Redis search count")
-			}
-			if total <= maxIndexedCandidates {
-				keys, err = Strings(results[1:])
-				if err != nil || len(keys) != int(total) {
-					return model.Source{}, metrics, errors.New("invalid Redis search rows")
-				}
-				metrics.PushedDown = append(metrics.PushedDown, "indexed-candidates")
-			}
-		}
-	}
-	if keys == nil {
-		value, err := s.Client.Do(ctx, "SMEMBERS", s.sourceSetKey(generation, name))
-		metrics.RedisCommands++
-		if err != nil {
-			return model.Source{}, metrics, err
-		}
-		keys, err = Strings(value)
-		if err != nil {
-			return model.Source{}, metrics, err
-		}
-	}
-	sort.Strings(keys)
-	if len(keys) > query.MaxInputRows {
-		return model.Source{}, metrics, fmt.Errorf("source %q exceeds max input rows", name)
-	}
-	rows := make([]model.Row, 0, len(keys))
-	batchSize := 1000
-	readRow := `redis.call("HGET", key, "raw")`
-	if jsonRows {
-		readRow = `redis.call("JSON.GET", key)`
-	}
-	script := `local out = {}; for i,key in ipairs(KEYS) do out[i] = ` + readRow + `; end; return out`
-	if projectedFields != nil || jsonRows {
-		// Bound replies for JSON documents and projected hash rows. A large
-		// collection may span batches, but no one reply can allocate more than
-		// half the query's working-byte budget.
-		batchSize = 32
-		script = fmt.Sprintf(`local out = {}; local bytes = 0; for i,key in ipairs(KEYS) do
-			local raw = %s
-			if raw then bytes = bytes + #raw end
-			if bytes > %d then return redis.error_reply("source batch exceeds max working bytes") end
-			out[i] = raw
-		end; return out`, readRow, query.MaxWorkingBytes/2)
-	}
-	for offset := 0; offset < len(keys); offset += batchSize {
-		end := min(len(keys), offset+batchSize)
-		command := make([]string, 0, 3+end-offset)
-		command = append(command, "EVAL", script, strconv.Itoa(end-offset))
-		command = append(command, keys[offset:end]...)
-		value, err := s.Client.Do(ctx, command...)
-		metrics.RedisCommands++
-		if err != nil {
-			return model.Source{}, metrics, err
-		}
-		rawRows, err := Strings(value)
-		if err != nil {
-			return model.Source{}, metrics, err
-		}
-		for _, raw := range rawRows {
-			if raw == "" {
-				return model.Source{}, metrics, errors.New("redis source row is missing")
-			}
-			var row model.Row
-			if err := json.Unmarshal([]byte(raw), &row); err != nil {
-				return model.Source{}, metrics, err
-			}
-			if projectedFields != nil {
-				projected := make(model.Row, len(projectedFields))
-				for field := range projectedFields {
-					if value, ok := row[field]; ok {
-						projected[field] = value
-					}
-				}
-				row = projected
-			}
-			rows = append(rows, row)
-		}
-	}
-	if name == "issues" {
-		// Only request statuses for retained rows; even a large global overlay
-		// never requires an unbounded Redis reply or main-thread hash scan.
-		for offset := 0; offset < len(rows); offset += batchSize {
-			end := min(len(rows), offset+batchSize)
-			ids := make([]string, 0, end-offset)
-			issueRows := make([]model.Row, 0, end-offset)
-			for _, row := range rows[offset:end] {
-				if id, ok := row["id"].(string); ok && id != "" &&
-					row["isPullRequest"] == false && !strings.Contains(fmt.Sprint(row["url"]), "/pull/") {
-					ids = append(ids, id)
-					issueRows = append(issueRows, row)
-				}
-			}
-			if len(ids) == 0 {
-				continue
-			}
-			command := append([]string{"HMGET", s.issueStatusKey()}, ids...)
-			value, err := s.Client.Do(ctx, command...)
-			metrics.RedisCommands++
-			if err != nil {
-				return model.Source{}, metrics, err
-			}
-			updates, ok := value.([]any)
-			if !ok || len(updates) != len(ids) {
-				return model.Source{}, metrics, errors.New("invalid issue status response")
-			}
-			for i, raw := range updates {
-				if raw == nil {
-					continue
-				}
-				var update model.Row
-				if err := json.Unmarshal([]byte(fmt.Sprint(raw)), &update); err != nil {
-					return model.Source{}, metrics, err
-				}
-				row := issueRows[i]
-				if update["ambiguous"] == true || update["rowHash"] != rowID(row, 0) ||
-					!strings.EqualFold(fmt.Sprint(update["repository"]), fmt.Sprint(row["repositoryFullName"])) {
-					continue
-				}
-				observed, updateErr := time.Parse(time.RFC3339Nano, fmt.Sprint(update["statusObservedAt"]))
-				snapshot, snapshotErr := time.Parse(time.RFC3339Nano, fmt.Sprint(row["statusObservedAt"]))
-				if updateErr != nil || snapshotErr == nil && !observed.After(snapshot) {
-					continue
-				}
-				for _, field := range []string{"state", "closed", "stateReason", "closedAt", "statusObservedAt"} {
-					row[field] = update[field]
-				}
-			}
-		}
-	}
-	metrics.RedisRows = len(rows)
-	redisLog.Printf("loaded source rows=%d mode=fallback", len(rows))
-	return model.Source{Source: name, Rows: rows, Metadata: metadata}, metrics, nil
-}
-
-func nativeTableCount(definition *query.Definition) (any, string, bool) {
-	if definition == nil || len(definition.Union) != 0 || len(definition.Joins) != 0 ||
-		definition.Filter != nil || definition.TemporalSeries != nil || len(definition.Predict) != 0 ||
-		len(definition.Compute) != 1 || definition.Aggregate == nil ||
-		len(definition.Aggregate.By) != 1 || len(definition.Aggregate.Values) != 1 {
-		return nil, "", false
-	}
-	computed := definition.Compute[0]
-	value := definition.Aggregate.Values[0]
-	if computed.Function != "literal" || len(computed.Args) != 1 {
-		return nil, "", false
-	}
-	label, labelOK := computed.Args[0].Value.(string)
-	if computed.Args[0].Field != nil || computed.Args[0].Context != "" ||
-		!labelOK || label == "" ||
-		computed.As == "" || definition.Aggregate.By[0] != computed.As ||
-		value.Field != computed.As || value.Reducer != "count" ||
-		value.Filter != nil || value.As == "" || value.As == computed.As {
-		return nil, "", false
-	}
-	return label, value.As, true
-}
-
-func (s *Store) sourceInfo(ctx context.Context, generation, name string) (model.Metadata, error) {
-	value, err := s.Client.Do(ctx, "HGET", s.generationKey(generation), "source:"+name+":metadata")
-	if err != nil {
-		return nil, err
-	}
-	if value == nil {
-		return nil, fmt.Errorf("%w: %q", ErrSourceUnavailable, name)
-	}
-	metadata := model.Metadata{}
-	if raw := fmt.Sprint(value); raw != "" {
-		_ = json.Unmarshal([]byte(raw), &metadata)
-	}
-	if metadata == nil {
-		metadata = model.Metadata{}
-	}
-	return metadata, nil
-}
-
-func rowID(row model.Row, fallback int) string {
-	for _, field := range []string{"id", "event", "run", "repository-coordinate"} {
-		if value := strings.TrimSpace(fmt.Sprint(row[field])); value != "" && value != "<nil>" {
-			sum := sha256.Sum256([]byte(value))
-			return hex.EncodeToString(sum[:16])
-		}
-	}
-	data, _ := json.Marshal(row)
-	data = append(data, strconv.Itoa(fallback)...)
-	sum := sha256.Sum256(data)
-	return hex.EncodeToString(sum[:16])
-}
-
-func safeName(value string) string {
-	sum := sha256.Sum256([]byte(value))
-	return hex.EncodeToString(sum[:12])
-}
-
-func (s *Store) activeKey() string { return s.namespace + ":active" }
-func (s *Store) activeGenerationKey() string {
-	return s.namespace + ":active-generation"
-}
-func (s *Store) revisionSequenceKey() string { return s.namespace + ":revision-sequence" }
-func (s *Store) generationKey(generation string) string {
+// repositoryMemoryRevisionKey retains the existing cache key layout so cached
+// repository-memory content remains available across the storage migration.
+func (s *Store) repositoryMemoryRevisionKey(generation string) string {
 	return s.namespace + ":g:" + generation
 }
-func (s *Store) sourceSetKey(generation, source string) string {
-	return s.generationKey(generation) + ":source:" + safeName(source) + ":rows"
-}
-func (s *Store) rowPrefix(generation, source string) string {
-	return s.generationKey(generation) + ":source:" + safeName(source) + ":row:"
-}
-func (s *Store) sourceIndexKey(generation, source string) string {
-	return s.generationKey(generation) + ":source:" + safeName(source) + ":index"
-}
-func (s *Store) issueStatusKey() string    { return s.Key("issue-status") }
-func (s *Store) issueStatusAgeKey() string { return s.Key("issue-status:updated") }

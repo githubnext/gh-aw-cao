@@ -103,7 +103,7 @@ func TestFailedPostgresReplaceRollsBackIngestedSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	repositories, _, err := store.LoadSource(ctx, "repositories", nil)
+	repositories, _, err := store.LoadSource(ctx, "$repositories", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func TestFailedPostgresReplaceRollsBackIngestedSources(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(after, before) || after.Revision != result.Revision {
 		t.Fatalf("failed replacement changed active state: before=%+v after=%+v err=%v", before, after, err)
 	}
-	preserved, _, err := store.LoadSource(ctx, "repositories", nil)
+	preserved, _, err := store.LoadSource(ctx, "$repositories", nil)
 	if err != nil || !reflect.DeepEqual(preserved, repositories) {
 		t.Fatalf("failed replacement lost ingested rows: %v, %v", preserved, err)
 	}
@@ -140,18 +140,18 @@ func TestIngestedPostgresSourcesSupportDirectQueries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	repositories, metrics, err := store.LoadSource(ctx, "repositories", nil)
+	repositories, metrics, err := store.LoadSource(ctx, "$repositories", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(repositories.Rows) == 0 || len(repositories.Rows) != result.Counts["repositories"] ||
+	if len(repositories.Rows) == 0 || len(repositories.Rows) != result.Counts["$repositories"] ||
 		metrics.OutputRows != len(repositories.Rows) {
 		t.Fatalf("Postgres direct source disagrees with ingestion: rows=%d metrics=%+v counts=%+v",
 			len(repositories.Rows), metrics, result.Counts)
 	}
 	id := repositories.Rows[0]["id"]
 	definitions := []query.Definition{{
-		Name: "selected-repository", From: "repositories",
+		Name: "selected-repository", From: "$repositories",
 		Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: id}}},
 	}}
 	sources, _, err := query.New(ingestSourceLoader{store: store, ctx: ctx}).Execute(definitions, []string{"selected-repository"})

@@ -125,7 +125,11 @@ func newHostedAppWithPolicy(
 	if postgresURL == "" {
 		return nil, errors.New("CAO_POSTGRES_URL is required")
 	}
-	database, err := postgresx.New(ctx, postgresURL)
+	databaseNamespace := strings.TrimSpace(host.RedisNamespace)
+	if databaseNamespace == "" {
+		databaseNamespace = "hosted-dashboard"
+	}
+	database, err := postgresx.NewWithNamespace(ctx, postgresURL, databaseNamespace)
 	if err != nil {
 		return nil, errors.New("connect to dashboard Postgres failed")
 	}

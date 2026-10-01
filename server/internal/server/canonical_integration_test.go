@@ -3,14 +3,15 @@ package server
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
-	"reflect"
 	"testing"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
+	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
 )
@@ -54,20 +55,47 @@ func TestCanonicalAPIQueriesMatchPostgresIngestion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	service := canonicalService{store: store}
+	content, err := os.ReadFile("../../../dashboard/site/src/data/queries/database.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var definitions []query.Definition
+	if err := json.Unmarshal(content, &definitions); err != nil {
+		t.Fatal(err)
+	}
+	var repositoryDefinitions []query.Definition
+	for _, definition := range definitions {
+		if definition.Name == "repositories" {
+			repositoryDefinitions = append(repositoryDefinitions, definition)
+		}
+	}
+	if len(repositoryDefinitions) != 1 {
+		t.Fatal("missing canonical repositories query")
+	}
+	service := canonicalService{store: store, definitions: repositoryDefinitions}
 	repositories, err := service.rows(ctx, "repositories")
 	if err != nil {
 		t.Fatal(err)
 	}
-	direct, _, err := store.LoadSource(ctx, "repositories", nil)
+	direct, _, err := store.LoadSource(ctx, "$repositories", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(repositories) == 0 || len(repositories) != result.Counts["repositories"] ||
-		!reflect.DeepEqual(repositories, direct.Rows) {
+	if len(repositories) == 0 || len(repositories) != result.Counts["$repositories"] ||
+		len(repositories) != len(direct.Rows) {
 		t.Fatalf("canonical API and Postgres source differ: api=%d postgres=%d", len(repositories), len(direct.Rows))
 	}
 	id := fmt.Sprint(repositories[0]["id"])
+	found := false
+	for _, row := range direct.Rows {
+		if fmt.Sprint(row["id"]) == id {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("canonical API repository %q missing from direct Postgres source", id)
+	}
 	repository, err := service.entity(ctx, "repositories", id)
 	if err != nil {
 		t.Fatal(err)
@@ -75,7 +103,12 @@ func TestCanonicalAPIQueriesMatchPostgresIngestion(t *testing.T) {
 	if fmt.Sprint(repository["id"]) != id {
 		t.Fatalf("canonical entity query returned the wrong repository: %#v", repository)
 	}
-	if _, err := service.repositoryRuns(ctx, id); err != nil {
+	matching, err := service.filteredRows(ctx, "repositories", map[string]any{"id": id})
+	if err != nil || len(matching) != 1 || fmt.Sprint(matching[0]["id"]) != id {
+		t.Fatalf("canonical filter did not match ingested repository: %+v, %v", matching, err)
+	}
+	_, err = service.entity(ctx, "repositories", "repository:not-found")
+	if err != errCanonicalEntityNotFound {
 		t.Fatal(err)
 	}
 }

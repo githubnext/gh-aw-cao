@@ -276,7 +276,11 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 	if postgresURL == "" {
 		return nil, errors.New("azure Functions mode requires CAO_POSTGRES_URL")
 	}
-	database, err := postgresx.New(ctx, postgresURL)
+	databaseNamespace := strings.TrimSpace(host.RedisNamespace)
+	if databaseNamespace == "" {
+		databaseNamespace = "hosted-dashboard"
+	}
+	database, err := postgresx.NewWithNamespace(ctx, postgresURL, databaseNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("connect to dashboard Postgres: %w", err)
 	}

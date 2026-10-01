@@ -2,187 +2,67 @@ package redisx
 
 import (
 	"context"
-	"encoding/json"
-	"reflect"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
-
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
-	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
 
-type sourceRowsClient struct {
-	rows     []any
-	maxBatch int
-	bounded  bool
-}
-
-func (client *sourceRowsClient) Do(_ context.Context, command ...string) (any, error) {
-	switch command[0] {
-	case "HGET":
-		return `{"availability":"available"}`, nil
-	case "SMEMBERS":
-		keys := make([]any, len(client.rows))
-		for i := range keys {
-			keys[i] = strconv.Itoa(i)
-		}
-		return keys, nil
-	case "EVAL":
-		client.maxBatch = max(client.maxBatch, len(command)-3)
-		client.bounded = client.bounded || strings.Contains(command[1], "source batch exceeds max working bytes")
-		rows := make([]any, 0, len(command)-3)
-		for _, key := range command[3:] {
-			index, err := strconv.Atoi(key)
-			if err != nil {
-				return nil, err
-			}
-			rows = append(rows, client.rows[index])
-		}
-		return rows, nil
-	default:
-		panic("unexpected Redis command")
-	}
-}
-
-func (*sourceRowsClient) DoMany(context.Context, [][]string) ([]any, error) {
-	return nil, nil
-}
-
-type storeQueryLoader struct {
-	store *Store
-	ctx   context.Context
-}
-
-func (loader storeQueryLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
-	return loader.store.LoadSource(loader.ctx, "generation", name, definition)
-}
-
-func TestIndexedPredicateRequiresSafeStringEquality(t *testing.T) {
-	rows := []model.Row{
-		{"conclusion": "success", "state": "open", "mode": true},
-		{"conclusion": "failure", "state": nil, "mode": "true"},
-	}
-	fields := indexedStringFields(rows)
-	if !reflect.DeepEqual(fields, []string{"conclusion", "state"}) {
-		t.Fatalf("unexpected indexed fields: %v", fields)
-	}
-	for _, test := range []struct {
-		name   string
-		filter query.Filter
-		want   string
-	}{
-		{"equality", query.Filter{Predicates: []query.Predicate{{Field: "conclusion", Equals: "failure"}}}, "@conclusion:{failure}"},
-		{"alternatives", query.Filter{Predicates: []query.Predicate{{Field: "conclusion", In: []any{"success", "failure"}}}}, "@conclusion:{success|failure}"},
-		{"escaped coordinate", query.Filter{Predicates: []query.Predicate{{Field: "state", Equals: "owner/repo-name"}}}, `@state:{owner\/repo\-name}`},
-		{"unindexed", query.Filter{Predicates: []query.Predicate{{Field: "mode", Equals: "true"}}}, ""},
-		{"missing unknown", query.Filter{Predicates: []query.Predicate{{Field: "state", Equals: "unknown"}}}, ""},
-		{"optional", query.Filter{Predicates: []query.Predicate{{Field: "state", Equals: "open", Optional: true}}}, ""},
-		{"injection", query.Filter{Predicates: []query.Predicate{{Field: "state", Equals: "open|*"}}}, ""},
-		{"mixed types", query.Filter{Predicates: []query.Predicate{{Field: "state", In: []any{"open", true}}}}, ""},
-		{"substring", query.Filter{Predicates: []query.Predicate{{Field: "state", Includes: "pen"}}}, ""},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if got := indexedPredicate(&test.filter, fields); got != test.want {
-				t.Fatalf("expression = %q, want %q", got, test.want)
-			}
-		})
-	}
-}
-
-func TestCountAggregateProjectsLargeToolRows(t *testing.T) {
-	event := map[string]any{
-		"organization": "example", "repository": "repo", "workflow": "worker",
-		"run": "1", "run-attempt": "1", "event": "created",
-		"payload": "unrelated tool details",
-	}
-	raw, err := json.Marshal(event)
-	if err != nil {
-		t.Fatal(err)
-	}
-	client := &sourceRowsClient{rows: []any{string(raw), string(raw)}}
-	store := NewStore(client, "count-test")
-	definition := query.Definition{
-		Name: "tool-event-runs", From: "tools",
-		Aggregate: &query.Aggregate{
-			By:     []string{"organization", "repository", "workflow", "run", "run-attempt"},
-			Values: []query.AggregateValue{{Field: "event", As: "events", Reducer: "count"}},
-		},
-	}
-	source, _, err := store.LoadSource(t.Context(), "generation", "tools", &definition)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := source.Rows[0]["payload"]; ok {
-		t.Fatal("unneeded tool payload was retained")
-	}
-	result, _, err := query.New(storeQueryLoader{store, t.Context()}).Execute([]query.Definition{definition}, []string{definition.Name})
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := []model.Row{{"organization": "example", "repository": "repo", "workflow": "worker",
-		"run": "1", "run-attempt": "1", "events": 2}}
-	if !reflect.DeepEqual(result[definition.Name].Rows, want) {
-		t.Fatalf("unexpected count rows: %#v", result[definition.Name].Rows)
-	}
-
-	withFilter := definition
-	withFilter.Filter = &query.Filter{Predicates: []query.Predicate{{Field: "payload", Equals: "unrelated tool details"}}}
-	source, _, err = store.LoadSource(t.Context(), "generation", "tools", &withFilter)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if source.Rows[0]["payload"] != event["payload"] {
-		t.Fatal("filtered query lost a required field")
-	}
-}
-
-func TestCountAggregateStaysUnderWorkingByteLimit(t *testing.T) {
-	event := map[string]any{
-		"organization": "example", "repository": "repo", "workflow": "worker",
-		"run": "1", "run-attempt": "1", "event": "created",
-		"payload": strings.Repeat("x", 1<<20),
-	}
-	raw, err := json.Marshal(event)
-	if err != nil {
-		t.Fatal(err)
-	}
-	client := &sourceRowsClient{rows: make([]any, 260)}
-	for i := range client.rows {
-		client.rows[i] = string(raw)
-	}
-	store := NewStore(client, "count-limit-test")
-	definition := query.Definition{
-		Name: "tool-event-runs", From: "tools",
-		Aggregate: &query.Aggregate{
-			By:     []string{"organization", "repository", "workflow", "run", "run-attempt"},
-			Values: []query.AggregateValue{{Field: "event", As: "events", Reducer: "count"}},
-		},
-	}
-	result, metrics, err := query.New(storeQueryLoader{store, t.Context()}).Execute(
-		[]query.Definition{definition}, []string{definition.Name})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(result[definition.Name].Rows) != 1 || result[definition.Name].Rows[0]["events"] != 260 {
-		t.Fatalf("unexpected count: %#v", result[definition.Name].Rows)
-	}
-	if metrics.PeakWorkingBytes >= query.MaxWorkingBytes {
-		t.Fatalf("unneeded payload was included in working bytes: %d", metrics.PeakWorkingBytes)
-	}
-	if client.maxBatch > 32 || !client.bounded {
-		t.Fatalf("projected source fetched an unbounded raw batch: max=%d bounded=%v", client.maxBatch, client.bounded)
-	}
-}
-
-// marketplaceStoreCommandClient is a minimal fake CommandClient, mirroring the
-// fake used in rate_limit_test.go, that records the last command issued and
-// serves a fixed GET response so CacheMarketplaceRegistry/
-// CachedMarketplaceRegistry can be exercised without a real Redis server.
 type marketplaceStoreCommandClient struct {
 	getValue any
 	command  []string
+}
+
+type repositoryMemoryCommandClient struct {
+	values map[string]string
+}
+
+func (client *repositoryMemoryCommandClient) Do(_ context.Context, command ...string) (any, error) {
+	key := command[1] + "\x00" + command[2]
+	switch command[0] {
+	case "HSET":
+		for i := 2; i+1 < len(command); i += 2 {
+			client.values[command[1]+"\x00"+command[i]] = command[i+1]
+		}
+		return int64(1), nil
+	case "HGET":
+		if value, ok := client.values[key]; ok {
+			return value, nil
+		}
+		return nil, nil
+	}
+	panic("unexpected Redis command")
+}
+
+func (client *repositoryMemoryCommandClient) DoMany(ctx context.Context, commands [][]string) ([]any, error) {
+	for _, command := range commands {
+		if _, err := client.Do(ctx, command...); err != nil {
+			return nil, err
+		}
+	}
+	return nil, nil
+}
+
+func TestRepositoryMemoryRevisionCachePreserved(t *testing.T) {
+	client := &repositoryMemoryCommandClient{values: make(map[string]string)}
+	store := NewStore(client, "memory")
+	files := map[string][]byte{"campaign\x00notes.md": []byte("contents")}
+	if err := store.PutRepositoryMemory(t.Context(), "revision", []byte("manifest"), files); err != nil {
+		t.Fatal(err)
+	}
+	if store.repositoryMemoryRevisionKey("revision") != store.Key("g:revision") {
+		t.Fatal("repository-memory key layout changed")
+	}
+	manifest, err := store.RepositoryMemoryManifest(t.Context(), "revision")
+	if err != nil || string(manifest) != "manifest" {
+		t.Fatalf("read repository-memory manifest = %q, %v", manifest, err)
+	}
+	file, err := store.RepositoryMemoryFile(t.Context(), "revision", "campaign", "notes.md")
+	if err != nil || string(file) != "contents" {
+		t.Fatalf("read repository-memory file = %q, %v", file, err)
+	}
+	if _, err := store.RepositoryMemoryFile(t.Context(), "another-revision", "campaign", "notes.md"); err != ErrSourceUnavailable {
+		t.Fatalf("missing revision returned %v, want ErrSourceUnavailable", err)
+	}
 }
 
 func (client *marketplaceStoreCommandClient) Do(_ context.Context, command ...string) (any, error) {
@@ -320,74 +200,4 @@ func TestMarketplaceCacheKeyIsolatesByRegistryAndGeneration(t *testing.T) {
 	if marketplaceCacheKey("official", "generation-1") != base {
 		t.Fatal("identical inputs produced different cache keys")
 	}
-}
-
-func TestParseActiveGenerationDecodesAllFields(t *testing.T) {
-	evaluatedAt := "2024-05-01T12:00:00Z"
-	activatedAt := "2024-05-01T12:00:05Z"
-	fields := []string{
-		"generation", "gen-1",
-		"revision", "7",
-		"dataRevision", "rev-abc",
-		"evaluatedAt", evaluatedAt,
-		"counts", `{"events":3}`,
-		"activatedAt", activatedAt,
-	}
-	result, malformed := parseActiveGeneration(fields)
-	if malformed != 0 {
-		t.Fatalf("expected no malformed fields, got %d", malformed)
-	}
-	if result.Generation != "gen-1" || result.Revision != 7 || result.DataRevision != "rev-abc" {
-		t.Fatalf("unexpected scalar fields: %+v", result)
-	}
-	if result.Counts["events"] != 3 {
-		t.Fatalf("unexpected counts: %+v", result.Counts)
-	}
-	if !result.EvaluatedAt.Equal(mustParseRFC3339Nano(t, evaluatedAt)) {
-		t.Fatalf("unexpected evaluatedAt: %v", result.EvaluatedAt)
-	}
-	if !result.Activated.Equal(mustParseRFC3339Nano(t, activatedAt)) {
-		t.Fatalf("unexpected activatedAt: %v", result.Activated)
-	}
-}
-
-func TestParseActiveGenerationCountsMalformedFieldsAndKeepsValidOnes(t *testing.T) {
-	fields := []string{
-		"generation", "gen-2",
-		"revision", "not-a-number",
-		"evaluatedAt", "not-a-time",
-		"counts", "not-json",
-		"activatedAt", "also-not-a-time",
-	}
-	result, malformed := parseActiveGeneration(fields)
-	if malformed != 4 {
-		t.Fatalf("expected 4 malformed fields, got %d", malformed)
-	}
-	if result.Generation != "gen-2" {
-		t.Fatalf("unexpected generation: %q", result.Generation)
-	}
-	if result.Revision != 0 || !result.EvaluatedAt.IsZero() || !result.Activated.IsZero() {
-		t.Fatalf("expected zero values for malformed fields, got %+v", result)
-	}
-	if len(result.Counts) != 0 {
-		t.Fatalf("expected empty counts for malformed JSON, got %+v", result.Counts)
-	}
-}
-
-func TestParseActiveGenerationHandlesEmptyAndOddLengthInput(t *testing.T) {
-	if result, malformed := parseActiveGeneration(nil); malformed != 0 || result.Generation != "" {
-		t.Fatalf("expected zero-value result for nil input, got %+v malformed=%d", result, malformed)
-	}
-	if result, malformed := parseActiveGeneration([]string{"generation"}); malformed != 0 || result.Generation != "" {
-		t.Fatalf("expected trailing unpaired field to be ignored, got %+v malformed=%d", result, malformed)
-	}
-}
-
-func mustParseRFC3339Nano(t *testing.T, value string) time.Time {
-	t.Helper()
-	parsed, err := time.Parse(time.RFC3339Nano, value)
-	if err != nil {
-		t.Fatalf("parse test timestamp %q: %v", value, err)
-	}
-	return parsed
 }

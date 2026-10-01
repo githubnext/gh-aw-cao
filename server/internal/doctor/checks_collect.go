@@ -485,6 +485,9 @@ func (d Doctor) checkBudget(ctx context.Context) Check {
 	if skip, ok := d.storeUnavailable(id, areaCollect, title); ok {
 		return skip
 	}
+	if skip, ok := d.postgresUnavailable(id, areaCollect, title); ok {
+		return skip
+	}
 	floor := intEnv(d.getenv("CAO_COLLECT_RATE_LIMIT_FLOOR"))
 	reporter := collect.Reporter{
 		Enrollment: d.collectEnrollment(),
@@ -492,6 +495,7 @@ func (d Doctor) checkBudget(ctx context.Context) Check {
 		Backfill:   collect.Backfill{Store: d.Store},
 		Budget:     &githubapp.Budget{Store: d.Store, Floor: floor},
 		Store:      d.Store,
+		Data:       d.Postgres,
 	}
 	status, err := reporter.Snapshot(ctx)
 	if err != nil {

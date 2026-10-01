@@ -967,7 +967,21 @@ type queryResponse struct {
 }
 
 func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollectionHealth bool) (queryResponse, int, error) {
-	active, err := a.database.State(ctx)
+	var response queryResponse
+	var status int
+	err := a.database.WithReadTransaction(ctx, func(reader postgresx.SourceReader) error {
+		var queryErr error
+		response, status, queryErr = a.executeQueryWithReader(ctx, input, allowCollectionHealth, reader)
+		return queryErr
+	})
+	if err != nil && status == 0 {
+		status = http.StatusServiceUnavailable
+	}
+	return response, status, err
+}
+
+func (a *App) executeQueryWithReader(ctx context.Context, input queryRequest, allowCollectionHealth bool, reader postgresx.SourceReader) (queryResponse, int, error) {
+	active, err := reader.State(ctx)
 	if err != nil || !active.Ready {
 		return queryResponse{}, http.StatusServiceUnavailable, errors.New("dashboard data is unavailable")
 	}
@@ -1005,7 +1019,7 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 	}
 	started := time.Now()
 	loader := &databaseLoader{
-		ctx: ctx, database: a.database, operational: a.store, dataRevision: active.DataRevision,
+		ctx: ctx, database: reader, operational: a.store, dataRevision: active.DataRevision,
 		app: a, allowCollectionHealth: allowCollectionHealth,
 	}
 	engine := query.New(loader)
@@ -1035,7 +1049,7 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 
 type databaseLoader struct {
 	ctx                   context.Context
-	database              *postgresx.Store
+	database              postgresx.SourceReader
 	operational           *redisx.Store
 	dataRevision          string
 	app                   *App

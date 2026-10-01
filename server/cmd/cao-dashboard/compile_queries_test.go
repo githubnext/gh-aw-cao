@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
 func TestCompileQueriesCommandReadsAllFragmentsAndDatabaseQueries(t *testing.T) {
@@ -34,12 +33,17 @@ func TestCompileQueriesCommandReadsAllFragmentsAndDatabaseQueries(t *testing.T) 
 	if err := cmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
-	var results []redisx.QueryCompilation
+	var results []queryValidation
 	if err := json.Unmarshal(output.Bytes(), &results); err != nil {
 		t.Fatal(err)
 	}
-	if len(results) != 4 || results[0].Name != "alpha" || results[1].Level != "fallback" || results[2].Name != "gamma" || results[3].Name != "root" {
+	if len(results) != 4 || results[0].Name != "root" || results[1].Name != "alpha" || results[2].Name != "beta" || results[3].Name != "gamma" {
 		t.Fatalf("unexpected compilation report: %#v", results)
+	}
+	for _, result := range results {
+		if !result.Valid {
+			t.Fatalf("query not validated: %+v", result)
+		}
 	}
 }
 
@@ -52,7 +56,7 @@ func TestCompileQueriesFailsOnMissingInputsAndUnknownFormat(t *testing.T) {
 		t.Fatal("unknown output format must fail")
 	}
 	var output bytes.Buffer
-	if err := renderCompilation(&output, []redisx.QueryCompilation{{Name: "a|b", Level: "fallback", Reason: "line\nbreak"}}, "markdown"); err != nil {
+	if err := renderCompilation(&output, []queryValidation{{Name: "a|b", From: "line\nbreak", Valid: true}}, "markdown"); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(output.String(), `a\|b`) || !strings.Contains(output.String(), "line break") {

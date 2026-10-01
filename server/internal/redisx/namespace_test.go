@@ -95,36 +95,15 @@ func TestCheckoutRootFallsBackWithoutGitMarker(t *testing.T) {
 	}
 }
 
-func TestStoreNamespacesUseDisjointKeysAndIndexes(t *testing.T) {
+func TestStoreNamespacesUseDisjointOperationalKeys(t *testing.T) {
 	first := NewStore(&Client{}, "first")
 	second := NewStore(&Client{}, "second")
-	firstNames := []string{
-		first.activeKey(),
-		first.activeGenerationKey(),
-		first.revisionSequenceKey(),
-		first.generationKey("generation"),
-		first.sourceSetKey("generation", "runs"),
-		first.rowPrefix("generation", "runs") + "row",
-		first.generationsKey(),
-	}
-	secondNames := []string{
-		second.activeKey(),
-		second.activeGenerationKey(),
-		second.revisionSequenceKey(),
-		second.generationKey("generation"),
-		second.sourceSetKey("generation", "runs"),
-		second.rowPrefix("generation", "runs") + "row",
-		second.generationsKey(),
-	}
-	for i := range firstNames {
-		if firstNames[i] == secondNames[i] {
-			t.Fatalf("namespaces shared Redis name %q", firstNames[i])
+	for _, suffix := range []string{"state:ingestion-health", "lock:collector", "repository-memory:campaign:example", "marketplace:registry:example", "g:revision"} {
+		if first.Key(suffix) == second.Key(suffix) {
+			t.Fatalf("namespaces shared Redis key %q", suffix)
 		}
-		if !strings.HasPrefix(firstNames[i], "cao:first:") {
-			t.Fatalf("first store name is not namespaced: %q", firstNames[i])
-		}
-		if !strings.HasPrefix(secondNames[i], "cao:second:") {
-			t.Fatalf("second store name is not namespaced: %q", secondNames[i])
+		if !strings.HasPrefix(first.Key(suffix), "cao:first:") || !strings.HasPrefix(second.Key(suffix), "cao:second:") {
+			t.Fatalf("operational key %q is not namespaced", suffix)
 		}
 	}
 }

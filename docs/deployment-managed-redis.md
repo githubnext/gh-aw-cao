@@ -13,8 +13,8 @@ variables. Redis provider modules only select conventional environment-variable 
 and consistency constraints;
 they do not add provider SDKs or weaken TLS verification.
 Configure a Postgres connection separately for current dashboard entity storage
-and queries. Redis supports operational caches, queues, sessions, and issue
-status overlays; the server does not store dashboard entities, RediSearch
+and queries. Redis supports operational caches, queues, and sessions; the
+server does not store dashboard entities, RediSearch
 indexes, or generations in Redis. Postgres replacements are transactional and
 have no generations, projections, or snapshots.
 To keep hosting settings separate from rollout policy, you can instead use a

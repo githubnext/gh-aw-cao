@@ -21,29 +21,26 @@ type canonicalService struct {
 var errCanonicalEntityNotFound = errors.New("canonical entity was not found")
 
 func (service canonicalService) rows(ctx context.Context, source string) ([]model.Row, error) {
-	active, err := service.store.State(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if !active.Ready {
-		return nil, errors.New("dashboard data is unavailable")
-	}
-	engine := query.New(&databaseLoader{ctx: ctx, database: service.store})
-	sources, _, err := engine.Execute(service.definitions, []string{source})
-	if err != nil {
-		return nil, err
-	}
-	return sources[source].Rows, nil
+	var rows []model.Row
+	err := service.store.WithReadTransaction(ctx, func(reader postgresx.SourceReader) error {
+		active, err := reader.State(ctx)
+		if err != nil {
+			return err
+		}
+		if !active.Ready {
+			return errors.New("dashboard data is unavailable")
+		}
+		engine := query.New(&databaseLoader{ctx: ctx, database: reader})
+		sources, _, err := engine.Execute(service.definitions, []string{source})
+		if err == nil {
+			rows = sources[source].Rows
+		}
+		return err
+	})
+	return rows, err
 }
 
 func (service canonicalService) filteredRows(ctx context.Context, source string, filters map[string]any) ([]model.Row, error) {
-	active, err := service.store.State(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if !active.Ready {
-		return nil, errors.New("dashboard data is unavailable")
-	}
 	predicates := make([]query.Predicate, 0, len(filters))
 	for field, value := range filters {
 		predicates = append(predicates, query.Predicate{Field: field, Equals: value})
@@ -55,13 +52,24 @@ func (service canonicalService) filteredRows(ctx context.Context, source string,
 			Predicates: predicates,
 		},
 	}
-	engine := query.New(&databaseLoader{ctx: ctx, database: service.store})
 	definitions := append(append([]query.Definition{}, service.definitions...), definition)
-	sources, _, err := engine.Execute(definitions, []string{definition.Name})
-	if err != nil {
-		return nil, err
-	}
-	return sources[definition.Name].Rows, nil
+	var rows []model.Row
+	err := service.store.WithReadTransaction(ctx, func(reader postgresx.SourceReader) error {
+		active, err := reader.State(ctx)
+		if err != nil {
+			return err
+		}
+		if !active.Ready {
+			return errors.New("dashboard data is unavailable")
+		}
+		engine := query.New(&databaseLoader{ctx: ctx, database: reader})
+		sources, _, err := engine.Execute(definitions, []string{definition.Name})
+		if err == nil {
+			rows = sources[definition.Name].Rows
+		}
+		return err
+	})
+	return rows, err
 }
 
 func (service canonicalService) entity(ctx context.Context, source, id string) (model.Row, error) {

@@ -201,7 +201,7 @@ flowchart LR
 | Artifact ingestion | `internal/ingest/` | Validates deployed manifests and hashes, loads run shards before record shards, and builds canonical logical sources. |
 | Query engine | `internal/query/` | Validates Dashboard Language definitions and executes joins, filters, computed fields, aggregates, temporal series, selection, ordering, and limits under resource budgets. |
 | Postgres entity storage | `internal/postgresx/` | Transactionally replaces current sources, diagnostics, and revision; reads complete source documents for bounded Go queries. |
-| Redis operations | `internal/redisx/` | Supports caches, queues, sessions, and issue status overlays. |
+| Redis operations | `internal/redisx/` | Supports caches, queues, and sessions. |
 | HTTP(S)/API server | `internal/server/` | Enforces loopback binding, optionally terminates operator-configured TLS, serves static dashboard assets, handles API requests, and publishes revision events. |
 | Externally hosted service | `hosting/` | Exposes a listener-independent application lifecycle and the complete hosted HTTP handler to other Go HTTP hosts. |
 | Azure Functions profile | `internal/server/azure.go` | Builds the same HTTP handler without starting a listener, validates Azure app settings, requires `rediss://` Redis, and trusts forwarded host/protocol headers only for configured Azure hosts. |
@@ -537,7 +537,7 @@ Primary actors and responsibilities:
   organization/team membership; GitHub tokens never leave the server.
 - **Postgres**: stores the current dashboard entity sources and diagnostics;
   replacement is transactional, without generations or snapshots.
-- **Redis**: stores operational queues, caches, sessions, and overlays, not
+- **Redis**: stores operational queues, caches, and sessions, not
   dashboard entities.
 - **Control-plane operator**: reviews Bicep/app settings, keeps Key Vault
   mandatory, rotates credentials, and validates compliance evidence.
@@ -621,12 +621,8 @@ Collection separates three concerns that fail differently:
    debounce, and appends one task to a Redis stream. A successful response
    therefore means durable admission. Admission is constant-time and takes no
    projection lease, so a delivery burst cannot block the endpoint.
-   Signed `issues` lifecycle events instead refresh status fields only for
-   existing issues in enrolled repositories, without queuing a repository
-   collection. The response reports `applied` (not `queued`); a same-timestamp
-   conflicting status reports `reason: ambiguous-status` and defers to the
-   projected row until newer evidence arrives. Status observations are retained
-   across ingestion updates and newer canonical evidence takes precedence.
+   Signed `issues` lifecycle events for enrolled repositories enqueue
+   repository collection rather than mutating stored issue entities directly.
 2. **Collection.** Workers lease tasks and run the same
    `gh aw logs --audit` and `activity/cao.mjs` commands the Activity workflow
    runs, writing into the evidence lake. One repository is collected at a time,
@@ -837,7 +833,7 @@ canonical diagnostics, and one revision/evaluation state. An ingestion replaces
 these atomically: failed transactions leave the previous committed state
 untouched. There are no Postgres generations, projections, or snapshots.
 Redis remains namespaced operational storage for caches, queues, sessions, and
-issue status overlays; it does not hold dashboard entity rows or query indexes.
+it does not hold dashboard entity rows or query indexes.
 Neither store grants control-plane authority. Credentials stay server-side.
 
 ## Query execution

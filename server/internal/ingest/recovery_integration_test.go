@@ -27,7 +27,7 @@ func TestEmptyPostgresRebuildAndFailedIngestionPreservesCurrentData(t *testing.T
 	if err != nil || !active.Ready || active.Revision != result.Revision || active.DataRevision != result.DataRevision {
 		t.Fatalf("ingestion not activated: %+v, %v", active, err)
 	}
-	original, _, err := store.LoadSource(ctx, "repositories", nil)
+	original, _, err := store.LoadSource(ctx, "$repositories", nil)
 	if err != nil || len(original.Rows) == 0 {
 		t.Fatalf("expected ingested repositories: %+v, %v", original, err)
 	}
@@ -41,7 +41,7 @@ func TestEmptyPostgresRebuildAndFailedIngestionPreservesCurrentData(t *testing.T
 	if err != nil || !reflect.DeepEqual(after, active) {
 		t.Fatalf("failed ingestion replaced current data: before=%+v after=%+v err=%v", active, after, err)
 	}
-	preserved, _, err := store.LoadSource(ctx, "repositories", nil)
+	preserved, _, err := store.LoadSource(ctx, "$repositories", nil)
 	if err != nil || !reflect.DeepEqual(preserved, original) {
 		t.Fatalf("failed ingestion lost current repositories: %+v, %v", preserved, err)
 	}

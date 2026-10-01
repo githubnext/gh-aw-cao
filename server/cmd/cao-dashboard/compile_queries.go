@@ -11,14 +11,19 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/server"
 )
+
+type queryValidation struct {
+	Name  string `json:"name"`
+	From  string `json:"from"`
+	Valid bool   `json:"valid"`
+}
 
 func newCompileQueriesCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "compile-queries",
-		Short: "report potential native Redis translation of dashboard queries without connecting to Redis",
+		Short: "validate dashboard queries with the Go query engine without connecting to a database",
 		Args:  cobra.NoArgs,
 	}
 	fragments := cmd.Flags().String("fragments", "../dashboard/site/dashboard-fragments", "dashboard query fragments directory")
@@ -30,9 +35,12 @@ func newCompileQueriesCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		results, err := redisx.CompileQueries(definitions, server.RuntimeQuerySourceNames()...)
-		if err != nil {
-			return fmt.Errorf("compile dashboard queries: %w", err)
+		if err := query.Validate(definitions); err != nil {
+			return fmt.Errorf("validate dashboard queries: %w", err)
+		}
+		results := make([]queryValidation, 0, len(definitions))
+		for _, definition := range definitions {
+			results = append(results, queryValidation{Name: definition.Name, From: definition.From, Valid: true})
 		}
 		return renderCompilation(cmd.OutOrStdout(), results, *format)
 	}
@@ -70,7 +78,7 @@ func loadCompilationQueries(dashboard, directory, database string) ([]query.Defi
 	return definitions, nil
 }
 
-func renderCompilation(out io.Writer, results []redisx.QueryCompilation, format string) error {
+func renderCompilation(out io.Writer, results []queryValidation, format string) error {
 	if format == "json" {
 		encoder := json.NewEncoder(out)
 		encoder.SetIndent("", "  ")
@@ -79,24 +87,17 @@ func renderCompilation(out io.Writer, results []redisx.QueryCompilation, format 
 	if format != "markdown" {
 		return fmt.Errorf("unsupported report format %q", format)
 	}
-	counts := map[string]int{}
-	for _, result := range results {
-		counts[result.Level]++
-	}
-	if _, err := fmt.Fprintf(out, "### Redis native translation (offline)\n\n"+
-		"%d queries: %d full candidates, %d partial candidates, %d Go fallback, %d unsupported by Go.\n\n"+
-		"Candidates are **not** verified native executions: the active Redis generation must have JSON sources and compatible RediSearch indexes. "+
-		"Partial candidates can still execute remaining operations in Go; no Redis connection or runtime row budget was checked.\n\n"+
-		"| Query | Source | Level | Redis primitive | Limitation |\n| --- | --- | --- | --- | --- |\n",
-		len(results), counts["full candidate"], counts["partial candidate"], counts["fallback"], counts["unsupported"]); err != nil {
+	if _, err := fmt.Fprintf(out, "### Go query validation (offline)\n\n"+
+		"%d queries passed structural and dependency validation. No database connection or runtime row budget was checked.\n\n"+
+		"| Query | Source | Valid |\n| --- | --- | --- |\n", len(results)); err != nil {
 		return err
 	}
 	for _, result := range results {
 		cell := func(value string) string {
 			return strings.NewReplacer("|", "\\|", "\n", " ", "\r", " ").Replace(value)
 		}
-		if _, err := fmt.Fprintf(out, "| %s | %s | %s | %s | %s |\n",
-			cell(result.Name), cell(result.From), cell(result.Level), cell(result.Native), cell(result.Reason)); err != nil {
+		if _, err := fmt.Fprintf(out, "| %s | %s | %t |\n",
+			cell(result.Name), cell(result.From), result.Valid); err != nil {
 			return err
 		}
 	}

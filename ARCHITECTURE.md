@@ -118,8 +118,8 @@ dedicated Web Worker. The optional Go server profile ingests the same deployed
 dashboard artifact into Postgres, keeps database credentials server-side,
 executes Dashboard Language in Go against current Postgres sources, and returns
 only canonical or explicitly registered bounded runtime-source query payloads
-to the browser. Redis remains operational storage for caches, queues, sessions,
-and issue status overlays, not dashboard entity storage or query execution.
+to the browser. Redis remains operational storage for caches, queues, and
+sessions, not dashboard entity storage or query execution.
 Its local mode remains loopback-only. Its host-neutral mode uses
 GitHub OAuth and explicit organization or team authorization, verifies and
 deduplicates GitHub webhooks, and atomically replaces the current Postgres
@@ -192,11 +192,9 @@ both profiles and a retained lake repopulates a database on cold start without
 contacting GitHub. Configuring both profiles fails at startup: a canonical
 database has one writer. The collection profile also persists allowlisted
 Redis-backed operational counters and exposes a read-only health status API.
-For retained issues in enrolled repositories, verified GitHub issue lifecycle
-deliveries refresh only status observations in Redis. These observations are
-deduplicated and ordered against the projected status timestamp, never create
-issue rows, and yield to newer snapshot evidence; other webhook payloads remain
-invalidation signals, not projection authority.
+Verified GitHub issue lifecycle deliveries for enrolled repositories enqueue
+repository collection through the durable operational queue. Webhook payloads
+remain invalidation signals, not authority for direct entity-row mutations.
 Authorized operators receive the registered `collection-health` runtime source
 through the Dashboard Language query boundary; it is not published or stored in
 browser IndexedDB. The Ingestion page renders that bounded snapshot alongside
@@ -470,7 +468,7 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
 - **JSONL** is the bounded evidence interchange; **SQLite** supports local tools
   and agents; **IndexedDB** supports the static browser dashboard; **Postgres**
   stores current hosted dashboard sources; **Redis** supports operational caches,
-  queues, sessions, and status overlays.
+  queues, and sessions.
 - **Go** implements the isolated host-neutral HTTP(S) ingestion, reconciliation,
   rebuild, and query service.
 - **Dashboard Language** keeps data operations declarative and off the browser
