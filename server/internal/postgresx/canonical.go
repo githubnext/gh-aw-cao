@@ -792,12 +792,11 @@ func insertCanonical(ctx context.Context, tx *sql.Tx, namespace, name string, or
 		return ok, err
 	}
 	columns := []string{"namespace", "source_name", "ordinal", "present", "extension"}
-	args := make([]any, 0, 5+len(values))
 	var storedExtension any
 	if extension != "" {
 		storedExtension = extension
 	}
-	args = append(args, namespace, name, ordinal, fields, storedExtension)
+	args := []any{namespace, name, ordinal, fields, storedExtension}
 	for _, field := range canonicalFields {
 		columns = append(columns, field.column)
 	}
