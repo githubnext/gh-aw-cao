@@ -4006,13 +4006,6 @@ function validateQueries(queries, queriesNode, errors) {
     if (query.acceptance !== undefined) validateStringField(query.acceptance, `${path}.acceptance`, true, errors);
     validateSemanticMetadataLength(query, path, errors);
     validateOptionalStringField(query.description, `${path}.description`, errors);
-    if (query.simulator !== undefined && query.simulator !== true) {
-      errors.push(createError(
-        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        'query simulator must be true when present.',
-        `${path}.simulator`
-      ));
-    }
     const parameters = validateQueryParameters(
       query.parameters,
       getValueNodeByKey(queryNode, 'parameters'),

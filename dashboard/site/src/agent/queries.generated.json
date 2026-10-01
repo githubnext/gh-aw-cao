@@ -8875,8 +8875,9 @@
  },
  {
   "name": "simulator-database-inputs",
-  "simulator": true,
   "subject": "Model daily run volume and 30-day retained detail from user-supplied scenario inputs.",
+  "objective": "Compare hypothetical workload choices without treating results as observed activity.",
+  "acceptance": "Each simulated day uses the selected inputs; skipped runs retain summaries and detailed records have a 30-day lifetime.",
   "description": "Each simulated day includes all accumulated run summaries; tools and issues belong only to non-skipped runs and expire after 30 days.",
   "from": "simulation-days",
   "parameters": [
@@ -9014,8 +9015,9 @@
  },
  {
   "name": "simulator-run-size",
-  "simulator": true,
   "subject": "Estimate retained run-summary table size at 512 bytes per run.",
+  "objective": "Show modeled accumulation of run summaries.",
+  "acceptance": "Summary size includes every simulated run at 512 bytes and is not presented as measured storage.",
   "from": "simulator-database-inputs",
   "compute": [
    {
@@ -9054,8 +9056,9 @@
  },
  {
   "name": "simulator-tool-size",
-  "simulator": true,
   "subject": "Estimate retained tool table size at 256 bytes per tool on non-skipped runs.",
+  "objective": "Show modeled tool-record growth under the selected workload.",
+  "acceptance": "Tool size uses only non-skipped simulated runs and 256 bytes per tool over the retained period.",
   "from": "simulator-database-inputs",
   "compute": [
    {
@@ -9097,8 +9100,9 @@
  },
  {
   "name": "simulator-issue-size",
-  "simulator": true,
   "subject": "Estimate retained issue table size at 512 bytes per issue on non-skipped runs.",
+  "objective": "Show modeled issue-record growth under the selected workload.",
+  "acceptance": "Issue size uses only non-skipped simulated runs and 512 bytes per issue over the retained period.",
   "from": "simulator-database-inputs",
   "compute": [
    {
@@ -9140,8 +9144,9 @@
  },
  {
   "name": "simulator-database-size",
-  "simulator": true,
   "subject": "Plot modeled run-summary, tool, and issue table bytes across the first 30 days.",
+  "objective": "Compare hypothetical database table sizes over time.",
+  "acceptance": "The model presents separate summary, tool, and issue estimates for each of 30 simulated days, never observed storage.",
   "description": "Run summaries accumulate; detailed records have a 30-day TTL.",
   "from": "simulator-run-size",
   "union": [

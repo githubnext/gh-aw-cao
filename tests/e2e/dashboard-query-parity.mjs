@@ -253,7 +253,11 @@ function representativeSources() {
 
 function dashboardQueries() {
   const { document } = loadDashboardSourceSync(dashboardPath);
-  const exposed = new Set(listQueries(document).map((query) => query.id));
+  // This corpus has no scenario inputs; parameterized queries are exercised
+  // separately with explicit values by the named-query tests.
+  const unparameterized = new Set(listQueries(document)
+    .filter((query) => !query.parameters.some((parameter) => parameter.type))
+    .map((query) => query.id));
   const resolveContext = (value) => {
     if (Array.isArray(value)) return value.map(resolveContext);
     if (!value || typeof value !== "object") return value;
@@ -265,7 +269,7 @@ function dashboardQueries() {
   // Ingestion receipts describe each backend's own writes, so their values are
   // intentionally backend-local rather than cross-backend query results.
   return resolveContext(document.dashboard.queries).filter(
-    (query) => query.from !== "transactions" && exposed.has(query.name),
+    (query) => query.from !== "transactions" && unparameterized.has(query.name),
   );
 }
 

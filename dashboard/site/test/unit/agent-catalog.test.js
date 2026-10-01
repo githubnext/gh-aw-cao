@@ -106,6 +106,21 @@ describe("agent catalog", () => {
     expect(queryParameters(document, "configuration-policy")).toEqual([]);
   });
 
+  it("publishes the simulator form bounds for transitive named-query operands", () => {
+    const growth = describeQuery(authoritativeDashboard, "simulator-database-size");
+    expect(growth?.parameters).toHaveLength(5);
+    expect(growth?.parameters.find((parameter) => parameter.name === "repositories")).toMatchObject({
+      name: "repositories",
+      type: "number",
+      required: true,
+      schema: { type: "number", minimum: 1, maximum: 100000, multipleOf: 1 }
+    });
+    expect(queryExecutionRequirements(authoritativeDashboard, "simulator-database-size")).toMatchObject({
+      local: true, requirements: ["simulation-days"]
+    });
+    expect(listPages(authoritativeDashboard).some((page) => page.id === "simulators")).toBe(true);
+  });
+
   it("resolves transitive source requirements", () => {
     const execution = queryExecutionRequirements(document, "usage-by-workflow");
     expect(execution.local).toBe(true);
@@ -134,37 +149,6 @@ describe("agent catalog", () => {
       "usage-by-workflow",
       "configuration-policy",
     ]);
-  });
-
-  it("withholds marked and synthetic simulator queries and their pages from agent transports", () => {
-    const simulator = {
-      dashboard: {
-        navigation: [{ pages: ["simulators", "ux", "count-only", "insights"] }],
-        queries: [
-          { name: "ordinary", from: "runs" },
-          { name: "ux-only", from: "runs", simulator: true },
-          { name: "ux-dependent", from: "ux-only" },
-          { name: "daily", from: "simulation-days" },
-          { name: "growth", from: "daily" },
-          { name: "combined", from: "ordinary", union: ["growth"] },
-        ],
-        pages: [
-          { id: "simulators", title: "Simulators", views: [{ data: { source: "growth" } }] },
-          { id: "ux", title: "UX", views: [{ data: { source: "ux-dependent" } }] },
-          { id: "count-only", title: "Count only", sections: [{ "count-sources": ["ordinary", "ux-only"] }] },
-          { id: "insights", title: "Insights", views: [{ data: { source: "ordinary" } }] },
-        ],
-      },
-    };
-    expect(listQueries(simulator).map((query) => query.id)).toEqual(["ordinary"]);
-    expect(describeQuery(simulator, "daily")).toBe(null);
-    expect(describeQuery(simulator, "growth")).toBe(null);
-    expect(describeQuery(simulator, "combined")).toBe(null);
-    expect(describeQuery(simulator, "ux-only")).toBe(null);
-    expect(describeQuery(simulator, "ux-dependent")).toBe(null);
-    expect(listPages(simulator).map((page) => page.id)).toEqual(["insights"]);
-    expect(listQueries(authoritativeDashboard).some((query) => query.id.startsWith("simulator-"))).toBe(false);
-    expect(listPages(authoritativeDashboard).some((page) => page.id === "simulators")).toBe(false);
   });
 
   it("exposes one catalog for every transport", () => {
