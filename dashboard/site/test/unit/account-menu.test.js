@@ -120,6 +120,27 @@ describe('hosted GitHub account menu', () => {
     ]);
   });
 
+  it('notifies when loading the hosted account is rate limited and clears on recovery', async () => {
+    document.head.innerHTML = '<meta name="cao-auth-mode" content="github">';
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 429 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ login: 'octocat' }), { status: 200 })));
+
+    const limited = renderAccountMenu();
+    if (!(limited instanceof HTMLDetailsElement)) throw new Error('account menu was not rendered');
+    document.body.append(limited);
+    await vi.waitFor(() => expect(limited.dataset.error).toBeTruthy());
+    expect(document.querySelectorAll('.dashboard-notification:not(.dashboard-notification-exit)')).toHaveLength(1);
+    expect(document.querySelector('.dashboard-notification [role="alert"]')?.textContent)
+      .toContain('Dashboard is rate limited');
+
+    const recovered = renderAccountMenu();
+    if (!(recovered instanceof HTMLDetailsElement)) throw new Error('account menu was not rendered');
+    document.body.append(recovered);
+    await vi.waitFor(() => expect(recovered.hidden).toBe(false));
+    expect(document.querySelectorAll('.dashboard-notification:not(.dashboard-notification-exit)')).toHaveLength(0);
+  });
+
   it('keeps the person icon when the session has no usable avatar URL', async () => {
     document.head.innerHTML = '<meta name="cao-auth-mode" content="github">';
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(

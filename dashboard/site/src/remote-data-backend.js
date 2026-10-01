@@ -5,7 +5,7 @@ import {
 } from "./data/queries/view-payload-compiler.js";
 import { csrfHeaders, ensureCsrfToken, usesGitHubAuthentication } from "./auth.js";
 import { createDebug } from "./debug.js";
-import { publishNotification } from "./notification-service.js";
+import { updateRateLimitNotification } from "./rate-limit-notification.js";
 
 const debugRemoteBackend = createDebug("remote-data-backend");
 
@@ -33,28 +33,6 @@ let observedEvaluatedAt;
 const remoteRevisionSubscribers = new Set();
 /** @type {(() => void) | undefined} */
 let stopRemoteRevisionStream;
-const rateLimitedPolicies = new Set();
-/** @type {ReturnType<typeof publishNotification> | undefined} */
-let rateLimitNotification;
-
-/** @param {string} path @param {number} status */
-function updateRateLimitNotification(path, status) {
-  const policy = path === "/api/v1/query" ? "query" : "general";
-  if (status === 429) {
-    rateLimitedPolicies.add(policy);
-    rateLimitNotification ??= publishNotification({
-      message: "Dashboard is rate limited. Please try again shortly.",
-      tone: "error",
-      duration: 0,
-    });
-  } else if (status >= 200 && status < 300) {
-    rateLimitedPolicies.delete(policy);
-    if (rateLimitedPolicies.size === 0) {
-      rateLimitNotification?.dismiss();
-      rateLimitNotification = undefined;
-    }
-  }
-}
 
 /**
  * @typedef {{
@@ -120,9 +98,7 @@ async function apiRequest(path, init = {}, signal) {
   const oauth = usesGitHubAuthentication();
   const token = oauth ? "" : accessToken();
   const method = (init.method ?? "GET").toUpperCase();
-  if (oauth && !["GET", "HEAD", "OPTIONS"].includes(method)) {
-    await ensureCsrfToken(signal, (status) => updateRateLimitNotification("/api/auth/session", status));
-  }
+  if (oauth && !["GET", "HEAD", "OPTIONS"].includes(method)) await ensureCsrfToken(signal);
   const headers = {
     Accept: "application/json",
     ...(init.body ? { "Content-Type": "application/json" } : {}),

@@ -1,4 +1,5 @@
 import { createDebug } from './debug.js';
+import { updateRateLimitNotification } from './rate-limit-notification.js';
 
 const CSRF_COOKIE_NAME = 'cao_csrf';
 
@@ -30,8 +31,8 @@ export function csrfHeaders(headers = {}, document = globalThis.document) {
   return applied ? { ...headers, 'X-CSRF-Token': token } : headers;
 }
 
-/** @param {AbortSignal} [signal] @param {(status: number) => void} [onResponse] */
-export async function ensureCsrfToken(signal, onResponse) {
+/** @param {AbortSignal} [signal] */
+export async function ensureCsrfToken(signal) {
   if (csrfToken()) return;
   const response = await fetch('/api/auth/session', {
     cache: 'no-store',
@@ -39,7 +40,7 @@ export async function ensureCsrfToken(signal, onResponse) {
     headers: { Accept: 'application/json' },
     signal
   });
-  onResponse?.(response.status);
+  updateRateLimitNotification('/api/auth/session', response.status);
   if (!response.ok || !csrfToken()) {
     throw new Error('GitHub authentication cookie could not be renewed');
   }
