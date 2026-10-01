@@ -15,72 +15,66 @@ import (
 
 var nativeQueryField = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]*$`)
 
+// ExecutePlan runs a compatible direct-source plan against a verified current
+// secondary index. The fixed canonical dataset remains the source of truth;
+// callers use the Go query engine if the index is not ready.
 func (s *Store) ExecutePlan(
 	ctx context.Context,
-	generation string,
 	definitions []query.Definition,
 	requested, _ []string,
 	external map[string]model.Source,
 ) (map[string]model.Source, model.Metrics, error) {
-	if len(external) != 0 || len(definitions) != 1 || len(requested) != 1 || requested[0] != definitions[0].Name {
+	if len(external) != 0 || len(definitions) != 1 || len(requested) != 1 ||
+		requested[0] != definitions[0].Name {
 		return nil, model.Metrics{}, errors.New("redis query engine requires one direct-source query")
 	}
 	definition := definitions[0]
-	metrics := model.Metrics{RedisCommands: 1}
-	metadata, err := s.sourceInfo(ctx, generation, definition.From)
+	revision, err := s.DatasetRevision(ctx)
 	if err != nil {
-		return nil, metrics, err
+		return nil, model.Metrics{}, err
 	}
-	format, err := s.Client.Do(ctx, "HGET", s.generationKey(generation), "source:"+definition.From+":format")
-	metrics.RedisCommands++
-	if err != nil {
-		return nil, metrics, err
+	ready, err := s.SearchIndexesReady(ctx, revision)
+	if err != nil || !ready {
+		return nil, model.Metrics{}, errors.New("redis search index is not ready")
 	}
-	if fmt.Sprint(format) != "json" {
-		return nil, metrics, errors.New("redis query engine requires a JSON source")
+	epoch, err := s.Client.Do(ctx, "HGET", s.datasetKey(), "indexedEpoch")
+	if err != nil || epoch == nil {
+		return nil, model.Metrics{}, errors.New("redis search index build token is unavailable")
 	}
-	fields, err := s.Client.Do(ctx, "HGET", s.generationKey(generation), "source:"+definition.From+":index-schema")
-	metrics.RedisCommands++
-	if err != nil {
-		return nil, metrics, err
+	meta, err := s.Client.Do(ctx, "HGET", s.datasetKey(), "source:"+definition.From+":metadata")
+	if err != nil || meta == nil {
+		return nil, model.Metrics{}, ErrSourceUnavailable
+	}
+	metadata := model.Metadata{}
+	if err := json.Unmarshal([]byte(fmt.Sprint(meta)), &metadata); err != nil {
+		return nil, model.Metrics{}, err
+	}
+	if metadata == nil {
+		metadata = model.Metadata{}
+	}
+	raw, err := s.Client.Do(ctx, "HGET", s.datasetKey(), "source:"+definition.From+":index-schema")
+	if err != nil || raw == nil {
+		return nil, model.Metrics{}, errors.New("search index schema is unavailable")
 	}
 	var indexed []indexField
-	if fields != nil {
-		if err := json.Unmarshal([]byte(fmt.Sprint(fields)), &indexed); err != nil {
-			return nil, metrics, err
-		}
-	} else {
-		legacy, err := s.Client.Do(ctx, "HGET", s.generationKey(generation), "source:"+definition.From+":indexed-fields")
-		metrics.RedisCommands++
-		if err != nil {
-			return nil, metrics, err
-		}
-		var names []string
-		if legacy != nil {
-			if err := json.Unmarshal([]byte(fmt.Sprint(legacy)), &names); err != nil {
-				return nil, metrics, err
-			}
-		}
-		for _, name := range names {
-			indexed = append(indexed, indexField{Name: name, Alias: nativeFieldAlias(name), Kind: indexFieldTag})
-		}
+	if err := json.Unmarshal([]byte(fmt.Sprint(raw)), &indexed); err != nil {
+		return nil, model.Metrics{}, err
 	}
-	command, outputFields, err := nativeAggregateCommand(s.sourceIndexKey(generation, definition.From), definition, indexed)
+	command, output, err := nativeAggregateCommand(s.sourceIndexKey(definition.From), definition, indexed)
 	if err != nil {
-		return nil, metrics, err
+		return nil, model.Metrics{}, err
 	}
 	value, err := s.Client.Do(ctx, command...)
-	metrics.RedisCommands++
 	if err != nil {
-		return nil, metrics, fmt.Errorf("execute FT.AGGREGATE query plan: %w", err)
+		return nil, model.Metrics{}, err
 	}
-	rows, err := decodeAggregateRows(value, outputFields)
+	rows, err := decodeAggregateRows(value, output)
 	if err != nil {
-		return nil, metrics, err
+		return nil, model.Metrics{}, err
 	}
 	response, ok := value.([]any)
 	if !ok || len(response) == 0 {
-		return nil, metrics, errors.New("invalid Redis aggregate response")
+		return nil, model.Metrics{}, errors.New("invalid Redis aggregate response")
 	}
 	total, ok := response[0].(int64)
 	expected := total
@@ -88,7 +82,15 @@ func (s *Store) ExecutePlan(
 		expected = min(expected, int64(*definition.Limit))
 	}
 	if !ok || total < 0 || expected != int64(len(rows)) {
-		return nil, metrics, errors.New("incomplete Redis aggregate response")
+		return nil, model.Metrics{}, errors.New("incomplete Redis aggregate response")
+	}
+	current, err := s.DatasetRevision(ctx)
+	if err != nil || current != revision {
+		return nil, model.Metrics{}, errors.New("dataset changed during indexed query")
+	}
+	currentEpoch, err := s.Client.Do(ctx, "HGET", s.datasetKey(), "indexedEpoch")
+	if err != nil || currentEpoch == nil || fmt.Sprint(currentEpoch) != fmt.Sprint(epoch) {
+		return nil, model.Metrics{}, errors.New("search index changed during indexed query")
 	}
 	metadata["source-id"] = definition.Name
 	metadata["source-kind"] = "database-query"
@@ -97,16 +99,13 @@ func (s *Store) ExecutePlan(
 		metadata["availability"] = "empty"
 	}
 	metadata["row-count"] = len(rows)
-	metrics.PushedDown = []string{"redis-query-engine"}
-	metrics.QueryCount = 1
-	metrics.FilterCount = boolCount(definition.Filter != nil)
-	metrics.ComputeCount = len(definition.Compute)
-	metrics.AggregateCount = boolCount(definition.Aggregate != nil)
-	metrics.SelectCount = len(definition.Select)
-	metrics.OrderByCount = len(definition.OrderBy)
-	metrics.LimitCount = boolCount(definition.Limit != nil)
-	metrics.OutputRows = len(rows)
-	metrics.RedisRows = len(rows)
+	metrics := model.Metrics{
+		PushedDown: []string{"redis-query-engine"}, QueryCount: 1,
+		FilterCount: boolCount(definition.Filter != nil), ComputeCount: len(definition.Compute),
+		AggregateCount: boolCount(definition.Aggregate != nil), SelectCount: len(definition.Select),
+		OrderByCount: len(definition.OrderBy), LimitCount: boolCount(definition.Limit != nil),
+		OutputRows: len(rows), RedisRows: len(rows), RedisCommands: 8,
+	}
 	return map[string]model.Source{
 		definition.Name: {Source: definition.Name, Rows: rows, Metadata: metadata},
 	}, metrics, nil

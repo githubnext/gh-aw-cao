@@ -33,7 +33,11 @@ func TestSignedIssueWebhookRefreshesRetainedSource(t *testing.T) {
 	if err := enrollment.AddRepositories(t.Context(), 42, []string{"octo/api"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.PutSource(t.Context(), "g1", model.Source{
+	stage, err := store.BeginDataset(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.StageSource(t.Context(), stage, model.Source{
 		Source: "issues", Rows: []model.Row{{
 			"id": "github:issue:octo/api:12", "repositoryFullName": "octo/api",
 			"isPullRequest": false, "state": "OPEN",
@@ -41,7 +45,7 @@ func TestSignedIssueWebhookRefreshesRetainedSource(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.Activate(t.Context(), "g1", "snapshot", time.Now(), map[string]int{"issues": 1}); err != nil {
+	if _, err := store.PublishDataset(t.Context(), stage, "revision", time.Now(), map[string]int{"issues": 1}); err != nil {
 		t.Fatal(err)
 	}
 	app := &App{store: store, webhookSecret: []byte("test-issue-webhook-secret"),
@@ -87,7 +91,7 @@ func TestSignedIssueWebhookRefreshesRetainedSource(t *testing.T) {
 	if result := send(payload, "delivery-1", true); result["duplicate"] != true {
 		t.Fatalf("duplicate delivery was applied: %+v", result)
 	}
-	source, _, err := store.LoadSource(t.Context(), "g1", "issues", nil)
+	source, _, err := store.ReadSource(t.Context(), "issues", nil)
 	if err != nil || source.Rows[0]["state"] != "CLOSED" ||
 		source.Rows[0]["stateReason"] != "completed" || source.Rows[0]["closed"] != true {
 		t.Fatalf("issue source did not refresh: %+v (%v)", source, err)
@@ -102,7 +106,7 @@ func TestSignedIssueWebhookRefreshesRetainedSource(t *testing.T) {
 		result["applied"] != false {
 		t.Fatalf("same-second conflicting status was not flagged: %+v", result)
 	}
-	source, _, err = store.LoadSource(t.Context(), "g1", "issues", nil)
+	source, _, err = store.ReadSource(t.Context(), "issues", nil)
 	if err != nil || source.Rows[0]["state"] != "OPEN" {
 		t.Fatalf("ambiguous status must defer to projected row: %+v (%v)", source, err)
 	}
@@ -111,7 +115,11 @@ func TestSignedIssueWebhookRefreshesRetainedSource(t *testing.T) {
 	if err := enrollment.AddRepositories(t.Context(), 1, []string{repository}); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.PutSource(t.Context(), "g2", model.Source{
+	stage, err = store.BeginDataset(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.StageSource(t.Context(), stage, model.Source{
 		Source: "issues", Rows: []model.Row{{
 			"id": "github:issue:" + repository + ":1", "repositoryFullName": repository,
 			"isPullRequest": false, "state": "UNKNOWN",
@@ -119,7 +127,7 @@ func TestSignedIssueWebhookRefreshesRetainedSource(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.Activate(t.Context(), "g2", "simulator-snapshot", time.Now(), map[string]int{"issues": 1}); err != nil {
+	if _, err := store.PublishDataset(t.Context(), stage, "simulator-revision", time.Now(), map[string]int{"issues": 1}); err != nil {
 		t.Fatal(err)
 	}
 	deliveries, err := (simulator.Scenario{
@@ -145,7 +153,7 @@ func TestSignedIssueWebhookRefreshesRetainedSource(t *testing.T) {
 		if result := send(string(delivery.Payload), delivery.ID, true); result["applied"] != true || result["queued"] != false {
 			t.Fatalf("%s was not applied to existing source: %+v", event.Action, result)
 		}
-		loaded, _, err := store.LoadSource(t.Context(), "g2", "issues", nil)
+		loaded, _, err := store.ReadSource(t.Context(), "issues", nil)
 		if err != nil || len(loaded.Rows) != 1 {
 			t.Fatalf("%s source unavailable: %+v (%v)", event.Action, loaded, err)
 		}

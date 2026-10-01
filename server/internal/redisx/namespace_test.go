@@ -95,26 +95,24 @@ func TestCheckoutRootFallsBackWithoutGitMarker(t *testing.T) {
 	}
 }
 
-func TestStoreNamespacesUseDisjointKeysAndIndexes(t *testing.T) {
+func TestStoreNamespacesUseDisjointDatasetKeys(t *testing.T) {
 	first := NewStore(&Client{}, "first")
 	second := NewStore(&Client{}, "second")
 	firstNames := []string{
 		first.activeKey(),
-		first.activeGenerationKey(),
 		first.revisionSequenceKey(),
-		first.generationKey("generation"),
-		first.sourceSetKey("generation", "runs"),
-		first.rowPrefix("generation", "runs") + "row",
-		first.generationsKey(),
+		first.datasetKey(),
+		first.sourceHashKey("runs"),
+		first.stagingKey("write"),
+		first.stagingSourceKey("write", "runs"),
 	}
 	secondNames := []string{
 		second.activeKey(),
-		second.activeGenerationKey(),
 		second.revisionSequenceKey(),
-		second.generationKey("generation"),
-		second.sourceSetKey("generation", "runs"),
-		second.rowPrefix("generation", "runs") + "row",
-		second.generationsKey(),
+		second.datasetKey(),
+		second.sourceHashKey("runs"),
+		second.stagingKey("write"),
+		second.stagingSourceKey("write", "runs"),
 	}
 	for i := range firstNames {
 		if firstNames[i] == secondNames[i] {

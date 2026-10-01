@@ -115,11 +115,11 @@ func TestReportFailedRespectsStrictFlag(t *testing.T) {
 func TestReportCheckFindsByID(t *testing.T) {
 	report := Report{Checks: []Check{
 		{ID: "redis.ping", Summary: "ok"},
-		{ID: "data.generation", Summary: "current"},
+		{ID: "data.active", Summary: "current"},
 	}}
-	found, ok := report.Check("data.generation")
+	found, ok := report.Check("data.active")
 	if !ok {
-		t.Fatalf("Check(data.generation) not found")
+		t.Fatalf("Check(data.active) not found")
 	}
 	if found.Summary != "current" {
 		t.Fatalf("Summary = %s, want current", found.Summary)

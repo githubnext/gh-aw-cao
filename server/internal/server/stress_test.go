@@ -73,7 +73,7 @@ type stressHarness struct {
 }
 
 // stressAppKey generates the simulated App key once per process so key
-// generation does not dominate the published CPU profile.
+// dataset does not dominate the published CPU profile.
 var stressAppKey = sync.OnceValues(func() ([]byte, error) {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {

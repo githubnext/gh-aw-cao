@@ -55,7 +55,7 @@ func (a *App) repositoryMemoryContent(response http.ResponseWriter, request *htt
 		writeError(response, http.StatusBadRequest, "repository-memory file path is invalid")
 		return
 	}
-	generation, campaign, err := a.repositoryMemorySnapshot(request, campaignID)
+	revision, campaign, err := a.repositoryMemorySnapshot(request, campaignID)
 	if err != nil && a.memory != nil &&
 		(errors.Is(err, errCanonicalEntityNotFound) || errors.Is(err, redisx.ErrSourceUnavailable)) {
 		content, resolveErr := a.memory.Content(request.Context(), campaignID, filePath)
@@ -90,13 +90,17 @@ func (a *App) repositoryMemoryContent(response http.ResponseWriter, request *htt
 		writeError(response, http.StatusNotFound, "repository-memory file was not found")
 		return
 	}
-	content, err := a.store.RepositoryMemoryFile(request.Context(), generation, campaignID, filePath)
+	content, err := a.store.ReadRepositoryMemoryFile(request.Context(), campaignID, filePath)
 	if err != nil {
 		if errors.Is(err, redisx.ErrSourceUnavailable) {
 			writeError(response, http.StatusNotFound, "repository-memory file was not found")
 			return
 		}
 		writeError(response, http.StatusServiceUnavailable, "repository memory is unavailable")
+		return
+	}
+	if current, revisionErr := a.store.DatasetRevision(request.Context()); revisionErr != nil || current != revision {
+		writeError(response, http.StatusServiceUnavailable, "repository memory changed during request")
 		return
 	}
 	if reason, ok := repositoryMemoryIntegrityFailure(content, *selected); !ok {
@@ -136,25 +140,28 @@ func repositoryMemoryIntegrityFailure(content []byte, expected repositorymemory.
 	return "", true
 }
 
-func (a *App) repositoryMemorySnapshot(request *http.Request, campaignID string) (string, repositorymemory.Campaign, error) {
+func (a *App) repositoryMemorySnapshot(request *http.Request, campaignID string) (int64, repositorymemory.Campaign, error) {
 	active, err := a.store.Active(request.Context())
-	if err != nil || active.Generation == "" {
-		return "", repositorymemory.Campaign{}, redisx.ErrSourceUnavailable
+	if err != nil || active.Revision == 0 {
+		return 0, repositorymemory.Campaign{}, redisx.ErrSourceUnavailable
 	}
-	content, err := a.store.RepositoryMemoryManifest(request.Context(), active.Generation)
+	content, err := a.store.ReadRepositoryMemoryManifest(request.Context())
 	if err != nil {
-		return "", repositorymemory.Campaign{}, err
+		return 0, repositorymemory.Campaign{}, err
 	}
 	var manifest repositorymemory.Manifest
 	if err := json.Unmarshal(content, &manifest); err != nil || manifest.Version != 1 {
-		return "", repositorymemory.Campaign{}, errors.New("repository-memory manifest is invalid")
+		return 0, repositorymemory.Campaign{}, errors.New("repository-memory manifest is invalid")
+	}
+	if current, err := a.store.DatasetRevision(request.Context()); err != nil || current != active.Revision {
+		return 0, repositorymemory.Campaign{}, redisx.ErrSourceUnavailable
 	}
 	for _, campaign := range manifest.Campaigns {
 		if campaign.Campaign == campaignID {
-			return active.Generation, campaign, nil
+			return active.Revision, campaign, nil
 		}
 	}
-	return active.Generation, repositorymemory.Campaign{}, errCanonicalEntityNotFound
+	return active.Revision, repositorymemory.Campaign{}, errCanonicalEntityNotFound
 }
 
 func writeRepositoryMemoryError(response http.ResponseWriter, err error) {

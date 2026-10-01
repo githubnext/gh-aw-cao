@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,8 +18,42 @@ import (
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
+	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
+
+type missingSearchIngestClient struct {
+	commands []string
+}
+
+func (client *missingSearchIngestClient) Do(_ context.Context, command ...string) (any, error) {
+	client.commands = append(client.commands, command[0])
+	switch command[0] {
+	case "HGETALL":
+		return []any{}, nil
+	case "COMMAND":
+		return []any{[]any{"json.set"}, nil, nil, nil}, nil
+	default:
+		return nil, fmt.Errorf("unexpected Redis command %s", command[0])
+	}
+}
+
+func (*missingSearchIngestClient) DoMany(context.Context, [][]string) ([]any, error) {
+	return nil, fmt.Errorf("unexpected Redis batch")
+}
+
+func TestIngestRejectsMissingSearchBeforePublication(t *testing.T) {
+	client := &missingSearchIngestClient{}
+	store := redisx.NewStore(client, "missing-search")
+	_, err := Run(t.Context(), store, "../../testdata/deployed-subset", Options{})
+	if err == nil || !strings.Contains(err.Error(), "FT.CREATE") {
+		t.Fatalf("missing Search support did not fail ingestion: %v", err)
+	}
+	if len(client.commands) != 2 || client.commands[0] != "HGETALL" ||
+		client.commands[1] != "COMMAND" {
+		t.Fatalf("unsupported provider received staging or publication commands: %v", client.commands)
+	}
+}
 
 func TestIngestionErrorSpanExcludesFilePath(t *testing.T) {
 	previousProvider := otel.GetTracerProvider()
@@ -310,7 +345,7 @@ func TestSourceEvaluationTimeUsesLatestCanonicalOrSourceTimestamp(t *testing.T) 
 	}
 }
 
-func TestValidateDiagnosticsRejectsInvalidStagingGeneration(t *testing.T) {
+func TestValidateDiagnosticsRejectsInvalidStagingDataset(t *testing.T) {
 	if err := validateDiagnostics(model.Diagnostics{
 		RelationshipErrors: []string{"session.runId does not reference an existing run"},
 	}); err == nil {

@@ -114,8 +114,8 @@ normalized run and record JSONL; browser ingestion fails closed rather than
 falling back to raw Activity JSONL. Static-browser download, normalization, persistence, and queries run in a
 dedicated Web Worker. The optional Redis profile ingests the same deployed
 dashboard artifact in a Go HTTP(S) server, keeps Redis credentials server-side,
-executes Dashboard Language in Go against RedisJSON documents
-and RediSearch indexes, and returns only canonical or explicitly registered
+executes Dashboard Language in Go against canonical Redis hashes with
+disposable RedisJSON/RediSearch indexes, and returns only canonical or explicitly registered
 bounded runtime-source query payloads to the browser. Compatible direct-source
 equality predicates select bounded indexed candidates before the Go engine
 evaluates the full query; other operations use bounded Go fallback. Issue
@@ -470,8 +470,8 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   collection, data, and local tooling.
 - **JSONL** is the bounded evidence interchange; **SQLite** supports local tools
   and agents; **IndexedDB** supports the static browser dashboard; **Redis**
-  supports the optional disposable server projection with generation-scoped row
-  sets and no module requirement.
+  supports the optional disposable server projection with canonical hashes
+  and RedisJSON/RediSearch secondary indexes in general deployments.
 - **Go** implements the isolated host-neutral HTTP(S) ingestion, reconciliation,
   rebuild, and query service.
 - **Dashboard Language** keeps data operations declarative and off the browser

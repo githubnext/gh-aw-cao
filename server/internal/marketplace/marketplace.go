@@ -26,7 +26,7 @@ import (
 var resolveLog = logger.New("cao:marketplace:resolve")
 
 // SourceName is the canonical dashboard source name the query engine and
-// generation loader use to request the marketplace catalog.
+// dataRevision loader use to request the marketplace catalog.
 const SourceName = "marketplace-packages"
 
 // DefaultCacheTTL applies when the policy omits or sets an invalid
@@ -364,7 +364,7 @@ type registryOutcome struct {
 // captured in the returned diagnostic so one bad registry cannot abort the
 // rest of a Resolve pass.
 func resolveOneRegistry(
-	ctx context.Context, raw Registry, index int, generation string, ttl time.Duration, cache Cache, opts Options,
+	ctx context.Context, raw Registry, index int, dataRevision string, ttl time.Duration, cache Cache, opts Options,
 ) registryOutcome {
 	registry, err := ValidateRegistry(raw, index)
 	if err != nil {
@@ -372,7 +372,7 @@ func resolveOneRegistry(
 			RegistryID: fallbackRegistryID(raw, index), Status: "unavailable", Message: safeDiagnosticMessage(err, raw, opts),
 		}}
 	}
-	if cached, hit := loadCachedRegistry(ctx, cache, registry.ID, generation); hit {
+	if cached, hit := loadCachedRegistry(ctx, cache, registry.ID, dataRevision); hit {
 		for i := range cached {
 			cached[i].RepositoryLink = repositoryLink(cached[i].Repository, apiBase(registry))
 		}
@@ -388,7 +388,7 @@ func resolveOneRegistry(
 			RegistryID: registry.ID, Status: "unavailable", Message: safeDiagnosticMessage(err, registry, opts),
 		}}
 	}
-	storeCachedRegistry(ctx, cache, registry.ID, generation, ttl, resolved)
+	storeCachedRegistry(ctx, cache, registry.ID, dataRevision, ttl, resolved)
 	return registryOutcome{
 		packages:   resolved,
 		diagnostic: RegistryDiagnostic{RegistryID: registry.ID, Status: "available", Packages: len(resolved)},
@@ -397,10 +397,10 @@ func resolveOneRegistry(
 
 // Resolve resolves every configured registry in order, isolating failures
 // into diagnostics, and returns the deduplicated, precedence-sorted package
-// catalog. generation isolates the Cache by dashboard data revision so a
+// catalog. dataRevision isolates the Cache by dashboard data revision so a
 // cached result from one revision is never served under another. cache may be
 // nil to disable caching.
-func Resolve(ctx context.Context, config *Config, generation string, cache Cache, opts Options) *Result {
+func Resolve(ctx context.Context, config *Config, dataRevision string, cache Cache, opts Options) *Result {
 	if config == nil {
 		return &Result{Packages: []Package{}, Diagnostics: []RegistryDiagnostic{}}
 	}
@@ -412,7 +412,7 @@ func Resolve(ctx context.Context, config *Config, generation string, cache Cache
 	diagnostics := make([]RegistryDiagnostic, 0, len(config.Registries))
 	cacheHits, unavailable := 0, 0
 	for index, raw := range config.Registries {
-		outcome := resolveOneRegistry(ctx, raw, index, generation, ttl, cache, opts)
+		outcome := resolveOneRegistry(ctx, raw, index, dataRevision, ttl, cache, opts)
 		packages = append(packages, outcome.packages...)
 		diagnostics = append(diagnostics, outcome.diagnostic)
 		if outcome.cacheHit {

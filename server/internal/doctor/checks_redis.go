@@ -96,7 +96,7 @@ func (d Doctor) checkRedisServer(ctx context.Context) Check {
 // checkRedisMemory is the most consequential Redis check.
 //
 // The canonical database is held entirely in Redis and every projection writes
-// a complete new generation. Under an eviction policy Redis silently discards
+// a complete new dataset. Under an eviction policy Redis silently discards
 // rows, which the dashboard renders as missing data rather than as an error.
 func (d Doctor) checkRedisMemory(ctx context.Context) Check {
 	const id, title = "redis.memory", "Redis memory and eviction policy"
@@ -169,15 +169,15 @@ func classifyRedisMemory(used, maximum int64, policy string) memoryClassificatio
 			return memoryClassification{
 				status:  StatusFail,
 				summary: fmt.Sprintf("memory is %.1f%% used; the next projection will probably fail", 100*utilization),
-				remedy:  "scale the instance or lower CAO_COLLECT_RETAIN_GENERATIONS so fewer superseded generations are kept",
+				remedy:  "scale the instance to allow headroom for the unpublished dataset while projection runs",
 				reason:  memoryReasonCriticalUtilization,
 			}
 		}
 		if utilization >= 0.80 {
 			return memoryClassification{
 				status:  StatusWarn,
-				summary: fmt.Sprintf("memory is %.1f%% used; a projection writes a full additional generation", 100*utilization),
-				remedy:  "headroom below one generation risks a failed projection; scale up or reduce retention",
+				summary: fmt.Sprintf("memory is %.1f%% used; a projection writes a full additional dataset", 100*utilization),
+				remedy:  "headroom below one dataset risks a failed projection; scale up the instance",
 				reason:  memoryReasonHighUtilization,
 			}
 		}
@@ -233,7 +233,7 @@ func classifyRedisStats(evicted, rejected int64) statsClassification {
 	if evicted > 0 {
 		return statsClassification{
 			status:  StatusFail,
-			summary: fmt.Sprintf("Redis has evicted %d keys; the canonical generation may be incomplete", evicted),
+			summary: fmt.Sprintf("Redis has evicted %d keys; the canonical dataset may be incomplete", evicted),
 			remedy:  "set noeviction, then reproject from authoritative evidence; changing the policy does not restore rows already lost",
 			reason:  statsReasonEvictedKeys,
 		}

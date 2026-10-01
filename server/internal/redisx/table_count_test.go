@@ -19,11 +19,16 @@ func (client *countCommandClient) Do(_ context.Context, command ...string) (any,
 	client.commands = append(client.commands, command[0])
 	switch command[0] {
 	case "HGET":
+		if command[2] == "revision" {
+			return "1", nil
+		}
 		return `{"availability":"available"}`, nil
-	case "SCARD":
-		return client.count, nil
-	case "SMEMBERS":
-		return []any{}, nil
+	case "HMGET":
+		return []any{nil, nil, nil}, nil
+	case "HLEN":
+		return int64(client.count + 1), nil
+	case "EVAL":
+		return []any{"0", []any{"_staged", "1"}}, nil
 	default:
 		return nil, fmt.Errorf("unexpected Redis command %q", command[0])
 	}
@@ -38,7 +43,7 @@ type countSourceLoader struct {
 }
 
 func (loader countSourceLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
-	return loader.store.LoadSource(context.Background(), "generation", name, definition)
+	return loader.store.ReadSource(context.Background(), name, definition)
 }
 
 func TestNativeTableCountUsesRedisCardinality(t *testing.T) {
@@ -69,7 +74,7 @@ func TestNativeTableCountUsesRedisCardinality(t *testing.T) {
 			if !reflect.DeepEqual(result[definition.Name].Rows, want) {
 				t.Fatalf("rows = %#v, want %#v", result[definition.Name].Rows, want)
 			}
-			if !reflect.DeepEqual(client.commands, []string{"HGET", "SCARD"}) ||
+			if !reflect.DeepEqual(client.commands, []string{"HGET", "HLEN"}) ||
 				!reflect.DeepEqual(metrics.PushedDown, []string{"compute", "aggregate"}) ||
 				metrics.RedisRows != 0 || metrics.PeakWorkingBytes > 1024 {
 				t.Fatalf("unexpected native-count execution: commands=%v metrics=%+v", client.commands, metrics)
@@ -115,11 +120,15 @@ func TestNativeTableCountRejectsChangedSemantics(t *testing.T) {
 			mutate(&definition)
 			client := &countCommandClient{count: 2}
 			store := NewStore(client, "test-count")
-			_, metrics, err := store.LoadSource(t.Context(), "generation", "tools", &definition)
+			_, metrics, err := store.ReadSource(t.Context(), "tools", &definition)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(client.commands, []string{"HGET", "HGET", "SMEMBERS"}) ||
+			wantCommands := []string{"HGET", "EVAL"}
+			if definition.Filter != nil && definition.From == "tools" && len(definition.Union) == 0 && len(definition.Joins) == 0 {
+				wantCommands = []string{"HGET", "HGET", "HMGET", "EVAL"}
+			}
+			if !reflect.DeepEqual(client.commands, wantCommands) ||
 				len(metrics.PushedDown) != 0 {
 				t.Fatalf("unsafe count pushdown: commands=%v metrics=%+v", client.commands, metrics)
 			}

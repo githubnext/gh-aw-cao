@@ -7,9 +7,9 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
 
-// QueryCompilation describes what the Redis compiler can establish without a
-// running generation. A candidate still requires a JSON source and compatible
-// indexed field types in the active generation.
+// QueryCompilation describes an offline candidate for Redis pushdown. These
+// candidates do not describe the currently published hash-backed dataset,
+// which always evaluates queries through the Go engine.
 type QueryCompilation struct {
 	Name            string                    `json:"name"`
 	From            string                    `json:"from"`
@@ -26,9 +26,9 @@ type QueryCompilation struct {
 	RedisCommands   []string                  `json:"redisCommands"`
 }
 
-// CompileQueries checks each definition against the same FT.AGGREGATE compiler
-// used at runtime. Inferred fields are only an optimistic schema: the report
-// must not claim that a query actually executes natively on a live generation.
+// CompileQueries evaluates possible native plans against inferred fields;
+// these are hypothetical plans, not live execution or an index availability
+// guarantee for the current dataset storage format.
 func CompileQueries(definitions []query.Definition, runtimeSources ...string) ([]QueryCompilation, error) {
 	if len(definitions) == 0 || len(definitions) > 2048 {
 		return nil, fmt.Errorf("expected between 1 and 2048 dashboard queries")
@@ -81,7 +81,7 @@ func CompileQueries(definitions []query.Definition, runtimeSources ...string) ([
 				result.Level == "fallback" {
 				result.Level, result.Native = "partial candidate", "FT.SEARCH candidate selection"
 				result.NativePrefix = append(result.NativePrefix, "indexed-candidates")
-				result.RedisCommands = []string{"FT.SEARCH", "JSON.GET"}
+				result.RedisCommands = []string{"FT.SEARCH", "HMGET"}
 			}
 			if label, _, ok := nativeTableCount(&definition); ok && label != "" &&
 				result.Level == "fallback" {

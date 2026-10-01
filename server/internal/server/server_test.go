@@ -898,6 +898,10 @@ func fakeRedis(t *testing.T) (string, func()) {
 					case "XADD":
 						_, _ = fmt.Fprint(connection, "$3\r\n1-0\r\n")
 					case "EVAL":
+						if strings.Contains(command[1], `redis.call("HSCAN"`) {
+							_, _ = fmt.Fprint(connection, "*2\r\n$1\r\n0\r\n*2\r\n$7\r\n_staged\r\n$1\r\n1\r\n")
+							break
+						}
 						mu.Lock()
 						result := 1
 						bulkResult := ""
@@ -985,12 +989,15 @@ func fakeRedis(t *testing.T) (string, func()) {
 							_, _ = fmt.Fprint(connection, ":0\r\n")
 						}
 					case "HGETALL":
-						_, _ = fmt.Fprint(connection, "*10\r\n$10\r\ngeneration\r\n$2\r\ng1\r\n$8\r\nrevision\r\n$1\r\n1\r\n$6\r\ncounts\r\n$2\r\n{}\r\n$11\r\nactivatedAt\r\n$20\r\n2026-01-01T00:00:00Z\r\n$11\r\nevaluatedAt\r\n$20\r\n2026-02-03T04:05:06Z\r\n")
+						_, _ = fmt.Fprint(connection, "*8\r\n$8\r\nrevision\r\n$1\r\n1\r\n$6\r\ncounts\r\n$2\r\n{}\r\n$11\r\nactivatedAt\r\n$20\r\n2026-01-01T00:00:00Z\r\n$11\r\nevaluatedAt\r\n$20\r\n2026-02-03T04:05:06Z\r\n")
 					case "HGET":
-						// Source metadata; rows come from SMEMBERS.
-						_, _ = fmt.Fprint(connection, "$28\r\n{\"availability\":\"available\"}\r\n")
-					case "SMEMBERS":
-						_, _ = fmt.Fprint(connection, "*0\r\n")
+						if command[2] == "revision" {
+							_, _ = fmt.Fprint(connection, "$1\r\n1\r\n")
+						} else {
+							_, _ = fmt.Fprint(connection, "$28\r\n{\"availability\":\"available\"}\r\n")
+						}
+					case "HMGET":
+						_, _ = fmt.Fprint(connection, "*3\r\n$-1\r\n$-1\r\n$-1\r\n")
 					default:
 						_, _ = fmt.Fprint(connection, "-ERR unsupported\r\n")
 					}

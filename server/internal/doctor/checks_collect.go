@@ -22,7 +22,7 @@ const areaCollect = "collect"
 //
 // The two profiles are alternatives, never layers. A process configured for
 // both would collect from GitHub and ingest published snapshots into the same
-// namespace, so each would overwrite the other's generation.
+// namespace, so each would overwrite the other's dataset.
 func (d Doctor) checkCollectionProfile(context.Context) Check {
 	const id, title = "collect.profile", "Acquisition profile"
 	profile := d.profile()
@@ -78,7 +78,6 @@ func (d Doctor) checkCollectionSettings(context.Context) Check {
 		detail("controlRepository", presence(d.getenv("CAO_COLLECT_CONTROL_REPOSITORY"))),
 		detail("workers", orDefault(d.getenv("CAO_COLLECT_WORKERS"), "0")),
 		detail("queueMaxLength", orDefault(d.getenv("CAO_COLLECT_QUEUE_MAX_LENGTH"), "default")),
-		detail("retainGenerations", orDefault(d.getenv("CAO_COLLECT_RETAIN_GENERATIONS"), "default")),
 		detail("inventoryLimit", orDefault(d.getenv("CAO_COLLECT_INVENTORY_LIMIT"), "unbounded")),
 		detail("projectionInterval", orDefault(d.getenv("CAO_COLLECT_PROJECTION_INTERVAL"), "default")),
 	}

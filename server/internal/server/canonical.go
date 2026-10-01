@@ -24,13 +24,16 @@ func (service canonicalService) rows(ctx context.Context, source string) ([]mode
 	if err != nil {
 		return nil, err
 	}
-	if active.Generation == "" {
+	if active.Revision == 0 {
 		return nil, errors.New("dashboard data is unavailable")
 	}
-	engine := query.New(&generationLoader{ctx: ctx, store: service.store, generation: active.Generation})
+	engine := query.New(&datasetLoader{ctx: ctx, store: service.store})
 	sources, _, err := engine.Execute(nil, []string{source})
 	if err != nil {
 		return nil, err
+	}
+	if revision, err := service.store.DatasetRevision(ctx); err != nil || revision != active.Revision {
+		return nil, errors.New("dashboard data changed during query")
 	}
 	return sources[source].Rows, nil
 }
@@ -40,7 +43,7 @@ func (service canonicalService) filteredRows(ctx context.Context, source string,
 	if err != nil {
 		return nil, err
 	}
-	if active.Generation == "" {
+	if active.Revision == 0 {
 		return nil, errors.New("dashboard data is unavailable")
 	}
 	predicates := make([]query.Predicate, 0, len(filters))
@@ -54,10 +57,13 @@ func (service canonicalService) filteredRows(ctx context.Context, source string,
 			Predicates: predicates,
 		},
 	}
-	engine := query.New(&generationLoader{ctx: ctx, store: service.store, generation: active.Generation})
+	engine := query.New(&datasetLoader{ctx: ctx, store: service.store})
 	sources, _, err := engine.Execute([]query.Definition{definition}, []string{definition.Name})
 	if err != nil {
 		return nil, err
+	}
+	if revision, err := service.store.DatasetRevision(ctx); err != nil || revision != active.Revision {
+		return nil, errors.New("dashboard data changed during query")
 	}
 	return sources[definition.Name].Rows, nil
 }
@@ -74,26 +80,48 @@ func (service canonicalService) entity(ctx context.Context, source, id string) (
 }
 
 func (service canonicalService) repositoryRuns(ctx context.Context, id string) ([]model.Row, error) {
+	revision, err := service.store.DatasetRevision(ctx)
+	if err != nil {
+		return nil, err
+	}
 	repository, err := service.entity(ctx, "repositories", id)
 	if err != nil || repository == nil {
 		return nil, err
 	}
-	return service.filteredRows(ctx, "runs", map[string]any{
+	rows, err := service.filteredRows(ctx, "runs", map[string]any{
 		"organization": repository["organization"],
 		"repository":   repository["repository"],
 	})
+	if err != nil {
+		return nil, err
+	}
+	if current, err := service.store.DatasetRevision(ctx); err != nil || current != revision {
+		return nil, errors.New("dashboard data changed during query")
+	}
+	return rows, nil
 }
 
 func (service canonicalService) workflowRuns(ctx context.Context, id string) ([]model.Row, error) {
+	revision, err := service.store.DatasetRevision(ctx)
+	if err != nil {
+		return nil, err
+	}
 	workflow, err := service.entity(ctx, "workflows", id)
 	if err != nil || workflow == nil {
 		return nil, err
 	}
-	return service.filteredRows(ctx, "runs", map[string]any{
+	rows, err := service.filteredRows(ctx, "runs", map[string]any{
 		"organization": workflow["organization"],
 		"repository":   workflow["repository"],
 		"workflow":     workflow["workflow"],
 	})
+	if err != nil {
+		return nil, err
+	}
+	if current, err := service.store.DatasetRevision(ctx); err != nil || current != revision {
+		return nil, errors.New("dashboard data changed during query")
+	}
+	return rows, nil
 }
 
 func (service canonicalService) related(ctx context.Context, source, id, field string) ([]model.Row, error) {

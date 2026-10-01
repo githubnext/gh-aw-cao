@@ -39,7 +39,6 @@ const projectionBatchSize = 25_000
 var ingestLog = logger.New("cao:ingest")
 
 type Result struct {
-	Generation   string         `json:"generation"`
 	Revision     int64          `json:"revision"`
 	DataRevision string         `json:"dataRevision"`
 	EvaluatedAt  string         `json:"evaluatedAt"`
@@ -49,9 +48,6 @@ type Result struct {
 type Options struct {
 	DatabaseQueriesPath string
 	Force               bool
-	// RetainGenerations bounds how many superseded generations are kept for
-	// rollback. Zero selects redisx.DefaultGenerationRetention.
-	RetainGenerations int
 }
 
 type Manifest map[string]string
@@ -165,10 +161,18 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 	dataRevision := DirectoryRevision(manifest, inventoryContent, memory.Revision)
 	active, err := store.Active(ctx)
 	if err != nil {
-		return Result{}, fmt.Errorf("read active Redis generation: %w", err)
+		return Result{}, fmt.Errorf("read Redis dataset: %w", err)
 	}
-	if !options.Force && active.Generation != "" && active.DataRevision == dataRevision {
-		ingestLog.Printf("reusing active generation revision=%d sources=%d", active.Revision, len(active.Counts))
+	if err := store.RequireIndexedModules(ctx); err != nil {
+		return Result{}, err
+	}
+	if !options.Force && active.Revision != 0 && active.DataRevision == dataRevision {
+		ingestLog.Printf("reusing dataset revision=%d sources=%d", active.Revision, len(active.Counts))
+		if ready, checkErr := store.SearchIndexesReady(ctx, active.Revision); checkErr == nil && !ready {
+			if err := store.RebuildSearchIndexes(ctx, active.Revision, active.Counts); err != nil {
+				ingestLog.Printf("search indexes unavailable; queries will use the canonical dataset")
+			}
+		}
 		evaluatedAt := active.EvaluatedAt
 		if evaluatedAt.IsZero() {
 			evaluatedAt = active.Activated
@@ -176,9 +180,9 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 		if evaluatedAt.IsZero() {
 			evaluatedAt = time.Unix(0, 0).UTC()
 		}
-		span.SetAttributes(attribute.Bool("cao_dashboard.ingest.reused_generation", true))
+		span.SetAttributes(attribute.Bool("cao_dashboard.ingest.reused_dataset", true))
 		return Result{
-			Generation: active.Generation, Revision: active.Revision,
+			Revision:     active.Revision,
 			DataRevision: dataRevision, EvaluatedAt: evaluatedAt.UTC().Format(time.RFC3339Nano),
 			Counts: active.Counts,
 		}, nil
@@ -202,23 +206,26 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 		return Result{}, err
 	}
 	ingestLog.Printf("projected logical sources count=%d", len(sources))
+	if len(definitions) > 0 {
+		store.ConfigureIndexDefinitions(definitions)
+	}
 	diagnostics := buildDiagnostics(canonical)
 	if err := validateDiagnostics(diagnostics); err != nil {
 		return Result{}, err
 	}
-	generation := time.Now().UTC().Format("20060102T150405.000000000Z") + "-" + dataRevision[len(dataRevision)-12:]
-	if err := store.TrackGeneration(ctx, generation); err != nil {
+	staging, err := store.BeginDataset(ctx)
+	if err != nil {
 		return Result{}, err
 	}
-	activationStarted := false
+	published := false
 	defer func() {
-		if err == nil || activationStarted {
+		if published {
 			return
 		}
 		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 		defer cancel()
-		if dropErr := store.DiscardGeneration(cleanup, generation); dropErr != nil {
-			ingestLog.Printf("failed generation cleanup incomplete")
+		if dropErr := store.DiscardDataset(cleanup, staging); dropErr != nil {
+			ingestLog.Printf("failed dataset cleanup incomplete")
 		}
 	}()
 	counts := map[string]int{}
@@ -232,40 +239,33 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 		source.Metadata["source-revision"] = dataRevision
 		source.Metadata["availability"] = availability(source.Rows)
 		source.Metadata["row-count"] = len(source.Rows)
-		if err := store.PutSource(ctx, generation, source); err != nil {
-			return Result{}, fmt.Errorf("stage generation %s: %w", generation, err)
+		if err := store.StageSource(ctx, staging, source); err != nil {
+			return Result{}, fmt.Errorf("stage source %s: %w", name, err)
 		}
 		ingestLog.Printf("staged source rows=%d", len(source.Rows))
 		counts[name] = len(source.Rows)
 	}
-	if err := store.PutDiagnostics(ctx, generation, diagnostics); err != nil {
+	if err := store.StageDiagnostics(ctx, staging, diagnostics); err != nil {
 		return Result{}, fmt.Errorf("stage diagnostics: %w", err)
 	}
-	if err := store.PutRepositoryMemory(ctx, generation, memory.Manifest, memory.Files); err != nil {
+	if err := store.StageRepositoryMemory(ctx, staging, memory.Manifest, memory.Files); err != nil {
 		return Result{}, fmt.Errorf("stage repository memory: %w", err)
 	}
 	evaluatedAt := sourceEvaluationTime(sources)
-	// Refresh the staging registration so the reclamation grace starts when
-	// this generation is actually ready to become active, not at ingest start.
-	if err := store.TrackGeneration(ctx, generation); err != nil {
-		return Result{}, err
-	}
-	activationStarted = true
-	revision, err := store.Activate(ctx, generation, dataRevision, evaluatedAt, counts)
+	revision, err := store.PublishDataset(ctx, staging, dataRevision, evaluatedAt, counts)
 	if err != nil {
 		return Result{}, err
 	}
-	ingestLog.Printf("activated generation revision=%d sources=%d", revision, len(counts))
-	// Every projection writes a complete new generation, so reclaiming
-	// superseded ones is part of activation. Redis is configured NoEviction:
-	// without this a frequently projecting deployment exhausts memory and
-	// every subsequent write fails. A reclamation failure must not invalidate
-	// the generation that was just activated.
-	if _, err := store.PruneGenerations(ctx, options.RetainGenerations); err != nil {
-		ingestLog.Printf("generation reclamation failed")
+	published = true
+	ingestLog.Printf("published dataset revision=%d sources=%d", revision, len(counts))
+	if err := store.PruneIssueStatuses(ctx); err != nil {
+		ingestLog.Printf("issue status reclamation incomplete")
+	}
+	if err := store.RebuildSearchIndexes(ctx, revision, counts); err != nil {
+		ingestLog.Printf("search indexes unavailable; queries will use the canonical dataset")
 	}
 	return Result{
-		Generation: generation, Revision: revision, DataRevision: dataRevision,
+		Revision: revision, DataRevision: dataRevision,
 		EvaluatedAt: evaluatedAt.Format(time.RFC3339Nano), Counts: counts,
 	}, nil
 }

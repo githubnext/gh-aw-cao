@@ -10,7 +10,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
-func TestEmptyRedisRebuildAndFailedReplacementPreservesActiveGeneration(t *testing.T) {
+func TestEmptyRedisRebuildAndFailedReplacementPreservesDataset(t *testing.T) {
 	rawURL := os.Getenv("REDIS_URL")
 	if rawURL == "" {
 		t.Skip("REDIS_URL is not set")
@@ -31,7 +31,7 @@ func TestEmptyRedisRebuildAndFailedReplacementPreservesActiveGeneration(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	if before.Generation != "" {
+	if before.Revision != 0 {
 		t.Fatalf("new projection namespace unexpectedly has active data: %#v", before)
 	}
 
@@ -42,8 +42,8 @@ func TestEmptyRedisRebuildAndFailedReplacementPreservesActiveGeneration(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Generation == "" || result.Revision != 1 || len(result.Counts) == 0 {
-		t.Fatalf("empty Redis was not rebuilt into a valid active generation: %#v", result)
+	if result.Revision != 1 || len(result.Counts) == 0 {
+		t.Fatalf("empty Redis was not rebuilt into a valid dataset: %#v", result)
 	}
 
 	if _, err := Run(ctx, store, t.TempDir(), Options{
@@ -56,7 +56,7 @@ func TestEmptyRedisRebuildAndFailedReplacementPreservesActiveGeneration(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	if after.Generation != result.Generation || after.Revision != result.Revision {
-		t.Fatalf("failed rebuild replaced active generation: before=%#v after=%#v", result, after)
+	if after.Revision != result.Revision {
+		t.Fatalf("failed rebuild replaced dataset: before=%#v after=%#v", result, after)
 	}
 }

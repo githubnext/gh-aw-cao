@@ -186,13 +186,15 @@ func (c *repositoryMemoryClient) Do(_ context.Context, arguments ...string) (any
 	switch arguments[0] {
 	case "HGETALL":
 		return []any{
-			"generation", "g1",
 			"revision", "1",
 			"counts", "{}",
 			"activatedAt", "2026-01-01T00:00:00Z",
 			"evaluatedAt", "2026-01-01T00:00:00Z",
 		}, nil
 	case "HGET":
+		if arguments[2] == "revision" {
+			return "1", nil
+		}
 		if strings.HasSuffix(arguments[2], "manifest") {
 			return string(c.manifest), nil
 		}

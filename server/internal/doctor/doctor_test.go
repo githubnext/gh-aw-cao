@@ -135,35 +135,6 @@ func TestRedisTransportRejectsPlaintextRemoteEndpoint(t *testing.T) {
 	}
 }
 
-func TestGenerationCheckFindsUntrackedStoredGeneration(t *testing.T) {
-	doctor := testDoctor(fakeClient{do: func(arguments ...string) (any, error) {
-		switch arguments[0] {
-		case "HGETALL":
-			return []any{
-				"generation", "current", "revision", "4",
-				"activatedAt", "2026-09-25T15:59:00Z", "counts", "{}",
-			}, nil
-		case "ZRANGE":
-			return []any{"current"}, nil
-		case "SCAN":
-			return []any{"0", []any{
-				"cao:test:g:current",
-				"cao:test:g:orphan",
-				"cao:test:g:orphan:source:runs:rows",
-			}}, nil
-		default:
-			return nil, fmt.Errorf("unexpected command %v", arguments)
-		}
-	}})
-	check := doctor.checkGenerations(context.Background())
-	if check.Status != StatusFail {
-		t.Fatalf("status = %s, want fail: %+v", check.Status, check)
-	}
-	if !strings.Contains(check.Summary, "not in the reclamation registry") {
-		t.Fatalf("summary = %q", check.Summary)
-	}
-}
-
 func TestProfileCheckRejectsBothAcquisitionProfiles(t *testing.T) {
 	values := map[string]string{
 		"CAO_COLLECT_APP_ID":   "42",

@@ -184,9 +184,9 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 		if err != nil {
 			return nil, fmt.Errorf("configure github quota: %w", err)
 		}
-	}
-	if store != nil {
-		store.ConfigureIndexDefinitions(config.DashboardQueries)
+		if store != nil {
+			store.ConfigureIndexDefinitions(config.DashboardQueries)
+		}
 	}
 	serverLog.Printf("initialized host_profile=%s oauth=%t source_ingestion=%t", profile.Name, oauth != nil, config.SourceDirectory != "")
 	app := &App{
@@ -733,11 +733,11 @@ func (a *App) health(response http.ResponseWriter, request *http.Request) {
 	if !redisHealthy || activeErr != nil {
 		status = http.StatusServiceUnavailable
 	}
-	serverLog.Printf("health status=%d redis=%t data=%t", status, redisHealthy, active.Generation != "")
+	serverLog.Printf("health status=%d redis=%t data=%t", status, redisHealthy, active.Revision != 0)
 	payload := map[string]any{
 		"status": "healthy",
 		"redis":  map[string]any{"connected": redisHealthy},
-		"data":   map[string]any{"available": active.Generation != "", "rebuildRequired": active.Generation == ""},
+		"data":   map[string]any{"available": active.Revision != 0, "rebuildRequired": active.Revision == 0},
 	}
 	if !redisHealthy {
 		payload["status"] = "unhealthy"
@@ -752,7 +752,6 @@ func (a *App) health(response http.ResponseWriter, request *http.Request) {
 			rowCount += count
 		}
 		payload["revision"] = active.Revision
-		payload["generation"] = active.Generation
 		payload["counts"] = active.Counts
 		payload["sourceCount"] = len(active.Counts)
 		payload["rowCount"] = rowCount
@@ -767,7 +766,7 @@ func (a *App) readiness(response http.ResponseWriter, request *http.Request) {
 	defer cancel()
 	active, activeErr := a.store.Active(ctx)
 	redisHealthy := a.store.Ping(ctx) == nil
-	ready := redisHealthy && activeErr == nil && active.Generation != ""
+	ready := redisHealthy && activeErr == nil && active.Revision != 0
 	status := http.StatusOK
 	if !ready {
 		status = http.StatusServiceUnavailable
@@ -776,8 +775,8 @@ func (a *App) readiness(response http.ResponseWriter, request *http.Request) {
 		"ready": ready,
 		"redis": map[string]any{"connected": redisHealthy},
 		"data": map[string]any{
-			"available":       active.Generation != "",
-			"rebuildRequired": active.Generation == "",
+			"available":       active.Revision != 0,
+			"rebuildRequired": active.Revision == 0,
 		},
 	})
 }
@@ -954,7 +953,7 @@ type queryResponse struct {
 
 func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollectionHealth bool) (queryResponse, int, error) {
 	active, err := a.store.Active(ctx)
-	if err != nil || active.Generation == "" {
+	if err != nil || active.Revision == 0 {
 		return queryResponse{}, http.StatusServiceUnavailable, errors.New("dashboard data is unavailable")
 	}
 	evaluatedAt := evaluationTime(active)
@@ -989,15 +988,22 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 		}
 	}
 	started := time.Now()
-	loader := &generationLoader{
-		ctx: ctx, store: a.store, generation: active.Generation,
+	loader := &datasetLoader{
+		ctx: ctx, store: a.store, dataRevision: active.DataRevision,
 		app: a, allowCollectionHealth: allowCollectionHealth,
 	}
 	engine := query.New(loader)
 	sources, metrics, err := engine.Execute(definitions, requested)
 	if err != nil {
 		serverLog.Printf("query failed")
+		if errors.Is(err, redisx.ErrSearchIndexUnavailable) {
+			return queryResponse{}, http.StatusServiceUnavailable, err
+		}
 		return queryResponse{}, http.StatusBadRequest, err
+	}
+	currentRevision, err := a.store.DatasetRevision(ctx)
+	if err != nil || currentRevision != active.Revision {
+		return queryResponse{}, http.StatusServiceUnavailable, errors.New("dashboard data changed during query")
 	}
 	for name, page := range input.Pagination {
 		source, ok := sources[name]
@@ -1018,15 +1024,15 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 	}, http.StatusOK, nil
 }
 
-type generationLoader struct {
+type datasetLoader struct {
 	ctx                   context.Context
 	store                 *redisx.Store
-	generation            string
+	dataRevision          string
 	app                   *App
 	allowCollectionHealth bool
 }
 
-func (loader *generationLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
+func (loader *datasetLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
 	if name == collectionHealthSourceName {
 		source, err := loader.app.collectionHealthSource(loader.ctx, loader.allowCollectionHealth)
 		return source, model.Metrics{}, err
@@ -1040,9 +1046,9 @@ func (loader *generationLoader) LoadSource(name string, definition *query.Defini
 		// The marketplace catalog is never stored as an ingested Redis source:
 		// it is resolved (and cached) transparently here so every query-engine
 		// caller sees an ordinary source, with no secrets ever leaving this call.
-		return marketplaceSource(loader.ctx, loader.store, loader.generation), model.Metrics{}, nil
+		return marketplaceSource(loader.ctx, loader.store, loader.dataRevision), model.Metrics{}, nil
 	}
-	source, metrics, err := loader.store.LoadSource(loader.ctx, loader.generation, name, definition)
+	source, metrics, err := loader.store.ReadSource(loader.ctx, name, definition)
 	if errors.Is(err, redisx.ErrSourceUnavailable) {
 		return unavailableSource(name), metrics, nil
 	}
@@ -1050,7 +1056,7 @@ func (loader *generationLoader) LoadSource(name string, definition *query.Defini
 }
 
 // RuntimeQuerySourceNames lists sources resolved by the server rather than
-// stored as generation-scoped RedisJSON documents.
+// stored in the canonical Redis dataset.
 func RuntimeQuerySourceNames() []string {
 	return []string{collectionHealthSourceName, gitHubQuotaUsageSourceName, marketplace.SourceName}
 }
@@ -1104,11 +1110,11 @@ func paginate(source model.Source, revision string, page paginationRequest) (mod
 
 func (a *App) diagnostics(response http.ResponseWriter, request *http.Request) {
 	active, err := a.store.Active(request.Context())
-	if err != nil || active.Generation == "" {
+	if err != nil || active.Revision == 0 {
 		writeError(response, http.StatusServiceUnavailable, "dashboard data is unavailable")
 		return
 	}
-	diagnostics, err := a.store.Diagnostics(request.Context(), active.Generation)
+	diagnostics, err := a.store.ReadDiagnostics(request.Context())
 	if err != nil {
 		writeError(response, http.StatusServiceUnavailable, "dashboard diagnostics are unavailable")
 		return
@@ -1131,7 +1137,7 @@ func (a *App) refresh(response http.ResponseWriter, request *http.Request) {
 	})
 }
 
-func evaluationTime(active model.ActiveGeneration) string {
+func evaluationTime(active model.ActiveDataset) string {
 	if !active.EvaluatedAt.IsZero() {
 		return active.EvaluatedAt.UTC().Format(time.RFC3339Nano)
 	}

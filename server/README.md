@@ -23,7 +23,7 @@ report distinguishes full `FT.AGGREGATE` candidates, partial Redis candidates,
 Go fallback, and definitions unsupported by the Go query engine. This is an
 offline compilation check, not a runtime performance measurement: native
 candidates still need compatible RedisJSON sources and RediSearch indexes in
-the active generation. The deployed query-cost workflow includes this report
+the active dataset. The deployed query-cost workflow includes this report
 in its pull-request comment and artifact. JSON reports also include the
 normalized result shape, known source and transient field requirements, native
 candidate prefix, fallback suffix, and Redis command names. A preserving shape
@@ -186,12 +186,12 @@ with `benchstat` and inspect profiles with `go tool pprof` or
 flowchart LR
   Artifact["Deployed dashboard artifact<br/>inventory + run JSONL + record JSONL"]
   Ingest["Go ingester<br/>verify, parse, project"]
-  Redis["Redis<br/>generation row sets"]
+  Redis["Redis<br/>canonical row sets"]
   API["Go HTTP(S) server<br/>bounded query engine"]
   Browser["Dashboard browser app<br/>render bounded view payloads"]
 
   Artifact --> Ingest
-  Ingest -->|"stage complete generation"| Redis
+  Ingest -->|"publish validated dataset"| Redis
   Redis -->|"atomic activation"| API
   Browser -->|"POST /api/v1/query"| API
   API -->|"HGET/SMEMBERS/EVAL"| Redis
@@ -430,8 +430,8 @@ authoritative re-ingestion; they are not treated as complete canonical records.
 Validated webhook and rebuild requests return `202` before projection work
 continues under a bounded, request-independent context. Only explicitly listed
 administrators may call `POST /api/admin/rebuild`; it always forces a new staged
-generation, validates it, then atomically activates it. A failed rebuild leaves
-the previous generation active.
+dataset, validates it, then publishes it. A failed rebuild does not
+publish incomplete data.
 
 The hosted dashboard shows a user icon at the lower left of the navigation.
 It appears only after the server confirms an authenticated GitHub session and
@@ -580,10 +580,9 @@ The ingestion sequence is:
 5. Project canonical Campaign, Repository, Workflow, Run, Domain, Tool, Audit,
    Issue, and Operational Value records through
    `dashboard/site/src/data/queries/database.json`.
-6. Stage every logical source, its metadata, diagnostics, and row set under a
-   new immutable generation.
-7. Atomically update the namespaced active pointer and increment the namespaced
-   active revision only after the generation is complete.
+6. Stage every logical source, its metadata, diagnostics, and row set.
+7. Publish the complete dataset and increment the namespaced revision only
+    after the projection is complete.
 
 An ingestion with the same artifact revision reuses the existing dataset.
 A failed ingestion must not publish incomplete data.
@@ -630,7 +629,7 @@ Collection separates three concerns that fail differently:
    collection. The response reports `applied` (not `queued`); a same-timestamp
    conflicting status reports `reason: ambiguous-status` and defers to the
    projected row until newer evidence arrives. Status observations are retained
-   across generation activations and newer projected evidence takes precedence.
+   across projections and newer projected evidence takes precedence.
 2. **Collection.** Workers lease tasks and run the same
    `gh aw logs --audit` and `activity/cao.mjs` commands the Activity workflow
    runs, writing into the evidence lake. One repository is collected at a time,
@@ -711,7 +710,7 @@ failing.
 `cao-dashboard doctor` runs a read-only check-up of the current server
 configuration. It does not contact GitHub, write to Redis, repair data, or
 report secret values. Every check has a stable identifier such as
-`redis.memory` or `data.generations`, a severity, observed facts, and an
+`redis.memory` or `data.active`, a severity, observed facts, and an
 operator remedy. The default text report is intended to be readable by both a
 person and an agent:
 
@@ -727,8 +726,8 @@ The standard check-up covers:
   exclusivity;
 - Redis connectivity, latency, TLS posture, server state, clients,
   persistence, memory headroom, `noeviction`, and namespace contents;
-- active-generation age, schema compatibility, source counts, referential
-  integrity, duplicate identifiers, and generation reclamation;
+- dataset age, schema compatibility, source counts, referential
+  integrity, and duplicate identifiers;
 - the canonical Dashboard Language query document;
 - collection configuration without reading secrets, enrollment coverage,
   queue backlog, pending work, dead letters, cold-start state, rate-limit
@@ -737,7 +736,7 @@ The standard check-up covers:
 Add `--deep` to read every active source through the production Redis loading
 path and confirm that rows decode, recorded counts match, and no source is
 approaching the 200,000-row fail-closed limit. This can read the whole active
-generation, so it is deliberately opt-in.
+dataset, so it is deliberately opt-in.
 
 ```bash
 go -C server run ./cmd/cao-dashboard doctor \
@@ -811,17 +810,15 @@ scales with what changed. Three properties keep that affordable.
 Projection is *skipped* when nothing changed. A collection re-enumerates a
 repository's window and usually downloads nothing new, so the lake's
 content-addressed data revision is normally unchanged and the projector reuses
-the active generation instead of rewriting it. Only an explicit operator
+the existing dataset instead of rewriting it. Only an explicit operator
 rebuild bypasses this.
 
-Superseded generations are *reclaimed*. Each projection that does run writes a
-complete copy of the canonical dataset plus its search indexes, and Redis is
-configured `NoEviction`. Reclamation is part of activation: a bounded number of
-generations is retained for rollback, and a generation is only dropped once a
-grace period has passed so in-flight reads finish. Tune with
-`CAO_COLLECT_RETAIN_GENERATIONS`; raise it to widen the rollback window at the
-cost of Redis memory. Redis capacity should be sized for the retained
-generation count, not for one copy of the dataset.
+Projection staging is *temporary*. Each projection writes expiring staging
+hashes, then atomically replaces the fixed canonical source keys. The previous
+dataset is not retained for rollback. Search documents and indexes are
+disposable secondary projections rebuilt from the published hashes; until
+they are complete, queries use the bounded canonical read path. Size Redis
+for the canonical data, search indexes, and one in-progress staging copy.
 
 The evidence lake is *many small per-repository shards*, so it is bound by file
 metadata operations rather than throughput. The lake share therefore defaults
@@ -838,8 +835,8 @@ Known limits, in the order they will be felt at scale:
   frequency, and it is why `CAO_COLLECT_PROJECTION_INTERVAL` defaults to five
   minutes rather than to seconds.
 - Redis is still an always-on cost. Azure Managed Redis enables RedisJSON and
-  RediSearch on its database; size for retained documents and search indexes,
-  including staging and rollback generations.
+  RediSearch on its database; size for canonical hashes, search documents,
+  indexes, and in-progress staging.
 - The Elastic Premium Function plan is always-on. It is sized for webhook
   admission, which is constant-time, so the smallest plan that meets the
   tenant's network requirements is the right one.
@@ -853,24 +850,23 @@ Redis is a disposable query projection, not an authoritative data source.
 
 | Redis structure | Purpose |
 | --- | --- |
-| `<namespace>:active` | Active generation, monotonically increasing revision, artifact revision, evaluation time, activation time, and source counts. |
-| `<namespace>:active-generation` | Active generation pointer updated during atomic activation. |
-| `<namespace>:revision-sequence` | Revision counter used by atomic activation. |
-| `<namespace>:g:<generation>` | Source metadata and canonical diagnostics for one generation. |
-| `<namespace>:g:<generation>:source:<hash>:rows` | Set of row keys for one logical source. |
-| `<namespace>:g:<generation>:source:<hash>:row:<id>` | RedisJSON document containing the complete row (hash containing `raw` for issues, Upstash, or older generations). |
-| `<namespace>:g:<generation>:source:<hash>:index` | RediSearch index over eligible JSON string fields; dropped with its generation. |
+| `<namespace>:active` | Monotonically increasing revision, artifact revision, evaluation time, publication time, and source counts. |
+| `<namespace>:revision-sequence` | Revision counter used by atomic publication. |
+| `<namespace>:dataset` | Source metadata, canonical diagnostics, and the revision of verified search indexes. |
+| `<namespace>:dataset:source:<hash>` | Canonical row hash for one logical source. |
+| `<namespace>:staging:<token>` | Expiring unpublished metadata and source hashes, removed after publication or failure. |
+| `<namespace>:search:<hash>:row:<id>` | Disposable RedisJSON search document derived from a published row. |
+| `<namespace>:search:<hash>:index` | RediSearch index over eligible search documents, used only after verification. |
 
 Source names and row identities are converted to deterministic hashes before
-becoming Redis key fragments. Complete row JSON remains available for bounded
-query-engine execution. Local and ordinary hosted Redis deployments require
-Redis 8 with JSON and Search commands; a rebuild is needed to convert an existing
-hash generation into indexed JSON. Missing module support fails ingestion before
-activation, leaving the existing generation intact. The Upstash provider continues
-to use core Redis hashes because its search commands are not RediSearch-compatible.
-An older server binary cannot read a JSON generation; rolling back the binary
-also requires restoring a hash generation or forcing a full rebuild with that
-binary before serving requests.
+becoming Redis key fragments. Complete row JSON remains available in the
+canonical hashes for bounded query-engine execution. Local and ordinary hosted
+Redis deployments require Redis 8 with JSON and Search commands. Search indexes
+are rebuilt and verified after publication; queries fall back to the canonical
+data while indexes are unavailable. The Upstash provider uses core Redis hashes
+because its search commands are not RediSearch-compatible. Existing older
+projection keys are not part of the new dataset; re-ingest the authoritative
+artifacts when upgrading.
 Every key is scoped by `--redis-namespace`. The default
 is a stable
 `cao:checkout-<path-hash>` value derived from the absolute checkout/worktree
@@ -897,14 +893,14 @@ input, join, output, and operator limits remain independently enforced.
 Expensive stages, including sorting, are charged against the operation budget
 before they allocate or run.
 
-Unfiltered, literal-labelled table counts use Redis `SCARD` on the active
-generation's source row-key set. This returns the retained row count without
-fetching or decoding rows, including for sources too large for the query
-engine's working-byte budget. Redis `SCARD` is O(1), not O(0). An empty source
+Unfiltered, literal-labelled table counts use Redis `HLEN` on the canonical
+source hash. This returns the retained row count without fetching or decoding
+rows, including for sources too large for the query engine's working-byte
+budget. Redis `HLEN` is O(1), not O(0). An empty source
 produces no labelled group. Eligible direct-source string equality and `in` filters use RediSearch to fetch
 at most 5,000 JSON candidate keys; the Go engine still applies every predicate,
 including search, against complete rows. Queries with more candidates, complex
-predicates, joins, issue status overlays, and legacy or Upstash hash generations
+predicates, joins, issue status overlays, and Upstash hash sources
 retain the bounded Go path. Filtered counts and joins do not bypass resource
 limits. Query metrics report indexed-candidate selection, Redis command count,
 Redis rows returned, fallback stages, and total duration.
@@ -931,13 +927,13 @@ IndexedDB ingestion:
 
 | Endpoint | Purpose |
 | --- | --- |
-| `GET /api/v1/health` | Public readiness exposes only Redis connectivity and data availability; capability-authenticated requests also receive generation/revision and source/row counts. |
+| `GET /api/v1/health` | Public readiness exposes only Redis connectivity and data availability; capability-authenticated requests also receive revision and source/row counts. |
 | `GET /api/health` | Public liveness; an empty Redis instance is healthy and reports `rebuildRequired`. |
-| `GET /api/readiness` | Public readiness; returns 503 until an active generation exists. |
+| `GET /api/readiness` | Public readiness; returns 503 until a dataset exists. |
 | `POST /api/v1/query` | Execute requested Dashboard Language queries and return bounded logical sources plus metrics. |
 | `POST /api/v1/refresh` | Return the current revision and authoritative evaluation time without ingesting data. |
 | `GET /api/v1/events` | Server-Sent Events stream that notifies active views when the Redis revision changes. |
-| `GET /api/v1/diagnostics` | Canonical schema counts, relationship errors, and duplicate IDs for the active generation. |
+| `GET /api/v1/diagnostics` | Canonical schema counts, relationship errors, and duplicate IDs for the dataset. |
 | `GET /api/v1/github-quota/usage` | Administrator-only GitHub API quota usage for the last 24 hours: the peak observed usage of each bucket (App, installation, resource) and the limit-weighted aggregate per 15-minute slot. The same data is the `github-quota-usage` runtime source behind the Ingestion page chart. No credentials are included. |
 | `GET /api/repositories` and `GET /api/repositories/:id` | Return canonical repository objects. |
 | `GET /api/repositories/:id/runs` and `GET /api/workflows/:id/runs` | Return related canonical runs. |
@@ -1144,7 +1140,7 @@ the Function App itself never imports an Azure Monitor SDK.
 
 The local capability profile is not suitable for remote or multi-user
 deployment. The capability authorizes its holder to read the full active
-dashboard generation; it provides no user identity or per-source authorization.
+dashboard dataset; it provides no user identity or per-source authorization.
 
 The Azure Functions profile is the experimental remote profile. It is enabled
 by calling `NewAzureFunctionsHandlerFromEnv`; `serve` does not enable it. Azure

@@ -51,9 +51,6 @@ type CollectorConfig struct {
 	RequestTimeoutMinutes int
 	RateLimitFloor        int
 	MinProjectionInterval time.Duration
-	// RetainGenerations bounds superseded canonical generations kept in Redis
-	// for rollback. Zero selects the shared default.
-	RetainGenerations int
 	// InventoryLimit optionally caps enrolled repositories named during
 	// inventory discovery. Zero means unbounded; exceeding a configured limit
 	// fails the projection rather than publishing a partial inventory.
@@ -227,7 +224,6 @@ func NewCollector(
 		DatabaseQueriesPath:      databaseQueriesPath,
 		ControlRepository:        config.ControlRepository,
 		MinInterval:              config.MinProjectionInterval,
-		RetainGenerations:        config.RetainGenerations,
 		InventoryRepositoryLimit: config.InventoryLimit,
 	}
 	backfill := collect.Backfill{

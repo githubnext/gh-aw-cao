@@ -45,7 +45,7 @@ func (emptyRedisClient) DoMany(context.Context, [][]string) ([]any, error) {
 
 func (reconciler *testReconciler) Rebuild(context.Context) (ingest.Result, error) {
 	reconciler.calls++
-	return ingest.Result{Generation: "g2", Revision: 2}, nil
+	return ingest.Result{Revision: 2}, nil
 }
 
 func (reconciler *testReconciler) Reconcile(_ context.Context, event GitHubWebhook) (ingest.Result, error) {
@@ -54,7 +54,7 @@ func (reconciler *testReconciler) Reconcile(_ context.Context, event GitHubWebho
 	if reconciler.called != nil {
 		close(reconciler.called)
 	}
-	return ingest.Result{Generation: "g2", Revision: 2}, nil
+	return ingest.Result{Revision: 2}, nil
 }
 
 func TestWebhookSignatureVerification(t *testing.T) {

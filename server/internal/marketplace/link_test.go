@@ -85,17 +85,17 @@ func TestResolveRegistryUsesRegistryAPIURLForLink(t *testing.T) {
 
 func TestCachedPackageRepositoryLinkFollowsRegistryURL(t *testing.T) {
 	cache := newMemoryCache()
-	cache.entries[[2]string{"official", "generation-1"}] = mustMarshalCachedPayload(t, []Package{{
+	cache.entries[[2]string{"official", "dataRevision-1"}] = mustMarshalCachedPayload(t, []Package{{
 		Repository: "example/packages",
 	}})
 	registry := Registry{ID: "official", Repository: "example/packages", Ref: "main"}
-	outcome := resolveOneRegistry(t.Context(), registry, 0, "generation-1", DefaultCacheTTL, cache, Options{})
+	outcome := resolveOneRegistry(t.Context(), registry, 0, "dataRevision-1", DefaultCacheTTL, cache, Options{})
 	if !outcome.cacheHit || outcome.packages[0].RepositoryLink == nil ||
 		outcome.packages[0].RepositoryLink.Href != "https://github.com/example/packages" {
 		t.Fatalf("cached package link not reconstructed from current registry: %+v", outcome)
 	}
 	registry.APIURL = "https://unsupported.example/api/v2"
-	outcome = resolveOneRegistry(t.Context(), registry, 0, "generation-1", DefaultCacheTTL, cache, Options{})
+	outcome = resolveOneRegistry(t.Context(), registry, 0, "dataRevision-1", DefaultCacheTTL, cache, Options{})
 	if outcome.packages[0].RepositoryLink != nil {
 		t.Fatalf("cached package retained unsupported repository link: %+v", outcome)
 	}

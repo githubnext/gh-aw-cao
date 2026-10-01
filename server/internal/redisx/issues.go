@@ -20,9 +20,8 @@ const issueStatusRetention = 30 * 24 * time.Hour
 var ErrIssueStatusAmbiguous = errors.New("issue status observations conflict at the same timestamp")
 
 const issueStatusPruneScript = `
-local function prune(overlay, ages, now, generation, prefix, rowSuffix, setSuffix)
-if not generation or generation == "" or
-   redis.call("HEXISTS", prefix .. generation, "source:issues:metadata") == 0 then
+local function prune(overlay, ages, now, dataset, issueRows)
+if redis.call("HEXISTS", dataset, "source:issues:metadata") == 0 then
   return
 end
 local function timestamp(value)
@@ -39,13 +38,11 @@ for _, id in ipairs(expired) do
   else
     local ok, update = pcall(cjson.decode, raw)
     local row = ok and type(update) == "table" and type(update.rowHash) == "string" and
-      prefix .. generation .. rowSuffix .. update.rowHash or nil
-    local retained = row and redis.call("SISMEMBER",
-      prefix .. generation .. setSuffix, row) == 1
-    local discard = row and not retained
+      redis.call("HGET", issueRows, update.rowHash) or nil
+    local retained = row ~= nil
+    local discard = not retained
     if retained then
-      local snapshotRaw = redis.call("HGET", row, "raw")
-      local valid, issue = pcall(cjson.decode, snapshotRaw or "")
+      local valid, issue = pcall(cjson.decode, row)
       if valid and type(issue) == "table" and issue.id == id then
         local snapshot = timestamp(issue.statusObservedAt)
         local observed = timestamp(update.statusObservedAt)
@@ -74,35 +71,48 @@ type IssueUpdate struct {
 	ClosedAt, ObservedAt     string
 }
 
+// PruneIssueStatuses bounds status overlays independently of canonical data.
+// Old observations are removed only when their row disappears or the newly
+// published row has caught up; still-newer observations remain available.
+func (s *Store) PruneIssueStatuses(ctx context.Context) error {
+	script := fmt.Sprintf(issueStatusPruneScript, int64(issueStatusRetention.Seconds())) + `
+if redis.call("HEXISTS", KEYS[3], "source:issues:metadata") == 0 then
+  redis.call("UNLINK", KEYS[1], KEYS[2])
+else
+  prune(KEYS[1], KEYS[2], tonumber(ARGV[1]), KEYS[3], KEYS[4])
+end
+return 0`
+	_, err := s.Client.Do(ctx, "EVAL", script, "4", s.issueStatusKey(),
+		s.issueStatusAgeKey(), s.datasetKey(), s.sourceHashKey("issues"),
+		strconv.FormatInt(time.Now().UTC().Unix(), 10))
+	return err
+}
+
 // ApplyIssueUpdate atomically checks current enrollment, delivery identity and
-// active generation before recording a small identity-keyed status overlay.
+// published dataset before recording a small identity-keyed status overlay.
 // Webhook payloads are not general projection authority: this is limited to
 // GitHub's signed issue status observation for a retained issue. It never
 // changes a canonical row; a newer projected snapshot wins over the overlay.
 func (s *Store) ApplyIssueUpdate(ctx context.Context, issue IssueUpdate, ttl time.Duration) (updated, duplicate bool, revision int64, err error) {
 	hash := sha256.Sum256([]byte(issue.ID))
 	row := hex.EncodeToString(hash[:16])
-	// The active generation is resolved inside the script, never in Go: an
-	// activation between lookup and write must not update a retired generation.
+	// The canonical issue row is checked inside the script, so publication
+	// between lookup and write cannot admit an issue absent from the dataset.
 	script := fmt.Sprintf(issueStatusPruneScript, int64(issueStatusRetention.Seconds())) + `
 local now = tonumber(ARGV[13])
-prune(KEYS[7], KEYS[8], now, redis.call("GET", KEYS[2]), ARGV[3], ARGV[4], ARGV[6])
+prune(KEYS[7], KEYS[8], now, KEYS[2], ARGV[3])
 if redis.call("EXISTS", KEYS[3]) == 1 then return {0, 1, 0} end
 if redis.call("SISMEMBER", KEYS[6], ARGV[1]) == 0 or
    redis.call("HGET", KEYS[4], ARGV[1]) ~= ARGV[2] then return {0, 0, 0} end
-local generation = redis.call("GET", KEYS[2])
-if not generation or generation == "" then
+if redis.call("HEXISTS", KEYS[2], "source:issues:metadata") == 0 then
   redis.call("SET", KEYS[3], "1", "PX", ARGV[8])
   return {0, 0, 0}
 end
-local rowkey = ARGV[3] .. generation .. ARGV[4] .. ARGV[5]
-local setkey = ARGV[3] .. generation .. ARGV[6]
-if redis.call("SISMEMBER", setkey, rowkey) == 0 then
+local raw = redis.call("HGET", ARGV[3], ARGV[5])
+if not raw then
   redis.call("SET", KEYS[3], "1", "PX", ARGV[8])
   return {0, 0, 0}
 end
-local raw = redis.call("HGET", rowkey, "raw")
-if not raw then return {0, 0, 0} end
 local issue = cjson.decode(raw)
 local url = type(issue.url) == "string" and issue.url or ""
 local repository = type(issue.repositoryFullName) == "string" and issue.repositoryFullName or ""
@@ -188,12 +198,12 @@ local revision = redis.call("INCR", KEYS[5])
 redis.call("HSET", KEYS[1], "revision", revision)
 return {1, 0, revision}`
 	value, err := s.Client.Do(ctx, "EVAL", script, "8",
-		s.activeKey(), s.activeGenerationKey(), s.deliveryKey(issue.Delivery),
+		s.activeKey(), s.datasetKey(), s.deliveryKey(issue.Delivery),
 		s.Key("collect:repository-installation"), s.revisionSequenceKey(), s.Key("collect:repositories"),
 		s.issueStatusKey(), s.issueStatusAgeKey(),
 		strings.ToLower(issue.Repository), strconv.FormatInt(issue.InstallationID, 10),
-		s.namespace+":g:", ":source:"+safeName("issues")+":row:", row,
-		":source:"+safeName("issues")+":rows", issue.ID,
+		s.sourceHashKey("issues"), "", row,
+		"", issue.ID,
 		strconv.FormatInt(ttl.Milliseconds(), 10),
 		issue.ObservedAt, issue.State, issue.StateReason, issue.ClosedAt,
 		strconv.FormatInt(time.Now().UTC().Unix(), 10),

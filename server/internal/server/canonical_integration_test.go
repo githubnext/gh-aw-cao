@@ -12,7 +12,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
-func TestCanonicalAPIQueriesMatchActiveRedisGeneration(t *testing.T) {
+func TestCanonicalAPIQueriesMatchPublishedRedisDataset(t *testing.T) {
 	rawURL := os.Getenv("REDIS_URL")
 	if rawURL == "" {
 		t.Skip("REDIS_URL is not set")
@@ -28,7 +28,7 @@ func TestCanonicalAPIQueriesMatchActiveRedisGeneration(t *testing.T) {
 	store := redisx.NewStore(client, namespace)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	result, err := ingest.Run(ctx, store, "../../testdata/deployed-subset", ingest.Options{
+	_, err = ingest.Run(ctx, store, "../../testdata/deployed-subset", ingest.Options{
 		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
 		Force:               true,
 	})
@@ -40,12 +40,12 @@ func TestCanonicalAPIQueriesMatchActiveRedisGeneration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	direct, _, err := store.LoadSource(ctx, result.Generation, "repositories", nil)
+	direct, _, err := store.ReadSource(ctx, "repositories", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(repositories) != len(direct.Rows) || len(repositories) == 0 {
-		t.Fatalf("canonical API and Redis generation differ: api=%d redis=%d", len(repositories), len(direct.Rows))
+		t.Fatalf("canonical API and Redis dataset differ: api=%d redis=%d", len(repositories), len(direct.Rows))
 	}
 	id := fmt.Sprint(repositories[0]["id"])
 	repository, err := service.entity(ctx, "repositories", id)

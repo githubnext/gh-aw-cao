@@ -17,10 +17,10 @@ func (client *aggregatePlanClient) Do(_ context.Context, command ...string) (any
 	client.commands = append(client.commands, append([]string(nil), command...))
 	if command[0] == "HGET" {
 		switch command[2] {
+		case "revision", "indexedRevision", "indexedEpoch":
+			return "1", nil
 		case "source:runs:metadata":
 			return `{"availability":"available"}`, nil
-		case "source:runs:format":
-			return "json", nil
 		case "source:runs:index-schema":
 			return `[{"name":"conclusion","alias":"conclusion","kind":"TAG"},{"name":"workflow-role","alias":"workflow_role","kind":"TAG"}]`, nil
 		case "source:runs:indexed-fields":
@@ -34,17 +34,17 @@ func (*aggregatePlanClient) DoMany(context.Context, [][]string) ([]any, error) {
 
 // dialectArrayPlanClient simulates a real Redis 8 FT.AGGREGATE response under
 // DIALECT 4, where JSONPath LOAD fields come back wrapped in a single-element
-// array instead of being unwrapped to a scalar, and the generation has never
+// array instead of being unwrapped to a scalar, and the dataset has never
 // recorded source metadata (so the stored value is the JSON literal "null").
 type dialectArrayPlanClient struct{}
 
 func (*dialectArrayPlanClient) Do(_ context.Context, command ...string) (any, error) {
 	if command[0] == "HGET" {
 		switch command[2] {
+		case "revision", "indexedRevision", "indexedEpoch":
+			return "1", nil
 		case "source:runs:metadata":
 			return "null", nil
-		case "source:runs:format":
-			return "json", nil
 		case "source:runs:index-schema":
 			return `[]`, nil
 		case "source:runs:indexed-fields":
@@ -252,7 +252,7 @@ func TestExecutePlanUnwrapsDialectFourArraysAndToleratesMissingMetadata(t *testi
 	}
 
 	result, _, err := store.ExecutePlan(
-		t.Context(), "generation", []query.Definition{definition}, []string{definition.Name},
+		t.Context(), []query.Definition{definition}, []string{definition.Name},
 		[]string{"runs", definition.Name}, nil,
 	)
 	if err != nil {
@@ -286,7 +286,7 @@ func TestExecutePlanUsesNativeAggregatePipeline(t *testing.T) {
 	}
 
 	result, metrics, err := store.ExecutePlan(
-		t.Context(), "generation", []query.Definition{definition}, []string{definition.Name},
+		t.Context(), []query.Definition{definition}, []string{definition.Name},
 		[]string{"runs", definition.Name}, nil,
 	)
 	if err != nil {
@@ -298,7 +298,15 @@ func TestExecutePlanUsesNativeAggregatePipeline(t *testing.T) {
 	if len(metrics.FallbackOperations) != 0 || !reflect.DeepEqual(metrics.PushedDown, []string{"redis-query-engine"}) {
 		t.Fatalf("unexpected native metrics: %+v", metrics)
 	}
-	command := client.commands[len(client.commands)-1]
+	var command []string
+	for _, candidate := range client.commands {
+		if candidate[0] == "FT.AGGREGATE" {
+			command = candidate
+		}
+	}
+	if command == nil {
+		t.Fatal("FT.AGGREGATE was not called")
+	}
 	if command[0] != "FT.AGGREGATE" {
 		t.Fatalf("query used %q instead of FT.AGGREGATE: %v", command[0], command)
 	}

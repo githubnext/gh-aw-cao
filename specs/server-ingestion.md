@@ -426,5 +426,5 @@ A conforming implementation:
     bounds its queues;
 12. admits deliveries without collection credentials, and fails closed when an
     admission-only process is asked to collect or project;
-13. short-circuits projection for an unchanged lake, reclaims superseded
-    generations, and refuses to publish a truncated inventory.
+13. short-circuits projection for an unchanged lake, bounds obsolete projection
+    storage, and refuses to publish a truncated inventory.

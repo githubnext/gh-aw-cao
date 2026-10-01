@@ -13,179 +13,64 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
-type failFirstRowBatch struct {
-	*redisx.Client
-}
-
-type ageFirstGeneration struct {
-	*redisx.Client
-	registryWrites int
-}
-
-func (client *ageFirstGeneration) Do(ctx context.Context, command ...string) (any, error) {
-	if len(command) >= 4 && command[0] == "ZADD" && strings.HasSuffix(command[1], ":generations") {
-		client.registryWrites++
-		if client.registryWrites == 1 {
-			command[2] = "1"
-		}
-	}
-	return client.Client.Do(ctx, command...)
-}
+type failFirstRowBatch struct{ *redisx.Client }
 
 func (client failFirstRowBatch) DoMany(ctx context.Context, commands [][]string) ([]any, error) {
-	if len(commands) != 0 && len(commands[0]) > 1 && strings.Contains(commands[0][1], "JSON.SET") {
+	if len(commands) > 0 && commands[0][0] == "EVAL" &&
+		strings.Contains(commands[0][1], `redis.call("HSET", KEYS[2], ARGV[1], ARGV[2])`) {
 		return nil, errors.New("injected row write failure")
 	}
 	return client.Client.DoMany(ctx, commands)
 }
 
-func TestGenerationGraceStartsAtActivation(t *testing.T) {
-	ctx, _, client, namespace := ingestTestStore(t, "generation-grace")
-	aging := &ageFirstGeneration{Client: client}
-	store := redisx.NewStore(aging, namespace)
-	result, err := Run(ctx, store, "../../testdata/deployed-subset", Options{
-		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
-		Force:               true,
-	})
+func TestFailedProjectionLeavesPublishedDatasetAndNoStagingKeys(t *testing.T) {
+	ctx, store, client, namespace := ingestTestStore(t, "failed-projection")
+	options := Options{DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json"}
+	first, err := Run(ctx, store, "../../testdata/deployed-subset", options)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if aging.registryWrites != 2 {
-		t.Fatalf("generation registered %d times, want staging and activation", aging.registryWrites)
-	}
-	score, err := client.Do(ctx, "ZSCORE", namespace+":generations", result.Generation)
-	if err != nil {
-		t.Fatal(err)
-	}
-	milliseconds, err := strconv.ParseInt(fmt.Sprint(score), 10, 64)
-	if err != nil || milliseconds < time.Now().Add(-time.Minute).UnixMilli() {
-		t.Fatalf("generation grace was not refreshed before activation: %v %v", score, err)
-	}
-}
-
-func TestFailedProjectionDiscardsJSONIndexes(t *testing.T) {
-	ctx, _, client, namespace := ingestTestStore(t, "failed-json")
-	store := redisx.NewStore(failFirstRowBatch{client}, namespace)
-	if _, err := Run(ctx, store, "../../testdata/deployed-subset", Options{
-		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
-		Force:               true,
-	}); err == nil {
-		t.Fatal("expected staged row write to fail")
+	failing := redisx.NewStore(failFirstRowBatch{client}, namespace)
+	options.Force = true
+	if _, err := Run(ctx, failing, "../../testdata/deployed-subset", options); err == nil {
+		t.Fatal("expected injected row write failure")
 	}
 	active, err := store.Active(ctx)
-	if err != nil || active.Generation != "" {
-		t.Fatalf("failed projection was activated: %+v %v", active, err)
+	if err != nil || active.Revision != first.Revision {
+		t.Fatalf("failed projection changed dataset: %+v %v", active, err)
 	}
-	registered, err := client.Do(ctx, "ZCARD", namespace+":generations")
-	if err != nil || registered != int64(0) {
-		t.Fatalf("failed generation remained registered: %v %v", registered, err)
-	}
-	if count := keyCount(ctx, t, client, namespace+":g:*"); count != 0 {
-		t.Fatalf("failed generation left %d keys", count)
-	}
-	indexes, err := client.Do(ctx, "FT._LIST")
-	if err != nil {
-		t.Fatal(err)
-	}
-	names, err := redisx.Strings(indexes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, name := range names {
-		if strings.HasPrefix(name, namespace+":g:") {
-			t.Fatalf("failed generation left an index: %s", name)
-		}
+	if count := keyCount(ctx, t, client, namespace+":staging:*"); count != 0 {
+		t.Fatalf("failed projection leaked %d staging keys", count)
 	}
 }
 
-// Every projection writes a complete new generation. Without reclamation a
-// deployment that projects frequently exhausts a NoEviction Redis, so this
-// asserts that repeated projections leave a bounded keyspace behind.
-func TestRepeatedProjectionsReclaimSupersededGenerations(t *testing.T) {
-	ctx, store, client, namespace := ingestTestStore(t, "reclaim")
-	generations := make([]string, 0, 4)
+func TestRepeatedProjectionsReplaceDatasetWithoutAccumulation(t *testing.T) {
+	ctx, store, client, namespace := ingestTestStore(t, "replace")
+	options := Options{DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json", Force: true}
+	baseline := -1
 	for attempt := 0; attempt < 4; attempt++ {
-		result, err := Run(ctx, store, "../../testdata/deployed-subset", Options{
-			DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
-			Force:               true,
-			RetainGenerations:   1,
-		})
+		result, err := Run(ctx, store, "../../testdata/deployed-subset", options)
 		if err != nil {
 			t.Fatal(err)
 		}
-		generations = append(generations, result.Generation)
-	}
-	// Activation must register every generation it writes; otherwise nothing
-	// could ever find a superseded generation to reclaim.
-	registered, err := client.Do(ctx, "ZCARD", namespace+":generations")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if fmt.Sprint(registered) != strconv.Itoa(len(generations)) {
-		t.Fatalf("registry holds %v generations, want %d", registered, len(generations))
-	}
-	// Reclamation honours a grace period so in-flight readers finish.
-	// Backdating simulates that period having elapsed.
-	for index, generation := range generations {
-		if _, err := client.Do(ctx, "ZADD", namespace+":generations", "XX", strconv.Itoa(index+1), generation); err != nil {
-			t.Fatal(err)
+		if result.Revision != int64(attempt+1) {
+			t.Fatalf("revision = %d", result.Revision)
 		}
-	}
-	dropped, err := store.PruneGenerations(ctx, 1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if dropped != len(generations)-1 {
-		t.Fatalf("reclaimed %d generations, want %d", dropped, len(generations)-1)
-	}
-	active := generations[len(generations)-1]
-	for _, generation := range generations[:len(generations)-1] {
-		if keyCount(ctx, t, client, namespace+":g:"+generation+"*") != 0 {
-			t.Fatalf("superseded generation %s was not reclaimed", generation)
+		count := keyCount(ctx, t, client, namespace+":dataset*")
+		if baseline < 0 {
+			baseline = count
+		} else if count != baseline {
+			t.Fatalf("dataset keys grew from %d to %d", baseline, count)
 		}
-	}
-	if keyCount(ctx, t, client, namespace+":g:"+active+"*") == 0 {
-		t.Fatal("active generation was reclaimed")
-	}
-	source, _, err := store.LoadSource(ctx, active, "repositories", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(source.Rows) == 0 {
-		t.Fatal("active generation lost its rows")
+		if count := keyCount(ctx, t, client, namespace+":staging:*"); count != 0 {
+			t.Fatalf("projection leaked %d staging keys", count)
+		}
 	}
 }
 
-// The active generation must survive reclamation even when the retention count
-// would otherwise select it, because dropping it would empty the dashboard.
-func TestReclamationNeverDropsTheActiveGeneration(t *testing.T) {
-	ctx, store, client, namespace := ingestTestStore(t, "reclaim-active")
-	result, err := Run(ctx, store, "../../testdata/deployed-subset", Options{
-		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
-		Force:               true,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := client.Do(ctx, "ZADD", namespace+":generations", "1", result.Generation); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := store.PruneGenerations(ctx, 0); err != nil {
-		t.Fatal(err)
-	}
-	if keyCount(ctx, t, client, namespace+":g:"+result.Generation+"*") == 0 {
-		t.Fatal("active generation was reclaimed")
-	}
-}
-
-// A projection over an unchanged lake must reuse the active generation. The
-// collection profile projects on a short interval and most collections add
-// nothing, so without this short-circuit steady state would be a full rewrite.
-func TestUnchangedLakeReusesTheActiveGeneration(t *testing.T) {
+func TestUnchangedLakeReusesPublishedDataset(t *testing.T) {
 	ctx, store, _, _ := ingestTestStore(t, "unchanged")
-	options := Options{
-		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
-	}
+	options := Options{DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json"}
 	first, err := Run(ctx, store, "../../testdata/deployed-subset", options)
 	if err != nil {
 		t.Fatal(err)
@@ -194,11 +79,8 @@ func TestUnchangedLakeReusesTheActiveGeneration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if second.Generation != first.Generation {
-		t.Fatalf("unchanged lake wrote a new generation %s, want %s", second.Generation, first.Generation)
-	}
-	if second.Revision != first.Revision {
-		t.Fatalf("unchanged lake advanced the revision to %d, want %d", second.Revision, first.Revision)
+	if first.Revision != second.Revision {
+		t.Fatalf("unchanged dataset advanced revision: %d to %d", first.Revision, second.Revision)
 	}
 }
 

@@ -103,9 +103,9 @@ func TestRegistryPrivateAndUnavailableCounts(t *testing.T) {
 
 func TestCachedPackageDoesNotPublishLegacySignalFields(t *testing.T) {
 	cache := newMemoryCache()
-	cache.entries[[2]string{"official", "generation-1"}] = []byte(`{"packages":[{"id":"example/packages/demo","verification-status":"verified","maintenance-status":"active","installation-status":"installed","adoption-count":1,"stars":12}]}`)
+	cache.entries[[2]string{"official", "dataRevision-1"}] = []byte(`{"packages":[{"id":"example/packages/demo","verification-status":"verified","maintenance-status":"active","installation-status":"installed","adoption-count":1,"stars":12}]}`)
 	outcome := resolveOneRegistry(t.Context(), Registry{ID: "official", Repository: "example/packages", Ref: "main"}, 0,
-		"generation-1", DefaultCacheTTL, cache, Options{})
+		"dataRevision-1", DefaultCacheTTL, cache, Options{})
 	if !outcome.cacheHit {
 		t.Fatal("expected cache hit")
 	}

@@ -42,8 +42,7 @@ type Metrics struct {
 	FallbackOperations  []string `json:"fallbackOperations"`
 }
 
-type ActiveGeneration struct {
-	Generation   string         `json:"generation"`
+type ActiveDataset struct {
 	Revision     int64          `json:"revision"`
 	DataRevision string         `json:"dataRevision,omitempty"`
 	EvaluatedAt  time.Time      `json:"evaluatedAt"`

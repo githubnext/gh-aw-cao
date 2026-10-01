@@ -11,7 +11,6 @@ import (
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
 const (
@@ -19,13 +18,13 @@ const (
 	areaQuery = "query"
 )
 
-// staleGenerationAge is when an unchanged canonical database stops looking
+// staleDatasetAge is when an unchanged canonical database stops looking
 // like a quiet deployment and starts looking like a stalled one. Both profiles
 // project at least daily when healthy.
-const staleGenerationAge = 24 * time.Hour
+const staleDatasetAge = 24 * time.Hour
 
-func (d Doctor) checkActiveGeneration(ctx context.Context) Check {
-	const id, title = "data.active", "Active canonical generation"
+func (d Doctor) checkActiveDataset(ctx context.Context) Check {
+	const id, title = "data.active", "Published canonical dataset"
 	if skip, ok := d.storeUnavailable(id, areaData, title); ok {
 		return skip
 	}
@@ -33,26 +32,25 @@ func (d Doctor) checkActiveGeneration(ctx context.Context) Check {
 	if err != nil {
 		return failed(id, areaData, title, err)
 	}
-	if active.Generation == "" {
+	if active.Revision == 0 {
 		return Check{
 			ID: id, Area: areaData, Title: title, Status: StatusFail,
-			Summary: "no generation is active; the dashboard has no data to serve",
+			Summary: "no dataset is published; the dashboard has no data to serve",
 			Remedy:  "run `cao-dashboard ingest --source DIRECTORY`, or `cao-dashboard backfill` in the collection profile",
 		}
 	}
 	age := d.now().Sub(active.Activated)
 	details := []Detail{
-		detail("generation", active.Generation),
 		detail("revision", fmt.Sprint(active.Revision)),
 		detail("dataRevision", active.DataRevision),
 		detail("evaluatedAt", formatTime(active.EvaluatedAt)),
 		detail("activatedAt", formatTime(active.Activated)),
 		detail("age", humanDuration(age)),
 	}
-	if !active.Activated.IsZero() && age > staleGenerationAge {
+	if !active.Activated.IsZero() && age > staleDatasetAge {
 		return Check{
 			ID: id, Area: areaData, Title: title, Status: StatusWarn,
-			Summary: fmt.Sprintf("the active generation was activated %s ago", humanDuration(age)),
+			Summary: fmt.Sprintf("the published dataset was activated %s ago", humanDuration(age)),
 			Details: details,
 			Remedy:  "check that projection is still running; the dashboard is serving data that is no longer current",
 		}
@@ -75,15 +73,15 @@ func (d Doctor) checkSchemaVersion(ctx context.Context) Check {
 	if err != nil {
 		return failed(id, areaData, title, err)
 	}
-	if active.Generation == "" {
-		return skipped(id, areaData, title, "there is no active generation to read a schema version from")
+	if active.Revision == 0 {
+		return skipped(id, areaData, title, "there is no published dataset to read a schema version from")
 	}
-	diagnostics, err := d.Store.Diagnostics(ctx, active.Generation)
+	diagnostics, err := d.Store.ReadDiagnostics(ctx)
 	if err != nil {
 		return Check{
 			ID: id, Area: areaData, Title: title, Status: StatusWarn,
-			Summary: "the active generation carries no diagnostics: " + err.Error(),
-			Remedy:  "reproject; a generation without diagnostics predates the current ingestion path",
+			Summary: "the published dataset carries no diagnostics: " + err.Error(),
+			Remedy:  "reproject; a dataset without diagnostics predates the current ingestion path",
 		}
 	}
 	details := []Detail{
@@ -115,12 +113,12 @@ func (d Doctor) checkIntegrity(ctx context.Context) Check {
 	if err != nil {
 		return failed(id, areaData, title, err)
 	}
-	if active.Generation == "" {
-		return skipped(id, areaData, title, "there is no active generation to inspect")
+	if active.Revision == 0 {
+		return skipped(id, areaData, title, "there is no published dataset to inspect")
 	}
-	diagnostics, err := d.Store.Diagnostics(ctx, active.Generation)
+	diagnostics, err := d.Store.ReadDiagnostics(ctx)
 	if err != nil {
-		return skipped(id, areaData, title, "the active generation carries no diagnostics")
+		return skipped(id, areaData, title, "the published dataset carries no diagnostics")
 	}
 	classification := classifyIntegrityDiagnostics(diagnostics.RelationshipErrors, diagnostics.DuplicateRecordIDs)
 	doctorLog.Printf("canonical integrity classified status=%s reason=%s", classification.status, classification.reason)
@@ -150,7 +148,7 @@ const (
 
 // integrityClassification is the status, summary, remedy, reason, duplicate
 // count, and bounded relationship-error sample classifyIntegrityDiagnostics
-// derives from one generation's stored diagnostics.
+// derives from one dataset's stored diagnostics.
 type integrityClassification struct {
 	status     Status
 	summary    string
@@ -161,7 +159,7 @@ type integrityClassification struct {
 }
 
 // classifyIntegrityDiagnostics decides the data.integrity check's outcome
-// from a generation's recorded relationship errors and duplicate record
+// from a dataset's recorded relationship errors and duplicate record
 // identifiers alone. It is a pure function so both failure modes — dangling
 // relationships and duplicated identifiers — and the bounded three-item
 // sample are testable without a fake Redis-backed diagnostics read.
@@ -179,7 +177,7 @@ func classifyIntegrityDiagnostics(relationshipErrors []string, duplicateRecordID
 		}
 		return integrityClassification{
 			status:     StatusFail,
-			summary:    fmt.Sprintf("%d relationship errors in the active generation", len(relationshipErrors)),
+			summary:    fmt.Sprintf("%d relationship errors in the published dataset", len(relationshipErrors)),
 			remedy:     "the projection published records that reference missing records; reproject from a complete source",
 			reason:     integrityReasonRelationshipErrors,
 			duplicates: duplicates,
@@ -213,14 +211,14 @@ func (d Doctor) checkSources(ctx context.Context) Check {
 	if err != nil {
 		return failed(id, areaData, title, err)
 	}
-	if active.Generation == "" {
-		return skipped(id, areaData, title, "there is no active generation to inspect")
+	if active.Revision == 0 {
+		return skipped(id, areaData, title, "there is no published dataset to inspect")
 	}
 	if len(active.Counts) == 0 {
 		return Check{
 			ID: id, Area: areaData, Title: title, Status: StatusFail,
-			Summary: "the active generation published no sources",
-			Remedy:  "reproject; an activated generation with no sources serves an empty dashboard",
+			Summary: "the published dataset published no sources",
+			Remedy:  "reproject; an activated dataset with no sources serves an empty dashboard",
 		}
 	}
 	total := 0
@@ -266,202 +264,6 @@ func largestSource(counts map[string]int) string {
 	return fmt.Sprintf("%s (%d rows)", name, highest)
 }
 
-// checkGenerations detects the failure mode that continuous projection
-// introduces and snapshot ingestion never showed.
-//
-// Every projection writes a complete new generation, so without reclamation
-// the namespace grows by a full copy of the dataset on every cycle until a
-// noeviction Redis refuses all writes. Reclamation runs at activation, so a
-// registry that keeps growing, or generation keys with no registry entry, mean
-// reclamation is not keeping up or never ran.
-func (d Doctor) checkGenerations(ctx context.Context) Check {
-	const id, title = "data.generations", "Generation retention"
-	if skip, ok := d.storeUnavailable(id, areaData, title); ok {
-		return skip
-	}
-	active, err := d.Store.Active(ctx)
-	if err != nil {
-		return failed(id, areaData, title, err)
-	}
-	tracked, err := d.trackedGenerations(ctx)
-	if err != nil {
-		return failed(id, areaData, title, err)
-	}
-	stored, complete, err := d.storedGenerations(ctx)
-	if err != nil {
-		return failed(id, areaData, title, err)
-	}
-	retention := d.retainGenerations()
-	classification := classifyGenerationRetention(tracked, stored, active.Generation, retention)
-	doctorLog.Printf("generation retention classified status=%s reason=%s", classification.status, classification.reason)
-	details := []Detail{
-		detail("tracked", fmt.Sprint(len(tracked))),
-		detail("storedGenerations", storedLabel(len(stored), complete)),
-		detail("retention", fmt.Sprint(retention)),
-		detail("activeTracked", fmt.Sprint(contains(tracked, active.Generation))),
-	}
-	if len(classification.orphans) > 0 {
-		sample := classification.orphans
-		if len(sample) > 3 {
-			sample = sample[:3]
-		}
-		details = append(details, detail("untrackedSample", strings.Join(sample, ", ")))
-	}
-	return Check{
-		ID: id, Area: areaData, Title: title, Status: classification.status,
-		Summary: classification.summary, Details: details, Remedy: classification.remedy,
-	}
-}
-
-// generationRetentionReason names why classifyGenerationRetention reached its
-// status, stable across summary wording changes so it is useful to log
-// without exposing generation identifiers.
-type generationRetentionReason string
-
-const (
-	generationReasonOrphans         generationRetentionReason = "orphans"
-	generationReasonOverRetention   generationRetentionReason = "over-retention"
-	generationReasonActiveUntracked generationRetentionReason = "active-untracked"
-	generationReasonHealthy         generationRetentionReason = "healthy"
-)
-
-// generationRetentionClassification is the status, summary, remedy, and
-// orphan sample classifyGenerationRetention derives from the tracked and
-// stored generation sets.
-type generationRetentionClassification struct {
-	status  Status
-	summary string
-	remedy  string
-	reason  generationRetentionReason
-	orphans []string
-}
-
-// classifyGenerationRetention decides the data.generations check's outcome
-// from the reclamation registry (tracked), the generations that actually
-// hold keys (stored), the active generation, and the configured retention.
-// It is a pure function so every threshold — orphaned generations, retention
-// overrun, and an untracked active generation — is testable without a fake
-// Redis SCAN reply.
-func classifyGenerationRetention(tracked, stored []string, activeGeneration string, retention int) generationRetentionClassification {
-	trackedSet := map[string]struct{}{}
-	for _, name := range tracked {
-		trackedSet[name] = struct{}{}
-	}
-	var orphans []string
-	for _, name := range stored {
-		if _, ok := trackedSet[name]; !ok && name != activeGeneration {
-			orphans = append(orphans, name)
-		}
-	}
-	sort.Strings(orphans)
-	if len(orphans) > 0 {
-		return generationRetentionClassification{
-			status:  StatusFail,
-			summary: fmt.Sprintf("%d generations hold keys but are not in the reclamation registry", len(orphans)),
-			remedy:  "these generations will never be reclaimed and will grow Redis without bound; drop them and reproject with a build that tracks generations",
-			reason:  generationReasonOrphans,
-			orphans: orphans,
-		}
-	}
-	// Retention plus a small allowance: reclamation also honours a grace
-	// period, so being one or two over the configured retention is normal.
-	if len(tracked) > retention+2 {
-		return generationRetentionClassification{
-			status:  StatusWarn,
-			summary: fmt.Sprintf("%d generations are retained against a retention of %d", len(tracked), retention),
-			remedy:  "reclamation is not keeping up; confirm projections are completing and consider lowering CAO_COLLECT_RETAIN_GENERATIONS",
-			reason:  generationReasonOverRetention,
-		}
-	}
-	if activeGeneration != "" && !contains(tracked, activeGeneration) {
-		return generationRetentionClassification{
-			status:  StatusWarn,
-			summary: "the active generation is not in the reclamation registry",
-			remedy:  "it is safe now, because reclamation never drops the active generation, but it will not be reclaimed after it is superseded",
-			reason:  generationReasonActiveUntracked,
-		}
-	}
-	return generationRetentionClassification{
-		status:  StatusPass,
-		summary: fmt.Sprintf("%d generations retained against a retention of %d", len(tracked), retention),
-		reason:  generationReasonHealthy,
-	}
-}
-
-func storedLabel(count int, complete bool) string {
-	if complete {
-		return fmt.Sprint(count)
-	}
-	return fmt.Sprintf("at least %d (sampled)", count)
-}
-
-func contains(values []string, target string) bool {
-	if target == "" {
-		return false
-	}
-	for _, value := range values {
-		if value == target {
-			return true
-		}
-	}
-	return false
-}
-
-// trackedGenerations reads the reclamation registry.
-func (d Doctor) trackedGenerations(ctx context.Context) ([]string, error) {
-	value, err := d.Store.Client.Do(ctx, "ZRANGE", d.Namespace+":generations", "0", "-1")
-	if err != nil {
-		return nil, fmt.Errorf("read generation registry: %w", err)
-	}
-	if value == nil {
-		return nil, nil
-	}
-	entries, err := redisx.Strings(value)
-	if err != nil {
-		return nil, fmt.Errorf("decode generation registry: %w", err)
-	}
-	names := make([]string, 0, len(entries))
-	for _, entry := range entries {
-		if entry != "" {
-			names = append(names, entry)
-		}
-	}
-	return names, nil
-}
-
-// storedGenerations derives the generations that actually hold keys, which is
-// the only way to see a generation the registry has lost track of.
-func (d Doctor) storedGenerations(ctx context.Context) ([]string, bool, error) {
-	keys, complete, err := d.scanKeys(ctx, d.Namespace+":g:*", 20000)
-	if err != nil {
-		return nil, false, err
-	}
-	prefix := d.Namespace + ":g:"
-	found := map[string]struct{}{}
-	for _, key := range keys {
-		remainder := strings.TrimPrefix(key, prefix)
-		generation, _, _ := strings.Cut(remainder, ":")
-		if generation != "" {
-			found[generation] = struct{}{}
-		}
-	}
-	return sortedKeys(found), complete, nil
-}
-
-func (d Doctor) retainGenerations() int {
-	if raw := d.getenv("CAO_COLLECT_RETAIN_GENERATIONS"); raw != "" {
-		var parsed int
-		if _, err := fmt.Sscanf(raw, "%d", &parsed); err == nil && parsed > 0 {
-			return parsed
-		}
-	}
-	return redisx.DefaultGenerationRetention
-}
-
-// queryDefinitionNames is the outcome of classifying a parsed query document
-// by name: which names are duplicated, which definitions carry no name at
-// all, and the full seen-name tally used to detect definitions with no
-// matching active source.
 type queryDefinitionNames struct {
 	seen       map[string]int
 	duplicates []string
@@ -595,7 +397,7 @@ const (
 )
 
 // sourceReadProbeClassification is the status, summary, and remedy
-// classifySourceReadProbe derives from a generation's per-source read
+// classifySourceReadProbe derives from a dataset's per-source read
 // results.
 type sourceReadProbeClassification struct {
 	status  Status
@@ -608,13 +410,13 @@ type sourceReadProbeClassification struct {
 // read failures and near-row-limit sources checkSourceReads collected, plus
 // the total source and row counts. It is a pure function so the
 // failures-outrank-warnings precedence is testable without a real Redis
-// store or generation.
+// store or dataset.
 func classifySourceReadProbe(failures, near []string, sourceCount, totalRows, maxInputRows int) sourceReadProbeClassification {
 	if len(failures) > 0 {
 		return sourceReadProbeClassification{
 			status:  StatusFail,
 			summary: fmt.Sprintf("%d of %d sources did not read back correctly", len(failures), sourceCount),
-			remedy:  "the stored generation is inconsistent with its recorded counts; reproject",
+			remedy:  "the stored dataset is inconsistent with its recorded counts; reproject",
 			reason:  sourceReadProbeReasonFailures,
 		}
 	}
@@ -650,8 +452,8 @@ func (d Doctor) checkSourceReads(ctx context.Context) Check {
 	if err != nil {
 		return failed(id, areaQuery, title, err)
 	}
-	if active.Generation == "" {
-		return skipped(id, areaQuery, title, "there is no active generation to read")
+	if active.Revision == 0 {
+		return skipped(id, areaQuery, title, "there is no published dataset to read")
 	}
 	var failures []string
 	var slowest string
@@ -659,7 +461,7 @@ func (d Doctor) checkSourceReads(ctx context.Context) Check {
 	totalRows, near := 0, []string{}
 	for _, name := range sortedKeys(active.Counts) {
 		started := time.Now()
-		source, _, err := d.Store.LoadSource(ctx, active.Generation, name, nil)
+		source, _, err := d.Store.ReadSource(ctx, name, nil)
 		elapsed := time.Since(started)
 		if err != nil {
 			failures = append(failures, fmt.Sprintf("%s: %v", name, err))
@@ -676,7 +478,7 @@ func (d Doctor) checkSourceReads(ctx context.Context) Check {
 		}
 		if count, ok := active.Counts[name]; ok && count != len(source.Rows) {
 			failures = append(failures,
-				fmt.Sprintf("%s: read %d rows but the generation records %d", name, len(source.Rows), count))
+				fmt.Sprintf("%s: read %d rows but the dataset records %d", name, len(source.Rows), count))
 		}
 	}
 	details := []Detail{

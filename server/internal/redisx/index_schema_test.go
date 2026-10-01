@@ -3,7 +3,6 @@ package redisx
 import (
 	"context"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
@@ -59,31 +58,3 @@ func (client *indexSchemaClient) Do(_ context.Context, command ...string) (any, 
 }
 
 func (*indexSchemaClient) DoMany(context.Context, [][]string) ([]any, error) { return nil, nil }
-
-func TestPutSourceCreatesTypedRedisJSONIndex(t *testing.T) {
-	client := &indexSchemaClient{}
-	store := NewStore(client, "typed-schema")
-	store.ConfigureIndexDefinitions([]query.Definition{{
-		Name: "run-summary", From: "runs",
-		Filter:  &query.Filter{Predicates: []query.Predicate{{Field: "duration", GTE: 4}}},
-		OrderBy: []query.OrderField{{Field: "duration", Direction: "desc"}},
-	}})
-	if err := store.PutSource(t.Context(), "g1", model.Source{
-		Source: "runs", Rows: []model.Row{{"duration": 4.5, "conclusion": "success"}},
-	}); err != nil {
-		t.Fatal(err)
-	}
-	var create []string
-	for _, command := range client.commands {
-		if command[0] == "FT.CREATE" {
-			create = command
-			break
-		}
-	}
-	encoded := strings.Join(create, "\x00")
-	for _, expected := range []string{`$["duration"]`, "duration", "NUMERIC", "SORTABLE", "conclusion", "TAG", "CASESENSITIVE"} {
-		if !strings.Contains(encoded, expected) {
-			t.Fatalf("FT.CREATE is missing %q: %v", expected, create)
-		}
-	}
-}

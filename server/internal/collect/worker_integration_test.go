@@ -103,7 +103,7 @@ func TestWorkerCollectsAndProjects(t *testing.T) {
 		t.Fatal(err)
 	}
 	if active.Revision == 0 {
-		t.Fatal("expected collection to activate a canonical generation")
+		t.Fatal("expected collection to activate a canonical dataset")
 	}
 }
 

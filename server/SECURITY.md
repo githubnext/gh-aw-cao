@@ -79,7 +79,7 @@ complete normative contract is `specs/server-cors.md`.
 Webhook delivery IDs and projection leases are stored in the deployment Redis
 namespace. Failed reconciliation removes its delivery marker so GitHub can
 retry. Full rebuilds and webhook reconciliation share a distributed lease;
-only a complete staged generation is atomically activated. Redis remains
+incomplete or inconsistent projections must not be published. Redis remains
 disposable, and health distinguishes an available service from ready data.
 
 `CAO_REDIS_URL`, OAuth secrets, the webhook secret, and session secrets are
@@ -110,8 +110,8 @@ may be loaded without the capability.
   service.
 - Token comparisons use constant-time comparison.
 - The unauthenticated health response contains only Redis connectivity and
-  whether an active data generation exists. Counts, generation identity, and
-  revision details require the capability cookie.
+  whether canonical data exists. Counts and revision details require the
+  capability cookie.
 
 Treat the capability URL and browser session as credentials. Do not paste the URL into
 issues, logs, screenshots, shell history shared with others, or browser
@@ -374,7 +374,7 @@ The Azure Functions profile assumes the following actors:
 | Network attacker | Can observe or interfere with traffic outside Azure/GitHub TLS channels. | HTTPS-only Function App, TLS Redis, verified Redis certificates, and no plaintext remote Redis are required. |
 | Azure platform/operator | Can deploy Bicep, configure app settings, rotate keys, and view platform metadata. | Uses reviewed Bicep, managed identity, Key Vault RBAC, non-secret outputs, and secret rotation procedures; does not copy secret values into logs, tickets, or checked-in files. |
 | GitHub OAuth/API | Issues tokens and reports membership. | OAuth client secret remains in Key Vault, tokens remain server-side, refresh failures clear sessions, and membership is rechecked before session creation. |
-| Redis | Stores disposable projection rows, encrypted OAuth session records, and active-generation pointers. | Is not authoritative; data can be rebuilt from trusted dashboard artifacts; access is TLS-only and namespace-scoped. |
+| Redis | Stores disposable projection rows and encrypted OAuth session records. | Is not authoritative; data can be rebuilt from trusted dashboard artifacts; access is TLS-only and namespace-scoped. |
 | Telemetry/diagnostics reader | Can view Application Insights and operational logs. | Sees only structured, non-secret operational metadata; no tokens, cookies, Redis URLs, prompt contents, source records, or secret values are logged. |
 
 Protected assets:
@@ -484,8 +484,8 @@ minute interval begins.
 - Every deployment uses a validated Redis namespace. The default is derived
   deterministically from the absolute checkout/worktree path, and
   `--redis-namespace` may supply an explicit deployment identifier.
-- The namespace applies to active-generation pointers, revision counters,
-  generation metadata, row sets, and row hashes.
+- The namespace applies to dataset metadata, revision counters, row sets,
+  and row hashes.
 
 Namespace isolation prevents accidental collisions between local deployments.
 It does not replace Redis ACLs. Use a dedicated Redis instance or database and
@@ -519,10 +519,9 @@ The ingester:
 - bounds JSONL scanner records;
 - accepts only known canonical collections;
 - validates and projects data before activation;
-- stages an immutable generation and atomically changes the active pointer only
-  after every source and diagnostic is written.
+- validates the complete projection before publishing its sources and diagnostics.
 
-A failed ingestion leaves the previous active generation available.
+A failed ingestion must not publish incomplete data.
 
 Artifact hashes provide integrity relative to the manifest; they do not prove
 the manifest's publisher identity. Obtain the artifact through a trusted
@@ -544,7 +543,7 @@ capability check.
   are evaluated by the bounded Go query engine against Redis row sets.
 
 The access capability authorizes the holder to query all data in the active
-local dashboard generation. There is no per-source or per-row authorization.
+local dashboard dataset. There is no per-source or per-row authorization.
 
 ## Secrets and logging
 

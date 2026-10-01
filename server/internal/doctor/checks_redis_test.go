@@ -260,19 +260,19 @@ func TestForeignNamespacesOf(t *testing.T) {
 		{
 			name:      "excludes keys scoped to the namespace",
 			namespace: "cao-dev",
-			keys:      []string{"cao-dev:g:1", "cao-dev:index:runs"},
+			keys:      []string{"cao-dev:dataset", "cao-dev:search:runs:rows"},
 			want:      []string{},
 		},
 		{
 			name:      "collects and sorts distinct foreign prefixes",
 			namespace: "cao-dev",
-			keys:      []string{"other-app:key1", "cao-dev:g:1", "zeta:key2", "other-app:key3"},
+			keys:      []string{"other-app:key1", "cao-dev:dataset", "zeta:key2", "other-app:key3"},
 			want:      []string{"other-app", "zeta"},
 		},
 		{
 			name:      "ignores keys without a colon separator",
 			namespace: "cao-dev",
-			keys:      []string{"nocolon", "cao-dev:g:1"},
+			keys:      []string{"nocolon", "cao-dev:dataset"},
 			want:      []string{},
 		},
 	}

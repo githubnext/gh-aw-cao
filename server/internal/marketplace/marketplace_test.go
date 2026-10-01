@@ -128,7 +128,7 @@ func TestResolveIsolatesRegistryFailuresAndKeepsHealthyPackages(t *testing.T) {
 		{ID: "third-party", Repository: "example/packages", Ref: "main", APIURL: healthy.baseURL()},
 	}}
 
-	result := Resolve(t.Context(), config, "generation-1", nil, Options{HTTPClient: insecureTestClient()})
+	result := Resolve(t.Context(), config, "dataRevision-1", nil, Options{HTTPClient: insecureTestClient()})
 
 	if len(result.Packages) != 1 || result.Packages[0].RegistryID != "third-party" {
 		t.Fatalf("expected only the healthy registry's package, got: %#v", result.Packages)
@@ -148,7 +148,7 @@ func TestResolveKeepsEarliestDuplicatePackageByPrecedence(t *testing.T) {
 		{ID: "second", Repository: "example/packages", Ref: "main", APIURL: server.baseURL()},
 	}}
 
-	result := Resolve(t.Context(), config, "generation-1", nil, Options{HTTPClient: insecureTestClient()})
+	result := Resolve(t.Context(), config, "dataRevision-1", nil, Options{HTTPClient: insecureTestClient()})
 
 	if len(result.Packages) != 1 || result.Packages[0].RegistryID != "first" {
 		t.Fatalf("expected the earliest registry's package to win, got: %#v", result.Packages)
@@ -157,7 +157,7 @@ func TestResolveKeepsEarliestDuplicatePackageByPrecedence(t *testing.T) {
 
 func TestResolveOneRegistryReportsInvalidRegistryAsUnavailableWithoutNetworkAccess(t *testing.T) {
 	outcome := resolveOneRegistry(t.Context(), Registry{ID: "not valid!", Repository: "example/packages", Ref: "main"}, 0,
-		"generation-1", DefaultCacheTTL, nil, Options{})
+		"dataRevision-1", DefaultCacheTTL, nil, Options{})
 
 	if outcome.cacheHit {
 		t.Fatal("an invalid registry must never be reported as a cache hit")
@@ -173,11 +173,11 @@ func TestResolveOneRegistryReportsInvalidRegistryAsUnavailableWithoutNetworkAcce
 func TestResolveOneRegistryReusesACachedResultWithoutResolving(t *testing.T) {
 	cache := newMemoryCache()
 	registry := Registry{ID: "official", Repository: "example/packages", Ref: "main"}
-	cache.entries[[2]string{"official", "generation-1"}] = mustMarshalCachedPayload(t, []Package{{ID: "cached-package"}})
+	cache.entries[[2]string{"official", "dataRevision-1"}] = mustMarshalCachedPayload(t, []Package{{ID: "cached-package"}})
 
 	// No HTTPClient is configured, so a real GitHub API call here would panic
 	// or fail; a cache hit must never attempt one.
-	outcome := resolveOneRegistry(t.Context(), registry, 0, "generation-1", DefaultCacheTTL, cache, Options{})
+	outcome := resolveOneRegistry(t.Context(), registry, 0, "dataRevision-1", DefaultCacheTTL, cache, Options{})
 
 	if !outcome.cacheHit {
 		t.Fatal("expected the cached result to be reused")
@@ -195,7 +195,7 @@ func TestResolveOneRegistryResolvesAndCachesOnAMiss(t *testing.T) {
 	cache := newMemoryCache()
 	registry := Registry{ID: "official", Repository: "example/packages", Ref: "main", APIURL: server.baseURL()}
 
-	outcome := resolveOneRegistry(t.Context(), registry, 0, "generation-1", 45*time.Second, cache,
+	outcome := resolveOneRegistry(t.Context(), registry, 0, "dataRevision-1", 45*time.Second, cache,
 		Options{HTTPClient: insecureTestClient()})
 
 	if outcome.cacheHit {
@@ -207,7 +207,7 @@ func TestResolveOneRegistryResolvesAndCachesOnAMiss(t *testing.T) {
 	if outcome.diagnostic.Status != "available" || outcome.diagnostic.Packages != 1 {
 		t.Fatalf("unexpected diagnostic for a fresh resolution: %#v", outcome.diagnostic)
 	}
-	if ttl := cache.ttls[[2]string{"official", "generation-1"}]; ttl != 45*time.Second {
+	if ttl := cache.ttls[[2]string{"official", "dataRevision-1"}]; ttl != 45*time.Second {
 		t.Fatalf("expected the resolved registry to be cached with the given TTL, got: %v", ttl)
 	}
 }
@@ -222,7 +222,7 @@ func mustMarshalCachedPayload(t *testing.T, packages []Package) []byte {
 }
 
 func TestResolveWithNilConfigReturnsEmptyResultNotNil(t *testing.T) {
-	result := Resolve(t.Context(), nil, "generation-1", nil, Options{})
+	result := Resolve(t.Context(), nil, "dataRevision-1", nil, Options{})
 	if result == nil || result.Packages == nil || result.Diagnostics == nil {
 		t.Fatalf("expected non-nil empty slices, got: %#v", result)
 	}
@@ -249,7 +249,7 @@ func TestResolveRedactsReferencedSecretValuesFromDiagnosticMessages(t *testing.T
 		HTTPClient: failingDoer{err: errFakeTransport("request rejected for not-client-data")},
 		Env:        fakeEnv{"PRIVATE_REGISTRY_TOKEN": "not-client-data"}.lookup,
 	}
-	result := Resolve(t.Context(), config, "generation-1", nil, opts)
+	result := Resolve(t.Context(), config, "dataRevision-1", nil, opts)
 
 	encoded, err := json.Marshal(result)
 	if err != nil {
@@ -280,7 +280,7 @@ func TestResolveNeverSerializesSecretValuesOrTokens(t *testing.T) {
 		HTTPClient: insecureTestClient(),
 		Env:        fakeEnv{"PRIVATE_REGISTRY_TOKEN": "not-client-data"}.lookup,
 	}
-	result := Resolve(t.Context(), config, "generation-1", nil, opts)
+	result := Resolve(t.Context(), config, "dataRevision-1", nil, opts)
 
 	encoded, err := json.Marshal(result)
 	if err != nil {

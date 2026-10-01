@@ -62,6 +62,10 @@ test('structured payload fields stay in sync with Go JSON tags', () => {
     const specFields = Object.keys(openapi.components.schemas[schema].properties).sort()
     assert.deepEqual(specFields, goFields, `${schema} differs from ${file}:${name}`)
   }
+  for (const schema of ['HealthResponse', 'RebuildStatus']) {
+    assert.ok(!('generation' in openapi.components.schemas[schema].properties),
+      `${schema} must not expose an internal dataset generation`)
+  }
 })
 
 test('selected JSON Schemas and nullable responses are emitted', () => {

@@ -52,10 +52,10 @@ Repository
 ```
 
 The static deployment SHALL maintain this canonical model in IndexedDB. The
-local server profile SHALL maintain an equivalent disposable generation in
+local server profile SHALL maintain an equivalent disposable dataset in
 Redis and SHALL execute dashboard queries in its Go HTTP(S) server.
 
-IndexedDB and Redis generations SHALL be treated exclusively as disposable,
+IndexedDB derived projections and the Redis dataset SHALL be treated exclusively as disposable,
 reconstructable, derived state and MUST NOT become authoritative storage.
 
 Domain records SHALL contain allowed and blocked firewall observations. Tool
@@ -196,7 +196,7 @@ Views MUST NOT parse:
 
 IndexedDB MUST be disposable and reconstructable.
 
-The local Redis projection MUST also be disposable, generation-scoped, and
+The local Redis projection MUST also be disposable and
 reconstructable from the deployed dashboard artifact.
 
 ## INV-005 — Authoritative inputs remain external
@@ -318,7 +318,7 @@ The implementation profile defined by this specification is:
 | Canonical model | 24 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
 | Browser IndexedDB | 32 | Eighteen canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
 | Local SQLite projection | IndexedDB 32 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus six transactional relational evidence mirrors |
-| Local Redis server projection | Canonical model 14 | Immutable active generation of logical-source row sets, queried only through the loopback Go HTTP(S) server |
+| Local Redis server projection | Canonical model 14 | Canonical logical-source rows, queried only through the loopback Go HTTP(S) server |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
 ## 5.2 Local Redis server profile
@@ -330,15 +330,15 @@ Node.js dashboard preview server. It SHALL:
   `gh-aw-logs-runs/*.jsonl` and `gh-aw-logs-records/*.jsonl` from a deployed
   dashboard artifact;
 * verify every manifested shard hash and require run-information shards before
-  activating a new generation;
-* activate a complete Redis generation atomically and preserve the prior active
-  generation when ingestion fails;
+  publishing a new dataset;
+* publish only a complete dataset and leave the existing dataset intact when
+  ingestion fails;
 * serve the built dashboard and its query API over HTTP on loopback by default,
   or HTTPS only when the operator provides a certificate and key;
 * keep the Redis URL and any Redis credentials exclusively in the Go process;
 * execute Dashboard Language queries on the server against Redis row sets using
   the same bounded Go query engine as unsupported dashboard stages;
-* keep active browser views subscribed to generation changes and return fresh,
+* keep active browser views subscribed to dataset revision changes and return fresh,
   bounded query payloads after successful ingestion.
 
 This profile is for local testing. Remote exposure, GitHub authentication, live
