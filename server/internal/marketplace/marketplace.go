@@ -67,13 +67,13 @@ type Auth struct {
 // Registry is one ordered marketplace source. Earlier registries have higher
 // precedence when two registries expose the same package coordinate.
 type Registry struct {
-	ID                string `json:"id"`
-	Name              string `json:"name,omitempty"`
-	Repository        string `json:"repository"`
-	Path              string `json:"path,omitempty"`
-	Ref               string `json:"ref"`
-	APIURL            string `json:"api-url,omitempty"`
-	Auth              Auth   `json:"auth,omitempty"`
+	ID         string `json:"id"`
+	Name       string `json:"name,omitempty"`
+	Repository string `json:"repository"`
+	Path       string `json:"path,omitempty"`
+	Ref        string `json:"ref"`
+	APIURL     string `json:"api-url,omitempty"`
+	Auth       Auth   `json:"auth,omitempty"`
 }
 
 // Config is the parsed control-plane.marketplace policy section.
