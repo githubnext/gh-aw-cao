@@ -5,6 +5,7 @@ import { processDataRequest } from '../../src/data-worker.js';
 import { loadDatabaseQuerySources, queryDatabaseSources } from '../../src/data/queries/database.js';
 import { executeDashboardQueries, resolveDashboardQuerySources } from '../../src/data/queries/declarative.js';
 import { validateDashboardDocument } from '../../src/validator.js';
+import { authoritativeDashboard, authoritativeDashboardSource } from '../authoritative-dashboard.js';
 
 const query = {
   name: 'simulated-series',
@@ -133,5 +134,21 @@ describe('simulation-days intrinsic query source', () => {
     const result = validateDashboardDocument(JSON.stringify(document));
     expect(result.errors).toEqual([]);
     expect(result.ok).toBe(true);
+  });
+
+  it('preserves the temporal date through every built-in simulator query and chart', () => {
+    const definitions = authoritativeDashboard.dashboard.queries;
+    const compiled = compileDashboardQueryTypes(definitions);
+    expect(compiled.errors).toEqual([]);
+    for (const name of [
+      'simulator-database-inputs',
+      'simulator-run-size',
+      'simulator-tool-size',
+      'simulator-issue-size',
+      'simulator-database-size'
+    ]) {
+      expect(compiled.queryFields.get(name), name).toContain('date');
+    }
+    expect(validateDashboardDocument(authoritativeDashboardSource)).toMatchObject({ ok: true });
   });
 });
