@@ -7,28 +7,29 @@ import (
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
 var canonicalLog = logger.New("cao:server:canonical")
 
 type canonicalService struct {
-	store *redisx.Store
+	store *postgresx.Store
+	definitions []query.Definition
 }
 
 var errCanonicalEntityNotFound = errors.New("canonical entity was not found")
 
 func (service canonicalService) rows(ctx context.Context, source string) ([]model.Row, error) {
-	active, err := service.store.Active(ctx)
+	active, err := service.store.State(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if active.Generation == "" {
+	if !active.Ready {
 		return nil, errors.New("dashboard data is unavailable")
 	}
-	engine := query.New(&generationLoader{ctx: ctx, store: service.store, generation: active.Generation})
-	sources, _, err := engine.Execute(nil, []string{source})
+	engine := query.New(&generationLoader{ctx: ctx, database: service.store})
+	sources, _, err := engine.Execute(service.definitions, []string{source})
 	if err != nil {
 		return nil, err
 	}
@@ -36,11 +37,11 @@ func (service canonicalService) rows(ctx context.Context, source string) ([]mode
 }
 
 func (service canonicalService) filteredRows(ctx context.Context, source string, filters map[string]any) ([]model.Row, error) {
-	active, err := service.store.Active(ctx)
+	active, err := service.store.State(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if active.Generation == "" {
+	if !active.Ready {
 		return nil, errors.New("dashboard data is unavailable")
 	}
 	predicates := make([]query.Predicate, 0, len(filters))
@@ -54,8 +55,9 @@ func (service canonicalService) filteredRows(ctx context.Context, source string,
 			Predicates: predicates,
 		},
 	}
-	engine := query.New(&generationLoader{ctx: ctx, store: service.store, generation: active.Generation})
-	sources, _, err := engine.Execute([]query.Definition{definition}, []string{definition.Name})
+	engine := query.New(&generationLoader{ctx: ctx, database: service.store})
+	definitions := append(append([]query.Definition{}, service.definitions...), definition)
+	sources, _, err := engine.Execute(definitions, []string{definition.Name})
 	if err != nil {
 		return nil, err
 	}

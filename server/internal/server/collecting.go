@@ -14,6 +14,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
@@ -51,9 +52,6 @@ type CollectorConfig struct {
 	RequestTimeoutMinutes int
 	RateLimitFloor        int
 	MinProjectionInterval time.Duration
-	// RetainGenerations bounds superseded canonical generations kept in Redis
-	// for rollback. Zero selects the shared default.
-	RetainGenerations int
 	// InventoryLimit optionally caps enrolled repositories named during
 	// inventory discovery. Zero means unbounded; exceeding a configured limit
 	// fails the projection rather than publishing a partial inventory.
@@ -142,30 +140,33 @@ const collectionHealthSourceName = "collection-health"
 
 // NewCollector assembles the collection profile from configuration.
 func NewCollector(
-	ctx context.Context, store *redisx.Store, config CollectorConfig, databaseQueriesPath string,
+	ctx context.Context, ops *redisx.Store, data *postgresx.Store, config CollectorConfig, databaseQueriesPath string,
 ) (*Collector, error) {
 	if err := config.Validate(); err != nil {
 		return nil, err
 	}
-	if store == nil {
+	if ops == nil {
 		return nil, errors.New("collection requires Redis")
+	}
+	if !config.AdmitOnly && data == nil {
+		return nil, errors.New("collection projection requires Postgres")
 	}
 	quotaFloor := config.RateLimitFloor
 	if quotaFloor <= 0 {
 		quotaFloor = 1000
 	}
-	quota, err := githubquota.New(store, githubquota.Options{SafetyReserve: quotaFloor})
+	quota, err := githubquota.New(ops, githubquota.Options{SafetyReserve: quotaFloor})
 	if err != nil {
 		return nil, fmt.Errorf("configure github quota: %w", err)
 	}
 	quotaApp := "github-app-" + strconv.FormatInt(config.AppID, 10)
-	enrollment := collect.Enrollment{Store: store}
-	queue := collect.Queue{Store: store, MaxLength: int64(config.QueueMaxLength)}
+	enrollment := collect.Enrollment{Store: ops}
+	queue := collect.Queue{Store: ops, MaxLength: int64(config.QueueMaxLength)}
 	if config.AdmitOnly {
 		// Erasure is enqueued rather than performed, because this process has
 		// no evidence lake to erase from.
 		backfill := collect.Backfill{
-			Store: store, Quota: quota, QuotaApp: quotaApp,
+			Store: ops, Quota: quota, QuotaApp: quotaApp,
 		}
 		return &Collector{
 			config:     config,
@@ -173,9 +174,9 @@ func NewCollector(
 			enrollment: enrollment,
 			queue:      queue,
 			backfill:   backfill,
-			admitter:   collect.Admitter{Enrollment: enrollment, Queue: queue, IssueStore: store},
+			admitter:   collect.Admitter{Enrollment: enrollment, Queue: queue, IssueStore: ops},
 			reporter: collect.Reporter{
-				Enrollment: enrollment, Queue: queue, Backfill: backfill, Store: store,
+				Enrollment: enrollment, Queue: queue, Backfill: backfill, Store: ops,
 			},
 		}, nil
 	}
@@ -195,7 +196,7 @@ func NewCollector(
 	if err := lake.Prepare(); err != nil {
 		return nil, err
 	}
-	budget := &githubapp.Budget{Store: store, Floor: config.RateLimitFloor}
+	budget := &githubapp.Budget{Store: ops, Floor: config.RateLimitFloor}
 	runner := collect.Runner{
 		Lake:                  lake,
 		CatalogRoot:           config.CatalogRoot,
@@ -214,7 +215,8 @@ func NewCollector(
 		return nil, err
 	}
 	projector := collect.Projector{
-		Store:                    store,
+		Store:                    ops,
+		Data:                     data,
 		Lake:                     lake,
 		Enrollment:               enrollment,
 		CatalogRoot:              config.CatalogRoot,
@@ -227,11 +229,10 @@ func NewCollector(
 		DatabaseQueriesPath:      databaseQueriesPath,
 		ControlRepository:        config.ControlRepository,
 		MinInterval:              config.MinProjectionInterval,
-		RetainGenerations:        config.RetainGenerations,
 		InventoryRepositoryLimit: config.InventoryLimit,
 	}
 	backfill := collect.Backfill{
-		Store: store, Enrollment: enrollment, Queue: queue,
+		Store: ops, Enrollment: enrollment, Queue: queue,
 		Projector: projector, Lake: lake, Enumerator: client, RunEnumerator: client,
 		Quota: quota, QuotaApp: quotaApp,
 	}
@@ -245,13 +246,13 @@ func NewCollector(
 		runner:     runner,
 		projector:  projector,
 		admitter: collect.Admitter{
-			Enrollment: enrollment, Queue: queue, IssueStore: store,
+			Enrollment: enrollment, Queue: queue, IssueStore: ops,
 			Projection: projector,
 		},
 		backfill: backfill,
 		reporter: collect.Reporter{
 			Enrollment: enrollment, Queue: queue, Backfill: backfill,
-			Budget: budget, Store: store,
+			Budget: budget, Store: ops,
 		},
 		replayer: collect.DeliveryReplayer{
 			Store: store, Client: client, Enabled: config.RecoverDeliveries,

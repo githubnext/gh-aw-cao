@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
@@ -34,13 +35,14 @@ type GitHubWebhook struct {
 }
 
 type DirectoryReconciler struct {
-	Store               *redisx.Store
+	Store               *postgresx.Store
+	Operational         *redisx.Store
 	SourceDirectory     string
 	DatabaseQueriesPath string
 }
 
 func (reconciler DirectoryReconciler) Rebuild(ctx context.Context) (ingest.Result, error) {
-	return ingest.Run(ctx, reconciler.Store, reconciler.SourceDirectory, ingest.Options{
+	return ingest.Run(ctx, reconciler.Store, reconciler.Operational, reconciler.SourceDirectory, ingest.Options{
 		DatabaseQueriesPath: reconciler.DatabaseQueriesPath,
 		Force:               true,
 	})
@@ -55,7 +57,6 @@ type rebuildStatus struct {
 	Required     bool           `json:"required"`
 	StartedAt    string         `json:"startedAt,omitempty"`
 	CompletedAt  string         `json:"completedAt,omitempty"`
-	Generation   string         `json:"generation,omitempty"`
 	Revision     int64          `json:"revision,omitempty"`
 	DataRevision string         `json:"dataRevision,omitempty"`
 	Counts       map[string]int `json:"counts,omitempty"`
@@ -85,9 +86,9 @@ func (a *App) rebuild(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 	started := time.Now().UTC()
-	active, _ := a.store.Active(request.Context())
+	active, _ := a.database.State(request.Context())
 	status := rebuildStatus{
-		State: "running", Required: active.Generation == "",
+		State: "running", Required: !active.Ready,
 		StartedAt: started.Format(time.RFC3339Nano),
 	}
 	if err := a.writeRebuildStatus(request.Context(), status); err != nil {
@@ -114,7 +115,6 @@ func (a *App) performRebuild(ctx context.Context, cancel context.CancelFunc, tok
 	status.State = "succeeded"
 	status.Required = false
 	status.CompletedAt = time.Now().UTC().Format(time.RFC3339Nano)
-	status.Generation = result.Generation
 	status.Revision = result.Revision
 	status.DataRevision = result.DataRevision
 	status.Counts = result.Counts
@@ -340,20 +340,20 @@ func (a *App) readRebuildStatus(ctx context.Context) (rebuildStatus, error) {
 				return rebuildStatus{}, err
 			}
 			if !held {
-				active, err := a.store.Active(ctx)
+				active, err := a.database.State(ctx)
 				if err != nil {
 					return rebuildStatus{}, err
 				}
 				status.State = "interrupted"
-				status.Required = active.Generation == ""
+				status.Required = !active.Ready
 				status.CompletedAt = time.Now().UTC().Format(time.RFC3339Nano)
 			}
 		}
 		return status, nil
 	}
-	active, err := a.store.Active(ctx)
+	active, err := a.database.State(ctx)
 	if err != nil {
 		return rebuildStatus{}, err
 	}
-	return rebuildStatus{State: "idle", Required: active.Generation == ""}, nil
+	return rebuildStatus{State: "idle", Required: !active.Ready}, nil
 }
