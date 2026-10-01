@@ -7,7 +7,7 @@ import (
 )
 
 func TestSimulationDaysSource(t *testing.T) {
-	source, _, err := (&generationLoader{}).LoadSource(simulationDaysSourceName, nil)
+	source, _, err := (&databaseLoader{}).LoadSource(simulationDaysSourceName, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +32,7 @@ func TestSimulationDaysSource(t *testing.T) {
 	if !found {
 		t.Fatal("simulation-days not registered as a runtime source")
 	}
-	result, _, err := query.New(&generationLoader{}).Execute(
+	result, _, err := query.New(&databaseLoader{}).Execute(
 		[]query.Definition{{Name: "simulated", From: simulationDaysSourceName}},
 		[]string{"simulated"},
 	)

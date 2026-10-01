@@ -53,6 +53,10 @@ test("Coolify Compose builds the checked-out source without deployment credentia
   ]);
   assert.equal(dashboard.environment.CAO_SOURCE_DIRECTORY, "/app/source");
   assert.equal(
+    dashboard.environment.CAO_POSTGRES_URL,
+    "${CAO_POSTGRES_URL:?Configure the PostgreSQL connection URL}",
+  );
+  assert.equal(
     dashboard.environment.CAO_MCP_ACTIONS_REPOSITORY,
     "${CAO_MCP_ACTIONS_REPOSITORY:?Configure the GitHub repository selected as this Coolify resource's source}",
   );
@@ -78,7 +82,7 @@ test("Coolify Compose builds the checked-out source without deployment credentia
   assert.doesNotMatch(source, /CAO_IMAGE|COOLIFY_API_TOKEN/);
   assert.doesNotMatch(source, /github_pat_|ghp_|gho_|-----BEGIN/);
   for (const [name, value] of Object.entries(dashboard.environment)) {
-    if (/SECRET|REDIS_URL/.test(name)) {
+    if (/SECRET|REDIS_URL|POSTGRES_URL/.test(name)) {
       assert.match(value, /^\$\{/, `${name} must be injected by Coolify`);
     }
   }

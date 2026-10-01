@@ -13,6 +13,7 @@ import (
 // and coalesced into one projection that activates a new revision.
 func TestWorkerCollectsAndProjects(t *testing.T) {
 	store, ctx := integrationStore(t)
+	data := integrationPostgres(t, ctx)
 	workspace := t.TempDir()
 	catalogRoot := filepath.Join(workspace, "catalog")
 	if err := os.MkdirAll(filepath.Join(catalogRoot, "activity"), 0o750); err != nil {
@@ -53,7 +54,7 @@ func TestWorkerCollectsAndProjects(t *testing.T) {
 			Tokens: fakeTokens{token: "installation-token"},
 		},
 		Projector: Projector{
-			Store: store, Lake: lake, Enrollment: enrollment,
+			Store: store, Data: data, Lake: lake, Enrollment: enrollment,
 			CatalogRoot: catalogRoot, NodeBinary: node,
 			DatabaseQueriesPath: databaseQueries,
 			MinInterval:         50 * time.Millisecond,
@@ -98,12 +99,12 @@ func TestWorkerCollectsAndProjects(t *testing.T) {
 	if dead != 0 {
 		t.Fatalf("dead letters = %d, want 0", dead)
 	}
-	active, err := store.Active(ctx)
+	active, err := data.State(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if active.Revision == 0 {
-		t.Fatal("expected collection to activate a canonical generation")
+		t.Fatal("expected collection to activate canonical data")
 	}
 }
 

@@ -1,5 +1,8 @@
 import { h, keyed } from '../dom.js';
 import { effect } from '../reactive.js';
+import { createDebug } from '../debug.js';
+
+const debugGraphWidget = createDebug('graph-widget');
 
 /**
  * Renders a labelled graph shell with a keyed, reactively updated plot.
@@ -72,14 +75,22 @@ export function renderReactiveGraphWidget(options) {
       : plot
   );
 
+  debugGraphWidget({ event: 'initialized', hasYAxisLabel: Boolean(options.yAxisLabel), legendCount: options.legend.length });
+
   effect(() => {
     const nextItems = options.items();
     const nextKeys = new Set(nextItems.map(options.key));
+    let prunedCount = 0;
     for (const key of elements.keys()) {
-      if (!nextKeys.has(key)) elements.delete(key);
+      if (!nextKeys.has(key)) {
+        elements.delete(key);
+        prunedCount += 1;
+      }
     }
+    if (prunedCount > 0) debugGraphWidget({ event: 'stale-elements-pruned', count: prunedCount });
     itemList.items = nextItems;
     itemList.render();
+    debugGraphWidget({ event: 'items-updated', count: nextItems.length });
     nextItems.forEach((item, index) => {
       const element = elements.get(options.key(item, index));
       if (element) options.updateItem(element, item, index, nextItems);

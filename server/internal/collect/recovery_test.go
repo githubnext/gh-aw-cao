@@ -13,6 +13,12 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
+func TestReporterRequiresPostgres(t *testing.T) {
+	if _, err := (Reporter{}).Snapshot(context.Background()); err == nil {
+		t.Fatal("collection status without Postgres must fail closed")
+	}
+}
+
 type recoveryStateClient struct {
 	mu     sync.Mutex
 	values map[string]string

@@ -16,6 +16,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/operationalvalue"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
@@ -26,7 +27,7 @@ const (
 	projectionLockName = "projection"
 )
 
-// Projector turns the evidence lake into an active canonical generation.
+// Projector turns the evidence lake into the current canonical dashboard data.
 //
 // It regenerates the payload manifest with the Activity CLI and then calls the
 // Actions profile's ingestion implementation over the lake directory. There is
@@ -34,10 +35,11 @@ const (
 // path that could observe a dangling relationship.
 //
 // Projection is coalesced: collections that complete within one debounce
-// window produce a single generation. Coalescing, not per-run projection, is
+// window produce a single replacement. Coalescing, not per-run projection, is
 // what keeps projection cost sublinear in run volume.
 type Projector struct {
 	Store               *redisx.Store
+	Data                *postgresx.Store
 	Lake                Lake
 	Enrollment          Enrollment
 	CatalogRoot         string
@@ -57,8 +59,6 @@ type Projector struct {
 	LockTTL time.Duration
 	// Timeout bounds one projection.
 	Timeout time.Duration
-	// RetainGenerations bounds superseded generations kept for rollback.
-	RetainGenerations int
 	// InventoryRepositoryLimit bounds how many enrolled repositories are named
 	// during inventory discovery. Zero means unbounded: truncating the
 	// inventory would silently drop enrolled repositories from the dashboard
@@ -126,8 +126,8 @@ func (p Projector) PendingProjection(ctx context.Context) (bool, error) {
 // ErrProjectionBusy reports that another process holds the projection lease.
 var ErrProjectionBusy = errors.New("a projection update is already running")
 
-// Project regenerates the manifest and activates a new generation. A failed
-// projection leaves the previously active generation serving.
+// Project regenerates the manifest and replaces the canonical data. A failed
+// projection leaves the previously active data serving.
 func (p Projector) Project(ctx context.Context) (ingest.Result, error) {
 	return p.project(ctx, false)
 }
@@ -142,6 +142,9 @@ func (p Projector) Rebuild(ctx context.Context) (ingest.Result, error) {
 func (p Projector) project(ctx context.Context, force bool) (ingest.Result, error) {
 	if p.DatabaseQueriesPath == "" {
 		return ingest.Result{}, errors.New("database query path is required")
+	}
+	if p.Data == nil {
+		return ingest.Result{}, errors.New("projection requires Postgres")
 	}
 	token, err := operationToken()
 	if err != nil {
@@ -172,18 +175,17 @@ func (p Projector) project(ctx context.Context, force bool) (ingest.Result, erro
 	// rewrite an identical canonical dataset. The content-addressed data
 	// revision skips those, which is what keeps a 60-second projection
 	// interval affordable.
-	result, err := ingest.Run(ctx, p.Store, p.Lake.Directory, ingest.Options{
+	result, err := ingest.Run(ctx, p.Data, p.Store, p.Lake.Directory, ingest.Options{
 		DatabaseQueriesPath: p.DatabaseQueriesPath,
-		RetainGenerations:   p.RetainGenerations,
 		Force:               force,
 	})
 	if err != nil {
-		// The lake is unchanged and the previous generation keeps serving, so
+		// The lake is unchanged and the previous data keeps serving, so
 		// the change marker is restored for the next attempt.
 		_ = p.RequestProjection(context.WithoutCancel(ctx))
 		return ingest.Result{}, err
 	}
-	projectorLog.Printf("activated generation revision=%d sources=%d", result.Revision, len(result.Counts))
+	projectorLog.Printf("activated dashboard data revision=%d sources=%d", result.Revision, len(result.Counts))
 	return result, nil
 }
 

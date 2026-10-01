@@ -29,8 +29,8 @@ func TestIngestionErrorSpanExcludesFilePath(t *testing.T) {
 		_ = provider.Shutdown(t.Context())
 		otel.SetTracerProvider(previousProvider)
 	})
-	directory := t.TempDir()
-	if _, err := Run(context.Background(), nil, directory, Options{}); err == nil {
+	directory := scratchDirectory(t)
+	if _, err := Run(context.Background(), nil, nil, directory, Options{}); err == nil {
 		t.Fatal("missing manifest must fail")
 	}
 	spans := exporter.GetSpans()
@@ -310,7 +310,7 @@ func TestSourceEvaluationTimeUsesLatestCanonicalOrSourceTimestamp(t *testing.T) 
 	}
 }
 
-func TestValidateDiagnosticsRejectsInvalidStagingGeneration(t *testing.T) {
+func TestValidateDiagnosticsRejectsInvalidCanonicalData(t *testing.T) {
 	if err := validateDiagnostics(model.Diagnostics{
 		RelationshipErrors: []string{"session.runId does not reference an existing run"},
 	}); err == nil {

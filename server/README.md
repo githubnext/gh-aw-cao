@@ -1,36 +1,28 @@
-# Go and Redis dashboard server
+# Go dashboard server with Postgres and Redis
 
 The [TypeSpec HTTP contract](spec/README.md) is the source for generated
 OpenAPI 3.1 and selected JSON Schemas; consult it before changing server routes.
 
 The `server/` module is an optional backend for running the Central Agentic Ops
 dashboard with server-owned persistence and query execution. It ingests the
-same compacted data published with the deployed dashboard, materializes
-generation-scoped logical sources in Redis, executes Dashboard Language queries
-in Go, and serves the built dashboard either over loopback HTTP or through an
-authenticated host-neutral service profile.
+same compacted data published with the deployed dashboard, stores current
+logical entity sources in Postgres, executes Dashboard Language queries in Go,
+and serves the built dashboard either over loopback HTTP or through an
+authenticated host-neutral service profile. Redis handles operational caches,
+queues, and sessions; it does not hold or query dashboard entities.
 
-The browser never connects to Redis and never receives the Redis URL or
-credentials. It communicates only with the same-origin HTTP(S) API.
+The browser never connects directly to Postgres or Redis and never receives
+database credentials. It communicates only with the same-origin HTTP(S) API.
 
 ## Offline query translation report
 
 From `server/`, run `go run ./cmd/cao-dashboard compile-queries` to check every
 query in `dashboard/site/dashboard.json`, `dashboard/site/dashboard-fragments/`,
-and the canonical database projection query file. Use `--format json` for
-machine-readable results, or the three query-path flags to inspect other documents. The
-report distinguishes full `FT.AGGREGATE` candidates, partial Redis candidates,
-Go fallback, and definitions unsupported by the Go query engine. This is an
-offline compilation check, not a runtime performance measurement: native
-candidates still need compatible RedisJSON sources and RediSearch indexes in
-the active generation. The deployed query-cost workflow includes this report
-in its pull-request comment and artifact. JSON reports also include the
-normalized result shape, known source and transient field requirements, native
-candidate prefix, fallback suffix, and Redis command names. A preserving shape
-means the complete RedisJSON document is retained, including unknown fields;
-the field list is not a projection. Native no-`select` grouped aggregates
-require complete indexed group and measure fields. Other no-`select` queries
-retain full documents through the indexed-candidate/Go path.
+and the canonical database query file. Use `--format json` for
+machine-readable results, or the query-path flags to inspect other documents.
+Legacy Redis translation candidates in this offline report do not describe
+the runtime Postgres execution path. Hosted queries load Postgres sources
+and apply the Go query engine's resource bounds.
 
 ### Debug logging
 
@@ -186,16 +178,17 @@ with `benchstat` and inspect profiles with `go tool pprof` or
 flowchart LR
   Artifact["Deployed dashboard artifact<br/>inventory + run JSONL + record JSONL"]
   Ingest["Go ingester<br/>verify, parse, project"]
-  Redis["Redis<br/>generation row sets"]
+  Postgres["Postgres<br/>current entity sources"]
+  Redis["Redis<br/>operational state"]
   API["Go HTTP(S) server<br/>bounded query engine"]
   Browser["Dashboard browser app<br/>render bounded view payloads"]
 
   Artifact --> Ingest
-  Ingest -->|"stage complete generation"| Redis
-  Redis -->|"atomic activation"| API
+  Ingest -->|"transactional replacement"| Postgres
+  Postgres --> API
   Browser -->|"POST /api/v1/query"| API
-  API -->|"HGET/SMEMBERS/EVAL"| Redis
-  Redis --> API
+  API -->|"source reads"| Postgres
+  API -->|"sessions, queues, caches"| Redis
   API -->|"LogicalSourceInput JSON"| Browser
   API -->|"SSE revision events"| Browser
 ```
@@ -204,15 +197,16 @@ flowchart LR
 
 | Component | Location | Responsibility |
 | --- | --- | --- |
-| CLI | `cmd/cao-dashboard/` | Implements the `ingest` and `serve` commands and keeps Redis configuration in the server process. |
-| Artifact ingestion | `internal/ingest/` | Validates deployed manifests and hashes, loads run shards before record shards, projects canonical records into logical dashboard sources, and activates complete generations. |
+| CLI | `cmd/cao-dashboard/` | Implements the `ingest` and `serve` commands and keeps Postgres and Redis configuration in the server process. |
+| Artifact ingestion | `internal/ingest/` | Validates deployed manifests and hashes, loads run shards before record shards, and builds canonical logical sources. |
 | Query engine | `internal/query/` | Validates Dashboard Language definitions and executes joins, filters, computed fields, aggregates, temporal series, selection, ordering, and limits under resource budgets. |
-| Redis projection | `internal/redisx/` | Stores generation-scoped RedisJSON rows and RediSearch indexes (core Redis hashes for issues and Upstash) and atomically publishes the active generation. |
+| Postgres entity storage | `internal/postgresx/` | Transactionally replaces current sources, diagnostics, and revision; reads complete source documents for bounded Go queries. |
+| Redis operations | `internal/redisx/` | Supports caches, queues, and sessions. |
 | HTTP(S)/API server | `internal/server/` | Enforces loopback binding, optionally terminates operator-configured TLS, serves static dashboard assets, handles API requests, and publishes revision events. |
 | Externally hosted service | `hosting/` | Exposes a listener-independent application lifecycle and the complete hosted HTTP handler to other Go HTTP hosts. |
 | Azure Functions profile | `internal/server/azure.go` | Builds the same HTTP handler without starting a listener, validates Azure app settings, requires `rediss://` Redis, and trusts forwarded host/protocol headers only for configured Azure hosts. |
 | GitHub OAuth sessions | `internal/server/oauth.go` | Implements the GitHub OAuth authorization-code flow, active organization/team authorization, refresh-token rotation, server-side encrypted sessions in Redis, logout revocation, and CSRF protection for mutating requests. |
-| Shared API model | `internal/model/` | Defines logical sources, active-generation metadata, diagnostics, and query metrics. |
+| Shared API model | `internal/model/` | Defines logical sources, diagnostics, and query metrics. |
 | Telemetry | `internal/telemetry/` | Configures OpenTelemetry trace and metric providers from standard `OTEL_*` environment variables, exposes the server's tracer, and writes W3C trace/span id response headers. |
 | Local Redis | `docker-compose.yml` | Runs plain Redis on `127.0.0.1:6379`. |
 | Coolify container profile | `Dockerfile`, `coolify/compose.yml` | Builds the dashboard and Go service into a non-root image and runs `serve-hosted` behind an explicitly trusted Coolify TLS proxy. |
@@ -431,11 +425,11 @@ The hosted server exposes canonical repository/run APIs, verifies and
 deduplicates webhook deliveries, and coordinates projection updates with a
 Redis lease so multiple replicas do not rebuild concurrently. Webhooks trigger
 authoritative re-ingestion; they are not treated as complete canonical records.
-Validated webhook and rebuild requests return `202` before projection work
+Validated webhook and rebuild requests return `202` before ingestion work
 continues under a bounded, request-independent context. Only explicitly listed
-administrators may call `POST /api/admin/rebuild`; it always forces a new staged
-generation, validates it, then atomically activates it. A failed rebuild leaves
-the previous generation active.
+administrators may call `POST /api/admin/rebuild`; it validates input and
+atomically replaces current Postgres sources and state. A failed replacement
+leaves the previous committed state intact.
 
 The hosted dashboard shows a user icon at the lower left of the navigation.
 It appears only after the server confirms an authenticated GitHub session and
@@ -502,10 +496,10 @@ invalid, expired, and unauthenticated requests cannot bypass Redis enforcement.
 > validated against your organization's Azure, GitHub, compliance, monitoring,
 > incident-response, and data-retention requirements before live use.
 
-The Azure Functions profile keeps the dashboard browser isolated from Redis,
-GitHub tokens, refresh tokens, Redis access keys, and Key Vault secret values.
+The Azure Functions profile keeps the dashboard browser isolated from Postgres,
+Redis, GitHub tokens, refresh tokens, database credentials, and Key Vault secret values.
 The Function App is the only public application boundary and the only component
-that talks to GitHub APIs, Key Vault references, and Azure Managed Redis.
+that talks to GitHub APIs, Key Vault references, Postgres, and Azure Managed Redis.
 
 ```mermaid
 flowchart LR
@@ -514,7 +508,8 @@ flowchart LR
   Function["Function App<br/>Go dashboard HTTP handler<br/>GitHub OAuth sessions + CSRF"]
   GitHubOAuth["GitHub OAuth + API<br/>login, refresh, org/team membership"]
   KeyVault["Azure Key Vault<br/>OAuth secret, session secret, Redis URL"]
-  Redis["Azure Managed Redis<br/>TLS<br/>derived dashboard projection"]
+  Postgres["Postgres<br/>current dashboard entities"]
+  Redis["Azure Managed Redis<br/>TLS<br/>operational state"]
   Storage["Functions storage account<br/>runtime state only"]
   Insights["Application Insights<br/>non-secret operational telemetry"]
   Operators["Control-plane operators<br/>deploy Bicep + rotate secrets"]
@@ -523,14 +518,15 @@ flowchart LR
   Edge -->|"trusted forwarded host/proto only when allow-listed"| Function
   Function -->|"OAuth code, refresh, membership checks"| GitHubOAuth
   Function -->|"Key Vault references resolved by managed identity"| KeyVault
-  Function -->|"rediss:// RedisJSON, RediSearch, core commands"| Redis
+  Function -->|"rediss:// operational commands"| Redis
+  Function -->|"entity source reads/writes"| Postgres
   Function -->|"runtime binding state"| Storage
   Function -->|"no tokens, no Redis URL, no source records"| Insights
   Operators -->|"reviewed Bicep + secret rotation"| KeyVault
   Operators -->|"deploy package + app settings"| Function
 
   classDef boundary fill:#eef6ff,stroke:#0969da,stroke-width:2px;
-  class Function,KeyVault,Redis boundary;
+  class Function,KeyVault,Postgres,Redis boundary;
 ```
 
 Primary actors and responsibilities:
@@ -543,8 +539,10 @@ Primary actors and responsibilities:
   scale in, or terminate long-lived SSE requests.
 - **GitHub OAuth/API**: issues expiring access/refresh tokens and confirms
   organization/team membership; GitHub tokens never leave the server.
-- **Redis**: stores disposable, namespaced dashboard projections; it is not an
-  authority or source of truth.
+- **Postgres**: stores the current dashboard entity sources and diagnostics;
+  replacement is transactional, without generations or snapshots.
+- **Redis**: stores operational queues, caches, and sessions, not
+  dashboard entities.
 - **Control-plane operator**: reviews Bicep/app settings, keeps Key Vault
   mandatory, rotates credentials, and validates compliance evidence.
 
@@ -584,15 +582,13 @@ The ingestion sequence is:
 5. Project canonical Campaign, Repository, Workflow, Run, Domain, Tool, Audit,
    Issue, and Operational Value records through
    `dashboard/site/src/data/queries/database.json`.
-6. Stage every logical source, its metadata, diagnostics, and row set under a
-   new immutable generation.
-7. Atomically update the namespaced active pointer and increment the namespaced
-   active revision only after the generation is complete.
+6. Transactionally replace current Postgres logical sources, metadata,
+   diagnostics, and revision state.
 
-An ingestion with the same artifact revision reuses the active generation.
-Failure before activation leaves the previous active generation available.
+An ingestion with the same artifact revision can reuse current state.
+Failure before commit leaves the previous Postgres state available.
 
-The active generation also records an authoritative `evaluatedAt` timestamp
+The Postgres state also records an authoritative `evaluatedAt` timestamp
 derived from the latest canonical row or source metadata timestamp. Relative
 dashboard time windows use this value rather than browser wall-clock time.
 
@@ -629,12 +625,8 @@ Collection separates three concerns that fail differently:
    debounce, and appends one task to a Redis stream. A successful response
    therefore means durable admission. Admission is constant-time and takes no
    projection lease, so a delivery burst cannot block the endpoint.
-   Signed `issues` lifecycle events instead refresh status fields only for
-   existing issues in enrolled repositories, without queuing a repository
-   collection. The response reports `applied` (not `queued`); a same-timestamp
-   conflicting status reports `reason: ambiguous-status` and defers to the
-   projected row until newer evidence arrives. Status observations are retained
-   across generation activations and newer projected evidence takes precedence.
+   Signed `issues` lifecycle events for enrolled repositories enqueue
+   repository collection rather than mutating stored issue entities directly.
 2. **Collection.** Workers lease tasks and run the same
    `gh aw logs --audit` and `activity/cao.mjs` commands the Activity workflow
    runs, writing into the evidence lake. One repository is collected at a time,
@@ -713,15 +705,16 @@ failing.
 ### Diagnose a deployment
 
 `cao-dashboard doctor` runs a read-only check-up of the current server
-configuration. It does not contact GitHub, write to Redis, repair data, or
+configuration. It does not contact GitHub, write to Redis or Postgres, repair data, or
 report secret values. Every check has a stable identifier such as
-`redis.memory` or `data.generations`, a severity, observed facts, and an
+`redis.memory` or `data.active`, a severity, observed facts, and an
 operator remedy. The default text report is intended to be readable by both a
 person and an agent:
 
 ```bash
 go -C server run ./cmd/cao-dashboard doctor \
   --redis-url "$CAO_REDIS_URL" \
+  --postgres-url "$CAO_POSTGRES_URL" \
   --redis-namespace production-dashboard
 ```
 
@@ -731,21 +724,21 @@ The standard check-up covers:
   exclusivity;
 - Redis connectivity, latency, TLS posture, server state, clients,
   persistence, memory headroom, `noeviction`, and namespace contents;
-- active-generation age, schema compatibility, source counts, referential
-  integrity, duplicate identifiers, and generation reclamation;
+- Postgres data age, schema compatibility, source counts, referential
+  integrity, and duplicate identifiers;
 - the canonical Dashboard Language query document;
 - collection configuration without reading secrets, enrollment coverage,
   queue backlog, pending work, dead letters, cold-start state, rate-limit
   headroom, evidence-lake replayability, and projection activity.
 
-Add `--deep` to read every active source through the production Redis loading
+Add `--deep` to read every current source through the production Postgres loading
 path and confirm that rows decode, recorded counts match, and no source is
-approaching the 200,000-row fail-closed limit. This can read the whole active
-generation, so it is deliberately opt-in.
+approaching the 200,000-row fail-closed limit. This can read every stored entity row, so it is deliberately opt-in.
 
 ```bash
 go -C server run ./cmd/cao-dashboard doctor \
   --redis-url "$CAO_REDIS_URL" \
+  --postgres-url "$CAO_POSTGRES_URL" \
   --redis-namespace production-dashboard \
   --deep
 ```
@@ -773,7 +766,6 @@ private-key file rather than reading it.
 | `CAO_COLLECT_WORKERS` | in-process workers; zero when workers scale separately |
 | `CAO_COLLECT_RATE_LIMIT_FLOOR` | requests reserved per installation |
 | `CAO_COLLECT_PROJECTION_INTERVAL` | minimum interval between projections (default 5 minutes) |
-| `CAO_COLLECT_RETAIN_GENERATIONS` | superseded canonical generations kept for rollback (default 3) |
 | `CAO_COLLECT_INVENTORY_LIMIT` | optional cap on enrolled repositories; exceeding it fails the projection |
 | `CAO_COLLECT_RECOVER_DELIVERIES` | replay failed webhook deliveries to close gaps |
 | `CAO_COLLECT_QUEUE_MAX_LENGTH` | admission backpressure limit for outstanding collection tasks (default 200 000); tasks are never trimmed |
@@ -809,24 +801,11 @@ way.
 
 ### Cost and sizing
 
-Steady-state cost is dominated by projection rather than by collection, because
-a projection's cost scales with retained evidence while a collection's cost
-scales with what changed. Three properties keep that affordable.
-
-Projection is *skipped* when nothing changed. A collection re-enumerates a
-repository's window and usually downloads nothing new, so the lake's
-content-addressed data revision is normally unchanged and the projector reuses
-the active generation instead of rewriting it. Only an explicit operator
-rebuild bypasses this.
-
-Superseded generations are *reclaimed*. Each projection that does run writes a
-complete copy of the canonical dataset plus its search indexes, and Redis is
-configured `NoEviction`. Reclamation is part of activation: a bounded number of
-generations is retained for rollback, and a generation is only dropped once a
-grace period has passed so in-flight reads finish. Tune with
-`CAO_COLLECT_RETAIN_GENERATIONS`; raise it to widen the rollback window at the
-cost of Redis memory. Redis capacity should be sized for the retained
-generation count, not for one copy of the dataset.
+Steady-state ingestion cost scales with retained evidence; unchanged artifact
+revisions may be skipped. Postgres stores only current entity sources and state,
+not staging or rollback generations. Size Postgres for current source rows and
+transactional replacement; size Redis separately for operational queues,
+sessions, and caches.
 
 The evidence lake is *many small per-repository shards*, so it is bound by file
 metadata operations rather than throughput. The lake share therefore defaults
@@ -842,9 +821,8 @@ Known limits, in the order they will be felt at scale:
   Go manifest validation. That is the structural ceiling on projection
   frequency, and it is why `CAO_COLLECT_PROJECTION_INTERVAL` defaults to five
   minutes rather than to seconds.
-- Redis is still an always-on cost. Azure Managed Redis enables RedisJSON and
-  RediSearch on its database; size for retained documents and search indexes,
-  including staging and rollback generations.
+- Redis is still an always-on operational cost. Size it for queues, sessions,
+  and caches. Size Postgres separately for current dashboard entity sources.
 - The Elastic Premium Function plan is always-on. It is sized for webhook
   admission, which is constant-time, so the smallest plan that meets the
   tenant's network requirements is the right one.
@@ -852,36 +830,15 @@ Known limits, in the order they will be felt at scale:
   KEDA scales on stream backlog, so an idle deployment pays for storage, Redis,
   and the Function plan only.
 
-## Redis model
+## Entity and operational storage
 
-Redis is a disposable query projection, not an authoritative data source.
-
-| Redis structure | Purpose |
-| --- | --- |
-| `<namespace>:active` | Active generation, monotonically increasing revision, artifact revision, evaluation time, activation time, and source counts. |
-| `<namespace>:active-generation` | Active generation pointer updated during atomic activation. |
-| `<namespace>:revision-sequence` | Revision counter used by atomic activation. |
-| `<namespace>:g:<generation>` | Source metadata and canonical diagnostics for one generation. |
-| `<namespace>:g:<generation>:source:<hash>:rows` | Set of row keys for one logical source. |
-| `<namespace>:g:<generation>:source:<hash>:row:<id>` | RedisJSON document containing the complete row (hash containing `raw` for issues, Upstash, or older generations). |
-| `<namespace>:g:<generation>:source:<hash>:index` | RediSearch index over eligible JSON string fields; dropped with its generation. |
-
-Source names and row identities are converted to deterministic hashes before
-becoming Redis key fragments. Complete row JSON remains available for bounded
-query-engine execution. Local and ordinary hosted Redis deployments require
-Redis 8 with JSON and Search commands; a rebuild is needed to convert an existing
-hash generation into indexed JSON. Missing module support fails ingestion before
-activation, leaving the existing generation intact. The Upstash provider continues
-to use core Redis hashes because its search commands are not RediSearch-compatible.
-An older server binary cannot read a JSON generation; rolling back the binary
-also requires restoring a hash generation or forcing a full rebuild with that
-binary before serving requests.
-Every key is scoped by `--redis-namespace`. The default
-is a stable
-`cao:checkout-<path-hash>` value derived from the absolute checkout/worktree
-path, so separate checkouts using Redis database 0 do not collide. Explicit
-values are normalized to a lowercase `cao:` namespace and reject Redis glob
-metacharacters.
+Postgres stores the current dashboard entity sources, their metadata and
+canonical diagnostics, and one revision/evaluation state. An ingestion replaces
+these atomically: failed transactions leave the previous committed state
+untouched. There are no Postgres generations, projections, or snapshots.
+Redis remains namespaced operational storage for caches, queues, sessions, and
+it does not hold dashboard entity rows or query indexes.
+Neither store grants control-plane authority. Credentials stay server-side.
 
 ## Query execution
 
@@ -902,17 +859,9 @@ input, join, output, and operator limits remain independently enforced.
 Expensive stages, including sorting, are charged against the operation budget
 before they allocate or run.
 
-Unfiltered, literal-labelled table counts use Redis `SCARD` on the active
-generation's source row-key set. This returns the retained row count without
-fetching or decoding rows, including for sources too large for the query
-engine's working-byte budget. Redis `SCARD` is O(1), not O(0). An empty source
-produces no labelled group. Eligible direct-source string equality and `in` filters use RediSearch to fetch
-at most 5,000 JSON candidate keys; the Go engine still applies every predicate,
-including search, against complete rows. Queries with more candidates, complex
-predicates, joins, issue status overlays, and legacy or Upstash hash generations
-retain the bounded Go path. Filtered counts and joins do not bypass resource
-limits. Query metrics report indexed-candidate selection, Redis command count,
-Redis rows returned, fallback stages, and total duration.
+Queries load current logical sources from Postgres. The Go engine applies
+selection, joins, aggregation, and limits to complete source documents; Redis
+is not a query backend. Query resource limits remain fail-closed.
 
 The engine rejects unsupported prediction queries and enforces limits on query
 definitions, joins, predicates, input rows, output rows, and total operations.
@@ -928,7 +877,7 @@ operator-managed certificate.
 The server injects:
 
 ```html
-<meta name="dashboard-data-backend" content="redis-http">
+<meta name="dashboard-data-backend" content="server-http">
 ```
 
 into the dashboard HTML. The browser then uses the server API instead of
@@ -936,13 +885,13 @@ IndexedDB ingestion:
 
 | Endpoint | Purpose |
 | --- | --- |
-| `GET /api/v1/health` | Public readiness exposes only Redis connectivity and data availability; capability-authenticated requests also receive generation/revision and source/row counts. |
-| `GET /api/health` | Public liveness; an empty Redis instance is healthy and reports `rebuildRequired`. |
-| `GET /api/readiness` | Public readiness; returns 503 until an active generation exists. |
+| `GET /api/v1/health` | Public readiness reports database dependency and data availability; capability-authenticated requests can receive revision and source/row counts. |
+| `GET /api/health` | Public health includes Redis and Postgres dependencies. |
+| `GET /api/readiness` | Public readiness; returns 503 until current Postgres data is available. |
 | `POST /api/v1/query` | Execute requested Dashboard Language queries and return bounded logical sources plus metrics. |
 | `POST /api/v1/refresh` | Return the current revision and authoritative evaluation time without ingesting data. |
-| `GET /api/v1/events` | Server-Sent Events stream that notifies active views when the Redis revision changes. |
-| `GET /api/v1/diagnostics` | Canonical schema counts, relationship errors, and duplicate IDs for the active generation. |
+| `GET /api/v1/events` | Server-Sent Events stream that notifies active views when the data revision changes. |
+| `GET /api/v1/diagnostics` | Canonical schema counts, relationship errors, and duplicate IDs from current Postgres data. |
 | `GET /api/v1/github-quota/usage` | Administrator-only GitHub API quota usage for the last 24 hours: the peak observed usage of each bucket (App, installation, resource) and the limit-weighted aggregate per 15-minute slot. The same data is the `github-quota-usage` runtime source behind the Ingestion page chart. No credentials are included. |
 | `GET /api/repositories` and `GET /api/repositories/:id` | Return canonical repository objects. |
 | `GET /api/repositories/:id/runs` and `GET /api/workflows/:id/runs` | Return related canonical runs. |
@@ -1134,7 +1083,7 @@ the Function App itself never imports an Azure Monitor SDK.
 - Every other remote Redis connection requires `rediss://`, standard
   certificate-chain and hostname verification, and TLS 1.2 or newer. Azure
   always requires this path. There is no insecure skip-verification option.
-- Redis namespaces isolate this server's keys and indexes, but are not a
+- Redis namespaces isolate this server's operational keys, but are not a
   substitute for dedicated Redis credentials with narrow ACL key patterns or a
   dedicated Redis database or instance.
 - The HTTP(S) server sets content-type, frame, referrer, permissions, and
@@ -1144,12 +1093,12 @@ the Function App itself never imports an Azure Monitor SDK.
 - Deployed artifact paths and SHA-256 hashes are validated before parsing.
 - Static files are served only from the configured built-site directory, with
   SPA fallback to that directory's `index.html`.
-- Missing Redis, data, manifests, shards, projections, or diagnostics fail
+- Missing Redis, Postgres data, manifests, shards, or diagnostics fail
   closed.
 
 The local capability profile is not suitable for remote or multi-user
 deployment. The capability authorizes its holder to read the full active
-dashboard generation; it provides no user identity or per-source authorization.
+dashboard data; it provides no user identity or per-source authorization.
 
 The Azure Functions profile is the experimental remote profile. It is enabled
 by calling `NewAzureFunctionsHandlerFromEnv`; `serve` does not enable it. Azure
@@ -1227,7 +1176,7 @@ hosting:
 - Keep HTTPS-only Functions, TLS-only Redis, disabled FTPS, disabled Redis
   public network access, storage HTTPS enforcement, Key Vault soft delete, and
   non-secret Bicep outputs enabled for compliance review.
-- Treat the Redis projection as disposable derived state. Compliance evidence
+- Treat the Postgres entity store as rebuildable from authoritative inputs. Compliance evidence
   comes from the checked-in Bicep, GitHub OAuth authorization policy, Key Vault
   access controls, Azure activity logs, Application Insights without secrets,
   and the CAO source artifacts that feed Redis.

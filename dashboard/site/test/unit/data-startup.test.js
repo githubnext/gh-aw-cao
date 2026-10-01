@@ -303,7 +303,7 @@ describe("dashboard data startup", () => {
   it("keeps remote navigation mounted when the revision is unchanged", async () => {
     const marker = document.createElement("meta");
     marker.name = "dashboard-data-backend";
-    marker.content = "redis-http";
+    marker.content = "server-http";
     document.head.append(marker);
     const root = document.createElement("div");
     root.id = "root";

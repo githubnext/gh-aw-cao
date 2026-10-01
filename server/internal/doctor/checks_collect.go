@@ -21,8 +21,8 @@ const areaCollect = "collect"
 // selects, and fails when it selects both.
 //
 // The two profiles are alternatives, never layers. A process configured for
-// both would collect from GitHub and ingest published snapshots into the same
-// namespace, so each would overwrite the other's generation.
+// both would collect from GitHub and ingest published artifacts into the same
+// current Postgres sources.
 func (d Doctor) checkCollectionProfile(context.Context) Check {
 	const id, title = "collect.profile", "Acquisition profile"
 	profile := d.profile()
@@ -78,7 +78,6 @@ func (d Doctor) checkCollectionSettings(context.Context) Check {
 		detail("controlRepository", presence(d.getenv("CAO_COLLECT_CONTROL_REPOSITORY"))),
 		detail("workers", orDefault(d.getenv("CAO_COLLECT_WORKERS"), "0")),
 		detail("queueMaxLength", orDefault(d.getenv("CAO_COLLECT_QUEUE_MAX_LENGTH"), "default")),
-		detail("retainGenerations", orDefault(d.getenv("CAO_COLLECT_RETAIN_GENERATIONS"), "default")),
 		detail("inventoryLimit", orDefault(d.getenv("CAO_COLLECT_INVENTORY_LIMIT"), "unbounded")),
 		detail("projectionInterval", orDefault(d.getenv("CAO_COLLECT_PROJECTION_INTERVAL"), "default")),
 	}
@@ -486,6 +485,9 @@ func (d Doctor) checkBudget(ctx context.Context) Check {
 	if skip, ok := d.storeUnavailable(id, areaCollect, title); ok {
 		return skip
 	}
+	if skip, ok := d.postgresUnavailable(id, areaCollect, title); ok {
+		return skip
+	}
 	floor := intEnv(d.getenv("CAO_COLLECT_RATE_LIMIT_FLOOR"))
 	reporter := collect.Reporter{
 		Enrollment: d.collectEnrollment(),
@@ -493,6 +495,7 @@ func (d Doctor) checkBudget(ctx context.Context) Check {
 		Backfill:   collect.Backfill{Store: d.Store},
 		Budget:     &githubapp.Budget{Store: d.Store, Floor: floor},
 		Store:      d.Store,
+		Data:       d.Postgres,
 	}
 	status, err := reporter.Snapshot(ctx)
 	if err != nil {
@@ -643,10 +646,10 @@ func (d Doctor) checkLake(context.Context) Check {
 	}
 }
 
-// checkProjectionLock reports whether a projection is in flight. The lock has
+// checkProjectionLock reports whether an ingestion is in flight. The lock has
 // a time to live, so a held lock is information rather than a fault.
 func (d Doctor) checkProjectionLock(ctx context.Context) Check {
-	const id, title = "collect.projection", "Projection lock"
+	const id, title = "collect.projection", "Ingestion lock"
 	if skip, ok := d.storeUnavailable(id, areaCollect, title); ok {
 		return skip
 	}
@@ -657,13 +660,13 @@ func (d Doctor) checkProjectionLock(ctx context.Context) Check {
 	if held {
 		return Check{
 			ID: id, Area: areaCollect, Title: title, Status: StatusPass,
-			Summary: "a projection currently holds the lock",
+			Summary: "an ingestion currently holds the lock",
 			Details: []Detail{detail("held", "true")},
 		}
 	}
 	return Check{
 		ID: id, Area: areaCollect, Title: title, Status: StatusPass,
-		Summary: "no projection is in flight",
+		Summary: "no ingestion is in flight",
 		Details: []Detail{detail("held", "false")},
 	}
 }

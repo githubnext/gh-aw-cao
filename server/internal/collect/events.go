@@ -21,7 +21,7 @@ type IntentKind string
 const (
 	// IntentCollect requests collection of one repository.
 	IntentCollect IntentKind = "collect"
-	// IntentIssueStatus updates a retained issue status observation only.
+	// IntentIssueStatus refreshes the enrolled repository after an issue event.
 	IntentIssueStatus IntentKind = "issue-status"
 	// IntentEnroll adds repositories to the enrollment set.
 	IntentEnroll IntentKind = "enroll"
@@ -259,8 +259,6 @@ type Admitter struct {
 	// Projection requests a projection after erasure, so the canonical
 	// database stops reporting repositories that left ingestion scope.
 	Projection ProjectionRequester
-	// Issue updates are applied only to already retained issue rows.
-	IssueStore *redisx.Store
 }
 
 // ProjectionRequester marks the lake as changed. Projector satisfies it.
@@ -273,7 +271,6 @@ type Admission struct {
 	Kind      IntentKind `json:"kind"`
 	Enqueued  bool       `json:"enqueued"`
 	Duplicate bool       `json:"duplicate,omitempty"`
-	Applied   bool       `json:"applied,omitempty"`
 	Reason    string     `json:"reason,omitempty"`
 	// ErasureQueued counts repositories with durable erasure work because they
 	// left ingestion scope.
@@ -350,9 +347,6 @@ func (a Admitter) AdmitDelivery(
 }
 
 func (a Admitter) admitIssue(ctx context.Context, intent Intent, delivery string, ttl time.Duration) (Admission, error) {
-	if a.IssueStore == nil {
-		return Admission{Kind: IntentIgnore}, nil
-	}
 	enrolled, err := a.Enrollment.Enrolled(ctx, intent.Repository)
 	if err != nil {
 		return Admission{}, err
@@ -364,20 +358,23 @@ func (a Admitter) admitIssue(ctx context.Context, intent Intent, delivery string
 	if !enrolled || owner != intent.InstallationID {
 		return Admission{Kind: IntentIgnore, Reason: "not-enrolled"}, nil
 	}
-	update := intent.Issue
-	update.Delivery = delivery
-	updated, duplicate, _, err := a.IssueStore.ApplyIssueUpdate(ctx, update, ttl)
-	if errors.Is(err, redisx.ErrIssueStatusAmbiguous) {
-		return Admission{Kind: IntentIssueStatus, Reason: "ambiguous-status"}, nil
+	task := Task{
+		Repository:     intent.Repository,
+		InstallationID: owner,
+		Reason:         "issue-status",
 	}
+	if delivery == "" {
+		enqueued, err := a.Queue.Enqueue(ctx, task)
+		if err != nil {
+			return Admission{}, err
+		}
+		return Admission{Kind: IntentIssueStatus, Enqueued: enqueued}, nil
+	}
+	enqueued, duplicate, err := a.Queue.EnqueueDelivery(ctx, task, delivery, ttl)
 	if err != nil {
 		return Admission{}, err
 	}
-	reason := ""
-	if !updated && !duplicate {
-		reason = "not-applied"
-	}
-	return Admission{Kind: IntentIssueStatus, Applied: updated, Duplicate: duplicate, Reason: reason}, nil
+	return Admission{Kind: IntentIssueStatus, Enqueued: enqueued, Duplicate: duplicate}, nil
 }
 
 // resolveCollectInstallation determines the installation that must own a
@@ -487,6 +484,8 @@ func (a Admitter) admitIntent(ctx context.Context, intent Intent) (Admission, er
 			return Admission{}, err
 		}
 		return Admission{Kind: IntentCollect, Enqueued: enqueued}, nil
+	case IntentIssueStatus:
+		return a.admitIssue(ctx, intent, "", 0)
 	default:
 		return Admission{Kind: IntentIgnore}, nil
 	}

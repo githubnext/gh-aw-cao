@@ -14,12 +14,11 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/collect"
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/simulator"
 )
 
-func TestSignedIssueWebhookRefreshesRetainedSource(t *testing.T) {
+func TestSignedIssueWebhookQueuesDeduplicatedRepositoryRefresh(t *testing.T) {
 	endpoint := os.Getenv("REDIS_URL")
 	if endpoint == "" {
 		t.Skip("REDIS_URL is not set")
@@ -33,20 +32,10 @@ func TestSignedIssueWebhookRefreshesRetainedSource(t *testing.T) {
 	if err := enrollment.AddRepositories(t.Context(), 42, []string{"octo/api"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.PutSource(t.Context(), "g1", model.Source{
-		Source: "issues", Rows: []model.Row{{
-			"id": "github:issue:octo/api:12", "repositoryFullName": "octo/api",
-			"isPullRequest": false, "state": "OPEN",
-		}}, Metadata: model.Metadata{"availability": "available"},
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := store.Activate(t.Context(), "g1", "snapshot", time.Now(), map[string]int{"issues": 1}); err != nil {
-		t.Fatal(err)
-	}
+	queue := collect.Queue{Store: store}
 	app := &App{store: store, webhookSecret: []byte("test-issue-webhook-secret"),
 		reconciler: &Collector{admitter: collect.Admitter{
-			Enrollment: enrollment, Queue: collect.Queue{Store: store}, IssueStore: store,
+			Enrollment: enrollment, Queue: queue,
 		}}}
 	payload := `{"action":"closed","repository":{"full_name":"octo/api"},"installation":{"id":42},
 		"issue":{"number":12,"state":"closed","state_reason":"completed",
@@ -80,46 +69,52 @@ func TestSignedIssueWebhookRefreshesRetainedSource(t *testing.T) {
 		}
 		return result
 	}
-	send(payload, "delivery-1", false)
-	if result := send(payload, "delivery-1", true); result["applied"] != true || result["queued"] != false {
-		t.Fatalf("signed issue was not applied: %+v", result)
+	depth := func() int64 {
+		t.Helper()
+		length, err := store.StreamLength(t.Context(), "collect:tasks")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return length
 	}
-	if result := send(payload, "delivery-1", true); result["duplicate"] != true {
-		t.Fatalf("duplicate delivery was applied: %+v", result)
+	send(payload, "unsigned", false)
+	if got := depth(); got != 0 {
+		t.Fatalf("unsigned delivery queued %d tasks", got)
 	}
-	source, _, err := store.LoadSource(t.Context(), "g1", "issues", nil)
-	if err != nil || source.Rows[0]["state"] != "CLOSED" ||
-		source.Rows[0]["stateReason"] != "completed" || source.Rows[0]["closed"] != true {
-		t.Fatalf("issue source did not refresh: %+v (%v)", source, err)
+	unowned := strings.Replace(payload, `"id":42`, `"id":43`, 1)
+	if result := send(unowned, "wrong-installation", true); result["reason"] != "not-enrolled" || result["queued"] == true {
+		t.Fatalf("delivery from wrong installation was admitted: %+v", result)
 	}
-	active, err := store.Active(t.Context())
-	if err != nil || active.Revision != 2 {
-		t.Fatalf("duplicate or unsigned webhook changed revision: %+v (%v)", active, err)
+	outOfScope := strings.ReplaceAll(payload, "octo/api", "octo/unowned")
+	if result := send(outOfScope, "outside-enrollment", true); result["reason"] != "not-enrolled" || result["queued"] == true {
+		t.Fatalf("unenrolled repository was admitted: %+v", result)
+	}
+	pullRequest := strings.Replace(payload, `"number":12`, `"number":12,"pull_request":{"url":"https://api.github.com/repos/octo/api/pulls/12"}`, 1)
+	if result := send(pullRequest, "pull-request", true); result["kind"] != "ignore" || result["queued"] != false {
+		t.Fatalf("pull request was admitted as an issue: %+v", result)
+	}
+	if got := depth(); got != 0 {
+		t.Fatalf("out-of-scope deliveries queued %d tasks", got)
+	}
+	if result := send(payload, "delivery-1", true); result["kind"] != "issue-status" ||
+		result["queued"] != true || result["duplicate"] != false {
+		t.Fatalf("signed issue did not enqueue repository refresh: %+v", result)
+	}
+	if result := send(payload, "delivery-1", true); result["duplicate"] != true || result["queued"] != false {
+		t.Fatalf("duplicate delivery queued another refresh: %+v", result)
 	}
 	reopened := strings.ReplaceAll(payload, `"action":"closed"`, `"action":"reopened"`)
 	reopened = strings.ReplaceAll(reopened, `"state":"closed"`, `"state":"open"`)
-	if result := send(reopened, "delivery-same-second", true); result["reason"] != "ambiguous-status" ||
-		result["applied"] != false {
-		t.Fatalf("same-second conflicting status was not flagged: %+v", result)
+	if result := send(reopened, "delivery-same-second", true); result["kind"] != "issue-status" ||
+		result["queued"] != false || result["duplicate"] != false {
+		t.Fatalf("same-second status did not coalesce pending refresh: %+v", result)
 	}
-	source, _, err = store.LoadSource(t.Context(), "g1", "issues", nil)
-	if err != nil || source.Rows[0]["state"] != "OPEN" {
-		t.Fatalf("ambiguous status must defer to projected row: %+v (%v)", source, err)
+	if got := depth(); got != 1 {
+		t.Fatalf("issue deliveries queued %d tasks, want one", got)
 	}
 
 	repository := "simulator/repo-00001"
 	if err := enrollment.AddRepositories(t.Context(), 1, []string{repository}); err != nil {
-		t.Fatal(err)
-	}
-	if err := store.PutSource(t.Context(), "g2", model.Source{
-		Source: "issues", Rows: []model.Row{{
-			"id": "github:issue:" + repository + ":1", "repositoryFullName": repository,
-			"isPullRequest": false, "state": "UNKNOWN",
-		}}, Metadata: model.Metadata{"availability": "available"},
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := store.Activate(t.Context(), "g2", "simulator-snapshot", time.Now(), map[string]int{"issues": 1}); err != nil {
 		t.Fatal(err)
 	}
 	deliveries, err := (simulator.Scenario{
@@ -128,55 +123,44 @@ func TestSignedIssueWebhookRefreshesRetainedSource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	seen := 0
 	for _, delivery := range deliveries {
 		if delivery.Event != "issues" {
 			continue
 		}
-		var event struct {
-			Action string `json:"action"`
-			Issue  struct {
-				UpdatedAt string `json:"updated_at"`
-				ClosedAt  any    `json:"closed_at"`
-			} `json:"issue"`
+		result := send(string(delivery.Payload), delivery.ID, true)
+		if result["kind"] != "issue-status" || result["duplicate"] != false ||
+			result["queued"] != (seen == 0) {
+			t.Fatalf("simulated issue delivery %d did not coalesce: %+v", seen, result)
 		}
-		if err := json.Unmarshal(delivery.Payload, &event); err != nil {
+		seen++
+	}
+	if seen != 4 {
+		t.Fatalf("simulator generated %d issue deliveries, want four", seen)
+	}
+	if got := depth(); got != 2 {
+		t.Fatalf("issue events queued %d repository refreshes, want two", got)
+	}
+	if err := queue.Ensure(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	messages, err := store.StreamRead(t.Context(), "collect:tasks", "collectors", "issue-webhook-test", 2, 0)
+	if err != nil || len(messages) != 2 {
+		t.Fatalf("expected two durable repository refreshes: %+v, %v", messages, err)
+	}
+	wantInstallations := map[string]int64{"octo/api": 42, repository: 1}
+	for _, message := range messages {
+		var task collect.Task
+		if err := json.Unmarshal([]byte(message.Fields["task"]), &task); err != nil {
 			t.Fatal(err)
 		}
-		if result := send(string(delivery.Payload), delivery.ID, true); result["applied"] != true || result["queued"] != false {
-			t.Fatalf("%s was not applied to existing source: %+v", event.Action, result)
+		if task.InstallationID != wantInstallations[task.Repository] || task.InstallationID == 0 ||
+			task.Reason != "issue-status" || task.Erase {
+			t.Fatalf("unexpected repository refresh: %+v", task)
 		}
-		loaded, _, err := store.LoadSource(t.Context(), "g2", "issues", nil)
-		if err != nil || len(loaded.Rows) != 1 {
-			t.Fatalf("%s source unavailable: %+v (%v)", event.Action, loaded, err)
-		}
-		row := loaded.Rows[0]
-		closed := event.Action == "closed"
-		wantState := "OPEN"
-		if closed {
-			wantState = "CLOSED"
-		}
-		observed, err := time.Parse(time.RFC3339Nano, event.Issue.UpdatedAt)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if row["state"] != wantState || row["closed"] != closed ||
-			row["statusObservedAt"] != observed.UTC().Format("2006-01-02T15:04:05.000000000Z") {
-			t.Fatalf("%s source status mismatch: %+v", event.Action, row)
-		}
-		if closed {
-			if row["stateReason"] != "completed" || row["closedAt"] != event.Issue.ClosedAt {
-				t.Fatalf("closed issue fields missing: %+v", row)
-			}
-		} else if row["stateReason"] != nil || row["closedAt"] != nil {
-			t.Fatalf("%s retained stale closing fields: %+v", event.Action, row)
-		}
+		delete(wantInstallations, task.Repository)
 	}
-	depth, err := store.StreamLength(t.Context(), "collect:tasks")
-	if err != nil || depth != 0 {
-		t.Fatalf("issue events enqueued workflow collection: depth=%d err=%v", depth, err)
-	}
-	active, err = store.Active(t.Context())
-	if err != nil || active.Revision != 8 {
-		t.Fatalf("issue lifecycle did not advance live revision: %+v (%v)", active, err)
+	if len(wantInstallations) != 0 {
+		t.Fatalf("missing repository refreshes: %+v", wantInstallations)
 	}
 }

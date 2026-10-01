@@ -4,15 +4,16 @@ package server
 //
 // The harness drives the production HTTP handler (security headers, access
 // control, inbound rate limiting, and the lazy repository-memory resolver)
-// against real Redis and the scenario-controlled GitHub API simulator. It
+// against real Redis and Postgres and the scenario-controlled GitHub API simulator. It
 // deliberately configures very low inbound and upstream limits so every run
 // exhausts them, then asserts that the server throttles cleanly: only 200 or
 // 429 responses, standard Retry-After and RateLimit-* headers, no GitHub
 // requests past the governed budget, and recovery once the budget resets.
 //
-// It runs only when CAO_STRESS_REDIS_URL names a disposable Redis instance:
+// It runs only when CAO_STRESS_REDIS_URL names a disposable Redis instance and
+// POSTGRES_URL names a disposable Postgres instance:
 //
-//	CAO_STRESS_REDIS_URL=redis://127.0.0.1:6379/0 \
+//	CAO_STRESS_REDIS_URL=redis://127.0.0.1:6379/0 POSTGRES_URL=postgres://postgres@127.0.0.1:5432/cao?sslmode=disable \
 //	  go test ./internal/server -run '^TestStress' -bench '^BenchmarkStress' -benchmem
 //
 // Optional environment:
@@ -107,6 +108,10 @@ func newStressHarness(tb testing.TB, options stressOptions) *stressHarness {
 		tb.Fatalf("connect to CAO_STRESS_REDIS_URL: %v", err)
 	}
 	store := redisx.NewStore(client, "stress-"+strconv.FormatInt(time.Now().UnixNano(), 36))
+	if os.Getenv("POSTGRES_URL") == "" {
+		tb.Fatal("POSTGRES_URL is required when CAO_STRESS_REDIS_URL is set")
+	}
+	database := integrationDatabase(tb)
 
 	api, err := simulator.NewAPIHandler(options.scenario, 1)
 	if err != nil {
@@ -134,6 +139,7 @@ func newStressHarness(tb testing.TB, options stressOptions) *stressHarness {
 		tb.Fatal(err)
 	}
 	app, err := New(context.Background(), store, Config{
+		Database:      database,
 		Listen:        "127.0.0.1:0",
 		SiteDirectory: site,
 		AccessToken:   testAccessToken,
