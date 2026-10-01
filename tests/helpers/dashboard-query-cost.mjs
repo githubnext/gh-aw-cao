@@ -1,12 +1,13 @@
 /**
- * Headless computational and space cost measurement for Dashboard Language
- * queries executed against the deployed SQLite snapshot.
+ * Static browser-query test helper: headless computational and space cost
+ * measurement for Dashboard Language queries against a SQLite-backed IndexedDB
+ * snapshot. This is not the hosted Postgres + Go deployed benchmark.
  *
  * The static query cost evaluator (`analyzeDashboardComplexity`) ranks every
  * query by normalized row-read units; the most expensive candidates are then
  * executed through the production query boundary so the measured time,
- * operation count, result size, and retained heap footprint are observable in
- * CI without a browser.
+ * operation count, result size, and retained heap footprint are observable
+ * without a browser in focused tests.
  */
 import { DatabaseSync } from "node:sqlite";
 import { execFileSync } from "node:child_process";

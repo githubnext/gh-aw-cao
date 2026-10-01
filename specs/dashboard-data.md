@@ -52,11 +52,12 @@ Repository
 ```
 
 The static deployment SHALL maintain this canonical model in IndexedDB. The
-local server profile SHALL maintain an equivalent disposable generation in
-Redis and SHALL execute dashboard queries in its Go HTTP(S) server.
+Go server profile SHALL transactionally replace current dashboard sources in
+Postgres and SHALL execute Dashboard Language queries server-side. Redis SHALL
+hold only operational caches, queues, and sessions, not dashboard entities.
 
-IndexedDB and Redis generations SHALL be treated exclusively as disposable,
-reconstructable, derived state and MUST NOT become authoritative storage.
+IndexedDB and Postgres dashboard sources SHALL be reconstructable from
+authoritative inputs and MUST NOT become authoritative evidence storage.
 
 Domain records SHALL contain allowed and blocked firewall observations. Tool
 records SHALL contain MCP, Bash, and skill calls, with skills identified as a
@@ -251,8 +252,9 @@ flowchart LR
   sqlite --> cli["CLI"]
   source --> indexeddb["IndexedDB<br/>browser"]
   indexeddb --> views["Dashboard views"]
-  source --> redis["Redis<br/>local server"]
-  redis --> go["Go HTTP(S) query server"]
+  source --> postgres["Postgres<br/>hosted dashboard sources"]
+  postgres --> go["Go HTTP(S) query server"]
+  redis["Redis<br/>operational state"] --> go
   go --> views
 ```
 
@@ -318,12 +320,12 @@ The implementation profile defined by this specification is:
 | Canonical model | 25 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
 | Browser IndexedDB | 33 | Eighteen canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
 | Local SQLite projection | IndexedDB 33 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus six transactional relational evidence mirrors |
-| Local Redis server projection | Canonical model 14 | Immutable active generation of logical-source row sets, queried only through the loopback Go HTTP(S) server |
+| Go server Postgres sources | Canonical model 14 | Current transactionally replaced source rows and diagnostics, with lossless JSON-text documents for supported SQL paths and legacy per-value rows for bounded fallback |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
-## 5.2 Local Redis server profile
+## 5.2 Go server profile
 
-The local Redis profile SHALL be implemented independently of the existing
+The Go server profile SHALL be implemented independently of the existing
 Node.js dashboard preview server. It SHALL:
 
 * ingest `inventory-sources.json`, `payload-hashes.json`, and compacted
@@ -331,18 +333,22 @@ Node.js dashboard preview server. It SHALL:
   dashboard artifact;
 * verify every manifested shard hash and require run-information shards before
   activating a new generation;
-* activate a complete Redis generation atomically and preserve the prior active
-  generation when ingestion fails;
+* replace current Postgres sources, diagnostics, and revision atomically and
+  preserve the prior committed state when ingestion fails, without persistent
+  generations;
 * serve the built dashboard and its query API over HTTP on loopback by default,
   or HTTPS only when the operator provides a certificate and key;
-* keep the Redis URL and any Redis credentials exclusively in the Go process;
-* execute Dashboard Language queries on the server against Redis row sets using
-  the same bounded Go query engine as unsupported dashboard stages;
-* keep active browser views subscribed to generation changes and return fresh,
+* keep Postgres and Redis credentials exclusively in the Go process; use Redis
+  for operational state only;
+* validate Dashboard Language before executing proven equivalent, bounded,
+  parameterized SQL plans in a repeatable-read Postgres transaction; evaluate
+  unsupported shapes in the bounded Go query engine without exposing raw SQL;
+* keep active browser views subscribed to revision changes and return fresh,
   bounded query payloads after successful ingestion.
 
-This profile is for local testing. Remote exposure, GitHub authentication, live
-GitHub querying, and webhook-driven ingestion are outside this version.
+The default local profile is loopback-only. The separate hosted profile requires
+GitHub OAuth and explicit organization/team authorization; neither profile
+grants database access to clients.
 
 `gh-aw-cao-dashboard-data` is the logical database name. Every implemented
 store uses `id` as its key path. The implemented secondary indexes are:

@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
 
 func TestPostgresSQLBindsValuesAndQuotesIdentifiers(t *testing.T) {
@@ -38,5 +40,25 @@ func TestPostgresSQLRejectsInvalidIdentifiersAndArity(t *testing.T) {
 	}
 	if _, _, err := postgresSQL(`SELECT {} AND {}`, 1); err == nil {
 		t.Fatal("missing parameters were accepted")
+	}
+}
+
+func TestNativeDocumentFilterUsesBoundValuesAndWhitelistedIdentifiers(t *testing.T) {
+	namespace := `tenant' OR TRUE --`
+	source := `$jobs' OR TRUE --`
+	predicate := `run' OR TRUE --`
+	where, args := documentFilter(namespace, source, &query.Filter{Predicates: []query.Predicate{
+		{Field: "runId", Equals: predicate},
+		{Field: "sessionId", Equals: "session-1"},
+	}})
+	statement, values, err := postgresSQL("SELECT count(*) FROM cao_source_documents WHERE "+where, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `SELECT count(*) FROM cao_source_documents WHERE namespace = $1 AND source_name = $2 AND ordinal >= 0 AND "run_id" = $3 AND "session_id" = $4`; statement != want {
+		t.Fatalf("unexpected native filter SQL: %q", statement)
+	}
+	if !reflect.DeepEqual(values, []any{namespace, source, predicate, "session-1"}) {
+		t.Fatalf("unexpected bound values: %#v", values)
 	}
 }

@@ -311,6 +311,30 @@ func TestExecuteFiltersUnionInputsBeforeWorkingByteGuard(t *testing.T) {
 	}
 }
 
+func TestPrefilterChargesRejectedRowsAndChecksOriginalInput(t *testing.T) {
+	definition := Definition{Name: "filtered", From: "raw",
+		Filter: &Filter{Predicates: []Predicate{{Field: "id", Equals: "kept"}}}}
+	_, metrics, err := New(&testLoader{sources: map[string]model.Source{
+		"raw": {Rows: []model.Row{{"id": "kept"}, {"id": "rejected"}}},
+	}}).Execute([]Definition{definition}, []string{"filtered"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if metrics.Operations != 5 {
+		t.Fatalf("FROM, FILTER and residual FROM must charge their input rows: %+v", metrics)
+	}
+	rows := make([]model.Row, MaxInputRows+1)
+	for i := range rows {
+		rows[i] = model.Row{"id": "rejected"}
+	}
+	_, _, err = New(&testLoader{sources: map[string]model.Source{
+		"raw": {Rows: rows},
+	}}).Execute([]Definition{definition}, []string{"filtered"})
+	if err == nil || !strings.Contains(err.Error(), "max input rows") {
+		t.Fatalf("prefilter must not bypass the input bound: %v", err)
+	}
+}
+
 func TestExecuteDoesNotPrefilterJoinedFields(t *testing.T) {
 	definition := Definition{
 		Name: "joined-filter", From: "audits",

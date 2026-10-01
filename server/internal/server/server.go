@@ -1205,7 +1205,7 @@ func (a *App) executeQueryWithReader(ctx context.Context, input queryRequest, al
 		definitions = append(append([]query.Definition{}, a.databaseQueries...), input.Queries...)
 	}
 	definitions = append(definitions, input.CompiledQueries...)
-	resolveQueryContext(definitions, evaluatedAt)
+	ResolveQueryContext(definitions, evaluatedAt)
 	replaced := map[string]bool{}
 	for _, name := range input.ReplacedSources {
 		replaced[name] = true
@@ -1253,6 +1253,52 @@ type databaseLoader struct {
 	dataRevision          string
 	app                   *App
 	allowCollectionHealth bool
+}
+
+// sourceOnlyLoader keeps the original bounded Go evaluator available for any
+// complete plan outside the native compiler's proven semantic subset.
+type sourceOnlyLoader struct{ loader *databaseLoader }
+
+func (only sourceOnlyLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
+	return only.loader.LoadSource(name, definition)
+}
+
+func (loader *databaseLoader) ExecutePlan(definitions []query.Definition, requested, order []string) (map[string]model.Source, model.Metrics, error) {
+	if native, ok := loader.database.(postgresx.NativePlanExecutor); ok {
+		runtime := map[string]bool{}
+		for _, name := range RuntimeQuerySourceNames() {
+			runtime[name] = true
+		}
+		registered := false
+		for _, name := range order {
+			if runtime[name] {
+				registered = true
+				break
+			}
+			for _, definition := range definitions {
+				if definition.Name != name {
+					continue
+				}
+				if runtime[definition.From] {
+					registered = true
+					break
+				}
+				for _, source := range definition.Union {
+					registered = registered || runtime[source]
+				}
+				for _, join := range definition.Joins {
+					registered = registered || runtime[join.Source]
+				}
+			}
+		}
+		if !registered {
+			result, metrics, supported, err := native.ExecuteNativePlan(loader.ctx, definitions, requested, order)
+			if supported {
+				return result, metrics, err
+			}
+		}
+	}
+	return query.New(sourceOnlyLoader{loader: loader}).Execute(definitions, requested)
 }
 
 func (loader *databaseLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
@@ -1370,7 +1416,8 @@ func evaluationTime(active postgresx.State) string {
 	return time.Now().UTC().Format(time.RFC3339Nano)
 }
 
-func resolveQueryContext(definitions []query.Definition, evaluatedAt string) {
+// ResolveQueryContext binds the ingestion evaluation time to dashboard queries.
+func ResolveQueryContext(definitions []query.Definition, evaluatedAt string) {
 	for definitionIndex := range definitions {
 		for computedIndex := range definitions[definitionIndex].Compute {
 			for argumentIndex := range definitions[definitionIndex].Compute[computedIndex].Args {
