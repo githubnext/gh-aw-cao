@@ -173,8 +173,10 @@ The CLI also exposes evidence used to improve campaigns:
 | --- | --- |
 | `./cao.sh operational-value` | Compute campaign-specific value evidence from the canonical snapshot. |
 | `./cao.sh cluster-problems` | Cluster bounded problem evidence emitted by installed campaigns. |
-| `./cao.sh dashboard-complexity --input FILE` | Rank Dashboard Language queries by estimated computation pressure. |
+| `./cao.sh dashboard-complexity --input FILE [--database FILE]` | Rank Dashboard Language queries by estimated computation pressure. |
 | `./cao.sh prune-dashboard --input FILE` | Report reusable, redundant, and unreferenced dashboard queries and views. |
+
+Without `--database`, `dashboard-complexity` normalizes every canonical database table to weight one. With `--database FILE`, it weights tables by their deployed row counts (normalized to the largest table) read from that downloaded snapshot, giving a more realistic computation-pressure ranking.
 
 Data-pipeline and dashboard-maintainer commands are listed by `./cao.sh --help`. For the full data workflow, see [Dashboard data ingestion](dashboard-data-ingestion.md#use-local-sqlite).
 
