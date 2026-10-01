@@ -117,13 +117,15 @@ test("workflow contracts isolate authenticated campaign lifecycle checks", () =>
 
   assert.match(source, /pull_request:\n    paths-ignore:\n      - \.github\/workflows\/cid\.yml\n      - dashboard\/site\/\*\*/);
   assert.match(source, /push:\n    branches: \[main\]\n    paths-ignore:\n      - \.github\/workflows\/cid\.yml\n      - dashboard\/site\/\*\*/);
-  assert.match(unit, /area: \[activity, dashboard, workflows, tooling, documentation\]/);
+  assert.match(unit, /area: \[activity, dashboard, workflows, tooling\]/);
   assert.match(unit, /uses: \.\/\.github\/actions\/setup-gh-aw/);
   assert.match(unit, /npm run test:unit:area -- \$\{\{ matrix\.area \}\}/);
   assert.doesNotMatch(unit, /GH_TOKEN|CENTRAL_AGENTIC_OPS_CAMPAIGN_SOURCE|test:campaign-lifecycle/);
   assert.match(contracts, /needs: unit/);
   assert.match(contracts, /if: \$\{\{ !cancelled\(\) \}\}/);
   assert.match(contracts, /UNIT_RESULT: \$\{\{ needs\.unit\.result \}\}/);
+  assert.match(contracts, /- name: Run documentation unit contracts\n\s+if: \$\{\{ !cancelled\(\) \}\}\n\s+run: npm run test:unit:area -- documentation/);
+  assert.match(contracts, /- name: Build and validate documentation\n\s+if: \$\{\{ !cancelled\(\) \}\}\n\s+run: \|\n\s+npm run check:svg\n\s+npm run docs:build/);
   for (const command of [
     "lint", "typecheck:cao", "test:integration", "test:load",
     "check:svg", "compile", "docs:build",

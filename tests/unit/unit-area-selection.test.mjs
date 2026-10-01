@@ -12,7 +12,9 @@ test("every root unit test runs in exactly one topical area", () => {
 });
 
 test("CI runs every defined unit test area", () => {
-  const workflow = readFileSync(".github/workflows/workflow-contracts.yml", "utf8");
+  const workflow = readFileSync(".github/workflows/workflow-contracts.yml", "utf8").replaceAll("\r\n", "\n");
   const areas = /^\s+area: \[([^\]]+)\]/m.exec(workflow)?.[1].split(", ");
-  assert.deepEqual(areas, Object.keys(unitTestAreas));
+  assert.deepEqual(areas, Object.keys(unitTestAreas).filter((area) => area !== "documentation"));
+  assert.match(workflow, /- name: Run documentation unit contracts\n\s+if: \$\{\{ !cancelled\(\) \}\}\n\s+run: npm run test:unit:area -- documentation/);
+  assert.equal((workflow.match(/npm run test:unit:area -- documentation/g) ?? []).length, 1);
 });
