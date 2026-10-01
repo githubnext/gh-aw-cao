@@ -10,7 +10,7 @@ import { updateRateLimitNotification } from "./rate-limit-notification.js";
 const debugRemoteBackend = createDebug("remote-data-backend");
 
 const BACKEND_META_NAME = "dashboard-data-backend";
-const REMOTE_BACKEND = "redis-http";
+const REMOTE_BACKEND = "server-http";
 const ACCESS_TOKEN_STORAGE_KEY = "cao-dashboard-access-token";
 
 export class DashboardServerError extends Error {

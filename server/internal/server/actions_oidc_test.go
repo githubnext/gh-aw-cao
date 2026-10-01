@@ -28,6 +28,8 @@ func (transport oidcTestTransport) RoundTrip(request *http.Request) (*http.Respo
 }
 
 func TestHostedActionsMCPAuthentication(t *testing.T) {
+	database := integrationDatabase(t)
+	seedDatabase(t, database, nil)
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatal(err)
@@ -300,6 +302,7 @@ func TestHostedActionsMCPAuthentication(t *testing.T) {
 	}
 
 	fullApp := newMCPTestApp(t, true)
+	fullApp.database = database
 	fullApp.oauth = &githubOAuth{}
 	fullApp.config.HostProfile = hostedHostProfile()
 	fullApp.config.ActionsHTTPClient = client

@@ -35,8 +35,6 @@ type Metrics struct {
 	OrderByCount        int      `json:"orderByCount"`
 	LimitCount          int      `json:"limitCount"`
 	PushedDown          []string `json:"pushedDown"`
-	RedisCommands       int      `json:"redisCommands"`
-	RedisRows           int      `json:"redisRows"`
 	FallbackOperations  []string `json:"fallbackOperations"`
 }
 

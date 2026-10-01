@@ -39,6 +39,11 @@ test('the generated contract describes the implemented security and wire formats
   for (const field of ['pushedDown', 'fallbackOperations']) {
     assert.ok(openapi.components.schemas.QueryMetrics.properties[field].anyOf.some(branch => branch.type === 'null'))
   }
+  for (const field of ['redisCommands', 'redisRows']) {
+    assert.equal(openapi.components.schemas.QueryMetrics.properties[field], undefined)
+  }
+  assert.equal(openapi.components.schemas.HealthResponse.properties.generation, undefined)
+  assert.equal(openapi.components.schemas.RebuildStatus.properties.generation, undefined)
 })
 
 test('structured payload fields stay in sync with Go JSON tags', () => {

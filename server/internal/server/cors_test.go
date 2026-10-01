@@ -180,6 +180,7 @@ func TestHostPolicyReadsCORSFromCaoJSON(t *testing.T) {
 func TestSameOriginDefaultEmitsNoCORSHeaders(t *testing.T) {
 	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
 	app := newAzureTestApp(t, github.URL)
+	app.database = integrationDatabase(t)
 	request := azureRequest(t, http.MethodGet, "/api/v1/health")
 	request.Header.Set("Origin", "https://evil.example")
 	response := httptest.NewRecorder()
@@ -261,6 +262,7 @@ func TestConfiguredCORSAllowsOnlyListedOrigins(t *testing.T) {
 func TestConfiguredCORSNeverSharesCredentialedResponses(t *testing.T) {
 	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
 	app := newAzureTestApp(t, github.URL)
+	app.database = integrationDatabase(t)
 	app.config.CORS = CORSPolicy{AllowedOrigins: []string{"https://tools.example.com"}, MaxAge: 120}
 	for _, path := range []string{"/api/auth/session", "/api/v1/health"} {
 		request := azureRequest(t, http.MethodGet, path)

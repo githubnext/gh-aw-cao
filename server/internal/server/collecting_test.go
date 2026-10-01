@@ -59,13 +59,15 @@ func TestCollectionHealthSourceReportsBackfillProgress(t *testing.T) {
 }
 
 func TestCollectionHealthQueryRunsThroughServerQueryEngine(t *testing.T) {
+	database := integrationDatabase(t)
+	seedDatabase(t, database, nil)
 	address, closeServer := fakeRedis(t)
 	defer closeServer()
 	client, err := redisx.New("redis://" + address)
 	if err != nil {
 		t.Fatal(err)
 	}
-	app := &App{store: redisx.NewStore(client, "health-query-test")}
+	app := &App{store: redisx.NewStore(client, "health-query-test"), database: database}
 	input := queryRequest{
 		Queries:     []query.Definition{{Name: "ingestion-health", From: collectionHealthSourceName}},
 		SourceNames: []string{"ingestion-health"},

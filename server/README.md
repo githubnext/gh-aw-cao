@@ -873,7 +873,7 @@ operator-managed certificate.
 The server injects:
 
 ```html
-<meta name="dashboard-data-backend" content="redis-http">
+<meta name="dashboard-data-backend" content="server-http">
 ```
 
 into the dashboard HTML. The browser then uses the server API instead of

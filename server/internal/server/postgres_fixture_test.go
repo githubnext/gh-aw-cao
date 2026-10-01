@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -54,4 +55,11 @@ func integrationDatabase(t *testing.T) *postgresx.Store {
 		_ = admin.Close()
 	})
 	return store
+}
+
+func seedDatabase(t *testing.T, store *postgresx.Store, sources map[string]model.Source) {
+	t.Helper()
+	if _, err := store.Replace(t.Context(), sources, model.Diagnostics{}, "test-data", time.Date(2026, 2, 3, 4, 5, 6, 0, time.UTC)); err != nil {
+		t.Fatal(err)
+	}
 }

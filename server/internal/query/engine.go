@@ -436,7 +436,7 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 	for _, source := range output {
 		metrics.OutputRows += len(source.Rows)
 	}
-	queryLog.Printf("completed outputs=%d operations=%d redis_commands=%d redis_rows=%d", len(output), operations, metrics.RedisCommands, metrics.RedisRows)
+	queryLog.Printf("completed outputs=%d operations=%d", len(output), operations)
 	return output, metrics, nil
 }
 
@@ -567,8 +567,6 @@ func residualDefinition(definition Definition, pushed []string) Definition {
 }
 
 func mergeMetrics(target *model.Metrics, incoming model.Metrics) {
-	target.RedisCommands += incoming.RedisCommands
-	target.RedisRows += incoming.RedisRows
 	target.PushedDown = append(target.PushedDown, incoming.PushedDown...)
 	target.FallbackOperations = append(target.FallbackOperations, incoming.FallbackOperations...)
 }

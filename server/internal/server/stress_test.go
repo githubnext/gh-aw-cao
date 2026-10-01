@@ -134,6 +134,7 @@ func newStressHarness(tb testing.TB, options stressOptions) *stressHarness {
 		tb.Fatal(err)
 	}
 	app, err := New(context.Background(), store, Config{
+		Database:      constructorDatabase(),
 		Listen:        "127.0.0.1:0",
 		SiteDirectory: site,
 		AccessToken:   testAccessToken,

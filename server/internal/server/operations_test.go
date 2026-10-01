@@ -139,7 +139,7 @@ func TestWebhookReconcilesThroughInjectedCanonicalUpdater(t *testing.T) {
 }
 
 func TestEmptyRedisIsHealthyButNotReady(t *testing.T) {
-	app := &App{store: redisx.NewStore(emptyRedisClient{}, "empty-test")}
+	app := &App{store: redisx.NewStore(emptyRedisClient{}, "empty-test"), database: integrationDatabase(t)}
 
 	healthResponse := httptest.NewRecorder()
 	app.health(
@@ -199,6 +199,7 @@ func TestHostedRebuildRequiresExplicitAdministrator(t *testing.T) {
 }
 
 func TestSimulatorUsesProductionWebhookAdmissionAndCollectionQueue(t *testing.T) {
+	database := integrationDatabase(t)
 	var client *redisx.Client
 	var err error
 	if endpoint := os.Getenv("CAO_SIMULATOR_REDIS_URL"); endpoint != "" {
@@ -224,6 +225,7 @@ func TestSimulatorUsesProductionWebhookAdmissionAndCollectionQueue(t *testing.T)
 	const secret = "simulator-webhook-secret"
 	namespace := "simulator-test-" + strconv.FormatInt(time.Now().UnixNano(), 10)
 	app, err := New(t.Context(), redisx.NewStore(client, namespace), Config{
+		Database:      database,
 		Listen:        "127.0.0.1:0",
 		SiteDirectory: site,
 		AccessToken:   strings.Repeat("x", 32),
@@ -257,6 +259,7 @@ func TestSimulatorExercisesGoServerWithRedis(t *testing.T) {
 	if endpoint == "" {
 		t.Skip("set CAO_SIMULATOR_REDIS_URL to run the Go server simulator integration")
 	}
+	database := integrationDatabase(t)
 	client, err := redisx.New(endpoint)
 	if err != nil {
 		t.Fatal(err)
@@ -272,6 +275,7 @@ func TestSimulatorExercisesGoServerWithRedis(t *testing.T) {
 	const secret = "simulator-webhook-secret"
 	namespace := "simulator-server-" + strconv.FormatInt(time.Now().UnixNano(), 10)
 	app, err := New(t.Context(), redisx.NewStore(client, namespace), Config{
+		Database:      database,
 		Listen:        "127.0.0.1:0",
 		SiteDirectory: site,
 		AccessToken:   testAccessToken,

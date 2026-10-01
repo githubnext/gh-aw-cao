@@ -37,7 +37,7 @@ describe("remote dashboard data backend", () => {
     expect(usesRemoteDataBackend(document)).toBe(false);
     const meta = document.createElement("meta");
     meta.name = "dashboard-data-backend";
-    meta.content = "redis-http";
+    meta.content = "server-http";
     document.head.append(meta);
     expect(usesRemoteDataBackend(document)).toBe(true);
   });

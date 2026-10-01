@@ -478,7 +478,7 @@
     "/api/health": {
       "get": {
         "operationId": "Health_health",
-        "description": "Public liveness and storage health, including when no projection exists.An externally hosted handler also returns an Unavailable error until startup completes or after shutdown.",
+        "description": "Public liveness and storage health, including before the first data ingestion.An externally hosted handler also returns an Unavailable error until startup completes or after shutdown.",
         "parameters": [],
         "responses": {
           "200": {
@@ -526,7 +526,7 @@
     "/api/readiness": {
       "get": {
         "operationId": "Health_readiness",
-        "description": "Public readiness; an empty Redis is healthy but not ready.",
+        "description": "Public readiness; Redis must be connected and Postgres must contain dashboard data.",
         "parameters": [],
         "responses": {
           "200": {
@@ -1745,7 +1745,7 @@
     "/api/v1/query": {
       "post": {
         "operationId": "Queries_execute",
-        "description": "Execute Dashboard Language against the active server projection. Up to 256 source names and 8 MiB of request body.",
+        "description": "Execute Dashboard Language against current Postgres dashboard entities. Up to 256 source names and 8 MiB of request body.",
         "parameters": [
           {
             "name": "X-CSRF-Token",
@@ -2785,9 +2785,6 @@
             "format": "int64",
             "description": "Details are present only for an authorized caller."
           },
-          "generation": {
-            "type": "string"
-          },
           "counts": {
             "type": "object",
             "unevaluatedProperties": {
@@ -3126,8 +3123,6 @@
           "orderByCount",
           "limitCount",
           "pushedDown",
-          "redisCommands",
-          "redisRows",
           "fallbackOperations"
         ],
         "properties": {
@@ -3223,14 +3218,6 @@
                 "type": "null"
               }
             ]
-          },
-          "redisCommands": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "redisRows": {
-            "type": "integer",
-            "format": "int32"
           },
           "fallbackOperations": {
             "anyOf": [
@@ -3572,9 +3559,6 @@
             "type": "string"
           },
           "completedAt": {
-            "type": "string"
-          },
-          "generation": {
             "type": "string"
           },
           "revision": {
