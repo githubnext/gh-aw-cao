@@ -250,6 +250,51 @@ func TestClassifyRedisStats(t *testing.T) {
 	}
 }
 
+func TestClassifyRedisClients(t *testing.T) {
+	cases := []struct {
+		name       string
+		connected  int64
+		blocked    int64
+		collecting bool
+		wantStatus Status
+		wantReason clientsClassificationReason
+		summaryHas string
+	}{
+		{
+			name:      "blocked clients pass when collecting",
+			connected: 5, blocked: 2, collecting: true,
+			wantStatus: StatusPass, wantReason: clientsReasonBlockedExpected,
+			summaryHas: "expected for waiting collection workers",
+		},
+		{
+			name:      "blocked clients warn when not collecting",
+			connected: 5, blocked: 2, collecting: false,
+			wantStatus: StatusWarn, wantReason: clientsReasonBlockedUnexpected,
+			summaryHas: "no collection workers configured",
+		},
+		{
+			name:      "no blocked clients pass regardless of profile",
+			connected: 5, blocked: 0, collecting: false,
+			wantStatus: StatusPass, wantReason: clientsReasonNoneBlocked,
+			summaryHas: "none blocked",
+		},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			got := classifyRedisClients(testCase.connected, testCase.blocked, testCase.collecting)
+			if got.status != testCase.wantStatus {
+				t.Fatalf("status = %s, want %s", got.status, testCase.wantStatus)
+			}
+			if got.reason != testCase.wantReason {
+				t.Fatalf("reason = %s, want %s", got.reason, testCase.wantReason)
+			}
+			if !strings.Contains(got.summary, testCase.summaryHas) {
+				t.Fatalf("summary = %q, want it to contain %q", got.summary, testCase.summaryHas)
+			}
+		})
+	}
+}
+
 func TestForeignNamespacesOf(t *testing.T) {
 	cases := []struct {
 		name      string
