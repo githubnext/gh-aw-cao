@@ -5,8 +5,12 @@ const rateLimitedPolicies = state(new Set());
 /** @type {ReturnType<typeof publishNotification> | undefined} */
 let rateLimitNotification;
 
+export function isDashboardRateLimited() {
+  return rateLimitedPolicies.get().size > 0;
+}
+
 effect(() => {
-  if (rateLimitedPolicies.get().size > 0) {
+  if (isDashboardRateLimited()) {
     rateLimitNotification ??= publishNotification({
       message: 'Dashboard is rate limited. Please try again shortly.',
       tone: 'error',

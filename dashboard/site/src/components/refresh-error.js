@@ -2,6 +2,9 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { formatMediumUtcDateTime, renderCloseButton, renderTooltip } from './ui-primitives.js';
 import { createDebug } from '../debug.js';
+import { effect } from '../reactive.js';
+import { isDashboardRateLimited } from '../rate-limit-notification.js';
+import { createFactoryScope } from './factory-elements.js';
 
 const debugRefreshError = createDebug('refresh-error');
 
@@ -64,19 +67,44 @@ export function renderDashboardSnapshotStatus(snapshot) {
 }
 
 /**
- * @param {{ createdAt: string }} snapshot
+ * @param {{ createdAt: string } | null} snapshot
  * @param {{ refreshing?: boolean }} [options]
  */
 export function renderDashboardCurrentStatus(snapshot, { refreshing = false } = {}) {
-  return renderTooltip({
+  const scope = createFactoryScope();
+  const normalIcon = snapshot ? (refreshing ? 'sync' : 'check-circle-fill') : 'sync';
+  const trigger = h('button', { type: 'button', className: 'tooltip-trigger' }, octicon(normalIcon));
+  const description = h('span', { className: 'tooltip-description' });
+  const status = renderTooltip({
     id: 'dashboard-current-status-tooltip',
-    label: refreshing ? 'Refreshing dashboard data' : 'Dashboard data is current',
-    description: refreshing
-      ? `Showing the last complete snapshot from ${formatSnapshotDate(snapshot)} while dashboard data refreshes.`
-      : `Dashboard data is current as of ${formatSnapshotDate(snapshot)}.`,
-    icon: octicon(refreshing ? 'sync' : 'check-circle-fill'),
-    className: refreshing ? 'dashboard-current-status dashboard-current-status-refreshing' : 'dashboard-current-status'
+    label: 'Dashboard data status',
+    trigger,
+    content: description,
+    className: 'dashboard-current-status'
   });
+  let currentIcon = normalIcon;
+  effect(() => {
+    const limited = isDashboardRateLimited();
+    const icon = limited ? 'alert' : normalIcon;
+    if (icon !== currentIcon) {
+      trigger.replaceChildren(octicon(icon));
+      currentIcon = icon;
+    }
+    const label = limited ? 'Dashboard is rate limited' : refreshing ? 'Refreshing dashboard data' : 'Dashboard data is current';
+    trigger.setAttribute('aria-label', label);
+    description.textContent = limited
+      ? 'Dashboard requests are rate limited. Please try again shortly.'
+      : snapshot
+        ? refreshing
+          ? `Showing the last complete snapshot from ${formatSnapshotDate(snapshot)} while dashboard data refreshes.`
+          : `Dashboard data is current as of ${formatSnapshotDate(snapshot)}.`
+        : '';
+    status.classList.toggle('dashboard-current-status-limited', limited);
+    status.classList.toggle('dashboard-current-status-refreshing', !limited && refreshing);
+    status.hidden = !snapshot && !limited;
+  }, { signal: scope.signal });
+  scope.bind(status);
+  return status;
 }
 
 /**
