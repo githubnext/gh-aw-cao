@@ -8,6 +8,7 @@ import "./auth.tsp";
 import "./canonical.tsp";
 import "./memory.tsp";
 import "./operations.tsp";
+import "./postgres.tsp";
 
 using TypeSpec.Http;
 

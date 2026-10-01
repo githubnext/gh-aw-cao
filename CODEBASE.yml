@@ -138,7 +138,7 @@ components:
     responsibility: rebuildable per-browser data projection
   postgres_entity_store:
     path: server/internal/postgresx/
-    responsibility: transactionally replace and read current dashboard entity sources, diagnostics, and revision state; maintain lossless JSON-text row documents with indexed drilldown keys alongside legacy per-value rows during migration; execute proven bounded plans as parameterized SQL in a repeatable-read snapshot without persistent generations
+    responsibility: transactionally replace and read current dashboard entity sources, diagnostics, and revision state; store mapped canonical fields in native columns and variable observation attributes or inventory sources as JSON, retaining an older EAV reader until replacement; execute proven bounded plans as parameterized SQL in a repeatable-read snapshot without persistent generations
   redis_operational_store:
     path: server/internal/redisx/
     responsibility: support operational caches, queues, and sessions, not dashboard entity storage or query execution
@@ -319,7 +319,7 @@ invariants:
   - "Activity evidence MUST NOT determine rollout, outcomes, or operational value."
   - "JSONL snapshots are authoritative; caches, SQLite, and IndexedDB are disposable projections."
   - "The hosted Postgres store holds current dashboard entity sources, diagnostics, and revision; replacement is transactional and does not create generations or persistent derived projections."
-  - "The hosted query plan executor MUST bind values and namespace, admit only proven equivalent complete paths, enforce pre-filter input and resource bounds, and fall back to bounded Go evaluation for unsupported paths or older committed revisions without indexed documents."
+  - "The hosted query plan executor MUST bind values and namespace, admit only proven equivalent complete paths, enforce pre-filter input and resource bounds, and fall back to bounded Go evaluation for unsupported semantics or older committed revisions."
   - "Dashboard ingestion MUST load every run-information shard before record shards; every domain, tool, audit, and issue MUST identify its owning run."
   - "The deployed dashboard artifact MUST NOT contain or manifest raw Activity JSONL; browser ingestion MUST consume compacted normalized run and record JSONL and fail closed when run-information shards are absent."
   - "Normalized Activity shards MUST be JSONL and browser consumers MUST stream bounded record batches without buffering a complete shard."

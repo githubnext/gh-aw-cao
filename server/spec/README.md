@@ -4,7 +4,23 @@
 `main.tsp` imports independent domains: shared response/auth types, Dashboard
 Language queries and SSE, health, hosted sessions, canonical entities, repository
 memory, and ingestion/administration. `/mcp` internals and static dashboard assets
-are intentionally out of scope.
+are intentionally out of scope. `postgres.tsp` documents the private physical
+storage contract separately from the HTTP entity response contract; it does
+not add an API endpoint or alter the canonical response shape.
+
+The PostgreSQL source classification is separate from the logical HTTP row
+contract. The registered `$`-prefixed canonical collections (`campaigns`, `repositories`,
+`workflows`, `runs`, `jobs`, `sessions`, `events`, `domains`, `tools`, `skills`,
+`friction`, `audits`, `issues`, `operationalValues`, `experiments`,
+`experimentAssignments`, `graders`, `graderObservations`, `evals`, and
+`evalObservations`) have native columns for shared scalar fields and an extension
+for genuinely variable observation attributes. Producer-specific known fields
+still require explicit native mappings before this migration is complete; they
+must not be treated as permanently schemaless. The normalizer merges arbitrary
+`observation.data` attributes without a closed field list. Inventory source
+names and row objects (even names beginning with `$` when unregistered) are
+caller-supplied and genuinely schemaless. The PostgreSQL store must never copy
+a native field into an extension or its legacy row representation.
 
 The compiled `generated/openapi.json` is OpenAPI **3.1** and can be consumed by
 another server implementation. `generated/schemas/` contains JSON Schema 2020-12

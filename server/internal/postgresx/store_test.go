@@ -142,11 +142,15 @@ func TestStoreIntegration(t *testing.T) {
 		"$runs": {
 			Source: "$runs",
 			Rows: []model.Row{
-				{"id": "raw-1", "nested": map[string]any{
-					"large":       json.Number("9007199254740993"),
-					"array":       []any{map[string]any{"deep": []any{json.Number("1.2345678901234567890123456789"), nil, true}}, []any{}, map[string]any{}},
-					"unusual/key": json.Number("1e1000000"),
-				}},
+				{"id": "raw-1", "runId": nil, "status": "completed", "enabled": true,
+					"organizationLink": map[string]any{"href": "https://github.com/githubnext"},
+					"githubId":         json.Number("9007199254740993"),
+					"githubRunId":      "00123", "attempt": json.Number("9007199254740993"),
+					"sequence": nil, "createdAt": "2026-01-02T03:04:05.123456789-07:00", "nested": map[string]any{
+						"large":       json.Number("9007199254740993"),
+						"array":       []any{map[string]any{"deep": []any{json.Number("1.2345678901234567890123456789"), nil, true}}, []any{}, map[string]any{}},
+						"unusual/key": json.Number("1e1000000"),
+					}},
 			},
 			Metadata: model.Metadata{"kind": "canonical"},
 		},
@@ -164,6 +168,21 @@ func TestStoreIntegration(t *testing.T) {
 	}
 	diagnostics := model.Diagnostics{SchemaVersion: model.SchemaVersion, Counts: map[string]int{"repositories": 2}, RelationshipErrors: []string{"test diagnostic"}, DuplicateRecordIDs: map[string][]string{"present-empty": {}, "duplicates": {"a", "b"}}}
 	revision, err := store.Replace(ctx, sources, diagnostics, "test-revision", evaluatedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
+		definitions := []query.Definition{{
+			Name: "by-status", From: "$runs",
+			Filter: &query.Filter{Predicates: []query.Predicate{{Field: "status", Equals: "completed"}}},
+		}}
+		result, _, supported, planErr := reader.(NativePlanExecutor).ExecuteNativePlan(ctx, definitions,
+			[]string{"by-status"}, []string{"by-status"})
+		if planErr != nil || !supported || !reflect.DeepEqual(result["by-status"].Rows, sources["$runs"].Rows) {
+			t.Errorf("typed status predicate: %+v supported=%t err=%v", result, supported, planErr)
+		}
+		return nil
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,6 +233,34 @@ func TestStoreIntegration(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(raw.Rows, sources["$runs"].Rows) {
 		t.Fatalf("raw canonical source: %+v, %v", raw, err)
 	}
+	err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
+		defs := []query.Definition{{
+			Name: "selected-run", From: "$runs",
+			Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: "raw-1"}}},
+			Select: []query.SelectedField{
+				{Field: "runId"}, {Field: "createdAt"}, {Field: "attempt"},
+				{Field: "sequence"}, {Field: "enabled"}, {Field: "githubId"},
+				{Field: "githubRunId"}, {Field: "organizationLink"},
+				{Field: "nested"}, {Field: "missingValue"},
+			},
+		}}
+		result, _, supported, planErr := reader.(NativePlanExecutor).ExecuteNativePlan(ctx, defs,
+			[]string{"selected-run"}, []string{"selected-run"})
+		want := model.Row{
+			"runId": nil, "createdAt": sources["$runs"].Rows[0]["createdAt"],
+			"attempt": json.Number("9007199254740993"), "sequence": nil, "enabled": true,
+			"githubId": json.Number("9007199254740993"), "githubRunId": "00123",
+			"organizationLink": map[string]any{"href": "https://github.com/githubnext"},
+			"nested":           sources["$runs"].Rows[0]["nested"],
+		}
+		if planErr != nil || !supported || !reflect.DeepEqual(result["selected-run"].Rows, []model.Row{want}) {
+			t.Errorf("native typed selection: result=%+v supported=%t err=%v", result, supported, planErr)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	deepSource, _, err := store.LoadSource(ctx, "deep", nil)
 	if err != nil || !reflect.DeepEqual(deepSource.Rows, sources["deep"].Rows) ||
 		!reflect.DeepEqual(deepSource.Metadata, sources["deep"].Metadata) {
@@ -228,8 +275,50 @@ func TestStoreIntegration(t *testing.T) {
 	assertNativeSchema(t, ctx, store.db)
 	var documents int
 	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM cao_source_documents
-		WHERE namespace = $1 AND source_name = $2`, "default", "$runs").Scan(&documents); err != nil || documents != 2 {
-		t.Fatalf("missing atomic source documents: count=%d err=%v", documents, err)
+		WHERE namespace = $1 AND source_name = $2`, "default", "$runs").Scan(&documents); err != nil || documents != 1 {
+		t.Fatalf("canonical row was duplicated in documents: count=%d err=%v", documents, err)
+	}
+	var canonicalRows int
+	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM cao_canonical_rows
+		WHERE namespace = $1 AND source_name = $2 AND id = 'raw-1' AND extension::text LIKE '%1e1000000%'`,
+		"default", "$runs").Scan(&canonicalRows); err != nil || canonicalRows != 1 {
+		t.Fatalf("missing native canonical row or lossless extension: count=%d err=%v", canonicalRows, err)
+	}
+	if _, err := store.db.ExecContext(ctx, `INSERT INTO cao_canonical_rows
+		(namespace, source_name, ordinal, present, extension, github_id, github_id_kind)
+		VALUES ($1, '$runs', 9999, ARRAY['githubId'], '{}'::json, '42', 'invalid')`, "default"); err == nil {
+		t.Fatal("invalid mixed identifier kind was accepted")
+	}
+	var nativeIndexes int
+	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM pg_indexes
+		WHERE schemaname = current_schema() AND tablename = 'cao_canonical_rows'
+		AND indexname IN (
+			'cao_canonical_rows_repository_id', 'cao_canonical_rows_workflow_id',
+			'cao_canonical_rows_created_at', 'cao_canonical_rows_started_at',
+			'cao_canonical_rows_timestamp_at', 'cao_canonical_rows_observed_at')`).Scan(&nativeIndexes); err != nil || nativeIndexes != 6 {
+		t.Fatalf("missing native relationship/time indexes: count=%d err=%v", nativeIndexes, err)
+	}
+	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM cao_values
+		WHERE namespace = $1 AND source_name = '$runs'`, "default").Scan(&canonicalRows); err != nil || canonicalRows != 0 {
+		t.Fatalf("canonical metadata or fields duplicated in EAV: count=%d err=%v", canonicalRows, err)
+	}
+	var href, extension string
+	if err := store.db.QueryRowContext(ctx, `SELECT organization_href, extension::text
+		FROM cao_canonical_rows WHERE namespace = $1 AND source_name = '$runs' AND ordinal = 0`,
+		"default").Scan(&href, &extension); err != nil ||
+		href != "https://github.com/githubnext" || strings.Contains(extension, "organizationLink") {
+		t.Fatalf("known link was not native-only: href=%q extension=%q err=%v", href, extension, err)
+	}
+	var attemptRaw, githubIDRaw sql.NullString
+	var nativeAttempt, nativeGithubID string
+	if err := store.db.QueryRowContext(ctx, `SELECT attempt_raw, github_id,
+		attempt::text, github_id_numeric::text FROM cao_canonical_rows
+		WHERE namespace = $1 AND source_name = '$runs' AND ordinal = 0`,
+		"default").Scan(&attemptRaw, &githubIDRaw, &nativeAttempt, &nativeGithubID); err != nil ||
+		attemptRaw.Valid || githubIDRaw.Valid ||
+		nativeAttempt != "9007199254740993" || nativeGithubID != "9007199254740993" {
+		t.Fatalf("ordinary numbers copied into text: attempt=%q githubId=%q raw=%v/%v err=%v",
+			nativeAttempt, nativeGithubID, attemptRaw, githubIDRaw, err)
 	}
 	var exactNumber, textFallback bool
 	if err := store.db.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM cao_values
@@ -237,10 +326,10 @@ func TestStoreIntegration(t *testing.T) {
 		"default", "9007199254740993").Scan(&exactNumber); err != nil || !exactNumber {
 		t.Fatalf("large integer missing native numeric representation: %v, %v", exactNumber, err)
 	}
-	if err := store.db.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM cao_values
-		WHERE namespace = $1 AND kind = 'number' AND text_value = $2 AND numeric_value IS NULL)`,
-		"default", "1e1000000").Scan(&textFallback); err != nil || !textFallback {
-		t.Fatalf("out-of-range number lost its lexeme: %v, %v", textFallback, err)
+	if err := store.db.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM cao_canonical_rows
+		WHERE namespace = $1 AND extension::text LIKE '%1e1000000%')`,
+		"default").Scan(&textFallback); err != nil || !textFallback {
+		t.Fatalf("out-of-range extension number lost its lexeme: %v, %v", textFallback, err)
 	}
 	loaded, metrics, err := store.LoadSource(ctx, "repositories", &query.Definition{From: "repositories", Limit: intPtr(1)})
 	if err != nil {
@@ -359,6 +448,71 @@ func TestStoreIntegration(t *testing.T) {
 	}
 	if legacy, _, err := store.LoadSource(ctx, "empty", nil); err != nil || len(legacy.Rows) != 0 {
 		t.Fatalf("EAV fallback lost older source: %+v err=%v", legacy, err)
+	}
+	// A previous revision's complete document-backed source is converted on
+	// reopen without retaining either EAV nodes or duplicate row documents.
+	_, err = store.Replace(ctx, map[string]model.Source{"$jobs": {
+		Source: "$jobs", Rows: []model.Row{{"id": "old", "createdAt": "invalid"}},
+		Metadata: model.Metadata{"source-id": "$jobs"},
+	}}, diagnostics, "legacy", evaluatedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fallbacks, err := store.StorageFallbacks(ctx)
+	if err != nil || fallbacks["$jobs"] != "known timestamp createdAt has invalid format" {
+		t.Fatalf("unsupported canonical shape fell back without diagnostics: %+v err=%v", fallbacks, err)
+	}
+	err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
+		defs := []query.Definition{{Name: "legacy-status", From: "$jobs",
+			Filter: &query.Filter{Predicates: []query.Predicate{{Field: "status", Equals: "completed"}}}}}
+		_, _, supported, planErr := reader.(NativePlanExecutor).ExecuteNativePlan(ctx, defs,
+			[]string{"legacy-status"}, []string{"legacy-status"})
+		if planErr != nil || supported {
+			t.Errorf("legacy fallback cannot claim typed field pushdown: supported=%t err=%v", supported, planErr)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.db.ExecContext(ctx, `UPDATE cao_source_documents SET payload = $1
+		WHERE namespace = $2 AND source_name = '$jobs' AND ordinal = 0`,
+		`{"id":"old","createdAt":"2026-01-02T03:04:05Z"}`, "default"); err != nil {
+		t.Fatal(err)
+	}
+	if err := initialize(ctx, store.db); err != nil {
+		t.Fatal(err)
+	}
+	fallbacks, err = store.StorageFallbacks(ctx)
+	if err != nil || len(fallbacks) != 0 {
+		t.Fatalf("backfilled source retained fallback warning: %+v err=%v", fallbacks, err)
+	}
+	converted, _, err := store.LoadSource(ctx, "$jobs", nil)
+	if err != nil || !reflect.DeepEqual(converted.Rows, []model.Row{{"id": "old", "createdAt": "2026-01-02T03:04:05Z"}}) {
+		t.Fatalf("backfilled canonical row: %+v err=%v", converted, err)
+	}
+	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM cao_source_rows
+		WHERE namespace = $1 AND source_name = '$jobs'`, "default").Scan(&documents); err != nil || documents != 0 {
+		t.Fatalf("backfill retained EAV rows: count=%d err=%v", documents, err)
+	}
+	var exceptionalRaw sql.NullString
+	if err := store.db.QueryRowContext(ctx, `SELECT created_at_raw FROM cao_canonical_rows
+		WHERE namespace = $1 AND source_name = '$jobs'`, "default").Scan(&exceptionalRaw); err != nil || exceptionalRaw.Valid {
+		t.Fatalf("ordinary timestamp unnecessarily duplicated: raw=%v err=%v", exceptionalRaw, err)
+	}
+	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM cao_values
+		WHERE namespace = $1 AND source_name = '$jobs'`, "default").Scan(&documents); err != nil || documents != 0 {
+		t.Fatalf("backfill retained metadata EAV: count=%d err=%v", documents, err)
+	}
+	if err := initialize(ctx, store.db); err != nil {
+		t.Fatalf("backfill is not idempotent: %v", err)
+	}
+	if _, err := store.db.ExecContext(ctx, `UPDATE cao_counts SET count = count + 1
+		WHERE namespace = $1 AND source_name = '$jobs'`, "default"); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := store.LoadSource(ctx, "$jobs", nil); err == nil {
+		t.Fatal("incomplete typed source was silently returned")
 	}
 }
 

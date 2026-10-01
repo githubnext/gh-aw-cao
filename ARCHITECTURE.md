@@ -125,10 +125,13 @@ sessions, not dashboard entity storage or query execution.
 Its local mode remains loopback-only. Its host-neutral mode uses
 GitHub OAuth and explicit organization or team authorization, verifies and
 deduplicates GitHub webhooks, and atomically replaces the current Postgres
-sources and state. A lossless JSON-text document and indexed drilldown keys
-are written atomically alongside the existing per-value representation until
-its callers and migration have been proven. There are no persistent Postgres
-generations or separate derived projections. Redis remains reconstructable
+sources and state. Mapped canonical scalar and link fields use native Postgres
+columns; other observation fields and open inventory sources retain JSON while
+the known-field catalogue is expanded. Existing document-backed canonical rows
+are converted
+transactionally; earlier EAV-only revisions remain readable until replacement.
+There are no
+persistent Postgres generations or separate derived projections. Redis remains reconstructable
 operational state, not an entity
 authority. The same server binary provides a read-only diagnostic check-up
 that inspects the runtime, Redis operations, Postgres canonical state and

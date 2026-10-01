@@ -55,18 +55,22 @@ func simplePlan(definitions []query.Definition, requested, order []string) (stri
 			if definition.Filter.Search != nil {
 				return "", nil, false
 			}
+			seenFields := map[string]bool{}
 			for _, predicate := range definition.Filter.Predicates {
 				switch predicate.Field {
 				case "id", "runId", "sessionId":
 				default:
-					return "", nil, false
+					if !isCanonicalSource(raw) || !isCanonicalTextField(predicate.Field) {
+						return "", nil, false
+					}
 				}
 				value, stringValue := predicate.Equals.(string)
-				if !stringValue || value == "unknown" || predicate.Optional ||
+				if seenFields[predicate.Field] || !stringValue || value == "unknown" || predicate.Optional ||
 					len(predicate.In) != 0 || predicate.Includes != "" ||
 					predicate.GTE != nil || predicate.LT != nil {
 					return "", nil, false
 				}
+				seenFields[predicate.Field] = true
 			}
 		}
 		path = append(path, definition)
@@ -109,6 +113,32 @@ func (r *readTransaction) ExecuteNativePlan(ctx context.Context, definitions []q
 	if baseBytes.Int64 > query.MaxWorkingBytes {
 		return nil, model.Metrics{}, true, fmt.Errorf("query %q exceeds max working bytes of %d", path[0].Name, query.MaxWorkingBytes)
 	}
+	var canonicalCount int
+	if isCanonicalSource(raw) {
+		if err := r.tx.QueryRowContext(ctx, `SELECT count(*) FROM cao_canonical_rows
+			WHERE namespace = $1 AND source_name = $2`, r.store.namespace, raw).Scan(&canonicalCount); err != nil {
+			return nil, model.Metrics{}, true, err
+		}
+	}
+	if canonicalCount != 0 && canonicalCount != baseCount {
+		return nil, model.Metrics{}, true, errors.New("incomplete postgres canonical source")
+	}
+	canonical := canonicalCount != 0
+	if !canonical {
+		for _, definition := range path {
+			if definition.Filter == nil {
+				continue
+			}
+			for _, predicate := range definition.Filter.Predicates {
+				switch predicate.Field {
+				case "id", "runId", "sessionId":
+				default:
+					// Legacy documents cannot promise the typed text semantics.
+					return nil, model.Metrics{}, false, nil
+				}
+			}
+		}
+	}
 
 	metrics := model.Metrics{
 		PushedDown: []string{"query-plan"}, FallbackOperations: []string{},
@@ -126,16 +156,29 @@ func (r *readTransaction) ExecuteNativePlan(ctx context.Context, definitions []q
 		metrics.QueryCount++
 		metrics.PushedDown = append(metrics.PushedDown, "from")
 		where, args := documentFilter(r.store.namespace, raw, definition.Filter)
+		filters := map[string]string{}
+		if definition.Filter != nil {
+			for _, predicate := range definition.Filter.Predicates {
+				filters[predicate.Field] = predicate.Equals.(string)
+			}
+		}
 		if definition.Filter != nil {
 			metrics.FilterCount++
 			metrics.Operations += inputCount
 			metrics.PushedDown = append(metrics.PushedDown, "filter")
 			if len(definition.Filter.Predicates) != 0 {
-				statement, values, buildErr := postgresSQL(`SELECT count(*) FROM cao_source_documents WHERE `+where, args...)
-				if buildErr != nil {
-					return nil, metrics, true, fmt.Errorf("compile postgres plan count: %w", buildErr)
+				var err error
+				if canonical {
+					canonicalWhere, canonicalArgs := canonicalFilter(r.store.namespace, raw, filters)
+					err = r.tx.QueryRowContext(ctx, `SELECT count(*) FROM cao_canonical_rows WHERE `+canonicalWhere,
+						canonicalArgs...).Scan(&currentCount)
+				} else {
+					statement, values, buildErr := postgresSQL(`SELECT count(*) FROM cao_source_documents WHERE `+where, args...)
+					if buildErr != nil {
+						return nil, metrics, true, fmt.Errorf("compile postgres plan count: %w", buildErr)
+					}
+					err = r.tx.QueryRowContext(ctx, statement, values...).Scan(&currentCount)
 				}
-				err := r.tx.QueryRowContext(ctx, statement, values...).Scan(&currentCount)
 				if err != nil {
 					return nil, metrics, true, fmt.Errorf("count postgres plan rows: %w", err)
 				}
@@ -159,8 +202,13 @@ func (r *readTransaction) ExecuteNativePlan(ctx context.Context, definitions []q
 			return nil, metrics, true, fmt.Errorf("query %q exceeds max operations", definition.Name)
 		}
 		if i == len(path)-1 {
-			output, err = r.documentRows(ctx, where, args, definition.Select, currentCount,
-				query.MaxRetainedBytes-metrics.RetainedBytes, definition.Name)
+			if canonical {
+				output, err = r.canonicalPlanRows(ctx, raw, filters, definition.Select, currentCount,
+					query.MaxRetainedBytes-metrics.RetainedBytes, definition.Name)
+			} else {
+				output, err = r.documentRows(ctx, where, args, definition.Select, currentCount,
+					query.MaxRetainedBytes-metrics.RetainedBytes, definition.Name)
+			}
 			if err != nil {
 				return nil, metrics, true, err
 			}
