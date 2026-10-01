@@ -714,12 +714,19 @@ func (s *Store) LoadSource(ctx context.Context, name string, definition *query.D
 func (r *readTransaction) LoadSource(ctx context.Context, name string, definition *query.Definition) (model.Source, model.Metrics, error) {
 	s, tx := r.store, r.tx
 	conditions, args := sourceCandidates(s.namespace, name, definition)
+	limit := sourceLimit(name, definition)
+	selection := ""
+	if limit > 0 {
+		args = append(args, limit)
+		selection = ` ORDER BY ordinal LIMIT $` + strconv.Itoa(len(args))
+	}
 	statement := `SELECT positions.ordinal, v.node_id, v.parent_id, v.object_key,
 			v.array_index, v.kind, v.text_value, v.bool_value
 		FROM (
 			SELECT -1::bigint AS ordinal FROM cao_sources WHERE namespace = $1 AND source_name = $2
 			UNION ALL
-			SELECT ordinal FROM cao_source_rows AS r WHERE namespace = $1 AND source_name = $2` + conditions + `
+			SELECT ordinal FROM (SELECT ordinal FROM cao_source_rows AS r
+				WHERE namespace = $1 AND source_name = $2` + conditions + selection + `) AS selected
 		) AS positions
 		LEFT JOIN cao_values AS v ON v.namespace = $1 AND v.source_name = $2 AND v.ordinal = positions.ordinal
 		ORDER BY positions.ordinal, v.node_id`
@@ -791,17 +798,42 @@ func (r *readTransaction) LoadSource(ctx context.Context, name string, definitio
 		return model.Source{}, model.Metrics{}, fmt.Errorf("decode postgres source: %w", err)
 	}
 	metrics := model.Metrics{OutputRows: len(source.Rows)}
-	if conditions != "" {
+	if conditions != "" || limit > 0 {
 		var total int
 		if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM cao_source_rows WHERE namespace = $1 AND source_name = $2`, s.namespace, name).Scan(&total); err != nil {
 			return model.Source{}, model.Metrics{}, fmt.Errorf("count postgres source rows: %w", err)
 		}
-		// The SQL test is a necessary condition only: Go still evaluates the
-		// complete filter. Charge omitted rows for both input and filter work.
-		metrics.Operations = 2 * (total - len(source.Rows))
-		metrics.PushedDown = []string{"filter-candidates"}
+		if conditions != "" {
+			// The SQL test is a necessary condition only: Go still evaluates
+			// the full filter. Early filtering charges one operation per row.
+			metrics.Operations = total - len(source.Rows)
+			metrics.PushedDown = []string{"filter-candidates"}
+		} else {
+			// Without a filter the Go engine would reject inputs over this
+			// bound before applying a limit.
+			if total > query.MaxInputRows {
+				return model.Source{}, model.Metrics{}, fmt.Errorf("query %q exceeds max input rows", definition.Name)
+			}
+			cost := 1
+			if len(definition.Select) != 0 {
+				cost++
+			}
+			metrics.Operations = cost * (total - len(source.Rows))
+			metrics.PushedDown = []string{"limit-candidates"}
+		}
 	}
 	return source, metrics, nil
+}
+
+func sourceLimit(name string, definition *query.Definition) int {
+	if definition == nil || definition.From != name || definition.Limit == nil ||
+		*definition.Limit <= 0 || len(definition.Union) != 0 || len(definition.Joins) != 0 ||
+		definition.Filter != nil || len(definition.Compute) != 0 ||
+		definition.Aggregate != nil || definition.TemporalSeries != nil ||
+		len(definition.OrderBy) != 0 {
+		return 0
+	}
+	return *definition.Limit
 }
 
 // sourceCandidates emits only necessary conditions for direct scalar fields.

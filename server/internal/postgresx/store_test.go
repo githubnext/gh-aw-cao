@@ -89,6 +89,57 @@ func TestRejectsInsecureDSNWithoutLeakingCredentials(t *testing.T) {
 	}
 }
 
+func TestSourceCandidates(t *testing.T) {
+	filter := &query.Filter{Predicates: []query.Predicate{
+		{Field: "id", Equals: "a' OR true --"},
+		{Field: "status", In: []any{"active", true, json.Number("12")}},
+		{Field: "optional", Equals: "x", Optional: true},
+		{Field: "@time", Equals: "today"},
+		{Field: "range", GTE: 1},
+		{Field: "nullable", In: []any{nil, "x"}},
+	}}
+	definition := &query.Definition{From: "repositories", Filter: filter}
+	clause, args := sourceCandidates("tenant", "repositories", definition)
+	if strings.Contains(clause, "a' OR true") || strings.Contains(clause, "optional") ||
+		strings.Contains(clause, "nullable") || strings.Contains(clause, "@time") {
+		t.Fatalf("unsafe or unsupported SQL condition: %s", clause)
+	}
+	if got := strings.Count(clause, "NOT EXISTS"); got != 2 {
+		t.Fatalf("conditions = %d, want 2: %s", got, clause)
+	}
+	if want := []any{"tenant", "repositories", "id", "a' OR true --", "status", "active", "true", "12"}; !reflect.DeepEqual(args, want) {
+		t.Fatalf("parameters = %#v, want %#v", args, want)
+	}
+	for _, blocked := range []*query.Definition{
+		nil, {From: "other", Filter: filter}, {From: "repositories", Filter: filter, Union: []string{"other"}},
+		{From: "repositories", Filter: filter, Joins: []query.Join{{Source: "other"}}},
+	} {
+		if clause, _ := sourceCandidates("tenant", "repositories", blocked); clause != "" {
+			t.Fatalf("unsafe candidate pruning for %+v", blocked)
+		}
+	}
+}
+
+func TestSourceLimit(t *testing.T) {
+	limit := 3
+	definition := query.Definition{From: "records", Limit: &limit, Select: []query.SelectedField{{Field: "id"}}}
+	if got := sourceLimit("records", &definition); got != limit {
+		t.Fatalf("limit = %d, want %d", got, limit)
+	}
+	for _, blocked := range []query.Definition{
+		{From: "other", Limit: &limit},
+		{From: "records", Limit: &limit, Filter: &query.Filter{}},
+		{From: "records", Limit: &limit, OrderBy: []query.OrderField{{Field: "id"}}},
+		{From: "records", Limit: &limit, Compute: []query.ComputedField{{As: "x"}}},
+		{From: "records", Limit: &limit, Union: []string{"other"}},
+		{From: "records", Limit: &limit, Joins: []query.Join{{Source: "other"}}},
+	} {
+		if got := sourceLimit("records", &blocked); got != 0 {
+			t.Fatalf("unsafe limit for %+v: %d", blocked, got)
+		}
+	}
+}
+
 func TestStoreIntegration(t *testing.T) {
 	url := os.Getenv("POSTGRES_URL")
 	if url == "" {
@@ -170,6 +221,61 @@ func TestStoreIntegration(t *testing.T) {
 	if revision != initial.Revision+1 {
 		t.Fatalf("revision = %d, want %d", revision, initial.Revision+1)
 	}
+	t.Run("native predicate candidates preserve Go results", func(t *testing.T) {
+		for _, definition := range []query.Definition{
+			{Name: "chosen", From: "repositories", Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: "a"}}}},
+			{Name: "chosen", From: "repositories", Filter: &query.Filter{Predicates: []query.Predicate{{Field: "count", In: []any{"2", "9007199254740993"}}}}},
+			{Name: "chosen", From: "repositories", Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: "unknown"}}}},
+			{Name: "chosen", From: "bulk", Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: "unknown"}}}},
+		} {
+			full, _, err := store.LoadSource(ctx, definition.From, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			candidates, metrics, err := store.LoadSource(ctx, definition.From, &definition)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(metrics.PushedDown, []string{"filter-candidates"}) ||
+				metrics.Operations != len(full.Rows)-len(candidates.Rows) {
+				t.Fatalf("SQL candidate metrics: %+v", metrics)
+			}
+			want, _, _, err := query.ExecuteDefinition(definition, map[string]model.Source{definition.From: full}, query.MaxOperations)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, _, _, err := query.ExecuteDefinition(definition, map[string]model.Source{definition.From: candidates}, query.MaxOperations)
+			if err != nil || !reflect.DeepEqual(got, want) {
+				t.Fatalf("SQL candidates changed results: got=%+v, want=%+v, err=%v", got, want, err)
+			}
+		}
+	})
+	t.Run("native ordinal limit preserves Go results and operation cost", func(t *testing.T) {
+		limit := 3
+		definition := query.Definition{Name: "first", From: "bulk", Limit: &limit,
+			Select: []query.SelectedField{{Field: "id"}}}
+		full, _, err := store.LoadSource(ctx, "bulk", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		candidates, metrics, err := store.LoadSource(ctx, "bulk", &definition)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(candidates.Rows) != limit || metrics.Operations != 2*(len(full.Rows)-limit) ||
+			!reflect.DeepEqual(metrics.PushedDown, []string{"limit-candidates"}) {
+			t.Fatalf("SQL ordinal limit: rows=%d metrics=%+v", len(candidates.Rows), metrics)
+		}
+		want, originalCost, _, err := query.ExecuteDefinition(definition, map[string]model.Source{"bulk": full}, query.MaxOperations)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, candidateCost, _, err := query.ExecuteDefinition(definition, map[string]model.Source{"bulk": candidates}, query.MaxOperations)
+		if err != nil || !reflect.DeepEqual(got, want) || candidateCost+metrics.Operations != originalCost {
+			t.Fatalf("SQL limit changed results or cost: got=%+v want=%+v costs=%d/%d err=%v",
+				got, want, candidateCost+metrics.Operations, originalCost, err)
+		}
+	})
 	state, err := store.State(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -231,7 +337,8 @@ func TestStoreIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if metrics.OutputRows != 2 || !reflect.DeepEqual(loaded.Rows, sources["repositories"].Rows) ||
+	if metrics.OutputRows != 1 || metrics.Operations != 1 ||
+		!reflect.DeepEqual(loaded.Rows, sources["repositories"].Rows[:1]) ||
 		!reflect.DeepEqual(loaded.Metadata, sources["repositories"].Metadata) {
 		t.Fatalf("unexpected source or metrics: %+v %+v", loaded, metrics)
 	}

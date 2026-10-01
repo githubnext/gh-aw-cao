@@ -15,6 +15,28 @@ type testLoader struct {
 	sources map[string]model.Source
 }
 
+type candidateLoader struct {
+	operations int
+}
+
+func (loader candidateLoader) LoadSource(name string, _ *Definition) (model.Source, model.Metrics, error) {
+	return model.Source{Source: name, Rows: []model.Row{{"id": "kept"}}},
+		model.Metrics{Operations: loader.operations, PushedDown: []string{"filter-candidates"}}, nil
+}
+
+func TestEngineChargesSQLCandidateOperations(t *testing.T) {
+	definition := Definition{Name: "selected", From: "records", Filter: &Filter{Predicates: []Predicate{{Field: "id", Equals: "kept"}}}}
+	result, metrics, err := New(candidateLoader{operations: 8}).Execute([]Definition{definition}, []string{"selected"})
+	if err != nil || len(result["selected"].Rows) != 1 || metrics.Operations != 10 ||
+		!reflect.DeepEqual(metrics.PushedDown, []string{"filter-candidates"}) {
+		t.Fatalf("candidate accounting: result=%+v metrics=%+v err=%v", result, metrics, err)
+	}
+	_, _, err = New(candidateLoader{operations: MaxOperations}).Execute([]Definition{definition}, []string{"selected"})
+	if err == nil || !strings.Contains(err.Error(), "exceeds max operations") {
+		t.Fatalf("SQL candidate work must not bypass budget: %v", err)
+	}
+}
+
 func (loader *testLoader) LoadSource(name string, _ *Definition) (model.Source, model.Metrics, error) {
 	source, ok := loader.sources[name]
 	if !ok {

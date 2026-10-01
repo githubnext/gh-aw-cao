@@ -200,7 +200,7 @@ flowchart LR
 | CLI | `cmd/cao-dashboard/` | Implements the `ingest` and `serve` commands and keeps Postgres and Redis configuration in the server process. |
 | Artifact ingestion | `internal/ingest/` | Validates deployed manifests and hashes, loads run shards before record shards, and builds canonical logical sources. |
 | Query engine | `internal/query/` | Validates Dashboard Language definitions and executes joins, filters, computed fields, aggregates, temporal series, selection, ordering, and limits under resource budgets. |
-| Postgres entity storage | `internal/postgresx/` | Transactionally replaces current sources, diagnostics, and revision; reads complete source documents for bounded Go queries. |
+| Postgres entity storage | `internal/postgresx/` | Transactionally replaces current sources, diagnostics, and revision; narrows safe direct-query candidates in SQL and reads their typed source values for bounded Go queries. |
 | Redis operations | `internal/redisx/` | Supports caches, queues, and sessions. |
 | HTTP(S)/API server | `internal/server/` | Enforces loopback binding, optionally terminates operator-configured TLS, serves static dashboard assets, handles API requests, and publishes revision events. |
 | Externally hosted service | `hosting/` | Exposes a listener-independent application lifecycle and the complete hosted HTTP handler to other Go HTTP hosts. |
@@ -855,13 +855,15 @@ Neither store grants control-plane authority. Credentials stay server-side.
 The browser sends declarative query definitions and requested source names to
 `POST /api/v1/query`. The server validates the query graph and resource limits
 before loading data.
-Postgres source reads use one ordered, parameterized native SQL query per source
-to select its namespace, metadata, rows, and typed values. This is **not**
-SQL translation of Dashboard Language queries: filters (including predicates), joins,
-aggregation, ordering, and limits still execute in the Go query engine.
-Predicate pushdown is not enabled because its coercion rules for arbitrary
-nested values, optional/missing fields, and operation budgets cannot be
-preserved by a simple SQL predicate without changing query results or limits.
+Postgres source reads use an ordered, parameterized native SQL query per source
+to select its namespace, metadata, rows, and typed values. Direct queries with
+scalar equality or membership predicates also select candidate row ordinals in
+SQL before fetching their value trees. Missing, null, and container values
+remain candidates; the Go engine applies the full filter and charges skipped
+rows against the operation budget. Direct queries with only selection and a
+limit also select the first ordinals in SQL; their unbounded input count and
+operation cost are still checked. Joins, unions, searches, ranges, computation,
+aggregation, ordering, and all other limits still execute in the Go query engine.
 Execution fails closed when a requested plan exceeds 16 dependency levels, 256
 derived queries, or 16 joins along one dependency path. Independent queries in a
 batch do not consume one another's structural join allowance. Runtime guards cap
