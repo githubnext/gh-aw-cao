@@ -204,6 +204,10 @@ describe('dashboard source ingestion queries', () => {
           'registry-id': 'official',
           repository: 'example/packages',
           'repository-link': repositoryLink,
+          'verification-status': 'verified',
+          'installation-status': 'installed',
+          'adoption-count': 42,
+          stars: 12,
           ref: 'main',
           'resolved-commit': 'a'.repeat(40),
           source: `example/packages/demo@${'a'.repeat(40)}`,
@@ -214,7 +218,12 @@ describe('dashboard source ingestion queries', () => {
       }
     });
 
-    expect(normalize(adapted.observations).marketplacePackages[0].repositoryLink).toEqual(repositoryLink);
+    const packageRecord = normalize(adapted.observations).marketplacePackages[0];
+    expect(packageRecord.repositoryLink).toEqual(repositoryLink);
+    expect(packageRecord.stars).toBe(12);
+    expect(packageRecord).not.toHaveProperty('verificationStatus');
+    expect(packageRecord).not.toHaveProperty('installationStatus');
+    expect(packageRecord).not.toHaveProperty('adoptionCount');
   });
 
   it('maps legacy package inventory to canonical campaigns during rollout', () => {

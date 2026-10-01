@@ -105,18 +105,8 @@ type Package struct {
 	ReadmePath         string          `json:"readme-path"`
 	Source             string          `json:"source"`
 	AddCommand         string          `json:"add-command"`
-	VerificationStatus string          `json:"verification-status"`
-	VerificationSource string          `json:"verification-source"`
-	MaintenanceStatus  string          `json:"maintenance-status"`
-	MaintenanceSource  string          `json:"maintenance-source"`
-	LastMaintainedAt   string          `json:"last-maintained-at"`
 	Stars              *int            `json:"stars"`
 	Forks              *int            `json:"forks"`
-	PopularitySource   string          `json:"popularity-source"`
-	SignalsObservedAt  string          `json:"signals-observed-at"`
-	InstallationStatus string          `json:"installation-status"`
-	AdoptionCount      *int            `json:"adoption-count"`
-	AdoptionSource     string          `json:"adoption-source"`
 }
 
 // RepositoryLink points only to a recognized public GitHub repository web URL.
@@ -153,18 +143,8 @@ func (p Package) Row() model.Row {
 		"package-readme-path": p.ReadmePath,
 		"package-source":      p.Source,
 		"add-command":         p.AddCommand,
-		"verification-status": p.VerificationStatus,
-		"verification-source": p.VerificationSource,
-		"maintenance-status":  p.MaintenanceStatus,
-		"maintenance-source":  p.MaintenanceSource,
-		"last-maintained-at":  p.LastMaintainedAt,
 		"stars":               p.Stars,
 		"forks":               p.Forks,
-		"popularity-source":   p.PopularitySource,
-		"signals-observed-at": p.SignalsObservedAt,
-		"installation-status": p.InstallationStatus,
-		"adoption-count":      p.AdoptionCount,
-		"adoption-source":     p.AdoptionSource,
 	}
 	if p.RepositoryLink != nil {
 		row["repository-link"] = p.RepositoryLink
@@ -395,7 +375,6 @@ func resolveOneRegistry(
 	}
 	if cached, hit := loadCachedRegistry(ctx, cache, registry.ID, generation); hit {
 		for i := range cached {
-			setPublisherVerification(&cached[i], registry.VerifiedPublisher)
 			cached[i].RepositoryLink = repositoryLink(cached[i].Repository, apiBase(registry))
 		}
 		return registryOutcome{
