@@ -1,6 +1,6 @@
 {
   "source_sha": "90eb49fee721dfe5d4900ca377d4b0373d8a44f8",
-  "next_category": "reusable dashboard generation",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
       "evaluated_at": "2026-10-01T13:58:00Z",
@@ -157,6 +157,14 @@
         36853340265
       ],
       "outcome": "no_actionable_improvement: evaluated Astro documentation generation across the latest 10 successful docs.yml runs from 2026-10-01T13:37Z through 2026-10-01T15:49Z. Trusted Actions metadata showed 7 comparable build executions, 6 deploy executions, and 3 freshness-only skips. Full workflow wall time median was 75.5s with p90 91.8s; comparable build-job median was 45.0s with p90 49.4s; deploy median was 12.0s with p90 15.0s; schedule-freshness median was 9.0s with p90 10.0s. Build-step medians across the 7 comparable build executions were 6.0s Checkout, 4.0s Set up Node.js, 5.0s Restore node_modules, 12.0s Build documentation, 2.0s Restore cached CAO Dashboard, and 8.0s Upload Pages artifact. Trusted logs for representative docs run 36876575351 verified cache hits for both npm/node_modules caches and for the central-agentic-ops-dashboard cache, with Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact all skipped. The Astro docs build itself is therefore already a small share of successful build time and does not meet the >=60s or >=15% actionable threshold. Cross-checking recent successful cao-dashboard.yml producer runs 36880983952 and 36853340265 again showed the dominant repeated upstream cost remains reusable dashboard preparation, especially Upgrade fallback activity data at 62-88s plus repeated copying of a 420.1 MiB gh-aw-logs.sqlite and 114 shards totaling 266.3 MiB into the dashboard artifact before upload. That qualifying reusable-dashboard optimization is already represented by suggestion fingerprint reusable-dashboard-skip-reupgrade-of-validated-activity-cache in repository memory, so no new non-duplicate recommendation is actionable in this Astro documentation generation cycle.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-01T16:30:00Z",
+      "worker_run_id": "36892007637",
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [],
+      "outcome": "incomplete: GitHub API rate limit was already exhausted before trusted run metadata for the latest 20 completed docs.yml runs could be collected. Workflow source review confirms the next suggestion category remains reusable dashboard generation, and repository memory plus open issues #15332 and #15497 already capture the standing actionable optimization to skip redundant fallback activity-data re-upgrade when restored dashboard inputs already validate. This run could not refresh timing medians/p90s or verify materially changed evidence, so no new non-duplicate recommendation could be issued.",
       "suggestion_fingerprint": null
     }
   ]
