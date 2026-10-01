@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -61,7 +62,7 @@ func TestClassifyCORSRequestNotCrossOrigin(t *testing.T) {
 		"invalid host":       func(request *http.Request) { request.Header.Set("Origin", "https://tools.example.com") },
 	} {
 		t.Run(name, func(t *testing.T) {
-			request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/health", nil)
+			request := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/health", nil)
 			mutate(request)
 			validHost := name != "invalid host"
 			if outcome := classifyCORSRequest(request, policy, validHost); outcome != corsOutcomeNotCrossOrigin {
@@ -87,7 +88,7 @@ func TestClassifyCORSRequestPreflight(t *testing.T) {
 		{"delete rejected", http.MethodDelete, corsOutcomePreflightRejected},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			request := httptest.NewRequestWithContext(t.Context(), http.MethodOptions, "/api/v1/query", nil)
+			request := httptest.NewRequestWithContext(context.Background(), http.MethodOptions, "/api/v1/query", nil)
 			request.Header.Set("Origin", "https://tools.example.com")
 			request.Header.Set("Access-Control-Request-Method", tc.requestedMethod)
 			if outcome := classifyCORSRequest(request, policy, true); outcome != tc.want {
@@ -110,7 +111,7 @@ func TestClassifyCORSRequestSimpleAllowed(t *testing.T) {
 		{"options without requested method", http.MethodOptions},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			request := httptest.NewRequestWithContext(t.Context(), tc.method, "/api/v1/health", nil)
+			request := httptest.NewRequestWithContext(context.Background(), tc.method, "/api/v1/health", nil)
 			request.Header.Set("Origin", "https://tools.example.com")
 			if outcome := classifyCORSRequest(request, policy, true); outcome != corsOutcomeSimpleAllowed {
 				t.Fatalf("outcome = %s, want %s", outcome, corsOutcomeSimpleAllowed)

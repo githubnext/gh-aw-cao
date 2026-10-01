@@ -3,7 +3,7 @@ import {
   dashboardFormDefaultValues,
   resolveDashboardQueryParameters
 } from "./data/queries/view-payload-compiler.js";
-import { csrfHeaders, usesGitHubAuthentication } from "./auth.js";
+import { csrfHeaders, ensureCsrfToken, usesGitHubAuthentication } from "./auth.js";
 import { createDebug } from "./debug.js";
 
 const debugRemoteBackend = createDebug("remote-data-backend");
@@ -97,6 +97,7 @@ async function apiRequest(path, init = {}, signal) {
   const oauth = usesGitHubAuthentication();
   const token = oauth ? "" : accessToken();
   const method = (init.method ?? "GET").toUpperCase();
+  if (oauth && !["GET", "HEAD", "OPTIONS"].includes(method)) await ensureCsrfToken(signal);
   const headers = {
     Accept: "application/json",
     ...(init.body ? { "Content-Type": "application/json" } : {}),

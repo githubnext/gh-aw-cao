@@ -192,20 +192,108 @@
       ]
     },
     {
+      "name": "workflow-aic-run-totals",
+      "subject": "Summarize observed run attempts and AI Credits for workflow cost comparison.",
+      "objective": "Count retained run attempts and recorded AI Credits without loading imported-event coverage.",
+      "acceptance": "Group observed run attempts by organization, repository, and workflow; count distinct run and attempt identities and sum recorded AI Credits, without inferring complete telemetry.",
+      "from": "runs",
+      "compute": [
+        {
+          "as": "run-attempt-identity",
+          "function": "concat",
+          "args": [{ "field": "run" }, { "value": ":" }, { "field": "run-attempt" }]
+        }
+      ],
+      "aggregate": {
+        "by": ["organization", "repository", "workflow"],
+        "values": [
+          { "field": "run-attempt-identity", "as": "runs", "reducer": "distinct-count" },
+          { "field": "aic-total", "as": "aic", "reducer": "sum" }
+        ]
+      }
+    },
+    {
       "name": "workflow-aic-per-run",
       "subject": "List declared workflows with observed runs and their average AI Credit cost per run.",
       "objective": "Identify workflows with observed run AIC averages worth investigating alongside run evidence.",
-      "acceptance": "Include only workflow inventory rows marked as having observed runs, retaining their reported averages and missing telemetry; inspect underlying runs and separate outcome evidence before inferring waste or benefit.",
+      "acceptance": "Include only declared workflows with observed run attempts, retaining their reported averages and missing telemetry; inspect underlying runs and separate outcome evidence before inferring waste or benefit.",
       "description": "Workflow AI Credit averages limited to workflows with at least one observed run.",
-      "from": "workflow-inventory",
+      "from": "workflows",
+      "joins": [
+        {
+          "source": "workflow-aic-run-totals",
+          "type": "left",
+          "on": [
+            { "left": "organization", "right": "organization" },
+            { "left": "repository", "right": "repository" },
+            { "left": "workflow", "right": "workflow" }
+          ],
+          "fields": [
+            { "field": "runs", "as": "observed-runs" },
+            { "field": "aic", "as": "observed-aic" }
+          ]
+        }
+      ],
+      "compute": [
+        {
+          "as": "repository-slug",
+          "function": "concat",
+          "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }]
+        },
+        {
+          "as": "workflow-display-name",
+          "function": "coalesce",
+          "args": [{ "field": "workflow-name" }, { "field": "workflow" }]
+        },
+        {
+          "as": "workflow-identity",
+          "function": "concat",
+          "args": [{ "field": "repository-slug" }, { "value": ":" }, { "field": "workflow" }]
+        },
+        {
+          "as": "encoded-workflow",
+          "function": "url-encode",
+          "args": [{ "field": "workflow-identity" }]
+        },
+        {
+          "as": "workflow-dashboard-href",
+          "function": "concat",
+          "args": [{ "value": "#page-workflow-runtime?workflow=" }, { "field": "encoded-workflow" }]
+        },
+        {
+          "as": "workflow-dashboard-label",
+          "function": "concat",
+          "args": [{ "value": "View " }, { "field": "workflow-display-name" }, { "value": " workflow dashboard" }]
+        },
+        {
+          "as": "workflow-dashboard-link",
+          "function": "dashboard-link",
+          "args": [
+            { "field": "workflow-link" },
+            { "field": "workflow-dashboard-href" },
+            { "field": "workflow-dashboard-label" },
+            { "field": "workflow-identity" }
+          ]
+        },
+        {
+          "as": "total-aic",
+          "function": "coalesce",
+          "args": [{ "field": "observed-aic" }, { "value": 0 }]
+        },
+        {
+          "as": "aic-per-run",
+          "function": "quotient",
+          "args": [{ "field": "total-aic" }, { "field": "observed-runs" }]
+        }
+      ],
       "filter": {
-        "predicates": [
-          {
-            "field": "has-observed-runs",
-            "equals": true
-          }
-        ]
-      }
+        "predicates": [{ "field": "observed-runs", "gte": 1 }]
+      },
+      "select": [
+        { "field": "workflow-identity", "as": "workflow-label" },
+        { "field": "workflow-dashboard-link", "as": "workflow-link" },
+        { "field": "aic-per-run" }
+      ]
     }
   ],
   "views": [

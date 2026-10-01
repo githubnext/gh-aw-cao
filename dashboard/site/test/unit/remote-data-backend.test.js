@@ -140,6 +140,40 @@ describe("remote dashboard data backend", () => {
     }
   });
 
+  it("restores a missing CSRF cookie before sending an OAuth mutation", async () => {
+    document.head.innerHTML = '<meta name="cao-auth-mode" content="github">';
+    const fetchMock = vi.fn().mockImplementation((url) => {
+      if (new URL(url, location.href).pathname === "/api/auth/session") {
+        document.cookie = "cao_csrf=renewed-token; Path=/";
+        return Promise.resolve(new Response(JSON.stringify({ login: "octocat" }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify({ revision: 5, sources: {} }), { status: 200 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await refreshRemoteDashboard([], { pages: [] });
+
+    expect(fetchMock.mock.calls.map(([url]) => new URL(url, location.href).pathname)).toEqual([
+      "/api/auth/session", "/api/v1/refresh", "/api/v1/query",
+    ]);
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({ credentials: "same-origin" });
+    expect(fetchMock.mock.calls[0][1].headers).not.toHaveProperty("X-CSRF-Token");
+    for (const [, init] of fetchMock.mock.calls.slice(1)) {
+      expect(init.headers).toMatchObject({ "X-CSRF-Token": "renewed-token" });
+    }
+  });
+
+  it("does not send a mutation when the missing CSRF cookie cannot be restored", async () => {
+    document.head.innerHTML = '<meta name="cao-auth-mode" content="github">';
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ login: "octocat" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(refreshRemoteDashboard([], { pages: [] }))
+      .rejects.toThrow("GitHub authentication cookie could not be renewed");
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(new URL(fetchMock.mock.calls[0][0], location.href).pathname).toBe("/api/auth/session");
+  });
+
   it("resolves repository memory through the authenticated server API", async () => {
     const manifest = { version: 1, campaigns: [{ campaign: "security-review", files: [] }] };
     const fetchMock = vi.fn()

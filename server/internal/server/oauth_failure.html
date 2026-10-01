@@ -81,14 +81,25 @@ code { overflow-wrap: anywhere; color: var(--fg); font-family: ui-monospace, SFM
 <p class="recovery-error" id="recovery-error" role="alert" hidden>Could not sign out. Please try again or clear this site’s cookies before signing in.</p>
 </section>
 </main><script>const button = document.getElementById('sign-out');
+const csrfToken = () => {
+  const cookie = document.cookie.split(';').map((entry) => entry.trim()).find((entry) => entry.startsWith('cao_csrf='));
+  return cookie ? decodeURIComponent(cookie.slice('cao_csrf='.length)) : '';
+};
 button.addEventListener('click', async () => {
   button.disabled = true;
   try {
-    const csrf = document.cookie.split(';').map((cookie) => cookie.trim()).find((cookie) => cookie.startsWith('cao_csrf='));
+    if (!csrfToken()) {
+      const session = await fetch('/api/auth/session', { credentials: 'same-origin', cache: 'no-store' });
+      if (session.status === 401) {
+        location.assign('/auth/logged-out');
+        return;
+      }
+      if (!session.ok || !csrfToken()) throw new Error('CSRF cookie unavailable');
+    }
     const response = await fetch('/auth/logout', {
       method: 'POST',
       credentials: 'same-origin',
-      headers: csrf ? { 'X-CSRF-Token': decodeURIComponent(csrf.slice('cao_csrf='.length)) } : {},
+      headers: { 'X-CSRF-Token': csrfToken() },
     });
     if (response.status === 204 || response.status === 401) {
       location.assign('/auth/logged-out');

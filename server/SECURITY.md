@@ -331,7 +331,11 @@ endpoints require the session-bound `X-CSRF-Token` header. The injected
 dashboard bootstrap adds this header for same-origin browser requests.
 
 When an access token is near expiry, the server uses the refresh token, stores
-rotated token values, and continues the request. If refresh fails or the
+rotated token values, renews both browser cookies, and continues the request.
+The readable CSRF cookie expires one day before the session cookie; if it is
+missing, the dashboard first makes an authenticated read to restore both cookies
+before sending a mutation. A missing session or failed renewal cannot authorize
+a mutation. If refresh fails or the
 refresh token has expired, the session is deleted, cookies are cleared, and the
 client must reauthenticate. Logout revokes both the current access token and
 the current refresh token when GitHub accepts revocation, deletes the Redis

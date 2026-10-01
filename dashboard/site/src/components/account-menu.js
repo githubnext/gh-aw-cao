@@ -1,4 +1,4 @@
-import { csrfHeaders, usesGitHubAuthentication } from '../auth.js';
+import { csrfHeaders, ensureCsrfToken, usesGitHubAuthentication } from '../auth.js';
 import { h } from '../dom.js';
 import { createDebug } from '../debug.js';
 import { octicon } from '../octicons.js';
@@ -62,6 +62,7 @@ async function switchAccount(busy, debug) {
   try {
     let response;
     try {
+      await ensureCsrfToken();
       response = await fetch('/auth/switch-account', {
         method: 'POST',
         headers: csrfHeaders({ Accept: 'application/json' })
@@ -103,6 +104,7 @@ async function logout(busy, debug) {
   try {
     let response;
     try {
+      await ensureCsrfToken();
       response = await fetch('/auth/logout', {
         method: 'POST',
         headers: csrfHeaders({ Accept: 'application/json' })
