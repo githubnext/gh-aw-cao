@@ -128,6 +128,11 @@ pre-agent-steps:
     with:
       go-version-file: server/go.mod
       cache: false
+  - name: Install Go linter
+    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    run: |
+      go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
+      echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 ---
 
 # SelfCare Redis Query Optimization
@@ -152,6 +157,6 @@ The SelfCare orchestrator provides dispatch ticks. Do not add a schedule, discov
 
 Run `gofmt` on changed Go files, `go -C server vet ./...`, `go -C server test ./...` (including Redis-backed tests with `REDIS_URL` set), and `npm run dashboard:server:lint`. Run impacted dashboard tests and lint/typecheck when dashboard files change. Review the diff and scan changed files for secrets.
 
-Call `create_pull_request` exactly once only after parity, real before/after synthetic measurements, and validation pass. Provide only the unprefixed subject. Begin the draft body with a concise executive summary, then `**Action:** Review the measured latency and parity evidence before merging.` Include the seed, data shape, reproducible commands, Redis/Go versions, baseline and after p50/p95, memory trade-off, parity engines and edge cases, and validation results; put verbose output in `<details>`. Include `### Control Plane` with correlation ID `${{ inputs.correlation_id }}`, central repository `${{ inputs.central_repo }}`, and run `${{ inputs.control_plane_run_url }}`. Otherwise call `noop` exactly once with the blocker. Never finish with only a textual response.
+Call `create_pull_request` exactly once only after parity, real before/after synthetic measurements, and validation pass. Provide only the unprefixed subject; the configured `title-prefix` is added automatically, so do not repeat it or add a semantically equivalent category prefix. Begin the draft body with a concise executive summary, then `**Action:** Review the measured latency and parity evidence before merging.` Include the seed, data shape, reproducible commands, Redis/Go versions, baseline and after p50/p95, memory trade-off, parity engines and edge cases, and validation results; put verbose output in `<details>`. Include `### Control Plane` with correlation ID `${{ inputs.correlation_id }}`, central repository `${{ inputs.central_repo }}`, and run `${{ inputs.control_plane_run_url }}`. Otherwise call `noop` exactly once with the blocker. Never finish with only a textual response.
 
 {{#runtime-import? .github/cao/self-care.md}}
