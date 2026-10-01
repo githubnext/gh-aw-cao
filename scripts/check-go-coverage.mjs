@@ -1,11 +1,35 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const modulePrefix = "github.com/githubnext/gh-aw-cao/server/";
 const minimumPercent = 80;
+const root = path.resolve(import.meta.dirname, "..");
+
+export function changedGoFiles(baseRef, cwd = root) {
+  const git = (...args) => execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  let mergeBase;
+  try {
+    mergeBase = git("merge-base", baseRef, "HEAD").trim();
+  } catch {
+    throw new Error(`Cannot find a local merge base with ${baseRef}; fetch the base branch or set GO_COVERAGE_BASE_REF`);
+  }
+  const names = [
+    ["diff", "--name-only", "--diff-filter=ACMR", "-z", mergeBase, "HEAD", "--", "server/"],
+    ["diff", "--name-only", "--diff-filter=ACMR", "-z", "HEAD", "--", "server/"],
+    ["ls-files", "--others", "--exclude-standard", "-z", "--", "server/"],
+  ];
+  return [...new Set(names.flatMap((args) => git(...args).split("\0").filter(Boolean)))]
+    .filter((file) => file.startsWith("server/") && file.endsWith(".go") && !file.endsWith("_test.go"))
+    .filter((file) => existsSync(path.join(cwd, file)));
+}
 
 export function checkGoCoverage(changedFiles, profile) {
+  if (!/^mode: (set|count|atomic)\r?$/.test(profile.split("\n", 1)[0])) {
+    throw new Error("Invalid Go coverage profile header");
+  }
   const blocks = new Map();
   for (const line of profile.split(/\r?\n/).slice(1)) {
     if (!line) continue;
@@ -39,21 +63,29 @@ export function checkGoCoverage(changedFiles, profile) {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  let directory;
   try {
-    const { PR_BASE_SHA: base, PR_HEAD_SHA: head } = process.env;
-    if (!base || !head || !process.argv[2]) throw new Error("Base SHA, head SHA, and coverage profile are required");
-    const changedFiles = execFileSync(
-      "git", ["diff", "--name-only", "--diff-filter=ACMR", "-z", base, head, "--", "server/"],
-      { encoding: "utf8" },
-    ).split("\0").filter(Boolean);
-    const results = checkGoCoverage(changedFiles, readFileSync(process.argv[2], "utf8"));
+    const baseRef = process.env.GO_COVERAGE_BASE_REF || "origin/main";
+    const changedFiles = changedGoFiles(baseRef);
+    if (!changedFiles.length) {
+      console.log("No modified non-test Go files to check.");
+      process.exit(0);
+    }
+    directory = mkdtempSync(path.join(tmpdir(), "cao-go-coverage-"));
+    const profilePath = path.join(directory, "coverage.out");
+    execFileSync("go", ["-C", "server", "test", "-coverpkg=./...", `-coverprofile=${profilePath}`, "./..."], {
+      cwd: root,
+      stdio: "inherit",
+    });
+    const results = checkGoCoverage(changedFiles, readFileSync(profilePath, "utf8"));
     for (const { file, total, covered, passed } of results) {
       console.log(`${passed ? "PASS" : "FAIL"} ${file}: ${total ? (covered * 100 / total).toFixed(1) + "%" : "no coverage data"} (${covered}/${total} statements)`);
     }
-    if (!results.length) console.log("No modified non-test Go files to check.");
     if (results.some(({ passed }) => !passed)) process.exitCode = 1;
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;
+  } finally {
+    if (directory) rmSync(directory, { recursive: true, force: true });
   }
 }

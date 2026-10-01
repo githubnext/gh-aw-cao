@@ -120,6 +120,7 @@ After UI changes, when Playwright loads the full website, capture and include de
 - Editing workflow `.md` files → `npm run compile` (add `compile:locks` if lock files should update)
 - Editing SVGs → `npm run check:svg`
 - Editing documentation under `docs/` → `npm run docs:build`
+- Editing Go production files under `server/` → run `node scripts/check-go-coverage.mjs` before committing. This agent inner-loop gate compares the local branch to `origin/main` (set `GO_COVERAGE_BASE_REF` if the base differs), includes committed and working-tree changes, runs `go -C server test -coverpkg=./...` with a temporary coverage profile, and requires at least 80% statement coverage for each changed non-test Go file. Fetch the base ref locally if it is missing; do not skip the gate.
 - Unsure what's affected → `npm run check`
 
 ## Working changes
