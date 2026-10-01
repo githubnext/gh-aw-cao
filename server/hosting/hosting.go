@@ -8,8 +8,11 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/server"
 )
+
+var hostingLog = logger.New("cao:hosting")
 
 // Config locates the built dashboard and its declarative query definitions.
 // Host policy and credentials are loaded from CAO's reviewed policy and
@@ -26,17 +29,48 @@ type Service struct {
 	handler http.Handler
 }
 
+// missingConfigField identifies which required Config field is blank, so a
+// misconfigured embedding host is diagnosable without logging the
+// configured paths themselves.
+type missingConfigField string
+
+const (
+	missingConfigFieldNone             missingConfigField = "none"
+	missingConfigFieldSiteDirectory    missingConfigField = "site-directory"
+	missingConfigFieldDashboardQueries missingConfigField = "dashboard-queries"
+	missingConfigFieldDatabaseQueries  missingConfigField = "database-queries"
+)
+
+// classifyMissingConfig reports the first required Config field that is
+// blank, applying the same precedence New previously checked inline. It is
+// a pure function extracted from New so this precondition is testable
+// without constructing a host policy or a server.App.
+func classifyMissingConfig(config Config) missingConfigField {
+	switch {
+	case config.SiteDirectory == "":
+		return missingConfigFieldSiteDirectory
+	case config.DashboardQueriesPath == "":
+		return missingConfigFieldDashboardQueries
+	case config.DatabaseQueriesPath == "":
+		return missingConfigFieldDatabaseQueries
+	default:
+		return missingConfigFieldNone
+	}
+}
+
 // New requires a hosted policy with target.module=generic and
 // target.listener=external. It never opens a socket or weakens CAO's request
 // authentication, proxy, CSRF, or rate-limit boundaries.
 func New(ctx context.Context, config Config) (*Service, error) {
-	if config.SiteDirectory == "" || config.DashboardQueriesPath == "" || config.DatabaseQueriesPath == "" {
+	if field := classifyMissingConfig(config); field != missingConfigFieldNone {
+		hostingLog.Printf("hosting config rejected missing_field=%s", field)
 		return nil, errors.New("external host requires site, dashboard queries, and database queries paths")
 	}
 	app, err := server.NewExternallyHostedAppFromEnv(
 		ctx, config.SiteDirectory, config.DashboardQueriesPath, config.DatabaseQueriesPath, config.Logger,
 	)
 	if err != nil {
+		hostingLog.Printf("hosting app construction failed")
 		return nil, err
 	}
 	return &Service{app: app, handler: app.Handler()}, nil

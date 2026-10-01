@@ -3,6 +3,9 @@
  */
 
 import { renderExternalLink, renderSafeLink } from './link-content.js';
+import { createDebug } from '../debug.js';
+
+const debugLinkedText = createDebug('linked-text');
 
 /**
  * Renders text as an external link when a safe link is available, otherwise as plain text.
@@ -46,10 +49,12 @@ export function createEntityAwareCellRenderer(entityLinkFields, findLink, render
           : toText(value);
         return renderLinkedText(linkedText, link);
       }
+      debugLinkedText({ event: 'entity-link-missing', field, linkField });
     }
     if (display === undefined && typeof column !== 'string' && column.format === undefined && isExternalLinkField(column)) {
       const externalLink = resolveExternalUrlValue(value);
       if (externalLink) return renderExternalLink(externalLink);
+      debugLinkedText({ event: 'external-link-unresolved', field });
     }
     return renderedValue;
   };
