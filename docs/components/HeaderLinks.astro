@@ -22,7 +22,7 @@ const links = [
 {
   !hasSidebar && (
     <details class="cao-mobile-nav">
-      <summary aria-label="Open primary navigation">
+      <summary aria-label="Open primary navigation menu">
         <span class="menu-icon open-menu" aria-hidden="true"><Icon name="bars" /></span>
         <span class="menu-icon close-menu" aria-hidden="true"><Icon name="close" /></span>
       </summary>
@@ -80,6 +80,7 @@ const links = [
     color: var(--sl-color-gray-2);
     cursor: pointer;
     list-style: none;
+    background: var(--sl-color-bg-nav);
   }
 
   .cao-mobile-nav summary::-webkit-details-marker {
@@ -92,8 +93,9 @@ const links = [
   }
 
   .cao-mobile-nav summary:focus-visible {
-    outline: 2px solid var(--sl-color-accent);
-    outline-offset: 2px;
+    outline: 3px solid var(--sl-color-accent-high);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 2px var(--sl-color-bg-nav);
   }
 
   .cao-mobile-nav .menu-icon {
