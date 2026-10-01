@@ -29,7 +29,12 @@ jobs:
       - name: Install agent plugin
         run: copilot plugin install "$(pwd)"
 
-  test:
+  unit:
+    name: Unit contracts (${{ matrix.area }})
+    strategy:
+      fail-fast: false
+      matrix:
+        area: [activity, dashboard, workflows, tooling, documentation]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -44,10 +49,46 @@ jobs:
         run: npm ci
       - name: Install gh-aw
         uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
-      - name: Run contract suite
-        run: npm run check
+      - name: Run ${{ matrix.area }} unit contracts
+        run: npm run test:unit:area -- ${{ matrix.area }}
+
+  test:
+    needs: unit
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install gh-aw
+        uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
+      - name: Run remaining contract checks
+        run: |
+          npm run lint
+          npm run typecheck:cao
+          npm run test:integration
+          npm run test:load
+          npm run check:svg
+          npm run compile
+          npm run docs:build
       - name: Check patch formatting
         run: git diff --check
+      - name: Require successful unit areas
+        if: ${{ !cancelled() }}
+        env:
+          UNIT_RESULT: ${{ needs.unit.result }}
+        run: |
+          if [[ "$UNIT_RESULT" != "success" ]]; then
+            echo "::error::Unit contracts failed or were skipped ($UNIT_RESULT)"
+            exit 1
+          fi
 
   github-issue-query:
     name: GitHub issue GraphQL integration
