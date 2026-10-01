@@ -197,7 +197,14 @@ function computeAgentFacingPages(document) {
   const unique = new Map();
   for (const page of pages) {
     if (!isAgentFacingPage(page, navigationPages)) continue;
-    if (pageViews(document, page).some((view) => viewQueryNames(view).some((name) => usesSimulatorQuery(document, name)))) continue;
+    const sections = pageDefinition(page).sections;
+    const sectionSources = (Array.isArray(sections) ? sections : []).flatMap((section) => (
+      isPlainObject(section)
+        ? [section['count-source'], ...(Array.isArray(section['count-sources']) ? section['count-sources'] : [])]
+        : []
+    ));
+    if ([...pageViews(document, page).flatMap(viewQueryNames), ...sectionSources]
+      .some((name) => typeof name === 'string' && usesSimulatorQuery(document, name))) continue;
     const pageId = text(page.id);
     if (unique.has(pageId)) continue;
     unique.set(pageId, page);

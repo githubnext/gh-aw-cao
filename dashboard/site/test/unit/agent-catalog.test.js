@@ -139,7 +139,7 @@ describe("agent catalog", () => {
   it("withholds marked and synthetic simulator queries and their pages from agent transports", () => {
     const simulator = {
       dashboard: {
-        navigation: [{ pages: ["simulators", "ux", "insights"] }],
+        navigation: [{ pages: ["simulators", "ux", "count-only", "insights"] }],
         queries: [
           { name: "ordinary", from: "runs" },
           { name: "ux-only", from: "runs", simulator: true },
@@ -151,6 +151,7 @@ describe("agent catalog", () => {
         pages: [
           { id: "simulators", title: "Simulators", views: [{ data: { source: "growth" } }] },
           { id: "ux", title: "UX", views: [{ data: { source: "ux-dependent" } }] },
+          { id: "count-only", title: "Count only", sections: [{ "count-sources": ["ordinary", "ux-only"] }] },
           { id: "insights", title: "Insights", views: [{ data: { source: "ordinary" } }] },
         ],
       },
