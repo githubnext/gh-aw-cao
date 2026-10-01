@@ -173,7 +173,7 @@ func TestBlackboxSSEFramingAndDisconnect(t *testing.T) {
 	}
 	app := &App{
 		database: integrationDatabase(t), hub: newEventHub(),
-		store: redisx.NewStore(redisClient, "blackbox-stream"),
+		store:  redisx.NewStore(redisClient, "blackbox-stream"),
 		config: Config{HostProfile: localHostProfile()}, accessToken: testAccessToken,
 	}
 	server := httptest.NewServer(app.Handler())
