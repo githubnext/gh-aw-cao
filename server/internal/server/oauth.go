@@ -239,6 +239,11 @@ func recordOAuthDecision(ctx context.Context, operation, outcome string) {
 }
 
 func (oauth *githubOAuth) login(response http.ResponseWriter, request *http.Request) {
+	if !navigationRequest(request) {
+		oauth.logBranch("login.embedded_or_subresource_rejected")
+		writeError(response, http.StatusUnauthorized, "GitHub sign-in requires a top-level navigation")
+		return
+	}
 	state, err := randomToken(32)
 	if err != nil {
 		oauth.logBranch("login.state_generation_failed")

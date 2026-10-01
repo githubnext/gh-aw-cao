@@ -4445,6 +4445,60 @@ describe('presenter built-in and custom pages', () => {
     }
   });
 
+  it('debounces scroll history writes and flushes pending scroll on navigation', () => {
+    const root = document.createElement('div');
+    root.innerHTML = `
+      <a data-nav-page-id="first" href="#page-first">First</a>
+      <a data-nav-page-id="second" href="#page-second">Second</a>
+      <main class="dashboard-prototype">
+        <section class="dashboard-page" id="page-first" data-page-id="first"></section>
+        <section class="dashboard-page" id="page-second" data-page-id="second"></section>
+      </main>
+    `;
+    document.body.append(root);
+    const disposeNavigation = enableDashboardPageNavigation(root, 'Dashboard', () => null, 'first');
+    const scroller = /** @type {HTMLElement} */ (root.querySelector('main.dashboard-prototype'));
+    const replaceState = vi.spyOn(window.history, 'replaceState');
+    replaceState.mockClear();
+    vi.useFakeTimers();
+    try {
+      for (let position = 1; position <= 150; position += 1) {
+        scroller.scrollTop = position;
+        scroller.dispatchEvent(new Event('scroll'));
+        vi.advanceTimersByTime(80);
+      }
+      expect(replaceState).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(250);
+      expect(replaceState).toHaveBeenCalledTimes(1);
+      expect(window.history.state).toMatchObject({
+        centralAgenticOpsScrollPageId: 'first',
+        centralAgenticOpsScrollTop: 150
+      });
+
+      scroller.scrollTop = 200;
+      scroller.dispatchEvent(new Event('scroll'));
+      /** @type {HTMLAnchorElement} */ (root.querySelector('[data-nav-page-id="second"]')).click();
+      expect(replaceState).toHaveBeenCalledTimes(2);
+      expect(replaceState.mock.calls[1][0]).toMatchObject({
+        centralAgenticOpsScrollPageId: 'first',
+        centralAgenticOpsScrollTop: 200
+      });
+      vi.advanceTimersByTime(250);
+      expect(replaceState).toHaveBeenCalledTimes(2);
+
+      scroller.dispatchEvent(new Event('scroll'));
+      disposeNavigation();
+      vi.advanceTimersByTime(250);
+      expect(replaceState).toHaveBeenCalledTimes(2);
+    } finally {
+      disposeNavigation();
+      vi.useRealTimers();
+      root.remove();
+      replaceState.mockRestore();
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
   it('aborts the active page subscription when the dashboard is disposed', async () => {
     /** @type {AbortSignal | undefined} */
     let pageSignal;

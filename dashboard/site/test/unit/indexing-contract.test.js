@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { executeDashboardQueries } from '../../src/data/queries/declarative.js';
+import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
 const dashboard = /** @type {Record<string, any>} */ (
@@ -111,6 +112,20 @@ describe('indexing dashboard', () => {
     expect(transactions.controls).toBeUndefined();
     expect(card.details.map(/** @param {any} detail */ (detail) => detail.field))
       .toEqual(['created-at', 'committed-records', 'payload-hash']);
+  });
+
+  it('reads table counts directly instead of cloning all count dependencies for the view', () => {
+    const page = dashboard.pages.find(/** @param {any} candidate */ (candidate) => candidate.id === 'indexing');
+    const payload = compileDashboardViewPayloadQueries(page, 'indexing', {
+      queries: dashboard.queries,
+      views: dashboard.views,
+      viewId: 'indexing-database-table-counts',
+      sourceNames: ['indexing-database-table-counts'],
+      queryContext: { filters: { repository: ['example'] } }
+    });
+
+    expect(page.views[0].data['query-context']).toBe(false);
+    expect(payload).toEqual({ aliases: [], queries: [], replacedSources: [] });
   });
 
   it('declares a live collection-health table on the Ingestion page', () => {
