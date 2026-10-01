@@ -654,13 +654,8 @@ function campaignRows(inventory = {}, controlSettings = {}, generatedAt) {
       .filter((id) => !INTERNAL_CAMPAIGNS.has(id)),
   );
   return [...ids].sort().map((id) => {
-    const bundle = bundles.get(id)
-      || [...bundles.values()].find((candidate) => candidate.id === id)
-      || {};
-    const installed = registered.get(id) || {};
-    const intelligenceDeclaration = bundle.intelligenceDeclaration
-      || installed.intelligenceDeclaration
-      || null;
+    const bundle = bundles.get(id) || [...bundles.values()].find((candidate) => candidate.id === id) || {};
+    const intelligenceDeclaration = bundle.intelligenceDeclaration || registered.get(id)?.intelligenceDeclaration || null;
     const policy = controlSettings.campaigns?.[id] || {};
     const workers = Object.entries(policy.worker_policies || {}).map(([workflow, worker]) => ({
       id: worker.worker || workflow,
