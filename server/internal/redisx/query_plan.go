@@ -78,17 +78,8 @@ func (s *Store) ExecutePlan(
 	if err != nil {
 		return nil, metrics, err
 	}
-	response, ok := value.([]any)
-	if !ok || len(response) == 0 {
-		return nil, metrics, errors.New("invalid Redis aggregate response")
-	}
-	total, ok := response[0].(int64)
-	expected := total
-	if definition.Limit != nil {
-		expected = min(expected, int64(*definition.Limit))
-	}
-	if !ok || total < 0 || expected != int64(len(rows)) {
-		return nil, metrics, errors.New("incomplete Redis aggregate response")
+	if err := validateAggregateTotal(value, len(rows), definition.Limit); err != nil {
+		return nil, metrics, err
 	}
 	metadata["source-id"] = definition.Name
 	metadata["source-kind"] = "database-query"
@@ -97,19 +88,62 @@ func (s *Store) ExecutePlan(
 		metadata["availability"] = "empty"
 	}
 	metadata["row-count"] = len(rows)
-	metrics.PushedDown = []string{"redis-query-engine"}
-	metrics.QueryCount = 1
-	metrics.FilterCount = boolCount(definition.Filter != nil)
-	metrics.ComputeCount = len(definition.Compute)
-	metrics.AggregateCount = boolCount(definition.Aggregate != nil)
-	metrics.SelectCount = len(definition.Select)
-	metrics.OrderByCount = len(definition.OrderBy)
-	metrics.LimitCount = boolCount(definition.Limit != nil)
-	metrics.OutputRows = len(rows)
-	metrics.RedisRows = len(rows)
+	planMetrics := planExecutionMetrics(definition, len(rows))
+	metrics.PushedDown = planMetrics.PushedDown
+	metrics.QueryCount = planMetrics.QueryCount
+	metrics.FilterCount = planMetrics.FilterCount
+	metrics.ComputeCount = planMetrics.ComputeCount
+	metrics.AggregateCount = planMetrics.AggregateCount
+	metrics.SelectCount = planMetrics.SelectCount
+	metrics.OrderByCount = planMetrics.OrderByCount
+	metrics.LimitCount = planMetrics.LimitCount
+	metrics.OutputRows = planMetrics.OutputRows
+	metrics.RedisRows = planMetrics.RedisRows
+	redisLog.Printf("executed query plan source=%s redis_commands=%d rows=%d", definition.From, metrics.RedisCommands, len(rows))
 	return map[string]model.Source{
 		definition.Name: {Source: definition.Name, Rows: rows, Metadata: metadata},
 	}, metrics, nil
+}
+
+// validateAggregateTotal checks that FT.AGGREGATE's reported total matches
+// the number of rows actually decoded, accounting for a query-level LIMIT
+// that can cap the total below the index's full match count. It is
+// extracted from ExecutePlan so the count-reconciliation rule is testable
+// against representative decoded responses without a Redis connection.
+func validateAggregateTotal(value any, rowCount int, limit *int) error {
+	response, ok := value.([]any)
+	if !ok || len(response) == 0 {
+		return errors.New("invalid Redis aggregate response")
+	}
+	total, ok := response[0].(int64)
+	expected := total
+	if limit != nil {
+		expected = min(expected, int64(*limit))
+	}
+	if !ok || total < 0 || expected != int64(rowCount) {
+		return errors.New("incomplete Redis aggregate response")
+	}
+	return nil
+}
+
+// planExecutionMetrics derives the structural and row-count metrics reported
+// for a successfully executed native query plan. It is a pure function of
+// the definition and the decoded row count, extracted from ExecutePlan so
+// the metric derivation is independently testable without a Redis
+// connection or a full FT.AGGREGATE response.
+func planExecutionMetrics(definition query.Definition, rowCount int) model.Metrics {
+	return model.Metrics{
+		PushedDown:     []string{"redis-query-engine"},
+		QueryCount:     1,
+		FilterCount:    boolCount(definition.Filter != nil),
+		ComputeCount:   len(definition.Compute),
+		AggregateCount: boolCount(definition.Aggregate != nil),
+		SelectCount:    len(definition.Select),
+		OrderByCount:   len(definition.OrderBy),
+		LimitCount:     boolCount(definition.Limit != nil),
+		OutputRows:     rowCount,
+		RedisRows:      rowCount,
+	}
 }
 
 // outputField describes how a Redis aggregate pipeline alias maps back to a

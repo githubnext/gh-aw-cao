@@ -160,6 +160,59 @@ func TestDecodeAggregateRowsPreservesTagGroupsAsText(t *testing.T) {
 	}
 }
 
+func TestValidateAggregateTotalAcceptsMatchingTotalsAndRejectsMismatches(t *testing.T) {
+	limit := 2
+	for name, testCase := range map[string]struct {
+		value   any
+		rows    int
+		limit   *int
+		wantErr bool
+	}{
+		"no limit matches total":          {value: []any{int64(3)}, rows: 3, wantErr: false},
+		"limit caps expected total":       {value: []any{int64(5)}, rows: 2, limit: &limit, wantErr: false},
+		"empty result matches total":      {value: []any{int64(0)}, rows: 0, wantErr: false},
+		"not a slice":                     {value: "not-a-slice", rows: 0, wantErr: true},
+		"empty slice":                     {value: []any{}, rows: 0, wantErr: true},
+		"total is not an integer":         {value: []any{"3"}, rows: 3, wantErr: true},
+		"negative total":                  {value: []any{int64(-1)}, rows: 0, wantErr: true},
+		"row count below unlimited total": {value: []any{int64(3)}, rows: 2, wantErr: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := validateAggregateTotal(testCase.value, testCase.rows, testCase.limit)
+			if (err != nil) != testCase.wantErr {
+				t.Fatalf("%s: got err=%v, want error=%t", name, err, testCase.wantErr)
+			}
+		})
+	}
+}
+
+func TestPlanExecutionMetricsCountsDefinitionStructureAndRows(t *testing.T) {
+	limit := 10
+	definition := query.Definition{
+		Name: "run-summary", From: "runs",
+		Filter:    &query.Filter{Predicates: []query.Predicate{{Field: "status", Equals: "failure"}}},
+		Compute:   []query.ComputedField{{As: "label", Function: "literal"}},
+		Aggregate: &query.Aggregate{By: []string{"workflow"}},
+		Select:    []query.SelectedField{{Field: "workflow"}},
+		OrderBy:   []query.OrderField{{Field: "workflow"}},
+		Limit:     &limit,
+	}
+	metrics := planExecutionMetrics(definition, 7)
+	if !reflect.DeepEqual(metrics.PushedDown, []string{"redis-query-engine"}) ||
+		metrics.QueryCount != 1 || metrics.FilterCount != 1 || metrics.ComputeCount != 1 ||
+		metrics.AggregateCount != 1 || metrics.SelectCount != 1 || metrics.OrderByCount != 1 ||
+		metrics.LimitCount != 1 || metrics.OutputRows != 7 || metrics.RedisRows != 7 {
+		t.Fatalf("unexpected plan execution metrics: %+v", metrics)
+	}
+
+	empty := planExecutionMetrics(query.Definition{Name: "bare", From: "runs"}, 0)
+	if empty.FilterCount != 0 || empty.ComputeCount != 0 || empty.AggregateCount != 0 ||
+		empty.SelectCount != 0 || empty.OrderByCount != 0 || empty.LimitCount != 0 ||
+		empty.OutputRows != 0 || empty.RedisRows != 0 {
+		t.Fatalf("unexpected plan execution metrics for bare definition: %+v", empty)
+	}
+}
+
 func TestNativeAggregateCommandRejectsCountOfOptionalField(t *testing.T) {
 	definition := query.Definition{
 		Name: "counts", From: "runs",
