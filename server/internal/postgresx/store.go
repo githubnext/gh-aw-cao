@@ -27,11 +27,37 @@ type State struct {
 }
 
 type Store struct {
-	db *sql.DB
+	db        *sql.DB
+	namespace string
+}
+
+// SourceReader reads state and sources from one consistent database snapshot.
+type SourceReader interface {
+	State(context.Context) (State, error)
+	LoadSource(context.Context, string, *query.Definition) (model.Source, model.Metrics, error)
+	Diagnostics(context.Context) (model.Diagnostics, error)
+}
+
+type readTransaction struct {
+	store *Store
+	tx    *sql.Tx
+}
+
+type rowQuerier interface {
+	QueryRowContext(context.Context, string, ...any) *sql.Row
 }
 
 // New connects to PostgreSQL and initializes the current-source schema.
 func New(ctx context.Context, dsn string) (*Store, error) {
+	return NewWithNamespace(ctx, dsn, "default")
+}
+
+// NewWithNamespace isolates dashboard data when deployments share a database.
+// New uses "default"; deployments sharing a DSN must provide distinct namespaces.
+func NewWithNamespace(ctx context.Context, dsn, namespace string) (*Store, error) {
+	if namespace == "" {
+		return nil, errors.New("postgres namespace is required")
+	}
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open postgres: %w", err)
@@ -41,17 +67,21 @@ func New(ctx context.Context, dsn string) (*Store, error) {
 	db.SetConnMaxLifetime(30 * time.Minute)
 	for _, statement := range []string{
 		`CREATE TABLE IF NOT EXISTS cao_sources (
-			source_name TEXT PRIMARY KEY,
-			metadata JSONB NOT NULL
+			namespace TEXT NOT NULL,
+			source_name TEXT NOT NULL,
+			metadata JSONB NOT NULL,
+			PRIMARY KEY (namespace, source_name)
 		)`,
 		`CREATE TABLE IF NOT EXISTS cao_source_rows (
-			source_name TEXT NOT NULL REFERENCES cao_sources(source_name) ON DELETE CASCADE,
+			namespace TEXT NOT NULL,
+			source_name TEXT NOT NULL,
 			ordinal BIGINT NOT NULL,
 			payload JSONB NOT NULL,
-			PRIMARY KEY (source_name, ordinal)
+			PRIMARY KEY (namespace, source_name, ordinal),
+			FOREIGN KEY (namespace, source_name) REFERENCES cao_sources(namespace, source_name) ON DELETE CASCADE
 		)`,
 		`CREATE TABLE IF NOT EXISTS cao_state (
-			id BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (id),
+			namespace TEXT PRIMARY KEY,
 			revision BIGINT NOT NULL,
 			data_revision TEXT NOT NULL,
 			evaluated_at TIMESTAMPTZ NOT NULL,
@@ -64,16 +94,24 @@ func New(ctx context.Context, dsn string) (*Store, error) {
 			return nil, fmt.Errorf("initialize postgres schema: %w", err)
 		}
 	}
-	return &Store{db: db}, nil
+	return &Store{db: db, namespace: namespace}, nil
 }
 
 func (s *Store) Close() error { return s.db.Close() }
 
 // State returns an unready zero revision before the first successful replacement.
 func (s *Store) State(ctx context.Context) (State, error) {
+	return s.readState(ctx, s.db)
+}
+
+func (r *readTransaction) State(ctx context.Context) (State, error) {
+	return r.store.readState(ctx, r.tx)
+}
+
+func (s *Store) readState(ctx context.Context, db rowQuerier) (State, error) {
 	state := State{Counts: map[string]int{}}
 	var counts []byte
-	err := s.db.QueryRowContext(ctx, `SELECT revision, data_revision, evaluated_at, counts FROM cao_state WHERE id = TRUE`).
+	err := db.QueryRowContext(ctx, `SELECT revision, data_revision, evaluated_at, counts FROM cao_state WHERE namespace = $1`, s.namespace).
 		Scan(&state.Revision, &state.DataRevision, &state.EvaluatedAt, &counts)
 	if errors.Is(err, sql.ErrNoRows) {
 		return state, nil
@@ -96,14 +134,14 @@ func (s *Store) Replace(ctx context.Context, sources map[string]model.Source, di
 		return 0, fmt.Errorf("begin postgres replacement: %w", err)
 	}
 	defer tx.Rollback()
-	if _, err = tx.ExecContext(ctx, `INSERT INTO cao_state (id, revision, data_revision, evaluated_at, counts, diagnostics)
-		VALUES (TRUE, 0, '', 'epoch'::timestamptz, '{}'::jsonb, '{}'::jsonb) ON CONFLICT (id) DO NOTHING`); err != nil {
+	if _, err = tx.ExecContext(ctx, `INSERT INTO cao_state (namespace, revision, data_revision, evaluated_at, counts, diagnostics)
+		VALUES ($1, 0, '', 'epoch'::timestamptz, '{}'::jsonb, '{}'::jsonb) ON CONFLICT (namespace) DO NOTHING`, s.namespace); err != nil {
 		return 0, fmt.Errorf("initialize postgres state: %w", err)
 	}
-	if err = tx.QueryRowContext(ctx, `SELECT revision FROM cao_state WHERE id = TRUE FOR UPDATE`).Scan(&revision); err != nil {
+	if err = tx.QueryRowContext(ctx, `SELECT revision FROM cao_state WHERE namespace = $1 FOR UPDATE`, s.namespace).Scan(&revision); err != nil {
 		return 0, fmt.Errorf("lock postgres state: %w", err)
 	}
-	if _, err = tx.ExecContext(ctx, `DELETE FROM cao_sources`); err != nil {
+	if _, err = tx.ExecContext(ctx, `DELETE FROM cao_sources WHERE namespace = $1`, s.namespace); err != nil {
 		return 0, fmt.Errorf("clear postgres sources: %w", err)
 	}
 	names := make([]string, 0, len(sources))
@@ -121,7 +159,7 @@ func (s *Store) Replace(ctx context.Context, sources map[string]model.Source, di
 		if marshalErr != nil {
 			return 0, fmt.Errorf("marshal metadata for %q: %w", name, marshalErr)
 		}
-		if _, err = tx.ExecContext(ctx, `INSERT INTO cao_sources (source_name, metadata) VALUES ($1, $2::jsonb)`, name, metadata); err != nil {
+		if _, err = tx.ExecContext(ctx, `INSERT INTO cao_sources (namespace, source_name, metadata) VALUES ($1, $2, $3::jsonb)`, s.namespace, name, metadata); err != nil {
 			return 0, fmt.Errorf("insert postgres source %q: %w", name, err)
 		}
 		for ordinal, row := range source.Rows {
@@ -132,7 +170,7 @@ func (s *Store) Replace(ctx context.Context, sources map[string]model.Source, di
 			if marshalErr != nil {
 				return 0, fmt.Errorf("marshal row in %q: %w", name, marshalErr)
 			}
-			if _, err = tx.ExecContext(ctx, `INSERT INTO cao_source_rows (source_name, ordinal, payload) VALUES ($1, $2, $3::jsonb)`, name, ordinal, payload); err != nil {
+			if _, err = tx.ExecContext(ctx, `INSERT INTO cao_source_rows (namespace, source_name, ordinal, payload) VALUES ($1, $2, $3, $4::jsonb)`, s.namespace, name, ordinal, payload); err != nil {
 				return 0, fmt.Errorf("insert postgres row in %q: %w", name, err)
 			}
 		}
@@ -148,7 +186,7 @@ func (s *Store) Replace(ctx context.Context, sources map[string]model.Source, di
 	}
 	if err = tx.QueryRowContext(ctx, `UPDATE cao_state SET revision = revision + 1,
 		data_revision = $1, evaluated_at = $2, counts = $3::jsonb, diagnostics = $4::jsonb
-		WHERE id = TRUE RETURNING revision`, dataRevision, evaluatedAt, countJSON, diagnosticsJSON).Scan(&revision); err != nil {
+		WHERE namespace = $5 RETURNING revision`, dataRevision, evaluatedAt, countJSON, diagnosticsJSON, s.namespace).Scan(&revision); err != nil {
 		return 0, fmt.Errorf("update postgres state: %w", err)
 	}
 	if err = tx.Commit(); err != nil {
@@ -157,27 +195,51 @@ func (s *Store) Replace(ctx context.Context, sources map[string]model.Source, di
 	return revision, nil
 }
 
+// WithReadTransaction keeps State, Diagnostics and every LoadSource in the
+// callback at the same PostgreSQL repeatable-read snapshot. Do not retain the
+// reader after the callback returns.
+func (s *Store) WithReadTransaction(ctx context.Context, fn func(SourceReader) error) error {
+	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead})
+	if err != nil {
+		return fmt.Errorf("begin postgres source read: %w", err)
+	}
+	defer tx.Rollback()
+	if err := fn(&readTransaction{store: s, tx: tx}); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit postgres source read: %w", err)
+	}
+	return nil
+}
+
 // LoadSource returns complete source documents; definition is deliberately not
 // pushed into SQL, so the existing Go query engine evaluates all operators.
 func (s *Store) LoadSource(ctx context.Context, name string, definition *query.Definition) (model.Source, model.Metrics, error) {
+	var source model.Source
+	var metrics model.Metrics
+	err := s.WithReadTransaction(ctx, func(reader SourceReader) (err error) {
+		source, metrics, err = reader.LoadSource(ctx, name, definition)
+		return err
+	})
+	return source, metrics, err
+}
+
+func (r *readTransaction) LoadSource(ctx context.Context, name string, definition *query.Definition) (model.Source, model.Metrics, error) {
 	_ = definition
-	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead})
-	if err != nil {
-		return model.Source{}, model.Metrics{}, fmt.Errorf("begin postgres source read: %w", err)
-	}
-	defer tx.Rollback()
+	s, tx := r.store, r.tx
 	var metadataJSON []byte
-	if err = tx.QueryRowContext(ctx, `SELECT metadata FROM cao_sources WHERE source_name = $1`, name).Scan(&metadataJSON); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT metadata FROM cao_sources WHERE namespace = $1 AND source_name = $2`, s.namespace, name).Scan(&metadataJSON); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.Source{}, model.Metrics{}, fmt.Errorf("%w: %q", ErrSourceUnavailable, name)
 		}
 		return model.Source{}, model.Metrics{}, fmt.Errorf("read postgres metadata: %w", err)
 	}
 	source := model.Source{Source: name, Rows: []model.Row{}}
-	if err = decodeJSON(metadataJSON, &source.Metadata); err != nil {
+	if err := decodeJSON(metadataJSON, &source.Metadata); err != nil {
 		return model.Source{}, model.Metrics{}, fmt.Errorf("decode postgres metadata: %w", err)
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT payload FROM cao_source_rows WHERE source_name = $1 ORDER BY ordinal`, name)
+	rows, err := tx.QueryContext(ctx, `SELECT payload FROM cao_source_rows WHERE namespace = $1 AND source_name = $2 ORDER BY ordinal`, s.namespace, name)
 	if err != nil {
 		return model.Source{}, model.Metrics{}, fmt.Errorf("read postgres rows: %w", err)
 	}
@@ -200,15 +262,20 @@ func (s *Store) LoadSource(ctx context.Context, name string, definition *query.D
 	if err != nil {
 		return model.Source{}, model.Metrics{}, fmt.Errorf("decode postgres rows: %w", err)
 	}
-	if err = tx.Commit(); err != nil {
-		return model.Source{}, model.Metrics{}, fmt.Errorf("commit postgres source read: %w", err)
-	}
 	return source, model.Metrics{OutputRows: len(source.Rows)}, nil
 }
 
 func (s *Store) Diagnostics(ctx context.Context) (model.Diagnostics, error) {
+	return s.readDiagnostics(ctx, s.db)
+}
+
+func (r *readTransaction) Diagnostics(ctx context.Context) (model.Diagnostics, error) {
+	return r.store.readDiagnostics(ctx, r.tx)
+}
+
+func (s *Store) readDiagnostics(ctx context.Context, db rowQuerier) (model.Diagnostics, error) {
 	var payload []byte
-	err := s.db.QueryRowContext(ctx, `SELECT diagnostics FROM cao_state WHERE id = TRUE AND revision > 0`).Scan(&payload)
+	err := db.QueryRowContext(ctx, `SELECT diagnostics FROM cao_state WHERE namespace = $1 AND revision > 0`, s.namespace).Scan(&payload)
 	if errors.Is(err, sql.ErrNoRows) {
 		return model.Diagnostics{}, nil
 	}

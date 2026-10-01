@@ -30,6 +30,12 @@ func TestDecodeJSONPreservesNumbers(t *testing.T) {
 	}
 }
 
+func TestNamespaceRequired(t *testing.T) {
+	if _, err := NewWithNamespace(t.Context(), "", ""); err == nil {
+		t.Fatal("empty namespace must fail before attempting a connection")
+	}
+}
+
 func TestStoreIntegration(t *testing.T) {
 	url := os.Getenv("POSTGRES_URL")
 	if url == "" {
@@ -106,6 +112,26 @@ func TestStoreIntegration(t *testing.T) {
 		!reflect.DeepEqual(state.Counts, map[string]int{"$runs": 1, "repositories": 2, "empty": 0}) {
 		t.Fatalf("unexpected state: %+v", state)
 	}
+	tenant, err := NewWithNamespace(ctx, dsn, "other-tenant")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tenant.Close()
+	tenantState, err := tenant.State(ctx)
+	if err != nil || tenantState.Ready {
+		t.Fatalf("other namespace should be unready: %+v, %v", tenantState, err)
+	}
+	if _, _, err := tenant.LoadSource(ctx, "$runs", nil); !errors.Is(err, ErrSourceUnavailable) {
+		t.Fatalf("other namespace leaked raw source: %v", err)
+	}
+	if _, err := tenant.Replace(ctx, map[string]model.Source{"$runs": {
+		Source: "$runs", Rows: []model.Row{{"id": "other"}}, Metadata: model.Metadata{},
+	}}, model.Diagnostics{}, "other", evaluatedAt); err != nil {
+		t.Fatal(err)
+	}
+	if other, _, err := tenant.LoadSource(ctx, "$runs", nil); err != nil || other.Rows[0]["id"] != "other" {
+		t.Fatalf("other namespace read: %+v, %v", other, err)
+	}
 	raw, _, err := store.LoadSource(ctx, "$runs", nil)
 	if err != nil || !reflect.DeepEqual(raw.Rows, sources["$runs"].Rows) {
 		t.Fatalf("raw canonical source: %+v, %v", raw, err)
@@ -130,6 +156,46 @@ func TestStoreIntegration(t *testing.T) {
 		[]query.Definition{{Name: "raw", From: "$runs"}}, []string{"raw"})
 	if err != nil || !reflect.DeepEqual(rawResults["raw"].Rows, raw.Rows) {
 		t.Fatalf("raw query result: %+v, %v", rawResults, err)
+	}
+	err = store.WithReadTransaction(ctx, func(reader SourceReader) error {
+		before, err := reader.State(ctx)
+		if err != nil {
+			return err
+		}
+		if _, err := store.Replace(ctx, map[string]model.Source{"$runs": {
+			Source: "$runs", Rows: []model.Row{{"id": "new"}}, Metadata: model.Metadata{},
+		}}, model.Diagnostics{}, "new", evaluatedAt); err != nil {
+			return err
+		}
+		stillOld, _, err := query.New(readerLoader{reader: reader, ctx: ctx}).Execute(
+			[]query.Definition{{Name: "raw", From: "$runs"}}, []string{"raw"})
+		if err != nil {
+			return err
+		}
+		again, err := reader.State(ctx)
+		if err != nil {
+			return err
+		}
+		if before.Revision != again.Revision || !reflect.DeepEqual(stillOld["raw"].Rows, raw.Rows) {
+			t.Fatalf("query read mixed revisions: before=%+v after=%+v rows=%+v", before, again, stillOld)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if latest, err := store.State(ctx); err != nil || latest.Revision != revision+1 {
+		t.Fatalf("replacement did not commit independently: %+v, %v", latest, err)
+	}
+	// Restore the original data so the remaining rollback and replacement
+	// assertions operate against their initial sources.
+	revision, err = store.Replace(ctx, sources, diagnostics, "test-revision", evaluatedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err = store.State(ctx)
+	if err != nil || state.Revision != revision {
+		t.Fatalf("restored state: %+v, %v", state, err)
 	}
 	empty, _, err := store.LoadSource(ctx, "empty", nil)
 	if err != nil || len(empty.Rows) != 0 {
@@ -167,6 +233,15 @@ func intPtr(n int) *int { return &n }
 type sourceLoader struct {
 	store *Store
 	ctx   context.Context
+}
+
+type readerLoader struct {
+	reader SourceReader
+	ctx    context.Context
+}
+
+func (l readerLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
+	return l.reader.LoadSource(l.ctx, name, definition)
 }
 
 func (l sourceLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
