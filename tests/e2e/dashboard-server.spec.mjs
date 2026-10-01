@@ -11,6 +11,7 @@ import {
   mergeDashboardPage,
   normalizeDashboardPageChunk,
 } from "../../dashboard/site/src/dashboard-chunks.js";
+import { scrollRenderedViewsIntoView } from "./dashboard-deployed-refresh-helpers.mjs";
 
 const accessToken = process.env.DASHBOARD_SERVER_ACCESS_TOKEN
   || "0123456789abcdef0123456789abcdef";
@@ -82,8 +83,10 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
     await expect(tableMode).toBeVisible();
     await tableMode.click();
     await expect(tableMode).toHaveAttribute("aria-pressed", "true");
-    const view = page.locator(`[data-view-id="${expected.view}"]`);
-    await view.scrollIntoViewIfNeeded();
+    const activePage = page.locator(`[data-page-id="${expected.page}"]`);
+    await expect(activePage).not.toHaveAttribute("aria-busy", "true", { timeout: 30_000 });
+    await scrollRenderedViewsIntoView(activePage);
+    const view = activePage.locator(`[data-view-id="${expected.view}"]`);
     await expect(view).toBeVisible();
     await expect(view.locator(`td[data-field="${expected.field}"]`, { hasText: expected.value })).toBeVisible();
     await expect(view).not.toContainText("Unavailable");
