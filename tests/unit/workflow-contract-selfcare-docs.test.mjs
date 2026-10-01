@@ -253,7 +253,7 @@ test("SelfCare specs maintainer fixes missing specification updates in W3C style
 
   assert.match(source, /^name: "SelfCare \/ Specs Maintainer"$/m);
   assert.match(source, /on:\n\s+bots: \["github-actions\[bot\]", "cao-githubnext-gh-aw-cao-write\[bot\]"\]/);
-  assert.match(source, /imports:\n\s+- \.\.\/agents\/w3c-specification\.md\n\s+- uses: shared\/control\.md/);
+  assert.match(source, /imports:\n\s+- uses: shared\/control\.md/);
   assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: specs-maintainer/);
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /evidence-watermark\.json/);
@@ -263,6 +263,7 @@ test("SelfCare specs maintainer fixes missing specification updates in W3C style
   assert.match(source, /never treat a pull request description as proof of behavior/);
   assert.match(source, /does not modify the governing file under `specs\/`/);
   assert.match(source, /RFC 2119/);
+  assert.match(source, /Follow W3C conventions for every specification change/);
   assert.match(source, /allowed-files:\n\s+- "specs\/\*\.md"\n/);
   assert.match(source, /draft: true/);
   assert.match(source, /max-patch-files: 3/);
@@ -271,7 +272,7 @@ test("SelfCare specs maintainer fixes missing specification updates in W3C style
   assert.match(source, /Call `noop` exactly once/);
   assert.match(source, /\{\{#runtime-import\? \.github\/cao\/self-care\.md\}\}/);
   assert.doesNotMatch(source, /^\s+(contents|actions|pull-requests): write$/m);
-  assert.match(compiled, /GH_AW_AGENT_FILE: "\.github\/agents\/w3c-specification\.md"/);
+  assert.doesNotMatch(compiled, /GH_AW_AGENT_FILE:/);
 });
 
 test("SelfCare docs build-time investigator rotates evidenced recommendations", () => {
