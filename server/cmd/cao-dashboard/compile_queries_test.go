@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
 
 func TestCompileQueriesCommandReadsAllFragmentsAndDatabaseQueries(t *testing.T) {
@@ -43,6 +45,42 @@ func TestCompileQueriesCommandReadsAllFragmentsAndDatabaseQueries(t *testing.T) 
 		if !result.Valid {
 			t.Fatalf("query not validated: %+v", result)
 		}
+	}
+}
+
+func TestValidateCompilationQueriesIsolatesEachDefinition(t *testing.T) {
+	definitions := []query.Definition{
+		{Name: "valid", From: "runs", Select: []query.SelectedField{{Field: "id"}}},
+		{Name: "invalid", From: "runs", Predict: []json.RawMessage{json.RawMessage(`{}`)}},
+	}
+	results := validateCompilationQueries(definitions)
+	if len(results) != 2 {
+		t.Fatalf("expected 2 results, got %d", len(results))
+	}
+	if !results[0].Valid || results[0].Reason != "" {
+		t.Fatalf("expected first definition to validate cleanly: %+v", results[0])
+	}
+	if results[1].Valid || results[1].Reason == "" {
+		t.Fatalf("expected second definition to fail validation with a reason: %+v", results[1])
+	}
+}
+
+func TestSummarizeCompilationValidityCountsBothOutcomes(t *testing.T) {
+	results := []queryValidation{
+		{Name: "a", Valid: true},
+		{Name: "b", Valid: true},
+		{Name: "c", Valid: false, Reason: "unsupported"},
+	}
+	valid, invalid := summarizeCompilationValidity(results)
+	if valid != 2 || invalid != 1 {
+		t.Fatalf("expected valid=2 invalid=1, got valid=%d invalid=%d", valid, invalid)
+	}
+}
+
+func TestSummarizeCompilationValidityHandlesEmptyResults(t *testing.T) {
+	valid, invalid := summarizeCompilationValidity(nil)
+	if valid != 0 || invalid != 0 {
+		t.Fatalf("expected zero counts for nil input, got valid=%d invalid=%d", valid, invalid)
 	}
 }
 
