@@ -5,7 +5,7 @@ const endpoint = 'https://cao.githubnext.com/mcp';
 const audience = 'https://cao.githubnext.com';
 const protocolVersion = '2026-07-28';
 
-test('hosted MCP lists tools, inspects the catalog, and executes a named query', async () => {
+test('hosted MCP lists tools, inspects the catalog, and executes a named query', async (t) => {
   const actionsToken = process.env.GITHUB_TOKEN;
   const requestURL = process.env.ACTIONS_ID_TOKEN_REQUEST_URL;
   const requestToken = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
@@ -72,8 +72,17 @@ test('hosted MCP lists tools, inspects the catalog, and executes a named query',
     return payload.result;
   }
 
-  const discovered = await call('server/discover');
-  assert.ok(discovered.supportedVersions.includes(protocolVersion));
+  await t.test('prints MCP server version information', async () => {
+    const discovered = await call('server/discover');
+    console.log('Hosted MCP server version information:', JSON.stringify({
+      serverInfo: discovered.serverInfo,
+      supportedVersions: discovered.supportedVersions
+    }, null, 2));
+    assert.equal(discovered.serverInfo?.name, 'cao');
+    assert.equal(typeof discovered.serverInfo?.version, 'string');
+    assert.ok(discovered.serverInfo.version.length > 0, 'Hosted MCP must report its server version');
+    assert.ok(discovered.supportedVersions.includes(protocolVersion));
+  });
 
   const listed = await call('tools/list');
   assert.deepEqual(listed.tools.map(({ name }) => name), ['cao_catalog', 'cao_query']);
