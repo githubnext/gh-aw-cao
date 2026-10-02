@@ -6,6 +6,7 @@ import { effect, onCleanup, render, state } from '../reactive.js';
 import { bindFactorySources, createFactoryScope } from './factory-elements.js';
 import { errorMessage } from './count-formatters.js';
 import { renderEmptyMessage, renderLoadingMessage } from './ui-primitives.js';
+import { renderFileContent } from './file-content.js';
 
 const debugCampaignMemory = createDebug('campaign-memory');
 const MOBILE_MEMORY_HISTORY_KEY = 'caoMemoryViewer';
@@ -316,7 +317,7 @@ function renderCampaignTree(campaigns, signal) {
     });
     readRepositoryMemoryFile(selected.campaign, selected.entry.path, controller.signal).then((result) => {
       if (!controller.signal.aborted) {
-        fileBody.replaceChildren(h('pre', null, h('code', null, formatMemoryFileContent(selected.entry.path, result.content))));
+        fileBody.replaceChildren(renderFileContent(formatMemoryFileContent(selected.entry.path, result.content)));
       }
     }).catch((error) => {
       if (error?.name !== 'AbortError') {
@@ -539,7 +540,7 @@ function memoryView({ campaignName, manifest, selectedPath, file, mobileView, se
           : file.status === 'error'
             ? renderEmptyMessage(`Unable to load this memory file. ${file.error}`, { role: 'alert' })
             : file.status === 'ready' && selected
-              ? h('pre', null, h('code', null, formatMemoryFileContent(selected.path, file.content)))
+              ? renderFileContent(formatMemoryFileContent(selected.path, file.content))
               : null
       )
     )

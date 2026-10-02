@@ -1372,6 +1372,12 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .workflow-badge-orchestrator { border-color: var(--accent); color: var(--accent); }
 .workflow-badge-worker { border-color: var(--success); color: var(--success); }
 .configuration-view { display: grid; gap: 20px; }
+.configuration-view.show-server-logs > :not(.configuration-server-logs-view) { display: none; }
+.configuration-server-logs-view { min-width: 0; }
+.configuration-server-logs-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px; }
+.configuration-server-logs-toolbar h2 { margin: 0; font-size: 1.125rem; }
+.configuration-server-logs-view pre { min-width: 0; margin: 0; padding: 16px; border-radius: 6px; background: var(--canvas-inset); color: var(--fg); font: .75rem/1.5 var(--font-mono, ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace); white-space: pre-wrap; overflow-wrap: anywhere; }
+.configuration-server-logs-view pre > code { display: block; }
 .configuration-browser-settings { overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
 .configuration-browser-settings-heading { padding: 10px 12px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); }
 .configuration-browser-settings-heading h3 { margin: 0; font-size: .875rem; }

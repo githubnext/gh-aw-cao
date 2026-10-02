@@ -1464,6 +1464,9 @@ provenance required by hosted MCP; local access uses the dashboard bearer
 capability or the configured Actions token and actor. Coolify enables this
 setting and `cao:server*` debug logging by default. The buffer covers the
 current process only and does not include logs emitted before it was enabled.
+On the server-backed dashboard, administrators can open **Settings → Logs →
+Server logs** to inspect this snapshot as a full-page, preformatted view and
+refresh it. The entry is absent when the endpoint is disabled or access is denied.
 
 Use `--redis-url` and optional `--redis-namespace` only on the server command
 line. The same namespace must be supplied to `ingest` and `serve` when

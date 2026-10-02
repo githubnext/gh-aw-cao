@@ -70,6 +70,11 @@ export function usesRemoteDataBackend(document = globalThis.document) {
   return document?.querySelector?.(`meta[name="${BACKEND_META_NAME}"]`)?.getAttribute("content") === REMOTE_BACKEND;
 }
 
+/** @param {AbortSignal} [signal] */
+export function fetchServerLogs(signal) {
+  return apiRequest("/api/admin/logs", {}, signal);
+}
+
 /**
  * Removes static-dashboard PWA state from the server-backed origin. A worker
  * controlling the current page remains until navigation, but unregistering it

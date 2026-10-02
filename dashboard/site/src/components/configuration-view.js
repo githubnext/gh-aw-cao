@@ -9,6 +9,7 @@ import { isPlainObject, renderLazyDisclosure, renderLiveRegion, renderSectionHea
 import { renderSettingsCliActions } from './cli-actions.js';
 import { createFactoryScope } from './factory-elements.js';
 import { renderResetDashboardControl } from './reset-dashboard-control.js';
+import { renderServerLogsSetting, renderServerLogsView } from './server-logs.js';
 import { effect, state } from '../reactive.js';
 import {
   automaticDashboardBackgroundUpdatesActive,
@@ -475,7 +476,7 @@ export function renderConfigurationView(context) {
   const row = context.sources['configuration-policy']?.rows?.[0];
   const policyDocument = policyDocumentFromRow(row);
   const headingId = `${context.pageId}-configuration-heading`;
-  return h('section', { className: 'configuration-view', 'aria-labelledby': headingId },
+  const root = h('section', { className: 'configuration-view', 'aria-labelledby': headingId },
     renderSectionHeading({
       kicker: 'Policy source of truth',
       id: headingId,
@@ -490,6 +491,18 @@ export function renderConfigurationView(context) {
     isPlainObject(policyDocument)
       ? renderSettingsEditor(policyDocument)
       : h('p', { className: 'configuration-unavailable' }, 'The policy cannot be edited until it contains valid JSON.'),
-    renderDebuggingSettings()
+    renderDebuggingSettings(),
+    renderServerLogsSetting(() => {
+      const trigger = /** @type {HTMLElement | null} */ (root.querySelector('#configuration-server-logs-link'));
+      const view = renderServerLogsView(() => {
+        view.remove();
+        root.classList.remove('show-server-logs');
+        trigger?.focus();
+      });
+      root.append(view);
+      root.classList.add('show-server-logs');
+      view.querySelector('button')?.focus();
+    })
   );
+  return root;
 }
