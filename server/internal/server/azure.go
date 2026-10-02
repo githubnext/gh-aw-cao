@@ -201,7 +201,7 @@ func (p *processTelemetry) ensure(logger *log.Logger) error {
 	p.once.Do(func() {
 		p.err = configureProcessTelemetry()
 		if p.err != nil && logger != nil {
-			logger.Printf("telemetry configuration failed, continuing without exported traces: %v", p.err)
+			logger.Printf("telemetry configuration failed, continuing without exported telemetry")
 		}
 	})
 	return p.err

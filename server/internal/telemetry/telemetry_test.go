@@ -214,6 +214,19 @@ func TestSetupExportsLogsOnlyWhenEnabled(t *testing.T) {
 	}
 
 	t.Setenv("CAO_OTEL_LOGS_ENABLED", "true")
+	t.Setenv("OTEL_SDK_DISABLED", "true")
+	shutdown, err = Setup(context.Background(), "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if global.GetLoggerProvider() != previousProvider {
+		t.Fatal("OTEL_SDK_DISABLED must override log export")
+	}
+	if err := shutdown(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("OTEL_SDK_DISABLED", "")
 	shutdown, err = Setup(context.Background(), "test")
 	if err != nil {
 		t.Fatal(err)
