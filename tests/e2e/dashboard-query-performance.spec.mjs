@@ -5,6 +5,7 @@ import { extname, resolve, sep } from "node:path";
 import {
   deployedActivityShardEntries,
   deployedDashboardUrl,
+  configureDeployedStorageQuota,
   legacyPhaseJsonToJsonl,
   shouldIgnoreRequestFailure,
 } from "./dashboard-deployed-refresh-helpers.mjs";
@@ -162,6 +163,7 @@ test(`benchmarks every dashboard query against settled deployed data (shard ${sh
   const succeededRequests = new WeakSet();
   const overviewWorkerMetrics = [];
   let overviewWorkerMetricsError = null;
+  let storageSession;
   page.on("console", (message) => {
     if (message.type() === "error") browserErrors.push(message.text());
     if (message.type() !== "debug") return;
@@ -209,6 +211,7 @@ test(`benchmarks every dashboard query against settled deployed data (shard ${sh
     const benchmarkUrl = new URL(dashboardUrl);
     benchmarkUrl.searchParams.set("debug", "data:performance");
     benchmarkUrl.hash = "page-overview";
+    storageSession = await configureDeployedStorageQuota(page, benchmarkUrl);
     await page.goto(benchmarkUrl.href, { waitUntil: "domcontentloaded" });
     await expect(page.locator(".dashboard-root")).toBeVisible({ timeout: 120_000 });
     await expect(page.locator(".dashboard-root")).not.toHaveAttribute("aria-busy", "true", {
@@ -253,6 +256,9 @@ test(`benchmarks every dashboard query against settled deployed data (shard ${sh
         records: Object.values(counts).reduce((total, count) => total + count, 0),
         counts,
       };
+    });
+    const storage = await storageSession.send("Storage.getUsageAndQuota", {
+      origin: new URL(dashboardUrl).origin,
     });
 
     const shardQueries = partitionQueryDefinitions(dashboardContext.queries, shard.index, shard.total);
@@ -342,11 +348,12 @@ test(`benchmarks every dashboard query against settled deployed data (shard ${sh
     const report = {
       generatedAt: new Date().toISOString(),
       dashboardUrl: deployedDashboardUrl,
-      methodology: "Fresh Chromium profile running the checkout's dashboard and query worker; proxy current deployed data; measure native IndexedDB count() across all canonical entity stores, initial Overview readiness, and the median of several settled Overview requests by worker phase; then measure a 25-row first chunk, one continuation chunk when present, and one unpaginated fill iteration.",
+      methodology: "Fresh Chromium profile with a fixed 2 GiB origin quota running the checkout's dashboard and query worker; proxy current deployed data; measure native IndexedDB count() across all canonical entity stores, initial Overview readiness, and the median of several settled Overview requests by worker phase; then measure a 25-row first chunk, one continuation chunk when present, and one unpaginated fill iteration.",
       chunkSize: QUERY_CHUNK_SIZE,
       shard: { index: shard.index, total: shard.total },
       populateMs: Math.round(populateMs * 100) / 100,
       indexedDbCount,
+      storage,
       overview: {
         initialReadyMs: Math.round(initialOverviewReadyMs * 100) / 100,
         requestMs: overviewRequest.requestMs,
@@ -378,8 +385,12 @@ test(`benchmarks every dashboard query against settled deployed data (shard ${sh
     expect(browserErrors).toEqual([]);
     expect(failedRequests).toEqual([]);
   } finally {
-    await new Promise((resolvePromise, reject) => {
-      proxy.server.close((error) => error ? reject(error) : resolvePromise());
-    });
+    try {
+      await storageSession?.detach();
+    } finally {
+      await new Promise((resolvePromise, reject) => {
+        proxy.server.close((error) => error ? reject(error) : resolvePromise());
+      });
+    }
   }
 });

@@ -137,3 +137,19 @@ test("CAO server image supports downstream Compose role selection", async () => 
   assert.match(dockerfile, /VOLUME \["\/app\/source"\]/);
   assert.match(dockerfile, /USER 65532:65532/);
 });
+
+test("CAO server package installs build dependencies before verifying API artifacts", async () => {
+  const workflow = parse(await text(".github/workflows/cao-package.yml"));
+  const build = workflow.jobs.test.steps.find((step) => step.id === "dashboard-build");
+  assert.ok(build);
+  const commands = build.run.trim().split("\n").map((line) => line.trim());
+  const buildIndex = commands.indexOf("npm run dashboard:server:build");
+  assert.ok(buildIndex >= 0);
+  for (const install of [
+    "npm --prefix dashboard/site ci",
+    "npm --prefix server/spec ci",
+  ]) {
+    const index = commands.indexOf(install);
+    assert.ok(index >= 0 && index < buildIndex, `${install} must precede the dashboard build`);
+  }
+});
