@@ -257,3 +257,71 @@ func TestNativeInventoryEnrichment(t *testing.T) {
 		t.Fatalf("native observation precedence lost: %s %s", owner, visibility)
 	}
 }
+
+func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
+	store, _ := nativeTestStore(t)
+	now := time.Now().UTC()
+	old := now.AddDate(0, 0, -28).Format(time.RFC3339)
+	current := now.Format(time.RFC3339)
+	writer, err := store.BeginIngestion(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer writer.Abort(t.Context())
+	for _, record := range []struct {
+		source string
+		row    model.Row
+	}{
+		{"$repositories", model.Row{"id": "repository"}},
+		{"$workflows", model.Row{"id": "workflow", "repositoryId": "repository"}},
+		{"$experiments", model.Row{"id": "experiment", "workflowId": "workflow"}},
+		{"$graders", model.Row{"id": "grader", "workflowId": "workflow"}},
+		{"$evals", model.Row{"id": "eval", "workflowId": "workflow"}},
+		{"$runs", model.Row{"id": "old", "repositoryId": "repository", "workflowId": "workflow", "createdAt": old}},
+		{"$runs", model.Row{"id": "current", "repositoryId": "repository", "workflowId": "workflow", "createdAt": current}},
+		{"$sessions", model.Row{"id": "old-session", "runId": "old"}},
+		{"$events", model.Row{"id": "old-event", "sessionId": "old-session"}},
+		{"$sessions", model.Row{"id": "current-session", "runId": "current"}},
+		{"$events", model.Row{"id": "current-event", "sessionId": "current-session"}},
+	} {
+		if err := writer.Append(t.Context(), record.source, record.row); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, source := range []string{"$audits", "$domains", "$evalObservations", "$experimentAssignments", "$friction", "$graderObservations", "$issues", "$jobs", "$skills", "$tools"} {
+		for _, run := range []string{"old", "current"} {
+			row := model.Row{"id": source + run, "runId": run}
+			switch source {
+			case "$evalObservations":
+				row["evalId"] = "eval"
+			case "$experimentAssignments":
+				row["experimentId"] = "experiment"
+			case "$graderObservations":
+				row["graderId"] = "grader"
+			}
+			if err := writer.Append(t.Context(), source, row); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if _, err := writer.Publish(t.Context(), "weekly"); err != nil {
+		t.Fatal(err)
+	}
+	var partitions int
+	if err := store.db.QueryRowContext(t.Context(), "SELECT count(DISTINCT tableoid) FROM runs WHERE namespace=$1", store.namespace).Scan(&partitions); err != nil || partitions != 2 {
+		t.Fatalf("runs did not route to two weekly partitions: %d %v", partitions, err)
+	}
+	result, _, err := store.ExecuteSQLPlan(t.Context(), []query.Definition{{Name: "runs", From: "$runs", Select: []query.SelectedField{{Field: "id"}}}}, []string{"runs"})
+	if err != nil || len(result["runs"].Rows) != 2 {
+		t.Fatalf("parent query lost partitions: %v %v", result, err)
+	}
+	if err := store.RunPartitionMaintenance(t.Context(), now, 14); err != nil {
+		t.Fatal(err)
+	}
+	for _, table := range []string{"runs", "sessions", "events", "audits", "domains", "eval_observations", "experiment_assignments", "friction", "grader_observations", "issues", "jobs", "skills", "tools"} {
+		var count int
+		if err := store.db.QueryRowContext(t.Context(), "SELECT count(*) FROM "+table+" WHERE namespace=$1", store.namespace).Scan(&count); err != nil || count != 1 {
+			t.Fatalf("%s coordinated retention count = %d, err = %v", table, count, err)
+		}
+	}
+}

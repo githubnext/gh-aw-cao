@@ -85,7 +85,9 @@ test('generated SQL contains no JSON or serialized document columns', () => {
   const sql = readFileSync(new URL('../internal/postgresx/schema.sql', import.meta.url), 'utf8');
   assert.doesNotMatch(sql, /\bJSONB?\b|\b(?:payload|record_json|document)\s+(?:TEXT|BYTEA)\b/i);
   assert.match(sql, /present_fields BIT VARYING NOT NULL/);
-  assert.match(sql, /REFERENCES runs\(namespace, id\) DEFERRABLE INITIALLY DEFERRED/);
+  assert.match(sql, /REFERENCES runs\(namespace, id, run_at\) DEFERRABLE INITIALLY DEFERRED/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS runs \([\s\S]*?\) PARTITION BY RANGE \(run_at\);/);
+  assert.match(sql, /REFERENCES sessions\(namespace, id, run_at\) DEFERRABLE INITIALLY DEFERRED/);
   assert.match(sql, /DEFERRABLE INITIALLY DEFERRED/);
   assert.doesNotMatch(sql, /\b(?:ALTER|DROP)\s+TABLE\b/i);
   assert.doesNotMatch(sql, /\b(?:cao_sources|cao_source_rows|cao_values|ChildValue)\b|CREATE TABLE[^\n]*(?:campaigns|runs|audits|friction)_values\b/i);

@@ -19,10 +19,11 @@ import (
 
 type entityColumn struct{ field, name, kind, sql string }
 type entityTable struct {
-	name      string
-	runtime   bool
-	canonical bool
-	columns   []entityColumn
+	name        string
+	runtime     bool
+	canonical   bool
+	partitioned bool
+	columns     []entityColumn
 }
 
 func IsCanonicalCollection(name string) bool {
@@ -145,6 +146,8 @@ type Writer struct {
 	revision             int64
 	PreviousDataRevision string
 	evaluatedAt          time.Time
+	ingestedAt           time.Time
+	staged               map[string]bool
 }
 
 func (s *Store) BeginIngestion(ctx context.Context) (*Writer, error) {
@@ -157,7 +160,7 @@ func (s *Store) BeginIngestion(ctx context.Context) (*Writer, error) {
 		_ = connection.Close(ctx)
 		return nil, err
 	}
-	writer := &Writer{store: s, connection: connection, tx: tx, ordinals: map[string]int64{}, inventoryOrdinals: map[string]int64{}, inventoryTables: map[string]bool{}, batches: map[string][][]any{}, evaluatedAt: time.Unix(0, 0).UTC()}
+	writer := &Writer{store: s, connection: connection, tx: tx, ordinals: map[string]int64{}, inventoryOrdinals: map[string]int64{}, inventoryTables: map[string]bool{}, batches: map[string][][]any{}, evaluatedAt: time.Unix(0, 0).UTC(), ingestedAt: time.Now().UTC(), staged: map[string]bool{}}
 	fail := func(err error) (*Writer, error) { writer.Abort(ctx); return nil, err }
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended(current_schema() || ':' || $1, 0))`, s.namespace); err != nil {
 		return fail(err)
@@ -232,6 +235,19 @@ func (w *Writer) append(ctx context.Context, source string, row model.Row, inven
 	}
 	present := make([]byte, len(table.columns))
 	values := make([]any, len(table.columns)+3)
+	if table.partitioned && table.name == "runs" {
+		values = append(values, w.ingestedAt)
+		for _, field := range []string{"createdAt", "startedAt", "completedAt", "updatedAt"} {
+			if value, ok := row[field]; ok && value != nil {
+				bound, err := (entityColumn{kind: "timestamp"}).bind(value)
+				if err != nil {
+					return fmt.Errorf("%s.%s: %w", source, field, err)
+				}
+				values[len(values)-1] = bound
+				break
+			}
+		}
+	}
 	rowBytes := 0
 	ordinals := w.ordinals
 	batchName := source
@@ -300,11 +316,22 @@ func (w *Writer) Flush(ctx context.Context) error {
 		tableName := table.name
 		if sourceName != source {
 			tableName += "_inventory"
+		} else if table.partitioned && table.name != "runs" {
+			tableName += "_stage"
+			if !w.staged[sourceName] {
+				if _, err := w.tx.Exec(ctx, "CREATE TEMP TABLE "+query.SQLIdentifier(tableName)+" ON COMMIT DROP AS SELECT * FROM "+query.SQLIdentifier(table.name)+" WITH NO DATA"); err != nil {
+					return err
+				}
+				w.staged[sourceName] = true
+			}
 		}
 		columns := make([]string, 0, 3+len(table.columns))
 		columns = append(columns, "namespace", "ordinal", "present_fields")
 		for _, column := range table.columns {
 			columns = append(columns, column.name)
+		}
+		if table.name == "runs" && sourceName == source {
+			columns = append(columns, "run_at")
 		}
 		if _, err := w.tx.CopyFrom(ctx, pgx.Identifier{tableName}, columns, pgx.CopyFromRows(batch)); err != nil {
 			return fmt.Errorf("copy native %s batch: %w", source, err)
@@ -360,6 +387,55 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 	}
 	if err := w.Flush(ctx); err != nil {
 		return State{}, err
+	}
+	var duplicate bool
+	if err := w.tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM runs WHERE namespace=$1 GROUP BY id HAVING count(*)>1)`, w.store.namespace).Scan(&duplicate); err != nil {
+		return State{}, err
+	}
+	if duplicate {
+		return State{}, errors.New("duplicate run identity across weeks")
+	}
+	// Staged run-owned rows are linked after all run and session records have
+	// arrived. The copied batches remain bounded; PostgreSQL routes the insert.
+	for _, source := range append([]string{"$sessions"}, tableNames()...) {
+		if source == "$sessions" && w.staged["$sessions"] == false {
+			continue
+		}
+		table, ok := entityTables[source]
+		if !ok || !w.staged[source] {
+			continue
+		}
+		name := table.name
+		parent := "runs"
+		key := "run_id"
+		if name == "events" {
+			parent, key = "sessions", "session_id"
+		}
+		columns := []string{"namespace", "ordinal", "present_fields"}
+		for _, column := range table.columns {
+			columns = append(columns, column.name)
+		}
+		quoted := make([]string, len(columns))
+		for i, column := range columns {
+			quoted[i] = "s." + query.SQLIdentifier(column)
+		}
+		statement := fmt.Sprintf("INSERT INTO %s (%s,run_at) SELECT %s,p.run_at FROM %s s JOIN %s p ON p.namespace=s.namespace AND p.id=s.%s",
+			query.SQLIdentifier(name), strings.Join(columns, ","), strings.Join(quoted, ","),
+			query.SQLIdentifier(name+"_stage"), parent, key)
+		tag, err := w.tx.Exec(ctx, statement)
+		if err != nil {
+			return State{}, fmt.Errorf("publish run-owned %s: %w", name, err)
+		}
+		if tag.RowsAffected() != w.ordinals[source] {
+			return State{}, fmt.Errorf("run-owned %s references a missing or ambiguous parent", name)
+		}
+		if err := w.tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM "+query.SQLIdentifier(name)+" WHERE namespace=$1 GROUP BY id HAVING count(*)>1)", w.store.namespace).Scan(&duplicate); err != nil {
+			return State{}, err
+		}
+		if duplicate {
+			return State{}, fmt.Errorf("duplicate %s identity across weeks", name)
+		}
+		w.staged[source] = false
 	}
 	for source := range w.inventoryTables {
 		table := entityTables[source]

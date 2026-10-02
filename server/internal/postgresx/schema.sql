@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS repositories (
   repository_link_label TEXT,
   rollout_mode TEXT,
   visibility TEXT,
+
   PRIMARY KEY (namespace, id),
   UNIQUE (namespace, ordinal),
   CHECK (bit_length(present_fields) = 14),
@@ -106,6 +107,7 @@ CREATE TABLE IF NOT EXISTS workflows (
   workflow_link_relation TEXT,
   workflow_link_href TEXT,
   workflow_link_label TEXT,
+
   PRIMARY KEY (namespace, id),
   UNIQUE (namespace, ordinal),
   CHECK (bit_length(present_fields) = 43),
@@ -193,19 +195,23 @@ CREATE TABLE IF NOT EXISTS runs (
   workflow_link_href TEXT,
   workflow_link_label TEXT,
   workflow_path TEXT,
-  PRIMARY KEY (namespace, id),
-  UNIQUE (namespace, ordinal),
+  run_at TIMESTAMPTZ NOT NULL,
+
+  PRIMARY KEY (namespace, id, run_at),
+  UNIQUE (namespace, ordinal, run_at),
   CHECK (bit_length(present_fields) = 73),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
   CHECK (repository_id IS NOT NULL AND repository_id <> ''),
   FOREIGN KEY (namespace, repository_id) REFERENCES repositories(namespace, id) DEFERRABLE INITIALLY DEFERRED,
   CHECK (workflow_id IS NOT NULL AND workflow_id <> ''),
   FOREIGN KEY (namespace, workflow_id) REFERENCES workflows(namespace, id) DEFERRABLE INITIALLY DEFERRED
-);
+) PARTITION BY RANGE (run_at);
 
 CREATE INDEX IF NOT EXISTS runs_repository_id ON runs (namespace, repository_id, ordinal);
 
 CREATE INDEX IF NOT EXISTS runs_workflow_id ON runs (namespace, workflow_id, ordinal);
+
+CREATE INDEX IF NOT EXISTS runs_identity ON runs (namespace, id);
 
 CREATE TABLE IF NOT EXISTS audits (
   namespace TEXT NOT NULL,
@@ -279,15 +285,19 @@ CREATE TABLE IF NOT EXISTS audits (
   total_tokens BIGINT,
   turns BIGINT,
   type TEXT,
-  PRIMARY KEY (namespace, id),
-  UNIQUE (namespace, ordinal),
+  run_at TIMESTAMPTZ NOT NULL,
+
+  PRIMARY KEY (namespace, id, run_at),
+  UNIQUE (namespace, ordinal, run_at),
   CHECK (bit_length(present_fields) = 68),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
   CHECK (run_id IS NOT NULL AND run_id <> ''),
-  FOREIGN KEY (namespace, run_id) REFERENCES runs(namespace, id) DEFERRABLE INITIALLY DEFERRED
-);
+  FOREIGN KEY (namespace, run_id, run_at) REFERENCES runs(namespace, id, run_at) DEFERRABLE INITIALLY DEFERRED
+) PARTITION BY RANGE (run_at);
 
 CREATE INDEX IF NOT EXISTS audits_run_id ON audits (namespace, run_id, ordinal);
+
+CREATE INDEX IF NOT EXISTS audits_identity ON audits (namespace, id);
 
 CREATE TABLE IF NOT EXISTS campaigns (
   namespace TEXT NOT NULL,
@@ -318,6 +328,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
   update_state TEXT,
   version TEXT,
   worker_count BIGINT,
+
   PRIMARY KEY (namespace, id),
   UNIQUE (namespace, ordinal),
   CHECK (bit_length(present_fields) = 25),
@@ -342,15 +353,19 @@ CREATE TABLE IF NOT EXISTS domains (
   summary TEXT,
   timestamp TIMESTAMPTZ,
   type TEXT,
-  PRIMARY KEY (namespace, id),
-  UNIQUE (namespace, ordinal),
+  run_at TIMESTAMPTZ NOT NULL,
+
+  PRIMARY KEY (namespace, id, run_at),
+  UNIQUE (namespace, ordinal, run_at),
   CHECK (bit_length(present_fields) = 14),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
   CHECK (run_id IS NOT NULL AND run_id <> ''),
-  FOREIGN KEY (namespace, run_id) REFERENCES runs(namespace, id) DEFERRABLE INITIALLY DEFERRED
-);
+  FOREIGN KEY (namespace, run_id, run_at) REFERENCES runs(namespace, id, run_at) DEFERRABLE INITIALLY DEFERRED
+) PARTITION BY RANGE (run_at);
 
 CREATE INDEX IF NOT EXISTS domains_run_id ON domains (namespace, run_id, ordinal);
+
+CREATE INDEX IF NOT EXISTS domains_identity ON domains (namespace, id);
 
 CREATE TABLE IF NOT EXISTS evals (
   namespace TEXT NOT NULL,
@@ -372,6 +387,7 @@ CREATE TABLE IF NOT EXISTS evals (
   source_eval_id TEXT,
   timestamp TIMESTAMPTZ,
   workflow_id TEXT,
+
   PRIMARY KEY (namespace, id),
   UNIQUE (namespace, ordinal),
   CHECK (bit_length(present_fields) = 16),
@@ -406,6 +422,7 @@ CREATE TABLE IF NOT EXISTS experiments (
   state TEXT,
   timestamp TIMESTAMPTZ,
   workflow_id TEXT,
+
   PRIMARY KEY (namespace, id),
   UNIQUE (namespace, ordinal),
   CHECK (bit_length(present_fields) = 20),
@@ -439,22 +456,26 @@ CREATE TABLE IF NOT EXISTS eval_observations (
   status TEXT,
   timestamp TIMESTAMPTZ,
   variant TEXT,
-  PRIMARY KEY (namespace, id),
-  UNIQUE (namespace, ordinal),
+  run_at TIMESTAMPTZ NOT NULL,
+
+  PRIMARY KEY (namespace, id, run_at),
+  UNIQUE (namespace, ordinal, run_at),
   CHECK (bit_length(present_fields) = 19),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
   CHECK (eval_id IS NOT NULL AND eval_id <> ''),
   FOREIGN KEY (namespace, eval_id) REFERENCES evals(namespace, id) DEFERRABLE INITIALLY DEFERRED,
   FOREIGN KEY (namespace, experiment_id) REFERENCES experiments(namespace, id) DEFERRABLE INITIALLY DEFERRED,
   CHECK (run_id IS NOT NULL AND run_id <> ''),
-  FOREIGN KEY (namespace, run_id) REFERENCES runs(namespace, id) DEFERRABLE INITIALLY DEFERRED
-);
+  FOREIGN KEY (namespace, run_id, run_at) REFERENCES runs(namespace, id, run_at) DEFERRABLE INITIALLY DEFERRED
+) PARTITION BY RANGE (run_at);
 
 CREATE INDEX IF NOT EXISTS eval_observations_eval_id ON eval_observations (namespace, eval_id, ordinal);
 
 CREATE INDEX IF NOT EXISTS eval_observations_experiment_id ON eval_observations (namespace, experiment_id, ordinal);
 
 CREATE INDEX IF NOT EXISTS eval_observations_run_id ON eval_observations (namespace, run_id, ordinal);
+
+CREATE INDEX IF NOT EXISTS eval_observations_identity ON eval_observations (namespace, id);
 
 CREATE TABLE IF NOT EXISTS sessions (
   namespace TEXT NOT NULL,
@@ -465,15 +486,19 @@ CREATE TABLE IF NOT EXISTS sessions (
   agent_id TEXT,
   started_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
-  PRIMARY KEY (namespace, id),
-  UNIQUE (namespace, ordinal),
+  run_at TIMESTAMPTZ NOT NULL,
+
+  PRIMARY KEY (namespace, id, run_at),
+  UNIQUE (namespace, ordinal, run_at),
   CHECK (bit_length(present_fields) = 5),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
   CHECK (run_id IS NOT NULL AND run_id <> ''),
-  FOREIGN KEY (namespace, run_id) REFERENCES runs(namespace, id) DEFERRABLE INITIALLY DEFERRED
-);
+  FOREIGN KEY (namespace, run_id, run_at) REFERENCES runs(namespace, id, run_at) DEFERRABLE INITIALLY DEFERRED
+) PARTITION BY RANGE (run_at);
 
 CREATE INDEX IF NOT EXISTS sessions_run_id ON sessions (namespace, run_id, ordinal);
+
+CREATE INDEX IF NOT EXISTS sessions_identity ON sessions (namespace, id);
 
 CREATE TABLE IF NOT EXISTS events (
   namespace TEXT NOT NULL,
@@ -484,15 +509,19 @@ CREATE TABLE IF NOT EXISTS events (
   type TEXT,
   timestamp TIMESTAMPTZ,
   summary TEXT,
-  PRIMARY KEY (namespace, id),
-  UNIQUE (namespace, ordinal),
+  run_at TIMESTAMPTZ NOT NULL,
+
+  PRIMARY KEY (namespace, id, run_at),
+  UNIQUE (namespace, ordinal, run_at),
   CHECK (bit_length(present_fields) = 5),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
   CHECK (session_id IS NOT NULL AND session_id <> ''),
-  FOREIGN KEY (namespace, session_id) REFERENCES sessions(namespace, id) DEFERRABLE INITIALLY DEFERRED
-);
+  FOREIGN KEY (namespace, session_id, run_at) REFERENCES sessions(namespace, id, run_at) DEFERRABLE INITIALLY DEFERRED
+) PARTITION BY RANGE (run_at);
 
 CREATE INDEX IF NOT EXISTS events_session_id ON events (namespace, session_id, ordinal);
+
+CREATE INDEX IF NOT EXISTS events_identity ON events (namespace, id);
 
 CREATE TABLE IF NOT EXISTS experiment_assignments (
   namespace TEXT NOT NULL,
@@ -512,19 +541,23 @@ CREATE TABLE IF NOT EXISTS experiment_assignments (
   timestamp TIMESTAMPTZ,
   trace_link TEXT,
   variant TEXT,
-  PRIMARY KEY (namespace, id),
-  UNIQUE (namespace, ordinal),
+  run_at TIMESTAMPTZ NOT NULL,
+
+  PRIMARY KEY (namespace, id, run_at),
+  UNIQUE (namespace, ordinal, run_at),
   CHECK (bit_length(present_fields) = 14),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
   CHECK (experiment_id IS NOT NULL AND experiment_id <> ''),
   FOREIGN KEY (namespace, experiment_id) REFERENCES experiments(namespace, id) DEFERRABLE INITIALLY DEFERRED,
   CHECK (run_id IS NOT NULL AND run_id <> ''),
-  FOREIGN KEY (namespace, run_id) REFERENCES runs(namespace, id) DEFERRABLE INITIALLY DEFERRED
-);
+  FOREIGN KEY (namespace, run_id, run_at) REFERENCES runs(namespace, id, run_at) DEFERRABLE INITIALLY DEFERRED
+) PARTITION BY RANGE (run_at);
 
 CREATE INDEX IF NOT EXISTS experiment_assignments_experiment_id ON experiment_assignments (namespace, experiment_id, ordinal);
 
 CREATE INDEX IF NOT EXISTS experiment_assignments_run_id ON experiment_assignments (namespace, run_id, ordinal);
+
+CREATE INDEX IF NOT EXISTS experiment_assignments_identity ON experiment_assignments (namespace, id);
 
 CREATE TABLE IF NOT EXISTS friction (
   namespace TEXT NOT NULL,
@@ -567,15 +600,19 @@ CREATE TABLE IF NOT EXISTS friction (
   total_run_aic NUMERIC,
   type TEXT,
   unattributed_occurrences BIGINT,
-  PRIMARY KEY (namespace, id),
-  UNIQUE (namespace, ordinal),
+  run_at TIMESTAMPTZ NOT NULL,
+
+  PRIMARY KEY (namespace, id, run_at),
+  UNIQUE (namespace, ordinal, run_at),
   CHECK (bit_length(present_fields) = 37),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
   CHECK (run_id IS NOT NULL AND run_id <> ''),
-  FOREIGN KEY (namespace, run_id) REFERENCES runs(namespace, id) DEFERRABLE INITIALLY DEFERRED
-);
+  FOREIGN KEY (namespace, run_id, run_at) REFERENCES runs(namespace, id, run_at) DEFERRABLE INITIALLY DEFERRED
+) PARTITION BY RANGE (run_at);
 
 CREATE INDEX IF NOT EXISTS friction_run_id ON friction (namespace, run_id, ordinal);
+
+CREATE INDEX IF NOT EXISTS friction_identity ON friction (namespace, id);
 
 CREATE TABLE IF NOT EXISTS graders (
   namespace TEXT NOT NULL,
@@ -597,6 +634,7 @@ CREATE TABLE IF NOT EXISTS graders (
   timestamp TIMESTAMPTZ,
   unit TEXT,
   workflow_id TEXT,
+
   PRIMARY KEY (namespace, id),
   UNIQUE (namespace, ordinal),
   CHECK (bit_length(present_fields) = 16),
@@ -635,22 +673,26 @@ CREATE TABLE IF NOT EXISTS grader_observations (
   timestamp TIMESTAMPTZ,
   value NUMERIC,
   variant TEXT,
-  PRIMARY KEY (namespace, id),
-  UNIQUE (namespace, ordinal),
+  run_at TIMESTAMPTZ NOT NULL,
+
+  PRIMARY KEY (namespace, id, run_at),
+  UNIQUE (namespace, ordinal, run_at),
   CHECK (bit_length(present_fields) = 24),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
   FOREIGN KEY (namespace, experiment_id) REFERENCES experiments(namespace, id) DEFERRABLE INITIALLY DEFERRED,
   CHECK (grader_id IS NOT NULL AND grader_id <> ''),
   FOREIGN KEY (namespace, grader_id) REFERENCES graders(namespace, id) DEFERRABLE INITIALLY DEFERRED,
   CHECK (run_id IS NOT NULL AND run_id <> ''),
-  FOREIGN KEY (namespace, run_id) REFERENCES runs(namespace, id) DEFERRABLE INITIALLY DEFERRED
-);
+  FOREIGN KEY (namespace, run_id, run_at) REFERENCES runs(namespace, id, run_at) DEFERRABLE INITIALLY DEFERRED
+) PARTITION BY RANGE (run_at);
 
 CREATE INDEX IF NOT EXISTS grader_observations_experiment_id ON grader_observations (namespace, experiment_id, ordinal);
 
 CREATE INDEX IF NOT EXISTS grader_observations_grader_id ON grader_observations (namespace, grader_id, ordinal);
 
 CREATE INDEX IF NOT EXISTS grader_observations_run_id ON grader_observations (namespace, run_id, ordinal);
+
+CREATE INDEX IF NOT EXISTS grader_observations_identity ON grader_observations (namespace, id);
 
 CREATE TABLE IF NOT EXISTS issues (
   namespace TEXT NOT NULL,
@@ -679,15 +721,19 @@ CREATE TABLE IF NOT EXISTS issues (
   summary TEXT,
   timestamp TIMESTAMPTZ,
   type TEXT,
-  PRIMARY KEY (namespace, id),
-  UNIQUE (namespace, ordinal),
+  run_at TIMESTAMPTZ NOT NULL,
+
+  PRIMARY KEY (namespace, id, run_at),
+  UNIQUE (namespace, ordinal, run_at),
   CHECK (bit_length(present_fields) = 23),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
   CHECK (run_id IS NOT NULL AND run_id <> ''),
-  FOREIGN KEY (namespace, run_id) REFERENCES runs(namespace, id) DEFERRABLE INITIALLY DEFERRED
-);
+  FOREIGN KEY (namespace, run_id, run_at) REFERENCES runs(namespace, id, run_at) DEFERRABLE INITIALLY DEFERRED
+) PARTITION BY RANGE (run_at);
 
 CREATE INDEX IF NOT EXISTS issues_run_id ON issues (namespace, run_id, ordinal);
+
+CREATE INDEX IF NOT EXISTS issues_identity ON issues (namespace, id);
 
 CREATE TABLE IF NOT EXISTS jobs (
   namespace TEXT NOT NULL,
@@ -700,15 +746,19 @@ CREATE TABLE IF NOT EXISTS jobs (
   conclusion TEXT,
   started_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
-  PRIMARY KEY (namespace, id),
-  UNIQUE (namespace, ordinal),
+  run_at TIMESTAMPTZ NOT NULL,
+
+  PRIMARY KEY (namespace, id, run_at),
+  UNIQUE (namespace, ordinal, run_at),
   CHECK (bit_length(present_fields) = 7),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
   CHECK (run_id IS NOT NULL AND run_id <> ''),
-  FOREIGN KEY (namespace, run_id) REFERENCES runs(namespace, id) DEFERRABLE INITIALLY DEFERRED
-);
+  FOREIGN KEY (namespace, run_id, run_at) REFERENCES runs(namespace, id, run_at) DEFERRABLE INITIALLY DEFERRED
+) PARTITION BY RANGE (run_at);
 
 CREATE INDEX IF NOT EXISTS jobs_run_id ON jobs (namespace, run_id, ordinal);
+
+CREATE INDEX IF NOT EXISTS jobs_identity ON jobs (namespace, id);
 
 CREATE TABLE IF NOT EXISTS operational_values (
   namespace TEXT NOT NULL,
@@ -747,6 +797,7 @@ CREATE TABLE IF NOT EXISTS operational_values (
   workflow_link TEXT,
   workflow_name TEXT,
   workflow_slug TEXT,
+
   PRIMARY KEY (namespace, id),
   UNIQUE (namespace, ordinal),
   CHECK (bit_length(present_fields) = 33),
@@ -776,6 +827,7 @@ CREATE TABLE IF NOT EXISTS outcome_performance (
   run_link_relation TEXT,
   run_link_href TEXT,
   run_link_label TEXT,
+
   PRIMARY KEY (namespace, id),
   UNIQUE (namespace, ordinal),
   CHECK (bit_length(present_fields) = 15),
@@ -811,6 +863,7 @@ CREATE TABLE IF NOT EXISTS security_findings (
   engine TEXT,
   requested_model TEXT,
   resolved_model TEXT,
+
   PRIMARY KEY (namespace, id),
   UNIQUE (namespace, ordinal),
   CHECK (bit_length(present_fields) = 25),
@@ -838,15 +891,19 @@ CREATE TABLE IF NOT EXISTS skills (
   timestamp TIMESTAMPTZ,
   tool_type TEXT,
   type TEXT,
-  PRIMARY KEY (namespace, id),
-  UNIQUE (namespace, ordinal),
+  run_at TIMESTAMPTZ NOT NULL,
+
+  PRIMARY KEY (namespace, id, run_at),
+  UNIQUE (namespace, ordinal, run_at),
   CHECK (bit_length(present_fields) = 17),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
   CHECK (run_id IS NOT NULL AND run_id <> ''),
-  FOREIGN KEY (namespace, run_id) REFERENCES runs(namespace, id) DEFERRABLE INITIALLY DEFERRED
-);
+  FOREIGN KEY (namespace, run_id, run_at) REFERENCES runs(namespace, id, run_at) DEFERRABLE INITIALLY DEFERRED
+) PARTITION BY RANGE (run_at);
 
 CREATE INDEX IF NOT EXISTS skills_run_id ON skills (namespace, run_id, ordinal);
+
+CREATE INDEX IF NOT EXISTS skills_identity ON skills (namespace, id);
 
 CREATE TABLE IF NOT EXISTS tools (
   namespace TEXT NOT NULL,
@@ -875,15 +932,19 @@ CREATE TABLE IF NOT EXISTS tools (
   timestamp TIMESTAMPTZ,
   tool_type TEXT,
   type TEXT,
-  PRIMARY KEY (namespace, id),
-  UNIQUE (namespace, ordinal),
+  run_at TIMESTAMPTZ NOT NULL,
+
+  PRIMARY KEY (namespace, id, run_at),
+  UNIQUE (namespace, ordinal, run_at),
   CHECK (bit_length(present_fields) = 23),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
   CHECK (run_id IS NOT NULL AND run_id <> ''),
-  FOREIGN KEY (namespace, run_id) REFERENCES runs(namespace, id) DEFERRABLE INITIALLY DEFERRED
-);
+  FOREIGN KEY (namespace, run_id, run_at) REFERENCES runs(namespace, id, run_at) DEFERRABLE INITIALLY DEFERRED
+) PARTITION BY RANGE (run_at);
 
 CREATE INDEX IF NOT EXISTS tools_run_id ON tools (namespace, run_id, ordinal);
+
+CREATE INDEX IF NOT EXISTS tools_identity ON tools (namespace, id);
 
 CREATE TABLE IF NOT EXISTS transactions (
   namespace TEXT NOT NULL,
@@ -905,6 +966,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   duplicate_agentic_run_observations BIGINT,
   unenriched_runs BIGINT,
   error TEXT,
+
   PRIMARY KEY (namespace, id),
   UNIQUE (namespace, ordinal),
   CHECK (bit_length(present_fields) = 16),
@@ -959,6 +1021,7 @@ CREATE TABLE IF NOT EXISTS work_items (
   run_link_relation TEXT,
   run_link_href TEXT,
   run_link_label TEXT,
+
   PRIMARY KEY (namespace, id),
   UNIQUE (namespace, ordinal),
   CHECK (bit_length(present_fields) = 44),

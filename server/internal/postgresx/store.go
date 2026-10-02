@@ -7,10 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/netip"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -29,9 +31,11 @@ type State struct {
 }
 
 type Store struct {
-	db        *sql.DB
-	config    *pgx.ConnConfig
-	namespace string
+	db              *sql.DB
+	config          *pgx.ConnConfig
+	namespace       string
+	stopMaintenance context.CancelFunc
+	maintenanceDone sync.WaitGroup
 }
 
 type NativeReader interface {
@@ -94,7 +98,36 @@ func NewConfig(ctx context.Context, config *pgx.ConnConfig, namespaces ...string
 		_ = db.Close()
 		return nil, fmt.Errorf("postgres connection or fresh schema initialization failed: %w", err)
 	}
-	return &Store{db: db, config: config.Copy(), namespace: namespace}, nil
+	retention, err := configuredRetentionDays()
+	if err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	store := &Store{db: db, config: config.Copy(), namespace: namespace}
+	if err := store.RunPartitionMaintenance(ctx, time.Now(), retention); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("initialize run partitions: %w", err)
+	}
+	maintenanceCtx, stop := context.WithCancel(context.Background())
+	store.stopMaintenance = stop
+	store.maintenanceDone.Add(1)
+	go func() {
+		defer store.maintenanceDone.Done()
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-maintenanceCtx.Done():
+				return
+			case <-ticker.C:
+				if err := store.RunPartitionMaintenance(maintenanceCtx, time.Now(), retention); err != nil && maintenanceCtx.Err() == nil {
+					// A later maintenance tick retries; ingestion never creates partitions.
+					log.Printf("postgres partition maintenance failed")
+				}
+			}
+		}
+	}()
+	return store, nil
 }
 
 func validateTransport(config *pgx.ConnConfig) error {
@@ -116,7 +149,13 @@ func validateTransport(config *pgx.ConnConfig) error {
 	return nil
 }
 
-func (s *Store) Close() error { return s.db.Close() }
+func (s *Store) Close() error {
+	if s.stopMaintenance != nil {
+		s.stopMaintenance()
+		s.maintenanceDone.Wait()
+	}
+	return s.db.Close()
+}
 
 func (s *Store) DeleteNamespace(ctx context.Context) error {
 	tx, err := s.db.BeginTx(ctx, nil)

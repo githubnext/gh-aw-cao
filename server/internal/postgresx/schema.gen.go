@@ -3,7 +3,7 @@
 package postgresx
 
 var entityTables = map[string]entityTable{
-	"$repositories": {name: "repositories", runtime: false, canonical: true, columns: []entityColumn{
+	"$repositories": {name: "repositories", runtime: false, canonical: true, partitioned: false, columns: []entityColumn{
 		{field: "id", name: "id", kind: "", sql: "TEXT"},
 		{field: "name", name: "name", kind: "", sql: "TEXT"},
 		{field: "observedAt", name: "observed_at", kind: "timestamp", sql: "TIMESTAMPTZ"},
@@ -19,7 +19,7 @@ var entityTables = map[string]entityTable{
 		{field: "rolloutMode", name: "rollout_mode", kind: "", sql: "TEXT"},
 		{field: "visibility", name: "visibility", kind: "", sql: "TEXT"},
 	}},
-	"$workflows": {name: "workflows", runtime: false, canonical: true, columns: []entityColumn{
+	"$workflows": {name: "workflows", runtime: false, canonical: true, partitioned: false, columns: []entityColumn{
 		{field: "admissionReason", name: "admission_reason", kind: "", sql: "TEXT"},
 		{field: "admissionStatus", name: "admission_status", kind: "", sql: "TEXT"},
 		{field: "campaign", name: "campaign", kind: "", sql: "TEXT"},
@@ -64,7 +64,7 @@ var entityTables = map[string]entityTable{
 		{field: "workflowLink.href", name: "workflow_link_href", kind: "", sql: "TEXT"},
 		{field: "workflowLink.label", name: "workflow_link_label", kind: "", sql: "TEXT"},
 	}},
-	"$runs": {name: "runs", runtime: false, canonical: true, columns: []entityColumn{
+	"$runs": {name: "runs", runtime: false, canonical: true, partitioned: true, columns: []entityColumn{
 		{field: "actionMinutes", name: "action_minutes", kind: "numeric", sql: "NUMERIC"},
 		{field: "admissionReason", name: "admission_reason", kind: "", sql: "TEXT"},
 		{field: "admissionStatus", name: "admission_status", kind: "", sql: "TEXT"},
@@ -139,7 +139,7 @@ var entityTables = map[string]entityTable{
 		{field: "workflowLink.label", name: "workflow_link_label", kind: "", sql: "TEXT"},
 		{field: "workflowPath", name: "workflow_path", kind: "", sql: "TEXT"},
 	}},
-	"$audits": {name: "audits", runtime: false, canonical: true, columns: []entityColumn{
+	"$audits": {name: "audits", runtime: false, canonical: true, partitioned: true, columns: []entityColumn{
 		{field: "acceptedAt", name: "accepted_at", kind: "timestamp", sql: "TIMESTAMPTZ"},
 		{field: "activationSource", name: "activation_source", kind: "", sql: "TEXT"},
 		{field: "actor", name: "actor", kind: "", sql: "TEXT"},
@@ -209,7 +209,7 @@ var entityTables = map[string]entityTable{
 		{field: "turns", name: "turns", kind: "numeric", sql: "BIGINT"},
 		{field: "type", name: "type", kind: "", sql: "TEXT"},
 	}},
-	"$campaigns": {name: "campaigns", runtime: false, canonical: true, columns: []entityColumn{
+	"$campaigns": {name: "campaigns", runtime: false, canonical: true, partitioned: false, columns: []entityColumn{
 		{field: "aiCreditAllowance", name: "ai_credit_allowance", kind: "numeric", sql: "NUMERIC"},
 		{field: "campaignLink", name: "campaign_link_object", kind: "object", sql: "BOOLEAN"},
 		{field: "campaignLink.relation", name: "campaign_link_relation", kind: "", sql: "TEXT"},
@@ -236,7 +236,7 @@ var entityTables = map[string]entityTable{
 		{field: "version", name: "version", kind: "", sql: "TEXT"},
 		{field: "workerCount", name: "worker_count", kind: "numeric", sql: "BIGINT"},
 	}},
-	"collection-health": {name: "collection_health", runtime: true, canonical: false, columns: []entityColumn{
+	"collection-health": {name: "collection_health", runtime: true, canonical: false, partitioned: false, columns: []entityColumn{
 		{field: "configured", name: "configured", kind: "boolean", sql: "BOOLEAN"},
 		{field: "health", name: "health", kind: "", sql: "TEXT"},
 		{field: "queue-depth", name: "queue_depth", kind: "numeric", sql: "BIGINT"},
@@ -265,7 +265,7 @@ var entityTables = map[string]entityTable{
 		{field: "collection-retried", name: "collection_retried", kind: "numeric", sql: "BIGINT"},
 		{field: "collection-dead-lettered", name: "collection_dead_lettered", kind: "numeric", sql: "BIGINT"},
 	}},
-	"$domains": {name: "domains", runtime: false, canonical: true, columns: []entityColumn{
+	"$domains": {name: "domains", runtime: false, canonical: true, partitioned: true, columns: []entityColumn{
 		{field: "correlationId", name: "correlation_id", kind: "", sql: "TEXT"},
 		{field: "decision", name: "decision", kind: "", sql: "TEXT"},
 		{field: "domain", name: "domain", kind: "", sql: "TEXT"},
@@ -281,7 +281,7 @@ var entityTables = map[string]entityTable{
 		{field: "timestamp", name: "timestamp", kind: "timestamp", sql: "TIMESTAMPTZ"},
 		{field: "type", name: "type", kind: "", sql: "TEXT"},
 	}},
-	"$evals": {name: "evals", runtime: false, canonical: true, columns: []entityColumn{
+	"$evals": {name: "evals", runtime: false, canonical: true, partitioned: false, columns: []entityColumn{
 		{field: "direction", name: "direction", kind: "", sql: "TEXT"},
 		{field: "displayName", name: "display_name", kind: "", sql: "TEXT"},
 		{field: "firstObservedAt", name: "first_observed_at", kind: "timestamp", sql: "TIMESTAMPTZ"},
@@ -299,7 +299,7 @@ var entityTables = map[string]entityTable{
 		{field: "timestamp", name: "timestamp", kind: "timestamp", sql: "TIMESTAMPTZ"},
 		{field: "workflowId", name: "workflow_id", kind: "", sql: "TEXT"},
 	}},
-	"$experiments": {name: "experiments", runtime: false, canonical: true, columns: []entityColumn{
+	"$experiments": {name: "experiments", runtime: false, canonical: true, partitioned: false, columns: []entityColumn{
 		{field: "campaign", name: "campaign", kind: "", sql: "TEXT"},
 		{field: "candidateVariant", name: "candidate_variant", kind: "", sql: "TEXT"},
 		{field: "controlVariant", name: "control_variant", kind: "", sql: "TEXT"},
@@ -321,7 +321,7 @@ var entityTables = map[string]entityTable{
 		{field: "timestamp", name: "timestamp", kind: "timestamp", sql: "TIMESTAMPTZ"},
 		{field: "workflowId", name: "workflow_id", kind: "", sql: "TEXT"},
 	}},
-	"$evalObservations": {name: "eval_observations", runtime: false, canonical: true, columns: []entityColumn{
+	"$evalObservations": {name: "eval_observations", runtime: false, canonical: true, partitioned: true, columns: []entityColumn{
 		{field: "direction", name: "direction", kind: "", sql: "TEXT"},
 		{field: "evalId", name: "eval_id", kind: "", sql: "TEXT"},
 		{field: "evalLink", name: "eval_link", kind: "", sql: "TEXT"},
@@ -342,21 +342,21 @@ var entityTables = map[string]entityTable{
 		{field: "timestamp", name: "timestamp", kind: "timestamp", sql: "TIMESTAMPTZ"},
 		{field: "variant", name: "variant", kind: "", sql: "TEXT"},
 	}},
-	"$sessions": {name: "sessions", runtime: false, canonical: true, columns: []entityColumn{
+	"$sessions": {name: "sessions", runtime: false, canonical: true, partitioned: true, columns: []entityColumn{
 		{field: "id", name: "id", kind: "", sql: "TEXT"},
 		{field: "runId", name: "run_id", kind: "", sql: "TEXT"},
 		{field: "agentId", name: "agent_id", kind: "", sql: "TEXT"},
 		{field: "startedAt", name: "started_at", kind: "timestamp", sql: "TIMESTAMPTZ"},
 		{field: "completedAt", name: "completed_at", kind: "timestamp", sql: "TIMESTAMPTZ"},
 	}},
-	"$events": {name: "events", runtime: false, canonical: true, columns: []entityColumn{
+	"$events": {name: "events", runtime: false, canonical: true, partitioned: true, columns: []entityColumn{
 		{field: "id", name: "id", kind: "", sql: "TEXT"},
 		{field: "sessionId", name: "session_id", kind: "", sql: "TEXT"},
 		{field: "type", name: "type", kind: "", sql: "TEXT"},
 		{field: "timestamp", name: "timestamp", kind: "timestamp", sql: "TIMESTAMPTZ"},
 		{field: "summary", name: "summary", kind: "", sql: "TEXT"},
 	}},
-	"$experimentAssignments": {name: "experiment_assignments", runtime: false, canonical: true, columns: []entityColumn{
+	"$experimentAssignments": {name: "experiment_assignments", runtime: false, canonical: true, partitioned: true, columns: []entityColumn{
 		{field: "artifactLink", name: "artifact_link", kind: "", sql: "TEXT"},
 		{field: "campaign", name: "campaign", kind: "", sql: "TEXT"},
 		{field: "exclusionReason", name: "exclusion_reason", kind: "", sql: "TEXT"},
@@ -372,7 +372,7 @@ var entityTables = map[string]entityTable{
 		{field: "traceLink", name: "trace_link", kind: "", sql: "TEXT"},
 		{field: "variant", name: "variant", kind: "", sql: "TEXT"},
 	}},
-	"$friction": {name: "friction", runtime: false, canonical: true, columns: []entityColumn{
+	"$friction": {name: "friction", runtime: false, canonical: true, partitioned: true, columns: []entityColumn{
 		{field: "aic", name: "aic", kind: "numeric", sql: "NUMERIC"},
 		{field: "inputTokens", name: "input_tokens", kind: "numeric", sql: "BIGINT"},
 		{field: "outputTokens", name: "output_tokens", kind: "numeric", sql: "BIGINT"},
@@ -411,7 +411,7 @@ var entityTables = map[string]entityTable{
 		{field: "type", name: "type", kind: "", sql: "TEXT"},
 		{field: "unattributedOccurrences", name: "unattributed_occurrences", kind: "numeric", sql: "BIGINT"},
 	}},
-	"github-quota-usage": {name: "github_quota_usage", runtime: true, canonical: false, columns: []entityColumn{
+	"github-quota-usage": {name: "github_quota_usage", runtime: true, canonical: false, partitioned: false, columns: []entityColumn{
 		{field: "observed-at", name: "observed_at", kind: "timestamp", sql: "TIMESTAMPTZ"},
 		{field: "scope", name: "scope", kind: "", sql: "TEXT"},
 		{field: "bucket", name: "bucket", kind: "", sql: "TEXT"},
@@ -424,7 +424,7 @@ var entityTables = map[string]entityTable{
 		{field: "reserved", name: "reserved", kind: "numeric", sql: "BIGINT"},
 		{field: "usage-percent", name: "usage_percent", kind: "numeric", sql: "NUMERIC"},
 	}},
-	"$graders": {name: "graders", runtime: false, canonical: true, columns: []entityColumn{
+	"$graders": {name: "graders", runtime: false, canonical: true, partitioned: false, columns: []entityColumn{
 		{field: "direction", name: "direction", kind: "", sql: "TEXT"},
 		{field: "displayName", name: "display_name", kind: "", sql: "TEXT"},
 		{field: "firstObservedAt", name: "first_observed_at", kind: "timestamp", sql: "TIMESTAMPTZ"},
@@ -442,7 +442,7 @@ var entityTables = map[string]entityTable{
 		{field: "unit", name: "unit", kind: "", sql: "TEXT"},
 		{field: "workflowId", name: "workflow_id", kind: "", sql: "TEXT"},
 	}},
-	"$graderObservations": {name: "grader_observations", runtime: false, canonical: true, columns: []entityColumn{
+	"$graderObservations": {name: "grader_observations", runtime: false, canonical: true, partitioned: true, columns: []entityColumn{
 		{field: "auditId", name: "audit_id", kind: "", sql: "TEXT"},
 		{field: "baselineValue", name: "baseline_value", kind: "numeric", sql: "NUMERIC"},
 		{field: "deltaFromBaseline", name: "delta_from_baseline", kind: "numeric", sql: "NUMERIC"},
@@ -468,7 +468,7 @@ var entityTables = map[string]entityTable{
 		{field: "value", name: "value", kind: "numeric", sql: "NUMERIC"},
 		{field: "variant", name: "variant", kind: "", sql: "TEXT"},
 	}},
-	"$issues": {name: "issues", runtime: false, canonical: true, columns: []entityColumn{
+	"$issues": {name: "issues", runtime: false, canonical: true, partitioned: true, columns: []entityColumn{
 		{field: "closed", name: "closed", kind: "boolean", sql: "BOOLEAN"},
 		{field: "closedAt", name: "closed_at", kind: "timestamp", sql: "TIMESTAMPTZ"},
 		{field: "correlationId", name: "correlation_id", kind: "", sql: "TEXT"},
@@ -493,7 +493,7 @@ var entityTables = map[string]entityTable{
 		{field: "timestamp", name: "timestamp", kind: "timestamp", sql: "TIMESTAMPTZ"},
 		{field: "type", name: "type", kind: "", sql: "TEXT"},
 	}},
-	"$jobs": {name: "jobs", runtime: false, canonical: true, columns: []entityColumn{
+	"$jobs": {name: "jobs", runtime: false, canonical: true, partitioned: true, columns: []entityColumn{
 		{field: "id", name: "id", kind: "", sql: "TEXT"},
 		{field: "runId", name: "run_id", kind: "", sql: "TEXT"},
 		{field: "name", name: "name", kind: "", sql: "TEXT"},
@@ -502,7 +502,7 @@ var entityTables = map[string]entityTable{
 		{field: "startedAt", name: "started_at", kind: "timestamp", sql: "TIMESTAMPTZ"},
 		{field: "completedAt", name: "completed_at", kind: "timestamp", sql: "TIMESTAMPTZ"},
 	}},
-	"$marketplacePackages": {name: "marketplace_packages", runtime: true, canonical: false, columns: []entityColumn{
+	"$marketplacePackages": {name: "marketplace_packages", runtime: true, canonical: false, partitioned: false, columns: []entityColumn{
 		{field: "addCommand", name: "add_command", kind: "", sql: "TEXT"},
 		{field: "artwork", name: "artwork", kind: "", sql: "TEXT"},
 		{field: "description", name: "description", kind: "", sql: "TEXT"},
@@ -529,7 +529,7 @@ var entityTables = map[string]entityTable{
 		{field: "stars", name: "stars", kind: "numeric", sql: "BIGINT"},
 		{field: "version", name: "version", kind: "", sql: "TEXT"},
 	}},
-	"$operationalValues": {name: "operational_values", runtime: false, canonical: true, columns: []entityColumn{
+	"$operationalValues": {name: "operational_values", runtime: false, canonical: true, partitioned: false, columns: []entityColumn{
 		{field: "adoption-at", name: "adoption_at", kind: "timestamp", sql: "TIMESTAMPTZ"},
 		{field: "baseline-value", name: "baseline_value", kind: "numeric", sql: "NUMERIC"},
 		{field: "campaign", name: "campaign", kind: "", sql: "TEXT"},
@@ -564,7 +564,7 @@ var entityTables = map[string]entityTable{
 		{field: "workflow-name", name: "workflow_name", kind: "", sql: "TEXT"},
 		{field: "workflow-slug", name: "workflow_slug", kind: "", sql: "TEXT"},
 	}},
-	"$outcomes": {name: "outcome_performance", runtime: false, canonical: false, columns: []entityColumn{
+	"$outcomes": {name: "outcome_performance", runtime: false, canonical: false, partitioned: false, columns: []entityColumn{
 		{field: "id", name: "id", kind: "", sql: "TEXT"},
 		{field: "organization", name: "organization", kind: "", sql: "TEXT"},
 		{field: "repository", name: "repository", kind: "", sql: "TEXT"},
@@ -581,7 +581,7 @@ var entityTables = map[string]entityTable{
 		{field: "run-link.href", name: "run_link_href", kind: "", sql: "TEXT"},
 		{field: "run-link.label", name: "run_link_label", kind: "", sql: "TEXT"},
 	}},
-	"$security-findings": {name: "security_findings", runtime: false, canonical: false, columns: []entityColumn{
+	"$security-findings": {name: "security_findings", runtime: false, canonical: false, partitioned: false, columns: []entityColumn{
 		{field: "id", name: "id", kind: "", sql: "TEXT"},
 		{field: "organization", name: "organization", kind: "", sql: "TEXT"},
 		{field: "repository", name: "repository", kind: "", sql: "TEXT"},
@@ -608,11 +608,11 @@ var entityTables = map[string]entityTable{
 		{field: "requested-model", name: "requested_model", kind: "", sql: "TEXT"},
 		{field: "resolved-model", name: "resolved_model", kind: "", sql: "TEXT"},
 	}},
-	"simulation-days": {name: "simulation_days", runtime: true, canonical: false, columns: []entityColumn{
+	"simulation-days": {name: "simulation_days", runtime: true, canonical: false, partitioned: false, columns: []entityColumn{
 		{field: "day", name: "day", kind: "numeric", sql: "BIGINT"},
 		{field: "date", name: "date", kind: "timestamp", sql: "TIMESTAMPTZ"},
 	}},
-	"$skills": {name: "skills", runtime: false, canonical: true, columns: []entityColumn{
+	"$skills": {name: "skills", runtime: false, canonical: true, partitioned: true, columns: []entityColumn{
 		{field: "activationSource", name: "activation_source", kind: "", sql: "TEXT"},
 		{field: "correlationId", name: "correlation_id", kind: "", sql: "TEXT"},
 		{field: "failedCount", name: "failed_count", kind: "numeric", sql: "BIGINT"},
@@ -631,7 +631,7 @@ var entityTables = map[string]entityTable{
 		{field: "toolType", name: "tool_type", kind: "", sql: "TEXT"},
 		{field: "type", name: "type", kind: "", sql: "TEXT"},
 	}},
-	"$tools": {name: "tools", runtime: false, canonical: true, columns: []entityColumn{
+	"$tools": {name: "tools", runtime: false, canonical: true, partitioned: true, columns: []entityColumn{
 		{field: "correlationId", name: "correlation_id", kind: "", sql: "TEXT"},
 		{field: "failedCount", name: "failed_count", kind: "numeric", sql: "BIGINT"},
 		{field: "id", name: "id", kind: "", sql: "TEXT"},
@@ -656,7 +656,7 @@ var entityTables = map[string]entityTable{
 		{field: "toolType", name: "tool_type", kind: "", sql: "TEXT"},
 		{field: "type", name: "type", kind: "", sql: "TEXT"},
 	}},
-	"$transactions": {name: "transactions", runtime: false, canonical: false, columns: []entityColumn{
+	"$transactions": {name: "transactions", runtime: false, canonical: false, partitioned: false, columns: []entityColumn{
 		{field: "id", name: "id", kind: "", sql: "TEXT"},
 		{field: "kind", name: "kind", kind: "", sql: "TEXT"},
 		{field: "createdAt", name: "created_at", kind: "timestamp", sql: "TIMESTAMPTZ"},
@@ -674,7 +674,7 @@ var entityTables = map[string]entityTable{
 		{field: "unenrichedRuns", name: "unenriched_runs", kind: "numeric", sql: "BIGINT"},
 		{field: "error", name: "error", kind: "", sql: "TEXT"},
 	}},
-	"work-items": {name: "work_items", runtime: false, canonical: false, columns: []entityColumn{
+	"work-items": {name: "work_items", runtime: false, canonical: false, partitioned: false, columns: []entityColumn{
 		{field: "id", name: "id", kind: "", sql: "TEXT"},
 		{field: "work-item-id", name: "work_item_id", kind: "", sql: "TEXT"},
 		{field: "name", name: "name", kind: "", sql: "TEXT"},

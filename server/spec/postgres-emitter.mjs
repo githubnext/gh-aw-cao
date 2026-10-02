@@ -5,8 +5,12 @@ import { createHash } from 'node:crypto';
 export const $lib = createTypeSpecLibrary({ name: 'cao-postgres', diagnostics: {} });
 export const namespace = 'Cao.Postgres';
 const parentKey = Symbol.for('cao-postgres.parent');
+const partitionKey = Symbol.for('cao-postgres.run-partition');
 export function $parent(context, target, entity, required = true) {
   context.program.stateMap(parentKey).set(target, { entity, required });
+}
+export function $runPartition(context, target) {
+  context.program.stateSet(partitionKey).add(target);
 }
 
 const snake = (field) => field.replace(/-/g, '_').replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
@@ -54,7 +58,7 @@ export async function $onEmit(context) {
         if (!kind) throw new Error(`Storage requires an explicit native type: ${model.name}.${property.name}`);
         columns.push({ field: property.name, name: snake(property.name), kind: kind[0], sql: kind[1], required: !property.optional });
       }
-      const table = { collection: model.name, name: snake(model.name), columns };
+      const table = { collection: model.name, name: snake(model.name), columns, partitioned: context.program.stateSet(partitionKey).has(model) };
       if (namespace === 'Cao.Postgres.Storage') systems.push(table);
       else {
         table.runtime = namespace === 'Cao.Postgres.Runtime' || model.name === 'marketplacePackages';
@@ -95,27 +99,31 @@ export async function $onEmit(context) {
   for (const table of tables) {
     if (!table.runtime) {
       const constraints = [
-        'PRIMARY KEY (namespace, id)', 'UNIQUE (namespace, ordinal)',
+        `PRIMARY KEY (namespace, id${table.partitioned ? ', run_at' : ''})`,
+        `UNIQUE (namespace, ordinal${table.partitioned ? ', run_at' : ''})`,
         `CHECK (bit_length(present_fields) = ${table.columns.length})`,
         'FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE'
       ];
       for (const [field, parent, optional] of parents.get(table.collection) ?? []) {
         if (!table.columns.some((c) => c.field === field)) throw new Error(`Missing relationship ${table.collection}.${field}`);
         if (!optional) constraints.push(`CHECK (${snake(field)} IS NOT NULL AND ${snake(field)} <> '')`);
-        constraints.push(`FOREIGN KEY (namespace, ${snake(field)}) REFERENCES ${snake(parent)}(namespace, id) DEFERRABLE INITIALLY DEFERRED`);
+        const parentPartitioned = tables.find((candidate) => candidate.collection === parent)?.partitioned;
+        constraints.push(`FOREIGN KEY (namespace, ${snake(field)}${parentPartitioned ? ', run_at' : ''}) REFERENCES ${snake(parent)}(namespace, id${parentPartitioned ? ', run_at' : ''}) DEFERRABLE INITIALLY DEFERRED`);
       }
       statements.push(`CREATE TABLE IF NOT EXISTS ${table.name} (
   namespace TEXT NOT NULL,
   ordinal BIGINT NOT NULL CHECK (ordinal >= 0),
   present_fields BIT VARYING NOT NULL,
 ${table.columns.map((c) => `  ${c.name} ${c.sql}${c.field === 'id' ? " NOT NULL CHECK (id <> '')" : ''}`).join(',\n')},
+${table.partitioned ? '  run_at TIMESTAMPTZ NOT NULL,\n' : ''}
   ${constraints.join(',\n  ')}
-);`);
+)${table.partitioned ? ' PARTITION BY RANGE (run_at)' : ''};`);
       for (const [field] of parents.get(table.collection) ?? []) {
         statements.push(`CREATE INDEX IF NOT EXISTS ${table.name}_${snake(field)} ON ${table.name} (namespace, ${snake(field)}, ordinal);`);
       }
+      if (table.partitioned) statements.push(`CREATE INDEX IF NOT EXISTS ${table.name}_identity ON ${table.name} (namespace, id);`);
     }
-    go.push(`\t"${table.source}": {name: "${table.name}", runtime: ${table.runtime}, canonical: ${table.canonical}, columns: []entityColumn{`);
+    go.push(`\t"${table.source}": {name: "${table.name}", runtime: ${table.runtime}, canonical: ${table.canonical}, partitioned: ${table.partitioned}, columns: []entityColumn{`);
     for (const column of table.columns) {
       go.push(`\t\t{field: "${column.field}", name: "${column.name}", kind: "${column.kind}", sql: "${column.sql}"},`);
     }

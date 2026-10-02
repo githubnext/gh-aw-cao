@@ -924,7 +924,19 @@ strings. Nested scalar values are represented by generated columns in their
 owning entity tables. No canonical JSON/JSONB or serialized documents are
 stored, and canonical scalar rows are not copied into generic source/value
 tables.
-Startup only initializes this fresh schema. There is no old-layout detection,
+`runs` and its run-owned records (including sessions and their events) use
+matching UTC Monday-to-Monday PostgreSQL RANGE partitions. `run_at` uses the
+run's `createdAt`, then `startedAt`, `completedAt`, or `updatedAt`; records
+without any of these use ingestion time. Linked records inherit their run's
+partition timestamp. PostgreSQL routes parent-table inserts; missing weeks
+fail closed rather than creating partitions during ingestion. At startup and
+every 24 hours, maintenance creates four future weeks and removes complete
+weeks older than `CAO_POSTGRES_RUN_RETENTION_DAYS` (default 400, allowed 7–3650).
+Retention detaches and drops events, sessions, other run-owned tables, then
+runs together, updating affected source counts and revisions. Choose a window
+that covers all authoritative run timestamps before ingestion.
+
+Startup initializes this fresh schema and its partitions. There is no old-layout detection,
 conversion, backfill, or backward-compatible import. Use a new database and
 re-ingest authoritative inputs when changing the physical contract.
 Redis remains namespaced operational storage for caches, queues, sessions, and
