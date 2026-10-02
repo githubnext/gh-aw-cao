@@ -76,6 +76,10 @@ jobs:
           npm run test:integration
           npm run test:load
           npm run compile
+      - name: Verify versioned server API signatures
+        run: |
+          npm --prefix server/spec ci
+          npm run dashboard:server:spec:check
       - name: Run documentation unit contracts
         if: ${{ !cancelled() }}
         run: npm run test:unit:area -- documentation

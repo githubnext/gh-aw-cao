@@ -209,6 +209,7 @@ jobs:
         run: |
           npm ci
           npm --prefix dashboard/site ci
+          npm --prefix server/spec ci
       - name: Go tests with Redis and Postgres
         run: go -C server test ./...
       - name: Build dashboard and server

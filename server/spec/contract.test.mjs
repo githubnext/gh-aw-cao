@@ -8,10 +8,13 @@ const directory = dirname(fileURLToPath(import.meta.url))
 const implementation = readFileSync(join(directory, '../internal/server/server.go'), 'utf8')
 const openapi = JSON.parse(readFileSync(join(directory, 'generated/openapi.json'), 'utf8'))
 
-test('every registered HTTP route has a TypeSpec operation (except MCP and static assets)', () => {
-  const registered = [...implementation.matchAll(/register\("(GET|POST) (\/[^"]+)"/g)]
-    .map(([, method, path]) => `${method.toLowerCase()} ${path}`)
-    .sort()
+test('every registered HTTP route has a TypeSpec operation (except static assets)', () => {
+  const registered = [
+    ...[...implementation.matchAll(/register\("(GET|POST) (\/[^"]+)"/g)]
+      .map(([, method, path]) => `${method.toLowerCase()} ${path}`),
+    ...[...implementation.matchAll(/mux\.Handle\("(GET|POST) (\/[^"]+)"/g)]
+      .map(([, method, path]) => `${method.toLowerCase()} ${path}`)
+  ].sort()
   const documented = Object.entries(openapi.paths)
     .flatMap(([path, operations]) => Object.keys(operations)
       .filter(method => ['get', 'post'].includes(method))
@@ -22,6 +25,7 @@ test('every registered HTTP route has a TypeSpec operation (except MCP and stati
 
 test('the generated contract describes the implemented security and wire formats', () => {
   assert.equal(openapi.openapi, '3.1.0')
+  assert.equal(openapi.info.version, '1.0.0')
   const query = openapi.paths['/api/v1/query'].post
   assert.ok(query.security.some(entry => 'BearerAuth' in entry))
   assert.ok(query.security.some(entry => 'ApiKeyAuth' in entry))
@@ -33,6 +37,14 @@ test('the generated contract describes the implemented security and wire formats
   assert.equal(openapi.paths['/api/github/webhook'].post.security, undefined)
   assert.ok(openapi.paths['/api/v1/events'].get.responses['200'].content['text/event-stream'])
   assert.ok(openapi.paths['/api/github/webhook'].post.responses['202'])
+  const mcp = openapi.paths['/mcp'].post
+  assert.ok(mcp.security.some(entry => 'BearerAuth' in entry))
+  assert.ok(mcp.parameters.some(parameter => parameter.name === 'X-GitHub-Actor'))
+  assert.ok(mcp.parameters.some(parameter => parameter.name === 'X-GitHub-OIDC-Token'))
+  assert.ok(mcp.requestBody.content['application/json'])
+  assert.ok(mcp.responses['200'].content['application/json'])
+  assert.ok(mcp.responses['202'])
+  assert.ok(mcp.responses['404'])
   assert.ok(openapi.paths['/api/admin/rebuild'].post.responses['202'])
   const logs = openapi.paths['/api/admin/logs'].get
   assert.ok(logs.security.some(entry => 'BearerAuth' in entry))

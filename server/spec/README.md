@@ -3,8 +3,9 @@
 `server/spec/` is the editable TypeSpec contract for the Go dashboard server.
 `main.tsp` imports independent domains: shared response/auth types, Dashboard
 Language queries and SSE, health, hosted sessions, canonical entities, repository
-memory, and ingestion/administration. `/mcp` internals and static dashboard assets
-are intentionally out of scope.
+memory, ingestion/administration, and the optional MCP HTTP transport. MCP
+protocol messages and tool schemas, and static dashboard assets, are intentionally
+out of scope.
 
 `storage.tsp` is a separate, **fresh-only** physical Postgres contract.
 `storage.tspconfig.yaml` runs the repository-owned `postgres-emitter.mjs` to
@@ -34,7 +35,9 @@ required query fields, absence of speculative columns, and document-free DDL.
 The follow-on removal and rebuild plan is [Postgres rebuild plan](../POSTGRES-REBUILD-PLAN.md).
 
 The compiled `generated/openapi.json` is OpenAPI **3.1** and can be consumed by
-another server implementation. `generated/schemas/` contains JSON Schema 2020-12
+another server implementation. Its `info.version` records the HTTP contract
+version; review and update it when changing externally observable API signatures.
+`generated/schemas/` contains JSON Schema 2020-12
 documents for query definitions, requests and results, SSE data frames, and webhook
 acknowledgements. Representative safe examples are embedded in the TypeSpec
 models and emitted into OpenAPI/JSON Schema. `RevisionEvent.json` describes the
@@ -76,6 +79,9 @@ add a new port only when a second implementation or parity test needs one.
    `npm run check` regenerates and fails if the committed artifacts drift.
    Run `go -C server test ./...` when changing the implementation. The
    `server-spec` job in `.github/workflows/cgo.yml` runs on server changes.
+   The root `dashboard:server:build` and `check` scripts also verify committed
+   generated API signatures before proceeding; install spec dependencies with
+   `npm --prefix server/spec ci` before running either command.
 
 The Go server has **two authentication profiles**: the loopback local profile
 requires an `Authorization: Bearer` capability for protected `/api/` routes;
