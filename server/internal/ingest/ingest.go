@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -34,7 +35,10 @@ var collections = []string{
 	"experiments", "experimentAssignments", "graders", "graderObservations", "evals", "evalObservations",
 }
 
-const projectionBatchSize = 25_000
+const (
+	projectionBatchSize = 25_000
+	projectionRevision  = "inventory-canonical-mappings-v3"
+)
 
 var ingestLog = logger.New("cao:ingest")
 
@@ -158,7 +162,7 @@ func Run(ctx context.Context, store *postgresx.Store, directory string, options 
 	if err != nil {
 		return Result{}, err
 	}
-	dataRevision := DirectoryRevision(manifest, inventoryContent, memory.Revision)
+	dataRevision := DirectoryRevision(manifest, inventoryContent, memory.Revision, projectionRevision)
 	active, err := store.State(ctx)
 	if err != nil {
 		return Result{}, fmt.Errorf("read dashboard database state: %w", err)
@@ -187,8 +191,9 @@ func Run(ctx context.Context, store *postgresx.Store, directory string, options 
 			return Result{}, err
 		}
 	}
+	materializeInventoryCanonicalMappings(canonical, inventory)
 	ingestLog.Printf("loaded canonical shards collections=%d", len(canonical))
-	sources := inventory
+	sources := namespaceCanonicalInventorySources(inventory)
 	for name, rows := range canonical {
 		sources["$"+name] = model.Source{Source: "$" + name, Rows: rows, Metadata: model.Metadata{}}
 	}
@@ -531,6 +536,231 @@ func projectSources(canonical map[string][]model.Row, inventory map[string]model
 		sources[name] = mergeLogical(sources[name], result)
 	}
 	return sources, nil
+}
+
+func namespaceCanonicalInventorySources(inventory map[string]model.Source) map[string]model.Source {
+	sources := make(map[string]model.Source, len(inventory))
+	for name, source := range inventory {
+		switch name {
+		case "campaigns", "repositories", "workflows":
+			name = "$inventory-" + name
+		}
+		source.Source = name
+		sources[name] = source
+	}
+	return sources
+}
+
+func materializeInventoryCanonicalMappings(canonical map[string][]model.Row, inventory map[string]model.Source) {
+	campaignFieldMappings := map[string]string{
+		"campaign-name":                     "name",
+		"campaign-description":              "description",
+		"campaign-icon":                     "icon",
+		"campaign-mode":                     "mode",
+		"campaign-enabled":                  "enabled",
+		"campaign-max-repositories":         "maxRepositories",
+		"campaign-rollout-percent":          "rolloutPercent",
+		"campaign-monthly-ai-credit-budget": "monthlyAiCreditBudget",
+		"campaign-aic-allowance":            "aiCreditAllowance",
+		"campaign-worker-count":             "workerCount",
+		"campaign-inventory-warnings":       "inventoryWarnings",
+		"campaign-workers":                  "workers",
+		"campaign-targets":                  "targets",
+		"campaign-intelligence-declaration": "intelligenceDeclaration",
+		"campaign-min-version":              "minVersion",
+		"campaign-version":                  "version",
+		"campaign-current-version":          "currentVersion",
+		"campaign-update-state":             "updateState",
+		"campaign-experimental":             "experimental",
+		"campaign-readme-path":              "readmePath",
+		"campaign-readme":                   "readme",
+		"observed-at":                       "observedAt",
+		"campaign-link":                     "campaignLink",
+	}
+	campaigns := map[string]model.Row{}
+	for _, campaign := range canonical["campaigns"] {
+		slug := strings.TrimSpace(fmt.Sprint(campaign["slug"]))
+		if slug != "" && slug != "<nil>" {
+			campaigns[slug] = campaign
+		}
+	}
+	for _, inventoryCampaign := range inventory["campaigns"].Rows {
+		slug := strings.TrimSpace(fmt.Sprint(inventoryCampaign["campaign"]))
+		if slug == "" || slug == "<nil>" {
+			continue
+		}
+		campaign := campaigns[slug]
+		if campaign == nil {
+			campaign = model.Row{
+				"id":      "campaign:dashboard-sources:" + encodeURIComponent(slug),
+				"slug":    slug,
+				"name":    slug,
+				"enabled": true,
+			}
+			canonical["campaigns"] = append(canonical["campaigns"], campaign)
+			campaigns[slug] = campaign
+		}
+		copyMappedFields(campaign, inventoryCampaign, campaignFieldMappings)
+		copyObservedAt(campaign, inventoryCampaign, inventory["campaigns"].Metadata)
+	}
+
+	repositoryFieldMappings := map[string]string{
+		"visibility":        "visibility",
+		"rollout-mode":      "rolloutMode",
+		"observed-at":       "observedAt",
+		"organization-link": "organizationLink",
+		"repository-link":   "repositoryLink",
+	}
+	repositoriesByCoordinate := make(map[string]model.Row, len(canonical["repositories"]))
+	for _, repository := range canonical["repositories"] {
+		owner := strings.TrimSpace(fmt.Sprint(repository["owner"]))
+		name := strings.TrimSpace(fmt.Sprint(repository["name"]))
+		if owner != "" && owner != "<nil>" && name != "" && name != "<nil>" {
+			coordinate := owner + "/" + name
+			repositoriesByCoordinate[strings.ToLower(coordinate)] = repository
+		}
+	}
+	for _, inventoryRepository := range inventory["repositories"].Rows {
+		owner := strings.TrimSpace(fmt.Sprint(inventoryRepository["organization"]))
+		name := strings.TrimSpace(fmt.Sprint(inventoryRepository["repository"]))
+		if owner == "" || owner == "<nil>" || name == "" || name == "<nil>" {
+			continue
+		}
+		coordinate := owner + "/" + name
+		normalizedCoordinate := strings.ToLower(coordinate)
+		repository := repositoriesByCoordinate[normalizedCoordinate]
+		if repository == nil {
+			id := "repository:" + encodeURIComponent(normalizedCoordinate)
+			repository = model.Row{
+				"id":         id,
+				"owner":      owner,
+				"name":       name,
+				"fullName":   coordinate,
+				"visibility": "unknown",
+			}
+			canonical["repositories"] = append(canonical["repositories"], repository)
+			repositoriesByCoordinate[normalizedCoordinate] = repository
+		}
+		copyMappedFields(repository, inventoryRepository, repositoryFieldMappings)
+		copyObservedAt(repository, inventoryRepository, inventory["repositories"].Metadata)
+	}
+	fieldMappings := map[string]string{
+		"workflow-name":               "name",
+		"campaign":                    "campaign",
+		"campaign-name":               "campaignName",
+		"campaign-icon":               "campaignIcon",
+		"campaign-readme-path":        "campaignReadmePath",
+		"workflow-id":                 "githubId",
+		"workflow-registry-state":     "registryState",
+		"admission-status":            "admissionStatus",
+		"admission-reason":            "admissionReason",
+		"created-at":                  "createdAt",
+		"updated-at":                  "updatedAt",
+		"workflow-role":               "role",
+		"rollout-mode":                "rolloutMode",
+		"max-ai-credits":              "maxAiCredits",
+		"gh-aw-version":               "ghAwVersion",
+		"gh-aw-current-version":       "ghAwCurrentVersion",
+		"gh-aw-version-label":         "ghAwVersionLabel",
+		"gh-aw-update-state":          "ghAwUpdateState",
+		"gh-aw-metadata":              "ghAwMetadata",
+		"gh-aw-manifest":              "ghAwManifest",
+		"campaign-aic-allowance":      "campaignAiCreditAllowance",
+		"campaign-worker-count":       "campaignWorkerCount",
+		"campaign-inventory-warnings": "campaignInventoryWarnings",
+		"inventory-ready":             "inventoryReady",
+		"organization-link":           "organizationLink",
+		"repository-link":             "repositoryLink",
+		"workflow-link":               "workflowLink",
+		"external-link":               "externalLink",
+	}
+	workflowsByID := make(map[string]model.Row, len(canonical["workflows"]))
+	for _, workflow := range canonical["workflows"] {
+		id := strings.TrimSpace(fmt.Sprint(workflow["id"]))
+		if id != "" && id != "<nil>" {
+			workflowsByID[id] = workflow
+		}
+	}
+	for _, inventoryWorkflow := range inventory["workflows"].Rows {
+		owner := strings.TrimSpace(fmt.Sprint(inventoryWorkflow["organization"]))
+		repositoryName := strings.TrimSpace(fmt.Sprint(inventoryWorkflow["repository"]))
+		path := normalizeWorkflowPath(fmt.Sprint(inventoryWorkflow["workflow"]))
+		if owner == "" || owner == "<nil>" || repositoryName == "" || repositoryName == "<nil>" ||
+			path == "" || path == "<nil>" {
+			continue
+		}
+		repositoryCoordinate := strings.ToLower(owner + "/" + repositoryName)
+		repositoryID := "repository:" + encodeURIComponent(repositoryCoordinate)
+		workflowID := "workflow:" + encodeURIComponent(repositoryCoordinate+":"+path)
+		workflow := workflowsByID[workflowID]
+		if workflow == nil {
+			workflow = model.Row{
+				"id":           workflowID,
+				"repositoryId": repositoryID,
+				"name":         path,
+				"path":         path,
+				"state":        "unknown",
+			}
+			canonical["workflows"] = append(canonical["workflows"], workflow)
+			workflowsByID[workflowID] = workflow
+		}
+		copyMappedFields(workflow, inventoryWorkflow, fieldMappings)
+		copyObservedAt(workflow, inventoryWorkflow, inventory["workflows"].Metadata)
+		campaignSlug := strings.TrimSpace(fmt.Sprint(inventoryWorkflow["campaign"]))
+		if campaignSlug != "" && campaignSlug != "<nil>" {
+			workflow["campaign"] = campaignSlug
+			if campaign := campaigns[campaignSlug]; campaign != nil {
+				workflow["campaignId"] = campaign["id"]
+			}
+		}
+		switch inventoryWorkflow["workflow-active"] {
+		case "true", true:
+			workflow["state"] = "active"
+		case "false", false:
+			workflow["state"] = "disabled"
+		}
+	}
+}
+
+func normalizeWorkflowPath(value string) string {
+	path := strings.ToLower(strings.TrimSpace(value))
+	if strings.HasSuffix(path, ".lock.yml") {
+		return strings.TrimSuffix(path, ".lock.yml") + ".md"
+	}
+	return path
+}
+
+func encodeURIComponent(value string) string {
+	encoded := url.QueryEscape(value)
+	replacements := []struct{ old, new string }{
+		{"+", "%20"}, {"%21", "!"}, {"%27", "'"}, {"%28", "("},
+		{"%29", ")"}, {"%2A", "*"}, {"%7E", "~"},
+	}
+	for _, replacement := range replacements {
+		encoded = strings.ReplaceAll(encoded, replacement.old, replacement.new)
+	}
+	return encoded
+}
+
+func copyObservedAt(target, source model.Row, metadata model.Metadata) {
+	for _, value := range []any{
+		source["observed-at"], source["observedAt"], metadata["as-of"],
+		metadata["observed-at"], metadata["observedAt"],
+	} {
+		text := strings.TrimSpace(fmt.Sprint(value))
+		if text != "" && text != "<nil>" {
+			target["observedAt"] = value
+			return
+		}
+	}
+}
+
+func copyMappedFields(target, source model.Row, mappings map[string]string) {
+	for sourceField, targetField := range mappings {
+		if value, ok := source[sourceField]; ok && value != nil {
+			target[targetField] = value
+		}
+	}
 }
 
 func mergeSourceMaps(maps ...map[string]model.Source) map[string]model.Source {

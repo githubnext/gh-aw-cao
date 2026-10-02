@@ -32,6 +32,7 @@ func TestRepositoryMemorySourcesUseCanonicalDocuments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	manifest := sources[repositorymemory.ManifestSource]
 	if len(manifest.Rows) != 1 || manifest.Rows[0]["id"] != "manifest" ||
 		manifest.Rows[0]["content"] != `{"version":1,"campaigns":[]}` {
@@ -44,6 +45,152 @@ func TestRepositoryMemorySourcesUseCanonicalDocuments(t *testing.T) {
 		files.Rows[1]["id"] != "self-care/README.md" ||
 		files.Rows[1]["content"] != "readme" {
 		t.Fatalf("repository-memory file source: %+v", files)
+	}
+}
+
+func TestMaterializeInventoryCanonicalMappingsEnrichesCanonicalRows(t *testing.T) {
+	canonical := map[string][]model.Row{
+		"campaigns": {{
+			"id": "campaign:dashboard-sources:activity", "slug": "activity", "name": "Activity",
+		}},
+		"repositories": {{
+			"id": "repository:githubnext%2Fgh-aw-cao", "owner": "githubnext", "name": "gh-aw-cao",
+		}},
+		"workflows": {{
+			"id":           "workflow:githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Factivity.md",
+			"repositoryId": "repository:githubnext%2Fgh-aw-cao",
+			"path":         ".github/workflows/activity.md", "state": "unknown",
+		}},
+	}
+	inventory := map[string]model.Source{
+		"campaigns": {
+			Rows: []model.Row{{
+				"campaign": "activity", "campaign-name": "Activity",
+				"campaign-description": "Collect activity evidence.",
+			}},
+		},
+		"repositories": {
+			Rows: []model.Row{{
+				"organization": "githubnext", "repository": "gh-aw-cao",
+				"visibility": "public",
+			}},
+		},
+		"workflows": {
+			Rows: []model.Row{{
+				"organization":    "githubnext",
+				"repository":      "gh-aw-cao",
+				"workflow":        ".github/workflows/activity.md",
+				"workflow-role":   "worker",
+				"campaign":        "activity",
+				"campaign-name":   "Activity",
+				"rollout-mode":    "review",
+				"workflow-active": "true",
+			}},
+		},
+	}
+
+	materializeInventoryCanonicalMappings(canonical, inventory)
+
+	campaign := canonical["campaigns"][0]
+	if campaign["description"] != "Collect activity evidence." {
+		t.Fatalf("inventory campaign mapping was not preserved: %#v", campaign)
+	}
+	repository := canonical["repositories"][0]
+	if repository["visibility"] != "public" {
+		t.Fatalf("inventory repository mapping was not preserved: %#v", repository)
+	}
+	workflow := canonical["workflows"][0]
+	if workflow["role"] != "worker" || workflow["campaign"] != "activity" ||
+		workflow["campaignName"] != "Activity" || workflow["rolloutMode"] != "review" ||
+		workflow["state"] != "active" ||
+		workflow["campaignId"] != "campaign:dashboard-sources:activity" {
+		t.Fatalf("inventory workflow mapping was not preserved: %#v", workflow)
+	}
+	if len(canonical["campaigns"]) != 1 || len(canonical["repositories"]) != 1 ||
+		len(canonical["workflows"]) != 1 {
+		t.Fatalf("existing canonical rows were duplicated: %#v", canonical)
+	}
+}
+
+func TestMaterializeInventoryCanonicalMappingsCreatesMissingRows(t *testing.T) {
+	canonical := map[string][]model.Row{
+		"campaigns": {}, "repositories": {}, "workflows": {},
+	}
+	inventory := map[string]model.Source{
+		"campaigns": {
+			Metadata: model.Metadata{"as-of": "2026-10-02T04:57:37Z"},
+			Rows: []model.Row{{
+				"campaign": "activity", "campaign-name": "Activity",
+			}},
+		},
+		"repositories": {
+			Rows: []model.Row{{
+				"organization": "GitHubNext", "repository": "GH-AW-CAO",
+				"visibility": "public",
+			}},
+		},
+		"workflows": {
+			Rows: []model.Row{{
+				"organization":    "GitHubNext",
+				"repository":      "GH-AW-CAO",
+				"workflow":        ".github/workflows/activity.lock.yml",
+				"workflow-name":   "Activity",
+				"workflow-active": "false",
+				"campaign":        "activity",
+				"observed-at":     "2026-10-02T05:00:00Z",
+			}},
+		},
+	}
+
+	materializeInventoryCanonicalMappings(canonical, inventory)
+
+	if len(canonical["campaigns"]) != 1 || len(canonical["repositories"]) != 1 ||
+		len(canonical["workflows"]) != 1 {
+		t.Fatalf("inventory rows were not materialized: %#v", canonical)
+	}
+	campaign := canonical["campaigns"][0]
+	if campaign["id"] != "campaign:dashboard-sources:activity" ||
+		campaign["observedAt"] != "2026-10-02T04:57:37Z" {
+		t.Fatalf("campaign row was not materialized canonically: %#v", campaign)
+	}
+	repository := canonical["repositories"][0]
+	if repository["id"] != "repository:githubnext%2Fgh-aw-cao" ||
+		repository["fullName"] != "GitHubNext/GH-AW-CAO" {
+		t.Fatalf("repository row was not materialized canonically: %#v", repository)
+	}
+	workflow := canonical["workflows"][0]
+	if workflow["id"] != "workflow:githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Factivity.md" ||
+		workflow["repositoryId"] != "repository:githubnext%2Fgh-aw-cao" ||
+		workflow["path"] != ".github/workflows/activity.md" ||
+		workflow["name"] != "Activity" ||
+		workflow["state"] != "disabled" ||
+		workflow["campaignId"] != "campaign:dashboard-sources:activity" ||
+		workflow["observedAt"] != "2026-10-02T05:00:00Z" {
+		t.Fatalf("workflow row was not materialized canonically: %#v", workflow)
+	}
+}
+
+func TestNamespaceCanonicalInventorySourcesAvoidsLogicalSourceShadowing(t *testing.T) {
+	inventory := map[string]model.Source{
+		"campaigns":            {Source: "campaigns", Rows: []model.Row{{"campaign": "activity"}}},
+		"repositories":         {Source: "repositories", Rows: []model.Row{{"repository": "gh-aw-cao"}}},
+		"workflows":            {Source: "workflows", Rows: []model.Row{{"workflow": "activity.md"}}},
+		"marketplace-packages": {Source: "marketplace-packages", Rows: []model.Row{{"package": "activity"}}},
+	}
+
+	sources := namespaceCanonicalInventorySources(inventory)
+
+	for _, name := range []string{"campaigns", "repositories", "workflows"} {
+		if _, exists := sources[name]; exists {
+			t.Fatalf("inventory source %q still shadows its logical database query", name)
+		}
+		rawName := "$inventory-" + name
+		if len(sources[rawName].Rows) != 1 || sources[rawName].Source != rawName {
+			t.Fatalf("inventory source %q was not namespaced: %#v", name, sources[rawName])
+		}
+	}
+	if len(sources["marketplace-packages"].Rows) != 1 {
+		t.Fatalf("inventory-only logical source was unexpectedly renamed: %#v", sources)
 	}
 }
 

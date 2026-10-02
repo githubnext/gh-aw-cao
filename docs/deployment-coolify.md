@@ -38,10 +38,14 @@ In the following steps, replace `PUBLIC-HOST` with the public host name of your 
 
 1. Create a Docker Compose resource from this repository through the Coolify GitHub App. Select the protected `main` branch, set the Compose location to `server/coolify/compose.yml`, enable automatic deployments, and disable previews unless you provision isolated preview credentials and data.
 1. In the resource's advanced settings, enable **Include Source Commit in Build**. Coolify then provides `SOURCE_COMMIT`, which the Compose build embeds in the image labels and exposes as the server build version.
+1. In the same advanced settings, enable **Connect To Predefined Network**. The
+   Docker Compose application otherwise remains on its resource-specific
+   network and cannot reach separately managed Coolify PostgreSQL and Redis
+   resources. Put all three resources on the same server and destination.
 
 1. Register a GitHub OAuth app. Set its **Authorization callback URL** to `https://PUBLIC-HOST/auth/callback`. For more information, see [Creating an OAuth app](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app) in the GitHub documentation.
-1. Create a PostgreSQL service in Coolify on the same private network as the dashboard. Copy its internal connection URL and store it as the dashboard resource's secret `CAO_POSTGRES_URL`. The database resource name, such as `cao-postgres`, is only a label and must not be substituted for the host in the connection URL.
-1. Create a Redis service in Coolify on the same private network as the dashboard, or use an external `rediss://` endpoint. To use Upstash, follow [Deploying the dashboard with Upstash Redis](deployment-upstash.md), select the `upstash` Redis module with `target.replicas: 1`, and keep the Coolify resource at exactly one replica.
+1. Create a PostgreSQL service in Coolify on the same destination as the dashboard. Copy its generated Internal URL and store it as the dashboard resource's secret `CAO_POSTGRES_URL`. The database resource name, such as `cao-postgres`, is only a display label and must not be substituted for the container hostname in the generated URL.
+1. Create a Redis service in Coolify on the same destination as the dashboard, copy its generated Internal URL into `REDIS_URL`, or use an external `rediss://` endpoint. The Redis display name, such as `cao-redis`, is not a stable cross-resource DNS contract. To use Upstash, follow [Deploying the dashboard with Upstash Redis](deployment-upstash.md), select the `upstash` Redis module with `target.replicas: 1`, and keep the Coolify resource at exactly one replica.
 1. Review `.github/workflows/cao.coolify.json`. This CAO deployment profile
    extends the authoritative `cao.json` rollout policy with only the
    `control-plane.web.host` settings required by Coolify. The Compose file
@@ -87,6 +91,8 @@ For the production deployment of the `githubnext/gh-aw-cao` dashboard:
    to `server/coolify/compose.yml`.
 1. Enable **Include Source Commit in Build** so `SOURCE_COMMIT` identifies the
    exact checkout in image labels and `/api/version`.
+1. Enable **Connect To Predefined Network**, and place the application,
+   PostgreSQL, and Redis resources on the same Coolify server and destination.
 1. Enable automatic deployments for `main`. Keep preview deployments disabled
    for the production resource.
 1. Configure the runtime values from
@@ -327,7 +333,7 @@ You configure traces for orchestrators and workers in the control repository. Fo
 - **Platform operations.** You operate Coolify, the host, Docker, TLS certificates, and the proxy network. CAO provides no SLA and doesn't harden the host.
 - **Package admission.** The source-built production image does not pass through the GHCR package workflow's Trivy, Grype, Dockle, SBOM, or artifact-attestation admission gates. Those checks still run for published packages.
 - **Automatic verified rollback.** Coolify, rather than a repository-owned API client, controls rollback. Operators must verify readiness after restoring a prior deployment.
-- **Redis operations.** You're responsible for Redis authentication, access control lists, persistence, memory sizing, and network isolation. Redis holds disposable data, and CAO doesn't back it up.
+- **Redis operations.** You're responsible for Redis authentication, access control lists, persistence, memory sizing, and network isolation. Redis holds operational caches and security state, not dashboard entities.
 - **Data freshness.** Nothing refreshes the artifact volume automatically. Data is only as fresh as the last volume that you prepared or the last rebuild. For the upstream schedule, see [CAO Activity](activity.md).
 - **Live updates.** Server-sent events are best effort. If they stop, clients fall back to polling.
 - **Per-repository authorization.** Authorized users can read all of the active data.
@@ -339,7 +345,7 @@ Use the Coolify resource's deployment history to select the last known-good depl
 
 1. In Coolify, redeploy the selected prior deployment or source revision.
 1. Confirm readiness, OAuth sign-in and authorization, a bounded query, webhook signature handling, and rate limits.
-1. If the new version wrote unusable data to Redis, clear only the deployment's Redis namespace. The service then loads the retained artifact again.
+1. If the new version wrote unusable dashboard data to PostgreSQL, rebuild it from the retained artifact. Clear the Redis namespace only when intentionally invalidating operational caches and active sessions.
 
 If you suspect an incident, see [Incident response](operations.md#incident-response). For the detailed reference, see the [Coolify container profile](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md#coolify-container-profile) in `server/README.md` and the [Coolify profile](https://github.com/githubnext/gh-aw-cao/blob/main/server/SECURITY.md#coolify-profile) in `server/SECURITY.md`.
 

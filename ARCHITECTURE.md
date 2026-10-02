@@ -167,6 +167,21 @@ Coolify logs, query and ingestion spans, and Postgres child spans. An
 observability backend is diagnostic infrastructure only: it cannot become
 dashboard data authority, policy, or rollout authority.
 
+#### Hosted storage boundary
+
+The hosted dashboard has one strict storage split:
+
+| Store | Owns | Must not own |
+| --- | --- | --- |
+| PostgreSQL | Current dashboard entity sources, source documents, diagnostics, revision state, and Dashboard Language query execution | Sessions, rate-limit buckets, delivery queues, deduplication markers, or transient resolver caches |
+| Redis | Sessions, rate limits, webhook and collection queues, delivery deduplication, distributed coordination, GitHub quota state, pending token revocations, and bounded runtime caches | Dashboard entity rows, canonical source documents, query indexes, persistent query projections, or dashboard query execution |
+
+The browser communicates only with the Go HTTP(S) server. It never connects to
+either store. Artifact ingestion and rebuilds transactionally replace the
+current PostgreSQL data; Redis failure may make protected operations
+unavailable, but Redis is never a fallback dashboard database. PostgreSQL
+failure makes dashboard data unavailable even when Redis is healthy.
+
 An externally owned HTTP host is a separate, explicit `generic` target with
 `listener: external`, not an alias for Azure's platform listener. The public
 `server/hosting/` facade constructs the same hosted CAO application from the
@@ -492,8 +507,9 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   collection, data, and local tooling.
 - **JSONL** is the bounded evidence interchange; **SQLite** supports local tools
   and agents; **IndexedDB** supports the static browser dashboard; **Postgres**
-  stores current hosted dashboard sources; **Redis** supports operational caches,
-  queues, and sessions.
+  exclusively stores and queries current hosted dashboard sources; **Redis**
+  exclusively supports operational caches, queues, coordination, rate limits,
+  and sessions.
 - **Go** implements the isolated host-neutral HTTP(S) ingestion, reconciliation,
   rebuild, and query service.
 - **Dashboard Language** keeps data operations declarative and off the browser

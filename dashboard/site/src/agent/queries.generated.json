@@ -9628,7 +9628,7 @@
   "aggregate": {
    "values": [
     {
-     "field": "id",
+     "field": "campaign",
      "as": "campaigns",
      "reducer": "count"
     }
@@ -10042,7 +10042,7 @@
   "aggregate": {
    "values": [
     {
-     "field": "id",
+     "field": "repository",
      "as": "registered-repositories",
      "reducer": "count"
     }
@@ -10287,7 +10287,7 @@
   "aggregate": {
    "values": [
     {
-     "field": "id",
+     "field": "campaign",
      "as": "healthy-campaigns",
      "reducer": "count",
      "filter": {
