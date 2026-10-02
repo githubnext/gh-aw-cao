@@ -4,6 +4,9 @@
 
 import { selectNamedComposition } from './route-composition.js';
 import { selectConfigBody } from './route-body-composition.js';
+import { createDebug } from '../debug.js';
+
+const debugRouteBodyConfig = createDebug('route-body-config');
 
 /**
  * @template {string} T
@@ -18,14 +21,21 @@ import { selectConfigBody } from './route-body-composition.js';
  * }}
  */
 export function createRouteBodyConfig(values, fallback) {
+  const body = (/** @type {unknown} */ value) => {
+    const resolved = selectConfigBody({ values, fallback }, value);
+    if (resolved !== value) {
+      debugRouteBodyConfig({
+        event: 'body-fallback',
+        requested: typeof value === 'string' ? value : typeof value,
+        fallback: resolved
+      });
+    }
+    return resolved;
+  };
   return {
     values,
     fallback,
-    body: (value) => selectConfigBody({ values, fallback }, value),
-    composition: (compositions, value) => selectNamedComposition(
-      compositions,
-      selectConfigBody({ values, fallback }, value),
-      fallback
-    )
+    body,
+    composition: (compositions, value) => selectNamedComposition(compositions, body(value), fallback)
   };
 }
