@@ -2,7 +2,7 @@
   "rule_key": "js-no-literal-color-value-in-test-assertion",
   "schema_version": 1,
   "first_seen": "2026-10-01T14:53:00Z",
-  "last_updated": "2026-10-02T03:59:40Z",
+  "last_updated": "2026-10-02T04:57:49Z",
   "status": "needs-work",
   "affected_languages": [
     "javascript"
@@ -93,15 +93,15 @@
   },
   "evaluation": {
     "target_repo": "githubnext/gh-aw-cao",
-    "target_commit": "3103235060ee12a20a202b6ccaad3111f779c986",
-    "true_positive_count": 1,
-    "false_positive_count": 15,
+    "target_commit": "c8c2e978c195e913fe0d458bc08904140528ae8a",
+    "true_positive_count": 2,
+    "false_positive_count": 14,
     "false_negative_count": 0,
     "readiness_for_target": "needs-work",
-    "reason": "Re-confirmed unchanged: the mined --terminal-syntax-placeholder regression pair is now in sync (test passes), leaving 15 stable non-churning literals flagged as false positives of 16 total sites. Still needs a file/churn-scope restriction before adoption.",
-    "txn_id": "refiner-36950555650-1"
+    "reason": "New confirmed true positive: tests/unit/docs-accessibility.test.mjs:23's color-mix literal is now failing at HEAD (source retuned, test not updated). landing-page-diagram.test.mjs still passes in full; 14 of 16 flagged sites remain stable false positives. Still needs file/churn-scope restriction before adoption.",
+    "txn_id": "refiner-36966484292-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36962115471",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36966484292",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-02T03:59:40Z"
+  "last_seen_at": "2026-10-02T04:57:49Z"
 }
