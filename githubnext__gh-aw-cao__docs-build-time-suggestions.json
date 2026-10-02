@@ -1,6 +1,6 @@
 {
   "source_sha": "336e431f759e2b14fdef1d7825e973fa979aade6",
-  "next_category": "Astro documentation generation",
+  "next_category": "reusable dashboard generation",
   "evaluations": [
     {
       "evaluated_at": "2026-10-02T09:56:00Z",
@@ -403,6 +403,24 @@
         37002875087
       ],
       "outcome": "no_actionable_improvement: evaluated dependency installation and caching across the latest 20 completed successful docs.yml runs in the 2026-10-02T11:34Z-15:26Z window, including 16 comparable successful build executions and 9 successful deploy executions, plus trusted workflow-source inspection of docs.yml and cao-dashboard.yml. Trusted Actions metadata showed docs workflow wall-time median 64s with p90 174.6s across all 20 successes, zero observable queue time median with p90 3s, build-job median 44s with p90 54s, deploy-job median 19s with p90 115.6s on deploying runs, and schedule-freshness median 8s on successful scheduled checks. Trusted step metadata and bounded logs confirmed effective cache hits on every comparable docs build: setup-node restored the npm cache (~291 MB), the explicit node_modules cache restored ~283 MB in about 4-7s, and the central-agentic-ops-dashboard cache restored from key central-agentic-ops-dashboard in about 1-3s; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped in every comparable successful build. Comparable docs build-step medians were about 12s for Build documentation, 5s for Restore node_modules, 2s for Restore cached CAO Dashboard, and 10s for Upload Pages artifact. Because dependency installation is already fully avoided on the measured docs builds and docs.yml consumes a prebuilt dashboard artifact instead of generating dashboard/site assets itself, no dependency-and-caching change in this cycle is evidenced to save at least 60s or 15 percent of median docs execution time without duplicating already-recorded avoidable-rebuild or upstream reusable-dashboard recommendations.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-02T15:45:18Z",
+      "worker_run_id": "37028675000",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        37026943933,
+        37025244279,
+        37021734130,
+        37020020519,
+        37018656763,
+        37017029269,
+        37016480662,
+        37024866143,
+        37021381186
+      ],
+      "outcome": "no_actionable_improvement: evaluated Astro documentation generation across 7 comparable successful docs.yml build executions in the 2026-10-02T13:57Z-15:27Z window, plus 2 matching successful cao-dashboard.yml producer runs for nearby source revisions. Trusted Actions metadata showed comparable docs workflow wall-time median 94s with p90 229s, zero observable queue time, build-job median 44s with p90 56s, and deploy-job median 79.5s with p90 154s on the 4 runs that actually deployed. Trusted step metadata confirmed effective cache hits in every sampled docs build: Restore node_modules took 4-7s, Install dependencies and Save node_modules were skipped in all 7 runs, Restore cached CAO Dashboard took 1-3s, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were skipped in all 7 runs. Astro docs generation itself remained only 8-14s per run with a 13s median, while Upload Pages artifact stayed 6-11s. Cross-checking successful dashboard producer runs 37021381186 and 37024866143 showed dashboard/site generation is likewise not the bottleneck upstream: Assemble Dashboard Language site took 3s in the latest successful run, while Upgrade fallback activity data dominated at 118s in run 37024866143 after a cache hit, and Upload dashboard artifact took 10s. Because Astro documentation generation is only about 13s median and no Astro-focused change is evidenced to save at least 60s or 15 percent of median docs execution time without overlapping already-recorded upstream reusable-dashboard or avoidable-deploy work, no new actionable recommendation was made.",
       "suggestion_fingerprint": null
     }
   ]
