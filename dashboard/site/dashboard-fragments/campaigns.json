@@ -116,8 +116,8 @@
       "subject": "List campaign-owned orchestrator and worker workflows with database-backed execution totals.",
       "objective": "Choose an active campaign workflow whose observed execution warrants inspection.",
       "acceptance": "Listed workflows match active declared orchestrator or worker inventory entries; runs and AI Credits agree with the selected-horizon inventory, and absence is not evidence of disabled authority or no executions. Rollout mode is context, not permission to change policy.",
-      "description": "Campaign workflows projected from the canonical workflow inventory.",
-      "from": "workflow-inventory",
+      "description": "Campaign workflows projected from lean canonical inventory, with display names and drill-down links computed only for the active list.",
+      "from": "campaign-workflow-inventory",
       "filter": {
         "predicates": [
           {
@@ -133,12 +133,81 @@
           }
         ]
       },
+      "compute": [
+        {
+          "as": "campaign-title",
+          "function": "title-case",
+          "args": [{ "field": "campaign" }]
+        },
+        {
+          "as": "campaign-display-name",
+          "function": "coalesce",
+          "args": [{ "field": "campaign-name" }, { "field": "campaign-title" }, { "value": "Repository-owned" }]
+        },
+        {
+          "as": "workflow-display-name",
+          "function": "coalesce",
+          "args": [{ "field": "workflow-name" }, { "field": "workflow" }]
+        },
+        {
+          "as": "encoded-repository",
+          "function": "url-encode",
+          "args": [{ "field": "repository" }]
+        },
+        {
+          "as": "repository-dashboard-href",
+          "function": "concat",
+          "args": [{ "value": "#page-repository-detail?repository=" }, { "field": "encoded-repository" }]
+        },
+        {
+          "as": "repository-dashboard-label",
+          "function": "concat",
+          "args": [{ "value": "View " }, { "field": "repository" }, { "value": " repository dashboard" }]
+        },
+        {
+          "as": "repository-dashboard-link",
+          "function": "dashboard-link",
+          "args": [
+            { "field": "repository-link" }, { "field": "repository-dashboard-href" },
+            { "field": "repository-dashboard-label" }, { "field": "repository" }
+          ]
+        },
+        {
+          "as": "workflow-identity",
+          "function": "concat",
+          "args": [{ "field": "repository" }, { "value": ":" }, { "field": "workflow" }]
+        },
+        {
+          "as": "encoded-workflow",
+          "function": "url-encode",
+          "args": [{ "field": "workflow-identity" }]
+        },
+        {
+          "as": "workflow-dashboard-href",
+          "function": "concat",
+          "args": [{ "value": "#page-workflow-runtime?workflow=" }, { "field": "encoded-workflow" }]
+        },
+        {
+          "as": "workflow-dashboard-label",
+          "function": "concat",
+          "args": [{ "value": "View " }, { "field": "workflow-display-name" }, { "value": " workflow dashboard" }]
+        },
+        {
+          "as": "workflow-dashboard-link",
+          "function": "dashboard-link",
+          "args": [
+            { "field": "workflow-link" }, { "field": "workflow-dashboard-href" },
+            { "field": "workflow-dashboard-label" }, { "field": "workflow-identity" }
+          ]
+        }
+      ],
       "select": [
         {
           "field": "campaign"
         },
         {
-          "field": "campaign-name"
+          "field": "campaign-display-name",
+          "as": "campaign-name"
         },
         {
           "field": "organization"
@@ -150,7 +219,8 @@
           "field": "workflow"
         },
         {
-          "field": "workflow-name"
+          "field": "workflow-display-name",
+          "as": "workflow-name"
         },
         {
           "field": "workflow-role"
@@ -168,10 +238,12 @@
           "field": "aic"
         },
         {
-          "field": "repository-link"
+          "field": "repository-dashboard-link",
+          "as": "repository-link"
         },
         {
-          "field": "workflow-link"
+          "field": "workflow-dashboard-link",
+          "as": "workflow-link"
         }
       ],
       "order-by": [
