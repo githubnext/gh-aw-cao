@@ -1,4 +1,5 @@
 import { h } from '../dom.js';
+import { usesGitHubAuthentication } from '../auth.js';
 import { effect, state } from '../reactive.js';
 import { fetchServerLogs, usesRemoteDataBackend } from '../remote-data-backend.js';
 import { errorMessage } from './count-formatters.js';
@@ -8,7 +9,7 @@ import { renderEmptyMessage, renderLoadingMessage } from './ui-primitives.js';
 
 /** @param {() => void} onOpen */
 export function renderServerLogsSetting(onOpen) {
-  if (!usesRemoteDataBackend()) return null;
+  if (!usesRemoteDataBackend() || !usesGitHubAuthentication()) return null;
   const scope = createFactoryScope();
   const section = h('section', { className: 'configuration-browser-settings', hidden: true, 'aria-labelledby': 'configuration-logs-heading' },
     h('div', { className: 'configuration-browser-settings-heading' },

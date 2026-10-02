@@ -6,6 +6,10 @@ const { fetchServerLogs, usesRemoteDataBackend } = vi.hoisted(() => ({
   usesRemoteDataBackend: vi.fn(() => true)
 }));
 vi.mock('../../src/remote-data-backend.js', () => ({ fetchServerLogs, usesRemoteDataBackend }));
+const { usesGitHubAuthentication } = vi.hoisted(() => ({
+  usesGitHubAuthentication: vi.fn(() => true)
+}));
+vi.mock('../../src/auth.js', () => ({ usesGitHubAuthentication }));
 
 import { renderServerLogsSetting, renderServerLogsView } from '../../src/components/server-logs.js';
 
@@ -13,13 +17,20 @@ afterEach(() => {
   document.body.replaceChildren();
   vi.clearAllMocks();
   usesRemoteDataBackend.mockReturnValue(true);
+  usesGitHubAuthentication.mockReturnValue(true);
 });
 
 describe('administrator server logs', () => {
-  it('hides the settings entry outside server mode and without admin access', async () => {
+  it('does not show or request logs on Pages or the local server', () => {
     usesRemoteDataBackend.mockReturnValue(false);
     expect(renderServerLogsSetting(() => {})).toBeNull();
     usesRemoteDataBackend.mockReturnValue(true);
+    usesGitHubAuthentication.mockReturnValue(false);
+    expect(renderServerLogsSetting(() => {})).toBeNull();
+    expect(fetchServerLogs).not.toHaveBeenCalled();
+  });
+
+  it('hides the hosted settings entry without admin access', async () => {
     fetchServerLogs.mockRejectedValue(new Error('administrator access is required'));
     const section = renderServerLogsSetting(() => {});
     if (!section) throw new Error('server logs setting did not render');

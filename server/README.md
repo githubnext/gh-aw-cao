@@ -1464,9 +1464,10 @@ provenance required by hosted MCP; local access uses the dashboard bearer
 capability or the configured Actions token and actor. Coolify enables this
 setting and `cao:server*` debug logging by default. The buffer covers the
 current process only and does not include logs emitted before it was enabled.
-On the server-backed dashboard, administrators can open **Settings → Logs →
+On the hosted GitHub-authenticated dashboard, administrators can open **Settings → Logs →
 Server logs** to inspect this snapshot as a full-page, preformatted view and
-refresh it. The entry is absent when the endpoint is disabled or access is denied.
+refresh it. The entry is absent on GitHub Pages and the local server, or when
+the endpoint is disabled or access is denied.
 These process-local diagnostics are not canonical dashboard data, so the
 settings viewer reads the protected runtime endpoint rather than a Dashboard
 Language data query.
