@@ -127,6 +127,7 @@ safe-outputs:
     target: "*"
     target-repo: ${{ inputs.target_repo }}
     pull-request-repo: ${{ inputs.target_repo }}
+    custom-instructions: "Read the Repo Assist triage comment on this issue for the verified change, relevant paths, and acceptance tests. Implement only that bounded change, validate it, and open a pull request for maintainer review. Do not merge or broaden scope."
     github-token: ${{ secrets.GH_AW_AGENT_TOKEN }}
     max: 1
     staged: ${{ inputs.safe_output_mode != 'live' }}
@@ -163,7 +164,7 @@ Do not post acknowledgements, restatements, generic contribution advice, promise
 
 In `live` mode, use `add_labels` or `remove_labels` only for the selected target issue, and use `add_comment` at most once when substantive guidance or clarification is warranted. Start a live comment with `🤖 *This is an automated response from Repo Assist.*`.
 
-For delegation, call `assign_to_agent` at most once for the selected existing issue in `TARGET_REPO`, with `agent: copilot` and concise `custom_instructions` describing the verified change and acceptance tests. Keep the issue and resulting pull request in `TARGET_REPO`; never override the repository or dispatch another workflow. Do not delegate ambiguous, broad, breaking, security-sensitive, or new-dependency work. If Copilot availability or assignment credentials are missing, report the blocker rather than falling back to a direct API write or claiming assignment succeeded.
+For delegation, first call `add_comment` on the selected issue with the verified change, relevant paths, and explicit acceptance tests. Then call `assign_to_agent` at most once for that existing issue in `TARGET_REPO`, with `agent: copilot`. Do not pass per-call custom instructions; the configured `custom-instructions` directs Copilot to the triage comment. Keep the issue and resulting pull request in `TARGET_REPO`; never override the repository or dispatch another workflow. Do not delegate ambiguous, broad, breaking, security-sensitive, or new-dependency work. If Copilot availability or assignment credentials are missing, report the blocker rather than falling back to a direct API write or claiming assignment succeeded.
 
 In `review` mode, never call item-based outputs for the target issue. Create one review issue in `SAFE_OUTPUT_REPO` with the canonical unprefixed subject `TARGET_REPO issue NUMBER triage guidance`. The configured `title-prefix` is added automatically, so do not repeat it or add a semantically equivalent category prefix. Keep the subject identical across reruns for the same target issue. Search all open campaign-worker issues before creation and call `noop` when equivalent guidance is already tracked.
 

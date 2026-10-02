@@ -37,7 +37,6 @@ jq -c '
       repository_matches($target) and positive_item
       and (.agent // "copilot") == "copilot"
       and (.pull_request_repo // $target) == $target
-      and (.custom_instructions | text)
     else false end;
   def valid_review($target; $safe_repo):
     type_name == "create_issue"
@@ -66,6 +65,9 @@ jq -c '
            ([.outputs[] | select(type_name != "noop") | item_number] | unique) as $items
            | if (.outputs | length) >= 1 and (.outputs | length) <= 4
                and ([.outputs[] | select(type_name == "assign_to_agent")] | length) <= 1
+               and (if any(.outputs[]; type_name == "assign_to_agent")
+                    then any(.outputs[]; type_name == "add_comment" and valid_live_action($target))
+                    else true end)
                and ($items | length) == 1
                and all(.outputs[]; valid_live_action($target))
              then 1 else 0 end

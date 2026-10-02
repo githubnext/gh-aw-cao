@@ -23,6 +23,7 @@ test("Repo Assist runs every six hours and scopes Copilot assignment to live tar
     target: "*",
     "target-repo": "${{ inputs.target_repo }}",
     "pull-request-repo": "${{ inputs.target_repo }}",
+    "custom-instructions": "Read the Repo Assist triage comment on this issue for the verified change, relevant paths, and acceptance tests. Implement only that bounded change, validate it, and open a pull request for maintainer review. Do not merge or broaden scope.",
     "github-token": "${{ secrets.GH_AW_AGENT_TOKEN }}",
     max: 1,
     staged: "${{ inputs.safe_output_mode != 'live' }}",
@@ -33,6 +34,8 @@ test("Repo Assist runs every six hours and scopes Copilot assignment to live tar
   );
   assert.ok(handlerStep, "assignment must reach the production safe-output handler");
   assert.deepEqual(JSON.parse(handlerStep.env.GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG).assign_to_agent, assignment);
+  assert.match(source, /first call `add_comment`[\s\S]*Then call `assign_to_agent`/);
+  assert.match(source, /Do not pass per-call custom instructions/);
   assert.match(source, /Skip issues already assigned to Copilot or another implementer/);
   assert.match(source, /Search open pull requests and Repo Assist issue-fix review records for an active fix/);
   assert.match(source, /Never call `assign_to_agent` in `review` mode, including for a central review issue/);
@@ -46,7 +49,6 @@ test("Repo Assist triage grader accepts one target-bound live assignment and rej
     repo: "example/target",
     agent: "copilot",
     pull_request_repo: "example/target",
-    custom_instructions: "Fix the verified bug and run its regression test.",
   };
   function score(outputs, mode = "live") {
     const request = {
@@ -60,7 +62,12 @@ test("Repo Assist triage grader accepts one target-bound live assignment and rej
     ], { input: JSON.stringify(request), encoding: "utf8" });
     return JSON.parse(result)[0].value;
   }
-  assert.equal(score([assignment]), 1);
+  const comment = {
+    type: "add_comment", issue_number: 42, repo: "example/target",
+    body: "🤖 *This is an automated response from Repo Assist.* Verified root cause. Fix src/example.js and run npm test.",
+  };
+  assert.equal(score([assignment]), 0);
+  assert.equal(score([comment, assignment]), 1);
   assert.equal(score([assignment], "review"), 0);
   assert.equal(score([assignment, assignment]), 0);
   for (const override of [
@@ -68,14 +75,9 @@ test("Repo Assist triage grader accepts one target-bound live assignment and rej
     { pull_request_repo: "example/other" },
     { agent: "other" },
     { issue_number: null },
-    { custom_instructions: "" },
   ]) {
-    assert.equal(score([{ ...assignment, ...override }]), 0);
+    assert.equal(score([comment, { ...assignment, ...override }]), 0);
   }
-  const comment = {
-    type: "add_comment", issue_number: 42, repo: "example/target",
-    body: "🤖 *This is an automated response from Repo Assist.* Verified root cause.",
-  };
   assert.equal(score([comment]), 1);
   assert.equal(score([assignment, comment]), 1);
   assert.equal(score([assignment, { ...comment, issue_number: 43 }]), 0);
