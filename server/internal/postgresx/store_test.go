@@ -885,7 +885,8 @@ func TestCanonicalProducerDifferentialIntegration(t *testing.T) {
 			Source: "$campaigns", Rows: []model.Row{{
 				"id": "campaign:1", "maxRepositories": json.Number("12"),
 				"inventoryWarnings": json.Number("0"), "experimental": false,
-				"workers": []any{map[string]any{"name": "worker", "index": json.Number("1")}},
+				"workers": []any{map[string]any{"id": "worker", "workflow": "worker.md",
+					"enabled": false, "max-mode": nil}},
 				"targets": []any{map[string]any{"repository": "org/repo"}},
 				"campaignLink": map[string]any{"href": "https://github.com/org/repo",
 					"relation": "campaign", "label": "Campaign"},

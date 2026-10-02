@@ -106,6 +106,35 @@ test('the physical PostgreSQL contract covers every native canonical field', () 
   assert.equal(properties.provenance, undefined, 'obsolete provenance JSON column retained')
 })
 
+test('closed nested PostgreSQL structures have explicit physical contracts', () => {
+  const implementation = readFileSync(join(directory, '../internal/postgresx/nested.go'), 'utf8')
+  for (const [catalogue, model] of [
+    ['campaignWorkerType', 'CampaignWorker'], ['campaignTargetType', 'CampaignTarget'],
+    ['intelligenceFieldsType', 'IntelligenceFields'], ['intelligenceType', 'IntelligenceDeclaration'],
+    ['modelUsageType', 'ModelTokenUsage'], ['sourceProvenanceType', 'SourceProvenance']
+  ]) {
+    const start = implementation.indexOf(`var ${catalogue} =`)
+    const end = implementation.indexOf('\n}}', start)
+    assert.notEqual(start, -1)
+    assert.notEqual(end, -1)
+    const properties = openapi.components.schemas[`Postgres.${model}`].properties
+    assert.ok(properties.present, `${model} must track nested presence`)
+    for (const [, key, kind] of implementation.slice(start, end).matchAll(/\{"([^"]+)", "([^"]+)"/g)) {
+      assert.ok(properties[key], `${model}.${key} is not documented`)
+      if (kind === 'numeric' || kind === 'timestamp') {
+        assert.ok(properties[key + 'Raw'], `${model}.${key}Raw is not documented`)
+      }
+    }
+  }
+  const row = openapi.components.schemas['Postgres.CanonicalRow'].properties
+  for (const [field, model] of [
+    ['tokenUsage', 'TokenUsage'], ['intelligenceDeclaration', 'IntelligenceDeclaration'],
+    ['sourceProvenance', 'SourceProvenance']
+  ]) {
+    assert.ok(JSON.stringify(row[field]).includes(`Postgres.${model}`), `${field} must reference its native composite`)
+  }
+})
+
 test('selected JSON Schemas and nullable responses are emitted', () => {
   for (const schema of ['QueryRequest', 'QueryResponse', 'QueryDefinition', 'RevisionEvent', 'WebhookAcknowledgement']) {
     const document = JSON.parse(readFileSync(join(directory, 'generated/schemas', `${schema}.json`), 'utf8'))

@@ -138,7 +138,7 @@ components:
     responsibility: rebuildable per-browser data projection
   postgres_entity_store:
     path: server/internal/postgresx/
-    responsibility: transactionally replace and read current dashboard entity sources, diagnostics, and revision state; store mapped canonical fields in native columns and variable observation attributes or inventory sources as JSON, retaining an older EAV reader until replacement; execute proven bounded plans as parameterized SQL in a repeatable-read snapshot without persistent generations
+    responsibility: transactionally replace and read current dashboard entity sources, diagnostics, and revision state; store known canonical fields and closed nested structures in native columns, composites, and ordered arrays, reserving JSON for source-defined payloads, evidence, semantic values, and inventory sources; require a fresh database for older nested JSON schemas; execute proven bounded plans as parameterized SQL in a repeatable-read snapshot without persistent generations
   redis_operational_store:
     path: server/internal/redisx/
     responsibility: support operational caches, queues, and sessions, not dashboard entity storage or query execution

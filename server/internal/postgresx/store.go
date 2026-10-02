@@ -24,6 +24,7 @@ import (
 )
 
 var ErrSourceUnavailable = errors.New("postgres source is unavailable")
+var ErrFreshDatabaseRequired = errors.New("native PostgreSQL nested storage requires an empty database")
 
 type State struct {
 	Ready        bool
@@ -107,6 +108,9 @@ func NewConfig(ctx context.Context, config *pgx.ConnConfig, namespaces ...string
 		_ = db.Close()
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
+		}
+		if errors.Is(err, ErrFreshDatabaseRequired) {
+			return nil, ErrFreshDatabaseRequired
 		}
 		return nil, errors.New("postgres connection or schema initialization failed")
 	}
@@ -316,8 +320,15 @@ func initialize(ctx context.Context, db *sql.DB) error {
 			"ADD COLUMN IF NOT EXISTS "+field.column+"_label TEXT",
 			"ADD COLUMN IF NOT EXISTS "+field.column+"_present TEXT[]")
 	}
+	if err := initializeNested(ctx, tx); err != nil {
+		return err
+	}
 	for _, field := range canonicalObjects {
-		additions = append(additions, "ADD COLUMN IF NOT EXISTS "+field.column+" JSON")
+		dataType := "JSON"
+		if native, ok := nativeNestedFields[field.key]; ok {
+			dataType = native.sqlType()
+		}
+		additions = append(additions, "ADD COLUMN IF NOT EXISTS "+field.column+" "+dataType)
 	}
 	for _, field := range canonicalFlexibleText {
 		additions = append(additions, "ADD COLUMN IF NOT EXISTS "+field.column+" JSON")
@@ -540,6 +551,7 @@ func migrateCanonicalLinks(ctx context.Context, tx *sql.Tx) error {
 		if invalid {
 			return fmt.Errorf("invalid legacy canonical link %s", field.key)
 		}
+		// #nosec G202 -- identifiers come exclusively from canonicalLinks.
 		if _, err := tx.ExecContext(ctx, `UPDATE cao_canonical_rows r SET
 			`+field.column+` = COALESCE(`+field.column+`, `+rich+` ->> 'href'),
 			`+field.column+`_relation = `+rich+` ->> 'relation',

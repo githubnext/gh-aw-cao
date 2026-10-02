@@ -2969,6 +2969,95 @@
           }
         }
       },
+      "Postgres.CampaignTarget": {
+        "type": "object",
+        "required": [
+          "present"
+        ],
+        "properties": {
+          "present": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "repository": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "Postgres.CampaignWorker": {
+        "type": "object",
+        "required": [
+          "present"
+        ],
+        "properties": {
+          "present": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "max-mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "description": "Ordered native worker composites, including nested missing/null presence."
+      },
       "Postgres.CanonicalRow": {
         "type": "object",
         "required": [
@@ -7055,7 +7144,15 @@
             "type": "boolean"
           },
           "tokenUsage": {
-            "description": "Nested provider and observation structures currently stored in JSON columns."
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Postgres.TokenUsage"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nested provider and observation structures currently stored in JSON columns.Native composite; provider-defined attributes alone remain JSON."
           },
           "ambientContext": {},
           "workingSet": {},
@@ -7065,7 +7162,16 @@
           "graders": {},
           "context": {},
           "evidenceProvenance": {},
-          "sourceProvenance": {},
+          "sourceProvenance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Postgres.SourceProvenance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "implementation": {},
           "observation": {},
           "diagnostics": {},
@@ -7077,9 +7183,42 @@
           "groups": {},
           "events": {},
           "unmeasuredDrivers": {},
-          "workers": {},
-          "targets": {},
-          "intelligenceDeclaration": {},
+          "workers": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Postgres.CampaignWorker"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "targets": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Postgres.CampaignTarget"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "intelligenceDeclaration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Postgres.IntelligenceDeclaration"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "ghAwMetadata": {},
           "ghAwManifest": {},
           "data": {},
@@ -7101,6 +7240,423 @@
           "contentsException": {}
         },
         "description": "Known canonical columns are never copied into the extension object."
+      },
+      "Postgres.IntelligenceDeclaration": {
+        "type": "object",
+        "required": [
+          "present"
+        ],
+        "properties": {
+          "present": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "contractVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "campaign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fields": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Postgres.IntelligenceFields"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "description": "Closed envelope; semantic field values are intentionally arbitrary JSON."
+      },
+      "Postgres.IntelligenceFields": {
+        "type": "object",
+        "required": [
+          "present"
+        ],
+        "properties": {
+          "present": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "repositoryNativeProblem": {},
+          "eligibleOpportunity": {},
+          "intendedOutcome": {},
+          "outcomeAttainmentEvidence": {},
+          "targetPopulation": {},
+          "interventionClass": {},
+          "triggerAndSchedule": {},
+          "scheduleRationale": {},
+          "maxDetectionDelay": {},
+          "resourceEnvelope": {},
+          "overlapIdentity": {},
+          "outputApprovalPolicy": {},
+          "maturationPeriod": {},
+          "deduplication": {},
+          "backoff": {},
+          "stopConditions": {},
+          "operationalValueDefinition": {}
+        }
+      },
+      "Postgres.ModelTokenUsage": {
+        "type": "object",
+        "required": [
+          "present"
+        ],
+        "properties": {
+          "present": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "extension": {
+            "anyOf": [
+              {
+                "type": "object",
+                "unevaluatedProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_aic": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_aicRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_input_tokens": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_input_tokensRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_output_tokens": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_output_tokensRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_cache_read_tokens": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_cache_read_tokensRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_cache_write_tokens": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_cache_write_tokensRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_requests": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_requestsRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cache_efficiency": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cache_efficiencyRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "input_tokens": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "input_tokensRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "output_tokens": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "output_tokensRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cache_read_tokens": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cache_read_tokensRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cache_write_tokens": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cache_write_tokensRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reasoning_tokens": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reasoning_tokensRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requests": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requestsRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "aic": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "aicRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "description": "Per-model usage has no recursive by_model member."
+      },
+      "Postgres.ModelUsage": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "usage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Postgres.ModelTokenUsage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
       },
       "Postgres.Source": {
         "type": "object",
@@ -7205,6 +7761,522 @@
           }
         },
         "description": "Source registry and resource accounting, scoped to a tenant."
+      },
+      "Postgres.SourceProvenance": {
+        "type": "object",
+        "required": [
+          "present"
+        ],
+        "properties": {
+          "present": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "extension": {
+            "anyOf": [
+              {
+                "type": "object",
+                "unevaluatedProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceSchemaRevision": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceSchemaRevisionRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "repository": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "runId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "runAttempt": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "runAttemptRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "actor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "observedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "observedAtRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "generation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "completeness": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "freshness": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evidenceLinks": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "description": "Native lifecycle evidence envelope; additional source attributes remain open."
+      },
+      "Postgres.TokenUsage": {
+        "type": "object",
+        "required": [
+          "present"
+        ],
+        "properties": {
+          "present": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "extension": {
+            "anyOf": [
+              {
+                "type": "object",
+                "unevaluatedProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_aic": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_aicRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_input_tokens": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_input_tokensRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_output_tokens": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_output_tokensRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_cache_read_tokens": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_cache_read_tokensRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_cache_write_tokens": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_cache_write_tokensRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_requests": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_requestsRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cache_efficiency": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cache_efficiencyRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "input_tokens": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "input_tokensRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "output_tokens": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "output_tokensRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cache_read_tokens": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cache_read_tokensRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cache_write_tokens": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cache_write_tokensRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reasoning_tokens": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reasoning_tokensRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requests": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requestsRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "aic": {
+            "anyOf": [
+              {
+                "type": "number",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "aicRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "by_model": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Postgres.ModelUsage"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Dictionary represented by a native array of named model composites."
+          }
+        },
+        "description": "Native usage composite reused for totals and per-model observations."
       },
       "Predicate": {
         "type": "object",

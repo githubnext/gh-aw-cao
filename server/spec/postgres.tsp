@@ -4,6 +4,117 @@
  */
 namespace Cao.Postgres;
 
+/** Ordered native worker composites, including nested missing/null presence. */
+model CampaignWorker {
+  present: string[];
+  id?: string | null;
+  workflow?: string | null;
+  enabled?: boolean | null;
+  `max-mode`?: string | null;
+}
+
+model CampaignTarget {
+  present: string[];
+  repository?: string | null;
+  mode?: string | null;
+}
+
+/** Closed envelope; semantic field values are intentionally arbitrary JSON. */
+model IntelligenceDeclaration {
+  present: string[];
+  contractVersion?: string | null;
+  campaign?: string | null;
+  fields?: IntelligenceFields | null;
+}
+
+model IntelligenceFields {
+  present: string[];
+  repositoryNativeProblem?: unknown;
+  eligibleOpportunity?: unknown;
+  intendedOutcome?: unknown;
+  outcomeAttainmentEvidence?: unknown;
+  targetPopulation?: unknown;
+  interventionClass?: unknown;
+  triggerAndSchedule?: unknown;
+  scheduleRationale?: unknown;
+  maxDetectionDelay?: unknown;
+  resourceEnvelope?: unknown;
+  overlapIdentity?: unknown;
+  outputApprovalPolicy?: unknown;
+  maturationPeriod?: unknown;
+  deduplication?: unknown;
+  backoff?: unknown;
+  stopConditions?: unknown;
+  operationalValueDefinition?: unknown;
+}
+
+/** Native usage composite reused for totals and per-model observations. */
+model TokenUsage {
+  present: string[];
+  extension?: Record<unknown> | null;
+  total_aic?: decimal | null;
+  total_aicRaw?: string | null;
+  total_input_tokens?: decimal | null;
+  total_input_tokensRaw?: string | null;
+  total_output_tokens?: decimal | null;
+  total_output_tokensRaw?: string | null;
+  total_cache_read_tokens?: decimal | null;
+  total_cache_read_tokensRaw?: string | null;
+  total_cache_write_tokens?: decimal | null;
+  total_cache_write_tokensRaw?: string | null;
+  total_requests?: decimal | null;
+  total_requestsRaw?: string | null;
+  cache_efficiency?: decimal | null;
+  cache_efficiencyRaw?: string | null;
+  input_tokens?: decimal | null;
+  input_tokensRaw?: string | null;
+  output_tokens?: decimal | null;
+  output_tokensRaw?: string | null;
+  cache_read_tokens?: decimal | null;
+  cache_read_tokensRaw?: string | null;
+  cache_write_tokens?: decimal | null;
+  cache_write_tokensRaw?: string | null;
+  reasoning_tokens?: decimal | null;
+  reasoning_tokensRaw?: string | null;
+  requests?: decimal | null;
+  requestsRaw?: string | null;
+  aic?: decimal | null;
+  aicRaw?: string | null;
+  /** Dictionary represented by a native array of named model composites. */
+  by_model?: ModelUsage[] | null;
+}
+
+model ModelUsage {
+  name: string;
+  usage?: ModelTokenUsage | null;
+}
+
+/** Per-model usage has no recursive by_model member. */
+model ModelTokenUsage {
+  ...OmitProperties<TokenUsage, "by_model">;
+}
+
+/** Native lifecycle evidence envelope; additional source attributes remain open. */
+model SourceProvenance {
+  present: string[];
+  extension?: Record<unknown> | null;
+  kind?: string | null;
+  sourceId?: string | null;
+  sourceSchemaRevision?: decimal | null;
+  sourceSchemaRevisionRaw?: string | null;
+  repository?: string | null;
+  runId?: string | null;
+  runAttempt?: decimal | null;
+  runAttemptRaw?: string | null;
+  actor?: string | null;
+  observedAt?: utcDateTime | null;
+  observedAtRaw?: string | null;
+  generation?: string | null;
+  completeness?: string | null;
+  freshness?: string | null;
+  evidenceLinks?: string[] | null;
+}
+
 /** Source registry and resource accounting, scoped to a tenant. */
 model Source {
   `namespace`: string;
@@ -446,7 +557,8 @@ model CanonicalRow {
   provenancePresent: string[];
   provenanceNull: boolean;
   /** Nested provider and observation structures currently stored in JSON columns. */
-  tokenUsage?: unknown;
+  /** Native composite; provider-defined attributes alone remain JSON. */
+  tokenUsage?: TokenUsage | null;
   ambientContext?: unknown;
   workingSet?: unknown;
   behaviorFingerprint?: unknown;
@@ -455,7 +567,7 @@ model CanonicalRow {
   graders?: unknown;
   context?: unknown;
   evidenceProvenance?: unknown;
-  sourceProvenance?: unknown;
+  sourceProvenance?: SourceProvenance | null;
   implementation?: unknown;
   observation?: unknown;
   diagnostics?: unknown;
@@ -467,9 +579,9 @@ model CanonicalRow {
   groups?: unknown;
   events?: unknown;
   unmeasuredDrivers?: unknown;
-  workers?: unknown;
-  targets?: unknown;
-  intelligenceDeclaration?: unknown;
+  workers?: CampaignWorker[] | null;
+  targets?: CampaignTarget[] | null;
+  intelligenceDeclaration?: IntelligenceDeclaration | null;
   ghAwMetadata?: unknown;
   ghAwManifest?: unknown;
   data?: unknown;

@@ -36,19 +36,17 @@ func simplePlan(definitions []query.Definition, requested, order []string) (stri
 		return "", nil, false
 	}
 	path := make([]query.Definition, 0, len(order))
+	previous := raw
 	for i, name := range order {
 		definition, ok := index[name]
-		from := raw
-		if i != 0 {
-			from = order[i-1]
-		}
-		if !ok || definition.From != from ||
+		if !ok || definition.From != previous ||
 			len(definition.Union) != 0 || len(definition.Joins) != 0 ||
 			len(definition.Compute) != 0 || definition.Aggregate != nil ||
 			definition.TemporalSeries != nil || len(definition.Predict) != 0 ||
 			len(definition.OrderBy) != 0 {
 			return "", nil, false
 		}
+		previous = name
 		if i < len(order)-1 && (definition.Filter != nil || len(definition.Select) != 0 || definition.Limit != nil) {
 			return "", nil, false
 		}
@@ -66,11 +64,11 @@ func simplePlan(definitions []query.Definition, requested, order []string) (stri
 						return "", nil, false
 					}
 				default:
-					if !isCanonicalSource(raw) ||
-						!(isCanonicalTextField(predicate.Field) && stringValue ||
-							isCanonicalTime(predicate.Field) && stringValue ||
-							isCanonicalBoolean(predicate.Field) && isBoolean ||
-							isCanonicalNumber(predicate.Field) && (stringValue || isQueryNumber(predicate.Equals))) {
+					admitted := isCanonicalTextField(predicate.Field) && stringValue ||
+						isCanonicalTime(predicate.Field) && stringValue ||
+						isCanonicalBoolean(predicate.Field) && isBoolean ||
+						isCanonicalNumber(predicate.Field) && (stringValue || isQueryNumber(predicate.Equals))
+					if !isCanonicalSource(raw) || !admitted {
 						return "", nil, false
 					}
 				}
@@ -123,11 +121,12 @@ func (r *readTransaction) ExecuteNativePlan(ctx context.Context, definitions []q
 		return nil, model.Metrics{}, true, errors.New("incomplete postgres source")
 	}
 	var metadata model.Metadata
-	if canonical {
+	switch {
+	case canonical:
 		metadata, err = readCanonicalMetadata(ctx, r.tx, r.store.namespace, raw)
-	} else if isCanonicalSource(raw) || !metadataText.Valid {
+	case isCanonicalSource(raw) || !metadataText.Valid:
 		return nil, model.Metrics{}, true, errors.New("incomplete postgres source metadata")
-	} else {
+	default:
 		err = decodeJSON([]byte(metadataText.String), &metadata)
 	}
 	if err != nil {

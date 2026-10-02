@@ -405,6 +405,11 @@ func canonicalFallbackReason(row model.Row) string {
 	}
 	for _, field := range canonicalObjects {
 		if value := row[field.key]; value != nil {
+			if native, ok := nativeNestedFields[field.key]; ok {
+				if err := native.validate(value); err != nil {
+					return err.Error()
+				}
+			}
 			switch value.(type) {
 			case map[string]any, []any:
 			default:
@@ -498,11 +503,15 @@ func decodeCanonicalProvenance(source, sourceID, observedAt, sourceRevision sql.
 }
 
 func timestampReadExpression(column string) string {
+	return `COALESCE(` + column + `_raw, ` + timestampNativeReadExpression(column) + `)`
+}
+
+func timestampNativeReadExpression(column string) string {
 	utc := "(" + column + " AT TIME ZONE 'UTC')"
-	return `COALESCE(` + column + `_raw, CASE WHEN ` + column + ` IS NULL THEN NULL ELSE
+	return `CASE WHEN ` + column + ` IS NULL THEN NULL ELSE
 		to_char(` + utc + `, 'YYYY-MM-DD"T"HH24:MI:SS') ||
 		CASE WHEN to_char(` + utc + `, 'US') = '000000' THEN '' ELSE
-			'.' || rtrim(to_char(` + utc + `, 'US'), '0') END || 'Z' END)`
+			'.' || rtrim(to_char(` + utc + `, 'US'), '0') END || 'Z' END`
 }
 
 func canonicalRow(row model.Row) (fields []string, values []any, extension string, ok bool, err error) {
@@ -750,6 +759,11 @@ func canonicalRow(row model.Row) (fields []string, values []any, extension strin
 		v, present := rest[field.key]
 		var encoded any
 		if v != nil {
+			if native, ok := nativeNestedFields[field.key]; ok {
+				if err := native.validate(v); err != nil {
+					return nil, nil, "", false, err
+				}
+			}
 			switch v.(type) {
 			case map[string]any, []any:
 			default:
@@ -829,7 +843,8 @@ func insertCanonical(ctx context.Context, tx *sql.Tx, namespace, name string, or
 	if extension != "" {
 		storedExtension = extension
 	}
-	args := []any{namespace, name, ordinal, fields, storedExtension}
+	args := make([]any, 0, 5+len(values))
+	args = append(args, namespace, name, ordinal, fields, storedExtension)
 	for _, field := range canonicalFields {
 		columns = append(columns, field.column)
 	}
@@ -871,6 +886,15 @@ func insertCanonical(ctx context.Context, tx *sql.Tx, namespace, name string, or
 	placeholders := make([]string, len(args))
 	for i := range args {
 		placeholders[i] = fmt.Sprintf("$%d", i+1)
+	}
+	for i, column := range columns {
+		for _, field := range canonicalObjects {
+			if column == field.column {
+				if native, ok := nativeNestedFields[field.key]; ok {
+					placeholders[i] = native.writeSQL(placeholders[i]+"::json", 0)
+				}
+			}
+		}
 	}
 	// The schema-owned identifiers above are constants, not user input.
 	// #nosec G202 -- column names come only from the static native field catalogue.
@@ -965,7 +989,7 @@ func (r *readTransaction) canonicalPlanRows(ctx context.Context, raw string, fil
 			}
 		}
 		for _, field := range canonicalObjects {
-			columns = append(columns, field.column+"::text")
+			columns = append(columns, nestedReadExpression(field.key, field.column))
 		}
 		for _, field := range canonicalFlexibleText {
 			columns = append(columns, field.column+"::text")
@@ -1154,15 +1178,16 @@ func (r *readTransaction) canonicalPlanRows(ctx context.Context, raw string, fil
 				}
 				for i, field := range canonicalArrays {
 					if key == field.key {
-						if field.key == "contents" && contentsException.Valid {
+						switch {
+						case field.key == "contents" && contentsException.Valid:
 							var value any
 							if err := decodeJSON([]byte(contentsException.String), &value); err != nil {
 								return nil, err
 							}
 							row[key] = value
-						} else if arrayValues[i] == nil {
+						case arrayValues[i] == nil:
 							row[key] = nil
-						} else {
+						default:
 							items := make([]any, len(arrayValues[i]))
 							for j, value := range arrayValues[i] {
 								items[j] = value
@@ -1295,6 +1320,9 @@ func (r *readTransaction) canonicalPlanRows(ctx context.Context, raw string, fil
 			} else if field.Field == "contents" {
 				expressions[i] = fmt.Sprintf(`CASE WHEN $%d = ANY(present) THEN
 					COALESCE(contents_exception::text, to_json(contents)::text, 'null') END`, len(args))
+			} else if _, native := nativeNestedFields[field.Field]; native {
+				expressions[i] = fmt.Sprintf(`CASE WHEN $%d = ANY(present) THEN %s END`,
+					len(args), nestedReadExpression(field.Field, column))
 			} else if array || object {
 				expressions[i] = fmt.Sprintf(`CASE WHEN $%d = ANY(present) THEN COALESCE(to_json(%s)::text, 'null') END`,
 					len(args), column)
@@ -1955,7 +1983,7 @@ func readCanonicalOrdinals(ctx context.Context, tx *sql.Tx, namespace, name stri
 		}
 	}
 	for _, field := range canonicalObjects {
-		columns = append(columns, field.column+"::text")
+		columns = append(columns, nestedReadExpression(field.key, field.column))
 	}
 	for _, field := range canonicalFlexibleText {
 		columns = append(columns, field.column+"::text")
@@ -2115,15 +2143,16 @@ func readCanonicalOrdinals(ctx context.Context, tx *sql.Tx, namespace, name stri
 		}
 		for i, field := range canonicalArrays {
 			if known[field.key] {
-				if field.key == "contents" && contentsException.Valid {
+				switch {
+				case field.key == "contents" && contentsException.Valid:
 					var value any
 					if err := decodeJSON([]byte(contentsException.String), &value); err != nil {
 						return nil, true, err
 					}
 					row[field.key] = value
-				} else if arrayValues[i] == nil {
+				case arrayValues[i] == nil:
 					row[field.key] = nil
-				} else {
+				default:
 					items := make([]any, len(arrayValues[i]))
 					for j, value := range arrayValues[i] {
 						items[j] = value

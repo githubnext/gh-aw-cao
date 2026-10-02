@@ -13,10 +13,9 @@ contract. The registered `$`-prefixed canonical collections (`campaigns`, `repos
 `workflows`, `runs`, `jobs`, `sessions`, `events`, `domains`, `tools`, `skills`,
 `friction`, `audits`, `issues`, `operationalValues`, `experiments`,
 `experimentAssignments`, `graders`, `graderObservations`, `evals`, and
-`evalObservations`) have native columns for shared scalar fields and an extension
-for genuinely variable observation attributes. Producer-specific known fields
-still require explicit native mappings before this migration is complete; they
-must not be treated as permanently schemaless. The normalizer merges arbitrary
+`evalObservations`, and `marketplacePackages`) have native columns for known
+producer fields and an extension for genuinely variable observation attributes.
+The normalizer merges arbitrary
 `observation.data` attributes without a closed field list. Inventory source
 names and row objects (even names beginning with `$` when unregistered) are
 caller-supplied and genuinely schemaless. The PostgreSQL store must never copy
@@ -24,12 +23,31 @@ a native field into an extension or its legacy row representation.
 Marketplace package `contents` paths are a known ordered string list stored as
 `TEXT[]`; only atypical historical shapes use the mutually exclusive
 `contents_exception` JSON column.
-Startup must transactionally convert complete historical sources into the
-current representation before retiring legacy EAV storage. Conversion of a
-canonical source with unsupported known fields must fail closed without
-discarding its existing data, not silently retain a legacy read/write path or
-coerce field values. Remaining producer-known and closed nested fields must be
-catalogued and mapped before claiming the native-only migration is complete.
+Closed nested structures use native PostgreSQL composites: ordered worker and
+target arrays, the campaign intelligence envelope and its field registry,
+token-usage totals and a named array of per-model usage, and lifecycle source
+provenance. Nested presence arrays preserve missing, null, empty objects and
+empty lists. Numeric and timestamp columns retain exceptional lexical forms
+without copying ordinary values. Known nested properties never enter a JSON
+extension. SQL reconstructs the logical JSON response only at the read boundary.
+
+JSON storage is explicitly limited to genuinely open data: upstream enriched
+log payloads (`ambientContext`, `workingSet`, `behaviorFingerprint`, `comparison`,
+`agenticAssessments`, `graders`, `context`, `ghAwMetadata`, `ghAwManifest`,
+`data`, `logsPayload`); evaluator-defined evidence (`implementation`,
+`observation`, `diagnostics`, `metrics`, `sources`, `evidenceProvenance`,
+`dimensionStates`, `uncertainty`, `drivers`, `groups`, `events`,
+`unmeasuredDrivers`); provider-specific token-usage and provenance extensions;
+and arbitrary values of individually catalogued intelligence semantic fields.
+Structured answers and cost-grain observations also have source-defined shapes.
+These are not a compatibility representation for closed fields.
+
+This schema targets a fresh database. Opening a populated earlier schema whose
+closed nested columns are JSON fails transactionally; initialization never
+discards tenant data or backfills those columns. Rebuild the disposable
+projection from its authoritative artifacts into an empty database instead.
+Unsupported known field shapes fail closed on replacement, preserving the
+previous committed revision.
 
 The compiled `generated/openapi.json` is OpenAPI **3.1** and can be consumed by
 another server implementation. `generated/schemas/` contains JSON Schema 2020-12

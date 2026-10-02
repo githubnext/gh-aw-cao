@@ -129,11 +129,13 @@ sources and state. Registered canonical sources map known scalar, relationship,
 timestamp, boolean, identifier, and array fields to native Postgres columns;
 presence tracking distinguishes missing fields from explicit null. Open
 observation attributes and unregistered inventory sources retain JSON, without
-copying mapped fields into extensions. Nested structured fields still stored in
-JSON require classification before the native-only migration is complete.
-Historical rows are converted transactionally before legacy storage is retired;
-an incompatible revision blocks migration without discarding data.
-There are no
+copying mapped fields into extensions. Closed nested campaign, usage, and source
+provenance structures use native composites and ordered composite arrays,
+including nested presence tracking. JSON is reserved for source-defined
+upstream payloads, evaluator evidence, provider extensions, and arbitrary
+intelligence semantic values. The native schema targets a fresh database;
+populated older JSON nested schemas are rejected without discarding data and
+must be rebuilt from authoritative artifacts. There are no
 persistent Postgres generations or separate derived projections. Redis remains reconstructable
 operational state, not an entity
 authority. The same server binary provides a read-only diagnostic check-up
