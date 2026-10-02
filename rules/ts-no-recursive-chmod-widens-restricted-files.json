@@ -79,7 +79,7 @@
     "reason": "Re-confirmed on current HEAD (6dd6157): implementation, flagged lines, and classification outcome are byte-for-byte unchanged since the prior evaluation. Same 4 false positives (sessionState, squid-preserved-dir, both diagnostics-dir sites) and same false negative (artifact-permissions.ts docker-exec shell-string 'chmod -R a+rwX /fix' on auditDir) persist. Still needs directory-provenance narrowing plus a shell-string chmod matcher before adoption.",
     "txn_id": "refiner-36601303276-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37015658867",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37010165621",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
   "additional_target_evaluations": [
     {
@@ -94,14 +94,14 @@
     },
     {
       "target_repo": "githubnext/gh-aw-cao",
-      "target_commit": "244a5e80718ad428014841fa51b133923af73043",
+      "target_commit": "d4e4f4047b3ab673cc994d71e25ece332d380aea",
       "true_positive_count": 0,
       "false_positive_count": 1,
       "false_negative_count": 0,
       "readiness_for_target": "needs-work",
       "reason": "Re-confirmed unchanged: sole recursive chmod site, tests/e2e/cao-mcp-container.mjs:89, remains a false positive (no restricted-mode file ever written there). No change in classification.",
-      "txn_id": "refiner-37015658867-3"
+      "txn_id": "refiner-37010165621-3"
     }
   ],
-  "last_seen_at": "2026-10-02T13:54:32Z"
+  "last_seen_at": "2026-10-02T13:05:59Z"
 }
