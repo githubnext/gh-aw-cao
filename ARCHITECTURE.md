@@ -122,6 +122,15 @@ evaluator for other shapes, and returns
 only canonical or explicitly registered bounded runtime-source query payloads
 to the browser. Redis remains operational storage for caches, queues, and
 sessions, not dashboard entity storage or query execution.
+The HTTP and MCP query boundary uses a disposable Redis cache-aside layer for
+expensive queries with compact output. SHA-256 query identities include the
+definitions, parameters, pagination, schema, and current authorization class,
+not ingestion revisions. Each entry has a fixed five-minute lifetime; ingestion
+and data egress do not invalidate or renew it. Redis-side atomic expiry and
+oldest-first eviction bound both allocator-reported result/index memory and
+entry count without changing global Redis eviction policy or touching sessions
+and queues. Cached payloads retain their original evidence revision and
+evaluation time; cache hits report no fresh query-plan work.
 Its local mode remains loopback-only. Its host-neutral mode uses
 GitHub OAuth and explicit organization or team authorization, verifies and
 deduplicates GitHub webhooks, and atomically replaces the current Postgres

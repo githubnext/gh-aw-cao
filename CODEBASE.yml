@@ -142,6 +142,9 @@ components:
   redis_operational_store:
     path: server/internal/redisx/
     responsibility: support operational caches, queues, and sessions, not dashboard entity storage or query execution
+  dashboard_query_result_cache:
+    path: server/internal/redisx/query_cache.go and server/internal/server/query_cache.go
+    responsibility: cache expensive compact HTTP and MCP query results by SHA-256 query identity for five minutes, with atomic expiry, allocator-reported memory limits and oldest-first eviction
   dashboard_https_server:
     path: server/
     responsibility: independently resolve compiled app-target and declarative Redis-provider modules from non-secret cao.json, ingest deployed artifacts into Postgres, use Redis for operational state, validate Dashboard Language and execute supported plans in SQL with bounded Go fallback, and serve bounded canonical or explicitly registered runtime-source results
@@ -238,6 +241,8 @@ dependencies:
   - dashboard_https_server -> postgres_entity_store
   - postgres_entity_store -> dashboard_https_server
   - dashboard_https_server -> redis_operational_store
+  - dashboard_https_server -> dashboard_query_result_cache
+  - dashboard_query_result_cache -> redis_operational_store
   - dashboard_https_server -> dashboard_language_queries
   - dashboard_https_server -> dashboard_canonical_api
   - dashboard_https_server -> dashboard_http_contract
@@ -326,6 +331,7 @@ invariants:
   - "Missing, stale, partial, and zero evidence are distinct states."
   - "Dashboard data operations MUST be declared in Dashboard Language and execute outside the browser main thread: in the data Web Worker for static deployment or in the Go HTTP(S) server over current Postgres sources."
   - "Hosted Redis stores operational caches, queues, and sessions; it MUST NOT store or query dashboard entity sources."
+  - "Hosted query-result cache identities MUST include definitions, parameters, pagination, schema and current authorization class, not ingestion revisions; entries retain their original evidence revision and evaluation time for a fixed five-minute lifetime without ingestion invalidation or renewal on data egress, and atomic expiry and oldest-first eviction MUST bound result/index memory and entry count without changing global Redis eviction policy."
   - "The local Redis profile MUST bind to loopback, use HTTP by default for localhost debugging, enable HTTPS only with operator-supplied certificate files, and MUST NOT expose Redis endpoints or credentials to browser code."
   - "The hosted Redis profile MUST use GitHub OAuth with explicit organization or team authorization, explicit rebuild administrators, server-side secrets and sessions, and an explicit account-selection flow for switching GitHub identities."
   - "Hosted Redis MUST use TLS by default and Azure Functions MUST always require TLS; private plaintext Redis is allowed only through an explicit opt-in and only for a private IP or single-label service hostname."
