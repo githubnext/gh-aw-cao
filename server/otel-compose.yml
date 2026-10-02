@@ -1,0 +1,15 @@
+services:
+  openobserve:
+    image: public.ecr.aws/zinclabs/openobserve:latest
+    environment:
+      ZO_DATA_DIR: /data
+      ZO_ROOT_USER_EMAIL: ${CAO_LOCAL_OTEL_EMAIL:?Set the local OpenObserve email}
+      ZO_ROOT_USER_PASSWORD: ${CAO_LOCAL_OTEL_PASSWORD:?Set the local OpenObserve password}
+    ports:
+      - "127.0.0.1:5080:5080"
+    volumes:
+      - openobserve-data:/data
+    restart: unless-stopped
+
+volumes:
+  openobserve-data:

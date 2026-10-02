@@ -1307,7 +1307,8 @@ go -C server run ./cmd/cao-dashboard serve
 
 To inspect local traces and metrics, start the optional
 [OpenObserve self-hosted instance](https://openobserve.ai/docs/getting-started/)
-on `http://127.0.0.1:5080`. It is not started by the default Compose stack.
+on `http://127.0.0.1:5080` via the separate `server/otel-compose.yml`.
+It is not started by the Redis/Postgres Compose stack.
 Set an email and a strong, locally held password before its first startup
 (do not commit them or put them in command-line arguments):
 
@@ -1335,7 +1336,7 @@ go -C server run ./cmd/cao-dashboard serve
 
 Sign in to OpenObserve with the same credentials and select the `default`
 organization. The local instance stores data in the `openobserve-data` Docker
-volume; `docker-compose -f server/docker-compose.yml down` stops it without
+volume; `docker-compose -f server/otel-compose.yml down` stops it without
 deleting that volume. Do not use `down -v` unless you intend to erase its data.
 For hosted deployments, supply exporter authentication through the deployment
 secret manager instead of exporting it from an interactive shell.
