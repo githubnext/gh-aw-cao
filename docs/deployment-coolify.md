@@ -24,7 +24,7 @@ The Coolify deployment is an alternative to the Azure deployment. It doesn't rep
 | Container runtime | Docker on the Coolify server, with enough CPU, memory, and disk to build and run the image. |
 | Source access | A Coolify GitHub App with read access to this repository and webhook delivery enabled. |
 | PostgreSQL | A PostgreSQL service on the Coolify private network. CAO stores dashboard rows there. |
-| Redis | A Redis service on the Coolify private network, or an external Redis service that uses TLS, such as [Upstash Redis](deployment-upstash.md). No Redis modules are required. Set the eviction policy to `noeviction`, and size memory for the number of data generations that you keep. |
+| Redis | A Redis service on the Coolify private network, or an external Redis service that uses TLS, such as [Upstash Redis](deployment-upstash.md). No Redis modules are required. Set the eviction policy to `noeviction`, and size memory for operational caches, queues, sessions, and rate limits. |
 | Artifact volume | A named Docker volume, managed by Coolify, that contains a complete and verified dashboard payload. |
 | GitHub OAuth app | An OAuth app with the callback URL `https://PUBLIC-HOST/auth/callback`. |
 | Webhook secret | A secret of at least 32 characters. The server requires one even if you don't use webhooks. |
@@ -74,7 +74,7 @@ In the following steps, replace `PUBLIC-HOST` with the public host name of your 
 1. Attach your public domain to container port `8080` through the Coolify proxy. The Compose file doesn't publish a host port.
 1. Set the variables and secrets listed in [Configuration reference](#configuration-reference), following [Setting the variables in Coolify](#setting-the-variables-in-coolify). Store every credential as a Coolify secret.
 1. Set `CAO_TRUSTED_PROXY_CIDRS` to the exact private subnet that Coolify assigns to its proxy network. Don't use `0.0.0.0/0` or a whole private address range. The server doesn't start if the value is missing, malformed, or public.
-1. Deploy the resource. When the container starts, `serve-hosted` reads the data in `CAO_SOURCE_DIRECTORY` (`/app/source`), prepares a generation, and makes it active.
+1. Deploy the resource. When the container starts, `serve-hosted` reads the data in `CAO_SOURCE_DIRECTORY` (`/app/source`) and transactionally replaces the current dashboard rows in PostgreSQL.
 1. Verify the deployment.
 
    1. Confirm that `https://PUBLIC-HOST/api/readiness` returns `200`.
@@ -341,7 +341,7 @@ You configure traces for orchestrators and workers in the control repository. Fo
 - **Encrypted Redis by default.** The server refuses plaintext Redis unless you allow it for a private address or a single-label service name.
 - **Source-bound builds.** Coolify fetches the configured `main` commit and embeds `SOURCE_COMMIT` into the image metadata. Mutable registry tags don't select production code.
 - **Native deployment history.** Coolify retains deployment records and supports rollback to a prior deployment or source revision.
-- **Safe ingestion.** Ingestion and rebuilds activate only complete generations. If they fail, the previous generation stays active.
+- **Safe ingestion.** Ingestion and rebuilds replace dashboard rows in a PostgreSQL transaction. If they fail, the previously committed rows remain available.
 
 ## What this deployment does not guarantee
 

@@ -4,11 +4,11 @@ import test from 'node:test';
 
 const bicep = await readFile(new URL('../../server/azure/main.bicep', import.meta.url), 'utf8');
 
-test('Azure dashboard Bicep enables JSON and search with TLS app settings', () => {
+test('Azure dashboard Bicep uses module-free Redis with TLS app settings', () => {
   assert.match(bicep, /Experimental Azure Functions deployment baseline/);
   assert.match(bicep, /Review and validate tenant-specific security, compliance, networking/);
   assert.match(bicep, /Microsoft\.Cache\/redisEnterprise@/);
-  assert.match(bicep, /modules:\s*\[\s*{\s*name:\s*'RedisJSON'\s*}\s*{\s*name:\s*'RediSearch'\s*}\s*]/);
+  assert.doesNotMatch(bicep, /modules:\s*\[/);
   assert.match(bicep, /param redisSkuName string = 'Balanced_B0'/);
   assert.match(bicep, /clientProtocol:\s*'Encrypted'/);
   assert.match(bicep, /publicNetworkAccess:\s*'Disabled'/);

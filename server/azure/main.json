@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.47.16.16243",
-      "templateHash": "16663024274036363741"
+      "templateHash": "16460985872102411365"
     }
   },
   "parameters": {
@@ -59,7 +59,7 @@
         "MemoryOptimized_M10"
       ],
       "metadata": {
-        "description": "Redis SKU. The server uses only core key-value commands (HSET/HGET/SMEMBERS/EVAL) and no Redis modules, so the smallest SKU that holds the retained generations is sufficient. Size this from retained dashboard data volume, not from feature requirements."
+        "description": "Redis SKU. Size for operational caches, queues, sessions, and rate limits."
       }
     },
     "redisCapacity": {
@@ -67,7 +67,7 @@
       "defaultValue": 1,
       "minValue": 1,
       "metadata": {
-        "description": "Redis capacity. The module-free default uses the smallest capacity; increase only when retained generations need more memory or throughput."
+        "description": "Redis capacity. Increase when operational state needs more memory or throughput."
       }
     },
     "allowedHosts": {

@@ -30,11 +30,11 @@ param redisEnterpriseName string
   'Balanced_B10'
   'MemoryOptimized_M10'
 ])
-@description('Redis SKU. Size for retained JSON generations and their search indexes.')
+@description('Redis SKU. Size for operational caches, queues, sessions, and rate limits.')
 param redisSkuName string = 'Balanced_B0'
 
 @minValue(1)
-@description('Redis capacity. Increase when retained JSON generations and search indexes need more memory or throughput.')
+@description('Redis capacity. Increase when operational state needs more memory or throughput.')
 param redisCapacity int = 1
 
 @description('Public host names that Azure Front Door/App Service is allowed to forward to the Go dashboard handler.')
@@ -248,10 +248,6 @@ resource redisDatabase 'Microsoft.Cache/redisEnterprise/databases@2024-11-01' = 
     clientProtocol: 'Encrypted'
     clusteringPolicy: 'EnterpriseCluster'
     evictionPolicy: 'NoEviction'
-    modules: [
-      { name: 'RedisJSON' }
-      { name: 'RediSearch' }
-    ]
   }
 }
 
