@@ -147,6 +147,7 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
             dashboardAssessmentPageHash(definition, dashboard));
           const activePage = page.locator(`[data-page-id="${definition.id}"]`);
           await expect(activePage).toBeVisible({ timeout: 30_000 });
+          await expect(activePage).not.toHaveAttribute("data-page-pending", "", { timeout: 30_000 });
           await expect(activePage).not.toHaveAttribute("aria-busy", "true", { timeout: 30_000 });
           await activePage.locator("details.view-disclosure").evaluateAll((items) => {
             for (const item of items) item.open = true;
