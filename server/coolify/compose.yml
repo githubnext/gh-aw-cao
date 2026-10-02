@@ -14,7 +14,7 @@ services:
       - --site
       - /app/site
       - --dashboard-queries
-      - /app/dashboard.json
+      - /app/agent/queries.json
       - --database-queries
       - /app/queries/database.json
       - --mcp-enabled
