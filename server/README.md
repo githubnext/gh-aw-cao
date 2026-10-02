@@ -1014,8 +1014,9 @@ is `specs/server-cors.md`.
 
 If the OAuth callback shows a sign-in error, select **Sign out and try again**.
 This attempts the existing CSRF-protected logout (including server-side token
-revocation), clears the pending OAuth state and the dashboard IndexedDB cache
-on the signed-out page, and then offers a fresh, explicit GitHub sign-in.
+revocation). The signed-out page clears CAO session, CSRF and OAuth state
+cookies and the dashboard IndexedDB cache, then offers an explicit sign-in
+that requests GitHub's account chooser. CAO cannot clear GitHub's own cookies.
 
 The older `{"error":"GitHub authorization failed"}` response corresponds to
 an authorization failure; current versions show a help page instead. This

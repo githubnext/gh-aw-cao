@@ -278,6 +278,7 @@ func (oauth *githubOAuth) login(response http.ResponseWriter, request *http.Requ
 
 func (oauth *githubOAuth) loggedOut(response http.ResponseWriter, _ *http.Request) {
 	oauth.logBranch("logged_out.rendered")
+	oauth.clearSessionCookies(response)
 	oauth.clearStateCookie(response)
 	response.Header().Set("Cache-Control", "no-store")
 	response.Header().Set("Referrer-Policy", "no-referrer")
