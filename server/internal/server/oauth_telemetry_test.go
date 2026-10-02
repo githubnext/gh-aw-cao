@@ -117,6 +117,7 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 	}
 	if !strings.Contains(unauthorized.Body.String(), "active member of an organization or team") ||
 		!strings.Contains(unauthorized.Body.String(), "check your membership") ||
+		!strings.Contains(unauthorized.Body.String(), "profile menu to add or switch") ||
 		!strings.Contains(unauthorized.Body.String(), "Request ID:") {
 		t.Fatal("authorization failure must offer actionable, privacy-preserving help")
 	}
