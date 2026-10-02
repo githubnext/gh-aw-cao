@@ -512,8 +512,8 @@ func TestOAuthRecoveryUsesExistingProtectedLogout(t *testing.T) {
 	}
 	loggedOut := httptest.NewRecorder()
 	app.Handler().ServeHTTP(loggedOut, azureRequest(t, http.MethodGet, "/auth/logged-out"))
-	if loggedOut.Code != http.StatusOK || !strings.Contains(loggedOut.Body.String(), `href="/auth/login"`) {
-		t.Fatal("recovery landing page must offer explicit sign-in")
+	if loggedOut.Code != http.StatusOK || !strings.Contains(loggedOut.Body.String(), `href="/auth/login?select_account=1"`) {
+		t.Fatal("recovery landing page must offer explicit sign-in with account selection")
 	}
 	_, remaining, found := strings.Cut(loggedOut.Body.String(), "<script>")
 	if !found {
@@ -529,7 +529,7 @@ func TestOAuthRecoveryUsesExistingProtectedLogout(t *testing.T) {
 		loggedOut.Header().Get("Cache-Control") != "no-store" ||
 		!strings.Contains(loggedOut.Body.String(), `<section class="signed-out-card"`) ||
 		!strings.Contains(script, "indexedDB.deleteDatabase('gh-aw-cao-dashboard-data')") ||
-		!strings.Contains(loggedOut.Body.String(), `id="sign-in" href="/auth/login" hidden`) {
+		!strings.Contains(loggedOut.Body.String(), `id="sign-in" href="/auth/login?select_account=1" hidden`) {
 		t.Fatal("signed-out page must protect its cleanup script and gate sign-in on database deletion")
 	}
 	foundClearedState := false
