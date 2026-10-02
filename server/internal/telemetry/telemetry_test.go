@@ -2,13 +2,20 @@ package telemetry
 
 import (
 	"context"
+	"io"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
+	otelLog "go.opentelemetry.io/otel/log"
+	"go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
+	logspb "go.opentelemetry.io/proto/otlp/collector/logs/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 const testSpanName = "test-span"
@@ -162,6 +169,80 @@ func TestSetupWithMetricsEndpointConfiguresMeterProviderOnly(t *testing.T) {
 	}
 	if otel.GetTracerProvider() != previousTracerProvider {
 		t.Fatal("metrics-only configuration must not replace the tracer provider")
+	}
+}
+
+func TestSetupExportsLogsOnlyWhenEnabled(t *testing.T) {
+	previousProvider := global.GetLoggerProvider()
+	t.Cleanup(func() { global.SetLoggerProvider(previousProvider) })
+	requests := make(chan *logspb.ExportLogsServiceRequest, 1)
+	receiver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/logs" {
+			http.Error(w, "unexpected path", http.StatusNotFound)
+			return
+		}
+		data, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "invalid body", http.StatusBadRequest)
+			return
+		}
+		var request logspb.ExportLogsServiceRequest
+		if err := proto.Unmarshal(data, &request); err != nil {
+			http.Error(w, "invalid protobuf", http.StatusBadRequest)
+			return
+		}
+		requests <- &request
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer receiver.Close()
+	t.Setenv("OTEL_SDK_DISABLED", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT", receiver.URL+"/v1/logs")
+
+	t.Setenv("CAO_OTEL_LOGS_ENABLED", "")
+	shutdown, err := Setup(context.Background(), "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if global.GetLoggerProvider() != previousProvider {
+		t.Fatal("log endpoint alone must not enable export")
+	}
+	if err := shutdown(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("CAO_OTEL_LOGS_ENABLED", "true")
+	shutdown, err = Setup(context.Background(), "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if global.GetLoggerProvider() == previousProvider {
+		t.Fatal("enabled logs must install a log provider")
+	}
+	var record otelLog.Record
+	record.SetBody(attribute.StringValue("safe diagnostic"))
+	record.SetSeverity(otelLog.SeverityError)
+	global.GetLoggerProvider().Logger("cao:test").Emit(context.Background(), record)
+	if err := shutdown(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case request := <-requests:
+		logs := request.GetResourceLogs()
+		if len(logs) != 1 || len(logs[0].GetScopeLogs()) != 1 ||
+			len(logs[0].GetScopeLogs()[0].GetLogRecords()) != 1 {
+			t.Fatalf("unexpected OTLP log batch: %v", request)
+		}
+		got := logs[0].GetScopeLogs()[0].GetLogRecords()[0]
+		if got.GetBody().GetStringValue() != "safe diagnostic" ||
+			got.GetSeverityNumber() != 17 ||
+			logs[0].GetScopeLogs()[0].GetScope().GetName() != "cao:test" {
+			t.Fatalf("unexpected OTLP record: %v", got)
+		}
+	default:
+		t.Fatal("shutdown did not flush the log batch")
 	}
 }
 
