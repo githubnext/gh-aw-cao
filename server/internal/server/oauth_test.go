@@ -633,6 +633,9 @@ func TestHostedOAuthLoggedOutPageRequiresExplicitLogin(t *testing.T) {
 	if !strings.Contains(response.Body.String(), `href="/auth/login?select_account=1"`) {
 		t.Fatal("logged-out page does not offer sign-in with account selection")
 	}
+	if !strings.Contains(response.Body.String(), `href="https://github.com/" target="_blank" rel="noreferrer noopener"`) {
+		t.Fatal("logged-out page does not offer a way to add another GitHub account")
+	}
 	if response.Header().Get("Location") != "" {
 		t.Fatal("logged-out page unexpectedly restarted OAuth")
 	}
