@@ -48,6 +48,21 @@ Apply the guidance for every role that is present. Do not infer a role from the 
   npm view yaml version --registry=https://registry.npmjs.org/ --fetch-retries=0 --fetch-timeout=15000
   ```
 
+- When direct npmjs access is blocked, these Microsoft-hosted public Azure Artifacts feeds provide an alternative package route. They are npm registry proxies/caches, not HTTP forward proxies; do not put their URLs in `HTTPS_PROXY`. Both served `yaml@2.9.0` and `@actions/core@2.0.3` metadata, and tarball downloads succeeded from this Microsoft-firewalled environment on 2026-10-02:
+
+  | Feed | Registry URL | Microsoft-owned configuration source |
+  |------|--------------|--------------------------------------|
+  | .NET public npm | `https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-public-npm/npm/registry/` | [dotnet/aspnetcore `.npmrc`](https://github.com/dotnet/aspnetcore/blob/main/.npmrc) |
+  | Visual C++ public packages | `https://pkgs.dev.azure.com/azure-public/VisualCpp/_packaging/cpp_PublicPackages/npm/registry/` | [microsoft/vscode-cpptools `.npmrc`](https://github.com/microsoft/vscode-cpptools/blob/main/Extension/.npmrc) |
+
+  Where organizational policy permits these public feeds, use a command-local registry override, preserving the existing lockfile:
+
+  ```sh
+  npm view yaml@2.9.0 version --registry=https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-public-npm/npm/registry/ --fetch-retries=0 --fetch-timeout=15000
+  npm ci --registry=https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-public-npm/npm/registry/ --replace-registry-host=npmjs
+  ```
+
+  Use the Visual C++ registry URL instead if needed. `--replace-registry-host=npmjs` routes default npmjs lockfile downloads through the selected registry without manually editing lockfile URLs; it does not redirect unrelated private registries or postinstall download hosts. Prefer `npm view` of a required pinned package over `npm ping` for Azure Artifacts, whose ping endpoint may not be supported. These feeds are not guaranteed to contain every npmjs package: [saving new upstream packages requires feed permissions](https://learn.microsoft.com/en-us/azure/devops/artifacts/concepts/upstream-sources?view=azure-devops). Treat missing packages and authentication errors as blockers, not a reason to invent another feed or add credentials to the repository. Successful access does not establish organization-wide approval.
 - If the Microsoft-managed network requires a proxy, obtain its approved URL from the network configuration or IT and set `HTTPS_PROXY` / `HTTP_PROXY` in the current shell. npm honors these variables; check that `NO_PROXY` does not exclude `registry.npmjs.org` when proxy access is required. Do not guess an internal proxy or registry mirror, persist machine-specific settings in the repository, or put proxy credentials in commands, logs, or committed `.npmrc` files.
 - For TLS inspection errors such as `SELF_SIGNED_CERT_IN_CHAIN` or `UNABLE_TO_GET_ISSUER_CERT_LOCALLY`, use the Microsoft-provided trusted CA. On supported Node.js versions, try the system trust store:
 
