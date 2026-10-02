@@ -311,6 +311,10 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 	if err := store.db.QueryRowContext(t.Context(), "SELECT count(DISTINCT tableoid) FROM runs WHERE namespace=$1", store.namespace).Scan(&partitions); err != nil || partitions != 2 {
 		t.Fatalf("runs did not route to two weekly partitions: %d %v", partitions, err)
 	}
+	var future bool
+	if err := store.db.QueryRowContext(t.Context(), `SELECT to_regclass('runs_w' || to_char(date_trunc('week', now() AT TIME ZONE 'UTC') + interval '3 weeks','YYYYMMDD')) IS NOT NULL`).Scan(&future); err != nil || !future {
+		t.Fatalf("future weekly partition was not pre-created: %v %v", future, err)
+	}
 	result, _, err := store.ExecuteSQLPlan(t.Context(), []query.Definition{{Name: "runs", From: "$runs", Select: []query.SelectedField{{Field: "id"}}}}, []string{"runs"})
 	if err != nil || len(result["runs"].Rows) != 2 {
 		t.Fatalf("parent query lost partitions: %v %v", result, err)
@@ -318,10 +322,18 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 	if err := store.RunPartitionMaintenance(t.Context(), now, 14); err != nil {
 		t.Fatal(err)
 	}
+	state, err := store.State(t.Context())
+	if err != nil || state.Revision <= 1 || state.Counts["$runs"] != 1 || state.Counts["$events"] != 1 {
+		t.Fatalf("retention did not publish updated counts and revision: %+v %v", state, err)
+	}
 	for _, table := range []string{"runs", "sessions", "events", "audits", "domains", "eval_observations", "experiment_assignments", "friction", "grader_observations", "issues", "jobs", "skills", "tools"} {
 		var count int
 		if err := store.db.QueryRowContext(t.Context(), "SELECT count(*) FROM "+table+" WHERE namespace=$1", store.namespace).Scan(&count); err != nil || count != 1 {
 			t.Fatalf("%s coordinated retention count = %d, err = %v", table, count, err)
 		}
+	}
+	if _, err := store.db.ExecContext(t.Context(), `INSERT INTO runs(namespace,ordinal,present_fields,id,repository_id,workflow_id,run_at)
+		VALUES($1,2,repeat('0',73)::bit varying,'unroutable','repository','workflow','1900-01-01')`, store.namespace); err == nil || !strings.Contains(err.Error(), "no partition") {
+		t.Fatalf("write unexpectedly created an out-of-window partition: %v", err)
 	}
 }

@@ -147,7 +147,7 @@ func (s *Store) maintainWeek(ctx context.Context, tables []string, at time.Time,
 			if source == "" {
 				return fmt.Errorf("unregistered run partition table %s", table)
 			}
-			if _, err := tx.ExecContext(ctx, `UPDATE cao_quality SET row_count=$1,availability=$2 WHERE namespace=$3 AND collection=$4`,
+			if _, err := tx.ExecContext(ctx, `UPDATE cao_quality SET row_count=$1,availability=CASE WHEN availability='unavailable' THEN 'unavailable' ELSE $2 END WHERE namespace=$3 AND collection=$4`,
 				count, map[bool]string{true: "empty", false: "available"}[count == 0], namespace, source); err != nil {
 				return err
 			}
