@@ -10,13 +10,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/repositorymemory"
 )
 
 func TestRepositoryMemoryHandlers(t *testing.T) {
 	database := integrationDatabase(t)
-	seedDatabase(t, database, nil)
 	content := []byte("# Context\n")
 	sum := sha256.Sum256(content)
 	manifest, err := json.Marshal(repositorymemory.Manifest{
@@ -36,8 +36,8 @@ func TestRepositoryMemoryHandlers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client := &repositoryMemoryClient{manifest: manifest, content: content}
-	app := &App{store: redisx.NewStore(client, "test"), database: database}
+	seedDatabase(t, database, repositoryMemorySources(manifest, "security-review/notes/context.md", content))
+	app := &App{database: database}
 
 	list := httptest.NewRecorder()
 	listRequest := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/memory/security-review", nil)
@@ -61,9 +61,9 @@ func TestRepositoryMemoryHandlers(t *testing.T) {
 
 func TestRepositoryMemoryHandlersRejectInvalidAndMissingRequests(t *testing.T) {
 	database := integrationDatabase(t)
-	seedDatabase(t, database, nil)
 	manifest := []byte(`{"version":1,"campaigns":[]}`)
-	app := &App{store: redisx.NewStore(&repositoryMemoryClient{manifest: manifest}, "test"), database: database}
+	seedDatabase(t, database, repositoryMemorySources(manifest, "", nil))
+	app := &App{database: database}
 
 	invalid := httptest.NewRecorder()
 	invalidRequest := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/memory/INVALID", nil)
@@ -85,8 +85,7 @@ func TestRepositoryMemoryHandlersRejectInvalidAndMissingRequests(t *testing.T) {
 func TestRepositoryMemoryHandlerReportsConcurrentRefresh(t *testing.T) {
 	database := integrationDatabase(t)
 	seedDatabase(t, database, nil)
-	store := redisx.NewStore(
-		&repositoryMemoryClient{manifest: []byte(`{"version":1,"campaigns":[]}`)}, "test")
+	store := redisx.NewStore(&repositoryMemoryClient{}, "test")
 	app := &App{
 		store:    store,
 		database: database,
@@ -152,7 +151,6 @@ func TestRepositoryMemoryIntegrityFailureIsCaseInsensitiveForSHA256(t *testing.T
 
 func TestRepositoryMemoryContentRejectsIntegrityFailure(t *testing.T) {
 	database := integrationDatabase(t)
-	seedDatabase(t, database, nil)
 	content := []byte("# Context\n")
 	manifest, err := json.Marshal(repositorymemory.Manifest{
 		Version: 1,
@@ -171,8 +169,8 @@ func TestRepositoryMemoryContentRejectsIntegrityFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client := &repositoryMemoryClient{manifest: manifest, content: content}
-	app := &App{store: redisx.NewStore(client, "test"), database: database}
+	seedDatabase(t, database, repositoryMemorySources(manifest, "security-review/notes/context.md", content))
+	app := &App{database: database}
 
 	response := httptest.NewRecorder()
 	request := httptest.NewRequestWithContext(
@@ -187,25 +185,32 @@ func TestRepositoryMemoryContentRejectsIntegrityFailure(t *testing.T) {
 }
 
 type repositoryMemoryClient struct {
-	manifest []byte
-	content  []byte
 }
 
 func (c *repositoryMemoryClient) Do(_ context.Context, arguments ...string) (any, error) {
-	switch arguments[0] {
-	case "HGET":
-		if strings.HasSuffix(arguments[2], "manifest") {
-			return string(c.manifest), nil
-		}
-		if len(c.content) == 0 {
-			return nil, nil
-		}
-		return string(c.content), nil
-	default:
-		return nil, nil
-	}
+	return nil, nil
 }
 
 func (*repositoryMemoryClient) DoMany(context.Context, [][]string) ([]any, error) {
 	return nil, nil
+}
+
+func repositoryMemorySources(manifest []byte, fileID string, content []byte) map[string]model.Source {
+	fileRows := []model.Row{}
+	if fileID != "" {
+		campaign, path, _ := strings.Cut(fileID, "/")
+		fileRows = append(fileRows, model.Row{
+			"id": fileID, "campaign": campaign, "path": path, "content": string(content),
+		})
+	}
+	return map[string]model.Source{
+		repositorymemory.ManifestSource: {
+			Source: repositorymemory.ManifestSource,
+			Rows:   []model.Row{{"id": "manifest", "content": string(manifest)}},
+		},
+		repositorymemory.FilesSource: {
+			Source: repositorymemory.FilesSource,
+			Rows:   fileRows,
+		},
+	}
 }

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"reflect"
@@ -78,8 +79,8 @@ func TestNativePlanDifferential(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			definitions := []query.Definition{base, test.definition}
-			err := store.WithReadTransaction(t.Context(), func(reader postgresx.SourceReader) error {
-				loader := &databaseLoader{ctx: t.Context(), database: reader}
+			err := store.WithReadTransaction(t.Context(), func(ctx context.Context, reader postgresx.SourceReader) error {
+				loader := &databaseLoader{ctx: ctx, database: reader}
 				native, metrics, err := query.New(loader).Execute(definitions, []string{"pick"})
 				if err != nil {
 					return err
@@ -115,8 +116,8 @@ func TestNativePlanDifferential(t *testing.T) {
 				Fields: []query.SelectedField{{Field: "id", As: "other"}},
 			}},
 		}}
-		err := store.WithReadTransaction(t.Context(), func(reader postgresx.SourceReader) error {
-			loader := &databaseLoader{ctx: t.Context(), database: reader}
+		err := store.WithReadTransaction(t.Context(), func(ctx context.Context, reader postgresx.SourceReader) error {
+			loader := &databaseLoader{ctx: ctx, database: reader}
 			_, _, err := query.New(loader).Execute(definitions, []string{"pick"})
 			if err == nil || !strings.Contains(err.Error(), "more than one row per join key") {
 				t.Errorf("duplicate join must fail in fallback: %v", err)
@@ -141,8 +142,8 @@ func TestNativePlanRejectsUnfilteredExcessBeforePredicate(t *testing.T) {
 	}})
 	definitions := []query.Definition{{Name: "pick", From: "$jobs",
 		Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: "absent"}}}}}
-	err := store.WithReadTransaction(t.Context(), func(reader postgresx.SourceReader) error {
-		loader := &databaseLoader{ctx: t.Context(), database: reader}
+	err := store.WithReadTransaction(t.Context(), func(ctx context.Context, reader postgresx.SourceReader) error {
+		loader := &databaseLoader{ctx: ctx, database: reader}
 		for _, engine := range []*query.Engine{query.New(loader), query.New(sourceOnlyLoader{loader: loader})} {
 			_, _, err := engine.Execute(definitions, []string{"pick"})
 			if err == nil || !strings.Contains(err.Error(), "max input rows") {

@@ -23,7 +23,6 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/repositorymemory"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
@@ -126,7 +125,7 @@ func DirectoryRevision(manifest Manifest, inventory []byte, additionalRevisions 
 	return "sha256:" + hex.EncodeToString(hasher.Sum(nil))
 }
 
-func Run(ctx context.Context, store *postgresx.Store, operational *redisx.Store, directory string, options Options) (result Result, err error) {
+func Run(ctx context.Context, store *postgresx.Store, directory string, options Options) (result Result, err error) {
 	ingestLog.Printf("starting ingestion")
 	ctx, span := telemetry.Tracer().Start(ctx, telemetry.SpanIngestRun)
 	defer func() {
@@ -164,7 +163,10 @@ func Run(ctx context.Context, store *postgresx.Store, operational *redisx.Store,
 	if err != nil {
 		return Result{}, fmt.Errorf("read dashboard database state: %w", err)
 	}
-	if !options.Force && active.Ready && active.DataRevision == dataRevision {
+	manifestRows, hasRepositoryMemoryManifest := active.Counts[repositorymemory.ManifestSource]
+	_, hasRepositoryMemoryFiles := active.Counts[repositorymemory.FilesSource]
+	if !options.Force && active.Ready && active.DataRevision == dataRevision &&
+		hasRepositoryMemoryManifest && manifestRows == 1 && hasRepositoryMemoryFiles {
 		ingestLog.Printf("reusing dashboard data revision=%d sources=%d", active.Revision, len(active.Counts))
 		evaluatedAt := active.EvaluatedAt
 		if evaluatedAt.IsZero() {
@@ -190,6 +192,13 @@ func Run(ctx context.Context, store *postgresx.Store, operational *redisx.Store,
 	for name, rows := range canonical {
 		sources["$"+name] = model.Source{Source: "$" + name, Rows: rows, Metadata: model.Metadata{}}
 	}
+	memorySources, err := repositoryMemorySources(memory)
+	if err != nil {
+		return Result{}, err
+	}
+	for name, source := range memorySources {
+		sources[name] = source
+	}
 	diagnostics := buildDiagnostics(canonical)
 	if err := validateDiagnostics(diagnostics); err != nil {
 		return Result{}, err
@@ -213,15 +222,41 @@ func Run(ctx context.Context, store *postgresx.Store, operational *redisx.Store,
 	if err != nil {
 		return Result{}, err
 	}
-	if operational != nil {
-		if err := operational.PutRepositoryMemory(ctx, dataRevision, revision, memory.Manifest, memory.Files); err != nil {
-			ingestLog.Printf("repository memory cache update failed")
-		}
-	}
 	ingestLog.Printf("stored dashboard data revision=%d sources=%d", revision, len(counts))
 	return Result{
 		Revision: revision, DataRevision: dataRevision,
 		EvaluatedAt: evaluatedAt.Format(time.RFC3339Nano), Counts: counts,
+	}, nil
+}
+
+func repositoryMemorySources(snapshot repositorymemory.Snapshot) (map[string]model.Source, error) {
+	fileKeys := make([]string, 0, len(snapshot.Files))
+	for key := range snapshot.Files {
+		fileKeys = append(fileKeys, key)
+	}
+	sort.Strings(fileKeys)
+	fileRows := make([]model.Row, 0, len(fileKeys))
+	for _, key := range fileKeys {
+		campaign, path, found := strings.Cut(key, "\x00")
+		if !found {
+			return nil, errors.New("repository-memory file key is invalid")
+		}
+		fileRows = append(fileRows, model.Row{
+			"id":       campaign + "/" + path,
+			"campaign": campaign,
+			"path":     path,
+			"content":  string(snapshot.Files[key]),
+		})
+	}
+	return map[string]model.Source{
+		repositorymemory.ManifestSource: {
+			Source: repositorymemory.ManifestSource,
+			Rows:   []model.Row{{"id": "manifest", "content": string(snapshot.Manifest)}},
+		},
+		repositorymemory.FilesSource: {
+			Source: repositorymemory.FilesSource,
+			Rows:   fileRows,
+		},
 	}, nil
 }
 

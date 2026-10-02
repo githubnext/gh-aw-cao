@@ -598,16 +598,50 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
         const flush = async () => {
           if (bufferedRecords === 0) return;
           phase = 'writing';
-          await preserveStreamedStructuralMetadata(database, batch);
-          const result = await upsertCanonicalBatchWithConnection(database, batch, {
-            validateRelationships: false,
-            onBatchCommitted: ({ committedRecords: storedRecords }) => {
-              options.onWriteProgress?.({
-                storedRecords: committedRecords + storedRecords,
-                totalRecords: Number(header?.records ?? committedRecords + bufferedRecords)
+          let batchSize = bufferedRecords;
+          let result;
+          for (let attempt = 0; ; attempt += 1) {
+            try {
+              await preserveStreamedStructuralMetadata(database, batch);
+              result = await upsertCanonicalBatchWithConnection(database, batch, {
+                batchSize,
+                validateRelationships: false,
+                onBatchCommitted: ({ committedRecords: storedRecords }) => {
+                  options.onWriteProgress?.({
+                    storedRecords: committedRecords + storedRecords,
+                    totalRecords: Number(header?.records ?? committedRecords + bufferedRecords)
+                  });
+                }
+              });
+              break;
+            } catch (error) {
+              if (!isQuotaExceededError(error) || attempt >= MAX_QUOTA_RECOVERY_ATTEMPTS) throw error;
+              options.signal?.throwIfAborted();
+              batchSize = Math.max(1, Math.floor(batchSize / 2));
+              const databaseUsage = options.storage
+                ? await inspectDatabaseUsage(options.storage).catch(() => null)
+                : null;
+              const maxDatabaseBytes = Number.isFinite(options.maxDatabaseBytes)
+                ? Math.max(0, Number(options.maxDatabaseBytes))
+                : MAX_DASHBOARD_DATABASE_BYTES;
+              const recoveryLimit = databaseUsage === null
+                ? Math.floor(maxDatabaseBytes * (0.5 ** (attempt + 1)))
+                : Math.floor(databaseUsage * 0.9);
+              const maintenance = await maintainCanonicalDatabase(indexedDB, {
+                now: options.now,
+                retentionWindowMs: options.retentionWindowMs,
+                retentionWindowMsByStore: options.retentionWindowMsByStore,
+                maxDatabaseBytes: recoveryLimit,
+                usageBytes: databaseUsage
+              });
+              debug('retrying normalized JSONL write after quota pressure', {
+                attempt: attempt + 1,
+                batchSize,
+                databaseUsage,
+                deletedRecords: maintenance.deletedRecords
               });
             }
-          });
+          }
           committedBatches += result.committedBatches;
           committedRecords += result.committedRecords;
           batch = emptyNormalizedBatch();

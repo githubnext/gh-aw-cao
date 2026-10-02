@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -17,7 +16,6 @@ import (
 
 var storeLog = logger.New("cao:redis:store")
 
-const redisWriteBatchSize = 100
 const ingestionHealthKey = "state:ingestion-health"
 
 var ingestionCounterNames = map[string]struct{}{
@@ -37,8 +35,6 @@ var ingestionLoadNames = map[string]string{
 	"collectionSucceeded": "collection",
 	"collectionFailed":    "failure",
 }
-
-var ErrSourceUnavailable = errors.New("redis source is unavailable")
 
 type Store struct {
 	Client          CommandClient
@@ -378,87 +374,6 @@ func (s *Store) IngestionHealth(ctx context.Context) (map[string]int64, map[stri
 	return counters, events, nil
 }
 
-const repositoryMemoryManifestField = "repository-memory:manifest"
-
-func repositoryMemoryFileField(campaign, path string) string {
-	return "repository-memory:file:" + base64.RawURLEncoding.EncodeToString([]byte(campaign+"\x00"+path))
-}
-
-func (s *Store) PutRepositoryMemory(ctx context.Context, generation string, revision int64, manifest []byte, files map[string][]byte) error {
-	key := s.repositoryMemoryRevisionKey(generation)
-	if _, err := s.Client.Do(ctx, "HSET", s.repositoryMemoryRevisionKey(generation), repositoryMemoryManifestField, string(manifest)); err != nil {
-		return fmt.Errorf("write repository-memory manifest: %w", err)
-	}
-	// Incomplete writes must not retain a cache indefinitely.
-	if _, err := s.Client.Do(ctx, "EVAL", `
-if redis.call("HGET", KEYS[1], "key") ~= KEYS[2] then
-  redis.call("EXPIRE", KEYS[2], ARGV[1])
-end
-return 1`, "2", s.Key("repository-memory:current"), key, "604800"); err != nil {
-		return fmt.Errorf("expire incomplete repository-memory cache: %w", err)
-	}
-	commands := make([][]string, 0, redisWriteBatchSize)
-	for key, content := range files {
-		campaign, path, found := strings.Cut(key, "\x00")
-		if !found {
-			return errors.New("repository-memory file key is invalid")
-		}
-		commands = append(commands, []string{
-			"HSET", s.repositoryMemoryRevisionKey(generation), repositoryMemoryFileField(campaign, path), string(content),
-		})
-		if len(commands) == cap(commands) {
-			if _, err := s.Client.DoMany(ctx, commands); err != nil {
-				return fmt.Errorf("write repository-memory files: %w", err)
-			}
-			commands = commands[:0]
-		}
-	}
-	if len(commands) > 0 {
-		if _, err := s.Client.DoMany(ctx, commands); err != nil {
-			return fmt.Errorf("write repository-memory files: %w", err)
-		}
-	}
-	script := `
-local previous = redis.call("HGET", KEYS[1], "key")
-local previousRevision = tonumber(redis.call("HGET", KEYS[1], "revision")) or -1
-if previousRevision > tonumber(ARGV[2]) then
-  if previous ~= KEYS[2] then redis.call("EXPIRE", KEYS[2], ARGV[1]) end
-  return 0
-end
-if previous and previous ~= KEYS[2] then
-  redis.call("EXPIRE", previous, ARGV[1])
-end
-redis.call("HSET", KEYS[1], "key", KEYS[2], "revision", ARGV[2])
-redis.call("PERSIST", KEYS[2])
-return 1`
-	if _, err := s.Client.Do(ctx, "EVAL", script, "2", s.Key("repository-memory:current"), key, "604800", strconv.FormatInt(revision, 10)); err != nil {
-		return fmt.Errorf("activate repository-memory cache: %w", err)
-	}
-	return nil
-}
-
-func (s *Store) RepositoryMemoryManifest(ctx context.Context, generation string) ([]byte, error) {
-	value, err := s.Client.Do(ctx, "HGET", s.repositoryMemoryRevisionKey(generation), repositoryMemoryManifestField)
-	if err != nil {
-		return nil, err
-	}
-	if value == nil {
-		return nil, ErrSourceUnavailable
-	}
-	return []byte(fmt.Sprint(value)), nil
-}
-
-func (s *Store) RepositoryMemoryFile(ctx context.Context, generation, campaign, path string) ([]byte, error) {
-	value, err := s.Client.Do(ctx, "HGET", s.repositoryMemoryRevisionKey(generation), repositoryMemoryFileField(campaign, path))
-	if err != nil {
-		return nil, err
-	}
-	if value == nil {
-		return nil, ErrSourceUnavailable
-	}
-	return []byte(fmt.Sprint(value)), nil
-}
-
 func repositoryMemoryCacheKey(parts ...string) string {
 	sum := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
 	return hex.EncodeToString(sum[:])
@@ -549,10 +464,4 @@ func (s *Store) CacheMarketplaceRegistry(
 
 func (s *Store) Key(suffix string) string {
 	return s.namespace + ":" + suffix
-}
-
-// repositoryMemoryRevisionKey retains the existing cache key layout so cached
-// repository-memory content remains available across the storage migration.
-func (s *Store) repositoryMemoryRevisionKey(generation string) string {
-	return s.namespace + ":g:" + generation
 }

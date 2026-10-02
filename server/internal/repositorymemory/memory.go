@@ -23,6 +23,9 @@ const (
 	MaxFileSize  = 1024 * 1024
 	MaxNesting   = 10
 	MaxTotalSize = 64 * 1024 * 1024
+
+	ManifestSource = "$repositoryMemoryManifest"
+	FilesSource    = "$repositoryMemoryFiles"
 )
 
 var campaignPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,99}$`)

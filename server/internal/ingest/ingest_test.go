@@ -17,8 +17,43 @@ import (
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
+	"github.com/githubnext/gh-aw-cao/server/internal/repositorymemory"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
+
+func TestRepositoryMemorySourcesUseCanonicalDocuments(t *testing.T) {
+	sources, err := repositoryMemorySources(repositorymemory.Snapshot{
+		Manifest: []byte(`{"version":1,"campaigns":[]}`),
+		Files: map[string][]byte{
+			repositorymemory.FileKey("security-review", "notes.md"): []byte("review notes"),
+			repositorymemory.FileKey("self-care", "README.md"):      []byte("readme"),
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := sources[repositorymemory.ManifestSource]
+	if len(manifest.Rows) != 1 || manifest.Rows[0]["id"] != "manifest" ||
+		manifest.Rows[0]["content"] != `{"version":1,"campaigns":[]}` {
+		t.Fatalf("repository-memory manifest source: %+v", manifest)
+	}
+	files := sources[repositorymemory.FilesSource]
+	if len(files.Rows) != 2 ||
+		files.Rows[0]["id"] != "security-review/notes.md" ||
+		files.Rows[0]["content"] != "review notes" ||
+		files.Rows[1]["id"] != "self-care/README.md" ||
+		files.Rows[1]["content"] != "readme" {
+		t.Fatalf("repository-memory file source: %+v", files)
+	}
+}
+
+func TestRepositoryMemorySourcesRejectInvalidFileKeys(t *testing.T) {
+	if _, err := repositoryMemorySources(repositorymemory.Snapshot{
+		Files: map[string][]byte{"invalid": []byte("content")},
+	}); err == nil {
+		t.Fatal("invalid file key must fail ingestion")
+	}
+}
 
 func TestIngestionErrorSpanExcludesFilePath(t *testing.T) {
 	previousProvider := otel.GetTracerProvider()
@@ -30,7 +65,7 @@ func TestIngestionErrorSpanExcludesFilePath(t *testing.T) {
 		otel.SetTracerProvider(previousProvider)
 	})
 	directory := scratchDirectory(t)
-	if _, err := Run(context.Background(), nil, nil, directory, Options{}); err == nil {
+	if _, err := Run(context.Background(), nil, directory, Options{}); err == nil {
 		t.Fatal("missing manifest must fail")
 	}
 	spans := exporter.GetSpans()

@@ -17,6 +17,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
+	"github.com/githubnext/gh-aw-cao/server/internal/repositorymemory"
 )
 
 const deployedSubset = "../../testdata/deployed-subset"
@@ -24,11 +25,11 @@ const databaseQueries = "../../../dashboard/site/src/data/queries/database.json"
 
 func TestForcedIngestionAdvancesRevisionWithoutChangingDataRevision(t *testing.T) {
 	ctx, store := ingestTestStore(t)
-	first, err := Run(ctx, store, nil, deployedSubset, Options{DatabaseQueriesPath: databaseQueries})
+	first, err := Run(ctx, store, deployedSubset, Options{DatabaseQueriesPath: databaseQueries})
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := Run(ctx, store, nil, deployedSubset, Options{DatabaseQueriesPath: databaseQueries, Force: true})
+	second, err := Run(ctx, store, deployedSubset, Options{DatabaseQueriesPath: databaseQueries, Force: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,11 +46,11 @@ func TestForcedIngestionAdvancesRevisionWithoutChangingDataRevision(t *testing.T
 func TestUnchangedLakeReusesPostgresRevision(t *testing.T) {
 	ctx, store := ingestTestStore(t)
 	options := Options{DatabaseQueriesPath: databaseQueries}
-	first, err := Run(ctx, store, nil, deployedSubset, options)
+	first, err := Run(ctx, store, deployedSubset, options)
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := Run(ctx, store, nil, deployedSubset, options)
+	second, err := Run(ctx, store, deployedSubset, options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,12 +58,48 @@ func TestUnchangedLakeReusesPostgresRevision(t *testing.T) {
 		!reflect.DeepEqual(second.Counts, first.Counts) || second.EvaluatedAt != first.EvaluatedAt {
 		t.Fatalf("unchanged lake was not reused: first=%+v second=%+v", first, second)
 	}
+	if first.Counts[repositorymemory.ManifestSource] != 1 {
+		t.Fatalf("repository-memory manifest was not stored in Postgres: counts=%v", first.Counts)
+	}
+	if count, ok := first.Counts[repositorymemory.FilesSource]; !ok || count != 0 {
+		t.Fatalf("empty repository-memory file source was not stored in Postgres: counts=%v", first.Counts)
+	}
+}
+
+func TestUnchangedLakeRebuildsMissingRepositoryMemorySources(t *testing.T) {
+	ctx, store := ingestTestStore(t)
+	options := Options{DatabaseQueriesPath: databaseQueries}
+	first, err := Run(ctx, store, deployedSubset, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacyRevision, err := store.Replace(
+		ctx, map[string]model.Source{"legacy": {Source: "legacy", Rows: []model.Row{}}},
+		model.Diagnostics{}, first.DataRevision, time.Now().UTC(),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rebuilt, err := Run(ctx, store, deployedSubset, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rebuilt.Revision != legacyRevision+1 || rebuilt.DataRevision != first.DataRevision {
+		t.Fatalf("missing repository-memory sources were not rebuilt: first=%+v rebuilt=%+v", first, rebuilt)
+	}
+	if rebuilt.Counts[repositorymemory.ManifestSource] != 1 {
+		t.Fatalf("rebuilt manifest source is missing: %v", rebuilt.Counts)
+	}
+	if count, ok := rebuilt.Counts[repositorymemory.FilesSource]; !ok || count != 0 {
+		t.Fatalf("rebuilt file source is missing: %v", rebuilt.Counts)
+	}
 }
 
 func TestChangedInventoryCreatesFreshDataRevision(t *testing.T) {
 	ctx, store := ingestTestStore(t)
 	options := Options{DatabaseQueriesPath: databaseQueries}
-	first, err := Run(ctx, store, nil, deployedSubset, options)
+	first, err := Run(ctx, store, deployedSubset, options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +118,7 @@ func TestChangedInventoryCreatesFreshDataRevision(t *testing.T) {
 		}
 		writeTestFile(t, filepath.Join(directory, name), content)
 	}
-	second, err := Run(ctx, store, nil, directory, options)
+	second, err := Run(ctx, store, directory, options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +134,7 @@ func TestChangedInventoryCreatesFreshDataRevision(t *testing.T) {
 
 func TestFailedPostgresReplaceRollsBackIngestedSources(t *testing.T) {
 	ctx, store := ingestTestStore(t)
-	result, err := Run(ctx, store, nil, deployedSubset, Options{DatabaseQueriesPath: databaseQueries})
+	result, err := Run(ctx, store, deployedSubset, Options{DatabaseQueriesPath: databaseQueries})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +175,7 @@ func TestFailedPostgresReplaceRollsBackIngestedSources(t *testing.T) {
 
 func TestIngestedPostgresSourcesSupportDirectQueries(t *testing.T) {
 	ctx, store := ingestTestStore(t)
-	result, err := Run(ctx, store, nil, deployedSubset, Options{DatabaseQueriesPath: databaseQueries})
+	result, err := Run(ctx, store, deployedSubset, Options{DatabaseQueriesPath: databaseQueries})
 	if err != nil {
 		t.Fatal(err)
 	}

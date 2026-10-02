@@ -22,7 +22,7 @@ var errCanonicalEntityNotFound = errors.New("canonical entity was not found")
 
 func (service canonicalService) rows(ctx context.Context, source string) ([]model.Row, error) {
 	var rows []model.Row
-	err := service.store.WithReadTransaction(ctx, func(reader postgresx.SourceReader) error {
+	err := service.store.WithReadTransaction(ctx, func(ctx context.Context, reader postgresx.SourceReader) error {
 		active, err := reader.State(ctx)
 		if err != nil {
 			return err
@@ -54,7 +54,7 @@ func (service canonicalService) filteredRows(ctx context.Context, source string,
 	}
 	definitions := append(append([]query.Definition{}, service.definitions...), definition)
 	var rows []model.Row
-	err := service.store.WithReadTransaction(ctx, func(reader postgresx.SourceReader) error {
+	err := service.store.WithReadTransaction(ctx, func(ctx context.Context, reader postgresx.SourceReader) error {
 		active, err := reader.State(ctx)
 		if err != nil {
 			return err
