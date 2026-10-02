@@ -1,6 +1,6 @@
 {
   "source_sha": "d4e4f4047b3ab673cc994d71e25ece332d380aea",
-  "next_category": "Astro documentation generation",
+  "next_category": "dependency installation and caching",
   "evaluations": [
     {
       "evaluated_at": "2026-10-02T09:56:00Z",
@@ -238,6 +238,31 @@
         36980773326
       ],
       "outcome": "no_actionable_improvement: evaluated dependency installation and caching across the latest 20 completed successful docs.yml runs from 2026-10-02T06:46Z through 2026-10-02T10:41Z, including 12 comparable successful build executions and 13 successful scheduled freshness checks, plus 3 successful cao-dashboard.yml producer runs at the matching source revisions. Trusted Actions metadata showed docs workflow wall-time median 55s with p90 76s, build-job median 50s with p90 55s, schedule-freshness median 8s with p90 10s, deploy-job median 12s with p90 15s on 5 deploys, and build queue median 8s with p90 15s. Trusted step metadata and logs confirmed stable cache hits on every comparable docs build: setup-node restored the npm cache (~291 MB), the explicit node_modules cache restored ~283 MB in 4-9s, and the central-agentic-ops-dashboard cache restored ~40 MB in 1-7s; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped in all 12 successful docs builds. Cross-checking successful dashboard producer runs 36996477794, 36982960058, and 36980773326 showed producer dependency work is also modest at 6-10s, while the dominant repeated cost remains Upgrade fallback activity data at 91-107s after restoring only a ~179 MB activity cache and before assembling an artifact that still recopies a 523.0 MiB SQLite database plus 135 activity shards totaling 333.6 MiB. Because dependency installation is already effectively eliminated on docs.yml and contributes only single-digit seconds upstream, no dependency-and-caching change in this cycle is evidenced to save at least 60s or 15 percent of median docs execution time without overlapping already-recorded reusable-dashboard or avoidable-rebuild opportunities.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-02T10:57:27Z",
+      "worker_run_id": "36998018455",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36997520263,
+        36996741413,
+        36996366175,
+        36995370597,
+        36993176170,
+        36992262108,
+        36991429427,
+        36989971567,
+        36987422734,
+        36986398337,
+        36984685039,
+        36983243324,
+        36981767075,
+        36996477794,
+        36982960058,
+        36980773326
+      ],
+      "outcome": "no_actionable_improvement: evaluated scheduling, concurrency, and avoidable rebuilds across 13 successful docs.yml runs in the 2026-10-02T08:02Z-10:49Z window, plus 3 matching successful cao-dashboard.yml producer runs. Trusted Actions metadata showed workflow wall-time median 15s (p90 64s) across all successful completions because 8 of 11 scheduled runs short-circuited after freshness checks; among the 5 comparable successful build executions, build-job median was 43s (p90 54s), deploy-job median 12s (p90 12s) on 3 deploys, schedule-freshness median 8s (p90 11s) on 11 successful scheduled checks, and queue time median/p90 remained 0s. Two successful workflow_run-triggered docs builds (36983243324, 36996741413) still spent 54-55s rebuilding and uploading Pages content with both node_modules and dashboard caches already hitting, while 8 later scheduled runs spent 10-15s only to skip after freshness checks. Matching dashboard producer runs 36980773326, 36982960058, and 36996477794 still spent 149-158s in build, dominated by Upgrade fallback activity data at 91-107s, before refreshing the cached dashboard artifact that retriggers docs.yml. The only change still clearing the >=60s / >=15% threshold is the already-recorded recommendation to remove or further gate docs.yml's workflow_run trigger on CAO Dashboard completions; current same-source evidence does not materially change that recommendation, and repository issues remain disabled, so no new non-duplicate actionable output is available in this cycle.",
       "suggestion_fingerprint": null
     }
   ]
