@@ -1,6 +1,6 @@
 {
   "source_sha": "336e431f759e2b14fdef1d7825e973fa979aade6",
-  "next_category": "reusable dashboard generation",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
       "evaluated_at": "2026-10-02T09:56:00Z",
@@ -205,7 +205,7 @@
         36980773326,
         36979979083
       ],
-      "outcome": "no_actionable_improvement: evaluated scheduling, concurrency, and avoidable rebuilds across 11 successful docs.yml runs in the 2026-10-02T07:32:45Z\u20132026-10-02T09:28:35Z window, plus 3 matching successful cao-dashboard.yml producer runs. Trusted Actions metadata showed workflow wall-time median 57s (p90 76s approx), build-job median 50s, deploy-job median 12s on 4 deploys, schedule-freshness median 6s on 7 scheduled runs, and zero observable queue time. Three successful workflow_run-triggered docs builds (36983243324, 36981029522, 36980245399) still spent about 43\u201355s rebuilding and uploading Pages content with both node_modules and dashboard caches already hitting, while three later scheduled runs (36989971567, 36987422734, 36986398337) spent 10\u201312s end-to-end only to skip after freshness checks. That indicates remaining waste is mostly duplicate invocations, but the only change clearing the >=60s / >=15% threshold remains the already-recorded recommendation to remove or further gate docs.yml's workflow_run trigger on CAO Dashboard completions. Current evidence is same-source and same-pattern as the earlier blocked suggestion, so no new non-duplicate recommendation is actionable in this cycle.",
+      "outcome": "no_actionable_improvement: evaluated scheduling, concurrency, and avoidable rebuilds across 11 successful docs.yml runs in the 2026-10-02T07:32:45Z–2026-10-02T09:28:35Z window, plus 3 matching successful cao-dashboard.yml producer runs. Trusted Actions metadata showed workflow wall-time median 57s (p90 76s approx), build-job median 50s, deploy-job median 12s on 4 deploys, schedule-freshness median 6s on 7 scheduled runs, and zero observable queue time. Three successful workflow_run-triggered docs builds (36983243324, 36981029522, 36980245399) still spent about 43–55s rebuilding and uploading Pages content with both node_modules and dashboard caches already hitting, while three later scheduled runs (36989971567, 36987422734, 36986398337) spent 10–12s end-to-end only to skip after freshness checks. That indicates remaining waste is mostly duplicate invocations, but the only change clearing the >=60s / >=15% threshold remains the already-recorded recommendation to remove or further gate docs.yml's workflow_run trigger on CAO Dashboard completions. Current evidence is same-source and same-pattern as the earlier blocked suggestion, so no new non-duplicate recommendation is actionable in this cycle.",
       "suggestion_fingerprint": null
     },
     {
@@ -421,6 +421,28 @@
         37021381186
       ],
       "outcome": "no_actionable_improvement: evaluated Astro documentation generation across 7 comparable successful docs.yml build executions in the 2026-10-02T13:57Z-15:27Z window, plus 2 matching successful cao-dashboard.yml producer runs for nearby source revisions. Trusted Actions metadata showed comparable docs workflow wall-time median 94s with p90 229s, zero observable queue time, build-job median 44s with p90 56s, and deploy-job median 79.5s with p90 154s on the 4 runs that actually deployed. Trusted step metadata confirmed effective cache hits in every sampled docs build: Restore node_modules took 4-7s, Install dependencies and Save node_modules were skipped in all 7 runs, Restore cached CAO Dashboard took 1-3s, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were skipped in all 7 runs. Astro docs generation itself remained only 8-14s per run with a 13s median, while Upload Pages artifact stayed 6-11s. Cross-checking successful dashboard producer runs 37021381186 and 37024866143 showed dashboard/site generation is likewise not the bottleneck upstream: Assemble Dashboard Language site took 3s in the latest successful run, while Upgrade fallback activity data dominated at 118s in run 37024866143 after a cache hit, and Upload dashboard artifact took 10s. Because Astro documentation generation is only about 13s median and no Astro-focused change is evidenced to save at least 60s or 15 percent of median docs execution time without overlapping already-recorded upstream reusable-dashboard or avoidable-deploy work, no new actionable recommendation was made.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-02T15:57:00Z",
+      "worker_run_id": "37030286701",
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        37029672805,
+        37028352204,
+        37026943933,
+        37025244279,
+        37024050398,
+        37022950670,
+        37021766014,
+        37021734130,
+        37024866143,
+        37021381186,
+        37018219309,
+        37014679783,
+        37008742907
+      ],
+      "outcome": "no_actionable_improvement: evaluated reusable dashboard generation using the latest 12 completed successful docs.yml runs in the 2026-10-02T12:57Z-15:49Z window, with 8 comparable successful build executions and 4 successful deploy executions, plus 5 successful cao-dashboard.yml producer runs in the same 14-day window. Trusted Actions metadata showed docs workflow wall-time median 56s with p90 203.4s across all successful completions, build-job median 44s with p90 53.9s, schedule-freshness median 8.5s with p90 9.0s on scheduled runs, and deploy-job median 79.5s with p90 139.6s on the 4 deploys that actually ran. Trusted step metadata confirmed docs-side cache reuse on every comparable build: Restore node_modules median 5s, Build documentation median 12s, Restore cached CAO Dashboard median 2s, Upload Pages artifact median 9.5s, and Install dependencies, Save node_modules, Find latest CAO Dashboard run, plus Mount latest CAO Dashboard artifact were skipped in all 8 comparable builds because cache hits were trusted from step conclusions. Cross-checking successful dashboard producer runs 37024866143, 37021381186, 37018219309, 37014679783, and 37008742907 showed the dominant repeated upstream cost is still Upgrade fallback activity data at 109s median with p90 118s, versus only 6s median for Assemble Dashboard Language site and 9s median for Upload dashboard artifact. Trusted logs from run 37024866143 further confirmed the producer recopied a 539.7 MiB gh-aw-logs.sqlite plus 137 activity shards totaling 344.4 MiB into the dashboard artifact before uploading a 51,953,985-byte zip. This remains the same reusable-dashboard bottleneck already tracked by open issues #15332 and #15497 and prior repository-memory evaluations, and the current same-source evidence does not materially change the recommendation or its expected savings, so no new non-duplicate actionable issue should be created.",
       "suggestion_fingerprint": null
     }
   ]
