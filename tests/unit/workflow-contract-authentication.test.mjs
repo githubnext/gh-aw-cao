@@ -38,6 +38,23 @@ test("Copilot setup uses Node 24", () => {
   assert.match(source, /actions\/setup-node@[0-9a-f]{40}[\s\S]*?node-version: 24[\s\S]*?cache: npm[\s\S]*?run: npm ci/);
 });
 
+test("Copilot setup installs the Go lint tooling used by server CI", () => {
+  const setup = parse(readFileSync(join(root, ".github", "workflows", "copilot-setup-steps.yml"), "utf8"));
+  const ci = parse(readFileSync(join(root, ".github", "workflows", "cgo.yml"), "utf8"));
+  const steps = setup.jobs["copilot-setup-steps"].steps;
+  const ciSteps = ci.jobs["server-quality"].steps;
+  const go = steps.find((step) => step.name === "Set up Go");
+  const lint = steps.find((step) => step.name === "Install golangci-lint");
+  const ciGo = ciSteps.find((step) => step.uses?.startsWith("actions/setup-go@"));
+
+  assert.ok(go);
+  assert.ok(lint);
+  assert.equal(go.uses, ciGo.uses);
+  assert.deepEqual(go.with, ciGo.with);
+  assert.equal(lint.run, ciSteps.find((step) => step.name === "Install golangci-lint").run);
+  assert.ok(steps.indexOf(go) < steps.indexOf(lint));
+});
+
 test("root CAO workflows use organization-billed Copilot authentication", () => {
   const rootCampaignWorkflowIds = [
     "cao-evolution-failures-investigator",
