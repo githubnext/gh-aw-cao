@@ -51,6 +51,8 @@ func (l *Logger) Enabled() bool {
 }
 
 // Printf writes a formatted message when the logger is enabled.
+//
+//nolint:contextcheck // This context-free debug API has no caller context; slog.Handle forwards its context separately.
 func (l *Logger) Printf(format string, args ...any) {
 	if !l.enabled {
 		return
@@ -59,6 +61,8 @@ func (l *Logger) Printf(format string, args ...any) {
 }
 
 // Print writes a message when the logger is enabled.
+//
+//nolint:contextcheck // This context-free debug API has no caller context; slog.Handle forwards its context separately.
 func (l *Logger) Print(args ...any) {
 	if !l.enabled {
 		return
