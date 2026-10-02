@@ -70,10 +70,10 @@ model QuotaUsage {
   buckets: QuotaPoint[];
   aggregate: QuotaAggregate[];
 }
-@example(#{timestamp: "2026-10-02T19:00:00Z", namespace: "cao:server", message: "listener ready"})
+@example(#{timestamp: utcDateTime.fromISO("2026-10-02T19:00:00Z"), `namespace`: "cao:server", message: "listener ready"})
 model ServerLogRecord {
   timestamp: utcDateTime;
-  namespace: string;
+  `namespace`: string;
   message: string;
 }
 /** Only fixed, numeric ingestion counters are returned; Redis keys and values are never exposed. */

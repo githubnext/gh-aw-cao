@@ -2,6 +2,8 @@ package telemetry
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -135,6 +137,14 @@ func TestRunSmokeRejectsInvalidConfigurationWithoutEchoingValues(t *testing.T) {
 		config SmokeConfig
 	}{
 		{
+			name: "missing endpoint",
+			config: SmokeConfig{
+				CAOReadinessURL:  "http://127.0.0.1:8080/api/readiness",
+				OTLPTraceHeaders: "Authorization=" + secret,
+				TraceStream:      "default",
+			},
+		},
+		{
 			name: "SDK disabled",
 			config: SmokeConfig{
 				CAOReadinessURL:   "http://127.0.0.1:8080/api/readiness",
@@ -173,5 +183,177 @@ func TestRunSmokeRejectsInvalidConfigurationWithoutEchoingValues(t *testing.T) {
 				t.Errorf("RunSmoke() error leaked a sensitive value: %q", err)
 			}
 		})
+	}
+}
+
+type smokeRoundTripper func(*http.Request) (*http.Response, error)
+
+func (transport smokeRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
+	return transport(request)
+}
+
+type smokeTestBody struct {
+	reader    io.Reader
+	readErr   error
+	closeErr  error
+	bytesRead int
+	closes    int
+}
+
+func (body *smokeTestBody) Read(buffer []byte) (int, error) {
+	if body.readErr != nil {
+		return 0, body.readErr
+	}
+	n, err := body.reader.Read(buffer)
+	body.bytesRead += n
+	return n, err
+}
+
+func (body *smokeTestBody) Close() error {
+	body.closes++
+	return body.closeErr
+}
+
+func TestRunSmokeClosesBodiesAndReportsIOFailures(t *testing.T) {
+	const (
+		readinessPath = "/api/readiness"
+		healthPath    = "/healthz"
+		searchPath    = "/api/default/default/traces/latest"
+		traceID       = "4bf92f3577b34da6a3ce929d0e0e4736"
+		spanID        = "00f067aa0ba902b7"
+	)
+	bodyErr := errors.New("private body failure")
+	tests := []struct {
+		name          string
+		failurePath   string
+		readErr       error
+		closeErr      error
+		malformedJSON bool
+		status        int
+		readinessOK   bool
+		healthOK      bool
+		passed        bool
+		searches      int
+	}{
+		{name: "success", readinessOK: true, healthOK: true, passed: true, searches: 1},
+		{name: "readiness read error", failurePath: readinessPath, readErr: bodyErr, healthOK: true},
+		{name: "readiness close error", failurePath: readinessPath, closeErr: bodyErr, healthOK: true},
+		{name: "readiness status failure", failurePath: readinessPath, status: http.StatusServiceUnavailable, healthOK: true},
+		{name: "health read error", failurePath: healthPath, readErr: bodyErr, readinessOK: true},
+		{name: "health close error", failurePath: healthPath, closeErr: bodyErr, readinessOK: true},
+		{name: "health status failure", failurePath: healthPath, status: http.StatusServiceUnavailable, readinessOK: true},
+		{name: "search read error retries", failurePath: searchPath, readErr: bodyErr, readinessOK: true, healthOK: true, passed: true, searches: 2},
+		{name: "search close error retries", failurePath: searchPath, closeErr: bodyErr, readinessOK: true, healthOK: true, passed: true, searches: 2},
+		{name: "malformed search retries", failurePath: searchPath, malformedJSON: true, readinessOK: true, healthOK: true, passed: true, searches: 2},
+		{name: "server failure retries", failurePath: searchPath, status: http.StatusServiceUnavailable, readinessOK: true, healthOK: true, passed: true, searches: 2},
+		{name: "request timeout retries", failurePath: searchPath, status: http.StatusRequestTimeout, readinessOK: true, healthOK: true, passed: true, searches: 2},
+		{name: "rate limit retries", failurePath: searchPath, status: http.StatusTooManyRequests, readinessOK: true, healthOK: true, passed: true, searches: 2},
+		{name: "authorization failure", failurePath: searchPath, status: http.StatusUnauthorized, readinessOK: true, healthOK: true, searches: 1},
+		{name: "authorization body read failure", failurePath: searchPath, status: http.StatusUnauthorized, readErr: bodyErr, readinessOK: true, healthOK: true, searches: 1},
+		{name: "authorization body close failure", failurePath: searchPath, status: http.StatusUnauthorized, closeErr: bodyErr, readinessOK: true, healthOK: true, searches: 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			requests := make(map[string]int)
+			var bodies []*smokeTestBody
+			client := &http.Client{Transport: smokeRoundTripper(func(request *http.Request) (*http.Response, error) {
+				for _, body := range bodies {
+					if body.closes != 1 {
+						t.Errorf("previous response body closed %d times before next request, want 1", body.closes)
+					}
+				}
+				path := request.URL.Path
+				requests[path]++
+				payload := "ok"
+				if path == searchPath {
+					payload = `{"hits":[{"trace_id":"` + traceID + `"}]}`
+				}
+				status := http.StatusOK
+				body := &smokeTestBody{}
+				if path == tt.failurePath && requests[path] == 1 {
+					body.readErr, body.closeErr = tt.readErr, tt.closeErr
+					if tt.malformedJSON {
+						payload = `{"hits":`
+					}
+					if tt.status != 0 {
+						status = tt.status
+					}
+				}
+				body.reader = strings.NewReader(payload)
+				bodies = append(bodies, body)
+				return &http.Response{
+					StatusCode: status,
+					Header: http.Header{
+						TraceIDHeader: []string{traceID},
+						SpanIDHeader:  []string{spanID},
+					},
+					Body: body,
+				}, nil
+			})}
+			report, err := RunSmoke(t.Context(), SmokeConfig{
+				CAOReadinessURL:   "http://cao/api/readiness",
+				OTLPTraceEndpoint: "http://collector/api/default/v1/traces",
+				OTLPTraceHeaders:  "Authorization=Basic test-credential",
+				TraceStream:       "default",
+				HTTPClient:        client,
+				Timeout:           time.Second,
+				PollInterval:      time.Millisecond,
+			})
+			if err != nil {
+				t.Fatalf("RunSmoke() error = %v, want sanitized report without error", err)
+			}
+			if report.CAOReadinessOK != tt.readinessOK || report.OpenObserveHealthOK != tt.healthOK ||
+				report.TraceFound != tt.passed || report.Passed != tt.passed {
+				t.Errorf("RunSmoke() = %+v, want readiness=%t health=%t found=%t passed=%t",
+					report, tt.readinessOK, tt.healthOK, tt.passed, tt.passed)
+			}
+			wantReadinessStatus, wantHealthStatus := http.StatusOK, http.StatusOK
+			if tt.status != 0 {
+				if tt.failurePath == readinessPath {
+					wantReadinessStatus = tt.status
+				}
+				if tt.failurePath == healthPath {
+					wantHealthStatus = tt.status
+				}
+			}
+			if report.CAOReadinessStatus != wantReadinessStatus || report.OpenObserveHealthStatus != wantHealthStatus {
+				t.Errorf("response statuses = (%d, %d), want (%d, %d)",
+					report.CAOReadinessStatus, report.OpenObserveHealthStatus, wantReadinessStatus, wantHealthStatus)
+			}
+			if got := requests[searchPath]; got != tt.searches {
+				t.Errorf("search requests = %d, want %d", got, tt.searches)
+			}
+			for _, body := range bodies {
+				if body.closes != 1 {
+					t.Errorf("response body closed %d times, want 1", body.closes)
+				}
+			}
+		})
+	}
+}
+
+func TestSmokeResponseReadersPropagateErrorsAndBoundReads(t *testing.T) {
+	const traceID = "4bf92f3577b34da6a3ce929d0e0e4736"
+	readErr := errors.New("private read failure")
+	if err := discardSmokeBody(&smokeTestBody{readErr: readErr}); !errors.Is(err, readErr) {
+		t.Errorf("discardSmokeBody() error = %v, want %v", err, readErr)
+	}
+	if found, err := smokeSearchContainsTrace(&smokeTestBody{readErr: readErr}, traceID); found || !errors.Is(err, readErr) {
+		t.Errorf("smokeSearchContainsTrace() = (%t, %v), want (false, %v)", found, err, readErr)
+	}
+	oversized := strings.Repeat(" ", maxSmokeResponseBytes) + `{"trace_id":"` + traceID + `"}`
+	body := &smokeTestBody{reader: strings.NewReader(oversized)}
+	if found, err := smokeSearchContainsTrace(body, traceID); found || err == nil {
+		t.Errorf("oversized smokeSearchContainsTrace() = (%t, %v), want (false, error)", found, err)
+	}
+	if body.bytesRead != maxSmokeResponseBytes {
+		t.Errorf("search bytes read = %d, want %d", body.bytesRead, maxSmokeResponseBytes)
+	}
+	body = &smokeTestBody{reader: strings.NewReader(oversized)}
+	if err := discardSmokeBody(body); err != nil {
+		t.Errorf("bounded discardSmokeBody() error = %v", err)
+	}
+	if body.bytesRead != maxSmokeResponseBytes {
+		t.Errorf("discard bytes read = %d, want %d", body.bytesRead, maxSmokeResponseBytes)
 	}
 }
