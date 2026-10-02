@@ -62,6 +62,7 @@ type Config struct {
 	AgentCatalogPath     string
 	MCPContractPath      string
 	MCPEnabled           bool
+	BuildRevision        string
 	GitHubActionsToken   string
 	GitHubActionsActor   string
 	ActionsRepository    string
@@ -582,6 +583,8 @@ func (a *App) Handler() http.Handler {
 	register("GET /api/v1/health", a.health)
 	register("GET /api/health", a.health)
 	register("GET /api/readiness", a.readiness)
+	mux.HandleFunc("GET /llms.txt", a.llms)
+	routePatterns["GET /llms.txt"] = struct{}{}
 	register("GET /api/v1/events", a.events)
 	register("POST /api/v1/query", a.query)
 	if a.mcp != nil {
@@ -1020,7 +1023,40 @@ func (a *App) readiness(response http.ResponseWriter, request *http.Request) {
 }
 
 func publicServiceEndpoint(path string) bool {
-	return path == "/api/v1/health" || path == "/api/health" || path == "/api/readiness"
+	return path == "/api/v1/health" || path == "/api/health" || path == "/api/readiness" || path == "/llms.txt"
+}
+
+func (a *App) llms(response http.ResponseWriter, _ *http.Request) {
+	revision := a.config.BuildRevision
+	if len(revision) != 40 || strings.IndexFunc(revision, func(char rune) bool {
+		return char < '0' || (char > '9' && char < 'a') || char > 'f'
+	}) >= 0 {
+		revision = "unknown"
+	}
+	response.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	response.Header().Set("Cache-Control", "no-store")
+	_, _ = fmt.Fprintf(response, `# Central Agentic Ops dashboard server
+
+Server commit SHA: %s
+
+## Agent documentation
+
+- CAO agent resources: https://githubnext.github.io/gh-aw-cao/agent/llms.txt
+- Published dashboard agent guide: https://githubnext.github.io/gh-aw-cao/cao/llms.txt
+- Agent analysis and MCP setup: https://githubnext.github.io/gh-aw-cao/agent-analysis/
+
+## Configure MCP
+
+The read-only MCP endpoint is POST /mcp, only when the server is started with --mcp-enabled.
+It exposes cao_catalog (discover pages and queries) and cao_query (run a reviewed named query).
+Local clients use the dashboard bearer capability in the Authorization header.
+Hosted clients must run in GitHub Actions on the authorized repository's default branch,
+send a repository-scoped GITHUB_TOKEN as a bearer token and an Actions OIDC token
+in X-GitHub-OIDC-Token (audience https://cao.githubnext.com).
+See the agent analysis guide and server setup documentation:
+https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md#local-mcp-endpoint
+Never put credentials in a URL or in source control.
+`, revision)
 }
 
 func (a *App) events(response http.ResponseWriter, request *http.Request) {

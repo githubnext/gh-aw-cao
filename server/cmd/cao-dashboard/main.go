@@ -27,6 +27,7 @@ import (
 // this build's OpenTelemetry spans. Override it at build time with
 // -ldflags "-X main.version=...", or at runtime with CAO_BUILD_VERSION.
 var version = "dev"
+var revision = "unknown"
 
 const defaultRedisURL = "redis://127.0.0.1:6379/0"
 
@@ -591,6 +592,7 @@ func newServeCommand() *cobra.Command {
 			AgentCatalogPath:     *agentCatalog,
 			MCPContractPath:      *mcpContract,
 			MCPEnabled:           *mcpEnabled,
+			BuildRevision:        revision,
 			GitHubActionsToken:   actionsEnv.Token,
 			GitHubActionsActor:   actionsEnv.Actor,
 			ActionsRepository:    actionsEnv.Repository,
