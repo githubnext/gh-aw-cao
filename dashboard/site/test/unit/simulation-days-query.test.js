@@ -142,7 +142,7 @@ describe('simulation-days intrinsic query source', () => {
     expect(result.ok).toBe(true);
   });
 
-  it('preserves the temporal date through every built-in simulator query and chart', () => {
+  it('projects the 30-day simulator results into a table of sizes and a final total', () => {
     const definitions = authoritativeDashboard.dashboard.queries;
     const compiled = compileDashboardQueryTypes(definitions);
     expect(compiled.errors).toEqual([]);
@@ -150,11 +150,21 @@ describe('simulation-days intrinsic query source', () => {
       'simulator-database-inputs',
       'simulator-run-size',
       'simulator-tool-size',
-      'simulator-issue-size',
-      'simulator-database-size'
+      'simulator-issue-size'
     ]) {
       expect(compiled.queryFields.get(name), name).toContain('date');
     }
+    for (const name of ['simulator-database-size', 'simulator-database-total', 'simulator-database-summary']) {
+      expect(compiled.queryFields.get(name), name).toEqual(['table', 'bytes']);
+    }
+    const page = authoritativeDashboard.dashboard.pages.find(
+      (/** @type {{ id?: string }} */ candidate) => candidate.id === 'simulators'
+    );
+    expect(page.views[0]).toMatchObject({
+      mark: 'table',
+      data: { source: 'simulator-database-summary' },
+      encoding: { columns: [{ field: 'table' }, { field: 'bytes' }] }
+    });
     expect(validateDashboardDocument(authoritativeDashboardSource)).toMatchObject({ ok: true });
   });
 
@@ -182,20 +192,20 @@ describe('simulation-days intrinsic query source', () => {
       return result.rows;
     };
     const defaults = render({});
-    /** @param {Record<string, unknown>[]} rows @param {string} date @param {string} table */
-    const byTable = (rows, date, table) => rows.find((row) => row.date === date && row.table === table);
-    expect(defaults).toHaveLength(90);
-    expect(byTable(defaults, '2025-01-01T00:00:00.000Z', 'Run summaries')?.bytes).toBe(5_120_000);
-    expect(byTable(defaults, '2025-01-01T00:00:00.000Z', 'Tools (30-day TTL)')?.bytes).toBe(20_480_000);
-    expect(byTable(defaults, '2025-01-01T00:00:00.000Z', 'Issues (30-day TTL)')?.bytes).toBe(4_096_000);
-    expect(byTable(defaults, '2025-01-30T00:00:00.000Z', 'Run summaries')?.bytes).toBe(153_600_000);
-    expect(byTable(defaults, '2025-01-30T00:00:00.000Z', 'Tools (30-day TTL)')?.bytes).toBe(614_400_000);
-    expect(byTable(defaults, '2025-01-30T00:00:00.000Z', 'Issues (30-day TTL)')?.bytes).toBe(122_880_000);
+    /** @param {Record<string, unknown>[]} rows @param {string} table */
+    const byTable = (rows, table) => rows.find((row) => row.table === table);
+    expect(defaults).toHaveLength(4);
+    expect(defaults.every((row) => Object.keys(row).sort().join(',') === 'bytes,table')).toBe(true);
+    expect(byTable(defaults, 'Run summaries')?.bytes).toBe(153_600_000);
+    expect(byTable(defaults, 'Tools (30-day TTL)')?.bytes).toBe(614_400_000);
+    expect(byTable(defaults, 'Issues (30-day TTL)')?.bytes).toBe(122_880_000);
+    expect(byTable(defaults, 'Total')?.bytes).toBe(890_880_000);
 
     const changed = render({ repositories: 2000, 'skip-rate': 50 });
-    expect(byTable(changed, '2025-01-30T00:00:00.000Z', 'Run summaries')?.bytes).toBe(307_200_000);
-    expect(byTable(changed, '2025-01-30T00:00:00.000Z', 'Tools (30-day TTL)')?.bytes).toBe(768_000_000);
-    expect(byTable(changed, '2025-01-30T00:00:00.000Z', 'Issues (30-day TTL)')?.bytes).toBe(153_600_000);
+    expect(byTable(changed, 'Run summaries')?.bytes).toBe(307_200_000);
+    expect(byTable(changed, 'Tools (30-day TTL)')?.bytes).toBe(768_000_000);
+    expect(byTable(changed, 'Issues (30-day TTL)')?.bytes).toBe(153_600_000);
+    expect(byTable(changed, 'Total')?.bytes).toBe(1_228_800_000);
   });
 
   it('caps the authored detail-days calculation after the 30-day retention horizon', () => {

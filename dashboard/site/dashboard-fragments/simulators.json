@@ -79,9 +79,9 @@
       "objective": "Show the final estimated size of the modeled database tables.",
       "acceptance": "The final value is the sum of the three modeled table sizes after 30 days.",
       "from": "simulator-database-size",
-      "compute": [{ "as": "table", "function": "literal", "args": [{ "value": "Total" }] }],
-      "aggregate": { "by": ["table"], "values": [{ "field": "bytes", "as": "bytes", "reducer": "sum" }] },
-      "select": [{ "field": "table" }, { "field": "bytes" }]
+      "compute": [{ "as": "total-label", "function": "literal", "args": [{ "value": "Total" }] }],
+      "aggregate": { "by": ["total-label"], "values": [{ "field": "bytes", "as": "bytes", "reducer": "sum" }] },
+      "select": [{ "field": "total-label", "as": "table" }, { "field": "bytes" }]
     },
     {
       "name": "simulator-database-summary",
@@ -128,6 +128,7 @@
           "description": "Modeled data size, not measured storage: 512 bytes per run summary or issue and 256 bytes per tool. Run summaries persist; tool and issue records expire after 30 days. Indexes, metadata, compression, and other tables are excluded.",
           "data": { "source": "simulator-database-summary" },
           "mark": "table",
+          "controls": "static",
           "layout": "full",
           "encoding": {
             "columns": [
