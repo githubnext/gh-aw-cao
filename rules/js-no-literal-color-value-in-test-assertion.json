@@ -2,7 +2,7 @@
   "rule_key": "js-no-literal-color-value-in-test-assertion",
   "schema_version": 1,
   "first_seen": "2026-10-01T14:53:00Z",
-  "last_updated": "2026-10-02T15:53:00Z",
+  "last_updated": "2026-10-02T13:05:59Z",
   "status": "needs-work",
   "affected_languages": [
     "javascript"
