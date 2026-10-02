@@ -152,7 +152,7 @@ describe('simulation-days intrinsic query source', () => {
       'simulator-tool-size',
       'simulator-issue-size'
     ]) {
-      expect(compiled.queryFields.get(name), name).toContain('date');
+      expect(compiled.queryFields.get(name), name).toContain('day');
     }
     for (const name of ['simulator-database-size', 'simulator-database-total', 'simulator-database-summary']) {
       expect(compiled.queryFields.get(name), name).toEqual(['table', 'bytes']);

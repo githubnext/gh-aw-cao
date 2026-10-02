@@ -8791,7 +8791,7 @@
   ],
   "select": [
    {
-    "field": "date"
+    "field": "day"
    },
    {
     "field": "table"
@@ -8835,7 +8835,7 @@
   ],
   "select": [
    {
-    "field": "date"
+    "field": "day"
    },
    {
     "field": "table"
@@ -8879,7 +8879,7 @@
   ],
   "select": [
    {
-    "field": "date"
+    "field": "day"
    },
    {
     "field": "table"
@@ -8903,8 +8903,8 @@
   "filter": {
    "predicates": [
     {
-     "field": "date",
-     "equals": "2025-01-30T00:00:00.000Z"
+     "field": "day",
+     "equals": 30
     }
    ]
   },

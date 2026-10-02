@@ -36,7 +36,7 @@
         { "as": "table", "function": "literal", "args": [{ "value": "Run summaries" }] },
         { "as": "bytes", "function": "product", "args": [{ "field": "summary-runs" }, { "value": 512 }] }
       ],
-      "select": [{ "field": "date" }, { "field": "table" }, { "field": "bytes" }]
+      "select": [{ "field": "day" }, { "field": "table" }, { "field": "bytes" }]
     },
     {
       "name": "simulator-tool-size",
@@ -48,7 +48,7 @@
         { "as": "table", "function": "literal", "args": [{ "value": "Tools (30-day TTL)" }] },
         { "as": "bytes", "function": "product", "args": [{ "field": "detail-runs" }, { "field": "tools-per-run" }, { "value": 256 }] }
       ],
-      "select": [{ "field": "date" }, { "field": "table" }, { "field": "bytes" }]
+      "select": [{ "field": "day" }, { "field": "table" }, { "field": "bytes" }]
     },
     {
       "name": "simulator-issue-size",
@@ -60,7 +60,7 @@
         { "as": "table", "function": "literal", "args": [{ "value": "Issues (30-day TTL)" }] },
         { "as": "bytes", "function": "product", "args": [{ "field": "detail-runs" }, { "field": "issues-per-run" }, { "value": 512 }] }
       ],
-      "select": [{ "field": "date" }, { "field": "table" }, { "field": "bytes" }]
+      "select": [{ "field": "day" }, { "field": "table" }, { "field": "bytes" }]
     },
     {
       "name": "simulator-database-size",
@@ -70,7 +70,7 @@
       "description": "Run summaries accumulate; detailed records have a 30-day TTL.",
       "from": "simulator-run-size",
       "union": ["simulator-tool-size", "simulator-issue-size"],
-      "filter": { "predicates": [{ "field": "date", "equals": "2025-01-30T00:00:00.000Z" }] },
+      "filter": { "predicates": [{ "field": "day", "equals": 30 }] },
       "select": [{ "field": "table" }, { "field": "bytes" }]
     },
     {
