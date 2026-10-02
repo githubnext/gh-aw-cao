@@ -27,7 +27,7 @@ type queryValidation struct {
 func newCompileQueriesCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "compile-queries",
-		Short: "validate dashboard queries with the Go query engine without connecting to a database",
+		Short: "validate dashboard query definitions offline without connecting to a database",
 		Args:  cobra.NoArgs,
 	}
 	fragments := cmd.Flags().String("fragments", "../dashboard/site/dashboard-fragments", "dashboard query fragments directory")

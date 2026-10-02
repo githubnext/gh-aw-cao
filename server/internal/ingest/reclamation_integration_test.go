@@ -73,7 +73,7 @@ func TestFreshNativeIngestionReuseForceAndQueries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(sources["runs"].Rows) != 1 || len(sources["repositories"].Rows) != 1 || len(metrics.FallbackOperations) != 0 {
+	if len(sources["runs"].Rows) != 1 || len(sources["repositories"].Rows) != 1 {
 		t.Fatalf("native corpus did not resolve canonical rows: %+v %+v", sources, metrics)
 	}
 	for _, name := range []string{"unknown", "usage", "repository-memory-manifest"} {

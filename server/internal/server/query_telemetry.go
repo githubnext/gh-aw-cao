@@ -32,6 +32,5 @@ func queryTelemetryAttributes(input queryRequest, result queryResponse) []attrib
 		attribute.Int("cao_dashboard.query.structure.order_by_count", metrics.OrderByCount),
 		attribute.Int("cao_dashboard.query.structure.limit_count", metrics.LimitCount),
 		attribute.Int("cao_dashboard.query.pushed_down_count", len(metrics.PushedDown)),
-		attribute.Int("cao_dashboard.query.fallback_count", len(metrics.FallbackOperations)),
 	}
 }

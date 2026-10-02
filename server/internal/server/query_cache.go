@@ -146,7 +146,7 @@ func (a *App) loadCachedQuery(ctx context.Context, key string, config QueryCache
 	// rate-limit cost or report its duration as a new database execution.
 	result.Metrics = model.Metrics{
 		OutputRows: result.Metrics.OutputRows,
-		PushedDown: []string{}, FallbackOperations: []string{},
+		PushedDown: []string{},
 	}
 	return result, true, nil
 }

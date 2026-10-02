@@ -35,7 +35,6 @@ type Metrics struct {
 	OrderByCount        int      `json:"orderByCount"`
 	LimitCount          int      `json:"limitCount"`
 	PushedDown          []string `json:"pushedDown"`
-	FallbackOperations  []string `json:"fallbackOperations"`
 }
 
 type Diagnostics struct {

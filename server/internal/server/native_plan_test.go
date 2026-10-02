@@ -30,7 +30,7 @@ func TestNativePlanUsesExistingHTTPPaginationContract(t *testing.T) {
 		first.Sources["pick"].Metadata["total-row-count"] != 3 || first.Sources["pick"].ContinuationToken == "" {
 		t.Fatalf("first native page failed: %+v %d %v", first, status, err)
 	}
-	if first.Metrics.RetainedRows != 1 || len(first.Metrics.FallbackOperations) != 0 {
+	if first.Metrics.RetainedRows != 1 {
 		t.Fatalf("pagination decoded whole source or used fallback: %+v", first.Metrics)
 	}
 	input.Pagination["pick"] = paginationRequest{Limit: 1, ContinuationToken: first.Sources["pick"].ContinuationToken}

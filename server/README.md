@@ -201,7 +201,7 @@ with `benchstat` and inspect profiles with `go tool pprof` or
 flowchart LR
   Artifact["Deployed dashboard artifact<br/>inventory + run JSONL + record JSONL"]
   Ingest["Go ingester<br/>verify, parse, project"]
-  Postgres["Postgres<br/>native entity tables + relational evidence"]
+  Postgres["Postgres<br/>native entity tables"]
   Redis["Redis<br/>operational state"]
   API["Go HTTP(S) server<br/>bounded PostgreSQL SQL plans"]
   Browser["Dashboard browser app<br/>render bounded view payloads"]
@@ -890,10 +890,10 @@ The editable representation is `spec/storage.tsp`; its emitter produces the
 standalone `internal/postgresx/schema.sql` and matching Go bindings.
 Eighteen entity tables retain query-consumed fields and identity/storage keys
 only. Scalars use native SQL types; timestamps are returned as UTC RFC3339
-strings. Required structured fields use entity-owned relational child values,
-whose numeric atoms preserve source lexemes, including exponents beyond
-Postgres `NUMERIC`. No canonical JSON/JSONB or serialized documents are stored,
-and canonical scalar rows are not copied into generic source/value tables.
+strings. Nested scalar values are represented by generated columns in their
+owning entity tables. No canonical JSON/JSONB or serialized documents are
+stored, and canonical scalar rows are not copied into generic source/value
+tables.
 Startup only initializes this fresh schema. There is no old-layout detection,
 conversion, backfill, or backward-compatible import. Use a new database and
 re-ingest authoritative inputs when changing the physical contract.

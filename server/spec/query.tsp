@@ -115,7 +115,6 @@ model QueryMetrics {
   orderByCount: int32;
   limitCount: int32;
   pushedDown: string[] | null;
-  fallbackOperations: string[] | null;
 }
 @jsonSchema
 model QueryResponse {

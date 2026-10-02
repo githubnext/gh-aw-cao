@@ -36,9 +36,10 @@ test('the generated contract describes the implemented security and wire formats
   assert.ok(openapi.paths['/api/admin/rebuild'].post.responses['202'])
   assert.ok(openapi.paths['/auth/logout'].post.responses['204'])
   assert.equal(openapi.components.securitySchemes.ApiKeyAuth.name, 'cao_session')
-  for (const field of ['pushedDown', 'fallbackOperations']) {
+  for (const field of ['pushedDown']) {
     assert.ok(openapi.components.schemas.QueryMetrics.properties[field].anyOf.some(branch => branch.type === 'null'))
   }
+  assert.equal(openapi.components.schemas.QueryMetrics.properties.fallbackOperations, undefined)
   for (const field of ['redisCommands', 'redisRows']) {
     assert.equal(openapi.components.schemas.QueryMetrics.properties[field], undefined)
   }

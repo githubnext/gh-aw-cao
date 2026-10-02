@@ -71,6 +71,7 @@ jobs:
           --health-retries 30
     env:
       REDIS_URL: redis://127.0.0.1:6379/0
+      POSTGRES_URL: postgres://postgres@127.0.0.1:5432/cao?sslmode=disable
       CAO_POSTGRES_URL: postgres://postgres@127.0.0.1:5432/cao?sslmode=disable
       DASHBOARD_SERVER_BINARY: ${{ github.workspace }}/.tmp/cao-dashboard
     steps:
