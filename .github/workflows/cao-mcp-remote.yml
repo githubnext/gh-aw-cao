@@ -32,13 +32,4 @@ jobs:
       - name: Verify deployed MCP
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          for attempt in $(seq 1 20); do
-            if node --test tests/e2e/cao-mcp-remote.mjs; then
-              exit 0
-            fi
-            if [ "$attempt" -eq 20 ]; then
-              exit 1
-            fi
-            sleep 30
-          done
+        run: node --test tests/e2e/cao-mcp-remote.mjs
