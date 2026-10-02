@@ -70,7 +70,7 @@ model QuotaUsage {
   buckets: QuotaPoint[];
   aggregate: QuotaAggregate[];
 }
-@example(#{timestamp: utcDateTime.fromISO("2026-10-02T19:00:00Z"), namespace: "cao:server", message: "listener ready"})
+@example(#{timestamp: "2026-10-02T19:00:00Z", namespace: "cao:server", message: "listener ready"})
 model ServerLogRecord {
   timestamp: utcDateTime;
   namespace: string;
