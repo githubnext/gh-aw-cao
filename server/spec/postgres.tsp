@@ -46,6 +46,8 @@ model CanonicalRow {
   targetRepositoryId?: string | null;
   /** Owning workflow relationship; indexed with namespace and source. */
   workflowId?: string | null;
+  /** Canonical observation generation, indexed with namespace and source. */
+  generation?: string | null;
   owner?: string | null;
   repository?: string | null;
   name?: string | null;

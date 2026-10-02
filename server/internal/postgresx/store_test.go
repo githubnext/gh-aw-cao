@@ -143,7 +143,7 @@ func TestStoreIntegration(t *testing.T) {
 			Source: "$runs",
 			Rows: []model.Row{
 				{"id": "raw-1", "runId": nil, "status": "completed", "enabled": true,
-					"targetRepositoryId": "repository:target",
+					"targetRepositoryId": "repository:target", "generation": "snapshot-1",
 					"organizationLink": map[string]any{"href": "https://github.com/githubnext"},
 					"githubId":         json.Number("9007199254740993"),
 					"githubRunId":      "00123", "attempt": json.Number("9007199254740993"),
@@ -168,7 +168,7 @@ func TestStoreIntegration(t *testing.T) {
 		"$jobs": {
 			Source: "$jobs",
 			Rows: []model.Row{
-				{}, {}, {"id": json.Number("1e1000000")}, {},
+				{"generation": nil}, {"generation": ""}, {"id": json.Number("1e1000000")}, {},
 				{"id": "42"}, {},
 			},
 		},
@@ -213,6 +213,15 @@ func TestStoreIntegration(t *testing.T) {
 			[]string{"by-target"}, []string{"by-target"})
 		if planErr != nil || !supported || !reflect.DeepEqual(result["by-target"].Rows, sources["$runs"].Rows) {
 			t.Errorf("native target relationship predicate: %+v supported=%t err=%v", result, supported, planErr)
+		}
+		byGeneration := []query.Definition{{
+			Name: "by-generation", From: "$runs",
+			Filter: &query.Filter{Predicates: []query.Predicate{{Field: "generation", Equals: "snapshot-1"}}},
+		}}
+		result, _, supported, planErr = reader.(NativePlanExecutor).ExecuteNativePlan(ctx, byGeneration,
+			[]string{"by-generation"}, []string{"by-generation"})
+		if planErr != nil || !supported || !reflect.DeepEqual(result["by-generation"].Rows, sources["$runs"].Rows) {
+			t.Errorf("native generation predicate: %+v supported=%t err=%v", result, supported, planErr)
 		}
 		return nil
 	})
@@ -291,7 +300,7 @@ func TestStoreIntegration(t *testing.T) {
 				{Field: "runId"}, {Field: "createdAt"}, {Field: "attempt"},
 				{Field: "sequence"}, {Field: "enabled"}, {Field: "githubId"},
 				{Field: "githubRunId"}, {Field: "organizationLink"},
-				{Field: "provenance"}, {Field: "nested"}, {Field: "missingValue"},
+				{Field: "provenance"}, {Field: "nested"}, {Field: "generation"}, {Field: "missingValue"},
 			},
 		}}
 		result, _, supported, planErr := reader.(NativePlanExecutor).ExecuteNativePlan(ctx, defs,
@@ -303,6 +312,7 @@ func TestStoreIntegration(t *testing.T) {
 			"organizationLink": map[string]any{"href": "https://github.com/githubnext"},
 			"provenance":       sources["$runs"].Rows[0]["provenance"],
 			"nested":           sources["$runs"].Rows[0]["nested"],
+			"generation":       "snapshot-1",
 		}
 		if planErr != nil || !supported || !reflect.DeepEqual(result["selected-run"].Rows, []model.Row{want}) {
 			t.Errorf("native typed selection: result=%+v supported=%t err=%v", result, supported, planErr)
@@ -360,6 +370,22 @@ func TestStoreIntegration(t *testing.T) {
 		FROM cao_canonical_rows WHERE namespace = $2 AND source_name = '$runs' AND ordinal = 0`,
 		"repository:target", "default").Scan(&targetNative); err != nil || !targetNative {
 		t.Fatalf("target repository was not stored exclusively in a native column: %t, %v", targetNative, err)
+	}
+	var nativeGeneration bool
+	if err := store.db.QueryRowContext(ctx, `SELECT generation = 'snapshot-1'
+		AND NOT EXISTS (SELECT 1 FROM json_object_keys(extension) AS key WHERE key = 'generation')
+		FROM cao_canonical_rows WHERE namespace = 'default' AND source_name = '$runs' AND ordinal = 0`).
+		Scan(&nativeGeneration); err != nil || !nativeGeneration {
+		t.Fatalf("generation was not stored exclusively in a native column: %t, %v", nativeGeneration, err)
+	}
+	var preservedPresence bool
+	if err := store.db.QueryRowContext(ctx, `SELECT bool_and(
+		(ordinal = 0 AND generation IS NULL AND 'generation' = ANY(present)) OR
+		(ordinal = 1 AND generation = '' AND 'generation' = ANY(present)) OR
+		(ordinal = 3 AND generation IS NULL AND NOT 'generation' = ANY(present)))
+		FROM cao_canonical_rows WHERE namespace = 'default' AND source_name = '$jobs'
+			AND ordinal IN (0, 1, 3)`).Scan(&preservedPresence); err != nil || !preservedPresence {
+		t.Fatalf("generation missing/null/empty distinction was not preserved: %t, %v", preservedPresence, err)
 	}
 	if _, err := store.db.ExecContext(ctx, `INSERT INTO cao_canonical_rows
 		(namespace, source_name, ordinal, present, extension, github_id, github_id_kind)
@@ -1176,7 +1202,7 @@ func TestCanonicalExtensionColumnUpgrade(t *testing.T) {
 		`ALTER TABLE cao_canonical_rows ALTER COLUMN extension SET NOT NULL`,
 		`ALTER TABLE cao_canonical_rows
 			DROP COLUMN agent_id, DROP COLUMN failure_message,
-			DROP COLUMN target_repository_id,
+			DROP COLUMN target_repository_id, DROP COLUMN generation,
 			DROP COLUMN evidence_window_start, DROP COLUMN evidence_window_start_raw,
 			DROP COLUMN attributable_run_ids, DROP COLUMN events_truncated,
 			DROP COLUMN value, DROP COLUMN value_raw, DROP COLUMN value_text,
@@ -1194,7 +1220,7 @@ func TestCanonicalExtensionColumnUpgrade(t *testing.T) {
 			WHERE source_name = '$runs'`,
 		`UPDATE cao_canonical_rows SET extension = json_build_object(
 			'agentId', 'agent-' || ordinal, 'failureMessage', null,
-			'targetRepositoryId', 'repository:target',
+			'targetRepositoryId', 'repository:target', 'generation', 'snapshot-1',
 			'evidenceWindowStart', '2026-09-01T10:11:12.123456789Z',
 			'attributableRunIds', json_build_array('run-' || ordinal),
 			'eventsTruncated', true, 'value', 'text evidence',
@@ -1254,7 +1280,7 @@ func TestCanonicalExtensionColumnUpgrade(t *testing.T) {
 	}
 	for i, row := range source.Rows {
 		if row["id"] != input[i]["id"] || row["runId"] != nil || row["status"] != "completed" ||
-			row["targetRepositoryId"] != "repository:target" ||
+			row["targetRepositoryId"] != "repository:target" || row["generation"] != "snapshot-1" ||
 			row["agentId"] != fmt.Sprintf("agent-%d", i) || row["failureMessage"] != nil ||
 			row["evidenceWindowStart"] != "2026-09-01T10:11:12.123456789Z" ||
 			row["eventsTruncated"] != true || row["value"] != "text evidence" ||
@@ -1271,7 +1297,9 @@ func TestCanonicalExtensionColumnUpgrade(t *testing.T) {
 	var migratedTarget bool
 	if err := upgraded.db.QueryRowContext(ctx, `SELECT bool_and(
 		target_repository_id = 'repository:target'
-		AND NOT EXISTS (SELECT 1 FROM json_object_keys(extension) AS key WHERE key = 'targetRepositoryId'))
+		AND generation = 'snapshot-1'
+		AND NOT EXISTS (SELECT 1 FROM json_object_keys(extension) AS key
+			WHERE key IN ('targetRepositoryId', 'generation')))
 		FROM cao_canonical_rows WHERE namespace = 'default' AND source_name = '$runs'`).
 		Scan(&migratedTarget); err != nil || !migratedTarget {
 		t.Fatalf("target relationship was not backfilled into native columns: %t, %v", migratedTarget, err)

@@ -144,7 +144,7 @@ func initialize(ctx context.Context, db *sql.DB) error {
 			namespace TEXT NOT NULL, source_name TEXT NOT NULL, ordinal BIGINT NOT NULL,
 			present TEXT[] NOT NULL, extension JSON,
 			id TEXT, run_id TEXT, session_id TEXT, repository_id TEXT,
-			target_repository_id TEXT, workflow_id TEXT,
+			target_repository_id TEXT, workflow_id TEXT, generation TEXT,
 			status TEXT, conclusion TEXT, event TEXT,
 			owner TEXT, repository TEXT, name TEXT, full_name TEXT, path TEXT,
 			visibility TEXT, state TEXT, campaign TEXT, campaign_id TEXT,
@@ -332,7 +332,7 @@ func initialize(ctx context.Context, db *sql.DB) error {
 	}
 	for _, column := range []string{
 		"experiment_id", "grader_id", "eval_id", "audit_id", "value_id",
-		"registry_id", "campaign_id", "slug", "target_repository_id",
+		"registry_id", "campaign_id", "slug", "target_repository_id", "generation",
 	} {
 		if _, err = tx.ExecContext(ctx, `CREATE INDEX IF NOT EXISTS cao_canonical_rows_`+column+
 			` ON cao_canonical_rows (namespace, source_name, `+column+`) WHERE `+column+` IS NOT NULL`); err != nil {
