@@ -77,7 +77,7 @@ import {
  */
 
 /**
- * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, experimental?: boolean, ['filter-bar']?: boolean, ['view-mode-control']?: boolean, ['pull-refresh']?: boolean, ['mode-indicator']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string, ['title-format']?: 'title-case' }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
+ * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, experimental?: boolean, ['filter-bar']?: boolean, ['view-mode-control']?: boolean, ['pull-refresh']?: boolean, ['mode-indicator']?: boolean, ['retain-on-navigation']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string, ['availability-view']?: string, ['availability-message']?: string, ['partial-message']?: string, ['title-format']?: 'title-case' }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
  */
 
 /**
@@ -1140,19 +1140,19 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       octicon('alert'),
       h('div', { className: 'view-state-card-body' },
        h('h2', null, `${title} unavailable`),
-       h('p', null, 'CAO could not load this package. It may have been removed, or Marketplace data may be temporarily unavailable.'),
+       h('p', null, page.route?.['availability-message'] ?? 'This item could not be loaded. It may have been removed or temporarily unavailable.'),
        h('div', { className: 'package-recovery-actions' },
          h('button', {
            type: 'button',
            className: 'button',
            onclick: () => root.dispatchEvent(new CustomEvent('dashboard-retry-page', { bubbles: true }))
          }, 'Retry'),
-         h('a', { className: 'button', href: `#page-${routeNavigationPage}` }, `Back to ${routeNavigationPage === 'marketplace' ? 'Marketplace' : routeNavigationPage}`)
+         h('a', { className: 'button', href: `#page-${routeNavigationPage}` }, `Back to ${titleCase(routeNavigationPage)}`)
        )
       )
     );
     const partial = h('p', { className: 'view-state-card', role: 'status' },
-      'Some package information could not be retrieved. Available details are shown below.');
+      page.route?.['partial-message'] ?? 'Some information could not be retrieved. Available details are shown below.');
     root.insertBefore(failure, renderedContent);
     root.insertBefore(partial, renderedContent);
     const updateAvailability = () => {
@@ -1165,7 +1165,8 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       const incomplete = !unavailable && !pending && source?.metadata?.completeness === 'partial';
       failure.hidden = !unavailable;
       partial.hidden = !incomplete;
-      renderedContent.hidden = unavailable;
+      if (unavailable) renderedContent.remove();
+      else if (!renderedContent.isConnected) root.append(renderedContent);
       if (renderedRouteTabs) renderedRouteTabs.hidden = unavailable;
     };
     if (binding) effect(updateAvailability, { signal: binding.signal });

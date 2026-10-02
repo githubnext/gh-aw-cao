@@ -749,6 +749,11 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .custom-view[data-view-layout="half"] { grid-column: span 6; }
 .custom-view[data-view-layout="third"] { grid-column: span 4; }
 .view-state-card { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 10px; margin: 12px 0; padding: 12px 14px; border: 1px solid var(--border); border-left-width: 4px; border-radius: 0; background: var(--canvas-subtle); color: var(--fg); font-size: .875rem; }
+.view-state-card[hidden], .page-layout-grid[hidden] { display: none; }
+.package-recovery-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.package-recovery-actions :is(button, a) { display: inline-flex; min-height: 40px; align-items: center; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--fg); font: inherit; text-decoration: none; cursor: pointer; }
+.package-recovery-actions button { border-color: var(--accent); background: var(--accent); color: var(--canvas); }
+.package-recovery-actions :is(button, a):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .view-state-card > .octicon { width: 16px; height: 16px; margin-top: 1px; color: var(--muted); }
 .view-state-card[data-view-state="unavailable"] { border-color: color-mix(in srgb, var(--attention) 45%, var(--border)); border-left-color: var(--attention); background: var(--attention-muted); }
 .view-state-card[data-view-state="unavailable"] > .octicon { color: var(--attention); }

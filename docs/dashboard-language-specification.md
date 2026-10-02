@@ -52,6 +52,15 @@ Sections containing numbered requirements are normative. Examples, notes, ration
 
 ## 1. Introduction
 
+A custom page MAY set `retain-on-navigation: true` to preserve its loaded view and
+interaction state while another dashboard route is active. A route MAY set
+`availability-view` to the ID of a view on that page: when its declared source
+cannot produce a selected row, the presenter shows a single recovery state
+instead of the page's ordinary sections. An incomplete but available source
+retains the page content with an explicit partial-data notice. Routes MAY supply
+`availability-message` and `partial-message` to explain those states in
+user-facing terms.
+
 ### 1.1 Purpose
 
 The Dashboard Language provides a portable vocabulary for defining what an agentic-operations dashboard communicates without prescribing how data is fetched, stored, cached, deployed, or rendered.

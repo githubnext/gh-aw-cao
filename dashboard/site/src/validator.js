@@ -1705,6 +1705,13 @@ function validatePage(page, pageNode, path, pageIds, errors) {
       `${path}.mode-indicator`
     ));
   }
+  if (page['retain-on-navigation'] !== undefined && typeof page['retain-on-navigation'] !== 'boolean') {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'retain-on-navigation must be a Boolean when present.',
+      `${path}.retain-on-navigation`
+    ));
+  }
   validatePageForm(page.form, getValueNodeByKey(pageNode, 'form'), `${path}.form`, errors);
   if (page.icon !== undefined) {
     validateStringField(page.icon, `${path}.icon`, true, errors);
@@ -2373,11 +2380,21 @@ function validateCustomPage(page, pageNode, path, errors) {
           'route availability view',
           errors
         );
-        if (!page.views.some((view) => isPlainObject(view) && view.id === page.route['availability-view'])) {
+        const availabilityViewId = page.route['availability-view'];
+        if (!Array.isArray(page.views) || !page.views.some((view) => isPlainObject(view) && view.id === availabilityViewId)) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
             'route availability-view must reference a view on this page.',
             `${routePath}.availability-view`
+          ));
+        }
+      }
+      for (const key of ['availability-message', 'partial-message']) {
+        if (page.route[key] !== undefined && (typeof page.route[key] !== 'string' || !page.route[key].trim())) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            `${key} must be a non-empty string when present.`,
+            `${routePath}.${key}`
           ));
         }
       }

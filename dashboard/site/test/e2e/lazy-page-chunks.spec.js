@@ -377,6 +377,64 @@ test('marketplace page renders canonical package cards after ingestion', async (
   expect(aboutBox?.x ?? 0).toBeGreaterThan((readmeBox?.x ?? 0) + (readmeBox?.width ?? 0));
 });
 
+test('package detail failure offers recovery without rendering unrelated sections', async ({ page }) => {
+  await page.goto(`${origin}/#page-marketplace-package?package-source=missing-package`);
+  const detail = page.locator('[data-page-id="marketplace-package"]');
+  await expect(detail.getByRole('heading', { name: 'Package unavailable' })).toBeVisible();
+  await expect(detail).toContainText('It may have been removed');
+  await expect(detail).not.toContainText('marketplace-package-detail');
+  await expect(detail.getByRole('heading', { name: 'README' })).toBeHidden();
+  await expect(detail.getByRole('heading', { name: 'About' })).toBeHidden();
+  await expect(detail.getByRole('button', { name: 'Retry' })).toBeVisible();
+  await detail.getByRole('button', { name: 'Retry' }).click();
+  await expect(detail.getByRole('heading', { name: 'Package unavailable' })).toBeVisible();
+  await detail.getByRole('link', { name: 'Back to Marketplace' }).click();
+  await expect(page.locator('[data-page-id="marketplace"] .entity-card-list-card')).toHaveCount(3);
+});
+
+test('a partially loaded package keeps its metadata and identifies incomplete data', async ({ context, page }) => {
+  await context.route(`${origin}/inventory-sources.json`, (route) => route.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({
+      ...inventory,
+      'marketplace-packages': {
+        ...inventory['marketplace-packages'],
+        metadata: { ...inventory['marketplace-packages'].metadata, completeness: 'partial' }
+      }
+    })
+  }));
+  await page.goto(`${origin}/#page-marketplace`);
+  await page.locator('[data-page-id="marketplace"] .entity-card-list-card')
+    .filter({ hasText: 'Dependabot' }).getByRole('link', { name: 'Dependabot' }).click();
+  const detail = page.locator('[data-page-id="marketplace-package"]');
+  await expect(detail).toContainText('Some package information could not be retrieved');
+  await expect(detail.locator('.entity-card-list-card')).toHaveCount(1);
+  await expect(detail.getByRole('heading', { name: 'Package unavailable' })).toBeHidden();
+});
+
+test('Marketplace is restored immediately after viewing a package without reloading the document', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 640 });
+  /** @type {string[]} */
+  const documentLoads = [];
+  page.on('request', (request) => {
+    if (request.isNavigationRequest()) documentLoads.push(request.url());
+  });
+  await page.goto(`${origin}/#page-marketplace`);
+  const marketplace = page.locator('[data-page-id="marketplace"]');
+  await expect(marketplace.locator('.entity-card-list-card')).toHaveCount(3);
+  const scrollBefore = await page.locator('main.dashboard-prototype').evaluate((main) => {
+    main.scrollTop = 120;
+    return main.scrollTop;
+  });
+  const card = marketplace.locator('.entity-card-list-card').filter({ hasText: 'AW Optimization' });
+  await card.getByRole('link', { name: 'AW Optimization' }).click();
+  await expect(page.locator('[data-page-id="marketplace-package"] .entity-card-list-card')).toHaveCount(1);
+  await page.goBack();
+  await expect(marketplace.locator('.entity-card-list-card')).toHaveCount(3);
+  await expect.poll(() => page.locator('main.dashboard-prototype').evaluate((main) => main.scrollTop)).toBe(scrollBefore);
+  expect(documentLoads).toHaveLength(1);
+});
+
 test('deep links and redirect routes fetch only the requested initial page chunk', async ({ page }) => {
   const hashChunkRequests = captureChunkRequests(page);
   await page.goto(`${origin}/#page-runs`);

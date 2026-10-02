@@ -1389,7 +1389,9 @@
       "route": {
         "hash-query-parameter": "package-source",
         "navigation-page": "marketplace",
-        "availability-view": "marketplace-package-detail"
+        "availability-view": "marketplace-package-detail",
+        "availability-message": "CAO could not load this package. It may have been removed, or Marketplace data may be temporarily unavailable.",
+        "partial-message": "Some package information could not be retrieved. Available details are shown below."
       },
       "views": [
         {
