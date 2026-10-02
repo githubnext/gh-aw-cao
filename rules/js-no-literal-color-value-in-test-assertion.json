@@ -2,8 +2,12 @@
   "rule_key": "js-no-literal-color-value-in-test-assertion",
   "schema_version": 1,
   "first_seen": "2026-10-01T14:53:00Z",
-  "last_updated": "2026-10-01T19:03:40Z",
-  "status": "needs-work",
+  "last_updated": "2026-10-02T03:57:05Z",
+  "status": "deprecated",
+  "deprecation": {
+    "reason": "Across its only two refiner evaluations (refiner-36887337909-1, refiner-36950555650-1), true-positive count stayed flat at 1 while false-positive count rose from 11 to 15 with zero narrowing progress.",
+    "txn_id": "librarian-36962106986-1"
+  },
   "affected_languages": [
     "javascript"
   ],
