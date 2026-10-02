@@ -362,7 +362,7 @@
       { "field": "reasoningTokens", "as": "reasoning-tokens" },
       { "field": "aicTotal", "as": "aic" },
       { "field": "estimated-usd" },
-      { "field": "observedAt", "as": "observed-at" },
+      { "field": "completedAt", "as": "observed-at" },
       { "field": "organizationLink", "as": "organization-link" },
       { "field": "repositoryLink", "as": "repository-link" },
       { "field": "workflowLink", "as": "workflow-link" },
