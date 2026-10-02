@@ -71,6 +71,27 @@ it('does not emit scheduled work after the form is detached', () => {
   expect(onChange).not.toHaveBeenCalled();
 });
 
+it('stops writing the slider readout once the field detaches from the document', async () => {
+  const form = renderDashboardForm({
+    fields: [{ id: 'workers', label: 'Workers', control: 'slider', default: 2, min: 1, max: 10, step: 1 }]
+  }, undefined, () => {});
+  document.body.append(form);
+  const slider = /** @type {HTMLInputElement} */ (form.querySelector('input'));
+  const output = /** @type {HTMLOutputElement} */ (form.querySelector('output'));
+
+  slider.value = '5';
+  slider.dispatchEvent(new Event('input'));
+  expect(output.textContent).toBe('5');
+
+  form.remove();
+  // Let the MutationObserver microtask backing createFactoryScope run.
+  await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+  slider.value = '9';
+  slider.dispatchEvent(new Event('input'));
+  expect(output.textContent).toBe('5');
+});
+
 it('is disabled by default (no debug output) when the debug query is absent', async () => {
   const output = { debug: vi.fn() };
   vi.doMock('../../src/debug.js', async () => {

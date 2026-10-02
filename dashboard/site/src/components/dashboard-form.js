@@ -1,6 +1,8 @@
 import { h } from '../dom.js';
 import { debounce, throttle } from '../debounce.js';
 import { createDebug } from '../debug.js';
+import { state, effect } from '../reactive.js';
+import { createFactoryScope } from './factory-elements.js';
 
 const DEFAULT_DELAY_MS = 250;
 
@@ -108,7 +110,17 @@ export function renderDashboardForm(definition, currentValues, onChange, idPrefi
         }))
       );
     }
+    // `sliderText` is this readout's entire visible run state; the effect
+    // below is the only place that writes it onto the owned `output` node,
+    // matching the `createCopyControl` (`ui-primitives.js`) state/effect/
+    // `createFactoryScope` shape for owned interactive DOM.
+    const sliderScope = createFactoryScope();
+    const sliderText = state(String(values[id]));
     const output = h('output', { htmlFor: controlId }, String(values[id]));
+    effect(() => {
+      output.textContent = sliderText.get();
+    }, { signal: sliderScope.signal });
+    sliderScope.bind(output);
     const input = /** @type {HTMLInputElement} */ (h('input', {
       id: controlId,
       type: 'range',
@@ -120,7 +132,7 @@ export function renderDashboardForm(definition, currentValues, onChange, idPrefi
     }));
     input.addEventListener('input', () => {
       values[id] = Number(input.value);
-      output.textContent = input.value;
+      sliderText.set(input.value);
       schedule();
     });
     return h('div', { className: 'dashboard-parameter-field dashboard-parameter-slider' },
