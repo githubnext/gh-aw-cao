@@ -81,8 +81,11 @@ test('hosted MCP lists tools, inspects the catalog, and executes a named query',
 
   const catalog = await call('tools/call', { name: 'cao_catalog', arguments: { kind: 'queries' } });
   assert.notEqual(catalog.isError, true);
-  assert.ok(Array.isArray(catalog.structuredContent?.queries));
-  assert.ok(catalog.structuredContent.queries.some(({ id }) => id === 'database-campaign-count'));
+  console.log('Hosted MCP query catalog:', JSON.stringify(catalog.structuredContent, null, 2));
+  assert.ok(Array.isArray(catalog.structuredContent?.queries), 'Hosted MCP must return a query catalog');
+  assert.ok(catalog.structuredContent.queries.length > 0, 'Hosted MCP query catalog must not be empty');
+  assert.ok(catalog.structuredContent.queries.some(({ id }) => id === 'database-campaign-count'),
+    'Hosted MCP query catalog must contain database-campaign-count');
 
   const query = await call('tools/call', { name: 'cao_query', arguments: { id: 'database-campaign-count', limit: 1 } });
   assert.equal(query.structuredContent?.query, 'database-campaign-count');
