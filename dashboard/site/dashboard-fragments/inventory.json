@@ -32,11 +32,13 @@
       }
     },
     {
-      "name": "entity-events",
-      "subject": "Project all run-owned records for reusable cards and run drill-down.",
-      "objective": "Expose run-owned event identity, status, provenance, timestamp, and available navigation links for inspection.",
-      "acceptance": "Projected event fields and fallback URL trace to the source record; a missing link or event is not proof of no output, and event status alone does not verify downstream impact.",
-      "from": "event-base",
+      "name": "entity-event-records",
+      "subject": "Project compact retained event records and their fallback navigation URL.",
+      "objective": "Resolve event links once before request-scoped output searching and ordering.",
+      "acceptance": "Preserve audit-first union availability, weakest quality, oldest provenance, and safe-output/correlation/implementation URL priority; absent records do not prove no activity.",
+      "description": "Resolve links in the compact event projection so the ordered consumer does not project every event again.",
+      "from": "audits",
+      "union": ["domains", "tools", "issues"],
       "compute": [
         {
           "as": "event-url",
@@ -101,7 +103,14 @@
         {
           "field": "run-link"
         }
-      ],
+      ]
+    },
+    {
+      "name": "entity-events",
+      "subject": "Project all run-owned records for reusable cards and run drill-down.",
+      "objective": "Expose run-owned event identity, status, provenance, timestamp, and available navigation links for inspection.",
+      "acceptance": "Projected event fields and fallback URL trace to the source record; a missing link or event is not proof of no output, and event status alone does not verify downstream impact.",
+      "from": "entity-event-records",
       "order-by": [
         {
           "field": "observed-at",

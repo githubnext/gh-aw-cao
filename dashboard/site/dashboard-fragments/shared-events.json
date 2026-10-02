@@ -1,37 +1,6 @@
 {
   "queries": [
     {
-      "name": "event-base",
-      "subject": "Project shared event fields before combining run-owned records.",
-      "objective": "Provide the narrow retained event evidence needed for inspection and run import-coverage analysis.",
-      "acceptance": "The result unions retained audit, domain, tool, and issue records with their available run identity; an empty or unavailable preview cannot establish zero source activity or complete import coverage.",
-      "from": "audits",
-      "union": [
-        "domains",
-        "tools",
-        "issues"
-      ],
-      "select": [
-        { "field": "organization" },
-        { "field": "repository" },
-        { "field": "workflow" },
-        { "field": "run" },
-        { "field": "run-attempt" },
-        { "field": "event" },
-        { "field": "event-source" },
-        { "field": "event-type" },
-        { "field": "event-summary" },
-        { "field": "event-status" },
-        { "field": "github-entity-type" },
-        { "field": "safe-output-type" },
-        { "field": "safe-output-url" },
-        { "field": "correlation-id" },
-        { "field": "implementation-pull-request-url" },
-        { "field": "event-timestamp" },
-        { "field": "run-link" }
-      ]
-    },
-    {
       "name": "audit-event-runs",
       "subject": "Count imported audit records per run before combining event sources.",
       "objective": "Bound audit evidence for run import-coverage analysis.",
@@ -101,145 +70,59 @@
       }
     },
     {
-      "name": "run-import-status",
-      "subject": "Identify observed runs that have one or more imported run-owned records.",
-      "objective": "Compare observed run attempts with retained run-owned event evidence to locate import-coverage gaps for investigation.",
-      "acceptance": "Keep each observed run and its run-attempt identity; imported-event-count is zero and imported is false without a matching retained event, but missing events alone do not establish an ingestion failure.",
-      "description": "Observed runs enriched with imported-record status.",
+      "name": "workflow-inventory-run-totals",
+      "subject": "Summarize retained run attempts, conclusions, and import coverage for workflow inventory.",
+      "objective": "Aggregate import status without retaining a second enriched copy of every run.",
+      "acceptance": "Preserve distinct run-attempt counts, conclusion counts, imported-run totals, and all four event sources' quality; absent import evidence is not proof of ingestion failure.",
       "from": "runs",
       "joins": [
         {
           "source": "event-runs",
           "type": "left",
           "on": [
-            {
-              "left": "organization",
-              "right": "organization"
-            },
-            {
-              "left": "repository",
-              "right": "repository"
-            },
-            {
-              "left": "workflow",
-              "right": "workflow"
-            },
-            {
-              "left": "run",
-              "right": "run"
-            },
-            {
-              "left": "run-attempt",
-              "right": "run-attempt"
-            }
+            { "left": "organization", "right": "organization" },
+            { "left": "repository", "right": "repository" },
+            { "left": "workflow", "right": "workflow" },
+            { "left": "run", "right": "run" },
+            { "left": "run-attempt", "right": "run-attempt" }
           ],
-          "fields": [
-            {
-              "field": "events",
-              "as": "imported-events"
-            }
-          ]
+          "fields": [{ "field": "events", "as": "imported-events" }]
         }
       ],
       "compute": [
         {
           "as": "imported-event-count",
           "function": "coalesce",
-          "args": [
-            {
-              "field": "imported-events"
-            },
-            {
-              "value": 0
-            }
-          ]
+          "args": [{ "field": "imported-events" }, { "value": 0 }]
         },
         {
           "as": "imported",
           "function": "greater-than",
-          "args": [
-            {
-              "field": "imported-event-count"
-            },
-            {
-              "value": 0
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "workflow-run-totals",
-      "subject": "Summarize observed run counts and imported runs by declared workflow.",
-      "objective": "Compare observed run attempts, conclusions, and imported-record coverage for each workflow.",
-      "acceptance": "Group by organization, repository, and workflow; report distinct run-attempt totals, successful and failed conclusion counts, and imported-run totals only from retained evidence. Missing run records cannot establish zero execution.",
-      "description": "Observed run and imported-run totals for each declared workflow.",
-      "from": "run-import-status",
-      "compute": [
+          "args": [{ "field": "imported-event-count" }, { "value": 0 }]
+        },
         {
           "as": "run-attempt-identity",
           "function": "concat",
-          "args": [
-            {
-              "field": "run"
-            },
-            {
-              "value": ":"
-            },
-            {
-              "field": "run-attempt"
-            }
-          ]
+          "args": [{ "field": "run" }, { "value": ":" }, { "field": "run-attempt" }]
         }
       ],
       "aggregate": {
-        "by": [
-          "organization",
-          "repository",
-          "workflow"
-        ],
+        "by": ["organization", "repository", "workflow"],
         "values": [
-          {
-            "field": "run-attempt-identity",
-            "as": "runs",
-            "reducer": "distinct-count"
-          },
+          { "field": "run-attempt-identity", "as": "runs", "reducer": "distinct-count" },
           {
             "field": "run-conclusion",
             "as": "successful-runs",
             "reducer": "count",
-            "filter": {
-              "predicates": [
-                {
-                  "field": "run-conclusion",
-                  "equals": "success"
-                }
-              ]
-            }
+            "filter": { "predicates": [{ "field": "run-conclusion", "equals": "success" }] }
           },
           {
             "field": "run-conclusion",
             "as": "failed-runs",
             "reducer": "count",
-            "filter": {
-              "predicates": [
-                {
-                  "field": "run-conclusion",
-                  "in": [
-                    "failure",
-                    "startup-failure",
-                    "stale",
-                    "timed-out"
-                  ]
-                }
-              ]
-            }
+            "filter": { "predicates": [{ "field": "run-conclusion", "in": ["failure", "startup-failure", "stale", "timed-out"] }] }
           },
-          {
-            "field": "imported",
-            "as": "imported-runs",
-            "reducer": "sum"
-          }
+          { "field": "imported", "as": "imported-runs", "reducer": "sum" }
         ]
       }
     },

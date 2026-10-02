@@ -432,7 +432,7 @@
       "from": "workflows",
       "joins": [
         {
-          "source": "workflow-run-totals",
+          "source": "workflow-inventory-run-totals",
           "type": "left",
           "on": [
             {
