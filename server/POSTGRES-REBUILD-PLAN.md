@@ -9,28 +9,31 @@ generic canonical/source machinery. This is a new project with a fresh database:
 **no old-database migration, backward compatibility, dual writes, alternate
 readers, or old-format fallback.**
 
-This document is a follow-on implementation plan, not a claim that the complete
-SQL engine has already been built.
+This document records the original native-Postgres cutover goals and the
+remaining verification work. The production server now executes hosted query
+plans as SQL; the historical step descriptions below are not a claim that the
+pre-cutover fallback architecture remains active.
 
 ## Starting point
 
-The current change establishes eighteen query-minimal entity tables, native
-scalar types, compact missing/null presence bits, and entity-owned relational
-children. SQL DDL and Go column bindings are generated from TypeSpec. Canonical
-scalar rows are no longer duplicated in generic storage, and no canonical
-JSON/JSONB or serialized row documents are persisted. Initialization is
-fresh-only.
+The current implementation initializes eighteen TypeSpec-generated native
+entity tables, uses compact missing/null presence bits, and stores canonical
+data without generic row/value tables or serialized documents. Ingestion streams
+manifested shards through a bounded batched writer and publishes entities,
+quality metadata, and revision atomically. The hosted SQL compiler executes
+Dashboard Language plans in PostgreSQL; Redis remains operational state and
+bounded response cache.
 
 The work still to replace is concrete:
 
 | Surface | Current implementation | Replacement |
 | --- | --- | --- |
-| Ingestion | `internal/ingest/ingest.go` accumulates canonical row maps and logical sources before `Store.Replace` | Streaming, typed ingestion into the generated tables |
-| Structured evidence | Entity-owned `*_values` trees and `ChildValue` | Explicit TypeSpec child models, typed relationships, or query-required scalar columns |
-| Auxiliary data and metadata | `cao_sources`, `cao_source_rows`, `cao_values`, generic source names and metadata trees | Explicit typed inputs and minimal typed publication metadata |
-| State and diagnostics | Generic count/error tables and presence sentinels | Required state/quality fields and SQL-derived diagnostics only |
-| Hosted queries | `internal/postgresx/plan.go` handles a small scalar slice; `internal/query/engine.go` evaluates other shapes in Go | Complete Dashboard Language-to-SQL compilation and bounded SQL execution |
-| Read APIs | Generic `SourceReader`, `LoadSource`, and `LoadDocument` | Generated table bindings, typed lookup methods, and compiled SQL result reads |
+| Ingestion | Manifest-verified phased streaming into bounded native-table batches | Keep generated table bindings and source validation aligned; verify memory bounds and atomic publication |
+| Structured evidence | Query-consumed fields are represented in the TypeSpec-generated entity tables; no generic value trees/documents | Keep schema/query field coverage current; use typed columns or relational fields, never generic persisted values |
+| Auxiliary data and metadata | Explicit typed tables, runtime providers, quality metadata, and revision state | Preserve the typed persistence/runtime boundary |
+| State and diagnostics | Native state/quality tables and SQL-derived diagnostics | Keep integrity checks bounded and fail closed |
+| Hosted queries | Validated Dashboard Language DAGs compile to PostgreSQL SQL; unsupported shapes fail closed | Prove deployed-corpus execution and browser/Postgres semantic parity |
+| Read APIs | Generated table bindings and SQL-backed query result reads | Keep all hosted entity reads on the PostgreSQL SQL boundary |
 
 ## Target rules
 

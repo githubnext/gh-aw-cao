@@ -6,8 +6,8 @@ OpenAPI 3.1 and selected JSON Schemas; consult it before changing server routes.
 The `server/` module is an optional backend for running the Central Agentic Ops
 dashboard with server-owned persistence and query execution. It ingests the
 same compacted data published with the deployed dashboard, stores current
-logical entity sources in Postgres, executes proven simple Dashboard Language
-plans in Postgres and other plans in the bounded Go evaluator,
+native entity rows in PostgreSQL and executes hosted Dashboard Language plans
+as SQL through the bounded PostgreSQL query engine,
 and serves the built dashboard either over loopback HTTP or through an
 authenticated host-neutral service profile. Redis handles operational caches,
 queues, and sessions; it does not hold or query dashboard entities.
@@ -15,44 +15,34 @@ queues, and sessions; it does not hold or query dashboard entities.
 The browser never connects directly to Postgres or Redis and never receives
 database credentials. It communicates only with the same-origin HTTP(S) API.
 
-## Offline query translation report
+## Offline query validation
 
 From `server/`, run `go run ./cmd/cao-dashboard compile-queries` to check every
 query in `dashboard/site/dashboard.json`, `dashboard/site/dashboard-fragments/`,
 and the canonical database query file. Use `--format json` for
-machine-readable results, or the query-path flags to inspect other documents.
-Legacy Redis translation candidates in this offline report do not describe
-the runtime Postgres execution path. Hosted queries validate Dashboard Language,
-then attempt a native plan within the request's repeatable-read transaction.
-Unsupported shapes use the bounded Go evaluator in that same transaction.
+machine-readable results. This command validates definitions offline; it does
+not compile or execute SQL plans.
 
-### Native query slice
+Hosted queries are compiled to SQL and executed in PostgreSQL within the
+request's repeatable-read transaction. The server does not fall back to a Go
+row evaluator: unsupported definitions and unregistered sources fail closed.
+Generated TypeSpec identifiers are used, values and namespace are
+parameterized, missing values remain distinct from explicit null, and SQL
+resource checks enforce operation, output, retained-row, and memory budgets.
+Explicitly registered operational sources are provided at the server boundary
+and participate as bounded SQL input relations.
 
-`internal/postgresx/plan.go` executes complete scalar paths against the
-TypeSpec-defined entity tables, optionally through one passthrough alias.
-Exact string equality on declared identity/drilldown keys, scalar projection,
-and query limits use parameterized SQL. Only generated table/column identifiers
-are admitted. The query reads only selected scalar columns, filters by namespace
-and indexed keys, and preserves source ordinal order. Compact presence bits
-distinguish absent fields from explicit null. SQL counts unfiltered input before
-filtering and preserves the existing operation, output, retained-row, and memory
-budgets.
+The deployed query corpus is exercised through the SQL executor by the
+`TestDashboardQueryCorpusUsesPostgres` integration test. It requires
+`POSTGRES_URL`; the dashboard-query-parity CI job additionally compares
+representative HTTP/MCP results with the browser evaluator over the deployed
+unparameterized named-query corpus.
 
-This is **not** full PostgreSQL query coverage. Structured-field projections,
-auxiliary sources, joins, aggregation, computation, range/optional/unknown
-predicates, searching, explicit ordering, multiple outputs, and deeper query
-DAGs currently use the bounded Go evaluator over the same relational storage
-and repeatable-read transaction. This is an implementation boundary, not an
-old-schema compatibility path. No documents or duplicate scalar representations
-are maintained for that evaluator.
-
-The [Postgres rebuild plan](POSTGRES-REBUILD-PLAN.md) specifies replacing this
-boundary with a complete SQL engine and removing generic source/value
-scaffolding. With a disposable fresh database, run
+With a disposable fresh database, run
 `POSTGRES_URL=... go test ./internal/postgresx -run '^$'
 -bench '^BenchmarkNativeFilterPlan$' -benchmem -benchtime=100x -count=1`
-from `server/` to compare typed SQL, bounded Go evaluation, and hand-written
-SQL retrieval over 5,000 domain records. The benchmark reports
+from `server/` to compare typed SQL and hand-written SQL retrieval over 5,000
+domain records. The benchmark reports
 `EXPLAIN (ANALYZE, BUFFERS)`, table/index bytes, ingestion time, allocations,
 and p50/p95; it asserts zero canonical scalar copies in generic value storage.
 These synthetic measurements do not establish production traffic coverage.
@@ -213,7 +203,7 @@ flowchart LR
   Ingest["Go ingester<br/>verify, parse, project"]
   Postgres["Postgres<br/>native entity tables + relational evidence"]
   Redis["Redis<br/>operational state"]
-  API["Go HTTP(S) server<br/>native plans + bounded fallback"]
+  API["Go HTTP(S) server<br/>bounded PostgreSQL SQL plans"]
   Browser["Dashboard browser app<br/>render bounded view payloads"]
 
   Artifact --> Ingest
@@ -231,9 +221,9 @@ flowchart LR
 | Component | Location | Responsibility |
 | --- | --- | --- |
 | CLI | `cmd/cao-dashboard/` | Implements the `ingest` and `serve` commands and keeps Postgres and Redis configuration in the server process. |
-| Artifact ingestion | `internal/ingest/` | Validates deployed manifests and hashes, loads run shards before record shards, and builds canonical logical sources. |
-| Query engine | `internal/query/` | Validates Dashboard Language definitions, delegates complete supported paths to a plan executor, and applies bounded Go evaluation to other shapes. |
-| Postgres entity storage | `internal/postgresx/` | Initializes fresh TypeSpec-generated tables and transactionally replaces native entities, relational evidence, diagnostics, and revision; executes supported SQL plans in the same snapshot as bounded Go evaluation. |
+| Artifact ingestion | `internal/ingest/` | Validates deployed manifests and hashes, streams run shards before record shards, and writes canonical rows through the native Postgres writer. |
+| Query engine | `internal/query/` | Validates Dashboard Language definitions and compiles hosted query plans to bounded SQL. |
+| Postgres entity storage | `internal/postgresx/` | Initializes fresh TypeSpec-generated tables and transactionally replaces native entities, quality metadata, diagnostics, and revision; executes query plans in repeatable-read snapshots. |
 | Redis operations | `internal/redisx/` | Supports caches, queues, and sessions. |
 | HTTP(S)/API server | `internal/server/` | Enforces loopback binding, optionally terminates operator-configured TLS, serves static dashboard assets, handles API requests, and publishes revision events. |
 | Externally hosted service | `hosting/` | Exposes a listener-independent application lifecycle and the complete hosted HTTP handler to other Go HTTP hosts. |
@@ -514,7 +504,7 @@ valid callbacks by a digest of their signed state. Forwarding headers are
 considered only at the configured trusted-proxy boundary. Raw logins, client
 addresses, and OAuth state are not stored in rate-limit keys.
 Query requests reserve one cost unit before execution. Completed queries cost
-the greatest of execution duration, measured operations and Redis rows, peak
+the greatest of execution duration, measured operations and SQL input rows, peak
 working rows, and estimated bytes. Structural complexity is bounded separately
 and emitted as privacy-preserving telemetry. Cost is capped at the query bucket
 capacity; the additional cost is charged atomically before the result is
@@ -916,11 +906,12 @@ Neither store grants control-plane authority. Credentials stay server-side.
 The browser sends declarative query definitions and requested source names to
 `POST /api/v1/query`. The server validates the query graph and resource limits
 before loading data.
-Native scalar plans filter, project, and limit typed columns directly in SQL.
-Other shapes read typed rows and required relational children and use the
-bounded Go evaluator. Neither path reads a stored row document. Missing/null,
-coercion, ordering, and resource semantics must be preserved before an operator
-can move to SQL.
+The validated query dependency graph is compiled to SQL and executed in
+PostgreSQL. The Go server validates and binds the plan, enforces resource limits,
+and serializes bounded results; it does not filter, join, aggregate, compute,
+sort, or paginate rows. Missing/null, coercion, ordering, and resource semantics
+are enforced by the SQL compiler and query engine. Unsupported definitions fail
+closed rather than switching to another evaluator.
 Execution fails closed when a requested plan exceeds 16 dependency levels, 256
 derived queries, or 16 joins along one dependency path. Independent queries in a
 batch do not consume one another's structural join allowance. Runtime guards cap
@@ -934,10 +925,10 @@ input, join, output, and operator limits remain independently enforced.
 Expensive stages, including sorting, are charged against the operation budget
 before they allocate or run.
 
-Native SQL reads load current logical sources from Postgres. The Go engine
-applies Dashboard Language selection, joins, aggregation, and limits to
-complete source documents; Redis is not a query backend. Query resource
-limits remain fail-closed.
+The SQL engine reads current native entity tables from PostgreSQL and evaluates
+Dashboard Language operators there. The Go server validates requests, binds
+parameters, enforces resource limits, and serializes bounded results; Redis is
+not a query backend.
 
 The engine rejects unsupported prediction queries and enforces limits on query
 definitions, joins, predicates, input rows, output rows, and total operations.

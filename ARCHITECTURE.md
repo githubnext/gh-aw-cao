@@ -116,9 +116,8 @@ normalized run and record JSONL; browser ingestion fails closed rather than
 falling back to raw Activity JSONL. Static-browser download, normalization, persistence, and queries run in a
 dedicated Web Worker. The optional Go server profile ingests the same deployed
 dashboard artifact into Postgres, keeps database credentials server-side,
-executes supported bounded Dashboard Language query paths as parameterized SQL
-in the request's repeatable-read transaction, falls back to the bounded Go
-evaluator for other shapes, and returns
+compiles hosted Dashboard Language queries to parameterized SQL in the
+request's repeatable-read transaction, and returns
 only canonical or explicitly registered bounded runtime-source query payloads
 to the browser. Redis remains operational storage for caches, queues, and
 sessions, not dashboard entity storage or query execution.
@@ -180,7 +179,7 @@ The hosted dashboard has one strict storage split:
 
 | Store | Owns | Must not own |
 | --- | --- | --- |
-| PostgreSQL | Current dashboard entity sources, source documents, diagnostics, revision state, and Dashboard Language query execution | Sessions, rate-limit buckets, delivery queues, deduplication markers, or transient resolver caches |
+| PostgreSQL | Current dashboard entities, quality metadata, diagnostics, revision state, and Dashboard Language query execution | Sessions, rate-limit buckets, delivery queues, deduplication markers, or transient resolver caches |
 | Redis | Sessions, rate limits, webhook and collection queues, delivery deduplication, distributed coordination, GitHub quota state, pending token revocations, and bounded runtime caches | Dashboard entity rows, canonical source documents, query indexes, persistent query projections, or dashboard query execution |
 
 The browser communicates only with the Go HTTP(S) server. It never connects to
@@ -380,9 +379,9 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   valid upstream results.
 - Dashboard selection, filtering, joins, grouping, aggregation, ordering, and
   pagination are declared in Dashboard Language. They execute in the data Web
-  Worker for static deployment and in the Go query server for the Redis
-  profile; compatible server plans push filtering, aggregation, ordering, and
-  limiting into Redis.
+  Worker for static deployment and as SQL over PostgreSQL for server deployment.
+  Redis may cache bounded server query results but never executes dashboard
+  queries or stores canonical dashboard entities.
 - UI effects and components render query results; they do not reconstruct
   business relationships or query source data.
 - The local Redis profile binds to loopback and serves HTTP for local debugging
