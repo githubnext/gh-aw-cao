@@ -1324,6 +1324,7 @@
       "navigation-label": "Marketplace",
       "icon": "archive",
       "class-name": "marketplace-page",
+      "retain-on-navigation": true,
       "experimental": false,
       "description": "Find campaign packages to extend your agentic operations.",
       "views": [
@@ -1387,7 +1388,8 @@
       "description": "Review normalized package metadata and copy the canonical CAO add command.",
       "route": {
         "hash-query-parameter": "package-source",
-        "navigation-page": "marketplace"
+        "navigation-page": "marketplace",
+        "availability-view": "marketplace-package-detail"
       },
       "views": [
         {
@@ -1424,7 +1426,7 @@
             ]
           },
           "layout": "full",
-          "empty-message": "The selected package is unavailable."
+          "empty-message": "Package unavailable."
         },
         {
           "id": "marketplace-package-readme",

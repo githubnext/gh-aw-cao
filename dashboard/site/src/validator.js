@@ -2366,6 +2366,21 @@ function validateCustomPage(page, pageNode, path, errors) {
           errors
         );
       }
+      if (page.route['availability-view'] !== undefined) {
+        validateRequiredIdentifier(
+          page.route['availability-view'],
+          `${routePath}.availability-view`,
+          'route availability view',
+          errors
+        );
+        if (!page.views.some((view) => isPlainObject(view) && view.id === page.route['availability-view'])) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'route availability-view must reference a view on this page.',
+            `${routePath}.availability-view`
+          ));
+        }
+      }
       const routeTitleFormat = page.route['title-format'];
       if (routeTitleFormat !== undefined
           && (typeof routeTitleFormat !== 'string'

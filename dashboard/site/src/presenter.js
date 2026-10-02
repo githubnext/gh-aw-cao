@@ -714,6 +714,7 @@ function renderPagePlaceholder(page) {
     'data-route-parameter': routeParameter,
     'data-route-navigation-page': routeNavigationPage,
     'data-route-title-format': payload.route?.['title-format'],
+    'data-retain-on-navigation': payload['retain-on-navigation'] === true ? 'true' : undefined,
     'data-page-pending': ''
   });
 }
@@ -1120,6 +1121,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       'data-route-parameter': routeParameter,
       'data-route-navigation-page': routeNavigationPage,
       'data-route-title-format': page.route?.['title-format'],
+      'data-retain-on-navigation': page['retain-on-navigation'] === true ? 'true' : undefined,
       'data-view-mode': selectedViewMode
     },
     renderedRouteTabs,
@@ -1129,6 +1131,46 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       ? [renderHiddenDataStateMetrics(summarizeDataState(pageSources)), renderedContent]
       : [h('p', null, 'No custom views available.')])
   );
+  const availabilityViewId = page.route?.['availability-view'];
+  const availabilityIndex = views.findIndex((view) => isPlainObject(view) && view.id === availabilityViewId);
+  if (availabilityIndex >= 0 && routeNavigationPage) {
+    const availabilityView = views[availabilityIndex];
+    const sourceName = getViewSources(availabilityView)[0];
+    const failure = h('div', { className: 'view-state-card', 'data-view-state': 'unavailable', role: 'alert' },
+      octicon('alert'),
+      h('div', { className: 'view-state-card-body' },
+       h('h2', null, `${title} unavailable`),
+       h('p', null, 'CAO could not load this package. It may have been removed, or Marketplace data may be temporarily unavailable.'),
+       h('div', { className: 'package-recovery-actions' },
+         h('button', {
+           type: 'button',
+           className: 'button',
+           onclick: () => root.dispatchEvent(new CustomEvent('dashboard-retry-page', { bubbles: true }))
+         }, 'Retry'),
+         h('a', { className: 'button', href: `#page-${routeNavigationPage}` }, `Back to ${routeNavigationPage === 'marketplace' ? 'Marketplace' : routeNavigationPage}`)
+       )
+      )
+    );
+    const partial = h('p', { className: 'view-state-card', role: 'status' },
+      'Some package information could not be retrieved. Available details are shown below.');
+    root.insertBefore(failure, renderedContent);
+    root.insertBefore(partial, renderedContent);
+    const updateAvailability = () => {
+      const current = binding?.sources.get() ?? sources;
+      const resolved = resolveViewSourceName(current, page.id, availabilityView, availabilityIndex, sourceName, 0);
+      const source = current[resolved];
+      const pending = binding?.loading.get() === true;
+      const unavailable = !pending && (!source || source.metadata?.availability === 'unavailable'
+       || !Array.isArray(source.rows) || source.rows.length === 0);
+      const incomplete = !unavailable && !pending && source?.metadata?.completeness === 'partial';
+      failure.hidden = !unavailable;
+      partial.hidden = !incomplete;
+      renderedContent.hidden = unavailable;
+      if (renderedRouteTabs) renderedRouteTabs.hidden = unavailable;
+    };
+    if (binding) effect(updateAvailability, { signal: binding.signal });
+    else updateAvailability();
+  }
   return root;
 }
 
@@ -1522,9 +1564,11 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
           scrollTop: scrollTop()
         });
         disconnectLazyViews(activePage);
-        activePage.replaceChildren();
-        activePage.removeAttribute('aria-busy');
-        activePage.setAttribute('data-page-pending', '');
+        if (activePage.dataset.retainOnNavigation !== 'true') {
+          activePage.replaceChildren();
+          activePage.removeAttribute('aria-busy');
+          activePage.setAttribute('data-page-pending', '');
+        }
       }
     }
     activePageId = pageId;
@@ -1541,6 +1585,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       && (pendingPage?.dataset.routeValue ?? '') !== pendingRouteValue;
     if (pendingPage && (
       pendingPage.hasAttribute('data-page-pending')
+      || pendingPage.dataset.retainOnNavigation === 'true'
       || reloadPopulatedPages
       || routeValueChanged
     )) {
@@ -1619,7 +1664,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
           replacePage(rendered);
         }
       };
-      if (deferPopulation) {
+      if (deferPopulation && pendingPage.dataset.retainOnNavigation !== 'true') {
         populationDeferred = true;
         showPageSkeleton(pendingPage, retainedRouteTabs);
         schedulePopulation(populate);
@@ -1797,11 +1842,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       `#page-${parentPageId}`
     );
     syncHistoryBack();
-    updateWithViewTransition(
-      root.ownerDocument,
-      () => activate(parentPageId, new URLSearchParams(), true),
-      'backward'
-    );
+    activate(parentPageId, new URLSearchParams(), true);
     if (pageTitle instanceof HTMLElement) pageTitle.focus();
   }, { signal: navigationOwner.signal });
   root.addEventListener('click', (event) => {
@@ -1823,11 +1864,15 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     syncHistoryBack();
     defaultView?.dispatchEvent(new CustomEvent('dashboard-history-change'));
     primePageChrome(pageId, provisionalTitle, provisionalDescription);
-    updateWithViewTransition(
-      root.ownerDocument,
-      () => activate(pageId, routeFromHash()?.parameters, true, provisionalTitle, provisionalDescription),
-      'forward'
-    );
+    if (pages.find((candidate) => candidate.dataset.pageId === pageId)?.dataset.retainOnNavigation === 'true') {
+      activate(pageId, routeFromHash()?.parameters, true, provisionalTitle, provisionalDescription);
+    } else {
+      updateWithViewTransition(
+        root.ownerDocument,
+        () => activate(pageId, routeFromHash()?.parameters, true, provisionalTitle, provisionalDescription),
+        'forward'
+      );
+    }
     if (pageTitle instanceof HTMLElement) pageTitle.focus();
   }, { signal: navigationOwner.signal });
   root.addEventListener('dashboard-query-context-change', (event) => {
@@ -1844,6 +1889,12 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     pages.find((page) => page.dataset.pageId === pageId)?.setAttribute('data-page-pending', '');
     const route = routeFromHash();
     activate(route?.pageId ?? pageId, route?.parameters ?? new URLSearchParams(), true);
+  }, { signal: navigationOwner.signal });
+  root.addEventListener('dashboard-retry-page', () => {
+    const route = routeFromHash();
+    const page = pages.find((candidate) => candidate.dataset.pageId === activePageId);
+    page?.setAttribute('data-page-pending', '');
+    activate(activePageId, route?.parameters ?? new URLSearchParams(), true);
   }, { signal: navigationOwner.signal });
 
   const disposeFullViewScrollForwarding = enableFullViewScrollForwarding(root, defaultView);
@@ -1886,11 +1937,10 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     pendingNavigationHash = undefined;
     primePageChrome(route?.pageId ?? initialPageId);
     const historyScrollTop = pendingScrollPageId === route?.pageId ? pendingScrollTop : undefined;
-    updateWithViewTransition(root.ownerDocument, () => activate(
-      route?.pageId ?? initialPageId,
-      route?.parameters,
-      true
-    ), navigationDirection);
+    const targetId = route?.pageId ?? initialPageId;
+    const navigate = () => activate(targetId, route?.parameters, true);
+    if (pages.find((candidate) => candidate.dataset.pageId === targetId)?.dataset.retainOnNavigation === 'true') navigate();
+    else updateWithViewTransition(root.ownerDocument, navigate, navigationDirection);
     if (historyScrollTop !== undefined && !route?.parameters.has('section')) {
       const scrollingElement = pageScroller instanceof HTMLElement
         ? pageScroller
