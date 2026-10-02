@@ -72,6 +72,7 @@ func TestResolveExporterDecision(t *testing.T) {
 func TestSetupWithoutEndpointStaysNoop(t *testing.T) {
 	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
 	t.Setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "")
 	t.Setenv("OTEL_SDK_DISABLED", "")
 	shutdown, err := Setup(context.Background(), "test")
 	if err != nil {
