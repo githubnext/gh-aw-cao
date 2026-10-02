@@ -148,16 +148,18 @@ test("cao_query runs a typed simulator scenario and rejects invalid inputs", asy
   };
   const invoke = (values) => request(
     "tools/call",
-    { name: "cao_query", arguments: { id: "simulator-database-size", parameters: values } },
+    { name: "cao_query", arguments: { id: "simulator-database-summary", parameters: values } },
     { "mcp-name": "cao_query" },
   );
   const { status, body } = await invoke(parameters);
   assert.equal(status, 200);
   assert.equal(body.result.isError, undefined);
-  assert.equal(body.result.structuredContent.rows.length, 90);
-  assert.deepEqual(body.result.structuredContent.rows[0], {
-    date: "2025-01-01T00:00:00.000Z", table: "Run summaries", bytes: 3072,
-  });
+  assert.deepEqual(body.result.structuredContent.rows, [
+    { table: "Run summaries", bytes: 92160 },
+    { table: "Tools (30-day TTL)", bytes: 92160 },
+    { table: "Issues (30-day TTL)", bytes: 46080 },
+    { table: "Total", bytes: 230400 },
+  ]);
   for (const values of [
     { ...parameters, repositories: 100001 },
     { ...parameters, "skip-rate": 0 },
