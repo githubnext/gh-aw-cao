@@ -4,6 +4,7 @@ using TypeSpec.Reflection;
 namespace Cao.Postgres;
 
 extern dec parent(target: ModelProperty, entity: valueof string, required?: valueof boolean);
+extern dec weeklyRunPartition(target: Model);
 
 model campaigns {
   aiCreditAllowance?: decimal;
@@ -41,6 +42,7 @@ model repositories {
   visibility?: string;
 }
 
+@weeklyRunPartition
 model jobs {
   id: string;
   @parent("runs")
@@ -52,6 +54,7 @@ model jobs {
   completedAt?: utcDateTime;
 }
 
+@weeklyRunPartition
 model sessions {
   id: string;
   @parent("runs")
@@ -61,6 +64,7 @@ model sessions {
   completedAt?: utcDateTime;
 }
 
+@weeklyRunPartition
 model events {
   id: string;
   @parent("sessions")
@@ -105,6 +109,7 @@ model workflows {
   workflowLink?: Values.Link;
 }
 
+@weeklyRunPartition
 model runs {
   actionMinutes?: decimal;
   admissionReason?: string;
@@ -171,6 +176,7 @@ model runs {
   workflowPath?: string;
 }
 
+@weeklyRunPartition
 model domains {
   correlationId?: string;
   decision?: string;
@@ -189,6 +195,7 @@ model domains {
   type?: string;
 }
 
+@weeklyRunPartition
 model tools {
   correlationId?: string;
   failedCount?: int64;
@@ -216,6 +223,7 @@ model tools {
   type?: string;
 }
 
+@weeklyRunPartition
 model skills {
   activationSource?: string;
   correlationId?: string;
@@ -237,6 +245,7 @@ model skills {
   type?: string;
 }
 
+@weeklyRunPartition
 model friction {
   aic?: decimal;
   inputTokens?: int64;
@@ -278,6 +287,7 @@ model friction {
   unattributedOccurrences?: int64;
 }
 
+@weeklyRunPartition
 model audits {
   acceptedAt?: utcDateTime;
   activationSource?: string;
@@ -350,6 +360,7 @@ model audits {
   type?: string;
 }
 
+@weeklyRunPartition
 model issues {
   closed?: boolean;
   closedAt?: utcDateTime;
@@ -435,6 +446,7 @@ model experiments {
   workflowId: string;
 }
 
+@weeklyRunPartition
 model experimentAssignments {
   artifactLink?: string;
   campaign?: string;
@@ -468,6 +480,7 @@ model graders {
   workflowId: string;
 }
 
+@weeklyRunPartition
 model graderObservations {
   auditId?: string;
   baselineValue?: decimal;
@@ -512,6 +525,7 @@ model evals {
   workflowId: string;
 }
 
+@weeklyRunPartition
 model evalObservations {
   direction?: string;
   @parent("evals")
