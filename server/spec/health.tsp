@@ -6,9 +6,19 @@ namespace Cao;
 model DataState {
   available: boolean;
   rebuildRequired: boolean;
+  /** Authoritative source time of the active canonical dataset, when available. */
+  evaluatedAt?: utcDateTime;
 }
 model RedisState { connected: boolean; }
-@example(#{status: "healthy", redis: #{connected: true}, data: #{available: true, rebuildRequired: false}})
+@example(#{
+  status: "healthy",
+  redis: #{connected: true},
+  data: #{
+    available: true,
+    rebuildRequired: false,
+    evaluatedAt: utcDateTime.fromISO("2026-10-02T14:25:38.957Z")
+  }
+})
 model HealthResponse {
   status: "healthy" | "unhealthy";
   redis: RedisState;

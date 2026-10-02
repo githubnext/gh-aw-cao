@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+
+	otelLog "go.opentelemetry.io/otel/log"
 )
 
 // SlogHandler implements slog.Handler by wrapping a Logger.
@@ -23,7 +25,7 @@ func (h *SlogHandler) Enabled(_ context.Context, _ slog.Level) bool {
 }
 
 // Handle formats a slog record for the wrapped logger.
-func (h *SlogHandler) Handle(_ context.Context, record slog.Record) error {
+func (h *SlogHandler) Handle(ctx context.Context, record slog.Record) error {
 	if !h.logger.Enabled() {
 		return nil
 	}
@@ -35,15 +37,21 @@ func (h *SlogHandler) Handle(_ context.Context, record slog.Record) error {
 		return true
 	})
 	levelPrefix := ""
+	severity := otelLog.SeverityDebug
 	switch record.Level {
 	case slog.LevelDebug, slog.LevelInfo:
 		levelPrefix = "· "
+		if record.Level == slog.LevelInfo {
+			severity = otelLog.SeverityInfo
+		}
 	case slog.LevelWarn:
 		levelPrefix = "⚠ "
+		severity = otelLog.SeverityWarn
 	case slog.LevelError:
 		levelPrefix = "✗ "
+		severity = otelLog.SeverityError
 	}
-	h.logger.Print(levelPrefix + message.String())
+	h.logger.write(ctx, severity, levelPrefix+message.String())
 	return nil
 }
 

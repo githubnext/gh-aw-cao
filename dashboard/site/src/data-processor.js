@@ -5,7 +5,7 @@ import { resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { normalize } from './data/normalize/index.js';
 import { batch } from './reactive.js';
 import { publishNotification } from './notification-service.js';
-import { createDebug, withDebugParameter } from './debug.js';
+import { createDebug, diagnosticErrorName, withDebugParameter } from './debug.js';
 import {
   queryRemoteDashboard,
   queryRemoteDiagnostics,
@@ -531,6 +531,12 @@ function registerRemoteSubscription(subscription) {
   const query = async (refreshDecayingLoad = false) => {
     if (!active || subscription.remoteQueryRunning) return;
     subscription.remoteQueryRunning = true;
+    const startedAt = performance.now();
+    debugDataProcessor({
+      event: 'remote-subscription-query-started',
+      sourceCount: subscription.sourceNames.length,
+      refreshDecayingLoad
+    });
     try {
       const result = await queryRemoteDashboard(
         subscription.sourceNames,
@@ -547,9 +553,20 @@ function registerRemoteSubscription(subscription) {
       if (!active || subscriptions.get(subscription.id) !== subscription) return;
       subscription.remoteRevision = result.revision;
       subscription.remoteHealthRevision = result.healthRevision;
+      debugDataProcessor({
+        event: 'remote-subscription-query-completed',
+        durationMs: Math.round(performance.now() - startedAt),
+        revision: result.revision,
+        healthRevision: result.healthRevision
+      });
       enqueueSubscriptionUpdate(subscription, result.sources, refreshDecayingLoad ? null : result.revision);
     } catch (error) {
       if (!active) return;
+      debugDataProcessor({
+        event: 'remote-subscription-query-failed',
+        durationMs: Math.round(performance.now() - startedAt),
+        errorName: diagnosticErrorName(error)
+      });
       const failure = error instanceof Error ? error : new Error(String(error));
       for (const listener of [...subscription.listeners]) {
         if (subscription.listeners.has(listener) && listener.onError) {

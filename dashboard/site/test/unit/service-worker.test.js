@@ -6,7 +6,7 @@ import { isDebugEnabled as pageIsDebugEnabled } from '../../src/debug.js';
 
 const source = readFileSync(resolve('service-worker.js'), 'utf8');
 
-/** @param {string[]} [cacheKeys] @param {{ search?: string }} [options] */
+/** @param {string[]} [cacheKeys] @param {{ search?: string, clientUrl?: string }} [options] */
 function serviceWorkerHarness(cacheKeys = [], options = {}) {
   /** @type {Record<string, (event: any) => void>} */
   const listeners = {};
@@ -40,7 +40,10 @@ function serviceWorkerHarness(cacheKeys = [], options = {}) {
     navigator: {
       connection: { type: 'wifi', saveData: false }
     },
-    clients: { claim: vi.fn().mockResolvedValue(undefined) },
+    clients: {
+      claim: vi.fn().mockResolvedValue(undefined),
+      get: vi.fn().mockResolvedValue(options.clientUrl ? { url: options.clientUrl } : undefined)
+    },
     skipWaiting: vi.fn().mockResolvedValue(undefined),
     /** @param {string} type @param {(event: any) => void} listener */
     addEventListener: (type, listener) => {
@@ -300,6 +303,85 @@ describe('dashboard service worker', () => {
       waitUntil: () => {}
     });
     await expect((await response)?.text()).resolves.toBe('cached data');
+  });
+
+  it('fetches the online dashboard shell and its assets without HTTP or offline cache reuse', async () => {
+    const { listeners, fetch, entries } = serviceWorkerHarness([], {
+      clientUrl: 'https://example.test/dashboard/?online=1'
+    });
+    const shell = new Request('https://example.test/dashboard/?online=1');
+    const asset = new Request('https://example.test/dashboard/src/main.js');
+    entries.set(String(shell), new Response('stale shell'));
+    entries.set(String(asset), new Response('stale asset'));
+    /** @type {Promise<Response> | undefined} */
+    let response;
+    for (const request of [shell, asset]) {
+      fetch.mockResolvedValueOnce(new Response('fresh'));
+      listeners.fetch({
+        request,
+        clientId: request === asset ? 'online-tab' : '',
+        respondWith: (/** @type {Promise<Response>} */ value) => { response = value; }
+      });
+      await expect((await response)?.text()).resolves.toBe('fresh');
+      expect(fetch.mock.lastCall?.[0]).toHaveProperty('cache', 'no-store');
+      await expect(entries.get(String(request))?.text()).resolves.toBe('fresh');
+    }
+    fetch.mockRejectedValueOnce(new TypeError('offline'));
+    listeners.fetch({
+      request: asset,
+      clientId: 'online-tab',
+      respondWith: (/** @type {Promise<Response>} */ value) => { response = value; }
+    });
+    await expect(response).rejects.toThrow('offline');
+    fetch.mockRejectedValueOnce(new TypeError('offline'));
+    listeners.fetch({
+      request: shell,
+      respondWith: (/** @type {Promise<Response>} */ value) => { response = value; }
+    });
+    await expect(response).rejects.toThrow('offline');
+  });
+
+  it('never falls back to cached data for an online dashboard tab', async () => {
+    const { listeners, fetch, entries } = serviceWorkerHarness([], {
+      clientUrl: 'https://example.test/dashboard/?online=1'
+    });
+    const request = new Request('https://example.test/dashboard/payload-hashes.json');
+    entries.set(String(request), new Response('stale'));
+    fetch.mockRejectedValueOnce(new TypeError('offline'));
+    /** @type {Promise<Response> | undefined} */
+    let response;
+    listeners.fetch({
+      request,
+      clientId: 'online-tab',
+      respondWith: (/** @type {Promise<Response>} */ value) => { response = value; },
+      waitUntil: () => {}
+    });
+    await expect(response).rejects.toThrow('offline');
+    expect(fetch.mock.lastCall?.[0]).toHaveProperty('cache', 'no-store');
+  });
+
+  it('redownloads unchanged shards for an online dashboard tab', async () => {
+    const { listeners, fetch } = serviceWorkerHarness();
+    const runName = 'gh-aw-logs-runs/2026-08-19-0000-d87bcbb6fd3ba859.jsonl';
+    const payloadHashes = JSON.stringify({ [runName]: 'a'.repeat(64) });
+    fetch.mockImplementation(async (url) => new Response(
+      String(url).endsWith('/payload-hashes.json') ? payloadHashes : 'fresh shard'
+    ));
+    const urls = ['https://example.test/dashboard/payload-hashes.json'];
+    const completed = vi.fn();
+    for (const sourceUrl of [
+      'https://example.test/dashboard/',
+      'https://example.test/dashboard/',
+      'https://example.test/dashboard/?online=1'
+    ]) {
+      await dispatchExtendedEvent(listeners.message, {
+        data: { type: 'DOWNLOAD_DATA', urls },
+        source: { url: sourceUrl },
+        ports: [{ postMessage: completed }]
+      });
+    }
+    expect(completed).toHaveBeenCalledWith(expect.objectContaining({ type: 'DOWNLOAD_COMPLETE' }));
+    expect(fetch.mock.calls.filter(([url]) => String(url).endsWith(runName))).toHaveLength(2);
   });
 
   it('streams foreground dashboard data before its cache write completes', async () => {

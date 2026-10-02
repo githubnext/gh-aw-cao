@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"context"
 	"fmt"
 	"hash/fnv"
 	"io"
@@ -8,6 +9,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"go.opentelemetry.io/otel/attribute"
+	otelLog "go.opentelemetry.io/otel/log"
+	"go.opentelemetry.io/otel/log/global"
 )
 
 // Logger represents a debug logger for a specific namespace.
@@ -46,22 +51,26 @@ func (l *Logger) Enabled() bool {
 }
 
 // Printf writes a formatted message when the logger is enabled.
+//
+//nolint:contextcheck // This context-free debug API has no caller context; slog.Handle forwards its context separately.
 func (l *Logger) Printf(format string, args ...any) {
 	if !l.enabled {
 		return
 	}
-	l.write(fmt.Sprintf(format, args...))
+	l.write(context.Background(), otelLog.SeverityDebug, fmt.Sprintf(format, args...))
 }
 
 // Print writes a message when the logger is enabled.
+//
+//nolint:contextcheck // This context-free debug API has no caller context; slog.Handle forwards its context separately.
 func (l *Logger) Print(args ...any) {
 	if !l.enabled {
 		return
 	}
-	l.write(fmt.Sprint(args...))
+	l.write(context.Background(), otelLog.SeverityDebug, fmt.Sprint(args...))
 }
 
-func (l *Logger) write(message string) {
+func (l *Logger) write(ctx context.Context, severity otelLog.Severity, message string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -69,6 +78,12 @@ func (l *Logger) write(message string) {
 	diff := now.Sub(l.lastLog)
 	l.lastLog = now
 	_, _ = fmt.Fprintf(stderrWriter(), "%s %s +%s\n", l.label, message, formatDuration(diff))
+
+	var record otelLog.Record
+	record.SetTimestamp(now)
+	record.SetSeverity(severity)
+	record.SetBody(attribute.StringValue(message))
+	global.GetLoggerProvider().Logger(l.namespace).Emit(ctx, record)
 }
 
 func initDebugEnv() string {

@@ -13,7 +13,8 @@ import {
 import { configureSourceLoader, refreshSources as refreshBoundSources } from "../source-store.js";
 import { dashboardViewAliasName } from "./queries/view-payload-compiler.js";
 import { usesRemoteDataBackend } from "../remote-data-backend.js";
-import { createDebug } from "../debug.js";
+import { createDebug, diagnosticErrorName } from "../debug.js";
+import { publishNotification } from "../notification-service.js";
 
 const debugStartup = createDebug("startup");
 
@@ -155,6 +156,18 @@ export async function startDashboardData(options) {
     settleUi = () => waitForDashboardUi(browserWindow),
   } = options;
   const cleanup = new AbortController();
+  const failedSubscriptions = new Set();
+  /** @type {ReturnType<typeof publishNotification> | undefined} */
+  let updateNotice;
+  const clearUpdateNotice = () => {
+    if (failedSubscriptions.size) return;
+    updateNotice?.dismiss();
+    updateNotice = undefined;
+  };
+  cleanup.signal.addEventListener("abort", () => {
+    failedSubscriptions.clear();
+    clearUpdateNotice();
+  }, { once: true });
   let nextViewSubscriptionId = 0;
   let stopAutomaticDataUpdates = () => {};
   /** @type {() => void} */
@@ -200,7 +213,7 @@ export async function startDashboardData(options) {
   /**
    * Subscribes to a bounded source set. The returned promise resolves with the
    * first snapshot; later snapshots are delivered through `pageOptions.onUpdate`.
-   * @param {{ subscriptionId: string, sourceNames: string[], pageOptions: PageLoadOptions & { pageId?: string, viewId?: string }, pagination?: Record<string, { limit: number, continuationToken?: string }>, transform?: (sources: DashboardSources) => DashboardSources, errorLabel: string }} options
+   * @param {{ subscriptionId: string, sourceNames: string[], pageOptions: PageLoadOptions & { pageId?: string, viewId?: string }, pagination?: Record<string, { limit: number, continuationToken?: string }>, transform?: (sources: DashboardSources) => DashboardSources }} options
    */
   const subscribeSources = (options) => {
     const pageOptions = options.pageOptions;
@@ -210,6 +223,9 @@ export async function startDashboardData(options) {
     }
     return new Promise((resolve, reject) => {
       let receivedInitialSnapshot = false;
+      pageOptions.signal.addEventListener("abort", () => {
+        if (failedSubscriptions.delete(options.subscriptionId)) clearUpdateNotice();
+      }, { once: true });
       const cleanup = () => pageOptions.signal.removeEventListener("abort", abort);
       const abort = () => {
         cleanup();
@@ -221,6 +237,7 @@ export async function startDashboardData(options) {
         options.sourceNames,
         dashboardContext,
         (sources) => {
+          if (failedSubscriptions.delete(options.subscriptionId)) clearUpdateNotice();
           const transformedSources = transform(sources);
           if (!receivedInitialSnapshot) {
             receivedInitialSnapshot = true;
@@ -239,16 +256,23 @@ export async function startDashboardData(options) {
           queryContext: pageOptions.queryContext,
           onError: (error) => {
             cleanup();
+            debugStartup({
+              op: "subscribe-sources",
+              subscriptionId: options.subscriptionId,
+              status: receivedInitialSnapshot ? "update-error" : "initial-error",
+              sourceCount: options.sourceNames.length,
+              errorName: diagnosticErrorName(error),
+            });
             if (!receivedInitialSnapshot) {
-              debugStartup({
-                op: "subscribe-sources",
-                subscriptionId: options.subscriptionId,
-                status: "initial-error",
-                errorName: error instanceof Error ? error.name : "Unknown",
-              });
               reject(error);
             } else {
-              console.error(`${options.errorLabel}: ${error.message}`);
+              failedSubscriptions.add(options.subscriptionId);
+              updateNotice ??= publishNotification({
+                message: "Some dashboard data could not be updated. Existing data remains visible.",
+                tone: "warning",
+                duration: 0,
+                action: { label: "Reload dashboard", run: () => browserWindow.location.reload() },
+              }, document);
             }
           },
         },
@@ -266,8 +290,7 @@ export async function startDashboardData(options) {
       sourceNames,
       pageOptions: { ...pageOptions, pageId },
       pagination,
-      transform: (sources) => bindContinuations(pageId, sources, paginatedSources, pageOptions),
-      errorLabel: `Unable to update dashboard page ${pageId}`
+      transform: (sources) => bindContinuations(pageId, sources, paginatedSources, pageOptions)
     });
   };
   loadPageSources.subscribeViewSources = (pageId, viewId, sourceNames, pageOptions) => {
@@ -278,8 +301,7 @@ export async function startDashboardData(options) {
       sourceNames: [...new Set(sourceNames)],
       pageOptions: { ...pageOptions, pageId, viewId },
       pagination: continuationRequests(Object.keys(bindings)),
-      transform: (sources) => bindContinuations(pageId, sources, bindings, pageOptions),
-      errorLabel: `Unable to update dashboard view ${viewId}`
+      transform: (sources) => bindContinuations(pageId, sources, bindings, pageOptions)
     });
   };
   loadPageSources.subscribeBackgroundSources = async (sourceNames, pageOptions) => {
@@ -291,8 +313,7 @@ export async function startDashboardData(options) {
     return subscribeSources({
       subscriptionId: `sources:${subscriptionSourceNames.join(",")}`,
       sourceNames: subscriptionSourceNames,
-      pageOptions,
-      errorLabel: "Unable to update dashboard sources"
+      pageOptions
     });
   };
   loadPageSources.prepare = async (pageId) => {

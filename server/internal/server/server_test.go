@@ -617,6 +617,24 @@ func TestAccessFailuresCarryStandardizedTraceIdentifiersWithoutDatabase(t *testi
 	}
 }
 
+func TestProcessTelemetryClose(t *testing.T) {
+	var p processTelemetry
+	if err := p.close(t.Context()); err != nil {
+		t.Fatalf("unconfigured telemetry shutdown: %v", err)
+	}
+	called := false
+	p.shutdown = func(ctx context.Context) error {
+		called = true
+		if ctx.Err() != nil {
+			t.Fatal("telemetry shutdown received a cancelled context")
+		}
+		return nil
+	}
+	if err := p.close(t.Context()); err != nil || !called {
+		t.Fatalf("process telemetry shutdown: called=%t err=%v", called, err)
+	}
+}
+
 func TestAzureFunctionsHandlerLogsTelemetryFailureOnceAndKeepsServing(t *testing.T) {
 	// NewAzureFunctionsHandlerFromEnv is the only caller of azureProcessTelemetry
 	// in the process, and this is its only test, so the shared sync.Once
@@ -720,6 +738,25 @@ func TestRefreshAndQueryReturnAuthoritativeEvaluatedAt(t *testing.T) {
 		}
 		if strings.Contains(response.Body.String(), "2099-01-01") {
 			t.Fatalf("%s trusted caller evaluatedAt: %s", test.path, response.Body.String())
+		}
+	}
+}
+
+func TestHealthAndReadinessExposeAuthoritativeEvaluatedAt(t *testing.T) {
+	database := integrationDatabase(t)
+	seedDatabase(t, database, map[string]model.Source{
+		"$runs": {Source: "$runs", Rows: []model.Row{}},
+	})
+	app := &App{store: redisx.NewStore(emptyRedisClient{}, "empty-test"), database: database}
+	for _, path := range []string{"/api/v1/health", "/api/readiness"} {
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "https://localhost"+path, nil)
+		response := httptest.NewRecorder()
+		app.Handler().ServeHTTP(response, request)
+		if response.Code != http.StatusOK {
+			t.Fatalf("%s returned %d: %s", path, response.Code, response.Body.String())
+		}
+		if !strings.Contains(response.Body.String(), `"evaluatedAt":"2026-02-03T04:05:06Z"`) {
+			t.Fatalf("%s did not expose authoritative evaluatedAt: %s", path, response.Body.String())
 		}
 	}
 }

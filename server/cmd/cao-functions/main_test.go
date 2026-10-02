@@ -186,3 +186,96 @@ func TestShutdownOnDone_WaitsForContext(t *testing.T) {
 		t.Fatalf("expected server to still accept requests, got error: %v", err)
 	}
 }
+
+func TestShutdownOnDoneWaitsForActiveRequestBeforeTelemetryFlush(t *testing.T) {
+	started := make(chan struct{})
+	release := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		close(started)
+		<-release
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	requestDone := make(chan struct{})
+	go func() {
+		defer close(requestDone)
+		response, err := http.DefaultClient.Do(request)
+		if err == nil {
+			_ = response.Body.Close()
+		}
+	}()
+	<-started
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		shutdownOnDone(ctx, server.Config, time.Second)
+	}()
+	cancel()
+	select {
+	case <-done:
+		t.Fatal("HTTP drain finished before active request")
+	case <-time.After(20 * time.Millisecond):
+	}
+	close(release)
+	<-requestDone
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("HTTP drain did not finish after active request")
+	}
+}
+
+type drainingTestHandler struct {
+	http.Handler
+	drain func()
+}
+
+func (h drainingTestHandler) Drain() { h.drain() }
+
+func TestShutdownOnDoneDrainsStreams(t *testing.T) {
+	started := make(chan struct{})
+	drained := make(chan struct{})
+	server := httptest.NewServer(drainingTestHandler{
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			close(started)
+			<-drained
+			w.WriteHeader(http.StatusOK)
+		}),
+		drain: func() { close(drained) },
+	})
+	defer server.Close()
+
+	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	requestDone := make(chan struct{})
+	go func() {
+		defer close(requestDone)
+		response, err := http.DefaultClient.Do(request)
+		if err == nil {
+			_ = response.Body.Close()
+		}
+	}()
+	<-started
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		shutdownOnDone(ctx, server.Config, time.Second)
+	}()
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("stream was not drained before HTTP shutdown")
+	}
+	<-requestDone
+}

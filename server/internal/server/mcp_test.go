@@ -35,6 +35,30 @@ func TestMCPDisabledEndpointIsAbsent(t *testing.T) {
 	}
 }
 
+func TestMCPRejectsCatalogQueriesWithoutLoadedDefinitions(t *testing.T) {
+	app := newMCPTestApp(t, true)
+	definitions := app.config.DashboardQueries
+	for _, name := range []string{"all", "database-campaign-count"} {
+		t.Run(name, func(t *testing.T) {
+			app.config.DashboardQueries = nil
+			if name != "all" {
+				for _, definition := range definitions {
+					if definition.Name != name {
+						app.config.DashboardQueries = append(app.config.DashboardQueries, definition)
+					}
+				}
+			}
+			_, err := app.newMCPHandler()
+			if err == nil || !strings.Contains(err.Error(), "has no loaded dashboard definition") {
+				t.Fatalf("missing definitions returned %v", err)
+			}
+			if name != "all" && !strings.Contains(err.Error(), name) {
+				t.Fatalf("error does not identify missing query: %v", err)
+			}
+		})
+	}
+}
+
 func TestMCPRequiresLocalBearerAndDiscoversReadOnlyTools(t *testing.T) {
 	app := newMCPTestApp(t, true)
 	httpServer := httptest.NewServer(app.Handler())
@@ -271,6 +295,20 @@ func TestMCPCatalogAndNamedQueryUseSharedData(t *testing.T) {
 	metadata := payload["metadata"].(map[string]any)
 	if metadata["availability"] != "empty" {
 		t.Fatalf("unexpected availability: %#v", metadata)
+	}
+
+	count, err := session.CallTool(t.Context(), &mcp.CallToolParams{
+		Name: "cao_query", Arguments: map[string]any{"id": "database-campaign-count", "limit": 1},
+	})
+	if err != nil || count.IsError {
+		t.Fatalf("campaign count query failed: result=%#v err=%v", count, err)
+	}
+	countPayload := count.StructuredContent.(map[string]any)
+	if countPayload["query"] != "database-campaign-count" {
+		t.Fatalf("unexpected campaign count query: %#v", countPayload)
+	}
+	if countPayload["metadata"].(map[string]any)["availability"] == "unavailable" {
+		t.Fatalf("campaign count query was unavailable: %#v", countPayload)
 	}
 
 	invalid, err := session.CallTool(t.Context(), &mcp.CallToolParams{

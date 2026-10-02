@@ -50,7 +50,7 @@ These synthetic measurements do not establish production traffic coverage.
 ### Debug logging
 
 The server includes the namespace logger helpers from `github/gh-aw`. Debug
-logs are disabled by default and always go to stderr. Enable selected
+logs are disabled by default and go to stderr when enabled. Enable selected
 components with `DEBUG`, for example:
 
 ```bash
@@ -69,6 +69,14 @@ the identifiers never contain user, request, session, or credential values.
 In the hosted dashboard, add `?debug=auth` to enable matching client-side
 authentication branch events through `dashboard/site/src/debug.js`; these
 events likewise contain fixed identifiers only.
+
+To also export enabled namespaces as OTLP logs, set
+`CAO_OTEL_LOGS_ENABLED=true` and configure `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT`
+or `OTEL_EXPORTER_OTLP_ENDPOINT`. `DEBUG` still selects the same namespaces
+for both stderr and OTLP; setting an endpoint alone does not enable log export.
+The exporter batches records and flushes at shutdown. `slog` error records
+retain their severity and active trace/span context. Only enable reviewed,
+non-sensitive namespaces when exporting to an external collector.
 
 > [!IMPORTANT]
 > The default `serve` command remains local-only: it uses a local bearer
@@ -230,7 +238,7 @@ flowchart LR
 | Azure Functions profile | `internal/server/azure.go` | Builds the same HTTP handler without starting a listener, validates Azure app settings, requires `rediss://` Redis, and trusts forwarded host/protocol headers only for configured Azure hosts. |
 | GitHub OAuth sessions | `internal/server/oauth.go` | Implements the GitHub OAuth authorization-code flow, active organization/team authorization, refresh-token rotation, server-side encrypted sessions in Redis, logout revocation, and CSRF protection for mutating requests. |
 | Shared API model | `internal/model/` | Defines logical sources, diagnostics, and query metrics. |
-| Telemetry | `internal/telemetry/` | Configures OpenTelemetry trace and metric providers from standard `OTEL_*` environment variables, exposes the server's tracer, and writes W3C trace/span id response headers. |
+| Telemetry | `internal/telemetry/` | Configures OpenTelemetry trace, metric, and opt-in log providers, exposes the server's tracer, and writes W3C trace/span id response headers. |
 | Local Redis | `docker-compose.yml` | Runs plain Redis on `127.0.0.1:6379`. |
 | Coolify container profile | `Dockerfile`, `coolify/compose.yml` | Builds the dashboard and Go service into a non-root image and runs `serve-hosted` behind an explicitly trusted Coolify TLS proxy. |
 
@@ -1148,19 +1156,21 @@ the bounded server error log records the status plus the same identifiers.
 Browser error views show only the trace ID as a request ID; they do not expose
 span attributes, internal exceptions, query payloads, or storage details.
 
-Telemetry is configured entirely through the standard OpenTelemetry SDK
-environment variables. Traces and metrics are independently optional, and no
-exporter is started for a signal unless its endpoint is configured:
+Telemetry uses standard OpenTelemetry SDK environment variables for exporters,
+plus `CAO_OTEL_LOGS_ENABLED` for the additional log-export opt-in. Traces and
+metrics are independently optional; logs additionally require that opt-in:
 
 | Variable | Effect |
 | --- | --- |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | Enables both OTLP/HTTP exporters and sets their shared destination. |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Enables trace and metric OTLP/HTTP exporters and sets their shared destination; also supplies the log destination when log export is enabled. |
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Enables the OTLP/HTTP trace exporter and sets its destination. Spans remain no-ops when neither this nor the shared endpoint is set. |
 | `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` | Enables the OTLP/HTTP metric exporter and sets its destination. |
-| `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_EXPORTER_OTLP_TRACES_HEADERS`, `OTEL_EXPORTER_OTLP_METRICS_HEADERS` | Authentication headers read directly by the corresponding OTLP exporter. Supply them through the deployment platform's secret manager; never place values in command-line arguments, checked-in configuration, or logs. |
+| `CAO_OTEL_LOGS_ENABLED` | Set to `true` to export `DEBUG`-selected server log namespaces when a log endpoint is configured. Stderr behavior is unchanged. |
+| `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` | Log-specific OTLP/HTTP destination; takes priority over the shared endpoint and includes the complete `/v1/logs` path. |
+| `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_EXPORTER_OTLP_TRACES_HEADERS`, `OTEL_EXPORTER_OTLP_METRICS_HEADERS`, `OTEL_EXPORTER_OTLP_LOGS_HEADERS` | Authentication headers read directly by the corresponding OTLP exporter. Supply them through the deployment platform's secret manager; never place values in command-line arguments, checked-in configuration, or logs. |
 | `OTEL_SERVICE_NAME` | Overrides the default `cao-dashboard` `service.name` resource attribute. |
 | `OTEL_RESOURCE_ATTRIBUTES` | Adds deployment-selected resource attributes; only configure reviewed, non-identifying values. Hostname detection is not enabled by default. |
-| `OTEL_SDK_DISABLED` | Set to `true` to keep both providers as no-ops even when endpoints are configured. |
+| `OTEL_SDK_DISABLED` | Set to `true` to keep all providers as no-ops even when endpoints are configured. |
 
 There is no Azure-specific exporter linked into the binary. To ship telemetry to
 Application Insights, point `OTEL_EXPORTER_OTLP_ENDPOINT` at an OpenTelemetry
@@ -1323,6 +1333,53 @@ go -C server run ./cmd/cao-dashboard ingest \
 
 go -C server run ./cmd/cao-dashboard serve
 ```
+
+To inspect local traces and metrics, start the optional
+[OpenObserve self-hosted instance](https://openobserve.ai/docs/getting-started/)
+on `http://127.0.0.1:5080` via the separate `server/otel-compose.yml`.
+It is not started by the Redis/Postgres Compose stack.
+Set an email and a locally held password (8–128 characters with uppercase,
+lowercase, digit, and special characters) before its first startup
+(do not commit them or put them in command-line arguments):
+
+```bash
+read -rp 'OpenObserve email: ' CAO_LOCAL_OTEL_EMAIL
+read -rsp 'OpenObserve password: ' CAO_LOCAL_OTEL_PASSWORD; echo
+export CAO_LOCAL_OTEL_EMAIL CAO_LOCAL_OTEL_PASSWORD
+npm run dashboard:server:otel-up
+```
+
+In the same shell, configure the Go server's OTLP/HTTP exporters before
+running `serve` or `ingest`. OpenObserve requires Basic authentication and
+uses signal-specific endpoints; the shared base OTLP endpoint would append
+the wrong paths. The credentials are needed again after a restart to export
+telemetry, even though OpenObserve only uses them for account creation on
+first startup.
+
+```bash
+export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1:5080/api/default/v1/traces
+export OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://127.0.0.1:5080/api/default/v1/metrics
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic%20$(printf '%s' "$CAO_LOCAL_OTEL_EMAIL:$CAO_LOCAL_OTEL_PASSWORD" | base64 | tr -d '\n')"
+export OTEL_RESOURCE_ATTRIBUTES=deployment.environment.name=local
+go -C server run ./cmd/cao-dashboard serve
+```
+
+To exercise both exporters from the local Go server integration test (after
+starting OpenObserve and setting the variables above in the same shell):
+
+```bash
+CAO_LOCAL_OTEL_INTEGRATION=1 go -C server test ./internal/telemetry -run '^TestLocalOpenObserveExport$' -count=1
+```
+
+The test skips during ordinary `go test ./...` runs; when enabled it fails if
+either the trace or metric export is rejected or unreachable.
+
+Sign in to OpenObserve with the same credentials and select the `default`
+organization. The local instance stores data in the `openobserve-data` Docker
+volume; `docker-compose -f server/otel-compose.yml down` stops it without
+deleting that volume. Do not use `down -v` unless you intend to erase its data.
+For hosted deployments, supply exporter authentication through the deployment
+secret manager instead of exporting it from an interactive shell.
 
 `serve` prints a capability URL such as:
 

@@ -172,6 +172,45 @@ describe("dashboard data startup", () => {
     ]);
   });
 
+  it("reports failed background updates once and clears the notice when the subscription recovers", async () => {
+    /** @type {((sources: Record<string, import('../../src/presenter.js').LogicalSourceInput>) => void) | undefined} */
+    let deliver;
+    /** @type {((error: Error) => void) | undefined} */
+    let fail;
+    dataProcessor.subscribeCanonicalDashboardView.mockImplementation(
+      (_id, _names, _context, listener, _pagination, subscriptionOptions) => {
+        deliver = listener;
+        fail = subscriptionOptions.onError;
+        listener(cachedSources);
+        return () => {};
+      },
+    );
+    const owner = new AbortController();
+    const stop = await startDashboardData(options({
+      render: /** @type {Parameters<typeof startDashboardData>[0]['render']} */ ((
+        _sources, _state, loadPageSources,
+      ) => {
+        void loadPageSources.subscribeBackgroundSources?.(["runs"], {
+          signal: owner.signal,
+          onUpdate: () => {},
+        });
+      }),
+    }));
+    await vi.waitFor(() => expect(deliver).toBeDefined());
+    fail?.(new Error("private error with token"));
+    fail?.(new Error("private error with token"));
+    expect(document.querySelectorAll(".dashboard-notification:not(.dashboard-notification-exit)")).toHaveLength(1);
+    expect(document.querySelector(".dashboard-notification-action")?.textContent).toBe("Reload dashboard");
+    expect(document.body.textContent).not.toContain("private error");
+    deliver?.({});
+    expect(document.querySelector(".dashboard-notification-exit")).not.toBeNull();
+    fail?.(new Error("private error with token"));
+    expect(document.querySelectorAll(".dashboard-notification:not(.dashboard-notification-exit)")).toHaveLength(1);
+    owner.abort();
+    expect(document.querySelectorAll(".dashboard-notification:not(.dashboard-notification-exit)")).toHaveLength(0);
+    stop();
+  });
+
   it("keeps a cold start in an accessible loading state until the first complete snapshot", async () => {
     dataProcessor.loadDashboardSnapshotMetadata
       .mockResolvedValueOnce(null)

@@ -478,6 +478,7 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
   let rerun = false;
   let backgroundConfigured = false;
   let backgroundSyncUnavailable = false;
+  let onlineRefreshPending = new URL(window.location.href).searchParams.get('online') === '1';
   /** @type {BatteryState | undefined} */
   let battery;
   /** @type {ServiceWorkerRegistration | undefined} */
@@ -586,7 +587,7 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
     }
     const lastSuccess = Number(storage.getItem(LAST_SUCCESS_STORAGE_KEY) ?? 0);
     const remaining = UPDATE_INTERVAL_MS - (now() - lastSuccess);
-    if (lastSuccess > 0 && remaining > 0) {
+    if (!onlineRefreshPending && lastSuccess > 0 && remaining > 0) {
       schedule(remaining, true);
       return;
     }
@@ -606,6 +607,7 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
         await disableDashboardBackgroundUpdates(serviceWorkers, scriptUrl, registration);
         return;
       }
+      onlineRefreshPending = false;
       storage.setItem(LAST_SUCCESS_STORAGE_KEY, String(now()));
       schedule(backgroundConfigured ? UPDATE_INTERVAL_MS : RETRY_INTERVAL_MS, backgroundConfigured);
     } catch (error) {

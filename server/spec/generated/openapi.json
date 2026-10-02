@@ -2727,6 +2727,11 @@
           },
           "rebuildRequired": {
             "type": "boolean"
+          },
+          "evaluatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Authoritative source time of the active canonical dataset, when available."
           }
         }
       },
@@ -2809,7 +2814,8 @@
             },
             "data": {
               "available": true,
-              "rebuildRequired": false
+              "rebuildRequired": false,
+              "evaluatedAt": "2026-10-02T14:25:38.957Z"
             }
           }
         ]

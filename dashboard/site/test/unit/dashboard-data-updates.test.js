@@ -360,6 +360,34 @@ describe('automatic dashboard data updates', () => {
     stop();
   });
 
+  it('refreshes opted-in dashboard data immediately with online=1 despite a recent download', async () => {
+    const originalUrl = window.location.href;
+    window.history.replaceState(null, '', '/?online=1');
+    localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
+    localStorage.setItem('central-agentic-ops.dashboard.automatic-data-update-last-success', '1000');
+    const worker = new FakeWorker();
+    const serviceWorkers = { register: vi.fn().mockResolvedValue(registration(worker)) };
+    const setTimer = vi.fn();
+    try {
+      const stop = startAutomaticDashboardDataUpdates(
+        ['https://example.test/payload-hashes.json'],
+        {
+          serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
+          getBattery: async () => ({ charging: true, level: 1 }),
+          permissions: grantedPermissions,
+          online: () => true,
+          now: () => 2000,
+          setTimer: /** @type {typeof window.setTimeout} */ (/** @type {unknown} */ (setTimer))
+        }
+      );
+      await vi.waitFor(() => expect(worker.messages.filter((message) => message.type === 'DOWNLOAD_DATA')).toHaveLength(1));
+      expect(setTimer).toHaveBeenCalledWith(expect.any(Function), 60 * 60 * 1000);
+      stop();
+    } finally {
+      window.history.replaceState(null, '', originalUrl);
+    }
+  });
+
   it('unregisters periodic background updates when disabled', async () => {
     localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
     const worker = new FakeWorker();

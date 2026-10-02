@@ -14,7 +14,7 @@ services:
       - --site
       - /app/site
       - --dashboard-queries
-      - /app/dashboard.json
+      - /app/agent/queries.json
       - --database-queries
       - /app/queries/database.json
       - --mcp-enabled
@@ -42,12 +42,15 @@ services:
       CAO_SOURCE_DIRECTORY: /app/source
       CAO_BUILD_VERSION: ${SOURCE_COMMIT:-unknown}
       DEBUG: ${DEBUG:-cao:server,cao:query,cao:ingest,cao:telemetry}
+      CAO_OTEL_LOGS_ENABLED: ${CAO_OTEL_LOGS_ENABLED:-false}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:-}
       OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: ${OTEL_EXPORTER_OTLP_METRICS_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: ${OTEL_EXPORTER_OTLP_LOGS_ENDPOINT:-}
       OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
       OTEL_EXPORTER_OTLP_TRACES_HEADERS: ${OTEL_EXPORTER_OTLP_TRACES_HEADERS:-}
       OTEL_EXPORTER_OTLP_METRICS_HEADERS: ${OTEL_EXPORTER_OTLP_METRICS_HEADERS:-}
+      OTEL_EXPORTER_OTLP_LOGS_HEADERS: ${OTEL_EXPORTER_OTLP_LOGS_HEADERS:-}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-cao-dashboard}
       OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES:-deployment.environment.name=production}
       OTEL_SDK_DISABLED: ${OTEL_SDK_DISABLED:-false}

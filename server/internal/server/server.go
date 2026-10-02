@@ -459,7 +459,7 @@ func (a *App) cancelAndWaitTasks(cancel context.CancelFunc, parent context.Conte
 	ctx, waitCancel := context.WithTimeout(context.WithoutCancel(parent), 5*time.Second)
 	defer waitCancel()
 	if err := a.waitTasks(ctx); err != nil {
-		serverLog.Printf("background startup cleanup failed: %v", err)
+		serverLog.Printf("background startup cleanup failed")
 	}
 }
 
@@ -498,7 +498,7 @@ func (a *App) Serve(ctx context.Context) error {
 		stopCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
 		if err := a.Stop(stopCtx); err != nil {
-			serverLog.Printf("background shutdown failed: %v", err)
+			serverLog.Printf("background shutdown failed")
 		}
 	}(ctx)
 	if err := a.start(ctx, context.WithoutCancel(ctx)); err != nil {
@@ -546,7 +546,7 @@ func (a *App) Serve(ctx context.Context) error {
 			defer cancel()
 			err := httpServer.Shutdown(shutdown)
 			if err != nil {
-				serverLog.Printf("HTTP shutdown failed: %v", err)
+				serverLog.Printf("HTTP shutdown failed")
 			}
 			shutdownResult <- err
 		case <-serveDone:
@@ -955,10 +955,14 @@ func (a *App) health(response http.ResponseWriter, request *http.Request) {
 		status = http.StatusServiceUnavailable
 	}
 	serverLog.Printf("health status=%d redis=%t data=%t", status, redisHealthy, active.Ready)
+	data := map[string]any{"available": active.Ready, "rebuildRequired": !active.Ready}
+	if active.Ready && !active.EvaluatedAt.IsZero() {
+		data["evaluatedAt"] = active.EvaluatedAt.UTC().Format(time.RFC3339Nano)
+	}
 	payload := map[string]any{
 		"status": "healthy",
 		"redis":  map[string]any{"connected": redisHealthy},
-		"data":   map[string]any{"available": active.Ready, "rebuildRequired": !active.Ready},
+		"data":   data,
 	}
 	if status != http.StatusOK {
 		payload["status"] = "unhealthy"
@@ -992,13 +996,17 @@ func (a *App) readiness(response http.ResponseWriter, request *http.Request) {
 	if !ready {
 		status = http.StatusServiceUnavailable
 	}
+	data := map[string]any{
+		"available":       active.Ready,
+		"rebuildRequired": !active.Ready,
+	}
+	if active.Ready && !active.EvaluatedAt.IsZero() {
+		data["evaluatedAt"] = active.EvaluatedAt.UTC().Format(time.RFC3339Nano)
+	}
 	writeJSON(response, status, map[string]any{
 		"ready": ready,
 		"redis": map[string]any{"connected": redisHealthy},
-		"data": map[string]any{
-			"available":       active.Ready,
-			"rebuildRequired": !active.Ready,
-		},
+		"data":  data,
 	})
 }
 
@@ -1014,7 +1022,7 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 	}
 	if err := http.NewResponseController(response).SetWriteDeadline(time.Time{}); err != nil &&
 		!errors.Is(err, http.ErrNotSupported) {
-		serverLog.Printf("event stream requires a response writer with deadline control: %v", err)
+		serverLog.Printf("event stream requires a response writer with deadline control")
 		writeError(response, http.StatusInternalServerError, "streaming unsupported")
 		return
 	}
