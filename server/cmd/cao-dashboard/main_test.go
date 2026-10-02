@@ -1,9 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"sort"
 	"strings"
 	"testing"
@@ -566,7 +570,7 @@ func TestActionsEnvironmentPresentReportsPresenceNotValues(t *testing.T) {
 }
 
 func TestRootCommandRegistersEverySubcommand(t *testing.T) {
-	want := []string{"backfill", "benchmark-queries", "collect", "compile-queries", "doctor", "ingest", "serve", "serve-hosted", "simulate-api", "simulate-webhooks"}
+	want := []string{"backfill", "benchmark-queries", "collect", "compile-queries", "doctor", "ingest", "otel-smoke", "serve", "serve-hosted", "simulate-api", "simulate-webhooks"}
 	root := newRootCommand()
 
 	got := make([]string, 0, len(want))
@@ -582,6 +586,65 @@ func TestRootCommandRegistersEverySubcommand(t *testing.T) {
 		if got[i] != want[i] {
 			t.Errorf("newRootCommand() registered %v, want %v", got, want)
 			break
+		}
+	}
+}
+
+func TestTelemetrySmokeCommandUsesEnvironmentWithoutReportingSecrets(t *testing.T) {
+	const (
+		traceID             = "4bf92f3577b34da6a3ce929d0e0e4736"
+		spanID              = "00f067aa0ba902b7"
+		authorizationHeader = "Basic command-test-credential"
+	)
+	cao := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.Header().Set(telemetry.TraceIDHeader, traceID)
+		response.Header().Set(telemetry.SpanIDHeader, spanID)
+		response.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(cao.Close)
+	openObserve := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case "/healthz":
+			response.WriteHeader(http.StatusOK)
+		case "/api/default/default/traces/latest":
+			if got := request.Header.Get("Authorization"); got != authorizationHeader {
+				t.Errorf("authorization header = %q, want %q", got, authorizationHeader)
+			}
+			response.Header().Set("Content-Type", "application/json")
+			_, _ = response.Write([]byte(`{"hits":[{"trace_id":"` + traceID + `"}]}`))
+		default:
+			http.NotFound(response, request)
+		}
+	}))
+	t.Cleanup(openObserve.Close)
+
+	t.Setenv("OTEL_SDK_DISABLED", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_HEADERS", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", openObserve.URL+"/api/default/v1/traces")
+	t.Setenv("OTEL_EXPORTER_OTLP_TRACES_HEADERS", "Authorization="+authorizationHeader)
+
+	var output bytes.Buffer
+	command := newTelemetrySmokeCommand()
+	command.SetOut(&output)
+	command.SetArgs([]string{
+		"--cao-readiness-url", cao.URL + "/api/readiness",
+		"--timeout", "1s",
+		"--poll-interval", "1ms",
+	})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	var report telemetry.SmokeReport
+	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
+		t.Fatalf("decode smoke report: %v", err)
+	}
+	if !report.Passed {
+		t.Fatalf("smoke report passed = false, report = %+v", report)
+	}
+	for _, forbidden := range []string{traceID, authorizationHeader, cao.URL, openObserve.URL} {
+		if strings.Contains(output.String(), forbidden) {
+			t.Errorf("command output contains sensitive runtime value %q", forbidden)
 		}
 	}
 }

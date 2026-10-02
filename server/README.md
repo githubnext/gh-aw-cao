@@ -734,6 +734,7 @@ The same binary runs every role:
 | `cao-dashboard backfill` | cold start: replay the lake, enumerate installations, seed tasks |
 | `cao-dashboard backfill --replay-only` | repopulate the database from retained evidence with no GitHub requests |
 | `cao-dashboard doctor` | run a read-only, systematic check-up of Redis, canonical data, queries, and collection |
+| `cao-dashboard otel-smoke` | verify that one live CAO request is indexed by OpenObserve without reporting credentials or trace identifiers |
 
 `GET /api/admin/collection/status` reports enrollment coverage, shared collection queue
 depth (including webhook and backfill tasks), in-flight tasks, cumulative
@@ -802,6 +803,24 @@ cannot hang the whole report.
 The report prints only a redacted Redis endpoint. It reports whether a webhook
 secret or App private key is configured, never its value, and it only `stat`s a
 private-key file rather than reading it.
+
+### Verify OpenObserve ingestion
+
+Run `cao-dashboard otel-smoke` inside the live CAO container after configuring
+the standard `OTEL_*` variables. The command requests the local readiness
+endpoint, confirms that the response carries valid trace and span identifiers,
+checks the OpenObserve `/healthz` endpoint derived from the OTLP traces
+endpoint, and polls the `default` trace stream for the emitted trace.
+
+```bash
+/app/cao-dashboard otel-smoke
+```
+
+Use `--trace-stream` when OpenObserve stores CAO traces outside `default`.
+`--timeout` bounds the complete test and `--poll-interval` controls lookup
+frequency. The command exits non-zero unless every stage succeeds. Its JSON
+report contains only HTTP status codes and booleans; it never includes the
+readiness URL, OTLP endpoint, authorization header, trace ID, or span ID.
 
 ### Collection settings
 

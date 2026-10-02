@@ -311,6 +311,20 @@ To check Redis, dashboard data, and queries without changing anything, run the f
 
 Add `--deep` to read every active source, `--format json` for automation, or `--strict` to fail on warnings.
 
+To verify the complete CAO-to-OpenObserve path, run the smoke test inside the
+live CAO container after a deployment:
+
+```bash
+/app/cao-dashboard otel-smoke
+```
+
+The command requests local readiness, checks the internal OpenObserve health
+endpoint, and polls OpenObserve for the resulting trace. It exits non-zero
+unless every stage succeeds. Its JSON output contains only HTTP status codes
+and booleans; it never reports endpoints, authorization headers, trace IDs, or
+span IDs. Pass `--trace-stream NAME` only when OpenObserve stores CAO traces
+outside the default `default` stream.
+
 ### Delivery history
 
 Coolify records each source commit, build, deployment status, and retained deployment in the resource's deployment history.

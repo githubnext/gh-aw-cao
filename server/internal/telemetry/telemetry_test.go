@@ -2,8 +2,11 @@ package telemetry
 
 import (
 	"context"
+	"io"
+	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/baggage"
@@ -133,6 +136,84 @@ func TestSetupWithHTTPEndpointConfiguresProvider(t *testing.T) {
 	}
 	if baggage.FromContext(extracted).Len() != 0 {
 		t.Fatal("untrusted baggage must not be propagated")
+	}
+}
+
+func TestSetupExportsTraceToConfiguredOpenObserveEndpoint(t *testing.T) {
+	const (
+		tracePath           = "/api/default/v1/traces"
+		authorizationHeader = "Basic test-credential"
+	)
+	type exportedRequest struct {
+		method        string
+		path          string
+		authorization string
+		contentType   string
+		bodySize      int
+		readErr       error
+	}
+	requests := make(chan exportedRequest, 1)
+	receiver := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		body, err := io.ReadAll(request.Body)
+		requests <- exportedRequest{
+			method:        request.Method,
+			path:          request.URL.Path,
+			authorization: request.Header.Get("Authorization"),
+			contentType:   request.Header.Get("Content-Type"),
+			bodySize:      len(body),
+			readErr:       err,
+		}
+		response.Header().Set("Content-Type", "application/x-protobuf")
+		response.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(receiver.Close)
+
+	previousProvider := otel.GetTracerProvider()
+	t.Cleanup(func() { otel.SetTracerProvider(previousProvider) })
+	t.Setenv("OTEL_SDK_DISABLED", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_HEADERS", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", receiver.URL+tracePath)
+	t.Setenv("OTEL_EXPORTER_OTLP_TRACES_HEADERS", "Authorization="+authorizationHeader)
+	t.Setenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_METRICS_HEADERS", "")
+	t.Setenv("OTEL_RESOURCE_ATTRIBUTES", "")
+
+	shutdown, err := Setup(t.Context(), "test")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	_, span := Tracer().Start(t.Context(), testSpanName)
+	span.End()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := shutdown(shutdownCtx); err != nil {
+		t.Fatalf("shutdown exporter: %v", err)
+	}
+
+	select {
+	case request := <-requests:
+		if request.readErr != nil {
+			t.Fatalf("read exported trace: %v", request.readErr)
+		}
+		if request.method != http.MethodPost {
+			t.Errorf("method = %q, want %q", request.method, http.MethodPost)
+		}
+		if request.path != tracePath {
+			t.Errorf("path = %q, want %q", request.path, tracePath)
+		}
+		if request.authorization != authorizationHeader {
+			t.Errorf("authorization header = %q, want %q", request.authorization, authorizationHeader)
+		}
+		if request.contentType != "application/x-protobuf" {
+			t.Errorf("content type = %q, want application/x-protobuf", request.contentType)
+		}
+		if request.bodySize == 0 {
+			t.Error("exported trace body must not be empty")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for exported trace")
 	}
 }
 

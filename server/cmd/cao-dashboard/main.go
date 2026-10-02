@@ -33,6 +33,7 @@ const defaultRedisURL = "redis://127.0.0.1:6379/0"
 var commandLog = debuglogger.New("cao:cli")
 
 var errDoctorFoundProblems = errors.New("doctor found problems")
+var errTelemetrySmokeFailed = errors.New("OpenTelemetry smoke test failed")
 
 // redisEndpointSource identifies which input determined a resolved Redis
 // endpoint. It is useful for diagnosing misconfiguration without logging the
@@ -305,7 +306,7 @@ func main() {
 	version = resolved
 	commandLog.Printf("resolved build version source=%s", source)
 	if err := run(os.Args[1:]); err != nil {
-		if errors.Is(err, errDoctorFoundProblems) {
+		if errors.Is(err, errDoctorFoundProblems) || errors.Is(err, errTelemetrySmokeFailed) {
 			os.Exit(1)
 		}
 		log.Printf("error: %v", err)
@@ -343,6 +344,7 @@ func newRootCommand() *cobra.Command {
 		newCollectCommand(),
 		newBackfillCommand(),
 		newDoctorCommand(),
+		newTelemetrySmokeCommand(),
 		newCompileQueriesCommand(),
 		newBenchmarkQueriesCommand(),
 		newSimulateAPICommand(),
@@ -408,6 +410,49 @@ func newDoctorCommand() *cobra.Command {
 			// main recognizes this sentinel and exits without adding a
 			// redundant error line, so the report remains the whole output.
 			return errDoctorFoundProblems
+		}
+		return nil
+	}
+	return cmd
+}
+
+func newTelemetrySmokeCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "otel-smoke",
+		Short: "verify that a live CAO request is indexed by OpenObserve",
+	}
+	readinessURL := cmd.Flags().String(
+		"cao-readiness-url",
+		"http://127.0.0.1:8080/api/readiness",
+		"live CAO readiness URL",
+	)
+	traceStream := cmd.Flags().String("trace-stream", "default", "OpenObserve trace stream")
+	timeout := cmd.Flags().Duration("timeout", 30*time.Second, "whole smoke-test timeout")
+	pollInterval := cmd.Flags().Duration("poll-interval", time.Second, "OpenObserve trace lookup interval")
+	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		report, err := telemetry.RunSmoke(ctx, telemetry.SmokeConfig{
+			CAOReadinessURL:   *readinessURL,
+			OTELSDKDisabled:   os.Getenv("OTEL_SDK_DISABLED"),
+			OTLPEndpoint:      os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+			OTLPHeaders:       os.Getenv("OTEL_EXPORTER_OTLP_HEADERS"),
+			OTLPTraceEndpoint: os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"),
+			OTLPTraceHeaders:  os.Getenv("OTEL_EXPORTER_OTLP_TRACES_HEADERS"),
+			TraceStream:       *traceStream,
+			Timeout:           *timeout,
+			PollInterval:      *pollInterval,
+		})
+		if err != nil {
+			return err
+		}
+		encoder := json.NewEncoder(cmd.OutOrStdout())
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(report); err != nil {
+			return err
+		}
+		if !report.Passed {
+			return errTelemetrySmokeFailed
 		}
 		return nil
 	}
