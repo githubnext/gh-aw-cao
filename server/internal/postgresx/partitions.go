@@ -7,10 +7,13 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 const defaultRunRetentionDays = 400
 const futureRunWeeks = 4
+const partitionMaintenanceInterval = 24 * time.Hour
 
 // RunPartitionMaintenance is an administrative operation, never part of
 // ingestion. Only whole weeks strictly older than the retention cutoff go.
@@ -18,19 +21,18 @@ func (s *Store) RunPartitionMaintenance(ctx context.Context, now time.Time, rete
 	if retentionDays < 7 || retentionDays > 3650 {
 		return fmt.Errorf("run retention days must be between 7 and 3650")
 	}
-	lock, err := s.db.Conn(ctx)
+	lock, err := pgx.ConnectConfig(ctx, s.config.Copy())
 	if err != nil {
 		return err
 	}
-	defer func() { _ = lock.Close() }()
-	if _, err := lock.ExecContext(ctx, "SELECT pg_advisory_lock(712083241, 17484)"); err != nil {
+	defer func() {
+		closeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = lock.Close(closeCtx)
+	}()
+	if _, err := lock.Exec(ctx, "SELECT pg_advisory_lock(712083241, 17484)"); err != nil {
 		return err
 	}
-	defer func() {
-		release, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_, _ = lock.ExecContext(release, "SELECT pg_advisory_unlock(712083241, 17484)")
-	}()
 	tables := []string{"events", "sessions", "audits", "domains", "eval_observations", "experiment_assignments", "friction", "grader_observations", "issues", "jobs", "skills", "tools", "runs"}
 	cutoff := now.UTC().AddDate(0, 0, -retentionDays)
 	week := func(t time.Time) time.Time {
@@ -39,18 +41,27 @@ func (s *Store) RunPartitionMaintenance(ctx context.Context, now time.Time, rete
 		return time.Date(t.Year(), t.Month(), t.Day()-day, 0, 0, 0, 0, time.UTC)
 	}
 	start := week(cutoff)
-	end := week(now).AddDate(0, 0, 7*(futureRunWeeks+1))
-	rows, err := s.db.QueryContext(ctx, `SELECT c.relname FROM pg_inherits i
-		JOIN pg_class c ON c.oid=i.inhrelid WHERE i.inhparent=to_regclass('runs')`)
+	current := week(now)
+	end := current.AddDate(0, 0, 7*(futureRunWeeks+1))
+	rows, err := s.db.QueryContext(ctx, `SELECT c.relname,p.relname FROM pg_inherits i
+		JOIN pg_class c ON c.oid=i.inhrelid JOIN pg_class p ON p.oid=i.inhparent
+		WHERE p.relnamespace=current_schema()::regnamespace AND p.relname IN
+		('events','sessions','audits','domains','eval_observations','experiment_assignments',
+		 'friction','grader_observations','issues','jobs','skills','tools','runs')`)
 	if err != nil {
 		return err
 	}
+	existing := make(map[string]bool)
 	var expired []time.Time
 	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
+		var name, table string
+		if err := rows.Scan(&name, &table); err != nil {
 			_ = rows.Close()
 			return err
+		}
+		existing[name] = true
+		if table != "runs" {
+			continue
 		}
 		if !strings.HasPrefix(name, "runs_w") || len(name) != len("runs_w")+8 {
 			_ = rows.Close()
@@ -70,15 +81,40 @@ func (s *Store) RunPartitionMaintenance(ctx context.Context, now time.Time, rete
 		return err
 	}
 	_ = rows.Close()
+	// Provision the current and upcoming weeks before any historical backlog.
+	for at := current; at.Before(end); at = at.AddDate(0, 0, 7) {
+		if err := s.createWeek(ctx, tables, at, existing); err != nil {
+			return err
+		}
+	}
+	for at := start; at.Before(current); at = at.AddDate(0, 0, 7) {
+		if err := s.createWeek(ctx, tables, at, existing); err != nil {
+			return err
+		}
+	}
 	for _, at := range expired {
 		if err := s.maintainWeek(ctx, tables, at, true); err != nil {
 			return err
 		}
 	}
-	for at := start; at.Before(end); at = at.AddDate(0, 0, 7) {
-		if err := s.maintainWeek(ctx, tables, at, false); err != nil {
-			return err
+	return nil
+}
+
+func (s *Store) createWeek(ctx context.Context, tables []string, at time.Time, existing map[string]bool) error {
+	var missing []string
+	for _, table := range tables {
+		if !existing[table+"_w"+at.Format("20060102")] {
+			missing = append(missing, table)
 		}
+	}
+	if len(missing) == 0 {
+		return nil
+	}
+	if err := s.maintainWeek(ctx, missing, at, false); err != nil {
+		return err
+	}
+	for _, table := range missing {
+		existing[table+"_w"+at.Format("20060102")] = true
 	}
 	return nil
 }
@@ -124,7 +160,7 @@ func (s *Store) maintainWeek(ctx context.Context, tables []string, at time.Time,
 				return fmt.Errorf("drop expired %s: %w", name, err)
 			}
 		} else {
-			statement := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s PARTITION OF %s FOR VALUES FROM ('%s') TO ('%s')",
+			statement := fmt.Sprintf("CREATE TABLE %s PARTITION OF %s FOR VALUES FROM ('%s') TO ('%s')",
 				name, table, at.Format(time.RFC3339), at.AddDate(0, 0, 7).Format(time.RFC3339))
 			if _, err := tx.ExecContext(ctx, statement); err != nil {
 				return fmt.Errorf("create weekly %s: %w", name, err)

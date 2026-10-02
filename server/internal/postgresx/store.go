@@ -113,21 +113,30 @@ func NewConfig(ctx context.Context, config *pgx.ConnConfig, namespaces ...string
 	store.maintenanceDone.Add(1)
 	go func() {
 		defer store.maintenanceDone.Done()
-		ticker := time.NewTicker(24 * time.Hour)
+		ticker := time.NewTicker(partitionMaintenanceInterval)
 		defer ticker.Stop()
-		for {
-			select {
-			case <-maintenanceCtx.Done():
-				return
-			case <-ticker.C:
-				if err := store.RunPartitionMaintenance(maintenanceCtx, time.Now(), retention); err != nil && maintenanceCtx.Err() == nil {
-					// A later maintenance tick retries; ingestion never creates partitions.
-					log.Printf("postgres partition maintenance failed")
-				}
-			}
-		}
+		runPartitionMaintenanceLoop(maintenanceCtx, ticker.C, func(ctx context.Context, now time.Time) error {
+			return store.RunPartitionMaintenance(ctx, now, retention)
+		})
 	}()
 	return store, nil
+}
+
+func runPartitionMaintenanceLoop(ctx context.Context, ticks <-chan time.Time, run func(context.Context, time.Time) error) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case now, ok := <-ticks:
+			if !ok {
+				return
+			}
+			if err := run(ctx, now); err != nil && ctx.Err() == nil {
+				// A later maintenance tick retries; ingestion never creates partitions.
+				log.Printf("postgres partition maintenance failed")
+			}
+		}
+	}
 }
 
 func validateTransport(config *pgx.ConnConfig) error {
