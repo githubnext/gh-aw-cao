@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderCampaignRouteVariant, renderCampaignRouteView } from '../../src/components/campaign-route-view.js';
-import { configureSourceLoader, refreshSources, resetSourceStore } from '../../src/source-store.js';
+import { configureSourceLoader, refreshSources, resetSourceStore, publishSource } from '../../src/source-store.js';
 
 const metadata = {
   'source-id': 'fixture',
@@ -448,6 +448,7 @@ describe('campaign detail route', () => {
         navigationPage: 'campaigns'
       });
 
+      publishSource('workflows', { source: 'workflows', metadata, rows: [] });
       rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
         detail: { parameter: 'campaign', value: 'missing' }
       }));
@@ -483,6 +484,7 @@ describe('campaign detail route', () => {
     }));
     expect(rendered.textContent).toBe('Select a campaign to view its overview.');
 
+    publishSource('workflows', { source: 'workflows', metadata, rows: [] });
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
       detail: { parameter: 'campaign', value: 'missing' }
     }));

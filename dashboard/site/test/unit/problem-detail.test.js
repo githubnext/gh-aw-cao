@@ -1,5 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderProblemDetail } from '../../src/components/problem-detail.js';
+import { publishSource, resetSourceStore } from '../../src/source-store.js';
+import { dashboardViewAliasName } from '../../src/data/queries/view-payload-compiler.js';
+import { renderDashboard, disposeDashboard } from '../../src/presenter.js';
+
+afterEach(async () => {
+  document.body.replaceChildren();
+  await Promise.resolve();
+  resetSourceStore();
+});
 
 const metadata = {
   'source-id': 'campaign-problem-items-fixture',
@@ -120,6 +129,17 @@ describe('problem detail', () => {
     expect(rendered.textContent).toBe('This runtime problem is no longer present in the selected horizon.');
   });
 
+  it('treats missing or non-text route values as an unselected problem', () => {
+    const rendered = renderProblemDetail(context());
+    for (const value of [undefined, null, { repository: 'github/gh-aw' }]) {
+      rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+        detail: { parameter: 'target-repository', value }
+      }));
+      expect(rendered.textContent).toBe('Select a runtime problem to view its details.');
+      expect(rendered.dataset.targetRepository).toBe('');
+    }
+  });
+
   it('explains fields not emitted before a sparse driver-exit failure', () => {
     const sparseProblem = /** @type {Record<string, unknown>} */ ({ ...problem() });
     for (const field of [
@@ -139,8 +159,8 @@ describe('problem detail', () => {
     expect(rendered.textContent).not.toContain('Unavailable');
     expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('Failure messageWorkflow failed');
     expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('JobThe failed job was not identified in retained run telemetry.');
-    expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('Requested modelAutomatic model selection was requested.');
-    expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('Resolved modelModel resolution did not complete before the failure.');
+    expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('Requested modelThe requested model was not recorded for this run.');
+    expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('Resolved modelThe resolved model was not recorded for this run.');
     expect(rendered.querySelector('.problem-view-log')?.textContent).toContain('did not retain raw output');
   });
 
@@ -155,6 +175,169 @@ describe('problem detail', () => {
       expect(rendered.querySelector('.problem-view-highlights')?.textContent).toContain('Workflow runUnavailable');
       expect(rendered.querySelector('.problem-view-highlights a')).toBeNull();
     }
+  });
+
+  it('updates worker-bound evidence without replacing focused controls or log scroll state', () => {
+    const fixture = { ...context(), viewId: 'campaign-problem-detail-view', viewIndex: 0 };
+    const rendered = renderProblemDetail(fixture);
+    document.body.append(rendered);
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'target-repository', value: 'github/gh-aw' }
+    }));
+    const button = rendered.querySelector('button');
+    const log = rendered.querySelector('.problem-view-log pre');
+    button?.focus();
+    if (log) log.scrollTop = 32;
+    const allocation = vi.fn();
+    rendered.addEventListener('dashboard-route-allocation', allocation);
+    publishSource('campaign-problem-items', {
+      ...fixture.sources['campaign-problem-items'],
+      rows: [{ ...problem(), 'problem-title': 'Updated problem', 'occurrence-count': 66, 'failure-log': 'Updated log' }]
+    }, dashboardViewAliasName(fixture.pageId, { id: fixture.viewId }, 0, 'campaign-problem-items', 0));
+
+    expect(rendered.querySelector('button')).toBe(button);
+    expect(document.activeElement).toBe(button);
+    expect(rendered.querySelector('.problem-view-log pre')).toBe(log);
+    expect(log?.scrollTop).toBe(32);
+    expect(log?.textContent).toBe('Updated log');
+    expect(rendered.querySelector('.problem-view-highlights')?.textContent).toContain('Occurrences66');
+    expect(allocation).toHaveBeenCalledWith(expect.objectContaining({ detail: expect.objectContaining({ title: 'Updated problem' }) }));
+  });
+
+  it('keeps the repair prompt open and updates its evidence reactively', () => {
+    const rendered = renderProblemDetail(context());
+    document.body.append(rendered);
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'target-repository', value: 'github/gh-aw' }
+    }));
+    rendered.querySelector('button')?.click();
+    const preview = rendered.querySelector('.table-intent-preview');
+    expect(preview?.textContent).toContain('"occurrence-count": 65');
+    const dialog = rendered.querySelector('dialog');
+    publishSource('campaign-problem-items', {
+      ...context().sources['campaign-problem-items'],
+      rows: [{ ...problem(), 'occurrence-count': 66 }]
+    });
+
+    expect(rendered.querySelector('dialog')).toBe(dialog);
+    expect(dialog?.open).toBe(true);
+    expect(preview?.textContent).toContain('"occurrence-count": 66');
+    rendered.querySelector('.table-intent-dialog-close')?.dispatchEvent(new MouseEvent('click'));
+    expect(dialog?.open).toBe(false);
+  });
+
+  it('distinguishes loading, incomplete, unavailable, recovery, and complete empty evidence', async () => {
+    const rendered = renderProblemDetail({ ...context(), sources: {} });
+    document.body.append(rendered);
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'target-repository', value: 'github/gh-aw' }
+    }));
+    expect(rendered.getAttribute('aria-busy')).toBe('true');
+    expect(rendered.textContent).toBe('Loading runtime problem evidence...');
+    publishSource('campaign-problem-items', {
+      source: 'campaign-problem-items', metadata: { ...metadata, completeness: 'partial' }, rows: []
+    });
+    expect(rendered.getAttribute('aria-busy')).toBe('false');
+    expect(rendered.textContent).toContain('evidence is incomplete');
+    expect(rendered.textContent).not.toContain('no longer present');
+    publishSource('campaign-problem-items', {
+      source: 'campaign-problem-items', metadata: { ...metadata, completeness: 'partial' }, rows: [problem()]
+    });
+    expect(rendered.querySelector('[role="status"]')?.textContent).toContain('evidence is incomplete');
+    expect(rendered.querySelector('.problem-view')).not.toBeNull();
+    publishSource('campaign-problem-items', {
+      source: 'campaign-problem-items', metadata: { ...metadata, availability: 'unavailable' }, rows: []
+    });
+    expect(rendered.textContent).toContain('evidence is unavailable');
+    expect(rendered.textContent).not.toContain('no longer present');
+    publishSource('campaign-problem-items', context().sources['campaign-problem-items']);
+    expect(rendered.querySelector('.problem-view')).not.toBeNull();
+    publishSource('campaign-problem-items', {
+      source: 'campaign-problem-items', metadata: { ...metadata, availability: 'empty' }, rows: []
+    });
+    expect(rendered.textContent).toBe('This runtime problem is no longer present in the selected horizon.');
+  });
+
+  it('stops source reactions and route listeners after its root is removed', async () => {
+    const rendered = renderProblemDetail(context());
+    document.body.append(rendered);
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'target-repository', value: 'github/gh-aw' }
+    }));
+    rendered.querySelector('button')?.click();
+    const contents = rendered.textContent;
+    const allocation = vi.fn();
+    rendered.addEventListener('dashboard-route-allocation', allocation);
+    rendered.remove();
+    await Promise.resolve();
+    publishSource('campaign-problem-items', {
+      ...context().sources['campaign-problem-items'],
+      rows: [{ ...problem(), 'occurrence-count': 99 }]
+    });
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'target-repository', value: '' }
+    }));
+    expect(rendered.textContent).toBe(contents);
+    expect(allocation).not.toHaveBeenCalled();
+    expect(rendered.dataset.targetRepository).toBe('github/gh-aw');
+  });
+
+  it('keeps the detail element mounted while the active page subscription publishes fresh results', async () => {
+    const previousUrl = window.location.href;
+    window.history.replaceState(null, '', '#page-campaign-problem-detail?target-repository=github%2Fgh-aw');
+    /** @type {import('../../src/presenter.js').PageSourceLoadOptions | undefined} */
+    let subscription;
+    const loadPageSources = /** @type {import('../../src/presenter.js').PageSourceLoader} */ (
+      vi.fn(async () => ({}))
+    );
+    loadPageSources.subscribeViewSources = vi.fn(async (_pageId, _viewId, names, options) => {
+      expect(names).toEqual(['campaign-problem-items']);
+      subscription = options;
+      return context().sources;
+    });
+    const dashboard = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'problem-subscription', title: 'Problem subscription',
+          pages: [{
+            id: 'campaign-problem-detail', kind: 'custom', title: 'Problem',
+            'filter-bar': false,
+            route: { 'hash-query-parameter': 'target-repository' },
+            views: [{
+              id: 'campaign-problem-detail-view', title: 'Problem',
+              mark: 'element', element: 'problem-detail',
+              data: { sources: ['campaign-problem-items'] }
+            }]
+          }]
+        }
+      },
+      sources: {},
+      loadPageSources
+    });
+    document.body.append(dashboard);
+    try {
+      await vi.waitFor(() => expect(dashboard.querySelector('.problem-view')).not.toBeNull());
+      expect(loadPageSources).not.toHaveBeenCalled();
+      expect(subscription?.signal.aborted).toBe(false);
+      const detail = dashboard.querySelector('.problem-detail');
+      const button = /** @type {HTMLButtonElement} */ (detail?.querySelector('.problem-view button'));
+      button.focus();
+      subscription?.onUpdate?.({
+        'campaign-problem-items': {
+          ...context().sources['campaign-problem-items'],
+          rows: [{ ...problem(), 'occurrence-count': 67 }]
+        }
+      });
+      expect(dashboard.querySelector('.problem-detail')).toBe(detail);
+      expect(detail?.querySelector('.problem-view-highlights')?.textContent).toContain('Occurrences67');
+      expect(document.activeElement).toBe(button);
+    } finally {
+      disposeDashboard(dashboard);
+      dashboard.remove();
+      window.history.replaceState(null, '', previousUrl);
+    }
+    expect(subscription?.signal.aborted).toBe(true);
   });
 });
 
@@ -179,7 +362,7 @@ describe('problem detail debug logging', () => {
     const { renderProblemDetail: renderProblemDetailWithDebug } = await import('../../src/components/problem-detail.js');
 
     const rendered = renderProblemDetailWithDebug(context());
-    expect(output.debug).toHaveBeenCalledWith('[cao:problem-detail]', { event: 'initialized', pageId: 'campaign-problem-detail', rowCount: 1 });
+    expect(output.debug).toHaveBeenCalledWith('[cao:problem-detail]', { event: 'initialized', pageId: 'campaign-problem-detail', availability: 'available' });
 
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
       detail: { parameter: 'target-repository', value: 'github/gh-aw' }

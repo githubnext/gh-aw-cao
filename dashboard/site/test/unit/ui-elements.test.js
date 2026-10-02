@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   elementHandlesEmptyRows,
+  elementBindsPageSources,
   elementLoadsSourcesAsync,
   renderUiElement
 } from '../../src/components/ui-elements.js';
@@ -42,4 +43,9 @@ describe('UI element registry', () => {
     }
   );
 
+  it('retains problem detail DOM while the page owns its query subscription', () => {
+    expect(elementBindsPageSources('problem-detail')).toBe(true);
+    expect(elementLoadsSourcesAsync('problem-detail')).toBe(false);
+    expect(elementHandlesEmptyRows('problem-detail')).toBe(true);
+  });
 });

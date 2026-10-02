@@ -74,6 +74,7 @@ test('campaign problem detail renders a responsive full view without a table', a
             'error-signature': 'dependency-update-failed',
             'failure-job': 'update',
             'failure-step': 'Apply update',
+            'failure-log': Array.from({ length: 100 }, (_, index) => `Failed step line ${index}`).join('\n'),
             'gh-aw-version': '0.89.20',
             engine: 'copilot',
             'engine-version': '1.2.3',
@@ -128,6 +129,37 @@ test('campaign problem detail renders a responsive full view without a table', a
   await expect(runLink).toHaveAttribute('href', 'https://github.com/github/gh-aw/actions/runs/1');
   await expect(runLink).toHaveAttribute('rel', 'noopener noreferrer');
   await expect(runLink.locator('svg')).toHaveCount(0);
+  const rawLog = problemDetail.locator('.problem-view-log pre');
+  await rawLog.evaluate((element) => { element.scrollTop = 100; });
+  await fixItButton.focus();
+  await page.evaluate(async () => {
+    const { publishSource, sourceState } = await import(new URL('/src/source-store.js', window.location.href).href);
+    const source = sourceState('campaign-problem-items').get().source;
+    if (!source) throw new Error('Problem evidence was not bound.');
+    publishSource('campaign-problem-items', {
+      ...source, rows: [{ ...source.rows[0], 'occurrence-count': 66 }]
+    });
+  });
+  await expect(fixItButton).toBeFocused();
+  await expect(problemDetail.locator('.problem-view-highlights')).toContainText('Occurrences66');
+  expect(await rawLog.evaluate((element) => element.scrollTop)).toBe(100);
+  await page.keyboard.press('Enter');
+  const prompt = problemDetail.getByRole('dialog', { name: 'Fix it prompt preview' });
+  await expect(prompt).toBeVisible();
+  await expect(prompt.locator('.table-intent-preview')).toContainText('"occurrence-count": 66');
+  await page.evaluate(async () => {
+    const { publishSource, sourceState } = await import(new URL('/src/source-store.js', window.location.href).href);
+    const source = sourceState('campaign-problem-items').get().source;
+    if (!source) throw new Error('Problem evidence was not bound.');
+    publishSource('campaign-problem-items', {
+      ...source, rows: [{ ...source.rows[0], 'occurrence-count': 67 }]
+    });
+  });
+  await expect(prompt).toBeVisible();
+  await expect(prompt.locator('.table-intent-preview')).toContainText('"occurrence-count": 67');
+  await page.keyboard.press('Escape');
+  await expect(prompt).not.toBeVisible();
+  await expect(fixItButton).toBeFocused();
   await page.setViewportSize({ width: 500, height: 800 });
   await expect(problemDetail.locator('.problem-view-sections')).toHaveCSS('grid-template-columns', '500px');
 });
