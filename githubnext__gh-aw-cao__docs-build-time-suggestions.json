@@ -1,6 +1,6 @@
 {
-  "source_sha": "d4e4f4047b3ab673cc994d71e25ece332d380aea",
-  "next_category": "artifact transfer and Pages packaging",
+  "source_sha": "e5d284acc64c596907154fa25cda8c97e2fadc1c",
+  "next_category": "dependency installation and caching",
   "evaluations": [
     {
       "evaluated_at": "2026-10-02T09:56:00Z",
@@ -135,6 +135,14 @@
       "category": "artifact transfer and Pages packaging",
       "evidence_run_ids": [],
       "outcome": "incomplete: GitHub Actions API rate limit was exhausted before this run could collect the required fresh 14-day docs.yml and cao-dashboard.yml evidence sample or verify current cache-hit metadata. Stopped without further API polling, so no actionable recommendation could be made in this cycle.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-02T14:57:00Z",
+      "worker_run_id": "37023235162",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [37022950670, 37021766014, 37021734130, 37020020519, 37018656763, 37017029269, 37016480662, 37015555252, 37015029105, 37011730414, 37009871083, 37021381186],
+      "outcome": "no_actionable_improvement: evaluated artifact transfer and Pages packaging across the latest 12 successful docs.yml runs in the 2026-10-02T12:57Z-14:52Z window, including 10 comparable successful build executions and 6 successful deploy executions, plus matching successful cao-dashboard.yml producer run 37021381186 for source e5d284acc64c596907154fa25cda8c97e2fadc1c. Trusted Actions metadata showed docs workflow wall-time median 74s with p90 171s, build-job median 44s with p90 53s, deploy-job median 36s with p90 106s, schedule-freshness median 9s with p90 9s on successful scheduled runs, and zero observable queue time. Trusted step metadata and logs confirmed cache hits on every comparable docs build: setup-node restored the npm cache (~291 MB), the explicit node_modules cache restored ~283 MB in 5.5s median, and the central-agentic-ops-dashboard cache restored ~41 MB in 2s median; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped in all 10 comparable builds. Comparable docs build-step medians were 11s for Build documentation and 9s for Upload Pages artifact. Deploy-job time varied because only schedule runs that passed freshness checks performed Pages deployment; among those successful deploys, 36s median is still below the 60s/15% actionable threshold for this category once cache hits are confirmed. Cross-checking producer run 37021381186 showed the upstream dashboard artifact assembly is still the larger transfer problem: the workflow restored a ~189 MB activity cache, then copied a 537.4 MiB SQLite database plus 136 activity shards totaling 343.0 MiB into the dashboard artifact before uploading it in 10s. Because docs-side artifact upload and Pages packaging remain modest and stable while the larger qualifying waste is upstream and already represented by open issue #15497, this cycle found no new non-duplicate actionable improvement in the artifact-transfer category.",
       "suggestion_fingerprint": null
     }
   ]
