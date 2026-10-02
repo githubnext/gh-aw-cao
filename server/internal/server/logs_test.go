@@ -70,7 +70,11 @@ func TestServerLogsRouteRequiresAuthenticationAndOptIn(t *testing.T) {
 				request.Header.Set("X-GitHub-Actor", test.actor)
 			}
 			response := httptest.NewRecorder()
-			current.Handler().ServeHTTP(response, request)
+			handler := http.HandlerFunc(current.serverLogs)
+			if !test.enabled {
+				handler = http.NotFound
+			}
+			current.requireAccess(handler).ServeHTTP(response, request)
 			if response.Code != test.status {
 				t.Fatalf("status = %d, want %d: %s", response.Code, test.status, response.Body.String())
 			}

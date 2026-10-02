@@ -1397,8 +1397,9 @@ In GitHub Actions, `serve` also reads the standard `GITHUB_TOKEN` and
 `GITHUB_ACTOR` environment variables. When both are available, an MCP client can
 send the token in the bearer `Authorization` header and the actor in
 `X-GitHub-Actor`.
-The configured pair is accepted only at `/mcp`; it does not grant access to the
-JSON APIs. Before enabling this gate, the server probes the current
+The configured pair is accepted at `/mcp` and, only when
+`CAO_SERVER_LOGS_ENABLED=true`, at `/api/admin/logs`; it does not grant access
+to other JSON APIs. Before enabling this gate, the server probes the current
 `GITHUB_REPOSITORY` through `GITHUB_API_URL` and fails closed unless the token
 can read Actions runs, contents, issues, and pull requests. Grant exactly these
 permissions:
@@ -1430,6 +1431,16 @@ identity and the Actions token's repository read permissions, before
 serving MCP requests. Keep both tokens in the Actions process environment,
 never in a URL, commit, or log. Browser access continues to use the hosted
 GitHub OAuth session.
+
+Set `CAO_SERVER_LOGS_ENABLED=true` to retain up to 10,000 recent `DEBUG`-selected
+server records in memory and mount `GET /api/admin/logs`. The response is a
+raw `application/x-ndjson` attachment, with one timestamped JSON object per
+line and `Cache-Control: no-store`. Hosted access requires either an authorized
+administrator session or the same bearer GitHub Actions token and OIDC
+provenance required by hosted MCP; local access uses the dashboard bearer
+capability or the configured Actions token and actor. Coolify enables this
+setting and `cao:server*` debug logging by default. The buffer covers the
+current process only and does not include logs emitted before it was enabled.
 
 Use `--redis-url` and optional `--redis-namespace` only on the server command
 line. The same namespace must be supplied to `ingest` and `serve` when
