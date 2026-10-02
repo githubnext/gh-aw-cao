@@ -14,6 +14,7 @@ import (
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
+	"github.com/githubnext/gh-aw-cao/server/internal/sqlbuilder"
 )
 
 type entityColumn struct{ field, name, kind, sql string }
@@ -172,7 +173,11 @@ func (s *Store) BeginIngestion(ctx context.Context) (*Writer, error) {
 		return fail(err)
 	}
 	for _, source := range tableNames() {
-		if _, err := tx.Exec(ctx, "DELETE FROM "+query.SQLIdentifier(entityTables[source].name)+" WHERE namespace=$1", s.namespace); err != nil {
+		statement, args, err := sqlbuilder.Build("DELETE FROM {} WHERE namespace={}", sqlbuilder.Identifier(entityTables[source].name), s.namespace)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := tx.Exec(ctx, statement, args...); err != nil {
 			return fail(err)
 		}
 	}
@@ -203,7 +208,12 @@ func (w *Writer) AppendInventory(ctx context.Context, source string, row model.R
 		if !exists || table.runtime {
 			return fmt.Errorf("unregistered inventory collection %q", source)
 		}
-		if _, err := w.tx.Exec(ctx, "CREATE TEMP TABLE "+query.SQLIdentifier(table.name+"_inventory")+" (LIKE "+query.SQLIdentifier(table.name)+" INCLUDING ALL) ON COMMIT DROP"); err != nil {
+		statement, args, err := sqlbuilder.Build("CREATE TEMP TABLE {} (LIKE {} INCLUDING ALL) ON COMMIT DROP",
+			sqlbuilder.Identifier(table.name+"_inventory"), sqlbuilder.Identifier(table.name))
+		if err != nil {
+			return err
+		}
+		if _, err := w.tx.Exec(ctx, statement, args...); err != nil {
 			return err
 		}
 		w.inventoryTables[source] = true
@@ -369,16 +379,27 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 			projection = append(projection, inputValue)
 			inventoryBits = append(inventoryBits, "CASE WHEN "+inputPresence+" THEN '1' ELSE '0' END")
 			if column.field != "id" {
-				updates = append(updates, name+"=CASE WHEN get_bit(t.present_fields,"+strconv.Itoa(index)+")=1 THEN t."+name+" ELSE excluded."+name+" END")
+				identity := source == "$repositories" && (column.field == "owner" || column.field == "name") ||
+					source == "$workflows" && (column.field == "repositoryId" || column.field == "path") ||
+					source == "$campaigns" && column.field == "slug"
+				if identity {
+					updates = append(updates, name+"=CASE WHEN get_bit(t.present_fields,"+strconv.Itoa(index)+")=1 THEN t."+name+" ELSE excluded."+name+" END")
+				} else {
+					updates = append(updates, name+"=CASE WHEN get_bit(excluded.present_fields,"+strconv.Itoa(index)+")=1 AND excluded."+name+" IS NOT NULL THEN excluded."+name+" ELSE t."+name+" END")
+				}
 			}
 			projection[2] = "(" + strings.Join(inventoryBits, " || ") + ")::bit varying"
 			bits = append(bits, "CASE WHEN get_bit(t.present_fields,"+strconv.Itoa(index)+")=1 OR get_bit(excluded.present_fields,"+strconv.Itoa(index)+")=1 THEN '1' ELSE '0' END")
 		}
 		updates = append(updates, "present_fields=("+strings.Join(bits, " || ")+")::bit varying")
-		statement := "INSERT INTO " + query.SQLIdentifier(table.name) + " AS t(" + strings.Join(columns, ",") + ") SELECT " +
-			strings.Join(projection, ",") + " FROM " + query.SQLIdentifier(table.name+"_inventory") + " i LEFT JOIN cao_quality q ON q.namespace=i.namespace AND q.collection=$2 WHERE i.namespace=$1 " +
-			"ON CONFLICT(namespace,id) DO UPDATE SET " + strings.Join(updates, ",")
-		if _, err := w.tx.Exec(ctx, statement, w.store.namespace, source); err != nil {
+		statement, args, err := sqlbuilder.Build("INSERT INTO {} AS t({}) SELECT {} FROM {} i LEFT JOIN cao_quality q ON q.namespace=i.namespace AND q.collection={} WHERE i.namespace={} ON CONFLICT(namespace,id) DO UPDATE SET {}",
+			sqlbuilder.Identifier(table.name), sqlbuilder.Fragment(strings.Join(columns, ",")),
+			sqlbuilder.Fragment(strings.Join(projection, ",")), sqlbuilder.Identifier(table.name+"_inventory"),
+			source, w.store.namespace, sqlbuilder.Fragment(strings.Join(updates, ",")))
+		if err != nil {
+			return State{}, err
+		}
+		if _, err := w.tx.Exec(ctx, statement, args...); err != nil {
 			return State{}, fmt.Errorf("publish typed inventory %s: %w", source, err)
 		}
 	}

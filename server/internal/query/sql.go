@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/sqlbuilder"
 )
 
 type SQLKind string
@@ -59,6 +61,7 @@ type sqlCompiler struct {
 	steps []SQLStep
 	joins []string
 	next  int
+	err   error
 }
 
 // CompileSQL lowers a validated declarative DAG to typed relational SQL.
@@ -86,17 +89,14 @@ func CompileSQL(definitions []Definition, requested []string, resolve SQLSourceR
 		if err != nil {
 			return err
 		}
-		parts := strings.Split(relation.SQL, "{}")
-		if len(parts) != len(relation.Params)+1 {
-			return errors.New("SQL source parameter count mismatch")
+		builder := sqlbuilder.New(compiler.args...)
+		builder.Write(relation.SQL, relation.Params...)
+		sourceSQL, arguments, err := builder.Statement()
+		if err != nil {
+			return err
 		}
-		var sourceSQL strings.Builder
-		sourceSQL.WriteString(parts[0])
-		for index, value := range relation.Params {
-			sourceSQL.WriteString(compiler.bind(value))
-			sourceSQL.WriteString(parts[index+1])
-		}
-		relation.SQL = sourceSQL.String()
+		compiler.args = arguments
+		relation.SQL = sourceSQL
 		relations[name] = compiler.materialize(relation, name, "source", 0)
 		return nil
 	}
@@ -129,12 +129,15 @@ func CompileSQL(definitions []Definition, requested []string, resolve SQLSourceR
 	for _, name := range requested {
 		outputs[name] = relations[name]
 	}
+	if compiler.err != nil {
+		return SQLPlan{}, compiler.err
+	}
 	return SQLPlan{CTEs: "WITH " + strings.Join(compiler.ctes, ",\n"), Outputs: outputs,
 		Args: compiler.args, Steps: compiler.steps, JoinKeys: compiler.joins}, nil
 }
 
 func SQLIdentifier(name string) string {
-	return `"` + strings.ReplaceAll(name, `"`, `""`) + `"`
+	return sqlbuilder.QuoteIdentifier(name)
 }
 
 func sortedSQLFields(columns map[string]SQLColumn) []string {
@@ -164,7 +167,13 @@ func (c *sqlCompiler) materialize(input SQLRelation, query, operation string, we
 			column.Presence+" AS "+SQLIdentifier(presentName))
 		columns[field] = SQLColumn{Expression: SQLIdentifier(valueName), Presence: SQLIdentifier(presentName), Kind: column.Kind, Point: column.Point}
 	}
-	c.ctes = append(c.ctes, SQLIdentifier(name)+" AS NOT MATERIALIZED (SELECT "+strings.Join(projection, ",")+" FROM "+input.SQL+")")
+	statement, _, err := sqlbuilder.Build("{} AS NOT MATERIALIZED (SELECT {} FROM {})",
+		sqlbuilder.Identifier(name), sqlbuilder.Fragment(strings.Join(projection, ",")), sqlbuilder.Fragment(input.SQL))
+	if err != nil {
+		c.err = err
+		return SQLRelation{}
+	}
+	c.ctes = append(c.ctes, statement)
 	c.steps = append(c.steps, SQLStep{Query: query, Relation: name, Operation: operation, Weight: weight})
 	return SQLRelation{SQL: SQLIdentifier(name), Columns: columns, Order: `"__order"`}
 }

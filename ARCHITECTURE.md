@@ -122,6 +122,15 @@ evaluator for other shapes, and returns
 only canonical or explicitly registered bounded runtime-source query payloads
 to the browser. Redis remains operational storage for caches, queues, and
 sessions, not dashboard entity storage or query execution.
+The HTTP and MCP query boundary uses a disposable Redis cache-aside layer for
+expensive queries with compact output. SHA-256 query identities include the
+definitions, parameters, pagination, schema, and current authorization class,
+not ingestion revisions. Each entry has a fixed five-minute lifetime; ingestion
+and data egress do not invalidate or renew it. Redis-side atomic expiry and
+oldest-first eviction bound both allocator-reported result/index memory and
+entry count without changing global Redis eviction policy or touching sessions
+and queues. Cached payloads retain their original evidence revision and
+evaluation time; cache hits report no fresh query-plan work.
 Its local mode remains loopback-only. Its host-neutral mode uses
 GitHub OAuth and explicit organization or team authorization, verifies and
 deduplicates GitHub webhooks, and atomically replaces the current Postgres
@@ -153,6 +162,21 @@ container, Azure Functions, and Upstash are compositions rather than provider
 checks in shared request handling.
 Startup rejects configurations or Redis clients that do not satisfy the
 selected capabilities.
+
+#### Hosted storage boundary
+
+The hosted dashboard has one strict storage split:
+
+| Store | Owns | Must not own |
+| --- | --- | --- |
+| PostgreSQL | Current dashboard entity sources, source documents, diagnostics, revision state, and Dashboard Language query execution | Sessions, rate-limit buckets, delivery queues, deduplication markers, or transient resolver caches |
+| Redis | Sessions, rate limits, webhook and collection queues, delivery deduplication, distributed coordination, GitHub quota state, pending token revocations, and bounded runtime caches | Dashboard entity rows, canonical source documents, query indexes, persistent query projections, or dashboard query execution |
+
+The browser communicates only with the Go HTTP(S) server. It never connects to
+either store. Artifact ingestion and rebuilds transactionally replace the
+current PostgreSQL data; Redis failure may make protected operations
+unavailable, but Redis is never a fallback dashboard database. PostgreSQL
+failure makes dashboard data unavailable even when Redis is healthy.
 
 An externally owned HTTP host is a separate, explicit `generic` target with
 `listener: external`, not an alias for Azure's platform listener. The public
@@ -479,8 +503,9 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   collection, data, and local tooling.
 - **JSONL** is the bounded evidence interchange; **SQLite** supports local tools
   and agents; **IndexedDB** supports the static browser dashboard; **Postgres**
-  stores current hosted dashboard sources; **Redis** supports operational caches,
-  queues, and sessions.
+  exclusively stores and queries current hosted dashboard sources; **Redis**
+  exclusively supports operational caches, queues, coordination, rate limits,
+  and sessions.
 - **Go** implements the isolated host-neutral HTTP(S) ingestion, reconciliation,
   rebuild, and query service.
 - **Dashboard Language** keeps data operations declarative and off the browser

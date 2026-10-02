@@ -240,6 +240,7 @@ func TestNativeInventoryEnrichment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	defer w.Abort(t.Context())
 	nativeParents(t.Context(), t, w)
 	if err := w.AppendInventory(t.Context(), "$repositories", model.Row{"id": "repository", "owner": "must-not-replace", "visibility": "private"}); err != nil {

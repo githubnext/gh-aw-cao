@@ -1,0 +1,176 @@
+package redisx
+
+import (
+	"context"
+	"encoding/hex"
+	"errors"
+	"strconv"
+	"time"
+)
+
+const (
+	QueryCacheTTL        = 5 * time.Minute
+	QueryCacheMaxEntries = 1024
+)
+
+type QueryCacheStats struct {
+	MemoryBytes int64
+	Entries     int64
+	Expired     int64
+	Evicted     int64
+}
+
+// The hash and expiration index form a portable per-entry TTL cache. All
+// bookkeeping and oldest-first eviction share one atomic operation.
+const queryCacheScript = `
+local entries, index = KEYS[1], KEYS[2]
+if redis.call("EXISTS", entries) ~= redis.call("EXISTS", index) then
+  redis.call("DEL", entries, index)
+end
+local clock = redis.call("TIME")
+local now = tonumber(clock[1]) * 1000 + math.floor(tonumber(clock[2]) / 1000)
+local ttl, budget, max_entries = tonumber(ARGV[2]), tonumber(ARGV[3]), tonumber(ARGV[4])
+local expired, evicted = 0, 0
+local function remove(key)
+  redis.call("HDEL", entries, key)
+  redis.call("ZREM", index, key)
+end
+for _, key in ipairs(redis.call("ZRANGEBYSCORE", index, "-inf", now)) do
+  remove(key)
+  expired = expired + 1
+end
+local function memory(key)
+  return redis.call("MEMORY", "USAGE", key, "SAMPLES", 0) or 0
+end
+local cache_bytes, cache_count = 0, 0
+local function trim()
+  cache_count = redis.call("ZCARD", index)
+  cache_bytes = memory(entries) + memory(index)
+  while cache_count > 0 and (cache_count > max_entries or cache_bytes > budget) do
+    local batch = math.max(1, cache_count - max_entries)
+    if cache_bytes > budget then
+      batch = math.max(batch, math.ceil(cache_count * (cache_bytes - budget) / cache_bytes))
+    end
+    local oldest = redis.call("ZRANGE", index, 0, math.min(batch, cache_count) - 1)
+    for _, key in ipairs(oldest) do
+      remove(key)
+      evicted = evicted + 1
+    end
+    cache_count = cache_count - #oldest
+    cache_bytes = memory(entries) + memory(index)
+  end
+  if cache_count == 0 then
+    redis.call("DEL", entries, index)
+    cache_bytes = 0
+  end
+end
+local function reply(value)
+  return {value, cache_bytes, cache_count, expired, evicted}
+end
+if redis.call("HSTRLEN", entries, ARGV[5]) > tonumber(ARGV[7]) then
+  remove(ARGV[5])
+  evicted = evicted + 1
+end
+local value = redis.call("HGET", entries, ARGV[5])
+if value and not redis.call("ZSCORE", index, ARGV[5]) then
+  remove(ARGV[5])
+  value = false
+end
+if ARGV[1] == "get" then
+  trim()
+  if redis.call("HEXISTS", entries, ARGV[5]) == 0 then return reply(false) end
+  return reply(value)
+end
+if not value then
+  redis.call("HSET", entries, ARGV[5], ARGV[6])
+  redis.call("ZADD", index, now + ttl, ARGV[5])
+  redis.call("PEXPIRE", entries, ttl)
+  redis.call("PEXPIRE", index, ttl)
+end
+trim()
+return reply(redis.call("HEXISTS", entries, ARGV[5]))
+`
+
+func validateQueryCacheKey(key string) error {
+	decoded, err := hex.DecodeString(key)
+	if err != nil || len(decoded) != 32 {
+		return errors.New("query cache identity must be a SHA-256 digest")
+	}
+	return nil
+}
+
+func (s *Store) queryCacheCommand(ctx context.Context, operation, key string, data []byte, maxResultBytes, maxBytes int64) (any, QueryCacheStats, error) {
+	if err := validateQueryCacheKey(key); err != nil {
+		return nil, QueryCacheStats{}, err
+	}
+	if maxResultBytes <= 0 || maxBytes <= 0 {
+		return nil, QueryCacheStats{}, errors.New("query cache size limits must be positive")
+	}
+	// The hash tag keeps all keys in one slot on clustered Redis providers.
+	prefix := s.Key("{query-cache:v1}:")
+	value, err := s.Client.Do(ctx, "EVAL", queryCacheScript, "2",
+		prefix+"entries", prefix+"expiry",
+		operation, strconv.FormatInt(QueryCacheTTL.Milliseconds(), 10),
+		strconv.FormatInt(maxBytes, 10), strconv.Itoa(QueryCacheMaxEntries), key, string(data),
+		strconv.FormatInt(maxResultBytes, 10))
+	if err != nil {
+		return nil, QueryCacheStats{}, err
+	}
+	values, ok := value.([]any)
+	if !ok || len(values) != 5 {
+		return nil, QueryCacheStats{}, errors.New("invalid query cache operation response")
+	}
+	var numbers [4]int64
+	for i := range numbers {
+		number, ok := values[i+1].(int64)
+		if !ok || number < 0 {
+			return nil, QueryCacheStats{}, errors.New("invalid query cache statistics")
+		}
+		numbers[i] = number
+	}
+	if numbers[0] > maxBytes || numbers[1] > QueryCacheMaxEntries {
+		return nil, QueryCacheStats{}, errors.New("query cache resource limits were not enforced")
+	}
+	return values[0], QueryCacheStats{
+		MemoryBytes: numbers[0], Entries: numbers[1], Expired: numbers[2], Evicted: numbers[3],
+	}, nil
+}
+
+func (s *Store) CachedQueryResult(ctx context.Context, key string, maxResultBytes, maxBytes int64) ([]byte, QueryCacheStats, error) {
+	value, stats, err := s.queryCacheCommand(ctx, "get", key, nil, maxResultBytes, maxBytes)
+	if err != nil || value == nil {
+		return nil, stats, err
+	}
+	content, ok := value.(string)
+	if !ok {
+		return nil, stats, errors.New("invalid query cache response")
+	}
+	if int64(len(content)) > maxResultBytes {
+		return nil, stats, errors.New("cached query result exceeds the configured size limit")
+	}
+	return []byte(content), stats, nil
+}
+
+func (s *Store) CacheQueryResult(ctx context.Context, key string, data []byte, maxResultBytes, maxBytes int64) (bool, QueryCacheStats, error) {
+	if err := validateQueryCacheKey(key); err != nil {
+		return false, QueryCacheStats{}, err
+	}
+	if maxResultBytes <= 0 || maxBytes <= 0 {
+		return false, QueryCacheStats{}, errors.New("query cache size limits must be positive")
+	}
+	if int64(len(data)) > maxResultBytes || int64(len(data)) > maxBytes {
+		return false, QueryCacheStats{}, nil
+	}
+	value, stats, err := s.queryCacheCommand(ctx, "put", key, data, maxResultBytes, maxBytes)
+	if err != nil {
+		return false, stats, err
+	}
+	switch value {
+	case int64(0):
+		return false, stats, nil
+	case int64(1):
+		return true, stats, nil
+	default:
+		return false, stats, errors.New("invalid query cache admission response")
+	}
+}

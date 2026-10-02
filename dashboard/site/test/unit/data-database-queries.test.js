@@ -383,6 +383,38 @@ describe('canonical view sources', () => {
     expect(collectionReads).not.toHaveBeenCalled();
   });
 
+  it('uses native counts only for declared non-null logical identity fields', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+    const nativeCounts = vi.spyOn(IDBObjectStore.prototype, 'count');
+    const definitions = [
+      {
+        name: 'repository-logical-count',
+        from: 'repositories',
+        aggregate: {
+          values: [{ field: 'repository', as: 'repositories', reducer: 'count' }]
+        }
+      },
+      {
+        name: 'repository-optional-count',
+        from: 'repositories',
+        aggregate: {
+          values: [{ field: 'rollout-mode', as: 'repositories', reducer: 'count' }]
+        }
+      }
+    ];
+
+    const result = await queryNativeCountSources(
+      indexedDB,
+      sources,
+      definitions,
+      ['repository-logical-count', 'repository-optional-count']
+    );
+
+    expect(result['repository-logical-count'].rows).toEqual([{ repositories: 1 }]);
+    expect(result['repository-optional-count']).toBeUndefined();
+    expect(nativeCounts).toHaveBeenCalledOnce();
+  });
+
   it('resolves literal-labelled indexing table counts with native IndexedDB counts', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
     const collectionReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');

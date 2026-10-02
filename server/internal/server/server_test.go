@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -926,6 +927,15 @@ func fakeRedis(t *testing.T) (string, func()) {
 					case "XADD":
 						_, _ = fmt.Fprint(connection, "$3\r\n1-0\r\n")
 					case "EVAL":
+						// Cache semantics are covered against real Redis; this fixture always misses.
+						if len(command) == 12 && strings.HasSuffix(command[3], "{query-cache:v1}:entries") {
+							result := "$-1\r\n"
+							if command[5] == "put" {
+								result = ":1\r\n"
+							}
+							_, _ = fmt.Fprint(connection, "*5\r\n"+result+":0\r\n:0\r\n:0\r\n:0\r\n")
+							continue
+						}
 						mu.Lock()
 						result := 1
 						bulkResult := ""
@@ -1037,6 +1047,15 @@ func fakeRedis(t *testing.T) (string, func()) {
 	}
 }
 
+func TestReadCommandConsumesLargeBulkStrings(t *testing.T) {
+	payload := strings.Repeat("script\n", 2048)
+	input := fmt.Sprintf("*2\r\n$4\r\nEVAL\r\n$%d\r\n%s\r\n", len(payload), payload)
+	command, err := readCommand(bufio.NewReaderSize(strings.NewReader(input), 64))
+	if err != nil || len(command) != 2 || command[0] != "EVAL" || command[1] != payload {
+		t.Fatalf("large RESP bulk string was not consumed exactly: fields=%d err=%v", len(command), err)
+	}
+}
+
 func readCommand(reader *bufio.Reader) ([]string, error) {
 	var count int
 	if _, err := fmt.Fscanf(reader, "*%d\r\n", &count); err != nil {
@@ -1049,7 +1068,7 @@ func readCommand(reader *bufio.Reader) ([]string, error) {
 			return nil, err
 		}
 		value := make([]byte, length+2)
-		if _, err := reader.Read(value); err != nil {
+		if _, err := io.ReadFull(reader, value); err != nil {
 			return nil, err
 		}
 		command[i] = string(value[:length])

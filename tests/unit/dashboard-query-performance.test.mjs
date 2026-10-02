@@ -8,7 +8,7 @@ import { parse } from "yaml";
 import config from "../playwright/configs/dashboard-query-performance.config.mjs";
 import {
   QUERY_CHUNK_SIZE,
-  availableDeployedActivityShardEntries,
+  snapshotDeployedActivityShards,
   deployedProxyTarget,
   mergeQueryPerformanceReports,
   overviewPhaseBreakdown,
@@ -179,7 +179,7 @@ test("deployed proxy targets remain under the trusted dashboard URL", () => {
   assert.equal(deployedProxyTarget("/../private", base), null);
 });
 
-test("deployed shard availability checks filter missing manifest entries", async () => {
+test("deployed shard snapshots pin bytes and filter missing manifest entries", async () => {
   const base = "https://githubnext.github.io/gh-aw-cao/cao/";
   const requests = [];
   const entries = [
@@ -194,29 +194,39 @@ test("deployed shard availability checks filter missing manifest entries", async
       hash: "b".repeat(64),
     },
     {
-      name: "gh-aw-logs-records/unreachable.jsonl",
-      sourceName: "gh-aw-logs-records/unreachable.jsonl",
+      name: "gh-aw-logs-records/available.jsonl",
+      sourceName: "gh-aw-logs-records/available.jsonl",
       hash: "c".repeat(64),
     },
   ];
 
-  const available = await availableDeployedActivityShardEntries(entries, {
+  const available = await snapshotDeployedActivityShards(entries, {
     baseUrl: base,
     async fetchImpl(url, options) {
       requests.push([url.href, options]);
-      if (url.pathname.endsWith("/unreachable.jsonl")) throw new Error("network unavailable");
-      return new Response(null, {
+      return new Response("deployed shard bytes", {
         status: url.pathname.endsWith("/available.jsonl") ? 200 : 404,
       });
     },
   });
 
-  assert.deepEqual(available, [entries[0]]);
-  assert.deepEqual(requests, [
-    [`${base}gh-aw-logs-runs/available.jsonl`, { method: "HEAD", redirect: "error" }],
-    [`${base}gh-aw-logs-runs/missing.jsonl`, { method: "HEAD", redirect: "error" }],
-    [`${base}gh-aw-logs-records/unreachable.jsonl`, { method: "HEAD", redirect: "error" }],
-  ]);
+  assert.deepEqual(available, [entries[0], entries[2]].map((entry) => ({
+    ...entry, content: Buffer.from("deployed shard bytes"),
+  })));
+  assert.deepEqual(requests.map(([url]) => url), entries.map(({ sourceName }) => `${base}${sourceName}`));
+  assert.ok(requests.every(([, options]) =>
+    options.method === "GET" && options.redirect === "error" && options.signal instanceof AbortSignal));
+});
+
+test("deployed shard snapshots report upstream and network failures", async () => {
+  const entry = { name: "gh-aw-logs-runs/shard.jsonl", sourceName: "gh-aw-logs-runs/shard.jsonl", hash: "a".repeat(64) };
+  const options = { baseUrl: "https://githubnext.github.io/gh-aw-cao/cao/" };
+  await assert.rejects(snapshotDeployedActivityShards([entry], {
+    ...options, fetchImpl: async () => new Response(null, { status: 503 }),
+  }), /Unable to snapshot deployed activity shard .*: 503/);
+  await assert.rejects(snapshotDeployedActivityShards([entry], {
+    ...options, fetchImpl: async () => { throw new Error("network unavailable"); },
+  }), /network unavailable/);
 });
 
 test("dashboard query timing summary distinguishes initial, continuation, and fill timings", () => {

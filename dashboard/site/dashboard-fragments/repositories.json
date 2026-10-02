@@ -360,10 +360,36 @@
     {
       "name": "repository-run-totals",
       "subject": "Summarize distinct runs, failures, and approval-required runs by repository.",
-      "objective": "Compare retained run volume, selected failure and action-required conclusions, and imported-record presence per repository.",
+      "objective": "Aggregate retained run volume, conclusions, and import coverage without materializing enriched run rows.",
       "acceptance": "Group by organization and repository; preserve distinct run IDs, configured failure/action-required conclusion counts, and imported-run sums. Missing enrichment or run history must not be treated as complete coverage.",
       "description": "Distinct run and conclusion totals for each repository.",
-      "from": "run-import-status",
+      "from": "runs",
+      "joins": [
+        {
+          "source": "event-runs",
+          "type": "left",
+          "on": [
+            { "left": "organization", "right": "organization" },
+            { "left": "repository", "right": "repository" },
+            { "left": "workflow", "right": "workflow" },
+            { "left": "run", "right": "run" },
+            { "left": "run-attempt", "right": "run-attempt" }
+          ],
+          "fields": [
+            { "field": "events", "as": "imported-events" }
+          ]
+        }
+      ],
+      "compute": [
+        {
+          "as": "imported",
+          "function": "greater-than",
+          "args": [
+            { "field": "imported-events" },
+            { "value": 0 }
+          ]
+        }
+      ],
       "aggregate": {
         "by": [
           "organization",

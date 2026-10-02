@@ -12,6 +12,7 @@ import (
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
+	"github.com/githubnext/gh-aw-cao/server/internal/sqlbuilder"
 )
 
 type SQLPage struct{ Offset, Limit int }
@@ -73,7 +74,10 @@ func (r *readTransaction) ExecuteSQLPlanWithOptions(ctx context.Context, definit
 	if err != nil {
 		return nil, model.Metrics{}, err
 	}
-	statsSQL, statsArgs := plan.StatisticsStatement()
+	statsSQL, statsArgs, err := plan.StatisticsStatement()
+	if err != nil {
+		return nil, model.Metrics{}, err
+	}
 	rows, err := r.tx.QueryContext(ctx, statsSQL, statsArgs...)
 	if err != nil {
 		return nil, model.Metrics{}, fmt.Errorf("execute SQL resource checks: %w", err)
@@ -138,7 +142,13 @@ func (r *readTransaction) ExecuteSQLPlanWithOptions(ctx context.Context, definit
 	}
 	for _, check := range plan.JoinKeys {
 		var duplicate int
-		err := r.tx.QueryRowContext(ctx, plan.CTEs+"\n"+check, plan.Args...).Scan(&duplicate)
+		builder := sqlbuilder.New(plan.Args...)
+		builder.Write("{}\n{}", sqlbuilder.Fragment(plan.CTEs), sqlbuilder.Fragment(check))
+		statement, args, err := builder.Statement()
+		if err != nil {
+			return nil, metrics, err
+		}
+		err = r.tx.QueryRowContext(ctx, statement, args...).Scan(&duplicate)
 		if err == nil {
 			return nil, metrics, errors.New("joined source has more than one row per join key")
 		}

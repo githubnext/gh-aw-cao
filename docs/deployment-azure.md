@@ -1,6 +1,6 @@
 ---
 title: Deploying the dashboard to Azure
-description: Run the Central Agentic Ops dashboard server on Azure Functions, with Azure Managed Redis, Key Vault, and Application Insights.
+description: Run the Central Agentic Ops dashboard server on Azure Functions, with PostgreSQL for dashboard data and Azure Managed Redis for operational state.
 ---
 
 > [!WARNING]
@@ -13,14 +13,16 @@ The Azure deployment runs the Go dashboard server from the `server/` directory a
 - Signs users in with GitHub OAuth.
 - Authorizes users by their membership in GitHub organizations or teams that you allow.
 - Reads secrets through Key Vault references.
-- Runs bounded [Dashboard Language](dashboard-language.md) queries against data in Azure Managed Redis. Redis holds a disposable copy of the dashboard data.
+- Runs bounded [Dashboard Language](dashboard-language.md) queries against dashboard data in PostgreSQL.
+- Uses Azure Managed Redis only for sessions, rate limits, queues, deduplication, coordination, and bounded caches.
 
 ```mermaid
 flowchart LR
   Browser["Authorized browser"] -->|"HTTPS"| Function["Function App<br/>cao-functions custom handler"]
   Function -->|"OAuth, refresh, membership"| GitHub["GitHub OAuth + API"]
   Function -->|"managed identity"| KeyVault["Key Vault"]
-  Function -->|"rediss://"| Redis["Azure Managed Redis"]
+  Function -->|"PostgreSQL protocol"| Postgres["PostgreSQL<br/>dashboard entities + queries"]
+  Function -->|"rediss://"| Redis["Azure Managed Redis<br/>operational state"]
   Function -->|"non-secret telemetry"| Insights["Application Insights"]
 ```
 
@@ -34,7 +36,7 @@ The `server/azure/main.bicep` template creates the following resources in one re
 | --- | --- | --- |
 | Azure Functions | Linux Function App on runtime `~4` with `FUNCTIONS_WORKER_RUNTIME=custom`. HTTPS only, TLS 1.2 or later, FTPS off, always on, at least one instance, and a system-assigned managed identity. | Hosts the Go HTTP handler |
 | App Service plan | Elastic Premium `EP1` | Keeps the Function App always on |
-| Azure Managed Redis | `Microsoft.Cache/redisEnterprise`. Default `Balanced_B0` with capacity 1, TLS 1.2, encrypted client protocol, `NoEviction` policy, public network access off, and RedisJSON and RediSearch modules enabled on the database. | Stores dashboard JSON documents and search indexes, sessions, rate limits, and webhook deduplication records |
+| Azure Managed Redis | `Microsoft.Cache/redisEnterprise`. Default `Balanced_B0` with capacity 1, TLS 1.2, encrypted client protocol, `NoEviction` policy, and public network access off. | Stores sessions, rate limits, webhook and collection queues, deduplication, coordination, quota state, and bounded caches |
 | Key Vault | Role-based access control, 90-day soft delete, and purge protection | Stores the OAuth client secret, session secrets, Redis URL, Functions storage connection string, and optional collection secrets |
 | Storage account | `Standard_LRS`, HTTPS only, TLS 1.2, and no public blob access | Stores Azure Functions runtime state only |
 | Application Insights | Optionally linked to a Log Analytics workspace | Collects operational telemetry that contains no secrets |
@@ -46,7 +48,8 @@ The `server/azure/main.bicep` template creates the following resources in one re
 - Go 1.27.1 and Node.js 24, to build the deployment package.
 - A GitHub OAuth app. Personal access tokens and GitHub App user tokens aren't supported.
 - At least one GitHub organization, or team in `ORGANIZATION/TEAM-SLUG` format, whose active members can read the dashboard.
-- A private network path from the Function App to Azure Managed Redis, and from any host that runs ingestion. The template turns off public network access for Redis but doesn't create a virtual network or private endpoint. You must add private networking that fits your tenant.
+- A PostgreSQL database and connection URL. The current Bicep template does not provision PostgreSQL or its secret; configure `CAO_POSTGRES_URL` separately.
+- A private network path from the Function App to PostgreSQL and Azure Managed Redis, and from any host that runs ingestion. The template turns off public network access for Redis but doesn't create a virtual network or private endpoint. You must add private networking that fits your tenant.
 - A dashboard payload from the `cao-dashboard.yml` workflow in your control repository. To produce one, first complete [the GitHub Actions only deployment](deployment-actions.md). If you don't want to publish to Pages, set `control-plane.campaigns.dashboard.deploy` to `false`.
 
 The optional collection profile also needs a container image of the collector, a GitHub App, and Azure Container Apps. For more information, see [Using the optional collection profile](#using-the-optional-collection-profile).
@@ -89,7 +92,8 @@ In the following steps, replace `FUNCTION-APP-NAME` with a globally unique name 
    > The Redis access key doesn't exist until Azure creates Azure Managed Redis. For the first deployment, enter a temporary `rediss://` value. After Redis is provisioned, get the database access key and redeploy with `rediss://:ACCESS-KEY@REDIS-HOST:10000/0`. The template stores this URL only as the `cao-redis-url` Key Vault secret.
 
 1. Review the deployment outputs. The template outputs only values that aren't secret: `functionHostName`, `githubOAuthRedirectUri`, `redisEnterpriseHostName`, `redisDatabaseName`, `keyVaultUri`, and `collectionEnabled`. Confirm that `githubOAuthRedirectUri` matches the callback URL of your OAuth app.
-1. Add private networking so that the Function App can reach Redis while public access to Redis stays off.
+1. Add the PostgreSQL connection URL as the secret app setting `CAO_POSTGRES_URL`.
+1. Add private networking so that the Function App can reach PostgreSQL and Redis while public access to Redis stays off.
 1. From a trusted checkout of this repository, build the site and the handler.
 
    Before building, verify that `.github/workflows/cao.json` contains
@@ -114,17 +118,16 @@ In the following steps, replace `FUNCTION-APP-NAME` with a globally unique name 
 
    The `scripts/azure-local/azure-local.sh` script generates this layout. Use it as a reference.
 1. Publish the package with Azure Functions zip deployment, for example with `az functionapp deployment source config-zip`.
-1. Load the dashboard data. In the default profile, the Function App doesn't load data by itself. From a host with private network access to Redis, run ingestion against the namespace that the Function App uses.
+1. Load the dashboard data. In the default profile, the Function App doesn't load data by itself. From a host with network access to PostgreSQL, run ingestion against the same database.
 
    ```bash
    go -C server run ./cmd/cao-dashboard ingest \
      --source /ABSOLUTE/PATH/TO/VERIFIED-DASHBOARD-ARTIFACT \
-     --redis-url "$CAO_REDIS_URL" \
-     --redis-namespace azure-dashboard
+     --postgres-url "$CAO_POSTGRES_URL"
    ```
 
    > [!CAUTION]
-   > Read `CAO_REDIS_URL` from Key Vault into the process environment only. Don't let it appear in shell history, tickets, or logs.
+   > Read `CAO_POSTGRES_URL` from the secret manager into the process environment only. Don't let it appear in shell history, tickets, or logs.
 
 1. Verify the deployment.
 
@@ -147,6 +150,7 @@ The template creates the following app settings.
 | `CAO_DASHBOARD_HOSTING` | Fixed value `azure-functions` | Selects Azure hosting mode. |
 | `CAO_AZURE_ALLOWED_HOSTS` | `allowedHosts` parameter | Exact public host names that the server trusts in forwarded `Host` headers. |
 | `CAO_AZURE_REQUIRE_HTTPS` | Fixed value `true` | Requires `X-Forwarded-Proto: https`. |
+| `CAO_POSTGRES_URL` | Operator-provided secret app setting | PostgreSQL connection URL for dashboard entities and queries. |
 | `CAO_REDIS_URL` | Key Vault secret `cao-redis-url` | Redis connection string. Must use `rediss://`. Azure always rejects plaintext connections. |
 | `CAO_REDIS_NAMESPACE` | Fixed value `azure-dashboard` | Prefix for Redis keys. |
 | `CAO_GITHUB_CLIENT_ID` | `githubClientId` parameter | Client ID of the OAuth app. |
@@ -171,7 +175,7 @@ The `cao-functions` handler also reads these optional settings.
 Besides the parameters in the deployment command, the template accepts:
 
 - `location` and `hostingPlanName`.
-- `redisSkuName`, from `Balanced_B0` through `MemoryOptimized_M10`, and `redisCapacity`. Size Redis for your data volume, search indexes, and retained generations. An existing module-free database must be replaced with one provisioned with RedisJSON and RediSearch before rebuilding its projection.
+- `redisSkuName`, from `Balanced_B0` through `MemoryOptimized_M10`, and `redisCapacity`. Size Redis for sessions, rate limits, queues, deduplication, coordination, quota state, and bounded caches. Dashboard entity volume belongs to PostgreSQL sizing, not Redis sizing.
 - `logAnalyticsWorkspaceResourceId`.
 - The collection parameters. For more information, see [Using the optional collection profile](#using-the-optional-collection-profile).
 
@@ -233,7 +237,7 @@ Logs go to standard error. They include operation names, counts, timings, and fi
 | `GET /api/health` | Liveness check. |
 | `GET /api/readiness` | Readiness check. Returns `503` until data is loaded. |
 | `GET /api/v1/health` | Versioned health check. |
-| `cao-dashboard doctor --redis-url "$CAO_REDIS_URL" --redis-namespace azure-dashboard` | Read-only check of Redis, dashboard data, queries, and collection. Add `--deep` to read every active source, `--format json` for automation, or `--strict` to fail on warnings. |
+| `cao-dashboard doctor --postgres-url "$CAO_POSTGRES_URL" --redis-url "$CAO_REDIS_URL" --redis-namespace azure-dashboard` | Read-only check of PostgreSQL dashboard data and Redis operational state. Add `--deep` to read every active source, `--format json` for automation, or `--strict` to fail on warnings. |
 
 Rate limits don't apply to the health and readiness checks.
 
@@ -271,15 +275,15 @@ In this profile, the Function App only admits webhooks (`CAO_COLLECT_ADMIT_ONLY=
 - **Encrypted Redis traffic.** Redis traffic uses `rediss://` with certificate and host name verification. You can't turn off TLS verification.
 - **Bounded queries.** Queries have limits on definitions, joins, predicates, rows, and operations. A query never returns a partial result without reporting it.
 - **Consistent rate limits.** Rate limits are enforced atomically in Redis across all instances. If Redis can't enforce them, requests fail with `503`.
-- **Safe ingestion.** Ingestion prepares a complete generation of data and then switches to it in one step. If ingestion or a rebuild fails, the previous generation stays active.
+- **Safe ingestion.** Ingestion transactionally replaces the complete PostgreSQL dataset. If ingestion or a rebuild fails, the previous committed data remains active.
 
 ## What this deployment does not guarantee
 
 - **Production readiness.** This deployment is experimental. CAO offers no support commitment or SLA. Availability depends on your Azure resources.
 - **Networking.** The template doesn't create virtual networks, private endpoints, a web application firewall, or Azure Front Door. You're responsible for network isolation and ingress.
-- **Automatic data loading.** In the default profile, nothing loads new data into Redis. Schedule ingestion yourself, or use the collection profile.
+- **Automatic data loading.** In the default profile, nothing loads new data into PostgreSQL. Schedule ingestion yourself, or use the collection profile.
 - **Live updates.** Server-sent events at `GET /api/v1/events` are best effort. Cold starts, scale-in, idle timeouts, and plan limits can end them. Clients then fall back to `POST /api/v1/refresh`. WebSockets aren't supported.
-- **Durability.** Redis holds disposable data, and CAO doesn't back it up. Rebuild it from the retained artifact or from the collected evidence. For long-term retention, see [Create a historical archive](dashboard-data-ingestion.md#create-a-historical-archive).
+- **Durability.** PostgreSQL holds rebuildable dashboard data and Redis holds operational state; CAO backs up neither. Rebuild PostgreSQL from the retained artifact or collected evidence. For long-term retention, see [Create a historical archive](dashboard-data-ingestion.md#create-a-historical-archive).
 - **Per-repository authorization.** Authorized users can read all of the active data. There's no filtering by repository or source.
 - **Low idle cost.** The EP1 plan and Azure Managed Redis cost money even when no one uses the dashboard.
 - **Credential rollback.** Rolling back the package doesn't roll back OAuth, session, or Redis credentials.
@@ -291,7 +295,7 @@ In this profile, the Function App only admits webhooks (`CAO_COLLECT_ADMIT_ONLY=
 | Rotate the session secret | Redeploy with the old key as `previousSessionSecret` and the new key as `sessionSecret`. Wait for active sessions and queued revocations to finish, then redeploy without `previousSessionSecret`. |
 | Rotate the Redis key | Regenerate the access key in Azure, add a new version of the `cao-redis-url` secret, and restart the Function App. |
 | Rotate the OAuth client secret | Generate a new secret in GitHub, add a new version of the Key Vault secret, and restart the Function App. |
-| Roll back the application | Redeploy the last known-good package. If the data in Redis is unusable, clear only the `azure-dashboard` namespace and ingest the retained artifact again. |
+| Roll back the application | Redeploy the last known-good package. If PostgreSQL dashboard data is unusable, ingest the retained artifact again. Clear the Redis namespace only when intentionally invalidating operational state and active sessions. |
 
 If you suspect an incident, see [Incident response](operations.md#incident-response). For the complete threat model and list of controls, see the [hosted Azure architecture](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md#hosted-azure-architecture) in `server/README.md` and the [Azure Functions profile](https://github.com/githubnext/gh-aw-cao/blob/main/server/SECURITY.md#azure-functions-profile) in `server/SECURITY.md`.
 

@@ -139,17 +139,18 @@ describe("remote dashboard data backend", () => {
   it("sends the authored simulator graph with only scalar form values", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       revision: 4,
-      sources: { "simulator-database-size": { source: "simulator-database-size", rows: [], metadata: {} } },
+      sources: { "simulator-database-summary": { source: "simulator-database-summary", rows: [], metadata: {} } },
     }), { status: 200, headers: { "Content-Type": "application/json" } }));
     vi.stubGlobal("fetch", fetchMock);
-    await queryRemoteDashboard(["simulator-database-size"], authoritativeDashboard.dashboard, undefined, {
+    await queryRemoteDashboard(["simulator-database-summary"], authoritativeDashboard.dashboard, undefined, {
       pageId: "simulators",
       queryContext: { formValues: { repositories: 2000 } },
     });
     const request = JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body));
     expect(request.queries.map((/** @type {{ name: string }} */ query) => query.name)).toEqual([
       "simulator-database-inputs", "simulator-run-size", "simulator-tool-size",
-      "simulator-issue-size", "simulator-database-size",
+      "simulator-issue-size", "simulator-database-size", "simulator-database-total",
+      "simulator-database-summary",
     ]);
     expect(request.queries[0].compute[0].args).toEqual([{ value: 2000 }, { value: 10 }]);
     expect(request.compiledQueries.length).toBeGreaterThan(0);

@@ -119,26 +119,37 @@ func TestMCPExecutesGeneratedSimulatorQuery(t *testing.T) {
 		{"repositories": float64(2), "runs-per-day": float64(3), "skip-rate": float64(20), "tools-per-run": float64(10), "issues-per-run": float64(1)},
 	} {
 		payload, err := runtime.callQuery(context.Background(), map[string]any{
-			"id": "simulator-database-size", "parameters": params,
+			"id": "simulator-database-summary", "parameters": params,
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
 		rows := payload.(map[string]any)["rows"].([]model.Row)
-		if len(rows) != 90 {
-			t.Fatalf("got %d simulator rows, want 90", len(rows))
+		if len(rows) != 4 {
+			t.Fatalf("got %d simulator rows, want 4", len(rows))
 		}
-		firstRun := params["repositories"].(float64) * params["runs-per-day"].(float64) * 512
-		found := false
+		runBytes := params["repositories"].(float64) * params["runs-per-day"].(float64) * 30 * 512
+		activeRuns := params["repositories"].(float64) * params["runs-per-day"].(float64) * 30 * (1 - params["skip-rate"].(float64)/100)
+		toolBytes := activeRuns * params["tools-per-run"].(float64) * 256
+		issueBytes := activeRuns * params["issues-per-run"].(float64) * 512
+		want := map[string]float64{
+			"Run summaries":       runBytes,
+			"Tools (30-day TTL)":  toolBytes,
+			"Issues (30-day TTL)": issueBytes,
+			"Total":               runBytes + toolBytes + issueBytes,
+		}
 		for _, row := range rows {
 			numeric, valid := row["bytes"].(json.Number)
 			value, _ := numeric.Float64()
-			if row["table"] == "Run summaries" && row["date"] == rows[0]["date"] && valid && value == firstRun {
-				found = true
+			table, ok := row["table"].(string)
+			expected, known := want[table]
+			if !valid || !ok || !known || value != expected {
+				t.Fatalf("unexpected simulator row: %+v, want %v", row, want)
 			}
+			delete(want, table)
 		}
-		if !found {
-			t.Fatalf("simulator did not compute expected run summary %v", firstRun)
+		if len(want) != 0 {
+			t.Fatalf("missing simulator tables: %v", want)
 		}
 	}
 }

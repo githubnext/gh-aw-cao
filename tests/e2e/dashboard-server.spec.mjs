@@ -155,8 +155,19 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
           const declared = declaredDashboardViewIds(definition, dashboard.dashboard.views);
           const rendered = await views.evaluateAll((items) =>
             items.map((item) => item.getAttribute("data-view-id")));
-          for (const viewId of declared) {
-            if (!rendered.includes(viewId)) result.errors.push(`Missing view: ${viewId}`);
+          const unavailable = activePage.locator('[data-view-state="unavailable"][role="alert"]');
+          if (definition.route?.["availability-view"] && await unavailable.isVisible()) {
+            expect(rendered, "Unavailable detail pages replace their views with recovery actions").toEqual([]);
+            await expect(unavailable).toContainText(definition.route["availability-message"]);
+            await expect(unavailable.getByRole("button", { name: "Retry", exact: true })).toBeVisible();
+            await expect(unavailable.getByRole("link")).toHaveAttribute(
+              "href", `#page-${definition.route["navigation-page"]}`,
+            );
+            result.availability = "unavailable";
+          } else {
+            for (const viewId of declared) {
+              if (!rendered.includes(viewId)) result.errors.push(`Missing view: ${viewId}`);
+            }
           }
           for (let index = 0; index < await views.count(); index += 1) {
             const view = views.nth(index);

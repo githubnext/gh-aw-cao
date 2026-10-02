@@ -17,6 +17,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -75,6 +76,7 @@ type Config struct {
 	// RateLimits overrides inbound request rate limits; the zero value keeps
 	// the production defaults.
 	RateLimits RateLimitConfig
+	QueryCache QueryCacheConfig
 }
 
 type App struct {
@@ -104,6 +106,9 @@ type App struct {
 	taskMu          sync.Mutex
 	taskCount       int
 	tasksDone       chan struct{}
+	cacheOnce       sync.Once
+	cacheMetrics    *queryCacheTelemetry
+	cacheError      error
 }
 
 func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) {
@@ -132,6 +137,14 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 	if err := config.RateLimits.validate(); err != nil {
 		return nil, err
 	}
+	cache, err := queryCacheConfigFromEnv(config.QueryCache)
+	if err != nil {
+		return nil, err
+	}
+	config.QueryCache = cache
+	queryCacheLog.Printf("configured enabled=%t ttl_ms=%d min_duration_ms=%d max_result_bytes=%d max_bytes=%d max_entries=%d",
+		!cache.Disabled, redisx.QueryCacheTTL.Milliseconds(), cache.MinDuration.Milliseconds(),
+		cache.MaxResultBytes, cache.MaxBytes, redisx.QueryCacheMaxEntries)
 	cors, err := config.CORS.normalize()
 	if err != nil {
 		return nil, err
@@ -1166,15 +1179,55 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 	if a.database == nil {
 		return queryResponse{}, http.StatusServiceUnavailable, errors.New("dashboard data is unavailable")
 	}
+	cache, err := a.config.QueryCache.resolve()
+	if err != nil {
+		return queryResponse{}, http.StatusInternalServerError, err
+	}
+	cacheEnabled := !cache.Disabled && a.store != nil && (len(input.SourceNames) > 0 || len(input.Aliases) > 0)
+	if !cacheEnabled {
+		reason := "readiness"
+		if cache.Disabled {
+			reason = "disabled"
+		} else if a.store == nil {
+			reason = "no-redis"
+		}
+		if err := a.recordQueryCacheBypass(ctx, reason); err != nil {
+			return queryResponse{}, http.StatusInternalServerError, err
+		}
+	}
+	var cacheKey string
+	if cacheEnabled {
+		cacheKey, err = a.queryCacheIdentity(input, allowCollectionHealth)
+		if err != nil {
+			return queryResponse{}, http.StatusBadRequest, err
+		}
+		cached, hit, err := a.loadCachedQuery(ctx, cacheKey, cache)
+		if err != nil {
+			return queryCacheError(err)
+		}
+		if hit {
+			return cached, http.StatusOK, nil
+		}
+	}
+	started := time.Now()
 	var response queryResponse
 	var status int
-	err := a.database.WithReadTransaction(ctx, func(ctx context.Context, reader postgresx.NativeReader) error {
+	err = a.database.WithReadTransaction(ctx, func(ctx context.Context, reader postgresx.NativeReader) error {
 		var queryErr error
 		response, status, queryErr = a.executeQueryWithReader(ctx, input, allowCollectionHealth, reader)
 		return queryErr
 	})
 	if err != nil && status == 0 {
 		status = http.StatusServiceUnavailable
+	}
+	if err == nil && cacheEnabled && time.Since(started) >= cache.MinDuration {
+		if cacheErr := a.storeCachedQuery(ctx, cacheKey, response, cache); cacheErr != nil {
+			return queryCacheError(cacheErr)
+		}
+	} else if err == nil && cacheEnabled {
+		if telemetryErr := a.recordQueryCacheBypass(ctx, "cheap-query"); telemetryErr != nil {
+			return queryResponse{}, http.StatusInternalServerError, telemetryErr
+		}
 	}
 	return response, status, err
 }
@@ -1396,7 +1449,9 @@ func evaluationTime(active postgresx.State) string {
 // ResolveQueryContext binds the ingestion evaluation time to dashboard queries.
 func ResolveQueryContext(definitions []query.Definition, evaluatedAt string) {
 	for definitionIndex := range definitions {
+		definitions[definitionIndex].Compute = slices.Clone(definitions[definitionIndex].Compute)
 		for computedIndex := range definitions[definitionIndex].Compute {
+			definitions[definitionIndex].Compute[computedIndex].Args = slices.Clone(definitions[definitionIndex].Compute[computedIndex].Args)
 			for argumentIndex := range definitions[definitionIndex].Compute[computedIndex].Args {
 				argument := &definitions[definitionIndex].Compute[computedIndex].Args[argumentIndex]
 				if argument.Context == "time-end" {

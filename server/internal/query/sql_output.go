@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/sqlbuilder"
 )
 
 // OutputStatement returns typed values and presence flags for bounded wire
@@ -26,27 +28,29 @@ func (plan SQLPlan) OutputStatement(name string, offset, limit int) (string, []a
 	if len(projection) == 0 {
 		projection = append(projection, "TRUE AS __empty_projection")
 	}
-	args := append([]any{}, plan.Args...)
-	args = append(args, limit, offset)
-	statement := plan.CTEs + "\nSELECT " + strings.Join(projection, ",") + " FROM " + relation.SQL +
-		" ORDER BY " + relation.Order + fmt.Sprintf(" LIMIT $%d OFFSET $%d", len(args)-1, len(args))
-	return statement, args, fields, nil
+	builder := sqlbuilder.New(plan.Args...)
+	builder.Write("{}\nSELECT {} FROM {} ORDER BY {} LIMIT {} OFFSET {}",
+		sqlbuilder.Fragment(plan.CTEs), sqlbuilder.Fragment(strings.Join(projection, ",")),
+		sqlbuilder.Fragment(relation.SQL), sqlbuilder.Fragment(relation.Order), limit, offset)
+	statement, args, err := builder.Statement()
+	return statement, args, fields, err
 }
 
 // StatisticsStatement performs cardinality and byte accounting in Postgres,
 // without fetching or reconstructing collections in Go.
-func (plan SQLPlan) StatisticsStatement() (string, []any) {
+func (plan SQLPlan) StatisticsStatement() (string, []any, error) {
 	seen := map[string]bool{}
 	var branches []string
-	args := append([]any{}, plan.Args...)
+	builder := sqlbuilder.New(plan.Args...)
 	for _, step := range plan.Steps {
 		if seen[step.Relation] {
 			continue
 		}
 		seen[step.Relation] = true
-		args = append(args, step.Relation)
-		branches = append(branches, fmt.Sprintf("SELECT $%d::text AS relation, count(*) AS rows, coalesce(sum(pg_column_size(r)),0) AS bytes FROM %s AS r",
-			len(args), SQLIdentifier(step.Relation)))
+		bound := builder.Bind(step.Relation)
+		branches = append(branches, fmt.Sprintf("SELECT %s::text AS relation, count(*) AS rows, coalesce(sum(pg_column_size(r)),0) AS bytes FROM %s AS r",
+			bound, SQLIdentifier(step.Relation)))
 	}
-	return plan.CTEs + "\n" + strings.Join(branches, " UNION ALL "), args
+	builder.Write("{}\n{}", sqlbuilder.Fragment(plan.CTEs), sqlbuilder.Fragment(strings.Join(branches, " UNION ALL ")))
+	return builder.Statement()
 }

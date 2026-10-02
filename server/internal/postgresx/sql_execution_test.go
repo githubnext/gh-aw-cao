@@ -74,7 +74,10 @@ func TestRelationalSQLExecutesInPostgres(t *testing.T) {
 		if run != "run-1" || total != "14" || !runPresent || !totalPresent {
 			t.Errorf("filter/compute/grouping/projection ran incorrectly in Postgres: %s %s %v %v", run, total, runPresent, totalPresent)
 		}
-		statsSQL, statsArgs := plan.StatisticsStatement()
+		statsSQL, statsArgs, err := plan.StatisticsStatement()
+		if err != nil {
+			return err
+		}
 		rows, err := r.tx.QueryContext(ctx, statsSQL, statsArgs...)
 		if err != nil {
 			return err

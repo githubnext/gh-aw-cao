@@ -39,6 +39,10 @@ Apply the guidance for every role that is present. Do not infer a role from the 
 
 ## Building and testing
 
+### npmjs access behind the Microsoft corporate firewall
+
+Use the [npm skill](.github/skills/npm/SKILL.md) for Microsoft 1ES feed configuration, dependency installation, and corporate proxy or certificate troubleshooting.
+
 ### Full validation
 
 Run `npm run check` for complete repository validation. It executes, in order: `typecheck:cao`, `test` (unit + integration), `test:load`, `check:svg`, `compile`, and `docs:build`.
