@@ -274,7 +274,7 @@ export function renderDashboard(input) {
       if (!resolvedPage()) return null;
       const renderPreparedPage = () => {
         const pagePayload = getBuiltInPagePayload(resolvedPage(), reusableViews);
-        const initialViewMode = pageId === 'overview' ? undefined : defaultViewMode(pagePayload.views ?? []);
+        const initialViewMode = defaultViewMode(pagePayload.views ?? []);
         const effectiveQueryContext = options.queryContext ?? (initialViewMode ? { viewMode: initialViewMode } : undefined);
         options.queryContext = effectiveQueryContext;
         const rendersBeforePageSources = dashboardPageSourcesAreIndependentlyBound(resolvedPage(), reusableViews);
@@ -770,7 +770,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
   const routeNavigationPage = typeof page.route?.['navigation-page'] === 'string'
     ? page.route['navigation-page']
     : undefined;
-  const viewModes = page.id === 'overview' ? [] : availableViewModes(views);
+  const viewModes = availableViewModes(views);
   const viewModeControlEnabled = page['view-mode-control'] !== false;
   const selectedViewMode = /** @type {'chart'|'table'|'card'|undefined} */ (
     viewModes.includes(viewModeControlEnabled ? queryContext?.viewMode ?? 'chart' : 'chart')

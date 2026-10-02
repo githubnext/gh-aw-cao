@@ -2603,6 +2603,50 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('[data-view-id="runs-table"]')?.getAttribute('data-view-mode-content')).toBe('table');
   });
 
+  it('omits the view-mode control for any page composed only of element-mark views, not only the built-in overview page', async () => {
+    const rendered = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'element-only-dashboard',
+          title: 'Element Only',
+          pages: [{
+            id: 'custom-element-page',
+            kind: /** @type {'custom'} */ ('custom'),
+            title: 'Custom element page',
+            views: [{
+              id: 'custom-element-view',
+              title: 'Custom element view',
+              data: { source: 'runs' },
+              mark: 'element',
+              element: 'markdown',
+              config: { 'content-field': 'notes' }
+            }]
+          }]
+        }
+      },
+      sources: {
+        runs: {
+          source: 'runs',
+          rows: [{ run: '1', notes: 'Example note.' }],
+          metadata: {
+            'source-id': 'runs-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-16T10:00:00Z',
+            'retrieved-at': '2026-09-16T10:00:00Z',
+            availability: 'available',
+            completeness: 'complete',
+            freshness: 'fresh'
+          }
+        }
+      }
+    });
+
+    const page = await activatePage(rendered, 'custom-element-page');
+    expect(page?.hasAttribute('data-view-mode')).toBe(false);
+    expect(page?.querySelector('.view-mode-control')).toBeNull();
+  });
+
   it('omits page chrome when a page has only one card view mode', async () => {
     const rendered = renderDashboard({
       document: {
