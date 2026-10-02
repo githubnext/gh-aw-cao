@@ -270,10 +270,7 @@ func (c *sqlCompiler) definition(definition Definition, relations map[string]SQL
 		c.steps = append(c.steps, SQLStep{Query: definition.Name, Relation: strings.Trim(relation.SQL, `"`), Operation: "select", Weight: 1})
 		columns := make(map[string]SQLColumn, len(definition.Select))
 		for _, selected := range definition.Select {
-			column, err := sqlField(relation, selected.Field)
-			if err != nil {
-				return SQLRelation{}, err
-			}
+			column := sqlField(relation, selected.Field)
 			name := selected.Field
 			if selected.As != "" {
 				name = selected.As
@@ -289,10 +286,7 @@ func (c *sqlCompiler) definition(definition Definition, relations map[string]SQL
 	if len(definition.OrderBy) != 0 {
 		order := make([]string, 0, len(definition.OrderBy)+1)
 		for _, field := range definition.OrderBy {
-			column, err := sqlField(relation, field.Field)
-			if err != nil {
-				return SQLRelation{}, err
-			}
+			column := sqlField(relation, field.Field)
 			direction := "ASC"
 			if field.Direction == "desc" {
 				direction = "DESC"
@@ -310,14 +304,14 @@ func (c *sqlCompiler) definition(definition Definition, relations map[string]SQL
 	return relation, nil
 }
 
-func sqlField(relation SQLRelation, field string) (SQLColumn, error) {
+func sqlField(relation SQLRelation, field string) SQLColumn {
 	column, exists := relation.Columns[field]
 	if !exists {
 		// Fields absent from the relation are missing values, matching the
 		// dashboard engine's treatment of fields a source does not provide.
-		return SQLColumn{Expression: "NULL::text", Kind: sqlNull, Presence: "FALSE"}, nil
+		return SQLColumn{Expression: "NULL::text", Kind: sqlNull, Presence: "FALSE"}
 	}
-	return column, nil
+	return column
 }
 
 func sqlText(column SQLColumn) string {
@@ -387,10 +381,7 @@ func (c *sqlCompiler) filter(relation SQLRelation, filter *Filter) (string, erro
 	}
 	predicates := make([]string, 0, len(filter.Predicates)+1)
 	for _, predicate := range filter.Predicates {
-		column, err := sqlField(relation, predicate.Field)
-		if err != nil {
-			return "", err
-		}
+		column := sqlField(relation, predicate.Field)
 		if column.Kind == SQLStructured {
 			return "", errors.New("structured fields cannot be filtered")
 		}
@@ -442,10 +433,7 @@ func (c *sqlCompiler) filter(relation SQLRelation, filter *Filter) (string, erro
 		terms := make([]string, 0, len(filter.Search.Fields))
 		search := c.bind(strings.ToLower(strings.TrimSpace(filter.Search.Query))) + "::text"
 		for _, field := range filter.Search.Fields {
-			column, err := sqlField(relation, field)
-			if err != nil {
-				return "", err
-			}
+			column := sqlField(relation, field)
 			if column.Kind == SQLStructured {
 				return "", errors.New("structured fields cannot be searched")
 			}
@@ -487,7 +475,7 @@ func (c *sqlCompiler) compute(relation SQLRelation, computed ComputedField) (SQL
 		var err error
 		switch {
 		case argument.Field != nil:
-			args[index], err = sqlField(relation, *argument.Field)
+			args[index] = sqlField(relation, *argument.Field)
 		case argument.Context != "" || argument.Parameter != "":
 			return SQLColumn{}, errors.New("query execution context and parameters must be resolved before compilation")
 		default:
@@ -721,14 +709,8 @@ func (c *sqlCompiler) join(left, right SQLRelation, join Join, name string) (SQL
 	left, right = qualifyRelation(left, "l"), qualifyRelation(right, "r")
 	var keys, condition, grouping []string
 	for _, key := range join.On {
-		a, err := sqlField(left, key.Left)
-		if err != nil {
-			return SQLRelation{}, err
-		}
-		b, err := sqlField(right, key.Right)
-		if err != nil {
-			return SQLRelation{}, err
-		}
+		a := sqlField(left, key.Left)
+		b := sqlField(right, key.Right)
 		if a.Kind == SQLStructured || b.Kind == SQLStructured {
 			return SQLRelation{}, errors.New("structured join keys are forbidden")
 		}
@@ -745,10 +727,7 @@ func (c *sqlCompiler) join(left, right SQLRelation, join Join, name string) (SQL
 	}
 	columns := left.Columns
 	for _, field := range join.Fields {
-		column, err := sqlField(right, field.Field)
-		if err != nil {
-			return SQLRelation{}, err
-		}
+		column := sqlField(right, field.Field)
 		alias := field.Field
 		if field.As != "" {
 			alias = field.As
@@ -767,10 +746,7 @@ func (c *sqlCompiler) aggregate(input SQLRelation, aggregate *Aggregate, name st
 	projection, groupBy := []string{}, []string{}
 	columns := map[string]SQLColumn{}
 	for index, field := range aggregate.By {
-		column, err := sqlField(input, field)
-		if err != nil {
-			return SQLRelation{}, err
-		}
+		column := sqlField(input, field)
 		if column.Kind == SQLStructured {
 			return SQLRelation{}, errors.New("structured grouping fields are forbidden")
 		}
@@ -781,10 +757,7 @@ func (c *sqlCompiler) aggregate(input SQLRelation, aggregate *Aggregate, name st
 		columns[field] = SQLColumn{Expression: SQLIdentifier(valueName), Presence: SQLIdentifier(valueName + "_present"), Kind: column.Kind}
 	}
 	for index, value := range aggregate.Values {
-		column, err := sqlField(input, value.Field)
-		if err != nil {
-			return SQLRelation{}, err
-		}
+		column := sqlField(input, value.Field)
 		if column.Kind == SQLStructured {
 			return SQLRelation{}, errors.New("structured aggregate measures are forbidden")
 		}

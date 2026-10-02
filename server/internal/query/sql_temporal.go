@@ -30,17 +30,11 @@ func (c *sqlCompiler) temporal(input SQLRelation, definition TemporalSeries, que
 	}
 	// Private aliases keep lateral map columns from shadowing source fields.
 	input = qualifyRelation(c.materialize(input, queryName, "temporal-input", 0), "ts")
-	timeColumn, err := sqlField(input, definition.Time)
-	if err != nil {
-		return SQLRelation{}, err
-	}
+	timeColumn := sqlField(input, definition.Time)
 	if timeColumn.Kind != SQLText && timeColumn.Kind != SQLTimestamp {
 		return SQLRelation{}, errors.New("temporal time requires text or a typed timestamp")
 	}
-	seriesColumn, err := sqlField(input, definition.Series)
-	if err != nil {
-		return SQLRelation{}, err
-	}
+	seriesColumn := sqlField(input, definition.Series)
 	if seriesColumn.Kind == SQLStructured {
 		return SQLRelation{}, errors.New("temporal series requires a scalar dimension")
 	}
@@ -91,17 +85,11 @@ func (c *sqlCompiler) temporal(input SQLRelation, definition TemporalSeries, que
 		if measure.Field == "" || measure.Kind == "" {
 			return SQLRelation{}, errors.New("temporal measure requires field and kind")
 		}
-		column, err := sqlField(input, measure.Field)
-		if err != nil {
-			return SQLRelation{}, err
-		}
+		column := sqlField(input, measure.Field)
 		fallback := c.bind(measure.Field) + "::text"
 		metric := fallback
 		if measure.Key != "" {
-			key, err := sqlField(input, measure.Key)
-			if err != nil {
-				return SQLRelation{}, err
-			}
+			key := sqlField(input, measure.Key)
 			metric = "coalesce(nullif(" + temporalScalarText(key) + ", ''), " + fallback + ")"
 		}
 		kind := c.bind(measure.Kind) + "::text"
@@ -111,19 +99,13 @@ func (c *sqlCompiler) temporal(input SQLRelation, definition TemporalSeries, que
 		if mapping.Field == "" || mapping.Kind == "" {
 			return SQLRelation{}, errors.New("temporal map requires field and kind")
 		}
-		column, err := sqlField(input, mapping.Field)
-		if err != nil {
-			return SQLRelation{}, err
-		}
+		column := sqlField(input, mapping.Field)
 		if column.Kind != SQLStructured {
 			return SQLRelation{}, errors.New("temporal map requires a virtual numeric mapping")
 		}
 		group := c.bind(mapping.Field) + "::text"
 		if mapping.Group != "" {
-			column, err := sqlField(input, mapping.Group)
-			if err != nil {
-				return SQLRelation{}, err
-			}
+			column := sqlField(input, mapping.Group)
 			group = "coalesce(nullif(" + temporalScalarText(column) + ", ''), " + group + ")"
 		}
 		kind := c.bind(mapping.Kind) + "::text"
@@ -140,10 +122,7 @@ func (c *sqlCompiler) temporal(input SQLRelation, definition TemporalSeries, que
 			" WHEN 'boolean' THEN CASE WHEN tm.value = 'true'::jsonb THEN 1::numeric ELSE 0::numeric END ELSE NULL::numeric END"
 		name := "tm.key"
 		if mapping.Definitions != "" {
-			definitions, err := sqlField(input, mapping.Definitions)
-			if err != nil {
-				return SQLRelation{}, err
-			}
+			definitions := sqlField(input, mapping.Definitions)
 			if definitions.Kind != SQLStructured {
 				return SQLRelation{}, errors.New("temporal metric definitions require a virtual array")
 			}

@@ -324,10 +324,14 @@ func TestQueryCacheSurvivesIngestionAndSeparatesAuthorization(t *testing.T) {
 	client := store.Client
 	seed := func(id string) {
 		t.Helper()
-		seedDatabase(t, database, map[string]model.Source{"$runs": {
-			Source: "$runs", Rows: []model.Row{{"id": id}},
-			Metadata: model.Metadata{"availability": "available"},
-		}})
+		seedDatabase(t, database, map[string]model.Source{
+			"$repositories": {Source: "$repositories", Rows: []model.Row{{"id": "repository"}}},
+			"$workflows":    {Source: "$workflows", Rows: []model.Row{{"id": "workflow", "repositoryId": "repository"}}},
+			"$runs": {
+				Source: "$runs", Rows: []model.Row{{"id": id, "repositoryId": "repository", "workflowId": "workflow"}},
+				Metadata: model.Metadata{"availability": "available"},
+			},
+		})
 	}
 	seed("old")
 	app := &App{
@@ -398,10 +402,14 @@ func TestQueryCacheSharedByAuthenticatedHTTPAndMCP(t *testing.T) {
 	store, keys := serverQueryCacheIntegrationStore(t)
 	seed := func(id string) {
 		t.Helper()
-		seedDatabase(t, database, map[string]model.Source{"$runs": {
-			Source: "$runs", Rows: []model.Row{{"id": id}},
-			Metadata: model.Metadata{"availability": "available"},
-		}})
+		seedDatabase(t, database, map[string]model.Source{
+			"$repositories": {Source: "$repositories", Rows: []model.Row{{"id": "repository"}}},
+			"$workflows":    {Source: "$workflows", Rows: []model.Row{{"id": "workflow", "repositoryId": "repository"}}},
+			"$runs": {
+				Source: "$runs", Rows: []model.Row{{"id": id, "repositoryId": "repository", "workflowId": "workflow"}},
+				Metadata: model.Metadata{"availability": "available"},
+			},
+		})
 	}
 	seed("http-snapshot")
 	site := t.TempDir()
