@@ -37,7 +37,7 @@ test('the generated contract describes the implemented security and wire formats
   const logs = openapi.paths['/api/admin/logs'].get
   assert.ok(logs.security.some(entry => 'BearerAuth' in entry))
   assert.ok(logs.security.some(entry => 'ApiKeyAuth' in entry))
-  assert.ok(logs.responses['200'].content['application/x-ndjson'])
+  assert.equal(logs.responses['200'].content['application/json'].schema.items.$ref, '#/components/schemas/ServerLogRecord')
   assert.ok(logs.parameters.some(parameter => parameter.name === 'X-GitHub-Actor'))
   assert.ok(openapi.paths['/auth/logout'].post.responses['204'])
   assert.equal(openapi.components.securitySchemes.ApiKeyAuth.name, 'cao_session')

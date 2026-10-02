@@ -70,6 +70,12 @@ model QuotaUsage {
   buckets: QuotaPoint[];
   aggregate: QuotaAggregate[];
 }
+@example(#{timestamp: utcDateTime.fromISO("2026-10-02T19:00:00Z"), namespace: "cao:server", message: "listener ready"})
+model ServerLogRecord {
+  timestamp: utcDateTime;
+  namespace: string;
+  message: string;
+}
 
 @tag("Ingestion and administration")
 namespace Operations {
@@ -109,10 +115,10 @@ namespace Operations {
   @route("/api/v1/github-quota/usage")
   @get op quotaUsage(): QuotaUsage | Unauthorized | Forbidden | Unavailable;
 
-  /** Available only when CAO_SERVER_LOGS_ENABLED=true. Returns up to 10,000 recent server debug log records as newline-delimited JSON; requires a local bearer capability, a hosted administrator session, or the hosted MCP GitHub Actions identity. */
+  /** Available only when CAO_SERVER_LOGS_ENABLED=true. Returns up to 10,000 recent server debug log records as a JSON array; requires a local bearer capability, a hosted administrator session, or the hosted MCP GitHub Actions identity. */
   @useAuth(DashboardAuth)
   @route("/api/admin/logs")
   @get op logs(@header("X-GitHub-Actor") githubActor?: string, @header("X-GitHub-OIDC-Token") githubOIDCToken?: string):
-    { @header contentType: "application/x-ndjson"; @header contentDisposition: "attachment; filename=\"cao-server-logs.jsonl\""; @body body: string } |
+    { @header contentType: "application/json"; @header contentDisposition: "attachment; filename=\"cao-server-logs.json\""; @body body: ServerLogRecord[] } |
     Unauthorized | Forbidden | Unavailable;
 }

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -29,11 +30,22 @@ func TestServerLogsAuthorization(t *testing.T) {
 				t.Fatalf("status = %d, want %d", response.Code, test.status)
 			}
 			if test.status == http.StatusOK {
-				if got := response.Header().Get("Content-Type"); got != "application/x-ndjson" {
+				if got := response.Header().Get("Content-Type"); got != "application/json" {
 					t.Fatalf("Content-Type = %q", got)
+				}
+				if got := response.Header().Get("Content-Disposition"); got != `attachment; filename="cao-server-logs.json"` {
+					t.Fatalf("Content-Disposition = %q", got)
 				}
 				if got := response.Header().Get("Cache-Control"); got != "no-store" {
 					t.Fatalf("Cache-Control = %q", got)
+				}
+				var records []struct {
+					Timestamp string `json:"timestamp"`
+					Namespace string `json:"namespace"`
+					Message   string `json:"message"`
+				}
+				if err := json.Unmarshal(response.Body.Bytes(), &records); err != nil || records == nil {
+					t.Fatalf("response is not a JSON array: %s (%v)", response.Body.String(), err)
 				}
 			}
 		})

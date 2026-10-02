@@ -1433,9 +1433,9 @@ never in a URL, commit, or log. Browser access continues to use the hosted
 GitHub OAuth session.
 
 Set `CAO_SERVER_LOGS_ENABLED=true` to retain up to 10,000 recent `DEBUG`-selected
-server records in memory and mount `GET /api/admin/logs`. The response is a
-raw `application/x-ndjson` attachment, with one timestamped JSON object per
-line and `Cache-Control: no-store`. Hosted access requires either an authorized
+server records in memory and mount `GET /api/admin/logs`. The response is an
+`application/json` attachment containing an array of timestamped log objects
+with `Cache-Control: no-store`. Hosted access requires either an authorized
 administrator session or the same bearer GitHub Actions token and OIDC
 provenance required by hosted MCP; local access uses the dashboard bearer
 capability or the configured Actions token and actor. Coolify enables this

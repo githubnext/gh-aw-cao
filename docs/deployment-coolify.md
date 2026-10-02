@@ -165,7 +165,7 @@ The `server/coolify/compose.yml` file reads the following variables.
 | `CAO_MCP_ACTIONS_REPOSITORY` | Yes | No | Exact `OWNER/REPO` GitHub repository selected as this Coolify resource's Git source; only its Actions OIDC provenance and read-scoped token can access `/mcp`. |
 | `SOURCE_COMMIT` | Set by Coolify. | No | Commit SHA embedded in the image and reported as the build version. Enable **Include Source Commit in Build**. |
 | `DEBUG` | No. Defaults to `cao:server*,cao:query,cao:ingest,cao:telemetry`. | No | Server log categories written to container output. |
-| `CAO_SERVER_LOGS_ENABLED` | No. Defaults to `true` in Coolify. | No | Mounts `GET /api/admin/logs`, a download of up to 10,000 recent server debug records as JSONL. Set to `false` to disable. |
+| `CAO_SERVER_LOGS_ENABLED` | No. Defaults to `true` in Coolify. | No | Mounts `GET /api/admin/logs`, a JSON array download of up to 10,000 recent server debug records. Set to `false` to disable. |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | No | No | Shared base OTLP/HTTP endpoint. The exporter appends the signal path. |
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | No | No | Full OTLP/HTTP trace endpoint. Use this to reuse the control plane's `GH_AW_DEFAULT_OTLP_ENDPOINT`. |
 | `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` | No | No | Full OTLP/HTTP metrics endpoint. |

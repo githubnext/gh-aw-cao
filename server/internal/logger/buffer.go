@@ -13,7 +13,7 @@ const maxMessageBytes = 4096
 // Buffer retains a bounded snapshot of recent server debug records.
 type Buffer struct {
 	mu    sync.Mutex
-	lines [bufferCapacity][]byte
+	lines [bufferCapacity]json.RawMessage
 	next  int
 	count int
 }
@@ -53,11 +53,11 @@ func (b *Buffer) append(timestamp time.Time, namespace, message string) {
 	b.mu.Unlock()
 }
 
-// Snapshot returns the retained JSONL records in chronological order.
-func (b *Buffer) Snapshot() [][]byte {
+// Snapshot returns the retained JSON records in chronological order.
+func (b *Buffer) Snapshot() []json.RawMessage {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	lines := make([][]byte, b.count)
+	lines := make([]json.RawMessage, b.count)
 	for i := range lines {
 		lines[i] = b.lines[(b.next-b.count+i+bufferCapacity)%bufferCapacity]
 	}

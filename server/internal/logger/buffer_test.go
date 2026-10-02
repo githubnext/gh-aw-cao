@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func TestBufferRetainsLastTenThousandJSONLRecords(t *testing.T) {
+func TestBufferRetainsLastTenThousandJSONRecords(t *testing.T) {
 	buffer := new(Buffer)
 	now := time.Now()
 	for i := 0; i < bufferCapacity+2; i++ {
@@ -24,6 +24,20 @@ func TestBufferRetainsLastTenThousandJSONLRecords(t *testing.T) {
 		if err := json.Unmarshal(lines[index], &record); err != nil || record.Message != want {
 			t.Fatalf("record %d: %s (%v)", index, lines[index], err)
 		}
+	}
+	encoded, err := json.Marshal(lines)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var records []struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(encoded, &records); err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != bufferCapacity || records[0].Message != "line 2\nquoted \"value\"" ||
+		records[len(records)-1].Message != fmt.Sprintf("line %d\nquoted \"value\"", bufferCapacity+1) {
+		t.Fatal("snapshot did not encode as an ordered JSON array")
 	}
 }
 
