@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
@@ -184,18 +185,32 @@ func Setup(ctx context.Context, version string) (Shutdown, error) {
 		global.SetLoggerProvider(logProvider)
 	}
 	return func(shutdownCtx context.Context) error {
-		var metricErr, traceErr, logErr error
+		var shutdowns []Shutdown
 		if logProvider != nil {
-			logErr = logProvider.Shutdown(shutdownCtx)
+			shutdowns = append(shutdowns, logProvider.Shutdown)
 		}
 		if meterProvider != nil {
-			metricErr = meterProvider.Shutdown(shutdownCtx)
+			shutdowns = append(shutdowns, meterProvider.Shutdown)
 		}
 		if traceProvider != nil {
-			traceErr = traceProvider.Shutdown(shutdownCtx)
+			shutdowns = append(shutdowns, traceProvider.Shutdown)
 		}
-		return errors.Join(metricErr, traceErr, logErr)
+		return shutdownExporters(shutdownCtx, shutdowns...)
 	}, nil
+}
+
+func shutdownExporters(ctx context.Context, shutdowns ...Shutdown) error {
+	var group sync.WaitGroup
+	results := make([]error, len(shutdowns))
+	for i, shutdown := range shutdowns {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			results[i] = shutdown(ctx)
+		}()
+	}
+	group.Wait()
+	return errors.Join(results...)
 }
 
 func firstNonEmpty(values ...string) string {

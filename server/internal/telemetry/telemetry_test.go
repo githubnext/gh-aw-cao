@@ -2,10 +2,12 @@ package telemetry
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -256,6 +258,34 @@ func TestSetupExportsLogsOnlyWhenEnabled(t *testing.T) {
 		}
 	default:
 		t.Fatal("shutdown did not flush the log batch")
+	}
+}
+
+func TestShutdownExportersDoesNotBlockHealthySignals(t *testing.T) {
+	finished := make(chan struct{})
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	stalled := errors.New("collector timed out")
+	err := shutdownExporters(ctx,
+		func(ctx context.Context) error {
+			<-ctx.Done()
+			return stalled
+		},
+		func(ctx context.Context) error {
+			if ctx.Err() != nil {
+				t.Error("healthy exporter received an expired deadline")
+			}
+			close(finished)
+			return nil
+		},
+	)
+	select {
+	case <-finished:
+	default:
+		t.Fatal("healthy exporter did not flush")
+	}
+	if !errors.Is(err, stalled) {
+		t.Fatalf("shutdown error = %v, want stalled exporter error", err)
 	}
 }
 
