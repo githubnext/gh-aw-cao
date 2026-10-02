@@ -610,9 +610,18 @@ func TestHostedOAuthLoggedOutPageRequiresExplicitLogin(t *testing.T) {
 	app := newAzureTestApp(t, fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600}).URL)
 	response := httptest.NewRecorder()
 	request := azureRequest(t, http.MethodGet, "/auth/logged-out")
-	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "stale-session"})
-	request.AddCookie(&http.Cookie{Name: csrfCookieName, Value: "stale-csrf"})
-	request.AddCookie(&http.Cookie{Name: "cao_oauth_state", Value: "stale-state"})
+	request.AddCookie(&http.Cookie{
+		Name: sessionCookieName, Value: "stale-session",
+		Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode,
+	})
+	request.AddCookie(&http.Cookie{
+		Name: csrfCookieName, Value: "stale-csrf",
+		Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode,
+	})
+	request.AddCookie(&http.Cookie{
+		Name: "cao_oauth_state", Value: "stale-state",
+		Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode,
+	})
 
 	app.Handler().ServeHTTP(response, request)
 
