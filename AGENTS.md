@@ -39,9 +39,21 @@ Apply the guidance for every role that is present. Do not infer a role from the 
 
 ## Building and testing
 
-### npmjs access behind the Microsoft corporate firewall
+### Installing npm dependencies
 
-Use the [npm skill](.github/skills/npm/SKILL.md) for Microsoft 1ES feed configuration, dependency installation, and corporate proxy or certificate troubleshooting.
+From the package directory, use the lockfile with `npm ci`. Outside the Microsoft corporate network, use the default npm registry:
+
+```sh
+npm ci
+```
+
+If npmjs access is blocked by the Microsoft corporate firewall, use the Microsoft 1ES feed instead:
+
+```sh
+npm ci --registry=https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/ --replace-registry-host=npmjs
+```
+
+Do not configure the Microsoft feed for environments that can access the default registry. See the [npm skill](.github/skills/npm/SKILL.md) for Microsoft proxy, certificate, and feed troubleshooting.
 
 ### Full validation
 
