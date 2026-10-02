@@ -1026,7 +1026,7 @@ func publicServiceEndpoint(path string) bool {
 	return path == "/api/v1/health" || path == "/api/health" || path == "/api/readiness" || path == "/llms.txt"
 }
 
-func (a *App) llms(response http.ResponseWriter, _ *http.Request) {
+func (a *App) llms(response http.ResponseWriter, request *http.Request) {
 	revision := a.config.BuildRevision
 	if len(revision) != 40 || strings.IndexFunc(revision, func(char rune) bool {
 		return char < '0' || (char > '9' && char < 'a') || char > 'f'
@@ -1035,6 +1035,9 @@ func (a *App) llms(response http.ResponseWriter, _ *http.Request) {
 	}
 	response.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	response.Header().Set("Cache-Control", "no-store")
+	if request.Method == http.MethodHead {
+		return
+	}
 	_, _ = fmt.Fprintf(response, `# Central Agentic Ops dashboard server
 
 Server commit SHA: %s

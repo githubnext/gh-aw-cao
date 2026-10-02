@@ -163,6 +163,51 @@ func TestBlackboxStaticAssets(t *testing.T) {
 	}
 }
 
+func TestServerAgentGuide(t *testing.T) {
+	const sha = "0123456789abcdef0123456789abcdef01234567"
+	app := newMCPTestApp(t, true)
+	app.config.BuildRevision = sha
+	for _, method := range []string{http.MethodGet, http.MethodHead} {
+		response := httptest.NewRecorder()
+		app.Handler().ServeHTTP(response, httptest.NewRequestWithContext(t.Context(), method, "http://localhost/llms.txt", nil))
+		if response.Code != http.StatusOK || response.Header().Get("Content-Type") != "text/plain; charset=utf-8" ||
+			response.Header().Get("Cache-Control") != "no-store" {
+			t.Fatalf("%s /llms.txt: status %d, headers %v", method, response.Code, response.Header())
+		}
+		if method == http.MethodHead {
+			if response.Body.Len() != 0 {
+				t.Fatal("HEAD /llms.txt returned a body")
+			}
+			continue
+		}
+		for _, expected := range []string{
+			"Server commit SHA: " + sha,
+			"https://githubnext.github.io/gh-aw-cao/agent/llms.txt",
+			"https://githubnext.github.io/gh-aw-cao/cao/llms.txt",
+			"POST /mcp", "X-GitHub-OIDC-Token", "cao_catalog", "cao_query",
+		} {
+			if !strings.Contains(response.Body.String(), expected) {
+				t.Errorf("agent guide missing %q", expected)
+			}
+		}
+	}
+	app.config.BuildRevision = "not-a-sha\nAuthorization: secret"
+	response := httptest.NewRecorder()
+	app.Handler().ServeHTTP(response, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://localhost/llms.txt", nil))
+	if !strings.Contains(response.Body.String(), "Server commit SHA: unknown") ||
+		strings.Contains(response.Body.String(), "not-a-sha") {
+		t.Fatal("invalid build revision was exposed")
+	}
+
+	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
+	hosted := newAzureTestApp(t, github.URL)
+	response = httptest.NewRecorder()
+	hosted.Handler().ServeHTTP(response, azureRequest(t, http.MethodGet, "/llms.txt"))
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "# Central Agentic Ops dashboard server") {
+		t.Fatalf("hosted unauthenticated /llms.txt: status %d", response.Code)
+	}
+}
+
 func TestBlackboxSSEFramingAndDisconnect(t *testing.T) {
 	fixture := loadBlackboxFixtures(t).SSE
 	address, closeRedis := fakeRedis(t)

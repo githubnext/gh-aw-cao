@@ -33,6 +33,13 @@
   ],
   "static": [
     {
+      "name": "public agent guide",
+      "path": "/llms.txt",
+      "status": 200,
+      "contentType": "text/plain",
+      "bodyContains": "Server commit SHA: unknown"
+    },
+    {
       "name": "public asset",
       "path": "/fixture.js",
       "status": 200,
