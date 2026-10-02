@@ -189,15 +189,23 @@ model CanonicalRow {
   @encodedName("application/json", "maturity-status") maturityStatus?: string | null;
   @encodedName("application/json", "adoption-at") adoptionAt?: string | null;
   @encodedName("application/json", "evaluation-mode") evaluationMode?: string | null;
-  /** Scalar href columns reconstruct the known `{href}` link object on read. */
+  /** Known link properties are native; present arrays preserve missing versus null. */
   organizationHref?: string | null;
-  organizationHrefJson?: unknown;
+  organizationHrefRelation?: string | null;
+  organizationHrefLabel?: string | null;
+  organizationHrefPresent?: string[] | null;
   repositoryHref?: string | null;
-  repositoryHrefJson?: unknown;
+  repositoryHrefRelation?: string | null;
+  repositoryHrefLabel?: string | null;
+  repositoryHrefPresent?: string[] | null;
   workflowHref?: string | null;
-  workflowHrefJson?: unknown;
+  workflowHrefRelation?: string | null;
+  workflowHrefLabel?: string | null;
+  workflowHrefPresent?: string[] | null;
   runHref?: string | null;
-  runHrefJson?: unknown;
+  runHrefRelation?: string | null;
+  runHrefLabel?: string | null;
+  runHrefPresent?: string[] | null;
   runHrefKind?: "object" | "string" | null;
   status?: string | null;
   conclusion?: string | null;
@@ -405,9 +413,13 @@ model CanonicalRow {
   evalResultJson?: unknown;
   costGrainJson?: unknown;
   campaignHref?: string | null;
-  campaignHrefJson?: unknown;
+  campaignHrefRelation?: string | null;
+  campaignHrefLabel?: string | null;
+  campaignHrefPresent?: string[] | null;
   externalHref?: string | null;
-  externalHrefJson?: unknown;
+  externalHrefRelation?: string | null;
+  externalHrefLabel?: string | null;
+  externalHrefPresent?: string[] | null;
   /** Nested provider and observation structures currently stored in JSON columns. */
   provenance?: unknown;
   tokenUsage?: unknown;

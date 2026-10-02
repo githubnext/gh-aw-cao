@@ -295,7 +295,9 @@ func initialize(ctx context.Context, db *sql.DB) error {
 	}
 	for _, field := range canonicalLinks {
 		additions = append(additions, "ADD COLUMN IF NOT EXISTS "+field.column+" TEXT",
-			"ADD COLUMN IF NOT EXISTS "+field.column+"_json JSON")
+			"ADD COLUMN IF NOT EXISTS "+field.column+"_relation TEXT",
+			"ADD COLUMN IF NOT EXISTS "+field.column+"_label TEXT",
+			"ADD COLUMN IF NOT EXISTS "+field.column+"_present TEXT[]")
 	}
 	for _, field := range canonicalObjects {
 		additions = append(additions, "ADD COLUMN IF NOT EXISTS "+field.column+" JSON")
@@ -370,6 +372,9 @@ func initialize(ctx context.Context, db *sql.DB) error {
 			return err
 		}
 	}
+	if err := migrateCanonicalLinks(ctx, tx); err != nil {
+		return err
+	}
 	if legacyProvenance {
 		if err := migrateLegacyCanonicalProvenance(ctx, tx); err != nil {
 			return err
@@ -431,6 +436,53 @@ func removeGenerationColumn(ctx context.Context, tx *sql.Tx) error {
 	}
 	_, err := tx.ExecContext(ctx, `ALTER TABLE cao_canonical_rows DROP COLUMN generation`)
 	return err
+}
+
+func migrateCanonicalLinks(ctx context.Context, tx *sql.Tx) error {
+	for _, field := range canonicalLinks {
+		rich := field.column + "_json"
+		var exists bool
+		if err := tx.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM pg_attribute
+			WHERE attrelid = to_regclass('cao_canonical_rows')
+			AND attname = $1 AND NOT attisdropped)`, rich).Scan(&exists); err != nil {
+			return err
+		}
+		if !exists {
+			continue
+		}
+		var invalid bool
+		// All identifiers are from the static canonical link catalogue.
+		if err := tx.QueryRowContext(ctx, `SELECT EXISTS (
+			SELECT 1 FROM cao_canonical_rows r WHERE `+rich+` IS NOT NULL
+			AND (NOT $1 = ANY(r.present) OR json_typeof(`+rich+`) IS DISTINCT FROM 'object'
+				OR json_typeof(`+rich+` -> 'href') IS DISTINCT FROM 'string'
+				OR EXISTS (SELECT 1 FROM json_each(`+rich+`) AS part
+					WHERE part.key NOT IN ('href', 'relation', 'label')
+					OR (part.key <> 'href' AND json_typeof(part.value) NOT IN ('string', 'null')))
+				OR `+field.column+` IS NOT NULL)
+		)`, field.key).Scan(&invalid); err != nil {
+			return err
+		}
+		if invalid {
+			return fmt.Errorf("invalid legacy canonical link %s", field.key)
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE cao_canonical_rows r SET
+			`+field.column+` = COALESCE(`+field.column+`, `+rich+` ->> 'href'),
+			`+field.column+`_relation = `+rich+` ->> 'relation',
+			`+field.column+`_label = `+rich+` ->> 'label',
+			`+field.column+`_present = CASE
+				WHEN `+rich+` IS NOT NULL THEN ARRAY(SELECT key FROM json_object_keys(`+rich+`) AS key ORDER BY key)
+				WHEN `+field.column+` IS NOT NULL AND ($1 <> 'runLink' OR run_href_kind <> 'string')
+					THEN ARRAY['href']::text[]
+			END
+			WHERE $1 = ANY(r.present)`, field.key); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `ALTER TABLE cao_canonical_rows DROP COLUMN `+rich); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func migrateCanonicalSourceKind(ctx context.Context, tx *sql.Tx) error {

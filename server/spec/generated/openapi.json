@@ -4516,9 +4516,41 @@
                 "type": "null"
               }
             ],
-            "description": "Scalar href columns reconstruct the known `{href}` link object on read."
+            "description": "Known link properties are native; present arrays preserve missing versus null."
           },
-          "organizationHrefJson": {},
+          "organizationHrefRelation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "organizationHrefLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "organizationHrefPresent": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "repositoryHref": {
             "anyOf": [
               {
@@ -4529,7 +4561,39 @@
               }
             ]
           },
-          "repositoryHrefJson": {},
+          "repositoryHrefRelation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "repositoryHrefLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "repositoryHrefPresent": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "workflowHref": {
             "anyOf": [
               {
@@ -4540,7 +4604,39 @@
               }
             ]
           },
-          "workflowHrefJson": {},
+          "workflowHrefRelation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "workflowHrefLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "workflowHrefPresent": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "runHref": {
             "anyOf": [
               {
@@ -4551,7 +4647,39 @@
               }
             ]
           },
-          "runHrefJson": {},
+          "runHrefRelation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "runHrefLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "runHrefPresent": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "runHrefKind": {
             "anyOf": [
               {
@@ -6613,7 +6741,39 @@
               }
             ]
           },
-          "campaignHrefJson": {},
+          "campaignHrefRelation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "campaignHrefLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "campaignHrefPresent": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "externalHref": {
             "anyOf": [
               {
@@ -6624,7 +6784,39 @@
               }
             ]
           },
-          "externalHrefJson": {},
+          "externalHrefRelation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "externalHrefLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "externalHrefPresent": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "provenance": {
             "description": "Nested provider and observation structures currently stored in JSON columns."
           },

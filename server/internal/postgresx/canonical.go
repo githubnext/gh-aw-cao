@@ -495,7 +495,7 @@ func canonicalRow(row model.Row) (fields []string, values []any, extension strin
 	for k, v := range row {
 		rest[k] = v
 	}
-	values = make([]any, 0, len(canonicalFields)+2*(len(canonicalTimes)+len(canonicalNumbers))+len(canonicalBooleans)+3*len(canonicalIdentifiers)+2*len(canonicalLinks)+len(canonicalArrays)+len(canonicalObjects)+1)
+	values = make([]any, 0)
 	for _, field := range canonicalFields {
 		v, present := rest[field.key]
 		if present && v != nil {
@@ -640,17 +640,18 @@ func canonicalRow(row model.Row) (fields []string, values []any, extension strin
 	}
 	for _, field := range canonicalLinks {
 		v, present := rest[field.key]
-		var rich any
+		var href, relation, label any
+		var parts []string
 		if v == nil {
-			values = append(values, nil)
 		} else if text, isString := v.(string); isString && field.key == "runLink" {
-			values = append(values, text)
+			href = text
 		} else {
 			link, isObject := v.(map[string]any)
 			if !isObject {
 				return nil, nil, "", false, nil
 			}
-			href, isString := link["href"].(string)
+			var isString bool
+			href, isString = link["href"].(string)
 			if !isString {
 				return nil, nil, "", false, nil
 			}
@@ -663,19 +664,12 @@ func canonicalRow(row model.Row) (fields []string, values []any, extension strin
 						return nil, nil, "", false, nil
 					}
 				}
+				parts = append(parts, key)
 			}
-			if len(link) > 1 {
-				raw, marshalErr := json.Marshal(link)
-				if marshalErr != nil {
-					return nil, nil, "", false, marshalErr
-				}
-				rich = string(raw)
-				values = append(values, nil)
-			} else {
-				values = append(values, href)
-			}
+			sort.Strings(parts)
+			relation, label = link["relation"], link["label"]
 		}
-		values = append(values, rich)
+		values = append(values, href, relation, label, parts)
 		if field.key == "runLink" {
 			kind := any(nil)
 			if v != nil {
@@ -814,7 +808,7 @@ func insertCanonical(ctx context.Context, tx *sql.Tx, namespace, name string, or
 		columns = append(columns, field.column, field.column+"_kind", field.column+"_numeric")
 	}
 	for _, field := range canonicalLinks {
-		columns = append(columns, field.column, field.column+"_json")
+		columns = append(columns, field.column, field.column+"_relation", field.column+"_label", field.column+"_present")
 		if field.key == "runLink" {
 			columns = append(columns, "run_href_kind")
 		}
@@ -911,7 +905,8 @@ func (r *readTransaction) canonicalPlanRows(ctx context.Context, raw string, fil
 			columns = append(columns, `COALESCE(`+field.column+`, `+field.column+`_numeric::text)`, field.column+"_kind")
 		}
 		for _, field := range canonicalLinks {
-			columns = append(columns, field.column, field.column+"_json::text")
+			columns = append(columns, field.column, field.column+"_relation",
+				field.column+"_label", field.column+"_present")
 			if field.key == "runLink" {
 				columns = append(columns, "run_href_kind")
 			}
@@ -948,7 +943,8 @@ func (r *readTransaction) canonicalPlanRows(ctx context.Context, raw string, fil
 			values := make([]sql.NullString, len(canonicalFields)+len(canonicalTimes)+len(canonicalNumbers))
 			booleanValues := make([]sql.NullBool, len(canonicalBooleans))
 			identifierValues := make([]sql.NullString, 2*len(canonicalIdentifiers))
-			linkValues := make([]sql.NullString, 2*len(canonicalLinks))
+			linkValues := make([]sql.NullString, 3*len(canonicalLinks))
+			linkPresent := make([][]string, len(canonicalLinks))
 			arrayValues := make([][]string, len(canonicalArrays))
 			objectValues := make([]sql.NullString, len(canonicalObjects))
 			flexibleValues := make([]sql.NullString, len(canonicalFlexibleText))
@@ -968,7 +964,8 @@ func (r *readTransaction) canonicalPlanRows(ctx context.Context, raw string, fil
 				dest = append(dest, &identifierValues[i])
 			}
 			for i := range canonicalLinks {
-				dest = append(dest, &linkValues[2*i], &linkValues[2*i+1])
+				dest = append(dest, &linkValues[3*i], &linkValues[3*i+1],
+					&linkValues[3*i+2], &linkPresent[i])
 				if canonicalLinks[i].key == "runLink" {
 					dest = append(dest, &runLinkKind)
 				}
@@ -1087,7 +1084,8 @@ func (r *readTransaction) canonicalPlanRows(ctx context.Context, raw string, fil
 				}
 				for i, field := range canonicalLinks {
 					if key == field.key {
-						value, err := decodeCanonicalLinkValue(linkValues[2*i], linkValues[2*i+1],
+						value, err := decodeCanonicalLinkValue(linkValues[3*i], linkValues[3*i+1],
+							linkValues[3*i+2], linkPresent[i],
 							field.key == "runLink" && runLinkKind.String == "string")
 						if err != nil {
 							return nil, err
@@ -1215,19 +1213,21 @@ func (r *readTransaction) canonicalPlanRows(ctx context.Context, raw string, fil
 		}
 		if column != "" {
 			if link {
-				rich := column + "_json"
+				plain := "FALSE"
 				if field.Field == "runLink" {
-					expressions[i] = fmt.Sprintf(`CASE WHEN $%d = ANY(present) THEN
-						CASE WHEN %s IS NULL AND %s IS NULL THEN 'null'
-						WHEN run_href_kind = 'string' THEN to_json(%s)::text
-						ELSE COALESCE(%s::text, json_build_object('href', %s)::text) END END`,
-						len(args), column, rich, column, rich, column)
-					continue
+					plain = "run_href_kind = 'string'"
 				}
 				expressions[i] = fmt.Sprintf(`CASE WHEN $%d = ANY(present) THEN
-					CASE WHEN %s IS NULL AND %s IS NULL THEN 'null'
-					ELSE COALESCE(%s::text, json_build_object('href', %s)::text) END END`,
-					len(args), column, rich, rich, column)
+					CASE WHEN %s IS NULL THEN 'null'
+					WHEN %s THEN to_json(%s)::text
+					ELSE (SELECT json_object_agg(key, value::json)::text FROM
+						(VALUES ('href', to_json(%s)::text),
+							('relation', CASE WHEN 'relation' = ANY(%s_present)
+								THEN COALESCE(to_json(%s_relation)::text, 'null') END),
+							('label', CASE WHEN 'label' = ANY(%s_present)
+								THEN COALESCE(to_json(%s_label)::text, 'null') END))
+						AS parts(key, value) WHERE value IS NOT NULL) END END`,
+					len(args), column, plain, column, column, column, column, column, column)
 			} else if field.Field == "id" {
 				expressions[i] = fmt.Sprintf(`CASE WHEN $%d = ANY(present) THEN
 					CASE WHEN id_kind = 'number' THEN COALESCE(id, 'null')
@@ -1856,25 +1856,34 @@ func decodeCanonicalIdentifier(value, kind sql.NullString) any {
 	return value.String
 }
 
-func decodeCanonicalLink(href sql.NullString) any {
-	if !href.Valid {
-		return nil
-	}
-	return map[string]any{"href": href.String}
-}
-
-func decodeCanonicalLinkValue(href, rich sql.NullString, plain bool) (any, error) {
-	if rich.Valid {
-		var result any
-		if err := decodeJSON([]byte(rich.String), &result); err != nil {
-			return nil, err
-		}
-		return result, nil
-	}
+func decodeCanonicalLinkValue(href, relation, label sql.NullString, present []string, plain bool) (any, error) {
 	if plain && href.Valid {
 		return href.String, nil
 	}
-	return decodeCanonicalLink(href), nil
+	if !href.Valid {
+		return nil, nil
+	}
+	link := map[string]any{"href": href.String}
+	for _, part := range present {
+		switch part {
+		case "href":
+		case "relation":
+			if relation.Valid {
+				link[part] = relation.String
+			} else {
+				link[part] = nil
+			}
+		case "label":
+			if label.Valid {
+				link[part] = label.String
+			} else {
+				link[part] = nil
+			}
+		default:
+			return nil, fmt.Errorf("invalid native link property %q", part)
+		}
+	}
+	return link, nil
 }
 
 func decodeCanonicalExtension(extension sql.NullString) (model.Row, error) {
@@ -1910,7 +1919,8 @@ func readCanonicalOrdinals(ctx context.Context, tx *sql.Tx, namespace, name stri
 		columns = append(columns, `COALESCE(`+field.column+`, `+field.column+`_numeric::text)`, field.column+"_kind")
 	}
 	for _, field := range canonicalLinks {
-		columns = append(columns, field.column, field.column+"_json::text")
+		columns = append(columns, field.column, field.column+"_relation",
+			field.column+"_label", field.column+"_present")
 		if field.key == "runLink" {
 			columns = append(columns, "run_href_kind")
 		}
@@ -1948,7 +1958,8 @@ func readCanonicalOrdinals(ctx context.Context, tx *sql.Tx, namespace, name stri
 		values := make([]sql.NullString, len(canonicalFields)+len(canonicalTimes)+len(canonicalNumbers))
 		booleanValues := make([]sql.NullBool, len(canonicalBooleans))
 		identifierValues := make([]sql.NullString, 2*len(canonicalIdentifiers))
-		linkValues := make([]sql.NullString, 2*len(canonicalLinks))
+		linkValues := make([]sql.NullString, 3*len(canonicalLinks))
+		linkPresent := make([][]string, len(canonicalLinks))
 		arrayValues := make([][]string, len(canonicalArrays))
 		objectValues := make([]sql.NullString, len(canonicalObjects))
 		flexibleValues := make([]sql.NullString, len(canonicalFlexibleText))
@@ -1968,7 +1979,8 @@ func readCanonicalOrdinals(ctx context.Context, tx *sql.Tx, namespace, name stri
 			dest = append(dest, &identifierValues[i])
 		}
 		for i := range canonicalLinks {
-			dest = append(dest, &linkValues[2*i], &linkValues[2*i+1])
+			dest = append(dest, &linkValues[3*i], &linkValues[3*i+1],
+				&linkValues[3*i+2], &linkPresent[i])
 			if canonicalLinks[i].key == "runLink" {
 				dest = append(dest, &runLinkKind)
 			}
@@ -2062,7 +2074,8 @@ func readCanonicalOrdinals(ctx context.Context, tx *sql.Tx, namespace, name stri
 		}
 		for i, field := range canonicalLinks {
 			if known[field.key] {
-				value, err := decodeCanonicalLinkValue(linkValues[2*i], linkValues[2*i+1],
+				value, err := decodeCanonicalLinkValue(linkValues[3*i], linkValues[3*i+1],
+					linkValues[3*i+2], linkPresent[i],
 					field.key == "runLink" && runLinkKind.String == "string")
 				if err != nil {
 					return nil, true, err

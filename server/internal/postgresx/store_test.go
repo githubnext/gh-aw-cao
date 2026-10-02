@@ -840,7 +840,7 @@ func TestCanonicalProducerDifferentialIntegration(t *testing.T) {
 			"attributableRunIds": []any{"run:1", "run:2"}},
 		{"id": "observation:2", "runId": "run:2", "graderId": "grader:2",
 			"runLink": map[string]any{"href": "https://github.com/org/repo/actions/runs/2",
-				"relation": "run", "label": "Run 2"},
+				"relation": nil, "label": ""},
 			"attributableRunIds": []any{}, "included": nil, "value": json.Number("0.000100")},
 	}
 	sources := map[string]model.Source{
@@ -896,9 +896,17 @@ func TestCanonicalProducerDifferentialIntegration(t *testing.T) {
 	var stored int
 	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM cao_canonical_rows
 		WHERE namespace = 'default' AND source_name = '$graderObservations'
-		AND extension IS NULL AND (run_href IS NOT NULL OR run_href_json IS NOT NULL) AND grader_id IS NOT NULL
+		AND extension IS NULL AND run_href IS NOT NULL AND grader_id IS NOT NULL
 		AND attributable_run_ids IS NOT NULL`).Scan(&stored); err != nil || stored != 2 {
 		t.Fatalf("producer fields not native: count=%d err=%v", stored, err)
+	}
+	var nativeLink bool
+	if err := store.db.QueryRowContext(ctx, `SELECT run_href_relation IS NULL
+		AND 'relation' = ANY(run_href_present) AND run_href_label = ''
+		AND 'label' = ANY(run_href_present) AND run_href_kind = 'object'
+		FROM cao_canonical_rows WHERE source_name = '$graderObservations' AND ordinal = 1`).
+		Scan(&nativeLink); err != nil || !nativeLink {
+		t.Fatalf("known link properties were not stored natively: %t, %v", nativeLink, err)
 	}
 	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM cao_canonical_rows
 		WHERE namespace = 'default' AND source_name = '$campaigns'
@@ -936,6 +944,21 @@ func TestCanonicalProducerDifferentialIntegration(t *testing.T) {
 		if planErr != nil || !supported || !reflect.DeepEqual(result["rich-link"].Rows,
 			[]model.Row{{"runLink": input[1]["runLink"], "attributableRunIds": []any{}}}) {
 			t.Errorf("rich link/empty array selection: %+v supported=%t err=%v", result, supported, planErr)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plainSelection := []query.Definition{{Name: "plain-link", From: "$graderObservations",
+		Filter: &query.Filter{Predicates: []query.Predicate{{Field: "graderId", Equals: "grader:1"}}},
+		Select: []query.SelectedField{{Field: "runLink"}}}}
+	err = store.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) error {
+		result, _, supported, planErr := reader.(NativePlanExecutor).ExecuteNativePlan(ctx,
+			plainSelection, []string{"plain-link"}, []string{"plain-link"})
+		if planErr != nil || !supported || !reflect.DeepEqual(result["plain-link"].Rows,
+			[]model.Row{{"runLink": input[0]["runLink"]}}) {
+			t.Errorf("plain link selection: %+v supported=%t err=%v", result, supported, planErr)
 		}
 		return nil
 	})
@@ -1289,6 +1312,16 @@ func TestCanonicalExtensionColumnUpgrade(t *testing.T) {
 			DROP COLUMN provenance_observed_at, DROP COLUMN provenance_observed_at_raw,
 			DROP COLUMN provenance_source_revision, DROP COLUMN provenance_present,
 			DROP COLUMN provenance_null, ADD COLUMN provenance JSON`,
+		`ALTER TABLE cao_canonical_rows
+			DROP COLUMN run_href_relation, DROP COLUMN run_href_label, DROP COLUMN run_href_present,
+			DROP COLUMN organization_href_relation, DROP COLUMN organization_href_label,
+			DROP COLUMN organization_href_present,
+			ADD COLUMN run_href_json JSON, ADD COLUMN organization_href_json JSON`,
+		`UPDATE cao_canonical_rows SET run_href_json =
+			'{"href":"https://github.com/org/repo/actions/runs/1","relation":null,"label":""}'::json,
+			organization_href_json = '{"href":"https://github.com/org"}'::json,
+			present = array_append(array_append(present, 'runLink'), 'organizationLink')
+			WHERE source_name = '$runs'`,
 		`UPDATE cao_canonical_rows SET
 			provenance = json_build_object('source', 'legacy', 'sourceId', 'source-' || ordinal,
 				'observedAt', '2026-09-01T10:11:12.123456789-07:00',
@@ -1308,6 +1341,28 @@ func TestCanonicalExtensionColumnUpgrade(t *testing.T) {
 		if _, err := legacy.ExecContext(ctx, statement); err != nil {
 			t.Fatal(err)
 		}
+	}
+	if _, err := legacy.ExecContext(ctx, `UPDATE cao_canonical_rows
+		SET run_href_json = '{"relation":"run"}'::json
+		WHERE source_name = '$runs' AND ordinal = 0`); err != nil {
+		t.Fatal(err)
+	}
+	if malformed, err := NewConfig(ctx, config); err == nil {
+		_ = malformed.Close()
+		t.Fatal("legacy link without href must abort the upgrade")
+	}
+	var retainedLink bool
+	if err := legacy.QueryRowContext(ctx, `SELECT EXISTS (
+		SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema()
+		AND table_name = 'cao_canonical_rows' AND column_name = 'run_href_json')`).
+		Scan(&retainedLink); err != nil || !retainedLink {
+		t.Fatalf("failed link upgrade removed legacy column: %t, %v", retainedLink, err)
+	}
+	if _, err := legacy.ExecContext(ctx, `UPDATE cao_canonical_rows
+		SET run_href_json =
+			'{"href":"https://github.com/org/repo/actions/runs/1","relation":null,"label":""}'::json
+		WHERE source_name = '$runs' AND ordinal = 0`); err != nil {
+		t.Fatal(err)
 	}
 	if _, err := legacy.ExecContext(ctx, `UPDATE cao_canonical_rows SET
 		extension = (extension::jsonb || '{"status":"failed"}'::jsonb)::json
@@ -1358,6 +1413,10 @@ func TestCanonicalExtensionColumnUpgrade(t *testing.T) {
 	for i, row := range source.Rows {
 		if row["id"] != input[i]["id"] || row["runId"] != nil || row["status"] != "completed" ||
 			row["targetRepositoryId"] != "repository:target" ||
+			!reflect.DeepEqual(row["runLink"], map[string]any{
+				"href": "https://github.com/org/repo/actions/runs/1", "relation": nil, "label": "",
+			}) ||
+			!reflect.DeepEqual(row["organizationLink"], map[string]any{"href": "https://github.com/org"}) ||
 			row["agentId"] != fmt.Sprintf("agent-%d", i) || row["failureMessage"] != nil ||
 			row["evidenceWindowStart"] != "2026-09-01T10:11:12.123456789Z" ||
 			row["eventsTruncated"] != true || row["value"] != "text evidence" ||
@@ -1378,6 +1437,24 @@ func TestCanonicalExtensionColumnUpgrade(t *testing.T) {
 		FROM cao_canonical_rows WHERE namespace = 'default' AND source_name = '$runs'`).
 		Scan(&migratedTarget); err != nil || !migratedTarget {
 		t.Fatalf("target relationship was not backfilled into native columns: %t, %v", migratedTarget, err)
+	}
+	var migratedLinks bool
+	if err := upgraded.db.QueryRowContext(ctx, `SELECT bool_and(
+		run_href = 'https://github.com/org/repo/actions/runs/1'
+		AND run_href_relation IS NULL AND 'relation' = ANY(run_href_present)
+		AND run_href_label = '' AND 'label' = ANY(run_href_present)
+		AND organization_href = 'https://github.com/org'
+		AND organization_href_present = ARRAY['href']::text[])
+		FROM cao_canonical_rows WHERE namespace = 'default' AND source_name = '$runs'`).
+		Scan(&migratedLinks); err != nil || !migratedLinks {
+		t.Fatalf("legacy link JSON was not migrated into native properties: %t, %v", migratedLinks, err)
+	}
+	var legacyLinkColumns bool
+	if err := upgraded.db.QueryRowContext(ctx, `SELECT EXISTS (
+		SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema()
+		AND table_name = 'cao_canonical_rows' AND column_name IN ('run_href_json', 'organization_href_json'))`).
+		Scan(&legacyLinkColumns); err != nil || legacyLinkColumns {
+		t.Fatalf("obsolete link JSON columns retained: %t, %v", legacyLinkColumns, err)
 	}
 	var extension string
 	var agent, valueText string
