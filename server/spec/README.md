@@ -21,6 +21,9 @@ must not be treated as permanently schemaless. The normalizer merges arbitrary
 names and row objects (even names beginning with `$` when unregistered) are
 caller-supplied and genuinely schemaless. The PostgreSQL store must never copy
 a native field into an extension or its legacy row representation.
+Marketplace package `contents` paths are a known ordered string list stored as
+`TEXT[]`; only atypical historical shapes use the mutually exclusive
+`contents_exception` JSON column.
 Startup must transactionally convert complete historical sources into the
 current representation before retiring legacy EAV storage. Conversion of a
 canonical source with unsupported known fields must fail closed without

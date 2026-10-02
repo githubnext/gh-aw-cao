@@ -869,6 +869,10 @@ func TestCanonicalProducerDifferentialIntegration(t *testing.T) {
 			Source: "$marketplacePackages", Rows: []model.Row{{
 				"id": "marketplace:1", "registryId": "primary", "registryPrecedence": json.Number("0"),
 				"contents": []any{map[string]any{"path": "worker.md"}}, "stars": json.Number("42"),
+			}, {
+				"id": "marketplace:2", "contents": []any{"workflows/main.md", "docs/readme.md"},
+			}, {
+				"id": "marketplace:3", "contents": []any{},
 			}},
 		},
 		"$audits": {
@@ -931,6 +935,15 @@ func TestCanonicalProducerDifferentialIntegration(t *testing.T) {
 		Scan(&stored); err != nil || stored != 4 {
 		t.Fatalf("workflow README path not native-only: count=%d err=%v", stored, err)
 	}
+	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM cao_canonical_rows
+		WHERE source_name = '$marketplacePackages' AND (
+			(ordinal = 0 AND contents IS NULL AND contents_exception IS NOT NULL) OR
+			(ordinal = 1 AND contents = ARRAY['workflows/main.md','docs/readme.md']::text[]
+				AND contents_exception IS NULL) OR
+			(ordinal = 2 AND contents = ARRAY[]::text[] AND contents_exception IS NULL))`).
+		Scan(&stored); err != nil || stored != 3 {
+		t.Fatalf("known package paths not native-only: count=%d err=%v", stored, err)
+	}
 	for _, table := range []string{"cao_values", "cao_source_rows"} {
 		if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM `+table+` WHERE namespace = 'default'`).
 			Scan(&stored); err != nil || stored != 0 {
@@ -962,6 +975,32 @@ func TestCanonicalProducerDifferentialIntegration(t *testing.T) {
 		if planErr != nil || !supported || !reflect.DeepEqual(result["workflow-readme"].Rows,
 			[]model.Row{{"campaignReadmePath": "docs/campaign.md"}}) {
 			t.Errorf("native workflow README selection: %+v supported=%t err=%v", result, supported, planErr)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	contentsSelection := []query.Definition{{Name: "package-contents", From: "$marketplacePackages",
+		Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: "marketplace:2"}}},
+		Select: []query.SelectedField{{Field: "contents"}}}}
+	err = store.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) error {
+		result, _, supported, planErr := reader.(NativePlanExecutor).ExecuteNativePlan(ctx,
+			contentsSelection, []string{"package-contents"}, []string{"package-contents"})
+		if planErr != nil || !supported || !reflect.DeepEqual(result["package-contents"].Rows,
+			[]model.Row{{"contents": sources["$marketplacePackages"].Rows[1]["contents"]}}) {
+			t.Errorf("native package paths projection: %+v supported=%t err=%v", result, supported, planErr)
+		}
+		all := []query.Definition{{Name: "all-package-contents", From: "$marketplacePackages",
+			Select: []query.SelectedField{{Field: "contents"}}}}
+		native, _, supported, planErr := reader.(NativePlanExecutor).ExecuteNativePlan(ctx,
+			all, []string{"all-package-contents"}, []string{"all-package-contents"})
+		evaluated, _, evalErr := query.New(readerLoader{reader: reader, ctx: ctx}).Execute(
+			all, []string{"all-package-contents"})
+		if planErr != nil || evalErr != nil || !supported ||
+			!reflect.DeepEqual(native["all-package-contents"].Rows, evaluated["all-package-contents"].Rows) {
+			t.Errorf("package contents projection parity: native=%+v evaluated=%+v supported=%t err=%v evalErr=%v",
+				native, evaluated, supported, planErr, evalErr)
 		}
 		return nil
 	})
@@ -1266,6 +1305,110 @@ func TestRemoveNativeGenerationColumn(t *testing.T) {
 			SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema()
 			AND table_name = 'cao_canonical_rows' AND column_name = 'generation')`).Scan(&exists); err != nil || exists {
 		t.Fatalf("native generation column retained: %t, %v", exists, err)
+	}
+}
+
+func TestCanonicalContentsUpgrade(t *testing.T) {
+	url := os.Getenv("POSTGRES_URL")
+	if url == "" {
+		t.Skip("POSTGRES_URL is unset")
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 45*time.Second)
+	defer cancel()
+	config, err := pgx.ParseConfig(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	admin := stdlib.OpenDB(*config.Copy())
+	defer func() { _ = admin.Close() }()
+	schema := fmt.Sprintf("cao_contents_upgrade_%d", time.Now().UnixNano())
+	if _, err := admin.ExecContext(ctx, "CREATE SCHEMA "+schema); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _, _ = admin.ExecContext(context.Background(), "DROP SCHEMA "+schema+" CASCADE") }()
+	config.RuntimeParams["search_path"] = schema
+	old, err := NewConfig(ctx, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := []model.Row{
+		{"id": "normal", "contents": []any{"workflows/a.md", "docs/b.md"}},
+		{"id": "empty", "contents": []any{}},
+		{"id": "exception", "contents": []any{map[string]any{"path": "legacy.md"}}},
+		{"id": "null", "contents": nil},
+		{"id": "object", "contents": map[string]any{"path": "legacy.md"}},
+		{"id": "absent"},
+	}
+	if _, err := old.Replace(ctx, map[string]model.Source{"$marketplacePackages": {
+		Source: "$marketplacePackages", Rows: input,
+	}}, model.Diagnostics{}, "old", time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	_ = old.Close()
+	legacy := stdlib.OpenDB(*config.Copy())
+	defer func() { _ = legacy.Close() }()
+	for _, statement := range []string{
+		`ALTER TABLE cao_canonical_rows DROP COLUMN contents, DROP COLUMN contents_exception,
+			ADD COLUMN contents JSON`,
+		`UPDATE cao_canonical_rows SET contents = CASE ordinal
+			WHEN 0 THEN '["workflows/a.md","docs/b.md"]'::json
+			WHEN 1 THEN '[]'::json
+			WHEN 2 THEN '[{"path":"legacy.md"}]'::json
+			WHEN 3 THEN 'null'::json
+			WHEN 4 THEN '{"path":"legacy.md"}'::json END
+			WHERE source_name = '$marketplacePackages'`,
+	} {
+		if _, err := legacy.ExecContext(ctx, statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := legacy.ExecContext(ctx, `UPDATE cao_canonical_rows SET contents = 'true'::json
+		WHERE source_name = '$marketplacePackages' AND ordinal = 0`); err != nil {
+		t.Fatal(err)
+	}
+	if bad, err := NewConfig(ctx, config); err == nil {
+		_ = bad.Close()
+		t.Fatal("invalid historical contents must abort the upgrade")
+	}
+	var oldType string
+	if err := legacy.QueryRowContext(ctx, `SELECT data_type FROM information_schema.columns
+		WHERE table_schema = current_schema() AND table_name = 'cao_canonical_rows'
+			AND column_name = 'contents'`).Scan(&oldType); err != nil || oldType != "json" {
+		t.Fatalf("failed upgrade changed legacy contents column: %q, %v", oldType, err)
+	}
+	if _, err := legacy.ExecContext(ctx, `UPDATE cao_canonical_rows
+		SET contents = '["workflows/a.md","docs/b.md"]'::json
+		WHERE source_name = '$marketplacePackages' AND ordinal = 0`); err != nil {
+		t.Fatal(err)
+	}
+	upgraded, err := NewConfig(ctx, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = upgraded.Close() }()
+	got, _, err := upgraded.LoadSource(ctx, "$marketplacePackages", nil)
+	if err != nil || !reflect.DeepEqual(got.Rows, input) {
+		t.Fatalf("historical contents changed: %#v, %v", got.Rows, err)
+	}
+	var ordinary, atypical, empty bool
+	if err := upgraded.db.QueryRowContext(ctx, `SELECT
+		(SELECT contents = ARRAY['workflows/a.md','docs/b.md']::text[]
+			AND contents_exception IS NULL FROM cao_canonical_rows WHERE ordinal = 0),
+		(SELECT contents IS NULL AND contents_exception IS NOT NULL
+			FROM cao_canonical_rows WHERE ordinal = 2),
+		(SELECT contents = ARRAY[]::text[] AND contents_exception IS NULL
+			FROM cao_canonical_rows WHERE ordinal = 1)`).
+		Scan(&ordinary, &atypical, &empty); err != nil || !ordinary || !atypical || !empty {
+		t.Fatalf("historical paths not separated: %t %t %t, %v", ordinary, atypical, empty, err)
+	}
+	if _, err := upgraded.db.ExecContext(ctx, `UPDATE cao_canonical_rows SET contents_exception = '[]'::json
+		WHERE source_name = '$marketplacePackages' AND ordinal = 0`); err == nil {
+		t.Fatal("native paths and exception JSON must be mutually exclusive")
+	}
+	if reopened, err := NewConfig(ctx, config); err != nil {
+		t.Fatalf("contents upgrade not idempotent: %v", err)
+	} else {
+		_ = reopened.Close()
 	}
 }
 

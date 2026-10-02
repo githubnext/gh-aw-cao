@@ -222,6 +222,7 @@ var canonicalBooleans = []struct {
 var canonicalArrays = []struct{ key, column string }{
 	{"attributableRunIds", "attributable_run_ids"},
 	{"implementationRunIds", "implementation_run_ids"},
+	{"contents", "contents"},
 }
 
 var canonicalObjects = []struct{ key, column string }{
@@ -241,7 +242,6 @@ var canonicalObjects = []struct{ key, column string }{
 	{"intelligenceDeclaration", "intelligence_declaration"},
 	{"ghAwMetadata", "gh_aw_metadata"}, {"ghAwManifest", "gh_aw_manifest"},
 	{"data", "data"}, {"logsPayload", "logs_payload"},
-	{"contents", "contents"},
 }
 
 // Producer identifiers may be numeric or textual; do not stringify a JSON
@@ -377,6 +377,12 @@ func canonicalFallbackReason(row model.Row) string {
 	}
 	for _, field := range canonicalArrays {
 		if value := row[field.key]; value != nil {
+			if field.key == "contents" {
+				switch value.(type) {
+				case map[string]any, []any:
+					continue
+				}
+			}
 			items, ok := value.([]any)
 			if !ok {
 				return fmt.Sprintf("known array %s has unsupported type %T", field.key, value)
@@ -689,21 +695,43 @@ func canonicalRow(row model.Row) (fields []string, values []any, extension strin
 	for _, field := range canonicalArrays {
 		v, present := rest[field.key]
 		var stringsValue []string
+		var exceptional any
 		if v != nil {
 			items, isArray := v.([]any)
-			if !isArray {
+			if !isArray && field.key != "contents" {
 				return nil, nil, "", false, nil
 			}
-			stringsValue = make([]string, len(items))
-			for i, item := range items {
-				var isString bool
-				stringsValue[i], isString = item.(string)
-				if !isString {
+			if isArray {
+				stringsValue = make([]string, len(items))
+				for i, item := range items {
+					var isString bool
+					stringsValue[i], isString = item.(string)
+					if !isString {
+						if field.key != "contents" {
+							return nil, nil, "", false, nil
+						}
+						stringsValue = nil
+						break
+					}
+				}
+			}
+			if field.key == "contents" && stringsValue == nil {
+				switch v.(type) {
+				case map[string]any, []any:
+				default:
 					return nil, nil, "", false, nil
 				}
+				raw, marshalErr := json.Marshal(v)
+				if marshalErr != nil {
+					return nil, nil, "", false, marshalErr
+				}
+				exceptional = string(raw)
 			}
 		}
 		values = append(values, stringsValue)
+		if field.key == "contents" {
+			values = append(values, exceptional)
+		}
 		if present {
 			fields = append(fields, field.key)
 			delete(rest, field.key)
@@ -816,6 +844,9 @@ func insertCanonical(ctx context.Context, tx *sql.Tx, namespace, name string, or
 	}
 	for _, field := range canonicalArrays {
 		columns = append(columns, field.column)
+		if field.key == "contents" {
+			columns = append(columns, "contents_exception")
+		}
 	}
 	for _, field := range canonicalObjects {
 		columns = append(columns, field.column)
@@ -914,6 +945,9 @@ func (r *readTransaction) canonicalPlanRows(ctx context.Context, raw string, fil
 		}
 		for _, field := range canonicalArrays {
 			columns = append(columns, field.column)
+			if field.key == "contents" {
+				columns = append(columns, "contents_exception::text")
+			}
 		}
 		for _, field := range canonicalObjects {
 			columns = append(columns, field.column+"::text")
@@ -947,6 +981,7 @@ func (r *readTransaction) canonicalPlanRows(ctx context.Context, raw string, fil
 			linkValues := make([]sql.NullString, 3*len(canonicalLinks))
 			linkPresent := make([][]string, len(canonicalLinks))
 			arrayValues := make([][]string, len(canonicalArrays))
+			var contentsException sql.NullString
 			objectValues := make([]sql.NullString, len(canonicalObjects))
 			flexibleValues := make([]sql.NullString, len(canonicalFlexibleText))
 			var valueText, valueKind, idKind sql.NullString
@@ -973,6 +1008,9 @@ func (r *readTransaction) canonicalPlanRows(ctx context.Context, raw string, fil
 			}
 			for i := range arrayValues {
 				dest = append(dest, &arrayValues[i])
+				if canonicalArrays[i].key == "contents" {
+					dest = append(dest, &contentsException)
+				}
 			}
 			for i := range objectValues {
 				dest = append(dest, &objectValues[i])
@@ -1101,7 +1139,13 @@ func (r *readTransaction) canonicalPlanRows(ctx context.Context, raw string, fil
 				}
 				for i, field := range canonicalArrays {
 					if key == field.key {
-						if arrayValues[i] == nil {
+						if field.key == "contents" && contentsException.Valid {
+							var value any
+							if err := decodeJSON([]byte(contentsException.String), &value); err != nil {
+								return nil, err
+							}
+							row[key] = value
+						} else if arrayValues[i] == nil {
 							row[key] = nil
 						} else {
 							items := make([]any, len(arrayValues[i]))
@@ -1233,6 +1277,9 @@ func (r *readTransaction) canonicalPlanRows(ctx context.Context, raw string, fil
 				expressions[i] = fmt.Sprintf(`CASE WHEN $%d = ANY(present) THEN
 					CASE WHEN id_kind = 'number' THEN COALESCE(id, 'null')
 					ELSE COALESCE(to_json(id)::text, 'null') END END`, len(args))
+			} else if field.Field == "contents" {
+				expressions[i] = fmt.Sprintf(`CASE WHEN $%d = ANY(present) THEN
+					COALESCE(contents_exception::text, to_json(contents)::text, 'null') END`, len(args))
 			} else if array || object {
 				expressions[i] = fmt.Sprintf(`CASE WHEN $%d = ANY(present) THEN COALESCE(to_json(%s)::text, 'null') END`,
 					len(args), column)
@@ -1928,6 +1975,9 @@ func readCanonicalOrdinals(ctx context.Context, tx *sql.Tx, namespace, name stri
 	}
 	for _, field := range canonicalArrays {
 		columns = append(columns, field.column)
+		if field.key == "contents" {
+			columns = append(columns, "contents_exception::text")
+		}
 	}
 	for _, field := range canonicalObjects {
 		columns = append(columns, field.column+"::text")
@@ -1962,6 +2012,7 @@ func readCanonicalOrdinals(ctx context.Context, tx *sql.Tx, namespace, name stri
 		linkValues := make([]sql.NullString, 3*len(canonicalLinks))
 		linkPresent := make([][]string, len(canonicalLinks))
 		arrayValues := make([][]string, len(canonicalArrays))
+		var contentsException sql.NullString
 		objectValues := make([]sql.NullString, len(canonicalObjects))
 		flexibleValues := make([]sql.NullString, len(canonicalFlexibleText))
 		var valueText, valueKind, idKind sql.NullString
@@ -1988,6 +2039,9 @@ func readCanonicalOrdinals(ctx context.Context, tx *sql.Tx, namespace, name stri
 		}
 		for i := range arrayValues {
 			dest = append(dest, &arrayValues[i])
+			if canonicalArrays[i].key == "contents" {
+				dest = append(dest, &contentsException)
+			}
 		}
 		for i := range objectValues {
 			dest = append(dest, &objectValues[i])
@@ -2086,7 +2140,13 @@ func readCanonicalOrdinals(ctx context.Context, tx *sql.Tx, namespace, name stri
 		}
 		for i, field := range canonicalArrays {
 			if known[field.key] {
-				if arrayValues[i] == nil {
+				if field.key == "contents" && contentsException.Valid {
+					var value any
+					if err := decodeJSON([]byte(contentsException.String), &value); err != nil {
+						return nil, true, err
+					}
+					row[field.key] = value
+				} else if arrayValues[i] == nil {
 					row[field.key] = nil
 				} else {
 					items := make([]any, len(arrayValues[i]))

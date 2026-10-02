@@ -7084,7 +7084,21 @@
           "ghAwManifest": {},
           "data": {},
           "logsPayload": {},
-          "contents": {}
+          "contents": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Known package manifest paths use TEXT[]; atypical historical values alone retain JSON."
+          },
+          "contentsException": {}
         },
         "description": "Known canonical columns are never copied into the extension object."
       },
