@@ -1,6 +1,6 @@
 {
   "source_sha": "d4e4f4047b3ab673cc994d71e25ece332d380aea",
-  "next_category": "dependency installation and caching",
+  "next_category": "Astro documentation generation",
   "evaluations": [
     {
       "evaluated_at": "2026-10-02T09:56:00Z",
@@ -264,6 +264,26 @@
       ],
       "outcome": "no_actionable_improvement: evaluated scheduling, concurrency, and avoidable rebuilds across 13 successful docs.yml runs in the 2026-10-02T08:02Z-10:49Z window, plus 3 matching successful cao-dashboard.yml producer runs. Trusted Actions metadata showed workflow wall-time median 15s (p90 64s) across all successful completions because 8 of 11 scheduled runs short-circuited after freshness checks; among the 5 comparable successful build executions, build-job median was 43s (p90 54s), deploy-job median 12s (p90 12s) on 3 deploys, schedule-freshness median 8s (p90 11s) on 11 successful scheduled checks, and queue time median/p90 remained 0s. Two successful workflow_run-triggered docs builds (36983243324, 36996741413) still spent 54-55s rebuilding and uploading Pages content with both node_modules and dashboard caches already hitting, while 8 later scheduled runs spent 10-15s only to skip after freshness checks. Matching dashboard producer runs 36980773326, 36982960058, and 36996477794 still spent 149-158s in build, dominated by Upgrade fallback activity data at 91-107s, before refreshing the cached dashboard artifact that retriggers docs.yml. The only change still clearing the >=60s / >=15% threshold is the already-recorded recommendation to remove or further gate docs.yml's workflow_run trigger on CAO Dashboard completions; current same-source evidence does not materially change that recommendation, and repository issues remain disabled, so no new non-duplicate actionable output is available in this cycle.",
       "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-02T11:27:58Z",
+      "worker_run_id": "37000689863",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        37000714317,
+        36998744862,
+        36997520263,
+        36996741413,
+        36996366175,
+        36995370597,
+        36993176170,
+        36992262108,
+        36991429427,
+        36989971567,
+        36987422734,
+        36986398337
+      ],
+      "outcome": "incomplete: analyzed the latest 12 successful docs.yml runs within the available last-20-run window, but only 1 comparable successful run included both successful build and deploy jobs; 9 scheduled successes short-circuited after schedule-freshness, 1 workflow_run rebuilt without deploy, and 1 schedule run built/deployed. This is below the required minimum of 5 comparable successful runs for a complete evaluation, so no actionable recommendation was emitted."
     }
   ]
 }
