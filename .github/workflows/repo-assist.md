@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  schedule: "weekly"
+  schedule: "every 6 hours"
   workflow_dispatch:
     inputs:
       target_repo:
@@ -127,7 +127,7 @@ Use bounded discovery. Rank the complete precomputed batch from trusted metadata
 
 Resolve enabled workers from precompute. For each selected repository, rank the applicable workers using the evidence below and dispatch at most three distinct workers. Deduplicate every `(worker, target_repo, safe_output_mode)` tuple.
 
-- `repo-assist-issue-triage` labels and investigates open issues, then provides a concise resolution, clarification request, or actionable analysis when warranted.
+- `repo-assist-issue-triage` labels and investigates open issues, then provides a concise resolution, clarification request, actionable analysis, or live Copilot assignment when warranted.
 - `repo-assist-issue-fix` selects one confidently fixable issue and opens one tested draft pull request.
 - `repo-assist-maintenance` selects one low-risk engineering, code, documentation, performance, testing, or repository-hygiene improvement and opens one tested draft pull request.
 - `repo-assist-pr-upkeep` repairs one open Repo Assist pull request when its own changes caused CI failures, review findings, or a merge conflict.

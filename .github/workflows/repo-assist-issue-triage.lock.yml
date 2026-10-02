@@ -1,5 +1,5 @@
-# gh-aw-metadata: {"schema_version":"v4","frontmatter_hash":"2df03dcee6b9fc4e8d2dc6555c5e202cd949b83a978a341c20f208c61c988db0","body_hash":"e46bb23e6482ebd12b3604f6b95d6b5df57b67742e0644c245fc6b4b30035444","compiler_version":"v0.89.22","strict":true,"agent_id":"copilot","engine_versions":{"copilot":"1.0.87"}}
-# gh-aw-manifest: {"version":1,"secrets":["GH_AW_DEFAULT_OTLP_ENDPOINT","GH_AW_DEFAULT_OTLP_HEADERS","GH_AW_GITHUB_MCP_SERVER_TOKEN","GH_AW_GITHUB_READ_APP_PRIVATE_KEY","GH_AW_GITHUB_READ_PAT","GH_AW_GITHUB_TOKEN","GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY","GH_AW_GITHUB_WRITE_PAT","GITHUB_TOKEN"],"actions":[{"repo":"actions/checkout","sha":"3d3c42e5aac5ba805825da76410c181273ba90b1","version":"v7.0.1"},{"repo":"actions/create-github-app-token","sha":"bcd2ba49218906704ab6c1aa796996da409d3eb1","version":"v3.2.0"},{"repo":"actions/download-artifact","sha":"3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c","version":"v8.0.1"},{"repo":"actions/github-script","sha":"3a2844b7e9c422d3c10d287c895573f7108da1b3","version":"v9.0.0"},{"repo":"actions/setup-node","sha":"820762786026740c76f36085b0efc47a31fe5020","version":"v7.0.0"},{"repo":"actions/upload-artifact","sha":"043fb46d1a93c77aae656e7c1c64a875d1fc6a0a","version":"v7.0.1"},{"repo":"github/gh-aw-actions/setup","sha":"2fbab69bfca02bebd76cd0fc43f2d12acfed994f","version":"v0.89.22"}],"containers":[{"image":"ghcr.io/github/gh-aw-firewall/agent:0.28.25","digest":"sha256:25fbbefb92b690d4e6ef34de8df057c0349e6adf2b7486c0cc56954a8e9a3cd4","pinned_image":"ghcr.io/github/gh-aw-firewall/agent:0.28.25@sha256:25fbbefb92b690d4e6ef34de8df057c0349e6adf2b7486c0cc56954a8e9a3cd4"},{"image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.25","digest":"sha256:c3c7082e73ba83052c580097e5a9c9c40a11e6f6b6fa0a4710e6859f83a62854","pinned_image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.25@sha256:c3c7082e73ba83052c580097e5a9c9c40a11e6f6b6fa0a4710e6859f83a62854"},{"image":"ghcr.io/github/gh-aw-firewall/cli-proxy:0.28.25","digest":"sha256:4acc70803e5c73317c56997b11112e041605b00c6c2d2440975e8ebb17edce05","pinned_image":"ghcr.io/github/gh-aw-firewall/cli-proxy:0.28.25@sha256:4acc70803e5c73317c56997b11112e041605b00c6c2d2440975e8ebb17edce05"},{"image":"ghcr.io/github/gh-aw-firewall/squid:0.28.25","digest":"sha256:94cac14372280dbf4a08d021d7b5810a9fd7d73c88802e04a9e05551b1cbcd09","pinned_image":"ghcr.io/github/gh-aw-firewall/squid:0.28.25@sha256:94cac14372280dbf4a08d021d7b5810a9fd7d73c88802e04a9e05551b1cbcd09"},{"image":"ghcr.io/github/gh-aw-mcpg:v0.4.26","digest":"sha256:2df1262a5b8877bfd8d99bc13e705f350a14709cf0d45005942fb63702a7a45b","pinned_image":"ghcr.io/github/gh-aw-mcpg:v0.4.26@sha256:2df1262a5b8877bfd8d99bc13e705f350a14709cf0d45005942fb63702a7a45b"},{"image":"ghcr.io/github/gh-aw-node","digest":"sha256:11c2c544876cdbaffefe0f7f1283b74838c209654b4934a78e23ed11f750490f","pinned_image":"ghcr.io/github/gh-aw-node@sha256:11c2c544876cdbaffefe0f7f1283b74838c209654b4934a78e23ed11f750490f"},{"image":"ghcr.io/github/github-mcp-server:v1.12.2","digest":"sha256:508a0857ec762b1ab1cece29193345b501fab1dd9d1228a7b617062954cecac6","pinned_image":"ghcr.io/github/github-mcp-server:v1.12.2@sha256:508a0857ec762b1ab1cece29193345b501fab1dd9d1228a7b617062954cecac6"}],"mcp_servers":[{"name":"safeoutputs","tools":["add_comment","add_labels","create_issue","missing_data","missing_tool","noop","remove_labels"]}]}
+# gh-aw-metadata: {"schema_version":"v4","frontmatter_hash":"307aea2f0a4b8041e4872813892b01bffd511280c523343e62b96c55beee99fe","body_hash":"5a7adf8aa3576cc2606532655d68697db307376c49883c297ccc015c021bc43c","compiler_version":"v0.89.22","strict":true,"agent_id":"copilot","engine_versions":{"copilot":"1.0.87"}}
+# gh-aw-manifest: {"version":1,"secrets":["GH_AW_AGENT_TOKEN","GH_AW_DEFAULT_OTLP_ENDPOINT","GH_AW_DEFAULT_OTLP_HEADERS","GH_AW_GITHUB_MCP_SERVER_TOKEN","GH_AW_GITHUB_READ_APP_PRIVATE_KEY","GH_AW_GITHUB_READ_PAT","GH_AW_GITHUB_TOKEN","GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY","GH_AW_GITHUB_WRITE_PAT","GITHUB_TOKEN"],"actions":[{"repo":"actions/checkout","sha":"3d3c42e5aac5ba805825da76410c181273ba90b1","version":"v7.0.1"},{"repo":"actions/create-github-app-token","sha":"bcd2ba49218906704ab6c1aa796996da409d3eb1","version":"v3.2.0"},{"repo":"actions/download-artifact","sha":"3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c","version":"v8.0.1"},{"repo":"actions/github-script","sha":"3a2844b7e9c422d3c10d287c895573f7108da1b3","version":"v9.0.0"},{"repo":"actions/setup-node","sha":"820762786026740c76f36085b0efc47a31fe5020","version":"v7.0.0"},{"repo":"actions/upload-artifact","sha":"043fb46d1a93c77aae656e7c1c64a875d1fc6a0a","version":"v7.0.1"},{"repo":"github/gh-aw-actions/setup","sha":"2fbab69bfca02bebd76cd0fc43f2d12acfed994f","version":"v0.89.22"}],"containers":[{"image":"ghcr.io/github/gh-aw-firewall/agent:0.28.25","digest":"sha256:25fbbefb92b690d4e6ef34de8df057c0349e6adf2b7486c0cc56954a8e9a3cd4","pinned_image":"ghcr.io/github/gh-aw-firewall/agent:0.28.25@sha256:25fbbefb92b690d4e6ef34de8df057c0349e6adf2b7486c0cc56954a8e9a3cd4"},{"image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.25","digest":"sha256:c3c7082e73ba83052c580097e5a9c9c40a11e6f6b6fa0a4710e6859f83a62854","pinned_image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.25@sha256:c3c7082e73ba83052c580097e5a9c9c40a11e6f6b6fa0a4710e6859f83a62854"},{"image":"ghcr.io/github/gh-aw-firewall/cli-proxy:0.28.25","digest":"sha256:4acc70803e5c73317c56997b11112e041605b00c6c2d2440975e8ebb17edce05","pinned_image":"ghcr.io/github/gh-aw-firewall/cli-proxy:0.28.25@sha256:4acc70803e5c73317c56997b11112e041605b00c6c2d2440975e8ebb17edce05"},{"image":"ghcr.io/github/gh-aw-firewall/squid:0.28.25","digest":"sha256:94cac14372280dbf4a08d021d7b5810a9fd7d73c88802e04a9e05551b1cbcd09","pinned_image":"ghcr.io/github/gh-aw-firewall/squid:0.28.25@sha256:94cac14372280dbf4a08d021d7b5810a9fd7d73c88802e04a9e05551b1cbcd09"},{"image":"ghcr.io/github/gh-aw-mcpg:v0.4.26","digest":"sha256:2df1262a5b8877bfd8d99bc13e705f350a14709cf0d45005942fb63702a7a45b","pinned_image":"ghcr.io/github/gh-aw-mcpg:v0.4.26@sha256:2df1262a5b8877bfd8d99bc13e705f350a14709cf0d45005942fb63702a7a45b"},{"image":"ghcr.io/github/gh-aw-node","digest":"sha256:11c2c544876cdbaffefe0f7f1283b74838c209654b4934a78e23ed11f750490f","pinned_image":"ghcr.io/github/gh-aw-node@sha256:11c2c544876cdbaffefe0f7f1283b74838c209654b4934a78e23ed11f750490f"},{"image":"ghcr.io/github/github-mcp-server:v1.12.2","digest":"sha256:508a0857ec762b1ab1cece29193345b501fab1dd9d1228a7b617062954cecac6","pinned_image":"ghcr.io/github/github-mcp-server:v1.12.2@sha256:508a0857ec762b1ab1cece29193345b501fab1dd9d1228a7b617062954cecac6"}],"mcp_servers":[{"name":"safeoutputs","tools":["add_comment","add_labels","assign_to_agent","create_issue","missing_data","missing_tool","noop","remove_labels"]}]}
 # This file was automatically generated by gh-aw (v0.89.22). DO NOT EDIT. To debug this workflow, load the skill at https://github.com/github/gh-aw/blob/main/debug.md
 #
 #    ___                   _   _
@@ -41,6 +41,7 @@
 #   - TARGET_REPO: (main workflow)
 #
 # Secrets used:
+#   - GH_AW_AGENT_TOKEN
 #   - GH_AW_DEFAULT_OTLP_ENDPOINT
 #   - GH_AW_DEFAULT_OTLP_HEADERS
 #   - GH_AW_GITHUB_MCP_SERVER_TOKEN
@@ -290,7 +291,7 @@ jobs:
           GH_AW_GITHUB_WORKSPACE: ${{ github.workspace }}
           GH_AW_INPUTS_TARGET_REPO: ${{ inputs.target_repo }}
           GH_AW_PROMPT_CONTENT_0000: "<system>\n"
-          GH_AW_PROMPT_CONTENT_0001: "<safe-output-tools>\nTools: add_comment, create_issue, add_labels(max:6), remove_labels(max:3), missing_tool, missing_data, noop\n"
+          GH_AW_PROMPT_CONTENT_0001: "<safe-output-tools>\nTools: add_comment, create_issue, add_labels(max:6), remove_labels(max:3), assign_to_agent, missing_tool, missing_data, noop\n"
           GH_AW_PROMPT_CONTENT_0002: "</safe-output-tools>\n"
           GH_AW_PROMPT_CONTENT_0003: "<github-context>\nThe following GitHub context information is available for this workflow:\n{{#if github.actor}}\n- **actor**: __GH_AW_GITHUB_ACTOR__\n{{/if}}\n{{#if github.repository}}\n- **repository**: __GH_AW_GITHUB_REPOSITORY__\n{{/if}}\n{{#if github.workspace}}\n- **workspace**: __GH_AW_GITHUB_WORKSPACE__\n{{/if}}\n{{#if github.event.issue.number || (github.aw.context.item_type == 'issue' && github.aw.context.item_number)}}\n- **issue-number**: #__GH_AW_EXPR_802A9F6A__\n{{/if}}\n{{#if github.event.discussion.number || (github.aw.context.item_type == 'discussion' && github.aw.context.item_number)}}\n- **discussion-number**: #__GH_AW_EXPR_1A3A194A__\n{{/if}}\n{{#if github.event.pull_request.number || (github.aw.context.item_type == 'pull_request' && github.aw.context.item_number)}}\n- **pull-request-number**: #__GH_AW_EXPR_463A214A__\n{{/if}}\n{{#if github.event.comment.id || github.aw.context.comment_id}}\n- **comment-id**: __GH_AW_EXPR_FF1D34CE__\n{{/if}}\n{{#if github.run_id}}\n- **workflow-run-id**: __GH_AW_GITHUB_RUN_ID__\n{{/if}}\n- **checkouts**: The following repositories have been checked out and are available in the workspace:\n  - repo `__GH_AW_INPUTS_TARGET_REPO__` → `__GH_AW_GITHUB_WORKSPACE__/target` [shallow clone, fetch-depth=1]\n  - **Note**: The workspace path reported above may contain a separate shallow, credential-free checkout of the host repository. Use the exact checkout path shown for the repository you need. Before concluding that a branch is unavailable, confirm your working directory matches that path and inspect refs there. If the branch is not present in that checkout and is not listed as an additional fetched ref, it has NOT been checked out. For private repositories you cannot fetch it. If the branch is required and not available, exit with an error and ask the user to add it to the `fetch:` option of the `checkout:` configuration (e.g., `fetch: [\"refs/pulls/open/*\"]` for all open PR refs, or `fetch: [\"main\", \"feature/my-branch\"]` for specific branches).\n  - **Warning: No git credentials are available to the agent.** Credentials are\n    intentionally removed after the checkout step for security. This means any git\n    operation that needs to authenticate to the remote will fail. In private repositories, that includes:\n    - `git fetch`, `git pull`, `git clone`, and `git push` (direct push, not via safe-output tools)\n    - Checking out or switching to a remote branch that is not already fetched\n    - Deepening a shallow clone (`git fetch --unshallow`)\n    - On-demand blob fetches in partial/blobless clones (operations on files not in the initial checkout)\n    Do NOT attempt to configure credentials, run `git credential fill`, or modify `.gitconfig` —\n    authentication will not succeed. If you encounter credential prompts or authentication errors,\n    stop immediately and report the limitation rather than spending turns trying to work around it.\n</github-context>\n\n"
           GH_AW_PROMPT_CONTENT_0004: "</system>\n"
@@ -685,8 +686,9 @@ jobs:
         env:
           GH_AW_FILE_ROOT: "${{ runner.temp }}/gh-aw"
           GH_AW_FILE_CONFIG: "{\"files\":[{\"path\":\"safeoutputs/config.json\",\"content_env\":\"GH_AW_SAFE_OUTPUTS_CONFIG\"}]}"
-          GH_AW_SAFE_OUTPUTS_CONFIG: "{\"add_comment\":{\"hide_older_comments\":true,\"max\":1,\"target\":\"*\",\"target-repo\":\"${GH_AW_INPUT_TARGET_REPO}\"},\"add_labels\":{\"allowed\":[\"bug\",\"enhancement\",\"help wanted\",\"good first issue\",\"spam\",\"off topic\",\"documentation\",\"question\",\"duplicate\",\"wontfix\",\"needs triage\",\"needs investigation\",\"breaking change\",\"performance\",\"security\",\"refactor\"],\"max\":6,\"target\":\"*\",\"target-repo\":\"${GH_AW_INPUT_TARGET_REPO}\"},\"create_issue\":{\"deduplicate_by_title\":true,\"expires\":336,\"labels\":[\"repo-assist\",\"repo-assist:issue-triage\"],\"max\":1,\"target-repo\":\"${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}\",\"title_prefix\":\"[repo-assist:issue-triage] \"},\"create_report_incomplete_issue\":{},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":1,\"report-as-issue\":\"false\"},\"remove_labels\":{\"allowed\":[\"bug\",\"enhancement\",\"help wanted\",\"good first issue\",\"spam\",\"off topic\",\"documentation\",\"question\",\"duplicate\",\"wontfix\",\"needs triage\",\"needs investigation\",\"breaking change\",\"performance\",\"security\",\"refactor\"],\"max\":3,\"target\":\"*\",\"target-repo\":\"${GH_AW_INPUT_TARGET_REPO}\"},\"report_incomplete\":{}}"
+          GH_AW_SAFE_OUTPUTS_CONFIG: "{\"add_comment\":{\"hide_older_comments\":true,\"max\":1,\"target\":\"*\",\"target-repo\":\"${GH_AW_INPUT_TARGET_REPO}\"},\"add_labels\":{\"allowed\":[\"bug\",\"enhancement\",\"help wanted\",\"good first issue\",\"spam\",\"off topic\",\"documentation\",\"question\",\"duplicate\",\"wontfix\",\"needs triage\",\"needs investigation\",\"breaking change\",\"performance\",\"security\",\"refactor\"],\"max\":6,\"target\":\"*\",\"target-repo\":\"${GH_AW_INPUT_TARGET_REPO}\"},\"assign_to_agent\":{\"allowed\":[\"copilot\"],\"custom-instructions\":\"Read the Repo Assist triage comment on this issue for the verified change, relevant paths, and acceptance tests. Implement only that bounded change, validate it, and open a pull request for maintainer review. Do not merge or broaden scope.\",\"github-token\":\"${GH_AW_SECRET_GH_AW_AGENT_TOKEN}\",\"max\":1,\"name\":\"copilot\",\"pull-request-repo\":\"${GH_AW_INPUT_TARGET_REPO}\",\"staged\":\"${{ inputs.safe_output_mode != 'live' }}\",\"target\":\"*\",\"target-repo\":\"${GH_AW_INPUT_TARGET_REPO}\"},\"create_issue\":{\"deduplicate_by_title\":true,\"expires\":336,\"labels\":[\"repo-assist\",\"repo-assist:issue-triage\"],\"max\":1,\"target-repo\":\"${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}\",\"title_prefix\":\"[repo-assist:issue-triage] \"},\"create_report_incomplete_issue\":{},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":1,\"report-as-issue\":\"false\"},\"remove_labels\":{\"allowed\":[\"bug\",\"enhancement\",\"help wanted\",\"good first issue\",\"spam\",\"off topic\",\"documentation\",\"question\",\"duplicate\",\"wontfix\",\"needs triage\",\"needs investigation\",\"breaking change\",\"performance\",\"security\",\"refactor\"],\"max\":3,\"target\":\"*\",\"target-repo\":\"${GH_AW_INPUT_TARGET_REPO}\"},\"report_incomplete\":{}}"
           GH_AW_INPUT_TARGET_REPO: ${{ inputs.target_repo }}
+          GH_AW_SECRET_GH_AW_AGENT_TOKEN: ${{ secrets.GH_AW_AGENT_TOKEN }}
         with:
           script: |
             const path = require('path');
@@ -702,6 +704,7 @@ jobs:
               "description_suffixes": {
                 "add_comment": " CONSTRAINTS: Maximum 1 comment(s) can be added. Target: *. Comments will be added in repository \"${GH_AW_INPUTS_TARGET_REPO}\". Supports reply_to_id for discussion threading.",
                 "add_labels": " CONSTRAINTS: Maximum 6 label(s) can be added. Only these labels are allowed: [\"bug\" \"enhancement\" \"help wanted\" \"good first issue\" \"spam\" \"off topic\" \"documentation\" \"question\" \"duplicate\" \"wontfix\" \"needs triage\" \"needs investigation\" \"breaking change\" \"performance\" \"security\" \"refactor\"]. Target: *.",
+                "assign_to_agent": " CONSTRAINTS: Maximum 1 issue(s) can be assigned to agent. Issues will be assigned to agent in repository \"${GH_AW_INPUTS_TARGET_REPO}\".",
                 "create_issue": " CONSTRAINTS: Maximum 1 issue(s) can be created. Title will be prefixed with \"[repo-assist:issue-triage] \". Labels [\"repo-assist\" \"repo-assist:issue-triage\"] will be automatically added. Issues will be created in repository \"${GH_AW_EXPR_07671AC8}\".",
                 "remove_labels": " CONSTRAINTS: Maximum 3 label(s) can be removed. Only these labels can be removed: [bug enhancement help wanted good first issue spam off topic documentation question duplicate wontfix needs triage needs investigation breaking change performance security refactor]. Target: *."
               },
@@ -766,6 +769,49 @@ jobs:
                     "maxLength": 256
                   }
                 }
+              },
+              "assign_to_agent": {
+                "defaultMax": 1,
+                "fields": {
+                  "agent": {
+                    "type": "string",
+                    "sanitize": true,
+                    "maxLength": 128
+                  },
+                  "confidence": {
+                    "type": "string",
+                    "enum": [
+                      "LOW",
+                      "MEDIUM",
+                      "HIGH"
+                    ],
+                    "x-strip-on-error": true
+                  },
+                  "issue_number": {
+                    "issueNumberOrTemporaryId": true
+                  },
+                  "pull_number": {
+                    "optionalPositiveInteger": true
+                  },
+                  "pull_request_repo": {
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  "rationale": {
+                    "type": "string",
+                    "sanitize": true,
+                    "maxLength": 280,
+                    "x-strip-on-error": true
+                  },
+                  "repo": {
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  "suggest": {
+                    "type": "boolean"
+                  }
+                },
+                "customValidation": "requiresOneOf:issue_number,pull_number"
               },
               "create_issue": {
                 "defaultMax": 1,
@@ -1198,7 +1244,8 @@ jobs:
             const { main } = require(path.join(actionsDir, 'redact_secrets.cjs'));
             await main();
         env:
-          GH_AW_SECRET_NAMES: 'GH_AW_GITHUB_MCP_SERVER_TOKEN,GH_AW_GITHUB_READ_PAT,GH_AW_GITHUB_TOKEN,GH_AW_GITHUB_WRITE_PAT,GITHUB_TOKEN'
+          GH_AW_SECRET_NAMES: 'GH_AW_AGENT_TOKEN,GH_AW_GITHUB_MCP_SERVER_TOKEN,GH_AW_GITHUB_READ_PAT,GH_AW_GITHUB_TOKEN,GH_AW_GITHUB_WRITE_PAT,GITHUB_TOKEN'
+          SECRET_GH_AW_AGENT_TOKEN: ${{ secrets.GH_AW_AGENT_TOKEN }}
           SECRET_GH_AW_GITHUB_MCP_SERVER_TOKEN: ${{ secrets.GH_AW_GITHUB_MCP_SERVER_TOKEN }}
           SECRET_GH_AW_GITHUB_READ_PAT: ${{ secrets.GH_AW_GITHUB_READ_PAT }}
           SECRET_GH_AW_GITHUB_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
@@ -1632,6 +1679,8 @@ jobs:
           GH_AW_MISSING_MODEL_PRICING_MODEL_NAME: ${{ needs.agent.outputs.missing_model_pricing_model_name }}
           GH_AW_SHELL_EXPANSION_GUARD_REJECTED: ${{ needs.agent.outputs.shell_expansion_guard_rejected }}
           GH_AW_ENGINE_API_HOSTS: "api.enterprise.githubcopilot.com,api.githubcopilot.com,api.business.githubcopilot.com,api.individual.githubcopilot.com"
+          GH_AW_ASSIGNMENT_ERRORS: ${{ needs.safe_outputs.outputs.assign_to_agent_assignment_errors }}
+          GH_AW_ASSIGNMENT_ERROR_COUNT: ${{ needs.safe_outputs.outputs.assign_to_agent_assignment_error_count }}
           GH_AW_SAFE_OUTPUTS_APP_TOKEN_MINTING_FAILED: ${{ needs.safe_outputs.outputs.app_token_minting_failed }}
           GH_AW_CONCLUSION_APP_TOKEN_MINTING_FAILED: ${{ steps.safe-outputs-app-token.outcome == 'failure' }}
           GH_AW_ACTIVATION_APP_TOKEN_MINTING_FAILED: ${{ needs.activation.outputs.activation_app_token_minting_failed }}
@@ -2355,6 +2404,9 @@ jobs:
       GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/repo-assist-issue-triage.md"
     outputs:
       app_token_minting_failed: ${{ steps.safe-outputs-app-token.outcome == 'failure' }}
+      assign_to_agent_assigned: ${{ steps.process_safe_outputs.outputs.assign_to_agent_assigned }}
+      assign_to_agent_assignment_error_count: ${{ steps.process_safe_outputs.outputs.assign_to_agent_assignment_error_count }}
+      assign_to_agent_assignment_errors: ${{ steps.process_safe_outputs.outputs.assign_to_agent_assignment_errors }}
       code_push_failure_count: ${{ steps.process_safe_outputs.outputs.code_push_failure_count }}
       code_push_failure_errors: ${{ steps.process_safe_outputs.outputs.code_push_failure_errors }}
       comment_id: ${{ steps.process_safe_outputs.outputs.comment_id }}
@@ -2455,7 +2507,8 @@ jobs:
           GH_AW_ALLOWED_DOMAINS: "*.githubusercontent.com,api.snapcraft.io,archive.ubuntu.com,azure.archive.ubuntu.com,codeload.github.com,crl.geotrust.com,crl.globalsign.com,crl.identrust.com,crl.sectigo.com,crl.thawte.com,crl.usertrust.com,crl.verisign.com,crl3.digicert.com,crl4.digicert.com,crls.ssl.com,docs.github.com,github-cloud.githubusercontent.com,github-cloud.s3.amazonaws.com,github.blog,github.com,github.githubassets.com,json-schema.org,json.schemastore.org,keyserver.ubuntu.com,lfs.github.com,objects.githubusercontent.com,ocsp.digicert.com,ocsp.geotrust.com,ocsp.globalsign.com,ocsp.identrust.com,ocsp.sectigo.com,ocsp.ssl.com,ocsp.thawte.com,ocsp.usertrust.com,ocsp.verisign.com,packagecloud.io,packages.cloud.google.com,packages.microsoft.com,patch-diff.githubusercontent.com,patchdiff.githubusercontent.com,ppa.launchpad.net,raw.githubusercontent.com,s.symcb.com,s.symcd.com,security.ubuntu.com,ts-crl.ws.symantec.com,ts-ocsp.ws.symantec.com,www.googleapis.com"
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_API_URL: ${{ github.api_url }}
-          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"add_comment\":{\"hide_older_comments\":true,\"max\":1,\"target\":\"*\",\"target-repo\":\"${{ inputs.target_repo }}\"},\"add_labels\":{\"allowed\":[\"bug\",\"enhancement\",\"help wanted\",\"good first issue\",\"spam\",\"off topic\",\"documentation\",\"question\",\"duplicate\",\"wontfix\",\"needs triage\",\"needs investigation\",\"breaking change\",\"performance\",\"security\",\"refactor\"],\"max\":6,\"target\":\"*\",\"target-repo\":\"${{ inputs.target_repo }}\"},\"create_issue\":{\"deduplicate_by_title\":true,\"expires\":336,\"labels\":[\"repo-assist\",\"repo-assist:issue-triage\"],\"max\":1,\"target-repo\":\"${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}\",\"title_prefix\":\"[repo-assist:issue-triage] \"},\"create_report_incomplete_issue\":{},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":1,\"report-as-issue\":\"false\"},\"remove_labels\":{\"allowed\":[\"bug\",\"enhancement\",\"help wanted\",\"good first issue\",\"spam\",\"off topic\",\"documentation\",\"question\",\"duplicate\",\"wontfix\",\"needs triage\",\"needs investigation\",\"breaking change\",\"performance\",\"security\",\"refactor\"],\"max\":3,\"target\":\"*\",\"target-repo\":\"${{ inputs.target_repo }}\"},\"report_incomplete\":{}}"
+          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"add_comment\":{\"hide_older_comments\":true,\"max\":1,\"target\":\"*\",\"target-repo\":\"${{ inputs.target_repo }}\"},\"add_labels\":{\"allowed\":[\"bug\",\"enhancement\",\"help wanted\",\"good first issue\",\"spam\",\"off topic\",\"documentation\",\"question\",\"duplicate\",\"wontfix\",\"needs triage\",\"needs investigation\",\"breaking change\",\"performance\",\"security\",\"refactor\"],\"max\":6,\"target\":\"*\",\"target-repo\":\"${{ inputs.target_repo }}\"},\"assign_to_agent\":{\"allowed\":[\"copilot\"],\"custom-instructions\":\"Read the Repo Assist triage comment on this issue for the verified change, relevant paths, and acceptance tests. Implement only that bounded change, validate it, and open a pull request for maintainer review. Do not merge or broaden scope.\",\"github-token\":\"${{ secrets.GH_AW_AGENT_TOKEN }}\",\"max\":1,\"name\":\"copilot\",\"pull-request-repo\":\"${{ inputs.target_repo }}\",\"staged\":\"${{ inputs.safe_output_mode != 'live' }}\",\"target\":\"*\",\"target-repo\":\"${{ inputs.target_repo }}\"},\"create_issue\":{\"deduplicate_by_title\":true,\"expires\":336,\"labels\":[\"repo-assist\",\"repo-assist:issue-triage\"],\"max\":1,\"target-repo\":\"${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}\",\"title_prefix\":\"[repo-assist:issue-triage] \"},\"create_report_incomplete_issue\":{},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":1,\"report-as-issue\":\"false\"},\"remove_labels\":{\"allowed\":[\"bug\",\"enhancement\",\"help wanted\",\"good first issue\",\"spam\",\"off topic\",\"documentation\",\"question\",\"duplicate\",\"wontfix\",\"needs triage\",\"needs investigation\",\"breaking change\",\"performance\",\"security\",\"refactor\"],\"max\":3,\"target\":\"*\",\"target-repo\":\"${{ inputs.target_repo }}\"},\"report_incomplete\":{}}"
+          GH_AW_ASSIGN_TO_AGENT_TOKEN: ${{ secrets.GH_AW_AGENT_TOKEN }}
         with:
           github-token: ${{ steps.safe-outputs-app-token.outputs.token || env.CAO_ROLE == 'orchestrator' && ((inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo || github.repository) == github.repository && github.token || vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_WRITE_PAT_REPOSITORIES || '{}')[(inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo || github.repository]] || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_WRITE_PAT || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
