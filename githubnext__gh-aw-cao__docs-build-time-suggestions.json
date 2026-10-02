@@ -1,6 +1,6 @@
 {
-  "source_sha": "dca74100c0281161f96996353d4deb08f7a68a43",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "source_sha": "3ec18f1462c34e7e8eda459be1de51dce514664e",
+  "next_category": 2,
   "evaluations": [
     {
       "evaluated_at": "2026-10-02T09:56:00Z",
@@ -466,6 +466,30 @@
       ],
       "outcome": "no_actionable_improvement: evaluated artifact transfer and Pages packaging across the latest 12 successful docs.yml runs in the 2026-10-02T14:15Z-16:27Z window, including 8 comparable successful build executions and 5 successful deploy executions, plus 5 successful cao-dashboard.yml producer runs in the same 14-day window. Trusted Actions metadata showed docs workflow wall-time median 90.5s with p90 213.6s, zero observable queue time, build-job median 44s with p90 50.9s, and deploy-job median 30s with p90 134.8s on deploying runs. Trusted step metadata confirmed docs-side cache hits in every comparable build: Restore node_modules median 5s, Build documentation median 13s, Restore cached CAO Dashboard median 2s, and Upload Pages artifact median 9.5s, while Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped. Cross-checking successful dashboard producer runs 37024866143, 37021381186, 37018219309, 37014679783, and 37008742907 showed the repeated upstream cost remains Upgrade fallback activity data at 84-118s, with Assemble Dashboard Language site only 3-6s and Upload dashboard artifact 7-10s. Trusted producer logs for run 37024866143 further showed the workflow restored a ~191 MB activity cache but still recopied a 539.7 MiB SQLite database plus 137 activity shards totaling 344.4 MiB before upload. That indicates the larger qualifying waste is upstream reusable-dashboard assembly, not docs-side Pages packaging, and that upstream recommendation is already represented by prior memory evaluations and open issues #15332 and #15497. No new non-duplicate artifact-transfer recommendation clears the required threshold in this cycle.",
       "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-02T17:42:23.175652Z",
+      "worker_run_id": 37042041199,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        "37042204638",
+        "37041622622",
+        "37037930142",
+        "37036647555",
+        "37035594768",
+        "37034890471",
+        "37034025837",
+        "37031136429",
+        "37026943933",
+        "37025244279",
+        "37021766014",
+        "37021734130",
+        "37020020519",
+        "37018656763",
+        "37017029269"
+      ],
+      "outcome": "suggestion-made",
+      "suggestion_fingerprint": "6daae770c4c4f8f8"
     }
   ]
 }
