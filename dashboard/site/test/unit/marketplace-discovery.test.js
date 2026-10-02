@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
 import { executeDashboardQueries } from '../../src/data/queries/declarative.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
+import { validateDashboardDocument } from '../../src/validator.js';
 
 const dashboard = authoritativeDashboard.dashboard;
 const page = dashboard.pages.find((/** @type {{id: string}} */ candidate) => candidate.id === 'marketplace');
@@ -40,6 +41,18 @@ function resolve() {
 }
 
 describe('marketplace discovery', () => {
+  it('requires a recovery route for the declared package availability view', () => {
+    const document = structuredClone(authoritativeDashboard);
+    const detail = document.dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'marketplace-package');
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    delete detail.route['navigation-page'];
+    expect(validateDashboardDocument(JSON.stringify(document)).errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        message: 'route availability-view requires navigation-page for recovery.'
+      })
+    ]));
+  });
+
   it('binds the declarative card list directly to marketplace packages without facets or ranking', () => {
     expect(page.views).toHaveLength(1);
     expect(page.views[0]).toMatchObject({

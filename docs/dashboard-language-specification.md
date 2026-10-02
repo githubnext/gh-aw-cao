@@ -52,15 +52,6 @@ Sections containing numbered requirements are normative. Examples, notes, ration
 
 ## 1. Introduction
 
-A custom page MAY set `retain-on-navigation: true` to preserve its loaded view and
-interaction state while another dashboard route is active. A route MAY set
-`availability-view` to the ID of a view on that page: when its declared source
-cannot produce a selected row, the presenter shows a single recovery state
-instead of the page's ordinary sections. An incomplete but available source
-retains the page content with an explicit partial-data notice. Routes MAY supply
-`availability-message` and `partial-message` to explain those states in
-user-facing terms.
-
 ### 1.1 Purpose
 
 The Dashboard Language provides a portable vocabulary for defining what an agentic-operations dashboard communicates without prescribing how data is fetched, stored, cached, deployed, or rendered.
@@ -259,7 +250,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Radio option | `value`, `label` |
 | Navigation section | `label`, `pages`, `experimental`, `placement` |
 | Page section | `id`, `title`, `description`, `layout`, `views`, `count-source`, `count-sources`, `count-field`, `count-label` |
-| Custom page `route` | `hash-query-parameter`, `navigation-page`, `title-format`, `tabs-class-name`, `tab`, `tabs` |
+| Custom page `route` | `hash-query-parameter`, `navigation-page`, `availability-view`, `availability-message`, `partial-message`, `title-format`, `tabs-class-name`, `tab`, `tabs` |
 | View | `id`, `title`, `show-title`, `description`, `subject`, `objective`, `acceptance`, `locked`, `data`, `mark`, `element`, `config`, `callout`, `chart`, `metric`, `list`, `tree`, `layout`, `disclosure`, `controls`, `lazy-list`, `column-summaries`, `empty-message`, `title-link`, `encoding` |
 | View `data` | `source` or `sources`, `scope`, `time`, `filters`, `arguments`, `limit`, `order-by` |
 | View data argument | `name`, `field` |
@@ -1078,6 +1069,16 @@ This binding is constrained templating, not general string interpolation. A pres
 An element view may declare a compact `title-link` beside an allocated page title. Its `href-field` names one relation-specific link field and its `identifier-field` names one scalar field declared by the same selected source. When both values are present, the presenter renders the identifier as `#<identifier>` and uses the link object's HTTPS `href` as the target. Missing or invalid runtime values leave the title unlinked. This supports issue and pull request numbers as well as workflow run IDs without parsing identifiers from URLs.
 
 `navigation-page` identifies a different declared page whose navigation item remains current while the custom page is active. The presenter uses that page as the custom page's parent breadcrumb. This supports detail and diagnostic subpages without requiring presentation components to contain navigation policy.
+
+A custom page may set `retain-on-navigation: true` to keep its loaded view visible
+while another route is active and until a new subscription rebinds on return.
+Scroll and disclosure state are restored on re-entry. A route with
+`navigation-page` may set `availability-view` to the ID of a view on that page:
+when its declared source cannot produce a selected row, the presenter shows a
+single recovery state instead of the ordinary sections. An incomplete but
+available source retains the page content with an explicit partial-data notice.
+Routes may supply `availability-message` and `partial-message` to explain
+those states in user-facing terms.
 
 | Semantic view | `mark` values | Required encoding |
 |---|---|---|

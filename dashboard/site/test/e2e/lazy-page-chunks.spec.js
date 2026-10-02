@@ -351,7 +351,7 @@ test('marketplace page renders canonical package cards after ingestion', async (
   await packageCard.getByRole('link', { name: 'Dependabot' }).click();
   const detail = page.locator('[data-page-id="marketplace-package"]');
   await expect(detail).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Dependabot', exact: true, level: 1 })).toBeVisible();
+  await expect(page.locator('#page-title')).toHaveText('Dependabot');
   const add = detail.locator('.entity-card-list-actions .cli-action-trigger');
   await expect(add).toBeVisible();
   await expect(add).toHaveAccessibleName('Add');

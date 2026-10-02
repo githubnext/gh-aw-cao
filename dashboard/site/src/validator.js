@@ -2374,6 +2374,13 @@ function validateCustomPage(page, pageNode, path, errors) {
         );
       }
       if (page.route['availability-view'] !== undefined) {
+        if (page.route['navigation-page'] === undefined) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'route availability-view requires navigation-page for recovery.',
+            `${routePath}.navigation-page`
+          ));
+        }
         validateRequiredIdentifier(
           page.route['availability-view'],
           `${routePath}.availability-view`,

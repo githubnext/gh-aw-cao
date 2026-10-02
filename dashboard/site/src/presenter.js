@@ -1151,8 +1151,11 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
        )
       )
     );
-    const partial = h('p', { className: 'view-state-card', role: 'status' },
-      page.route?.['partial-message'] ?? 'Some information could not be retrieved. Available details are shown below.');
+    const partial = h('div', { className: 'view-state-card', role: 'status' },
+      octicon('info'),
+      h('div', { className: 'view-state-card-body' },
+        h('p', null, page.route?.['partial-message'] ?? 'Some information could not be retrieved. Available details are shown below.')
+      ));
     root.insertBefore(failure, renderedContent);
     root.insertBefore(partial, renderedContent);
     const updateAvailability = () => {
@@ -1865,7 +1868,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     syncHistoryBack();
     defaultView?.dispatchEvent(new CustomEvent('dashboard-history-change'));
     primePageChrome(pageId, provisionalTitle, provisionalDescription);
-    if (pages.find((candidate) => candidate.dataset.pageId === pageId)?.dataset.retainOnNavigation === 'true') {
+    if (pages.find((candidate) => candidate.dataset.pageId === pageId)?.dataset.retainOnNavigation === 'true'
+      || pages.find((candidate) => candidate.dataset.pageId === activePageId)?.dataset.retainOnNavigation === 'true') {
       activate(pageId, routeFromHash()?.parameters, true, provisionalTitle, provisionalDescription);
     } else {
       updateWithViewTransition(
@@ -1940,7 +1944,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const historyScrollTop = pendingScrollPageId === route?.pageId ? pendingScrollTop : undefined;
     const targetId = route?.pageId ?? initialPageId;
     const navigate = () => activate(targetId, route?.parameters, true);
-    if (pages.find((candidate) => candidate.dataset.pageId === targetId)?.dataset.retainOnNavigation === 'true') navigate();
+    if (pages.find((candidate) => candidate.dataset.pageId === targetId)?.dataset.retainOnNavigation === 'true'
+      || pages.find((candidate) => candidate.dataset.pageId === activePageId)?.dataset.retainOnNavigation === 'true') navigate();
     else updateWithViewTransition(root.ownerDocument, navigate, navigationDirection);
     if (historyScrollTop !== undefined && !route?.parameters.has('section')) {
       const scrollingElement = pageScroller instanceof HTMLElement
