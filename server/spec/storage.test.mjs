@@ -92,3 +92,17 @@ test('generated SQL contains no JSON or serialized document columns', () => {
   assert.match(sql, /CREATE TABLE IF NOT EXISTS cao_quality/);
   assert.doesNotMatch(sql, /CREATE TABLE IF NOT EXISTS (?:collection_health|github_quota_usage|simulation_days|marketplace_packages)\b/);
 });
+
+test('generated Postgres contract persists Campaign as a namespace-scoped entity table', () => {
+  const sql = readFileSync(new URL('../internal/postgresx/schema.sql', import.meta.url), 'utf8');
+  const campaignTable = sql.match(/CREATE TABLE IF NOT EXISTS campaigns \(\n([\s\S]*?)\n\);/);
+  assert.ok(campaignTable, 'Campaign must have a physical Postgres table');
+  assert.match(campaignTable[1], /id TEXT NOT NULL CHECK \(id <> ''\)/);
+  assert.match(campaignTable[1], /slug TEXT/);
+  assert.match(campaignTable[1], /enabled BOOLEAN/);
+  assert.match(campaignTable[1], /PRIMARY KEY \(namespace, id\)/);
+  assert.match(campaignTable[1], /FOREIGN KEY \(namespace\) REFERENCES cao_state\(namespace\) ON DELETE CASCADE/);
+  const bindings = readFileSync(new URL('../internal/postgresx/schema.gen.go', import.meta.url), 'utf8');
+  assert.match(bindings, /"\$campaigns": \{name: "campaigns", runtime: false, canonical: true/);
+  assert.match(bindings, /"campaigns": \{[\s\S]*?field: "version", inputs: \[\]string\{"campaign-version"(?:,|\})/);
+});

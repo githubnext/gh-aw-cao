@@ -308,7 +308,7 @@ browser reuses its cached ingestion instead of redownloading the shard.
 The local SQLite projection and browser IndexedDB projection SHALL use the same
 adapters, identities, normalization, object-store definitions, and relationship
 validation. The local SQLite file implements the IndexedDB subset used by the
-canonical storage API. It additionally mirrors the six experiment-evidence
+canonical storage API. It additionally mirrors Campaign and the six experiment-evidence
 stores into queryable relational tables within the same write transaction;
 these mirrors are derived from canonical records, not an independent ingestion
 or acquisition path. It MAY use a different retention window when explicitly
@@ -333,7 +333,7 @@ The implementation profile defined by this specification is:
 | --- | ---: | --- |
 | Canonical model | 25 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
 | Browser IndexedDB | 33 | Eighteen canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
-| Local SQLite projection | IndexedDB 33 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus six transactional relational evidence mirrors |
+| Local SQLite projection | IndexedDB 33 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors |
 | Go server Postgres sources | Canonical model 14 | Eighteen fresh TypeSpec-defined entity tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
@@ -397,6 +397,43 @@ is disposable. The SQLite-backed implementation SHALL preserve exactly the same
 logical database version, store names, key paths, indexes, and record values.
 The metadata tables are an emulation detail and MUST NOT be presented as
 canonical domain tables.
+
+Every canonical storage implementation MUST persist Campaign as a first-class
+entity, including campaigns with no Workflows or Runs. IndexedDB SHALL use the
+`campaigns` object store; SQLite and Postgres SHALL expose a physical `campaigns`
+table. The key SHALL be `id` in IndexedDB, `(database_name, id)` in SQLite, and
+`(namespace, id)` in Postgres. Campaign data MUST NOT be reconstructed from
+Workflow classifications or stored only as incidental Workflow fields.
+
+The local SQLite `campaigns` table SHALL mirror the canonical object store
+transactionally. It SHALL expose `slug`, `name`, `description`, `icon`, `mode`,
+`enabled`, `experimental`, `version`, `current_version`, `min_version`,
+`update_state`, `readme_path`, `readme`, `worker_count`, `inventory_warnings`,
+`max_repositories`, `rollout_percent`, `ai_credit_allowance`,
+`monthly_ai_credit_budget`, `campaign_link`, and `intelligence_declaration`.
+Boolean columns SHALL use SQLite integers; numeric columns SHALL use INTEGER
+or REAL as appropriate. Structured links and declarations SHALL use JSON TEXT.
+`observed_at`, JSON TEXT `provenance`, and `record_json` SHALL preserve the
+canonical observation. Partial records MAY omit observation metadata; the
+mirror MUST NOT fabricate it. A `(database_name, slug)` index SHALL support
+the same campaign lookup as IndexedDB's `bySlug` index.
+
+Creating the SQLite table for an existing logical database SHALL populate it
+from that database's canonical Campaign records without changing their IDs,
+values, or logical schema version. Inserts, updates, replacement, deletion,
+and rollback SHALL keep the mirror consistent with the object store. Store or
+database deletion SHALL remove only the corresponding database's mirror rows.
+Campaigns SHALL remain exempt from run-detail retention.
+The SQLite doctor SHALL diagnose a missing Campaign table or required column
+and restore the table from retained canonical records inside its backed-up
+repair transaction.
+
+The Postgres table SHALL use the query-required native fields declared in
+`server/spec/storage.tsp`, with presence bits preserving missing versus null
+values and the existing fresh-schema contract. Its generated DDL and Go
+bindings MUST include `campaigns` and `$campaigns`, respectively. Storage
+conformance tests MUST verify Campaign persistence, stable identity on refresh,
+and deletion in each implementation.
 
 The local SQLite evidence mirrors are `experiments`,
 `experiment_assignments`, `graders`, `grader_observations`, `evals`, and
@@ -918,6 +955,7 @@ not an acceptable privacy boundary.
 Version 1 SHALL define:
 
 ```text
+Campaign
 Repository
 Workflow
 Run
@@ -1036,6 +1074,40 @@ efficiency, but remain mandatory canonical relationships. Every Domain, Tool,
 Audit, and Issue MUST reference exactly one Run. Partial observations MAY exist
 during normalization; all mandatory relationships MUST resolve before a
 complete batch is reconciled or a streamed record phase is marked current.
+
+## 6.3 Campaign
+
+A Campaign represents one installed campaign independently of execution
+activity. Its stable slug defines a deterministic, source-namespaced canonical
+`id`, such as `campaign:dashboard-sources:dependabot`. Version, name, mode, and
+observation time are mutable evidence, not identity.
+
+```js
+{
+  id: "campaign:dashboard-sources:dependabot",
+  slug: "dependabot",
+  name: "Dependabot",
+  mode: "review",
+  enabled: true,
+  version: "v1",
+  currentVersion: "v2",
+  updateState: "update-available",
+  observedAt: "2026-10-02T00:00:00Z"
+}
+```
+
+**CAM-001** — Every implementation MUST define the Campaign store/table and
+persist campaigns even when they have no workflows.
+
+**CAM-002** — Refreshing mutable inventory fields MUST enrich the existing
+Campaign rather than create a version-specific record.
+
+**CAM-003** — Campaign records have no mandatory execution parent and MUST NOT
+be deleted merely because Runs or run-owned details expire.
+
+**CAM-004** — Stored mode, enablement, scope, and budgets are descriptive
+evidence, not control-plane authority. Their presence MUST NOT authorize live
+work or widen reviewed policy.
 
 ---
 
@@ -1909,6 +1981,12 @@ computationMetadata
 # 28. Core Indexes
 
 Indexes SHOULD initially reflect known query paths.
+
+### campaigns
+
+```text
+slug
+```
 
 ### repositories
 

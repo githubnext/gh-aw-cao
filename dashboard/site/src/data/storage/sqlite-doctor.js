@@ -11,7 +11,11 @@ import {
   ENTITY_STORES
 } from './indexeddb.js';
 import { mergeRetainedRecords, RETENTION_WINDOW_DAYS } from './retention.js';
-import { SQLITE_INDEXEDDB_METADATA_SCHEMA } from './sqlite-indexeddb.js';
+import {
+  createSqliteRelationalTables,
+  SQLITE_INDEXEDDB_METADATA_SCHEMA,
+  SQLITE_RELATIONAL_STORES
+} from './sqlite-indexeddb.js';
 import { createDebug } from '../../debug.js';
 import { identifier, sql } from './sql.js';
 
@@ -145,6 +149,13 @@ function schemaDiagnosticsFromConnection(connection) {
     for (const row of indexes.filter((candidate) => candidate.store_name === store)) {
       if (!(String(row.name) in expected)) issues.push(`unexpected index ${store}.${String(row.name)}`);
     }
+  }
+  const campaignColumns = new Set(connection.prepare('PRAGMA table_info(campaigns)').all().map((row) => row.name));
+  for (const field of [
+    'database_name', 'id', 'observed_at', 'provenance', 'record_json',
+    ...Object.keys(SQLITE_RELATIONAL_STORES.campaigns).map((name) => name.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`))
+  ]) {
+    if (!campaignColumns.has(field)) issues.push(`missing campaigns table column ${field}`);
   }
   return { version, stores: actualStores, issues };
 }
@@ -387,6 +398,7 @@ async function repairCanonicalDatabase(filename, checkedAt, now, retentionWindow
     });
     const transactions = retainedTransactions(scanned.transactions, horizon);
     writeCanonicalDatabase(connection, repairedBatch, transactions);
+    createSqliteRelationalTables(connection);
     connection.exec('COMMIT;');
     locked = false;
     return {
