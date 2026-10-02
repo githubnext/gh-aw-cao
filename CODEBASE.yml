@@ -80,6 +80,9 @@ architecture:
     computation_authority: authority inferred from a derived computation result
     outcome_inference_from_runtime: treating runtime success as verification, accepted outcome, an operational-grader result, or operational value
     generation_scoped_computation_results: disposable bounded measure results keyed to one canonical generation, measure version, partition, and input fingerprint
+    dashboard_entity_storage: current hosted dashboard rows, source documents, diagnostics, and revision state
+    dashboard_query_execution: Dashboard Language evaluation over current hosted dashboard data
+    operational_state_storage: sessions, rate limits, queues, deduplication, coordination, quota state, revocation retries, and bounded caches
 
 components:
   policy_resolution:
@@ -305,6 +308,19 @@ boundaries:
     must_not_depend_on:
       - computation_authority
       - outcome_inference_from_runtime
+  - subject: postgres_entity_store
+    may_depend_on:
+      - canonical_evidence
+      - dashboard_entity_storage
+      - dashboard_query_execution
+    must_not_depend_on:
+      - operational_state_storage
+  - subject: redis_operational_store
+    may_depend_on:
+      - operational_state_storage
+    must_not_depend_on:
+      - dashboard_entity_storage
+      - dashboard_query_execution
 
 invariants:
   - "CAO controls whether and where operations run; gh-aw controls how admitted workflows run."
@@ -318,14 +334,15 @@ invariants:
   - "Dispatch envelopes include identity, mode, review destination, and provenance; they MUST NOT include credentials."
   - "Activity evidence MUST NOT determine rollout, outcomes, or operational value."
   - "JSONL snapshots are authoritative; caches, SQLite, and IndexedDB are disposable projections."
-  - "The hosted Postgres store holds current dashboard entity sources, diagnostics, and revision; replacement is transactional and does not create generations or persistent derived projections."
+  - "Postgres is the exclusive hosted dashboard entity and query store: it holds current dashboard sources, lossless source documents, diagnostics, and revision state; replacement is transactional and does not create generations or persistent derived projections."
   - "The hosted query plan executor MUST bind values and namespace, admit only proven equivalent complete paths, enforce pre-filter input and resource bounds, and fall back to bounded Go evaluation for unsupported paths or older committed revisions without indexed documents."
   - "Dashboard ingestion MUST load every run-information shard before record shards; every domain, tool, audit, and issue MUST identify its owning run."
   - "The deployed dashboard artifact MUST NOT contain or manifest raw Activity JSONL; browser ingestion MUST consume compacted normalized run and record JSONL and fail closed when run-information shards are absent."
   - "Normalized Activity shards MUST be JSONL and browser consumers MUST stream bounded record batches without buffering a complete shard."
   - "Missing, stale, partial, and zero evidence are distinct states."
   - "Dashboard data operations MUST be declared in Dashboard Language and execute outside the browser main thread: in the data Web Worker for static deployment or in the Go HTTP(S) server over current Postgres sources."
-  - "Hosted Redis stores operational caches, queues, and sessions; it MUST NOT store or query dashboard entity sources."
+  - "Redis is operational-only: it stores sessions, rate limits, queues, deduplication, coordination, quota state, revocation retries, and bounded caches; it MUST NOT store dashboard entity rows, canonical source documents, query indexes, persistent query projections, or execute dashboard data queries."
+  - "The hosted server MUST NOT fall back from Postgres to Redis for dashboard data; Postgres unavailability makes dashboard data unavailable even when Redis is healthy."
   - "The local Redis profile MUST bind to loopback, use HTTP by default for localhost debugging, enable HTTPS only with operator-supplied certificate files, and MUST NOT expose Redis endpoints or credentials to browser code."
   - "The hosted Redis profile MUST use GitHub OAuth with explicit organization or team authorization, explicit rebuild administrators, server-side secrets and sessions, and an explicit account-selection flow for switching GitHub identities."
   - "Hosted Redis MUST use TLS by default and Azure Functions MUST always require TLS; private plaintext Redis is allowed only through an explicit opt-in and only for a private IP or single-label service hostname."
@@ -516,7 +533,7 @@ commands:
       lint: npm run lint
       typecheck: npm run typecheck
       corpus_validation: npm run validate:corpus
-  dashboard_redis_server:
+  dashboard_server:
     working_directory: server/
     entries:
       tests: go test ./...
@@ -535,11 +552,11 @@ validation:
     - commands.dashboard_site.entries.lint
     - commands.dashboard_site.entries.typecheck
     - commands.dashboard_site.entries.corpus_validation
-  dashboard_redis_server_command_refs:
+  dashboard_server_command_refs:
     - commands.repository_root.entries.dashboard_server_lint
     - commands.repository_root.entries.dashboard_server_tests
     - commands.repository_root.entries.dashboard_server_e2e
-    - commands.dashboard_redis_server.entries.tests
+    - commands.dashboard_server.entries.tests
   workflow_source_command_refs:
     - commands.repository_root.entries.workflow_compile
   workflow_source_generated_artifact_command_refs:
@@ -561,6 +578,7 @@ validation:
     - "Verify policy and workflow changes are reviewed together."
     - "Verify workflow sources, not generated lock files, are edited."
     - "Verify dashboard data access crosses either the Web Worker or Go HTTP(S) server declarative query boundary."
+    - "Verify hosted dashboard entities and queries use Postgres, while Redis remains operational-only."
 
 provenance:
   source: ARCHITECTURE.md

@@ -41,6 +41,11 @@ const DATABASE_TABLE_SOURCES = new Set([
   'eval-observations',
   'transactions'
 ]);
+/** @type {Record<string, Set<string>>} */
+const NATIVE_COUNT_FIELDS = {
+  campaigns: new Set(['id', 'campaign']),
+  repositories: new Set(['id', 'repository'])
+};
 /**
  * @param {Record<string, unknown>} sources
  * @param {string} sourceName
@@ -173,6 +178,8 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     )));
     const computedFields = Object.keys(computedLiterals);
     const groupedFields = definition.aggregate?.by ?? [];
+    const nativeCountFields = NATIVE_COUNT_FIELDS[definition.from]
+      ?? new Set([table?.keyPath]);
     if (!table
         || (computedFields.length === 0 && typeof table.keyPath !== 'string')
         || definition.union?.length
@@ -190,7 +197,7 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
         || values.length === 0
         || values.some((value) => (
           value.reducer !== 'count'
-          || (computedFields.length === 0 && value.field !== table.keyPath)
+          || (computedFields.length === 0 && !nativeCountFields.has(value.field))
           || value.filter
         ))) {
       return [];

@@ -165,26 +165,28 @@ Collected evidence MUST be persisted in a durable **evidence lake**.
 
 ## 7. Projection
 
-Projection converts the evidence lake into an active canonical generation.
+Projection converts the evidence lake into the current canonical PostgreSQL
+dataset.
 
 - Projection MUST reuse the Actions profile's ingestion implementation over the
   evidence lake directory. An implementation MUST NOT define a second projector.
 - Projection MUST be coalesced: an implementation MUST collapse collections that
-  complete within a configured debounce window into a single generation.
-- A generation MUST be staged and then activated atomically. A failed projection
-  MUST leave the previously active generation serving.
+  complete within a configured debounce window into one replacement.
+- A replacement MUST commit all current sources, source documents, diagnostics,
+  revision state, and evaluation time in one PostgreSQL transaction. A failed
+  projection MUST leave the previously committed dataset serving.
 - Relationship errors and duplicate record identities MUST fail the projection
-  rather than activate a generation known to be inconsistent.
+  rather than commit a dataset known to be inconsistent.
 - On successful activation the implementation MUST increment the revision and
   notify connected clients through the existing revision channel.
 - Projection MUST short-circuit when the lake's content-addressed data revision
-  already matches the active generation. A collection re-enumerates a window and
+  already matches the current dataset. A collection re-enumerates a window and
   usually adds nothing, so rewriting an identical dataset would be the dominant
   steady-state cost. An explicit operator rebuild MAY bypass this short-circuit.
-- An implementation MUST reclaim superseded generations, retaining a bounded
-  number for rollback and honouring a grace period so in-flight reads complete.
-  Every projection writes a complete new generation; without reclamation a
-  no-eviction store exhausts memory and every subsequent write fails.
+- PostgreSQL MUST be the only dashboard entity and query store. Redis MAY hold
+  projection coordination and health state, but MUST NOT hold entity rows,
+  canonical source documents, query indexes, persistent query projections, or
+  execute dashboard data queries.
 - Inventory discovery MUST NOT silently truncate the enrolled repository set. An
   implementation MAY enforce a configured bound, but exceeding it MUST fail the
   projection rather than publish a partial inventory.
@@ -324,8 +326,8 @@ count.
   the repository or delivery they concern. A deployment MUST route these records
   and the process's telemetry to a durable sink.
 - The server MUST provide a read-only check-up that reports the selected
-  profile, Redis connectivity and safety posture, active-generation status,
-  canonical integrity, query-definition validity, generation reclamation,
+  profile, Redis connectivity and safety posture, PostgreSQL readiness and
+  revision state, canonical integrity, query-definition validity,
   and, when collection is configured, enrollment, queue, cold-start,
   rate-limit, evidence-lake, and tooling state.
 - Each check MUST have a stable machine-readable identifier, severity,
@@ -335,7 +337,7 @@ count.
   contents unnecessarily, or report tokens, passwords, private keys, webhook
   secrets, payload contents, or prompts. Dependency checks MUST be bounded so
   an unavailable surface cannot hang the full report.
-- Expensive checks that read the full active generation MUST be explicit and
+- Expensive checks that read every current PostgreSQL source MUST be explicit and
   MUST use the production source-loading path and its fail-closed row bounds.
 
 ## 13. Reliability simulator
@@ -429,5 +431,5 @@ A conforming implementation:
     bounds its queues;
 12. admits deliveries without collection credentials, and fails closed when an
     admission-only process is asked to collect or project;
-13. short-circuits projection for an unchanged lake, reclaims superseded
-    generations, and refuses to publish a truncated inventory.
+13. short-circuits projection for an unchanged lake, transactionally replaces
+    the current PostgreSQL dataset, and refuses to publish a truncated inventory.
