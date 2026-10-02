@@ -56,8 +56,8 @@ COPY --from=server-build --chown=cao:cao /out/cao-dashboard /app/cao-dashboard
 COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/dist/ /app/site/
 COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/dashboard.json /app/dashboard.json
 COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/src/data/queries/database.json /app/queries/database.json
-COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/src/agent/catalog.generated.json /app/agent/catalog.json
-COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/src/agent/queries.generated.json /app/agent/queries.json
+COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/dist/src/agent/catalog.generated.json /app/agent/catalog.json
+COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/dist/src/agent/queries.generated.json /app/agent/queries.json
 COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/src/agent/mcp-contract.json /app/agent/mcp-contract.json
 COPY --from=dashboard-build --chown=cao:cao /workspace/.github/workflows/cao.json /app/.github/workflows/cao.json
 COPY --from=dashboard-build --chown=cao:cao /workspace/.github/workflows/cao.coolify.json /app/.github/workflows/cao.coolify.json

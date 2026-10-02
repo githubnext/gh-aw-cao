@@ -35,6 +35,30 @@ func TestMCPDisabledEndpointIsAbsent(t *testing.T) {
 	}
 }
 
+func TestMCPRejectsCatalogQueriesWithoutLoadedDefinitions(t *testing.T) {
+	app := newMCPTestApp(t, true)
+	definitions := app.config.DashboardQueries
+	for _, name := range []string{"all", "database-campaign-count"} {
+		t.Run(name, func(t *testing.T) {
+			app.config.DashboardQueries = nil
+			if name != "all" {
+				for _, definition := range definitions {
+					if definition.Name != name {
+						app.config.DashboardQueries = append(app.config.DashboardQueries, definition)
+					}
+				}
+			}
+			_, err := app.newMCPHandler()
+			if err == nil || !strings.Contains(err.Error(), "has no loaded dashboard definition") {
+				t.Fatalf("missing definitions returned %v", err)
+			}
+			if name != "all" && !strings.Contains(err.Error(), name) {
+				t.Fatalf("error does not identify missing query: %v", err)
+			}
+		})
+	}
+}
+
 func TestMCPRequiresLocalBearerAndDiscoversReadOnlyTools(t *testing.T) {
 	app := newMCPTestApp(t, true)
 	httpServer := httptest.NewServer(app.Handler())

@@ -107,6 +107,11 @@ func (a *App) newMCPHandler() (http.Handler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read agent catalog: %w", err)
 	}
+	for _, entry := range catalog.Queries {
+		if _, ok := findDefinition(a.config.DashboardQueries, entry.ID); !ok {
+			return nil, fmt.Errorf("agent catalog query %q has no loaded dashboard definition", entry.ID)
+		}
+	}
 	catalogRaw, err := readJSONFile[map[string]any](a.config.AgentCatalogPath)
 	if err != nil {
 		return nil, fmt.Errorf("read agent catalog payload: %w", err)

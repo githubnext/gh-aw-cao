@@ -13,6 +13,8 @@ import {
   loadDashboardControlSettings,
 } from "../../dashboard/site/scripts/build.mjs";
 import { validateDashboardAgentArtifacts } from "../../dashboard/site/scripts/llms.mjs";
+import { loadDashboardSource } from "../../dashboard/report/bundle-dashboards.mjs";
+import { agentCatalog } from "../../dashboard/site/src/agent/catalog.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -69,6 +71,19 @@ test("dashboard build uses GitHub Actions repository and server URL for the chro
     const dashboard = JSON.parse(await readFile(path.join(root, "output", "dashboard.json"), "utf8"));
     assert.equal(dashboard.dashboard.repository, "octo-org/operations");
     assert.equal(dashboard.dashboard["github-url-base"], "https://github.example.com");
+    const { document } = await loadDashboardSource(path.resolve("dashboard/site/dashboard.json"));
+    const queries = JSON.parse(await readFile(path.join(root, "output", "src/agent/queries.generated.json"), "utf8"));
+    const catalog = JSON.parse(await readFile(path.join(root, "output", "src/agent/catalog.generated.json"), "utf8"));
+    assert.deepEqual(queries, document.dashboard.queries);
+    assert.ok(queries.some(({ name }) => name === "database-campaign-count"));
+    assert.deepEqual(catalog, agentCatalog({
+      ...document,
+      dashboard: {
+        ...filterExperimentalDashboardViews(document).dashboard,
+        repository: "octo-org/operations",
+        "github-url-base": "https://github.example.com",
+      },
+    }));
   } finally {
     await rm(root, { force: true, recursive: true });
   }
