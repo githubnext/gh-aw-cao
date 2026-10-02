@@ -1,6 +1,6 @@
 {
   "source_sha": "51f934ecb9ea9d294a97344ef57d81eeb8ffe943",
-  "next_category": "dependency installation and caching",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
       "evaluated_at": "2026-10-01T12:50:00Z",
@@ -508,6 +508,25 @@
         36940386558
       ],
       "outcome": "incomplete: only 4 comparable successful runs with executed build job in last 14 days; minimum is 5"
+    },
+    {
+      "evaluated_at": "2026-10-02T02:40:00Z",
+      "worker_run_id": 36956415527,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        36956381931,
+        36955136213,
+        36953648542,
+        36952022091,
+        36948897847,
+        36944129683,
+        36942903113,
+        36942536188,
+        36941361943,
+        36954913967
+      ],
+      "outcome": "no_actionable_improvement: latest 9 successful docs.yml runs in the last 14 days provided sufficient evidence, including 6 comparable successful build executions and 4 successful deployments. Trusted Actions metadata showed docs full-workflow median 64.0s with p90 91.4s, build-job median 49.0s with p90 56.0s, deploy median 24.0s with p90 31.5s, schedule-freshness median 8.0s with p90 8.8s, and queue time median/p90 0.0s. Comparable build-step medians were 13.0s for Build documentation, 6.0s for Restore node_modules, 2.5s for Restore cached CAO Dashboard, and 9.5s for Upload Pages artifact. Trusted step metadata confirmed cache hits on every comparable docs build: Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped in all 6 comparable successful build executions, so docs.yml already reuses both dependency and dashboard caches effectively. Cross-checking successful cao-dashboard.yml run 36954913967 still showed the dominant repeated upstream cost is Upgrade fallback activity data at 98s, while Assemble Dashboard Language site took 3s and Upload dashboard artifact 9s. Bounded trusted logs for run 36954913967 confirmed the producer still recopied a 493.7 MiB gh-aw-logs.sqlite plus 130 activity shards totaling 314.9 MiB into the dashboard artifact before uploading a 47.5 MiB archive. That qualifying reusable-dashboard optimization is already represented by open issues #15332 and #15497 and suggestion fingerprint reusable-dashboard-skip-reupgrade-of-validated-activity-cache, so no new non-duplicate recommendation is actionable in this cycle.",
+      "suggestion_fingerprint": null
     }
   ]
 }
