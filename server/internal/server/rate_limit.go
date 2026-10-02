@@ -120,7 +120,7 @@ func (a *App) preAuthRateLimit(next http.Handler) http.Handler {
 			return
 		}
 		if publicServiceEndpoint(request.URL.Path) {
-			if request.Method == http.MethodGet {
+			if request.Method == http.MethodGet || request.Method == http.MethodHead {
 				a.enforceRateLimit(response, request, next, a.config.RateLimits.policy("public"), "client:"+a.clientIP(request))
 			} else {
 				next.ServeHTTP(response, request)

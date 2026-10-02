@@ -53,8 +53,9 @@ The server MUST apply the following token buckets.
 | Hosted edge | non-public hosted requests before session loading | 1,200 | 1 minute | client address |
 | Hosted public probes | `GET /api/health`, `GET /api/v1/health`, `GET /api/readiness` | 600 | 1 minute | client address, shared across probe paths |
 
-Hosted health and readiness probes MUST use the public probe bucket before
-their handler runs, without requiring authentication. The loopback local
+Hosted health and readiness probes (including HEAD requests accepted by the
+GET routes) MUST use the public probe bucket before their handler runs, without
+requiring authentication. The loopback local
 profile MUST leave these probes unmetered. Invalid host or proxy boundaries
 MUST be rejected without consulting the limiter. The independently
 signature-authenticated GitHub webhook endpoint MUST be exempt from inner

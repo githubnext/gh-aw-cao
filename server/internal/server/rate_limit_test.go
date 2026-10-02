@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
@@ -21,6 +22,7 @@ type serverRateLimitClient struct {
 	command     []string
 	callCount   int
 	maxDeadline time.Duration
+	err         error
 }
 
 func (client *serverRateLimitClient) Do(ctx context.Context, command ...string) (any, error) {
@@ -29,7 +31,7 @@ func (client *serverRateLimitClient) Do(ctx context.Context, command ...string) 
 	if deadline, ok := ctx.Deadline(); ok {
 		client.maxDeadline = time.Until(deadline)
 	}
-	return client.result, nil
+	return client.result, client.err
 }
 
 func (*serverRateLimitClient) DoMany(context.Context, [][]string) ([]any, error) {
@@ -303,8 +305,9 @@ func TestHostedPublicProbeAllowsRequestAndSkipsInvalidBoundary(t *testing.T) {
 		wantCalls          int
 	}{
 		{"valid", http.MethodGet, "dashboard.example", 1},
-		{"unsupported method", http.MethodPost, "dashboard.example", 1},
-		{"invalid host", http.MethodGet, "attacker.example", 1},
+		{"head", http.MethodHead, "dashboard.example", 2},
+		{"unsupported method", http.MethodPost, "dashboard.example", 2},
+		{"invalid host", http.MethodGet, "attacker.example", 2},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			response := httptest.NewRecorder()
@@ -317,6 +320,22 @@ func TestHostedPublicProbeAllowsRequestAndSkipsInvalidBoundary(t *testing.T) {
 				t.Fatalf("allowed probe missing rate limit headers: %v", response.Header())
 			}
 		})
+	}
+}
+
+func TestHostedPublicProbeFailsClosedWhenLimiterUnavailable(t *testing.T) {
+	client := &serverRateLimitClient{err: errors.New("redis unavailable")}
+	app := hostedRateLimitApp(client)
+	handler := app.preAuthRateLimit(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("probe reached handler without rate limiting")
+	}))
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "https://dashboard.example/api/readiness", nil))
+	if response.Code != http.StatusServiceUnavailable || client.callCount != 1 {
+		t.Fatalf("limiter outage returned status=%d calls=%d", response.Code, client.callCount)
+	}
+	if strings.Contains(response.Body.String(), "redis unavailable") {
+		t.Fatal("limiter response exposed Redis details")
 	}
 }
 
