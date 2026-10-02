@@ -103,7 +103,7 @@ health evaluation, and rollback.
 
 ### Updating the data
 
-To update the data, prepare a new volume in the same way, set `CAO_ARTIFACT_VOLUME` to the new volume, and redeploy. An administrator listed in `CAO_GITHUB_ADMIN_USERS` can also start a rebuild with `POST /api/admin/rebuild`.
+To update the data, prepare a new volume in the same way, set `CAO_ARTIFACT_VOLUME` to the new volume, and redeploy. A GitHub admin or maintainer of the workspace repository can also start a rebuild with `POST /api/admin/rebuild`.
 
 ### Automating delivery
 
@@ -154,9 +154,8 @@ The `server/coolify/compose.yml` file reads the following variables.
 | `CAO_SESSION_SECRET_PREVIOUS` | No | Yes | Previous session key, used during rotation. |
 | `CAO_GITHUB_ALLOWED_ORGS` | At least one of these two | No | Organizations whose active members can sign in. |
 | `CAO_GITHUB_ALLOWED_TEAMS` | At least one of these two | No | Teams, in `ORGANIZATION/TEAM-SLUG` format, whose active members can sign in. |
-| `CAO_GITHUB_ADMIN_USERS` | Yes | No | GitHub usernames that can start rebuilds. |
 | `CAO_GITHUB_WEBHOOK_SECRET_ROTATED` | Yes | Yes | Secret for verifying webhook signatures. At least 32 characters. Compose maps it to the server's `CAO_GITHUB_WEBHOOK_SECRET` runtime variable. |
-| `CAO_MCP_ACTIONS_REPOSITORY` | Yes | No | Exact `OWNER/REPO` GitHub repository selected as this Coolify resource's Git source; only its Actions OIDC provenance and read-scoped token can access `/mcp`. |
+| `CAO_MCP_ACTIONS_REPOSITORY` | Yes | No | Exact `OWNER/REPO` workspace repository selected as this Coolify resource's Git source. Its admins and maintainers can access administrative resources; only its Actions OIDC provenance and read-scoped token can access `/mcp`. |
 | `SOURCE_COMMIT` | Set by Coolify. | No | Commit SHA embedded in the image and reported as the build version. Enable **Include Source Commit in Build**. |
 
 ### Setting the variables in Coolify
@@ -173,7 +172,6 @@ Set these required variables:
 - `CAO_GITHUB_CLIENT_SECRET_ROTATED`
 - `CAO_GITHUB_REDIRECT_URL`
 - `CAO_SESSION_SECRET_ROTATED`
-- `CAO_GITHUB_ADMIN_USERS`
 - `CAO_GITHUB_WEBHOOK_SECRET_ROTATED`
 - `CAO_MCP_ACTIONS_REPOSITORY`
 
@@ -185,6 +183,23 @@ expose them as Docker build arguments. The server fails closed at startup when
 any required runtime value is absent.
 
 Set `CAO_MCP_ACTIONS_REPOSITORY` to the repository configured in this Coolify resource's Git source, including its owner. Coolify does not expose that repository identity as a documented Compose variable, so the setting is required rather than falling back to the catalog's repository or reading potentially credential-bearing Git metadata into the build.
+
+Administrative access reuses that workspace identity; no extra administrator
+repository or username setting is needed. Its immutable GitHub ID is resolved
+and pinned automatically, so name reuse cannot replace an enrolled workspace.
+Preserve durable workspace identity records during Redis maintenance.
+Roles are checked with each user's
+GitHub token and refreshed every five minutes and on token refresh. Failed
+checks deny administrative access, not ordinary dashboard access. For private
+repositories, the user token needs repository access: use a GitHub App with
+**Metadata: read** installed on that repository, or an OAuth App token already
+authorized with `repo` scope. CAO does not automatically broaden OAuth scopes.
+For prompt revocation, subscribe the workspace webhook to `member`, `team`,
+`team_add`, and `repository`, and the owning organization webhook to
+`membership`, `organization`, and `team`, using the existing webhook secret.
+Verified changes invalidate affected users or the workspace's cached decisions
+across replicas; ordinary readers remain signed in unless they also lose their
+allowed organization/team membership.
 
 Follow these rules when you add the values.
 

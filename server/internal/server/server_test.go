@@ -933,6 +933,14 @@ func fakeRedis(t *testing.T) (string, func()) {
 						switch {
 						case strings.Contains(command[1], `local current = redis.call("TIME")`):
 							rateLimitResult = true
+						case len(command) >= 8 && strings.Contains(command[1], `redis.call("EXISTS", KEYS[1])`) &&
+							strings.Contains(command[1], `redis.call("SET", KEYS[2], ARGV[1]`):
+							if values[command[3]] != "" {
+								result = 0
+							} else {
+								values[command[4]] = command[5]
+								values[command[3]] = "1"
+							}
 						case len(command) >= 6 && strings.Contains(command[1], `redis.call("SADD"`) && strings.Contains(command[1], `redis.call("DEL"`):
 							bulkResult = values[command[3]]
 							if bulkResult == "" {

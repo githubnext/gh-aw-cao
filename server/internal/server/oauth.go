@@ -103,11 +103,14 @@ type GitHubOAuthConfig struct {
 	PreviousSessionSecret string
 	AllowedOrganizations  []string
 	AllowedTeams          []string
+	WorkspaceRepository   string
+	WorkspaceRepositoryID int64
 	AuthURL               string
 	TokenURL              string
 	UserURL               string
 	OrgMembershipURL      string
 	TeamMembershipURL     string
+	RepositoryURL         string
 	RevokeURL             string
 	HTTPClient            *http.Client
 	RevocationKeyPrefix   string
@@ -123,20 +126,25 @@ type githubOAuth struct {
 }
 
 type oauthSession struct {
-	ID             string    `json:"id"`
-	Login          string    `json:"login"`
-	AvatarURL      string    `json:"avatarUrl,omitempty"`
-	AccessToken    string    `json:"accessToken"`
-	RefreshToken   string    `json:"refreshToken"`
-	AccessExpires  time.Time `json:"accessExpires"`
-	RefreshExpires time.Time `json:"refreshExpires"`
-	AuthorizedAt   time.Time `json:"authorizedAt"`
-	CSRFToken      string    `json:"csrfToken"`
+	ID                    string    `json:"id"`
+	Login                 string    `json:"login"`
+	AvatarURL             string    `json:"avatarUrl,omitempty"`
+	AccessToken           string    `json:"accessToken"`
+	RefreshToken          string    `json:"refreshToken"`
+	AccessExpires         time.Time `json:"accessExpires"`
+	RefreshExpires        time.Time `json:"refreshExpires"`
+	AuthorizedAt          time.Time `json:"authorizedAt"`
+	Admin                 bool      `json:"admin,omitempty"`
+	AdminRepository       string    `json:"adminRepository,omitempty"`
+	AdminRepositoryID     int64     `json:"adminRepositoryId,omitempty"`
+	AuthorizationRevision string    `json:"authorizationRevision,omitempty"`
+	CSRFToken             string    `json:"csrfToken"`
 }
 
 type githubAccount struct {
-	Login     string `json:"login"`
-	AvatarURL string `json:"avatar_url"`
+	Login                 string `json:"login"`
+	AvatarURL             string `json:"avatar_url"`
+	AuthorizationRevision string `json:"-"`
 }
 
 type tokenResponse struct {
@@ -168,6 +176,13 @@ func (config *GitHubOAuthConfig) validate() error {
 	if len(config.AllowedOrganizations) == 0 && len(config.AllowedTeams) == 0 {
 		return errors.New("GitHub OAuth authorization requires at least one allowed organization or team")
 	}
+	config.WorkspaceRepository = strings.TrimSpace(config.WorkspaceRepository)
+	if config.WorkspaceRepository != "" && !adminRepositoryPattern.MatchString(config.WorkspaceRepository) {
+		return errors.New("GitHub OAuth workspace repository must be in owner/repository form")
+	}
+	if config.WorkspaceRepositoryID < 0 {
+		return errors.New("GitHub OAuth workspace repository ID must not be negative")
+	}
 	if config.AuthURL == "" {
 		config.AuthURL = "https://github.com/login/oauth/authorize"
 	}
@@ -182,6 +197,9 @@ func (config *GitHubOAuthConfig) validate() error {
 	}
 	if config.TeamMembershipURL == "" {
 		config.TeamMembershipURL = "https://api.github.com/orgs/{org}/teams/{team}/memberships/{user}"
+	}
+	if config.RepositoryURL == "" {
+		config.RepositoryURL = "https://api.github.com/repos/{owner}/{repo}"
 	}
 	if config.RevokeURL == "" {
 		config.RevokeURL = "https://api.github.com/applications/{client_id}/token"
@@ -395,6 +413,11 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 	}()
 	account, err := oauth.authorizedAccount(ctx, tokens.AccessToken)
 	if err != nil {
+		if errors.Is(err, errAuthorizationStateUnavailable) {
+			oauth.logBranch("callback.authorization_state_unavailable")
+			fail(http.StatusServiceUnavailable, "authorization_state_unavailable")
+			return
+		}
 		serverLog.Printf("oauth authorization failed")
 		oauth.logBranch("callback.authorization_failed")
 		fail(http.StatusForbidden, "authorization_failed")
@@ -416,6 +439,8 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 	session.Login = account.Login
 	session.AvatarURL = account.AvatarURL
 	session.CSRFToken = csrfToken
+	session.AuthorizationRevision = account.AuthorizationRevision
+	oauth.updateAdminAuthorization(ctx, &session)
 	if err := oauth.saveSession(ctx, session); err != nil {
 		serverLog.Printf("oauth session save failed")
 		oauth.logBranch("callback.session_save_failed")
@@ -512,8 +537,21 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 		oauth.logBranch("session.load_failed")
 		return oauthSession{}, false
 	}
+	revision, err := oauth.authorizationRevision(request.Context(), session.Login)
+	if err != nil {
+		oauth.logBranch("session.authorization_state_unavailable")
+		return oauthSession{}, false
+	}
+	workspaceID, err := oauth.workspaceRepositoryID(request.Context())
+	if err != nil {
+		oauth.logBranch("session.workspace_identity_unavailable")
+		return oauthSession{}, false
+	}
 	if time.Now().UTC().Add(tokenRefreshSkew).Before(session.AccessExpires) {
-		if time.Since(session.AuthorizedAt) >= authorizationRecheckInterval {
+		if time.Since(session.AuthorizedAt) >= authorizationRecheckInterval ||
+			!strings.EqualFold(session.AdminRepository, oauth.config.WorkspaceRepository) ||
+			session.AdminRepositoryID != workspaceID ||
+			session.AuthorizationRevision != revision {
 			ctx := propagation.TraceContext{}.Extract(request.Context(), propagation.HeaderCarrier(request.Header))
 			ctx, span := telemetry.Tracer().Start(ctx, "cao_dashboard.auth.revalidate")
 			defer span.End()
@@ -525,6 +563,8 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 				return oauthSession{}, false
 			}
 			session.AvatarURL = account.AvatarURL
+			session.AuthorizationRevision = account.AuthorizationRevision
+			oauth.updateAdminAuthorization(ctx, &session)
 			session.AuthorizedAt = time.Now().UTC()
 			saved, err := oauth.saveSessionIfUnchanged(ctx, session, expected)
 			if err != nil {
@@ -534,7 +574,9 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 			}
 			if !saved {
 				latest, err := oauth.loadSession(ctx, session.ID)
-				if err != nil || time.Since(latest.AuthorizedAt) >= authorizationRecheckInterval {
+				if err != nil || time.Since(latest.AuthorizedAt) >= authorizationRecheckInterval ||
+					!strings.EqualFold(latest.AdminRepository, oauth.config.WorkspaceRepository) ||
+					latest.AdminRepositoryID != session.AdminRepositoryID {
 					oauth.logBranch("session.revalidation_superseded")
 					recordOAuthDecision(ctx, "session_revalidation", "superseded")
 					return oauthSession{}, false
@@ -545,6 +587,10 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 				oauth.logBranch("session.authorization_revalidated")
 				recordOAuthDecision(ctx, "session_revalidation", "accepted")
 			}
+		}
+		if !oauth.authorizationCurrent(request.Context(), session) {
+			oauth.logBranch("session.authorization_changed_during_check")
+			return oauthSession{}, false
 		}
 		oauth.logBranch("session.active")
 		csrfCookie, err := request.Cookie(csrfCookieName)
@@ -613,6 +659,8 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 		return oauthSession{}, false
 	}
 	session.AvatarURL = account.AvatarURL
+	session.AuthorizationRevision = account.AuthorizationRevision
+	oauth.updateAdminAuthorization(request.Context(), &session)
 	session.AuthorizedAt = time.Now().UTC()
 	saved, err := oauth.saveSessionIfUnchanged(request.Context(), session, expected)
 	if err == nil && !saved {
@@ -657,6 +705,10 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 			oauth.logBranch("refresh.superseded_credentials_revoked")
 		}
 		oauth.clearSessionCookies(response)
+		return oauthSession{}, false
+	}
+	if !oauth.authorizationCurrent(request.Context(), session) {
+		oauth.logBranch("refresh.authorization_changed_during_check")
 		return oauthSession{}, false
 	}
 	serverLog.Printf("oauth session refreshed")
@@ -744,6 +796,11 @@ func (oauth *githubOAuth) authorizedAccount(ctx context.Context, accessToken str
 	if err != nil {
 		oauth.logBranch("authorization.identity_failed")
 		return githubAccount{}, err
+	}
+	account.AuthorizationRevision, err = oauth.authorizationRevision(ctx, account.Login)
+	if err != nil {
+		oauth.logBranch("authorization.state_unavailable")
+		return githubAccount{}, errors.Join(errAuthorizationStateUnavailable, err)
 	}
 	for _, org := range oauth.config.AllowedOrganizations {
 		if oauth.orgAuthorized(ctx, accessToken, org) {

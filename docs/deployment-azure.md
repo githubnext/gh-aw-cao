@@ -251,7 +251,30 @@ By default, the server serves the data that the Activity workflow publishes and 
 - A user-assigned managed identity with access to Key Vault.
 - An Azure Files share for collected evidence. The SKU is set by `collectorLakeStorageSku` (default `Premium_LRS`).
 
-The collection profile requires these parameters: `collectorGithubAppId`, `collectorPrivateKey`, `githubWebhookSecret`, `collectorRedisPassword`, `githubAdminUsers`, and `collectorControlRepository`.
+The collection profile requires these parameters: `collectorGithubAppId`, `collectorPrivateKey`, `githubWebhookSecret`, `collectorRedisPassword`, and `collectorControlRepository`.
+
+Administrative access always uses the dashboard workspace repository.
+The `workspaceRepository` parameter supplies this shared context in
+`OWNER/REPOSITORY` form; collection deployments reuse
+`collectorControlRepository` when it is omitted. There is no separate
+administrator repository or username setting. Its immutable GitHub ID is
+resolved and pinned automatically; preserve the durable workspace identity
+record during Redis maintenance. Signed-in users need GitHub `admin` or `maintain`
+permission on that repository. The server checks the user's token every five
+minutes and on refresh, and denies administrative access when the check fails.
+For private repositories, the token needs repository access (GitHub App
+**Metadata: read** with an installation on that repository, or an OAuth App
+token already authorized with `repo` scope); CAO does not broaden scopes
+automatically.
+
+Subscribe the workspace webhook to `member`, `team`, `team_add`, and `repository`
+and the organization webhook to `membership`, `organization`, and `team`.
+Signed permission changes invalidate cached decisions across replicas
+independently of collection admission; ordinary readers remain signed in unless
+they also lose allowed organization/team membership.
+Supply `githubWebhookSecret` with at least 32 characters in either deployment
+profile to enable these signed deliveries; permission webhooks do not require
+`collectorImage`.
 
 In this profile, the Function App only admits webhooks (`CAO_COLLECT_ADMIT_ONLY=true`). It verifies and deduplicates deliveries to `POST /api/github/webhook`, then queues the work. It never holds the app's private key.
 

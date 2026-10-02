@@ -347,7 +347,22 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   or HTTPS only with operator-supplied certificate files.
 - The hosted Redis profile runs behind an explicitly trusted HTTPS proxy,
   authenticates users through GitHub OAuth plus explicit organization or team
-  authorization, limits rebuild control to explicit administrators, verifies
+  authorization, limits administrative resources to GitHub admins and maintainers
+  of the existing workspace repository using the signed-in user's token, resolves
+  and durably pins its immutable GitHub ID automatically (or honors an existing
+  trusted host workspace ID), and binds that identity to the encrypted session.
+  No independent administrator repository or username setting is used. Durable
+  identity records survive process/session namespace changes and must be
+  preserved during Redis maintenance; clearing them re-enrolls by source name.
+  Verified collaborator, team, organization membership, and workspace lifecycle
+  webhooks synchronously publish atomically deduplicated authorization revisions
+  across replicas, independently of ingestion locks. Session checks, in-flight
+  revalidation, and event-stream emissions reject stale revisions; membership
+  loss revokes ordinary access only when no allowed organization/team remains.
+  The profile
+  rechecks it every five minutes, on token refresh, and after repository changes.
+  Missing or failed role checks deny administrative access without denying
+  ordinary authorized dashboard access. The profile verifies
   webhook signatures, deduplicates deliveries, and coordinates bounded
   request-independent rebuilds through Redis so multiple stateless replicas
   cannot replace the projection concurrently. Its client exposes the active

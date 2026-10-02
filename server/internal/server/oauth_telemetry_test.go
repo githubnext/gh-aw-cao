@@ -1,9 +1,11 @@
 package server
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -22,6 +24,17 @@ import (
 
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
+
+type failingSessionSaveClient struct {
+	redisx.CommandClient
+}
+
+func (client failingSessionSaveClient) Do(ctx context.Context, command ...string) (any, error) {
+	if command[0] == "SET" && strings.Contains(command[1], ":session:") {
+		return nil, errors.New("session persistence unavailable")
+	}
+	return client.CommandClient.Do(ctx, command...)
+}
 
 func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 	previousTracer := otel.GetTracerProvider()
@@ -155,11 +168,7 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 
 	app = newAzureTestApp(t, github.URL)
 	stateCookie, state = loginState(t, app)
-	unavailable, err := redisx.New("redis://127.0.0.1:1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	app.oauth.store = redisx.NewStore(unavailable, "test")
+	app.oauth.store.Client = failingSessionSaveClient{CommandClient: app.oauth.store.Client}
 	failedSave := httptest.NewRecorder()
 	request = azureRequest(t, http.MethodGet, "/auth/callback?code="+callbackCode+"&state="+url.QueryEscape(state))
 	request.AddCookie(stateCookie)

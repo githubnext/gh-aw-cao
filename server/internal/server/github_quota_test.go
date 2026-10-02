@@ -46,12 +46,11 @@ func usageSamples() []redisx.GitHubQuotaUsageSample {
 
 func TestGitHubQuotaUsageRequiresHostedAdministrator(t *testing.T) {
 	app := &App{
-		oauth:  &githubOAuth{},
-		config: Config{AdminUsers: []string{"operator"}},
-		quota:  newUsageQuota(t, usageQuotaStore{samples: usageSamples(), now: usageNow}),
+		oauth: adminRoleTestOAuth(t),
+		quota: newUsageQuota(t, usageQuotaStore{samples: usageSamples(), now: usageNow}),
 	}
 	request := httptest.NewRequestWithContext(
-		context.WithValue(t.Context(), oauthSessionContextKey{}, oauthSession{Login: "reader"}),
+		context.WithValue(t.Context(), oauthSessionContextKey{}, adminRoleTestSession(t, app.oauth, "reader", "reader-token")),
 		http.MethodGet, "/api/v1/github-quota/usage", nil,
 	)
 	response := httptest.NewRecorder()
@@ -61,7 +60,7 @@ func TestGitHubQuotaUsageRequiresHostedAdministrator(t *testing.T) {
 	}
 
 	request = httptest.NewRequestWithContext(
-		context.WithValue(t.Context(), oauthSessionContextKey{}, oauthSession{Login: "operator"}),
+		context.WithValue(t.Context(), oauthSessionContextKey{}, adminRoleTestSession(t, app.oauth, "operator", "operator-token")),
 		http.MethodGet, "/api/v1/github-quota/usage", nil,
 	)
 	response = httptest.NewRecorder()

@@ -88,15 +88,15 @@ param collectorGithubAppId string = ''
 param collectorPrivateKey string = ''
 
 @secure()
-@description('Shared secret verifying GitHub webhook deliveries. Required with collectorImage.')
+@description('Shared secret verifying permission and collection webhook deliveries. At least 32 characters when supplied; required with collectorImage.')
 param githubWebhookSecret string = ''
 
 @secure()
 @description('Redis access key used only by the collection autoscaler to read stream backlog. Required with collectorImage.')
 param collectorRedisPassword string = ''
 
-@description('GitHub logins permitted to run administrative operations.')
-param githubAdminUsers array = []
+@description('Dashboard workspace repository in OWNER/REPOSITORY form. Defaults to collectorControlRepository when collection is enabled. Its immutable GitHub ID is resolved automatically.')
+param workspaceRepository string = ''
 
 @description('Control repository used for logical source discovery, in OWNER/REPOSITORY form.')
 param collectorControlRepository string = ''
@@ -209,7 +209,7 @@ resource collectorRedisPasswordValue 'Microsoft.KeyVault/vaults/secrets@2023-07-
   }
 }
 
-resource githubWebhookSecretValue 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (collectionEnabled) {
+resource githubWebhookSecretValue 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!empty(githubWebhookSecret)) {
   parent: keyVault
   name: 'cao-github-webhook-secret'
   properties: {
@@ -356,6 +356,10 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
           value: join(githubAllowedTeams, ',')
         }
         {
+          name: 'CAO_MCP_ACTIONS_REPOSITORY'
+          value: empty(workspaceRepository) ? collectorControlRepository : workspaceRepository
+        }
+        {
           name: 'CAO_SESSION_SECRET'
           value: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/cao-session-secret)'
         }
@@ -364,18 +368,15 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
           name: 'CAO_SESSION_SECRET_PREVIOUS'
           value: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/cao-session-secret-previous)'
         }
-      ], !collectionEnabled ? [] : [
-        // With collection configured the Function App admits webhook
-        // deliveries into the collection queue. It performs no collection of
-        // its own, so its per-request work stays constant.
+      ], empty(githubWebhookSecret) ? [] : [
         {
           name: 'CAO_GITHUB_WEBHOOK_SECRET'
           value: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/cao-github-webhook-secret)'
         }
-        {
-          name: 'CAO_GITHUB_ADMIN_USERS'
-          value: join(githubAdminUsers, ',')
-        }
+      ], !collectionEnabled ? [] : [
+        // With collection configured the Function App admits webhook
+        // deliveries into the collection queue. It performs no collection of
+        // its own, so its per-request work stays constant.
         {
           name: 'CAO_COLLECT_APP_ID'
           value: collectorGithubAppId

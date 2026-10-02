@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -148,7 +149,7 @@ func (a *App) rebuildStatus(response http.ResponseWriter, request *http.Request)
 }
 
 func (a *App) githubWebhook(response http.ResponseWriter, request *http.Request) {
-	if a.reconciler == nil || len(a.webhookSecret) == 0 {
+	if (a.reconciler == nil && a.oauth == nil) || len(a.webhookSecret) == 0 {
 		writeError(response, http.StatusServiceUnavailable, "webhook reconciliation is not configured")
 		return
 	}
@@ -168,6 +169,43 @@ func (a *App) githubWebhook(response http.ResponseWriter, request *http.Request)
 	event := strings.TrimSpace(request.Header.Get("X-GitHub-Event"))
 	if delivery == "" || event == "" {
 		writeError(response, http.StatusBadRequest, "GitHub delivery and event headers are required")
+		return
+	}
+	eventPayload := GitHubWebhook{Delivery: delivery, Event: event, Payload: payload}
+	if a.oauth != nil {
+		handled, login, invalidate, err := a.oauth.authorizationWebhookScope(request.Context(), eventPayload)
+		if err != nil {
+			if errors.Is(err, errAuthorizationStateUnavailable) {
+				a.logAuthBranch("webhook.authorization_state_unavailable")
+				writeError(response, http.StatusServiceUnavailable, "authorization state is unavailable")
+				return
+			}
+			a.logAuthBranch("webhook.authorization_payload_rejected")
+			writeError(response, http.StatusBadRequest, "invalid authorization webhook payload")
+			return
+		}
+		if handled {
+			if !invalidate {
+				a.logAuthBranch("webhook.authorization_ignored")
+				writeJSON(response, http.StatusAccepted, map[string]any{"accepted": true, "invalidated": false})
+				return
+			}
+			fresh, err := a.oauth.invalidateAuthorization(request.Context(), eventPayload, login)
+			if err != nil {
+				writeError(response, http.StatusServiceUnavailable, "authorization invalidation is unavailable")
+				return
+			}
+			if fresh && a.hub != nil {
+				a.hub.BroadcastAuthorizationChange()
+			}
+			writeJSON(response, http.StatusAccepted, map[string]any{
+				"accepted": true, "invalidated": fresh, "duplicate": !fresh,
+			})
+			return
+		}
+	}
+	if a.reconciler == nil {
+		writeError(response, http.StatusServiceUnavailable, "webhook reconciliation is not configured")
 		return
 	}
 	a.recordIngestionCounter(request.Context(), "webhookReceived")
@@ -207,11 +245,6 @@ func (a *App) githubWebhook(response http.ResponseWriter, request *http.Request)
 		a.releaseProjectionLock(request.Context(), token)
 		writeJSON(response, http.StatusAccepted, map[string]any{"accepted": true, "duplicate": true})
 		return
-	}
-	eventPayload := GitHubWebhook{
-		Delivery: delivery,
-		Event:    event,
-		Payload:  payload,
 	}
 	ctx, cancel := a.operationContext(request.Context())
 	if !a.launchTask(func() { a.performReconciliation(ctx, cancel, token, eventPayload) }) {

@@ -782,10 +782,16 @@ type fakeGitHubOptions struct {
 
 type fakeGitHubServer struct {
 	*httptest.Server
-	revoked          []string
-	rejectRevocation bool
-	membershipState  string
-	onUserRequest    func()
+	revoked               []string
+	rejectRevocation      bool
+	membershipState       string
+	onUserRequest         func()
+	repositoryPermissions map[string]bool
+	repositoryStatus      int
+	repositoryRequests    int
+	repositoryToken       string
+	repositoryID          int64
+	onRepositoryRequest   func()
 }
 
 func fakeGitHub(t *testing.T, options fakeGitHubOptions) *fakeGitHubServer {
@@ -793,6 +799,7 @@ func fakeGitHub(t *testing.T, options fakeGitHubOptions) *fakeGitHubServer {
 	server := &fakeGitHubServer{}
 	server.rejectRevocation = options.rejectRevocation
 	server.membershipState = options.membershipState
+	server.repositoryID = 42
 	mux := http.NewServeMux()
 	mux.HandleFunc("/login/oauth/access_token", func(response http.ResponseWriter, request *http.Request) {
 		if err := request.ParseForm(); err != nil {
@@ -819,6 +826,21 @@ func fakeGitHub(t *testing.T, options fakeGitHubOptions) *fakeGitHubServer {
 		_ = json.NewEncoder(response).Encode(map[string]string{
 			"login":      "octocat",
 			"avatar_url": server.URL + "/avatars/octocat.png",
+		})
+	})
+	mux.HandleFunc("/repos/example/control", func(response http.ResponseWriter, request *http.Request) {
+		server.repositoryRequests++
+		server.repositoryToken = request.Header.Get("Authorization")
+		if server.repositoryStatus != 0 {
+			response.WriteHeader(server.repositoryStatus)
+			return
+		}
+		permissions := server.repositoryPermissions
+		if server.onRepositoryRequest != nil {
+			server.onRepositoryRequest()
+		}
+		_ = json.NewEncoder(response).Encode(map[string]any{
+			"id": server.repositoryID, "full_name": "example/control", "permissions": permissions,
 		})
 	})
 	mux.HandleFunc("/user/memberships/orgs/example", func(response http.ResponseWriter, request *http.Request) {

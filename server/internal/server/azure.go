@@ -272,6 +272,10 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 	if err != nil {
 		return nil, err
 	}
+	sourceRepository := strings.TrimSpace(os.Getenv("CAO_MCP_ACTIONS_REPOSITORY"))
+	if sourceRepository == "" && collector != nil {
+		sourceRepository = collector.ControlRepository
+	}
 	postgresURL := strings.TrimSpace(os.Getenv("CAO_POSTGRES_URL"))
 	if postgresURL == "" {
 		return nil, errors.New("azure Functions mode requires CAO_POSTGRES_URL")
@@ -297,7 +301,7 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 		DashboardQueries:       definitions,
 		Collector:              collector,
 		WebhookSecret:          os.Getenv("CAO_GITHUB_WEBHOOK_SECRET"),
-		AdminUsers:             splitCSV(os.Getenv("CAO_GITHUB_ADMIN_USERS")),
+		WorkspaceRepository:    sourceRepository,
 		CORS:                   host.CORS,
 		Proxy: ProxyPolicy{
 			AllowedHosts:   allowedHosts,

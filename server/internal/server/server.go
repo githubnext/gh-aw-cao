@@ -52,26 +52,27 @@ type Config struct {
 	Proxy                  ProxyPolicy
 	// CORS is the reviewed cross-origin policy; the zero value is
 	// same-origin only.
-	CORS                 CORSPolicy
-	GitHubOAuth          *GitHubOAuthConfig
-	DatabaseQueriesPath  string
-	Database             *postgresx.Store
-	DashboardQueries     []query.Definition
-	DashboardQueriesPath string
-	AgentCatalogPath     string
-	MCPContractPath      string
-	MCPEnabled           bool
-	GitHubActionsToken   string
-	GitHubActionsActor   string
-	ActionsRepository    string
-	GitHubAPIURL         string
-	ActionsHTTPClient    *http.Client
-	SourceDirectory      string
-	Reconciler           Reconciler
-	Collector            *CollectorConfig
-	WebhookSecret        string
-	AdminUsers           []string
-	Logger               *log.Logger
+	CORS                  CORSPolicy
+	GitHubOAuth           *GitHubOAuthConfig
+	DatabaseQueriesPath   string
+	Database              *postgresx.Store
+	DashboardQueries      []query.Definition
+	DashboardQueriesPath  string
+	AgentCatalogPath      string
+	MCPContractPath       string
+	MCPEnabled            bool
+	GitHubActionsToken    string
+	GitHubActionsActor    string
+	ActionsRepository     string
+	WorkspaceRepository   string
+	WorkspaceRepositoryID int64
+	GitHubAPIURL          string
+	ActionsHTTPClient     *http.Client
+	SourceDirectory       string
+	Reconciler            Reconciler
+	Collector             *CollectorConfig
+	WebhookSecret         string
+	Logger                *log.Logger
 	// RateLimits overrides inbound request rate limits; the zero value keeps
 	// the production defaults.
 	RateLimits RateLimitConfig
@@ -129,6 +130,18 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 	if err := validateHostProfile(store, &config); err != nil {
 		return nil, err
 	}
+	if config.GitHubOAuth != nil {
+		oauthConfig := *config.GitHubOAuth
+		if config.WorkspaceRepository == "" {
+			config.WorkspaceRepository = config.ActionsRepository
+		}
+		if config.WorkspaceRepository == "" && config.Collector != nil {
+			config.WorkspaceRepository = config.Collector.ControlRepository
+		}
+		oauthConfig.WorkspaceRepository = config.WorkspaceRepository
+		oauthConfig.WorkspaceRepositoryID = config.WorkspaceRepositoryID
+		config.GitHubOAuth = &oauthConfig
+	}
 	if err := config.RateLimits.validate(); err != nil {
 		return nil, err
 	}
@@ -141,6 +154,10 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 	serverLog.Printf("initializing host_profile=%s", profile.Name)
 	if err := validateHostedMode(store, &config); err != nil {
 		return nil, err
+	}
+	if profile.Authentication == HostAuthenticationOAuth &&
+		config.WebhookSecret != "" && len(config.WebhookSecret) < 32 {
+		return nil, errors.New("hosted webhook secret must contain at least 32 characters")
 	}
 	info, err := os.Stat(config.SiteDirectory)
 	if err != nil || !info.IsDir() {
@@ -903,11 +920,21 @@ func (a *App) adminAuthorized(request *http.Request) bool {
 		a.logAuthBranch("admin.session_missing")
 		return false
 	}
-	for _, login := range a.config.AdminUsers {
-		if strings.EqualFold(strings.TrimSpace(login), session.Login) {
-			a.logAuthBranch("admin.allowed")
-			return true
-		}
+	workspaceID, err := a.oauth.workspaceRepositoryID(request.Context())
+	if err != nil {
+		a.logAuthBranch("admin.workspace_identity_unavailable")
+		return false
+	}
+	if a.oauth.config.WorkspaceRepository == "" || workspaceID <= 0 ||
+		!strings.EqualFold(session.AdminRepository, a.oauth.config.WorkspaceRepository) ||
+		session.AdminRepositoryID != workspaceID {
+		a.logAuthBranch("admin.repository_missing_or_changed")
+		return false
+	}
+	if session.Admin && time.Since(session.AuthorizedAt) < authorizationRecheckInterval &&
+		a.oauth.authorizationCurrent(request.Context(), session) {
+		a.logAuthBranch("admin.allowed")
+		return true
 	}
 	a.logAuthBranch("admin.denied")
 	return false
@@ -1034,6 +1061,13 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 			if !ok {
 				return
 			}
+			if a.oauth != nil {
+				session, _ := request.Context().Value(oauthSessionContextKey{}).(oauthSession)
+				if !a.oauth.authorizationCurrent(request.Context(), session) {
+					a.logAuthBranch("events.authorization_invalidated")
+					return
+				}
+			}
 			healthRevision := int64(0)
 			if allowHealth {
 				healthRevision = observation.healthRevision
@@ -1045,6 +1079,13 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 				lastHealthRevision = healthRevision
 			}
 		case <-heartbeat.C:
+			if a.oauth != nil {
+				session, _ := request.Context().Value(oauthSessionContextKey{}).(oauthSession)
+				if !a.oauth.authorizationCurrent(request.Context(), session) {
+					a.logAuthBranch("events.authorization_invalidated")
+					return
+				}
+			}
 			_, _ = io.WriteString(response, ": keepalive\n\n")
 			flusher.Flush()
 		case <-request.Context().Done():
@@ -1562,6 +1603,12 @@ func (hub *eventHub) Broadcast(revision int64) {
 	case hub.wake <- struct{}{}:
 	default:
 	}
+}
+
+func (hub *eventHub) BroadcastAuthorizationChange() {
+	hub.mu.Lock()
+	defer hub.mu.Unlock()
+	hub.publishLocked()
 }
 
 func (hub *eventHub) publishLocked() {

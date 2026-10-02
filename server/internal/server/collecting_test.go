@@ -101,12 +101,9 @@ func TestCollectionHealthQueryRunsThroughServerQueryEngine(t *testing.T) {
 }
 
 func TestCollectionStatusRequiresHostedAdministrator(t *testing.T) {
-	app := &App{
-		oauth:  &githubOAuth{},
-		config: Config{AdminUsers: []string{"operator"}},
-	}
+	app := &App{oauth: adminRoleTestOAuth(t)}
 	request := httptest.NewRequestWithContext(
-		context.WithValue(t.Context(), oauthSessionContextKey{}, oauthSession{Login: "reader"}),
+		context.WithValue(t.Context(), oauthSessionContextKey{}, adminRoleTestSession(t, app.oauth, "reader", "reader-token")),
 		http.MethodGet, "/api/v1/ingestion/health", nil,
 	)
 	response := httptest.NewRecorder()
@@ -116,7 +113,7 @@ func TestCollectionStatusRequiresHostedAdministrator(t *testing.T) {
 	}
 
 	request = httptest.NewRequestWithContext(
-		context.WithValue(t.Context(), oauthSessionContextKey{}, oauthSession{Login: "operator"}),
+		context.WithValue(t.Context(), oauthSessionContextKey{}, adminRoleTestSession(t, app.oauth, "operator", "operator-token")),
 		http.MethodGet, "/api/v1/ingestion/health", nil,
 	)
 	response = httptest.NewRecorder()

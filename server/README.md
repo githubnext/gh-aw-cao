@@ -370,7 +370,7 @@ settings:
 | `CAO_SESSION_SECRET` | Current session encryption/signing secret of at least 32 characters. |
 | `CAO_SESSION_SECRET_PREVIOUS` | Optional previous session secret retained only during controlled rotation. |
 | `CAO_GITHUB_ALLOWED_ORGS`, `CAO_GITHUB_ALLOWED_TEAMS` | Explicit authorization policy. |
-| `CAO_GITHUB_ADMIN_USERS` | Required comma-separated GitHub logins allowed to trigger rebuilds. |
+| `CAO_MCP_ACTIONS_REPOSITORY` | Dashboard workspace repository in `OWNER/REPOSITORY` form; shared with hosted MCP source authentication. Its admins and maintainers may access administrative resources. Collection profiles can reuse `CAO_COLLECT_CONTROL_REPOSITORY` when the source repository is not separately supplied. |
 | `CAO_GITHUB_WEBHOOK_SECRET` | Required GitHub webhook signature secret of at least 32 characters. |
 | `CAO_SOURCE_DIRECTORY` | Required authoritative deployed gh-aw artifact directory used by rebuild/reconciliation. |
 
@@ -381,6 +381,44 @@ Supply secrets through the deployment platform's secret manager (for example,
 Key Vault references, Kubernetes Secrets mounted into the process environment,
 or an equivalent managed facility), never command-line arguments or checked-in
 configuration.
+
+Administrative access always uses the dashboard's existing workspace repository;
+there is no separate administrator repository setting or username allowlist.
+The server uses the signed-in user's GitHub token to read
+`GET /repos/OWNER/REPOSITORY` and requires `permissions.admin` or
+`permissions.maintain`. Write, triage, and read permissions alone do not qualify.
+The repository's immutable GitHub ID is resolved automatically and pinned in a
+durable workspace identity record, independently of disposable process/session
+namespaces. An existing host workspace ID is honored when provided through the
+server configuration. A replacement repository at the same name cannot inherit
+an enrolled workspace's authority. Preserve these identity records during
+maintenance; clearing them re-enrolls the workspace from its source name.
+The checked role is bound to the workspace name and ID in the encrypted session,
+rechecked every five minutes and on token refresh, and checked immediately when
+the configured repository changes. API failures or missing permission evidence
+deny administrative access without denying ordinary organization/team-authorized
+dashboard access.
+
+Subscribe the workspace repository's webhook to `member`, `team`, `team_add`,
+and `repository` events and the owning organization's webhook to `membership`,
+`organization`, and `team` events, using the existing
+`CAO_GITHUB_WEBHOOK_SECRET`. Repository membership edits target the affected
+user; team access and repository lifecycle changes invalidate the workspace's
+cached authorization. Organization/team membership changes also recheck
+ordinary sign-in authorization. Invalidation is signed, synchronous, atomically
+deduplicated in Redis, and independent of ingestion or rebuild locks.
+All replicas check the invalidation revision before using cached authority;
+permission checks already in flight cannot restore it. Open event streams
+recheck before emitting revisions and on their heartbeat, and reconnect through
+normal session authorization. The five-minute fallback remains for missing or
+unsupported webhook notifications. Permission loss alone does not log out an
+otherwise authorized reader.
+
+The user's authorization must let GitHub return permissions for that repository.
+For private repositories, use a GitHub App user token with **Metadata: read**
+and an installation that includes the control repository, or an OAuth App token
+already authorized with the `repo` scope. CAO does not request broader OAuth
+scopes automatically; insufficient token access fails closed.
 
 ### Upstash Redis provider
 

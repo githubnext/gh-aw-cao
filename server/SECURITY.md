@@ -30,8 +30,27 @@ or public reverse proxy.
 
 Hosted mode rejects local bearer capabilities and requires GitHub OAuth,
 explicit organization or team authorization, and an exact trusted-host policy.
-Administrative rebuilds additionally require an explicit GitHub login in
-`CAO_GITHUB_ADMIN_USERS`.
+Administrative resources additionally require the signed-in user's GitHub
+`admin` or `maintain` permission on the dashboard workspace repository,
+checked with that user's token rather than an
+installation credential or username allowlist. The encrypted session binds the
+decision to the workspace name and automatically resolved immutable ID.
+The first authenticated metadata lookup enrolls that ID in a durable workspace
+record, which must be preserved during Redis maintenance and survives process
+namespace changes. Existing trusted host workspace IDs constrain enrollment
+when available; an enrolled workspace rejects a replacement at the same name.
+Permissions are rechecked every five
+minutes, on token refresh, and immediately after repository configuration changes.
+Missing repository configuration, unavailable GitHub APIs, and missing permission
+evidence deny administrative access while leaving ordinary authorized access
+unchanged. Read, triage, and write roles do not grant administrative access.
+Verified collaborator, team, organization membership, and workspace lifecycle
+webhooks publish atomically deduplicated, cross-replica authorization revisions
+before acknowledgement. A stale session or an in-flight check with an older
+revision cannot grant access. Repository-role loss preserves ordinary reader
+sessions; loss of all allowed organization/team membership revokes them through
+the normal revalidation path. Webhook payloads never establish workspace identity
+or grant a role; the server rechecks GitHub with the user's token.
 Mutating browser requests require the session-bound CSRF token. The webhook
 route is exempt from browser authentication only because it independently
 requires a valid `X-Hub-Signature-256` signature and delivery identity.

@@ -28,6 +28,17 @@ test('Azure dashboard Bicep does not output secrets or PAT-based configuration',
   assert.match(bicep, /OAuth authorization-code flow/);
 });
 
+test('Azure administrative access reuses the workspace repository identity', async () => {
+  assert.match(bicep, /param workspaceRepository string = ''/);
+  assert.match(bicep, /name:\s*'CAO_MCP_ACTIONS_REPOSITORY'\s*value:\s*empty\(workspaceRepository\) \? collectorControlRepository : workspaceRepository/);
+  assert.doesNotMatch(bicep, /githubAdmin|_ADMIN_/);
+  const template = JSON.parse(await readFile(new URL('../../server/azure/main.json', import.meta.url), 'utf8'));
+  assert.equal(template.parameters.workspaceRepository.type, 'string');
+  assert.equal(template.parameters.workspaceRepository.defaultValue, '');
+  assert.ok(Object.keys(template.parameters).every((name) => !name.startsWith('githubAdmin')));
+  assert.doesNotMatch(JSON.stringify(template), /_ADMIN_/);
+});
+
 test('Azure dashboard Bicep keeps secret-bearing settings in Key Vault', () => {
   assert.match(bicep, /resource keyVault 'Microsoft\.KeyVault\/vaults@/);
   assert.match(bicep, /enableRbacAuthorization:\s*true/);
@@ -51,4 +62,9 @@ test('Azure dashboard Bicep keeps secret-bearing settings in Key Vault', () => {
   assert.match(bicep, /ftpsState:\s*'Disabled'/);
   assert.match(bicep, /allowBlobPublicAccess:\s*false/);
   assert.match(bicep, /supportsHttpsTrafficOnly:\s*true/);
+});
+
+test('Azure permission webhooks do not require the collection profile', () => {
+  assert.match(bicep, /resource githubWebhookSecretValue[^\n]+if \(!empty\(githubWebhookSecret\)\)/);
+  assert.match(bicep, /empty\(githubWebhookSecret\) \? \[\] : \[\s*{\s*name: 'CAO_GITHUB_WEBHOOK_SECRET'/);
 });

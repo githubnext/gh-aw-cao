@@ -168,7 +168,7 @@ components:
     responsibility: expose canonical repositories, workflows, runs, jobs, sessions, and events without exposing Redis keys or representations
   dashboard_github_auth:
     path: server/internal/server/oauth.go
-    responsibility: authenticate hosted users through GitHub and enforce explicit organization or team authorization with server-side sessions
+    responsibility: authenticate hosted users through GitHub, enforce explicit organization or team authorization with server-side sessions, authorize administrators using the existing workspace identity and signed-in user's admin or maintain permission, automatically pin immutable workspace IDs, and invalidate cached decisions through verified permission webhooks
   dashboard_webhook_reconciliation:
     path: server/internal/server/operations.go
     responsibility: verify and deduplicate GitHub deliveries and reconcile the disposable projection from authoritative inputs
@@ -327,7 +327,9 @@ invariants:
   - "Dashboard data operations MUST be declared in Dashboard Language and execute outside the browser main thread: in the data Web Worker for static deployment or in the Go HTTP(S) server over current Postgres sources."
   - "Hosted Redis stores operational caches, queues, and sessions; it MUST NOT store or query dashboard entity sources."
   - "The local Redis profile MUST bind to loopback, use HTTP by default for localhost debugging, enable HTTPS only with operator-supplied certificate files, and MUST NOT expose Redis endpoints or credentials to browser code."
-  - "The hosted Redis profile MUST use GitHub OAuth with explicit organization or team authorization, explicit rebuild administrators, server-side secrets and sessions, and an explicit account-selection flow for switching GitHub identities."
+  - "The hosted Redis profile MUST use GitHub OAuth with explicit organization or team authorization, server-side secrets and sessions, and an explicit account-selection flow for switching GitHub identities."
+  - "Hosted administrative resources MUST require the signed-in user's GitHub admin or maintain permission on the existing workspace repository, automatically resolve and durably pin its immutable ID or honor a trusted host workspace ID, bind the checked identity to the encrypted session, reject replacement repositories at an enrolled name, and use no independent administrator repository or username setting. Durable identity records MUST survive process/session namespace changes and be preserved during Redis maintenance; clearing them re-enrolls by source name."
+  - "Verified collaborator, team, organization membership, and workspace lifecycle webhooks MUST synchronously publish atomically deduplicated cross-replica authorization revisions independently of ingestion locks; stale sessions, in-flight checks, and event-stream emissions MUST NOT grant access. Permission evidence MUST also be rechecked every five minutes, on token refresh, and after workspace changes. Missing or failed checks MUST deny administrative access without denying otherwise authorized dashboard readers; ordinary membership loss MUST revoke access when no allowed organization/team remains."
   - "Hosted Redis MUST use TLS by default and Azure Functions MUST always require TLS; private plaintext Redis is allowed only through an explicit opt-in and only for a private IP or single-label service hostname."
   - "A hosted non-loopback listener MUST terminate TLS or explicitly trust only private proxy CIDRs; forwarded headers are authoritative only from a direct peer in those CIDRs, with an exact allowed host and HTTPS protocol."
   - "An externally owned host MUST use an explicit generic OAuth target with listener external, preserve the entire CAO security handler, require direct HTTPS or a trusted private proxy boundary, and fail closed before service startup and after cancellation."

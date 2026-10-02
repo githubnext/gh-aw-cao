@@ -185,19 +185,20 @@ func TestHealthReportsPostgresFailureAsUnhealthy(t *testing.T) {
 	}
 }
 
-func TestHostedRebuildRequiresExplicitAdministrator(t *testing.T) {
+func TestHostedRebuildRequiresRepositoryAdministrator(t *testing.T) {
+	oauth := adminRoleTestOAuth(t)
+	reader := adminRoleTestSession(t, oauth, "dashboard-reader", "reader-token")
+	administrator := adminRoleTestSession(t, oauth, "cao-admin", "operator-token")
 	var branches []string
-	app := &App{
-		oauth: &githubOAuth{log: func(branch string) {
-			branches = append(branches, branch)
-		}},
-		config: Config{AdminUsers: []string{"cao-admin"}},
+	oauth.log = func(branch string) {
+		branches = append(branches, branch)
 	}
+	app := &App{oauth: oauth}
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/admin/rebuild", nil)
 	request = request.WithContext(context.WithValue(
 		request.Context(),
 		oauthSessionContextKey{},
-		oauthSession{Login: "dashboard-reader"},
+		reader,
 	))
 	if app.adminAuthorized(request) {
 		t.Fatal("non-administrator was authorized to rebuild")
@@ -205,13 +206,27 @@ func TestHostedRebuildRequiresExplicitAdministrator(t *testing.T) {
 	request = request.WithContext(context.WithValue(
 		request.Context(),
 		oauthSessionContextKey{},
-		oauthSession{Login: "CAO-ADMIN"},
+		administrator,
 	))
 	if !app.adminAuthorized(request) {
-		t.Fatal("explicit administrator was denied")
+		t.Fatal("repository maintainer was denied")
 	}
 	if strings.Join(branches, ",") != "admin.denied,admin.allowed" {
 		t.Fatalf("unexpected administrator branch logs: %v", branches)
+	}
+	for _, test := range []struct {
+		session oauthSession
+		status  int
+	}{
+		{reader, http.StatusForbidden},
+		{administrator, http.StatusServiceUnavailable},
+	} {
+		response := httptest.NewRecorder()
+		request = request.WithContext(context.WithValue(t.Context(), oauthSessionContextKey{}, test.session))
+		app.rebuild(response, request)
+		if response.Code != test.status {
+			t.Fatalf("rebuild returned %d, want %d", response.Code, test.status)
+		}
 	}
 }
 
