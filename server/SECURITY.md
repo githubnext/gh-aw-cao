@@ -52,7 +52,8 @@ back to the direct peer rather than an attacker-controlled earlier hop. Query
 requests receive the tightest limit because they consume the most server and
 Redis work. The limiter fails
 closed when Redis is unavailable, and `429` responses communicate the cooldown
-with `Retry-After` plus the standard `RateLimit-*` headers. Health/readiness
+with `Retry-After` plus the standard `RateLimit-*` headers. Hosted public
+health/readiness probes share a separate per-client-address bucket; local
 probes remain exempt. GitHub webhooks are exempt from user quotas but cross the
 high-capacity edge bucket before signature validation, bounding invalid request
 bodies and HMAC work without disrupting ordinary delivery retries.

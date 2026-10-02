@@ -134,5 +134,6 @@ test('selected JSON Schemas and nullable responses are emitted', () => {
     const schema = openapi.paths[path].get.responses['503'].content['application/json'].schema
     assert.ok(schema.anyOf.some(branch => branch.$ref === `#/components/schemas/${response}`), path)
     assert.ok(schema.anyOf.some(branch => branch.required?.includes('error')), path)
+    assert.ok(openapi.paths[path].get.responses['429'].content['application/json'], path)
   }
 })

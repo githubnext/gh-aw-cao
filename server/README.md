@@ -529,8 +529,11 @@ quotas. The normative contract is `specs/server-rate-limiting.md`.
 | OAuth entry and callback | 10 | 5 minutes |
 | Other API and auth requests | 120 | 1 minute |
 | Hosted pre-authentication edge | 1,200 per client IP | 1 minute |
+| Hosted public health/readiness (shared across probe paths) | 600 per client IP | 1 minute |
 
-Health/readiness probes are exempt. GitHub webhooks are exempt from user/API
+Local health/readiness probes remain exempt. Hosted probes can return `429`
+when their shared per-client bucket is exhausted, or `503` when Redis cannot
+enforce it. GitHub webhooks are exempt from user/API
 quotas but use the high-capacity edge bucket before signature validation.
 Hosted dashboard assets use that edge bucket so session loading remains bounded
 without applying the tighter API quota to page loads.

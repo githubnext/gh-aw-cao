@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
@@ -21,6 +22,7 @@ type serverRateLimitClient struct {
 	command     []string
 	callCount   int
 	maxDeadline time.Duration
+	err         error
 }
 
 func (client *serverRateLimitClient) Do(ctx context.Context, command ...string) (any, error) {
@@ -29,7 +31,7 @@ func (client *serverRateLimitClient) Do(ctx context.Context, command ...string) 
 	if deadline, ok := ctx.Deadline(); ok {
 		client.maxDeadline = time.Until(deadline)
 	}
-	return client.result, nil
+	return client.result, client.err
 }
 
 func (*serverRateLimitClient) DoMany(context.Context, [][]string) ([]any, error) {
@@ -260,6 +262,95 @@ func TestInnerRateLimitExemptsServiceProbesWebhooksAndAssets(t *testing.T) {
 	}
 }
 
+func TestHostedPublicProbesShareClientBucket(t *testing.T) {
+	for _, path := range []string{"/api/health", "/api/v1/health", "/api/readiness"} {
+		t.Run(path, func(t *testing.T) {
+			client := &serverRateLimitClient{result: []any{int64(0), int64(0), int64(1500), int64(60000)}}
+			app := hostedRateLimitApp(client)
+			handler := app.preAuthRateLimit(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+				t.Fatal("exhausted public probe reached handler")
+			}))
+			request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "https://dashboard.example"+path, nil)
+			request.RemoteAddr = "192.0.2.10:4321"
+			response := httptest.NewRecorder()
+
+			handler.ServeHTTP(response, request)
+
+			sum := sha256.Sum256([]byte("client:192.0.2.10"))
+			wantKey := "cao:test:rate-limit:public:" + hex.EncodeToString(sum[:])
+			if response.Code != http.StatusTooManyRequests ||
+				response.Header().Get("Retry-After") != "2" ||
+				response.Header().Get("RateLimit-Limit") != "600" ||
+				response.Header().Get("RateLimit-Remaining") != "0" ||
+				response.Header().Get("RateLimit-Reset") != "60" ||
+				response.Header().Get("RateLimit-Policy") != "600;w=60" {
+				t.Fatalf("unexpected public probe response: status=%d headers=%v", response.Code, response.Header())
+			}
+			if len(client.command) < 6 || client.command[3] != wantKey ||
+				client.command[4] != "600" || client.command[5] != "60000" {
+				t.Fatalf("public bucket command = %#v", client.command)
+			}
+		})
+	}
+}
+
+func TestHostedPublicProbeAllowsRequestAndSkipsInvalidBoundary(t *testing.T) {
+	client := &serverRateLimitClient{result: []any{int64(1), int64(599), int64(0), int64(100)}}
+	app := hostedRateLimitApp(client)
+	handler := app.preAuthRateLimit(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.WriteHeader(http.StatusNoContent)
+	}))
+	for _, testCase := range []struct {
+		name, method, host string
+		wantCalls          int
+	}{
+		{"valid", http.MethodGet, "dashboard.example", 1},
+		{"head", http.MethodHead, "dashboard.example", 2},
+		{"unsupported method", http.MethodPost, "dashboard.example", 2},
+		{"invalid host", http.MethodGet, "attacker.example", 2},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			response := httptest.NewRecorder()
+			request := httptest.NewRequestWithContext(t.Context(), testCase.method, "https://"+testCase.host+"/api/health", nil)
+			handler.ServeHTTP(response, request)
+			if response.Code != http.StatusNoContent || client.callCount != testCase.wantCalls {
+				t.Fatalf("probe status=%d limiter calls=%d", response.Code, client.callCount)
+			}
+			if testCase.name == "valid" && response.Header().Get("RateLimit-Remaining") != "599" {
+				t.Fatalf("allowed probe missing rate limit headers: %v", response.Header())
+			}
+		})
+	}
+}
+
+func TestHostedPublicProbeFailsClosedWhenLimiterUnavailable(t *testing.T) {
+	client := &serverRateLimitClient{err: errors.New("redis unavailable")}
+	app := hostedRateLimitApp(client)
+	handler := app.preAuthRateLimit(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("probe reached handler without rate limiting")
+	}))
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "https://dashboard.example/api/readiness", nil))
+	if response.Code != http.StatusServiceUnavailable || client.callCount != 1 {
+		t.Fatalf("limiter outage returned status=%d calls=%d", response.Code, client.callCount)
+	}
+	if strings.Contains(response.Body.String(), "redis unavailable") {
+		t.Fatal("limiter response exposed Redis details")
+	}
+}
+
+func TestLocalPublicProbesRemainUnmetered(t *testing.T) {
+	client := &serverRateLimitClient{}
+	app := &App{store: redisx.NewStore(client, "test")}
+	handler := app.preAuthRateLimit(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.WriteHeader(http.StatusNoContent)
+	}))
+	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://localhost/api/health", nil))
+	if client.callCount != 0 {
+		t.Fatal("local public probe used the hosted rate limiter")
+	}
+}
+
 func TestPreAuthRateLimitBoundsWebhookBeforeSignatureValidation(t *testing.T) {
 	client := &serverRateLimitClient{result: []any{int64(1), int64(1199), int64(0), int64(50)}}
 	app := hostedRateLimitApp(client)
@@ -467,6 +558,7 @@ func TestRateLimitConfigRejectsInvalidPolicies(t *testing.T) {
 	for _, limits := range []RateLimitConfig{
 		{General: RateLimitPolicy{Capacity: -1}},
 		{Query: RateLimitPolicy{Window: time.Microsecond}},
+		{Public: RateLimitPolicy{Capacity: -1}},
 	} {
 		if err := limits.validate(); err == nil {
 			t.Errorf("limits %#v must be rejected", limits)

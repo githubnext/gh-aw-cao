@@ -51,8 +51,13 @@ The server MUST apply the following token buckets.
 | OAuth | `/auth/login`, `/auth/callback` | 10 | 5 minutes | client address for login; OAuth state for callback when present |
 | General | other `/api/` and `/auth/` requests | 120 | 1 minute | authenticated GitHub login, otherwise client address |
 | Hosted edge | non-public hosted requests before session loading | 1,200 | 1 minute | client address |
+| Hosted public probes | `GET /api/health`, `GET /api/v1/health`, `GET /api/readiness` | 600 | 1 minute | client address, shared across probe paths |
 
-Health and readiness endpoints MUST be exempt. The independently
+Hosted health and readiness probes (including HEAD requests accepted by the
+GET routes) MUST use the public probe bucket before their handler runs, without
+requiring authentication. The loopback local
+profile MUST leave these probes unmetered. Invalid host or proxy boundaries
+MUST be rejected without consulting the limiter. The independently
 signature-authenticated GitHub webhook endpoint MUST be exempt from inner
 user/API quotas but MUST cross the hosted edge bucket before its body and
 signature are processed. The hosted edge bucket MUST also cover static dashboard
@@ -164,7 +169,8 @@ A conforming implementation MUST test:
 7. repeated and comma-separated proxy headers, address-and-port forms, RFC 7239
    values, and malformed final-value fallback;
 8. separate OAuth callback subjects behind one enterprise egress address; and
-9. health/readiness exemptions and pre-signature webhook edge coverage.
+9. local health/readiness exemptions and pre-signature webhook edge coverage;
+10. hosted public probe limits, local exemption, and shared client-address keys.
 
 ## 7. Security and privacy considerations
 
