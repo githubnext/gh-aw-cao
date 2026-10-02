@@ -1384,6 +1384,42 @@ deleting that volume. Do not use `down -v` unless you intend to erase its data.
 For hosted deployments, supply exporter authentication through the deployment
 secret manager instead of exporting it from an interactive shell.
 
+### PostgreSQL backfill integration
+
+From the repository root, run:
+
+```bash
+npm run test:integration:dashboard-backfill
+```
+
+The harness requires Go, Docker, Compose (plugin or standalone), curl, and
+OpenSSL. It starts isolated PostgreSQL, Redis, and OpenObserve containers using
+`server/backfill-compose.yml`, generates ephemeral credentials, waits for
+readiness, and starts a real loopback Go HTTP server inside the test. Random
+host ports and a unique Compose project avoid interfering with existing local
+services. All containers and their disposable data are removed on exit; your
+normal dashboard and OpenObserve volumes are untouched.
+
+The suite uses the checked-in deployed snapshot and fake GitHub enumeration;
+it needs no GitHub token or live repository access. It verifies cold-start
+native rows and relationships, durable repository/run admissions, idempotent
+reruns and enumeration checkpoints, replay after PostgreSQL projection loss
+without GitHub access, empty-lake rejection, and preservation of committed rows
+and HTTP readiness after a hash-valid malformed replacement. A repaired replay
+must clear the retry marker without advancing an unchanged data revision.
+OpenObserve searches must find ingestion, PostgreSQL, and query spans, match
+the HTTP response's W3C trace ID, and contain positive PostgreSQL and backfill
+queue/deduplication metric samples.
+
+Ordinary Go tests skip this suite. Explicitly enabled runs fail rather than
+skip when any required service or exporter configuration is missing. The
+separate **Postgres backfill and OpenObserve integration** job in
+`.github/workflows/cgo.yml` runs the same harness and uploads Go results and
+service logs to `go-server-backfill`. Local reports are in `.tmp/go-backfill/`
+(override with `CAO_BACKFILL_REPORT_DIR`).
+
+### Local serving
+
 `serve` prints a capability URL such as:
 
 ```text

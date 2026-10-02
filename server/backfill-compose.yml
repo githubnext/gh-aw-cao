@@ -1,0 +1,35 @@
+services:
+  redis:
+    image: redis:8.2-alpine
+    ports:
+      - "127.0.0.1::6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cao_backfill
+      POSTGRES_USER: cao_backfill
+      POSTGRES_PASSWORD: ${CAO_LOCAL_POSTGRES_PASSWORD:?Set an ephemeral Postgres password}
+    ports:
+      - "127.0.0.1::5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cao_backfill -d cao_backfill"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  openobserve:
+    image: public.ecr.aws/zinclabs/openobserve@sha256:d4a878fac1f6c56003764f7f2a1625668917388f167e222c8c810de3f54c56ba
+    environment:
+      ZO_DATA_DIR: /data
+      ZO_ROOT_USER_EMAIL: ${CAO_LOCAL_OTEL_EMAIL:?Set the local OpenObserve email}
+      ZO_ROOT_USER_PASSWORD: ${CAO_LOCAL_OTEL_PASSWORD:?Set an ephemeral OpenObserve password}
+    ports:
+      - "127.0.0.1::5080"
+    tmpfs:
+      - /data
