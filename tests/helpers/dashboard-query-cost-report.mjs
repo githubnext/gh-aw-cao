@@ -10,7 +10,7 @@ export function postgresQueryCostMarkdown(report, candidates) {
     "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
     ...measurements.map((entry) => `| \`${entry.query}\` | ${ranks.get(entry.query)} | ${entry.rows} | ${entry.metrics.operations} | ${entry["duration-ms"].toFixed(2)} | ${entry.metrics.peakWorkingRows} | ${entry.metrics.retainedBytes} |`),
     "",
-    "_Timings include Postgres source reads and Go query execution; operations and retained bytes are Go engine metrics, not PostgreSQL EXPLAIN statistics._",
+    "_Timings include PostgreSQL SQL plan execution and Go result decoding; operations and retained bytes are SQL plan resource metrics, not PostgreSQL EXPLAIN statistics._",
     "",
   ].join("\n");
 }
