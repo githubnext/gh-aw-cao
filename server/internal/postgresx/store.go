@@ -157,6 +157,7 @@ func initialize(ctx context.Context, db *sql.DB) error {
 			summary TEXT, payload_ref TEXT, target_repo TEXT,
 			target_organization TEXT, target_repository TEXT,
 			rollout_mode TEXT, campaign_name TEXT, campaign_icon TEXT,
+			campaign_readme_path TEXT,
 			role TEXT, workflow_path TEXT, title TEXT, branch TEXT,
 			engine TEXT, engine_version TEXT, requested_model TEXT,
 			resolved_model TEXT, model_id TEXT,

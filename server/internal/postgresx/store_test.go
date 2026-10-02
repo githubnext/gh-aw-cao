@@ -844,6 +844,14 @@ func TestCanonicalProducerDifferentialIntegration(t *testing.T) {
 			"attributableRunIds": []any{}, "included": nil, "value": json.Number("0.000100")},
 	}
 	sources := map[string]model.Source{
+		"$workflows": {
+			Source: "$workflows", Rows: []model.Row{
+				{"id": "workflow:1", "campaignReadmePath": "docs/campaign.md"},
+				{"id": "workflow:2", "campaignReadmePath": ""},
+				{"id": "workflow:3", "campaignReadmePath": nil},
+				{"id": "workflow:4"},
+			},
+		},
 		"$graderObservations": {
 			Source: "$graderObservations", Rows: input, Metadata: model.Metadata{"source-id": "$graderObservations"},
 		},
@@ -913,6 +921,16 @@ func TestCanonicalProducerDifferentialIntegration(t *testing.T) {
 		AND id = 'campaign:dashboard' AND extension IS NULL`).Scan(&stored); err != nil || stored != 1 {
 		t.Fatalf("fully known deployed fixture retained JSON extension: count=%d err=%v", stored, err)
 	}
+	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM cao_canonical_rows
+		WHERE namespace = 'default' AND source_name = '$workflows'
+		AND extension IS NULL AND (
+			(ordinal = 0 AND campaign_readme_path = 'docs/campaign.md') OR
+			(ordinal = 1 AND campaign_readme_path = '') OR
+			(ordinal = 2 AND campaign_readme_path IS NULL AND 'campaignReadmePath' = ANY(present)) OR
+			(ordinal = 3 AND campaign_readme_path IS NULL AND NOT 'campaignReadmePath' = ANY(present)))`).
+		Scan(&stored); err != nil || stored != 4 {
+		t.Fatalf("workflow README path not native-only: count=%d err=%v", stored, err)
+	}
 	for _, table := range []string{"cao_values", "cao_source_rows"} {
 		if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM `+table+` WHERE namespace = 'default'`).
 			Scan(&stored); err != nil || stored != 0 {
@@ -929,11 +947,26 @@ func TestCanonicalProducerDifferentialIntegration(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(loaded.Rows, input) {
 		t.Fatalf("native producer roundtrip: %+v err=%v", loaded, err)
 	}
-	for _, name := range []string{"$campaigns", "$marketplacePackages", "$audits"} {
+	for _, name := range []string{"$campaigns", "$workflows", "$marketplacePackages", "$audits"} {
 		loaded, _, err := store.LoadSource(ctx, name, nil)
 		if err != nil || !reflect.DeepEqual(loaded.Rows, sources[name].Rows) {
 			t.Errorf("%s native structured roundtrip: %+v err=%v", name, loaded, err)
 		}
+	}
+	readmeSelection := []query.Definition{{Name: "workflow-readme", From: "$workflows",
+		Filter: &query.Filter{Predicates: []query.Predicate{{Field: "campaignReadmePath", Equals: "docs/campaign.md"}}},
+		Select: []query.SelectedField{{Field: "campaignReadmePath"}}}}
+	err = store.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) error {
+		result, _, supported, planErr := reader.(NativePlanExecutor).ExecuteNativePlan(ctx,
+			readmeSelection, []string{"workflow-readme"}, []string{"workflow-readme"})
+		if planErr != nil || !supported || !reflect.DeepEqual(result["workflow-readme"].Rows,
+			[]model.Row{{"campaignReadmePath": "docs/campaign.md"}}) {
+			t.Errorf("native workflow README selection: %+v supported=%t err=%v", result, supported, planErr)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 	richSelection := []query.Definition{{Name: "rich-link", From: "$graderObservations",
 		Filter: &query.Filter{Predicates: []query.Predicate{{Field: "graderId", Equals: "grader:2"}}},
@@ -1342,6 +1375,12 @@ func TestCanonicalExtensionColumnUpgrade(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if _, err := legacy.ExecContext(ctx, `UPDATE cao_canonical_rows SET
+		extension = (extension::jsonb || json_build_object('campaignReadmePath',
+			CASE ordinal WHEN 0 THEN 'docs/campaign.md' WHEN 2 THEN '' ELSE NULL END)::jsonb)::json
+		WHERE source_name = '$runs' AND ordinal IN (0, 1, 2)`); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := legacy.ExecContext(ctx, `UPDATE cao_canonical_rows
 		SET run_href_json = '{"relation":"run"}'::json
 		WHERE source_name = '$runs' AND ordinal = 0`); err != nil {
@@ -1429,6 +1468,25 @@ func TestCanonicalExtensionColumnUpgrade(t *testing.T) {
 			!reflect.DeepEqual(row["openEvidence"], map[string]any{"source": "old"}) {
 			t.Fatalf("upgraded row %d lost a field: %#v", i, row)
 		}
+	}
+	for i, want := range []any{"docs/campaign.md", nil, ""} {
+		if got, exists := source.Rows[i]["campaignReadmePath"]; !exists || got != want {
+			t.Fatalf("upgraded README path %d: %#v", i, source.Rows[i])
+		}
+	}
+	if _, exists := source.Rows[3]["campaignReadmePath"]; exists {
+		t.Fatalf("upgrade added absent README path: %#v", source.Rows[3])
+	}
+	var migratedReadme bool
+	if err := upgraded.db.QueryRowContext(ctx, `SELECT bool_and(
+		(ordinal = 0 AND campaign_readme_path = 'docs/campaign.md' OR
+			ordinal = 1 AND campaign_readme_path IS NULL OR
+			ordinal = 2 AND campaign_readme_path = '')
+		AND 'campaignReadmePath' = ANY(present)
+		AND NOT EXISTS (SELECT 1 FROM json_object_keys(extension) AS key WHERE key = 'campaignReadmePath'))
+		FROM cao_canonical_rows WHERE namespace = 'default' AND source_name = '$runs'
+			AND ordinal IN (0, 1, 2)`).Scan(&migratedReadme); err != nil || !migratedReadme {
+		t.Fatalf("README path not backfilled to native column: %t, %v", migratedReadme, err)
 	}
 	var migratedTarget bool
 	if err := upgraded.db.QueryRowContext(ctx, `SELECT bool_and(

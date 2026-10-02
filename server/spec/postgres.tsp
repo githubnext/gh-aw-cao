@@ -84,6 +84,7 @@ model CanonicalRow {
   rolloutMode?: string | null;
   campaignName?: string | null;
   campaignIcon?: string | null;
+  campaignReadmePath?: string | null;
   role?: string | null;
   workflowPath?: string | null;
   title?: string | null;

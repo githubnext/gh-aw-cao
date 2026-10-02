@@ -3457,6 +3457,16 @@
               }
             ]
           },
+          "campaignReadmePath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "role": {
             "anyOf": [
               {
