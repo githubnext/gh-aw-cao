@@ -288,6 +288,142 @@
       "limit": 10
     },
     {
+      "name": "campaign-workflow-import-evidence",
+      "subject": "Summarize retained import evidence at workflow grain for campaign inventory quality.",
+      "objective": "Preserve import-evidence provenance without materializing per-run ingestion indicators.",
+      "acceptance": "Compose all four retained event sources with the same availability, freshness, and completeness as event-runs; counts describe retained records, not executions or outcomes.",
+      "from": "audit-event-runs",
+      "union": ["domain-event-runs", "tool-event-runs", "issue-event-runs"],
+      "aggregate": {
+        "by": ["organization", "repository", "workflow"],
+        "values": [
+          { "field": "events", "as": "events", "reducer": "sum" }
+        ]
+      }
+    },
+    {
+      "name": "campaign-workflow-execution-base",
+      "subject": "Summarize retained run attempts and AI Credits before campaign workflow enrichment.",
+      "objective": "Read run identity and recorded AI Credits together instead of enriching every run with import status.",
+      "acceptance": "Count distinct run-attempt identities and sum aic-total per organization, repository, and workflow; missing retained evidence is not proof of no execution or cost.",
+      "from": "runs",
+      "compute": [
+        {
+          "as": "run-attempt-identity",
+          "function": "concat",
+          "args": [{ "field": "run" }, { "value": ":" }, { "field": "run-attempt" }]
+        }
+      ],
+      "aggregate": {
+        "by": ["organization", "repository", "workflow"],
+        "values": [
+          { "field": "run-attempt-identity", "as": "runs", "reducer": "distinct-count" },
+          { "field": "aic-total", "as": "aic", "reducer": "sum" }
+        ]
+      }
+    },
+    {
+      "name": "campaign-workflow-execution-totals",
+      "subject": "Attach retained import-evidence quality to compact workflow execution totals.",
+      "objective": "Preserve the public inventory's run and import availability composition after aggregating run evidence.",
+      "acceptance": "Keep runs and AI Credits unchanged; unavailable run evidence fails closed and optional import evidence degrades quality exactly as in run-import-status.",
+      "description": "The import-evidence join preserves inventory provenance without per-run ingestion indicators. It follows run aggregation so unavailable run evidence retains the original failure-quality semantics.",
+      "from": "campaign-workflow-execution-base",
+      "joins": [
+        {
+          "source": "campaign-workflow-import-evidence",
+          "type": "left",
+          "on": [
+            { "left": "organization", "right": "organization" },
+            { "left": "repository", "right": "repository" },
+            { "left": "workflow", "right": "workflow" }
+          ],
+          "fields": [{ "field": "events", "as": "imported-events" }]
+        }
+      ],
+      "select": [
+        { "field": "organization" },
+        { "field": "repository" },
+        { "field": "workflow" },
+        { "field": "runs" },
+        { "field": "aic" }
+      ]
+    },
+    {
+      "name": "campaign-workflow-inventory",
+      "subject": "Project declared campaign workflows with lean execution and configuration evidence.",
+      "objective": "Provide campaign totals and lists without unused ingestion, failure, or dashboard-link computations.",
+      "acceptance": "Keep all declared orchestrators and workers, including inactive and unobserved entries; preserve inventory ordering, configuration defaults, execution totals, and import-evidence quality.",
+      "description": "Lean campaign inventory with execution totals that retain the public workflow inventory's evidence-quality dependencies.",
+      "from": "workflows",
+      "joins": [
+        {
+          "source": "campaign-workflow-execution-totals",
+          "type": "left",
+          "on": [
+            { "left": "organization", "right": "organization" },
+            { "left": "repository", "right": "repository" },
+            { "left": "workflow", "right": "workflow" }
+          ],
+          "fields": [
+            { "field": "runs", "as": "observed-runs" },
+            { "field": "aic", "as": "observed-aic" }
+          ]
+        }
+      ],
+      "filter": {
+        "predicates": [
+          { "field": "workflow-role", "in": ["orchestrator", "worker"] }
+        ]
+      },
+      "compute": [
+        {
+          "as": "repository-slug",
+          "function": "concat",
+          "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }]
+        },
+        {
+          "as": "declared-mode",
+          "function": "coalesce",
+          "args": [{ "field": "rollout-mode" }, { "value": "unknown" }]
+        },
+        {
+          "as": "declared-registration",
+          "function": "coalesce",
+          "args": [{ "field": "workflow-active" }, { "value": "unknown" }]
+        },
+        {
+          "as": "total-runs",
+          "function": "coalesce",
+          "args": [{ "field": "observed-runs" }, { "value": 0 }]
+        },
+        {
+          "as": "total-aic",
+          "function": "coalesce",
+          "args": [{ "field": "observed-aic" }, { "value": 0 }]
+        }
+      ],
+      "select": [
+        { "field": "campaign" },
+        { "field": "campaign-name" },
+        { "field": "organization" },
+        { "field": "repository-slug", "as": "repository" },
+        { "field": "workflow" },
+        { "field": "workflow-name" },
+        { "field": "workflow-role" },
+        { "field": "declared-mode", "as": "rollout-mode" },
+        { "field": "declared-registration", "as": "workflow-active" },
+        { "field": "total-runs", "as": "runs" },
+        { "field": "total-aic", "as": "aic" },
+        { "field": "repository-link" },
+        { "field": "workflow-link" }
+      ],
+      "order-by": [
+        { "field": "repository", "direction": "asc" },
+        { "field": "workflow", "direction": "asc" }
+      ]
+    },
+    {
       "name": "workflow-inventory",
       "subject": "List declared workflows with their campaign, repository, configuration, and observed execution totals.",
       "objective": "Compare declared workflow configuration with retained run, import-coverage, and AI Credit evidence to select a workflow for closer inspection.",

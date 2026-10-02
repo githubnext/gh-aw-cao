@@ -1188,12 +1188,53 @@
       ]
     },
     {
+      "name": "campaign-dispatch-inventory",
+      "subject": "Project retained dispatch identity and campaign attribution before campaign counting.",
+      "objective": "Count dispatches without materializing run diagnoses and presentation links.",
+      "acceptance": "Keep workflow_dispatch runs in timestamp order with declared campaign attribution; preserve workflow and incomplete-outcome join quality and duplicate-key failure behavior.",
+      "description": "Lean dispatch-count input; the incomplete-outcome join preserves the full campaign run source's evidence quality and fail-closed validation.",
+      "from": "runs",
+      "joins": [
+        {
+          "source": "workflows",
+          "type": "left",
+          "on": [
+            { "left": "organization", "right": "organization" },
+            { "left": "repository", "right": "repository" },
+            { "left": "workflow", "right": "workflow" }
+          ],
+          "fields": [{ "field": "campaign", "as": "declared-campaign" }]
+        },
+        {
+          "source": "run-incomplete-outcomes",
+          "type": "left",
+          "on": [
+            { "left": "organization", "right": "organization" },
+            { "left": "repository", "right": "repository" },
+            { "left": "workflow", "right": "workflow" },
+            { "left": "run", "right": "run" },
+            { "left": "run-attempt", "right": "run-attempt" }
+          ],
+          "fields": [{ "field": "outcome-kind", "as": "outcome-kind" }]
+        }
+      ],
+      "filter": {
+        "predicates": [{ "field": "event", "equals": "workflow_dispatch" }]
+      },
+      "select": [
+        { "field": "declared-campaign", "as": "campaign" },
+        { "field": "run" },
+        { "field": "started-at" }
+      ],
+      "order-by": [{ "field": "started-at", "direction": "desc" }]
+    },
+    {
       "name": "campaign-dispatch-totals",
       "subject": "Summarize observed workflow dispatches for each centrally managed campaign.",
       "objective": "Compare retained workflow_dispatch run counts across attributed campaigns.",
       "acceptance": "Count distinct run identifiers per campaign from dispatches; do not treat missing campaign attribution or unretained dispatches as zero actual activity.",
       "description": "Observed workflow-dispatch run totals grouped by campaign.",
-      "from": "dispatches",
+      "from": "campaign-dispatch-inventory",
       "aggregate": {
         "by": [
           "campaign"
@@ -1213,7 +1254,7 @@
       "objective": "Compare declared orchestrator/worker composition, rollout registration, observed runs, and AI Credit usage by campaign.",
       "acceptance": "Group only orchestrator and worker workflow-inventory rows by campaign; retain workflow count, distinct roles/modes/registration and summed observed runs and AIC, without inferring successful outcomes.",
       "description": "Observed workflow, rollout, run, and AI Credit totals grouped by campaign.",
-      "from": "workflow-inventory",
+      "from": "campaign-workflow-inventory",
       "filter": {
         "predicates": [
           {
