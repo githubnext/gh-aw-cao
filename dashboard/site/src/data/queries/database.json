@@ -338,6 +338,17 @@
     ]
   },
   {
+    "name": "usage",
+    "stores": ["runs"],
+    "from": "$runs",
+    "select": [
+      { "field": "owner", "as": "organization" },
+      { "field": "repository" },
+      { "field": "workflowPath", "as": "workflow" },
+      { "field": "aicTotal", "as": "aic" }
+    ]
+  },
+  {
     "name": "runs",
     "stores": ["workflows", "runs"],
     "from": "$runs",

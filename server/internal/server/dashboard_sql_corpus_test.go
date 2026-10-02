@@ -79,7 +79,7 @@ func dashboardSQLCorpus() ([]query.Definition, map[string]any, error) {
 	parameters := map[string]any{}
 	for _, fragment := range dashboard.Fragments {
 		path := filepath.Join("../../../dashboard/site", fragment)
-		content, err := os.ReadFile(path)
+		content, err := os.ReadFile(path) // #nosec G304 -- fragments come from the checked-in dashboard manifest in this repository test.
 		if err != nil {
 			return nil, nil, fmt.Errorf("read deployed dashboard fragment %q: %w", fragment, err)
 		}
