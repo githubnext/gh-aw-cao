@@ -7,9 +7,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
+
+var planLog = logger.New("cao:postgresx:plan")
 
 // NativePlanExecutor executes supported complete query paths within the same
 // repeatable-read snapshot as State. A false result leaves the Go evaluator in
@@ -18,13 +21,33 @@ type NativePlanExecutor interface {
 	ExecuteNativePlan(context.Context, []query.Definition, []string, []string) (map[string]model.Source, model.Metrics, bool, error)
 }
 
+// planRejectionReason names why simplePlan declined a requested query shape,
+// stable across its exact admission rules so it is useful to log without
+// exposing query names, field names, or predicate values.
+type planRejectionReason string
+
+const (
+	planRejectionReasonNone                 planRejectionReason = "none"
+	planRejectionReasonRequestShape         planRejectionReason = "request-shape"
+	planRejectionReasonDerivedRawSource     planRejectionReason = "derived-raw-source"
+	planRejectionReasonUnsupportedOperator  planRejectionReason = "unsupported-operator"
+	planRejectionReasonIntermediateShaping  planRejectionReason = "intermediate-shaping"
+	planRejectionReasonUnsupportedSearch    planRejectionReason = "unsupported-search"
+	planRejectionReasonUnsupportedPredicate planRejectionReason = "unsupported-predicate"
+)
+
 // simplePlan admits a raw source followed by one or two definitions. The first
 // may be a passthrough alias; only the final definition may filter or select.
 // In particular, it never treats an unsupported operator as a residual after
 // applying LIMIT or filtering, which would change its input and cost bounds.
-func simplePlan(definitions []query.Definition, requested, order []string) (string, []query.Definition, bool) {
+//
+// It returns the resolved raw source, the admitted definition path, and the
+// classification of why a non-admitted request was declined, so callers can
+// diagnose a request that fell back to the Go evaluator without exposing the
+// query names, fields, or predicate values that produced the decision.
+func simplePlan(definitions []query.Definition, requested, order []string) (string, []query.Definition, planRejectionReason) {
 	if len(requested) != 1 || len(order) < 1 || len(order) > 2 || order[len(order)-1] != requested[0] {
-		return "", nil, false
+		return "", nil, planRejectionReasonRequestShape
 	}
 	index := make(map[string]query.Definition, len(definitions))
 	for _, definition := range definitions {
@@ -32,7 +55,7 @@ func simplePlan(definitions []query.Definition, requested, order []string) (stri
 	}
 	raw := index[order[0]].From
 	if _, derived := index[raw]; derived {
-		return "", nil, false
+		return "", nil, planRejectionReasonDerivedRawSource
 	}
 	path := make([]query.Definition, 0, len(order))
 	for i, name := range order {
@@ -46,37 +69,38 @@ func simplePlan(definitions []query.Definition, requested, order []string) (stri
 			len(definition.Compute) != 0 || definition.Aggregate != nil ||
 			definition.TemporalSeries != nil || len(definition.Predict) != 0 ||
 			len(definition.OrderBy) != 0 {
-			return "", nil, false
+			return "", nil, planRejectionReasonUnsupportedOperator
 		}
 		if i < len(order)-1 && (definition.Filter != nil || len(definition.Select) != 0 || definition.Limit != nil) {
-			return "", nil, false
+			return "", nil, planRejectionReasonIntermediateShaping
 		}
 		if definition.Filter != nil {
 			if definition.Filter.Search != nil {
-				return "", nil, false
+				return "", nil, planRejectionReasonUnsupportedSearch
 			}
 			for _, predicate := range definition.Filter.Predicates {
 				switch predicate.Field {
 				case "id", "runId", "sessionId":
 				default:
-					return "", nil, false
+					return "", nil, planRejectionReasonUnsupportedPredicate
 				}
 				value, stringValue := predicate.Equals.(string)
 				if !stringValue || value == "unknown" || predicate.Optional ||
 					len(predicate.In) != 0 || predicate.Includes != "" ||
 					predicate.GTE != nil || predicate.LT != nil {
-					return "", nil, false
+					return "", nil, planRejectionReasonUnsupportedPredicate
 				}
 			}
 		}
 		path = append(path, definition)
 	}
-	return raw, path, true
+	return raw, path, planRejectionReasonNone
 }
 
 func (r *readTransaction) ExecuteNativePlan(ctx context.Context, definitions []query.Definition, requested, order []string) (map[string]model.Source, model.Metrics, bool, error) {
-	raw, path, supported := simplePlan(definitions, requested, order)
-	if !supported {
+	raw, path, reason := simplePlan(definitions, requested, order)
+	if reason != planRejectionReasonNone {
+		planLog.Printf("native plan declined reason=%s", reason)
 		return nil, model.Metrics{}, false, nil
 	}
 	var baseBytes sql.NullInt64
