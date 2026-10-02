@@ -213,7 +213,7 @@ export async function startDashboardData(options) {
   /**
    * Subscribes to a bounded source set. The returned promise resolves with the
    * first snapshot; later snapshots are delivered through `pageOptions.onUpdate`.
-   * @param {{ subscriptionId: string, sourceNames: string[], pageOptions: PageLoadOptions & { pageId?: string, viewId?: string }, pagination?: Record<string, { limit: number, continuationToken?: string }>, transform?: (sources: DashboardSources) => DashboardSources, errorLabel: string }} options
+   * @param {{ subscriptionId: string, sourceNames: string[], pageOptions: PageLoadOptions & { pageId?: string, viewId?: string }, pagination?: Record<string, { limit: number, continuationToken?: string }>, transform?: (sources: DashboardSources) => DashboardSources }} options
    */
   const subscribeSources = (options) => {
     const pageOptions = options.pageOptions;
@@ -287,8 +287,7 @@ export async function startDashboardData(options) {
       sourceNames,
       pageOptions: { ...pageOptions, pageId },
       pagination,
-      transform: (sources) => bindContinuations(pageId, sources, paginatedSources, pageOptions),
-      errorLabel: `Unable to update dashboard page ${pageId}`
+      transform: (sources) => bindContinuations(pageId, sources, paginatedSources, pageOptions)
     });
   };
   loadPageSources.subscribeViewSources = (pageId, viewId, sourceNames, pageOptions) => {
@@ -299,8 +298,7 @@ export async function startDashboardData(options) {
       sourceNames: [...new Set(sourceNames)],
       pageOptions: { ...pageOptions, pageId, viewId },
       pagination: continuationRequests(Object.keys(bindings)),
-      transform: (sources) => bindContinuations(pageId, sources, bindings, pageOptions),
-      errorLabel: `Unable to update dashboard view ${viewId}`
+      transform: (sources) => bindContinuations(pageId, sources, bindings, pageOptions)
     });
   };
   loadPageSources.subscribeBackgroundSources = async (sourceNames, pageOptions) => {
@@ -312,8 +310,7 @@ export async function startDashboardData(options) {
     return subscribeSources({
       subscriptionId: `sources:${subscriptionSourceNames.join(",")}`,
       sourceNames: subscriptionSourceNames,
-      pageOptions,
-      errorLabel: "Unable to update dashboard sources"
+      pageOptions
     });
   };
   loadPageSources.prepare = async (pageId) => {

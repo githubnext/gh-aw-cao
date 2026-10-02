@@ -450,12 +450,39 @@ describe("remote dashboard data backend", () => {
       await vi.waitFor(() => expect(revisions).toEqual([5022]));
 
       streamController?.close();
-      await vi.waitFor(() => expect(errors).toEqual(["Dashboard data server event stream disconnected."]));
+      await vi.waitFor(() => expect(document.querySelector('[role="status"]')?.textContent)
+        .toContain("Reconnecting automatically"));
+      expect(errors).toEqual([]);
+      expect(document.querySelectorAll(".dashboard-notification:not(.dashboard-notification-exit)")).toHaveLength(1);
       await new Promise((resolve) => setTimeout(resolve, 1100));
       expect(fetchMock).toHaveBeenCalledTimes(2);
+      await vi.waitFor(() => expect(document.querySelector(".dashboard-notification-exit")).not.toBeNull());
     } finally {
       stopFailingSubscriber();
       stopHealthySubscriber();
+    }
+  });
+
+  it("shows one reconnect notice for repeated network failures and clears it on recovery or unsubscribe", async () => {
+    localStorage.setItem("cao-dashboard-access-token", "private-bearer-token");
+    const stream = new ReadableStream();
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new TypeError("Load failed: private-bearer-token"))
+      .mockRejectedValueOnce(new TypeError("Load failed: private-bearer-token"))
+      .mockResolvedValueOnce(new Response(stream, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const onError = vi.fn();
+    const stop = subscribeRemoteRevision(() => {}, onError);
+    try {
+      await vi.waitFor(() => expect(document.querySelectorAll(".dashboard-notification:not(.dashboard-notification-exit)")).toHaveLength(1));
+      expect(document.body.textContent).not.toContain("private-bearer-token");
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2), { timeout: 1500 });
+      expect(document.querySelectorAll(".dashboard-notification:not(.dashboard-notification-exit)")).toHaveLength(1);
+      expect(onError).not.toHaveBeenCalled();
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3), { timeout: 2500 });
+      await vi.waitFor(() => expect(document.querySelector(".dashboard-notification-exit")).not.toBeNull());
+    } finally {
+      stop();
     }
   });
 
@@ -488,7 +515,9 @@ describe("remote dashboard data backend", () => {
       .rejects.toThrow();
 
     expect(output.debug).toHaveBeenCalledWith("[cao:remote-data-backend]", { event: "refresh-checked", changed: false });
-    expect(output.debug).toHaveBeenCalledWith("[cao:remote-data-backend]", { event: "request-failed", path: "/api/v1/query", status: 404 });
+    expect(output.debug).toHaveBeenCalledWith("[cao:remote-data-backend]", expect.objectContaining({
+      event: "request-failed", operation: "query", status: 404
+    }));
 
     for (const call of output.debug.mock.calls) {
       const metadata = call[1];
