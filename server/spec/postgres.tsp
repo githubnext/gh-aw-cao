@@ -15,6 +15,7 @@ model Source {
   metadataPresent: string[];
   metadataSourceId?: string | null;
   metadataSourceRevision?: string | null;
+  metadataSourceKind?: string | null;
   metadataAvailability?: string | null;
   metadataRowCountNull: boolean;
   metadataMigrated: boolean;
@@ -46,8 +47,6 @@ model CanonicalRow {
   targetRepositoryId?: string | null;
   /** Owning workflow relationship; indexed with namespace and source. */
   workflowId?: string | null;
-  /** Canonical observation generation, indexed with namespace and source. */
-  generation?: string | null;
   owner?: string | null;
   repository?: string | null;
   name?: string | null;

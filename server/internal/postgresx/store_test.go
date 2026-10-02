@@ -143,10 +143,10 @@ func TestStoreIntegration(t *testing.T) {
 			Source: "$runs",
 			Rows: []model.Row{
 				{"id": "raw-1", "runId": nil, "status": "completed", "enabled": true,
-					"targetRepositoryId": "repository:target", "generation": "snapshot-1",
-					"organizationLink": map[string]any{"href": "https://github.com/githubnext"},
-					"githubId":         json.Number("9007199254740993"),
-					"githubRunId":      "00123", "attempt": json.Number("9007199254740993"),
+					"targetRepositoryId": "repository:target",
+					"organizationLink":   map[string]any{"href": "https://github.com/githubnext"},
+					"githubId":           json.Number("9007199254740993"),
+					"githubRunId":        "00123", "attempt": json.Number("9007199254740993"),
 					"provenance": map[string]any{
 						"source": "gh-aw-logs", "sourceId": "run-1",
 						"observedAt":     "2026-01-02T03:04:05.123456789-07:00",
@@ -162,13 +162,14 @@ func TestStoreIntegration(t *testing.T) {
 			},
 			Metadata: model.Metadata{
 				"kind": "canonical", "source-id": "$runs", "source-revision": "revision-1",
-				"availability": "available", "row-count": 1,
+				"availability": "available", "source-kind": "derived", "row-count": 1,
 			},
 		},
 		"$jobs": {
-			Source: "$jobs",
+			Source:   "$jobs",
+			Metadata: model.Metadata{"source-kind": nil},
 			Rows: []model.Row{
-				{"generation": nil}, {"generation": ""}, {"id": json.Number("1e1000000")}, {},
+				{}, {}, {"id": json.Number("1e1000000")}, {},
 				{"id": "42"}, {},
 			},
 		},
@@ -213,15 +214,6 @@ func TestStoreIntegration(t *testing.T) {
 			[]string{"by-target"}, []string{"by-target"})
 		if planErr != nil || !supported || !reflect.DeepEqual(result["by-target"].Rows, sources["$runs"].Rows) {
 			t.Errorf("native target relationship predicate: %+v supported=%t err=%v", result, supported, planErr)
-		}
-		byGeneration := []query.Definition{{
-			Name: "by-generation", From: "$runs",
-			Filter: &query.Filter{Predicates: []query.Predicate{{Field: "generation", Equals: "snapshot-1"}}},
-		}}
-		result, _, supported, planErr = reader.(NativePlanExecutor).ExecuteNativePlan(ctx, byGeneration,
-			[]string{"by-generation"}, []string{"by-generation"})
-		if planErr != nil || !supported || !reflect.DeepEqual(result["by-generation"].Rows, sources["$runs"].Rows) {
-			t.Errorf("native generation predicate: %+v supported=%t err=%v", result, supported, planErr)
 		}
 		return nil
 	})
@@ -279,7 +271,8 @@ func TestStoreIntegration(t *testing.T) {
 		t.Fatalf("raw canonical source: %+v, %v", raw, err)
 	}
 	jobs, _, err := store.LoadSource(ctx, "$jobs", nil)
-	if err != nil || !reflect.DeepEqual(jobs.Rows, sources["$jobs"].Rows) {
+	if err != nil || !reflect.DeepEqual(jobs.Rows, sources["$jobs"].Rows) ||
+		!reflect.DeepEqual(jobs.Metadata, sources["$jobs"].Metadata) {
 		t.Fatalf("sparse canonical source with numeric IDs: %+v, %v", jobs, err)
 	}
 	events, _, err := store.LoadSource(ctx, "$events", nil)
@@ -300,7 +293,7 @@ func TestStoreIntegration(t *testing.T) {
 				{Field: "runId"}, {Field: "createdAt"}, {Field: "attempt"},
 				{Field: "sequence"}, {Field: "enabled"}, {Field: "githubId"},
 				{Field: "githubRunId"}, {Field: "organizationLink"},
-				{Field: "provenance"}, {Field: "nested"}, {Field: "generation"}, {Field: "missingValue"},
+				{Field: "provenance"}, {Field: "nested"}, {Field: "missingValue"},
 			},
 		}}
 		result, _, supported, planErr := reader.(NativePlanExecutor).ExecuteNativePlan(ctx, defs,
@@ -312,7 +305,6 @@ func TestStoreIntegration(t *testing.T) {
 			"organizationLink": map[string]any{"href": "https://github.com/githubnext"},
 			"provenance":       sources["$runs"].Rows[0]["provenance"],
 			"nested":           sources["$runs"].Rows[0]["nested"],
-			"generation":       "snapshot-1",
 		}
 		if planErr != nil || !supported || !reflect.DeepEqual(result["selected-run"].Rows, []model.Row{want}) {
 			t.Errorf("native typed selection: result=%+v supported=%t err=%v", result, supported, planErr)
@@ -346,15 +338,16 @@ func TestStoreIntegration(t *testing.T) {
 		WHERE namespace = $1 AND source_name = $2`, "default", "$runs").Scan(&documents); err != nil || documents != 0 {
 		t.Fatalf("canonical source retained metadata or row documents: count=%d err=%v", documents, err)
 	}
-	var metadataExtension, sourceID, sourceRevision, availability string
+	var metadataExtension, sourceID, sourceRevision, availability, sourceKind string
 	var metadataPresent []string
 	if err := store.db.QueryRowContext(ctx, `SELECT metadata_extension::text,
-		metadata_present, metadata_source_id, metadata_source_revision, metadata_availability
+		metadata_present, metadata_source_id, metadata_source_revision, metadata_availability,
+		metadata_source_kind
 		FROM cao_sources WHERE namespace = $1 AND source_name = '$runs'`, "default").
-		Scan(&metadataExtension, &metadataPresent, &sourceID, &sourceRevision, &availability); err != nil ||
+		Scan(&metadataExtension, &metadataPresent, &sourceID, &sourceRevision, &availability, &sourceKind); err != nil ||
 		metadataExtension != `{"kind":"canonical"}` ||
-		!reflect.DeepEqual(metadataPresent, []string{"availability", "row-count", "source-id", "source-revision"}) ||
-		sourceID != "$runs" || sourceRevision != "revision-1" || availability != "available" {
+		!reflect.DeepEqual(metadataPresent, []string{"availability", "row-count", "source-id", "source-kind", "source-revision"}) ||
+		sourceID != "$runs" || sourceRevision != "revision-1" || availability != "available" || sourceKind != "derived" {
 		t.Fatalf("native canonical metadata: extension=%s present=%v source=%s revision=%s availability=%s err=%v",
 			metadataExtension, metadataPresent, sourceID, sourceRevision, availability, err)
 	}
@@ -370,22 +363,6 @@ func TestStoreIntegration(t *testing.T) {
 		FROM cao_canonical_rows WHERE namespace = $2 AND source_name = '$runs' AND ordinal = 0`,
 		"repository:target", "default").Scan(&targetNative); err != nil || !targetNative {
 		t.Fatalf("target repository was not stored exclusively in a native column: %t, %v", targetNative, err)
-	}
-	var nativeGeneration bool
-	if err := store.db.QueryRowContext(ctx, `SELECT generation = 'snapshot-1'
-		AND NOT EXISTS (SELECT 1 FROM json_object_keys(extension) AS key WHERE key = 'generation')
-		FROM cao_canonical_rows WHERE namespace = 'default' AND source_name = '$runs' AND ordinal = 0`).
-		Scan(&nativeGeneration); err != nil || !nativeGeneration {
-		t.Fatalf("generation was not stored exclusively in a native column: %t, %v", nativeGeneration, err)
-	}
-	var preservedPresence bool
-	if err := store.db.QueryRowContext(ctx, `SELECT bool_and(
-		(ordinal = 0 AND generation IS NULL AND 'generation' = ANY(present)) OR
-		(ordinal = 1 AND generation = '' AND 'generation' = ANY(present)) OR
-		(ordinal = 3 AND generation IS NULL AND NOT 'generation' = ANY(present)))
-		FROM cao_canonical_rows WHERE namespace = 'default' AND source_name = '$jobs'
-			AND ordinal IN (0, 1, 3)`).Scan(&preservedPresence); err != nil || !preservedPresence {
-		t.Fatalf("generation missing/null/empty distinction was not preserved: %t, %v", preservedPresence, err)
 	}
 	if _, err := store.db.ExecContext(ctx, `INSERT INTO cao_canonical_rows
 		(namespace, source_name, ordinal, present, extension, github_id, github_id_kind)
@@ -1136,6 +1113,106 @@ func TestLegacyMigrationFailureRollsBack(t *testing.T) {
 	}
 }
 
+func TestRemoveNativeGenerationColumn(t *testing.T) {
+	url := os.Getenv("POSTGRES_URL")
+	if url == "" {
+		t.Skip("POSTGRES_URL is unset")
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	config, err := pgx.ParseConfig(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	admin := stdlib.OpenDB(*config.Copy())
+	defer func() { _ = admin.Close() }()
+	schema := fmt.Sprintf("cao_generation_removal_%d", time.Now().UnixNano())
+	if _, err := admin.ExecContext(ctx, "CREATE SCHEMA "+schema); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _, _ = admin.ExecContext(context.Background(), "DROP SCHEMA "+schema+" CASCADE") }()
+	config.RuntimeParams["search_path"] = schema
+	store, err := NewConfig(ctx, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := []model.Row{
+		{"id": "one", "open": map[string]any{"wide": json.Number("1e1000000")}},
+		{"id": "two"},
+		{"id": "three"},
+		{"id": "four"},
+	}
+	if _, err := store.Replace(ctx, map[string]model.Source{
+		"$runs": {Source: "$runs", Rows: input},
+	}, model.Diagnostics{}, "old", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.db.ExecContext(ctx, `ALTER TABLE cao_canonical_rows ADD COLUMN generation TEXT`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.db.ExecContext(ctx, `UPDATE cao_canonical_rows SET
+			generation = CASE ordinal WHEN 0 THEN 'snapshot-1' WHEN 2 THEN '' END,
+			present = CASE WHEN ordinal = 1 THEN present ELSE array_append(present, 'generation') END
+			WHERE source_name = '$runs'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.db.ExecContext(ctx, `UPDATE cao_sources SET
+			metadata_extension = '{"source-kind":"derived","wide":1e1000000}'::json
+			WHERE source_name = '$runs'`); err != nil {
+		t.Fatal(err)
+	}
+	_ = store.Close()
+	legacy := stdlib.OpenDB(*config.Copy())
+	defer func() { _ = legacy.Close() }()
+	if _, err := legacy.ExecContext(ctx, `UPDATE cao_sources
+			SET metadata_extension = '{"source-kind":42}'::json WHERE source_name = '$runs'`); err != nil {
+		t.Fatal(err)
+	}
+	if broken, err := NewConfig(ctx, config); err == nil {
+		_ = broken.Close()
+		t.Fatal("invalid source-kind must abort the entire upgrade")
+	}
+	var retained bool
+	if err := legacy.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM information_schema.columns
+			WHERE table_schema = current_schema() AND table_name = 'cao_canonical_rows'
+			AND column_name = 'generation')`).Scan(&retained); err != nil || !retained {
+		t.Fatalf("failed upgrade removed native generation before commit: %t, %v", retained, err)
+	}
+	if _, err := legacy.ExecContext(ctx, `UPDATE cao_sources
+			SET metadata_extension = '{"source-kind":"derived","wide":1e1000000}'::json
+			WHERE source_name = '$runs'`); err != nil {
+		t.Fatal(err)
+	}
+	upgraded, err := NewConfig(ctx, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = upgraded.Close() }()
+	input[0]["generation"] = "snapshot-1"
+	input[2]["generation"] = ""
+	input[3]["generation"] = nil
+	got, _, err := upgraded.LoadSource(ctx, "$runs", nil)
+	if err != nil || !reflect.DeepEqual(got.Rows, input) {
+		t.Fatalf("generation column removal changed rows: %#v, %v", got.Rows, err)
+	}
+	if !reflect.DeepEqual(got.Metadata, model.Metadata{
+		"source-kind": "derived", "wide": json.Number("1e1000000"),
+	}) {
+		t.Fatalf("known metadata field was not migrated losslessly: %#v", got.Metadata)
+	}
+	var metadataKind string
+	if err := upgraded.db.QueryRowContext(ctx, `SELECT metadata_source_kind
+		FROM cao_sources WHERE source_name = '$runs'`).Scan(&metadataKind); err != nil || metadataKind != "derived" {
+		t.Fatalf("metadata source kind not native: %q, %v", metadataKind, err)
+	}
+	var exists bool
+	if err := upgraded.db.QueryRowContext(ctx, `SELECT EXISTS (
+			SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema()
+			AND table_name = 'cao_canonical_rows' AND column_name = 'generation')`).Scan(&exists); err != nil || exists {
+		t.Fatalf("native generation column retained: %t, %v", exists, err)
+	}
+}
+
 func TestCanonicalExtensionColumnUpgrade(t *testing.T) {
 	url := os.Getenv("POSTGRES_URL")
 	if url == "" {
@@ -1202,7 +1279,7 @@ func TestCanonicalExtensionColumnUpgrade(t *testing.T) {
 		`ALTER TABLE cao_canonical_rows ALTER COLUMN extension SET NOT NULL`,
 		`ALTER TABLE cao_canonical_rows
 			DROP COLUMN agent_id, DROP COLUMN failure_message,
-			DROP COLUMN target_repository_id, DROP COLUMN generation,
+			DROP COLUMN target_repository_id,
 			DROP COLUMN evidence_window_start, DROP COLUMN evidence_window_start_raw,
 			DROP COLUMN attributable_run_ids, DROP COLUMN events_truncated,
 			DROP COLUMN value, DROP COLUMN value_raw, DROP COLUMN value_text,
@@ -1220,7 +1297,7 @@ func TestCanonicalExtensionColumnUpgrade(t *testing.T) {
 			WHERE source_name = '$runs'`,
 		`UPDATE cao_canonical_rows SET extension = json_build_object(
 			'agentId', 'agent-' || ordinal, 'failureMessage', null,
-			'targetRepositoryId', 'repository:target', 'generation', 'snapshot-1',
+			'targetRepositoryId', 'repository:target',
 			'evidenceWindowStart', '2026-09-01T10:11:12.123456789Z',
 			'attributableRunIds', json_build_array('run-' || ordinal),
 			'eventsTruncated', true, 'value', 'text evidence',
@@ -1280,7 +1357,7 @@ func TestCanonicalExtensionColumnUpgrade(t *testing.T) {
 	}
 	for i, row := range source.Rows {
 		if row["id"] != input[i]["id"] || row["runId"] != nil || row["status"] != "completed" ||
-			row["targetRepositoryId"] != "repository:target" || row["generation"] != "snapshot-1" ||
+			row["targetRepositoryId"] != "repository:target" ||
 			row["agentId"] != fmt.Sprintf("agent-%d", i) || row["failureMessage"] != nil ||
 			row["evidenceWindowStart"] != "2026-09-01T10:11:12.123456789Z" ||
 			row["eventsTruncated"] != true || row["value"] != "text evidence" ||
@@ -1297,9 +1374,7 @@ func TestCanonicalExtensionColumnUpgrade(t *testing.T) {
 	var migratedTarget bool
 	if err := upgraded.db.QueryRowContext(ctx, `SELECT bool_and(
 		target_repository_id = 'repository:target'
-		AND generation = 'snapshot-1'
-		AND NOT EXISTS (SELECT 1 FROM json_object_keys(extension) AS key
-			WHERE key IN ('targetRepositoryId', 'generation')))
+		AND NOT EXISTS (SELECT 1 FROM json_object_keys(extension) AS key WHERE key = 'targetRepositoryId'))
 		FROM cao_canonical_rows WHERE namespace = 'default' AND source_name = '$runs'`).
 		Scan(&migratedTarget); err != nil || !migratedTarget {
 		t.Fatalf("target relationship was not backfilled into native columns: %t, %v", migratedTarget, err)

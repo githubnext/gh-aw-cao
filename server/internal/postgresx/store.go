@@ -144,7 +144,7 @@ func initialize(ctx context.Context, db *sql.DB) error {
 			namespace TEXT NOT NULL, source_name TEXT NOT NULL, ordinal BIGINT NOT NULL,
 			present TEXT[] NOT NULL, extension JSON,
 			id TEXT, run_id TEXT, session_id TEXT, repository_id TEXT,
-			target_repository_id TEXT, workflow_id TEXT, generation TEXT,
+			target_repository_id TEXT, workflow_id TEXT,
 			status TEXT, conclusion TEXT, event TEXT,
 			owner TEXT, repository TEXT, name TEXT, full_name TEXT, path TEXT,
 			visibility TEXT, state TEXT, campaign TEXT, campaign_id TEXT,
@@ -252,6 +252,7 @@ func initialize(ctx context.Context, db *sql.DB) error {
 		`ALTER TABLE cao_sources ADD COLUMN IF NOT EXISTS metadata_present TEXT[] NOT NULL DEFAULT ARRAY[]::text[]`,
 		`ALTER TABLE cao_sources ADD COLUMN IF NOT EXISTS metadata_source_id TEXT`,
 		`ALTER TABLE cao_sources ADD COLUMN IF NOT EXISTS metadata_source_revision TEXT`,
+		`ALTER TABLE cao_sources ADD COLUMN IF NOT EXISTS metadata_source_kind TEXT`,
 		`ALTER TABLE cao_sources ADD COLUMN IF NOT EXISTS metadata_availability TEXT`,
 		`ALTER TABLE cao_sources ADD COLUMN IF NOT EXISTS metadata_row_count_null BOOLEAN NOT NULL DEFAULT FALSE`,
 		`ALTER TABLE cao_sources ADD COLUMN IF NOT EXISTS metadata_migrated BOOLEAN NOT NULL DEFAULT FALSE`,
@@ -332,7 +333,7 @@ func initialize(ctx context.Context, db *sql.DB) error {
 	}
 	for _, column := range []string{
 		"experiment_id", "grader_id", "eval_id", "audit_id", "value_id",
-		"registry_id", "campaign_id", "slug", "target_repository_id", "generation",
+		"registry_id", "campaign_id", "slug", "target_repository_id",
 	} {
 		if _, err = tx.ExecContext(ctx, `CREATE INDEX IF NOT EXISTS cao_canonical_rows_`+column+
 			` ON cao_canonical_rows (namespace, source_name, `+column+`) WHERE `+column+` IS NOT NULL`); err != nil {
@@ -377,16 +378,83 @@ func initialize(ctx context.Context, db *sql.DB) error {
 			return err
 		}
 	}
+	if err := removeGenerationColumn(ctx, tx); err != nil {
+		return err
+	}
 	if err := backfillCanonical(ctx, tx); err != nil {
 		return err
 	}
 	if err := migrateCanonicalMetadata(ctx, tx); err != nil {
 		return err
 	}
+	if err := migrateCanonicalSourceKind(ctx, tx); err != nil {
+		return err
+	}
 	if err := migrateCanonicalExtensions(ctx, tx); err != nil {
 		return err
 	}
 	return tx.Commit()
+}
+
+// Undo the short-lived native generation column without losing older rows.
+// The logical field returns to the open extension, as it was before that column.
+func removeGenerationColumn(ctx context.Context, tx *sql.Tx) error {
+	var exists bool
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM pg_attribute
+		WHERE attrelid = to_regclass('cao_canonical_rows')
+		AND attname = 'generation' AND NOT attisdropped)`).Scan(&exists); err != nil {
+		return err
+	}
+	if !exists {
+		return nil
+	}
+	var duplicates bool
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS (
+		SELECT 1 FROM cao_canonical_rows r
+		WHERE (r.generation IS NOT NULL AND NOT 'generation' = ANY(r.present))
+			OR ('generation' = ANY(r.present)
+				AND EXISTS (SELECT 1 FROM json_object_keys(r.extension) AS key WHERE key = 'generation'))
+	)`).Scan(&duplicates); err != nil {
+		return err
+	}
+	if duplicates {
+		return errors.New("inconsistent native generation field in canonical row")
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE cao_canonical_rows AS r SET
+		extension = (SELECT json_object_agg(key, value) FROM (
+			SELECT key, value FROM json_each(COALESCE(r.extension, '{}'::json))
+			UNION ALL SELECT 'generation', to_json(r.generation)
+		) AS fields),
+		present = array_remove(r.present, 'generation')
+		WHERE 'generation' = ANY(r.present)`); err != nil {
+		return err
+	}
+	_, err := tx.ExecContext(ctx, `ALTER TABLE cao_canonical_rows DROP COLUMN generation`)
+	return err
+}
+
+func migrateCanonicalSourceKind(ctx context.Context, tx *sql.Tx) error {
+	var invalid bool
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS (
+		SELECT 1 FROM cao_sources WHERE metadata_migrated
+		AND metadata_extension IS NOT NULL
+		AND EXISTS (SELECT 1 FROM json_object_keys(metadata_extension) AS key WHERE key = 'source-kind')
+		AND ('source-kind' = ANY(metadata_present)
+			OR json_typeof(metadata_extension -> 'source-kind') NOT IN ('string', 'null'))
+	)`).Scan(&invalid); err != nil {
+		return err
+	}
+	if invalid {
+		return errors.New("invalid or duplicated canonical metadata source-kind")
+	}
+	_, err := tx.ExecContext(ctx, `UPDATE cao_sources AS s SET
+		metadata_source_kind = s.metadata_extension ->> 'source-kind',
+		metadata_present = array_append(s.metadata_present, 'source-kind'),
+		metadata_extension = (SELECT COALESCE(json_object_agg(key, value), '{}'::json)
+			FROM json_each(s.metadata_extension) WHERE key <> 'source-kind')
+		WHERE s.metadata_migrated AND s.metadata_extension IS NOT NULL
+		AND EXISTS (SELECT 1 FROM json_object_keys(s.metadata_extension) AS key WHERE key = 'source-kind')`)
+	return err
 }
 
 func migrateMetadata(ctx context.Context, tx *sql.Tx) error {
@@ -1066,8 +1134,8 @@ func (b *documentBatch) flush() error {
 	return nil
 }
 
-func canonicalMetadataFields(value any, count int) (any, []string, [3]any, bool, error) {
-	var fields [3]any
+func canonicalMetadataFields(value any, count int) (any, []string, [4]any, bool, error) {
+	var fields [4]any
 	if value == nil {
 		return nil, []string{}, fields, false, nil
 	}
@@ -1079,8 +1147,8 @@ func canonicalMetadataFields(value any, count int) (any, []string, [3]any, bool,
 	for key, value := range metadata {
 		extension[key] = value
 	}
-	present := make([]string, 0, 4)
-	for index, key := range []string{"source-id", "source-revision", "availability"} {
+	present := make([]string, 0, 5)
+	for index, key := range []string{"source-id", "source-revision", "availability", "source-kind"} {
 		if value, found := extension[key]; found {
 			if value != nil {
 				text, ok := value.(string)
@@ -1122,9 +1190,10 @@ func writeCanonicalMetadata(ctx context.Context, tx *sql.Tx, namespace, name str
 	if _, err := tx.ExecContext(ctx, `UPDATE cao_sources
 		SET metadata_extension = $1, metadata_present = $2,
 			metadata_source_id = $3, metadata_source_revision = $4,
-			metadata_availability = $5, metadata_row_count_null = $6, metadata_migrated = TRUE
-		WHERE namespace = $7 AND source_name = $8`,
-		extension, present, fields[0], fields[1], fields[2], rowCountNull, namespace, name); err != nil {
+			metadata_availability = $5, metadata_source_kind = $6,
+			metadata_row_count_null = $7, metadata_migrated = TRUE
+		WHERE namespace = $8 AND source_name = $9`,
+		extension, present, fields[0], fields[1], fields[2], fields[3], rowCountNull, namespace, name); err != nil {
 		return err
 	}
 	_, err = tx.ExecContext(ctx, `DELETE FROM cao_source_documents
@@ -1133,25 +1202,25 @@ func writeCanonicalMetadata(ctx context.Context, tx *sql.Tx, namespace, name str
 }
 
 func readCanonicalMetadata(ctx context.Context, tx *sql.Tx, namespace, name string) (model.Metadata, error) {
-	var extension, sourceID, revision, availability sql.NullString
+	var extension, sourceID, revision, availability, sourceKind sql.NullString
 	var present []string
 	var migrated, rowCountNull bool
 	var count int
 	if err := tx.QueryRowContext(ctx, `SELECT s.metadata_extension::text,
 		s.metadata_present, s.metadata_source_id, s.metadata_source_revision,
-		s.metadata_availability, s.metadata_migrated, s.metadata_row_count_null, c.count
+		s.metadata_availability, s.metadata_source_kind, s.metadata_migrated, s.metadata_row_count_null, c.count
 		FROM cao_sources s JOIN cao_counts c
 		ON c.namespace = s.namespace AND c.source_name = s.source_name
 		WHERE s.namespace = $1 AND s.source_name = $2 AND s.is_canonical`,
 		namespace, name).Scan(&extension, &present, &sourceID, &revision,
-		&availability, &migrated, &rowCountNull, &count); err != nil {
+		&availability, &sourceKind, &migrated, &rowCountNull, &count); err != nil {
 		return nil, err
 	}
 	if !migrated {
 		return nil, errors.New("unmigrated postgres canonical metadata")
 	}
 	if !extension.Valid {
-		if len(present) != 0 || sourceID.Valid || revision.Valid || availability.Valid || rowCountNull {
+		if len(present) != 0 || sourceID.Valid || revision.Valid || availability.Valid || sourceKind.Valid || rowCountNull {
 			return nil, errors.New("inconsistent null postgres canonical metadata")
 		}
 		//nolint:nilnil // A nil metadata map is a valid, distinct source value.
@@ -1161,12 +1230,12 @@ func readCanonicalMetadata(ctx context.Context, tx *sql.Tx, namespace, name stri
 	if err := decodeJSON([]byte(extension.String), &metadata); err != nil || metadata == nil {
 		return nil, errors.New("invalid postgres canonical metadata extension")
 	}
-	for _, key := range []string{"source-id", "source-revision", "availability", "row-count"} {
+	for _, key := range []string{"source-id", "source-revision", "availability", "source-kind", "row-count"} {
 		if _, duplicated := metadata[key]; duplicated {
 			return nil, fmt.Errorf("canonical metadata field %q retained in extension", key)
 		}
 	}
-	values := []sql.NullString{sourceID, revision, availability}
+	values := []sql.NullString{sourceID, revision, availability, sourceKind}
 	observed := make(map[string]bool, len(present))
 	for _, key := range present {
 		if observed[key] {
@@ -1174,7 +1243,7 @@ func readCanonicalMetadata(ctx context.Context, tx *sql.Tx, namespace, name stri
 		}
 		observed[key] = true
 	}
-	for index, key := range []string{"source-id", "source-revision", "availability"} {
+	for index, key := range []string{"source-id", "source-revision", "availability", "source-kind"} {
 		if values[index].Valid && !observed[key] {
 			return nil, fmt.Errorf("canonical metadata field %q lacks presence", key)
 		}
@@ -1191,7 +1260,7 @@ func readCanonicalMetadata(ctx context.Context, tx *sql.Tx, namespace, name stri
 	}
 	for key := range observed {
 		switch key {
-		case "source-id", "source-revision", "availability", "row-count":
+		case "source-id", "source-revision", "availability", "source-kind", "row-count":
 		default:
 			return nil, fmt.Errorf("unsupported canonical metadata presence %q", key)
 		}

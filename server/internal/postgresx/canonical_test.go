@@ -27,7 +27,7 @@ func TestCanonicalRowSeparatesKnownAndOpenFields(t *testing.T) {
 	if !reflect.DeepEqual(present, []string{"attempt", "createdAt", "id", "organizationLink", "runId", "sequence", "status"}) {
 		t.Fatalf("presence: %v", present)
 	}
-	if values[0] != "run:1" || values[1] != nil || values[7] != "completed" ||
+	if values[0] != "run:1" || values[1] != nil || values[6] != "completed" ||
 		values[len(canonicalFields)+1] != input["createdAt"] ||
 		values[len(canonicalFields)+2*len(canonicalTimes)] != "9007199254740993" {
 		t.Fatalf("relational values: %#v", values)

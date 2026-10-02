@@ -3087,17 +3087,6 @@
             ],
             "description": "Owning workflow relationship; indexed with namespace and source."
           },
-          "generation": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Canonical observation generation, indexed with namespace and source."
-          },
           "owner": {
             "anyOf": [
               {
@@ -6713,6 +6702,16 @@
             ]
           },
           "metadataSourceRevision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "metadataSourceKind": {
             "anyOf": [
               {
                 "type": "string"
