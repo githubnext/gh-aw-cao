@@ -1,6 +1,6 @@
 {
-  "source_sha": "3efc3631a20923f0fbaf8b98e5e5246709243af5",
-  "next_category": "dependency installation and caching",
+  "source_sha": "80d7bbab778b8654a72cf544c08123070088ac65",
+  "next_category": "Astro documentation generation",
   "evaluations": [
     {
       "evaluated_at": "2026-10-01T12:50:00Z",
@@ -592,6 +592,26 @@
         36954913967
       ],
       "outcome": "no_actionable_improvement: evaluated artifact transfer and Pages packaging across the latest 12 completed successful docs.yml runs in the last 14 days, yielding 12 comparable successful build executions and 6 successful deployments. Trusted Actions metadata showed docs full-workflow execution median 65.5s with p90 79.0s, queue time median/p90 0.0s, build-job median 43.5s with p90 54.7s, deploy-job median 11.5s with p90 21.5s, and schedule-freshness median 7.5s with p90 8.0s. Trusted step metadata and representative logs confirmed repeated cache hits for actions/setup-node npm cache, the explicit node_modules cache, and the central-agentic-ops-dashboard cache; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact stayed skipped on comparable docs builds. Within docs.yml, artifact-transfer and Pages-packaging work remained small: Restore cached CAO Dashboard took about 1.5-3.4s on sampled builds with cache restored from key central-agentic-ops-dashboard, Upload Pages artifact took about 7.0-9.9s with a 9.3s median across sampled builds, and Deploy Pages took about 7.1-12.1s with representative logs showing Creating Pages deployment with payload followed by Reported success. The build path therefore remains dominated by other work, while artifact packaging plus deployment stays well below the >=60s or >=15% actionable threshold. Cross-checking the latest successful cao-dashboard.yml producer runs 36958556409, 36957094048, and 36954913967 still showed the dominant repeated upstream cost is Upgrade fallback activity data at 101-103s, while Assemble Dashboard Language site remained about 3s and Upload dashboard artifact about 9s; trusted logs also confirmed repeated restoration of ~162-164 MiB activity caches before that upgrade work. That qualifying reusable-dashboard optimization is already represented by suggestion fingerprint reusable-dashboard-skip-reupgrade-of-validated-activity-cache and existing open issues #15332 and #15497, so no new non-duplicate recommendation is actionable in this artifact-transfer cycle.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-02T04:30:00Z",
+      "worker_run_id": "36964682731",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36964228125,
+        36963515564,
+        36962772776,
+        36962729381,
+        36962389859,
+        36962032098,
+        36961253226,
+        36960448036,
+        36959029344,
+        36958788594,
+        36964013511
+      ],
+      "outcome": "no_actionable_improvement: evaluated dependency installation and caching across the latest 10 successful docs.yml runs from 2026-10-02T03:07Z through 2026-10-02T04:22Z, plus comparable successful cao-dashboard.yml producer run 36964013511. Trusted Actions metadata showed 10 successful docs runs within the 14-day window, satisfying the minimum sample gate, with 10 comparable build executions, 3 scheduled runs, and 3 deploy executions. Full workflow wall time median was 49.0s with p90 80.5s and queue time median/p90 0.0s. Comparable successful docs build-job median was 41.0s with p90 47.8s; schedule-freshness median was 8.0s with p90 8.0s on scheduled runs; deploy median was 15.0s with p90 18.2s on runs that actually deployed. Build-step medians across comparable docs builds were 5.0s Restore node_modules, 12.5s Build documentation, 9.5s Upload Pages artifact, 3.0s Set up Node.js, 5.5s Checkout, and 2.0s Restore cached CAO Dashboard. Trusted step metadata confirmed dependency reuse on all 10 successful docs builds: Install dependencies and Save node_modules were skipped every time, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were also skipped every time, proving both node_modules and cached dashboard hits rather than inferred reuse. Cross-checking successful CAO Dashboard producer run 36964013511 showed the repeated qualifying upstream bottleneck remains reusable-dashboard preparation rather than dependency installation: Restore collected activity data hit cache, but Upgrade fallback activity data still took 103s while Assemble Dashboard Language site took 3s and Upload dashboard artifact took 9s. Because dependency installation is already consistently skipped and no dependency/caching change in docs.yml can save >=60s or >=15% of median full workflow time, no new non-duplicate improvement is actionable in this category.",
       "suggestion_fingerprint": null
     }
   ]
