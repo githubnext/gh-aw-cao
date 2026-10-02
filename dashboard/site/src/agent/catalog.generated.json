@@ -1208,6 +1208,99 @@
       }
     },
     {
+      "id": "campaign-workflow-import-evidence",
+      "subject": "Summarize retained import evidence at workflow grain for campaign inventory quality.",
+      "objective": "Preserve import-evidence provenance without materializing per-run ingestion indicators.",
+      "acceptance": "Compose all four retained event sources with the same availability, freshness, and completeness as event-runs; counts describe retained records, not executions or outcomes.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "audit-event-runs",
+        "domain-event-runs",
+        "issue-event-runs",
+        "tool-event-runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "domains",
+          "issues",
+          "tools"
+        ]
+      }
+    },
+    {
+      "id": "campaign-workflow-execution-base",
+      "subject": "Summarize retained run attempts and AI Credits before campaign workflow enrichment.",
+      "objective": "Read run identity and recorded AI Credits together instead of enriching every run with import status.",
+      "acceptance": "Count distinct run-attempt identities and sum aic-total per organization, repository, and workflow; missing retained evidence is not proof of no execution or cost.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "campaign-workflow-execution-totals",
+      "subject": "Attach retained import-evidence quality to compact workflow execution totals.",
+      "objective": "Preserve the public inventory's run and import availability composition after aggregating run evidence.",
+      "acceptance": "Keep runs and AI Credits unchanged; unavailable run evidence fails closed and optional import evidence degrades quality exactly as in run-import-status.",
+      "description": "The import-evidence join preserves inventory provenance without per-run ingestion indicators. It follows run aggregation so unavailable run evidence retains the original failure-quality semantics.",
+      "parameters": [],
+      "sources": [
+        "campaign-workflow-execution-base",
+        "campaign-workflow-import-evidence"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "domains",
+          "issues",
+          "runs",
+          "tools"
+        ]
+      }
+    },
+    {
+      "id": "campaign-workflow-inventory",
+      "subject": "Project declared campaign workflows with lean execution and configuration evidence.",
+      "objective": "Provide campaign totals and lists without unused ingestion, failure, or dashboard-link computations.",
+      "acceptance": "Keep all declared orchestrators and workers, including inactive and unobserved entries; preserve inventory ordering, configuration defaults, execution totals, and import-evidence quality.",
+      "description": "Lean campaign inventory with execution totals that retain the public workflow inventory's evidence-quality dependencies.",
+      "parameters": [],
+      "sources": [
+        "campaign-workflow-execution-totals",
+        "workflows"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "domains",
+          "issues",
+          "runs",
+          "tools",
+          "workflows"
+        ]
+      }
+    },
+    {
       "id": "workflow-inventory",
       "subject": "List declared workflows with their campaign, repository, configuration, and observed execution totals.",
       "objective": "Compare declared workflow configuration with retained run, import-coverage, and AI Credit evidence to select a workflow for closer inspection.",
@@ -1599,6 +1692,29 @@
       }
     },
     {
+      "id": "campaign-dispatch-inventory",
+      "subject": "Project retained dispatch identity and campaign attribution before campaign counting.",
+      "objective": "Count dispatches without materializing run diagnoses and presentation links.",
+      "acceptance": "Keep workflow_dispatch runs in timestamp order with declared campaign attribution; preserve workflow and incomplete-outcome join quality and duplicate-key failure behavior.",
+      "description": "Lean dispatch-count input; the incomplete-outcome join preserves the full campaign run source's evidence quality and fail-closed validation.",
+      "parameters": [],
+      "sources": [
+        "run-incomplete-outcomes",
+        "runs",
+        "workflows"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
       "id": "campaign-dispatch-totals",
       "subject": "Summarize observed workflow dispatches for each centrally managed campaign.",
       "objective": "Compare retained workflow_dispatch run counts across attributed campaigns.",
@@ -1606,7 +1722,7 @@
       "description": "Observed workflow-dispatch run totals grouped by campaign.",
       "parameters": [],
       "sources": [
-        "dispatches"
+        "campaign-dispatch-inventory"
       ],
       "used-by-pages": [],
       "execution": {
@@ -1627,7 +1743,7 @@
       "description": "Observed workflow, rollout, run, and AI Credit totals grouped by campaign.",
       "parameters": [],
       "sources": [
-        "workflow-inventory"
+        "campaign-workflow-inventory"
       ],
       "used-by-pages": [],
       "execution": {
@@ -2240,7 +2356,7 @@
       "subject": "List campaign-owned orchestrator and worker workflows with database-backed execution totals.",
       "objective": "Choose an active campaign workflow whose observed execution warrants inspection.",
       "acceptance": "Listed workflows match active declared orchestrator or worker inventory entries; runs and AI Credits agree with the selected-horizon inventory, and absence is not evidence of disabled authority or no executions. Rollout mode is context, not permission to change policy.",
-      "description": "Campaign workflows projected from the canonical workflow inventory.",
+      "description": "Campaign workflows projected from lean canonical inventory, with display names and drill-down links computed only for the active list.",
       "parameters": [
         {
           "name": "campaign",
@@ -2248,7 +2364,7 @@
         }
       ],
       "sources": [
-        "workflow-inventory"
+        "campaign-workflow-inventory"
       ],
       "used-by-pages": [
         "campaign-repositories",
@@ -2565,8 +2681,8 @@
       "id": "campaign-problem-runs",
       "subject": "List retained failed runs for campaign problem investigation.",
       "objective": "Choose a recent failed campaign run to investigate with its diagnostic evidence.",
-      "acceptance": "Each row corresponds to a retained campaign run with a declared failure, startup-failure, stale, or timed-out status and is ordered newest first; absence is not proof of healthy execution or complete ingestion.",
-      "description": "Failed campaign runs ordered from newest to oldest with retained diagnostic metadata.",
+      "acceptance": "Each row corresponds to a retained campaign run with a declared failure, startup-failure, stale, or timed-out status; campaign-problem-run-evidence orders matching rows newest first. Absence is not proof of healthy execution or complete ingestion.",
+      "description": "Private failed-run input with retained diagnostic metadata; the evidence consumer orders only runs matching current runtime problems.",
       "parameters": [],
       "sources": [
         "campaign-runs"
@@ -2583,6 +2699,46 @@
       }
     },
     {
+      "id": "campaign-problem-runtime-failures",
+      "subject": "Select current failing runtime partitions without presentation ordering.",
+      "objective": "Retain the exact current-failure eligibility needed by the problem evidence join.",
+      "acceptance": "A latest failure streak is a nonnegative integer, so failure-count at least one is equivalent to has-current-failure; missing or incomplete runtime evidence remains unknown.",
+      "description": "Private unsorted failure partitions for problem evidence; ordering is supplied by the retained failed runs.",
+      "parameters": [],
+      "sources": [
+        "campaign-runtime-health-groups"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "overview-runs"
+        ]
+      }
+    },
+    {
+      "id": "campaign-problem-runtime-partitions",
+      "subject": "Project current runtime problem keys and diagnoses for the failed-run evidence join.",
+      "objective": "Avoid sorting and retaining unused runtime problem presentation fields.",
+      "acceptance": "Retain both current failures and unobserved orchestrators, including their metadata and duplicate-key failure semantics; this projection does not establish health or root cause.",
+      "description": "Private compact equivalent of campaign-runtime-problems for equality enrichment, not presentation.",
+      "parameters": [],
+      "sources": [
+        "campaign-problem-runtime-failures",
+        "campaign-unobserved-orchestrators"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "overview-runs",
+          "workflows"
+        ]
+      }
+    },
+    {
       "id": "campaign-problem-run-evidence",
       "subject": "Attach the current campaign runtime problem summary to each retained failed Run for that partition.",
       "objective": "Inspect the failure count and problem kind alongside a failed run without inferring its root cause.",
@@ -2591,7 +2747,7 @@
       "parameters": [],
       "sources": [
         "campaign-problem-runs",
-        "campaign-runtime-problems"
+        "campaign-problem-runtime-partitions"
       ],
       "used-by-pages": [],
       "execution": {
