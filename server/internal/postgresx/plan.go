@@ -68,6 +68,7 @@ func simplePlan(definitions []query.Definition, requested, order []string) (stri
 				default:
 					if !isCanonicalSource(raw) ||
 						!(isCanonicalTextField(predicate.Field) && stringValue ||
+							isCanonicalTime(predicate.Field) && stringValue ||
 							isCanonicalBoolean(predicate.Field) && isBoolean ||
 							isCanonicalNumber(predicate.Field) && (stringValue || isQueryNumber(predicate.Equals))) {
 						return "", nil, false

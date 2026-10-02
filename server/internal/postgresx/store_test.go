@@ -1412,6 +1412,72 @@ func TestCanonicalDocumentBackfillFailsClosed(t *testing.T) {
 	}
 }
 
+func TestCanonicalTimestampEqualityPlan(t *testing.T) {
+	url := os.Getenv("POSTGRES_URL")
+	if url == "" {
+		t.Skip("POSTGRES_URL is unset")
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 45*time.Second)
+	defer cancel()
+	config, err := pgx.ParseConfig(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	admin := stdlib.OpenDB(*config.Copy())
+	defer func() { _ = admin.Close() }()
+	schema := fmt.Sprintf("cao_timestamp_plan_%d", time.Now().UnixNano())
+	if _, err := admin.ExecContext(ctx, "CREATE SCHEMA "+schema); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _, _ = admin.ExecContext(context.Background(), "DROP SCHEMA "+schema+" CASCADE") }()
+	config.RuntimeParams["search_path"] = schema
+	store, err := NewConfig(ctx, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	rows := []model.Row{
+		{"id": "offset", "createdAt": "2026-01-02T03:04:05.123456789-07:00"},
+		{"id": "utc", "createdAt": "2026-01-02T10:04:05.123456789Z"},
+		{"id": "micro", "createdAt": "2026-01-02T10:04:05.123456Z"},
+		{"id": "null", "createdAt": nil},
+		{"id": "missing"},
+	}
+	if _, err := store.Replace(ctx, map[string]model.Source{
+		"$runs": {Source: "$runs", Rows: rows, Metadata: model.Metadata{}},
+	}, model.Diagnostics{}, "timestamp-plan", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ label, timestamp string }{
+		{"offset", "2026-01-02T03:04:05.123456789-07:00"},
+		{"utc", "2026-01-02T10:04:05.123456789Z"},
+		{"micro", "2026-01-02T10:04:05.123456Z"},
+		{"no match", "2026-01-02T10:04:05Z"},
+	} {
+		t.Run(tc.label, func(t *testing.T) {
+			definitions := []query.Definition{{Name: "matching", From: "$runs",
+				Filter: &query.Filter{Predicates: []query.Predicate{{Field: "createdAt", Equals: tc.timestamp}}},
+				Select: []query.SelectedField{{Field: "id"}, {Field: "createdAt"}}}}
+			err := store.WithReadTransaction(ctx, func(ctx context.Context, reader SourceReader) error {
+				native, nativeMetrics, supported, planErr := reader.(NativePlanExecutor).ExecuteNativePlan(ctx,
+					definitions, []string{"matching"}, []string{"matching"})
+				evaluated, evaluatedMetrics, evalErr := query.New(readerLoader{reader: reader, ctx: ctx}).Execute(
+					definitions, []string{"matching"})
+				if planErr != nil || evalErr != nil || !supported ||
+					!reflect.DeepEqual(native["matching"].Rows, evaluated["matching"].Rows) ||
+					nativeMetrics.Operations != evaluatedMetrics.Operations {
+					t.Errorf("native timestamp predicate parity: native=%+v evaluated=%+v supported=%t metrics=%+v/%+v errors=%v/%v",
+						native, evaluated, supported, nativeMetrics, evaluatedMetrics, planErr, evalErr)
+				}
+				return nil
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
 func TestCanonicalContentsUpgrade(t *testing.T) {
 	url := os.Getenv("POSTGRES_URL")
 	if url == "" {

@@ -293,6 +293,15 @@ func isCanonicalBoolean(name string) bool {
 	return false
 }
 
+func isCanonicalTime(name string) bool {
+	for _, field := range canonicalTimes {
+		if field.key == name {
+			return true
+		}
+	}
+	return false
+}
+
 func canonicalFallbackReason(row model.Row) string {
 	for _, field := range canonicalFields {
 		if value := row[field.key]; value != nil {
@@ -888,6 +897,12 @@ func canonicalFilter(namespace, name string, filter map[string]any) (string, []a
 		if value, ok := filter[field.key]; ok {
 			args = append(args, value)
 			where += fmt.Sprintf(" AND %s = $%d", field.column, len(args))
+		}
+	}
+	for _, field := range canonicalTimes {
+		if value, ok := filter[field.key]; ok {
+			args = append(args, value)
+			where += fmt.Sprintf(" AND %s = $%d", timestampReadExpression(field.column), len(args))
 		}
 	}
 	for _, field := range canonicalBooleans {
