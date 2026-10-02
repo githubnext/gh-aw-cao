@@ -90,7 +90,22 @@ function isAppAssetUrl(value) {
   }
 }
 
-async function downloadData(urls, debug) {
+function isOnlineUrl(value) {
+  try {
+    return new URL(value).searchParams.get('online') === '1';
+  } catch {
+    return false;
+  }
+}
+
+async function onlineRequest(event) {
+  if (isOnlineUrl(event.request.url)) return true;
+  if (!event.clientId) return false;
+  const client = await self.clients.get(event.clientId);
+  return isOnlineUrl(client?.url);
+}
+
+async function downloadData(urls, debug, online = false) {
   const requested = [...new Set(urls)].filter(isDashboardDataUrl);
   if (!requested.some((url) => new URL(url).pathname.endsWith('/payload-hashes.json'))) {
     throw new Error('Dashboard data URL is missing.');
@@ -163,7 +178,7 @@ async function downloadData(urls, debug) {
   for (const [index, [name, hash]] of shardEntries.entries()) {
     const url = new URL(`./${name}`, hashesUrl).href;
     currentShardUrls.add(url);
-    if (previousHashes?.[name]?.toLowerCase?.() === hash.toLowerCase()) {
+    if (!online && previousHashes?.[name]?.toLowerCase?.() === hash.toLowerCase()) {
       debugLog(debug, 'data:ingestion:sw', 'skipping current shard', { name, index: index + 1, shardCount: shardEntries.length });
       continue;
     }
@@ -226,7 +241,7 @@ async function readDataConfig(cache) {
   };
 }
 
-async function downloadConfiguredData(force = false, fallbackUrls = [], debug = undefined) {
+async function downloadConfiguredData(force = false, fallbackUrls = [], debug = undefined, online = false) {
   const connection = self.navigator?.connection;
   if (connection?.saveData || connection?.metered || connection?.type === 'cellular') return;
   // Periodic Background Sync itself is deferred by the browser when power conditions are unsuitable.
@@ -240,7 +255,7 @@ async function downloadConfiguredData(force = false, fallbackUrls = [], debug = 
   if (!force && config.lastSuccess > 0 && Date.now() - config.lastSuccess < UPDATE_INTERVAL_MS) {
     return config.lastSuccess;
   }
-  await downloadData(config.urls, debug);
+  await downloadData(config.urls, debug, online);
   config.lastSuccess = Date.now();
   await cache.put(CONFIG_URL, new Response(JSON.stringify(config), {
     headers: { 'content-type': 'application/json' }
@@ -271,15 +286,19 @@ self.addEventListener('fetch', (event) => {
   if (!isDashboardDataUrl(event.request.url)) {
     if (!isAppAssetUrl(event.request.url)) return;
     event.respondWith((async () => {
+      const online = await onlineRequest(event);
       if (event.request.cache === 'no-store') return fetch(event.request);
       try {
-        const response = await fetch(event.request);
+        const response = await fetch(online
+          ? new Request(event.request, { cache: 'no-store' })
+          : event.request);
         if (response.ok) {
           const cache = await caches.open(APP_CACHE);
           await cache.put(event.request, response.clone()).catch(() => undefined);
         }
         return response;
       } catch (error) {
+        if (online) throw error;
         const cached = await caches.match(event.request);
         if (cached) return cached;
         if (event.request.mode === 'navigate') {
@@ -295,7 +314,11 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(fetch(event.request));
     return;
   }
-  const networkResponse = fetch(event.request);
+  const responseRequest = onlineRequest(event).then((online) => {
+    const request = online ? new Request(event.request, { cache: 'no-store' }) : event.request;
+    return { online, request };
+  });
+  const networkResponse = responseRequest.then(({ request }) => fetch(request));
   event.waitUntil(networkResponse.then(async (response) => {
     if (!response.ok) return;
     const copy = response.clone();
@@ -303,6 +326,7 @@ self.addEventListener('fetch', (event) => {
     await cache.put(event.request, copy);
   }).catch(() => undefined));
   event.respondWith(networkResponse.catch(async (error) => {
+      if ((await responseRequest).online) throw error;
       const cached = await caches.match(event.request);
       if (cached) return cached;
       throw error;
@@ -352,7 +376,7 @@ self.addEventListener('message', (event) => {
   }
   if (event.data?.type !== 'DOWNLOAD_DATA' || !Array.isArray(event.data.urls)) return;
   const debug = typeof event.data.debug === 'string' ? event.data.debug : undefined;
-  const task = downloadConfiguredData(true, event.data.urls, debug).then(
+  const task = downloadConfiguredData(true, event.data.urls, debug, isOnlineUrl(event.source?.url)).then(
     (lastSuccess) => event.ports[0]?.postMessage({
       type: 'DOWNLOAD_COMPLETE',
       version: VERSION,
