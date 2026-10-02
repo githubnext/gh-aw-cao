@@ -7,6 +7,7 @@ import { resolveDashboardQuerySources } from "./data/queries/declarative.js";
 import { csrfHeaders, ensureCsrfToken, usesGitHubAuthentication } from "./auth.js";
 import { createDebug } from "./debug.js";
 import { updateRateLimitNotification } from "./rate-limit-notification.js";
+import { publishNotification } from "./notification-service.js";
 
 const debugRemoteBackend = createDebug("remote-data-backend");
 
@@ -108,6 +109,10 @@ async function apiRequest(path, init = {}, signal) {
   const oauth = usesGitHubAuthentication();
   const token = oauth ? "" : accessToken();
   const method = (init.method ?? "GET").toUpperCase();
+  const operation = path === "/api/v1/query" ? "query"
+    : path === "/api/v1/refresh" ? "refresh" : "other";
+  const startedAt = performance.now();
+  debugRemoteBackend({ event: "request-started", operation, method });
   if (oauth && !["GET", "HEAD", "OPTIONS"].includes(method)) await ensureCsrfToken(signal);
   const headers = {
     Accept: "application/json",
@@ -115,15 +120,25 @@ async function apiRequest(path, init = {}, signal) {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...init.headers,
   };
-  const response = await fetch(apiUrl(path), {
-    ...init,
-    signal,
-    cache: "no-store",
-    credentials: oauth ? "same-origin" : "omit",
-    headers: oauth && !["GET", "HEAD", "OPTIONS"].includes(method)
-      ? csrfHeaders(headers)
-      : headers,
-  });
+  let response;
+  try {
+    response = await fetch(apiUrl(path), {
+      ...init,
+      signal,
+      cache: "no-store",
+      credentials: oauth ? "same-origin" : "omit",
+      headers: oauth && !["GET", "HEAD", "OPTIONS"].includes(method)
+        ? csrfHeaders(headers)
+        : headers,
+    });
+  } catch (error) {
+    debugRemoteBackend({
+      event: "request-network-failed", operation,
+      durationMs: Math.round(performance.now() - startedAt),
+      errorName: error instanceof Error ? error.name : "UnknownError"
+    });
+    throw error;
+  }
   updateRateLimitNotification(path, response.status);
   if (!response.ok) {
     const payload = await response.json().catch(() => null);
@@ -136,8 +151,9 @@ async function apiRequest(path, init = {}, signal) {
       : response.headers.get("X-Span-Id") ?? "";
     debugRemoteBackend({
       event: "request-failed",
-      path,
+      operation,
       status: response.status,
+      durationMs: Math.round(performance.now() - startedAt),
       ...(traceId ? { traceId } : {})
     });
     throw new DashboardServerError(
@@ -149,7 +165,12 @@ async function apiRequest(path, init = {}, signal) {
       spanId
     );
   }
-  return response.json();
+  const result = await response.json();
+  debugRemoteBackend({
+    event: "request-completed", operation, status: response.status,
+    durationMs: Math.round(performance.now() - startedAt)
+  });
+  return result;
 }
 
 /**
@@ -209,6 +230,13 @@ function remoteQueryPayload(sourceNames, context, pagination, options = {}) {
  * @param {RemoteQueryOptions} [options]
  */
 export async function queryRemoteDashboard(sourceNames, context, pagination, options = {}) {
+  debugRemoteBackend({
+    event: "query-started",
+    sourceCount: sourceNames.length,
+    hasPage: Boolean(options.pageId),
+    hasView: Boolean(options.viewId),
+    needsEvaluationTime: !observedEvaluatedAt
+  });
   if (!observedEvaluatedAt) {
     const status = await apiRequest("/api/v1/refresh", { method: "POST" }, options.signal);
     if (Number.isSafeInteger(status?.revision)) observedRevision = status.revision;
@@ -224,6 +252,12 @@ export async function queryRemoteDashboard(sourceNames, context, pagination, opt
   if (Number.isSafeInteger(payload.revision)) observedRevision = payload.revision;
   if (Number.isSafeInteger(payload.healthRevision)) observedHealthRevision = payload.healthRevision;
   if (typeof payload.evaluatedAt === "string") observedEvaluatedAt = payload.evaluatedAt;
+  debugRemoteBackend({
+    event: "query-completed",
+    sourceCount: Object.keys(payload.sources).length,
+    revision: observedRevision,
+    healthRevision: observedHealthRevision
+  });
   return {
     revision: Number.isSafeInteger(payload.revision) ? payload.revision : null,
     healthRevision: Number.isSafeInteger(payload.healthRevision) ? payload.healthRevision : null,
@@ -271,9 +305,11 @@ export function subscribeRemoteRevision(onRevision, onError) {
   if (typeof fetch !== "function" || typeof TextDecoder === "undefined") return () => {};
   const subscriber = { onRevision, onError };
   remoteRevisionSubscribers.add(subscriber);
+  debugRemoteBackend({ event: "stream-subscriber-added", subscriberCount: remoteRevisionSubscribers.size });
   if (!stopRemoteRevisionStream) stopRemoteRevisionStream = startRemoteRevisionStream();
   return () => {
     remoteRevisionSubscribers.delete(subscriber);
+    debugRemoteBackend({ event: "stream-subscriber-removed", subscriberCount: remoteRevisionSubscribers.size });
     if (remoteRevisionSubscribers.size > 0) return;
     stopRemoteRevisionStream?.();
     stopRemoteRevisionStream = undefined;
@@ -285,6 +321,9 @@ function startRemoteRevisionStream() {
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let retry;
   let stopped = false;
+  let attempt = 0;
+  /** @type {ReturnType<typeof publishNotification> | undefined} */
+  let connectionNotice;
 
   /**
    * @param {(subscriber: { onRevision: (revision: number, healthRevision: number | null) => void, onError?: (error: Error) => void }) => void} callback
@@ -319,6 +358,7 @@ function startRemoteRevisionStream() {
         observedRevision = payload.revision;
         if (healthRevision !== null) observedHealthRevision = healthRevision;
         if (changed) {
+          debugRemoteBackend({ event: "revision-changed", hasHealthRevision: healthRevision !== null });
           notifySubscribers(
             (subscriber) => subscriber.onRevision(payload.revision, healthRevision),
             "revision",
@@ -332,6 +372,8 @@ function startRemoteRevisionStream() {
   };
 
   const connect = async () => {
+    attempt += 1;
+    debugRemoteBackend({ event: "stream-connecting", attempt, subscriberCount: remoteRevisionSubscribers.size });
     try {
       const oauth = usesGitHubAuthentication();
       const token = oauth ? "" : accessToken();
@@ -346,8 +388,13 @@ function startRemoteRevisionStream() {
       });
       updateRateLimitNotification("/api/v1/events", response.status);
       if (!response.ok || !response.body) {
-        throw new Error(`Dashboard data event stream failed: ${response.status}`);
+        debugRemoteBackend({ event: "stream-response-failed", status: response.status, hasBody: Boolean(response.body) });
+        throw new Error("Dashboard data event stream is unavailable.");
       }
+      debugRemoteBackend({ event: "stream-connected", attempt, status: response.status });
+      connectionNotice?.dismiss();
+      connectionNotice = undefined;
+      attempt = 0;
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
@@ -370,9 +417,13 @@ function startRemoteRevisionStream() {
     } catch (error) {
       if (stopped || controller.signal.aborted) return;
       const errorName = error instanceof Error ? error.name : "UnknownError";
-      debugRemoteBackend({ event: "stream-reconnecting", errorName });
-      const failure = error instanceof Error ? error : new Error(String(error));
-      notifySubscribers((subscriber) => subscriber.onError?.(failure), "error");
+      debugRemoteBackend({ event: "stream-reconnecting", errorName, attempt, retryDelayMs: 1000 });
+      // A lost event stream does not invalidate the last successful query.
+      connectionNotice ??= publishNotification({
+        message: "Live dashboard updates are temporarily unavailable. Reconnecting automatically; existing data remains visible.",
+        tone: "warning",
+        duration: 0
+      });
       retry = setTimeout(() => void connect(), 1000);
     }
   };
@@ -381,5 +432,6 @@ function startRemoteRevisionStream() {
     stopped = true;
     if (retry !== undefined) clearTimeout(retry);
     controller.abort();
+    connectionNotice?.dismiss();
   };
 }

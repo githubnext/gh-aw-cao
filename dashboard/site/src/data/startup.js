@@ -14,6 +14,7 @@ import { configureSourceLoader, refreshSources as refreshBoundSources } from "..
 import { dashboardViewAliasName } from "./queries/view-payload-compiler.js";
 import { usesRemoteDataBackend } from "../remote-data-backend.js";
 import { createDebug } from "../debug.js";
+import { publishNotification } from "../notification-service.js";
 
 const debugStartup = createDebug("startup");
 
@@ -155,6 +156,18 @@ export async function startDashboardData(options) {
     settleUi = () => waitForDashboardUi(browserWindow),
   } = options;
   const cleanup = new AbortController();
+  const failedSubscriptions = new Set();
+  /** @type {ReturnType<typeof publishNotification> | undefined} */
+  let updateNotice;
+  const clearUpdateNotice = () => {
+    if (failedSubscriptions.size) return;
+    updateNotice?.dismiss();
+    updateNotice = undefined;
+  };
+  cleanup.signal.addEventListener("abort", () => {
+    failedSubscriptions.clear();
+    clearUpdateNotice();
+  }, { once: true });
   let nextViewSubscriptionId = 0;
   let stopAutomaticDataUpdates = () => {};
   /** @type {() => void} */
@@ -221,6 +234,7 @@ export async function startDashboardData(options) {
         options.sourceNames,
         dashboardContext,
         (sources) => {
+          if (failedSubscriptions.delete(options.subscriptionId)) clearUpdateNotice();
           const transformedSources = transform(sources);
           if (!receivedInitialSnapshot) {
             receivedInitialSnapshot = true;
@@ -239,16 +253,23 @@ export async function startDashboardData(options) {
           queryContext: pageOptions.queryContext,
           onError: (error) => {
             cleanup();
+            debugStartup({
+              op: "subscribe-sources",
+              subscriptionId: options.subscriptionId,
+              status: receivedInitialSnapshot ? "update-error" : "initial-error",
+              sourceCount: options.sourceNames.length,
+              errorName: error instanceof Error ? error.name : "Unknown",
+            });
             if (!receivedInitialSnapshot) {
-              debugStartup({
-                op: "subscribe-sources",
-                subscriptionId: options.subscriptionId,
-                status: "initial-error",
-                errorName: error instanceof Error ? error.name : "Unknown",
-              });
               reject(error);
             } else {
-              console.error(`${options.errorLabel}: ${error.message}`);
+              failedSubscriptions.add(options.subscriptionId);
+              updateNotice ??= publishNotification({
+                message: "Some dashboard data could not be updated. Existing data remains visible.",
+                tone: "warning",
+                duration: 0,
+                action: { label: "Retry", run: () => refreshSources() },
+              }, document);
             }
           },
         },
