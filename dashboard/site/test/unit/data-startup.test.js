@@ -8,6 +8,7 @@ const dataProcessor = vi.hoisted(() => ({
   loadCanonicalDashboardSources: vi.fn(),
   refreshCanonicalDashboardSources: vi.fn(),
   subscribeCanonicalDashboardView: vi.fn(),
+  subscribeWorkerLoadingProgress: vi.fn(),
 }));
 const updates = vi.hoisted(() => ({
   DASHBOARD_REFRESH_REQUEST_EVENT: "dashboard-refresh-request",
@@ -19,6 +20,7 @@ vi.mock("../../src/dashboard-data-updates.js", () => updates);
 
 import { createBatchedSourceLoader, startDashboardData } from "../../src/data/startup.js";
 import { dashboardViewAliasName } from "../../src/data/queries/view-payload-compiler.js";
+import { browserFirstLoad } from "../../src/browser-first-load.js";
 
 const cachedSources = {
   runs: { source: "runs", rows: [{ run: "cached" }] },
@@ -60,6 +62,8 @@ describe("dashboard data startup", () => {
   beforeEach(() => {
     calls.length = 0;
     vi.clearAllMocks();
+    browserFirstLoad.set({ status: "inactive", dismissed: false });
+    dataProcessor.subscribeWorkerLoadingProgress.mockReturnValue(() => {});
     document.head.replaceChildren();
     document.body.replaceChildren();
     dataProcessor.loadCanonicalDashboardPage.mockImplementation(async (sourceNames = ["runs"]) => {
@@ -163,6 +167,8 @@ describe("dashboard data startup", () => {
   it("renders cached data and lets the UI settle before any download starts", async () => {
     await startDashboardData(options());
 
+    expect(document.querySelector("dialog")).toBeNull();
+    expect(dataProcessor.subscribeWorkerLoadingProgress).not.toHaveBeenCalled();
     expect(calls).toEqual([
       "render:cached",
       "settle",
@@ -222,6 +228,76 @@ describe("dashboard data startup", () => {
 
     expect(calls).toContain("render:loading");
     expect(dataProcessor.loadDashboardSnapshotMetadata).toHaveBeenCalledTimes(2);
+    expect(browserFirstLoad.get().status).toBe("inactive");
+    expect(document.querySelector("dialog")?.open).toBe(false);
+  });
+
+  it("shows the first-import screen only without a complete browser snapshot and cleans up on stop", async () => {
+    dataProcessor.loadDashboardSnapshotMetadata.mockResolvedValue(null);
+    const stopProgress = vi.fn();
+    dataProcessor.subscribeWorkerLoadingProgress.mockReturnValue(stopProgress);
+    const stop = await startDashboardData(options());
+    expect(document.querySelector("dialog")?.open).toBe(true);
+    expect(browserFirstLoad.get().status).toBe("loading");
+    const progress = dataProcessor.subscribeWorkerLoadingProgress.mock.calls[0]?.[0];
+    progress({ id: "ingestion", phase: "update", completed: 1, total: 4 });
+    expect(browserFirstLoad.get()).toMatchObject({ completed: 1, total: 4 });
+    progress({ id: "ingestion", phase: "complete" });
+    expect(browserFirstLoad.get().status).toBe("loading");
+    stop();
+    expect(stopProgress).toHaveBeenCalledOnce();
+    expect(document.querySelector("dialog")).toBeNull();
+    expect(browserFirstLoad.get().status).toBe("inactive");
+  });
+
+  it("keeps failed and cancelled first imports incomplete and supports retry without reopening a dismissed screen", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    dataProcessor.loadDashboardSnapshotMetadata.mockResolvedValue(null);
+    const cancellation = new Error("Data ingestion cancelled.");
+    cancellation.name = "DataProcessingCancelledError";
+    dataProcessor.refreshCanonicalDashboardSources
+      .mockRejectedValueOnce(cancellation)
+      .mockResolvedValueOnce({ changed: true });
+    const startupOptions = options();
+    const stop = await startDashboardData(startupOptions);
+    await vi.waitFor(() => expect(browserFirstLoad.get().status).toBe("failed"));
+    expect(document.querySelector("dialog")?.textContent).toContain("could not finish");
+    browserFirstLoad.set((current) => ({ ...current, dismissed: true }));
+    dataProcessor.loadDashboardSnapshotMetadata.mockResolvedValue({ createdAt: "2026-09-28T12:00:00.000Z" });
+    startupOptions.browserWindow.dispatchEvent(new Event("dashboard-refresh-request"));
+    expect(browserFirstLoad.get().status).toBe("loading");
+    expect(document.querySelector("dialog")?.open).toBe(false);
+    await vi.waitFor(() => expect(browserFirstLoad.get().status).toBe("inactive"));
+    stop();
+    vi.restoreAllMocks();
+  });
+
+  it("does not claim readiness if snapshot metadata cannot confirm a complete first import", async () => {
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+    dataProcessor.loadDashboardSnapshotMetadata
+      .mockResolvedValueOnce(null)
+      .mockRejectedValueOnce(new Error("Snapshot metadata unavailable"));
+    dataProcessor.refreshCanonicalDashboardSources.mockResolvedValue({ changed: false });
+    const stop = await startDashboardData(options());
+    await vi.waitFor(() => expect(browserFirstLoad.get().status).toBe("failed"));
+    expect(calls).not.toContain("render:ready");
+    expect(errorLog).toHaveBeenCalled();
+    stop();
+    vi.restoreAllMocks();
+  });
+
+  it("does not show a browser import screen for a backend without a local snapshot", async () => {
+    const marker = document.createElement("meta");
+    marker.name = "dashboard-data-backend";
+    marker.content = "server-http";
+    document.head.append(marker);
+    dataProcessor.loadDashboardSnapshotMetadata.mockResolvedValue(null);
+    const stop = await startDashboardData(options());
+    expect(calls).toContain("render:cached");
+    expect(document.querySelector("dialog")).toBeNull();
+    expect(browserFirstLoad.get().status).toBe("inactive");
+    expect(dataProcessor.subscribeWorkerLoadingProgress).not.toHaveBeenCalled();
+    stop();
   });
 
   it("treats a successfully completed empty snapshot as ready", async () => {
@@ -332,6 +408,8 @@ describe("dashboard data startup", () => {
     dataProcessor.refreshCanonicalDashboardSources.mockResolvedValue({ changed: false });
     const startupOptions = options();
     await startDashboardData(startupOptions);
+    await vi.waitFor(() => expect(dataProcessor.loadDashboardSnapshotMetadata).toHaveBeenCalledTimes(2));
+    await Promise.resolve();
     dataProcessor.refreshCanonicalDashboardSources.mockClear();
 
     startupOptions.browserWindow.dispatchEvent(new Event("dashboard-refresh-request"));

@@ -1132,6 +1132,15 @@ An element that presents counted summary boxes may declare `config.labels`, a ma
 
 `factory-header` and `factory-floor` are independently loading named elements. Their page shell does not wait for a combined page projection: each declared presentation query is bound to the view separately. An unresolved source places only its dependent widget in a loading state; resolving or refreshing one source updates only widgets that consume that source. A page-level subscription must not emit aliases for independently bound sources it did not request.
 
+`factory-header` may declare the boolean `config.browser-first-load` (default
+`false`) to present the browser's first-import lifecycle instead of campaign
+status until a complete local snapshot is available. This flag is supported
+only by `factory-header`. It does not change the element's declared queries:
+browser-local import progress and dismissal are transient interaction state,
+not canonical campaign evidence. An incomplete or failed first import must not
+be represented as an idle campaign. Backend-backed dashboards and refreshes
+with an existing complete snapshot must not enter this first-import state.
+
 The `problem-detail` element consumes its declared, route-scoped problem query
 through the active page's abort-scoped subscription and updates retained
 evidence without rebuilding its repair control or resetting log scroll position.

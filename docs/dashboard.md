@@ -40,6 +40,15 @@ evidence from collection into the browser, while the
 [Data model](dashboard-data-model.md) explains the records and relationships
 available to every view.
 
+On the first visit to a static dashboard, a dismissible import screen explains
+how the browser downloads and caches its first snapshot. Dismissing it keeps
+the import running; Overview continues to show preparation progress rather
+than calling campaigns idle. The import screen closes when a complete snapshot
+is ready. If preparation fails or is cancelled, Overview reports an incomplete
+import and lets you reopen the screen to retry. Later visits use the cached
+snapshot during refresh. Backend-backed dashboards do not use this browser-local
+first-import experience.
+
 ## Read a result
 
 Treat each result as a starting point for investigation, not as a scorecard. A

@@ -1942,6 +1942,10 @@
           },
           "mark": "element",
           "element": "factory-header",
+          "objective": "Show browser-local first-import progress instead of campaign status until a complete snapshot is available; backend dashboards use the declarative campaign evidence directly.",
+          "config": {
+            "browser-first-load": true
+          },
           "layout": "full"
         },
         {
