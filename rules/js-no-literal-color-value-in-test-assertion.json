@@ -103,15 +103,15 @@
   },
   "evaluation": {
     "target_repo": "githubnext/gh-aw-cao",
-    "target_commit": "d4e4f4047b3ab673cc994d71e25ece332d380aea",
+    "target_commit": "e5d284acc64c596907154fa25cda8c97e2fadc1c",
     "true_positive_count": 1,
     "false_positive_count": 15,
     "false_negative_count": 0,
     "readiness_for_target": "needs-work",
-    "reason": "Re-confirmed unchanged: --terminal-syntax-placeholder pair remains in sync (#953800/#ffa657); 15 stable non-actively-tuned literals, 1 confirmed regression-prone true positive. No new occurrences.",
-    "txn_id": "refiner-37010165621-1"
+    "reason": "Re-confirmed unchanged on e5d284a: --terminal-syntax-placeholder pair remains in sync (#953800/#ffa657); 15 stable non-actively-tuned literals, 1 confirmed regression-prone true positive. No new occurrences since #15803.",
+    "txn_id": "refiner-37023491701-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37010165621",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37023491701",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-02T07:11:19Z"
+  "last_seen_at": "2026-10-02T15:01:15Z"
 }
