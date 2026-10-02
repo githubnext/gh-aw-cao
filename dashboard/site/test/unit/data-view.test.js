@@ -2096,6 +2096,62 @@ describe('data view renderer', () => {
     vi.unstubAllGlobals();
   });
 
+  it('ignores a scatter clustering result that resolves after the chart section is detached', async () => {
+    class ScatterWorker extends EventTarget {
+      /** @param {Record<string, unknown>} request */
+      postMessage(request) {
+        setTimeout(() => this.dispatchEvent(new MessageEvent('message', {
+          data: { id: request.id, data: processDataRequest(request) }
+        })), 0);
+      }
+
+      terminate() {}
+    }
+    vi.stubGlobal('Worker', ScatterWorker);
+    const start = Date.parse('2026-09-01T00:00:00Z');
+    const points = Array.from({ length: 100_000 }, (_, index) => ({
+      key: `point-${index}`,
+      x: new Date(start + (index * 1_000)).toISOString(),
+      y: index % 101,
+      color: `lane-${index % 4}`,
+      link: null
+    }));
+    const rendered = renderDataView('chart', {
+      pageId: 'github-api',
+      title: 'Quota history',
+      view: {
+        mark: 'chart',
+        chart: 'scatter',
+        encoding: {
+          x: { field: 'observed-at', type: 'temporal' },
+          y: { field: 'remaining-percent', type: 'quantitative' },
+          color: { field: 'maximum-lane', type: 'nominal' }
+        }
+      },
+      sourceName: 'github-api-rate-limits',
+      rows: [],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: () => [],
+      buildChartPoints: () => points,
+      prepareChartPoints: (prepared) => prepared,
+      toText: String
+    });
+    document.body.append(/** @type {HTMLElement} */ (rendered));
+    const progress = rendered?.querySelector('.chart-clustering-progress');
+    expect(progress).not.toBeNull();
+
+    rendered?.remove();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    // The detached progress placeholder must not be replaced by a stale
+    // clustering result racing in after the section left the document.
+    expect(rendered?.querySelector('.chart-clustering-progress')).toBe(progress);
+    expect(rendered?.querySelectorAll('.scatter-chart-point')).toHaveLength(0);
+    vi.unstubAllGlobals();
+  });
+
   it('renders workflow run IDs as links whenever a safe run link is available', () => {
     const context = {
       pageId: 'values',

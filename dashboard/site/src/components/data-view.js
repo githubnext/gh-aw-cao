@@ -1371,15 +1371,34 @@ function renderChartView(context) {
     headingTag
   );
   if (pending) {
+    // The clustering result arrives from the data worker after this section
+    // may already be detached (navigated away from); scope the update to the
+    // section's own abort-scoped lifetime so a stale result never mutates a
+    // removed root, matching the swimlane continuation pattern below.
+    const clusteringScope = createFactoryScope();
+    clusteringScope.bind(section);
+    const clusteringState = state(
+      /** @type {{ status: 'pending' } | { status: 'ready', chartContent: HTMLElement[] } | { status: 'failed' }} */
+      ({ status: 'pending' })
+    );
+    effect(() => {
+      const current = clusteringState.get();
+      if (current.status === 'ready') {
+        visualization?.replaceWith(...current.chartContent);
+      } else if (current.status === 'failed') {
+        visualization?.replaceWith(h(
+          'div',
+          { className: 'chart-widget scatter-chart-widget', role: 'status' },
+          'Unable to prepare this scatter visualization.'
+        ));
+      }
+    }, { signal: clusteringScope.signal });
     clustering.then((clustered) => {
-      const rendered = renderVisualization(clustered);
-      visualization?.replaceWith(...rendered.chartContent);
+      if (clusteringScope.signal.aborted) return;
+      clusteringState.set({ status: 'ready', chartContent: renderVisualization(clustered).chartContent });
     }).catch(() => {
-      visualization?.replaceWith(h(
-        'div',
-        { className: 'chart-widget scatter-chart-widget', role: 'status' },
-        'Unable to prepare this scatter visualization.'
-      ));
+      if (clusteringScope.signal.aborted) return;
+      clusteringState.set({ status: 'failed' });
     });
   } else if (chartType === 'pie') {
     section.append(
