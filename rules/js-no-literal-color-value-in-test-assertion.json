@@ -2,12 +2,8 @@
   "rule_key": "js-no-literal-color-value-in-test-assertion",
   "schema_version": 1,
   "first_seen": "2026-10-01T14:53:00Z",
-  "last_updated": "2026-10-02T03:57:05Z",
-  "status": "deprecated",
-  "deprecation": {
-    "reason": "Across its only two refiner evaluations (refiner-36887337909-1, refiner-36950555650-1), true-positive count stayed flat at 1 while false-positive count rose from 11 to 15 with zero narrowing progress.",
-    "txn_id": "librarian-36962106986-1"
-  },
+  "last_updated": "2026-10-02T03:59:40Z",
+  "status": "needs-work",
   "affected_languages": [
     "javascript"
   ],
@@ -17,10 +13,10 @@
   "likely_false_positives": "Asserting a literal color value is legitimate when the test is specifically about a fixed brand constant that is never expected to change (e.g. a GitHub/Primer base token that is not part of an actively-tuned theme), or when the assertion is paired with a computed contrast-ratio check rather than being the sole guard. The rule should flag literal hex/color-mix matches against files under active visual-design iteration (docs/components/*.astro, src/styles.js) rather than every color literal in the codebase.",
   "autofix_safe": false,
   "existing_plugin_coverage": "No published ESLint rule covers this: it requires recognizing brittle golden-value regex assertions tied to a specific pair of source/test files under active design churn, not a generic no-magic-numbers or regex-literal rule that existing plugins (eslint-plugin-jest, eslint-plugin-regexp) target.",
-  "occurrence_count": 5,
+  "occurrence_count": 6,
   "repositories": {
     "githubnext/gh-aw-cao": {
-      "occurrence_count": 5,
+      "occurrence_count": 6,
       "evidence": [
         {
           "type": "merged_pull_request",
@@ -75,6 +71,18 @@
             "tests/unit/docs-accessibility.test.mjs",
             "tests/unit/landing-page-diagram.test.mjs"
           ]
+        },
+        {
+          "type": "merged_pull_request",
+          "repo": "githubnext/gh-aw-cao",
+          "number": 15686,
+          "title": "[self-care:accessibility-checker] Fix dark theme homepage contrast in shared hero components",
+          "detail": "Retuned --terminal-muted, --terminal-syntax-command/option/string/placeholder/operator, and several DispatchIllustration.astro color-mix literals for a dark-mode contrast fix; single-line literal-only update to tests/unit/landing-page-diagram.test.mjs's --terminal-syntax-placeholder assertion (#ffd8b8 -> #ffa657) to keep the brittle golden-value test passing.",
+          "files": [
+            "docs/components/DispatchIllustration.astro",
+            "docs/components/TerminalDemo.astro",
+            "tests/unit/landing-page-diagram.test.mjs"
+          ]
         }
       ],
       "affected_paths": [
@@ -93,7 +101,7 @@
     "reason": "Re-confirmed unchanged: the mined --terminal-syntax-placeholder regression pair is now in sync (test passes), leaving 15 stable non-churning literals flagged as false positives of 16 total sites. Still needs a file/churn-scope restriction before adoption.",
     "txn_id": "refiner-36950555650-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36950555650",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36962115471",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-02T01:30:17Z"
+  "last_seen_at": "2026-10-02T03:59:40Z"
 }
