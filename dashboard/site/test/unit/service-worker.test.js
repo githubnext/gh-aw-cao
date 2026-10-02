@@ -309,7 +309,7 @@ describe('dashboard service worker', () => {
     const { listeners, fetch, entries } = serviceWorkerHarness([], {
       clientUrl: 'https://example.test/dashboard/?online=1'
     });
-    const shell = new Request('https://example.test/dashboard/?online=1', { mode: 'navigate' });
+    const shell = new Request('https://example.test/dashboard/?online=1');
     const asset = new Request('https://example.test/dashboard/src/main.js');
     entries.set(String(shell), new Response('stale shell'));
     entries.set(String(asset), new Response('stale asset'));
