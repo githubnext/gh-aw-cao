@@ -1,9 +1,18 @@
 ---
-import DefaultHead from "@astrojs/starlight/components/Head.astro";
 import { getCollection } from "astro:content";
 import { starlightAgentConfig } from "virtual:starlight-agent/config";
 
-const { entry } = Astro.locals.starlightRoute;
+const { entry, head } = Astro.locals.starlightRoute;
+const description = head.find(({ tag, attrs }) => tag === "meta" && attrs?.property === "og:description")?.attrs?.content;
+const socialDescription = description ? `${description} Built with GitHub Agentic Workflows (gh.io/gh-aw).` : undefined;
+const socialHead = head.map((item) =>
+  item.tag === "meta" && (item.attrs?.property === "og:description" || item.attrs?.name === "twitter:description")
+    ? { ...item, attrs: { ...item.attrs, content: socialDescription } }
+    : item
+);
+if (socialDescription && !head.some(({ tag, attrs }) => tag === "meta" && attrs?.name === "twitter:description")) {
+  socialHead.push({ tag: "meta", attrs: { name: "twitter:description", content: socialDescription } });
+}
 const resourceIds = new Set((await getCollection(
   "docs",
   (candidate) => !candidate.data.draft && !starlightAgentConfig.excludedIds.includes(candidate.id),
@@ -16,7 +25,7 @@ const resourcePath = resourceId === "index" ? "index.json" : `${resourceId}/inde
 const hasStructuredResource = resourceIds.has(resourceId);
 ---
 
-<DefaultHead />
+{socialHead.map(({ tag: Tag, attrs, content }) => <Tag {...attrs} set:html={content} />)}
 <link rel="describedby" href={`${base}${starlightAgentConfig.scopePath}/llms.txt`} />
 <link rel="index" type="application/json" href={`${base}${starlightAgentConfig.scopePath}/resources.json`} />
 {hasStructuredResource && <link rel="alternate" type="application/json" href={`${base}${resourcePath}`} />}

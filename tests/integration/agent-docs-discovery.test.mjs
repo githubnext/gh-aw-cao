@@ -16,6 +16,25 @@ function hrefForRel(html, rel, type) {
   return tag?.match(/\bhref="([^"]+)"/)?.[1];
 }
 
+function metaContent(html, key, value) {
+  const tags = html.match(/<meta\b[^>]*>/g) ?? [];
+  const tag = tags.find((candidate) => candidate.includes(`${key}="${value}"`));
+  return tag?.match(/\bcontent="([^"]+)"/)?.[1];
+}
+
+test("documentation unfurls reference gh-aw without changing page descriptions or URLs", async () => {
+  for (const route of ["", "architecture/", "catalog/"]) {
+    const html = await readFile(path.join(dist, route, "index.html"), "utf8");
+    const description = metaContent(html, "name", "description");
+    const socialDescription = `${description} Built with GitHub Agentic Workflows (gh.io/gh-aw).`;
+    assert.ok(description, `${route || "index"} should have a page description`);
+    assert.equal(metaContent(html, "property", "og:description"), socialDescription);
+    assert.equal(metaContent(html, "name", "twitter:description"), socialDescription);
+    assert.equal(metaContent(html, "property", "og:url"), new URL(route, publicBase).href);
+    assert.equal(hrefForRel(html, "canonical"), new URL(route, publicBase).href);
+  }
+});
+
 function markdownLinks(markdown) {
   return [...markdown.matchAll(/\[[^\]]+\]\(([^)\s]+)\)/g)].map((match) => match[1]);
 }
