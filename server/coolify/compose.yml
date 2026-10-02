@@ -41,7 +41,8 @@ services:
       CAO_MCP_ACTIONS_REPOSITORY: ${CAO_MCP_ACTIONS_REPOSITORY:?Configure the GitHub repository selected as this Coolify resource's source}
       CAO_SOURCE_DIRECTORY: /app/source
       CAO_BUILD_VERSION: ${SOURCE_COMMIT:-unknown}
-      DEBUG: ${DEBUG:-cao:server,cao:query,cao:ingest,cao:telemetry}
+      DEBUG: ${DEBUG:-cao:server*,cao:query,cao:ingest,cao:telemetry}
+      CAO_SERVER_LOGS_ENABLED: ${CAO_SERVER_LOGS_ENABLED:-true}
       CAO_OTEL_LOGS_ENABLED: ${CAO_OTEL_LOGS_ENABLED:-false}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:-}

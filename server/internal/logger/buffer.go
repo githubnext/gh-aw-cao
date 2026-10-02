@@ -12,10 +12,10 @@ const maxMessageBytes = 4096
 
 // Buffer retains a bounded snapshot of recent server debug records.
 type Buffer struct {
-	mu      sync.Mutex
-	lines   [bufferCapacity][]byte
-	next    int
-	count   int
+	mu    sync.Mutex
+	lines [bufferCapacity][]byte
+	next  int
+	count int
 }
 
 var activeBuffer atomic.Pointer[Buffer]
