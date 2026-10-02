@@ -1487,11 +1487,11 @@
       }
     },
     {
-      "id": "campaign-runtime-health-runs",
-      "subject": "Project only the run and workflow fields required to classify current campaign runtime health.",
-      "objective": "Provide the retained run identity, timing, role, dispatch type, repository, and status needed to assess campaign runtime-health groups.",
-      "acceptance": "Project the selected fields from overview-runs without converting missing statuses or unattributed workflows into failures; unavailable run history leaves health assessment incomplete.",
-      "description": "A bounded runtime-health input that excludes audit outcomes and presentation-only campaign run fields.",
+      "id": "campaign-runtime-streak-groups",
+      "subject": "Aggregate retained completed run streaks before constructing role-derived dispatch labels.",
+      "objective": "Compute current failure streaks without copying per-run presentation fields.",
+      "acceptance": "Preserve campaign, workflow, role, repository and latest-failure-streak identity, canonical ordering and overview-runs evidence quality. Dispatch type is a deterministic function of workflow role; an in-flight retry cannot mask a concluded failure streak.",
+      "description": "Private completed-run partitions; role-dependent labels are attached only after aggregation.",
       "parameters": [],
       "sources": [
         "overview-runs"
@@ -1513,7 +1513,7 @@
       "description": "Current retained failure streaks grouped by campaign workflow and runtime repository, considering only concluded Runs so an in-flight retry cannot mask an active failure streak.",
       "parameters": [],
       "sources": [
-        "campaign-runtime-health-runs"
+        "campaign-runtime-streak-groups"
       ],
       "used-by-pages": [],
       "execution": {

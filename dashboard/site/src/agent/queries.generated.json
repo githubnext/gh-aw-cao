@@ -2457,12 +2457,20 @@
   ]
  },
  {
-  "name": "campaign-runtime-health-runs",
-  "subject": "Project only the run and workflow fields required to classify current campaign runtime health.",
-  "objective": "Provide the retained run identity, timing, role, dispatch type, repository, and status needed to assess campaign runtime-health groups.",
-  "acceptance": "Project the selected fields from overview-runs without converting missing statuses or unattributed workflows into failures; unavailable run history leaves health assessment incomplete.",
-  "description": "A bounded runtime-health input that excludes audit outcomes and presentation-only campaign run fields.",
+  "name": "campaign-runtime-streak-groups",
+  "subject": "Aggregate retained completed run streaks before constructing role-derived dispatch labels.",
+  "objective": "Compute current failure streaks without copying per-run presentation fields.",
+  "acceptance": "Preserve campaign, workflow, role, repository and latest-failure-streak identity, canonical ordering and overview-runs evidence quality. Dispatch type is a deterministic function of workflow role; an in-flight retry cannot mask a concluded failure streak.",
+  "description": "Private completed-run partitions; role-dependent labels are attached only after aggregation.",
   "from": "overview-runs",
+  "filter": {
+   "predicates": [
+    {
+     "field": "run-status",
+     "equals": "completed"
+    }
+   ]
+  },
   "compute": [
    {
     "as": "status",
@@ -2494,6 +2502,69 @@
      }
     ]
    },
+   {
+    "as": "is-runtime-failure",
+    "function": "equals-any",
+    "args": [
+     {
+      "field": "status"
+     },
+     {
+      "value": "failure"
+     },
+     {
+      "value": "startup-failure"
+     },
+     {
+      "value": "stale"
+     },
+     {
+      "value": "timed-out"
+     }
+    ]
+   },
+   {
+    "as": "runtime-failure-streak-point",
+    "function": "failure-streak-point",
+    "args": [
+     {
+      "field": "started-at"
+     },
+     {
+      "field": "run"
+     },
+     {
+      "field": "is-runtime-failure"
+     }
+    ]
+   }
+  ],
+  "aggregate": {
+   "by": [
+    "campaign",
+    "campaign-name",
+    "workflow",
+    "workflow-name",
+    "workflow-role",
+    "runtime-repository"
+   ],
+   "values": [
+    {
+     "field": "runtime-failure-streak-point",
+     "as": "failure-count",
+     "reducer": "latest-failure-streak"
+    }
+   ]
+  }
+ },
+ {
+  "name": "campaign-runtime-health-groups",
+  "subject": "Compute each campaign workflow and runtime repository's latest consecutive failure streak in the selected horizon.",
+  "objective": "Locate campaign workflow/runtime-repository groups whose most recent retained completed runs have consecutive runtime failures.",
+  "acceptance": "Group completed runs by campaign, workflow, role, dispatch type, and runtime repository; failure-count is the latest retained failure streak, not a rate or a claim about runs outside the available horizon.",
+  "description": "Current retained failure streaks grouped by campaign workflow and runtime repository, considering only concluded Runs so an in-flight retry cannot mask an active failure streak.",
+  "from": "campaign-runtime-streak-groups",
+  "compute": [
    {
     "as": "is-worker",
     "function": "equals-any",
@@ -2551,9 +2622,6 @@
   ],
   "select": [
    {
-    "field": "started-at"
-   },
-   {
     "field": "campaign"
    },
    {
@@ -2575,87 +2643,9 @@
     "field": "runtime-repository"
    },
    {
-    "field": "run"
-   },
-   {
-    "field": "run-status"
-   },
-   {
-    "field": "status"
+    "field": "failure-count"
    }
   ]
- },
- {
-  "name": "campaign-runtime-health-groups",
-  "subject": "Compute each campaign workflow and runtime repository's latest consecutive failure streak in the selected horizon.",
-  "objective": "Locate campaign workflow/runtime-repository groups whose most recent retained completed runs have consecutive runtime failures.",
-  "acceptance": "Group completed runs by campaign, workflow, role, dispatch type, and runtime repository; failure-count is the latest retained failure streak, not a rate or a claim about runs outside the available horizon.",
-  "description": "Current retained failure streaks grouped by campaign workflow and runtime repository, considering only concluded Runs so an in-flight retry cannot mask an active failure streak.",
-  "from": "campaign-runtime-health-runs",
-  "filter": {
-   "predicates": [
-    {
-     "field": "run-status",
-     "equals": "completed"
-    }
-   ]
-  },
-  "compute": [
-   {
-    "as": "is-runtime-failure",
-    "function": "equals-any",
-    "args": [
-     {
-      "field": "status"
-     },
-     {
-      "value": "failure"
-     },
-     {
-      "value": "startup-failure"
-     },
-     {
-      "value": "stale"
-     },
-     {
-      "value": "timed-out"
-     }
-    ]
-   },
-   {
-    "as": "runtime-failure-streak-point",
-    "function": "failure-streak-point",
-    "args": [
-     {
-      "field": "started-at"
-     },
-     {
-      "field": "run"
-     },
-     {
-      "field": "is-runtime-failure"
-     }
-    ]
-   }
-  ],
-  "aggregate": {
-   "by": [
-    "campaign",
-    "campaign-name",
-    "workflow",
-    "workflow-name",
-    "workflow-role",
-    "dispatch-type",
-    "runtime-repository"
-   ],
-   "values": [
-    {
-     "field": "runtime-failure-streak-point",
-     "as": "failure-count",
-     "reducer": "latest-failure-streak"
-    }
-   ]
-  }
  },
  {
   "name": "campaign-runtime-problem-candidates",

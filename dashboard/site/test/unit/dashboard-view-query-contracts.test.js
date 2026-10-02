@@ -401,10 +401,10 @@ describe('dashboard view query contracts', () => {
       (/** @type {Record<string, unknown>} */ query) => query.name === 'campaign-runtime-health-groups'
     );
     const runtimeHealthInput = dashboard.queries.find(
-      (/** @type {Record<string, unknown>} */ query) => query.name === 'campaign-runtime-health-runs'
+      (/** @type {Record<string, unknown>} */ query) => query.name === 'campaign-runtime-streak-groups'
     );
 
-    expect(runtimeHealth).toMatchObject({ from: 'campaign-runtime-health-runs' });
+    expect(runtimeHealth).toMatchObject({ from: 'campaign-runtime-streak-groups' });
     expect(runtimeHealthInput).toMatchObject({ from: 'overview-runs' });
     expect(declaredQueryReferences(runtimeHealthInput)).not.toContain('run-incomplete-outcomes');
     expect(declaredQueryReferences(runtimeHealthInput)).not.toContain('audits');
