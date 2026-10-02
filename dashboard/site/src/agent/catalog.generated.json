@@ -943,31 +943,6 @@
   ],
   "queries": [
     {
-      "id": "event-base",
-      "subject": "Project shared event fields before combining run-owned records.",
-      "objective": "Provide the narrow retained event evidence needed for inspection and run import-coverage analysis.",
-      "acceptance": "The result unions retained audit, domain, tool, and issue records with their available run identity; an empty or unavailable preview cannot establish zero source activity or complete import coverage.",
-      "description": "",
-      "parameters": [],
-      "sources": [
-        "audits",
-        "domains",
-        "issues",
-        "tools"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits",
-          "domains",
-          "issues",
-          "tools"
-        ]
-      }
-    },
-    {
       "id": "audit-event-runs",
       "subject": "Count imported audit records per run before combining event sources.",
       "objective": "Bound audit evidence for run import-coverage analysis.",
@@ -1069,38 +1044,15 @@
       }
     },
     {
-      "id": "run-import-status",
-      "subject": "Identify observed runs that have one or more imported run-owned records.",
-      "objective": "Compare observed run attempts with retained run-owned event evidence to locate import-coverage gaps for investigation.",
-      "acceptance": "Keep each observed run and its run-attempt identity; imported-event-count is zero and imported is false without a matching retained event, but missing events alone do not establish an ingestion failure.",
-      "description": "Observed runs enriched with imported-record status.",
+      "id": "workflow-inventory-run-totals",
+      "subject": "Summarize retained run attempts, conclusions, and import coverage for workflow inventory.",
+      "objective": "Aggregate import status without retaining a second enriched copy of every run.",
+      "acceptance": "Preserve distinct run-attempt counts, conclusion counts, imported-run totals, and all four event sources' quality; absent import evidence is not proof of ingestion failure.",
+      "description": "",
       "parameters": [],
       "sources": [
         "event-runs",
         "runs"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits",
-          "domains",
-          "issues",
-          "runs",
-          "tools"
-        ]
-      }
-    },
-    {
-      "id": "workflow-run-totals",
-      "subject": "Summarize observed run counts and imported runs by declared workflow.",
-      "objective": "Compare observed run attempts, conclusions, and imported-record coverage for each workflow.",
-      "acceptance": "Group by organization, repository, and workflow; report distinct run-attempt totals, successful and failed conclusion counts, and imported-run totals only from retained evidence. Missing run records cannot establish zero execution.",
-      "description": "Observed run and imported-run totals for each declared workflow.",
-      "parameters": [],
-      "sources": [
-        "run-import-status"
       ],
       "used-by-pages": [],
       "execution": {
@@ -1314,7 +1266,7 @@
       ],
       "sources": [
         "workflow-aic-totals",
-        "workflow-run-totals",
+        "workflow-inventory-run-totals",
         "workflows"
       ],
       "used-by-pages": [
@@ -3097,6 +3049,31 @@
       }
     },
     {
+      "id": "entity-event-records",
+      "subject": "Project compact retained event records and their fallback navigation URL.",
+      "objective": "Resolve event links once before request-scoped output searching and ordering.",
+      "acceptance": "Preserve audit-first union availability, weakest quality, oldest provenance, and safe-output/correlation/implementation URL priority; absent records do not prove no activity.",
+      "description": "Resolve links in the compact event projection so the ordered consumer does not project every event again.",
+      "parameters": [],
+      "sources": [
+        "audits",
+        "domains",
+        "issues",
+        "tools"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "domains",
+          "issues",
+          "tools"
+        ]
+      }
+    },
+    {
       "id": "entity-events",
       "subject": "Project all run-owned records for reusable cards and run drill-down.",
       "objective": "Expose run-owned event identity, status, provenance, timestamp, and available navigation links for inspection.",
@@ -3125,7 +3102,7 @@
         }
       ],
       "sources": [
-        "event-base"
+        "entity-event-records"
       ],
       "used-by-pages": [
         "run-events",
