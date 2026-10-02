@@ -619,6 +619,19 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.doesNotMatch(workflow, /GH_TOKEN:/);
 });
 
+test("deployed integration rejects a stale hosted dashboard backfill", () => {
+  const workflow = readFileSync(join(root, ".github", "workflows", "dashboard-deployed-integration.yml"), "utf8");
+  const backfillTest = readFileSync(join(root, "tests", "integration", "dashboard-hosted-backfill.test.mjs"), "utf8");
+
+  assert.match(workflow, /Test hosted dashboard backfill freshness[\s\S]*?node --test tests\/integration\/dashboard-hosted-backfill\.test\.mjs/);
+  assert.match(workflow, /steps\.backfill\.outcome == 'failure' \|\| steps\.test\.outcome == 'failure'/);
+  assert.match(backfillTest, /https:\/\/cao\.githubnext\.com\/api\/v1\/health/);
+  assert.match(backfillTest, /https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/agent-summary\.json/);
+  assert.match(backfillTest, /HOSTED_BACKFILL_MAX_LAG_MINUTES/);
+  assert.match(backfillTest, /hostedEvaluatedAt/);
+  assert.match(backfillTest, /publishedGeneratedAt/);
+});
+
 test("Documentation site uses stock Starlight without external themes", () => {
   const campaignJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
   const astroConfig = readFileSync(join(root, "astro.config.mjs"), "utf8");

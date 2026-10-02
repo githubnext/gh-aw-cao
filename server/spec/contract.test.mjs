@@ -44,6 +44,13 @@ test('the generated contract describes the implemented security and wire formats
   }
   assert.equal(openapi.components.schemas.HealthResponse.properties.generation, undefined)
   assert.equal(openapi.components.schemas.RebuildStatus.properties.generation, undefined)
+  assert.deepEqual(
+    {
+      type: openapi.components.schemas.DataState.properties.evaluatedAt.type,
+      format: openapi.components.schemas.DataState.properties.evaluatedAt.format
+    },
+    { type: 'string', format: 'date-time' }
+  )
 })
 
 test('structured payload fields stay in sync with Go JSON tags', () => {

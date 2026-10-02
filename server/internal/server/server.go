@@ -955,10 +955,14 @@ func (a *App) health(response http.ResponseWriter, request *http.Request) {
 		status = http.StatusServiceUnavailable
 	}
 	serverLog.Printf("health status=%d redis=%t data=%t", status, redisHealthy, active.Ready)
+	data := map[string]any{"available": active.Ready, "rebuildRequired": !active.Ready}
+	if active.Ready && !active.EvaluatedAt.IsZero() {
+		data["evaluatedAt"] = active.EvaluatedAt.UTC().Format(time.RFC3339Nano)
+	}
 	payload := map[string]any{
 		"status": "healthy",
 		"redis":  map[string]any{"connected": redisHealthy},
-		"data":   map[string]any{"available": active.Ready, "rebuildRequired": !active.Ready},
+		"data":   data,
 	}
 	if status != http.StatusOK {
 		payload["status"] = "unhealthy"
@@ -992,13 +996,17 @@ func (a *App) readiness(response http.ResponseWriter, request *http.Request) {
 	if !ready {
 		status = http.StatusServiceUnavailable
 	}
+	data := map[string]any{
+		"available":       active.Ready,
+		"rebuildRequired": !active.Ready,
+	}
+	if active.Ready && !active.EvaluatedAt.IsZero() {
+		data["evaluatedAt"] = active.EvaluatedAt.UTC().Format(time.RFC3339Nano)
+	}
 	writeJSON(response, status, map[string]any{
 		"ready": ready,
 		"redis": map[string]any{"connected": redisHealthy},
-		"data": map[string]any{
-			"available":       active.Ready,
-			"rebuildRequired": !active.Ready,
-		},
+		"data":  data,
 	})
 }
 

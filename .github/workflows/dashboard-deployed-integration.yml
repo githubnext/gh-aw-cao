@@ -27,6 +27,7 @@ on:
       - tests/e2e/dashboard-query-performance-helpers.mjs
       - tests/e2e/dashboard-query-performance.spec.mjs
       - tests/e2e/dashboard-view-assessment.mjs
+      - tests/integration/dashboard-hosted-backfill.test.mjs
       - tests/helpers/dashboard-query-cost.mjs
       - tests/helpers/dashboard-query-cost-report.mjs
       - tests/performance/dashboard-query-cost-postgres.test.mjs
@@ -68,6 +69,10 @@ jobs:
         run: |
           sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
           npx playwright install --with-deps chromium
+      - name: Test hosted dashboard backfill freshness
+        id: backfill
+        continue-on-error: true
+        run: node --test tests/integration/dashboard-hosted-backfill.test.mjs
       - name: Test deployed dashboard
         id: test
         continue-on-error: true
@@ -81,7 +86,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
       - name: Fail when integration checks fail
-        if: steps.test.outcome == 'failure'
+        if: steps.backfill.outcome == 'failure' || steps.test.outcome == 'failure'
         run: exit 1
 
   query-performance:
