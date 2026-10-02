@@ -1370,8 +1370,8 @@ func isCanonicalNumber(field string) bool {
 }
 
 // Backfill complete document-backed and older EAV-only canonical sources.
-// Each source is staged behind a savepoint so malformed historical data
-// remains readable without leaving half-converted native rows.
+// An unsupported historical row aborts the enclosing schema transaction,
+// preserving all legacy data for repair or a subsequent authoritative rebuild.
 func backfillCanonical(ctx context.Context, tx *sql.Tx) error {
 	rows, err := tx.QueryContext(ctx, `SELECT s.namespace, s.source_name
 			FROM cao_sources s JOIN cao_counts c
@@ -1407,9 +1407,6 @@ func backfillCanonical(ctx context.Context, tx *sql.Tx) error {
 		if !isCanonicalSource(name) {
 			continue
 		}
-		if _, err = tx.ExecContext(ctx, "SAVEPOINT canonical_backfill"); err != nil {
-			return err
-		}
 		var documentCount int
 		var hasMetadata bool
 		if err = tx.QueryRowContext(ctx, `SELECT
@@ -1441,10 +1438,8 @@ func backfillCanonical(ctx context.Context, tx *sql.Tx) error {
 			if err = documents.add(-1, metadata); err != nil {
 				return err
 			}
-			compatible := true
-			fallbackReason := ""
 			var lastOrdinal int64 = -1
-			for compatible {
+			for {
 				ordinals, readErr := func() ([]int64, error) {
 					batch, queryErr := tx.QueryContext(ctx, `SELECT ordinal FROM cao_source_rows
 						WHERE namespace = $1 AND source_name = $2 AND ordinal > $3
@@ -1482,34 +1477,20 @@ func backfillCanonical(ctx context.Context, tx *sql.Tx) error {
 						return err
 					}
 					if !ok {
-						compatible = false
-						fallbackReason = canonicalFallbackReason(legacyRows[i])
-						break
+						return fmt.Errorf("cannot migrate canonical source %q at ordinal %d: %s",
+							name, ordinal, canonicalFallbackReason(legacyRows[i]))
 					}
 					lastOrdinal = ordinal
 				}
 			}
-			if compatible && lastOrdinal+1 != int64(expected) {
+			if lastOrdinal+1 != int64(expected) {
 				return fmt.Errorf("incomplete legacy canonical source %q: expected %d rows, got %d",
 					name, expected, lastOrdinal+1)
 			}
-			if !compatible {
-				if _, err = tx.ExecContext(ctx, "ROLLBACK TO SAVEPOINT canonical_backfill"); err != nil {
-					return err
-				}
-				if _, err = tx.ExecContext(ctx, `UPDATE cao_sources SET storage_fallback_reason = $1
-					WHERE namespace = $2 AND source_name = $3`, fallbackReason, namespace, name); err != nil {
-					return err
-				}
-			} else {
-				if err = documents.flush(); err != nil {
-					return err
-				}
-				if err = finalizeCanonicalBackfill(ctx, tx, namespace, name); err != nil {
-					return err
-				}
+			if err = documents.flush(); err != nil {
+				return err
 			}
-			if _, err = tx.ExecContext(ctx, "RELEASE SAVEPOINT canonical_backfill"); err != nil {
+			if err = finalizeCanonicalBackfill(ctx, tx, namespace, name); err != nil {
 				return err
 			}
 			continue
@@ -1521,8 +1502,6 @@ func backfillCanonical(ctx context.Context, tx *sql.Tx) error {
 				WHERE namespace = $1 AND source_name = $2 AND ordinal >= 0 ORDER BY ordinal`, namespace, name); err != nil {
 			return err
 		}
-		compatible := true
-		fallbackReason := ""
 		for {
 			type item struct {
 				ordinal int64
@@ -1561,34 +1540,15 @@ func backfillCanonical(ctx context.Context, tx *sql.Tx) error {
 					return err
 				}
 				if !ok {
-					compatible = false
-					fallbackReason = canonicalFallbackReason(item.row)
-					break
+					return fmt.Errorf("cannot migrate canonical source %q at ordinal %d: %s",
+						name, item.ordinal, canonicalFallbackReason(item.row))
 				}
 			}
-			if !compatible {
-				break
-			}
 		}
-		if !compatible {
-			// Rolling back also closes the cursor.
-			if _, err = tx.ExecContext(ctx, "ROLLBACK TO SAVEPOINT canonical_backfill"); err != nil {
-				return err
-			}
-			if _, err = tx.ExecContext(ctx, `UPDATE cao_sources SET storage_fallback_reason = $1
-				WHERE namespace = $2 AND source_name = $3`, fallbackReason, namespace, name); err != nil {
-				return err
-			}
-		} else {
-			if _, err = tx.ExecContext(ctx, "CLOSE canonical_backfill_cursor"); err != nil {
-				return err
-			}
-			if err = finalizeCanonicalBackfill(ctx, tx, namespace, name); err != nil {
-				return err
-			}
+		if _, err = tx.ExecContext(ctx, "CLOSE canonical_backfill_cursor"); err != nil {
+			return err
 		}
-
-		if _, err = tx.ExecContext(ctx, "RELEASE SAVEPOINT canonical_backfill"); err != nil {
+		if err = finalizeCanonicalBackfill(ctx, tx, namespace, name); err != nil {
 			return err
 		}
 	}

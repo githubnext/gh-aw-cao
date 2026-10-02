@@ -420,6 +420,19 @@ func initialize(ctx context.Context, db *sql.DB) error {
 	if err := migrateCanonicalExtensions(ctx, tx); err != nil {
 		return err
 	}
+	names := make([]string, 0, len(canonicalCollections))
+	for name := range canonicalCollections {
+		names = append(names, name)
+	}
+	var unmigrated string
+	err = tx.QueryRowContext(ctx, `SELECT source_name FROM cao_sources
+		WHERE source_name = ANY($1) AND NOT is_canonical LIMIT 1`, names).Scan(&unmigrated)
+	if err == nil {
+		return fmt.Errorf("unmigrated postgres canonical source %q", unmigrated)
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
 	if _, err := tx.ExecContext(ctx, `DO $$
 		BEGIN
 			IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'cao_canonical_rows'::regclass
@@ -1521,9 +1534,12 @@ func (r *readTransaction) LoadSource(ctx context.Context, name string, definitio
 			}
 			return result, model.Metrics{OutputRows: len(canonical)}, nil
 		}
+		if readErr == nil {
+			return model.Source{}, model.Metrics{}, errors.New("unmigrated postgres canonical source")
+		}
 	}
 	// Current schemaless sources use documents alone; EAV is read only for
-	// pre-document revisions (including older canonical revisions).
+	// pre-document schemaless revisions.
 	var metadataText string
 	docErr := tx.QueryRowContext(ctx, `SELECT payload FROM cao_source_documents
 		WHERE namespace = $1 AND source_name = $2 AND ordinal = -1`, s.namespace, name).Scan(&metadataText)
@@ -1650,6 +1666,9 @@ func (r *readTransaction) LoadSource(ctx context.Context, name string, definitio
 }
 
 func (r *readTransaction) LoadDocument(ctx context.Context, source, id string) (model.Row, error) {
+	if isCanonicalSource(source) {
+		return nil, fmt.Errorf("%w: canonical source %q has no document reader", ErrSourceUnavailable, source)
+	}
 	var payload string
 	err := r.tx.QueryRowContext(ctx, `SELECT payload FROM cao_source_documents
 		WHERE namespace = $1 AND source_name = $2 AND id = $3

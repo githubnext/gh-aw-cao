@@ -564,7 +564,7 @@ func TestStoreIntegration(t *testing.T) {
 		t.Fatalf("invalid replacement changed committed state: before=%+v after=%+v err=%v", beforeInvalid, afterInvalid, err)
 	}
 	// Simulate a committed pre-document EAV-only source and migrate it on
-	// reopening; the legacy reader remains usable until migration succeeds.
+	// reopening; canonical reads fail closed until migration succeeds.
 	tx, err := store.db.BeginTx(ctx, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -596,9 +596,8 @@ func TestStoreIntegration(t *testing.T) {
 	if err = tx.Commit(); err != nil {
 		t.Fatal(err)
 	}
-	legacy, _, err := store.LoadSource(ctx, "$jobs", nil)
-	if err != nil || !reflect.DeepEqual(legacy.Rows, []model.Row{{"id": "old", "createdAt": "2026-01-02T03:04:05Z"}}) {
-		t.Fatalf("pre-document EAV reader lost data: %+v err=%v", legacy, err)
+	if _, _, err := store.LoadSource(ctx, "$jobs", nil); err == nil {
+		t.Fatal("pre-document canonical EAV source was served without conversion")
 	}
 	if err := initialize(ctx, store.db); err != nil {
 		t.Fatal(err)
@@ -627,8 +626,8 @@ func TestStoreIntegration(t *testing.T) {
 	if err := initialize(ctx, store.db); err != nil {
 		t.Fatalf("backfill is not idempotent: %v", err)
 	}
-	// Malformed historical EAV records must remain readable, not be partly
-	// promoted and deleted when their known shape cannot be represented.
+	// Malformed historical EAV records must abort startup without being partly
+	// promoted or deleted; after repair, conversion must succeed.
 	tx, err = store.db.BeginTx(ctx, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -659,20 +658,47 @@ func TestStoreIntegration(t *testing.T) {
 	if err = tx.Commit(); err != nil {
 		t.Fatal(err)
 	}
-	if err := initialize(ctx, store.db); err != nil {
-		t.Fatal(err)
+	if err := initialize(ctx, store.db); err == nil ||
+		!strings.Contains(err.Error(), "known timestamp createdAt has invalid format") {
+		t.Fatalf("unsupported historical canonical row must abort upgrade: %v", err)
 	}
 	fallbacks, err = store.StorageFallbacks(ctx)
-	if err != nil || fallbacks["$sessions"] != "known timestamp createdAt has invalid format" {
-		t.Fatalf("historical unsupported shape lacked fallback diagnostic: %+v err=%v", fallbacks, err)
+	if err != nil || len(fallbacks) != 0 {
+		t.Fatalf("failed upgrade committed fallback metadata: %+v err=%v", fallbacks, err)
 	}
-	if malformed, _, err := store.LoadSource(ctx, "$sessions", nil); err != nil ||
-		!reflect.DeepEqual(malformed.Rows, []model.Row{{"id": "old-bad", "createdAt": "not-a-timestamp"}}) {
-		t.Fatalf("historical EAV source lost after failed promotion: %+v err=%v", malformed, err)
+	if _, _, err := store.LoadSource(ctx, "$sessions", nil); err == nil {
+		t.Fatal("unsupported historical EAV source was served")
+	}
+	if _, err := store.LoadDocument(ctx, "$sessions", "old-bad"); !errors.Is(err, ErrSourceUnavailable) {
+		t.Fatalf("canonical EAV source was served as a document: %v", err)
 	}
 	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM cao_canonical_rows
 		WHERE namespace = 'default' AND source_name = '$sessions'`).Scan(&documents); err != nil || documents != 0 {
 		t.Fatalf("failed historical promotion left partial native rows: count=%d err=%v", documents, err)
+	}
+	var originalTime string
+	if err := store.db.QueryRowContext(ctx, `SELECT text_value FROM cao_values
+		WHERE namespace = 'default' AND source_name = '$sessions'
+			AND ordinal = 0 AND object_key = 'createdAt'`).Scan(&originalTime); err != nil ||
+		originalTime != "not-a-timestamp" {
+		t.Fatalf("failed upgrade lost historical value: %q, %v", originalTime, err)
+	}
+	if _, err := store.db.ExecContext(ctx, `UPDATE cao_values SET text_value = $1
+		WHERE namespace = 'default' AND source_name = '$sessions'
+			AND ordinal = 0 AND object_key = 'createdAt'`, "2026-01-02T03:04:05Z"); err != nil {
+		t.Fatal(err)
+	}
+	if err := initialize(ctx, store.db); err != nil {
+		t.Fatalf("repaired historical source failed to migrate: %v", err)
+	}
+	repaired, _, err := store.LoadSource(ctx, "$sessions", nil)
+	if err != nil || !reflect.DeepEqual(repaired.Rows,
+		[]model.Row{{"id": "old-bad", "createdAt": "2026-01-02T03:04:05Z"}}) {
+		t.Fatalf("repaired historical source changed on conversion: %+v err=%v", repaired, err)
+	}
+	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM cao_values
+		WHERE namespace = 'default' AND source_name = '$sessions'`).Scan(&documents); err != nil || documents != 0 {
+		t.Fatalf("repaired canonical source retained EAV rows: count=%d err=%v", documents, err)
 	}
 	if _, err := store.db.ExecContext(ctx, `UPDATE cao_counts SET count = count + 1
 		WHERE namespace = $1 AND source_name = '$jobs'`, "default"); err != nil {
@@ -1305,6 +1331,84 @@ func TestRemoveNativeGenerationColumn(t *testing.T) {
 			SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema()
 			AND table_name = 'cao_canonical_rows' AND column_name = 'generation')`).Scan(&exists); err != nil || exists {
 		t.Fatalf("native generation column retained: %t, %v", exists, err)
+	}
+}
+
+func TestCanonicalDocumentBackfillFailsClosed(t *testing.T) {
+	url := os.Getenv("POSTGRES_URL")
+	if url == "" {
+		t.Skip("POSTGRES_URL is unset")
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 45*time.Second)
+	defer cancel()
+	config, err := pgx.ParseConfig(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	admin := stdlib.OpenDB(*config.Copy())
+	defer func() { _ = admin.Close() }()
+	schema := fmt.Sprintf("cao_document_upgrade_%d", time.Now().UnixNano())
+	if _, err := admin.ExecContext(ctx, "CREATE SCHEMA "+schema); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _, _ = admin.ExecContext(context.Background(), "DROP SCHEMA "+schema+" CASCADE") }()
+	config.RuntimeParams["search_path"] = schema
+	store, err := NewConfig(ctx, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	for _, statement := range []string{
+		`INSERT INTO cao_state (namespace, revision, data_revision, evaluated_at)
+			VALUES ('default', 1, 'legacy', now())`,
+		`INSERT INTO cao_sources (namespace, source_name) VALUES ('default', '$jobs')`,
+		`INSERT INTO cao_counts (namespace, source_name, count) VALUES ('default', '$jobs', 2)`,
+		`INSERT INTO cao_source_documents (namespace, source_name, ordinal, payload, id)
+			VALUES ('default', '$jobs', -1, '{}'::json, NULL),
+				('default', '$jobs', 0, '{"id":"valid","createdAt":"2026-01-02T03:04:05Z"}'::json, 'valid'),
+				('default', '$jobs', 1, '{"id":"invalid","createdAt":"invalid"}'::json, 'invalid')`,
+	} {
+		if _, err := store.db.ExecContext(ctx, statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := initialize(ctx, store.db); err == nil ||
+		!strings.Contains(err.Error(), "known timestamp createdAt has invalid format") {
+		t.Fatalf("unsupported document source must abort upgrade: %v", err)
+	}
+	var native, documents int
+	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM cao_canonical_rows
+		WHERE namespace = 'default' AND source_name = '$jobs'`).Scan(&native); err != nil || native != 0 {
+		t.Fatalf("failed upgrade left partial native rows: %d, %v", native, err)
+	}
+	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM cao_source_documents
+		WHERE namespace = 'default' AND source_name = '$jobs'`).Scan(&documents); err != nil || documents != 3 {
+		t.Fatalf("failed upgrade deleted historical documents: %d, %v", documents, err)
+	}
+	if _, _, err := store.LoadSource(ctx, "$jobs", nil); err == nil {
+		t.Fatal("historical canonical document source was served")
+	}
+	if _, err := store.LoadDocument(ctx, "$jobs", "valid"); !errors.Is(err, ErrSourceUnavailable) {
+		t.Fatalf("historical canonical document lookup succeeded: %v", err)
+	}
+	if _, err := store.db.ExecContext(ctx, `UPDATE cao_source_documents
+		SET payload = '{"id":"invalid","createdAt":"2026-01-03T03:04:05Z"}'::json
+		WHERE namespace = 'default' AND source_name = '$jobs' AND ordinal = 1`); err != nil {
+		t.Fatal(err)
+	}
+	if err := initialize(ctx, store.db); err != nil {
+		t.Fatalf("corrected documents failed to migrate: %v", err)
+	}
+	converted, _, err := store.LoadSource(ctx, "$jobs", nil)
+	if err != nil || !reflect.DeepEqual(converted.Rows, []model.Row{
+		{"id": "valid", "createdAt": "2026-01-02T03:04:05Z"},
+		{"id": "invalid", "createdAt": "2026-01-03T03:04:05Z"},
+	}) {
+		t.Fatalf("corrected document source changed on migration: %+v, %v", converted, err)
+	}
+	if err := store.db.QueryRowContext(ctx, `SELECT count(*) FROM cao_source_documents
+		WHERE namespace = 'default' AND source_name = '$jobs'`).Scan(&documents); err != nil || documents != 0 {
+		t.Fatalf("canonical source retained document rows: %d, %v", documents, err)
 	}
 }
 
