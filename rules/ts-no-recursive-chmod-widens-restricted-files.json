@@ -94,14 +94,14 @@
     },
     {
       "target_repo": "githubnext/gh-aw-cao",
-      "target_commit": "3ec18f1462c34e7e8eda459be1de51dce514664e",
+      "target_commit": "d4e4f4047b3ab673cc994d71e25ece332d380aea",
       "true_positive_count": 0,
       "false_positive_count": 1,
       "false_negative_count": 0,
       "readiness_for_target": "needs-work",
-      "reason": "Re-confirmed unchanged: intervening commit #15839 did not touch cao-mcp-container.mjs; sole recursive chmod site, tests/e2e/cao-mcp-container.mjs:89, remains a false positive (no restricted-mode file ever written there). No change in classification.",
-      "txn_id": "refiner-37043177984-3"
+      "reason": "Re-confirmed unchanged: sole recursive chmod site, tests/e2e/cao-mcp-container.mjs:89, remains a false positive (no restricted-mode file ever written there). No change in classification.",
+      "txn_id": "refiner-37010165621-3"
     }
   ],
-  "last_seen_at": "2026-10-02T17:50:27Z"
+  "last_seen_at": "2026-10-02T13:05:59Z"
 }
