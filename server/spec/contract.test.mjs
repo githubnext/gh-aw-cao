@@ -69,6 +69,43 @@ test('structured payload fields stay in sync with Go JSON tags', () => {
   }
 })
 
+test('the physical PostgreSQL contract covers every native canonical field', () => {
+  const implementation = readFileSync(join(directory, '../internal/postgresx/canonical.go'), 'utf8')
+  const properties = openapi.components.schemas['Postgres.CanonicalRow'].properties
+  const camel = name => name.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+  for (const catalogue of [
+    'canonicalFields', 'canonicalTimes', 'canonicalNumbers', 'canonicalBooleans',
+    'canonicalArrays', 'canonicalObjects', 'canonicalIdentifiers', 'canonicalLinks'
+  ]) {
+    const start = implementation.indexOf(`var ${catalogue} =`)
+    assert.notEqual(start, -1, `missing ${catalogue}`)
+    const end = implementation.indexOf('\n}\n', start)
+    assert.notEqual(end, -1, `unterminated ${catalogue}`)
+    const entries = [...implementation.slice(start, end).matchAll(/\{"([^"]+)", "([^"]+)"\}/g)]
+    assert.ok(entries.length, `empty ${catalogue}`)
+    for (const [, key, column] of entries) {
+      const field = catalogue === 'canonicalLinks' ? camel(column) : key
+      assert.ok(properties[field], `${catalogue}.${field} missing from physical contract`)
+      if (catalogue === 'canonicalLinks') {
+        for (const suffix of ['Relation', 'Label', 'Present']) {
+          assert.ok(properties[field + suffix], `${catalogue}.${field + suffix} missing`)
+        }
+      }
+      if (catalogue === 'canonicalNumbers' || catalogue === 'canonicalTimes') {
+        assert.ok(properties[key.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()) + 'Raw'],
+          `${catalogue}.${column}_raw missing`)
+      }
+    }
+  }
+  for (const field of [
+    'provenanceSource', 'provenanceSourceId', 'provenanceObservedAt',
+    'provenanceObservedAtRaw', 'provenanceSourceRevision', 'provenancePresent', 'provenanceNull'
+  ]) {
+    assert.ok(properties[field], `native ${field} missing`)
+  }
+  assert.equal(properties.provenance, undefined, 'obsolete provenance JSON column retained')
+})
+
 test('selected JSON Schemas and nullable responses are emitted', () => {
   for (const schema of ['QueryRequest', 'QueryResponse', 'QueryDefinition', 'RevisionEvent', 'WebhookAcknowledgement']) {
     const document = JSON.parse(readFileSync(join(directory, 'generated/schemas', `${schema}.json`), 'utf8'))

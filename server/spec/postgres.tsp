@@ -179,6 +179,14 @@ model CanonicalRow {
   admissionStatus?: string | null;
   admissionReason?: string | null;
   resource?: string | null;
+  addCommand?: string | null;
+  artwork?: string | null;
+  publisher?: string | null;
+  ref?: string | null;
+  registryId?: string | null;
+  registryName?: string | null;
+  resolvedCommit?: string | null;
+  sourceCoordinate?: string | null;
   message?: string | null;
   error?: string | null;
   @encodedName("application/json", "workflow-slug") workflowSlug?: string | null;
@@ -314,6 +322,9 @@ model CanonicalRow {
   frictionRatio?: decimal | null;
   requestBytes?: decimal | null;
   responseBytes?: decimal | null;
+  registryPrecedence?: decimal | null;
+  stars?: decimal | null;
+  forks?: decimal | null;
   maxRepositories?: decimal | null;
   rolloutPercent?: decimal | null;
   monthlyAiCreditBudget?: decimal | null;
@@ -421,8 +432,20 @@ model CanonicalRow {
   externalHrefRelation?: string | null;
   externalHrefLabel?: string | null;
   externalHrefPresent?: string[] | null;
+  closedAt?: utcDateTime | null;
+  closedAtRaw?: string | null;
+  registryPrecedenceRaw?: string | null;
+  starsRaw?: string | null;
+  forksRaw?: string | null;
+  /** Closed-shape provenance uses native columns and separate subfield presence. */
+  provenanceSource?: string | null;
+  provenanceSourceId?: string | null;
+  provenanceObservedAt?: utcDateTime | null;
+  provenanceObservedAtRaw?: string | null;
+  provenanceSourceRevision?: string | null;
+  provenancePresent: string[];
+  provenanceNull: boolean;
   /** Nested provider and observation structures currently stored in JSON columns. */
-  provenance?: unknown;
   tokenUsage?: unknown;
   ambientContext?: unknown;
   workingSet?: unknown;
@@ -451,4 +474,5 @@ model CanonicalRow {
   ghAwManifest?: unknown;
   data?: unknown;
   logsPayload?: unknown;
+  contents?: unknown;
 }
