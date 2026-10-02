@@ -16,11 +16,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
+	debuglogger "github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/server"
 )
+
+var benchmarkLog = debuglogger.New("cao:dashboard:benchmark")
 
 type benchmarkLoader struct {
 	ctx   context.Context
@@ -96,6 +99,31 @@ func newBenchmarkNamespace() (string, error) {
 	return "query_cost_benchmark_" + hex.EncodeToString(id[:]), nil
 }
 
+// mergeBenchmarkDefinitions combines the canonical database queries with the
+// dashboard's declared queries and reports which names the dashboard
+// declares. Candidates outside that declared set must fail closed before any
+// Postgres work runs.
+func mergeBenchmarkDefinitions(database, dashboard []query.Definition) ([]query.Definition, map[string]bool) {
+	definitions := append([]query.Definition{}, database...)
+	definitions = append(definitions, dashboard...)
+	defined := make(map[string]bool, len(dashboard))
+	for _, definition := range dashboard {
+		defined[definition.Name] = true
+	}
+	return definitions, defined
+}
+
+// validateBenchmarkCandidates reports the first candidate not declared by the
+// dashboard, so callers can fail before issuing any Postgres query.
+func validateBenchmarkCandidates(candidates []string, defined map[string]bool) error {
+	for _, name := range candidates {
+		if !defined[name] {
+			return fmt.Errorf("query %q is not declared in the dashboard", name)
+		}
+	}
+	return nil
+}
+
 func benchmarkQueries(ctx context.Context, store *postgresx.Store, source, databasePath, dashboardPath string, candidates []string) (benchmarkReport, error) {
 	report := benchmarkReport{Engine: "postgres-go", Measurements: []benchmarkMeasurement{}}
 	if len(candidates) == 0 {
@@ -118,17 +146,13 @@ func benchmarkQueries(ctx context.Context, store *postgresx.Store, source, datab
 	if err != nil {
 		return report, fmt.Errorf("parse dashboard queries: %w", err)
 	}
-	definitions := append([]query.Definition{}, database...)
-	definitions = append(definitions, dashboard...)
+	definitions, defined := mergeBenchmarkDefinitions(database, dashboard)
 	server.ResolveQueryContext(definitions, result.EvaluatedAt)
-	defined := make(map[string]bool, len(dashboard))
-	for _, definition := range dashboard {
-		defined[definition.Name] = true
+	if err := validateBenchmarkCandidates(candidates, defined); err != nil {
+		return report, err
 	}
+	benchmarkLog.Printf("benchmark starting candidates=%d records=%d", len(candidates), report.Records)
 	for _, name := range candidates {
-		if !defined[name] {
-			return report, fmt.Errorf("query %q is not declared in the dashboard", name)
-		}
 		started := time.Now()
 		sources, metrics, err := query.New(benchmarkLoader{ctx: ctx, store: store}).Execute(definitions, []string{name})
 		if err != nil {
@@ -143,6 +167,7 @@ func benchmarkQueries(ctx context.Context, store *postgresx.Store, source, datab
 			Metrics: metrics, Rows: len(source.Rows),
 		})
 	}
+	benchmarkLog.Printf("benchmark completed measurements=%d", len(report.Measurements))
 	return report, nil
 }
 

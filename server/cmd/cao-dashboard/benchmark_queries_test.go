@@ -10,7 +10,37 @@ import (
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
+	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
+
+func TestMergeBenchmarkDefinitionsDeclaresDashboardNames(t *testing.T) {
+	database := []query.Definition{{Name: "runs-base", From: "$runs"}}
+	dashboard := []query.Definition{{Name: "overview", From: "runs-base"}, {Name: "cso-summary", From: "runs-base"}}
+
+	definitions, defined := mergeBenchmarkDefinitions(database, dashboard)
+
+	if len(definitions) != len(database)+len(dashboard) {
+		t.Fatalf("expected %d merged definitions, got %d", len(database)+len(dashboard), len(definitions))
+	}
+	if defined["runs-base"] {
+		t.Fatal("database-only queries must not be in the declared candidate set")
+	}
+	if !defined["overview"] || !defined["cso-summary"] {
+		t.Fatalf("expected dashboard queries to be declared, got %+v", defined)
+	}
+}
+
+func TestValidateBenchmarkCandidatesRejectsUndeclared(t *testing.T) {
+	defined := map[string]bool{"overview": true}
+
+	if err := validateBenchmarkCandidates([]string{"overview"}, defined); err != nil {
+		t.Fatalf("expected declared candidate to pass, got %v", err)
+	}
+	err := validateBenchmarkCandidates([]string{"overview", "not-a-dashboard-query"}, defined)
+	if err == nil || !strings.Contains(err.Error(), "not-a-dashboard-query") {
+		t.Fatalf("expected an undeclared-candidate error naming the query, got %v", err)
+	}
+}
 
 func TestBenchmarkPostgresConfigLocalOnly(t *testing.T) {
 	for _, tc := range []struct {
