@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
@@ -557,6 +558,62 @@ func TestAPIResponsesCarryStandardizedTraceIdentifiers(t *testing.T) {
 	}
 	if len(spanID) != 16 {
 		t.Fatalf("expected a 16-character W3C span id, got %q", spanID)
+	}
+
+	errorRequest := httptest.NewRequestWithContext(
+		t.Context(), http.MethodGet, "https://localhost/api/v1/diagnostics", nil,
+	)
+	errorResponse := httptest.NewRecorder()
+	app.Handler().ServeHTTP(errorResponse, errorRequest)
+	if errorResponse.Code != http.StatusUnauthorized {
+		t.Fatalf("diagnostics returned %d: %s", errorResponse.Code, errorResponse.Body.String())
+	}
+	var errorBody map[string]string
+	if err := json.Unmarshal(errorResponse.Body.Bytes(), &errorBody); err != nil {
+		t.Fatal(err)
+	}
+	if errorBody["traceId"] == "" ||
+		errorBody["traceId"] != errorResponse.Header().Get(telemetry.TraceIDHeader) {
+		t.Fatalf("error body trace id does not match response: %#v", errorBody)
+	}
+	if errorBody["spanId"] == "" ||
+		errorBody["spanId"] != errorResponse.Header().Get(telemetry.SpanIDHeader) {
+		t.Fatalf("error body span id does not match response: %#v", errorBody)
+	}
+}
+
+func TestAccessFailuresCarryStandardizedTraceIdentifiersWithoutDatabase(t *testing.T) {
+	previousProvider := otel.GetTracerProvider()
+	provider := sdktrace.NewTracerProvider()
+	otel.SetTracerProvider(provider)
+	t.Cleanup(func() {
+		_ = provider.Shutdown(context.Background())
+		otel.SetTracerProvider(previousProvider)
+	})
+
+	app := &App{
+		config:      Config{HostProfile: localHostProfile()},
+		accessToken: testAccessToken,
+	}
+	request := httptest.NewRequestWithContext(
+		t.Context(), http.MethodGet, "https://localhost/api/v1/diagnostics", nil,
+	)
+	response := httptest.NewRecorder()
+	app.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("diagnostics returned %d: %s", response.Code, response.Body.String())
+	}
+	var payload map[string]string
+	if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	traceID := response.Header().Get(telemetry.TraceIDHeader)
+	spanID := response.Header().Get(telemetry.SpanIDHeader)
+	if len(traceID) != 32 || payload["traceId"] != traceID {
+		t.Fatalf("error trace id does not match response header: %#v", payload)
+	}
+	if len(spanID) != 16 || payload["spanId"] != spanID {
+		t.Fatalf("error span id does not match response header: %#v", payload)
 	}
 }
 

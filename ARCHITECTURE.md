@@ -163,6 +163,17 @@ checks in shared request handling.
 Startup rejects configurations or Redis clients that do not satisfy the
 selected capabilities.
 
+Hosted server observability uses the same vendor-neutral OTLP contract as
+agentic workflows. Standard `OTEL_*` runtime environment variables select the
+collector; exporter endpoints and headers remain deployment secrets and never
+enter policy, browser state, or logs. When tracing is active, every API response
+has W3C trace and span headers. JSON failures repeat those identifiers, the
+browser exposes the trace ID as a request ID, and bounded server error logs emit
+the same identifiers so operators and agents can correlate client failures,
+Coolify logs, query and ingestion spans, and Postgres child spans. An
+observability backend is diagnostic infrastructure only: it cannot become
+dashboard data authority, policy, or rollout authority.
+
 #### Hosted storage boundary
 
 The hosted dashboard has one strict storage split:

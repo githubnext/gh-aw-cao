@@ -42,4 +42,21 @@ describe('page load error', () => {
     expect(element.textContent).not.toContain('__proto__');
     expect(element.textContent).not.toContain('536870912');
   });
+
+  it('shows a request ID for trace-correlated server failures', () => {
+    const element = renderPageLoadError(
+      new DashboardServerError(
+        'dashboard data is unavailable',
+        '',
+        '',
+        '',
+        '4bf92f3577b34da6a3ce929d0e0e4736',
+        '00f067aa0ba902b7'
+      ),
+      () => {}
+    );
+
+    expect(element.textContent).toContain('Request ID: 4bf92f3577b34da6a3ce929d0e0e4736');
+    expect(element.textContent).not.toContain('00f067aa0ba902b7');
+  });
 });

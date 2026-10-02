@@ -24,14 +24,38 @@ describe("remote dashboard data backend", () => {
       code: "query_plan_too_large",
       queryId: "campaign-repository-coverage",
       boundary: "retained_bytes",
+      traceId: "4bf92f3577b34da6a3ce929d0e0e4736",
+      spanId: "00f067aa0ba902b7",
     }), { status: 422, headers: { "Content-Type": "application/json" } })));
     await expect(queryRemoteDashboard([], { pages: [] })).rejects.toMatchObject({
       name: "DashboardServerError",
       code: "query_plan_too_large",
       queryId: "campaign-repository-coverage",
       boundary: "retained_bytes",
+      traceId: "4bf92f3577b34da6a3ce929d0e0e4736",
+      spanId: "00f067aa0ba902b7",
     });
     expect(new DashboardServerError("failure", "query_plan_too_large", "campaign-inventory")).toBeInstanceOf(Error);
+  });
+
+  it("preserves response trace headers for uncoded server failures", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      error: "dashboard data is unavailable",
+    }), {
+      status: 503,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Trace-Id": "4bf92f3577b34da6a3ce929d0e0e4736",
+        "X-Span-Id": "00f067aa0ba902b7",
+      },
+    })));
+
+    await expect(queryRemoteDashboard([], { pages: [] })).rejects.toMatchObject({
+      name: "DashboardServerError",
+      code: "",
+      traceId: "4bf92f3577b34da6a3ce929d0e0e4736",
+      spanId: "00f067aa0ba902b7",
+    });
   });
 
   it("activates only for the server-injected backend marker", () => {

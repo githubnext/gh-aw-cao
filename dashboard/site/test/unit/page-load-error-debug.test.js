@@ -60,6 +60,34 @@ describe('page load error debug logging', () => {
     });
   });
 
+  it('logs only the trace identifier for a correlated server error', async () => {
+    const debugFn = vi.fn();
+    mockDebugModule(debugFn, '?debug=page-load-error');
+    const { renderPageLoadError } = await import('../../src/components/page-load-error.js');
+    const { DashboardServerError } = await import('../../src/remote-data-backend.js');
+
+    renderPageLoadError(
+      new DashboardServerError(
+        'dashboard data is unavailable',
+        '',
+        '',
+        '',
+        '4bf92f3577b34da6a3ce929d0e0e4736',
+        '00f067aa0ba902b7'
+      ),
+      vi.fn()
+    );
+
+    expect(debugFn).toHaveBeenCalledWith('[cao:page-load-error]', {
+      event: 'classified',
+      errorKind: 'server',
+      code: '',
+      matched: false,
+      hasBoundary: false,
+      traceId: '4bf92f3577b34da6a3ce929d0e0e4736'
+    });
+  });
+
   it('logs a classified event with no match for a generic (non-server) error', async () => {
     const debugFn = vi.fn();
     mockDebugModule(debugFn, '?debug=page-load-error');

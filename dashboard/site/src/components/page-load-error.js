@@ -39,7 +39,8 @@ export function renderPageLoadError(error, retry) {
     errorKind: serverError ? 'server' : 'generic',
     code: serverError?.code,
     matched,
-    hasBoundary: boundary !== undefined
+    hasBoundary: boundary !== undefined,
+    ...(serverError?.traceId ? { traceId: serverError.traceId } : {})
   });
   return h('div', { className: 'page-load-error', role: 'alert' },
     octicon('alert'),
@@ -49,6 +50,8 @@ export function renderPageLoadError(error, retry) {
       presentation !== DEFAULT_PRESENTATION && serverError?.queryId
         ? h('p', { className: 'page-load-error-detail' }, `Query: ${serverError.queryId}`) : null,
       boundary ? h('p', { className: 'page-load-error-detail' }, `Limit type: ${boundary}`) : null,
+      serverError?.traceId
+        ? h('p', { className: 'page-load-error-detail' }, `Request ID: ${serverError.traceId}`) : null,
       h('button', {
         type: 'button',
         className: 'button',
