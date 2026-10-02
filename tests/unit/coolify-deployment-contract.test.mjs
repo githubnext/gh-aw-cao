@@ -80,6 +80,9 @@ test("Coolify Compose builds the checked-out source without deployment credentia
     dashboard.environment.CAO_BUILD_VERSION,
     "${SOURCE_COMMIT:-unknown}",
   );
+  assert.equal(dashboard.environment.CAO_OTEL_LOGS_ENABLED, "${CAO_OTEL_LOGS_ENABLED:-false}");
+  assert.equal(dashboard.environment.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT, "${OTEL_EXPORTER_OTLP_LOGS_ENDPOINT:-}");
+  assert.equal(dashboard.environment.OTEL_EXPORTER_OTLP_LOGS_HEADERS, "${OTEL_EXPORTER_OTLP_LOGS_HEADERS:-}");
   assert.equal(dashboard.read_only, true);
   assert.equal(dashboard.init, true);
   assert.deepEqual(dashboard.cap_drop, ["ALL"]);
