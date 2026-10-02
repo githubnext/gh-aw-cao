@@ -6145,8 +6145,8 @@
   "name": "campaign-problem-runs",
   "subject": "List retained failed runs for campaign problem investigation.",
   "objective": "Choose a recent failed campaign run to investigate with its diagnostic evidence.",
-  "acceptance": "Each row corresponds to a retained campaign run with a declared failure, startup-failure, stale, or timed-out status and is ordered newest first; absence is not proof of healthy execution or complete ingestion.",
-  "description": "Failed campaign runs ordered from newest to oldest with retained diagnostic metadata.",
+  "acceptance": "Each row corresponds to a retained campaign run with a declared failure, startup-failure, stale, or timed-out status; campaign-problem-run-evidence orders matching rows newest first. Absence is not proof of healthy execution or complete ingestion.",
+  "description": "Private failed-run input with retained diagnostic metadata; the evidence consumer orders only runs matching current runtime problems.",
   "from": "campaign-runs",
   "filter": {
    "predicates": [
@@ -6160,15 +6160,63 @@
      ]
     }
    ]
+  }
+ },
+ {
+  "name": "campaign-problem-runtime-failures",
+  "subject": "Select current failing runtime partitions without presentation ordering.",
+  "objective": "Retain the exact current-failure eligibility needed by the problem evidence join.",
+  "acceptance": "A latest failure streak is a nonnegative integer, so failure-count at least one is equivalent to has-current-failure; missing or incomplete runtime evidence remains unknown.",
+  "description": "Private unsorted failure partitions for problem evidence; ordering is supplied by the retained failed runs.",
+  "from": "campaign-runtime-health-groups",
+  "filter": {
+   "predicates": [
+    {
+     "field": "failure-count",
+     "gte": 1
+    }
+   ]
   },
-  "order-by": [
+  "compute": [
    {
-    "field": "started-at",
-    "direction": "desc"
+    "as": "problem-kind",
+    "function": "coalesce",
+    "args": [
+     {
+      "value": "failure"
+     },
+     {
+      "value": "failure"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "campaign-problem-runtime-partitions",
+  "subject": "Project current runtime problem keys and diagnoses for the failed-run evidence join.",
+  "objective": "Avoid sorting and retaining unused runtime problem presentation fields.",
+  "acceptance": "Retain both current failures and unobserved orchestrators, including their metadata and duplicate-key failure semantics; this projection does not establish health or root cause.",
+  "description": "Private compact equivalent of campaign-runtime-problems for equality enrichment, not presentation.",
+  "from": "campaign-problem-runtime-failures",
+  "union": [
+   "campaign-unobserved-orchestrators"
+  ],
+  "select": [
+   {
+    "field": "campaign"
    },
    {
-    "field": "run",
-    "direction": "desc"
+    "field": "workflow"
+   },
+   {
+    "field": "runtime-repository"
+   },
+   {
+    "field": "failure-count"
+   },
+   {
+    "field": "problem-kind"
    }
   ]
  },
@@ -6181,7 +6229,7 @@
   "from": "campaign-problem-runs",
   "joins": [
    {
-    "source": "campaign-runtime-problems",
+    "source": "campaign-problem-runtime-partitions",
     "type": "inner",
     "on": [
      {
@@ -6207,6 +6255,16 @@
       "as": "problem-kind"
      }
     ]
+   }
+  ],
+  "order-by": [
+   {
+    "field": "started-at",
+    "direction": "desc"
+   },
+   {
+    "field": "run",
+    "direction": "desc"
    }
   ]
  },
