@@ -792,12 +792,12 @@ describe('dashboard document validation', () => {
     });
     expect(pages['overview-awaiting-review'].views[0].encoding.href).toBeUndefined();
     expect(pages['overview-security-findings'].views[0]).toMatchObject({
-      data: { source: 'security-findings' },
+      data: { source: 'detection-observations' },
       encoding: {
         columns: [
           { field: 'observed-at', type: 'temporal', title: 'Date' },
           { field: 'repository', type: 'nominal', title: 'Repository' },
-          { field: 'smell-name', type: 'nominal', title: 'Finding', display: 'run-link' }
+          { field: 'detection-signal', type: 'nominal', title: 'Finding', display: 'run-link' }
         ]
       }
     });

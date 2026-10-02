@@ -129,7 +129,7 @@ func TestNativeStorageAndSQLPresence(t *testing.T) {
 	if _, present := rows[1]["domain"]; present {
 		t.Fatal("absent became explicit null")
 	}
-	if !reflect.DeepEqual(metrics.FallbackOperations, []string{}) || len(metrics.PushedDown) == 0 {
+	if len(metrics.PushedDown) == 0 {
 		t.Fatalf("not a complete SQL execution: %+v", metrics)
 	}
 	var forbidden int

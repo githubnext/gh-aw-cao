@@ -3,8 +3,6 @@ package query
 import (
 	"encoding/json"
 	"fmt"
-
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
 )
 
 const (
@@ -200,16 +198,4 @@ type TemporalMap struct {
 	Definitions string `json:"definitions,omitempty"`
 	Group       string `json:"group,omitempty"`
 	Kind        string `json:"kind"`
-}
-
-type Loader interface {
-	LoadSource(name string, definition *Definition) (model.Source, model.Metrics, error)
-}
-
-type PlanExecutor interface {
-	ExecutePlan(definitions []Definition, requested, order []string) (map[string]model.Source, model.Metrics, error)
-}
-
-type Options struct {
-	MaxOperations int
 }

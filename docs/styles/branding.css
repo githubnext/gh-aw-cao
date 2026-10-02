@@ -10,6 +10,16 @@
   --sl-content-width: 60rem;
 }
 
+.sl-skip-link:focus-visible {
+  outline: 3px solid #1f6feb;
+  outline-offset: 3px;
+  border-radius: 0.5rem;
+}
+
+:root[data-theme="dark"] .sl-skip-link:focus-visible {
+  outline-color: #79c0ff;
+}
+
 .site-title {
   gap: 0.55rem;
   background: none !important;

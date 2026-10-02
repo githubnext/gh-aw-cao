@@ -1,6 +1,7 @@
 package query
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -77,6 +78,23 @@ func TestSQLCompilationFailsClosed(t *testing.T) {
 		if _, err := CompileSQL([]Definition{definition}, []string{"bad"}, sqlTestResolver); err == nil {
 			t.Fatalf("invalid SQL query was admitted: %+v", definition)
 		}
+	}
+}
+
+func TestValidateRejectsPrediction(t *testing.T) {
+	err := Validate([]Definition{{Name: "prediction", From: "facts", Predict: []json.RawMessage{json.RawMessage(`{}`)}}})
+	if err == nil || !strings.Contains(err.Error(), "prediction") {
+		t.Fatalf("prediction query validation error = %v", err)
+	}
+}
+
+func TestDependenciesRejectCycles(t *testing.T) {
+	definitions := []Definition{
+		{Name: "first", From: "second"},
+		{Name: "second", From: "first"},
+	}
+	if _, err := Dependencies(definitions, []string{"first"}); err == nil {
+		t.Fatal("cyclic query dependency graph was accepted")
 	}
 }
 

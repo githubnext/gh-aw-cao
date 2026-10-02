@@ -1,36 +1,39 @@
-# Postgres ingestion and query-engine rebuild
+# PostgreSQL ingestion/query architecture status and verification
 
-## Decision
+## Current architecture
 
-Use `spec/storage.tsp` as the sole physical storage contract and its generated
-`internal/postgresx/schema.sql` as the standalone representation. Rebuild hosted
-ingestion and query execution around native relational tables, then delete the
-generic canonical/source machinery. This is a new project with a fresh database:
-**no old-database migration, backward compatibility, dual writes, alternate
-readers, or old-format fallback.**
+`spec/storage.tsp` is the physical storage contract; its generated
+`internal/postgresx/schema.sql` is the standalone representation. Hosted
+ingestion and query execution use native relational tables. The generic
+canonical/source machinery and compatibility readers have been removed. The
+server starts with a fresh database: **no old-database migration, backward
+compatibility, dual writes, alternate readers, or old-format fallback.**
 
-This document is a follow-on implementation plan, not a claim that the complete
-SQL engine has already been built.
+This document records the original native-Postgres cutover goals and the
+remaining verification work. The production server now executes hosted query
+plans as SQL; the historical step descriptions below are not a claim that the
+pre-cutover fallback architecture remains active.
 
 ## Starting point
 
-The current change establishes eighteen query-minimal entity tables, native
-scalar types, compact missing/null presence bits, and entity-owned relational
-children. SQL DDL and Go column bindings are generated from TypeSpec. Canonical
-scalar rows are no longer duplicated in generic storage, and no canonical
-JSON/JSONB or serialized row documents are persisted. Initialization is
-fresh-only.
+The current implementation initializes eighteen TypeSpec-generated native
+entity tables, uses compact missing/null presence bits, and stores canonical
+data without generic row/value tables or serialized documents. Ingestion streams
+manifested shards through a bounded batched writer and publishes entities,
+quality metadata, and revision atomically. The hosted SQL compiler executes
+Dashboard Language plans in PostgreSQL; Redis remains operational state and
+bounded response cache.
 
 The work still to replace is concrete:
 
 | Surface | Current implementation | Replacement |
 | --- | --- | --- |
-| Ingestion | `internal/ingest/ingest.go` accumulates canonical row maps and logical sources before `Store.Replace` | Streaming, typed ingestion into the generated tables |
-| Structured evidence | Entity-owned `*_values` trees and `ChildValue` | Explicit TypeSpec child models, typed relationships, or query-required scalar columns |
-| Auxiliary data and metadata | `cao_sources`, `cao_source_rows`, `cao_values`, generic source names and metadata trees | Explicit typed inputs and minimal typed publication metadata |
-| State and diagnostics | Generic count/error tables and presence sentinels | Required state/quality fields and SQL-derived diagnostics only |
-| Hosted queries | `internal/postgresx/plan.go` handles a small scalar slice; `internal/query/engine.go` evaluates other shapes in Go | Complete Dashboard Language-to-SQL compilation and bounded SQL execution |
-| Read APIs | Generic `SourceReader`, `LoadSource`, and `LoadDocument` | Generated table bindings, typed lookup methods, and compiled SQL result reads |
+| Ingestion | Manifest-verified phased streaming into bounded native-table batches | Keep generated table bindings and source validation aligned; verify memory bounds and atomic publication |
+| Structured evidence | Query-consumed fields are represented in the TypeSpec-generated entity tables; no generic value trees/documents | Keep schema/query field coverage current; use typed columns or relational fields, never generic persisted values |
+| Auxiliary data and metadata | Explicit typed tables, runtime providers, quality metadata, and revision state | Preserve the typed persistence/runtime boundary |
+| State and diagnostics | Native state/quality tables and SQL-derived diagnostics | Keep integrity checks bounded and fail closed |
+| Hosted queries | Validated Dashboard Language DAGs compile to PostgreSQL SQL; unsupported shapes fail closed | Prove deployed-corpus execution and browser/Postgres semantic parity |
+| Read APIs | Generated table bindings and SQL-backed query result reads | Keep all hosted entity reads on the PostgreSQL SQL boundary |
 
 ## Target rules
 
@@ -55,152 +58,42 @@ The work still to replace is concrete:
   read-only GitHub authority, and atomic publication. Redis remains operational
   state, not a second canonical entity store.
 
-## 1. Finish the relational contract
+## Completed cutover
 
-Inventory every database/view query and each API lookup against the TypeSpec
-tables. Extend the existing field-coverage test to resolve complete query
-lineage, not just direct database-source projections.
+The hosted implementation now has a generated relational schema and typed
+PostgreSQL ingestion path. Ingestion streams manifested inputs in bounded
+batches and publishes entity rows, quality metadata, fingerprint, evaluation
+time, and revision atomically. There are no persistent publication generations,
+dual-format tables, or compatibility reads.
 
-Replace `unknown` structured fields and `ChildValue` with explicit TypeSpec
-models. Links, evidence references, experiment provenance, diagnostics, and
-ordered evidence lists need typed child rows keyed to their entity. Flatten
-query-consumed scalar attributes when that avoids an unnecessary join. Keep
-order only where the query or wire contract requires it.
+The hosted query endpoint, entity/detail reads, MCP query tools, diagnostics,
+and query-cost path use PostgreSQL. The query package retains request
+vocabulary, validation, dependency planning, limits, and byte estimation; the
+Go row evaluator has been removed, and unsupported query shapes fail closed.
+The response contract still includes the legacy `fallbackOperations` metric as
+an empty compatibility field. Redis remains operational state and a bounded
+completed-response cache; it does not store canonical entities or execute
+dashboard queries.
 
-For opaque fields such as `data` and `logsPayload`, identify the actual consumed
-attributes. Update declarative queries and their contract fixtures to request
-those typed attributes instead of requiring an entire arbitrary payload. Keep
-unqueried raw artifacts outside the canonical database and retain a typed
-reference only if a declared detail surface needs it. Do not replace a JSON
-document with another generic property/tree store.
+## Remaining verification
 
-Generate relationship constraints from TypeSpec, including mandatory parents,
-optional associations, uniqueness, namespace scope, and bounded list ordering.
-Use deferred foreign keys only where atomic ingestion ordering requires them.
-Add indexes for demonstrated joins, drilldowns, search, ordering, or pagination;
-do not index every optional field.
+- Run the PostgreSQL integration test that loads the active root dashboard
+  fragments and canonical database query definitions, then executes each
+  definition through the production SQL-plan path. Its empty runtime-source
+  fixtures prove SQL compilation and execution, not provider behavior or
+  result-value parity.
+- Keep the browser/PostgreSQL parity harness as the semantic check for browser
+  behavior. It covers selected parity cases; it is not a substitute for
+  executing every deployed definition through PostgreSQL.
+- Run TypeSpec generation and contract checks after API-contract changes, and
+  keep generated OpenAPI/schema artifacts synchronized with the source.
+- Continue testing atomic publication, namespace isolation, bounded ingestion
+  and query resources, cancellation, pagination, and fresh-database rebuilds.
+- Use the deployed query-cost benchmark to investigate meaningful regressions.
+  Corpus execution is coverage of declared definitions, not a claim about
+  production traffic volume or workload performance.
 
-**Exit:** all current query inputs have explicit relational models, required
-structured evidence has no generic tree representation, and schema/query
-coverage rejects both missing fields and unused columns.
-
-## 2. Rebuild ingestion
-
-Replace `map[string][]model.Row`, merged logical-source maps, and generic
-replacement with a typed ingestion writer generated from the storage contract.
-
-Stream the existing manifested run-information shards before record shards,
-validate records and deterministic identities, and hash inputs while reading.
-Do not buffer a whole shard or lake. Use bounded batches and `pgx.CopyFrom`
-for typed tables; use transaction-local staging where batch validation or
-dependency ordering needs it.
-
-Admit inventory observations through explicit typed adapters. Do not trust
-inventory/report projections as substitutes for canonical run or experiment
-evidence. Model required noncanonical inventory and repository-memory surfaces
-explicitly, or resolve them through their existing operational/artifact
-boundary; never persist arbitrary named logical sources.
-
-Validate all manifested hashes, required parent relationships, duplicate
-identities, and required evidence before publication. Publish entity rows,
-quality metadata, fingerprint, evaluation timestamp, and revision in one
-transaction under the existing per-namespace writer lock. Failure preserves
-the preceding committed data. Re-ingesting unchanged inputs is deterministic;
-forced ingestion retains its explicit revision behavior.
-
-Readers retain their repeatable-read snapshot while a new publication commits.
-Temporary staging is transaction-local and cleaned up; there are no persistent
-generations, publication copies, or dual-format tables.
-
-**Exit:** ingestion memory is bounded by batch size; canonical rows are written
-once; missing shards, bad hashes, malformed fields, duplicates, or orphaned
-records cannot publish a revision.
-
-## 3. Rebuild the hosted query engine
-
-Keep the declarative Dashboard Language request and validation boundary.
-Compile its validated dependency DAG to typed SQL relations/CTEs using generated
-table/column registries. Bind every value and namespace; never accept client SQL
-or unchecked identifiers.
-
-Implement the actual operator corpus: source aliases and unions, joins,
-predicates and search, computed expressions, aggregates, temporal-series
-operations, prediction operators that appear in declared queries, projections,
-ordering, and limits. Make unsupported definitions a structured validation
-error, not a switch to the Go evaluator.
-
-Specify and test the semantics that ordinary SQL does not reproduce
-automatically: missing versus null, `unknown` and optional predicates, numeric
-coercion, empty aggregates, stable ordering, alias collisions, and union
-ordering. Joins must preserve the declared one-match-per-key contract; duplicate
-right-side keys must fail rather than multiply output silently.
-
-Perform pre-filter input checks and enforce the existing per-query, dependency,
-join, operation, working-byte, retained-byte, and output bounds. Add cancellation
-and SQL statement timeouts. Stream bounded result pages; do not materialize
-complete sources or paginate already-decoded Go row arrays. Preserve current
-revision-bound continuation behavior and structured limit errors.
-
-Explicitly registered operational runtime sources need typed, bounded SQL input
-relations when participating in a query. They must not become generic persisted
-canonical sources or a hidden alternate evaluator.
-
-**Exit:** every declared hosted dashboard query executes as SQL; metrics identify
-actual SQL work; unsupported or over-budget plans fail closed; Go performs no
-row filtering, joins, aggregation, computation, sorting, or pagination.
-
-## 4. Wire consumers and delete superseded machinery
-
-Route `/api/v1/query`, canonical entity/detail handlers, MCP query tools,
-readiness, diagnostics, doctor, collection projection, rebuild commands, and
-query-cost benchmarks through the typed writer and SQL executor.
-
-Preserve active-view revision subscriptions, SSE publication after commit,
-bounded API payloads, and the current security boundary. Keep the static
-browser worker as its own deployment profile; it is not a hosted fallback.
-Any changed view payload contract must update its declarative query,
-declaration, fixture, and production-boundary tests together.
-
-Delete, rather than retain behind a flag:
-
-- `cao_sources`, `cao_source_rows`, `cao_values`, and arbitrary source-name
-  persistence; remove generic count/diagnostic scaffolding that no longer has
-  a required consumer.
-- Entity `*_values` trees, `ChildValue`, `valueBatch`, `valueNode`, `decodeTree`,
-  generic row-position batches, and generic normalization/read helpers.
-- `Store.Replace` over logical-source maps, source merging/projection helpers,
-  generic `LoadSource`/`LoadDocument`, and the source-only evaluator adapters.
-- The small-plan admission/fallback split and hosted use of the Go row
-  evaluator in `internal/query/engine.go`; retain only necessary request
-  vocabulary, validation, limits, errors, and SQL compilation support.
-- Tests, benchmarks, and documentation that require generic storage,
-  auxiliary compatibility readers, duplicate formats, or fallback execution.
-
-Make these reviewable implementation commits on a single cutover branch.
-Do not ship an intermediate compatibility switch or dual-read/write mode.
-Deploy against a fresh database and ingest existing authoritative artifacts.
-
-## Verification and completion gates
-
-Run TypeSpec generation/coverage checks, Go build/lint/tests, fresh-Postgres
-ingestion and SQL-query integration tests, server API/blackbox contracts, and
-the production browser/server query-parity harness. Use the browser production
-query boundary as an independent semantics oracle, not copied test-only
-source synthesis.
-
-Exercise representative and maximum-size graphs, sparse optional evidence,
-large identifiers, timestamps, explicit nulls, duplicate join keys, empty
-sources, pagination, cancellation, concurrent publication, failed ingestion,
-namespace isolation, and restart/rebuild from an empty database.
-
-Use the deployed query-cost benchmark and handwritten SQL comparisons to record
-ingestion wall time/peak heap, database and index bytes, SQL/HTTP p50 and p95,
-rows examined/returned, retained bytes, and Go allocations. Require the
-complete declared corpus to compile and execute natively and investigate any
-regression against equivalent typed SQL. Synthetic corpus coverage is not
-production traffic coverage.
-
-The final gates are **zero** stored JSON documents, generic canonical/EAV
-tables, duplicate row formats, compatibility paths, and hosted Go row-evaluator
-fallbacks; **all** declared hosted queries use SQL; publication remains atomic
-and bounded; and generated TypeSpec artifacts match the deployed fresh schema.
+The completion gates are: every active deployed query definition is validated
+and executes through PostgreSQL SQL; browser/server semantics remain covered
+by the parity harness; generated storage/API artifacts are current; and
+publication and query execution remain bounded, atomic, and fail-closed.

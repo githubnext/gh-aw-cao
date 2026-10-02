@@ -799,7 +799,7 @@ func TestQueryAllowsEmptyReadinessProbe(t *testing.T) {
 		t.Fatalf("readiness probe returned sources: %#v", result.Sources)
 	}
 	if result.Metrics.DurationMS != 0 || result.Metrics.Operations != 0 || result.Metrics.OutputRows != 0 ||
-		len(result.Metrics.PushedDown) != 0 || len(result.Metrics.FallbackOperations) != 0 {
+		len(result.Metrics.PushedDown) != 0 {
 		t.Fatalf("readiness probe returned non-zero metrics: %#v", result.Metrics)
 	}
 }

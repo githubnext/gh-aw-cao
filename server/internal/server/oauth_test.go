@@ -76,7 +76,7 @@ func TestAzureOAuthLoginCallbackAndAuthorizedAPI(t *testing.T) {
 		t.Fatal(err)
 	}
 	state := location.Query().Get("state")
-	if state == "" || location.Query().Get("scope") != "read:org" {
+	if state == "" || location.Query().Get("scope") != "read:org" || location.Query().Get("prompt") != "select_account" {
 		t.Fatalf("unexpected login redirect: %s", location.String())
 	}
 
@@ -146,6 +146,12 @@ func TestAzureOAuthRejectsInvalidStateAndDeniedMembership(t *testing.T) {
 	}
 	if !deniedGitHub.sawRevocation("access-old") || !deniedGitHub.sawRevocation("refresh-old") {
 		t.Fatal("denied callback left issued credentials active")
+	}
+	retry := httptest.NewRecorder()
+	app.Handler().ServeHTTP(retry, azureRequest(t, http.MethodGet, "/auth/login"))
+	location, err := url.Parse(retry.Header().Get("Location"))
+	if retry.Code != http.StatusFound || err != nil || location.Query().Get("prompt") != "select_account" {
+		t.Fatalf("retry after denied membership did not request account selection: %s (%v)", retry.Header().Get("Location"), err)
 	}
 }
 
@@ -604,9 +610,18 @@ func TestHostedOAuthLoggedOutPageRequiresExplicitLogin(t *testing.T) {
 	app := newAzureTestApp(t, fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600}).URL)
 	response := httptest.NewRecorder()
 	request := azureRequest(t, http.MethodGet, "/auth/logged-out")
-	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "stale-session"})
-	request.AddCookie(&http.Cookie{Name: csrfCookieName, Value: "stale-csrf"})
-	request.AddCookie(&http.Cookie{Name: "cao_oauth_state", Value: "stale-state"})
+	request.AddCookie(&http.Cookie{
+		Name: sessionCookieName, Value: "stale-session",
+		Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode,
+	})
+	request.AddCookie(&http.Cookie{
+		Name: csrfCookieName, Value: "stale-csrf",
+		Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode,
+	})
+	request.AddCookie(&http.Cookie{
+		Name: "cao_oauth_state", Value: "stale-state",
+		Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode,
+	})
 
 	app.Handler().ServeHTTP(response, request)
 
@@ -626,6 +641,9 @@ func TestHostedOAuthLoggedOutPageRequiresExplicitLogin(t *testing.T) {
 	}
 	if !strings.Contains(response.Body.String(), `href="/auth/login?select_account=1"`) {
 		t.Fatal("logged-out page does not offer sign-in with account selection")
+	}
+	if !strings.Contains(response.Body.String(), `href="https://github.com/" target="_blank" rel="noreferrer noopener"`) {
+		t.Fatal("logged-out page does not offer a way to add another GitHub account")
 	}
 	if response.Header().Get("Location") != "" {
 		t.Fatal("logged-out page unexpectedly restarted OAuth")
@@ -672,7 +690,7 @@ func TestHostedOAuthLogsBranchesWithoutCredentialValues(t *testing.T) {
 
 	for _, expected := range []string{
 		"access.public_allowed",
-		"login.default_account_requested",
+		"login.account_selection_requested",
 		"exchange.succeeded",
 		"identity.loaded",
 		"organization_membership.active",

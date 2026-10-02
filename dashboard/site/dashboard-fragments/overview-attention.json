@@ -770,7 +770,7 @@
           "title": "Security finding evidence",
           "description": "Open the GitHub run that produced each threat-detection finding.",
           "data": {
-            "source": "security-findings",
+            "source": "detection-observations",
             "order-by": [
               {
                 "field": "observed-at",
@@ -797,7 +797,7 @@
                 "title": "Repository"
               },
               {
-                "field": "smell-name",
+                "field": "detection-signal",
                 "type": "nominal",
                 "title": "Finding",
                 "display": "run-link"

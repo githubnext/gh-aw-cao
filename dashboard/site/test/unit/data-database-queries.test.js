@@ -811,14 +811,14 @@ describe('canonical view sources', () => {
     expect(topTools.rows[0]['mcp-tool']).not.toBe('stale_tool');
   });
 
-  it('does not read database stores for a missing logical source', async () => {
+  it('does not read database stores for an undeclared logical source', async () => {
     const collectionReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');
 
-    const projected = await queryDatabaseSources(indexedDB, {}, ['usage']);
+    const projected = await queryDatabaseSources(indexedDB, {}, ['missing-logical-source']);
 
-    expect(projected.usage).toMatchObject({
+    expect(projected['missing-logical-source']).toMatchObject({
       rows: [],
-      metadata: { availability: 'empty' }
+      metadata: { availability: 'unavailable' }
     });
     expect(collectionReads).not.toHaveBeenCalled();
   });

@@ -265,12 +265,8 @@ func (oauth *githubOAuth) login(response http.ResponseWriter, request *http.Requ
 	values.Set("redirect_uri", oauth.config.RedirectURL)
 	values.Set("state", state)
 	values.Set("scope", "read:org")
-	if request.URL.Query().Get("select_account") == "1" {
-		oauth.logBranch("login.account_selection_requested")
-		values.Set("prompt", "select_account")
-	} else {
-		oauth.logBranch("login.default_account_requested")
-	}
+	values.Set("prompt", "select_account")
+	oauth.logBranch("login.account_selection_requested")
 	target.RawQuery = values.Encode()
 	oauth.logBranch("login.redirected")
 	http.Redirect(response, request, target.String(), http.StatusFound)

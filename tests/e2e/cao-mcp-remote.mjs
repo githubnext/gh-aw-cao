@@ -77,11 +77,11 @@ test('hosted MCP lists tools, inspects the catalog, and executes a named query',
   const catalog = await call('tools/call', { name: 'cao_catalog', arguments: { kind: 'queries' } });
   assert.notEqual(catalog.isError, true);
   assert.ok(Array.isArray(catalog.structuredContent?.queries));
-  assert.ok(catalog.structuredContent.queries.some(({ id }) => id === 'campaign-runs'));
+  assert.ok(catalog.structuredContent.queries.some(({ id }) => id === 'campaign-readme-orchestrators'));
 
-  const query = await call('tools/call', { name: 'cao_query', arguments: { id: 'campaign-runs', limit: 1 } });
+  const query = await call('tools/call', { name: 'cao_query', arguments: { id: 'campaign-readme-orchestrators', limit: 1 } });
   assert.notEqual(query.isError, true);
-  assert.equal(query.structuredContent?.query, 'campaign-runs');
+  assert.equal(query.structuredContent?.query, 'campaign-readme-orchestrators');
   assert.ok(Array.isArray(query.structuredContent.rows));
   assert.ok(query.structuredContent.metadata?.availability);
   assert.notEqual(query.structuredContent.metadata.availability, 'unavailable');
