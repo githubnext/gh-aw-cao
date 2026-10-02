@@ -1,7 +1,27 @@
 {
   "source_sha": "c8c2e978c195e913fe0d458bc08904140528ae8a",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "next_category": "dependency installation and caching",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-02T05:47:00Z",
+      "worker_run_id": "36969909539",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36969778970,
+        36968893299,
+        36967901464,
+        36967121980,
+        36966031808,
+        36965640021,
+        36964763008,
+        36964228125,
+        36967682746,
+        36965454791,
+        36964013511
+      ],
+      "outcome": "actionable_issue_blocked_by_repo_settings: evaluated scheduling, concurrency, and avoidable rebuilds across the latest 8 successful docs.yml runs in the 2026-10-02T04:21Z-05:37Z window, with 6 comparable successful build executions and 3 successful deploy executions, plus 3 successful cao-dashboard.yml producer runs for workflow_run causality. Trusted docs metadata showed full workflow wall-time median 62s (p90 82s), median build-job time 42s (p90 47.5s), median build queue time 8s overall and 3s on workflow_run pushes, median deploy-job time 17s (p90 18s) on runs that actually deployed, and 2 of 8 successful runs still spent 42-87s wall time only to skip after schedule-freshness. Trusted job and step metadata also showed every comparable docs build already hit both the explicit node_modules cache and the reused dashboard cache, so the repeated cost is not dependency work but avoidable workflow invocations. The workflow currently triggers docs.yml on every successful CAO Dashboard completion and then rechecks freshness in schedule-freshness; successful docs runs 36967901464 and 36965640021 were workflow_run builds that rebuilt docs solely because the dashboard artifact changed, while successful scheduled runs 36969778970 and 36967121980 still queued and ran schedule-freshness before skipping. Trusted producer timings on cao-dashboard runs 36964013511, 36965454791, and 36967682746 showed the upstream dashboard build spends 103s, 80s, and 103s in Upgrade fallback activity data before emitting the dashboard artifact that immediately retriggers docs. Evidence supports one concrete workflow change expected to save more than the 15 percent threshold on the docs pipeline itself: remove the docs.yml workflow_run trigger on CAO Dashboard and let the existing 15-minute schedule publish dashboard freshness, or gate that trigger to only run when docs inputs changed as well. That would eliminate the 38-47s build + upload path now paid by each successful workflow_run docs rebuild and avoid 42-51s no-deploy workflow wall time on the three sampled workflow_run successes. The repository has issues disabled, so the recommendation cannot be emitted as a GitHub issue in this cycle.",
+      "suggestion_fingerprint": "docs-avoid-workflow-run-rebuild-after-dashboard"
+    },
     {
       "evaluated_at": "2026-10-02T05:40:00Z",
       "worker_run_id": "36968833730",
