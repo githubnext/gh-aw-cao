@@ -7235,9 +7235,8 @@
                 "type": "null"
               }
             ],
-            "description": "Known package manifest paths use TEXT[]; atypical historical values alone retain JSON."
-          },
-          "contentsException": {}
+            "description": "Known package manifest paths use TEXT[] exclusively; non-string items are rejected."
+          }
         },
         "description": "Known canonical columns are never copied into the extension object."
       },

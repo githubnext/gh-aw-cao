@@ -24,7 +24,7 @@ import (
 )
 
 var ErrSourceUnavailable = errors.New("postgres source is unavailable")
-var ErrFreshDatabaseRequired = errors.New("native PostgreSQL nested storage requires an empty database")
+var ErrFreshDatabaseRequired = errors.New("native PostgreSQL storage requires an empty database")
 
 type State struct {
 	Ready        bool
@@ -182,7 +182,7 @@ func initialize(ctx context.Context, db *sql.DB) error {
 			github_id TEXT, github_id_kind TEXT, github_id_numeric NUMERIC,
 			github_run_id TEXT, github_run_id_kind TEXT, github_run_id_numeric NUMERIC,
 			organization_href TEXT, repository_href TEXT, workflow_href TEXT, run_href TEXT,
-			contents TEXT[], contents_exception JSON,
+			contents TEXT[],
 			CONSTRAINT cao_canonical_github_id_kind CHECK (COALESCE(
 				(github_id IS NULL AND github_id_kind IS NULL AND github_id_numeric IS NULL) OR
 				(github_id_kind = 'string' AND github_id IS NOT NULL AND github_id_numeric IS NULL) OR
@@ -287,9 +287,28 @@ func initialize(ctx context.Context, db *sql.DB) error {
 			AND column_name = 'contents'`).Scan(&contentsType); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return err
 	}
-	legacyContents := contentsType.Valid && contentsType.String == "json"
-	if legacyContents {
-		if _, err = tx.ExecContext(ctx, `ALTER TABLE cao_canonical_rows RENAME COLUMN contents TO contents_exception`); err != nil {
+	legacyContents := contentsType.Valid && (contentsType.String == "json" || contentsType.String == "jsonb")
+	var contentsException bool
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM information_schema.columns
+		WHERE table_schema = current_schema() AND table_name = 'cao_canonical_rows'
+		AND column_name = 'contents_exception')`).Scan(&contentsException); err != nil {
+		return err
+	}
+	if legacyContents || contentsException {
+		var populated bool
+		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM cao_canonical_rows)`).Scan(&populated); err != nil {
+			return err
+		}
+		if populated {
+			return ErrFreshDatabaseRequired
+		}
+		if legacyContents {
+			if _, err := tx.ExecContext(ctx, `ALTER TABLE cao_canonical_rows DROP COLUMN contents`); err != nil {
+				return err
+			}
+		}
+		if _, err := tx.ExecContext(ctx, `ALTER TABLE cao_canonical_rows
+			DROP COLUMN IF EXISTS contents_exception`); err != nil {
 			return err
 		}
 	} else if contentsType.Valid && contentsType.String != "ARRAY" {
@@ -313,7 +332,6 @@ func initialize(ctx context.Context, db *sql.DB) error {
 	for _, field := range canonicalArrays {
 		additions = append(additions, "ADD COLUMN IF NOT EXISTS "+field.column+" TEXT[]")
 	}
-	additions = append(additions, "ADD COLUMN IF NOT EXISTS contents_exception JSON")
 	for _, field := range canonicalLinks {
 		additions = append(additions, "ADD COLUMN IF NOT EXISTS "+field.column+" TEXT",
 			"ADD COLUMN IF NOT EXISTS "+field.column+"_relation TEXT",
@@ -403,11 +421,6 @@ func initialize(ctx context.Context, db *sql.DB) error {
 	if err := migrateCanonicalLinks(ctx, tx); err != nil {
 		return err
 	}
-	if legacyContents {
-		if err := migrateCanonicalContents(ctx, tx); err != nil {
-			return err
-		}
-	}
 	if legacyProvenance {
 		if err := migrateLegacyCanonicalProvenance(ctx, tx); err != nil {
 			return err
@@ -447,43 +460,16 @@ func initialize(ctx context.Context, db *sql.DB) error {
 	if _, err := tx.ExecContext(ctx, `DO $$
 		BEGIN
 			IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'cao_canonical_rows'::regclass
-				AND conname = 'cao_canonical_contents_exclusive') THEN
-				ALTER TABLE cao_canonical_rows ADD CONSTRAINT cao_canonical_contents_exclusive
-					CHECK ((contents IS NULL OR contents_exception IS NULL)
-						AND ((contents IS NULL AND contents_exception IS NULL) OR 'contents' = ANY(present)));
+				AND conname = 'cao_canonical_contents_present') THEN
+				ALTER TABLE cao_canonical_rows ADD CONSTRAINT cao_canonical_contents_present
+					CHECK (contents IS NULL OR (
+						'contents' = ANY(present) AND array_position(contents, NULL) IS NULL
+						AND COALESCE(array_ndims(contents), 1) = 1));
 			END IF;
 		END $$`); err != nil {
 		return err
 	}
 	return tx.Commit()
-}
-
-func migrateCanonicalContents(ctx context.Context, tx *sql.Tx) error {
-	var invalid bool
-	if err := tx.QueryRowContext(ctx, `SELECT EXISTS (
-		SELECT 1 FROM cao_canonical_rows
-		WHERE contents_exception IS NOT NULL AND (
-			NOT 'contents' = ANY(present) OR contents IS NOT NULL
-			OR json_typeof(contents_exception) NOT IN ('null', 'array', 'object')))`).Scan(&invalid); err != nil {
-		return err
-	}
-	if invalid {
-		return errors.New("inconsistent legacy canonical contents")
-	}
-	_, err := tx.ExecContext(ctx, `UPDATE cao_canonical_rows r SET
-		contents = ARRAY(SELECT json_array_elements_text(r.contents_exception)),
-		contents_exception = NULL
-		WHERE json_typeof(r.contents_exception) = 'array'
-		AND NOT EXISTS (SELECT 1 FROM json_array_elements(CASE
-			WHEN json_typeof(r.contents_exception) = 'array' THEN r.contents_exception
-			ELSE '[]'::json END) AS part
-			WHERE json_typeof(part) <> 'string')`)
-	if err != nil {
-		return err
-	}
-	_, err = tx.ExecContext(ctx, `UPDATE cao_canonical_rows SET contents_exception = NULL
-		WHERE json_typeof(contents_exception) = 'null'`)
-	return err
 }
 
 // Undo the short-lived native generation column without losing older rows.

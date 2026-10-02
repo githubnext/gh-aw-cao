@@ -95,6 +95,28 @@ func TestCanonicalNullExtensionDecodesAsEmptyRow(t *testing.T) {
 	}
 }
 
+func TestCanonicalContentsRequiresStringArray(t *testing.T) {
+	for _, value := range []any{
+		"worker.md", true, json.Number("1"), map[string]any{"path": "worker.md"},
+		[]any{map[string]any{"path": "worker.md"}}, []any{nil}, []any{"worker.md", false},
+	} {
+		row := model.Row{"contents": value}
+		if _, _, _, ok, err := canonicalRow(row); ok || err != nil {
+			t.Fatalf("malformed known contents must be rejected: value=%#v ok=%t err=%v", value, ok, err)
+		}
+		if !strings.Contains(canonicalFallbackReason(row), "contents") {
+			t.Fatalf("malformed contents lack field diagnostic: %#v", value)
+		}
+	}
+	for _, value := range []any{nil, []any{}, []any{"docs/b.md", "", "docs/b.md", "worker.md"}} {
+		present, _, extension, ok, err := canonicalRow(model.Row{"contents": value})
+		if !ok || err != nil || extension != "" || !reflect.DeepEqual(present, []string{"contents"}) {
+			t.Fatalf("native contents shape changed: value=%#v present=%v extension=%q ok=%t err=%v",
+				value, present, extension, ok, err)
+		}
+	}
+}
+
 func TestCanonicalProvenanceNativeShape(t *testing.T) {
 	for _, provenance := range []any{
 		map[string]any{"source": "gh-aw-logs", "sourceId": nil,

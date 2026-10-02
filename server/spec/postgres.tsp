@@ -586,7 +586,6 @@ model CanonicalRow {
   ghAwManifest?: unknown;
   data?: unknown;
   logsPayload?: unknown;
-  /** Known package manifest paths use TEXT[]; atypical historical values alone retain JSON. */
+  /** Known package manifest paths use TEXT[] exclusively; non-string items are rejected. */
   contents?: string[] | null;
-  contentsException?: unknown;
 }

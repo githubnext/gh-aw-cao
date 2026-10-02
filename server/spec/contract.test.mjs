@@ -104,6 +104,10 @@ test('the physical PostgreSQL contract covers every native canonical field', () 
     assert.ok(properties[field], `native ${field} missing`)
   }
   assert.equal(properties.provenance, undefined, 'obsolete provenance JSON column retained')
+  assert.equal(properties.contentsException, undefined, 'obsolete contents JSON compatibility column retained')
+  const contents = properties.contents.anyOf.find(schema => schema.type === 'array')
+  assert.ok(contents, 'package paths must be a native string array')
+  assert.equal(contents.items.type, 'string', 'package path items must be strings')
 })
 
 test('closed nested PostgreSQL structures have explicit physical contracts', () => {

@@ -21,8 +21,8 @@ names and row objects (even names beginning with `$` when unregistered) are
 caller-supplied and genuinely schemaless. The PostgreSQL store must never copy
 a native field into an extension or its legacy row representation.
 Marketplace package `contents` paths are a known ordered string list stored as
-`TEXT[]`; only atypical historical shapes use the mutually exclusive
-`contents_exception` JSON column.
+`TEXT[]` exclusively. Objects and non-string items are rejected rather than
+retained in a historical JSON compatibility column.
 Closed nested structures use native PostgreSQL composites: ordered worker and
 target arrays, the campaign intelligence envelope and its field registry,
 token-usage totals and a named array of per-model usage, and lifecycle source
@@ -42,8 +42,9 @@ and arbitrary values of individually catalogued intelligence semantic fields.
 Structured answers and cost-grain observations also have source-defined shapes.
 These are not a compatibility representation for closed fields.
 
-This schema targets a fresh database. Opening a populated earlier schema whose
-closed nested columns are JSON fails transactionally; initialization never
+This schema targets a fresh database. Opening a populated earlier schema with
+closed nested JSON columns, JSON/JSONB package paths, or the historical package
+JSON exception column fails transactionally; initialization never
 discards tenant data or backfills those columns. Rebuild the disposable
 projection from its authoritative artifacts into an empty database instead.
 Unsupported known field shapes fail closed on replacement, preserving the
