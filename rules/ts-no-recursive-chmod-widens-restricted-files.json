@@ -79,8 +79,8 @@
     "reason": "Re-confirmed on current HEAD (6dd6157): implementation, flagged lines, and classification outcome are byte-for-byte unchanged since the prior evaluation. Same 4 false positives (sessionState, squid-preserved-dir, both diagnostics-dir sites) and same false negative (artifact-permissions.ts docker-exec shell-string 'chmod -R a+rwX /fix' on auditDir) persist. Still needs directory-provenance narrowing plus a shell-string chmod matcher before adoption.",
     "txn_id": "refiner-36601303276-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36601303276",
-  "last_updated_target_repo": "github/gh-aw-firewall",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36950555650",
+  "last_updated_target_repo": "githubnext/gh-aw-cao",
   "additional_target_evaluations": [
     {
       "target_repo": "github/gh-aw-actions",
@@ -94,14 +94,14 @@
     },
     {
       "target_repo": "githubnext/gh-aw-cao",
-      "target_commit": "90eb49fee721dfe5d4900ca377d4b0373d8a44f8",
+      "target_commit": "3103235060ee12a20a202b6ccaad3111f779c986",
       "true_positive_count": 0,
       "false_positive_count": 1,
       "false_negative_count": 0,
       "readiness_for_target": "needs-work",
-      "reason": "Re-confirmed unchanged: the sole recursive chmod site, tests/e2e/cao-mcp-container.mjs:89 (chmod -R a+rX on an mkdtemp'd directory holding only a public SQLite fixture copy), remains a false positive since no restricted-mode file is ever written into that directory. All other chmod/chmodSync calls in this repo set a fixed non-recursive mode on one named executable and fall outside the rule's pattern.",
-      "txn_id": "refiner-36887337909-3"
+      "reason": "Re-confirmed unchanged: the sole recursive chmod site, tests/e2e/cao-mcp-container.mjs:89, remains a false positive since no restricted-mode file is ever written into that directory. No change in classification.",
+      "txn_id": "refiner-36950555650-3"
     }
   ],
-  "last_seen_at": "2026-10-01T16:04:26Z"
+  "last_seen_at": "2026-10-02T01:30:17Z"
 }
