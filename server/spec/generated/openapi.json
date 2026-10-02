@@ -113,6 +113,121 @@
         ]
       }
     },
+    "/api/admin/logs": {
+      "get": {
+        "operationId": "Operations_logs",
+        "description": "Available only when CAO_SERVER_LOGS_ENABLED=true. Returns up to 10,000 recent server debug log records and fixed Redis ingestion counters (or availability status); requires a local bearer capability, a hosted administrator session, or the hosted MCP GitHub Actions identity.",
+        "parameters": [
+          {
+            "name": "X-GitHub-Actor",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-GitHub-OIDC-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "headers": {
+              "content-disposition": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "attachment; filename=\"cao-server-logs.json\""
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerLogSnapshot"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Ingestion and administration"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
     "/api/admin/rebuild": {
       "post": {
         "operationId": "Operations_rebuild",
@@ -3631,6 +3746,101 @@
             "type": "string"
           }
         }
+      },
+      "ServerLogRecord": {
+        "type": "object",
+        "required": [
+          "timestamp",
+          "namespace",
+          "message"
+        ],
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "examples": [
+          {
+            "timestamp": "2026-10-02T19:00:00Z",
+            "namespace": "cao:server",
+            "message": "listener ready"
+          }
+        ]
+      },
+      "ServerLogRedis": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "not-configured",
+              "unavailable"
+            ]
+          },
+          "counters": {
+            "type": "object",
+            "unevaluatedProperties": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "queueDepth": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pendingTasks": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "deadLetters": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "description": "Only fixed, numeric ingestion counters are returned; Redis keys and values are never exposed."
+      },
+      "ServerLogSnapshot": {
+        "type": "object",
+        "required": [
+          "logs",
+          "redis"
+        ],
+        "properties": {
+          "logs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServerLogRecord"
+            }
+          },
+          "redis": {
+            "$ref": "#/components/schemas/ServerLogRedis"
+          }
+        },
+        "examples": [
+          {
+            "logs": [],
+            "redis": {
+              "status": "ok",
+              "counters": {
+                "webhookReceived": 3
+              },
+              "queueDepth": 0,
+              "pendingTasks": 0,
+              "deadLetters": 0
+            }
+          }
+        ]
       },
       "TemporalSeries": {
         "type": "object",
