@@ -792,7 +792,7 @@
         }
       ],
       "queries": [
-        "simulator-database-size"
+        "simulator-database-summary"
       ]
     },
     {
@@ -4050,9 +4050,9 @@
     },
     {
       "id": "simulator-database-size",
-      "subject": "Plot modeled run-summary, tool, and issue table bytes across the first 30 days.",
-      "objective": "Compare hypothetical database table sizes over time.",
-      "acceptance": "The model presents separate summary, tool, and issue estimates for each of 30 simulated days, never observed storage.",
+      "subject": "Show modeled run-summary, tool, and issue table bytes after 30 days.",
+      "objective": "Compare hypothetical database table sizes at the end of the retention horizon.",
+      "acceptance": "The model presents separate summary, tool, and issue estimates after 30 simulated days, never observed storage.",
       "description": "Run summaries accumulate; detailed records have a 30-day TTL.",
       "parameters": [
         {
@@ -4125,6 +4125,177 @@
         "simulator-issue-size",
         "simulator-run-size",
         "simulator-tool-size"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "simulation-days"
+        ]
+      }
+    },
+    {
+      "id": "simulator-database-total",
+      "subject": "Sum the modeled table sizes after 30 days.",
+      "objective": "Show the final estimated size of the modeled database tables.",
+      "acceptance": "The final value is the sum of the three modeled table sizes after 30 days.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "issues-per-run",
+          "type": "number",
+          "required": true,
+          "schema": {
+            "type": "number",
+            "description": "Issues per non-skipped run",
+            "minimum": 1,
+            "maximum": 5,
+            "multipleOf": 1,
+            "default": 1
+          }
+        },
+        {
+          "name": "repositories",
+          "type": "number",
+          "required": true,
+          "schema": {
+            "type": "number",
+            "description": "Repositories",
+            "minimum": 1,
+            "maximum": 100000,
+            "multipleOf": 1,
+            "default": 1000
+          }
+        },
+        {
+          "name": "runs-per-day",
+          "type": "number",
+          "required": true,
+          "schema": {
+            "type": "number",
+            "description": "Runs per repository per day",
+            "minimum": 1,
+            "maximum": 100,
+            "multipleOf": 1,
+            "default": 10
+          }
+        },
+        {
+          "name": "skip-rate",
+          "type": "number",
+          "required": true,
+          "schema": {
+            "type": "number",
+            "description": "Skipped runs (%)",
+            "minimum": 1,
+            "maximum": 99,
+            "multipleOf": 1,
+            "default": 20
+          }
+        },
+        {
+          "name": "tools-per-run",
+          "type": "number",
+          "required": true,
+          "schema": {
+            "type": "number",
+            "description": "Tools per non-skipped run",
+            "minimum": 1,
+            "maximum": 100,
+            "multipleOf": 1,
+            "default": 10
+          }
+        }
+      ],
+      "sources": [
+        "simulator-database-size"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "simulation-days"
+        ]
+      }
+    },
+    {
+      "id": "simulator-database-summary",
+      "subject": "List modeled table sizes and their final total after 30 days.",
+      "objective": "Present the 30-day estimate in a compact table.",
+      "acceptance": "Three modeled table sizes and their summed final value are shown without a growth chart.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "issues-per-run",
+          "type": "number",
+          "required": true,
+          "schema": {
+            "type": "number",
+            "description": "Issues per non-skipped run",
+            "minimum": 1,
+            "maximum": 5,
+            "multipleOf": 1,
+            "default": 1
+          }
+        },
+        {
+          "name": "repositories",
+          "type": "number",
+          "required": true,
+          "schema": {
+            "type": "number",
+            "description": "Repositories",
+            "minimum": 1,
+            "maximum": 100000,
+            "multipleOf": 1,
+            "default": 1000
+          }
+        },
+        {
+          "name": "runs-per-day",
+          "type": "number",
+          "required": true,
+          "schema": {
+            "type": "number",
+            "description": "Runs per repository per day",
+            "minimum": 1,
+            "maximum": 100,
+            "multipleOf": 1,
+            "default": 10
+          }
+        },
+        {
+          "name": "skip-rate",
+          "type": "number",
+          "required": true,
+          "schema": {
+            "type": "number",
+            "description": "Skipped runs (%)",
+            "minimum": 1,
+            "maximum": 99,
+            "multipleOf": 1,
+            "default": 20
+          }
+        },
+        {
+          "name": "tools-per-run",
+          "type": "number",
+          "required": true,
+          "schema": {
+            "type": "number",
+            "description": "Tools per non-skipped run",
+            "minimum": 1,
+            "maximum": 100,
+            "multipleOf": 1,
+            "default": 10
+          }
+        }
+      ],
+      "sources": [
+        "simulator-database-size",
+        "simulator-database-total"
       ],
       "used-by-pages": [
         "simulators"

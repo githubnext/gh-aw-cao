@@ -8891,14 +8891,79 @@
  },
  {
   "name": "simulator-database-size",
-  "subject": "Plot modeled run-summary, tool, and issue table bytes across the first 30 days.",
-  "objective": "Compare hypothetical database table sizes over time.",
-  "acceptance": "The model presents separate summary, tool, and issue estimates for each of 30 simulated days, never observed storage.",
+  "subject": "Show modeled run-summary, tool, and issue table bytes after 30 days.",
+  "objective": "Compare hypothetical database table sizes at the end of the retention horizon.",
+  "acceptance": "The model presents separate summary, tool, and issue estimates after 30 simulated days, never observed storage.",
   "description": "Run summaries accumulate; detailed records have a 30-day TTL.",
   "from": "simulator-run-size",
   "union": [
    "simulator-tool-size",
    "simulator-issue-size"
+  ],
+  "filter": {
+   "predicates": [
+    {
+     "field": "date",
+     "equals": "2025-01-30T00:00:00.000Z"
+    }
+   ]
+  },
+  "select": [
+   {
+    "field": "table"
+   },
+   {
+    "field": "bytes"
+   }
+  ]
+ },
+ {
+  "name": "simulator-database-total",
+  "subject": "Sum the modeled table sizes after 30 days.",
+  "objective": "Show the final estimated size of the modeled database tables.",
+  "acceptance": "The final value is the sum of the three modeled table sizes after 30 days.",
+  "from": "simulator-database-size",
+  "compute": [
+   {
+    "as": "total-label",
+    "function": "literal",
+    "args": [
+     {
+      "value": "Total"
+     }
+    ]
+   }
+  ],
+  "aggregate": {
+   "by": [
+    "total-label"
+   ],
+   "values": [
+    {
+     "field": "bytes",
+     "as": "bytes",
+     "reducer": "sum"
+    }
+   ]
+  },
+  "select": [
+   {
+    "field": "total-label",
+    "as": "table"
+   },
+   {
+    "field": "bytes"
+   }
+  ]
+ },
+ {
+  "name": "simulator-database-summary",
+  "subject": "List modeled table sizes and their final total after 30 days.",
+  "objective": "Present the 30-day estimate in a compact table.",
+  "acceptance": "Three modeled table sizes and their summed final value are shown without a growth chart.",
+  "from": "simulator-database-size",
+  "union": [
+   "simulator-database-total"
   ]
  },
  {

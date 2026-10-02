@@ -24,12 +24,13 @@ it('executes bounded parameterized simulator queries without an IndexedDB source
   const result = await executeNamedQuery({
     indexedDB,
     document: authoritativeDashboard,
-    queryId: 'simulator-database-size',
+    queryId: 'simulator-database-summary',
     parameters: simulatorInputs
   });
-  expect(result.rows).toHaveLength(90);
-  expect(result.rows[0]).toMatchObject({ table: 'Run summaries', bytes: 3072 });
-  expect(result.rows[30]).toMatchObject({ table: 'Tools (30-day TTL)', bytes: 3072 });
+  expect(result.rows).toHaveLength(4);
+  expect(result.rows[0]).toMatchObject({ table: 'Run summaries', bytes: 92_160 });
+  expect(result.rows[1]).toMatchObject({ table: 'Tools (30-day TTL)', bytes: 92_160 });
+  expect(result.rows[3]).toMatchObject({ table: 'Total', bytes: 230_400 });
   expect(result.metadata.parameters).toEqual(simulatorInputs);
 });
 
@@ -43,7 +44,7 @@ it('rejects omitted, unknown and out-of-range simulator operands', async () => {
   ]) {
     await expect(executeNamedQuery({
       indexedDB, document: authoritativeDashboard,
-      queryId: 'simulator-database-size', parameters
+      queryId: 'simulator-database-summary', parameters
     })).rejects.toThrow(NamedQueryError);
   }
 });
