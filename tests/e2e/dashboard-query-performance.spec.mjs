@@ -10,7 +10,7 @@ import {
 } from "./dashboard-deployed-refresh-helpers.mjs";
 import {
   QUERY_CHUNK_SIZE,
-  availableDeployedActivityShardEntries,
+  snapshotDeployedActivityShards,
   deployedProxyTarget,
   parseQueryPerformanceShard,
   partitionQueryDefinitions,
@@ -44,6 +44,7 @@ const overviewSourceNames = dashboardPageAllSourceNames(
   "overview",
 );
 const deployedShardSources = new Map();
+let deployedManifest;
 // A single settled Overview request sits close to its budget on the current
 // deployed dataset, so one GC pause or runner stall can decide the outcome.
 // Assert the median of several sequential requests instead of one sample.
@@ -80,8 +81,19 @@ async function serveDashboard(request, response) {
     if (error?.code !== "ENOENT" && error?.message !== "Not a file") throw error;
   }
 
+  const snapshot = deployedShardSources.get(pathname);
+  if (snapshot || pathname === "/payload-hashes.json" && deployedManifest) {
+    const content = snapshot ?? deployedManifest;
+    response.writeHead(200, {
+      "cache-control": "no-store",
+      "content-type": "application/json",
+      "content-length": content.length,
+    });
+    response.end(request.method === "HEAD" ? undefined : content);
+    return;
+  }
   const deployedUrl = deployedProxyTarget(
-    deployedShardSources.get(pathname) ?? pathname,
+    pathname,
     deployedDashboardUrl,
   );
   if (!deployedUrl) {
@@ -96,7 +108,7 @@ async function serveDashboard(request, response) {
     ? undefined
     : Buffer.from(await deployedResponse.arrayBuffer());
   if (pathname === "/payload-hashes.json" && body) {
-    const entries = await availableDeployedActivityShardEntries(
+    const entries = await snapshotDeployedActivityShards(
       deployedActivityShardEntries(JSON.parse(body.toString("utf8"))),
       { baseUrl: deployedDashboardUrl },
     );
@@ -104,10 +116,13 @@ async function serveDashboard(request, response) {
       throw new Error("No available deployed run-information shards remain after availability checks.");
     }
     deployedShardSources.clear();
-    for (const { name, sourceName } of entries) deployedShardSources.set(`/${name}`, `/${sourceName}`);
+    for (const { name, sourceName, content } of entries) {
+      deployedShardSources.set(`/${name}`, sourceName.endsWith(".json")
+        ? Buffer.from(legacyPhaseJsonToJsonl(content))
+        : content);
+    }
     body = Buffer.from(JSON.stringify(Object.fromEntries(entries.map(({ name, hash }) => [name, hash]))));
-  } else if (body && deployedShardSources.get(pathname)?.endsWith(".json")) {
-    body = Buffer.from(legacyPhaseJsonToJsonl(body));
+    deployedManifest = body;
   }
   const contentLength = request.method === "HEAD"
     ? deployedResponse.headers.get("content-length")
@@ -202,8 +217,11 @@ test(`benchmarks every dashboard query against settled deployed data (shard ${sh
     const initialOverviewReadyMs = await page.evaluate(() => performance.now());
     await page.waitForFunction(() => {
       const events = window.__dashboardPerformanceEvents ?? [];
-      return events.some(({ detail }) => detail?.kind === "refresh" && detail?.status === "completed");
+      return events.some(({ detail }) =>
+        detail?.kind === "refresh" && ["completed", "failed"].includes(detail?.status));
     }, null, { timeout: 300_000 });
+    expect(browserErrors, "Deployed data must refresh successfully before benchmarking").toEqual([]);
+    expect(failedRequests, "The deployed snapshot must be available in full").toEqual([]);
     await expect(page.locator(".dashboard-root")).not.toHaveAttribute("aria-busy", "true", {
       timeout: 120_000,
     });
