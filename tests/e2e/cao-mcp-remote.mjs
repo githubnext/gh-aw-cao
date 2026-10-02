@@ -64,6 +64,11 @@ test('hosted MCP lists tools, inspects the catalog, and executes a named query',
     assert.equal(payload.id, id);
     assert.equal(payload.jsonrpc, '2.0');
     assert.equal(payload.error, undefined, `${method} must not return a JSON-RPC error`);
+    if (payload.result?.isError === true) {
+      const trace = response.headers.get('x-trace-id');
+      const traceId = /^[0-9a-f]{32}$/.test(trace ?? '') ? trace : 'unavailable';
+      assert.fail(`${method} ${params.name} returned a tool error (traceId=${traceId})`);
+    }
     return payload.result;
   }
 
@@ -77,11 +82,10 @@ test('hosted MCP lists tools, inspects the catalog, and executes a named query',
   const catalog = await call('tools/call', { name: 'cao_catalog', arguments: { kind: 'queries' } });
   assert.notEqual(catalog.isError, true);
   assert.ok(Array.isArray(catalog.structuredContent?.queries));
-  assert.ok(catalog.structuredContent.queries.some(({ id }) => id === 'campaign-readme-orchestrators'));
+  assert.ok(catalog.structuredContent.queries.some(({ id }) => id === 'database-campaign-count'));
 
-  const query = await call('tools/call', { name: 'cao_query', arguments: { id: 'campaign-readme-orchestrators', limit: 1 } });
-  assert.notEqual(query.isError, true);
-  assert.equal(query.structuredContent?.query, 'campaign-readme-orchestrators');
+  const query = await call('tools/call', { name: 'cao_query', arguments: { id: 'database-campaign-count', limit: 1 } });
+  assert.equal(query.structuredContent?.query, 'database-campaign-count');
   assert.ok(Array.isArray(query.structuredContent.rows));
   assert.ok(query.structuredContent.metadata?.availability);
   assert.notEqual(query.structuredContent.metadata.availability, 'unavailable');
