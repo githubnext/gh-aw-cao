@@ -1,13 +1,13 @@
-# Postgres ingestion and query-engine rebuild
+# PostgreSQL ingestion/query architecture status and verification
 
-## Decision
+## Current architecture
 
-Use `spec/storage.tsp` as the sole physical storage contract and its generated
-`internal/postgresx/schema.sql` as the standalone representation. Rebuild hosted
-ingestion and query execution around native relational tables, then delete the
-generic canonical/source machinery. This is a new project with a fresh database:
-**no old-database migration, backward compatibility, dual writes, alternate
-readers, or old-format fallback.**
+`spec/storage.tsp` is the physical storage contract; its generated
+`internal/postgresx/schema.sql` is the standalone representation. Hosted
+ingestion and query execution use native relational tables. The generic
+canonical/source machinery and compatibility readers have been removed. The
+server starts with a fresh database: **no old-database migration, backward
+compatibility, dual writes, alternate readers, or old-format fallback.**
 
 This document records the original native-Postgres cutover goals and the
 remaining verification work. The production server now executes hosted query
