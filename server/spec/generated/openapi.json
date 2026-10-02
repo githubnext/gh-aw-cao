@@ -1,0 +1,4160 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "CAO dashboard server",
+    "version": "1.0.0",
+    "description": "The Go dashboard server HTTP contract. Local mode uses a loopback bearer capability; hosted mode uses an authorized GitHub OAuth session and X-CSRF-Token on protected mutations. The optional MCP HTTP transport is covered, but its protocol messages and tool schemas are owned by the MCP contract; dashboard static assets are outside this contract."
+  },
+  "tags": [
+    {
+      "name": "Queries"
+    },
+    {
+      "name": "Health"
+    },
+    {
+      "name": "Hosted authentication"
+    },
+    {
+      "name": "Canonical entities"
+    },
+    {
+      "name": "Repository memory"
+    },
+    {
+      "name": "Ingestion and administration"
+    },
+    {
+      "name": "MCP transport"
+    }
+  ],
+  "paths": {
+    "/api/admin/collection/status": {
+      "get": {
+        "operationId": "Operations_collectionStatus",
+        "description": "Administrator-only; returns not-configured when no collector is active.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Ingestion and administration"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/logs": {
+      "get": {
+        "operationId": "Operations_logs",
+        "description": "Available only when CAO_SERVER_LOGS_ENABLED=true. Returns up to 10,000 recent server debug log records and fixed Redis ingestion counters (or availability status); requires a local bearer capability, a hosted administrator session, or the hosted MCP GitHub Actions identity.",
+        "parameters": [
+          {
+            "name": "X-GitHub-Actor",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-GitHub-OIDC-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "headers": {
+              "content-disposition": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "attachment; filename=\"cao-server-logs.json\""
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerLogSnapshot"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Ingestion and administration"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/rebuild": {
+      "post": {
+        "operationId": "Operations_rebuild",
+        "description": "Start a distributed, asynchronous rebuild; local bearer or hosted admin session and CSRF on hosted mutations.",
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request has been accepted for processing, but processing has not yet completed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RebuildStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Ingestion and administration"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/rebuild/status": {
+      "get": {
+        "operationId": "Operations_rebuildStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RebuildStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Ingestion and administration"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/auth/session": {
+      "get": {
+        "operationId": "Auth_session",
+        "description": "Hosted profile only. An authenticated GitHub account (not OAuth tokens).",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Hosted authentication"
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/github/webhook": {
+      "post": {
+        "operationId": "Operations_webhook",
+        "description": "Public signed GitHub delivery (maximum 10 MiB); validated with HMAC-SHA256 over the raw body. Never use dashboard bearer/session credentials for webhook authentication. The body is a GitHub event-specific JSON object.",
+        "parameters": [
+          {
+            "name": "X-Hub-Signature-256",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-GitHub-Delivery",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-GitHub-Event",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request has been accepted for processing, but processing has not yet completed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookAcknowledgement"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Ingestion and administration"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "unevaluatedProperties": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "Health_health",
+        "description": "Public liveness and storage health, including before the first data ingestion.An externally hosted handler also returns an Unavailable error until startup completes or after shutdown.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HealthResponse"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "error"
+                      ],
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "description": "An error response. The message is diagnostic, not a stable error code."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/api/readiness": {
+      "get": {
+        "operationId": "Health_readiness",
+        "description": "Public readiness; Redis must be connected and Postgres must contain dashboard data.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ReadinessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "error"
+                      ],
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "description": "An error response. The message is diagnostic, not a stable error code."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/api/repositories": {
+      "get": {
+        "operationId": "Canonical_repositories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "unevaluatedProperties": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Canonical entities"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/repositories/{id}": {
+      "get": {
+        "operationId": "Canonical_repository",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "unevaluatedProperties": {}
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Canonical entities"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/repositories/{id}/runs": {
+      "get": {
+        "operationId": "Canonical_repositoryRuns",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "unevaluatedProperties": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Canonical entities"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/runs/{id}/jobs": {
+      "get": {
+        "operationId": "Canonical_runJobs",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "unevaluatedProperties": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Canonical entities"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/runs/{id}/sessions": {
+      "get": {
+        "operationId": "Canonical_runSessions",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "unevaluatedProperties": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Canonical entities"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/sessions/{id}/events": {
+      "get": {
+        "operationId": "Canonical_sessionEvents",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "unevaluatedProperties": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Canonical entities"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/diagnostics": {
+      "get": {
+        "operationId": "Queries_diagnostics",
+        "description": "Read-only projection diagnostics.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "schemaVersion": {
+                      "type": "integer",
+                      "format": "int32"
+                    },
+                    "counts": {
+                      "type": "object",
+                      "unevaluatedProperties": {
+                        "type": "integer",
+                        "format": "int32"
+                      }
+                    },
+                    "relationshipErrors": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "duplicateRecordIds": {
+                      "type": "object",
+                      "unevaluatedProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "schemaVersion",
+                    "counts",
+                    "relationshipErrors",
+                    "duplicateRecordIds"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Queries"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/events": {
+      "get": {
+        "operationId": "Queries_events",
+        "description": "Server-sent stream: each `data:` line is a RevisionEvent JSON object; `: keepalive` comments arrive every 20 seconds. HTTP hosts must support flushing and must not impose a finite whole-request timeout on this route.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Queries"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/github-quota/usage": {
+      "get": {
+        "operationId": "Operations_quotaUsage",
+        "description": "Administrator-only retained GitHub API usage; does not expose credentials.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotaUsage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Ingestion and administration"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "operationId": "Health_healthV1",
+        "description": "Alias of /api/health.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HealthResponse"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "error"
+                      ],
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "description": "An error response. The message is diagnostic, not a stable error code."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/api/v1/ingestion/health": {
+      "get": {
+        "operationId": "Operations_ingestionHealth",
+        "description": "Alias for the administrative collection status endpoint.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Ingestion and administration"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/memory/{campaign}": {
+      "get": {
+        "operationId": "Memory_campaign",
+        "description": "Returns JSON null when no campaign exists. Campaign identifiers must meet the repository-memory identifier policy.",
+        "parameters": [
+          {
+            "name": "campaign",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/MemoryCampaign"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository memory"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/memory/{campaign}/content": {
+      "get": {
+        "operationId": "Memory_content",
+        "description": "Returns verified file content as a JSON string. Relative file paths only; traversal is rejected.",
+        "parameters": [
+          {
+            "name": "campaign",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "content": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "content"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository memory"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/query": {
+      "post": {
+        "operationId": "Queries_execute",
+        "description": "Execute Dashboard Language against current Postgres dashboard entities. Up to 256 source names and 8 MiB of request body.",
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": false,
+            "description": "Required in hosted mode for every POST; omitted in local bearer mode.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Client error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryPlanTooLarge"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Queries"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/refresh": {
+      "post": {
+        "operationId": "Queries_refresh",
+        "description": "Check the current revision; does not itself rebuild or mutate the projection.",
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "revision": {
+                      "type": "integer",
+                      "format": "int64"
+                    },
+                    "evaluatedAt": {
+                      "type": "string"
+                    },
+                    "changed": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    }
+                  },
+                  "required": [
+                    "revision",
+                    "evaluatedAt",
+                    "changed"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Queries"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/workflows/{id}/runs": {
+      "get": {
+        "operationId": "Canonical_workflowRuns",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "unevaluatedProperties": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Canonical entities"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/auth/callback": {
+      "get": {
+        "operationId": "Auth_callback",
+        "description": "Hosted profile only. Exchange the GitHub OAuth code and state; sets the HttpOnly session and CSRF cookies, then redirects home. Failure pages are HTML.",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirection",
+            "headers": {
+              "location": {
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Hosted authentication"
+        ]
+      }
+    },
+    "/auth/logged-out": {
+      "get": {
+        "operationId": "Auth_loggedOut",
+        "description": "Hosted profile only. A public, static HTML confirmation page.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "text/html; charset=utf-8": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Hosted authentication"
+        ]
+      }
+    },
+    "/auth/login": {
+      "get": {
+        "operationId": "Auth_login",
+        "description": "Hosted profile only. Start the GitHub OAuth flow; responds with a redirect to GitHub and sets a short-lived state cookie.",
+        "parameters": [
+          {
+            "name": "select_account",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirection",
+            "headers": {
+              "location": {
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Hosted authentication"
+        ]
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "Auth_logout",
+        "description": "Hosted profile only. Revokes the server-side session and clears cookies. Requires the X-CSRF-Token returned in the cao_csrf cookie.",
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "There is no content to send for this request, but the headers may be useful. "
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Hosted authentication"
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/auth/switch-account": {
+      "post": {
+        "operationId": "Auth_switchAccount",
+        "description": "Hosted profile only. Revokes the current session and returns the explicit account-selection login path.",
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "loginUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "loginUrl"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Hosted authentication"
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/mcp": {
+      "post": {
+        "operationId": "Mcp_exchange",
+        "description": "Optional stateless streamable HTTP transport, present only when MCP is enabled. Local mode accepts the dashboard bearer capability or a configured GitHub Actions identity; hosted mode requires a repository-scoped GitHub Actions identity (bearer token, actor and signed OIDC token). MCP message formats and tool schemas are maintained by the MCP contract, not this HTTP contract.",
+        "parameters": [
+          {
+            "name": "X-GitHub-Actor",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-GitHub-OIDC-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "MCP-Protocol-Version",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "unevaluatedProperties": {}
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "The request has been accepted for processing, but processing has not yet completed."
+          },
+          "400": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "MCP transport"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "unevaluatedProperties": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Account": {
+        "type": "object",
+        "required": [
+          "login",
+          "avatarUrl"
+        ],
+        "properties": {
+          "login": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "type": "string"
+          }
+        },
+        "examples": [
+          {
+            "login": "octocat",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/1"
+          }
+        ]
+      },
+      "AggregateValue": {
+        "type": "object",
+        "required": [
+          "field",
+          "as",
+          "reducer"
+        ],
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "as": {
+            "type": "string"
+          },
+          "reducer": {
+            "type": "string"
+          },
+          "filter": {
+            "$ref": "#/components/schemas/Filter"
+          }
+        }
+      },
+      "CollectionStatus": {
+        "type": "object",
+        "required": [
+          "configured",
+          "health",
+          "coverage",
+          "queueDepth",
+          "pendingTasks",
+          "deadLetters",
+          "backfill",
+          "backfillFailures",
+          "backfillQueuedRunTasks",
+          "counters",
+          "healthRevision"
+        ],
+        "properties": {
+          "configured": {
+            "type": "boolean"
+          },
+          "health": {
+            "type": "string"
+          },
+          "coverage": {
+            "type": "object",
+            "properties": {
+              "installations": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "repositories": {
+                "type": "integer",
+                "format": "int64"
+              }
+            },
+            "required": [
+              "installations",
+              "repositories"
+            ]
+          },
+          "queueDepth": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pendingTasks": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "oldestPendingAge": {
+            "type": "string"
+          },
+          "deadLetters": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "backfill": {
+            "type": "string"
+          },
+          "backfillFailures": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "backfillQueuedRunTasks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastProjected": {
+            "type": "string"
+          },
+          "counters": {
+            "type": "object",
+            "unevaluatedProperties": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "load": {
+            "type": "object",
+            "unevaluatedProperties": {
+              "type": "number",
+              "format": "double"
+            },
+            "description": "Half-life 60 seconds: each event contributes one unit, decaying by half every minute. Keys are webhook, collection, and failure."
+          },
+          "healthRevision": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lastWebhookAt": {
+            "type": "string"
+          },
+          "lastFailureAt": {
+            "type": "string"
+          },
+          "lastFailureCode": {
+            "type": "string"
+          },
+          "lastSuccessAt": {
+            "type": "string"
+          },
+          "rateLimits": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "installationId": {
+                  "type": "integer",
+                  "format": "int64"
+                },
+                "remaining": {
+                  "type": "integer",
+                  "format": "int32"
+                },
+                "parkedUntil": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "installationId",
+                "remaining"
+              ]
+            }
+          }
+        }
+      },
+      "ComputedField": {
+        "type": "object",
+        "required": [
+          "as",
+          "function",
+          "args"
+        ],
+        "properties": {
+          "as": {
+            "type": "string"
+          },
+          "function": {
+            "type": "string"
+          },
+          "args": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "field"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "value": {}
+                  },
+                  "required": [
+                    "value"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "context": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "context"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "DataState": {
+        "type": "object",
+        "required": [
+          "available",
+          "rebuildRequired"
+        ],
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "rebuildRequired": {
+            "type": "boolean"
+          },
+          "evaluatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Authoritative source time of the active canonical dataset, when available."
+          }
+        }
+      },
+      "Filter": {
+        "type": "object",
+        "properties": {
+          "predicates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Predicate"
+            }
+          },
+          "search": {
+            "type": "object",
+            "properties": {
+              "fields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "query": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "fields",
+              "query"
+            ]
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "redis",
+          "data"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "healthy",
+              "unhealthy"
+            ]
+          },
+          "redis": {
+            "$ref": "#/components/schemas/RedisState"
+          },
+          "data": {
+            "$ref": "#/components/schemas/DataState"
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Details are present only for an authorized caller."
+          },
+          "counts": {
+            "type": "object",
+            "unevaluatedProperties": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          "sourceCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rowCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "examples": [
+          {
+            "status": "healthy",
+            "redis": {
+              "connected": true
+            },
+            "data": {
+              "available": true,
+              "rebuildRequired": false,
+              "evaluatedAt": "2026-10-02T14:25:38.957Z"
+            }
+          }
+        ]
+      },
+      "Join": {
+        "type": "object",
+        "required": [
+          "source",
+          "on",
+          "fields"
+        ],
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "on": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "left": {
+                  "type": "string"
+                },
+                "right": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "left",
+                "right"
+              ]
+            }
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SelectedField"
+            }
+          }
+        }
+      },
+      "MemoryCampaign": {
+        "type": "object",
+        "required": [
+          "campaign",
+          "branch",
+          "commit",
+          "files",
+          "omitted"
+        ],
+        "properties": {
+          "campaign": {
+            "type": "string"
+          },
+          "branch": {
+            "type": "string"
+          },
+          "commit": {
+            "type": "string"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MemoryFile"
+            }
+          },
+          "omitted": {
+            "$ref": "#/components/schemas/MemoryOmissions"
+          }
+        }
+      },
+      "MemoryFile": {
+        "type": "object",
+        "required": [
+          "path",
+          "oid",
+          "size"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "oid": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "MemoryOmissions": {
+        "type": "object",
+        "required": [
+          "fileLimit",
+          "fileSize",
+          "totalSize",
+          "extension",
+          "nesting",
+          "unsafePath",
+          "invalidContent",
+          "unsupportedType"
+        ],
+        "properties": {
+          "fileLimit": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fileSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "extension": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nesting": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unsafePath": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "invalidContent": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unsupportedType": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PaginationRequest": {
+        "type": "object",
+        "required": [
+          "limit"
+        ],
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "continuationToken": {
+            "type": "string"
+          }
+        }
+      },
+      "Predicate": {
+        "type": "object",
+        "required": [
+          "field"
+        ],
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "equals": {},
+          "in": {
+            "type": "array",
+            "items": {}
+          },
+          "includes": {
+            "type": "string"
+          },
+          "gte": {},
+          "lt": {},
+          "optional": {
+            "type": "boolean"
+          }
+        }
+      },
+      "QueryDefinition": {
+        "type": "object",
+        "required": [
+          "name",
+          "from"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string"
+          },
+          "union": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "joins": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Join"
+            }
+          },
+          "filter": {
+            "$ref": "#/components/schemas/Filter"
+          },
+          "compute": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComputedField"
+            }
+          },
+          "aggregate": {
+            "type": "object",
+            "properties": {
+              "by": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "values": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AggregateValue"
+                }
+              }
+            },
+            "required": [
+              "values"
+            ]
+          },
+          "temporal-series": {
+            "$ref": "#/components/schemas/TemporalSeries"
+          },
+          "predict": {
+            "type": "array",
+            "items": {}
+          },
+          "select": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SelectedField"
+            }
+          },
+          "order-by": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "direction": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "field"
+              ]
+            }
+          },
+          "limit": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stores": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "stores-by-source": {
+            "type": "object",
+            "unevaluatedProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "description": "A Dashboard Language query definition. See dashboard/site/dashboard.json for the language vocabulary."
+      },
+      "QueryMetrics": {
+        "type": "object",
+        "required": [
+          "durationMs",
+          "operations",
+          "outputRows",
+          "peakWorkingRows",
+          "retainedRows",
+          "peakWorkingBytes",
+          "retainedBytes",
+          "dependencyDepth",
+          "rateLimitCost",
+          "queryCount",
+          "unionCount",
+          "joinCount",
+          "filterCount",
+          "computeCount",
+          "aggregateCount",
+          "aggregateValueCount",
+          "temporalSeriesCount",
+          "selectCount",
+          "orderByCount",
+          "limitCount",
+          "pushedDown",
+          "fallbackOperations"
+        ],
+        "properties": {
+          "durationMs": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "operations": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "outputRows": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "peakWorkingRows": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "retainedRows": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "peakWorkingBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "retainedBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "dependencyDepth": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rateLimitCost": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "queryCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unionCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "joinCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "filterCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "computeCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "aggregateCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "aggregateValueCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "temporalSeriesCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "selectCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "orderByCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "limitCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pushedDown": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fallbackOperations": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "QueryPlanTooLarge": {
+        "type": "object",
+        "required": [
+          "error",
+          "code",
+          "queryId",
+          "boundary"
+        ],
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "query_plan_too_large"
+            ]
+          },
+          "queryId": {
+            "type": "string"
+          },
+          "boundary": {
+            "type": "string"
+          }
+        }
+      },
+      "QueryRequest": {
+        "type": "object",
+        "properties": {
+          "sourceNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "queries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueryDefinition"
+            }
+          },
+          "compiledQueries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueryDefinition"
+            }
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "replacedSources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "pagination": {
+            "type": "object",
+            "unevaluatedProperties": {
+              "$ref": "#/components/schemas/PaginationRequest"
+            }
+          },
+          "pageId": {
+            "type": "string"
+          },
+          "viewId": {
+            "type": "string"
+          },
+          "routeParameters": {
+            "type": "object",
+            "unevaluatedProperties": {}
+          },
+          "queryContext": {
+            "type": "object",
+            "unevaluatedProperties": {}
+          },
+          "context": {
+            "type": "object",
+            "unevaluatedProperties": {}
+          },
+          "evaluatedAt": {
+            "type": "string"
+          }
+        },
+        "description": "Requests may supply query definitions or use server-configured definitions.",
+        "examples": [
+          {
+            "sourceNames": [
+              "runs"
+            ],
+            "aliases": [],
+            "pagination": {
+              "runs": {
+                "limit": 50
+              }
+            }
+          }
+        ]
+      },
+      "QueryResponse": {
+        "type": "object",
+        "required": [
+          "revision",
+          "evaluatedAt",
+          "sources",
+          "metrics"
+        ],
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "healthRevision": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "evaluatedAt": {
+            "type": "string"
+          },
+          "sources": {
+            "type": "object",
+            "unevaluatedProperties": {
+              "$ref": "#/components/schemas/QuerySource"
+            }
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/QueryMetrics"
+          }
+        }
+      },
+      "QuerySource": {
+        "type": "object",
+        "required": [
+          "source",
+          "rows",
+          "metadata"
+        ],
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "unevaluatedProperties": {}
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "unevaluatedProperties": {}
+          },
+          "continuationToken": {
+            "type": "string"
+          }
+        }
+      },
+      "QuotaAggregate": {
+        "type": "object",
+        "required": [
+          "time",
+          "buckets",
+          "limit",
+          "used",
+          "reserved",
+          "usagePercent"
+        ],
+        "properties": {
+          "time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "buckets": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "limit": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "used": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reserved": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "usagePercent": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "QuotaBucket": {
+        "type": "object",
+        "required": [
+          "app",
+          "installation",
+          "resource"
+        ],
+        "properties": {
+          "app": {
+            "type": "string"
+          },
+          "installation": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "resource": {
+            "type": "string"
+          }
+        }
+      },
+      "QuotaPoint": {
+        "type": "object",
+        "required": [
+          "time",
+          "bucket",
+          "limit",
+          "used",
+          "reserved",
+          "usagePercent"
+        ],
+        "properties": {
+          "time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "bucket": {
+            "$ref": "#/components/schemas/QuotaBucket"
+          },
+          "limit": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "used": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reserved": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "usagePercent": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "QuotaUsage": {
+        "type": "object",
+        "required": [
+          "generatedAt",
+          "from",
+          "intervalSeconds",
+          "buckets",
+          "aggregate"
+        ],
+        "properties": {
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "intervalSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "buckets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuotaPoint"
+            }
+          },
+          "aggregate": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuotaAggregate"
+            }
+          }
+        }
+      },
+      "ReadinessResponse": {
+        "type": "object",
+        "required": [
+          "ready",
+          "redis",
+          "data"
+        ],
+        "properties": {
+          "ready": {
+            "type": "boolean"
+          },
+          "redis": {
+            "$ref": "#/components/schemas/RedisState"
+          },
+          "data": {
+            "$ref": "#/components/schemas/DataState"
+          }
+        }
+      },
+      "RebuildStatus": {
+        "type": "object",
+        "required": [
+          "state",
+          "required"
+        ],
+        "properties": {
+          "state": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "startedAt": {
+            "type": "string"
+          },
+          "completedAt": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "dataRevision": {
+            "type": "string"
+          },
+          "counts": {
+            "type": "object",
+            "unevaluatedProperties": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        }
+      },
+      "RedisState": {
+        "type": "object",
+        "required": [
+          "connected"
+        ],
+        "properties": {
+          "connected": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RevisionEvent": {
+        "type": "object",
+        "required": [
+          "revision",
+          "healthRevision"
+        ],
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "healthRevision": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "description": "JSON object within each SSE data frame (not the wire framing itself).",
+        "examples": [
+          {
+            "revision": 42,
+            "healthRevision": 7
+          }
+        ]
+      },
+      "SelectedField": {
+        "type": "object",
+        "required": [
+          "field"
+        ],
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "as": {
+            "type": "string"
+          }
+        }
+      },
+      "ServerLogRecord": {
+        "type": "object",
+        "required": [
+          "timestamp",
+          "namespace",
+          "message"
+        ],
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "examples": [
+          {
+            "timestamp": "2026-10-02T19:00:00Z",
+            "namespace": "cao:server",
+            "message": "listener ready"
+          }
+        ]
+      },
+      "ServerLogRedis": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "not-configured",
+              "unavailable"
+            ]
+          },
+          "counters": {
+            "type": "object",
+            "unevaluatedProperties": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "queueDepth": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pendingTasks": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "deadLetters": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "description": "Only fixed, numeric ingestion counters are returned; Redis keys and values are never exposed."
+      },
+      "ServerLogSnapshot": {
+        "type": "object",
+        "required": [
+          "logs",
+          "redis"
+        ],
+        "properties": {
+          "logs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServerLogRecord"
+            }
+          },
+          "redis": {
+            "$ref": "#/components/schemas/ServerLogRedis"
+          }
+        },
+        "examples": [
+          {
+            "logs": [],
+            "redis": {
+              "status": "ok",
+              "counters": {
+                "webhookReceived": 3
+              },
+              "queueDepth": 0,
+              "pendingTasks": 0,
+              "deadLetters": 0
+            }
+          }
+        ]
+      },
+      "TemporalSeries": {
+        "type": "object",
+        "required": [
+          "time",
+          "series"
+        ],
+        "properties": {
+          "time": {
+            "type": "string"
+          },
+          "series": {
+            "type": "string"
+          },
+          "shape": {
+            "type": "string"
+          },
+          "carry": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "measures": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "key": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "field",
+                "kind"
+              ]
+            }
+          },
+          "maps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "definitions": {
+                  "type": "string"
+                },
+                "group": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "field",
+                "kind"
+              ]
+            }
+          },
+          "trend": {
+            "$ref": "#/components/schemas/TemporalTrend"
+          }
+        }
+      },
+      "TemporalTrend": {
+        "type": "object",
+        "required": [
+          "direction"
+        ],
+        "properties": {
+          "direction": {
+            "type": "string"
+          }
+        }
+      },
+      "WebhookAcknowledgement": {
+        "type": "object",
+        "required": [
+          "accepted"
+        ],
+        "properties": {
+          "accepted": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "duplicate": {
+            "type": "boolean"
+          },
+          "ignored": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "queued": {
+            "type": "boolean"
+          }
+        },
+        "examples": [
+          {
+            "accepted": true,
+            "duplicate": true
+          }
+        ]
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "Bearer"
+      },
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "cao_session"
+      }
+    }
+  }
+}

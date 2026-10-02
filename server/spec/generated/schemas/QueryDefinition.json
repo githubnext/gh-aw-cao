@@ -1,0 +1,381 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "QueryDefinition.json",
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string"
+        },
+        "from": {
+            "type": "string"
+        },
+        "union": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "joins": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/Join"
+            }
+        },
+        "filter": {
+            "$ref": "#/$defs/Filter"
+        },
+        "compute": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/ComputedField"
+            }
+        },
+        "aggregate": {
+            "type": "object",
+            "properties": {
+                "by": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "values": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/AggregateValue"
+                    }
+                }
+            },
+            "required": [
+                "values"
+            ]
+        },
+        "temporalSeries": {
+            "$ref": "#/$defs/TemporalSeries"
+        },
+        "predict": {
+            "type": "array",
+            "items": {}
+        },
+        "select": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/SelectedField"
+            }
+        },
+        "orderBy": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "field": {
+                        "type": "string"
+                    },
+                    "direction": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "field"
+                ]
+            }
+        },
+        "limit": {
+            "type": "integer",
+            "minimum": -2147483648,
+            "maximum": 2147483647
+        },
+        "stores": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "storesBySource": {
+            "$ref": "#/$defs/RecordArrayString"
+        }
+    },
+    "required": [
+        "name",
+        "from"
+    ],
+    "description": "A Dashboard Language query definition. See dashboard/site/dashboard.json for the language vocabulary.",
+    "$defs": {
+        "Join": {
+            "type": "object",
+            "properties": {
+                "source": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "on": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "left": {
+                                "type": "string"
+                            },
+                            "right": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "left",
+                            "right"
+                        ]
+                    }
+                },
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/SelectedField"
+                    }
+                }
+            },
+            "required": [
+                "source",
+                "on",
+                "fields"
+            ]
+        },
+        "Filter": {
+            "type": "object",
+            "properties": {
+                "predicates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/Predicate"
+                    }
+                },
+                "search": {
+                    "type": "object",
+                    "properties": {
+                        "fields": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "query": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fields",
+                        "query"
+                    ]
+                }
+            }
+        },
+        "ComputedField": {
+            "type": "object",
+            "properties": {
+                "as": {
+                    "type": "string"
+                },
+                "function": {
+                    "type": "string"
+                },
+                "args": {
+                    "type": "array",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "field": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "field"
+                                ]
+                            },
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "value": {}
+                                },
+                                "required": [
+                                    "value"
+                                ]
+                            },
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "context": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "context"
+                                ]
+                            }
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "as",
+                "function",
+                "args"
+            ]
+        },
+        "AggregateValue": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "as": {
+                    "type": "string"
+                },
+                "reducer": {
+                    "type": "string"
+                },
+                "filter": {
+                    "$ref": "#/$defs/Filter"
+                }
+            },
+            "required": [
+                "field",
+                "as",
+                "reducer"
+            ]
+        },
+        "TemporalSeries": {
+            "type": "object",
+            "properties": {
+                "time": {
+                    "type": "string"
+                },
+                "series": {
+                    "type": "string"
+                },
+                "shape": {
+                    "type": "string"
+                },
+                "carry": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "measures": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "field": {
+                                "type": "string"
+                            },
+                            "key": {
+                                "type": "string"
+                            },
+                            "kind": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "field",
+                            "kind"
+                        ]
+                    }
+                },
+                "maps": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "field": {
+                                "type": "string"
+                            },
+                            "definitions": {
+                                "type": "string"
+                            },
+                            "group": {
+                                "type": "string"
+                            },
+                            "kind": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "field",
+                            "kind"
+                        ]
+                    }
+                },
+                "trend": {
+                    "$ref": "#/$defs/TemporalTrend"
+                }
+            },
+            "required": [
+                "time",
+                "series"
+            ]
+        },
+        "SelectedField": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "as": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "field"
+            ]
+        },
+        "RecordArrayString": {
+            "type": "object",
+            "properties": {},
+            "unevaluatedProperties": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            }
+        },
+        "Predicate": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "equals": {},
+                "in": {
+                    "type": "array",
+                    "items": {}
+                },
+                "includes": {
+                    "type": "string"
+                },
+                "gte": {},
+                "lt": {},
+                "optional": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "field"
+            ]
+        },
+        "TemporalTrend": {
+            "type": "object",
+            "properties": {
+                "direction": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "direction"
+            ]
+        }
+    }
+}

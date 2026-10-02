@@ -1,0 +1,24 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "RevisionEvent.json",
+    "type": "object",
+    "properties": {
+        "revision": {
+            "type": "string"
+        },
+        "healthRevision": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "revision",
+        "healthRevision"
+    ],
+    "examples": [
+        {
+            "revision": 42,
+            "healthRevision": 7
+        }
+    ],
+    "description": "JSON object within each SSE data frame (not the wire framing itself)."
+}
