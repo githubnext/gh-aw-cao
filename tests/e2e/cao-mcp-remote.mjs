@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import {
+  assertHostedMCPVersionInformation,
+  hostedMCPVersionInformation
+} from '../unit/cao-mcp-remote.helpers.mjs';
+
 const endpoint = 'https://cao.githubnext.com/mcp';
 const audience = 'https://cao.githubnext.com';
 const protocolVersion = '2026-07-28';
@@ -74,14 +79,9 @@ test('hosted MCP lists tools, inspects the catalog, and executes a named query',
 
   await t.test('prints MCP server version information', async () => {
     const discovered = await call('server/discover');
-    console.log('Hosted MCP server version information:', JSON.stringify({
-      serverInfo: discovered.serverInfo,
-      supportedVersions: discovered.supportedVersions
-    }, null, 2));
-    assert.equal(discovered.serverInfo?.name, 'cao');
-    assert.equal(typeof discovered.serverInfo?.version, 'string');
-    assert.ok(discovered.serverInfo.version.length > 0, 'Hosted MCP must report its server version');
-    assert.ok(discovered.supportedVersions.includes(protocolVersion));
+    const versionInformation = hostedMCPVersionInformation(discovered);
+    console.log('Hosted MCP server version information:', JSON.stringify(versionInformation, null, 2));
+    assertHostedMCPVersionInformation(versionInformation, protocolVersion);
   });
 
   const listed = await call('tools/list');
