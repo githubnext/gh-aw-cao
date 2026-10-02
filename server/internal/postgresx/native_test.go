@@ -319,7 +319,19 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 	if err != nil || len(result["runs"].Rows) != 2 {
 		t.Fatalf("parent query lost partitions: %v %v", result, err)
 	}
-	if err := store.RunPartitionMaintenance(t.Context(), now, 14); err != nil {
+	active, err := store.BeginIngestion(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	maintenance := make(chan error, 1)
+	go func() { maintenance <- store.RunPartitionMaintenance(t.Context(), now, 14) }()
+	select {
+	case err := <-maintenance:
+		t.Fatalf("maintenance raced an active ingestion: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	active.Abort(t.Context())
+	if err := <-maintenance; err != nil {
 		t.Fatal(err)
 	}
 	state, err := store.State(t.Context())

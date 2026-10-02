@@ -162,6 +162,9 @@ func (s *Store) BeginIngestion(ctx context.Context) (*Writer, error) {
 	}
 	writer := &Writer{store: s, connection: connection, tx: tx, ordinals: map[string]int64{}, inventoryOrdinals: map[string]int64{}, inventoryTables: map[string]bool{}, batches: map[string][][]any{}, evaluatedAt: time.Unix(0, 0).UTC(), ingestedAt: time.Now().UTC(), staged: map[string]bool{}}
 	fail := func(err error) (*Writer, error) { writer.Abort(ctx); return nil, err }
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock_shared(712083241, 17484)`); err != nil {
+		return fail(err)
+	}
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended(current_schema() || ':' || $1, 0))`, s.namespace); err != nil {
 		return fail(err)
 	}

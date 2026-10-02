@@ -166,6 +166,9 @@ func (s *Store) DeleteNamespace(ctx context.Context) error {
 	if _, err = tx.ExecContext(ctx, "SET CONSTRAINTS ALL DEFERRED"); err != nil {
 		return err
 	}
+	if _, err = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock_shared(712083241, 17484)`); err != nil {
+		return err
+	}
 	if _, err = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended(current_schema() || ':' || $1, 0))`, s.namespace); err != nil {
 		return err
 	}
