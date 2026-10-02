@@ -69,10 +69,11 @@ dual-format tables, or compatibility reads.
 The hosted query endpoint, entity/detail reads, MCP query tools, diagnostics,
 and query-cost path use PostgreSQL. The query package retains request
 vocabulary, validation, dependency planning, limits, and byte estimation; the
-Go row evaluator and its fallback-operation telemetry have been removed.
-Unsupported query shapes fail closed. Redis remains operational state and a
-bounded completed-response cache; it does not store canonical entities or
-execute dashboard queries.
+Go row evaluator has been removed, and unsupported query shapes fail closed.
+The response contract still includes the legacy `fallbackOperations` metric as
+an empty compatibility field. Redis remains operational state and a bounded
+completed-response cache; it does not store canonical entities or execute
+dashboard queries.
 
 ## Remaining verification
 

@@ -102,7 +102,7 @@ func (r *readTransaction) ExecuteSQLPlanWithOptions(ctx context.Context, definit
 	if err != nil {
 		return nil, model.Metrics{}, err
 	}
-	metrics := model.Metrics{PushedDown: []string{"sql-plan"}}
+	metrics := model.Metrics{PushedDown: []string{"sql-plan"}, FallbackOperations: []string{}}
 	for _, step := range plan.Steps {
 		size, exists := sizes[step.Relation]
 		if !exists {

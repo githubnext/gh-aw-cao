@@ -1249,7 +1249,7 @@ func (a *App) executeQueryWithReader(ctx context.Context, input queryRequest, al
 		return queryResponse{
 			Revision: active.Revision, HealthRevision: healthRevision, EvaluatedAt: evaluatedAt,
 			Sources: map[string]model.Source{},
-			Metrics: model.Metrics{PushedDown: []string{}},
+			Metrics: model.Metrics{PushedDown: []string{}, FallbackOperations: []string{}},
 		}, http.StatusOK, nil
 	}
 	definitions := append([]query.Definition{}, a.databaseQueries...)
