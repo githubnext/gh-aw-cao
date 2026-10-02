@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/repositorymemory"
 )
 
@@ -25,13 +24,9 @@ func (a *App) repositoryMemoryCampaign(response http.ResponseWriter, request *ht
 		return
 	}
 	var campaign repositorymemory.Campaign
-	err := a.database.WithReadTransaction(request.Context(), func(ctx context.Context, reader postgresx.SourceReader) error {
-		var snapshotErr error
-		campaign, snapshotErr = repositoryMemorySnapshot(ctx, reader, campaignID)
-		return snapshotErr
-	})
+	campaign, err := repositoryMemorySnapshot(request.Context(), a.config.SourceDirectory, campaignID)
 	if err != nil && a.memory != nil &&
-		(errors.Is(err, errCanonicalEntityNotFound) || errors.Is(err, postgresx.ErrSourceUnavailable)) {
+		errors.Is(err, errCanonicalEntityNotFound) {
 		resolved, resolveErr := a.memory.Campaign(request.Context(), campaignID)
 		if resolveErr != nil {
 			writeRepositoryMemoryError(response, resolveErr)
@@ -63,8 +58,8 @@ func (a *App) repositoryMemoryContent(response http.ResponseWriter, request *htt
 		return
 	}
 	var content []byte
-	err := a.database.WithReadTransaction(request.Context(), func(ctx context.Context, reader postgresx.SourceReader) error {
-		campaign, err := repositoryMemorySnapshot(ctx, reader, campaignID)
+	err := func(ctx context.Context) error {
+		campaign, err := repositoryMemorySnapshot(ctx, a.config.SourceDirectory, campaignID)
 		if err != nil {
 			return err
 		}
@@ -78,27 +73,23 @@ func (a *App) repositoryMemoryContent(response http.ResponseWriter, request *htt
 		if selected == nil {
 			return repositorymemory.ErrNotFound
 		}
-		document, err := reader.LoadDocument(
-			ctx, repositorymemory.FilesSource, campaignID+"/"+filePath)
-		if errors.Is(err, postgresx.ErrSourceUnavailable) {
-			return repositorymemory.ErrNotFound
-		}
+		snapshot, err := repositorymemory.Load(a.config.SourceDirectory)
 		if err != nil {
 			return err
 		}
-		value, ok := document["content"].(string)
+		value, ok := snapshot.Files[repositorymemory.FileKey(campaignID, filePath)]
 		if !ok {
 			return errors.New("repository-memory file content is invalid")
 		}
-		content = []byte(value)
+		content = value
 		if reason, ok := repositoryMemoryIntegrityFailure(content, *selected); !ok {
 			repositoryMemoryLog.Printf("repository-memory file failed integrity validation reason=%s", reason)
 			return errRepositoryMemoryIntegrityFailure
 		}
 		return nil
-	})
+	}(request.Context())
 	if err != nil && a.memory != nil &&
-		(errors.Is(err, errCanonicalEntityNotFound) || errors.Is(err, postgresx.ErrSourceUnavailable)) {
+		errors.Is(err, errCanonicalEntityNotFound) {
 		content, resolveErr := a.memory.Content(request.Context(), campaignID, filePath)
 		if errors.Is(resolveErr, repositorymemory.ErrNotFound) ||
 			(resolveErr == nil && content == nil) {
@@ -161,25 +152,20 @@ func repositoryMemoryIntegrityFailure(content []byte, expected repositorymemory.
 }
 
 func repositoryMemorySnapshot(
-	ctx context.Context, reader postgresx.SourceReader, campaignID string,
+	ctx context.Context, directory, campaignID string,
 ) (repositorymemory.Campaign, error) {
-	active, err := reader.State(ctx)
-	if err != nil {
+	if err := ctx.Err(); err != nil {
 		return repositorymemory.Campaign{}, err
 	}
-	if !active.Ready {
-		return repositorymemory.Campaign{}, postgresx.ErrSourceUnavailable
+	if directory == "" {
+		return repositorymemory.Campaign{}, errCanonicalEntityNotFound
 	}
-	document, err := reader.LoadDocument(ctx, repositorymemory.ManifestSource, "manifest")
+	snapshot, err := repositorymemory.Load(directory)
 	if err != nil {
 		return repositorymemory.Campaign{}, err
-	}
-	content, ok := document["content"].(string)
-	if !ok {
-		return repositorymemory.Campaign{}, errors.New("repository-memory manifest is invalid")
 	}
 	var manifest repositorymemory.Manifest
-	if err := json.Unmarshal([]byte(content), &manifest); err != nil || manifest.Version != 1 {
+	if err := json.Unmarshal(snapshot.Manifest, &manifest); err != nil || manifest.Version != 1 {
 		return repositorymemory.Campaign{}, errors.New("repository-memory manifest is invalid")
 	}
 	for _, campaign := range manifest.Campaigns {

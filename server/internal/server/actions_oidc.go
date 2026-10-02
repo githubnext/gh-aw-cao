@@ -125,7 +125,7 @@ func actionsRepositoryMetadataForToken(
 			ID int64 `json:"id"`
 		} `json:"owner"`
 	}
-	if json.NewDecoder(io.LimitReader(response.Body, 4096)).Decode(&repository) != nil ||
+	if json.NewDecoder(io.LimitReader(response.Body, 64<<10)).Decode(&repository) != nil ||
 		!strings.EqualFold(repository.FullName, strings.TrimSpace(config.ActionsRepository)) ||
 		repository.ID <= 0 || repository.Owner.ID <= 0 ||
 		repository.DefaultBranch == "" || len(repository.DefaultBranch) > 255 ||

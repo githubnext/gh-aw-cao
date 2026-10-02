@@ -58,7 +58,22 @@ func integrationDatabase(t testing.TB) *postgresx.Store {
 
 func seedDatabase(t *testing.T, store *postgresx.Store, sources map[string]model.Source) {
 	t.Helper()
-	if _, err := store.Replace(t.Context(), sources, model.Diagnostics{}, "test-data", time.Date(2026, 2, 3, 4, 5, 6, 0, time.UTC)); err != nil {
+	writer, err := store.BeginIngestion(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer writer.Abort(t.Context())
+	for name, source := range sources {
+		for _, row := range source.Rows {
+			if err := writer.Append(t.Context(), name, row); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if err := writer.Quality(t.Context(), "$runs", model.Metadata{"as-of": "2026-02-03T04:05:06Z"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := writer.Publish(t.Context(), "test-data"); err != nil {
 		t.Fatal(err)
 	}
 }

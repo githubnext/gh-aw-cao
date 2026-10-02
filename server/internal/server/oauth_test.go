@@ -603,8 +603,12 @@ func TestHostedOAuthExposesAndSwitchesCurrentAccount(t *testing.T) {
 func TestHostedOAuthLoggedOutPageRequiresExplicitLogin(t *testing.T) {
 	app := newAzureTestApp(t, fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600}).URL)
 	response := httptest.NewRecorder()
+	request := azureRequest(t, http.MethodGet, "/auth/logged-out")
+	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "stale-session"})
+	request.AddCookie(&http.Cookie{Name: csrfCookieName, Value: "stale-csrf"})
+	request.AddCookie(&http.Cookie{Name: "cao_oauth_state", Value: "stale-state"})
 
-	app.Handler().ServeHTTP(response, azureRequest(t, http.MethodGet, "/auth/logged-out"))
+	app.Handler().ServeHTTP(response, request)
 
 	if response.Code != http.StatusOK {
 		t.Fatalf("logged-out page returned %d: %s", response.Code, response.Body.String())
@@ -612,11 +616,25 @@ func TestHostedOAuthLoggedOutPageRequiresExplicitLogin(t *testing.T) {
 	if response.Header().Get("Cache-Control") != "no-store" {
 		t.Fatal("logged-out page may be cached")
 	}
-	if !strings.Contains(response.Body.String(), `href="/auth/login"`) {
-		t.Fatal("logged-out page does not offer explicit GitHub sign-in")
+	for name, path := range map[string]string{
+		sessionCookieName: "/", csrfCookieName: "/", "cao_oauth_state": "/auth/",
+	} {
+		cookie := firstCookie(t, response.Result(), name)
+		if cookie.Value != "" || cookie.MaxAge >= 0 || cookie.Path != path || !cookie.Secure {
+			t.Errorf("logged-out page did not clear %s cookie: %#v", name, cookie)
+		}
+	}
+	if !strings.Contains(response.Body.String(), `href="/auth/login?select_account=1"`) {
+		t.Fatal("logged-out page does not offer sign-in with account selection")
 	}
 	if response.Header().Get("Location") != "" {
 		t.Fatal("logged-out page unexpectedly restarted OAuth")
+	}
+	login := httptest.NewRecorder()
+	app.Handler().ServeHTTP(login, azureRequest(t, http.MethodGet, "/auth/login?select_account=1"))
+	location, err := url.Parse(login.Header().Get("Location"))
+	if err != nil || location.Query().Get("prompt") != "select_account" {
+		t.Fatalf("retry did not ask GitHub to select an account: %s (%v)", login.Header().Get("Location"), err)
 	}
 }
 

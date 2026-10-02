@@ -28,58 +28,34 @@ Unsupported shapes use the bounded Go evaluator in that same transaction.
 
 ### Native query slice
 
-`internal/postgresx/plan.go` runs a complete single-source query, optionally
-through one passthrough alias, when its only operations are exact equality on
-`id`, `runId`, or `sessionId` (with string arguments other than `unknown`),
-projection, and a query limit. SQL binds source names, values, and projected
-field paths; it never accepts SQL identifiers or SQL text from requests. Rows
-are returned in source ordinal order. Missing fields and JSON null are distinct
-in projections, and numbers retain their original JSON lexemes. SQL counts the
-unfiltered input before filtering, charges both FROM and FILTER for rejected
-rows, and checks the input, operation, output, retained-row, and memory budgets.
-The first read after upgrading an existing database uses the Go evaluator until
-a changed artifact or a forced ingestion installs the new documents; an
-unchanged-revision no-op does not backfill them.
+`internal/postgresx/plan.go` executes complete scalar paths against the
+TypeSpec-defined entity tables, optionally through one passthrough alias.
+Exact string equality on declared identity/drilldown keys, scalar projection,
+and query limits use parameterized SQL. Only generated table/column identifiers
+are admitted. The query reads only selected scalar columns, filters by namespace
+and indexed keys, and preserves source ordinal order. Compact presence bits
+distinguish absent fields from explicit null. SQL counts unfiltered input before
+filtering and preserves the existing operation, output, retained-row, and memory
+budgets.
 
-This is a first vertical slice, **not** full PostgreSQL query coverage. Joins,
-aggregation, computation, ranges, optional/unknown predicates, searching,
-explicit ordering, multiple requested outputs, deeper query DAGs, and HTTP
-continuation pagination still use the bounded Go path. The persisted
-`cao_source_documents` table duplicates the existing EAV rows for now: it has
-lossless JSON text (not JSONB, which cannot represent huge exponents) and
-indexed hot keys for canonical drilldowns. Both representations are replaced
-atomically with the revision and diagnostics; EAV cannot be removed until
-all callers, unsupported shapes, and upgrades have migrated. Future work must
-profile real query traffic and storage costs before extending indexes, move
-eligible joins/aggregations/sorting/pages to SQL with differential tests, and
-bulk-ingest rather than writing both formats. No traffic-coverage or p95 target
-is claimed without a measured production workload.
+This is **not** full PostgreSQL query coverage. Structured-field projections,
+auxiliary sources, joins, aggregation, computation, range/optional/unknown
+predicates, searching, explicit ordering, multiple outputs, and deeper query
+DAGs currently use the bounded Go evaluator over the same relational storage
+and repeatable-read transaction. This is an implementation boundary, not an
+old-schema compatibility path. No documents or duplicate scalar representations
+are maintained for that evaluator.
 
-The declared dashboard corpus has 169 view queries and 21 database-source
-definitions; raw canonical `id` joins and the `runId`/`sessionId` drilldown
-routes motivate the first three hot-key indexes. This is **not** a traffic
-sample, so weighted native coverage remains unmeasured. With a disposable
-Postgres database, run `POSTGRES_URL=... go test ./internal/postgresx -run '^$'
--bench '^BenchmarkNativeFilterPlan$' -benchmem -benchtime=100x -count=1` from
-`server/` to compare full repeatable-read query paths. On a local AMD EPYC
-9V74 with 5,000 synthetic jobs and 100 repetitions per path, one run measured:
-
-| Path | Mean | p50 | p95 | Go allocations |
-| --- | ---: | ---: | ---: | ---: |
-| Native filtered plan | 1.034 ms | 1,003 µs | 1,319 µs | 28,483 B/op |
-| Bounded Go evaluator | 53.468 ms | 49,584 µs | 64,369 µs | 13,554,614 B/op |
-| Hand-written SQL row retrieval | 0.482 ms | 471 µs | 533 µs | 3,835 B/op |
-
-`EXPLAIN (ANALYZE, BUFFERS)` for the hand-written filtered retrieval reported
-an index scan on `cao_source_documents_run_id`, three shared buffer hits and
-0.054 ms execution (including its ordinal sort). The 10 matching JSON
-documents totaled 820 payload bytes versus 136,680 text bytes in the
-unfiltered legacy EAV values; these are payload sizes, **not** actual wire
-byte counts. Dual-format ingestion took 1.04 s for 5,000 rows. The native
-p95 here is **2.47×** the hand-written retrieval (which does not enforce
-plan budgets or build metadata), above the 1.25× goal. Join/aggregate/sorted
-table/page benchmarks, end-to-end HTTP p50/p95, production weighted
-coverage, and a COPY-based ingestion cost comparison remain to be measured.
+The [Postgres rebuild plan](POSTGRES-REBUILD-PLAN.md) specifies replacing this
+boundary with a complete SQL engine and removing generic source/value
+scaffolding. With a disposable fresh database, run
+`POSTGRES_URL=... go test ./internal/postgresx -run '^$'
+-bench '^BenchmarkNativeFilterPlan$' -benchmem -benchtime=100x -count=1`
+from `server/` to compare typed SQL, bounded Go evaluation, and hand-written
+SQL retrieval over 5,000 domain records. The benchmark reports
+`EXPLAIN (ANALYZE, BUFFERS)`, table/index bytes, ingestion time, allocations,
+and p50/p95; it asserts zero canonical scalar copies in generic value storage.
+These synthetic measurements do not establish production traffic coverage.
 
 ### Debug logging
 
@@ -235,7 +211,7 @@ with `benchstat` and inspect profiles with `go tool pprof` or
 flowchart LR
   Artifact["Deployed dashboard artifact<br/>inventory + run JSONL + record JSONL"]
   Ingest["Go ingester<br/>verify, parse, project"]
-  Postgres["Postgres<br/>current entity sources + indexed documents"]
+  Postgres["Postgres<br/>native entity tables + relational evidence"]
   Redis["Redis<br/>operational state"]
   API["Go HTTP(S) server<br/>native plans + bounded fallback"]
   Browser["Dashboard browser app<br/>render bounded view payloads"]
@@ -257,7 +233,7 @@ flowchart LR
 | CLI | `cmd/cao-dashboard/` | Implements the `ingest` and `serve` commands and keeps Postgres and Redis configuration in the server process. |
 | Artifact ingestion | `internal/ingest/` | Validates deployed manifests and hashes, loads run shards before record shards, and builds canonical logical sources. |
 | Query engine | `internal/query/` | Validates Dashboard Language definitions, delegates complete supported paths to a plan executor, and applies bounded Go evaluation to other shapes. |
-| Postgres entity storage | `internal/postgresx/` | Transactionally replaces current sources, diagnostics, revision and indexed lossless documents; executes supported SQL plans under the same repeatable-read snapshot as fallback. |
+| Postgres entity storage | `internal/postgresx/` | Initializes fresh TypeSpec-generated tables and transactionally replaces native entities, relational evidence, diagnostics, and revision; executes supported SQL plans in the same snapshot as bounded Go evaluation. |
 | Redis operations | `internal/redisx/` | Supports caches, queues, and sessions. |
 | HTTP(S)/API server | `internal/server/` | Enforces loopback binding, optionally terminates operator-configured TLS, serves static dashboard assets, handles API requests, and publishes revision events. |
 | Externally hosted service | `hosting/` | Exposes a listener-independent application lifecycle and the complete hosted HTTP handler to other Go HTTP hosts. |
@@ -920,15 +896,17 @@ alongside their metadata, canonical diagnostics, and one revision/evaluation
 state. An ingestion replaces these atomically: failed transactions leave the
 previous committed state untouched. There are no Postgres generations,
 projections, or snapshots.
-On startup, the store converts legacy JSONB rows, metadata, counts, and
-diagnostics for **all namespaces** into relational typed tables in one
-transaction, then drops the legacy JSONB columns. A failed conversion rolls
-back both schema and data changes, so fixing the legacy data and restarting
-can retry safely. Existing revisions and namespace boundaries are retained;
-subsequent startups do not re-import converted data. Numeric values retain
-their original JSON lexemes for exact round-tripping, including values outside
-PostgreSQL `NUMERIC` range. Migration fetches legacy rows in bounded batches;
-ingestion batches typed-value and row inserts in the same replacement transaction.
+The editable representation is `spec/storage.tsp`; its emitter produces the
+standalone `internal/postgresx/schema.sql` and matching Go bindings.
+Eighteen entity tables retain query-consumed fields and identity/storage keys
+only. Scalars use native SQL types; timestamps are returned as UTC RFC3339
+strings. Required structured fields use entity-owned relational child values,
+whose numeric atoms preserve source lexemes, including exponents beyond
+Postgres `NUMERIC`. No canonical JSON/JSONB or serialized documents are stored,
+and canonical scalar rows are not copied into generic source/value tables.
+Startup only initializes this fresh schema. There is no old-layout detection,
+conversion, backfill, or backward-compatible import. Use a new database and
+re-ingest authoritative inputs when changing the physical contract.
 Redis remains namespaced operational storage for caches, queues, sessions, and
 it does not hold dashboard entity rows or query indexes.
 Neither store grants control-plane authority. Credentials stay server-side.
@@ -938,13 +916,11 @@ Neither store grants control-plane authority. Credentials stay server-side.
 The browser sends declarative query definitions and requested source names to
 `POST /api/v1/query`. The server validates the query graph and resource limits
 before loading data.
-Postgres source reads use one ordered, parameterized native SQL query per source
-to select its namespace, metadata, rows, and typed values. This is **not**
-SQL translation of Dashboard Language queries: filters (including predicates), joins,
-aggregation, ordering, and limits still execute in the Go query engine.
-Predicate pushdown is not enabled because its coercion rules for arbitrary
-nested values, optional/missing fields, and operation budgets cannot be
-preserved by a simple SQL predicate without changing query results or limits.
+Native scalar plans filter, project, and limit typed columns directly in SQL.
+Other shapes read typed rows and required relational children and use the
+bounded Go evaluator. Neither path reads a stored row document. Missing/null,
+coercion, ordering, and resource semantics must be preserved before an operator
+can move to SQL.
 Execution fails closed when a requested plan exceeds 16 dependency levels, 256
 derived queries, or 16 joins along one dependency path. Independent queries in a
 batch do not consume one another's structural join allowance. Runtime guards cap
@@ -1047,8 +1023,9 @@ is `specs/server-cors.md`.
 
 If the OAuth callback shows a sign-in error, select **Sign out and try again**.
 This attempts the existing CSRF-protected logout (including server-side token
-revocation), clears the pending OAuth state and the dashboard IndexedDB cache
-on the signed-out page, and then offers a fresh, explicit GitHub sign-in.
+revocation). The signed-out page clears CAO session, CSRF and OAuth state
+cookies and the dashboard IndexedDB cache, then offers an explicit sign-in
+that requests GitHub's account chooser. CAO cannot clear GitHub's own cookies.
 
 The older `{"error":"GitHub authorization failed"}` response corresponds to
 an authorization failure; current versions show a help page instead. This
@@ -1152,6 +1129,10 @@ continues an existing transport trace. MCP spans use trace context from
 `params._meta.traceparent` as their remote parent and link the ambient HTTP span. Every API
 response also echoes the active request's ids as `X-Trace-Id` / `X-Span-Id`
 headers for correlating a client-visible request with exported spans.
+JSON error responses repeat those identifiers as `traceId` and `spanId`, and
+the bounded server error log records the status plus the same identifiers.
+Browser error views show only the trace ID as a request ID; they do not expose
+span attributes, internal exceptions, query payloads, or storage details.
 
 Telemetry is configured entirely through the standard OpenTelemetry SDK
 environment variables. Traces and metrics are independently optional, and no

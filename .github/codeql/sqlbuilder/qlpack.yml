@@ -1,0 +1,6 @@
+name: githubnext/cao-sqlbuilder-models
+version: 0.0.1
+extensionTargets:
+  codeql/go-all: "*"
+dataExtensions:
+  - models/*.yml

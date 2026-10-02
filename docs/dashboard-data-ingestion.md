@@ -27,6 +27,22 @@ bounded to 30 days unless a separate full-detail SQLite archive is requested.
 
 See [Data model](/gh-aw-cao/dashboard-data-model/) for the canonical entities, identities, and relationships produced by ingestion.
 
+## Hosted server data pipeline
+
+Server-backed deployments keep the browser isolated from both databases. The
+Go server verifies the same published payload, normalizes inventory metadata
+onto canonical records, and transactionally replaces the current dashboard
+sources in PostgreSQL. Dashboard Language queries execute against PostgreSQL,
+using parameterized SQL for proven plans and the bounded Go evaluator for other
+supported shapes.
+
+Redis is not a dashboard database. It stores operational state such as sessions,
+rate limits, webhook and collection queues, delivery deduplication, distributed
+coordination, GitHub quota observations, pending token revocations, and bounded
+resolver caches. It does not store dashboard entity rows, query indexes, or
+persistent dashboard projections. If PostgreSQL is unavailable, dashboard data
+is unavailable even when Redis is healthy.
+
 ## Completeness and duplicates
 
 The scheduled Activity workflow is a rolling operational snapshot, not a full historical archive. Data can be incomplete at these boundaries:

@@ -43,7 +43,9 @@ model TemporalSeries {
   carry?: string[];
   measures?: { field: string; key?: string; kind: string }[];
   maps?: { field: string; definitions?: string; group?: string; kind: string }[];
+  trend?: TemporalTrend;
 }
+model TemporalTrend { direction: string; }
 
 /** A Dashboard Language query definition. See dashboard/site/dashboard.json for the language vocabulary. */
 @jsonSchema

@@ -56,6 +56,20 @@ Go server profile SHALL transactionally replace current dashboard sources in
 Postgres and SHALL execute Dashboard Language queries server-side. Redis SHALL
 hold only operational caches, queues, and sessions, not dashboard entities.
 
+The Go query boundary MAY cache expensive queries with compact output in Redis
+using cache-aside lookup by a query ETag (SHA-256 of the query contract, parameters,
+pagination, schema version, and current authorization class). It MUST NOT key
+these results by ingestion revision or invalidate them on ingestion or data
+egress. Results SHALL expire five minutes after admission, without sliding
+renewal; their original evidence revision and evaluation time MUST remain
+visible. Cache hits MUST NOT imply newly evaluated evidence or charge the
+original execution's query-plan work. Admission MUST bound each encoded result,
+total Redis result/index memory, and entry count, retiring expired and then
+oldest entries atomically. Current authentication and authorization MUST still
+be enforced before cache lookup. Canonical entity APIs and readiness probes
+MUST NOT use this result cache. Query ETags identify internal cache entries;
+they do not change the HTTP query response contract.
+
 IndexedDB and Postgres dashboard sources SHALL be reconstructable from
 authoritative inputs and MUST NOT become authoritative evidence storage.
 
@@ -320,7 +334,7 @@ The implementation profile defined by this specification is:
 | Canonical model | 25 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
 | Browser IndexedDB | 33 | Eighteen canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
 | Local SQLite projection | IndexedDB 33 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus six transactional relational evidence mirrors |
-| Go server Postgres sources | Canonical model 14 | Current transactionally replaced source rows and diagnostics, with lossless JSON-text documents for supported SQL paths and legacy per-value rows for bounded fallback |
+| Go server Postgres sources | Canonical model 14 | Eighteen fresh TypeSpec-defined entity tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
 ## 5.2 Go server profile
@@ -336,6 +350,14 @@ Node.js dashboard preview server. It SHALL:
 * replace current Postgres sources, diagnostics, and revision atomically and
   preserve the prior committed state when ingestion fails, without persistent
   generations;
+* initialize the fresh physical schema defined by `server/spec/storage.tsp`
+  and emitted as `server/internal/postgresx/schema.sql`; preserve only fields
+  consumed by declared queries plus identity/storage keys, use native SQL
+  scalar types and relational child values, and never persist JSON/JSONB or
+  serialized canonical row documents;
+* provide no legacy conversion, backfill, old-layout import, or dual-format
+  canonical storage path; incompatible database layouts require a fresh
+  database rebuilt from authoritative deployed inputs;
 * serve the built dashboard and its query API over HTTP on loopback by default,
   or HTTPS only when the operator provides a certificate and key;
 * keep Postgres and Redis credentials exclusively in the Go process; use Redis

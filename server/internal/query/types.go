@@ -182,6 +182,11 @@ type TemporalSeries struct {
 	Carry    []string          `json:"carry,omitempty"`
 	Measures []TemporalMeasure `json:"measures,omitempty"`
 	Maps     []TemporalMap     `json:"maps,omitempty"`
+	Trend    *TemporalTrend    `json:"trend,omitempty"`
+}
+
+type TemporalTrend struct {
+	Direction string `json:"direction"`
 }
 
 type TemporalMeasure struct {

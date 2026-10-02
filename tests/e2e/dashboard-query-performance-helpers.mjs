@@ -67,14 +67,28 @@ export function deployedProxyTarget(pathname, baseUrl) {
     : null;
 }
 
-export async function availableDeployedActivityShardEntries(entries, { baseUrl, fetchImpl = fetch }) {
-  const checked = await Promise.all(entries.map(async (entry) => {
+export async function snapshotDeployedActivityShards(entries, { baseUrl, fetchImpl = fetch }) {
+  const snapshots = new Array(entries.length);
+  let nextIndex = 0;
+  const download = async (entry) => {
     const target = deployedProxyTarget(`/${entry.sourceName}`, baseUrl);
-    if (!target) return null;
-    const response = await fetchImpl(target, { method: "HEAD", redirect: "error" }).catch(() => null);
-    return response?.ok ? entry : null;
+    if (!target) throw new Error(`Invalid deployed activity shard path: ${entry.sourceName}`);
+    const response = await fetchImpl(target, {
+      method: "GET", redirect: "error", signal: AbortSignal.timeout(30_000),
+    });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error(`Unable to snapshot deployed activity shard ${entry.sourceName}: ${response.status}`);
+    return { ...entry, content: Buffer.from(await response.arrayBuffer()) };
+  };
+  // Pin bytes before publishing the manifest so a concurrent Pages deployment
+  // cannot remove a shard between an availability probe and browser ingestion.
+  await Promise.all(Array.from({ length: Math.min(8, entries.length) }, async () => {
+    while (nextIndex < entries.length) {
+      const index = nextIndex++;
+      snapshots[index] = await download(entries[index]);
+    }
   }));
-  return checked.filter(Boolean);
+  return snapshots.filter(Boolean);
 }
 
 export function roundMilliseconds(value) {

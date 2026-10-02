@@ -1,0 +1,403 @@
+package postgresx
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/query"
+	"github.com/githubnext/gh-aw-cao/server/internal/sqlbuilder"
+)
+
+type SQLPage struct{ Offset, Limit int }
+type SQLExecutionOptions struct {
+	Runtime func(context.Context, string) (model.Source, error)
+	Pages   map[string]SQLPage
+}
+
+func (r *readTransaction) ExecuteSQLPlan(ctx context.Context, definitions []query.Definition, requested []string) (map[string]model.Source, model.Metrics, error) {
+	return r.ExecuteSQLPlanWithOptions(ctx, definitions, requested, SQLExecutionOptions{})
+}
+
+func (r *readTransaction) ExecuteSQLPlanWithOptions(ctx context.Context, definitions []query.Definition, requested []string, options SQLExecutionOptions) (map[string]model.Source, model.Metrics, error) {
+	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+	definitions = collectionDefinitions(definitions)
+	metadata := map[string]model.Metadata{}
+	retrievedAt := time.Now().UTC().Format(time.RFC3339Nano)
+	resolve := func(name string) (query.SQLRelation, error) {
+		if table, exists := entityTables[name]; exists && table.runtime {
+			if options.Runtime == nil {
+				return query.SQLRelation{}, fmt.Errorf("runtime source %q requires its authorized provider", name)
+			}
+			source, err := options.Runtime(ctx, name)
+			if err != nil {
+				return query.SQLRelation{}, err
+			}
+			if source.Metadata == nil {
+				source.Metadata = model.Metadata{}
+			}
+			for _, field := range []string{"as-of", "retrieved-at"} {
+				if _, present := source.Metadata[field]; !present {
+					source.Metadata[field] = retrievedAt
+				}
+			}
+			for _, field := range []string{"completeness", "freshness"} {
+				if _, present := source.Metadata[field]; !present {
+					source.Metadata[field] = "unknown"
+				}
+			}
+			metadata[name] = source.Metadata
+			return runtimeSQLSource(name, source)
+		}
+		relation, err := r.entitySQLSource(name)
+		if err != nil {
+			return query.SQLRelation{}, err
+		}
+		value, err := r.rootMetadata(ctx, name)
+		if err != nil {
+			return query.SQLRelation{}, err
+		}
+		metadata[name] = value
+		if value["availability"] == "unavailable" {
+			relation.SQL = "(SELECT * FROM " + relation.SQL + " WHERE FALSE) AS t"
+		}
+		return relation, nil
+	}
+	plan, err := query.CompileSQL(definitions, requested, resolve)
+	if err != nil {
+		return nil, model.Metrics{}, err
+	}
+	statsSQL, statsArgs, err := plan.StatisticsStatement()
+	if err != nil {
+		return nil, model.Metrics{}, err
+	}
+	rows, err := r.tx.QueryContext(ctx, statsSQL, statsArgs...)
+	if err != nil {
+		return nil, model.Metrics{}, fmt.Errorf("execute SQL resource checks: %w", err)
+	}
+	type relationSize struct {
+		rows  int
+		bytes int64
+	}
+	sizes, err := func() (map[string]relationSize, error) {
+		defer func() { _ = rows.Close() }()
+		result := map[string]relationSize{}
+		for rows.Next() {
+			var name string
+			var size relationSize
+			if err := rows.Scan(&name, &size.rows, &size.bytes); err != nil {
+				return nil, err
+			}
+			result[name] = size
+		}
+		return result, rows.Err()
+	}()
+	if err != nil {
+		return nil, model.Metrics{}, err
+	}
+	metrics := model.Metrics{PushedDown: []string{"sql-plan"}, FallbackOperations: []string{}}
+	for _, step := range plan.Steps {
+		size, exists := sizes[step.Relation]
+		if !exists {
+			return nil, metrics, errors.New("SQL resource statistics are incomplete")
+		}
+		if size.rows > query.MaxInputRows {
+			return nil, metrics, fmt.Errorf("query %q exceeds max input rows", step.Query)
+		}
+		metrics.PeakWorkingRows = max(metrics.PeakWorkingRows, size.rows)
+		metrics.PeakWorkingBytes = max(metrics.PeakWorkingBytes, size.bytes)
+		if size.bytes > query.MaxWorkingBytes {
+			return nil, metrics, fmt.Errorf("query %q exceeds max working bytes", step.Query)
+		}
+		metrics.Operations += size.rows * step.Weight
+		if metrics.Operations > query.MaxOperations {
+			return nil, metrics, fmt.Errorf("query %q exceeds max operations", step.Query)
+		}
+		switch step.Operation {
+		case "from":
+			metrics.QueryCount++
+		case "filter":
+			metrics.FilterCount++
+		case "compute":
+			metrics.ComputeCount++
+		case "join":
+			metrics.JoinCount++
+		case "aggregate":
+			metrics.AggregateCount++
+		case "select":
+			metrics.SelectCount++
+		case "order-by":
+			metrics.OrderByCount++
+		case "limit":
+			metrics.LimitCount++
+		}
+		metrics.PushedDown = append(metrics.PushedDown, step.Operation)
+	}
+	for _, check := range plan.JoinKeys {
+		var duplicate int
+		scoped, scopedArgs, rewritten := plan.Scoped(check)
+		builder := sqlbuilder.New(scopedArgs...)
+		builder.Write("{}\n{}", sqlbuilder.Fragment(scoped), sqlbuilder.Fragment(rewritten[0]))
+		statement, args, err := builder.Statement()
+		if err != nil {
+			return nil, metrics, err
+		}
+		err = r.tx.QueryRowContext(ctx, statement, args...).Scan(&duplicate)
+		if err == nil {
+			return nil, metrics, errors.New("joined source has more than one row per join key")
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return nil, metrics, fmt.Errorf("validate SQL join cardinality: %w", err)
+		}
+	}
+	output := make(map[string]model.Source, len(requested))
+	for _, name := range requested {
+		relation := plan.Outputs[name]
+		size := sizes[unquoteSQLName(relation.SQL)]
+		page, paginated := options.Pages[name]
+		if size.rows > query.MaxOutputRows && !paginated {
+			return nil, metrics, fmt.Errorf("query %q exceeds max output rows", name)
+		}
+		if !paginated {
+			page = SQLPage{Limit: query.MaxOutputRows}
+		}
+		if page.Offset > size.rows {
+			return nil, metrics, fmt.Errorf("invalid or stale continuation token for %q", name)
+		}
+		statement, args, fields, err := plan.OutputStatement(name, page.Offset, page.Limit)
+		if err != nil {
+			return nil, metrics, err
+		}
+		composed := composeMetadata(definitions, metadata, name, map[string]bool{})
+		ownedMetadata := model.Metadata{}
+		for field, value := range composed {
+			ownedMetadata[field] = value
+		}
+		composed = ownedMetadata
+		if composed["availability"] == "unavailable" {
+			statement = "SELECT * FROM (" + statement + ") AS unavailable WHERE FALSE"
+		}
+		rows, err := r.tx.QueryContext(ctx, statement, args...)
+		if err != nil {
+			return nil, metrics, fmt.Errorf("read SQL result: %w", err)
+		}
+		result, err := func() ([]model.Row, error) {
+			defer func() { _ = rows.Close() }()
+			result := []model.Row{}
+			for rows.Next() {
+				values := make([]any, len(fields))
+				present := make([]bool, len(fields))
+				dest := make([]any, len(fields)*2)
+				for index := range fields {
+					dest[index*2], dest[index*2+1] = &values[index], &present[index]
+				}
+				if len(fields) == 0 {
+					var empty bool
+					dest = []any{&empty}
+				}
+				if err := rows.Scan(dest...); err != nil {
+					return nil, err
+				}
+				row := model.Row{}
+				for index, field := range fields {
+					if !present[index] {
+						continue
+					}
+					value, err := decodeSQLValue(values[index], relation.Columns[field].Kind)
+					if err != nil {
+						return nil, err
+					}
+					row[field] = value
+				}
+				metrics.RetainedRows++
+				metrics.RetainedBytes += query.EstimateRowsBytes([]model.Row{row})
+				if metrics.RetainedRows > query.MaxRetainedRows || metrics.RetainedBytes > query.MaxRetainedBytes {
+					return nil, &query.PlanLimitError{QueryID: name, Boundary: query.BoundaryRetainedBytes}
+				}
+				result = append(result, row)
+			}
+			return result, rows.Err()
+		}()
+		if err != nil {
+			return nil, metrics, err
+		}
+		composed["source-id"], composed["source-kind"], composed["row-count"] = name, "derived", len(result)
+		if composed["availability"] != "unavailable" {
+			composed["availability"] = "available"
+			if size.rows == 0 {
+				composed["availability"] = "empty"
+			}
+		}
+		if paginated {
+			composed["total-row-count"] = size.rows
+			if composed["availability"] == "unavailable" {
+				composed["total-row-count"] = 0
+			}
+		}
+		output[name] = model.Source{Source: name, Rows: result, Metadata: composed}
+		metrics.OutputRows += len(result)
+	}
+	return output, metrics, nil
+}
+
+func (r *readTransaction) rootMetadata(ctx context.Context, name string) (model.Metadata, error) {
+	if name == "$records" {
+		result := model.Metadata{"availability": "empty", "completeness": "complete", "freshness": "current"}
+		for _, source := range recordSources {
+			value, err := r.rootMetadata(ctx, source)
+			if err != nil {
+				return nil, err
+			}
+			result = mergeMetadata(result, value, false)
+		}
+		return result, nil
+	}
+	var availability, completeness, freshness string
+	var asOf, retrieved sql.NullTime
+	err := r.tx.QueryRowContext(ctx, `SELECT availability,completeness,freshness,as_of,retrieved_at FROM cao_quality
+			WHERE namespace=$1 AND collection=$2`, r.store.namespace, name).Scan(&availability, &completeness, &freshness, &asOf, &retrieved)
+	if errors.Is(err, sql.ErrNoRows) {
+		return model.Metadata{"source-id": name, "source-kind": "canonical", "availability": "unavailable", "completeness": "unknown", "freshness": "unknown"}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	value := model.Metadata{"source-id": name, "source-kind": "canonical", "availability": availability, "completeness": completeness, "freshness": freshness}
+	var evaluated time.Time
+	if err := r.tx.QueryRowContext(ctx, "SELECT evaluated_at FROM cao_state WHERE namespace=$1", r.store.namespace).Scan(&evaluated); err != nil {
+		return nil, err
+	}
+	for field, instant := range map[string]sql.NullTime{"as-of": asOf, "retrieved-at": retrieved} {
+		value[field] = evaluated.UTC().Format(time.RFC3339Nano)
+		if instant.Valid {
+			value[field] = instant.Time.UTC().Format(time.RFC3339Nano)
+		}
+	}
+	return value, nil
+}
+
+func mergeMetadata(left, right model.Metadata, optional bool) model.Metadata {
+	result := model.Metadata{}
+	for key, value := range left {
+		result[key] = value
+	}
+	for _, field := range []string{"as-of", "retrieved-at"} {
+		a, _ := left[field].(string)
+		b, _ := right[field].(string)
+		if a == "" || b != "" && b < a {
+			result[field] = b
+		}
+	}
+	for _, field := range []string{"completeness", "freshness"} {
+		a, _ := left[field].(string)
+		b, _ := right[field].(string)
+		if a == "fresh" {
+			a = "current"
+		}
+		if b == "fresh" {
+			b = "current"
+		}
+		weak := "partial"
+		if field == "freshness" {
+			weak = "stale"
+		}
+		switch {
+		case a == "" || b == "" || a == "unknown" || b == "unknown":
+			result[field] = "unknown"
+		case a == weak || b == weak:
+			result[field] = weak
+		default:
+			result[field] = a
+		}
+	}
+	if right["availability"] == "unavailable" {
+		if optional {
+			if result["completeness"] != "unknown" {
+				result["completeness"] = "partial"
+			}
+		} else {
+			result["availability"] = "unavailable"
+		}
+	} else if result["availability"] == "empty" && right["availability"] == "available" {
+		result["availability"] = "available"
+	}
+	return result
+}
+
+func composeMetadata(definitions []query.Definition, roots map[string]model.Metadata, name string, visiting map[string]bool) model.Metadata {
+	if root, exists := roots[name]; exists {
+		return root
+	}
+	if visiting[name] {
+		return model.Metadata{"availability": "unavailable", "completeness": "unknown", "freshness": "unknown"}
+	}
+	visiting[name] = true
+	defer delete(visiting, name)
+	for _, definition := range definitions {
+		if definition.Name != name {
+			continue
+		}
+		result := model.Metadata{"availability": "empty", "completeness": "complete", "freshness": "current"}
+		if definition.From != "" {
+			result = composeMetadata(definitions, roots, definition.From, visiting)
+		}
+		for _, source := range definition.Union {
+			result = mergeMetadata(result, composeMetadata(definitions, roots, source, visiting), false)
+		}
+		for _, join := range definition.Joins {
+			result = mergeMetadata(result, composeMetadata(definitions, roots, join.Source, visiting), join.Type == "left")
+		}
+		return result
+	}
+	// No arbitrary source-name or legacy logical-source fallback is admitted.
+	return model.Metadata{"source-id": strings.TrimSpace(name), "availability": "unavailable", "completeness": "unknown", "freshness": "unknown"}
+}
+func unquoteSQLName(name string) string {
+	if len(name) >= 2 && name[0] == '"' && name[len(name)-1] == '"' {
+		return name[1 : len(name)-1]
+	}
+	return name
+}
+
+func decodeSQLValue(value any, kind query.SQLKind) (any, error) {
+	if value == nil {
+		return nil, nil
+	}
+	if bytes, binary := value.([]byte); binary {
+		value = string(bytes)
+	}
+	switch kind {
+	case query.SQLText:
+		return value, nil
+	case query.SQLNumber:
+		return json.Number(fmt.Sprint(value)), nil
+	case query.SQLTimestamp:
+		instant, valid := value.(time.Time)
+		if !valid {
+			return nil, errors.New("invalid typed SQL timestamp")
+		}
+		return instant.UTC().Format(time.RFC3339Nano), nil
+	case query.SQLStructured:
+		text, valid := value.(string)
+		if !valid {
+			return nil, errors.New("invalid SQL wire projection")
+		}
+		var decoded any
+		if err := decodeJSON([]byte(text), &decoded); err != nil {
+			return nil, err
+		}
+		return decoded, nil
+	case query.SQLBoolean:
+		if text, stringValue := value.(string); stringValue {
+			return strconv.ParseBool(text)
+		}
+	}
+	return value, nil
+}

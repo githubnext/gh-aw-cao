@@ -107,10 +107,6 @@ dashboard:
                 type: ordinal
                 title: State
                 display: status
-              - field: evidence-strength
-                type: ordinal
-                title: Evidence
-                display: status
               - field: run-conclusion
                 type: ordinal
                 title: Run conclusion

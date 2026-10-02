@@ -11,12 +11,6 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
 
-type simulationLoader struct{}
-
-func (simulationLoader) LoadSource(name string, _ *query.Definition) (model.Source, model.Metrics, error) {
-	return simulationDaysSource(), model.Metrics{}, nil
-}
-
 func TestMCPBindsSimulatorOperandsInDependencies(t *testing.T) {
 	min, max, defaultValue, step := float64(1), float64(100000), float64(1000), float64(1)
 	input := query.Definition{
@@ -66,13 +60,6 @@ func TestMCPBindsSimulatorOperandsInDependencies(t *testing.T) {
 			}
 			if input.Compute[0].Args[0].Parameter != "repositories" {
 				t.Fatal("shared query was modified")
-			}
-			rows, _, err := query.New(simulationLoader{}).Execute(definitions, []string{final.Name})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if len(rows[final.Name].Rows) == 0 || rows[final.Name].Rows[0]["bytes"] != test.want*10*512 {
-				t.Fatalf("simulator result: %+v", rows[final.Name])
 			}
 		})
 	}
@@ -152,9 +139,11 @@ func TestMCPExecutesGeneratedSimulatorQuery(t *testing.T) {
 			"Total":               runBytes + toolBytes + issueBytes,
 		}
 		for _, row := range rows {
+			numeric, valid := row["bytes"].(json.Number)
+			value, _ := numeric.Float64()
 			table, ok := row["table"].(string)
 			expected, known := want[table]
-			if !ok || !known || row["bytes"] != expected {
+			if !valid || !ok || !known || value != expected {
 				t.Fatalf("unexpected simulator row: %+v, want %v", row, want)
 			}
 			delete(want, table)

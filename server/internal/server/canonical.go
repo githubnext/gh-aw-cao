@@ -22,7 +22,7 @@ var errCanonicalEntityNotFound = errors.New("canonical entity was not found")
 
 func (service canonicalService) rows(ctx context.Context, source string) ([]model.Row, error) {
 	var rows []model.Row
-	err := service.store.WithReadTransaction(ctx, func(ctx context.Context, reader postgresx.SourceReader) error {
+	err := service.store.WithReadTransaction(ctx, func(ctx context.Context, reader postgresx.NativeReader) error {
 		active, err := reader.State(ctx)
 		if err != nil {
 			return err
@@ -30,9 +30,11 @@ func (service canonicalService) rows(ctx context.Context, source string) ([]mode
 		if !active.Ready {
 			return errors.New("dashboard data is unavailable")
 		}
-		engine := query.New(&databaseLoader{ctx: ctx, database: reader})
-		sources, _, err := engine.Execute(service.definitions, []string{source})
+		sources, _, err := reader.ExecuteSQLPlan(ctx, service.definitions, []string{source})
 		if err == nil {
+			if sources[source].Metadata["availability"] == "unavailable" {
+				return errors.New("canonical data is unavailable")
+			}
 			rows = sources[source].Rows
 		}
 		return err
@@ -54,7 +56,7 @@ func (service canonicalService) filteredRows(ctx context.Context, source string,
 	}
 	definitions := append(append([]query.Definition{}, service.definitions...), definition)
 	var rows []model.Row
-	err := service.store.WithReadTransaction(ctx, func(ctx context.Context, reader postgresx.SourceReader) error {
+	err := service.store.WithReadTransaction(ctx, func(ctx context.Context, reader postgresx.NativeReader) error {
 		active, err := reader.State(ctx)
 		if err != nil {
 			return err
@@ -62,9 +64,11 @@ func (service canonicalService) filteredRows(ctx context.Context, source string,
 		if !active.Ready {
 			return errors.New("dashboard data is unavailable")
 		}
-		engine := query.New(&databaseLoader{ctx: ctx, database: reader})
-		sources, _, err := engine.Execute(definitions, []string{definition.Name})
+		sources, _, err := reader.ExecuteSQLPlan(ctx, definitions, []string{definition.Name})
 		if err == nil {
+			if sources[definition.Name].Metadata["availability"] == "unavailable" {
+				return errors.New("canonical data is unavailable")
+			}
 			rows = sources[definition.Name].Rows
 		}
 		return err
@@ -84,26 +88,52 @@ func (service canonicalService) entity(ctx context.Context, source, id string) (
 }
 
 func (service canonicalService) repositoryRuns(ctx context.Context, id string) ([]model.Row, error) {
-	repository, err := service.entity(ctx, "repositories", id)
-	if err != nil || repository == nil {
-		return nil, err
-	}
-	return service.filteredRows(ctx, "runs", map[string]any{
-		"organization": repository["organization"],
-		"repository":   repository["repository"],
-	})
+	return service.parentRuns(ctx, "repositories", "repositoryId", id)
 }
 
 func (service canonicalService) workflowRuns(ctx context.Context, id string) ([]model.Row, error) {
-	workflow, err := service.entity(ctx, "workflows", id)
-	if err != nil || workflow == nil {
-		return nil, err
+	return service.parentRuns(ctx, "workflows", "workflowId", id)
+}
+
+func (service canonicalService) parentRuns(ctx context.Context, parent, field, id string) ([]model.Row, error) {
+	definitions := append([]query.Definition{}, service.definitions...)
+	definitions = append(definitions, query.Definition{Name: "canonical-parent", From: parent, Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: id}}}},
+		query.Definition{Name: "canonical-run-input", From: "$runs", Filter: &query.Filter{Predicates: []query.Predicate{{Field: field, Equals: id}}}})
+	var presentation query.Definition
+	for _, definition := range service.definitions {
+		if definition.Name == "runs" {
+			presentation = definition
+			break
+		}
 	}
-	return service.filteredRows(ctx, "runs", map[string]any{
-		"organization": workflow["organization"],
-		"repository":   workflow["repository"],
-		"workflow":     workflow["workflow"],
+	if presentation.Name == "" {
+		return nil, errors.New("canonical run projection is not declared")
+	}
+	presentation.Name, presentation.From = "canonical-parent-runs", "canonical-run-input"
+	definitions = append(definitions, presentation)
+	var rows []model.Row
+	err := service.store.WithReadTransaction(ctx, func(ctx context.Context, reader postgresx.NativeReader) error {
+		active, err := reader.State(ctx)
+		if err != nil {
+			return err
+		}
+		if !active.Ready {
+			return errors.New("dashboard data is unavailable")
+		}
+		sources, _, err := reader.ExecuteSQLPlan(ctx, definitions, []string{"canonical-parent", "canonical-parent-runs"})
+		if err != nil {
+			return err
+		}
+		if sources["canonical-parent"].Metadata["availability"] == "unavailable" || sources["canonical-parent-runs"].Metadata["availability"] == "unavailable" {
+			return errors.New("canonical data is unavailable")
+		}
+		if len(sources["canonical-parent"].Rows) == 0 {
+			return errCanonicalEntityNotFound
+		}
+		rows = sources["canonical-parent-runs"].Rows
+		return nil
 	})
+	return rows, err
 }
 
 func (service canonicalService) related(ctx context.Context, source, id, field string) ([]model.Row, error) {

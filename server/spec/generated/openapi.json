@@ -3692,6 +3692,20 @@
                 "kind"
               ]
             }
+          },
+          "trend": {
+            "$ref": "#/components/schemas/TemporalTrend"
+          }
+        }
+      },
+      "TemporalTrend": {
+        "type": "object",
+        "required": [
+          "direction"
+        ],
+        "properties": {
+          "direction": {
+            "type": "string"
           }
         }
       },

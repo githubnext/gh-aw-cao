@@ -308,6 +308,9 @@
                             "kind"
                         ]
                     }
+                },
+                "trend": {
+                    "$ref": "#/$defs/TemporalTrend"
                 }
             },
             "required": [
@@ -361,6 +364,17 @@
             },
             "required": [
                 "field"
+            ]
+        },
+        "TemporalTrend": {
+            "type": "object",
+            "properties": {
+                "direction": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "direction"
             ]
         }
     }

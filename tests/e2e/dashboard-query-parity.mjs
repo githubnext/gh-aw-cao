@@ -160,7 +160,7 @@ function representativeSources() {
       event,
       "started-at": startedAt,
       "ended-at": new Date(Date.parse(startedAt) + (index + 1) * 60_000).toISOString(),
-      duration: (index + 1) * 60,
+      duration: String((index + 1) * 60),
       "rollout-mode": workflow === "beta" ? "live" : "review",
       engine: index % 2 === 0 ? "copilot" : "claude",
       "requested-model": index % 2 === 0 ? "model-a" : "model-b",
@@ -182,7 +182,7 @@ function representativeSources() {
       "observed-at": startedAt,
     }))),
     "work-items": logicalSource(runs.map(([id, workflow, conclusion, , startedAt]) => ({
-      "work-item-id": `synthetic:${workflow}`,
+      "work-item-id": `synthetic:${workflow}:${id}`,
       name: `Synthetic ${workflow}`,
       objective: "Exercise dashboard query semantics",
       organization: "synthetic-org",
@@ -268,9 +268,28 @@ function dashboardQueries() {
   };
   // Ingestion receipts describe each backend's own writes, so their values are
   // intentionally backend-local rather than cross-backend query results.
-  return resolveContext(document.dashboard.queries).filter(
-    (query) => query.from !== "transactions" && unparameterized.has(query.name),
+  const candidates = resolveContext(document.dashboard.queries).filter(
+    (query) => unparameterized.has(query.name),
   );
+  const excluded = new Set(candidates
+    .filter((query) => query.from === "transactions")
+    .map((query) => query.name));
+  const inputs = (query) => [
+    query.from,
+    ...(query.union ?? []),
+    ...(query.joins ?? []).map((join) => join.source),
+  ];
+  // Queries derived from receipt-backed queries inherit their backend-local values.
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const query of candidates) {
+      if (!excluded.has(query.name) && inputs(query).some((input) => excluded.has(input))) {
+        excluded.add(query.name);
+        changed = true;
+      }
+    }
+  }
+  return candidates.filter((query) => !excluded.has(query.name));
 }
 
 function rowsByQuery(result, names) {
@@ -388,7 +407,10 @@ function canonicalToolResult(result) {
   if (canonical.isError === false) delete canonical.isError;
   const metadata = canonical.structuredContent?.metadata;
   if (metadata) {
+    // Source quality is recorded by each backend's own ingestion, so the local
+    // projection and hosted database legitimately differ on these fields.
     delete metadata["as-of"];
+    delete metadata.completeness;
     delete metadata.freshness;
   }
   return canonical;
@@ -458,13 +480,22 @@ async function writeDeployedArtifact(directory, factory, sources) {
     (name) => name !== "transactions",
   ));
   const runCollections = new Set(["campaigns", "repositories", "workflows", "runs"]);
-  const encode = (collections, phase) => [
-    JSON.stringify({ kind: "metadata", schemaVersion: 13, ingestionVersion: 3, phase }),
-    ...collections.flatMap((collection) => canonical[collection].map((record) =>
+  const encode = (collections, phase) => {
+    const lines = collections.flatMap((collection) => canonical[collection].map((record) =>
       JSON.stringify({ kind: "record", collection, record })
-    )),
-    "",
-  ].join("\n");
+    ));
+    return [
+      JSON.stringify({
+        kind: "metadata",
+        schemaVersion: 13,
+        ingestionVersion: 3,
+        phase,
+        records: lines.length,
+      }),
+      ...lines,
+      "",
+    ].join("\n");
+  };
   const runs = encode([...runCollections], "runs");
   const recordCollections = ["domains", "tools", "skills", "friction", "audits", "issues", "operationalValues"];
   const records = encode(recordCollections, "records");
@@ -644,7 +675,10 @@ function stableJSON(value) {
 }
 
 function normalizedRows(rows, ordered) {
-  const normalized = JSON.parse(JSON.stringify(rows));
+  // Timestamps denote the same instant with or without zero milliseconds.
+  const normalized = JSON.parse(JSON.stringify(rows), (_key, value) =>
+    typeof value === "string" ? value.replace(/(T\d{2}:\d{2}:\d{2})\.0+Z$/, "$1Z") : value
+  );
   return ordered ? normalized : normalized.toSorted((left, right) =>
     stableJSON(left).localeCompare(stableJSON(right))
   );

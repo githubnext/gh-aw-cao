@@ -97,27 +97,17 @@ func TestEvidenceShardPipelineParity(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeTestFile(t, filepath.Join(directory, "payload-hashes.json"), marshaled)
-	_, runs, records, err := ValidateManifest(directory)
+	writeTestFile(t, filepath.Join(directory, "inventory-sources.json"), []byte("{}"))
+	ctx, store := ingestTestStore(t)
+	ingested, err := Run(ctx, store, directory, Options{DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json"})
 	if err != nil {
 		t.Fatal(err)
-	}
-	canonical := map[string][]model.Row{}
-	for _, collection := range collections {
-		canonical[collection] = []model.Row{}
-	}
-	for _, name := range append(runs, records...) {
-		if err := readShard(filepath.Join(directory, filepath.FromSlash(name)), canonical); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if errors := relationshipErrors(canonical); len(errors) != 0 {
-		t.Fatalf("invalid evidence relationships: %v", errors)
 	}
 	definitions, err := loadDefinitions("../../../dashboard/site/src/data/queries/database.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	hosted, err := projectSources(canonical, nil, definitions)
+	hosted, _, err := store.ExecuteSQLPlan(ctx, definitions, []string{"experiments", "experiment-assignments", "graders", "grader-observations", "evals", "eval-observations"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,11 +140,15 @@ func TestEvidenceShardPipelineParity(t *testing.T) {
 		"evals":                 "evals",
 		"evalObservations":      "eval-observations",
 	} {
-		if count := browser.CanonicalCounts[store]; count != 1 || len(canonical[store]) != 1 {
-			t.Errorf("%s: expected one record in both canonical stores, JS=%d Go=%d", store, count, len(canonical[store]))
+		if count := browser.CanonicalCounts[store]; count != 1 || ingested.Counts["$"+store] != 1 {
+			t.Errorf("%s: expected one record in both canonical stores, JS=%d Postgres=%d", store, count, ingested.Counts["$"+store])
 		}
 		got := browser.Rows[source]
 		want := hosted[source].Rows
+		wire, _ := json.Marshal(want)
+		if err := json.Unmarshal(wire, &want); err != nil {
+			t.Fatal(err)
+		}
 		if len(got) == 1 {
 			for field, expected := range expectedFields[source] {
 				if !reflect.DeepEqual(got[0][field], expected) {

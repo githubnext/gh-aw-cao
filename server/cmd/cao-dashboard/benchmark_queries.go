@@ -25,24 +25,6 @@ import (
 
 var benchmarkLog = debuglogger.New("cao:dashboard:benchmark")
 
-type benchmarkLoader struct {
-	ctx   context.Context
-	store *postgresx.Store
-}
-
-func (loader benchmarkLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
-	source, metrics, err := loader.store.LoadSource(loader.ctx, name, definition)
-	if errors.Is(err, postgresx.ErrSourceUnavailable) {
-		// Match the server loader: optional logical sources are unavailable,
-		// not a fatal Postgres read error.
-		return model.Source{Source: name, Rows: []model.Row{}, Metadata: model.Metadata{
-			"source-id": name, "availability": "unavailable",
-			"completeness": "unknown", "freshness": "unknown",
-		}}, metrics, nil
-	}
-	return source, metrics, err
-}
-
 type benchmarkMeasurement struct {
 	Query      string        `json:"query"`
 	DurationMS float64       `json:"duration-ms"`
@@ -125,7 +107,7 @@ func validateBenchmarkCandidates(candidates []string, defined map[string]bool) e
 }
 
 func benchmarkQueries(ctx context.Context, store *postgresx.Store, source, databasePath, dashboardPath string, candidates []string) (benchmarkReport, error) {
-	report := benchmarkReport{Engine: "postgres-go", Measurements: []benchmarkMeasurement{}}
+	report := benchmarkReport{Engine: "postgres-native-sql", Measurements: []benchmarkMeasurement{}}
 	if len(candidates) == 0 {
 		return report, errors.New("no query candidates selected")
 	}
@@ -154,7 +136,7 @@ func benchmarkQueries(ctx context.Context, store *postgresx.Store, source, datab
 	benchmarkLog.Printf("benchmark starting candidates=%d records=%d", len(candidates), report.Records)
 	for _, name := range candidates {
 		started := time.Now()
-		sources, metrics, err := query.New(benchmarkLoader{ctx: ctx, store: store}).Execute(definitions, []string{name})
+		sources, metrics, err := store.ExecuteSQLPlan(ctx, definitions, []string{name})
 		if err != nil {
 			return report, fmt.Errorf("query %q failed: %w", name, err)
 		}

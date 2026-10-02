@@ -1,10 +1,37 @@
-# Server HTTP contract
+# Server contracts
 
 `server/spec/` is the editable TypeSpec contract for the Go dashboard server.
 `main.tsp` imports independent domains: shared response/auth types, Dashboard
 Language queries and SSE, health, hosted sessions, canonical entities, repository
 memory, and ingestion/administration. `/mcp` internals and static dashboard assets
 are intentionally out of scope.
+
+`storage.tsp` is a separate, **fresh-only** physical Postgres contract.
+`storage.tspconfig.yaml` runs the repository-owned `postgres-emitter.mjs` to
+generate `../internal/postgresx/schema.sql` and `schema.gen.go`. The SQL file is
+standalone DDL for downstream implementations; the Go file supplies the same
+entity names, fields, and native types to ingestion and reads. Both are generated
+artifacts. Edit TypeSpec, never the generated SQL or bindings.
+
+Each of the eighteen canonical collections has one root table. Only fields
+consumed by `dashboard/site/src/data/queries/database.json` and its joins are
+retained, plus identity/storage keys. Counters use `BIGINT`, fractional measures
+use `NUMERIC`, booleans use `BOOLEAN`, timestamps use `TIMESTAMPTZ`, and identifiers
+use `TEXT`. Optional-field presence costs one bit per scalar column, preserving
+absent versus explicit null. Query-required structured evidence uses entity-owned
+relational child values; no JSON, JSONB, serialized row documents, or duplicate
+generic scalar rows are stored.
+
+The `Storage` namespace describes the current source metadata, auxiliary
+sources, revision, and diagnostics scaffolding, separately from entity models.
+It is not an alternate canonical representation. Startup only initializes this
+schema; there are no old-layout migrations or backward-compatible imports.
+Use a fresh database when changing its physical layout.
+
+Run `npm run generate:storage` for storage only, or `npm run generate` for both
+storage and HTTP contracts. `storage.test.mjs` checks one-to-one table coverage,
+required query fields, absence of speculative columns, and document-free DDL.
+The follow-on removal and rebuild plan is [Postgres rebuild plan](../POSTGRES-REBUILD-PLAN.md).
 
 The compiled `generated/openapi.json` is OpenAPI **3.1** and can be consumed by
 another server implementation. `generated/schemas/` contains JSON Schema 2020-12

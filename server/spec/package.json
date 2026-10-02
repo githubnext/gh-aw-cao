@@ -3,13 +3,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "generate": "rm -rf generated && tsp compile . --warn-as-error",
-    "test": "node --test contract.test.mjs",
-    "check": "npm run generate && npm test && git diff --exit-code -- generated && test -z \"$(git ls-files --others --exclude-standard -- generated)\""
+    "generate": "rm -rf generated && tsp compile . --warn-as-error && npm run generate:storage",
+    "generate:storage": "tsp compile storage.tsp --config storage.tspconfig.yaml --warn-as-error",
+    "test": "node --test contract.test.mjs storage.test.mjs",
+    "check": "npm run generate && npm test && git diff --exit-code -- generated ../internal/postgresx/schema.sql ../internal/postgresx/schema.gen.go && test -z \"$(git ls-files --others --exclude-standard -- generated)\""
   },
   "devDependencies": {
     "@typespec/compiler": "1.16.0",
     "@typespec/json-schema": "1.16.0",
     "@typespec/openapi3": "1.16.0"
+  },
+  "overrides": {
+    "ansi-regex": "6.2.2"
   }
 }

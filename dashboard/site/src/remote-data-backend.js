@@ -15,13 +15,22 @@ const REMOTE_BACKEND = "server-http";
 const ACCESS_TOKEN_STORAGE_KEY = "cao-dashboard-access-token";
 
 export class DashboardServerError extends Error {
-  /** @param {string} message @param {string} code @param {string} queryId @param {string} [boundary] */
-  constructor(message, code, queryId, boundary = "") {
+  /**
+   * @param {string} message
+   * @param {string} code
+   * @param {string} queryId
+   * @param {string} [boundary]
+   * @param {string} [traceId]
+   * @param {string} [spanId]
+   */
+  constructor(message, code, queryId, boundary = "", traceId = "", spanId = "") {
     super(message);
     this.name = "DashboardServerError";
     this.code = code;
     this.queryId = queryId;
     this.boundary = boundary;
+    this.traceId = traceId;
+    this.spanId = spanId;
   }
 }
 /** @type {number | null} */
@@ -117,17 +126,28 @@ async function apiRequest(path, init = {}, signal) {
   });
   updateRateLimitNotification(path, response.status);
   if (!response.ok) {
-    debugRemoteBackend({ event: "request-failed", path, status: response.status });
     const payload = await response.json().catch(() => null);
     const message = typeof payload?.error === "string" ? payload.error : `Dashboard data server request failed: ${response.status}`;
-    if (typeof payload?.code === "string") {
-      throw new DashboardServerError(
-        message, payload.code,
-        typeof payload?.queryId === "string" ? payload.queryId : "",
-        typeof payload?.boundary === "string" ? payload.boundary : ""
-      );
-    }
-    throw new Error(message);
+    const traceId = typeof payload?.traceId === "string"
+      ? payload.traceId
+      : response.headers.get("X-Trace-Id") ?? "";
+    const spanId = typeof payload?.spanId === "string"
+      ? payload.spanId
+      : response.headers.get("X-Span-Id") ?? "";
+    debugRemoteBackend({
+      event: "request-failed",
+      path,
+      status: response.status,
+      ...(traceId ? { traceId } : {})
+    });
+    throw new DashboardServerError(
+      message,
+      typeof payload?.code === "string" ? payload.code : "",
+      typeof payload?.queryId === "string" ? payload.queryId : "",
+      typeof payload?.boundary === "string" ? payload.boundary : "",
+      traceId,
+      spanId
+    );
   }
   return response.json();
 }

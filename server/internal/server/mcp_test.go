@@ -14,7 +14,6 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
@@ -221,14 +220,7 @@ func TestResolveQueryLimit(t *testing.T) {
 
 func TestMCPCatalogAndNamedQueryUseSharedData(t *testing.T) {
 	database := integrationDatabase(t)
-	sources := map[string]model.Source{}
-	for _, name := range []string{"runs", "workflows", "run-incomplete-outcomes", "mcp-calls"} {
-		sources[name] = model.Source{
-			Source: name, Rows: []model.Row{},
-			Metadata: model.Metadata{"availability": "available", "completeness": "complete", "freshness": "current"},
-		}
-	}
-	seedDatabase(t, database, sources)
+	seedDatabase(t, database, nil)
 	app := newMCPTestApp(t, true)
 	app.database = database
 	httpServer := httptest.NewServer(app.Handler())
@@ -425,8 +417,8 @@ func newMCPTestAppConfig(
 		t.Fatal(err)
 	}
 	app, err := New(context.Background(), redisx.NewStore(client, "test"), Config{
-		Database: constructorDatabase(),
-		Listen:   "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
+		Database: constructorDatabase(), DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
+		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
 		DashboardQueries: definitions, AgentCatalogPath: testAgentCatalog,
 		MCPContractPath: testMCPContract, MCPEnabled: enabled,
 		GitHubActionsToken: actionsToken, GitHubActionsActor: actionsActor,

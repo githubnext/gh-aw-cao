@@ -1,13 +1,16 @@
 package server
 
 import (
+	"context"
 	"testing"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
 
 func TestSimulationDaysSource(t *testing.T) {
-	source, _, err := (&databaseLoader{}).LoadSource(simulationDaysSourceName, nil)
+	source, err := (&databaseLoader{}).runtimeSource(t.Context(), simulationDaysSourceName, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,10 +35,20 @@ func TestSimulationDaysSource(t *testing.T) {
 	if !found {
 		t.Fatal("simulation-days not registered as a runtime source")
 	}
-	result, _, err := query.New(&databaseLoader{}).Execute(
-		[]query.Definition{{Name: "simulated", From: simulationDaysSourceName}},
-		[]string{"simulated"},
-	)
+	database := integrationDatabase(t)
+	seedDatabase(t, database, nil)
+	result, _, err := func() (map[string]model.Source, model.Metrics, error) {
+		var sources map[string]model.Source
+		var metrics model.Metrics
+		err := database.WithReadTransaction(t.Context(), func(ctx context.Context, reader postgresx.NativeReader) error {
+			var err error
+			sources, metrics, err = (&databaseLoader{ctx: ctx, database: reader}).ExecuteSQLPlan(
+				[]query.Definition{{Name: "simulated", From: simulationDaysSourceName}},
+				[]string{"simulated"}, nil)
+			return err
+		})
+		return sources, metrics, err
+	}()
 	if err != nil {
 		t.Fatal(err)
 	}

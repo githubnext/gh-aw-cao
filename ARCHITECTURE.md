@@ -122,13 +122,29 @@ evaluator for other shapes, and returns
 only canonical or explicitly registered bounded runtime-source query payloads
 to the browser. Redis remains operational storage for caches, queues, and
 sessions, not dashboard entity storage or query execution.
+The HTTP and MCP query boundary uses a disposable Redis cache-aside layer for
+expensive queries with compact output. SHA-256 query identities include the
+definitions, parameters, pagination, schema, and current authorization class,
+not ingestion revisions. Each entry has a fixed five-minute lifetime; ingestion
+and data egress do not invalidate or renew it. Redis-side atomic expiry and
+oldest-first eviction bound both allocator-reported result/index memory and
+entry count without changing global Redis eviction policy or touching sessions
+and queues. Cached payloads retain their original evidence revision and
+evaluation time; cache hits report no fresh query-plan work.
 Its local mode remains loopback-only. Its host-neutral mode uses
 GitHub OAuth and explicit organization or team authorization, verifies and
 deduplicates GitHub webhooks, and atomically replaces the current Postgres
-sources and state. A lossless JSON-text document and indexed drilldown keys
-are written atomically alongside the existing per-value representation until
-its callers and migration have been proven. There are no persistent Postgres
-generations or separate derived projections. Redis remains reconstructable
+sources and state. `server/spec/storage.tsp` owns the fresh-only physical
+Postgres contract. Its emitter generates the standalone
+`server/internal/postgresx/schema.sql` and matching Go column bindings.
+Eighteen canonical collections map one-to-one to entity tables containing only
+query-consumed fields and identity/storage keys. Scalars use native SQL types;
+required structured fields use entity-owned relational child values, not
+JSON, JSONB, or serialized row documents. Scalar entity rows are never duplicated
+in generic source storage. Compact presence bits preserve missing versus null.
+Startup initializes this schema only; it performs no legacy conversion or
+backward-compatible import. There are no persistent Postgres generations or
+separate derived projections. Redis remains reconstructable
 operational state, not an entity
 authority. The same server binary provides a read-only diagnostic check-up
 that inspects the runtime, Redis operations, Postgres canonical state and
@@ -146,6 +162,32 @@ container, Azure Functions, and Upstash are compositions rather than provider
 checks in shared request handling.
 Startup rejects configurations or Redis clients that do not satisfy the
 selected capabilities.
+
+Hosted server observability uses the same vendor-neutral OTLP contract as
+agentic workflows. Standard `OTEL_*` runtime environment variables select the
+collector; exporter endpoints and headers remain deployment secrets and never
+enter policy, browser state, or logs. When tracing is active, every API response
+has W3C trace and span headers. JSON failures repeat those identifiers, the
+browser exposes the trace ID as a request ID, and bounded server error logs emit
+the same identifiers so operators and agents can correlate client failures,
+Coolify logs, query and ingestion spans, and Postgres child spans. An
+observability backend is diagnostic infrastructure only: it cannot become
+dashboard data authority, policy, or rollout authority.
+
+#### Hosted storage boundary
+
+The hosted dashboard has one strict storage split:
+
+| Store | Owns | Must not own |
+| --- | --- | --- |
+| PostgreSQL | Current dashboard entity sources, source documents, diagnostics, revision state, and Dashboard Language query execution | Sessions, rate-limit buckets, delivery queues, deduplication markers, or transient resolver caches |
+| Redis | Sessions, rate limits, webhook and collection queues, delivery deduplication, distributed coordination, GitHub quota state, pending token revocations, and bounded runtime caches | Dashboard entity rows, canonical source documents, query indexes, persistent query projections, or dashboard query execution |
+
+The browser communicates only with the Go HTTP(S) server. It never connects to
+either store. Artifact ingestion and rebuilds transactionally replace the
+current PostgreSQL data; Redis failure may make protected operations
+unavailable, but Redis is never a fallback dashboard database. PostgreSQL
+failure makes dashboard data unavailable even when Redis is healthy.
 
 An externally owned HTTP host is a separate, explicit `generic` target with
 `listener: external`, not an alias for Azure's platform listener. The public
@@ -259,7 +301,7 @@ reconstructable.
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
 | `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
 | `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Postgres entity storage, Redis operational state, server-side Dashboard Language query engine, externally hosted handler facade, and peer Azure Functions and Coolify deployment profiles. |
-| `server/spec/` | Editable TypeSpec HTTP and SSE contract with generated OpenAPI 3.1 and JSON Schemas; the contract checks registered server routes and selected payloads. |
+| `server/spec/` | Editable TypeSpec HTTP/SSE and fresh Postgres storage contracts; generates OpenAPI 3.1, wire JSON Schemas, standalone SQL DDL, and Go entity bindings; checks routes, payloads, and query-required table fields. |
 | `dashboard/site/src/data/` | Canonical browser data model, adapters, normalization, storage, and declarative query engine. |
 | `research/` | Executable notebooks and experimental reference runtimes used to validate proposed computation semantics against canonical data; these are not dashboard production code. |
 | `specs/computations.md` | Versioned computation, bounded insight, provenance, quality, and measure contracts. |
@@ -472,8 +514,9 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   collection, data, and local tooling.
 - **JSONL** is the bounded evidence interchange; **SQLite** supports local tools
   and agents; **IndexedDB** supports the static browser dashboard; **Postgres**
-  stores current hosted dashboard sources; **Redis** supports operational caches,
-  queues, and sessions.
+  exclusively stores and queries current hosted dashboard sources; **Redis**
+  exclusively supports operational caches, queues, coordination, rate limits,
+  and sessions.
 - **Go** implements the isolated host-neutral HTTP(S) ingestion, reconciliation,
   rebuild, and query service.
 - **Dashboard Language** keeps data operations declarative and off the browser

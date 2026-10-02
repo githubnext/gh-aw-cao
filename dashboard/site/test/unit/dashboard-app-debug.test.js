@@ -29,11 +29,26 @@ const webmcpRuntime = vi.hoisted(() => ({
   startDashboardWebMCP: vi.fn(() => ({ refresh: vi.fn(), stop: vi.fn() })),
   supportsWebMCP: vi.fn(() => false)
 }));
+const remoteDataBackend = vi.hoisted(() => {
+  class DashboardServerError extends Error {
+    /** @param {string} message @param {string} [traceId] */
+    constructor(message, traceId = "") {
+      super(message);
+      this.traceId = traceId;
+    }
+  }
+  return {
+    DashboardServerError,
+    usesRemoteDataBackend: vi.fn(() => false)
+  };
+});
 
 vi.mock("../../src/presenter.js", () => presenter);
 vi.mock("../../src/loading-progress.js", () => ({ setLoadingProgressState: vi.fn() }));
 vi.mock("../../src/cancel-command.js", () => ({
-  offerCancelCommand: vi.fn(() => ({ complete: vi.fn() }))
+  isDataProcessingCancellation: vi.fn(() => false),
+  offerCancelCommand: vi.fn(() => ({ complete: vi.fn() })),
+  offerStartupRecovery: vi.fn()
 }));
 vi.mock("../../src/data-processor.js", () => dataProcessor);
 vi.mock("../../src/data/startup.js", () => startup);
@@ -46,7 +61,7 @@ vi.mock("../../src/components/cli-actions.js", () => ({
 }));
 vi.mock("../../src/data/table-capacity.js", () => tableCapacity);
 vi.mock("../../src/console-log-capture.js", () => ({ startConsoleLogCapture: vi.fn() }));
-vi.mock("../../src/remote-data-backend.js", () => ({ usesRemoteDataBackend: vi.fn(() => false) }));
+vi.mock("../../src/remote-data-backend.js", () => remoteDataBackend);
 vi.mock("../../src/webmcp/runtime.js", () => webmcpRuntime);
 
 /** @param {{ id: string, chunk?: string }} page */
@@ -90,6 +105,27 @@ afterEach(() => {
 });
 
 describe("dashboard app page-chunk debug logging", () => {
+  it("shows the request ID when remote startup fails", async () => {
+    startup.startDashboardData.mockRejectedValueOnce(
+      new remoteDataBackend.DashboardServerError(
+        "dashboard data is unavailable",
+        "4bf92f3577b34da6a3ce929d0e0e4736"
+      )
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify(stubDashboardSchema({ id: "overview" })), { status: 200 }))
+    );
+    vi.resetModules();
+
+    await import("../../src/dashboard-app.js").catch(() => {});
+    await vi.waitFor(() => expect(document.querySelector("#root")?.textContent).toContain(
+      "Request ID: 4bf92f3577b34da6a3ce929d0e0e4736"
+    ));
+
+    vi.unstubAllGlobals();
+  });
+
   it("passes loaded page queries to the presenter for semantic prompts", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input) => {
       if (String(input).includes("dashboard.json")) {
