@@ -2,21 +2,21 @@
   "rule_key": "js-no-literal-color-value-in-test-assertion",
   "schema_version": 1,
   "first_seen": "2026-10-01T14:53:00Z",
-  "last_updated": "2026-10-02T03:59:40Z",
+  "last_updated": "2026-10-02T07:11:19Z",
   "status": "needs-work",
   "affected_languages": [
     "javascript"
   ],
   "unsafe_pattern": "A JavaScript/TypeScript test asserts (via assert.match/toMatch/toContain with a regex or exact string) a specific hex color or color-mix() literal value copied out of a themed/visual source file (e.g. docs/components/*.astro dark-mode CSS custom properties), instead of asserting only the structural property (selector exists, variable name defined, contrast ratio computed) that the test is actually meant to guard.",
-  "consequence": "Every time a human or agent retunes the asserted color for a legitimate visual reason (WCAG contrast fix, palette rebalancing), the test breaks even though no regression occurred, forcing a follow-up PR whose only purpose is updating the literal to match the new value. In this repo this happened twice in a 2-week window: PR #15525 tuned dark-mode colors in docs/components/DispatchIllustration.astro and TerminalDemo.astro, which broke two literal-color assertions in tests/unit/docs-accessibility.test.mjs and tests/unit/landing-page-diagram.test.mjs, requiring the separate follow-up PR #15538 to update the regexes to the new literals; then PR #15544 (another contrast retune of the same files, same self-care:accessibility-checker workflow) changed --terminal-syntax-placeholder from #ffbe88 and did not update the still-brittle assertion in tests/unit/landing-page-diagram.test.mjs, so at HEAD (commit 2fefc8f0) `node --test tests/unit/landing-page-diagram.test.mjs` fails: `assert.match(terminal, /--terminal-syntax-placeholder: #ffa657/)` no longer matches the current `#ffbe88` value — a real, currently-failing regression the rule would have caught before merge.",
+  "consequence": "Every time a human or agent retunes the asserted color for a legitimate visual reason (WCAG contrast fix, palette rebalancing), the test breaks even though no regression occurred, forcing a follow-up PR whose only purpose is updating the literal to match the new value. In this repo this happened twice in a 2-week window: PR #15525 tuned dark-mode colors in docs/components/DispatchIllustration.astro and TerminalDemo.astro, which broke two literal-color assertions in tests/unit/docs-accessibility.test.mjs and tests/unit/landing-page-diagram.test.mjs, requiring the separate follow-up PR #15538 to update the regexes to the new literals; then PR #15544 (another contrast retune of the same files, same self-care:accessibility-checker workflow) changed --terminal-syntax-placeholder from #ffbe88 and did not update the still-brittle assertion in tests/unit/landing-page-diagram.test.mjs, so at HEAD (commit 2fefc8f0) `node --test tests/unit/landing-page-diagram.test.mjs` fails: `assert.match(terminal, /--terminal-syntax-placeholder: #ffa657/)` no longer matches the current `#ffbe88` value — a real, currently-failing regression the rule would have caught before merge. A seventh occurrence (PR #15746, 'Fix main CI contracts and deployed integration regressions') directly caused a main-branch CI contract regression requiring a dedicated fix, not just a routine follow-up, underscoring the churn's real cost.",
   "mechanical_correction": "Replace the literal hex/color-mix value assertion with a structural assertion: assert the CSS custom property or selector is defined with some color value (e.g. /--terminal-syntax-placeholder: #[0-9a-fA-F]{3,8}/ or a capture-group-based contrast check), or compute/assert contrast ratio programmatically (e.g. via a WCAG contrast helper) rather than string-matching the designer's exact chosen value. Where the test's actual intent is 'this token still meets AA contrast', assert that computed property, not the literal.",
   "likely_false_positives": "Asserting a literal color value is legitimate when the test is specifically about a fixed brand constant that is never expected to change (e.g. a GitHub/Primer base token that is not part of an actively-tuned theme), or when the assertion is paired with a computed contrast-ratio check rather than being the sole guard. The rule should flag literal hex/color-mix matches against files under active visual-design iteration (docs/components/*.astro, src/styles.js) rather than every color literal in the codebase.",
   "autofix_safe": false,
   "existing_plugin_coverage": "No published ESLint rule covers this: it requires recognizing brittle golden-value regex assertions tied to a specific pair of source/test files under active design churn, not a generic no-magic-numbers or regex-literal rule that existing plugins (eslint-plugin-jest, eslint-plugin-regexp) target.",
-  "occurrence_count": 6,
+  "occurrence_count": 7,
   "repositories": {
     "githubnext/gh-aw-cao": {
-      "occurrence_count": 6,
+      "occurrence_count": 7,
       "evidence": [
         {
           "type": "merged_pull_request",
@@ -83,6 +83,16 @@
             "docs/components/TerminalDemo.astro",
             "tests/unit/landing-page-diagram.test.mjs"
           ]
+        },
+        {
+          "type": "merged_pull_request",
+          "repo": "githubnext/gh-aw-cao",
+          "number": 15746,
+          "title": "Fix main CI contracts and deployed integration regressions",
+          "detail": "Refreshed the documentation accessibility assertions in tests/unit/docs-accessibility.test.mjs for corrected dark-theme colors and a valid two-color color-mix(), a literal-only 2/-2 edit required to fix a main-branch CI contract regression caused by the same brittle golden-value assertion pattern previously mined six times in this repo.",
+          "files": [
+            "tests/unit/docs-accessibility.test.mjs"
+          ]
         }
       ],
       "affected_paths": [
@@ -101,7 +111,7 @@
     "reason": "Re-confirmed unchanged: the mined --terminal-syntax-placeholder regression pair is now in sync (test passes), leaving 15 stable non-churning literals flagged as false positives of 16 total sites. Still needs a file/churn-scope restriction before adoption.",
     "txn_id": "refiner-36950555650-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36962115471",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/36976078772",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-02T03:59:40Z"
+  "last_seen_at": "2026-10-02T07:11:19Z"
 }
