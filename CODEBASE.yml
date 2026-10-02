@@ -162,7 +162,7 @@ components:
     responsibility: let a repository-scoped Coolify GitHub App watch protected main, build the non-root serve-hosted container from the checked-out source commit, and run it behind a fail-closed Coolify TLS proxy with an atomically populated external read-only artifact volume
   dashboard_observability:
     path: server/internal/telemetry/, server/internal/server/, dashboard/site/src/remote-data-backend.js
-    responsibility: export vendor-neutral OTLP traces and metrics, correlate bounded server errors and browser failures through matching W3C trace/span identifiers, and keep exporter credentials and internal failure details outside responses and logs
+    responsibility: export vendor-neutral OTLP traces and metrics plus explicitly enabled DEBUG-selected logs, correlate bounded server errors and browser failures through matching W3C trace/span identifiers, and keep exporter credentials and internal failure details outside responses and logs
   dashboard_server_package:
     path: .github/workflows/cao-package.yml
     responsibility: validate protected source authority, test and independently scan, and seal the deployment-neutral multi-role CAO server image without package-write authority

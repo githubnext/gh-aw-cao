@@ -72,9 +72,9 @@ func resolveExporterDecision(sdkDisabledEnv, signalEndpointEnv, endpointEnv stri
 	return endpoint, exporterDecisionConfigured
 }
 
-// Setup installs global trace and metric providers and a W3C Trace Context
-// propagator for the dashboard server. Each signal is enabled independently
-// by its standard OTLP endpoint environment variable or by the shared endpoint.
+// Setup installs global trace, metric, and opt-in log providers and a W3C Trace
+// Context propagator for the dashboard server. Each signal requires its standard
+// OTLP endpoint or the shared endpoint; logs also require CAO_OTEL_LOGS_ENABLED.
 // When OTEL_SDK_DISABLED is "true" or no OTLP endpoint is configured, the
 // global propagator is still installed but no exporter is started.
 func Setup(ctx context.Context, version string) (Shutdown, error) {
