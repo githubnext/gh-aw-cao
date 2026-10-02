@@ -1,6 +1,6 @@
 {
   "source_sha": "12d4f92b218a1f32894f739c58d2009d5fbf20ac",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "next_category": "dependency installation and caching",
   "evaluations": [
     {
       "evaluated_at": "2026-10-02T07:09:46Z",
@@ -175,6 +175,29 @@
         36980773326
       ],
       "outcome": "no_actionable_improvement: evaluated artifact transfer and Pages packaging across 11 successful docs.yml runs in the 2026-10-02T06:24Z-08:00Z window and matching successful cao-dashboard.yml producer run 36980773326 for source 12d4f92b218a1f32894f739c58d2009d5fbf20ac. Trusted Actions metadata showed docs workflow wall-time median 61s (p90 84s), build-job median 45s (p90 52s), schedule-freshness median 7s (p90 9s on 4 scheduled runs), deploy-job median 12s (p90 15s on 4 deploys), and zero observable queue time in every sampled docs run. Trusted step timings showed restore-and-packaging costs remain modest and stable: Restore node_modules median 5s, Build documentation 13s, Restore cached CAO Dashboard 2s, and Upload Pages artifact 10s, while Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped in every sampled successful docs build because both caches hit. Trusted build logs confirmed a central-agentic-ops-dashboard cache hit on all sampled docs runs, and trusted deploy logs showed Pages deployment itself stayed in the 8-15s range, spending most of that time in standard artifact metadata fetch and syncing_files status polling. Cross-checking the matching successful dashboard producer run showed the upstream dashboard artifact is still compressed to only about 171 MB in cache form even though the producer rebuild assembles it from a much larger activity dataset; docs.yml then restores that cache in 2-7s and repackages the combined dist tree in 6-11s. Because docs-side artifact transfer plus Pages packaging contributes about 12s combined median, no concrete change in this category is evidenced to save at least 60s or 15 percent of the 61s median docs workflow execution time without overlapping already-recorded upstream reusable-dashboard and avoidable-rebuild opportunities. The repository also has issues disabled, so no new GitHub issue can be emitted in this cycle.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-02T09:35:00Z",
+      "worker_run_id": "36989905428",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36989971567,
+        36987422734,
+        36986398337,
+        36984685039,
+        36983243324,
+        36981767075,
+        36981029522,
+        36980869693,
+        36980773430,
+        36980245399,
+        36979122405,
+        36982960058,
+        36980773326,
+        36979979083
+      ],
+      "outcome": "no_actionable_improvement: evaluated scheduling, concurrency, and avoidable rebuilds across 11 successful docs.yml runs in the 2026-10-02T07:32:45Z\u20132026-10-02T09:28:35Z window, plus 3 matching successful cao-dashboard.yml producer runs. Trusted Actions metadata showed workflow wall-time median 57s (p90 76s approx), build-job median 50s, deploy-job median 12s on 4 deploys, schedule-freshness median 6s on 7 scheduled runs, and zero observable queue time. Three successful workflow_run-triggered docs builds (36983243324, 36981029522, 36980245399) still spent about 43\u201355s rebuilding and uploading Pages content with both node_modules and dashboard caches already hitting, while three later scheduled runs (36989971567, 36987422734, 36986398337) spent 10\u201312s end-to-end only to skip after freshness checks. That indicates remaining waste is mostly duplicate invocations, but the only change clearing the >=60s / >=15% threshold remains the already-recorded recommendation to remove or further gate docs.yml's workflow_run trigger on CAO Dashboard completions. Current evidence is same-source and same-pattern as the earlier blocked suggestion, so no new non-duplicate recommendation is actionable in this cycle.",
       "suggestion_fingerprint": null
     }
   ]
