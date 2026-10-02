@@ -4,6 +4,15 @@ const DEBUG_EAGER_INGEST_PARAMETER = 'debug-eager-ingest';
 const DEBUG_PREFIX = 'cao';
 const patternCache = new Map();
 const disabledDebug = () => {};
+const SAFE_ERROR_NAMES = new Set([
+  'Error', 'TypeError', 'RangeError', 'SyntaxError', 'AbortError',
+  'NetworkError', 'QuotaExceededError', 'DashboardServerError'
+]);
+
+/** @param {unknown} error */
+export function diagnosticErrorName(error) {
+  return error instanceof Error && SAFE_ERROR_NAMES.has(error.name) ? error.name : 'UnknownError';
+}
 
 /**
  * @param {string} pattern

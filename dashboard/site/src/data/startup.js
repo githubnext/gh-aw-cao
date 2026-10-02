@@ -13,7 +13,7 @@ import {
 import { configureSourceLoader, refreshSources as refreshBoundSources } from "../source-store.js";
 import { dashboardViewAliasName } from "./queries/view-payload-compiler.js";
 import { usesRemoteDataBackend } from "../remote-data-backend.js";
-import { createDebug } from "../debug.js";
+import { createDebug, diagnosticErrorName } from "../debug.js";
 import { publishNotification } from "../notification-service.js";
 
 const debugStartup = createDebug("startup");
@@ -223,6 +223,9 @@ export async function startDashboardData(options) {
     }
     return new Promise((resolve, reject) => {
       let receivedInitialSnapshot = false;
+      pageOptions.signal.addEventListener("abort", () => {
+        if (failedSubscriptions.delete(options.subscriptionId)) clearUpdateNotice();
+      }, { once: true });
       const cleanup = () => pageOptions.signal.removeEventListener("abort", abort);
       const abort = () => {
         cleanup();
@@ -258,7 +261,7 @@ export async function startDashboardData(options) {
               subscriptionId: options.subscriptionId,
               status: receivedInitialSnapshot ? "update-error" : "initial-error",
               sourceCount: options.sourceNames.length,
-              errorName: error instanceof Error ? error.name : "Unknown",
+              errorName: diagnosticErrorName(error),
             });
             if (!receivedInitialSnapshot) {
               reject(error);
@@ -268,7 +271,7 @@ export async function startDashboardData(options) {
                 message: "Some dashboard data could not be updated. Existing data remains visible.",
                 tone: "warning",
                 duration: 0,
-                action: { label: "Retry", run: () => refreshSources() },
+                action: { label: "Reload dashboard", run: () => browserWindow.location.reload() },
               }, document);
             }
           },

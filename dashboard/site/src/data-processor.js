@@ -5,7 +5,7 @@ import { resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { normalize } from './data/normalize/index.js';
 import { batch } from './reactive.js';
 import { publishNotification } from './notification-service.js';
-import { createDebug, withDebugParameter } from './debug.js';
+import { createDebug, diagnosticErrorName, withDebugParameter } from './debug.js';
 import {
   queryRemoteDashboard,
   queryRemoteDiagnostics,
@@ -565,7 +565,7 @@ function registerRemoteSubscription(subscription) {
       debugDataProcessor({
         event: 'remote-subscription-query-failed',
         durationMs: Math.round(performance.now() - startedAt),
-        errorName: error instanceof Error ? error.name : 'UnknownError'
+        errorName: diagnosticErrorName(error)
       });
       const failure = error instanceof Error ? error : new Error(String(error));
       for (const listener of [...subscription.listeners]) {

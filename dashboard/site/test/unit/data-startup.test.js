@@ -185,12 +185,13 @@ describe("dashboard data startup", () => {
         return () => {};
       },
     );
+    const owner = new AbortController();
     const stop = await startDashboardData(options({
       render: /** @type {Parameters<typeof startDashboardData>[0]['render']} */ ((
         _sources, _state, loadPageSources,
       ) => {
         void loadPageSources.subscribeBackgroundSources?.(["runs"], {
-          signal: new AbortController().signal,
+          signal: owner.signal,
           onUpdate: () => {},
         });
       }),
@@ -199,9 +200,14 @@ describe("dashboard data startup", () => {
     fail?.(new Error("private error with token"));
     fail?.(new Error("private error with token"));
     expect(document.querySelectorAll(".dashboard-notification:not(.dashboard-notification-exit)")).toHaveLength(1);
+    expect(document.querySelector(".dashboard-notification-action")?.textContent).toBe("Reload dashboard");
     expect(document.body.textContent).not.toContain("private error");
     deliver?.({});
     expect(document.querySelector(".dashboard-notification-exit")).not.toBeNull();
+    fail?.(new Error("private error with token"));
+    expect(document.querySelectorAll(".dashboard-notification:not(.dashboard-notification-exit)")).toHaveLength(1);
+    owner.abort();
+    expect(document.querySelectorAll(".dashboard-notification:not(.dashboard-notification-exit)")).toHaveLength(0);
     stop();
   });
 

@@ -4,12 +4,21 @@ import {
   debugEagerIngest,
   debugParameter,
   debugShardLimit,
+  diagnosticErrorName,
   fullDebugUrl,
   isDebugEnabled,
   withDebugParameter
 } from '../../src/debug.js';
 
 describe('dashboard debug logging', () => {
+  it('uses a fixed error-name vocabulary so custom error names cannot expose secrets', () => {
+    expect(diagnosticErrorName(new TypeError('secret detail'))).toBe('TypeError');
+    const error = new Error('secret detail');
+    error.name = 'secret-token-Error';
+    expect(diagnosticErrorName(error)).toBe('UnknownError');
+    expect(diagnosticErrorName({ name: 'TypeError' })).toBe('UnknownError');
+  });
+
   it('builds a full-debug reload URL without losing the current route', () => {
     expect(fullDebugUrl('https://example.test/dashboard?local-preview=1#page-settings'))
       .toBe('https://example.test/dashboard?local-preview=1&debug=1#page-settings');

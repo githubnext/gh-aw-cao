@@ -508,9 +508,12 @@ describe("remote dashboard data backend", () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({ error: "not-found" }), {
         status: 404,
         headers: { "Content-Type": "application/json" },
-      }));
+      }))
+      .mockRejectedValueOnce(new TypeError("Load failed: private-bearer-token"));
     vi.stubGlobal("fetch", fetchMock);
 
+    await expect(refreshRemoteDashboardWithDebug([], { pages: [], queries: [], views: [] }))
+      .rejects.toThrow();
     await expect(refreshRemoteDashboardWithDebug([], { pages: [], queries: [], views: [] }))
       .rejects.toThrow();
 
@@ -518,12 +521,15 @@ describe("remote dashboard data backend", () => {
     expect(output.debug).toHaveBeenCalledWith("[cao:remote-data-backend]", expect.objectContaining({
       event: "request-failed", operation: "query", status: 404
     }));
+    expect(output.debug).toHaveBeenCalledWith("[cao:remote-data-backend]", expect.objectContaining({
+      event: "request-network-failed", operation: "refresh", errorName: "TypeError"
+    }));
 
     for (const call of output.debug.mock.calls) {
       const metadata = call[1];
       expect(Object.values(metadata).every((value) => typeof value !== "object")).toBe(true);
     }
-    expect(JSON.stringify(output.debug.mock.calls)).not.toMatch(/authorization|token|redis/i);
+    expect(JSON.stringify(output.debug.mock.calls)).not.toMatch(/authorization|token|redis|Load failed/i);
 
     vi.doUnmock("../../src/debug.js");
     vi.resetModules();

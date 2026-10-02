@@ -5,7 +5,7 @@ import {
 } from "./data/queries/view-payload-compiler.js";
 import { resolveDashboardQuerySources } from "./data/queries/declarative.js";
 import { csrfHeaders, ensureCsrfToken, usesGitHubAuthentication } from "./auth.js";
-import { createDebug } from "./debug.js";
+import { createDebug, diagnosticErrorName } from "./debug.js";
 import { updateRateLimitNotification } from "./rate-limit-notification.js";
 import { publishNotification } from "./notification-service.js";
 
@@ -135,7 +135,7 @@ async function apiRequest(path, init = {}, signal) {
     debugRemoteBackend({
       event: "request-network-failed", operation,
       durationMs: Math.round(performance.now() - startedAt),
-      errorName: error instanceof Error ? error.name : "UnknownError"
+      errorName: diagnosticErrorName(error)
     });
     throw error;
   }
@@ -154,7 +154,7 @@ async function apiRequest(path, init = {}, signal) {
       operation,
       status: response.status,
       durationMs: Math.round(performance.now() - startedAt),
-      ...(traceId ? { traceId } : {})
+      ...(/^[a-f0-9]{32}$/i.test(traceId) ? { traceId } : {})
     });
     throw new DashboardServerError(
       message,
@@ -338,7 +338,7 @@ function startRemoteRevisionStream() {
         debugRemoteBackend({
           event: "subscriber-callback-failed",
           callback: callbackType,
-          errorName: error instanceof Error ? error.name : "UnknownError",
+          errorName: diagnosticErrorName(error),
         });
       }
     }
@@ -416,11 +416,11 @@ function startRemoteRevisionStream() {
       throw new Error("Dashboard data server event stream disconnected.");
     } catch (error) {
       if (stopped || controller.signal.aborted) return;
-      const errorName = error instanceof Error ? error.name : "UnknownError";
+      const errorName = diagnosticErrorName(error);
       debugRemoteBackend({ event: "stream-reconnecting", errorName, attempt, retryDelayMs: 1000 });
       // A lost event stream does not invalidate the last successful query.
       connectionNotice ??= publishNotification({
-        message: "Live dashboard updates are temporarily unavailable. Reconnecting automatically; existing data remains visible.",
+        message: "Live dashboard updates are paused. Reconnecting automatically; existing data remains visible. If this continues, check your connection or sign in again.",
         tone: "warning",
         duration: 0
       });
