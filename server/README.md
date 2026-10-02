@@ -1016,7 +1016,11 @@ If the OAuth callback shows a sign-in error, select **Sign out and try again**.
 This attempts the existing CSRF-protected logout (including server-side token
 revocation). The signed-out page clears CAO session, CSRF and OAuth state
 cookies and the dashboard IndexedDB cache, then offers an explicit sign-in
-that requests GitHub's account chooser. CAO cannot clear GitHub's own cookies.
+that requests GitHub's account chooser. Every CAO login requests account
+selection, including login redirects after a failed session. CAO cannot clear
+GitHub's own cookies: if GitHub shows only the existing account's permission
+dialogue, use GitHub's profile menu to add or switch to another account,
+then retry sign-in.
 
 The older `{"error":"GitHub authorization failed"}` response corresponds to
 an authorization failure; current versions show a help page instead. This

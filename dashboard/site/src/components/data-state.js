@@ -4,6 +4,9 @@
 
 import { h } from '../dom.js';
 import { renderStatusBadge } from './badge.js';
+import { createDebug } from '../debug.js';
+
+const debugDataState = createDebug('data-state');
 
 /**
  * @typedef {import("../presenter.js").DataState} EffectiveDataState
@@ -36,6 +39,9 @@ function renderDataStateMetricCard(label, axis, status) {
  */
 export function renderDataStateMetrics(effectiveState) {
   const availability = effectiveState?.availability ?? 'available';
+  if (availability !== 'available') {
+    debugDataState({ event: 'availability-degraded', availability });
+  }
 
   return h(
     'dl',

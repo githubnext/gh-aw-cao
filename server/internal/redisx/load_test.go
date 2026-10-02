@@ -26,6 +26,42 @@ func TestLoadRejectsUnboundedNamesAndAmounts(t *testing.T) {
 	}
 }
 
+func TestClassifyLoadObservationIdentifiesEachRejectionReason(t *testing.T) {
+	cases := []struct {
+		name     string
+		amount   float64
+		halfLife time.Duration
+		want     loadRejectionReason
+	}{
+		{"events", 1, time.Minute, loadRejectionReasonNone},
+		{"Bad Name", 1, time.Minute, loadRejectionReasonNameOrHalfLife},
+		{"events", 1, 0, loadRejectionReasonNameOrHalfLife},
+		{"events", 1, 25 * time.Hour, loadRejectionReasonNameOrHalfLife},
+		{"events", math.NaN(), time.Minute, loadRejectionReasonAmountNotFinite},
+		{"events", math.Inf(1), time.Minute, loadRejectionReasonAmountNotFinite},
+		{"events", -1, time.Minute, loadRejectionReasonAmountOutOfRange},
+		{"events", 1e10, time.Minute, loadRejectionReasonAmountOutOfRange},
+	}
+	for _, testCase := range cases {
+		if got := classifyLoadObservation(testCase.name, testCase.amount, testCase.halfLife); got != testCase.want {
+			t.Errorf("classifyLoadObservation(%q, %v, %v) = %q, want %q",
+				testCase.name, testCase.amount, testCase.halfLife, got, testCase.want)
+		}
+	}
+}
+
+func TestParseLoadRejectsMalformedValues(t *testing.T) {
+	for _, value := range []any{"not-a-number", "NaN", "+Inf", "-1"} {
+		if _, err := parseLoad(value); err == nil {
+			t.Errorf("parseLoad(%v) accepted a malformed value", value)
+		}
+	}
+	number, err := parseLoad("2.5")
+	if err != nil || number != 2.5 {
+		t.Fatalf("parseLoad(\"2.5\") = %v, %v", number, err)
+	}
+}
+
 func TestDistributedLoadDecaysWithoutRefreshingOnRead(t *testing.T) {
 	rawURL := os.Getenv("REDIS_URL")
 	if rawURL == "" {
