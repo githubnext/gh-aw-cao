@@ -106,14 +106,6 @@
       ]
     },
     {
-      "name": "campaign-operational-value-plot-inventory",
-      "subject": "Describe each repository operational-value plot rendered on campaign Insights.",
-      "objective": "Identify which repository operational-value plots are backed by available series evidence.",
-      "acceptance": "Every plot entry derives from a primary-series group with its repository, native measure definition, unit, and direction; neither null-only observations nor point-level maturity are represented, so requery operational-values before treating an empty inventory as zero value or a plot as matured evidence.",
-      "description": "Plot inventory derived from numeric repository operational-value series; maturity must be checked separately.",
-      "from": "campaign-operational-value-primary-series"
-    },
-    {
       "name": "campaign-audit-summary-plot-inventory",
       "subject": "Describe the rendered audit-summary chart using the shared campaign Insights plot contract.",
       "objective": "Find campaigns with retained high- or medium-severity audit summaries worth reviewing.",
@@ -139,7 +131,7 @@
       "objective": "Choose an available campaign Insights plot to inspect its underlying evidence.",
       "acceptance": "Each plot entry is supplied by the repository value or audit summary plot inventory for the same campaign; no plot count is treated as outcome quality, and unavailable evidence is not synthesized into a plot.",
       "description": "One campaign row per rendered Insights plot, independent of the plot's data source or renderer.",
-      "from": "campaign-operational-value-plot-inventory",
+      "from": "campaign-operational-value-primary-series",
       "union": [
         "campaign-audit-summary-plot-inventory"
       ]
