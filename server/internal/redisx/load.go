@@ -8,7 +8,11 @@ import (
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var loadLog = logger.New("cao:redis:load")
 
 // A load is an exponentially decaying event count. One event contributes 1
 // immediately and half as much after each half-life; idle keys expire.
@@ -29,6 +33,35 @@ return tostring(value)`
 
 var loadName = regexp.MustCompile(`^[a-z][a-z0-9-]{0,63}$`)
 
+// loadRejectionReason identifies which precondition rejected a load
+// observation, so a caller's rejection is diagnosable without logging the
+// load name or the observed amount itself.
+type loadRejectionReason string
+
+const (
+	loadRejectionReasonNone             loadRejectionReason = "none"
+	loadRejectionReasonNameOrHalfLife   loadRejectionReason = "name-or-half-life"
+	loadRejectionReasonAmountNotFinite  loadRejectionReason = "amount-not-finite"
+	loadRejectionReasonAmountOutOfRange loadRejectionReason = "amount-out-of-range"
+)
+
+// classifyLoadObservation applies AddLoad's standard preconditions for a
+// load name, half-life, and observed amount, reporting the first one that
+// fails. It is a pure function extracted from AddLoad so each precondition
+// is independently testable without a Redis client.
+func classifyLoadObservation(name string, amount float64, halfLife time.Duration) loadRejectionReason {
+	if !loadName.MatchString(name) || halfLife < time.Second || halfLife > 24*time.Hour {
+		return loadRejectionReasonNameOrHalfLife
+	}
+	if math.IsNaN(amount) || math.IsInf(amount, 0) {
+		return loadRejectionReasonAmountNotFinite
+	}
+	if amount < 0 || amount > 1e9 {
+		return loadRejectionReasonAmountOutOfRange
+	}
+	return loadRejectionReasonNone
+}
+
 func loadArgs(name string, halfLife time.Duration) (string, string, error) {
 	if !loadName.MatchString(name) || halfLife < time.Second || halfLife > 24*time.Hour {
 		return "", "", errors.New("invalid load name or half-life")
@@ -39,8 +72,12 @@ func loadArgs(name string, halfLife time.Duration) (string, string, error) {
 
 // AddLoad updates a distributed load in one atomic Redis operation.
 func (s *Store) AddLoad(ctx context.Context, name string, amount float64, halfLife time.Duration) (float64, error) {
+	if reason := classifyLoadObservation(name, amount, halfLife); reason != loadRejectionReasonNone {
+		loadLog.Printf("load observation rejected reason=%s", reason)
+		return 0, errors.New("invalid load observation")
+	}
 	seconds, ttl, err := loadArgs(name, halfLife)
-	if err != nil || math.IsNaN(amount) || math.IsInf(amount, 0) || amount < 0 || amount > 1e9 {
+	if err != nil {
 		return 0, errors.New("invalid load observation")
 	}
 	value, err := s.Client.Do(ctx, "EVAL", loadStep, "1", s.Key("load:"+name),
@@ -54,6 +91,7 @@ func (s *Store) AddLoad(ctx context.Context, name string, amount float64, halfLi
 func parseLoad(value any) (float64, error) {
 	number, err := strconv.ParseFloat(fmt.Sprint(value), 64)
 	if err != nil || math.IsNaN(number) || math.IsInf(number, 0) || number < 0 {
+		loadLog.Printf("load response malformed")
 		return 0, errors.New("invalid load response")
 	}
 	return number, nil
