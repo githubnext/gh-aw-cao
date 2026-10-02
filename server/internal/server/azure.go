@@ -181,25 +181,26 @@ func forwardedHeader(request *http.Request, name string) string {
 	return ""
 }
 
-// processTelemetry lazily installs the OpenTelemetry tracer provider exactly
-// once for the life of the process. The Azure Functions runtime reuses the
-// process across invocations, so the exporter it configures must outlive any
+// processTelemetry lazily installs OpenTelemetry providers exactly once for
+// the life of the process. The Azure Functions runtime reuses the process
+// across invocations, so the exporters it configures must outlive any
 // single request; bundling the sync.Once and its cached error into one type
 // keeps that pairing in a single place instead of spreading a package-level
 // mutex and error variable across the file.
 type processTelemetry struct {
-	once sync.Once
-	err  error
+	once     sync.Once
+	err      error
+	shutdown telemetry.Shutdown
 }
 
 // ensure configures telemetry on the first call and returns the cached
 // outcome on every call thereafter. A configuration failure is logged at
 // most once, on the call that performed the setup, and is treated as
-// non-fatal: callers keep serving requests without exported traces rather
+// non-fatal: callers keep serving requests without exported telemetry rather
 // than failing the whole handler over a bad exporter configuration.
 func (p *processTelemetry) ensure(logger *log.Logger) error {
 	p.once.Do(func() {
-		p.err = configureProcessTelemetry()
+		p.shutdown, p.err = configureProcessTelemetry()
 		if p.err != nil && logger != nil {
 			logger.Printf("telemetry configuration failed, continuing without exported telemetry")
 		}
@@ -207,16 +208,28 @@ func (p *processTelemetry) ensure(logger *log.Logger) error {
 	return p.err
 }
 
-// configureProcessTelemetry installs the tracer provider with a process-
+// ShutdownAzureFunctionsTelemetry flushes process-owned exporters after the
+// custom handler has finished serving requests.
+func ShutdownAzureFunctionsTelemetry(ctx context.Context) error {
+	return azureProcessTelemetry.close(ctx)
+}
+
+func (p *processTelemetry) close(ctx context.Context) error {
+	if p.shutdown == nil {
+		return nil
+	}
+	return p.shutdown(ctx)
+}
+
+// configureProcessTelemetry installs the providers with a process-
 // lifetime context rather than a request-scoped one, since the resulting
 // exporter is shared by every future invocation handled by this process.
-func configureProcessTelemetry() error {
+func configureProcessTelemetry() (telemetry.Shutdown, error) {
 	version := strings.TrimSpace(os.Getenv("CAO_BUILD_VERSION"))
 	if version == "" {
 		version = "unknown"
 	}
-	_, err := telemetry.Setup(context.Background(), version)
-	return err
+	return telemetry.Setup(context.Background(), version)
 }
 
 var azureProcessTelemetry processTelemetry

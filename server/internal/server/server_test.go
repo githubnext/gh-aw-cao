@@ -617,6 +617,24 @@ func TestAccessFailuresCarryStandardizedTraceIdentifiersWithoutDatabase(t *testi
 	}
 }
 
+func TestProcessTelemetryClose(t *testing.T) {
+	var p processTelemetry
+	if err := p.close(t.Context()); err != nil {
+		t.Fatalf("unconfigured telemetry shutdown: %v", err)
+	}
+	called := false
+	p.shutdown = func(ctx context.Context) error {
+		called = true
+		if ctx.Err() != nil {
+			t.Fatal("telemetry shutdown received a cancelled context")
+		}
+		return nil
+	}
+	if err := p.close(t.Context()); err != nil || !called {
+		t.Fatalf("process telemetry shutdown: called=%t err=%v", called, err)
+	}
+}
+
 func TestAzureFunctionsHandlerLogsTelemetryFailureOnceAndKeepsServing(t *testing.T) {
 	// NewAzureFunctionsHandlerFromEnv is the only caller of azureProcessTelemetry
 	// in the process, and this is its only test, so the shared sync.Once
