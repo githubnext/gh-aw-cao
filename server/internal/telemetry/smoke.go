@@ -122,6 +122,7 @@ func RunSmoke(ctx context.Context, config SmokeConfig) (SmokeReport, error) {
 		report.CAOReadinessOK = readinessResponse.StatusCode == http.StatusOK
 		traceID, report.TraceHeadersPresent = validResponseTraceHeaders(readinessResponse.Header)
 		discardSmokeBody(readinessResponse.Body)
+		_ = readinessResponse.Body.Close()
 	}
 
 	healthURL := target.baseURL
@@ -135,6 +136,7 @@ func RunSmoke(ctx context.Context, config SmokeConfig) (SmokeReport, error) {
 		report.OpenObserveHealthStatus = healthResponse.StatusCode
 		report.OpenObserveHealthOK = healthResponse.StatusCode == http.StatusOK
 		discardSmokeBody(healthResponse.Body)
+		_ = healthResponse.Body.Close()
 	}
 
 	if !report.CAOReadinessOK || !report.TraceHeadersPresent || !report.OpenObserveHealthOK {
@@ -165,6 +167,7 @@ func RunSmoke(ctx context.Context, config SmokeConfig) (SmokeReport, error) {
 			} else {
 				discardSmokeBody(searchResponse.Body)
 			}
+			_ = searchResponse.Body.Close()
 			if report.TraceFound {
 				report.Passed = true
 				return report, nil
@@ -198,6 +201,7 @@ func resolveOpenObserveTarget(config SmokeConfig) (openObserveTarget, error) {
 		return openObserveTarget{}, errors.New("OpenTelemetry SDK is disabled")
 	case exporterDecisionNoEndpoint:
 		return openObserveTarget{}, errors.New("OTLP traces endpoint is not configured")
+	case exporterDecisionConfigured:
 	}
 	if strings.TrimSpace(config.OTLPTraceEndpoint) == "" {
 		parsed, err := url.Parse(endpoint)
@@ -268,7 +272,6 @@ func validResponseTraceHeaders(headers http.Header) (trace.TraceID, bool) {
 }
 
 func smokeSearchContainsTrace(body io.ReadCloser, traceID string) bool {
-	defer body.Close()
 	var result openObserveTraceSearch
 	if err := json.NewDecoder(io.LimitReader(body, maxSmokeResponseBytes)).Decode(&result); err != nil {
 		return false
@@ -286,5 +289,4 @@ func smokeSearchContainsTrace(body io.ReadCloser, traceID string) bool {
 
 func discardSmokeBody(body io.ReadCloser) {
 	_, _ = io.Copy(io.Discard, io.LimitReader(body, maxSmokeResponseBytes))
-	_ = body.Close()
 }
