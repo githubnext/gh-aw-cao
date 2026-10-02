@@ -64,12 +64,32 @@
     },
     {
       "name": "simulator-database-size",
-      "subject": "Plot modeled run-summary, tool, and issue table bytes across the first 30 days.",
-      "objective": "Compare hypothetical database table sizes over time.",
-      "acceptance": "The model presents separate summary, tool, and issue estimates for each of 30 simulated days, never observed storage.",
+      "subject": "Show modeled run-summary, tool, and issue table bytes after 30 days.",
+      "objective": "Compare hypothetical database table sizes at the end of the retention horizon.",
+      "acceptance": "The model presents separate summary, tool, and issue estimates after 30 simulated days, never observed storage.",
       "description": "Run summaries accumulate; detailed records have a 30-day TTL.",
       "from": "simulator-run-size",
-      "union": ["simulator-tool-size", "simulator-issue-size"]
+      "union": ["simulator-tool-size", "simulator-issue-size"],
+      "filter": { "predicates": [{ "field": "date", "equals": "2025-01-30T00:00:00.000Z" }] },
+      "select": [{ "field": "table" }, { "field": "bytes" }]
+    },
+    {
+      "name": "simulator-database-total",
+      "subject": "Sum the modeled table sizes after 30 days.",
+      "objective": "Show the final estimated size of the modeled database tables.",
+      "acceptance": "The final value is the sum of the three modeled table sizes after 30 days.",
+      "from": "simulator-database-size",
+      "compute": [{ "as": "table", "function": "literal", "args": [{ "value": "Total" }] }],
+      "aggregate": { "by": ["table"], "values": [{ "field": "bytes", "as": "bytes", "reducer": "sum" }] },
+      "select": [{ "field": "table" }, { "field": "bytes" }]
+    },
+    {
+      "name": "simulator-database-summary",
+      "subject": "List modeled table sizes and their final total after 30 days.",
+      "objective": "Present the 30-day estimate in a compact table.",
+      "acceptance": "Three modeled table sizes and their summed final value are shown without a growth chart.",
+      "from": "simulator-database-size",
+      "union": ["simulator-database-total"]
     }
   ],
   "pages": [
@@ -101,19 +121,19 @@
       "views": [
         {
           "id": "simulator-database-growth",
-          "title": "Database tables over 30 days",
+          "title": "Database size after 30 days",
           "subject": "Estimated retained size of run, tool, and issue tables.",
           "objective": "Compare hypothetical table growth under different workload and skip-rate inputs.",
-          "acceptance": "Thirty modeled daily points per table use the authored byte-per-record assumptions, with run summaries retained and detailed records limited to 30 days; no point is presented as observed storage.",
+          "acceptance": "Three modeled table sizes after 30 days and their final total use the authored byte-per-record assumptions, with run summaries retained and detailed records limited to 30 days; no value is presented as observed storage.",
           "description": "Modeled data size, not measured storage: 512 bytes per run summary or issue and 256 bytes per tool. Run summaries persist; tool and issue records expire after 30 days. Indexes, metadata, compression, and other tables are excluded.",
-          "data": { "source": "simulator-database-size" },
-          "mark": "chart",
-          "chart": "line",
+          "data": { "source": "simulator-database-summary" },
+          "mark": "table",
           "layout": "full",
           "encoding": {
-            "x": { "field": "date", "type": "temporal", "time-unit": "day", "format": "human-friendly-timestamp", "title": "Simulation day" },
-            "y": { "field": "bytes", "type": "quantitative", "aggregate": "max", "title": "Estimated bytes" },
-            "color": { "field": "table", "type": "nominal", "title": "Table" }
+            "columns": [
+              { "field": "table", "type": "nominal", "title": "Table" },
+              { "field": "bytes", "type": "quantitative", "title": "Estimated bytes after 30 days" }
+            ]
           }
         }
       ]
