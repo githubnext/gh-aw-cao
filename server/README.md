@@ -1473,11 +1473,14 @@ compares actual native rows and quality metadata, not only counts.
 
 ### Synthetic enterprise backfill stress
 
-The manually dispatched `backfill-stress.yml` workflow runs separate jobs for
+The daily-only `backfill-stress.yml` workflow runs at 04:23 UTC with separate jobs for
 1,000, 10,000, and 50,000 repositories. Every repository has at least
 one synthetic run per day in 14 days of API history; the real backfill admits
-only the configured seven-day window. The `runs_per_day` input supports more
-daily runs within the five-million-history-run safety bound.
+only the configured seven-day window. There are no PR, push, or manual-dispatch
+triggers for the full matrix. Scheduled runs append a combined report and
+artifact links to the tracking issue; the test jobs remain read-only, and a
+separate reporting job owns issue-write permission. Local runs can select
+more daily runs within the five-million-history-run safety bound.
 
 ```bash
 CAO_BACKFILL_REPOSITORIES=10000 CAO_BACKFILL_RUNS_PER_DAY=1 \

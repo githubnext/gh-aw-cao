@@ -1,13 +1,12 @@
 name: Synthetic Postgres Backfill Stress
 
 on:
-  workflow_dispatch:
-    inputs:
-      runs_per_day:
-        description: Synthetic workflow runs per repository per day (at least 1)
-        required: true
-        default: "1"
-        type: string
+  schedule:
+    - cron: "23 4 * * *"
+
+concurrency:
+  group: daily-synthetic-backfill-stress
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -24,7 +23,7 @@ jobs:
     env:
       CAO_BACKFILL_STRESS: "1"
       CAO_BACKFILL_REPOSITORIES: ${{ matrix.repositories }}
-      CAO_BACKFILL_RUNS_PER_DAY: ${{ inputs.runs_per_day }}
+      CAO_BACKFILL_RUNS_PER_DAY: "1"
       GH_TOKEN: ""
       GITHUB_TOKEN: ""
     steps:
@@ -39,7 +38,11 @@ jobs:
         run: bash scripts/test-dashboard-backfill.sh
       - name: Summarize results
         if: always()
+        env:
+          CASE_RESULT: ${{ job.status }}
         run: |
+          jq -n --argjson repositories "$CAO_BACKFILL_REPOSITORIES" --arg status "$CASE_RESULT" \
+            '{repositories: $repositories, status: $status}' > .tmp/go-backfill/case-status.json
           {
             echo "## Seven-day synthetic backfill: ${CAO_BACKFILL_REPOSITORIES} repositories"
             echo "All GitHub API and webhook traffic is restricted to exact numeric-loopback simulator endpoints."
@@ -60,3 +63,48 @@ jobs:
           path: .tmp/go-backfill/
           if-no-files-found: error
           retention-days: 14
+
+  report:
+    name: Append daily stress report to tracking issue
+    needs: backfill-stress
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        continue-on-error: true
+        with:
+          pattern: postgres-backfill-stress-*
+          path: backfill-stress-results
+      - name: Publish combined report
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          STRESS_RESULT: ${{ needs.backfill-stress.result }}
+        with:
+          script: |
+            const { pathToFileURL } = require('node:url')
+            const path = require('node:path')
+            const { buildBackfillStressReport, readBackfillStressCases } = await import(
+              pathToFileURL(path.resolve('scripts/report-backfill-stress.mjs')).href
+            )
+            const body = buildBackfillStressReport({
+              repository: `${context.repo.owner}/${context.repo.repo}`,
+              serverUrl: context.serverUrl,
+              runId: context.runId,
+              runAttempt: process.env.GITHUB_RUN_ATTEMPT,
+              sha: context.sha,
+              result: process.env.STRESS_RESULT,
+              cases: readBackfillStressCases('backfill-stress-results'),
+            })
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: 15886,
+              body,
+            })
+            await core.summary.addRaw(body).write()
