@@ -19,9 +19,12 @@ import (
 	"strings"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/propagation"
+	sdklog "go.opentelemetry.io/otel/sdk/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -89,8 +92,16 @@ func Setup(ctx context.Context, version string) (Shutdown, error) {
 		os.Getenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"),
 		os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 	)
-	setupLog.Printf("telemetry setup traces=%s metrics=%s", traceDecision, metricDecision)
-	if traceDecision != exporterDecisionConfigured && metricDecision != exporterDecisionConfigured {
+	logEndpoint, logDecision := resolveExporterDecision(
+		os.Getenv("OTEL_SDK_DISABLED"),
+		os.Getenv("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT"),
+		os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+	)
+	if !strings.EqualFold(strings.TrimSpace(os.Getenv("CAO_OTEL_LOGS_ENABLED")), "true") {
+		logDecision = exporterDecisionDisabled
+	}
+	setupLog.Printf("telemetry setup traces=%s metrics=%s logs=%s", traceDecision, metricDecision, logDecision)
+	if traceDecision != exporterDecisionConfigured && metricDecision != exporterDecisionConfigured && logDecision != exporterDecisionConfigured {
 		return noop, nil
 	}
 	serviceName := firstNonEmpty(os.Getenv("OTEL_SERVICE_NAME"), ServiceName)
@@ -141,21 +152,49 @@ func Setup(ctx context.Context, version string) (Shutdown, error) {
 		)
 	}
 
+	var logProvider *sdklog.LoggerProvider
+	if logDecision == exporterDecisionConfigured {
+		var options []otlploghttp.Option
+		if strings.HasPrefix(logEndpoint, "http://") {
+			options = append(options, otlploghttp.WithInsecure())
+		}
+		exporter, exporterErr := otlploghttp.New(ctx, options...)
+		if exporterErr != nil {
+			if meterProvider != nil {
+				_ = meterProvider.Shutdown(ctx)
+			}
+			if traceProvider != nil {
+				_ = traceProvider.Shutdown(ctx)
+			}
+			return noop, fmt.Errorf("create OTLP log exporter: %w", exporterErr)
+		}
+		logProvider = sdklog.NewLoggerProvider(
+			sdklog.WithProcessor(sdklog.NewBatchProcessor(exporter)),
+			sdklog.WithResource(res),
+		)
+	}
+
 	if traceProvider != nil {
 		otel.SetTracerProvider(traceProvider)
 	}
 	if meterProvider != nil {
 		otel.SetMeterProvider(meterProvider)
 	}
+	if logProvider != nil {
+		global.SetLoggerProvider(logProvider)
+	}
 	return func(shutdownCtx context.Context) error {
-		var metricErr, traceErr error
+		var metricErr, traceErr, logErr error
+		if logProvider != nil {
+			logErr = logProvider.Shutdown(shutdownCtx)
+		}
 		if meterProvider != nil {
 			metricErr = meterProvider.Shutdown(shutdownCtx)
 		}
 		if traceProvider != nil {
 			traceErr = traceProvider.Shutdown(shutdownCtx)
 		}
-		return errors.Join(metricErr, traceErr)
+		return errors.Join(metricErr, traceErr, logErr)
 	}, nil
 }
 
