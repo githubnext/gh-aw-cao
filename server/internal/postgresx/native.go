@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -23,7 +22,6 @@ type entityTable struct {
 	name      string
 	runtime   bool
 	canonical bool
-	weekly    bool
 	columns   []entityColumn
 }
 
@@ -147,8 +145,6 @@ type Writer struct {
 	revision             int64
 	PreviousDataRevision string
 	evaluatedAt          time.Time
-	runFallback          time.Time
-	staged               map[string]bool
 }
 
 func (s *Store) BeginIngestion(ctx context.Context) (*Writer, error) {
@@ -161,11 +157,8 @@ func (s *Store) BeginIngestion(ctx context.Context) (*Writer, error) {
 		_ = connection.Close(ctx)
 		return nil, err
 	}
-	writer := &Writer{store: s, connection: connection, tx: tx, ordinals: map[string]int64{}, inventoryOrdinals: map[string]int64{}, inventoryTables: map[string]bool{}, batches: map[string][][]any{}, evaluatedAt: time.Unix(0, 0).UTC(), runFallback: time.Now().UTC(), staged: map[string]bool{}}
+	writer := &Writer{store: s, connection: connection, tx: tx, ordinals: map[string]int64{}, inventoryOrdinals: map[string]int64{}, inventoryTables: map[string]bool{}, batches: map[string][][]any{}, evaluatedAt: time.Unix(0, 0).UTC()}
 	fail := func(err error) (*Writer, error) { writer.Abort(ctx); return nil, err }
-	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock_shared(712083241, 17484)`); err != nil {
-		return fail(err)
-	}
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended(current_schema() || ':' || $1, 0))`, s.namespace); err != nil {
 		return fail(err)
 	}
@@ -238,11 +231,7 @@ func (w *Writer) append(ctx context.Context, source string, row model.Row, inven
 		return errors.New("native row requires a nonempty string id")
 	}
 	present := make([]byte, len(table.columns))
-	extra := 3
-	if table.weekly {
-		extra++
-	}
-	values := make([]any, len(table.columns)+extra)
+	values := make([]any, len(table.columns)+3)
 	rowBytes := 0
 	ordinals := w.ordinals
 	batchName := source
@@ -261,7 +250,7 @@ func (w *Writer) append(ctx context.Context, source string, row model.Row, inven
 		if err != nil {
 			return fmt.Errorf("%s.%s: %w", source, column.field, err)
 		}
-		values[index+extra] = bound
+		values[index+3] = bound
 		switch value := bound.(type) {
 		case string:
 			rowBytes += len(value)
@@ -282,19 +271,6 @@ func (w *Writer) append(ctx context.Context, source string, row model.Row, inven
 	w.bytes += rowBytes
 	// #nosec G115 -- the column count is bounded by the generated TypeSpec registry.
 	values[2] = pgtype.Bits{Bytes: presenceBytes(present), Len: int32(len(present)), Valid: true}
-	if table.weekly && source == "$runs" {
-		values[3] = w.runFallback
-		for _, field := range []string{"createdAt", "startedAt", "completedAt", "observedAt"} {
-			if value, ok := row[field]; ok && value != nil {
-				instant, err := (entityColumn{kind: "timestamp"}).bind(value)
-				if err != nil {
-					return fmt.Errorf("%s.%s: %w", source, field, err)
-				}
-				values[3] = instant
-				break
-			}
-		}
-	}
 	ordinals[source]++
 	w.batches[batchName] = append(w.batches[batchName], values)
 	w.rows++
@@ -324,22 +300,9 @@ func (w *Writer) Flush(ctx context.Context) error {
 		tableName := table.name
 		if sourceName != source {
 			tableName += "_inventory"
-		} else if table.weekly && sourceName != "$runs" {
-			tableName += "_staging"
-			if !w.staged[sourceName] {
-				statement := "CREATE TEMP TABLE " + query.SQLIdentifier(tableName) +
-					" ON COMMIT DROP AS SELECT * FROM " + query.SQLIdentifier(table.name) + " WITH NO DATA"
-				if _, err := w.tx.Exec(ctx, statement); err != nil {
-					return err
-				}
-				w.staged[sourceName] = true
-			}
 		}
 		columns := make([]string, 0, 3+len(table.columns))
 		columns = append(columns, "namespace", "ordinal", "present_fields")
-		if table.weekly && sourceName == "$runs" {
-			columns = append(columns, "run_at")
-		}
 		for _, column := range table.columns {
 			columns = append(columns, column.name)
 		}
@@ -397,37 +360,6 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 	}
 	if err := w.Flush(ctx); err != nil {
 		return State{}, err
-	}
-	// Stage run children until their run (or session) is present; the database
-	// resolves the shared partition key without retaining a run-ID map in Go.
-	staged := make([]string, 0, len(w.staged))
-	for source := range w.staged {
-		if source != "$events" {
-			staged = append(staged, source)
-		}
-	}
-	sort.Strings(staged)
-	if w.staged["$events"] {
-		staged = append(staged, "$events")
-	}
-	for _, source := range staged {
-		table := entityTables[source]
-		parent, key := "runs", "run_id"
-		if source == "$events" {
-			parent, key = "sessions", "session_id"
-		}
-		columns := []string{"namespace", "ordinal", "present_fields", "run_at"}
-		selected := []string{"s.namespace", "s.ordinal", "s.present_fields", "coalesce(p.run_at, $1)"}
-		for _, column := range table.columns {
-			columns = append(columns, query.SQLIdentifier(column.name))
-			selected = append(selected, "s."+query.SQLIdentifier(column.name))
-		}
-		statement := "INSERT INTO " + query.SQLIdentifier(table.name) + " (" + strings.Join(columns, ",") + ") SELECT " +
-			strings.Join(selected, ",") + " FROM " + query.SQLIdentifier(table.name+"_staging") +
-			" s LEFT JOIN " + query.SQLIdentifier(parent) + " p ON p.namespace=s.namespace AND p.id=s." + key
-		if _, err := w.tx.Exec(ctx, statement, w.runFallback); err != nil {
-			return State{}, fmt.Errorf("route %s to weekly partition: %w", source, err)
-		}
 	}
 	for source := range w.inventoryTables {
 		table := entityTables[source]

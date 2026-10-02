@@ -5,12 +5,8 @@ import { createHash } from 'node:crypto';
 export const $lib = createTypeSpecLibrary({ name: 'cao-postgres', diagnostics: {} });
 export const namespace = 'Cao.Postgres';
 const parentKey = Symbol.for('cao-postgres.parent');
-const weeklyRunPartitionKey = Symbol.for('cao-postgres.weekly-run-partition');
 export function $parent(context, target, entity, required = true) {
   context.program.stateMap(parentKey).set(target, { entity, required });
-}
-export function $weeklyRunPartition(context, target) {
-  context.program.stateMap(weeklyRunPartitionKey).set(target, true);
 }
 
 const snake = (field) => field.replace(/-/g, '_').replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
@@ -58,8 +54,7 @@ export async function $onEmit(context) {
         if (!kind) throw new Error(`Storage requires an explicit native type: ${model.name}.${property.name}`);
         columns.push({ field: property.name, name: snake(property.name), kind: kind[0], sql: kind[1], required: !property.optional });
       }
-      const table = { collection: model.name, name: snake(model.name), columns,
-        weekly: context.program.stateMap(weeklyRunPartitionKey).has(model) };
+      const table = { collection: model.name, name: snake(model.name), columns };
       if (namespace === 'Cao.Postgres.Storage') systems.push(table);
       else {
         table.runtime = namespace === 'Cao.Postgres.Runtime' || model.name === 'marketplacePackages';
@@ -80,12 +75,6 @@ export async function $onEmit(context) {
   };
   for (const table of tables) visit(table);
   tables.splice(0, tables.length, ...ordered);
-  for (const table of tables.filter((t) => t.weekly)) {
-    if (table.runtime || !table.canonical) throw new Error(`Invalid weekly partition ${table.collection}`);
-    if (table.collection !== 'runs' && !(parents.get(table.collection) ?? []).some(([, parent]) => {
-      return parent === 'runs' || parent === 'sessions' && table.collection === 'events';
-    })) throw new Error(`Weekly table ${table.collection} has no run parent`);
-  }
   const statements = [
     '-- Generated from server/spec/storage.tsp. Do not edit.',
     '-- Fresh database only. Opaque artifacts remain external.',
@@ -106,31 +95,27 @@ export async function $onEmit(context) {
   for (const table of tables) {
     if (!table.runtime) {
       const constraints = [
-        `PRIMARY KEY (namespace, id${table.weekly ? ', run_at' : ''})`,
-        `UNIQUE (namespace, ordinal${table.weekly ? ', run_at' : ''})`,
+        'PRIMARY KEY (namespace, id)', 'UNIQUE (namespace, ordinal)',
         `CHECK (bit_length(present_fields) = ${table.columns.length})`,
         'FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE'
       ];
       for (const [field, parent, optional] of parents.get(table.collection) ?? []) {
         if (!table.columns.some((c) => c.field === field)) throw new Error(`Missing relationship ${table.collection}.${field}`);
         if (!optional) constraints.push(`CHECK (${snake(field)} IS NOT NULL AND ${snake(field)} <> '')`);
-        const partitionedParent = tables.find((t) => t.collection === parent)?.weekly;
-        constraints.push(`FOREIGN KEY (namespace, ${snake(field)}${partitionedParent ? ', run_at' : ''}) REFERENCES ${snake(parent)}(namespace, id${partitionedParent ? ', run_at' : ''}) DEFERRABLE INITIALLY DEFERRED`);
+        constraints.push(`FOREIGN KEY (namespace, ${snake(field)}) REFERENCES ${snake(parent)}(namespace, id) DEFERRABLE INITIALLY DEFERRED`);
       }
       statements.push(`CREATE TABLE IF NOT EXISTS ${table.name} (
   namespace TEXT NOT NULL,
   ordinal BIGINT NOT NULL CHECK (ordinal >= 0),
   present_fields BIT VARYING NOT NULL,
-${table.weekly ? '  run_at TIMESTAMPTZ NOT NULL,\n' : ''}
 ${table.columns.map((c) => `  ${c.name} ${c.sql}${c.field === 'id' ? " NOT NULL CHECK (id <> '')" : ''}`).join(',\n')},
   ${constraints.join(',\n  ')}
-)${table.weekly ? ' PARTITION BY RANGE (run_at)' : ''};`);
-      if (table.weekly) statements.push(`CREATE TABLE IF NOT EXISTS ${table.name}_default PARTITION OF ${table.name} DEFAULT;`);
+);`);
       for (const [field] of parents.get(table.collection) ?? []) {
         statements.push(`CREATE INDEX IF NOT EXISTS ${table.name}_${snake(field)} ON ${table.name} (namespace, ${snake(field)}, ordinal);`);
       }
     }
-    go.push(`\t"${table.source}": {name: "${table.name}", runtime: ${table.runtime}, canonical: ${table.canonical}, weekly: ${table.weekly}, columns: []entityColumn{`);
+    go.push(`\t"${table.source}": {name: "${table.name}", runtime: ${table.runtime}, canonical: ${table.canonical}, columns: []entityColumn{`);
     for (const column of table.columns) {
       go.push(`\t\t{field: "${column.field}", name: "${column.name}", kind: "${column.kind}", sql: "${column.sql}"},`);
     }
