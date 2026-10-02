@@ -67,7 +67,7 @@ test('hosted MCP lists tools, inspects the catalog, and executes a named query',
     if (payload.result?.isError === true) {
       const trace = response.headers.get('x-trace-id');
       const traceId = /^[0-9a-f]{32}$/.test(trace ?? '') ? trace : 'unavailable';
-      assert.fail(`${method} ${params.name} returned a tool error (traceId=${traceId})`);
+      assert.fail(`${method} ${params.name} returned a tool error (traceId=${traceId}): ${JSON.stringify(payload.result, null, 2)}`);
     }
     return payload.result;
   }
