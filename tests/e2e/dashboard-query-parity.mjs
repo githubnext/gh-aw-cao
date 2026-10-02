@@ -750,9 +750,15 @@ async function main() {
     await writeDeployedArtifact(artifactDirectory, nodeFactory, sources);
     const resolvedDocumentPath = join(temporaryDirectory, "resolved-dashboard.json");
     const { document: dashboardDocument } = loadDashboardSourceSync(dashboardPath);
+    const parityQueries = new Map(queries.map((query) => [query.name, query]));
     const resolvedDocument = {
       ...dashboardDocument,
-      dashboard: { ...dashboardDocument.dashboard, queries },
+      dashboard: {
+        ...dashboardDocument.dashboard,
+        queries: dashboardDocument.dashboard.queries.map(
+          (query) => parityQueries.get(query.name) ?? query,
+        ),
+      },
     };
     writeFileSync(resolvedDocumentPath, JSON.stringify(resolvedDocument));
     const localNames = names.filter(
