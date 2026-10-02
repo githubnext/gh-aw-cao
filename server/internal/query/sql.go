@@ -49,6 +49,7 @@ type SQLStep struct {
 
 type SQLPlan struct {
 	CTEs     string
+	CTEList  []string
 	Outputs  map[string]SQLRelation
 	Args     []any
 	Steps    []SQLStep
@@ -132,7 +133,7 @@ func CompileSQL(definitions []Definition, requested []string, resolve SQLSourceR
 	if compiler.err != nil {
 		return SQLPlan{}, compiler.err
 	}
-	return SQLPlan{CTEs: "WITH " + strings.Join(compiler.ctes, ",\n"), Outputs: outputs,
+	return SQLPlan{CTEs: "WITH " + strings.Join(compiler.ctes, ",\n"), CTEList: compiler.ctes, Outputs: outputs,
 		Args: compiler.args, Steps: compiler.steps, JoinKeys: compiler.joins}, nil
 }
 
@@ -228,13 +229,27 @@ func (c *sqlCompiler) definition(definition Definition, relations map[string]SQL
 		relation.SQL += " WHERE " + predicate
 		relation = c.materialize(relation, definition.Name, "filter-output", 0)
 	}
+	// Computed fields share one materialization until one reads a field
+	// computed in the same batch, which keeps wide relations from being
+	// re-projected once per field.
+	batch := map[string]bool{}
 	for _, computed := range definition.Compute {
+		for _, argument := range computed.Args {
+			if argument.Field != nil && batch[*argument.Field] {
+				relation = c.materialize(relation, definition.Name, "compute-output", 0)
+				batch = map[string]bool{}
+				break
+			}
+		}
 		c.steps = append(c.steps, SQLStep{Query: definition.Name, Relation: strings.Trim(relation.SQL, `"`), Operation: "compute", Weight: 1})
 		column, err := c.compute(relation, computed)
 		if err != nil {
 			return SQLRelation{}, err
 		}
 		relation.Columns[computed.As] = column
+		batch[computed.As] = true
+	}
+	if len(batch) != 0 {
 		relation = c.materialize(relation, definition.Name, "compute-output", 0)
 	}
 	if definition.TemporalSeries != nil {
@@ -298,7 +313,9 @@ func (c *sqlCompiler) definition(definition Definition, relations map[string]SQL
 func sqlField(relation SQLRelation, field string) (SQLColumn, error) {
 	column, exists := relation.Columns[field]
 	if !exists {
-		return SQLColumn{}, fmt.Errorf("field %q is not declared by the input relation", field)
+		// Fields absent from the relation are missing values, matching the
+		// dashboard engine's treatment of fields a source does not provide.
+		return SQLColumn{Expression: "NULL::text", Kind: sqlNull, Presence: "FALSE"}, nil
 	}
 	return column, nil
 }
@@ -647,6 +664,15 @@ func (c *sqlCompiler) compute(relation SQLRelation, computed ComputedField) (SQL
 		}
 	default:
 		return SQLColumn{}, fmt.Errorf("computed function %q has no SQL lowering", computed.Function)
+	}
+	// Literal arguments are bound values. A lowering that does not reference
+	// one leaves an untyped parameter that Postgres rejects, so keep it typed.
+	for index, argument := range args {
+		if computed.Args[index].Field != nil || strings.Contains(out.Expression, argument.Expression) {
+			continue
+		}
+		out.Expression = "(CASE WHEN (" + argument.Expression + " IS NOT DISTINCT FROM " + argument.Expression + ") THEN " +
+			out.Expression + " END)"
 	}
 	return out, nil
 }

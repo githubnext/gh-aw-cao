@@ -142,8 +142,9 @@ func (r *readTransaction) ExecuteSQLPlanWithOptions(ctx context.Context, definit
 	}
 	for _, check := range plan.JoinKeys {
 		var duplicate int
-		builder := sqlbuilder.New(plan.Args...)
-		builder.Write("{}\n{}", sqlbuilder.Fragment(plan.CTEs), sqlbuilder.Fragment(check))
+		scoped, scopedArgs, rewritten := plan.Scoped(check)
+		builder := sqlbuilder.New(scopedArgs...)
+		builder.Write("{}\n{}", sqlbuilder.Fragment(scoped), sqlbuilder.Fragment(rewritten[0]))
 		statement, args, err := builder.Statement()
 		if err != nil {
 			return nil, metrics, err

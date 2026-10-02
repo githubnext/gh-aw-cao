@@ -71,12 +71,23 @@ func TestCompileSQLJoinsAndUnions(t *testing.T) {
 func TestSQLCompilationFailsClosed(t *testing.T) {
 	for _, definition := range []Definition{
 		{Name: "bad", From: "unregistered"},
-		{Name: "bad", From: "facts", Select: []SelectedField{{Field: `id"; DROP TABLE facts; --`}}},
 		{Name: "bad", From: "facts", Compute: []ComputedField{{As: "a", Function: "literal", Args: []Argument{{Parameter: "unresolved"}}}}},
 		{Name: "bad", From: "facts", Joins: []Join{{Source: "owners", On: []JoinKey{{Left: "id", Right: "id"}}, Fields: []SelectedField{{Field: "value"}}}}},
 	} {
 		if _, err := CompileSQL([]Definition{definition}, []string{"bad"}, sqlTestResolver); err == nil {
 			t.Fatalf("invalid SQL query was admitted: %+v", definition)
 		}
+	}
+}
+
+func TestSQLCompilationTreatsUndeclaredFieldsAsMissing(t *testing.T) {
+	hostile := `id"; DROP TABLE facts; --`
+	plan, err := CompileSQL([]Definition{{Name: "missing", From: "facts", Select: []SelectedField{{Field: hostile}}}},
+		[]string{"missing"}, sqlTestResolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(plan.CTEs, "DROP TABLE") || !strings.Contains(plan.CTEs, "NULL::text") {
+		t.Fatalf("undeclared field must compile to a NULL column: %s", plan.CTEs)
 	}
 }

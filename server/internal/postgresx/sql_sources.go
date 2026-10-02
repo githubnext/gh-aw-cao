@@ -60,7 +60,7 @@ func (r *readTransaction) entitySQLSource(name string) (query.SQLRelation, error
 	}
 	table, exists := entityTables[name]
 	if !exists || table.runtime {
-		return query.SQLRelation{}, errors.New("SQL source is not registered by TypeSpec")
+		return query.SQLRelation{}, fmt.Errorf("SQL source %q is not registered by TypeSpec", name)
 	}
 	columns := relationColumns(table, func(index int) string { return "get_bit(t.present_fields, " + strconv.Itoa(index) + ") = 1" })
 	for _, recordSource := range recordSources {
