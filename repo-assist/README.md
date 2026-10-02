@@ -9,13 +9,15 @@ Repo Assist makes bounded progress on enrolled repositories. Its orchestrator ra
 
 | Workflow | Responsibility |
 | --- | --- |
-| [`repo-assist`](../.github/workflows/repo-assist.md) | Weekly and manually dispatchable orchestrator that ranks repositories and applicable workers. |
-| [`repo-assist-issue-triage`](../.github/workflows/repo-assist-issue-triage.md) | Advances one open issue with evidence-backed labels, guidance, or a clarification request. |
+| [`repo-assist`](../.github/workflows/repo-assist.md) | Runs every six hours or on manual dispatch to rank repositories and applicable workers. |
+| [`repo-assist-issue-triage`](../.github/workflows/repo-assist-issue-triage.md) | Advances one open issue with evidence-backed labels, guidance, clarification, or live Copilot assignment. |
 | [`repo-assist-issue-fix`](../.github/workflows/repo-assist-issue-fix.md) | Implements one confidently bounded issue fix and validates the patch. |
 | [`repo-assist-maintenance`](../.github/workflows/repo-assist-maintenance.md) | Implements one low-risk engineering, code, documentation, performance, testing, or hygiene improvement. |
 | [`repo-assist-pr-upkeep`](../.github/workflows/repo-assist-pr-upkeep.md) | Repairs one owned Repo Assist pull request with an actionable code blocker. |
 
-Workers are independently dispatchable and handle exactly one authorized target repository. Review mode routes issue findings to the control repository and publishes proposed patches as review-bundle artifacts. Live mode may label or comment on a selected issue, create a draft pull request, or update an owned Repo Assist pull request branch.
+Workers are independently dispatchable and handle exactly one authorized target repository. Review mode routes issue findings to the control repository and publishes proposed patches as review-bundle artifacts. Live mode may label or comment on a selected issue, assign one actionable issue to Copilot, create a draft pull request, or update an owned Repo Assist pull request branch.
+
+Copilot assignment uses the `assign-to-agent` safe output and requires Copilot coding agent availability on the target plus a `GH_AW_AGENT_TOKEN` Actions secret with the assignment permissions required by gh-aw. Both the issue and resulting pull request stay in the authorized target repository. Already assigned issues and active fixes are skipped. Review mode never starts a coding agent; maintainers review the suggested prompt before delegation. Assignment does not grant merge authority.
 
 ## Install
 

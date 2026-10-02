@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
@@ -6,6 +7,80 @@ import { parse } from "yaml";
 import { portableSkill, root, stepBlock, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
 
 // Safe-output reporting, issue, and pull request contracts.
+
+test("Repo Assist runs every six hours and scopes Copilot assignment to live targets", () => {
+  const dispatcher = parse(/^---\n([\s\S]*?)\n---/.exec(workflow("repo-assist.md"))[1]);
+  assert.equal(dispatcher.on.schedule, "every 6 hours");
+  const compiledDispatcher = parse(workflow("repo-assist.lock.yml"));
+  assert.match(compiledDispatcher.on.schedule[0].cron, /^\d+ \*\/6 \* \* \*$/);
+
+  const source = workflow("repo-assist-issue-triage.md");
+  const config = parse(/^---\n([\s\S]*?)\n---/.exec(source)[1]);
+  const assignment = config["safe-outputs"]["assign-to-agent"];
+  assert.deepEqual(assignment, {
+    name: "copilot",
+    allowed: ["copilot"],
+    target: "*",
+    "target-repo": "${{ inputs.target_repo }}",
+    "pull-request-repo": "${{ inputs.target_repo }}",
+    "github-token": "${{ secrets.GH_AW_AGENT_TOKEN }}",
+    max: 1,
+    staged: "${{ inputs.safe_output_mode != 'live' }}",
+  });
+  const compiled = parse(workflow("repo-assist-issue-triage.lock.yml"));
+  const handlerStep = compiled.jobs.safe_outputs.steps.find(
+    (step) => step.env?.GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG,
+  );
+  assert.ok(handlerStep, "assignment must reach the production safe-output handler");
+  assert.deepEqual(JSON.parse(handlerStep.env.GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG).assign_to_agent, assignment);
+  assert.match(source, /Skip issues already assigned to Copilot or another implementer/);
+  assert.match(source, /Search open pull requests and Repo Assist issue-fix review records for an active fix/);
+  assert.match(source, /Never call `assign_to_agent` in `review` mode, including for a central review issue/);
+  assert.match(source, /Do not delegate ambiguous, broad, breaking, security-sensitive, or new-dependency work/);
+});
+
+test("Repo Assist triage grader accepts one target-bound live assignment and rejects unsafe requests", () => {
+  const assignment = {
+    type: "assign_to_agent",
+    issue_number: 42,
+    repo: "example/target",
+    agent: "copilot",
+    pull_request_repo: "example/target",
+    custom_instructions: "Fix the verified bug and run its regression test.",
+  };
+  function score(outputs, mode = "live") {
+    const request = {
+      schemaVersion: 1,
+      run: { repository: "example/control" },
+      event: { inputs: { target_repo: "example/target", safe_output_mode: mode } },
+      outputs,
+    };
+    const result = execFileSync("bash", [
+      join(root, "repo-assist", ".github", "graders", "repo-assist-issue-triage-operational-value.sh"),
+    ], { input: JSON.stringify(request), encoding: "utf8" });
+    return JSON.parse(result)[0].value;
+  }
+  assert.equal(score([assignment]), 1);
+  assert.equal(score([assignment], "review"), 0);
+  assert.equal(score([assignment, assignment]), 0);
+  for (const override of [
+    { repo: "example/other" },
+    { pull_request_repo: "example/other" },
+    { agent: "other" },
+    { issue_number: null },
+    { custom_instructions: "" },
+  ]) {
+    assert.equal(score([{ ...assignment, ...override }]), 0);
+  }
+  const comment = {
+    type: "add_comment", issue_number: 42, repo: "example/target",
+    body: "🤖 *This is an automated response from Repo Assist.* Verified root cause.",
+  };
+  assert.equal(score([comment]), 1);
+  assert.equal(score([assignment, comment]), 1);
+  assert.equal(score([assignment, { ...comment, issue_number: 43 }]), 0);
+  assert.equal(score([{ type: "noop" }]), null);
+});
 
 test("operations creation guidance scopes detection and omits worker evals", () => {
   const campaignSkill = portableSkill("create-cao-campaign");

@@ -121,6 +121,15 @@ safe-outputs:
     target-repo: ${{ inputs.target_repo }}
     allowed: [bug, enhancement, "help wanted", "good first issue", spam, "off topic", documentation, question, duplicate, wontfix, "needs triage", "needs investigation", "breaking change", performance, security, refactor]
     max: 3
+  assign-to-agent:
+    name: copilot
+    allowed: [copilot]
+    target: "*"
+    target-repo: ${{ inputs.target_repo }}
+    pull-request-repo: ${{ inputs.target_repo }}
+    github-token: ${{ secrets.GH_AW_AGENT_TOKEN }}
+    max: 1
+    staged: ${{ inputs.safe_output_mode != 'live' }}
 
 timeout-minutes: 30
 ---
@@ -138,7 +147,7 @@ Read `/tmp/gh-aw/agent/control-precompute.json` first and assess only its `targe
 3. a `bug`, `help wanted`, or `good first issue` item with recent human activity;
 4. an issue marked `needs triage` or `needs investigation`.
 
-Skip issues with an open linked fix, a Repo Assist response newer than the latest human activity, insufficient repository evidence, or a materially equivalent open `[repo-assist:issue-triage]` record in `SAFE_OUTPUT_REPO`. Inspect only the selected issue, its comments, and the smallest relevant code, history, documentation, and tests needed to support a conclusion.
+Skip issues already assigned to Copilot or another implementer, with an open linked fix, a Repo Assist response newer than the latest human activity, insufficient repository evidence, or a materially equivalent open `[repo-assist:issue-triage]` record in `SAFE_OUTPUT_REPO`. Search open pull requests and Repo Assist issue-fix review records for an active fix before selecting an issue. Inspect only the selected issue, its comments, and the smallest relevant code, history, documentation, and tests needed to support a conclusion.
 
 ## Decision
 
@@ -148,12 +157,17 @@ Choose one outcome supported by current evidence:
 - clarify: ask only the specific questions needed to unblock a decision;
 - investigate: provide a verified root cause, workaround, feasibility result, or bounded implementation direction;
 - label: apply or remove only clearly supported labels from the configured allowlist.
+- delegate: in `live` mode only, assign a confidently bounded implementation to Copilot with verified behavior, relevant paths, and explicit validation criteria.
 
 Do not post acknowledgements, restatements, generic contribution advice, promises of future work, or a second response to unchanged evidence.
 
 In `live` mode, use `add_labels` or `remove_labels` only for the selected target issue, and use `add_comment` at most once when substantive guidance or clarification is warranted. Start a live comment with `🤖 *This is an automated response from Repo Assist.*`.
 
+For delegation, call `assign_to_agent` at most once for the selected existing issue in `TARGET_REPO`, with `agent: copilot` and concise `custom_instructions` describing the verified change and acceptance tests. Keep the issue and resulting pull request in `TARGET_REPO`; never override the repository or dispatch another workflow. Do not delegate ambiguous, broad, breaking, security-sensitive, or new-dependency work. If Copilot availability or assignment credentials are missing, report the blocker rather than falling back to a direct API write or claiming assignment succeeded.
+
 In `review` mode, never call item-based outputs for the target issue. Create one review issue in `SAFE_OUTPUT_REPO` with the canonical unprefixed subject `TARGET_REPO issue NUMBER triage guidance`. The configured `title-prefix` is added automatically, so do not repeat it or add a semantically equivalent category prefix. Keep the subject identical across reruns for the same target issue. Search all open campaign-worker issues before creation and call `noop` when equivalent guidance is already tracked.
+
+Never call `assign_to_agent` in `review` mode, including for a central review issue; retain the imperative agent prompt for human approval instead.
 
 ## Report
 
