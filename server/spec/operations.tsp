@@ -108,4 +108,11 @@ namespace Operations {
   @useAuth(DashboardAuth)
   @route("/api/v1/github-quota/usage")
   @get op quotaUsage(): QuotaUsage | Unauthorized | Forbidden | Unavailable;
+
+  /** Available only when CAO_SERVER_LOGS_ENABLED=true. Returns up to 10,000 recent server debug log records as newline-delimited JSON; requires a local bearer capability, a hosted administrator session, or the hosted MCP GitHub Actions identity. */
+  @useAuth(DashboardAuth)
+  @route("/api/admin/logs")
+  @get op logs(@header("X-GitHub-Actor") githubActor?: string):
+    { @header contentType: "application/x-ndjson"; @header contentDisposition: "attachment; filename=\"cao-server-logs.jsonl\""; @body body: string } |
+    Unauthorized | Forbidden | Unavailable;
 }

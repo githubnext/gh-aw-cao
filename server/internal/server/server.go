@@ -98,6 +98,7 @@ type App struct {
 	actionsToken    string
 	actionsActor    string
 	quota           *githubquota.Service
+	logs            *logger.Buffer
 	startMu         sync.Mutex
 	startContext    context.Context
 	stop            context.CancelFunc
@@ -209,7 +210,8 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 			DatabaseQueriesPath: config.DatabaseQueriesPath,
 		}
 	}
-	if config.MCPEnabled && profile.Authentication == HostAuthenticationOAuth {
+	if (config.MCPEnabled || os.Getenv("CAO_SERVER_LOGS_ENABLED") == "true") &&
+		profile.Authentication == HostAuthenticationOAuth {
 		if _, _, err := parseActionsRepository(config.ActionsRepository); err != nil {
 			return nil, fmt.Errorf("hosted MCP requires an Actions repository: %w", err)
 		}
@@ -235,6 +237,9 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 		canonical: canonicalService{store: config.Database, definitions: databaseQueries}, reconciler: reconciler, memory: memoryResolver,
 		webhookSecret: []byte(config.WebhookSecret), actionsToken: actionsToken, actionsActor: actionsActor,
 		quota: quota, drain: make(chan struct{}),
+	}
+	if os.Getenv("CAO_SERVER_LOGS_ENABLED") == "true" {
+		app.logs = logger.EnableBuffer()
 	}
 	if config.MCPEnabled {
 		handler, err := app.newMCPHandler()
@@ -598,6 +603,9 @@ func (a *App) Handler() http.Handler {
 	register("POST /api/admin/rebuild", a.rebuild)
 	register("GET /api/admin/rebuild/status", a.rebuildStatus)
 	register("GET /api/admin/collection/status", a.collectionStatus)
+	if a.logs != nil {
+		register("GET /api/admin/logs", a.serverLogs)
+	}
 	register("GET /api/v1/ingestion/health", a.collectionStatus)
 	register("GET /api/v1/github-quota/usage", a.gitHubQuotaUsage)
 	mux.HandleFunc("/", a.static)
@@ -722,7 +730,7 @@ func (a *App) requireAccess(next http.Handler) http.Handler {
 			next.ServeHTTP(response, request)
 			return
 		}
-		if request.URL.Path == "/mcp" {
+		if request.URL.Path == "/mcp" || (request.URL.Path == "/api/admin/logs" && a.logs != nil) {
 			if actor, ok := a.authorizedGitHubActions(request); ok {
 				a.logAuthBranch("access.local_actions_accepted")
 				request = request.WithContext(context.WithValue(
@@ -818,7 +826,8 @@ func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 			next.ServeHTTP(response, request)
 			return
 		}
-		if request.URL.Path == "/mcp" && a.mcp != nil {
+		if (request.URL.Path == "/mcp" && a.mcp != nil) ||
+			(request.URL.Path == "/api/admin/logs" && a.logs != nil && request.Header.Get("Authorization") != "") {
 			ctx, span := telemetry.Tracer().Start(request.Context(), "cao_dashboard.auth.mcp")
 			defer span.End()
 			actor, err := verifyHostedActionsMCP(ctx, a.config, request)

@@ -78,6 +78,9 @@ func (l *Logger) write(ctx context.Context, severity otelLog.Severity, message s
 	diff := now.Sub(l.lastLog)
 	l.lastLog = now
 	_, _ = fmt.Fprintf(stderrWriter(), "%s %s +%s\n", l.label, message, formatDuration(diff))
+	if buffer := activeBuffer.Load(); buffer != nil {
+		buffer.append(now, l.namespace, message)
+	}
 
 	var record otelLog.Record
 	record.SetTimestamp(now)
