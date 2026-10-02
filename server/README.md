@@ -1467,6 +1467,9 @@ current process only and does not include logs emitted before it was enabled.
 On the server-backed dashboard, administrators can open **Settings → Logs →
 Server logs** to inspect this snapshot as a full-page, preformatted view and
 refresh it. The entry is absent when the endpoint is disabled or access is denied.
+These process-local diagnostics are not canonical dashboard data, so the
+settings viewer reads the protected runtime endpoint rather than a Dashboard
+Language data query.
 
 Use `--redis-url` and optional `--redis-namespace` only on the server command
 line. The same namespace must be supplied to `ingest` and `serve` when
