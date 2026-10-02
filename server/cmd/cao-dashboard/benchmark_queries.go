@@ -153,6 +153,30 @@ func benchmarkQueries(ctx context.Context, store *postgresx.Store, source, datab
 	return report, nil
 }
 
+// loadBenchmarkCandidates reads and decodes the --candidates JSON file into a
+// non-empty list of query names. It is a pure, testable boundary extracted
+// from newBenchmarkQueriesCommand's RunE closure, so the read, decode, and
+// empty-list failure modes are each exercised directly against a real
+// temporary file instead of through a constructed cobra command.
+func loadBenchmarkCandidates(path string) ([]string, error) {
+	content, err := os.ReadFile(path) // #nosec G304 -- the operator explicitly supplies the local candidates path.
+	if err != nil {
+		benchmarkLog.Printf("benchmark candidates load failed stage=read")
+		return nil, fmt.Errorf("read candidates: %w", err)
+	}
+	var candidates []string
+	if err := json.Unmarshal(content, &candidates); err != nil {
+		benchmarkLog.Printf("benchmark candidates load failed stage=decode")
+		return nil, fmt.Errorf("parse candidates: %w", err)
+	}
+	if len(candidates) == 0 {
+		benchmarkLog.Printf("benchmark candidates load failed stage=empty")
+		return nil, errors.New("no query candidates selected")
+	}
+	benchmarkLog.Printf("benchmark candidates loaded count=%d", len(candidates))
+	return candidates, nil
+}
+
 func newBenchmarkQueriesCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "benchmark-queries",
@@ -168,16 +192,9 @@ func newBenchmarkQueriesCommand() *cobra.Command {
 		if *source == "" || *candidatesPath == "" {
 			return errors.New("--source and --candidates are required")
 		}
-		content, err := os.ReadFile(*candidatesPath)
+		candidates, err := loadBenchmarkCandidates(*candidatesPath)
 		if err != nil {
-			return fmt.Errorf("read candidates: %w", err)
-		}
-		var candidates []string
-		if err := json.Unmarshal(content, &candidates); err != nil {
-			return fmt.Errorf("parse candidates: %w", err)
-		}
-		if len(candidates) == 0 {
-			return errors.New("no query candidates selected")
+			return err
 		}
 		endpoint, err := resolvePostgresEndpoint(*postgresURL, os.Getenv("CAO_POSTGRES_URL"))
 		if err != nil {
