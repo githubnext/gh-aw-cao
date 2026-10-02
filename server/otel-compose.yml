@@ -1,3 +1,5 @@
+name: cao-local-otel
+
 services:
   openobserve:
     image: public.ecr.aws/zinclabs/openobserve:latest
