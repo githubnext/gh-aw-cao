@@ -136,6 +136,7 @@ After UI changes, when Playwright loads the full website, capture and include de
 - Editing workflow `.md` files → `npm run compile` (add `compile:locks` if lock files should update)
 - Editing SVGs → `npm run check:svg`
 - Editing documentation under `docs/` → `npm run docs:build`
+- Editing the PostgreSQL schema (`server/spec/storage.tsp`, `server/spec/postgres-emitter.mjs`, or generated `server/internal/postgresx/schema.*`) → from `server/spec/`, run `npm run generate` and `npm test`, commit all changed generated files (including `generated/openapi.json`), then run `npm run check` as a required gate. The check compares generated artifacts against the commit, so it cannot pass before those changes are committed.
 - Unsure what's affected → `npm run check`
 
 ## Working changes
