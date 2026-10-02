@@ -111,6 +111,9 @@ func run() error {
 // error remains the caller's signal for a failed shutdown.
 func shutdownOnDone(ctx context.Context, httpServer *http.Server, timeout time.Duration) {
 	<-ctx.Done()
+	if drainer, ok := httpServer.Handler.(interface{ Drain() }); ok {
+		drainer.Drain()
+	}
 	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), timeout)
 	defer cancel()
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {

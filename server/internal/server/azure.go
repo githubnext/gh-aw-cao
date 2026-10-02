@@ -333,7 +333,16 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 		return nil, err
 	}
 	go app.oauth.runRevocationWorker(context.WithoutCancel(ctx))
-	return app.AzureFunctionsHandler(), nil
+	return &azureFunctionsHandler{Handler: app.AzureFunctionsHandler(), app: app}, nil
+}
+
+type azureFunctionsHandler struct {
+	http.Handler
+	app *App
+}
+
+func (h *azureFunctionsHandler) Drain() {
+	h.app.Drain()
 }
 
 func azureLocalSimulationFromEnv() (bool, error) {
