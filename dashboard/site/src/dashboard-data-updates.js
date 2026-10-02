@@ -591,6 +591,7 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
       schedule(remaining, true);
       return;
     }
+    if (onlineRefreshPending) debugServiceWorker('forcing immediate online dashboard data refresh');
     try {
       debugServiceWorker('requesting data download', { urls: dataUrls });
       const response = await requestWorker(

@@ -34,6 +34,7 @@ The built-in dashboard keeps its shared query foundations and its controls, repo
 `sources.json` is the default deployed input. Add `?fixtures` locally to use the illustrative fixture data.
 
 Add `?online=1` to the dashboard URL to require fresh network responses for the page, its assets, and dashboard data instead of falling back to the service worker's offline cache. The worker bypasses the browser HTTP cache for these requests and redownloads unchanged activity shards during automatic data updates; if the network is unavailable, requests fail rather than showing cached files. Removing the parameter restores offline fallback.
+For fetch and shard-refresh diagnostics, use `?online=1&debug=data:fetch:sw,data:ingestion:sw`; debug logging is off by default.
 
 The [Overview component model](../../docs/dashboard-overview-components.md) documents that page's UI ownership boundaries, state coverage, and fixture-based visual testing convention. The [dashboard view catalog](../../docs/dashboard-view-catalog.md) indexes every standardized product view, built-in page, mark, chart, and named element.
 

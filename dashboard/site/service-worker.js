@@ -23,7 +23,12 @@ const RECORD_SHARD_PATH = /\/gh-aw-logs-records\/[^/]+\.jsonl$/i;
  */
 function debugParameterValue(search) {
   const match = /(?:^|[?&])debug=([^&]*)/.exec(search || '');
-  return match ? decodeURIComponent(match[1]) : '';
+  if (!match) return '';
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return '';
+  }
 }
 
 /** @param {string} pattern */
@@ -99,10 +104,12 @@ function isOnlineUrl(value) {
 }
 
 async function onlineRequest(event) {
-  if (isOnlineUrl(event.request.url)) return true;
-  if (!event.clientId) return false;
-  const client = await self.clients.get(event.clientId);
-  return isOnlineUrl(client?.url);
+  const client = event.clientId ? await self.clients.get(event.clientId) : null;
+  return {
+    online: isOnlineUrl(event.request.url) || isOnlineUrl(client?.url),
+    debug: debugParameterValue(new URL(client?.url ?? event.request.url).search)
+      || debugParameterValue(new URL(event.request.url).search)
+  };
 }
 
 async function downloadData(urls, debug, online = false) {
@@ -173,6 +180,7 @@ async function downloadData(urls, debug, online = false) {
   if (shardEntries.length === 0) {
     throw new Error('Dashboard activity shard manifest contains no compacted run-information shards.');
   }
+  if (online) debugLog(debug, 'data:ingestion:sw', 'forcing online refresh of activity shards', { shardCount: shardEntries.length });
   debugLog(debug, 'data:ingestion:sw', 'published activity manifest', { shardCount: shardEntries.length });
   const currentShardUrls = new Set();
   for (const [index, [name, hash]] of shardEntries.entries()) {
@@ -286,18 +294,21 @@ self.addEventListener('fetch', (event) => {
   if (!isDashboardDataUrl(event.request.url)) {
     if (!isAppAssetUrl(event.request.url)) return;
     event.respondWith((async () => {
-      const online = await onlineRequest(event);
+      const { online, debug } = await onlineRequest(event);
       if (event.request.cache === 'no-store') return fetch(event.request);
       try {
+        if (online) debugLog(debug, 'data:fetch:sw', 'fetching dashboard asset without cache');
         const response = await fetch(online
           ? new Request(event.request, { cache: 'no-store' })
           : event.request);
+        if (online) debugLog(debug, 'data:fetch:sw', 'online dashboard asset response', { status: response.status });
         if (response.ok) {
           const cache = await caches.open(APP_CACHE);
           await cache.put(event.request, response.clone()).catch(() => undefined);
         }
         return response;
       } catch (error) {
+        if (online) debugLog(debug, 'data:fetch:sw', 'online dashboard asset fetch failed');
         if (online) throw error;
         const cached = await caches.match(event.request);
         if (cached) return cached;
@@ -314,11 +325,21 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(fetch(event.request));
     return;
   }
-  const responseRequest = onlineRequest(event).then((online) => {
+  const responseRequest = onlineRequest(event).then(({ online, debug }) => {
+    if (online) debugLog(debug, 'data:fetch:sw', 'fetching dashboard data without cache');
     const request = online ? new Request(event.request, { cache: 'no-store' }) : event.request;
-    return { online, request };
+    return { online, debug, request };
   });
-  const networkResponse = responseRequest.then(({ request }) => fetch(request));
+  const networkResponse = responseRequest.then(async ({ online, debug, request }) => {
+    try {
+      const response = await fetch(request);
+      if (online) debugLog(debug, 'data:fetch:sw', 'online dashboard data response', { status: response.status });
+      return response;
+    } catch (error) {
+      if (online) debugLog(debug, 'data:fetch:sw', 'online dashboard data fetch failed');
+      throw error;
+    }
+  });
   event.waitUntil(networkResponse.then(async (response) => {
     if (!response.ok) return;
     const copy = response.clone();

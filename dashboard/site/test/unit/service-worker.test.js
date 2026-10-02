@@ -360,8 +360,67 @@ describe('dashboard service worker', () => {
     expect(fetch.mock.lastCall?.[0]).toHaveProperty('cache', 'no-store');
   });
 
+  it('logs online fetch outcomes only with matching debug enabled', async () => {
+    const { listeners, fetch, debugConsole } = serviceWorkerHarness([], {
+      clientUrl: 'https://example.test/dashboard/?online=1&debug=data:fetch:sw'
+    });
+    const asset = new Request('https://example.test/dashboard/src/main.js');
+    const data = new Request('https://example.test/dashboard/payload-hashes.json');
+    /** @type {Promise<Response> | undefined} */
+    let response;
+    listeners.fetch({
+      request: asset,
+      clientId: 'online-tab',
+      respondWith: (/** @type {Promise<Response>} */ value) => { response = value; }
+    });
+    await response;
+    expect(debugConsole.debug).toHaveBeenCalledWith(
+      '[cao:data:fetch:sw]', 'fetching dashboard asset without cache'
+    );
+    expect(debugConsole.debug).toHaveBeenCalledWith(
+      '[cao:data:fetch:sw]', 'online dashboard asset response', { status: 200 }
+    );
+    fetch.mockRejectedValueOnce(new TypeError('offline'));
+    listeners.fetch({
+      request: data,
+      clientId: 'online-tab',
+      respondWith: (/** @type {Promise<Response>} */ value) => { response = value; },
+      waitUntil: () => {}
+    });
+    await expect(response).rejects.toThrow('offline');
+    expect(debugConsole.debug).toHaveBeenCalledWith(
+      '[cao:data:fetch:sw]', 'fetching dashboard data without cache'
+    );
+    expect(debugConsole.debug).toHaveBeenCalledWith(
+      '[cao:data:fetch:sw]', 'online dashboard data fetch failed'
+    );
+    expect(JSON.stringify(debugConsole.debug.mock.calls)).not.toContain('example.test');
+
+    const quiet = serviceWorkerHarness([], {
+      clientUrl: 'https://example.test/dashboard/?online=1'
+    });
+    quiet.listeners.fetch({
+      request: asset,
+      clientId: 'online-tab',
+      respondWith: (/** @type {Promise<Response>} */ value) => { response = value; }
+    });
+    await response;
+    expect(quiet.debugConsole.debug).not.toHaveBeenCalled();
+
+    const malformed = serviceWorkerHarness([], {
+      clientUrl: 'https://example.test/dashboard/?online=1&debug=%'
+    });
+    malformed.listeners.fetch({
+      request: asset,
+      clientId: 'online-tab',
+      respondWith: (/** @type {Promise<Response>} */ value) => { response = value; }
+    });
+    await expect(response).resolves.toHaveProperty('status', 200);
+    expect(malformed.debugConsole.debug).not.toHaveBeenCalled();
+  });
+
   it('redownloads unchanged shards for an online dashboard tab', async () => {
-    const { listeners, fetch } = serviceWorkerHarness();
+    const { listeners, fetch, debugConsole } = serviceWorkerHarness();
     const runName = 'gh-aw-logs-runs/2026-08-19-0000-d87bcbb6fd3ba859.jsonl';
     const payloadHashes = JSON.stringify({ [runName]: 'a'.repeat(64) });
     fetch.mockImplementation(async (url) => new Response(
@@ -375,13 +434,15 @@ describe('dashboard service worker', () => {
       'https://example.test/dashboard/?online=1'
     ]) {
       await dispatchExtendedEvent(listeners.message, {
-        data: { type: 'DOWNLOAD_DATA', urls },
+        data: { type: 'DOWNLOAD_DATA', urls, debug: 'data:ingestion:sw' },
         source: { url: sourceUrl },
         ports: [{ postMessage: completed }]
       });
     }
     expect(completed).toHaveBeenCalledWith(expect.objectContaining({ type: 'DOWNLOAD_COMPLETE' }));
     expect(fetch.mock.calls.filter(([url]) => String(url).endsWith(runName))).toHaveLength(2);
+    expect(debugConsole.debug.mock.calls.filter(([, message]) => message === 'forcing online refresh of activity shards'))
+      .toEqual([['[cao:data:ingestion:sw]', 'forcing online refresh of activity shards', { shardCount: 1 }]]);
   });
 
   it('streams foreground dashboard data before its cache write completes', async () => {
