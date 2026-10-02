@@ -1,6 +1,7 @@
 import { isSpuriousAbortAfterSuccessResponse } from "./dashboard-view-assessment.mjs";
 
 export const deployedDashboardUrl = "https://githubnext.github.io/gh-aw-cao/cao/";
+export const DEPLOYED_STORAGE_QUOTA_BYTES = 2 * 1024 ** 3;
 export const populatedDashboardPages = [
   { pageId: "repositories", storeName: "repositories" },
   { pageId: "workflows", storeName: "workflows" },
@@ -8,6 +9,21 @@ export const populatedDashboardPages = [
 ];
 const deployedDashboardBase = new URL(deployedDashboardUrl);
 const deployedActivityShardDirectories = new Set(["gh-aw-logs-runs", "gh-aw-logs-records"]);
+
+export async function configureDeployedStorageQuota(page, url) {
+  const session = await page.context().newCDPSession(page);
+  try {
+    // Incognito quotas depend on runner memory, not the dataset under test.
+    await session.send("Storage.overrideQuotaForOrigin", {
+      origin: new URL(url).origin,
+      quotaSize: DEPLOYED_STORAGE_QUOTA_BYTES,
+    });
+    return session;
+  } catch (error) {
+    await session.detach();
+    throw error;
+  }
+}
 
 export function deployedActivityShardEntries(manifest) {
   const entries = Object.entries(manifest ?? {})
