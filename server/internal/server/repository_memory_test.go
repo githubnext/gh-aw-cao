@@ -7,10 +7,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/repositorymemory"
 )
@@ -36,8 +37,8 @@ func TestRepositoryMemoryHandlers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	seedDatabase(t, database, repositoryMemorySources(manifest, "security-review/notes/context.md", content))
-	app := &App{database: database}
+	directory := repositoryMemoryArtifact(t, manifest, "security-review/notes/context.md", content)
+	app := &App{database: database, config: Config{SourceDirectory: directory}}
 
 	list := httptest.NewRecorder()
 	listRequest := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/memory/security-review", nil)
@@ -62,8 +63,8 @@ func TestRepositoryMemoryHandlers(t *testing.T) {
 func TestRepositoryMemoryHandlersRejectInvalidAndMissingRequests(t *testing.T) {
 	database := integrationDatabase(t)
 	manifest := []byte(`{"version":1,"campaigns":[]}`)
-	seedDatabase(t, database, repositoryMemorySources(manifest, "", nil))
-	app := &App{database: database}
+	directory := repositoryMemoryArtifact(t, manifest, "", nil)
+	app := &App{database: database, config: Config{SourceDirectory: directory}}
 
 	invalid := httptest.NewRecorder()
 	invalidRequest := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/memory/INVALID", nil)
@@ -169,8 +170,8 @@ func TestRepositoryMemoryContentRejectsIntegrityFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	seedDatabase(t, database, repositoryMemorySources(manifest, "security-review/notes/context.md", content))
-	app := &App{database: database}
+	directory := repositoryMemoryArtifact(t, manifest, "security-review/notes/context.md", content)
+	app := &App{database: database, config: Config{SourceDirectory: directory}}
 
 	response := httptest.NewRecorder()
 	request := httptest.NewRequestWithContext(
@@ -195,22 +196,28 @@ func (*repositoryMemoryClient) DoMany(context.Context, [][]string) ([]any, error
 	return nil, nil
 }
 
-func repositoryMemorySources(manifest []byte, fileID string, content []byte) map[string]model.Source {
-	fileRows := []model.Row{}
+func repositoryMemoryArtifact(t *testing.T, manifest []byte, fileID string, content []byte) string {
+	t.Helper()
+	directory, err := os.MkdirTemp(".", "memory-artifact-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(directory) })
+	root := filepath.Join(directory, "memory")
+	if err := os.MkdirAll(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "manifest.json"), manifest, 0600); err != nil {
+		t.Fatal(err)
+	}
 	if fileID != "" {
-		campaign, path, _ := strings.Cut(fileID, "/")
-		fileRows = append(fileRows, model.Row{
-			"id": fileID, "campaign": campaign, "path": path, "content": string(content),
-		})
+		path := filepath.Join(root, filepath.FromSlash(fileID))
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, content, 0600); err != nil {
+			t.Fatal(err)
+		}
 	}
-	return map[string]model.Source{
-		repositorymemory.ManifestSource: {
-			Source: repositorymemory.ManifestSource,
-			Rows:   []model.Row{{"id": "manifest", "content": string(manifest)}},
-		},
-		repositorymemory.FilesSource: {
-			Source: repositorymemory.FilesSource,
-			Rows:   fileRows,
-		},
-	}
+	return directory
 }

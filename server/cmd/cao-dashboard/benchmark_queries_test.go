@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
@@ -122,7 +124,22 @@ func TestBenchmarkQueriesWithDeployedSubset(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	store, err := postgresx.NewWithNamespace(ctx, url, namespace)
+	admin, err := pgx.Connect(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = admin.Close(context.Background()) }()
+	schema := "cao_benchmark_" + namespace
+	if _, err := admin.Exec(ctx, "CREATE SCHEMA "+schema); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _, _ = admin.Exec(context.Background(), "DROP SCHEMA "+schema+" CASCADE") }()
+	config, err := pgx.ParseConfig(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config.RuntimeParams["search_path"] = schema
+	store, err := postgresx.NewConfig(ctx, config, namespace)
 	if err != nil {
 		t.Fatal("cannot initialize test Postgres")
 	}
@@ -140,7 +157,7 @@ func TestBenchmarkQueriesWithDeployedSubset(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if report.Engine != "postgres-go" || report.Records == 0 || report.SourceCounts["$runs"] == 0 {
+	if report.Engine != "postgres-native-sql" || report.Records == 0 || report.SourceCounts["$runs"] == 0 {
 		t.Fatalf("invalid Postgres ingestion report: %+v", report)
 	}
 
@@ -171,22 +188,48 @@ func TestBenchmarkCleanupPreservesOtherNamespaces(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	first, err := postgresx.NewWithNamespace(ctx, url, one)
+	admin, err := pgx.Connect(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = admin.Close(context.Background()) }()
+	schema := "cao_benchmark_" + one
+	if _, err := admin.Exec(ctx, "CREATE SCHEMA "+schema); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _, _ = admin.Exec(context.Background(), "DROP SCHEMA "+schema+" CASCADE") }()
+	config, err := pgx.ParseConfig(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config.RuntimeParams["search_path"] = schema
+	first, err := postgresx.NewConfig(ctx, config, one)
 	if err != nil {
 		t.Fatal("cannot initialize test Postgres")
 	}
 	defer func() { _ = first.Close() }()
 	defer func() { _ = first.DeleteNamespace(context.Background()) }()
-	second, err := postgresx.NewWithNamespace(ctx, url, two)
+	second, err := postgresx.NewConfig(ctx, config, two)
 	if err != nil {
 		t.Fatal("cannot initialize test Postgres")
 	}
 	defer func() { _ = second.Close() }()
 	defer func() { _ = second.DeleteNamespace(context.Background()) }()
 	for _, store := range []*postgresx.Store{first, second} {
-		if _, err := store.Replace(ctx, map[string]model.Source{"$runs": {
-			Source: "$runs", Rows: []model.Row{{"id": "test"}},
-		}}, model.Diagnostics{}, "benchmark-test", time.Now()); err != nil {
+		writer, err := store.BeginIngestion(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for name, row := range map[string]model.Row{
+			"$repositories": {"id": "repo"}, "$workflows": {"id": "workflow", "repositoryId": "repo"}, "$runs": {"id": "test", "workflowId": "workflow", "repositoryId": "repo"},
+		} {
+			if err := writer.Append(ctx, name, row); err != nil {
+				writer.Abort(ctx)
+				t.Fatal(err)
+			}
+		}
+		if _, err := writer.Publish(ctx, "benchmark-test"); err != nil {
+			writer.Abort(ctx)
 			t.Fatal(err)
 		}
 	}

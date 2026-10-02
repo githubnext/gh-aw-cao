@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
 
@@ -471,24 +472,48 @@ func (d Doctor) checkSourceReads(ctx context.Context) Check {
 	totalRows, near := 0, []string{}
 	for _, name := range sortedKeys(active.Counts) {
 		started := time.Now()
-		source, _, err := d.Postgres.LoadSource(ctx, name, nil)
+		readCount, expected := 0, active.Counts[name]
+		err := d.Postgres.WithReadTransaction(ctx, func(ctx context.Context, reader postgresx.NativeReader) error {
+			snapshot, err := reader.State(ctx)
+			if err != nil {
+				return err
+			}
+			expected = snapshot.Counts[name]
+			for offset := 0; ; {
+				sources, _, err := reader.ExecuteSQLPlanWithOptions(ctx, []query.Definition{{Name: "doctor-read-probe", From: name}}, []string{"doctor-read-probe"},
+					postgresx.SQLExecutionOptions{Pages: map[string]postgresx.SQLPage{"doctor-read-probe": {Offset: offset, Limit: query.MaxOutputRows}}})
+				if err != nil {
+					return err
+				}
+				source := sources["doctor-read-probe"]
+				readCount += len(source.Rows)
+				offset += len(source.Rows)
+				total, _ := source.Metadata["total-row-count"].(int)
+				if offset >= total {
+					return nil
+				}
+				if len(source.Rows) == 0 {
+					return fmt.Errorf("native read probe did not advance")
+				}
+			}
+		})
 		elapsed := time.Since(started)
 		if err != nil {
 			failures = append(failures, fmt.Sprintf("%s: %v", name, err))
 			continue
 		}
-		totalRows += len(source.Rows)
+		totalRows += readCount
 		if elapsed > slowestDuration {
 			slowest, slowestDuration = name, elapsed
 		}
 		// The engine refuses a source above MaxInputRows outright, so a source
 		// approaching it is about to stop being readable at all.
-		if len(source.Rows) > (query.MaxInputRows*9)/10 {
-			near = append(near, fmt.Sprintf("%s (%d rows)", name, len(source.Rows)))
+		if readCount > (query.MaxInputRows*9)/10 {
+			near = append(near, fmt.Sprintf("%s (%d rows)", name, readCount))
 		}
-		if count, ok := active.Counts[name]; ok && count != len(source.Rows) {
+		if expected != readCount {
 			failures = append(failures,
-				fmt.Sprintf("%s: read %d rows but the stored state records %d", name, len(source.Rows), count))
+				fmt.Sprintf("%s: read %d rows but the stored state records %d", name, readCount, expected))
 		}
 	}
 	details := []Detail{

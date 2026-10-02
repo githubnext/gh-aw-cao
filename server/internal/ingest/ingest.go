@@ -27,15 +27,6 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
-var collections = []string{
-	"campaigns", "repositories", "workflows", "runs",
-	"jobs", "sessions", "events",
-	"domains", "tools", "skills", "friction", "audits", "issues", "operationalValues",
-	"experiments", "experimentAssignments", "graders", "graderObservations", "evals", "evalObservations",
-}
-
-const projectionBatchSize = 25_000
-
 var ingestLog = logger.New("cao:ingest")
 
 type Result struct {
@@ -44,18 +35,15 @@ type Result struct {
 	EvaluatedAt  string         `json:"evaluatedAt"`
 	Counts       map[string]int `json:"counts"`
 }
-
 type Options struct {
 	DatabaseQueriesPath string
 	Force               bool
 }
-
 type Manifest map[string]string
 
 func ValidateManifest(directory string) (Manifest, []string, []string, error) {
-	manifestPath := filepath.Join(directory, "payload-hashes.json")
-	// #nosec G304 -- the caller explicitly selects the local deployment directory.
-	content, err := os.ReadFile(manifestPath)
+	// #nosec G304 -- the operator selects the deployment directory.
+	content, err := os.ReadFile(filepath.Join(directory, "payload-hashes.json"))
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("read payload manifest: %w", err)
 	}
@@ -72,31 +60,31 @@ func ValidateManifest(directory string) (Manifest, []string, []string, error) {
 		if clean != name || filepath.IsAbs(name) || strings.HasPrefix(clean, "../") {
 			return nil, nil, nil, fmt.Errorf("manifest path %q is unsafe", name)
 		}
-		verifyContentHash := false
-		switch {
-		case strings.HasPrefix(name, "gh-aw-logs-runs/") && strings.HasSuffix(name, ".jsonl"):
-			runs = append(runs, name)
-			verifyContentHash = true
-		case strings.HasPrefix(name, "gh-aw-logs-records/") && strings.HasSuffix(name, ".jsonl"):
-			records = append(records, name)
-			verifyContentHash = true
-		case strings.HasPrefix(name, "gh-aw-logs-shards/"):
-			return nil, nil, nil, errors.New("raw activity JSONL is not supported; compacted run/record shards are required")
-		}
 		if len(expected) != 64 {
 			return nil, nil, nil, fmt.Errorf("manifest hash for %q is not SHA-256", name)
 		}
-		if !verifyContentHash {
-			continue
+		if _, err := hex.DecodeString(expected); err != nil {
+			return nil, nil, nil, fmt.Errorf("manifest hash for %q is not SHA-256", name)
 		}
-		// #nosec G304 -- name is constrained above to a clean relative manifest path.
-		payload, err := os.ReadFile(filepath.Join(directory, filepath.FromSlash(name)))
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("read manifested payload %q: %w", name, err)
+		shard := false
+		switch {
+		case strings.HasPrefix(name, "gh-aw-logs-runs/") && strings.HasSuffix(name, ".jsonl"):
+			runs = append(runs, name)
+			shard = true
+		case strings.HasPrefix(name, "gh-aw-logs-records/") && strings.HasSuffix(name, ".jsonl"):
+			records = append(records, name)
+			shard = true
+		case strings.HasPrefix(name, "gh-aw-logs-shards/"):
+			return nil, nil, nil, errors.New("raw activity JSONL is not supported; compacted run/record shards are required")
 		}
-		sum := sha256.Sum256(payload)
-		if !strings.EqualFold(hex.EncodeToString(sum[:]), expected) {
-			return nil, nil, nil, fmt.Errorf("payload hash mismatch for %q", name)
+		if shard {
+			actual, err := fileHash(filepath.Join(directory, filepath.FromSlash(name)))
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("read manifested payload %q: %w", name, err)
+			}
+			if !strings.EqualFold(actual, expected) {
+				return nil, nil, nil, fmt.Errorf("payload hash mismatch for %q", name)
+			}
 		}
 	}
 	if len(runs) == 0 {
@@ -107,7 +95,25 @@ func ValidateManifest(directory string) (Manifest, []string, []string, error) {
 	return manifest, runs, records, nil
 }
 
+func fileHash(path string) (string, error) {
+	// #nosec G304 -- paths are operator-selected or clean manifest-relative paths.
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = file.Close() }()
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, file); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hasher.Sum(nil)), nil
+}
+
 func DirectoryRevision(manifest Manifest, inventory []byte, additionalRevisions ...string) string {
+	sum := sha256.Sum256(inventory)
+	return directoryRevision(manifest, hex.EncodeToString(sum[:]), additionalRevisions...)
+}
+func directoryRevision(manifest Manifest, inventoryHash string, additionalRevisions ...string) string {
 	keys := make([]string, 0, len(manifest))
 	for key := range manifest {
 		keys = append(keys, key)
@@ -117,8 +123,7 @@ func DirectoryRevision(manifest Manifest, inventory []byte, additionalRevisions 
 	for _, key := range keys {
 		_, _ = io.WriteString(hasher, key+"\x00"+strings.ToLower(manifest[key])+"\x00")
 	}
-	sum := sha256.Sum256(inventory)
-	_, _ = io.WriteString(hasher, "inventory\x00"+hex.EncodeToString(sum[:]))
+	_, _ = io.WriteString(hasher, "inventory\x00"+inventoryHash)
 	for _, revision := range additionalRevisions {
 		_, _ = io.WriteString(hasher, "\x00additional\x00"+revision)
 	}
@@ -126,16 +131,12 @@ func DirectoryRevision(manifest Manifest, inventory []byte, additionalRevisions 
 }
 
 func Run(ctx context.Context, store *postgresx.Store, directory string, options Options) (result Result, err error) {
-	ingestLog.Printf("starting ingestion")
 	ctx, span := telemetry.Tracer().Start(ctx, telemetry.SpanIngestRun)
 	defer func() {
 		if err != nil {
 			span.SetStatus(codes.Error, "ingestion failed")
 		} else {
-			span.SetAttributes(
-				attribute.Int64("cao_dashboard.ingest.revision", result.Revision),
-				attribute.Int("cao_dashboard.ingest.source_count", len(result.Counts)),
-			)
+			span.SetAttributes(attribute.Int64("cao_dashboard.ingest.revision", result.Revision), attribute.Int("cao_dashboard.ingest.source_count", len(result.Counts)))
 			span.SetStatus(codes.Ok, "")
 		}
 		span.End()
@@ -144,173 +145,83 @@ func Run(ctx context.Context, store *postgresx.Store, directory string, options 
 	if err != nil {
 		return Result{}, err
 	}
-	ingestLog.Printf("validated manifest entries=%d run_shards=%d record_shards=%d", len(manifest), len(runs), len(records))
-	// #nosec G304 -- the filename is fixed within the caller-selected deployment directory.
-	inventoryContent, err := os.ReadFile(filepath.Join(directory, "inventory-sources.json"))
+	inventoryPath := filepath.Join(directory, "inventory-sources.json")
+	inventoryHash, err := fileHash(inventoryPath)
 	if err != nil {
 		return Result{}, fmt.Errorf("read inventory-sources.json: %w", err)
-	}
-	inventory, err := parseInventory(inventoryContent)
-	if err != nil {
-		return Result{}, err
 	}
 	memory, err := repositorymemory.Load(directory)
 	if err != nil {
 		return Result{}, err
 	}
-	dataRevision := DirectoryRevision(manifest, inventoryContent, memory.Revision)
+	dataRevision := directoryRevision(manifest, inventoryHash, memory.Revision)
 	active, err := store.State(ctx)
 	if err != nil {
-		return Result{}, fmt.Errorf("read dashboard database state: %w", err)
+		return Result{}, err
 	}
-	manifestRows, hasRepositoryMemoryManifest := active.Counts[repositorymemory.ManifestSource]
-	_, hasRepositoryMemoryFiles := active.Counts[repositorymemory.FilesSource]
-	if !options.Force && active.Ready && active.DataRevision == dataRevision &&
-		hasRepositoryMemoryManifest && manifestRows == 1 && hasRepositoryMemoryFiles {
-		ingestLog.Printf("reusing dashboard data revision=%d sources=%d", active.Revision, len(active.Counts))
-		evaluatedAt := active.EvaluatedAt
-		if evaluatedAt.IsZero() {
-			evaluatedAt = time.Unix(0, 0).UTC()
+	if !options.Force && active.Ready && active.DataRevision == dataRevision {
+		return stateResult(active), nil
+	}
+	writer, err := store.BeginIngestion(ctx)
+	if err != nil {
+		return Result{}, err
+	}
+	defer writer.Abort(ctx)
+	if !options.Force && writer.PreviousDataRevision == dataRevision {
+		writer.Abort(ctx)
+		active, err := store.State(ctx)
+		if err != nil {
+			return Result{}, err
 		}
-		return Result{
-			Revision:     active.Revision,
-			DataRevision: dataRevision, EvaluatedAt: evaluatedAt.UTC().Format(time.RFC3339Nano),
-			Counts: active.Counts,
-		}, nil
+		return stateResult(active), nil
 	}
-	canonical := map[string][]model.Row{}
-	for _, name := range collections {
-		canonical[name] = []model.Row{}
-	}
-	for _, name := range append(runs, records...) {
-		if err := readShard(filepath.Join(directory, filepath.FromSlash(name)), canonical); err != nil {
+	for _, source := range []string{"$security-findings", "$outcomes", "work-items"} {
+		if err := writer.Quality(ctx, source, model.Metadata{"availability": "unavailable", "completeness": "unknown", "freshness": "unknown"}); err != nil {
 			return Result{}, err
 		}
 	}
-	ingestLog.Printf("loaded canonical shards collections=%d", len(canonical))
-	sources := inventory
-	for name, rows := range canonical {
-		sources["$"+name] = model.Source{Source: "$" + name, Rows: rows, Metadata: model.Metadata{}}
-	}
-	memorySources, err := repositoryMemorySources(memory)
-	if err != nil {
-		return Result{}, err
-	}
-	for name, source := range memorySources {
-		sources[name] = source
-	}
-	diagnostics := buildDiagnostics(canonical)
-	if err := validateDiagnostics(diagnostics); err != nil {
-		return Result{}, err
-	}
-	counts := map[string]int{}
-	for _, name := range sortedSourceNames(sources) {
-		source := sources[name]
-		source.Source = name
-		if source.Metadata == nil {
-			source.Metadata = model.Metadata{}
-		}
-		source.Metadata["source-id"] = name
-		source.Metadata["source-revision"] = dataRevision
-		source.Metadata["availability"] = availability(source.Rows)
-		source.Metadata["row-count"] = len(source.Rows)
-		sources[name] = source
-		counts[name] = len(source.Rows)
-	}
-	evaluatedAt := sourceEvaluationTime(sources)
-	revision, err := store.Replace(ctx, sources, diagnostics, dataRevision, evaluatedAt)
-	if err != nil {
-		return Result{}, err
-	}
-	ingestLog.Printf("stored dashboard data revision=%d sources=%d", revision, len(counts))
-	return Result{
-		Revision: revision, DataRevision: dataRevision,
-		EvaluatedAt: evaluatedAt.Format(time.RFC3339Nano), Counts: counts,
-	}, nil
-}
-
-func repositoryMemorySources(snapshot repositorymemory.Snapshot) (map[string]model.Source, error) {
-	fileKeys := make([]string, 0, len(snapshot.Files))
-	for key := range snapshot.Files {
-		fileKeys = append(fileKeys, key)
-	}
-	sort.Strings(fileKeys)
-	fileRows := make([]model.Row, 0, len(fileKeys))
-	for _, key := range fileKeys {
-		campaign, path, found := strings.Cut(key, "\x00")
-		if !found {
-			return nil, errors.New("repository-memory file key is invalid")
-		}
-		fileRows = append(fileRows, model.Row{
-			"id":       campaign + "/" + path,
-			"campaign": campaign,
-			"path":     path,
-			"content":  string(snapshot.Files[key]),
-		})
-	}
-	return map[string]model.Source{
-		repositorymemory.ManifestSource: {
-			Source: repositorymemory.ManifestSource,
-			Rows:   []model.Row{{"id": "manifest", "content": string(snapshot.Manifest)}},
-		},
-		repositorymemory.FilesSource: {
-			Source: repositorymemory.FilesSource,
-			Rows:   fileRows,
-		},
-	}, nil
-}
-
-func validateDiagnostics(diagnostics model.Diagnostics) error {
-	if len(diagnostics.RelationshipErrors) > 0 {
-		return fmt.Errorf("canonical projection has %d relationship errors", len(diagnostics.RelationshipErrors))
-	}
-	duplicateCount := 0
-	for _, ids := range diagnostics.DuplicateRecordIDs {
-		duplicateCount += len(ids)
-	}
-	if duplicateCount > 0 {
-		return fmt.Errorf("canonical projection has %d duplicate record IDs", duplicateCount)
-	}
-	return nil
-}
-
-func sourceEvaluationTime(sources map[string]model.Source) time.Time {
-	fields := map[string]bool{
-		"as-of": true, "retrieved-at": true, "observed-at": true, "observedAt": true,
-		"event-timestamp": true, "created-at": true, "createdAt": true,
-		"started-at": true, "startedAt": true, "ended-at": true, "completedAt": true,
-		"updated-at": true, "updatedAt": true,
-	}
-	latest := time.Unix(0, 0).UTC()
-	consider := func(value any) {
-		text, ok := value.(string)
-		if !ok {
-			return
-		}
-		instant, err := time.Parse(time.RFC3339Nano, text)
-		if err == nil && instant.After(latest) {
-			latest = instant.UTC()
-		}
-	}
-	for _, source := range sources {
-		for field := range fields {
-			consider(source.Metadata[field])
-		}
-		for _, row := range source.Rows {
-			for field := range fields {
-				consider(row[field])
+	if len(records) == 0 {
+		for _, source := range []string{"$domains", "$tools", "$skills", "$friction", "$audits", "$issues", "$jobs", "$sessions", "$events", "$graders", "$graderObservations", "$evals", "$evalObservations", "$operationalValues"} {
+			if err := writer.Quality(ctx, source, model.Metadata{"availability": "unavailable", "completeness": "unknown", "freshness": "unknown"}); err != nil {
+				return Result{}, err
 			}
 		}
 	}
-	return latest
+	// Canonical run identity is authoritative and always precedes linked records.
+	for _, phase := range [][]string{runs, records} {
+		for _, name := range phase {
+			if err := readShard(ctx, writer, filepath.Join(directory, filepath.FromSlash(name)), manifest[name]); err != nil {
+				return Result{}, err
+			}
+		}
+		if err := writer.Flush(ctx); err != nil {
+			return Result{}, err
+		}
+	}
+	_, err = loadDefinitions(options.DatabaseQueriesPath)
+	if err != nil {
+		return Result{}, err
+	}
+	if err := readInventory(ctx, writer, inventoryPath, inventoryHash); err != nil {
+		return Result{}, err
+	}
+	active, err = writer.Publish(ctx, dataRevision)
+	if err != nil {
+		return Result{}, err
+	}
+	ingestLog.Printf("published native revision=%d collections=%d", active.Revision, len(active.Counts))
+	return stateResult(active), nil
 }
 
-//nolint:unparam // Test callers use one fixture; the helper accepts arbitrary query paths.
+func stateResult(state postgresx.State) Result {
+	return Result{Revision: state.Revision, DataRevision: state.DataRevision, EvaluatedAt: state.EvaluatedAt.UTC().Format(time.RFC3339Nano), Counts: state.Counts}
+}
+
 func loadDefinitions(path string) ([]query.Definition, error) {
 	if path == "" {
-		return nil, errors.New("database query path is required")
+		return nil, errors.New("database query path is required for typed inventory adapters")
 	}
-	// #nosec G304 -- the operator explicitly configures the local query-definition path.
+	// #nosec G304 -- the operator configures this local definition file.
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read database queries: %w", err)
@@ -322,46 +233,28 @@ func loadDefinitions(path string) ([]query.Definition, error) {
 	return definitions, nil
 }
 
-func parseInventory(content []byte) (map[string]model.Source, error) {
-	decoder := json.NewDecoder(bytes.NewReader(content))
-	decoder.UseNumber()
-	var raw map[string]json.RawMessage
-	if err := decoder.Decode(&raw); err != nil {
-		return nil, fmt.Errorf("parse inventory-sources.json: %w", err)
-	}
-	sources := map[string]model.Source{}
-	for name, payload := range raw {
-		var source model.Source
-		if err := json.Unmarshal(payload, &source); err == nil && source.Rows != nil {
-			source.Source = name
-			if source.Metadata == nil {
-				source.Metadata = model.Metadata{}
-			}
-			sources[name] = source
-			continue
-		}
-		var rows []model.Row
-		if err := json.Unmarshal(payload, &rows); err != nil {
-			return nil, fmt.Errorf("inventory source %q must be a LogicalSourceInput or row array", name)
-		}
-		sources[name] = model.Source{Source: name, Rows: rows, Metadata: model.Metadata{}}
-	}
-	return sources, nil
-}
-
-func readShard(path string, canonical map[string][]model.Row) error {
-	// #nosec G304 -- path comes from a manifest entry validated by ValidateManifest.
+func readShard(ctx context.Context, writer *postgresx.Writer, path, expected string) error {
+	// #nosec G304 -- manifest-relative paths were validated by ValidateManifest.
 	file, err := os.Open(path)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		_ = file.Close()
-	}()
-	scanner := bufio.NewScanner(file)
+	defer func() { _ = file.Close() }()
+	hasher := sha256.New()
+	scanner := bufio.NewScanner(io.TeeReader(file, hasher))
 	scanner.Buffer(make([]byte, 64*1024), 16*1024*1024)
 	line := 0
+	var expectedRecords *int64
+	var count int64
+	header := false
+	kind := "records"
+	if clean := filepath.ToSlash(path); strings.HasPrefix(clean, "gh-aw-logs-runs/") || strings.Contains(clean, "/gh-aw-logs-runs/") {
+		kind = "runs"
+	}
 	for scanner.Scan() {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		line++
 		if len(bytes.TrimSpace(scanner.Bytes())) == 0 {
 			continue
@@ -370,385 +263,313 @@ func readShard(path string, canonical map[string][]model.Row) error {
 			Kind       string          `json:"kind"`
 			Collection string          `json:"collection"`
 			Record     json.RawMessage `json:"record"`
+			Records    *int64          `json:"records"`
+			Phase      string          `json:"phase"`
 		}
 		if err := json.Unmarshal(scanner.Bytes(), &envelope); err != nil {
-			return fmt.Errorf("%s:%d must contain valid canonical JSON: %w", path, line, err)
+			return fmt.Errorf("%s:%d must contain valid canonical JSON", path, line)
 		}
-		if envelope.Kind != "record" {
+		switch envelope.Kind {
+		case "metadata":
+			if header || count != 0 || envelope.Records == nil || *envelope.Records < 0 ||
+				envelope.Phase != "" && envelope.Phase != kind {
+				return errors.New("normalized shard metadata is invalid")
+			}
+			header = true
+			expectedRecords = envelope.Records
 			continue
+		case "record":
+			if !header {
+				return errors.New("normalized shard requires its metadata header before records")
+			}
+		default:
+			return fmt.Errorf("%s:%d has unsupported canonical envelope", path, line)
 		}
-		if _, ok := canonical[envelope.Collection]; !ok {
-			return fmt.Errorf("%s:%d has unsupported collection %q", path, line, envelope.Collection)
+		if !postgresx.IsCanonicalCollection(envelope.Collection) {
+			return errors.New("normalized shard collection is not registered by TypeSpec")
 		}
+		runCollection := false
+		switch envelope.Collection {
+		case "campaigns", "repositories", "workflows", "runs", "experiments", "experimentAssignments":
+			runCollection = true
+		}
+		if runCollection != (kind == "runs") {
+			return errors.New("normalized collection is in the wrong shard phase")
+		}
+		decoder := json.NewDecoder(bytes.NewReader(envelope.Record))
+		decoder.UseNumber()
 		var row model.Row
-		if err := json.Unmarshal(envelope.Record, &row); err != nil || row == nil {
+		if err := decoder.Decode(&row); err != nil || row == nil {
 			return fmt.Errorf("%s:%d record must be an object", path, line)
 		}
-		canonical[envelope.Collection] = append(canonical[envelope.Collection], row)
+		if err := writer.Append(ctx, "$"+envelope.Collection, row); err != nil {
+			return fmt.Errorf("%s:%d: %w", path, line, err)
+		}
+		count++
 	}
 	if err := scanner.Err(); err != nil {
 		return fmt.Errorf("scan %s: %w", path, err)
 	}
+	if !strings.EqualFold(hex.EncodeToString(hasher.Sum(nil)), expected) {
+		return fmt.Errorf("payload hash mismatch while ingesting %q", path)
+	}
+	if expectedRecords == nil || *expectedRecords != count {
+		return errors.New("normalized shard record count does not match its metadata")
+	}
+	scope := filepath.ToSlash(filepath.Join(filepath.Base(filepath.Dir(path)), filepath.Base(path)))
+	identity := sha256.Sum256([]byte(scope + "\x00" + strings.ToLower(expected)))
+	return writer.Append(ctx, "$transactions", model.Row{"id": "shard:" + hex.EncodeToString(identity[:]), "kind": kind,
+		"payloadScope": scope,
+		"payloadHash":  strings.ToLower(expected), "records": count, "committedRecords": count})
+}
+
+func skipValue(decoder *json.Decoder, budget *boundedJSONReader) error {
+	budget.remaining = maxJSONRecordBytes
+	token, err := decoder.Token()
+	if err != nil {
+		return err
+	}
+	if delimiter, ok := token.(json.Delim); ok && (delimiter == '{' || delimiter == '[') {
+		for decoder.More() {
+			if err := skipValue(decoder, budget); err != nil {
+				return err
+			}
+		}
+		_, err = decoder.Token()
+	}
+	return err
+}
+
+const maxJSONRecordBytes = 16 << 20
+
+type boundedJSONReader struct {
+	reader    io.Reader
+	remaining int
+}
+
+func (reader *boundedJSONReader) Read(target []byte) (int, error) {
+	if reader.remaining <= 0 {
+		return 0, errors.New("inventory JSON value exceeds the bounded record budget")
+	}
+	count, err := reader.reader.Read(target[:min(len(target), reader.remaining)])
+	reader.remaining -= count
+	return count, err
+}
+
+func readInventory(ctx context.Context, writer *postgresx.Writer, path, expected string) error {
+	// #nosec G304 -- the inventory path is fixed within the deployment directory.
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = file.Close() }()
+	hasher := sha256.New()
+	budget := &boundedJSONReader{reader: io.TeeReader(file, hasher), remaining: maxJSONRecordBytes}
+	decoder := json.NewDecoder(budget)
+	decoder.UseNumber()
+	token, err := decoder.Token()
+	if err != nil || token != json.Delim('{') {
+		return errors.New("inventory-sources.json must be an object")
+	}
+	for decoder.More() {
+		budget.remaining = maxJSONRecordBytes
+		token, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		name, ok := token.(string)
+		if !ok {
+			return errors.New("inventory source name must be text")
+		}
+		switch name {
+		case "campaigns", "repositories", "workflows", "security-findings", "outcomes", "work-items":
+		default:
+			// Unconsumed report projections and run/experiment substitutes are
+			// not admitted as canonical database authority.
+			if err := skipValue(decoder, budget); err != nil {
+				return err
+			}
+			continue
+		}
+		first, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		qualitySource := name
+		if name != "work-items" {
+			qualitySource = "$" + name
+		}
+		if err := writer.Quality(ctx, qualitySource, model.Metadata{}); err != nil {
+			return err
+		}
+		rows := func() error {
+			for decoder.More() {
+				budget.remaining = maxJSONRecordBytes
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+				var row model.Row
+				if err := decoder.Decode(&row); err != nil || row == nil {
+					return errors.New("inventory row must be an object")
+				}
+				source, normalized, err := inventoryRow(name, row)
+				if err != nil {
+					return err
+				}
+				if err := writer.AppendInventory(ctx, source, normalized); err != nil {
+					return err
+				}
+			}
+			end, err := decoder.Token()
+			if err != nil || end != json.Delim(']') {
+				return errors.New("inventory rows must be an array")
+			}
+			return nil
+		}
+		switch first {
+		case json.Delim('['):
+			if err := rows(); err != nil {
+				return err
+			}
+		case json.Delim('{'):
+			for decoder.More() {
+				budget.remaining = maxJSONRecordBytes
+				key, err := decoder.Token()
+				if err != nil {
+					return err
+				}
+				if key == "rows" {
+					start, err := decoder.Token()
+					if err != nil || start != json.Delim('[') {
+						return errors.New("inventory rows must be an array")
+					}
+					if err := rows(); err != nil {
+						return err
+					}
+				} else if key == "metadata" {
+					var metadata model.Metadata
+					if err := decoder.Decode(&metadata); err != nil {
+						return err
+					}
+					source := name
+					if name != "work-items" {
+						source = "$" + name
+					}
+					if err := writer.Quality(ctx, source, metadata); err != nil {
+						return err
+					}
+				} else if err := skipValue(decoder, budget); err != nil {
+					return err
+				}
+			}
+			if _, err := decoder.Token(); err != nil {
+				return err
+			}
+		default:
+			return errors.New("inventory input must be a row array or a logical-source envelope")
+		}
+	}
+	if _, err := decoder.Token(); err != nil {
+		return err
+	}
+	if _, err := decoder.Token(); err != io.EOF {
+		return errors.New("inventory contains trailing JSON")
+	}
+	if !strings.EqualFold(hex.EncodeToString(hasher.Sum(nil)), expected) {
+		return errors.New("inventory changed while ingesting")
+	}
 	return nil
 }
 
-func projectSources(canonical map[string][]model.Row, inventory map[string]model.Source, definitions []query.Definition) (map[string]model.Source, error) {
-	sources := map[string]model.Source{}
-	for name, source := range inventory {
-		sources[name] = source
+// inventoryRow is mechanical field normalization, not a query evaluator.
+// Canonical IDs use the same stable coordinate rules as ingestion.json.
+func inventoryRow(name string, input model.Row) (string, model.Row, error) {
+	source := name
+	if name != "work-items" {
+		source = "$" + name
 	}
-	inputs := map[string]model.Source{}
-	for name, rows := range canonical {
-		inputs["$"+name] = model.Source{Source: "$" + name, Rows: rows, Metadata: model.Metadata{"availability": availability(rows)}}
-	}
-	index := map[string]query.Definition{}
-	for _, definition := range definitions {
-		index[definition.Name] = definition
-	}
-	execute := func(definition query.Definition, available map[string]model.Source) (model.Source, error) {
-		result, _, _, err := query.ExecuteDefinition(definition, available, query.MaxOperations)
-		return result, err
-	}
-	for _, name := range []string{"campaigns", "repositories", "workflows", "runs", "overview-runs", "operational-values"} {
-		definition, ok := index[name]
-		if !ok {
-			continue
-		}
-		available := mergeSourceMaps(inputs, sources)
-		result, err := execute(definition, available)
+	row := model.Row{}
+	switch name {
+	case "campaigns", "repositories", "workflows":
+		var err error
+		row, err = postgresx.NormalizeInventoryFields(name, input)
 		if err != nil {
-			return nil, fmt.Errorf("project %s: %w", name, err)
+			return "", nil, err
 		}
-		if name == "operational-values" {
-			sources[name] = result
-		} else {
-			sources[name] = mergeLogical(sources[name], result)
+		if observed, present := input["observed-at"]; present {
+			row["observedAt"] = observed
 		}
-	}
-	for _, name := range []string{
-		"experiments", "experiment-assignments", "graders", "grader-observations", "evals", "eval-observations",
-	} {
-		definition, ok := index[name]
-		if !ok {
-			return nil, fmt.Errorf("missing canonical evidence query %q", name)
-		}
-		result, err := execute(definition, mergeSourceMaps(inputs, sources))
-		if err != nil {
-			return nil, fmt.Errorf("project %s: %w", name, err)
-		}
-		sources[name] = result
-	}
-	for _, name := range []string{"jobs", "sessions", "events"} {
-		if len(canonical[name]) == 0 {
-			continue
-		}
-		sources[name] = mergeLogical(sources[name], model.Source{
-			Source:   name,
-			Rows:     canonical[name],
-			Metadata: model.Metadata{"availability": availability(canonical[name])},
-		})
-	}
-	runRecords, ok := index["run-records"]
-	if ok {
-		for _, name := range []string{"domains", "tools", "skills", "friction", "audits", "issues"} {
-			records := canonical[name]
-			projected := model.Source{Source: name, Rows: []model.Row{}, Metadata: model.Metadata{}}
-			for offset := 0; offset < max(1, len(records)); offset += projectionBatchSize {
-				end := min(len(records), offset+projectionBatchSize)
-				batch := records[offset:end]
-				available := mergeSourceMaps(sources, map[string]model.Source{
-					"$records": {Source: "$records", Rows: batch, Metadata: model.Metadata{}},
-					"$runs":    {Source: "$runs", Rows: canonical["runs"], Metadata: model.Metadata{}},
-				})
-				result, err := execute(runRecords, available)
-				if err != nil {
-					return nil, fmt.Errorf("project %s batch %d-%d: %w", name, offset, end, err)
-				}
-				projected.Rows = append(projected.Rows, result.Rows...)
-				for key, value := range result.Metadata {
-					projected.Metadata[key] = value
-				}
-				if len(records) == 0 {
-					break
-				}
+		text := func(field string) string { value, _ := input[field].(string); return strings.TrimSpace(value) }
+		switch name {
+		case "campaigns":
+			slug := text("campaign")
+			if slug == "" {
+				return "", nil, errors.New("inventory campaign requires a slug")
 			}
-			sources[name] = mergeLogical(sources[name], projected)
-		}
-	}
-	for _, name := range []string{"mcp-calls", "findings", "firewall-observations"} {
-		definition, exists := index[name]
-		if !exists {
-			continue
-		}
-		store := map[string]string{"mcp-calls": "tools", "findings": "audits", "firewall-observations": "domains"}[name]
-		available := mergeSourceMaps(sources, map[string]model.Source{"run-records": sources[store]})
-		result, err := execute(definition, available)
-		if err != nil {
-			return nil, fmt.Errorf("project %s: %w", name, err)
-		}
-		sources[name] = mergeLogical(sources[name], result)
-	}
-	if definition, exists := index["outcomes"]; exists {
-		records := sources["issues"]
-		for _, row := range records.Rows {
-			correlation := strings.TrimSpace(fmt.Sprint(row["correlation-id"]))
-			if correlation == "" || correlation == "<nil>" {
-				continue
+			row["id"], row["slug"] = "campaign:dashboard-sources:"+encodeCoordinate(slug), slug
+			if _, present := row["name"]; !present {
+				row["name"] = slug
 			}
-			label := "View issue"
-			if row["is-pull-request"] == true {
-				label = "View pull request"
+		case "repositories":
+			owner, repository := text("organization"), text("repository")
+			if owner == "" || repository == "" {
+				return "", nil, errors.New("inventory repository requires a coordinate")
 			}
-			link := map[string]any{"href": correlation, "label": label}
-			if row["is-pull-request"] == true {
-				row["pull-request-link"] = link
+			row["id"], row["owner"], row["name"] = "repository:"+encodeCoordinate(strings.ToLower(owner+"/"+repository)), owner, repository
+		case "workflows":
+			owner, repository, path := text("organization"), text("repository"), strings.ToLower(text("workflow"))
+			path = strings.TrimSuffix(path, ".lock.yml") + ".md"
+			if !strings.HasSuffix(text("workflow"), ".lock.yml") {
+				path = strings.ToLower(text("workflow"))
+			}
+			if owner == "" || repository == "" || path == "" {
+				return "", nil, errors.New("inventory workflow requires a coordinate")
+			}
+			coordinate := strings.ToLower(owner + "/" + repository)
+			row["id"], row["repositoryId"], row["path"] = "workflow:"+encodeCoordinate(coordinate+":"+path), "repository:"+encodeCoordinate(coordinate), path
+			if _, present := row["name"]; !present {
+				row["name"] = text("workflow")
+			}
+			switch text("workflow-active") {
+			case "true":
+				row["state"] = "active"
+			case "false":
+				row["state"] = "disabled"
+			default:
+				row["state"] = "unknown"
+			}
+		}
+	default:
+		for key, value := range input {
+			row[key] = value
+		}
+		if id, valid := row["id"].(string); !valid || id == "" {
+			if id, valid := row["work-item-id"].(string); valid && id != "" {
+				row["id"] = id
 			} else {
-				row["issue-link"] = link
-			}
-			row["external-link"] = link
-		}
-		result, err := execute(definition, mergeSourceMaps(sources, map[string]model.Source{"run-records": records}))
-		if err != nil {
-			return nil, fmt.Errorf("project outcomes: %w", err)
-		}
-		sources["outcomes"] = mergeLogical(sources["outcomes"], result)
-	}
-	for _, name := range []string{"detection-observations", "safe-output-performance"} {
-		definition, exists := index[name]
-		if !exists {
-			continue
-		}
-		logicalName := map[string]string{"detection-observations": "security-findings", "safe-output-performance": "outcomes"}[name]
-		inputName := "$" + logicalName
-		input, exists := inventory[logicalName]
-		if !exists {
-			continue
-		}
-		result, err := execute(definition, mergeSourceMaps(sources, map[string]model.Source{inputName: input}))
-		if err != nil {
-			return nil, fmt.Errorf("project %s: %w", name, err)
-		}
-		sources[name] = mergeLogical(sources[name], result)
-	}
-	return sources, nil
-}
-
-func mergeSourceMaps(maps ...map[string]model.Source) map[string]model.Source {
-	result := map[string]model.Source{}
-	for _, sources := range maps {
-		for name, source := range sources {
-			result[name] = source
-		}
-	}
-	return result
-}
-
-func mergeLogical(left, right model.Source) model.Source {
-	sourceName := right.Source
-	if sourceName == "" {
-		sourceName = left.Source
-	}
-	merged := map[string]model.Row{}
-	order := []string{}
-	mergeRows := func(rows []model.Row) {
-		for _, row := range rows {
-			key := logicalRowKey(sourceName, row)
-			if existing := merged[key]; existing != nil {
-				combined := model.Row{}
-				for field, value := range existing {
-					combined[field] = value
+				payload, err := json.Marshal(input)
+				if err != nil {
+					return "", nil, err
 				}
-				for field, value := range row {
-					if value != nil {
-						combined[field] = value
-					}
-				}
-				merged[key] = combined
-				continue
+				sum := sha256.Sum256(payload)
+				row["id"] = "inventory:" + name + ":" + hex.EncodeToString(sum[:])
 			}
-			copy := model.Row{}
-			for field, value := range row {
-				copy[field] = value
-			}
-			merged[key] = copy
-			order = append(order, key)
 		}
 	}
-	mergeRows(right.Rows)
-	mergeRows(left.Rows)
-	rows := make([]model.Row, 0, len(order))
-	for _, key := range order {
-		rows = append(rows, merged[key])
-	}
-	sort.SliceStable(rows, func(i, j int) bool {
-		leftData, _ := json.Marshal(rows[i])
-		rightData, _ := json.Marshal(rows[j])
-		return bytes.Compare(leftData, rightData) < 0
-	})
-	metadata := model.Metadata{}
-	for key, value := range left.Metadata {
-		metadata[key] = value
-	}
-	for key, value := range right.Metadata {
-		metadata[key] = value
-	}
-	return model.Source{Source: sourceName, Rows: rows, Metadata: metadata}
+	return source, row, nil
 }
 
-func logicalRowKey(sourceName string, row model.Row) string {
-	fields := map[string][]string{
-		"campaigns":         {"campaign"},
-		"repositories":      {"organization", "repository"},
-		"workflows":         {"organization", "repository", "workflow"},
-		"runs":              {"organization", "repository", "workflow", "run"},
-		"domains":           {"event"},
-		"tools":             {"event"},
-		"skills":            {"event"},
-		"friction":          {"event"},
-		"audits":            {"event"},
-		"issues":            {"event"},
-		"operationalValues": {"repository", "valueId", "timestamp"},
-		"outcomes":          {"safe-output"},
-	}[sourceName]
-	for _, fallback := range [][]string{fields, {"id"}} {
-		if len(fallback) == 0 {
-			continue
-		}
-		values := make([]string, 0, len(fallback))
-		complete := true
-		for _, field := range fallback {
-			value := strings.TrimSpace(fmt.Sprint(row[field]))
-			if value == "" || value == "<nil>" {
-				complete = false
-				break
-			}
-			values = append(values, value)
-		}
-		if complete {
-			return sourceName + ":" + strings.Join(values, "\x00")
+func encodeCoordinate(value string) string {
+	const hexDigits = "0123456789ABCDEF"
+	var result strings.Builder
+	for _, value := range []byte(value) {
+		if value >= 'a' && value <= 'z' || value >= 'A' && value <= 'Z' || value >= '0' && value <= '9' || strings.ContainsRune("-_.!~*'()", rune(value)) {
+			result.WriteByte(value)
+		} else {
+			result.WriteByte('%')
+			result.WriteByte(hexDigits[value>>4])
+			result.WriteByte(hexDigits[value&15])
 		}
 	}
-	data, _ := json.Marshal(row)
-	return sourceName + ":json:" + string(data)
-}
-
-func buildDiagnostics(canonical map[string][]model.Row) model.Diagnostics {
-	counts := map[string]int{}
-	duplicates := map[string][]string{}
-	for _, collection := range collections {
-		counts[collection] = len(canonical[collection])
-		seen := map[string]bool{}
-		duplicateSet := map[string]bool{}
-		for _, row := range canonical[collection] {
-			id := strings.TrimSpace(fmt.Sprint(row["id"]))
-			if id == "" || id == "<nil>" {
-				continue
-			}
-			if seen[id] {
-				duplicateSet[id] = true
-			}
-			seen[id] = true
-		}
-		duplicates[collection] = make([]string, 0, len(duplicateSet))
-		for id := range duplicateSet {
-			duplicates[collection] = append(duplicates[collection], id)
-		}
-		sort.Strings(duplicates[collection])
-	}
-	errors := relationshipErrors(canonical)
-	return model.Diagnostics{
-		SchemaVersion:      model.SchemaVersion,
-		Counts:             counts,
-		RelationshipErrors: errors,
-		DuplicateRecordIDs: duplicates,
-	}
-}
-
-func relationshipErrors(canonical map[string][]model.Row) []string {
-	ids := map[string]map[string]bool{}
-	records := map[string]map[string]model.Row{}
-	for _, collection := range []string{"repositories", "campaigns", "workflows", "runs", "experiments", "graders", "evals"} {
-		ids[collection] = map[string]bool{}
-		records[collection] = map[string]model.Row{}
-		for _, row := range canonical[collection] {
-			id := fmt.Sprint(row["id"])
-			ids[collection][id] = true
-			records[collection][id] = row
-		}
-	}
-	var result []string
-	require := func(row model.Row, field, collection, entity string) {
-		id := fmt.Sprint(row["id"])
-		reference := fmt.Sprint(row[field])
-		if reference == "" || reference == "<nil>" || !ids[collection][reference] {
-			result = append(result, fmt.Sprintf("%s.%s does not reference an existing %s", id, field, entity))
-		}
-	}
-	for _, row := range canonical["workflows"] {
-		require(row, "repositoryId", "repositories", "repository")
-		if row["campaignId"] != nil {
-			require(row, "campaignId", "campaigns", "campaign")
-			if campaign := records["campaigns"][fmt.Sprint(row["campaignId"])]; campaign != nil &&
-				fmt.Sprint(row["campaign"]) != fmt.Sprint(campaign["slug"]) {
-				result = append(result, fmt.Sprintf("%s.campaignId references a different campaign slug", row["id"]))
-			}
-		}
-	}
-	for _, row := range canonical["runs"] {
-		require(row, "repositoryId", "repositories", "repository")
-		require(row, "workflowId", "workflows", "workflow")
-		if workflow := records["workflows"][fmt.Sprint(row["workflowId"])]; workflow != nil &&
-			fmt.Sprint(workflow["repositoryId"]) != fmt.Sprint(row["repositoryId"]) {
-			result = append(result, fmt.Sprintf("%s.workflowId references a workflow from another repository", row["id"]))
-		}
-	}
-	for _, collection := range []string{"jobs", "sessions", "domains", "tools", "skills", "friction", "audits", "issues", "experimentAssignments", "graderObservations", "evalObservations"} {
-		for _, row := range canonical[collection] {
-			require(row, "runId", "runs", "run")
-		}
-	}
-	for _, row := range canonical["events"] {
-		require(row, "sessionId", "sessions", "session")
-	}
-	for _, row := range canonical["operationalValues"] {
-		require(row, "repositoryId", "repositories", "repository")
-	}
-	for _, collection := range []string{"experiments", "graders", "evals"} {
-		for _, row := range canonical[collection] {
-			require(row, "workflowId", "workflows", "workflow")
-		}
-	}
-	for _, pair := range []struct{ child, parent, field string }{
-		{"experimentAssignments", "experiments", "experimentId"},
-		{"graderObservations", "graders", "graderId"},
-		{"evalObservations", "evals", "evalId"},
-	} {
-		for _, row := range canonical[pair.child] {
-			require(row, pair.field, pair.parent, "definition")
-			if run := records["runs"][fmt.Sprint(row["runId"])]; run != nil {
-				if definition := records[pair.parent][fmt.Sprint(row[pair.field])]; definition != nil &&
-					fmt.Sprint(run["workflowId"]) != fmt.Sprint(definition["workflowId"]) {
-					result = append(result, fmt.Sprintf("%s.%s references a different workflow", row["id"], pair.field))
-				}
-			}
-		}
-	}
-	sort.Strings(result)
-	return result
-}
-
-func sortedSourceNames(sources map[string]model.Source) []string {
-	names := make([]string, 0, len(sources))
-	for name := range sources {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names
-}
-
-func availability(rows []model.Row) string {
-	if len(rows) == 0 {
-		return "empty"
-	}
-	return "available"
+	return result.String()
 }

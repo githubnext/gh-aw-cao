@@ -613,7 +613,7 @@ func TestAzureFunctionsHandlerLogsTelemetryFailureOnceAndKeepsServing(t *testing
 func TestRefreshAndQueryReturnAuthoritativeEvaluatedAt(t *testing.T) {
 	database := integrationDatabase(t)
 	seedDatabase(t, database, map[string]model.Source{
-		"runs": {Source: "runs", Rows: []model.Row{}},
+		"$runs": {Source: "$runs", Rows: []model.Row{}},
 	})
 	address, closeServer := fakeRedis(t)
 	defer closeServer()
@@ -645,7 +645,7 @@ func TestRefreshAndQueryReturnAuthoritativeEvaluatedAt(t *testing.T) {
 		body string
 	}{
 		{path: "/api/v1/refresh", body: ""},
-		{path: "/api/v1/query", body: `{"sourceNames":["runs"],"evaluatedAt":"2099-01-01T00:00:00Z"}`},
+		{path: "/api/v1/query", body: `{"sourceNames":["$runs"],"evaluatedAt":"2099-01-01T00:00:00Z"}`},
 	} {
 		request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "https://localhost"+test.path, strings.NewReader(test.body))
 		if test.body != "" {

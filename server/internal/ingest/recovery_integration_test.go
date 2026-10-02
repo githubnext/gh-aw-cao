@@ -1,48 +1,60 @@
 package ingest
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 )
 
 func TestEmptyPostgresRebuildAndFailedIngestionPreservesCurrentData(t *testing.T) {
 	ctx, store := ingestTestStore(t)
-	before, err := store.State(ctx)
+	directory := scratchDirectory(t)
+	options := Options{DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json"}
+	for _, name := range []string{"inventory-sources.json", "payload-hashes.json", "gh-aw-logs-runs/subset.jsonl", "gh-aw-logs-records/subset.jsonl"} {
+		// #nosec G304 -- the fixture root and filenames are fixed test inputs.
+		content, err := os.ReadFile(filepath.Join("../../testdata/deployed-subset", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		writeTestFile(t, filepath.Join(directory, name), content)
+	}
+	before, err := Run(ctx, store, directory, options)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if before.Ready || before.Revision != 0 {
-		t.Fatalf("new Postgres schema unexpectedly has data: %+v", before)
-	}
-	result, err := Run(ctx, store, deployedSubset, Options{
-		DatabaseQueriesPath: databaseQueries,
-	})
+	name := "gh-aw-logs-records/subset.jsonl"
+	// #nosec G304 -- this path belongs to this test's owned scratch directory.
+	content, err := os.ReadFile(filepath.Join(directory, name))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Revision != 1 || result.DataRevision == "" || len(result.Counts) == 0 {
-		t.Fatalf("empty Postgres schema was not ingested: %+v", result)
+	content = append(content, []byte("{\"kind\":\"record\",\"collection\":\"domains\",\"record\":{\"id\":\"orphan\",\"runId\":\"missing\"}}\n")...)
+	writeTestFile(t, filepath.Join(directory, name), content)
+	// #nosec G304 -- this path belongs to this test's owned scratch directory.
+	manifestContent, err := os.ReadFile(filepath.Join(directory, "payload-hashes.json"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	active, err := store.State(ctx)
-	if err != nil || !active.Ready || active.Revision != result.Revision || active.DataRevision != result.DataRevision {
-		t.Fatalf("ingestion not activated: %+v, %v", active, err)
+	var manifest Manifest
+	if err := json.Unmarshal(manifestContent, &manifest); err != nil {
+		t.Fatal(err)
 	}
-	original, _, err := store.LoadSource(ctx, "$repositories", nil)
-	if err != nil || len(original.Rows) == 0 {
-		t.Fatalf("expected ingested repositories: %+v, %v", original, err)
-	}
-	if _, err := Run(ctx, store, scratchDirectory(t), Options{
-		DatabaseQueriesPath: databaseQueries,
-		Force:               true,
-	}); err == nil {
-		t.Fatal("expected invalid authoritative source to fail")
+	sum := sha256.Sum256(content)
+	manifest[name] = hex.EncodeToString(sum[:])
+	manifestContent, _ = json.Marshal(manifest)
+	writeTestFile(t, filepath.Join(directory, "payload-hashes.json"), manifestContent)
+	if _, err := Run(ctx, store, directory, options); err == nil {
+		t.Fatal("orphan shard published")
 	}
 	after, err := store.State(ctx)
-	if err != nil || !reflect.DeepEqual(after, active) {
-		t.Fatalf("failed ingestion replaced current data: before=%+v after=%+v err=%v", active, after, err)
+	if err != nil {
+		t.Fatal(err)
 	}
-	preserved, _, err := store.LoadSource(ctx, "$repositories", nil)
-	if err != nil || !reflect.DeepEqual(preserved, original) {
-		t.Fatalf("failed ingestion lost current repositories: %+v, %v", preserved, err)
+	if after.Revision != before.Revision || after.DataRevision != before.DataRevision || !reflect.DeepEqual(after.Counts, before.Counts) {
+		t.Fatalf("failed ingestion changed publication: %+v", after)
 	}
 }

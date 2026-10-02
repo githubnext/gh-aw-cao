@@ -1168,7 +1168,7 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 	}
 	var response queryResponse
 	var status int
-	err := a.database.WithReadTransaction(ctx, func(ctx context.Context, reader postgresx.SourceReader) error {
+	err := a.database.WithReadTransaction(ctx, func(ctx context.Context, reader postgresx.NativeReader) error {
 		var queryErr error
 		response, status, queryErr = a.executeQueryWithReader(ctx, input, allowCollectionHealth, reader)
 		return queryErr
@@ -1179,7 +1179,7 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 	return response, status, err
 }
 
-func (a *App) executeQueryWithReader(ctx context.Context, input queryRequest, allowCollectionHealth bool, reader postgresx.SourceReader) (queryResponse, int, error) {
+func (a *App) executeQueryWithReader(ctx context.Context, input queryRequest, allowCollectionHealth bool, reader postgresx.NativeReader) (queryResponse, int, error) {
 	active, err := reader.State(ctx)
 	if err != nil || !active.Ready {
 		return queryResponse{}, http.StatusServiceUnavailable, errors.New("dashboard data is unavailable")
@@ -1221,22 +1221,32 @@ func (a *App) executeQueryWithReader(ctx context.Context, input queryRequest, al
 		ctx: ctx, database: reader, operational: a.store, dataRevision: active.DataRevision,
 		app: a, allowCollectionHealth: allowCollectionHealth,
 	}
-	engine := query.New(loader)
-	sources, metrics, err := engine.Execute(definitions, requested)
+	pages := map[string]postgresx.SQLPage{}
+	for name, page := range input.Pagination {
+		offset, err := paginationOffset(name, strconv.FormatInt(active.Revision, 10), page)
+		if err != nil {
+			return queryResponse{}, http.StatusBadRequest, err
+		}
+		pages[name] = postgresx.SQLPage{Offset: offset, Limit: page.Limit}
+	}
+	sources, metrics, err := loader.ExecuteSQLPlan(definitions, requested, pages)
 	if err != nil {
 		serverLog.Printf("query failed")
 		return queryResponse{}, http.StatusBadRequest, err
 	}
-	for name, page := range input.Pagination {
+	for name := range input.Pagination {
 		source, ok := sources[name]
 		if !ok {
 			continue
 		}
-		paginated, err := paginate(source, strconv.FormatInt(active.Revision, 10), page)
-		if err != nil {
-			return queryResponse{}, http.StatusBadRequest, err
+		offset := pages[name].Offset
+		total, _ := source.Metadata["total-row-count"].(int)
+		end := offset + len(source.Rows)
+		if end < total {
+			cursor, _ := json.Marshal(map[string]any{"source": name, "revision": strconv.FormatInt(active.Revision, 10), "offset": end})
+			source.ContinuationToken = base64.RawURLEncoding.EncodeToString(cursor)
 		}
-		sources[name] = paginated
+		sources[name] = source
 	}
 	metrics.DurationMS = time.Since(started).Milliseconds()
 	serverLog.Printf("query completed sources=%d duration_ms=%d", len(sources), metrics.DurationMS)
@@ -1248,83 +1258,61 @@ func (a *App) executeQueryWithReader(ctx context.Context, input queryRequest, al
 
 type databaseLoader struct {
 	ctx                   context.Context
-	database              postgresx.SourceReader
+	database              postgresx.NativeReader
 	operational           *redisx.Store
 	dataRevision          string
 	app                   *App
 	allowCollectionHealth bool
 }
 
-// sourceOnlyLoader keeps the original bounded Go evaluator available for any
-// complete plan outside the native compiler's proven semantic subset.
-type sourceOnlyLoader struct{ loader *databaseLoader }
-
-func (only sourceOnlyLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
-	return only.loader.LoadSource(name, definition)
+func (loader *databaseLoader) ExecuteSQLPlan(definitions []query.Definition, requested []string, pages map[string]postgresx.SQLPage) (map[string]model.Source, model.Metrics, error) {
+	return loader.database.ExecuteSQLPlanWithOptions(loader.ctx, definitions, requested, postgresx.SQLExecutionOptions{
+		Pages: pages, Runtime: func(ctx context.Context, name string) (model.Source, error) {
+			return loader.runtimeSource(ctx, name, definitions)
+		},
+	})
 }
 
-func (loader *databaseLoader) ExecutePlan(definitions []query.Definition, requested, order []string) (map[string]model.Source, model.Metrics, error) {
-	if native, ok := loader.database.(postgresx.NativePlanExecutor); ok {
-		runtime := map[string]bool{}
-		for _, name := range RuntimeQuerySourceNames() {
-			runtime[name] = true
-		}
-		registered := false
-		for _, name := range order {
-			if runtime[name] {
-				registered = true
-				break
-			}
-			for _, definition := range definitions {
-				if definition.Name != name {
-					continue
-				}
-				if runtime[definition.From] {
-					registered = true
-					break
-				}
-				for _, source := range definition.Union {
-					registered = registered || runtime[source]
-				}
-				for _, join := range definition.Joins {
-					registered = registered || runtime[join.Source]
-				}
-			}
-		}
-		if !registered {
-			result, metrics, supported, err := native.ExecuteNativePlan(loader.ctx, definitions, requested, order)
-			if supported {
-				return result, metrics, err
-			}
-		}
-	}
-	return query.New(sourceOnlyLoader{loader: loader}).Execute(definitions, requested)
-}
-
-func (loader *databaseLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
+func (loader *databaseLoader) runtimeSource(ctx context.Context, name string, definitions []query.Definition) (model.Source, error) {
 	if name == simulationDaysSourceName {
-		return simulationDaysSource(), model.Metrics{}, nil
+		return simulationDaysSource(), nil
 	}
 	if name == collectionHealthSourceName {
-		source, err := loader.app.collectionHealthSource(loader.ctx, loader.allowCollectionHealth)
-		return source, model.Metrics{}, err
+		if loader.app == nil {
+			return model.Source{}, errors.New("collection-health provider is unavailable")
+		}
+		return loader.app.collectionHealthSource(ctx, loader.allowCollectionHealth)
 	}
 
 	if name == gitHubQuotaUsageSourceName {
-		source, err := loader.app.gitHubQuotaUsageSource(loader.ctx, loader.allowCollectionHealth)
-		return source, model.Metrics{}, err
+		if loader.app == nil {
+			return model.Source{}, errors.New("GitHub quota provider is unavailable")
+		}
+		return loader.app.gitHubQuotaUsageSource(ctx, loader.allowCollectionHealth)
 	}
-	if name == marketplace.SourceName {
-		// The marketplace catalog is never stored as an ingested Redis source:
-		// it is resolved (and cached) transparently here so every query-engine
-		// caller sees an ordinary source, with no secrets ever leaving this call.
-		return marketplaceSource(loader.ctx, loader.operational, loader.dataRevision), model.Metrics{}, nil
+	if name == "$marketplacePackages" {
+		source := marketplaceSource(ctx, loader.operational, loader.dataRevision)
+		for index, input := range source.Rows {
+			row := model.Row{}
+			for _, definition := range definitions {
+				if definition.Name != marketplace.SourceName {
+					continue
+				}
+				for _, field := range definition.Select {
+					logical := field.As
+					if logical == "" {
+						logical = field.Field
+					}
+					if value, present := input[logical]; present {
+						row[field.Field] = value
+					}
+				}
+			}
+			source.Rows[index] = row
+		}
+		return source, nil
 	}
-	source, metrics, err := loader.database.LoadSource(loader.ctx, name, definition)
-	if errors.Is(err, postgresx.ErrSourceUnavailable) {
-		return unavailableSource(name), metrics, nil
-	}
-	return source, metrics, err
+	return model.Source{}, errors.New("runtime SQL source is not registered")
 }
 
 // RuntimeQuerySourceNames lists sources resolved by the server rather than
@@ -1346,38 +1334,27 @@ func unavailableSource(name string) model.Source {
 	}
 }
 
-func paginate(source model.Source, revision string, page paginationRequest) (model.Source, error) {
+func paginationOffset(source, revision string, page paginationRequest) (int, error) {
 	if page.Limit <= 0 || page.Limit > query.MaxOutputRows {
-		return model.Source{}, fmt.Errorf("pagination limit for %q is invalid", source.Source)
+		return 0, fmt.Errorf("pagination limit for %q is invalid", source)
 	}
 	offset := 0
 	if page.ContinuationToken != "" {
 		data, err := base64.RawURLEncoding.DecodeString(page.ContinuationToken)
 		if err != nil {
-			return model.Source{}, fmt.Errorf("invalid or stale continuation token for %q", source.Source)
+			return 0, fmt.Errorf("invalid or stale continuation token for %q", source)
 		}
 		var cursor struct {
 			Source   string `json:"source"`
 			Revision string `json:"revision"`
 			Offset   int    `json:"offset"`
 		}
-		if json.Unmarshal(data, &cursor) != nil || cursor.Source != source.Source || cursor.Revision != revision || cursor.Offset <= 0 {
-			return model.Source{}, fmt.Errorf("invalid or stale continuation token for %q", source.Source)
+		if json.Unmarshal(data, &cursor) != nil || cursor.Source != source || cursor.Revision != revision || cursor.Offset <= 0 {
+			return 0, fmt.Errorf("invalid or stale continuation token for %q", source)
 		}
 		offset = cursor.Offset
 	}
-	if offset > len(source.Rows) {
-		return model.Source{}, fmt.Errorf("invalid or stale continuation token for %q", source.Source)
-	}
-	end := min(len(source.Rows), offset+page.Limit)
-	total := len(source.Rows)
-	source.Rows = source.Rows[offset:end]
-	source.Metadata["total-row-count"] = total
-	if end < total {
-		cursor, _ := json.Marshal(map[string]any{"source": source.Source, "revision": revision, "offset": end})
-		source.ContinuationToken = base64.RawURLEncoding.EncodeToString(cursor)
-	}
-	return source, nil
+	return offset, nil
 }
 
 func (a *App) diagnostics(response http.ResponseWriter, request *http.Request) {

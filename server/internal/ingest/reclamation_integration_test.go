@@ -3,221 +3,26 @@ package ingest
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
-	"reflect"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	_ "github.com/jackc/pgx/v5/stdlib"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	"github.com/githubnext/gh-aw-cao/server/internal/repositorymemory"
 )
-
-const deployedSubset = "../../testdata/deployed-subset"
-const databaseQueries = "../../../dashboard/site/src/data/queries/database.json"
-
-func TestForcedIngestionAdvancesRevisionWithoutChangingDataRevision(t *testing.T) {
-	ctx, store := ingestTestStore(t)
-	first, err := Run(ctx, store, deployedSubset, Options{DatabaseQueriesPath: databaseQueries})
-	if err != nil {
-		t.Fatal(err)
-	}
-	second, err := Run(ctx, store, deployedSubset, Options{DatabaseQueriesPath: databaseQueries, Force: true})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if second.Revision != first.Revision+1 || second.DataRevision != first.DataRevision ||
-		!reflect.DeepEqual(second.Counts, first.Counts) {
-		t.Fatalf("forced ingestion changed data or did not advance revision: first=%+v second=%+v", first, second)
-	}
-	state, err := store.State(ctx)
-	if err != nil || state.Revision != second.Revision || state.DataRevision != second.DataRevision {
-		t.Fatalf("forced ingestion not reflected in database: %+v, %v", state, err)
-	}
-}
-
-func TestUnchangedLakeReusesPostgresRevision(t *testing.T) {
-	ctx, store := ingestTestStore(t)
-	options := Options{DatabaseQueriesPath: databaseQueries}
-	first, err := Run(ctx, store, deployedSubset, options)
-	if err != nil {
-		t.Fatal(err)
-	}
-	second, err := Run(ctx, store, deployedSubset, options)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if second.Revision != first.Revision || second.DataRevision != first.DataRevision ||
-		!reflect.DeepEqual(second.Counts, first.Counts) || second.EvaluatedAt != first.EvaluatedAt {
-		t.Fatalf("unchanged lake was not reused: first=%+v second=%+v", first, second)
-	}
-	if first.Counts[repositorymemory.ManifestSource] != 1 {
-		t.Fatalf("repository-memory manifest was not stored in Postgres: counts=%v", first.Counts)
-	}
-	if count, ok := first.Counts[repositorymemory.FilesSource]; !ok || count != 0 {
-		t.Fatalf("empty repository-memory file source was not stored in Postgres: counts=%v", first.Counts)
-	}
-}
-
-func TestUnchangedLakeRebuildsMissingRepositoryMemorySources(t *testing.T) {
-	ctx, store := ingestTestStore(t)
-	options := Options{DatabaseQueriesPath: databaseQueries}
-	first, err := Run(ctx, store, deployedSubset, options)
-	if err != nil {
-		t.Fatal(err)
-	}
-	legacyRevision, err := store.Replace(
-		ctx, map[string]model.Source{"legacy": {Source: "legacy", Rows: []model.Row{}}},
-		model.Diagnostics{}, first.DataRevision, time.Now().UTC(),
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	rebuilt, err := Run(ctx, store, deployedSubset, options)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if rebuilt.Revision != legacyRevision+1 || rebuilt.DataRevision != first.DataRevision {
-		t.Fatalf("missing repository-memory sources were not rebuilt: first=%+v rebuilt=%+v", first, rebuilt)
-	}
-	if rebuilt.Counts[repositorymemory.ManifestSource] != 1 {
-		t.Fatalf("rebuilt manifest source is missing: %v", rebuilt.Counts)
-	}
-	if count, ok := rebuilt.Counts[repositorymemory.FilesSource]; !ok || count != 0 {
-		t.Fatalf("rebuilt file source is missing: %v", rebuilt.Counts)
-	}
-}
-
-func TestChangedInventoryCreatesFreshDataRevision(t *testing.T) {
-	ctx, store := ingestTestStore(t)
-	options := Options{DatabaseQueriesPath: databaseQueries}
-	first, err := Run(ctx, store, deployedSubset, options)
-	if err != nil {
-		t.Fatal(err)
-	}
-	directory := scratchDirectory(t)
-	for _, name := range []string{
-		"payload-hashes.json", "inventory-sources.json",
-		"gh-aw-logs-runs/subset.jsonl", "gh-aw-logs-records/subset.jsonl",
-	} {
-		// #nosec G304 -- these fixture names are fixed within the checked-in deployed subset.
-		content, err := os.ReadFile(filepath.Join(deployedSubset, name))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if name == "inventory-sources.json" {
-			content = append(content, '\n')
-		}
-		writeTestFile(t, filepath.Join(directory, name), content)
-	}
-	second, err := Run(ctx, store, directory, options)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if second.Revision != first.Revision+1 || second.DataRevision == first.DataRevision ||
-		!reflect.DeepEqual(second.Counts, first.Counts) {
-		t.Fatalf("changed inventory did not create a fresh data revision: first=%+v second=%+v", first, second)
-	}
-	state, err := store.State(ctx)
-	if err != nil || state.DataRevision != second.DataRevision || state.Revision != second.Revision {
-		t.Fatalf("fresh revision not activated: %+v, %v", state, err)
-	}
-}
-
-func TestFailedPostgresReplaceRollsBackIngestedSources(t *testing.T) {
-	ctx, store := ingestTestStore(t)
-	result, err := Run(ctx, store, deployedSubset, Options{DatabaseQueriesPath: databaseQueries})
-	if err != nil {
-		t.Fatal(err)
-	}
-	before, err := store.State(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	repositories, _, err := store.LoadSource(ctx, "$repositories", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	diagnostics, err := store.Diagnostics(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = store.Replace(ctx, map[string]model.Source{
-		"invalid": {Source: "invalid", Rows: []model.Row{{"bad": make(chan int)}}},
-	}, model.Diagnostics{}, "invalid-revision", time.Now())
-	if err == nil {
-		t.Fatal("expected replacement to fail")
-	}
-	after, err := store.State(ctx)
-	if err != nil || !reflect.DeepEqual(after, before) || after.Revision != result.Revision {
-		t.Fatalf("failed replacement changed active state: before=%+v after=%+v err=%v", before, after, err)
-	}
-	preserved, _, err := store.LoadSource(ctx, "$repositories", nil)
-	if err != nil || !reflect.DeepEqual(preserved, repositories) {
-		t.Fatalf("failed replacement lost ingested rows: %v, %v", preserved, err)
-	}
-	afterDiagnostics, err := store.Diagnostics(ctx)
-	if err != nil || !reflect.DeepEqual(afterDiagnostics, diagnostics) {
-		t.Fatalf("failed replacement changed diagnostics: %+v, %v", afterDiagnostics, err)
-	}
-	if _, _, err := store.LoadSource(ctx, "invalid", nil); !errors.Is(err, postgresx.ErrSourceUnavailable) {
-		t.Fatalf("failed replacement exposed incomplete source: %v", err)
-	}
-}
-
-func TestIngestedPostgresSourcesSupportDirectQueries(t *testing.T) {
-	ctx, store := ingestTestStore(t)
-	result, err := Run(ctx, store, deployedSubset, Options{DatabaseQueriesPath: databaseQueries})
-	if err != nil {
-		t.Fatal(err)
-	}
-	repositories, metrics, err := store.LoadSource(ctx, "$repositories", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(repositories.Rows) == 0 || len(repositories.Rows) != result.Counts["$repositories"] ||
-		metrics.OutputRows != len(repositories.Rows) {
-		t.Fatalf("Postgres direct source disagrees with ingestion: rows=%d metrics=%+v counts=%+v",
-			len(repositories.Rows), metrics, result.Counts)
-	}
-	id := repositories.Rows[0]["id"]
-	definitions := []query.Definition{{
-		Name: "selected-repository", From: "$repositories",
-		Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: id}}},
-	}}
-	sources, _, err := query.New(ingestSourceLoader{store: store, ctx: ctx}).Execute(definitions, []string{"selected-repository"})
-	if err != nil || len(sources["selected-repository"].Rows) != 1 ||
-		sources["selected-repository"].Rows[0]["id"] != id {
-		t.Fatalf("direct query did not select the ingested repository: %+v, %v", sources, err)
-	}
-}
-
-type ingestSourceLoader struct {
-	store *postgresx.Store
-	ctx   context.Context
-}
-
-func (loader ingestSourceLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
-	return loader.store.LoadSource(loader.ctx, name, definition)
-}
 
 func ingestTestStore(t *testing.T) (context.Context, *postgresx.Store) {
 	t.Helper()
-	url := os.Getenv("POSTGRES_URL")
-	if url == "" {
+	endpoint := os.Getenv("POSTGRES_URL")
+	if endpoint == "" {
 		t.Skip("POSTGRES_URL is not set")
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 90*time.Second)
 	t.Cleanup(cancel)
-	admin, err := sql.Open("pgx", url)
+	admin, err := sql.Open("pgx", endpoint)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,11 +32,11 @@ func ingestTestStore(t *testing.T) (context.Context, *postgresx.Store) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		dropCtx, dropCancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer dropCancel()
-		_, _ = admin.ExecContext(dropCtx, "DROP SCHEMA "+schema+" CASCADE")
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_, _ = admin.ExecContext(ctx, "DROP SCHEMA "+schema+" CASCADE")
 	})
-	config, err := pgx.ParseConfig(url)
+	config, err := pgx.ParseConfig(endpoint)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,4 +47,38 @@ func ingestTestStore(t *testing.T) (context.Context, *postgresx.Store) {
 	}
 	t.Cleanup(func() { _ = store.Close() })
 	return ctx, store
+}
+
+func TestFreshNativeIngestionReuseForceAndQueries(t *testing.T) {
+	ctx, store := ingestTestStore(t)
+	options := Options{DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json"}
+	first, err := Run(ctx, store, "../../testdata/deployed-subset", options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := Run(ctx, store, "../../testdata/deployed-subset", options)
+	if err != nil || second.Revision != first.Revision || second.DataRevision != first.DataRevision {
+		t.Fatalf("unchanged revision advanced: %+v %v", second, err)
+	}
+	options.Force = true
+	third, err := Run(ctx, store, "../../testdata/deployed-subset", options)
+	if err != nil || third.Revision != first.Revision+1 || third.DataRevision != first.DataRevision {
+		t.Fatalf("force semantics changed: %+v %v", third, err)
+	}
+	definitions, err := loadDefinitions(options.DatabaseQueriesPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sources, metrics, err := store.ExecuteSQLPlan(ctx, definitions, []string{"repositories", "runs", "domains", "tools", "audits"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sources["runs"].Rows) != 1 || len(sources["repositories"].Rows) != 1 || len(metrics.FallbackOperations) != 0 {
+		t.Fatalf("native corpus did not resolve canonical rows: %+v %+v", sources, metrics)
+	}
+	for _, name := range []string{"unknown", "usage", "repository-memory-manifest"} {
+		if _, _, err := store.ExecuteSQLPlan(ctx, []query.Definition{{Name: "fail", From: name}}, []string{"fail"}); err == nil {
+			t.Fatalf("arbitrary source %q admitted", name)
+		}
+	}
 }

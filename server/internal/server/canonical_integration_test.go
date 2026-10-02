@@ -15,7 +15,6 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
@@ -79,7 +78,8 @@ func TestCanonicalAPIQueriesMatchPostgresIngestion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	direct, _, err := store.LoadSource(ctx, "$repositories", nil)
+	directSources, _, err := store.ExecuteSQLPlan(ctx, []query.Definition{{Name: "direct", From: "$repositories"}}, []string{"direct"})
+	direct := directSources["direct"]
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +135,7 @@ func TestCanonicalAPIQueriesMatchPostgresIngestion(t *testing.T) {
 	}
 	if rows := response.Sources["outcomes"].Rows; len(rows) == 1 {
 		outcome := rows[0]
-		if link, ok := outcome["issue-link"].(model.Row); !ok ||
+		if link, ok := outcome["issue-link"].(map[string]any); !ok ||
 			link["href"] != "https://github.com/githubnext/gh-aw-cao/issues/42" || outcome["pull-request-link"] != nil {
 			t.Fatalf("outcome issue link was not preserved: %#v", outcome)
 		}

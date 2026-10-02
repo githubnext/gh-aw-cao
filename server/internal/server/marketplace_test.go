@@ -98,8 +98,8 @@ func TestQueryTransparentlyInjectsMarketplacePackagesWithoutSecretLeakage(t *tes
 		t.Fatal(err)
 	}
 	app, err := New(context.Background(), redisx.NewStore(client, "test"), Config{
-		Database: database,
-		Listen:   "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
+		Database: database, DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
+		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -161,8 +161,8 @@ func TestQueryDegradesMarketplacePackagesToUnavailableWhenThePolicyFileIsMissing
 		t.Fatal(err)
 	}
 	app, err := New(context.Background(), redisx.NewStore(client, "test"), Config{
-		Database: database,
-		Listen:   "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
+		Database: database, DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
+		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
 	})
 	if err != nil {
 		t.Fatal(err)
