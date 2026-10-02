@@ -20,9 +20,12 @@ func constructorDatabase() *postgresx.Store { return &postgresx.Store{} }
 
 func integrationDatabase(t testing.TB) *postgresx.Store {
 	t.Helper()
-	rawURL := os.Getenv("POSTGRES_URL")
+	rawURL := os.Getenv("CAO_POSTGRES_URL")
 	if rawURL == "" {
-		t.Skip("POSTGRES_URL is not set")
+		rawURL = os.Getenv("POSTGRES_URL")
+	}
+	if rawURL == "" {
+		t.Skip("CAO_POSTGRES_URL or POSTGRES_URL is not set")
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
