@@ -21,7 +21,7 @@ namespace Auth {
   @get op callback(@query code?: string, @query state?: string):
     { @statusCode code: 302; @header location: string } | BadRequest | Forbidden | Unavailable;
 
-  /** Hosted profile only. A public, static HTML confirmation page. */
+  /** Hosted profile only. A public, non-cacheable HTML confirmation page that clears CAO session, CSRF, and OAuth state cookies. Its explicit sign-in link requests GitHub account selection. */
   @route("/auth/logged-out")
   @get op loggedOut(): { @header contentType: "text/html; charset=utf-8"; @body body: string };
 
