@@ -4,6 +4,9 @@
 
 import { h } from '../dom.js';
 import { text, titleCase } from './count-formatters.js';
+import { createDebug } from '../debug.js';
+
+const debugWorkflowBadges = createDebug('workflow-badges');
 
 /**
  * @typedef {{
@@ -46,9 +49,11 @@ export function renderWorkflowBadges(workflow, options = {}) {
 /** @param {Record<string, unknown>} workflow */
 export function workflowRole(workflow) {
   const role = text(workflow['workflow-role']).toLowerCase();
-  return ['orchestrator', 'worker', 'standalone'].includes(role)
-    ? role
-    : workflowCampaignMemberships(workflow).length > 0 ? 'operation' : 'unknown';
+  if (['orchestrator', 'worker', 'standalone'].includes(role)) return role;
+  const membershipCount = workflowCampaignMemberships(workflow).length;
+  const resolved = membershipCount > 0 ? 'operation' : 'unknown';
+  debugWorkflowBadges({ event: 'role-fallback', resolved, membershipCount });
+  return resolved;
 }
 
 /** @param {Record<string, unknown>} workflow */
