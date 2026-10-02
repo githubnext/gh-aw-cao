@@ -91,3 +91,13 @@ func TestSQLCompilationTreatsUndeclaredFieldsAsMissing(t *testing.T) {
 		t.Fatalf("undeclared field must compile to a NULL column: %s", plan.CTEs)
 	}
 }
+
+func TestSQLBindsNULStringsAsNonMatchingText(t *testing.T) {
+	compiler := &sqlCompiler{}
+	if placeholder := compiler.bind("a\x00b"); placeholder != "$1" {
+		t.Fatalf("placeholder = %q", placeholder)
+	}
+	if got := compiler.args[0]; got != "a\uFFFDb" {
+		t.Fatalf("bound value = %q", got)
+	}
+}

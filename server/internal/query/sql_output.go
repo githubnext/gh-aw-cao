@@ -74,6 +74,10 @@ func (plan SQLPlan) Scoped(fragments ...string) (string, []any, []string) {
 	if len(plan.CTEList) == 0 {
 		return plan.CTEs, plan.Args, fragments
 	}
+	// Postgres inlines a relation with one consumer and evaluates a shared
+	// relation once; forcing inlining would re-evaluate shared upstream
+	// relations for every consumer.
+	const forcedInline = " AS NOT MATERIALIZED ("
 	index := make(map[string]int, len(plan.CTEList))
 	for position, text := range plan.CTEList {
 		index[sqlRelationName.FindString(text)] = position
@@ -115,7 +119,7 @@ func (plan SQLPlan) Scoped(fragments ...string) (string, []any, []string) {
 	}
 	statements := make([]string, len(included))
 	for position, text := range included {
-		statements[position] = renumber(text)
+		statements[position] = strings.Replace(renumber(text), forcedInline, " AS (", 1)
 	}
 	rewritten := make([]string, len(fragments))
 	for position, fragment := range fragments {

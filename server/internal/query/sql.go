@@ -151,6 +151,11 @@ func sortedSQLFields(columns map[string]SQLColumn) []string {
 }
 
 func (c *sqlCompiler) bind(value any) string {
+	if text, ok := value.(string); ok && strings.ContainsRune(text, 0) {
+		// Postgres text cannot hold NUL, so such a value can never equal stored
+		// data; the replacement keeps comparisons well-formed and non-matching.
+		value = strings.ReplaceAll(text, "\x00", "\uFFFD")
+	}
 	c.args = append(c.args, value)
 	return "$" + strconv.Itoa(len(c.args))
 }
