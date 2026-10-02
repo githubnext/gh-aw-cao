@@ -197,7 +197,7 @@ func TestLoadScenarioRejectsUnknownFieldsAndOverlappingWindows(t *testing.T) {
 	for _, input := range []string{
 		`{"name":"x","repositories":1,"unknown":true}`,
 		`{"name":"x","repositories":1,"api":[{"from":"0s","to":"2s","mode":"healthy"},{"from":"1s","to":"3s","mode":"healthy"}]}`,
-		`{"name":"x","repositories":20001}`,
+		`{"name":"x","repositories":50001}`,
 	} {
 		if _, err := LoadScenario([]byte(input)); err == nil {
 			t.Fatalf("accepted invalid scenario: %s", input)

@@ -11,6 +11,8 @@ import (
 
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
+	"github.com/githubnext/gh-aw-cao/server/internal/query"
+	"github.com/githubnext/gh-aw-cao/server/internal/testutil"
 )
 
 // publishedSnapshot is a real snapshot published by the Activity workflow. The
@@ -42,6 +44,9 @@ func TestProfilesProduceIdenticalCanonicalRecords(t *testing.T) {
 
 	collectionStore, collectionCtx := integrationStore(t)
 	collectionData := integrationPostgres(t, collectionCtx)
+	if state, err := collectionData.State(collectionCtx); err != nil || state.Ready {
+		t.Fatalf("collection fixture shared the Actions projection before ingestion: %+v, %v", state, err)
+	}
 	lake := Lake{Directory: t.TempDir()}
 	if err := lake.Prepare(); err != nil {
 		t.Fatal(err)
@@ -70,6 +75,20 @@ func TestProfilesProduceIdenticalCanonicalRecords(t *testing.T) {
 	}
 	if len(collected.Counts) == 0 {
 		t.Fatal("expected the equivalence test to compare a non-empty projection")
+	}
+	for name := range actions.Counts {
+		definitions := []query.Definition{{Name: "parity", From: name}}
+		published, _, err := actionsData.ExecuteSQLPlan(ctx, definitions, []string{"parity"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		replayed, _, err := collectionData.ExecuteSQLPlan(collectionCtx, definitions, []string{"parity"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(published, replayed) {
+			t.Fatalf("canonical rows or quality metadata differ for %s", name)
+		}
 	}
 }
 
@@ -107,57 +126,9 @@ func TestProjectionIsCoalesced(t *testing.T) {
 	}
 }
 
-// TestBackfillReplaysWithoutContactingGitHub proves the cold-start guarantee:
-// an empty database is repopulated from retained evidence with no GitHub
-// requests, so recovery does not depend on rate-limit headroom.
-func TestBackfillReplaysWithoutContactingGitHub(t *testing.T) {
-	store, ctx := integrationStore(t)
-	data := integrationPostgres(t, ctx)
-	lake := Lake{Directory: t.TempDir()}
-	if err := lake.Prepare(); err != nil {
-		t.Fatal(err)
-	}
-	copyTree(t, publishedSnapshot, lake.Directory)
-	enrollment := Enrollment{Store: store}
-	backfill := Backfill{
-		Store: store, Enrollment: enrollment, Queue: Queue{Store: store},
-		Projector: Projector{
-			Store: store, Data: data, Lake: lake, Enrollment: enrollment,
-			DatabaseQueriesPath: databaseQueries,
-		},
-		Lake: lake,
-		// No enumerator: any GitHub request would panic rather than silently
-		// succeed.
-		Enumerator: nil,
-	}
-	result, err := backfill.Replay(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(result.Counts) == 0 {
-		t.Fatal("expected replay to repopulate canonical collections")
-	}
-	active, err := data.State(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if active.Revision != result.Revision {
-		t.Fatalf("active revision = %d, want the replayed revision %d", active.Revision, result.Revision)
-	}
-}
-
 func integrationPostgres(t *testing.T, ctx context.Context) *postgresx.Store {
 	t.Helper()
-	dsn := os.Getenv("CAO_TEST_POSTGRES_URL")
-	if dsn == "" {
-		t.Skip("set CAO_TEST_POSTGRES_URL to run Postgres projection integration tests")
-	}
-	store, err := postgresx.New(ctx, dsn)
-	if err != nil {
-		t.Fatal("Postgres is unavailable")
-	}
-	t.Cleanup(func() { _ = store.Close() })
-	return store
+	return testutil.Postgres(t, ctx, "CAO_TEST_POSTGRES_URL", "CAO_POSTGRES_URL", "POSTGRES_URL")
 }
 
 // TestBackfillFailsClosedWithoutEnrollment proves cold start does not invent

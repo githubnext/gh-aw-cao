@@ -16,8 +16,8 @@ services:
       POSTGRES_PASSWORD: ${CAO_LOCAL_POSTGRES_PASSWORD:?Set an ephemeral Postgres password}
     ports:
       - "127.0.0.1::5432"
-    tmpfs:
-      - /var/lib/postgresql/data
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cao_backfill -d cao_backfill"]
       interval: 2s
@@ -31,5 +31,9 @@ services:
       ZO_ROOT_USER_PASSWORD: ${CAO_LOCAL_OTEL_PASSWORD:?Set an ephemeral OpenObserve password}
     ports:
       - "127.0.0.1::5080"
-    tmpfs:
-      - /data
+    volumes:
+      - openobserve-data:/data
+
+volumes:
+  postgres-data:
+  openobserve-data:

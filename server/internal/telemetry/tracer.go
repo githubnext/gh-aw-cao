@@ -22,6 +22,7 @@ const (
 	SpanPostgresQuery    = "cao_dashboard.postgres.query"
 	SpanQueryCacheLookup = "cao_dashboard.query.cache.lookup"
 	SpanQueryCacheStore  = "cao_dashboard.query.cache.store"
+	SpanBackfillRun      = "cao_dashboard.collection.backfill"
 )
 
 // Tracer returns the dashboard server's instrumentation-scoped tracer. It

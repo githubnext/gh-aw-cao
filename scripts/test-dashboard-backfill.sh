@@ -20,6 +20,17 @@ mkdir -p "$report_dir"
 cleanup() {
   status=$?
   trap - EXIT
+  containers=()
+  while IFS= read -r container; do
+    if [ -n "$container" ]; then
+      containers+=("$container")
+    fi
+  done < <("${compose[@]}" ps -aq)
+  if [ "${#containers[@]}" -gt 0 ] && ! docker inspect "${containers[@]}" \
+    --format '{{json .State}}' > "$report_dir/container-state.jsonl" 2>&1; then
+    echo "Could not collect backfill container exit/resource state" >&2
+    status=1
+  fi
   if ! "${compose[@]}" logs --no-color > "$report_dir/services.log" 2>&1; then
     echo "Could not collect backfill service logs" >&2
     status=1
@@ -43,9 +54,16 @@ export CAO_POSTGRES_URL="postgres://cao_backfill:$CAO_LOCAL_POSTGRES_PASSWORD@$p
 export CAO_BACKFILL_OPENOBSERVE_URL="http://$observe_address"
 export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="$CAO_BACKFILL_OPENOBSERVE_URL/api/default/v1/traces"
 export OTEL_EXPORTER_OTLP_METRICS_ENDPOINT="$CAO_BACKFILL_OPENOBSERVE_URL/api/default/v1/metrics"
+export OTEL_EXPORTER_OTLP_LOGS_ENDPOINT="$CAO_BACKFILL_OPENOBSERVE_URL/api/default/v1/logs"
 export OTEL_EXPORTER_OTLP_HEADERS
 OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic%20$(printf '%s' "$CAO_LOCAL_OTEL_EMAIL:$CAO_LOCAL_OTEL_PASSWORD" | base64 | tr -d '\n')"
 export CAO_BACKFILL_INTEGRATION=1
+export CAO_BACKFILL_OTEL_LOGS=1
+export DEBUG=cao:collect:backfill:summary,cao:collect:projector,cao:ingest
+export DEBUG_COLORS=0
+export OTEL_RESOURCE_ATTRIBUTES=deployment.environment.name=synthetic
+unset GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN CAO_COLLECT_PRIVATE_KEY CAO_COLLECT_PRIVATE_KEY_FILE
+unset OTEL_EXPORTER_OTLP_TRACES_HEADERS OTEL_EXPORTER_OTLP_METRICS_HEADERS OTEL_EXPORTER_OTLP_LOGS_HEADERS
 
 ready=false
 for ((attempt = 0; attempt < 60; attempt++)); do
@@ -60,5 +78,13 @@ if [ "$ready" != true ]; then
   exit 1
 fi
 
-go -C server test ./internal/server -run '^TestPostgresBackfillIntegration$' \
-  -count=1 -timeout=5m -v 2>&1 | tee "$report_dir/go-test.txt"
+if [ "${CAO_BACKFILL_STRESS:-0}" = 1 ]; then
+  go -C server test ./internal/server -run '^TestPostgresBackfillStress$' \
+    -count=1 -timeout=45m -v 2>&1 | tee "$report_dir/go-test.txt"
+else
+  go -C server test ./internal/server ./internal/simulator \
+    -run '^Test(PostgresBackfill.*|Backfill.*|ProfilesProduceIdenticalCanonicalRecords|Synthetic.*|LocalTransport.*|FaultProxy.*)$' \
+    -count=1 -timeout=5m -v 2>&1 | tee "$report_dir/go-test.txt"
+  go -C server test ./internal/collect -count=1 -timeout=5m -v \
+    2>&1 | tee -a "$report_dir/go-test.txt"
+fi

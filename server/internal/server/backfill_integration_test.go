@@ -17,47 +17,27 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/collect"
-	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/simulator"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
 const backfillDatabaseQueries = "../../../dashboard/site/src/data/queries/database.json"
 
-type backfillEnumeration struct{ runPages int }
-
-func (*backfillEnumeration) ListInstallations(context.Context) ([]githubapp.Installation, error) {
-	return []githubapp.Installation{{ID: 7}}, nil
-}
-
-func (*backfillEnumeration) ListRepositories(context.Context, int64) ([]githubapp.Repository, error) {
-	return []githubapp.Repository{{FullName: "githubnext/gh-aw-cao"}}, nil
-}
-
-func (e *backfillEnumeration) ListWorkflowRuns(
-	_ context.Context, installation int64, repository string, page, perPage int,
-) ([]githubapp.WorkflowRun, int, githubquota.ResponseQuota, error) {
-	if installation != 7 || repository != "githubnext/gh-aw-cao" || page != 1 || perPage != 100 {
-		return nil, 0, githubquota.ResponseQuota{}, fmt.Errorf("unexpected historical enumeration parameters")
-	}
-	e.runPages++
-	return []githubapp.WorkflowRun{{
-		ID: 424242, Attempt: 1, CreatedAt: time.Date(2026, 9, 23, 17, 59, 0, 0, time.UTC),
-	}}, 0, githubquota.ResponseQuota{}, nil
-}
-
 func TestPostgresBackfillIntegration(t *testing.T) {
-	if os.Getenv("CAO_BACKFILL_INTEGRATION") != "1" {
-		t.Skip("run npm run test:integration:dashboard-backfill for local Postgres/Redis/OpenObserve coverage")
+	export := os.Getenv("CAO_BACKFILL_INTEGRATION") == "1"
+	if !export && (os.Getenv("REDIS_URL") == "" ||
+		(os.Getenv("CAO_POSTGRES_URL") == "" && os.Getenv("POSTGRES_URL") == "")) {
+		t.Skip("set Postgres/Redis endpoints or run npm run test:integration:dashboard-backfill")
 	}
 	for _, name := range []string{"CAO_POSTGRES_URL", "REDIS_URL", "CAO_BACKFILL_OPENOBSERVE_URL",
 		"CAO_LOCAL_OTEL_EMAIL", "CAO_LOCAL_OTEL_PASSWORD",
 		"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "OTEL_EXPORTER_OTLP_HEADERS"} {
-		if os.Getenv(name) == "" {
+		if export && os.Getenv(name) == "" {
 			t.Fatalf("%s is required when backfill integration is enabled", name)
 		}
 	}
@@ -65,7 +45,10 @@ func TestPostgresBackfillIntegration(t *testing.T) {
 	defer cancel()
 	started := time.Now()
 	service := fmt.Sprintf("cao-backfill-test-%d", started.UnixNano())
-	flush := backfillTelemetry(t, ctx, service)
+	var flush func(*testing.T)
+	if export {
+		flush = backfillTelemetry(t, ctx, service)
+	}
 	data := integrationDatabase(t)
 	client, err := redisx.New(os.Getenv("REDIS_URL"))
 	if err != nil {
@@ -80,7 +63,14 @@ func TestPostgresBackfillIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	enrollment := collect.Enrollment{Store: store}
-	enumeration := &backfillEnumeration{}
+	github, api, proxy, _ := syntheticGitHub(t, simulator.Scenario{
+		Name: "backfill-replay", Repositories: 1,
+		History: &simulator.History{Days: 1, RunsPerDay: 1, AsOf: started.Add(-time.Minute).UTC().Format(time.RFC3339)},
+	})
+	quota, err := githubquota.New(store, githubquota.Options{SafetyReserve: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
 	backfill := collect.Backfill{
 		Store: store, Lake: lake, Enrollment: enrollment,
 		Queue: collect.Queue{Store: store, MaxLength: 100},
@@ -88,7 +78,7 @@ func TestPostgresBackfillIntegration(t *testing.T) {
 			Store: store, Data: data, Lake: lake, Enrollment: enrollment,
 			DatabaseQueriesPath: backfillDatabaseQueries,
 		},
-		Enumerator: enumeration, RunEnumerator: enumeration,
+		Enumerator: github, RunEnumerator: github, Quota: quota, QuotaApp: "simulator", WindowDays: 7,
 	}
 	app, err := New(ctx, store, Config{
 		Database: data, DatabaseQueriesPath: backfillDatabaseQueries,
@@ -119,7 +109,7 @@ func TestPostgresBackfillIntegration(t *testing.T) {
 		if err != nil || persisted != state {
 			t.Fatalf("backfill checkpoint was not persisted: %+v, %v", persisted, err)
 		}
-		if installation, err := enrollment.InstallationFor(ctx, "githubnext/gh-aw-cao"); err != nil || installation != 7 {
+		if installation, err := enrollment.InstallationFor(ctx, "simulator/repo-00001"); err != nil || installation != 1 {
 			t.Fatalf("enrollment installation = %d, err=%v", installation, err)
 		}
 		assertBackfillQueueDepth(t, ctx, backfill.Queue)
@@ -143,8 +133,8 @@ func TestPostgresBackfillIntegration(t *testing.T) {
 			t.Fatal(err)
 		}
 		if state.Revision != committed.Revision || state.QueuedRepositories != 0 || state.QueuedRunTasks != 0 ||
-			state.Phase != "collecting" || enumeration.runPages != 2 {
-			t.Fatalf("rerun advanced revision, duplicated work, or ignored cursor: %+v, pages=%d", state, enumeration.runPages)
+			state.Phase != "collecting" || proxy.RequestCount("/repos/simulator/repo-00001/actions/runs", 1) != 2 {
+			t.Fatalf("rerun advanced revision, duplicated work, or ignored cursor: %+v", state)
 		}
 		assertBackfillQueueDepth(t, ctx, backfill.Queue)
 		if got := backfillState(t, ctx, data); !reflect.DeepEqual(got, committed) {
@@ -157,6 +147,7 @@ func TestPostgresBackfillIntegration(t *testing.T) {
 	// Replay must not depend on GitHub enumeration or quota availability.
 	backfill.Enumerator = nil
 	backfill.RunEnumerator = nil
+	requestsBeforeReplay := api.Stats().Requests
 	if !t.Run("lost Postgres projection recovers from retained lake without GitHub", func(t *testing.T) {
 		if err := data.DeleteNamespace(ctx); err != nil {
 			t.Fatal(err)
@@ -177,6 +168,9 @@ func TestPostgresBackfillIntegration(t *testing.T) {
 			t.Fatal("recovery changed canonical rows or metadata")
 		}
 		backfillReadiness(t, ctx, local, http.StatusOK)
+		if api.Stats().Requests != requestsBeforeReplay {
+			t.Fatal("projection recovery contacted the GitHub simulator")
+		}
 	}) {
 		return
 	}
@@ -252,10 +246,12 @@ func TestPostgresBackfillIntegration(t *testing.T) {
 			t.Fatal("empty lake changed existing data")
 		}
 	})
-	t.Run("OpenObserve receives correlated traces and backfill metrics", func(t *testing.T) {
-		flush(t)
-		assertBackfillTelemetry(t, ctx, service, queryTrace, started)
-	})
+	if export {
+		t.Run("OpenObserve receives correlated traces and backfill metrics", func(t *testing.T) {
+			flush(t)
+			assertBackfillTelemetry(t, ctx, service, queryTrace, started)
+		})
+	}
 }
 
 func backfillState(t *testing.T, ctx context.Context, data *postgresx.Store) postgresx.State {
@@ -324,7 +320,8 @@ func backfillRequest(t *testing.T, ctx context.Context, local *httptest.Server, 
 		t.Fatal(err)
 	}
 	traceID := response.Header.Get(telemetry.TraceIDHeader)
-	if len(traceID) != 32 || len(response.Header.Get(telemetry.SpanIDHeader)) != 16 {
+	if os.Getenv("CAO_BACKFILL_INTEGRATION") == "1" &&
+		(len(traceID) != 32 || len(response.Header.Get(telemetry.SpanIDHeader)) != 16) {
 		t.Fatal("live server response lacks W3C trace/span correlation")
 	}
 	return traceID

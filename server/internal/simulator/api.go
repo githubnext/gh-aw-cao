@@ -142,6 +142,21 @@ func NewAPIHandler(scenario Scenario, timeScale float64) (*API, error) {
 		}
 	}
 	mux := http.NewServeMux()
+	success := func(writer http.ResponseWriter, request *http.Request, rate rateHeaders) {
+		payload, handled, err := scenario.historyResponse(writer, request)
+		if handled {
+			setRateHeaders(writer, rate)
+			writer.Header().Set("Content-Type", "application/json")
+			if err != nil {
+				writer.WriteHeader(http.StatusBadRequest)
+				_ = json.NewEncoder(writer).Encode(map[string]string{"message": err.Error()})
+				return
+			}
+			_ = json.NewEncoder(writer).Encode(payload)
+			return
+		}
+		writeGitHubSuccess(writer, request, rate)
+	}
 	mux.HandleFunc("GET /healthz", func(writer http.ResponseWriter, _ *http.Request) {
 		writer.WriteHeader(http.StatusNoContent)
 	})
@@ -167,13 +182,13 @@ func NewAPIHandler(scenario Scenario, timeScale float64) (*API, error) {
 		elapsed := time.Duration(float64(time.Since(started)) * timeScale)
 		window, ok := windowAt(windows, elapsed)
 		if !ok {
-			writeGitHubSuccess(writer, request, successRate(APIWindow{}, rate))
+			success(writer, request, successRate(APIWindow{}, rate))
 			return
 		}
 		if applyFailure(writer, request, window.spec, count) {
 			return
 		}
-		writeGitHubSuccess(writer, request, successRate(window.spec, rate))
+		success(writer, request, successRate(window.spec, rate))
 	})
 	api.handler = mux
 	return api, nil

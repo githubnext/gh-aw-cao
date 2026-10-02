@@ -214,23 +214,40 @@ func (e Enrollment) addRepositories(ctx context.Context, installationID int64, r
 		return err
 	}
 	transferred := 0
-	for _, repository := range normalized {
+	for start := 0; start < len(normalized); start += 256 {
+		batch := normalized[start:min(start+256, len(normalized))]
+		reads := make([][]string, 0, len(batch))
+		for _, repository := range batch {
+			reads = append(reads, []string{"HGET", e.Store.Key(repositoryInstallations), repository})
+		}
+		previous, err := e.Store.Client.DoMany(ctx, reads)
+		if err != nil {
+			return err
+		}
+		if len(previous) != len(batch) {
+			return errors.New("incomplete enrollment ownership response")
+		}
 		// A repository that moved between installations must not stay in the
 		// previous installation's set: a later removal or deletion event for
 		// that installation would otherwise erase evidence the current
 		// installation still covers.
-		previous, err := e.Store.HashGet(ctx, repositoryInstallations, repository)
-		if err != nil {
-			return err
-		}
-		if previousInstallation, ok := repositoryTransfer(previous, installationID); ok {
-			if err := e.Store.SetRemove(ctx, installationRepositoriesKey(previousInstallation), repository); err != nil {
-				return err
+		writes := make([][]string, 0, len(batch)*2)
+		for index, repository := range batch {
+			owner := ""
+			if previous[index] != nil {
+				value, ok := previous[index].(string)
+				if !ok {
+					return errors.New("invalid enrollment ownership response")
+				}
+				owner = value
 			}
-			transferred++
+			if previousInstallation, ok := repositoryTransfer(owner, installationID); ok {
+				writes = append(writes, []string{"SREM", e.Store.Key(installationRepositoriesKey(previousInstallation)), repository})
+				transferred++
+			}
+			writes = append(writes, []string{"HSET", e.Store.Key(repositoryInstallations), repository, strconv.FormatInt(installationID, 10)})
 		}
-		if err := e.Store.HashSet(ctx, repositoryInstallations, repository,
-			strconv.FormatInt(installationID, 10)); err != nil {
+		if _, err := e.Store.Client.DoMany(ctx, writes); err != nil {
 			return err
 		}
 	}

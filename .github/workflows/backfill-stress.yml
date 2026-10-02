@@ -1,0 +1,62 @@
+name: Synthetic Postgres Backfill Stress
+
+on:
+  workflow_dispatch:
+    inputs:
+      runs_per_day:
+        description: Synthetic workflow runs per repository per day (at least 1)
+        required: true
+        default: "1"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  backfill-stress:
+    name: Backfill 7 days across ${{ matrix.repositories }} synthetic repos
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        repositories: [1000, 10000, 50000]
+    env:
+      CAO_BACKFILL_STRESS: "1"
+      CAO_BACKFILL_REPOSITORIES: ${{ matrix.repositories }}
+      CAO_BACKFILL_RUNS_PER_DAY: ${{ inputs.runs_per_day }}
+      GH_TOKEN: ""
+      GITHUB_TOKEN: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version: 1.27.1
+          cache: false
+      - name: Backfill synthetic history with concurrent signed webhooks
+        run: bash scripts/test-dashboard-backfill.sh
+      - name: Summarize results
+        if: always()
+        run: |
+          {
+            echo "## Seven-day synthetic backfill: ${CAO_BACKFILL_REPOSITORIES} repositories"
+            echo "All GitHub API and webhook traffic is restricted to exact numeric-loopback simulator endpoints."
+            report=".tmp/go-backfill/stress-${CAO_BACKFILL_REPOSITORIES}.json"
+            if [ -f "$report" ]; then
+              echo '```json'
+              cat "$report"
+              echo '```'
+            else
+              echo "No completed report; inspect the test and service logs."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload stress report and local service logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: postgres-backfill-stress-${{ matrix.repositories }}
+          path: .tmp/go-backfill/
+          if-no-files-found: error
+          retention-days: 14

@@ -212,6 +212,16 @@ During cold start the implementation MUST continue to accept webhooks and MUST
 apply them without loss or double application. Window completeness and
 backfilled repository count MUST be published as source metadata.
 
+An explicitly configured historical backfill window MUST be sent as an
+inclusive UTC `created=START..END` range to GitHub's run-list API; a provider
+that cannot apply that range MUST fail closed. An unset window preserves
+unbounded discovery. Windowed admission MUST NOT truncate retained lake replay.
+Transient contention with a webhook-held enrollment mutation lease MUST wait
+cancellation-safely rather than abort cold start. Enrollment ownership updates
+MUST preserve transfer/withdrawal semantics when pipelined in bounded batches.
+Checkpoint write failures MUST NOT be reported as successful backfill;
+cancellation MUST persist a terminal failed state with bounded cleanup.
+
 ## 9. Gap recovery
 
 An implementation MUST NOT rely on scheduled sweeps of the enrollment set as its
@@ -353,7 +363,7 @@ substitute an in-memory queue for Redis.
 
 Scenarios are strict JSON documents. Unknown fields MUST be rejected before
 simulation starts. A scenario MUST have a name, a repository count between 1
-and 20,000, and no more than 1,000,000 generated workflow events. API windows
+and 50,000, and no more than 1,000,000 generated workflow/issue events combined. API windows
 MUST have valid, increasing, non-overlapping `from` and `to` durations.
 
 The supported scenario controls are:
@@ -366,6 +376,35 @@ The supported scenario controls are:
   original delivery IDs; and
 - `remove_repositories` to emit a repository-removal event after workflow
   traffic.
+
+  An optional `history` object MAY generate 1-31 days with a positive
+  `runs_per_day` and an explicit RFC3339 `as_of`. Historical generation MUST be
+  bounded to five million run identities and generate API pages on demand.
+  Installation, repository, and run pages MUST follow the production GitHub
+  pagination contract, including the `created` time range.
+
+  An optional `faults` list MAY configure the local reverse proxy by path, page,
+  bounded request count, mode, and backoff. Faults MUST expire at their declared
+  count. Supported proxy faults include 5xx, authorization, malformed JSON,
+  connection loss, timeout, missing quota headers, and primary/secondary limits.
+  `webhook_retry_limit` MAY enable bounded transient delivery retries; retries
+  MUST reuse the signed delivery identity and be counted separately.
+
+  All simulation HTTP transports MUST pin an exact numeric-loopback endpoint,
+  disable environment proxies and DNS-based host selection, and reject redirects
+  to other hosts/ports before dialing. Stress harnesses MUST create their own
+  synthetic origins and ephemeral App keys, remove inherited GitHub credentials,
+  and MUST NOT send simulated traffic to live GitHub APIs.
+
+  The enterprise backfill workflow MUST exercise 1,000, 10,000, and
+  50,000 repositories, at least one run per day, and a seven-day horizon.
+  Signed webhook traffic MUST overlap backfill. Assertions MUST cover all durable
+  run identities, exact counts, the time window, deduplication, and native
+  Postgres queries; no in-memory queue or production-handler bypass is permitted.
+  Diagnostic artifacts MUST retain bounded local OTEL traces, logs, and counters
+  before teardown on success or failure. Aggregate backfill telemetry MUST carry
+  fixed phase/count/window attributes, not credentials, prompts, source rows,
+  or per-repository metric labels.
 
 API windows select a behavior for elapsed scenario time. Supported modes are
 `healthy`, `latency`, `timeout`, `connection-failure`, `rate-limited`,

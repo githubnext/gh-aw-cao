@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/log/global"
+	sdklog "go.opentelemetry.io/otel/sdk/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
@@ -23,23 +25,44 @@ func backfillTelemetry(t *testing.T, ctx context.Context, service string) func(*
 	previousTracer := otel.GetTracerProvider()
 	previousMeter := otel.GetMeterProvider()
 	previousPropagator := otel.GetTextMapPropagator()
+	previousLogs := global.GetLoggerProvider()
 	t.Setenv("OTEL_SDK_DISABLED", "false")
 	t.Setenv("OTEL_SERVICE_NAME", service)
 	t.Setenv("OTEL_TRACES_SAMPLER", "always_on")
 	t.Setenv("CAO_OTEL_LOGS_ENABLED", "false")
+	if os.Getenv("CAO_BACKFILL_OTEL_LOGS") == "1" {
+		t.Setenv("CAO_OTEL_LOGS_ENABLED", "true")
+	}
 	shutdown, err := telemetry.Setup(ctx, "backfill-integration")
 	if err != nil {
 		t.Fatal("initialize local OTLP exporters")
 	}
 	t.Cleanup(func() {
-		stopCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+		stopCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 		defer cancel()
+		if provider, ok := otel.GetTracerProvider().(*sdktrace.TracerProvider); ok {
+			if err := provider.ForceFlush(stopCtx); err != nil {
+				t.Error("flush diagnostic traces")
+			}
+		}
+		if provider, ok := global.GetLoggerProvider().(*sdklog.LoggerProvider); ok {
+			if err := provider.ForceFlush(stopCtx); err != nil {
+				t.Error("flush diagnostic logs")
+			}
+		}
+		if provider, ok := otel.GetMeterProvider().(*sdkmetric.MeterProvider); ok {
+			if err := provider.ForceFlush(stopCtx); err != nil {
+				t.Error("flush diagnostic metrics")
+			}
+		}
+		downloadBackfillTelemetry(t, stopCtx, service)
 		if err := shutdown(stopCtx); err != nil {
 			t.Error("shut down local OTLP exporters")
 		}
 		otel.SetTracerProvider(previousTracer)
 		otel.SetMeterProvider(previousMeter)
 		otel.SetTextMapPropagator(previousPropagator)
+		global.SetLoggerProvider(previousLogs)
 	})
 	tracer, ok := otel.GetTracerProvider().(*sdktrace.TracerProvider)
 	if !ok {
@@ -56,6 +79,11 @@ func backfillTelemetry(t *testing.T, ctx context.Context, service string) func(*
 		}
 		if err := meter.ForceFlush(ctx); err != nil {
 			t.Fatal("OpenObserve rejected metric export")
+		}
+		if provider, ok := global.GetLoggerProvider().(*sdklog.LoggerProvider); ok {
+			if err := provider.ForceFlush(ctx); err != nil {
+				t.Fatal("OpenObserve rejected log export")
+			}
 		}
 	}
 }
@@ -117,13 +145,16 @@ func assertBackfillTelemetry(t *testing.T, ctx context.Context, service, queryTr
 	wantSpans := map[string]bool{
 		telemetry.SpanIngestRun: false, telemetry.SpanPostgresQuery: false,
 		telemetry.SpanQueryExecute: false,
+		telemetry.SpanBackfillRun:  false,
 	}
 	correlated := map[string]bool{
 		"POST /api/v1/query": false, telemetry.SpanQueryExecute: false, telemetry.SpanPostgresQuery: false,
 	}
 	for {
 		rows := backfillObserveSearch(t, ctx, "traces",
-			`SELECT * FROM "default" WHERE service_name = '`+service+`'`, started)
+			`SELECT * FROM "default" WHERE service_name = '`+service+
+				`' AND (operation_name IN ('`+telemetry.SpanIngestRun+`', '`+telemetry.SpanBackfillRun+`', '`+telemetry.SpanQueryExecute+
+				`') OR trace_id = '`+queryTrace+`')`, started)
 		for _, row := range rows {
 			name, _ := row["operation_name"].(string)
 			if _, ok := wantSpans[name]; ok {
@@ -136,7 +167,7 @@ func assertBackfillTelemetry(t *testing.T, ctx context.Context, service, queryTr
 			}
 		}
 		if wantSpans[telemetry.SpanIngestRun] && wantSpans[telemetry.SpanPostgresQuery] &&
-			wantSpans[telemetry.SpanQueryExecute] && correlated["POST /api/v1/query"] &&
+			wantSpans[telemetry.SpanQueryExecute] && wantSpans[telemetry.SpanBackfillRun] && correlated["POST /api/v1/query"] &&
 			correlated[telemetry.SpanQueryExecute] && correlated[telemetry.SpanPostgresQuery] {
 			break
 		}

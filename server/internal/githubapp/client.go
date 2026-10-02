@@ -35,6 +35,7 @@ type Config struct {
 	BaseURL        string
 	UploadURL      string
 	RequestTimeout time.Duration
+	Transport      http.RoundTripper
 }
 
 // Validate reports whether the configuration can authenticate at all. It
@@ -128,7 +129,11 @@ func New(config Config) (*Client, error) {
 	if config.RequestTimeout <= 0 {
 		config.RequestTimeout = 30 * time.Second
 	}
-	transport, err := ghinstallation.NewAppsTransport(http.DefaultTransport, config.AppID, config.PrivateKeyPEM)
+	baseTransport := config.Transport
+	if baseTransport == nil {
+		baseTransport = http.DefaultTransport
+	}
+	transport, err := ghinstallation.NewAppsTransport(baseTransport, config.AppID, config.PrivateKeyPEM)
 	if err != nil {
 		return nil, fmt.Errorf("configure GitHub App transport: %w", err)
 	}
@@ -235,6 +240,22 @@ func (c *Client) ListRepositories(ctx context.Context, installationID int64) ([]
 func (c *Client) ListWorkflowRuns(
 	ctx context.Context, installationID int64, repository string, page, perPage int,
 ) ([]WorkflowRun, int, githubquota.ResponseQuota, error) {
+	return c.listWorkflowRuns(ctx, installationID, repository, page, perPage, "")
+}
+
+func (c *Client) ListWorkflowRunsWindow(
+	ctx context.Context, installationID int64, repository string, page, perPage int, after, before time.Time,
+) ([]WorkflowRun, int, githubquota.ResponseQuota, error) {
+	if after.IsZero() || !after.Before(before) {
+		return nil, 0, githubquota.ResponseQuota{}, errors.New("workflow run window must have increasing bounds")
+	}
+	created := after.UTC().Format(time.RFC3339) + ".." + before.UTC().Format(time.RFC3339)
+	return c.listWorkflowRuns(ctx, installationID, repository, page, perPage, created)
+}
+
+func (c *Client) listWorkflowRuns(
+	ctx context.Context, installationID int64, repository string, page, perPage int, created string,
+) ([]WorkflowRun, int, githubquota.ResponseQuota, error) {
 	client, owner, name, err := c.repositoryClient(installationID, repository)
 	if err != nil {
 		return nil, 0, githubquota.ResponseQuota{}, err
@@ -247,6 +268,7 @@ func (c *Client) ListWorkflowRuns(
 	}
 	runs, response, err := client.Actions.ListRepositoryWorkflowRuns(ctx, owner, name, &github.ListWorkflowRunsOptions{
 		ListOptions: github.ListOptions{Page: page, PerPage: perPage},
+		Created:     created,
 	})
 	quota := workflowRunResponseQuota(response)
 	if err != nil {
