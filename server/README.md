@@ -1434,8 +1434,12 @@ GitHub OAuth session.
 
 Set `CAO_SERVER_LOGS_ENABLED=true` to retain up to 10,000 recent `DEBUG`-selected
 server records in memory and mount `GET /api/admin/logs`. The response is an
-`application/json` attachment containing an array of timestamped log objects
-with `Cache-Control: no-store`. Hosted access requires either an authorized
+`application/json` attachment containing `logs` (an array of timestamped log
+objects) and `redis` (availability, fixed numeric ingestion counters, and,
+when collection is enabled, queue depth, pending tasks, and dead letters).
+Redis keys, event details, credentials, and raw values are excluded. When Redis
+is unavailable, the log download still succeeds with `redis.status` set to
+`unavailable`. The response uses `Cache-Control: no-store`. Hosted access requires either an authorized
 administrator session or the same bearer GitHub Actions token and OIDC
 provenance required by hosted MCP; local access uses the dashboard bearer
 capability or the configured Actions token and actor. Coolify enables this

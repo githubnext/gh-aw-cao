@@ -76,6 +76,19 @@ model ServerLogRecord {
   namespace: string;
   message: string;
 }
+/** Only fixed, numeric ingestion counters are returned; Redis keys and values are never exposed. */
+model ServerLogRedis {
+  status: "ok" | "not-configured" | "unavailable";
+  counters?: Record<int64>;
+  queueDepth?: int64;
+  pendingTasks?: int64;
+  deadLetters?: int64;
+}
+@example(#{logs: #[], redis: #{status: "ok", counters: #{webhookReceived: 3}, queueDepth: 0, pendingTasks: 0, deadLetters: 0}})
+model ServerLogSnapshot {
+  logs: ServerLogRecord[];
+  redis: ServerLogRedis;
+}
 
 @tag("Ingestion and administration")
 namespace Operations {
@@ -115,10 +128,10 @@ namespace Operations {
   @route("/api/v1/github-quota/usage")
   @get op quotaUsage(): QuotaUsage | Unauthorized | Forbidden | Unavailable;
 
-  /** Available only when CAO_SERVER_LOGS_ENABLED=true. Returns up to 10,000 recent server debug log records as a JSON array; requires a local bearer capability, a hosted administrator session, or the hosted MCP GitHub Actions identity. */
+  /** Available only when CAO_SERVER_LOGS_ENABLED=true. Returns up to 10,000 recent server debug log records and fixed Redis ingestion counters (or availability status); requires a local bearer capability, a hosted administrator session, or the hosted MCP GitHub Actions identity. */
   @useAuth(DashboardAuth)
   @route("/api/admin/logs")
   @get op logs(@header("X-GitHub-Actor") githubActor?: string, @header("X-GitHub-OIDC-Token") githubOIDCToken?: string):
-    { @header contentType: "application/json"; @header contentDisposition: "attachment; filename=\"cao-server-logs.json\""; @body body: ServerLogRecord[] } |
+    { @header contentType: "application/json"; @header contentDisposition: "attachment; filename=\"cao-server-logs.json\""; @body body: ServerLogSnapshot } |
     Unauthorized | Forbidden | Unavailable;
 }
