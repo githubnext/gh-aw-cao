@@ -24,6 +24,8 @@ const (
 	authRateWindow    = 5 * time.Minute
 	edgeRateLimit     = 1200
 	edgeRateWindow    = time.Minute
+	publicRateLimit   = 600
+	publicRateWindow  = time.Minute
 	rateLimitTimeout  = 2 * time.Second
 )
 
@@ -42,11 +44,13 @@ type RateLimitConfig struct {
 	Query   RateLimitPolicy
 	Auth    RateLimitPolicy
 	Edge    RateLimitPolicy
+	Public  RateLimitPolicy
 }
 
 func (c RateLimitConfig) validate() error {
 	for name, policy := range map[string]RateLimitPolicy{
 		"general": c.General, "query": c.Query, "auth": c.Auth, "edge": c.Edge,
+		"public": c.Public,
 	} {
 		if policy.Capacity < 0 {
 			return fmt.Errorf("%s rate limit capacity cannot be negative", name)
@@ -70,6 +74,8 @@ func (c RateLimitConfig) policy(name string) requestRatePolicy {
 		override, resolved.capacity, resolved.window = c.Auth, authRateLimit, authRateWindow
 	case "edge":
 		override, resolved.capacity, resolved.window = c.Edge, edgeRateLimit, edgeRateWindow
+	case "public":
+		override, resolved.capacity, resolved.window = c.Public, publicRateLimit, publicRateWindow
 	}
 	if override.Capacity > 0 {
 		resolved.capacity = override.Capacity
@@ -109,7 +115,19 @@ func (a *App) rateLimit(next http.Handler) http.Handler {
 // not available until the access middleware has completed.
 func (a *App) preAuthRateLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		if a.oauth == nil || !requiresPreAuthRateLimit(request.URL.Path) || !a.validRateLimitBoundary(request) {
+		if a.oauth == nil || !a.validRateLimitBoundary(request) {
+			next.ServeHTTP(response, request)
+			return
+		}
+		if publicServiceEndpoint(request.URL.Path) {
+			if request.Method == http.MethodGet {
+				a.enforceRateLimit(response, request, next, a.config.RateLimits.policy("public"), "client:"+a.clientIP(request))
+			} else {
+				next.ServeHTTP(response, request)
+			}
+			return
+		}
+		if !requiresPreAuthRateLimit(request.URL.Path) {
 			next.ServeHTTP(response, request)
 			return
 		}

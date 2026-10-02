@@ -45,16 +45,16 @@ model NotReady {
 
 @tag("Health")
 namespace Health {
-  /** Public liveness and storage health, including before the first data ingestion. */
+  /** Public liveness and storage health, including before the first data ingestion. Hosted requests are limited per client address. */
   @route("/api/health")
   /** An externally hosted handler also returns an Unavailable error until startup completes or after shutdown. */
-  @get op health(): HealthResponse | UnhealthyHealth | Unavailable;
+  @get op health(): HealthResponse | UnhealthyHealth | TooManyRequests | Unavailable;
 
   /** Alias of /api/health. */
   @route("/api/v1/health")
-  @get op healthV1(): HealthResponse | UnhealthyHealth | Unavailable;
+  @get op healthV1(): HealthResponse | UnhealthyHealth | TooManyRequests | Unavailable;
 
-  /** Public readiness; Redis must be connected and Postgres must contain dashboard data. */
+  /** Public readiness; Redis must be connected and Postgres must contain dashboard data. Hosted requests are limited per client address. */
   @route("/api/readiness")
-  @get op readiness(): ReadinessResponse | NotReady | Unavailable;
+  @get op readiness(): ReadinessResponse | NotReady | TooManyRequests | Unavailable;
 }
