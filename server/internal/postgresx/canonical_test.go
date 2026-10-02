@@ -61,7 +61,7 @@ func TestCanonicalRowRejectsNonNativeKnownValues(t *testing.T) {
 		{"organizationLink": map[string]any{"href": "https://github.com", "title": "extra"}},
 	} {
 		if _, _, _, ok, err := canonicalRow(row); err != nil || ok {
-			t.Fatalf("expected lossless legacy fallback for %#v: ok=%t err=%v", row, ok, err)
+			t.Fatalf("unsupported known representation must be rejected: %#v ok=%t err=%v", row, ok, err)
 		}
 	}
 }

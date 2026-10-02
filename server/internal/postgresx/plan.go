@@ -160,7 +160,7 @@ func (r *readTransaction) ExecuteNativePlan(ctx context.Context, definitions []q
 				switch predicate.Field {
 				case "id", "runId", "sessionId":
 				default:
-					// Legacy documents cannot promise the typed text semantics.
+					// Schemaless documents cannot promise the typed text semantics.
 					return nil, model.Metrics{}, false, nil
 				}
 			}

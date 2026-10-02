@@ -7664,8 +7664,7 @@
           "sourceName",
           "isCanonical",
           "metadataPresent",
-          "metadataRowCountNull",
-          "metadataMigrated"
+          "metadataRowCountNull"
         ],
         "properties": {
           "namespace": {
@@ -7732,9 +7731,6 @@
           "metadataRowCountNull": {
             "type": "boolean"
           },
-          "metadataMigrated": {
-            "type": "boolean"
-          },
           "metadataExtension": {
             "anyOf": [
               {
@@ -7746,17 +7742,6 @@
               }
             ],
             "description": "Only unknown metadata keys; absent when the metadata schema is closed."
-          },
-          "storageFallbackReason": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Field/type diagnostic for a canonical source retaining legacy storage."
           }
         },
         "description": "Source registry and resource accounting, scoped to a tenant."

@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"net/netip"
 	"path/filepath"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -117,594 +116,6 @@ func NewConfig(ctx context.Context, config *pgx.ConnConfig, namespaces ...string
 	return &Store{db: db, namespace: namespace}, nil
 }
 
-// initialize migrates legacy JSONB columns for every namespace, not just the
-// caller's. PostgreSQL commits the schema changes and converted values together:
-// a failed conversion leaves the old schema and all tenant data intact. Opening
-// the database again after success is a no-op for already converted values.
-func initialize(ctx context.Context, db *sql.DB) error {
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-	// Serialize initializers sharing a schema, including initializers for other tenants.
-	if _, err = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(712083241, 17483)`); err != nil {
-		return err
-	}
-	for _, statement := range []string{
-		`CREATE TABLE IF NOT EXISTS cao_sources (
-			namespace TEXT NOT NULL, source_name TEXT NOT NULL,
-			PRIMARY KEY (namespace, source_name))`,
-		`CREATE TABLE IF NOT EXISTS cao_source_rows (
-			namespace TEXT NOT NULL, source_name TEXT NOT NULL, ordinal BIGINT NOT NULL,
-			PRIMARY KEY (namespace, source_name, ordinal),
-			FOREIGN KEY (namespace, source_name) REFERENCES cao_sources(namespace, source_name) ON DELETE CASCADE)`,
-		`CREATE TABLE IF NOT EXISTS cao_source_documents (
-			namespace TEXT NOT NULL, source_name TEXT NOT NULL, ordinal BIGINT NOT NULL,
-			payload JSON NOT NULL, id TEXT, run_id TEXT, session_id TEXT,
-			PRIMARY KEY (namespace, source_name, ordinal),
-			FOREIGN KEY (namespace, source_name) REFERENCES cao_sources(namespace, source_name) ON DELETE CASCADE)`,
-		`CREATE TABLE IF NOT EXISTS cao_canonical_rows (
-			namespace TEXT NOT NULL, source_name TEXT NOT NULL, ordinal BIGINT NOT NULL,
-			present TEXT[] NOT NULL, extension JSON,
-			id TEXT, run_id TEXT, session_id TEXT, repository_id TEXT,
-			target_repository_id TEXT, workflow_id TEXT,
-			status TEXT, conclusion TEXT, event TEXT,
-			owner TEXT, repository TEXT, name TEXT, full_name TEXT, path TEXT,
-			visibility TEXT, state TEXT, campaign TEXT, campaign_id TEXT,
-			head_sha TEXT, head_branch TEXT, source TEXT, source_id TEXT,
-			repository_full_name TEXT, slug TEXT, url TEXT, type TEXT,
-			category TEXT, correlation_id TEXT,
-			description TEXT, icon TEXT, mode TEXT, domain TEXT, decision TEXT,
-			tool_type TEXT, mcp_server TEXT, mcp_tool TEXT,
-			safe_output_type TEXT, github_entity_type TEXT,
-			summary TEXT, payload_ref TEXT, target_repo TEXT,
-			target_organization TEXT, target_repository TEXT,
-			rollout_mode TEXT, campaign_name TEXT, campaign_icon TEXT,
-			campaign_readme_path TEXT,
-			role TEXT, workflow_path TEXT, title TEXT, branch TEXT,
-			engine TEXT, engine_version TEXT, requested_model TEXT,
-			resolved_model TEXT, model_id TEXT,
-			created_at TIMESTAMPTZ, created_at_raw TEXT,
-			started_at TIMESTAMPTZ, started_at_raw TEXT,
-			completed_at TIMESTAMPTZ, completed_at_raw TEXT,
-			updated_at TIMESTAMPTZ, updated_at_raw TEXT,
-			observed_at TIMESTAMPTZ, observed_at_raw TEXT,
-			timestamp_at TIMESTAMPTZ, timestamp_at_raw TEXT,
-			attempt NUMERIC, attempt_raw TEXT,
-			sequence NUMERIC, sequence_raw TEXT,
-			issue_number NUMERIC, issue_number_raw TEXT,
-			duration_ms NUMERIC, duration_ms_raw TEXT,
-			request_count NUMERIC, request_count_raw TEXT,
-			worker_count NUMERIC, worker_count_raw TEXT,
-			aic_total NUMERIC, aic_total_raw TEXT,
-			enabled BOOLEAN, is_skill BOOLEAN, is_pull_request BOOLEAN,
-			github_id TEXT, github_id_kind TEXT, github_id_numeric NUMERIC,
-			github_run_id TEXT, github_run_id_kind TEXT, github_run_id_numeric NUMERIC,
-			organization_href TEXT, repository_href TEXT, workflow_href TEXT, run_href TEXT,
-			contents TEXT[],
-			CONSTRAINT cao_canonical_github_id_kind CHECK (COALESCE(
-				(github_id IS NULL AND github_id_kind IS NULL AND github_id_numeric IS NULL) OR
-				(github_id_kind = 'string' AND github_id IS NOT NULL AND github_id_numeric IS NULL) OR
-				(github_id_kind = 'number' AND
-					(github_id IS NOT NULL OR github_id_numeric IS NOT NULL)), FALSE)),
-			CONSTRAINT cao_canonical_github_run_id_kind CHECK (COALESCE(
-				(github_run_id IS NULL AND github_run_id_kind IS NULL AND github_run_id_numeric IS NULL) OR
-				(github_run_id_kind = 'string' AND github_run_id IS NOT NULL AND github_run_id_numeric IS NULL) OR
-				(github_run_id_kind = 'number' AND
-					(github_run_id IS NOT NULL OR github_run_id_numeric IS NOT NULL)), FALSE)),
-			PRIMARY KEY (namespace, source_name, ordinal),
-			FOREIGN KEY (namespace, source_name) REFERENCES cao_sources(namespace, source_name) ON DELETE CASCADE)`,
-		`CREATE INDEX IF NOT EXISTS cao_canonical_rows_id ON cao_canonical_rows
-			(namespace, source_name, id) WHERE id IS NOT NULL`,
-		`CREATE INDEX IF NOT EXISTS cao_canonical_rows_run_id ON cao_canonical_rows
-			(namespace, source_name, run_id) WHERE run_id IS NOT NULL`,
-		`CREATE INDEX IF NOT EXISTS cao_canonical_rows_session_id ON cao_canonical_rows
-			(namespace, source_name, session_id) WHERE session_id IS NOT NULL`,
-		`CREATE INDEX IF NOT EXISTS cao_canonical_rows_repository_id ON cao_canonical_rows
-			(namespace, source_name, repository_id) WHERE repository_id IS NOT NULL`,
-		`CREATE INDEX IF NOT EXISTS cao_canonical_rows_workflow_id ON cao_canonical_rows
-			(namespace, source_name, workflow_id) WHERE workflow_id IS NOT NULL`,
-		`CREATE INDEX IF NOT EXISTS cao_canonical_rows_created_at ON cao_canonical_rows
-			(namespace, source_name, created_at) WHERE created_at IS NOT NULL`,
-		`CREATE INDEX IF NOT EXISTS cao_canonical_rows_started_at ON cao_canonical_rows
-			(namespace, source_name, started_at) WHERE started_at IS NOT NULL`,
-		`CREATE INDEX IF NOT EXISTS cao_canonical_rows_timestamp_at ON cao_canonical_rows
-			(namespace, source_name, timestamp_at) WHERE timestamp_at IS NOT NULL`,
-		`CREATE INDEX IF NOT EXISTS cao_canonical_rows_observed_at ON cao_canonical_rows
-			(namespace, source_name, observed_at) WHERE observed_at IS NOT NULL`,
-		`CREATE INDEX IF NOT EXISTS cao_canonical_rows_enabled ON cao_canonical_rows
-			(namespace, source_name, enabled) WHERE enabled IS NOT NULL`,
-		`CREATE INDEX IF NOT EXISTS cao_canonical_rows_is_pull_request ON cao_canonical_rows
-			(namespace, source_name, is_pull_request) WHERE is_pull_request IS NOT NULL`,
-		`CREATE INDEX IF NOT EXISTS cao_source_documents_id
-			ON cao_source_documents (namespace, source_name, id) WHERE id IS NOT NULL`,
-		`CREATE INDEX IF NOT EXISTS cao_source_documents_run_id
-			ON cao_source_documents (namespace, source_name, run_id) WHERE run_id IS NOT NULL`,
-		`CREATE INDEX IF NOT EXISTS cao_source_documents_session_id
-			ON cao_source_documents (namespace, source_name, session_id) WHERE session_id IS NOT NULL`,
-		`CREATE TABLE IF NOT EXISTS cao_state (
-			namespace TEXT PRIMARY KEY, revision BIGINT NOT NULL, data_revision TEXT NOT NULL,
-			evaluated_at TIMESTAMPTZ NOT NULL)`,
-		`CREATE TABLE IF NOT EXISTS cao_values (
-			namespace TEXT NOT NULL, source_name TEXT NOT NULL, ordinal BIGINT NOT NULL,
-			node_id BIGINT NOT NULL, parent_id BIGINT, object_key TEXT, array_index BIGINT,
-			kind TEXT NOT NULL CHECK (kind IN ('object', 'array', 'string', 'number', 'boolean', 'null')),
-			text_value TEXT, numeric_value NUMERIC, bool_value BOOLEAN,
-			PRIMARY KEY (namespace, source_name, ordinal, node_id),
-			FOREIGN KEY (namespace, source_name) REFERENCES cao_sources(namespace, source_name) ON DELETE CASCADE)`,
-		`CREATE TABLE IF NOT EXISTS cao_counts (
-			namespace TEXT NOT NULL REFERENCES cao_state(namespace) ON DELETE CASCADE,
-			source_name TEXT NOT NULL, count BIGINT NOT NULL,
-			PRIMARY KEY (namespace, source_name))`,
-		`CREATE TABLE IF NOT EXISTS cao_diagnostic_counts (
-			namespace TEXT NOT NULL REFERENCES cao_state(namespace) ON DELETE CASCADE,
-			name TEXT NOT NULL, count BIGINT NOT NULL, PRIMARY KEY (namespace, name))`,
-		`CREATE TABLE IF NOT EXISTS cao_relationship_errors (
-			namespace TEXT NOT NULL REFERENCES cao_state(namespace) ON DELETE CASCADE,
-			ordinal BIGINT NOT NULL, message TEXT NOT NULL, PRIMARY KEY (namespace, ordinal))`,
-		`CREATE TABLE IF NOT EXISTS cao_duplicate_ids (
-			namespace TEXT NOT NULL REFERENCES cao_state(namespace) ON DELETE CASCADE,
-			name TEXT NOT NULL, ordinal BIGINT NOT NULL, record_id TEXT NOT NULL,
-			PRIMARY KEY (namespace, name, ordinal))`,
-		`ALTER TABLE cao_state ADD COLUMN IF NOT EXISTS schema_version BIGINT NOT NULL DEFAULT 0`,
-		`ALTER TABLE cao_state ADD COLUMN IF NOT EXISTS diagnostic_counts_present BOOLEAN NOT NULL DEFAULT FALSE`,
-		`ALTER TABLE cao_state ADD COLUMN IF NOT EXISTS relationship_errors_present BOOLEAN NOT NULL DEFAULT FALSE`,
-		`ALTER TABLE cao_state ADD COLUMN IF NOT EXISTS duplicate_ids_present BOOLEAN NOT NULL DEFAULT FALSE`,
-		`ALTER TABLE cao_sources ADD COLUMN IF NOT EXISTS estimated_bytes BIGINT`,
-		`ALTER TABLE cao_sources ADD COLUMN IF NOT EXISTS is_canonical BOOLEAN NOT NULL DEFAULT FALSE`,
-		`ALTER TABLE cao_sources ADD COLUMN IF NOT EXISTS storage_fallback_reason TEXT`,
-		`ALTER TABLE cao_sources ADD COLUMN IF NOT EXISTS metadata_extension JSON`,
-		`ALTER TABLE cao_sources ADD COLUMN IF NOT EXISTS metadata_present TEXT[] NOT NULL DEFAULT ARRAY[]::text[]`,
-		`ALTER TABLE cao_sources ADD COLUMN IF NOT EXISTS metadata_source_id TEXT`,
-		`ALTER TABLE cao_sources ADD COLUMN IF NOT EXISTS metadata_source_revision TEXT`,
-		`ALTER TABLE cao_sources ADD COLUMN IF NOT EXISTS metadata_source_kind TEXT`,
-		`ALTER TABLE cao_sources ADD COLUMN IF NOT EXISTS metadata_availability TEXT`,
-		`ALTER TABLE cao_sources ADD COLUMN IF NOT EXISTS metadata_row_count_null BOOLEAN NOT NULL DEFAULT FALSE`,
-		`ALTER TABLE cao_sources ADD COLUMN IF NOT EXISTS metadata_migrated BOOLEAN NOT NULL DEFAULT FALSE`,
-	} {
-		if _, err = tx.ExecContext(ctx, statement); err != nil {
-			return err
-		}
-	}
-	var documentPayloadType string
-	if err = tx.QueryRowContext(ctx, `SELECT data_type FROM information_schema.columns
-		WHERE table_schema = current_schema() AND table_name = 'cao_source_documents'
-			AND column_name = 'payload'`).Scan(&documentPayloadType); err != nil {
-		return err
-	}
-	if documentPayloadType != "json" {
-		if _, err = tx.ExecContext(ctx, `ALTER TABLE cao_source_documents
-			ALTER COLUMN payload TYPE JSON USING payload::json`); err != nil {
-			return err
-		}
-	}
-	// Existing installations predate part of the producer schema. Extend the
-	// canonical table atomically in the same transaction as any backfill.
-	var contentsType sql.NullString
-	if err = tx.QueryRowContext(ctx, `SELECT data_type FROM information_schema.columns
-		WHERE table_schema = current_schema() AND table_name = 'cao_canonical_rows'
-			AND column_name = 'contents'`).Scan(&contentsType); err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return err
-	}
-	legacyContents := contentsType.Valid && (contentsType.String == "json" || contentsType.String == "jsonb")
-	var contentsException bool
-	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM information_schema.columns
-		WHERE table_schema = current_schema() AND table_name = 'cao_canonical_rows'
-		AND column_name = 'contents_exception')`).Scan(&contentsException); err != nil {
-		return err
-	}
-	if legacyContents || contentsException {
-		var populated bool
-		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM cao_canonical_rows)`).Scan(&populated); err != nil {
-			return err
-		}
-		if populated {
-			return ErrFreshDatabaseRequired
-		}
-		if legacyContents {
-			if _, err := tx.ExecContext(ctx, `ALTER TABLE cao_canonical_rows DROP COLUMN contents`); err != nil {
-				return err
-			}
-		}
-		if _, err := tx.ExecContext(ctx, `ALTER TABLE cao_canonical_rows
-			DROP COLUMN IF EXISTS contents_exception`); err != nil {
-			return err
-		}
-	} else if contentsType.Valid && contentsType.String != "ARRAY" {
-		return errors.New("unsupported legacy canonical contents column")
-	}
-	var additions []string
-	for _, field := range canonicalFields {
-		additions = append(additions, "ADD COLUMN IF NOT EXISTS "+field.column+" TEXT")
-	}
-	for _, field := range canonicalTimes {
-		additions = append(additions, "ADD COLUMN IF NOT EXISTS "+field.column+" TIMESTAMPTZ",
-			"ADD COLUMN IF NOT EXISTS "+field.column+"_raw TEXT")
-	}
-	for _, field := range canonicalNumbers {
-		additions = append(additions, "ADD COLUMN IF NOT EXISTS "+field.column+" NUMERIC",
-			"ADD COLUMN IF NOT EXISTS "+field.column+"_raw TEXT")
-	}
-	for _, field := range canonicalBooleans {
-		additions = append(additions, "ADD COLUMN IF NOT EXISTS "+field.column+" BOOLEAN")
-	}
-	for _, field := range canonicalArrays {
-		additions = append(additions, "ADD COLUMN IF NOT EXISTS "+field.column+" TEXT[]")
-	}
-	for _, field := range canonicalLinks {
-		additions = append(additions, "ADD COLUMN IF NOT EXISTS "+field.column+" TEXT",
-			"ADD COLUMN IF NOT EXISTS "+field.column+"_relation TEXT",
-			"ADD COLUMN IF NOT EXISTS "+field.column+"_label TEXT",
-			"ADD COLUMN IF NOT EXISTS "+field.column+"_present TEXT[]")
-	}
-	if err := initializeNested(ctx, tx); err != nil {
-		return err
-	}
-	for _, field := range canonicalObjects {
-		dataType := "JSON"
-		if native, ok := nativeNestedFields[field.key]; ok {
-			dataType = native.sqlType()
-		}
-		additions = append(additions, "ADD COLUMN IF NOT EXISTS "+field.column+" "+dataType)
-	}
-	for _, field := range canonicalFlexibleText {
-		additions = append(additions, "ADD COLUMN IF NOT EXISTS "+field.column+" JSON")
-	}
-	additions = append(additions, "ADD COLUMN IF NOT EXISTS value_text TEXT",
-		"ADD COLUMN IF NOT EXISTS value_kind TEXT",
-		"ADD COLUMN IF NOT EXISTS id_kind TEXT")
-	additions = append(additions, "ADD COLUMN IF NOT EXISTS run_href_kind TEXT")
-	additions = append(additions, "ADD COLUMN IF NOT EXISTS provenance_source TEXT",
-		"ADD COLUMN IF NOT EXISTS provenance_source_id TEXT",
-		"ADD COLUMN IF NOT EXISTS provenance_observed_at TIMESTAMPTZ",
-		"ADD COLUMN IF NOT EXISTS provenance_observed_at_raw TEXT",
-		"ADD COLUMN IF NOT EXISTS provenance_source_revision TEXT",
-		"ADD COLUMN IF NOT EXISTS provenance_present TEXT[] NOT NULL DEFAULT ARRAY[]::text[]",
-		"ADD COLUMN IF NOT EXISTS provenance_null BOOLEAN NOT NULL DEFAULT FALSE")
-	if _, err = tx.ExecContext(ctx, "ALTER TABLE cao_canonical_rows "+strings.Join(additions, ", ")); err != nil {
-		return err
-	}
-	var legacyProvenance bool
-	if err = tx.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM pg_attribute
-		WHERE attrelid = to_regclass('cao_canonical_rows')
-		AND attname = 'provenance' AND NOT attisdropped)`).Scan(&legacyProvenance); err != nil {
-		return err
-	}
-	if _, err = tx.ExecContext(ctx, `ALTER TABLE cao_canonical_rows
-		ALTER COLUMN extension DROP NOT NULL`); err != nil {
-		return err
-	}
-	if _, err = tx.ExecContext(ctx, `UPDATE cao_canonical_rows SET extension = NULL
-		WHERE extension::text = '{}'`); err != nil {
-		return err
-	}
-	for _, column := range []string{
-		"experiment_id", "grader_id", "eval_id", "audit_id", "value_id",
-		"registry_id", "campaign_id", "slug", "target_repository_id",
-	} {
-		if _, err = tx.ExecContext(ctx, `CREATE INDEX IF NOT EXISTS cao_canonical_rows_`+column+
-			` ON cao_canonical_rows (namespace, source_name, `+column+`) WHERE `+column+` IS NOT NULL`); err != nil {
-			return err
-		}
-	}
-	for _, legacy := range []struct {
-		table, column string
-		migrate       func(context.Context, *sql.Tx) error
-	}{
-		{"cao_sources", "metadata", migrateMetadata},
-		{"cao_source_rows", "payload", migrateRows},
-		{"cao_state", "counts", migrateState},
-	} {
-		var exists bool
-		if err = tx.QueryRowContext(ctx, `SELECT EXISTS (
-			SELECT 1 FROM pg_attribute WHERE attrelid = to_regclass($1)
-			AND attname = $2 AND NOT attisdropped)`, legacy.table, legacy.column).Scan(&exists); err != nil {
-			return err
-		}
-		if exists {
-			if err = legacy.migrate(ctx, tx); err != nil {
-				return err
-			}
-		}
-	}
-	for _, statement := range []string{
-		`ALTER TABLE cao_sources DROP COLUMN IF EXISTS metadata`,
-		`ALTER TABLE cao_source_rows DROP COLUMN IF EXISTS payload`,
-		`ALTER TABLE cao_state DROP COLUMN IF EXISTS counts`,
-		`ALTER TABLE cao_state DROP COLUMN IF EXISTS diagnostics`,
-	} {
-		if _, err = tx.ExecContext(ctx, statement); err != nil {
-			return err
-		}
-	}
-	if err := migrateCanonicalLinks(ctx, tx); err != nil {
-		return err
-	}
-	if legacyProvenance {
-		if err := migrateLegacyCanonicalProvenance(ctx, tx); err != nil {
-			return err
-		}
-		if _, err := tx.ExecContext(ctx, `ALTER TABLE cao_canonical_rows DROP COLUMN provenance`); err != nil {
-			return err
-		}
-	}
-	if err := removeGenerationColumn(ctx, tx); err != nil {
-		return err
-	}
-	if err := backfillCanonical(ctx, tx); err != nil {
-		return err
-	}
-	if err := migrateCanonicalMetadata(ctx, tx); err != nil {
-		return err
-	}
-	if err := migrateCanonicalSourceKind(ctx, tx); err != nil {
-		return err
-	}
-	if err := migrateCanonicalExtensions(ctx, tx); err != nil {
-		return err
-	}
-	names := make([]string, 0, len(canonicalCollections))
-	for name := range canonicalCollections {
-		names = append(names, name)
-	}
-	var unmigrated string
-	err = tx.QueryRowContext(ctx, `SELECT source_name FROM cao_sources
-		WHERE source_name = ANY($1) AND NOT is_canonical LIMIT 1`, names).Scan(&unmigrated)
-	if err == nil {
-		return fmt.Errorf("unmigrated postgres canonical source %q", unmigrated)
-	}
-	if !errors.Is(err, sql.ErrNoRows) {
-		return err
-	}
-	if _, err := tx.ExecContext(ctx, `DO $$
-		BEGIN
-			IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'cao_canonical_rows'::regclass
-				AND conname = 'cao_canonical_contents_present') THEN
-				ALTER TABLE cao_canonical_rows ADD CONSTRAINT cao_canonical_contents_present
-					CHECK (contents IS NULL OR (
-						'contents' = ANY(present) AND array_position(contents, NULL) IS NULL
-						AND COALESCE(array_ndims(contents), 1) = 1));
-			END IF;
-		END $$`); err != nil {
-		return err
-	}
-	return tx.Commit()
-}
-
-// Undo the short-lived native generation column without losing older rows.
-// The logical field returns to the open extension, as it was before that column.
-func removeGenerationColumn(ctx context.Context, tx *sql.Tx) error {
-	var exists bool
-	if err := tx.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM pg_attribute
-		WHERE attrelid = to_regclass('cao_canonical_rows')
-		AND attname = 'generation' AND NOT attisdropped)`).Scan(&exists); err != nil {
-		return err
-	}
-	if !exists {
-		return nil
-	}
-	var duplicates bool
-	if err := tx.QueryRowContext(ctx, `SELECT EXISTS (
-		SELECT 1 FROM cao_canonical_rows r
-		WHERE (r.generation IS NOT NULL AND NOT 'generation' = ANY(r.present))
-			OR ('generation' = ANY(r.present)
-				AND EXISTS (SELECT 1 FROM json_object_keys(r.extension) AS key WHERE key = 'generation'))
-	)`).Scan(&duplicates); err != nil {
-		return err
-	}
-	if duplicates {
-		return errors.New("inconsistent native generation field in canonical row")
-	}
-	if _, err := tx.ExecContext(ctx, `UPDATE cao_canonical_rows AS r SET
-		extension = (SELECT json_object_agg(key, value) FROM (
-			SELECT key, value FROM json_each(COALESCE(r.extension, '{}'::json))
-			UNION ALL SELECT 'generation', to_json(r.generation)
-		) AS fields),
-		present = array_remove(r.present, 'generation')
-		WHERE 'generation' = ANY(r.present)`); err != nil {
-		return err
-	}
-	_, err := tx.ExecContext(ctx, `ALTER TABLE cao_canonical_rows DROP COLUMN generation`)
-	return err
-}
-
-func migrateCanonicalLinks(ctx context.Context, tx *sql.Tx) error {
-	for _, field := range canonicalLinks {
-		rich := field.column + "_json"
-		var exists bool
-		if err := tx.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM pg_attribute
-			WHERE attrelid = to_regclass('cao_canonical_rows')
-			AND attname = $1 AND NOT attisdropped)`, rich).Scan(&exists); err != nil {
-			return err
-		}
-		if !exists {
-			continue
-		}
-		var invalid bool
-		// All identifiers are from the static canonical link catalogue.
-		if err := tx.QueryRowContext(ctx, `SELECT EXISTS (
-			SELECT 1 FROM cao_canonical_rows r WHERE `+rich+` IS NOT NULL
-			AND (NOT $1 = ANY(r.present) OR json_typeof(`+rich+`) IS DISTINCT FROM 'object'
-				OR json_typeof(`+rich+` -> 'href') IS DISTINCT FROM 'string'
-				OR EXISTS (SELECT 1 FROM json_each(`+rich+`) AS part
-					WHERE part.key NOT IN ('href', 'relation', 'label')
-					OR (part.key <> 'href' AND json_typeof(part.value) NOT IN ('string', 'null')))
-				OR `+field.column+` IS NOT NULL)
-		)`, field.key).Scan(&invalid); err != nil {
-			return err
-		}
-		if invalid {
-			return fmt.Errorf("invalid legacy canonical link %s", field.key)
-		}
-		// #nosec G202 -- identifiers come exclusively from canonicalLinks.
-		if _, err := tx.ExecContext(ctx, `UPDATE cao_canonical_rows r SET
-			`+field.column+` = COALESCE(`+field.column+`, `+rich+` ->> 'href'),
-			`+field.column+`_relation = `+rich+` ->> 'relation',
-			`+field.column+`_label = `+rich+` ->> 'label',
-			`+field.column+`_present = CASE
-				WHEN `+rich+` IS NOT NULL THEN ARRAY(SELECT key FROM json_object_keys(`+rich+`) AS key ORDER BY key)
-				WHEN `+field.column+` IS NOT NULL AND ($1 <> 'runLink' OR run_href_kind <> 'string')
-					THEN ARRAY['href']::text[]
-			END
-			WHERE $1 = ANY(r.present)`, field.key); err != nil {
-			return err
-		}
-		if _, err := tx.ExecContext(ctx, `ALTER TABLE cao_canonical_rows DROP COLUMN `+rich); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func migrateCanonicalSourceKind(ctx context.Context, tx *sql.Tx) error {
-	var invalid bool
-	if err := tx.QueryRowContext(ctx, `SELECT EXISTS (
-		SELECT 1 FROM cao_sources WHERE metadata_migrated
-		AND metadata_extension IS NOT NULL
-		AND EXISTS (SELECT 1 FROM json_object_keys(metadata_extension) AS key WHERE key = 'source-kind')
-		AND ('source-kind' = ANY(metadata_present)
-			OR json_typeof(metadata_extension -> 'source-kind') NOT IN ('string', 'null'))
-	)`).Scan(&invalid); err != nil {
-		return err
-	}
-	if invalid {
-		return errors.New("invalid or duplicated canonical metadata source-kind")
-	}
-	_, err := tx.ExecContext(ctx, `UPDATE cao_sources AS s SET
-		metadata_source_kind = s.metadata_extension ->> 'source-kind',
-		metadata_present = array_append(s.metadata_present, 'source-kind'),
-		metadata_extension = (SELECT COALESCE(json_object_agg(key, value), '{}'::json)
-			FROM json_each(s.metadata_extension) WHERE key <> 'source-kind')
-		WHERE s.metadata_migrated AND s.metadata_extension IS NOT NULL
-		AND EXISTS (SELECT 1 FROM json_object_keys(s.metadata_extension) AS key WHERE key = 'source-kind')`)
-	return err
-}
-
-func migrateMetadata(ctx context.Context, tx *sql.Tx) error {
-	return migrateTrees(ctx, tx, `SELECT namespace, source_name, metadata FROM cao_sources`, false)
-}
-
-func migrateRows(ctx context.Context, tx *sql.Tx) error {
-	return migrateTrees(ctx, tx, `SELECT namespace, source_name, ordinal, payload FROM cao_source_rows`, true)
-}
-
-func migrateTrees(ctx context.Context, tx *sql.Tx, selectSQL string, hasOrdinal bool) error {
-	// FETCH closes before inserts on the same transaction connection. A bounded
-	// cursor avoids retaining all legacy JSONB rows in memory during migration.
-	cursor := "cao_metadata_cursor"
-	if hasOrdinal {
-		cursor = "cao_rows_cursor"
-	}
-	declare, _, err := postgresSQL(`DECLARE {} NO SCROLL CURSOR FOR `+selectSQL, sqlIdentifier(cursor))
-	if err != nil {
-		return err
-	}
-	if _, err := tx.ExecContext(ctx, declare); err != nil {
-		return err
-	}
-	fetch, _, err := postgresSQL(`FETCH FORWARD 256 FROM {}`, sqlIdentifier(cursor))
-	if err != nil {
-		return err
-	}
-	batch := valueBatch{ctx: ctx, tx: tx}
-	type item struct {
-		namespace, name string
-		ordinal         int64
-		payload         []byte
-	}
-	for {
-		rows, err := tx.QueryContext(ctx, fetch)
-		if err != nil {
-			return err
-		}
-		items, err := func() ([]item, error) {
-			defer func() { _ = rows.Close() }()
-			items := make([]item, 0, 256)
-			for rows.Next() {
-				v := item{ordinal: -1}
-				var scanErr error
-				if hasOrdinal {
-					scanErr = rows.Scan(&v.namespace, &v.name, &v.ordinal, &v.payload)
-				} else {
-					scanErr = rows.Scan(&v.namespace, &v.name, &v.payload)
-				}
-				if scanErr != nil {
-					return nil, scanErr
-				}
-				items = append(items, v)
-			}
-			return items, rows.Err()
-		}()
-		if err != nil {
-			return err
-		}
-		if len(items) == 0 {
-			break
-		}
-		for _, v := range items {
-			var value any
-			if err = decodeJSON(v.payload, &value); err != nil {
-				return err
-			}
-			if err = batch.addTree(v.namespace, v.name, v.ordinal, value); err != nil {
-				return err
-			}
-		}
-	}
-	closeCursor, _, err := postgresSQL(`CLOSE {}`, sqlIdentifier(cursor))
-	if err != nil {
-		return err
-	}
-	if _, err := tx.ExecContext(ctx, closeCursor); err != nil {
-		return err
-	}
-	return batch.flush()
-}
-
-func migrateState(ctx context.Context, tx *sql.Tx) error {
-	rows, err := tx.QueryContext(ctx, `SELECT namespace, counts, diagnostics FROM cao_state`)
-	if err != nil {
-		return err
-	}
-	type item struct {
-		namespace           string
-		counts, diagnostics []byte
-	}
-	items, err := func() ([]item, error) {
-		defer func() { _ = rows.Close() }()
-		var items []item
-		for rows.Next() {
-			var v item
-			if scanErr := rows.Scan(&v.namespace, &v.counts, &v.diagnostics); scanErr != nil {
-				return nil, scanErr
-			}
-			items = append(items, v)
-		}
-		return items, rows.Err()
-	}()
-	if err != nil {
-		return err
-	}
-	for _, v := range items {
-		var counts map[string]int
-		var diag model.Diagnostics
-		if err = decodeJSON(v.counts, &counts); err != nil {
-			return err
-		}
-		if err = decodeJSON(v.diagnostics, &diag); err != nil {
-			return err
-		}
-		if err = writeCounts(ctx, tx, v.namespace, counts); err != nil {
-			return err
-		}
-		if err = writeDiagnostics(ctx, tx, v.namespace, diag); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func validateTransport(config *pgx.ConnConfig) error {
 	secure := func(host string, tlsEnabled bool) bool {
 		if tlsEnabled || filepath.IsAbs(host) || strings.EqualFold(host, "localhost") {
@@ -725,26 +136,6 @@ func validateTransport(config *pgx.ConnConfig) error {
 }
 
 func (s *Store) Close() error { return s.db.Close() }
-
-// StorageFallbacks reports canonical sources that could not use typed storage.
-// Reasons name only field shapes or types, never record values.
-func (s *Store) StorageFallbacks(ctx context.Context) (map[string]string, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT source_name, storage_fallback_reason FROM cao_sources
-		WHERE namespace = $1 AND storage_fallback_reason IS NOT NULL`, s.namespace)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-	result := map[string]string{}
-	for rows.Next() {
-		var name, reason string
-		if err := rows.Scan(&name, &reason); err != nil {
-			return nil, err
-		}
-		result[name] = reason
-	}
-	return result, rows.Err()
-}
 
 // DeleteNamespace removes only this store's data. Benchmark callers use it to
 // discard a unique per-run namespace without affecting other consumers.
@@ -938,8 +329,8 @@ func (s *Store) Replace(ctx context.Context, sources map[string]model.Source, di
 			return 0, fmt.Errorf("insert postgres documents in %q: %w", name, err)
 		}
 		if _, err = tx.ExecContext(ctx, `UPDATE cao_sources SET estimated_bytes = $1,
-			is_canonical = $2, storage_fallback_reason = NULLIF($3, '')
-			WHERE namespace = $4 AND source_name = $5`, estimatedBytes, typed, "", s.namespace, name); err != nil {
+			is_canonical = $2
+			WHERE namespace = $3 AND source_name = $4`, estimatedBytes, typed, s.namespace, name); err != nil {
 			return 0, fmt.Errorf("update postgres source size in %q: %w", name, err)
 		}
 		counts[name] = len(source.Rows)
@@ -1035,163 +426,7 @@ func normalize(value any) (any, error) {
 	return normalized, err
 }
 
-const valueBatchSize = 256
-const rowBatchSize = 512
-
-type valueEntry struct {
-	namespace, name string
-	ordinal, id     int64
-	parent, key     any
-	index           any
-	kind            string
-	text, numeric   any
-	boolean         any
-}
-
-type valueBatch struct {
-	ctx     context.Context
-	tx      *sql.Tx
-	entries []valueEntry
-}
-
-func (b *valueBatch) addTree(namespace, name string, ordinal int64, value any) error {
-	var next int64
-	var walk func(any, any, any, any) error
-	walk = func(v any, parent, key, index any) error {
-		id := next
-		next++
-		entry := valueEntry{namespace: namespace, name: name, ordinal: ordinal, id: id,
-			parent: parent, key: key, index: index, kind: "null"}
-		switch x := v.(type) {
-		case map[string]any:
-			entry.kind = "object"
-		case []any:
-			entry.kind = "array"
-		case string:
-			entry.kind, entry.text = "string", x
-		case json.Number:
-			entry.kind, entry.text = "number", string(x)
-			// Keep the original lexeme even for numbers outside PostgreSQL NUMERIC's range.
-			if len(x) <= 1000 {
-				exponent := 0
-				validExponent := true
-				if pos := strings.IndexAny(string(x), "eE"); pos >= 0 {
-					var parseErr error
-					exponent, parseErr = strconv.Atoi(string(x)[pos+1:])
-					validExponent = parseErr == nil
-				}
-				if validExponent && exponent >= -1000 && exponent <= 1000 {
-					entry.numeric = string(x)
-				}
-			}
-		case bool:
-			entry.kind, entry.boolean = "boolean", x
-		case nil:
-		default:
-			return fmt.Errorf("unsupported normalized value %T", v)
-		}
-		b.entries = append(b.entries, entry)
-		if len(b.entries) >= valueBatchSize {
-			if err := b.flush(); err != nil {
-				return err
-			}
-		}
-		switch x := v.(type) {
-		case map[string]any:
-			keys := make([]string, 0, len(x))
-			for k := range x {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
-			for _, k := range keys {
-				if err := walk(x[k], id, k, nil); err != nil {
-					return err
-				}
-			}
-		case []any:
-			for i, child := range x {
-				if err := walk(child, id, nil, i); err != nil {
-					return err
-				}
-			}
-		}
-		return nil
-	}
-	return walk(value, nil, nil, nil)
-}
-
-func (b *valueBatch) flush() error {
-	if len(b.entries) == 0 {
-		return nil
-	}
-	var statement strings.Builder
-	statement.WriteString(`INSERT INTO cao_values
-		(namespace, source_name, ordinal, node_id, parent_id, object_key, array_index, kind, text_value, numeric_value, bool_value) VALUES `)
-	args := make([]any, 0, len(b.entries)*11)
-	for i, entry := range b.entries {
-		if i > 0 {
-			statement.WriteByte(',')
-		}
-		statement.WriteByte('(')
-		for column := 0; column < 11; column++ {
-			if column > 0 {
-				statement.WriteByte(',')
-			}
-			statement.WriteByte('$')
-			statement.WriteString(strconv.Itoa(i*11 + column + 1))
-			if column == 9 {
-				statement.WriteString("::numeric")
-			}
-		}
-		statement.WriteByte(')')
-		args = append(args, entry.namespace, entry.name, entry.ordinal, entry.id, entry.parent,
-			entry.key, entry.index, entry.kind, entry.text, entry.numeric, entry.boolean)
-	}
-	if _, err := b.tx.ExecContext(b.ctx, statement.String(), args...); err != nil {
-		return err
-	}
-	b.entries = b.entries[:0]
-	return nil
-}
-
-type rowBatch struct {
-	ctx             context.Context
-	tx              *sql.Tx
-	namespace, name string
-	ordinals        []int64
-}
-
-func (b *rowBatch) add(ordinal int64) error {
-	b.ordinals = append(b.ordinals, ordinal)
-	if len(b.ordinals) >= rowBatchSize {
-		return b.flush()
-	}
-	return nil
-}
-
-func (b *rowBatch) flush() error {
-	if len(b.ordinals) == 0 {
-		return nil
-	}
-	var statement strings.Builder
-	statement.WriteString(`INSERT INTO cao_source_rows (namespace, source_name, ordinal) VALUES `)
-	args := make([]any, 0, 2+len(b.ordinals))
-	args = append(args, b.namespace, b.name)
-	for i, ordinal := range b.ordinals {
-		if i > 0 {
-			statement.WriteByte(',')
-		}
-		statement.WriteString("($1,$2,$")
-		statement.WriteString(strconv.Itoa(i + 3))
-		statement.WriteByte(')')
-		args = append(args, ordinal)
-	}
-	if _, err := b.tx.ExecContext(b.ctx, statement.String(), args...); err != nil {
-		return err
-	}
-	b.ordinals = b.ordinals[:0]
-	return nil
-}
+const documentBatchSize = 512
 
 type documentEntry struct {
 	ordinal              int64
@@ -1218,7 +453,7 @@ func (b *documentBatch) add(ordinal int64, value any) error {
 		entry.sessionID = documentKey(row["sessionId"])
 	}
 	b.entries = append(b.entries, entry)
-	if len(b.entries) >= rowBatchSize {
+	if len(b.entries) >= documentBatchSize {
 		return b.flush()
 	}
 	return nil
@@ -1315,7 +550,7 @@ func writeCanonicalMetadata(ctx context.Context, tx *sql.Tx, namespace, name str
 		SET metadata_extension = $1, metadata_present = $2,
 			metadata_source_id = $3, metadata_source_revision = $4,
 			metadata_availability = $5, metadata_source_kind = $6,
-			metadata_row_count_null = $7, metadata_migrated = TRUE
+			metadata_row_count_null = $7
 		WHERE namespace = $8 AND source_name = $9`,
 		extension, present, fields[0], fields[1], fields[2], fields[3], rowCountNull, namespace, name); err != nil {
 		return err
@@ -1328,20 +563,17 @@ func writeCanonicalMetadata(ctx context.Context, tx *sql.Tx, namespace, name str
 func readCanonicalMetadata(ctx context.Context, tx *sql.Tx, namespace, name string) (model.Metadata, error) {
 	var extension, sourceID, revision, availability, sourceKind sql.NullString
 	var present []string
-	var migrated, rowCountNull bool
+	var rowCountNull bool
 	var count int
 	if err := tx.QueryRowContext(ctx, `SELECT s.metadata_extension::text,
 		s.metadata_present, s.metadata_source_id, s.metadata_source_revision,
-		s.metadata_availability, s.metadata_source_kind, s.metadata_migrated, s.metadata_row_count_null, c.count
+		s.metadata_availability, s.metadata_source_kind, s.metadata_row_count_null, c.count
 		FROM cao_sources s JOIN cao_counts c
 		ON c.namespace = s.namespace AND c.source_name = s.source_name
 		WHERE s.namespace = $1 AND s.source_name = $2 AND s.is_canonical`,
 		namespace, name).Scan(&extension, &present, &sourceID, &revision,
-		&availability, &sourceKind, &migrated, &rowCountNull, &count); err != nil {
+		&availability, &sourceKind, &rowCountNull, &count); err != nil {
 		return nil, err
-	}
-	if !migrated {
-		return nil, errors.New("unmigrated postgres canonical metadata")
 	}
 	if !extension.Valid {
 		if len(present) != 0 || sourceID.Valid || revision.Valid || availability.Valid || sourceKind.Valid || rowCountNull {
@@ -1397,72 +629,6 @@ func readCanonicalMetadata(ctx context.Context, tx *sql.Tx, namespace, name stri
 		}
 	}
 	return metadata, nil
-}
-
-func migrateCanonicalMetadata(ctx context.Context, tx *sql.Tx) error {
-	if _, err := tx.ExecContext(ctx, `DECLARE canonical_metadata_cursor NO SCROLL CURSOR FOR
-		SELECT s.namespace, s.source_name, d.payload::text, c.count
-		FROM cao_sources s JOIN cao_counts c
-		ON c.namespace = s.namespace AND c.source_name = s.source_name
-		LEFT JOIN cao_source_documents d ON d.namespace = s.namespace
-			AND d.source_name = s.source_name AND d.ordinal = -1
-		WHERE s.is_canonical AND NOT s.metadata_migrated
-		ORDER BY s.namespace, s.source_name`); err != nil {
-		return err
-	}
-	defer func() { _, _ = tx.ExecContext(ctx, "CLOSE canonical_metadata_cursor") }()
-	for {
-		type entry struct {
-			namespace, name string
-			payload         sql.NullString
-			count           int
-		}
-		entries, err := func() ([]entry, error) {
-			rows, err := tx.QueryContext(ctx, "FETCH FORWARD 256 FROM canonical_metadata_cursor")
-			if err != nil {
-				return nil, err
-			}
-			defer func() { _ = rows.Close() }()
-			entries := make([]entry, 0, 256)
-			for rows.Next() {
-				var item entry
-				if err := rows.Scan(&item.namespace, &item.name, &item.payload, &item.count); err != nil {
-					return nil, err
-				}
-				entries = append(entries, item)
-			}
-			return entries, rows.Err()
-		}()
-		if err != nil {
-			return err
-		}
-		if len(entries) == 0 {
-			return nil
-		}
-		for _, item := range entries {
-			if !item.payload.Valid {
-				return fmt.Errorf("missing canonical metadata in %q", item.name)
-			}
-			var metadata any
-			if err := decodeJSON([]byte(item.payload.String), &metadata); err != nil {
-				return err
-			}
-			if err := writeCanonicalMetadata(ctx, tx, item.namespace, item.name, metadata, item.count); err != nil {
-				return fmt.Errorf("migrate canonical metadata in %q: %w", item.name, err)
-			}
-			restored, err := readCanonicalMetadata(ctx, tx, item.namespace, item.name)
-			if err != nil {
-				return err
-			}
-			if original, ok := metadata.(map[string]any); ok {
-				if !reflect.DeepEqual(restored, model.Metadata(original)) {
-					return fmt.Errorf("canonical metadata migration changed source %q", item.name)
-				}
-			} else if metadata != nil || restored != nil {
-				return fmt.Errorf("canonical metadata migration changed source %q", item.name)
-			}
-		}
-	}
 }
 
 // WithReadTransaction holds a single repeatable-read snapshot for the callback.
@@ -1533,11 +699,10 @@ func (r *readTransaction) LoadSource(ctx context.Context, name string, definitio
 			return result, model.Metrics{OutputRows: len(canonical)}, nil
 		}
 		if readErr == nil {
-			return model.Source{}, model.Metrics{}, errors.New("unmigrated postgres canonical source")
+			return model.Source{}, model.Metrics{}, errors.New("invalid postgres canonical source classification")
 		}
 	}
-	// Current schemaless sources use documents alone; EAV is read only for
-	// pre-document schemaless revisions.
+	// Schemaless sources use documents alone.
 	var metadataText string
 	docErr := tx.QueryRowContext(ctx, `SELECT payload FROM cao_source_documents
 		WHERE namespace = $1 AND source_name = $2 AND ordinal = -1`, s.namespace, name).Scan(&metadataText)
@@ -1585,82 +750,15 @@ func (r *readTransaction) LoadSource(ctx context.Context, name string, definitio
 	if docErr != nil && !errors.Is(docErr, sql.ErrNoRows) {
 		return model.Source{}, model.Metrics{}, docErr
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT positions.ordinal, v.node_id, v.parent_id, v.object_key,
-			v.array_index, v.kind, v.text_value, v.bool_value
-		FROM (
-			SELECT -1::bigint AS ordinal FROM cao_sources WHERE namespace = $1 AND source_name = $2
-			UNION ALL
-			SELECT ordinal FROM cao_source_rows WHERE namespace = $1 AND source_name = $2
-		) AS positions
-		LEFT JOIN cao_values AS v ON v.namespace = $1 AND v.source_name = $2 AND v.ordinal = positions.ordinal
-		ORDER BY positions.ordinal, v.node_id`, s.namespace, name)
-	if err != nil {
-		return model.Source{}, model.Metrics{}, fmt.Errorf("read postgres source: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	source := model.Source{Source: name, Rows: []model.Row{}}
-	var nodes []*valueNode
-	var ordinal int64
-	found := false
-	finish := func() error {
-		value, err := decodeTree(nodes)
-		if err != nil {
-			return err
-		}
-		if ordinal == -1 {
-			if value != nil {
-				var ok bool
-				source.Metadata, ok = value.(map[string]any)
-				if !ok {
-					return errors.New("invalid postgres metadata root")
-				}
-			}
-		} else {
-			row, ok := value.(map[string]any)
-			if !ok {
-				return errors.New("invalid postgres row root")
-			}
-			source.Rows = append(source.Rows, row)
-		}
-		return nil
-	}
-	for rows.Next() {
-		n := new(valueNode)
-		var nextOrdinal int64
-		var nodeID sql.NullInt64
-		var kind sql.NullString
-		if err = rows.Scan(&nextOrdinal, &nodeID, &n.parent, &n.key, &n.index, &kind, &n.text, &n.boolean); err != nil {
-			return model.Source{}, model.Metrics{}, fmt.Errorf("scan postgres source: %w", err)
-		}
-		if !found && nextOrdinal != -1 {
-			return model.Source{}, model.Metrics{}, errors.New("missing postgres metadata")
-		}
-		if found && nextOrdinal != ordinal {
-			if err = finish(); err != nil {
-				return model.Source{}, model.Metrics{}, fmt.Errorf("decode postgres source: %w", err)
-			}
-			nodes = nil
-		}
-		found, ordinal = true, nextOrdinal
-		if !nodeID.Valid {
-			return model.Source{}, model.Metrics{}, errors.New("missing postgres value root")
-		}
-		n.id, n.kind = nodeID.Int64, kind.String
-		if err = n.decode(); err != nil {
-			return model.Source{}, model.Metrics{}, fmt.Errorf("decode postgres source: %w", err)
-		}
-		nodes = append(nodes, n)
-	}
-	if err = rows.Err(); err != nil {
-		return model.Source{}, model.Metrics{}, fmt.Errorf("read postgres source: %w", err)
+	var found bool
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM cao_sources
+		WHERE namespace = $1 AND source_name = $2)`, s.namespace, name).Scan(&found); err != nil {
+		return model.Source{}, model.Metrics{}, fmt.Errorf("read postgres source registry: %w", err)
 	}
 	if !found {
 		return model.Source{}, model.Metrics{}, fmt.Errorf("%w: %q", ErrSourceUnavailable, name)
 	}
-	if err = finish(); err != nil {
-		return model.Source{}, model.Metrics{}, fmt.Errorf("decode postgres source: %w", err)
-	}
-	return source, model.Metrics{OutputRows: len(source.Rows)}, nil
+	return model.Source{}, model.Metrics{}, errors.New("incomplete postgres source metadata")
 }
 
 func (r *readTransaction) LoadDocument(ctx context.Context, source, id string) (model.Row, error) {
@@ -1682,84 +780,6 @@ func (r *readTransaction) LoadDocument(ctx context.Context, source, id string) (
 		return nil, fmt.Errorf("decode postgres source document: %w", err)
 	}
 	return document, nil
-}
-
-type valueNode struct {
-	id            int64
-	parent, index sql.NullInt64
-	key, text     sql.NullString
-	kind          string
-	boolean       sql.NullBool
-	value         any
-}
-
-func (n *valueNode) decode() error {
-	switch n.kind {
-	case "object":
-		n.value = map[string]any{}
-	case "array":
-		n.value = []any{}
-	case "string":
-		n.value = n.text.String
-	case "number":
-		n.value = json.Number(n.text.String)
-	case "boolean":
-		n.value = n.boolean.Bool
-	case "null":
-		n.value = nil
-	default:
-		return fmt.Errorf("unknown postgres value kind %q", n.kind)
-	}
-	return nil
-}
-
-func decodeTree(nodes []*valueNode) (any, error) {
-	if len(nodes) == 0 || nodes[0].id != 0 || nodes[0].parent.Valid {
-		return nil, errors.New("missing postgres value root")
-	}
-	byID := make(map[int64]*valueNode, len(nodes))
-	for _, n := range nodes {
-		if _, exists := byID[n.id]; exists {
-			return nil, errors.New("duplicate postgres value node")
-		}
-		byID[n.id] = n
-	}
-	arraySizes := map[int64]int{}
-	for _, n := range nodes {
-		if n.parent.Valid {
-			arraySizes[n.parent.Int64]++
-		}
-	}
-	for _, n := range nodes {
-		if n.kind == "array" {
-			n.value = make([]any, arraySizes[n.id])
-		}
-	}
-	for i := len(nodes) - 1; i >= 0; i-- {
-		n := nodes[i]
-		if !n.parent.Valid {
-			continue
-		}
-		parent := byID[n.parent.Int64]
-		if parent == nil || parent.id >= n.id {
-			return nil, errors.New("missing postgres value parent")
-		}
-		switch parent.kind {
-		case "object":
-			if !n.key.Valid {
-				return nil, errors.New("missing postgres object key")
-			}
-			parent.value.(map[string]any)[n.key.String] = n.value
-		case "array":
-			if !n.index.Valid || n.index.Int64 < 0 || n.index.Int64 >= int64(len(parent.value.([]any))) {
-				return nil, errors.New("invalid postgres array index")
-			}
-			parent.value.([]any)[n.index.Int64] = n.value
-		default:
-			return nil, errors.New("invalid postgres value parent")
-		}
-	}
-	return nodes[0].value, nil
 }
 
 func (s *Store) Diagnostics(ctx context.Context) (model.Diagnostics, error) {

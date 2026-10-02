@@ -19,7 +19,7 @@ The normalizer merges arbitrary
 `observation.data` attributes without a closed field list. Inventory source
 names and row objects (even names beginning with `$` when unregistered) are
 caller-supplied and genuinely schemaless. The PostgreSQL store must never copy
-a native field into an extension or its legacy row representation.
+a native field into an extension or duplicate canonical rows as documents.
 Marketplace package `contents` paths are a known ordered string list stored as
 `TEXT[]` exclusively. Objects and non-string items are rejected rather than
 retained in a historical JSON compatibility column.
@@ -42,13 +42,21 @@ and arbitrary values of individually catalogued intelligence semantic fields.
 Structured answers and cost-grain observations also have source-defined shapes.
 These are not a compatibility representation for closed fields.
 
-This schema targets a fresh database. Opening a populated earlier schema with
-closed nested JSON columns, JSON/JSONB package paths, or the historical package
-JSON exception column fails transactionally; initialization never
-discards tenant data or backfills those columns. Rebuild the disposable
-projection from its authoritative artifacts into an empty database instead.
+Initialization creates the eight current tables and native composite types in
+an empty CAO schema, or verifies the exact current column names, types, nullability,
+and positions on restart. It does not alter existing tables or convert old rows.
+The retired `cao_source_rows` and `cao_values` tables, legacy bookkeeping columns,
+partial schemas, and incompatible column or composite types are rejected without
+modifying their data. Unrelated tables in the same schema are left untouched.
+Rebuild an older disposable projection from authoritative artifacts in a fresh
+database or a separate empty PostgreSQL schema instead.
 Unsupported known field shapes fail closed on replacement, preserving the
 previous committed revision.
+
+The active tables are `cao_sources`, `cao_canonical_rows`,
+`cao_source_documents`, `cao_state`, `cao_counts`, `cao_diagnostic_counts`,
+`cao_relationship_errors`, and `cao_duplicate_ids`. No EAV reader, writer,
+backfill, or migration/fallback bookkeeping remains.
 
 The compiled `generated/openapi.json` is OpenAPI **3.1** and can be consumed by
 another server implementation. `generated/schemas/` contains JSON Schema 2020-12

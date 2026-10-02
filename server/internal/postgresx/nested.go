@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 )
@@ -313,7 +312,21 @@ func nestedReadExpression(key, column string) string {
 	return column + "::text"
 }
 
-func initializeNested(ctx context.Context, tx *sql.Tx) error {
+func nestedTypeColumns(t *nestedType) []storageColumn {
+	columns := []storageColumn{{"present", "text[]", ""}}
+	for _, field := range t.fields {
+		columns = append(columns, storageColumn{nestedColumn(field.key), field.sqlType(), ""})
+		if field.kind == "numeric" || field.kind == "timestamp" {
+			columns = append(columns, storageColumn{nestedColumn(field.key) + "_raw", "text", ""})
+		}
+	}
+	if t.open {
+		columns = append(columns, storageColumn{"extension", "json", ""})
+	}
+	return columns
+}
+
+func initializeNestedTypes(ctx context.Context, tx *sql.Tx) error {
 	for _, t := range []*nestedType{campaignWorkerType, campaignTargetType, intelligenceFieldsType,
 		intelligenceType, modelUsageType, tokenUsageType, sourceProvenanceType} {
 		var exists bool
@@ -322,39 +335,16 @@ func initializeNested(ctx context.Context, tx *sql.Tx) error {
 			return err
 		}
 		if !exists {
-			columns := []string{"present text[]"}
-			for _, field := range t.fields {
-				columns = append(columns, nestedColumn(field.key)+" "+field.sqlType())
-				if field.kind == "numeric" || field.kind == "timestamp" {
-					columns = append(columns, nestedColumn(field.key)+"_raw text")
-				}
-			}
-			if t.open {
-				columns = append(columns, "extension json")
+			var columns []string
+			for _, column := range nestedTypeColumns(t) {
+				columns = append(columns, column.name+" "+column.kind)
 			}
 			if _, err := tx.ExecContext(ctx, "CREATE TYPE "+t.name+" AS ("+strings.Join(columns, ",")+")"); err != nil {
 				return err
 			}
 		} else {
-			var actual []string
-			if err := tx.QueryRowContext(ctx, `SELECT array_agg(a.attname::text ORDER BY a.attnum)
-				FROM pg_attribute a JOIN pg_type t ON a.attrelid = t.typrelid
-				WHERE t.typnamespace = current_schema()::regnamespace AND t.typname = $1
-				AND a.attnum > 0 AND NOT a.attisdropped`, t.name).Scan(&actual); err != nil {
+			if err := verifyStorageTable(ctx, tx, storageTable{name: t.name, columns: nestedTypeColumns(t)}); err != nil {
 				return err
-			}
-			expected := []string{"present"}
-			for _, field := range t.fields {
-				expected = append(expected, nestedColumn(field.key))
-				if field.kind == "numeric" || field.kind == "timestamp" {
-					expected = append(expected, nestedColumn(field.key)+"_raw")
-				}
-			}
-			if t.open {
-				expected = append(expected, "extension")
-			}
-			if !reflect.DeepEqual(actual, expected) {
-				return ErrFreshDatabaseRequired
 			}
 		}
 		if t == modelUsageType {
@@ -366,34 +356,10 @@ func initializeNested(ctx context.Context, tx *sql.Tx) error {
 				if _, err := tx.ExecContext(ctx, "CREATE TYPE "+t.name+"_entry AS (name text, usage "+t.name+")"); err != nil {
 					return err
 				}
-			}
-		}
-	}
-	for _, field := range canonicalObjects {
-		native, ok := nativeNestedFields[field.key]
-		if !ok {
-			continue
-		}
-		var old bool
-		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM information_schema.columns
-			WHERE table_schema = current_schema() AND table_name = 'cao_canonical_rows'
-			AND column_name = $1 AND data_type = 'json')`, field.column).Scan(&old); err != nil {
-			return err
-		}
-		if old {
-			var populated bool
-			if err := tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM cao_canonical_rows)").Scan(&populated); err != nil {
+			} else if err := verifyStorageTable(ctx, tx, storageTable{name: t.name + "_entry",
+				columns: []storageColumn{{"name", "text", ""}, {"usage", t.name, ""}}}); err != nil {
 				return err
 			}
-			if populated {
-				return ErrFreshDatabaseRequired
-			}
-			if _, err := tx.ExecContext(ctx, "ALTER TABLE cao_canonical_rows DROP COLUMN "+field.column); err != nil {
-				return err
-			}
-		}
-		if _, err := tx.ExecContext(ctx, "ALTER TABLE cao_canonical_rows ADD COLUMN IF NOT EXISTS "+field.column+" "+native.sqlType()); err != nil {
-			return err
 		}
 	}
 	return nil

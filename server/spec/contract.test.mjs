@@ -139,6 +139,12 @@ test('closed nested PostgreSQL structures have explicit physical contracts', () 
   }
 })
 
+test('PostgreSQL source contract has no legacy migration or fallback bookkeeping', () => {
+  const properties = openapi.components.schemas['Postgres.Source'].properties
+  assert.equal(properties.metadataMigrated, undefined)
+  assert.equal(properties.storageFallbackReason, undefined)
+})
+
 test('selected JSON Schemas and nullable responses are emitted', () => {
   for (const schema of ['QueryRequest', 'QueryResponse', 'QueryDefinition', 'RevisionEvent', 'WebhookAcknowledgement']) {
     const document = JSON.parse(readFileSync(join(directory, 'generated/schemas', `${schema}.json`), 'utf8'))

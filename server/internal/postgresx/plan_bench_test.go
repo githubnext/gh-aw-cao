@@ -18,7 +18,7 @@ import (
 )
 
 // BenchmarkNativeFilterPlan compares one indexed drilldown against the old
-// evaluator and equivalent hand-written SQL on the same committed revision.
+// Go evaluator and equivalent hand-written SQL on the same committed revision.
 // POSTGRES_URL must point to a disposable Postgres instance.
 func BenchmarkNativeFilterPlan(b *testing.B) {
 	url := os.Getenv("POSTGRES_URL")
@@ -56,12 +56,12 @@ func BenchmarkNativeFilterPlan(b *testing.B) {
 	}}, model.Diagnostics{}, "benchmark", time.Now()); err != nil {
 		b.Fatal(err)
 	}
-	b.Logf("ingestion: %s for %d rows (includes legacy EAV + indexed documents)", time.Since(started), len(rows))
-	if _, err := store.db.ExecContext(ctx, "ANALYZE cao_source_documents"); err != nil {
+	b.Logf("ingestion: %s for %d native canonical rows", time.Since(started), len(rows))
+	if _, err := store.db.ExecContext(ctx, "ANALYZE cao_canonical_rows"); err != nil {
 		b.Fatal(err)
 	}
-	plan, err := store.db.QueryContext(ctx, `EXPLAIN (ANALYZE, BUFFERS) SELECT payload
-		FROM cao_source_documents WHERE namespace = $1 AND source_name = $2
+	plan, err := store.db.QueryContext(ctx, `EXPLAIN (ANALYZE, BUFFERS) SELECT id, run_id, status, extension::text
+		FROM cao_canonical_rows WHERE namespace = $1 AND source_name = $2
 		AND run_id = $3 AND ordinal >= 0 ORDER BY ordinal LIMIT 11`,
 		"default", "$jobs", "run-250")
 	if err != nil {
@@ -121,7 +121,7 @@ func BenchmarkNativeFilterPlan(b *testing.B) {
 	b.Run("handwritten-sql", func(b *testing.B) {
 		bench(b, func(ctx context.Context, reader SourceReader) error {
 			r := reader.(*readTransaction)
-			rows, err := r.tx.QueryContext(ctx, `SELECT payload FROM cao_source_documents
+			rows, err := r.tx.QueryContext(ctx, `SELECT id, run_id, status, extension::text FROM cao_canonical_rows
 				WHERE namespace = $1 AND source_name = $2 AND run_id = $3 AND ordinal >= 0
 				ORDER BY ordinal LIMIT 11`, "default", "$jobs", "run-250")
 			if err != nil {
@@ -130,8 +130,8 @@ func BenchmarkNativeFilterPlan(b *testing.B) {
 			defer func() { _ = rows.Close() }()
 			count := 0
 			for rows.Next() {
-				var payload string
-				if err := rows.Scan(&payload); err != nil {
+				var id, runID, status, extension string
+				if err := rows.Scan(&id, &runID, &status, &extension); err != nil {
 					return err
 				}
 				count++
@@ -145,15 +145,12 @@ func BenchmarkNativeFilterPlan(b *testing.B) {
 			return nil
 		})
 	})
-	var sqlBytes, eavBytes sql.NullInt64
-	if err := store.db.QueryRowContext(ctx, `SELECT sum(octet_length(payload)) FROM cao_source_documents
-		WHERE namespace = $1 AND source_name = $2 AND run_id = $3`, "default", "$jobs", "run-250").Scan(&sqlBytes); err != nil {
+	var filteredBytes, sourceBytes sql.NullInt64
+	if err := store.db.QueryRowContext(ctx, `SELECT
+		sum(pg_column_size(r)) FILTER (WHERE run_id = $3), sum(pg_column_size(r))
+		FROM cao_canonical_rows r WHERE namespace = $1 AND source_name = $2`,
+		"default", "$jobs", "run-250").Scan(&filteredBytes, &sourceBytes); err != nil {
 		b.Fatal(err)
 	}
-	if err := store.db.QueryRowContext(ctx, `SELECT sum(octet_length(coalesce(text_value, '')))
-		FROM cao_values WHERE namespace = $1 AND source_name = $2 AND ordinal >= 0`,
-		"default", "$jobs").Scan(&eavBytes); err != nil {
-		b.Fatal(err)
-	}
-	b.Logf("filtered SQL JSON payload bytes=%d; unfiltered EAV text bytes=%d (excludes row protocol overhead)", sqlBytes.Int64, eavBytes.Int64)
+	b.Logf("filtered native tuple bytes=%d; unfiltered native tuple bytes=%d", filteredBytes.Int64, sourceBytes.Int64)
 }

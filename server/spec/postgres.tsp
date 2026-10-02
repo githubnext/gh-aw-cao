@@ -129,11 +129,8 @@ model Source {
   metadataSourceKind?: string | null;
   metadataAvailability?: string | null;
   metadataRowCountNull: boolean;
-  metadataMigrated: boolean;
   /** Only unknown metadata keys; absent when the metadata schema is closed. */
   metadataExtension?: Record<unknown> | null;
-  /** Field/type diagnostic for a canonical source retaining legacy storage. */
-  storageFallbackReason?: string | null;
 }
 
 /** Known canonical columns are never copied into the extension object. */

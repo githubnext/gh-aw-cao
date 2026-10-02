@@ -133,9 +133,11 @@ copying mapped fields into extensions. Closed nested campaign, usage, and source
 provenance structures use native composites and ordered composite arrays,
 including nested presence tracking. JSON is reserved for source-defined
 upstream payloads, evaluator evidence, provider extensions, and arbitrary
-intelligence semantic values. The native schema targets a fresh database;
-populated older JSON nested schemas are rejected without discarding data and
-must be rebuilt from authoritative artifacts. There are no
+intelligence semantic values. Initialization only creates the current eight-table
+schema or verifies it on restart. EAV storage and legacy readers, backfills,
+and migration bookkeeping are retired. Older or incompatible CAO schemas are
+rejected without modification and must be rebuilt from authoritative artifacts
+in a fresh database or an empty PostgreSQL schema. There are no
 persistent Postgres generations or separate derived projections. Redis remains reconstructable
 operational state, not an entity
 authority. The same server binary provides a read-only diagnostic check-up
