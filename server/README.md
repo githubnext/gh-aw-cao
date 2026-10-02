@@ -1152,6 +1152,10 @@ continues an existing transport trace. MCP spans use trace context from
 `params._meta.traceparent` as their remote parent and link the ambient HTTP span. Every API
 response also echoes the active request's ids as `X-Trace-Id` / `X-Span-Id`
 headers for correlating a client-visible request with exported spans.
+JSON error responses repeat those identifiers as `traceId` and `spanId`, and
+the bounded server error log records the status plus the same identifiers.
+Browser error views show only the trace ID as a request ID; they do not expose
+span attributes, internal exceptions, query payloads, or storage details.
 
 Telemetry is configured entirely through the standard OpenTelemetry SDK
 environment variables. Traces and metrics are independently optional, and no

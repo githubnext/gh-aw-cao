@@ -10,7 +10,7 @@
       import { attachCliActions, setDeclaredCliActions } from "./components/cli-actions.js";
       import { applyTableQuerySafetyLimits, browserTableCapacityDecision, logTableCapacityDecision } from "./data/table-capacity.js";
       import { startConsoleLogCapture } from "./console-log-capture.js";
-      import { usesRemoteDataBackend } from "./remote-data-backend.js";
+      import { DashboardServerError, usesRemoteDataBackend } from "./remote-data-backend.js";
       import { startDashboardWebMCP, supportsWebMCP } from "./webmcp/runtime.js";
       import {
         dashboardPageChunkPath,
@@ -935,7 +935,10 @@
           } else {
             const message = error instanceof Error ? error.message : String(error);
             const failure = new Error(`Unable to load live dashboard data: ${message}`, { cause: error });
-            root.textContent = failure.message;
+            const requestId = error instanceof DashboardServerError ? error.traceId : "";
+            root.textContent = requestId
+              ? `${failure.message} Request ID: ${requestId}`
+              : failure.message;
             throw failure;
           }
         } finally {

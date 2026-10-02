@@ -601,12 +601,20 @@ func (a *App) Handler() http.Handler {
 	register("GET /api/v1/ingestion/health", a.collectionStatus)
 	register("GET /api/v1/github-quota/usage", a.gitHubQuotaUsage)
 	mux.HandleFunc("/", a.static)
-	tracedMux := withResponseTraceHeaders(mux)
+	handler := a.preAuthRateLimit(a.cors(a.requireAccess(a.rateLimit(mux))))
+	switch a.config.HostProfile.Listener {
+	case HostListenerExternal:
+		handler = a.requireStarted(handler)
+	case HostListenerProcess:
+		handler = a.requireNotDraining(handler)
+	case HostListenerPlatform:
+	}
+	tracedHandler := withResponseTraceHeaders(handler)
 	instrumented := otelhttp.NewHandler(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		original := request.Context().Value(originalHTTPRequestKey{}).(*http.Request)
 		restored := original.WithContext(request.Context())
 		restored.Body = request.Body
-		tracedMux.ServeHTTP(response, restored)
+		tracedHandler.ServeHTTP(response, restored)
 	}), telemetry.SpanHTTPServer,
 		otelhttp.WithFilter(func(request *http.Request) bool {
 			// OAuth callbacks use a dedicated, allowlisted server span instead
@@ -649,15 +657,7 @@ func (a *App) Handler() http.Handler {
 		}
 		instrumented.ServeHTTP(response, safe)
 	})
-	handler := a.preAuthRateLimit(a.cors(a.requireAccess(a.rateLimit(safeTelemetry))))
-	switch a.config.HostProfile.Listener {
-	case HostListenerExternal:
-		handler = a.requireStarted(handler)
-	case HostListenerProcess:
-		handler = a.requireNotDraining(handler)
-	case HostListenerPlatform:
-	}
-	return securityHeaders(handler)
+	return securityHeaders(safeTelemetry)
 }
 
 type originalHTTPRequestKey struct{}
@@ -1159,7 +1159,7 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 func writeQueryError(response http.ResponseWriter, status int, err error) {
 	var limitErr *query.PlanLimitError
 	if errors.As(err, &limitErr) {
-		writeJSON(response, http.StatusUnprocessableEntity, map[string]string{
+		writeErrorPayload(response, http.StatusUnprocessableEntity, map[string]string{
 			"error": limitErr.Error(), "code": "query_plan_too_large", "queryId": limitErr.QueryID, "boundary": limitErr.Boundary,
 		})
 		return
@@ -1557,7 +1557,23 @@ func writeJSON(response http.ResponseWriter, status int, value any) {
 }
 
 func writeError(response http.ResponseWriter, status int, message string) {
-	writeJSON(response, status, map[string]string{"error": message})
+	writeErrorPayload(response, status, map[string]string{"error": message})
+}
+
+func writeErrorPayload(response http.ResponseWriter, status int, payload map[string]string) {
+	traceID := response.Header().Get(telemetry.TraceIDHeader)
+	spanID := response.Header().Get(telemetry.SpanIDHeader)
+	if traceID != "" {
+		payload["traceId"] = traceID
+	}
+	if spanID != "" {
+		payload["spanId"] = spanID
+	}
+	serverLog.Printf(
+		"http error status=%d trace_id=%s span_id=%s",
+		status, traceID, spanID,
+	)
+	writeJSON(response, status, payload)
 }
 
 type eventHub struct {
