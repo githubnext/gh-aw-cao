@@ -95,6 +95,25 @@ test('structured payload fields stay in sync with Go JSON tags', () => {
   }
 })
 
+test('server log records preserve reserved wire names and date-time examples', () => {
+  const record = openapi.components.schemas.ServerLogRecord
+  assert.deepEqual(record.required, ['timestamp', 'namespace', 'message'])
+  assert.deepEqual(record.properties, {
+    timestamp: { type: 'string', format: 'date-time' },
+    namespace: { type: 'string' },
+    message: { type: 'string' }
+  })
+  assert.deepEqual(record.examples, [{
+    timestamp: '2026-10-02T19:00:00Z',
+    namespace: 'cao:server',
+    message: 'listener ready'
+  }])
+  assert.equal(
+    openapi.components.schemas.ServerLogSnapshot.properties.logs.items.$ref,
+    '#/components/schemas/ServerLogRecord'
+  )
+})
+
 test('selected JSON Schemas and nullable responses are emitted', () => {
   for (const schema of ['QueryRequest', 'QueryResponse', 'QueryDefinition', 'RevisionEvent', 'WebhookAcknowledgement']) {
     const document = JSON.parse(readFileSync(join(directory, 'generated/schemas', `${schema}.json`), 'utf8'))

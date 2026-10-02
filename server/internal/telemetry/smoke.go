@@ -119,10 +119,10 @@ func RunSmoke(ctx context.Context, config SmokeConfig) (SmokeReport, error) {
 	var traceID trace.TraceID
 	if requestErr == nil {
 		report.CAOReadinessStatus = readinessResponse.StatusCode
-		report.CAOReadinessOK = readinessResponse.StatusCode == http.StatusOK
 		traceID, report.TraceHeadersPresent = validResponseTraceHeaders(readinessResponse.Header)
-		discardSmokeBody(readinessResponse.Body)
-		_ = readinessResponse.Body.Close()
+		readErr := discardSmokeBody(readinessResponse.Body)
+		closeErr := readinessResponse.Body.Close()
+		report.CAOReadinessOK = readinessResponse.StatusCode == http.StatusOK && readErr == nil && closeErr == nil
 	}
 
 	healthURL := target.baseURL
@@ -134,9 +134,9 @@ func RunSmoke(ctx context.Context, config SmokeConfig) (SmokeReport, error) {
 	healthResponse, requestErr := client.Do(healthRequest)
 	if requestErr == nil {
 		report.OpenObserveHealthStatus = healthResponse.StatusCode
-		report.OpenObserveHealthOK = healthResponse.StatusCode == http.StatusOK
-		discardSmokeBody(healthResponse.Body)
-		_ = healthResponse.Body.Close()
+		readErr := discardSmokeBody(healthResponse.Body)
+		closeErr := healthResponse.Body.Close()
+		report.OpenObserveHealthOK = healthResponse.StatusCode == http.StatusOK && readErr == nil && closeErr == nil
 	}
 
 	if !report.CAOReadinessOK || !report.TraceHeadersPresent || !report.OpenObserveHealthOK {
@@ -162,12 +162,16 @@ func RunSmoke(ctx context.Context, config SmokeConfig) (SmokeReport, error) {
 		searchResponse, searchErr := client.Do(searchRequest)
 		if searchErr == nil {
 			report.OpenObserveSearchStatus = searchResponse.StatusCode
+			var readErr error
 			if searchResponse.StatusCode == http.StatusOK {
-				report.TraceFound = smokeSearchContainsTrace(searchResponse.Body, traceID.String())
+				report.TraceFound, readErr = smokeSearchContainsTrace(searchResponse.Body, traceID.String())
 			} else {
-				discardSmokeBody(searchResponse.Body)
+				readErr = discardSmokeBody(searchResponse.Body)
 			}
-			_ = searchResponse.Body.Close()
+			closeErr := searchResponse.Body.Close()
+			if readErr != nil || closeErr != nil {
+				report.TraceFound = false
+			}
 			if report.TraceFound {
 				report.Passed = true
 				return report, nil
@@ -271,22 +275,23 @@ func validResponseTraceHeaders(headers http.Header) (trace.TraceID, bool) {
 	return traceID, traceErr == nil && spanErr == nil
 }
 
-func smokeSearchContainsTrace(body io.ReadCloser, traceID string) bool {
+func smokeSearchContainsTrace(body io.Reader, traceID string) (bool, error) {
 	var result openObserveTraceSearch
 	if err := json.NewDecoder(io.LimitReader(body, maxSmokeResponseBytes)).Decode(&result); err != nil {
-		return false
+		return false, err
 	}
 	if strings.EqualFold(result.TraceID, traceID) {
-		return true
+		return true, nil
 	}
 	for _, hit := range result.Hits {
 		if strings.EqualFold(hit.TraceID, traceID) {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
-func discardSmokeBody(body io.ReadCloser) {
-	_, _ = io.Copy(io.Discard, io.LimitReader(body, maxSmokeResponseBytes))
+func discardSmokeBody(body io.Reader) error {
+	_, err := io.Copy(io.Discard, io.LimitReader(body, maxSmokeResponseBytes))
+	return err
 }

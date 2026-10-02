@@ -403,10 +403,19 @@ func TestQueryCacheSharedByAuthenticatedHTTPAndMCP(t *testing.T) {
 	seed := func(id string) {
 		t.Helper()
 		seedDatabase(t, database, map[string]model.Source{
-			"$repositories": {Source: "$repositories", Rows: []model.Row{{"id": "repository"}}},
-			"$workflows":    {Source: "$workflows", Rows: []model.Row{{"id": "workflow", "repositoryId": "repository"}}},
+			"$repositories": {Source: "$repositories", Rows: []model.Row{{
+				"id": "repository", "owner": "githubnext", "name": "gh-aw-cao",
+			}}},
+			"$workflows": {Source: "$workflows", Rows: []model.Row{{
+				"id": "workflow", "repositoryId": "repository", "path": ".github/workflows/cache-fixture.yml",
+				"name": "Cache fixture", "campaign": "cache-fixture",
+			}}},
 			"$runs": {
-				Source: "$runs", Rows: []model.Row{{"id": id, "repositoryId": "repository", "workflowId": "workflow"}},
+				Source: "$runs", Rows: []model.Row{{
+					"id": id, "repositoryId": "repository", "workflowId": "workflow",
+					"owner": "githubnext", "repository": "gh-aw-cao", "githubRunId": "123",
+					"attempt": 1, "title": id,
+				}},
 				Metadata: model.Metadata{"availability": "available"},
 			},
 		})
@@ -416,9 +425,17 @@ func TestQueryCacheSharedByAuthenticatedHTTPAndMCP(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(site, "index.html"), []byte("<html></html>"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	definitions := []query.Definition{{Name: "campaign-runs", From: "$runs"}}
+	definitions, err := ParseDashboardQueries("../../../dashboard/site/src/agent/queries.generated.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	definition, ok := findDefinition(definitions, "campaign-runs")
+	if !ok {
+		t.Fatal("generated agent queries do not define campaign-runs")
+	}
 	app, err := New(t.Context(), store, Config{
-		Database: database, Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
+		Database: database, DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
+		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
 		QueryCache: QueryCacheConfig{MinDuration: time.Nanosecond}, DashboardQueries: definitions,
 		MCPEnabled: true, AgentCatalogPath: testAgentCatalog, MCPContractPath: testMCPContract,
 	})
@@ -426,11 +443,12 @@ func TestQueryCacheSharedByAuthenticatedHTTPAndMCP(t *testing.T) {
 		t.Fatal(err)
 	}
 	alias := "agent:campaign-runs"
+	definition.Name = alias + ":source"
 	limit := 2
 	input := queryRequest{
 		Aliases: []string{alias}, Queries: definitions,
 		CompiledQueries: []query.Definition{
-			{Name: alias + ":source", From: "$runs"},
+			definition,
 			{Name: alias, From: alias + ":source", Limit: &limit},
 		},
 	}
@@ -473,7 +491,9 @@ func TestQueryCacheSharedByAuthenticatedHTTPAndMCP(t *testing.T) {
 	}
 	payload := result.StructuredContent.(map[string]any)
 	rows := payload["rows"].([]any)
-	if len(rows) != 1 || rows[0].(map[string]any)["id"] != "http-snapshot" {
+	if len(rows) != 1 || rows[0].(map[string]any)["run-title"] != "http-snapshot" ||
+		rows[0].(map[string]any)["campaign"] != "cache-fixture" ||
+		rows[0].(map[string]any)["workflow-name"] != "Cache fixture" {
 		t.Fatalf("MCP did not reuse HTTP query snapshot: %+v", payload)
 	}
 	count, err := store.Client.Do(t.Context(), "HLEN", keys[0])

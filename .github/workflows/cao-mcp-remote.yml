@@ -9,6 +9,8 @@ on:
       - server/cmd/cao-dashboard/**
       - server/internal/server/**
       - tests/e2e/cao-mcp-remote.mjs
+      - tests/unit/cao-mcp-remote-contract.test.mjs
+      - tests/unit/cao-mcp-remote.helpers.mjs
 
 permissions:
   actions: read
