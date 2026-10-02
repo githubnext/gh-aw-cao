@@ -6,11 +6,28 @@ import (
 	"errors"
 	"strconv"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var queryCacheLog = logger.New("cao:redis:query-cache")
 
 const (
 	QueryCacheTTL        = 5 * time.Minute
 	QueryCacheMaxEntries = 1024
+)
+
+// queryCacheReplyRejection identifies why a raw EVAL reply from the query
+// cache Lua script failed validation. It is useful for diagnosing a
+// malformed or tampered Redis reply without logging the reply itself, which
+// can contain cached query payload bytes.
+type queryCacheReplyRejection string
+
+const (
+	queryCacheReplyRejectionNone        queryCacheReplyRejection = "none"
+	queryCacheReplyRejectionShape       queryCacheReplyRejection = "shape"
+	queryCacheReplyRejectionStatistics  queryCacheReplyRejection = "statistics"
+	queryCacheReplyRejectionResourceCap queryCacheReplyRejection = "resource-cap"
 )
 
 type QueryCacheStats struct {
@@ -99,6 +116,33 @@ func validateQueryCacheKey(key string) error {
 	return nil
 }
 
+// parseQueryCacheReply validates a raw EVAL reply from queryCacheScript and
+// extracts its payload and statistics. It is a pure function extracted from
+// queryCacheCommand so every malformed-reply shape the script could return is
+// directly testable without a Redis client. maxBytes and maxEntries are the
+// resource caps queryCacheCommand requested, used to confirm the script
+// actually enforced them.
+func parseQueryCacheReply(value any, maxBytes int64, maxEntries int64) (any, QueryCacheStats, queryCacheReplyRejection, error) {
+	values, ok := value.([]any)
+	if !ok || len(values) != 5 {
+		return nil, QueryCacheStats{}, queryCacheReplyRejectionShape, errors.New("invalid query cache operation response")
+	}
+	var numbers [4]int64
+	for i := range numbers {
+		number, ok := values[i+1].(int64)
+		if !ok || number < 0 {
+			return nil, QueryCacheStats{}, queryCacheReplyRejectionStatistics, errors.New("invalid query cache statistics")
+		}
+		numbers[i] = number
+	}
+	if numbers[0] > maxBytes || numbers[1] > maxEntries {
+		return nil, QueryCacheStats{}, queryCacheReplyRejectionResourceCap, errors.New("query cache resource limits were not enforced")
+	}
+	return values[0], QueryCacheStats{
+		MemoryBytes: numbers[0], Entries: numbers[1], Expired: numbers[2], Evicted: numbers[3],
+	}, queryCacheReplyRejectionNone, nil
+}
+
 func (s *Store) queryCacheCommand(ctx context.Context, operation, key string, data []byte, maxResultBytes, maxBytes int64) (any, QueryCacheStats, error) {
 	if err := validateQueryCacheKey(key); err != nil {
 		return nil, QueryCacheStats{}, err
@@ -116,24 +160,12 @@ func (s *Store) queryCacheCommand(ctx context.Context, operation, key string, da
 	if err != nil {
 		return nil, QueryCacheStats{}, err
 	}
-	values, ok := value.([]any)
-	if !ok || len(values) != 5 {
-		return nil, QueryCacheStats{}, errors.New("invalid query cache operation response")
+	payload, stats, rejection, err := parseQueryCacheReply(value, maxBytes, QueryCacheMaxEntries)
+	if err != nil {
+		queryCacheLog.Printf("query cache reply rejected reason=%s", rejection)
+		return nil, QueryCacheStats{}, err
 	}
-	var numbers [4]int64
-	for i := range numbers {
-		number, ok := values[i+1].(int64)
-		if !ok || number < 0 {
-			return nil, QueryCacheStats{}, errors.New("invalid query cache statistics")
-		}
-		numbers[i] = number
-	}
-	if numbers[0] > maxBytes || numbers[1] > QueryCacheMaxEntries {
-		return nil, QueryCacheStats{}, errors.New("query cache resource limits were not enforced")
-	}
-	return values[0], QueryCacheStats{
-		MemoryBytes: numbers[0], Entries: numbers[1], Expired: numbers[2], Evicted: numbers[3],
-	}, nil
+	return payload, stats, nil
 }
 
 func (s *Store) CachedQueryResult(ctx context.Context, key string, maxResultBytes, maxBytes int64) ([]byte, QueryCacheStats, error) {

@@ -32,6 +32,42 @@ func (queryCacheReplyClient) DoMany(context.Context, [][]string) ([]any, error) 
 	return nil, errors.New("unexpected cache pipeline")
 }
 
+func TestParseQueryCacheReplyAcceptsValidShape(t *testing.T) {
+	payload, stats, rejection, err := parseQueryCacheReply(
+		[]any{"value", int64(128), int64(1), int64(2), int64(3)}, 4096, QueryCacheMaxEntries)
+	if err != nil || payload != "value" || rejection != queryCacheReplyRejectionNone {
+		t.Fatalf("payload=%v stats=%+v rejection=%s err=%v", payload, stats, rejection, err)
+	}
+	if stats.MemoryBytes != 128 || stats.Entries != 1 || stats.Expired != 2 || stats.Evicted != 3 {
+		t.Fatalf("unexpected statistics: %+v", stats)
+	}
+}
+
+func TestParseQueryCacheReplyRejectsEachMalformedShape(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		reply     any
+		rejection queryCacheReplyRejection
+	}{
+		{"nil response", nil, queryCacheReplyRejectionShape},
+		{"missing statistics", []any{"value", int64(0)}, queryCacheReplyRejectionShape},
+		{"negative memory", []any{"value", int64(-1), int64(1), int64(0), int64(0)}, queryCacheReplyRejectionStatistics},
+		{"string statistics", []any{"value", "128", int64(1), int64(0), int64(0)}, queryCacheReplyRejectionStatistics},
+		{"memory budget exceeded", []any{"value", int64(4097), int64(1), int64(0), int64(0)}, queryCacheReplyRejectionResourceCap},
+		{"entry limit exceeded", []any{"value", int64(128), int64(QueryCacheMaxEntries + 1), int64(0), int64(0)}, queryCacheReplyRejectionResourceCap},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			_, _, rejection, err := parseQueryCacheReply(test.reply, 4096, QueryCacheMaxEntries)
+			if err == nil {
+				t.Fatal("invalid Redis response was accepted")
+			}
+			if rejection != test.rejection {
+				t.Fatalf("rejection=%s, want %s", rejection, test.rejection)
+			}
+		})
+	}
+}
+
 func TestQueryCacheRejectsMalformedRedisReplies(t *testing.T) {
 	key := queryDigest("query")
 	for _, test := range []struct {
