@@ -1,6 +1,6 @@
 {
-  "source_sha": "3103235060ee12a20a202b6ccaad3111f779c986",
-  "next_category": 3,
+  "source_sha": "51f934ecb9ea9d294a97344ef57d81eeb8ffe943",
+  "next_category": "dependency installation and caching",
   "evaluations": [
     {
       "evaluated_at": "2026-10-01T12:50:00Z",
@@ -492,6 +492,22 @@
       ],
       "outcome": "no_actionable_improvement: evaluated Astro documentation generation across the latest 20 completed docs.yml runs from 2026-10-01T22:46Z through 2026-10-02T01:40Z. Trusted Actions metadata showed 9 successful docs runs within the 14-day window, satisfying the minimum sample gate, but only 3 comparable successful build executions because 6 successful scheduled runs short-circuited after schedule-freshness and workflow_run run 36942903113 skipped deploy by design. Across all successful runs, full workflow wall time median was 13.0s with p90 101.0s; among comparable build executions, build-job median was 48.0s with p90 50.0s, build queue median was 12.0s with p90 16.0s, deploy-job median was 26.5s with p90 33.0s on the 2 runs that actually deployed, and schedule-freshness median was 8.0s with p90 10.0s on successful scheduled runs. Build-step medians across comparable docs builds were about 13s for Build documentation, 6s for Restore node_modules, 2s for Restore cached CAO Dashboard, and 9s for Upload Pages artifact; trusted step metadata confirmed cache hits for actions/setup-node npm cache, the explicit node_modules cache, and the central-agentic-ops-dashboard cache because Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on every comparable successful build. For the next-cycle category Astro documentation generation, no new actionable improvement met the >=60s or >=15% threshold: docs.yml already restored the reusable dashboard in 1-3s, while the only repeated large cost remained upstream in successful cao-dashboard.yml producer run 36942640668, where Upgrade fallback activity data took 97s, far more than Assemble Dashboard Language site at 4s or Upload dashboard artifact at 9s. That reusable-dashboard bottleneck is already represented by suggestion fingerprint reusable-dashboard-skip-reupgrade-of-validated-activity-cache in repository memory, and repository issues are disabled, so no new non-duplicate recommendation is actionable in this cycle.",
       "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-02T02:08:23.246071Z",
+      "worker_run_id": 36953967469,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        36953648542,
+        36948897847,
+        36944129683,
+        36942903113,
+        36952022091,
+        36942536188,
+        36941361943,
+        36940386558
+      ],
+      "outcome": "incomplete: only 4 comparable successful runs with executed build job in last 14 days; minimum is 5"
     }
   ]
 }
