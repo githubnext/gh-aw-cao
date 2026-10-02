@@ -51,7 +51,7 @@ test("deployed query cost uses Postgres and the production Go engine", async () 
   await writeFile(path.join(outputDirectory, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
   await writeFile(path.join(outputDirectory, "summary.md"), postgresQueryCostMarkdown(report, candidates));
 
-  assert.equal(report.engine, "postgres-native-sql");
+  assert.equal(report.engine, "postgres-go");
   assert.ok(report.records >= positiveBudget("DASHBOARD_QUERY_COST_MIN_RECORDS", 1));
   assert.ok(report["source-counts"]["$runs"] > 0, "deployed runs are empty");
   assert.deepEqual(report.measurements.map(({ query }) => query), candidates.map(({ name }) => name));

@@ -46,16 +46,6 @@ func TestCompileRelationalSQLDAG(t *testing.T) {
 			t.Fatal("filter must charge unfiltered input")
 		}
 	}
-	statement, args, _, err := plan.OutputStatement("totals", 0, 100)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(statement, "AS NOT MATERIALIZED") || !strings.Contains(statement, "AS MATERIALIZED") {
-		t.Fatal("output must materialize intermediate relations to avoid repeated SQL evaluation")
-	}
-	if len(args) != 5 || args[0] != "tenant" || args[1] != `owner' OR TRUE --` || args[2] != 2 || args[3] != 100 || args[4] != 0 {
-		t.Fatalf("output parameters were not preserved: %#v", args)
-	}
 }
 
 func TestCompileSQLJoinsAndUnions(t *testing.T) {

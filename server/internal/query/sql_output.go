@@ -30,7 +30,7 @@ func (plan SQLPlan) OutputStatement(name string, offset, limit int) (string, []a
 	if len(projection) == 0 {
 		projection = append(projection, "TRUE AS __empty_projection")
 	}
-	scoped, scopedArgs, rewritten := plan.scoped(true, strings.Join(projection, ","), relation.SQL, relation.Order)
+	scoped, scopedArgs, rewritten := plan.Scoped(strings.Join(projection, ","), relation.SQL, relation.Order)
 	builder := sqlbuilder.New(scopedArgs...)
 	builder.Write("{}\nSELECT {} FROM {} ORDER BY {} LIMIT {} OFFSET {}",
 		sqlbuilder.Fragment(scoped), sqlbuilder.Fragment(rewritten[0]),
@@ -71,10 +71,6 @@ var (
 // compact bound arguments they use. The returned fragments are renumbered to
 // match and are not otherwise changed.
 func (plan SQLPlan) Scoped(fragments ...string) (string, []any, []string) {
-	return plan.scoped(false, fragments...)
-}
-
-func (plan SQLPlan) scoped(materialize bool, fragments ...string) (string, []any, []string) {
 	if len(plan.CTEList) == 0 {
 		return plan.CTEs, plan.Args, fragments
 	}
@@ -123,11 +119,7 @@ func (plan SQLPlan) scoped(materialize bool, fragments ...string) (string, []any
 	}
 	statements := make([]string, len(included))
 	for position, text := range included {
-		kind := " AS ("
-		if materialize {
-			kind = " AS MATERIALIZED ("
-		}
-		statements[position] = strings.Replace(renumber(text), forcedInline, kind, 1)
+		statements[position] = strings.Replace(renumber(text), forcedInline, " AS (", 1)
 	}
 	rewritten := make([]string, len(fragments))
 	for position, fragment := range fragments {
