@@ -29,6 +29,34 @@ It is not an alternate canonical representation. Startup only initializes this
 schema; there are no old-layout migrations or backward-compatible imports.
 Use a fresh database when changing its physical layout.
 
+The local SQLite evidence mirrors likewise retain typed query columns and
+observation metadata, but no `record_json` copy. The complete document lives
+once in `__idb_records.value`. Outdated mirrors are rebuilt transactionally
+from those canonical records, never from a second stored representation.
+Canonical normalization and writes also prune unused raw Run payload copies,
+Workflow declaration copies, Issue lifecycle aliases, and the unused
+`isSkill` flag. The explicit exclusions live in
+`dashboard/site/src/data/model/fields.js`; provenance and unrecognized
+evidence remain intact.
+
+### Tool structure assessment
+
+The current logical `tools` collection is execution-event evidence: one
+invocation can emit a start, result, error, or policy-block observation.
+A future SQL dictionary can separate repeated observed tool identity
+(`server`, `name`, tool type, server/protocol versions) from event facts
+(`runId`, correlation ID, timestamp, status, request/response sizes, latency,
+and provenance). Dictionary identity must be namespace-scoped and distinguish
+versions and missing values, not key on tool name alone.
+
+Do not rename those events to `toolCalls` or merge them into one invocation
+without a correlation and aggregation contract: doing so changes counts,
+ordering, failure evidence, and size measurements. Preserve the existing
+logical query source through a SQL join if introducing a physical dictionary.
+Observed identities are not configured tool definitions; the latter require
+independent workflow-declaration evidence. This split is an assessed follow-on,
+not part of the current schema.
+
 Run `npm run generate:storage` for storage only, or `npm run generate` for both
 storage and HTTP contracts. `storage.test.mjs` checks one-to-one table coverage,
 required query fields, absence of speculative columns, and document-free DDL.

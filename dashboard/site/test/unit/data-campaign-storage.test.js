@@ -83,9 +83,13 @@ describe.each(['IndexedDB', 'SQLite'])('Campaign storage in %s', (backend) => {
           observed_at: records[0].observedAt,
           campaign_link: JSON.stringify(records[0].campaignLink),
           intelligence_declaration: JSON.stringify(records[0].intelligenceDeclaration),
-          provenance: JSON.stringify(records[0].provenance),
-          record_json: JSON.stringify(records[0])
+          provenance: JSON.stringify(records[0].provenance)
         })]);
+        expect(mirrorRows(connection)[0]).not.toHaveProperty('record_json');
+        expect(connection.prepare(`
+          SELECT value FROM __idb_records
+          WHERE database_name = ? AND store_name = 'campaigns' AND record_key = ?
+        `).get(DATABASE_NAME, JSON.stringify(records[0].id))?.value).toBe(JSON.stringify(records[0]));
         expect(connection.prepare('PRAGMA index_info(campaigns_slug)').all().map((row) => row.name))
           .toEqual(['database_name', 'slug']);
       } finally {
@@ -137,7 +141,7 @@ describe('SQLite Campaign mirror', () => {
     const connection = new DatabaseSync(filename);
     try {
       expect(mirrorRows(connection)).toEqual([expect.objectContaining({
-        record_json: JSON.stringify(campaignBatch().campaigns[0])
+        id: campaignBatch().campaigns[0].id, slug: 'dependabot', version: 'v1'
       })]);
     } finally {
       connection.close();
@@ -164,7 +168,7 @@ describe('SQLite Campaign mirror', () => {
     const repaired = new DatabaseSync(filename);
     try {
       expect(mirrorRows(repaired)).toEqual([expect.objectContaining({
-        record_json: JSON.stringify(campaignBatch().campaigns[0])
+        id: campaignBatch().campaigns[0].id, slug: 'dependabot', version: 'v1'
       })]);
     } finally {
       repaired.close();

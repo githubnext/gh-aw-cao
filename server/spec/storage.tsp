@@ -70,6 +70,7 @@ model events {
   summary?: string;
 }
 
+/** Query-minimal workflow inventory; raw ghAwMetadata and ghAwManifest remain upstream. */
 model workflows {
   admissionReason?: string;
   admissionStatus?: string;
@@ -105,6 +106,7 @@ model workflows {
   workflowLink?: Values.Link;
 }
 
+/** Run facts and scalar metrics; nested context, usage, and assessment payloads remain upstream. */
 model runs {
   actionMinutes?: decimal;
   admissionReason?: string;
@@ -189,12 +191,12 @@ model domains {
   type?: string;
 }
 
+/** Run-linked tool events, including separate call/outcome records; not configured tool definitions. */
 model tools {
   correlationId?: string;
   failedCount?: int64;
   id: string;
   invocationCount?: int64;
-  isSkill?: boolean;
   latencyMs?: decimal;
   mcpProtocolVersion?: string;
   mcpServer?: string;
@@ -216,13 +218,13 @@ model tools {
   type?: string;
 }
 
+/** Separate skill activity; collection membership replaces the unused isSkill flag. */
 model skills {
   activationSource?: string;
   correlationId?: string;
   failedCount?: int64;
   id: string;
   invocationCount?: int64;
-  isSkill?: boolean;
   name?: string;
   observedAt?: utcDateTime;
   payloadRef?: string;

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { compile, getNamespaceFullName, navigateProgram, NodeHost } from '@typespec/compiler';
+import { PRUNED_CANONICAL_FIELDS } from '../../dashboard/site/src/data/model/fields.js';
 
 const program = await compile(NodeHost, new URL('storage.tsp', import.meta.url).pathname, { noEmit: true });
 assert.deepEqual(program.diagnostics, []);
@@ -81,6 +82,16 @@ test('native table fields cover database projections and joins without speculati
   assert.deepEqual(defects, []);
 });
 
+test('TypeSpec excludes pruned payload copies and lifecycle aliases', () => {
+  for (const [collection, fields] of Object.entries(PRUNED_CANONICAL_FIELDS)) {
+    const table = tables.get(`$${collection}`);
+    assert.ok(table, `missing native collection ${collection}`);
+    for (const field of fields) {
+      assert.equal(table.has(field), false, `${collection}.${field} must not be stored`);
+    }
+  }
+});
+
 test('generated SQL contains no JSON or serialized document columns', () => {
   const sql = readFileSync(new URL('../internal/postgresx/schema.sql', import.meta.url), 'utf8');
   assert.doesNotMatch(sql, /\bJSONB?\b|\b(?:payload|record_json|document)\s+(?:TEXT|BYTEA)\b/i);
@@ -90,6 +101,7 @@ test('generated SQL contains no JSON or serialized document columns', () => {
   assert.doesNotMatch(sql, /\b(?:ALTER|DROP)\s+TABLE\b/i);
   assert.doesNotMatch(sql, /\b(?:cao_sources|cao_source_rows|cao_values|ChildValue)\b|CREATE TABLE[^\n]*(?:campaigns|runs|audits|friction)_values\b/i);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS cao_quality/);
+  assert.doesNotMatch(sql, /\bis_skill\b/);
   assert.doesNotMatch(sql, /CREATE TABLE IF NOT EXISTS (?:collection_health|github_quota_usage|simulation_days|marketplace_packages)\b/);
 });
 

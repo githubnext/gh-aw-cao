@@ -236,8 +236,7 @@ function runMetadata(run) {
     outputTokens: finiteNumber(summary.total_output_tokens),
     cacheReadTokens: finiteNumber(summary.total_cache_read_tokens),
     cacheWriteTokens: finiteNumber(summary.total_cache_write_tokens),
-    reasoningTokens,
-    tokenUsage
+    reasoningTokens
   };
 }
 
@@ -486,7 +485,6 @@ function specializedFields(type, fields, kind) {
     const isBash = /(^|[/.:_-])(bash|shell)(?:$|[/.:_-])/i.test(name);
     return {
       toolType: isBash ? 'bash' : 'mcp',
-      isSkill: false,
       name
     };
   }
@@ -1322,7 +1320,6 @@ function createCachedGhAwJsonlAccumulator(options) {
         workflowPath: structural.workflowPath ? workflowSourcePath(structural.workflowPath) : undefined,
         githubRunId,
         attempt,
-        number: finiteNumber(rawValue.number) ?? finiteNumber(enrichedValue.number),
         title,
         event,
         targetRepository: dispatchTargetRepository(title, event),
@@ -1344,7 +1341,6 @@ function createCachedGhAwJsonlAccumulator(options) {
         updatedAt,
         runLink: optionalString(rawValue.url) ?? optionalString(enrichedValue.url) ?? null,
         classification: optionalString(enrichedValue.classification),
-        intentionalFailure: enrichedValue.intentional_failure,
         failureKind: optionalString(enrichedValue.failure_kind),
         failureJob: failure.failureJob,
         failureMessage: failure.failureMessage,
@@ -1370,27 +1366,15 @@ function createCachedGhAwJsonlAccumulator(options) {
         agentRuntime: metadata.agentRuntime,
         firewallVersion: metadata.firewallVersion,
         gatewayVersion: metadata.gatewayVersion,
-        aic: metadata.aicTotal,
         aicTotal: metadata.aicTotal,
         inputTokens: metadata.inputTokens,
         outputTokens: metadata.outputTokens,
         cacheReadTokens: metadata.cacheReadTokens,
         cacheWriteTokens: metadata.cacheWriteTokens,
         reasoningTokens: metadata.reasoningTokens,
-        tokenUsage: metadata.tokenUsage,
-        ambientContext: enrichedValue.ambient_context,
-        workingSet: enrichedValue.working_set,
-        behaviorFingerprint: enrichedValue.behavior_fingerprint,
-        taskDomain: enrichedValue.task_domain,
-        comparison: enrichedValue.comparison,
-        agenticAssessments: enrichedValue.agentic_assessments,
-        graders: enrichedValue.graders,
-        context: enrichedValue.context,
         githubApiCalls: finiteNumber(enrichedValue.github_api_calls),
         safeItemsCount: finiteNumber(enrichedValue.safe_items_count),
-        errorCount: finiteNumber(enrichedValue.error_count),
-        logsPath: optionalString(enrichedValue.logs_path),
-        auditPath: optionalString(enrichedValue.audit_path)
+        errorCount: finiteNumber(enrichedValue.error_count)
       })
     });
     if (enriched) {

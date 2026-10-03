@@ -15,7 +15,7 @@ The mapping SHALL preserve these mandatory relationships:
 ```text
 Workflow -> Repository
 Run -> Repository and Workflow
-Domain, Tool, Audit, and Issue -> Run
+Domain, Tool, Skill, Friction, Audit, and Issue -> Run
 ```
 
 The mapping SHALL NOT emit Campaign or Transaction observations. Transactions
@@ -56,7 +56,6 @@ Payload rows SHALL be deduplicated by `databaseId` and `attempt`.
 | Mapped Repository ID | Workflow | `repositoryId` |
 | `payload[].databaseId` | Run | `id`, `githubRunId` |
 | `payload[].attempt` | Run | `attempt` |
-| `payload[].number` | Run | `number` |
 | `payload[].displayTitle` | Run | `title` |
 | `payload[].event` | Run | `event` |
 | `payload[].status` | Run | `status` |
@@ -112,7 +111,6 @@ create the base Run using its own GitHub and workflow fields.
 | `status` | `status` |
 | `conclusion` | `conclusion` |
 | `classification` | `classification` |
-| `intentional_failure` | `intentionalFailure` |
 | `failure_kind` | `failureKind` |
 | `duration` | `duration` |
 | `action_minutes` | `actionMinutes` |
@@ -136,21 +134,25 @@ create the base Run using its own GitHub and workflow fields.
 | `agent_runtime` or `aw_info.agent_runtime` | `agentRuntime` |
 | `firewall_version`, `aw_info.firewall_version`, or `aw_info.awf_version` | `firewallVersion` |
 | `gateway_version` or `aw_info.awmg_version` | `gatewayVersion` |
-| `token_usage_summary.total_aic` or `aic` | `aic`, `aicTotal` |
-| `token_usage_summary` or `token_usage` | `tokenUsage` |
-| `ambient_context` | `ambientContext` |
-| `working_set` | `workingSet` |
-| `behavior_fingerprint` | `behaviorFingerprint` |
-| `task_domain` | `taskDomain` |
-| `comparison` | `comparison` |
-| `agentic_assessments` | `agenticAssessments` |
-| `graders` | `graders` |
-| `context` | `context` |
+| `token_usage_summary.total_aic` or `aic` | `aicTotal` |
+| `token_usage_summary.total_input_tokens` | `inputTokens` |
+| `token_usage_summary.total_output_tokens` | `outputTokens` |
+| `token_usage_summary.total_cache_read_tokens` | `cacheReadTokens` |
+| `token_usage_summary.total_cache_write_tokens` | `cacheWriteTokens` |
+| `token_usage_summary.by_model.*.reasoning_tokens` | summed `reasoningTokens` |
 | `github_api_calls` | `githubApiCalls` |
 | `safe_items_count` | `safeItemsCount` |
 | `error_count` | `errorCount` |
-| `logs_path` | `logsPath` |
-| `audit_path` | `auditPath` |
+
+The raw `number`, `intentional_failure`, nested usage, context, assessment,
+working-set, behavior, comparison, and diagnostic-path payloads SHALL NOT be
+copied into canonical Run records. They remain authoritative upstream inputs.
+When supported, their compact run-linked Audit observations and separately
+keyed experiment assignments, grader results, and eval results SHALL retain
+the useful evidence, as specified below and in `specs/dashboard-data.md`.
+The same exclusions SHALL apply when importing previously normalized shards;
+explicit nulls, scalar metrics, immutable aggregates, provenance, and unknown
+evidence fields SHALL remain intact.
 
 Raw `workflow_runs` values SHALL own GitHub execution state when both source
 variants contain the field. Enriched values SHALL own agentic analysis fields.
@@ -169,22 +171,23 @@ used only when the top-level field is absent.
 The schema-v2 `run` envelope supplies supporting token-optimization evidence at
 the grain declared by the source schema:
 
-| JSONL source | Canonical projection |
+| JSONL source | Evidence projection |
 | --- | --- |
-| `turns` | Run-level turn diagnostic |
+| `turns` | Upstream Run-level turn diagnostic, not a stored Run field |
 | `token_usage_summary.total_aic` | Run-aggregate AIC |
 | `token_usage_summary.total_input_tokens` | Run-aggregate input tokens |
 | `token_usage_summary.total_output_tokens` | Run-aggregate output tokens |
 | `token_usage_summary.total_cache_read_tokens` | Run-aggregate cache-read tokens |
 | `token_usage_summary.total_cache_write_tokens` | Run-aggregate cache-write tokens |
-| `token_usage_summary.by_model` | Run-and-model aggregate usage |
-| `token_usage_summary.cache_efficiency` | Run-level cache diagnostic |
+| `token_usage_summary.by_model` | Dominant model identity and summed reasoning tokens; remaining aggregate detail stays upstream |
+| `token_usage_summary.cache_efficiency` | Upstream Run-level cache diagnostic, not a stored Run field |
 | `experiments.assignments` | One experiment assignment per map entry for the Run |
 | `mcp_tool_usage.tool_calls[]` | Correlated canonical Tool records |
 | canonical Run conclusion | Completed-Run reliability evidence |
 
-The summary and `by_model` objects SHALL retain aggregate cost grain and MUST
-NOT fabricate API-invocation identities. When invocation-grain API-proxy usage
+The upstream summary and `by_model` objects SHALL retain aggregate cost grain
+and MUST NOT fabricate API-invocation identities or be copied wholesale into
+canonical Run records. When invocation-grain API-proxy usage
 is also collected, adapters SHALL prefer it for invocation queries and MUST NOT
 add the corresponding summary AIC a second time.
 
@@ -261,9 +264,9 @@ Skill record preserving `name`, `status`, `source`, `invocation_count`, and
 `audit.friction` only when absent, SHALL map to one Friction record preserving
 its measurement state, aggregate dimensions, attribution detail, and
 uncertainty.
-A `skill_activations` item SHALL become a Tool record with `toolType="skill"`
-and `isSkill=true`. Each record SHALL preserve the source item's `code` as its
-machine-readable audit kind. Dashboard queries SHALL use `code` when present and
+A `skill_activations` item SHALL remain a Skill record, not a Tool record
+marked by `isSkill`. Audit records SHALL preserve the source item's `code` as
+its machine-readable audit kind. Dashboard queries SHALL use `code` when present and
 retain the `audit.*` type only as the category and legacy fallback.
 
 Gateway steering warnings SHALL map to Audit records. `gateway_steering_events`,
@@ -327,11 +330,14 @@ provenance
 
 They MAY additionally populate the specialized fields declared for their record
 type in `specs/dashboard-data.md` Section 12: `domain`, `decision`, and
-`requestCount` for a Domain; `toolType`, `isSkill`, and `name` for a Tool; and
+`requestCount` for a Domain; `toolType` and `name` for a Tool; and
 `owner`, `repository`, `repositoryFullName`, `number`, `url`, and
 `isPullRequest` for an Issue. An Issue MAY additionally populate `state`,
 `closed`, `stateReason`, `closedAt`, and `statusObservedAt` from bounded
 GraphQL enrichment.
+The source `issueState`, `issueClosed`, `issueStateReason`, `issueClosedAt`,
+and `issueStatusObservedAt` aliases SHALL NOT be persisted alongside those
+canonical Issue lifecycle fields.
 
 The Activity collector MAY append a schema-v2
 `token_efficiency_observation` envelope only from the validated

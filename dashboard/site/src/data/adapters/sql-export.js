@@ -233,7 +233,6 @@ export function adaptSqlExport(input) {
           source: optionalString(row.source) ?? 'mcp',
           type: optionalString(row.type) ?? 'tool.call',
           toolType: optionalString(row.tool_type) ?? 'mcp',
-          isSkill: row.is_skill === true,
           name: requiredString(row.name, 'name'),
           mcpServer: optionalString(row.mcp_server),
           mcpTool: optionalString(row.mcp_tool),

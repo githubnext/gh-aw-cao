@@ -3,6 +3,7 @@ import { rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { backup, DatabaseSync } from 'node:sqlite';
 import { relationshipErrors } from '../model/schema.js';
+import { pruneCanonicalRecord } from '../model/fields.js';
 import {
   CANONICAL_DATABASE_SCHEMA,
   DATABASE_NAME,
@@ -150,12 +151,19 @@ function schemaDiagnosticsFromConnection(connection) {
       if (!(String(row.name) in expected)) issues.push(`unexpected index ${store}.${String(row.name)}`);
     }
   }
-  const campaignColumns = new Set(connection.prepare('PRAGMA table_info(campaigns)').all().map((row) => row.name));
-  for (const field of [
-    'database_name', 'id', 'observed_at', 'provenance', 'record_json',
-    ...Object.keys(SQLITE_RELATIONAL_STORES.campaigns).map((name) => name.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`))
-  ]) {
-    if (!campaignColumns.has(field)) issues.push(`missing campaigns table column ${field}`);
+  for (const [store, definition] of Object.entries(SQLITE_RELATIONAL_STORES)) {
+    const table = store.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+    const columns = new Set(connection.prepare(`PRAGMA table_info(${table})`).all().map((row) => String(row.name)));
+    const expected = [
+      'database_name', 'id', 'observed_at', 'provenance',
+      ...Object.keys(definition).map((name) => name.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`))
+    ];
+    for (const field of expected) {
+      if (!columns.has(field)) issues.push(`missing ${table} table column ${field}`);
+    }
+    for (const field of columns) {
+      if (!expected.includes(field)) issues.push(`unexpected ${table} table column ${field}`);
+    }
   }
   return { version, stores: actualStores, issues };
 }
@@ -338,7 +346,7 @@ function writeCanonicalDatabase(connection, batch, transactions) {
   `);
   for (const store of ENTITY_STORES) {
     for (const record of batch[store] ?? []) {
-      insertRecord.run(DATABASE_NAME, store, JSON.stringify(record.id), JSON.stringify(record));
+      insertRecord.run(DATABASE_NAME, store, JSON.stringify(record.id), JSON.stringify(pruneCanonicalRecord(store, record)));
     }
   }
   for (const transaction of transactions) {

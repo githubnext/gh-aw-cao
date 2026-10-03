@@ -735,7 +735,6 @@
       { "field": "statusObservedAt", "as": "issue-status-observed-at" },
       { "field": "number" },
       { "field": "toolType", "as": "tool-type" },
-      { "field": "isSkill", "as": "is-skill" },
       { "field": "name" },
       { "field": "invocationCount", "as": "invocation-count" },
       { "field": "failedCount", "as": "failed-count" },

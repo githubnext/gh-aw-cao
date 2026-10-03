@@ -2,7 +2,7 @@
 
 -- Fresh database only. Opaque artifacts remain external.
 
--- Inventory normalization contract: 8f0ad8208cc16d5d062da3046994731a0635d38f0aea200c06addc6875badea1
+-- Inventory normalization contract: f14c6e284504dd4b77d773b756dd862f321ca3f0ccc9e60a6646f55314cddd72
 
 CREATE TABLE IF NOT EXISTS cao_contract (
   digest TEXT NOT NULL,
@@ -826,7 +826,6 @@ CREATE TABLE IF NOT EXISTS skills (
   failed_count BIGINT,
   id TEXT NOT NULL CHECK (id <> ''),
   invocation_count BIGINT,
-  is_skill BOOLEAN,
   name TEXT,
   observed_at TIMESTAMPTZ,
   payload_ref TEXT,
@@ -840,7 +839,7 @@ CREATE TABLE IF NOT EXISTS skills (
   type TEXT,
   PRIMARY KEY (namespace, id),
   UNIQUE (namespace, ordinal),
-  CHECK (bit_length(present_fields) = 17),
+  CHECK (bit_length(present_fields) = 16),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
   CHECK (run_id IS NOT NULL AND run_id <> ''),
   FOREIGN KEY (namespace, run_id) REFERENCES runs(namespace, id) DEFERRABLE INITIALLY DEFERRED
@@ -856,7 +855,6 @@ CREATE TABLE IF NOT EXISTS tools (
   failed_count BIGINT,
   id TEXT NOT NULL CHECK (id <> ''),
   invocation_count BIGINT,
-  is_skill BOOLEAN,
   latency_ms NUMERIC,
   mcp_protocol_version TEXT,
   mcp_server TEXT,
@@ -877,7 +875,7 @@ CREATE TABLE IF NOT EXISTS tools (
   type TEXT,
   PRIMARY KEY (namespace, id),
   UNIQUE (namespace, ordinal),
-  CHECK (bit_length(present_fields) = 23),
+  CHECK (bit_length(present_fields) = 22),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
   CHECK (run_id IS NOT NULL AND run_id <> ''),
   FOREIGN KEY (namespace, run_id) REFERENCES runs(namespace, id) DEFERRABLE INITIALLY DEFERRED

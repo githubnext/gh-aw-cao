@@ -97,6 +97,17 @@ export function createSqliteRelationalTables(connection) {
         : store === 'graderObservations' ? 'grader_id' : 'eval_id']
       : ['workflow_id']);
     const existing = new Set(connection.prepare(`PRAGMA table_info(${table})`).all().map((row) => row.name));
+    const expected = ['database_name', 'id', ...columns, 'observed_at', 'provenance'];
+    const rebuild = existing.size > 0
+      && (existing.size !== expected.length || expected.some((column) => !existing.has(column)));
+    if (rebuild) {
+      connection.exec(`
+        DROP TRIGGER IF EXISTS ${table}_insert;
+        DROP TRIGGER IF EXISTS ${table}_update;
+        DROP TRIGGER IF EXISTS ${table}_delete;
+        DROP TABLE ${table};
+      `);
+    }
     const observationRequired = store === 'campaigns' ? '' : ' NOT NULL';
     connection.exec(`
       CREATE TABLE IF NOT EXISTS ${table} (
@@ -105,30 +116,19 @@ export function createSqliteRelationalTables(connection) {
         ${columns.map((column, index) => `${column} ${/** @type {Record<string, string>} */ (definition)[fields[index]]}${required.has(column) ? ' NOT NULL' : ''},`).join('\n')}
         observed_at TEXT${observationRequired},
         provenance TEXT${observationRequired},
-        record_json TEXT NOT NULL,
         PRIMARY KEY (database_name, id)
       );
     `);
-    let migrated = false;
-    for (const [index, column] of columns.entries()) {
-      if (existing.size === 0 || existing.has(column)) continue;
-      migrated = true;
-      connection.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${/** @type {Record<string, string>} */ (definition)[fields[index]]};`);
-      connection.exec(`UPDATE ${table} SET ${column} = json_extract(record_json, '$.${fields[index]}');`);
-    }
     connection.exec(`
       ${indexed.map((column) => `CREATE INDEX IF NOT EXISTS ${table}_${column} ON ${table}(database_name, ${column});`).join('\n')}
-      ${migrated ? `DROP TRIGGER IF EXISTS ${table}_insert;
-      DROP TRIGGER IF EXISTS ${table}_update;
-      DROP TRIGGER IF EXISTS ${table}_delete;` : ''}
       CREATE TRIGGER IF NOT EXISTS ${table}_insert AFTER INSERT ON __idb_records
       WHEN NEW.store_name = '${store}'
       BEGIN
-        INSERT INTO ${table} (database_name, id, ${columns.join(', ')}, observed_at, provenance, record_json)
+        INSERT INTO ${table} (database_name, id, ${columns.join(', ')}, observed_at, provenance)
         VALUES (NEW.database_name, json_extract(NEW.value, '$.id'),
           ${fields.map((field) => sqlValue(field)).join(', ')},
           json_extract(NEW.value, '$.observedAt'),
-          json_extract(NEW.value, '$.provenance'), NEW.value);
+          json_extract(NEW.value, '$.provenance'));
       END;
       CREATE TRIGGER IF NOT EXISTS ${table}_update AFTER UPDATE OF value ON __idb_records
       WHEN NEW.store_name = '${store}'
@@ -136,8 +136,7 @@ export function createSqliteRelationalTables(connection) {
         UPDATE ${table} SET
           ${fields.map((field, index) => `${columns[index]} = ${sqlValue(field)},`).join('\n')}
           observed_at = json_extract(NEW.value, '$.observedAt'),
-          provenance = json_extract(NEW.value, '$.provenance'),
-          record_json = NEW.value
+          provenance = json_extract(NEW.value, '$.provenance')
         WHERE database_name = NEW.database_name AND id = json_extract(NEW.value, '$.id');
       END;
       CREATE TRIGGER IF NOT EXISTS ${table}_delete AFTER DELETE ON __idb_records
@@ -146,13 +145,13 @@ export function createSqliteRelationalTables(connection) {
         DELETE FROM ${table} WHERE database_name = OLD.database_name AND id = json_extract(OLD.value, '$.id');
       END;
     `);
-    if (store === 'campaigns' && existing.size === 0) {
+    if (existing.size === 0 || rebuild) {
       connection.exec(`
-        INSERT INTO campaigns (database_name, id, ${columns.join(', ')}, observed_at, provenance, record_json)
+        INSERT INTO ${table} (database_name, id, ${columns.join(', ')}, observed_at, provenance)
         SELECT database_name, json_extract(value, '$.id'),
           ${fields.map((field) => sqlValue(field, 'value')).join(', ')},
-          json_extract(value, '$.observedAt'), json_extract(value, '$.provenance'), value
-        FROM __idb_records WHERE store_name = 'campaigns';
+          json_extract(value, '$.observedAt'), json_extract(value, '$.provenance')
+        FROM __idb_records WHERE store_name = '${store}';
       `);
     }
   }
