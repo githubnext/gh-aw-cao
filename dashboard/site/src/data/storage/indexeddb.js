@@ -14,7 +14,13 @@ import {
 const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 34;
+export const DATABASE_VERSION = 35;
+
+export const CANONICAL_QUERY_INDEX_FIELDS = /** @type {Record<string, string[]>} */ ({
+  byQuerySummary: ['summary'],
+  byQueryDomain: ['domain'],
+  byQueryMcpIdentity: ['source', 'type', 'mcpServer', 'mcpTool']
+});
 
 /** @param {string} [pathname] */
 export function canonicalDatabaseName(pathname) {
@@ -81,11 +87,21 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
  },
  domains: {
    keyPath: 'id',
-   indexes: { byRun: 'runId' }
+   indexes: {
+     byRun: 'runId',
+     byQuerySummary: '_queryKeys.byQuerySummary',
+     byQueryDomain: '_queryKeys.byQueryDomain'
+   }
  },
  tools: {
    keyPath: 'id',
-   indexes: { byRun: 'runId' }
+   indexes: {
+     byRun: 'runId',
+     byQuerySummary: '_queryKeys.byQuerySummary',
+     byQueryMcpIdentity: '_queryKeys.byQueryMcpIdentity',
+     byTypeStatusRun: ['type', 'status', 'runId'],
+     byTypeStatusRunSummary: ['type', 'status', 'runId', 'summary']
+   }
  },
  skills: {
    keyPath: 'id',
@@ -97,12 +113,18 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
  },
  audits: {
    keyPath: 'id',
-   indexes: { byRun: 'runId' }
+   indexes: {
+     byRun: 'runId',
+     byQuerySummary: '_queryKeys.byQuerySummary',
+     byTypeStatusRun: ['type', 'status', 'runId'],
+     byTypeStatusRunSummary: ['type', 'status', 'runId', 'summary']
+   }
   },
   issues: {
     keyPath: 'id',
     indexes: {
-      byRun: 'runId'
+      byRun: 'runId',
+      byQuerySummary: '_queryKeys.byQuerySummary'
     }
   },
   operationalValues: {
@@ -176,6 +198,54 @@ const QUERYABLE_STRING_KEY_PATHS = new Set([
   'event'
 ]);
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
+
+/**
+ * Physical index keys include absent/null dimensions so native selection never
+ * silently drops observations. Query semantics remain in Dashboard Language;
+ * these tuples encode raw canonical fields, not computed labels or page state.
+ * @param {string} storeName
+ * @param {Record<string, unknown>} record
+ */
+export function prepareCanonicalRecord(storeName, record) {
+  const indexes = Object.keys(CANONICAL_DATABASE_SCHEMA[storeName]?.indexes ?? {})
+    .filter((name) => Object.hasOwn(CANONICAL_QUERY_INDEX_FIELDS, name));
+  if (indexes.length === 0) return record;
+  return {
+    ...record,
+    _queryKeys: Object.fromEntries(indexes.flatMap((name) => {
+      const values = CANONICAL_QUERY_INDEX_FIELDS[name].map((field) => record[field] ?? null);
+      return values.every((value) => losslessQueryKeyValue(value))
+        ? [[name, JSON.stringify(values)]] : [];
+    }))
+  };
+}
+
+/**
+ * @param {unknown} value
+ * @param {Set<object>} [seen]
+ * @param {number} [depth]
+ * @returns {boolean}
+ */
+function losslessQueryKeyValue(value, seen = new Set(), depth = 0) {
+  if (value == null || ['string', 'boolean'].includes(typeof value)) return true;
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (typeof value !== 'object' || depth > 64 || seen.has(value)
+      || (!Array.isArray(value) && ![Object.prototype, null].includes(Object.getPrototypeOf(value)))) return false;
+  seen.add(value);
+  const safe = Object.values(value).every((child) => losslessQueryKeyValue(child, seen, depth + 1));
+  seen.delete(value);
+  return safe;
+}
+
+/**
+ * @template {Record<string, unknown> | undefined | null} T
+ * @param {T} record
+ * @returns {T}
+ */
+function canonicalRecord(record) {
+  if (record && Object.hasOwn(record, '_queryKeys')) delete record._queryKeys;
+  return record;
+}
 
 /**
  * @template T
@@ -558,7 +628,7 @@ export async function upsertCanonicalBatchWithConnection(database, batch, option
           };
         }
       } else {
-        for (const record of boundedRecords) store.put(record);
+        for (const record of boundedRecords) store.put(prepareCanonicalRecord(storeName, record));
         commitTransaction(transaction);
       }
       await done;
@@ -667,7 +737,7 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
           const id = String(record.id);
           if (storeName === 'runs') auditRunFacts.set(id, auditCurationRunFacts(record));
           if (storeName === 'audits' && !referencedAudits.has(id)
-              && discardAudit(record, auditRunFacts.get(String(record.runId)))) {
+              && discardAudit(canonicalRecord({ ...record }), auditRunFacts.get(String(record.runId)))) {
             remove();
             deletedRecords += 1;
             prunedAudits += 1;
@@ -957,7 +1027,9 @@ export async function readCollections(indexedDB, storeNames) {
       stores: [...storeNames].join('|'),
       durationMs: monotonicNow() - startedAt
     });
-    return Object.fromEntries(storeNames.map((storeName, index) => [storeName, records[index]]));
+    return Object.fromEntries(storeNames.map((storeName, index) => [
+      storeName, records[index].map((record) => canonicalRecord(record))
+    ]));
   } finally {
     database.close();
   }
@@ -1002,7 +1074,8 @@ export async function countCollections(indexedDB, storeNames) {
 export async function readCollection(indexedDB, storeName) {
   const database = await openCanonicalDatabase(indexedDB);
   try {
-    return await requestResult(database.transaction(storeName).objectStore(storeName).getAll());
+    return (await requestResult(database.transaction(storeName).objectStore(storeName).getAll()))
+      .map((record) => canonicalRecord(record));
   } finally {
     database.close();
   }
@@ -1016,7 +1089,7 @@ export async function readCollection(indexedDB, storeName) {
  * @param {IDBFactory} indexedDB
  * @param {typeof ENTITY_STORES[number]} storeName
  * @param {import('../../data-operations.js').DataOperator[]} operators
- * @param {{ onMetrics?: (metrics: { durationMs: number, requestCount: number, recordsScanned: number, recordsReturned: number, index: string | null }) => void }} [options]
+ * @param {{ maxRows?: number, onMetrics?: (metrics: { durationMs: number, requestCount: number, recordsScanned: number, recordsReturned: number, index: string | null }) => void }} [options]
  */
 export async function queryCollection(indexedDB, storeName, operators, options = {}) {
   const startedAt = monotonicNow();
@@ -1025,6 +1098,14 @@ export async function queryCollection(indexedDB, storeName, operators, options =
     const transaction = database.transaction(storeName);
     const store = transaction.objectStore(storeName);
     const plan = indexedQueryPlan(store, operators);
+    if (options.maxRows !== undefined) {
+      const counts = await Promise.all(plan
+        ? plan.keys.map((key) => requestResult(plan.index.count(key)))
+        : [requestResult(store.count())]);
+      if (counts.reduce((sum, count) => sum + count, 0) > options.maxRows) {
+        throw new Error(`IndexedDB selection exceeded max-input-rows of ${options.maxRows}`);
+      }
+    }
     let records;
     if (!plan) {
       records = await requestResult(store.getAll());
@@ -1040,7 +1121,7 @@ export async function queryCollection(indexedDB, storeName, operators, options =
         candidateRecords: records.length
       });
     }
-    const result = tidy(records, operators);
+    const result = tidy(records.map((record) => canonicalRecord(record)), operators);
     const metrics = {
       durationMs: monotonicNow() - startedAt,
       requestCount: plan?.keys.length ?? 1,
@@ -1051,6 +1132,239 @@ export async function queryCollection(indexedDB, storeName, operators, options =
     debug('completed collection query', { store: storeName, ...metrics });
     options.onMetrics?.(metrics);
     return result;
+  } finally {
+    database.close();
+  }
+}
+
+/**
+ * Counts distinct index keys without reading their event records. A nullable
+ * trailing dimension is recovered by subtracting its indexed counts from the
+ * prefix counts: IndexedDB omits null and absent keys, whereas query grouping
+ * places both in the same null bucket.
+ *
+ * @param {IDBFactory} indexedDB
+ * @param {typeof ENTITY_STORES[number]} storeName
+ * @param {{ index: string, nullableIndex?: string, predicates?: import('../../data-operations.js').Predicate[], maxGroups: number, checkpoint?: () => void }} plan
+ * @returns {Promise<Record<string, unknown>[] | null>}
+ */
+export async function queryCollectionCountGroups(indexedDB, storeName, plan) {
+  const startedAt = monotonicNow();
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    const transaction = database.transaction(storeName);
+    const done = transactionDone(transaction);
+    const store = transaction.objectStore(storeName);
+    const base = store.index(plan.index);
+    if (typeof base.openKeyCursor !== 'function') { await done; return null; }
+    // A missing run relationship cannot be silently dropped by an index.
+    const [total, indexed, emptyId] = await Promise.all([
+      requestResult(store.count()), requestResult(store.index('byRun').count()), requestResult(store.getKey(''))
+    ]);
+    if (total !== indexed || emptyId !== undefined) {
+      await done;
+      return null;
+    }
+    /** @type {Record<string, unknown>[]} */
+    const groups = [];
+    let requestCount = 3;
+    let recordsScanned = 0;
+    /**
+     * Queue every count and cursor continuation synchronously in each callback,
+     * keeping the readonly transaction alive for the entire snapshot.
+     * @param {IDBIndex} index
+     * @param {(key: IDBValidKey[], count: number, firstKey: IDBValidKey) => void} receive
+     */
+    const countKeys = (index, receive) => new Promise((resolve, reject) => {
+      const fields = Array.isArray(index.keyPath) ? index.keyPath : [index.keyPath];
+      const cursorRequest = index.openKeyCursor(null, 'nextunique');
+      requestCount += 1;
+      cursorRequest.onerror = () => reject(cursorRequest.error ?? new Error('IndexedDB count cursor failed'));
+      cursorRequest.onsuccess = () => {
+        try { plan.checkpoint?.(); } catch (error) { reject(error); return; }
+        const cursor = cursorRequest.result;
+        if (!cursor) {
+          resolve(undefined);
+          return;
+        }
+        const key = Array.isArray(cursor.key) ? cursor.key : [cursor.key];
+        const row = Object.fromEntries(fields.map((field, i) => [field, key[i]]));
+        if (plan.predicates?.length && tidy([row], [{ op: 'filter', predicates: plan.predicates }]).length === 0) {
+          cursor.continue();
+          return;
+        }
+        const count = index.count(cursor.key);
+        requestCount += 1;
+        count.onerror = () => reject(count.error ?? new Error('IndexedDB group count failed'));
+        count.onsuccess = () => {
+          try {
+            receive(key, count.result, cursor.primaryKey);
+            cursor.continue();
+          } catch (error) {
+            reject(error);
+          }
+        };
+      };
+    });
+    const fields = Array.isArray(base.keyPath) ? base.keyPath : [base.keyPath];
+    /** @type {Map<string, { key: IDBValidKey[], count: number }>} */
+    const prefixes = new Map();
+    const append = (/** @type {Record<string, unknown>} */ row) => {
+      if (groups.length + recordsScanned >= plan.maxGroups) throw new Error(`IndexedDB aggregate exceeded max-input-rows of ${plan.maxGroups}`);
+      groups.push(row);
+    };
+    try {
+      await countKeys(base, (key, count, firstKey) => {
+        if (plan.nullableIndex) {
+          if (prefixes.size >= plan.maxGroups) throw new Error(`IndexedDB aggregate exceeded max-input-rows of ${plan.maxGroups}`);
+          prefixes.set(JSON.stringify(key), { key, count });
+        } else {
+          append({ ...Object.fromEntries(fields.map((field, i) => [field, key[i]])), id: firstKey, count });
+        }
+      });
+      if (plan.nullableIndex) {
+        const nullable = store.index(plan.nullableIndex);
+        const nullableFields = Array.isArray(nullable.keyPath) ? nullable.keyPath : [nullable.keyPath];
+        await countKeys(nullable, (key, count, firstKey) => {
+          const prefix = prefixes.get(JSON.stringify(key.slice(0, fields.length)));
+          if (!prefix) throw new Error('IndexedDB aggregate has an inconsistent prefix count');
+          prefix.count -= count;
+          append({ ...Object.fromEntries(nullableFields.map((field, i) => [field, key[i]])), id: firstKey, count });
+        });
+        for (const { key, count } of prefixes.values()) {
+          if (count < 0) throw new Error('IndexedDB aggregate has a negative missing-key count');
+          if (count === 0) continue;
+          const missingField = nullableFields[nullableFields.length - 1];
+          // Read only the earliest missing-key representative, preserving
+          // explicit null versus absent values and canonical input ordering.
+          const representative = await new Promise((resolve, reject) => {
+            const request = base.openCursor(Array.isArray(base.keyPath) ? key : key[0]);
+            requestCount += 1;
+            request.onerror = () => reject(request.error ?? new Error('IndexedDB missing-key lookup failed'));
+            request.onsuccess = () => {
+              try { plan.checkpoint?.(); } catch (error) { reject(error); return; }
+              const cursor = request.result;
+              if (!cursor) {
+                reject(new Error('IndexedDB aggregate has no missing-key representative'));
+                return;
+              }
+              recordsScanned += 1;
+              if (recordsScanned + groups.length > plan.maxGroups) {
+                reject(new Error(`IndexedDB aggregate exceeded max-input-rows of ${plan.maxGroups}`));
+                return;
+              }
+              if (cursor.value[missingField] == null) {
+                resolve({ id: cursor.primaryKey, value: cursor.value[missingField] });
+              } else {
+                cursor.continue();
+              }
+            };
+          });
+          append({
+            ...Object.fromEntries(fields.map((field, i) => [field, key[i]])),
+            [missingField]: representative.value,
+            id: representative.id,
+            count
+          });
+        }
+      }
+      await done;
+    } catch (error) {
+      try { transaction.abort(); } catch { /* Already completed or aborted. */ }
+      await done.catch(() => undefined);
+      throw error;
+    }
+    debug('completed indexed collection aggregate', {
+      store: storeName, index: base.name, executionPath: 'indexed-count',
+      durationMs: monotonicNow() - startedAt, requestCount,
+      recordsScanned, recordsReturned: groups.length
+    });
+    return groups.sort((left, right) => indexedDB.cmp(
+      /** @type {IDBValidKey} */ (left.id), /** @type {IDBValidKey} */ (right.id)
+    ));
+  } finally {
+    database.close();
+  }
+}
+
+/**
+ * Reads a bounded dictionary of nullable raw-field tuples, not event rows.
+ * @param {IDBFactory} indexedDB
+ * @param {typeof ENTITY_STORES[number]} storeName
+ * @param {string} indexName
+ * @param {{ maxKeys: number, checkpoint?: () => void }} options
+ * @returns {Promise<Array<{ key: string, row: Record<string, unknown> }> | null>}
+ */
+export async function readCollectionQueryKeys(indexedDB, storeName, indexName, options) {
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    const transaction = database.transaction(storeName);
+    const done = transactionDone(transaction);
+    const store = transaction.objectStore(storeName);
+    const index = store.index(indexName);
+    if (typeof index.openKeyCursor !== 'function') { await done; return null; }
+    const [total, indexed] = await Promise.all([requestResult(store.count()), requestResult(index.count())]);
+    if (total !== indexed) {
+      await done;
+      return null;
+    }
+    const fields = CANONICAL_QUERY_INDEX_FIELDS[indexName];
+    /** @type {Array<{ key: string, row: Record<string, unknown> }>} */
+    const rows = [];
+    try {
+      await new Promise((resolve, reject) => {
+        const request = index.openKeyCursor(null, 'nextunique');
+        request.onerror = () => reject(request.error ?? new Error('IndexedDB query-key read failed'));
+        request.onsuccess = () => {
+          try {
+            options.checkpoint?.();
+            const cursor = request.result;
+            if (!cursor) { resolve(undefined); return; }
+            if (rows.length >= options.maxKeys) throw new Error(`IndexedDB query keys exceeded max-input-rows of ${options.maxKeys}`);
+            const key = String(cursor.key);
+            const values = JSON.parse(key);
+            if (!Array.isArray(values) || values.length !== fields.length) throw new Error('Invalid canonical query index key');
+            rows.push({ key, row: Object.fromEntries(fields.map((field, i) => [field, values[i]])) });
+            cursor.continue();
+          } catch (error) { reject(error); }
+        };
+      });
+      await done;
+    } catch (error) {
+      try { transaction.abort(); } catch { /* Already completed or aborted. */ }
+      await done.catch(() => undefined);
+      throw error;
+    }
+    return rows;
+  } finally {
+    database.close();
+  }
+}
+
+/**
+ * Materializes only selected tuple keys, after checking their native counts.
+ * @param {IDBFactory} indexedDB
+ * @param {typeof ENTITY_STORES[number]} storeName
+ * @param {string} indexName
+ * @param {string[]} keys
+ * @param {{ maxRows: number, checkpoint?: () => void }} options
+ * @returns {Promise<Record<string, unknown>[]>}
+ */
+export async function readCollectionQueryKeyRecords(indexedDB, storeName, indexName, keys, options) {
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    const index = database.transaction(storeName).objectStore(storeName).index(indexName);
+    const unique = [...new Set(keys)];
+    const counts = await Promise.all(unique.map((key) => requestResult(index.count(key))));
+    options.checkpoint?.();
+    if (counts.reduce((sum, count) => sum + count, 0) > options.maxRows) {
+      throw new Error(`IndexedDB selection exceeded max-input-rows of ${options.maxRows}`);
+    }
+    const records = await Promise.all(unique.map((key) => requestResult(index.getAll(key))));
+    options.checkpoint?.();
+    return records.flat().map((record) => canonicalRecord(record)).sort((left, right) => indexedDB.cmp(
+      /** @type {IDBValidKey} */ (left.id), /** @type {IDBValidKey} */ (right.id)
+    ));
   } finally {
     database.close();
   }
@@ -1103,7 +1417,7 @@ function indexedQueryPlan(store, operators) {
  */
 export async function readRecordWithConnection(database, storeName, id) {
   const result = await requestResult(database.transaction(storeName).objectStore(storeName).get(id));
-  return result && typeof result === 'object' ? result : null;
+  return result && typeof result === 'object' ? canonicalRecord(result) : null;
 }
 
 /**
@@ -1131,11 +1445,11 @@ export async function readIndex(indexedDB, storeName, indexName, key) {
   try {
     const index = database.transaction(storeName).objectStore(storeName).index(indexName);
     if (key.length === 1 && !Array.isArray(index.keyPath)) {
-      return await requestResult(index.getAll(key[0]));
+      return (await requestResult(index.getAll(key[0]))).map((record) => canonicalRecord(record));
     }
-    return await requestResult(index.getAll(
+    return (await requestResult(index.getAll(
       IDBKeyRange.bound(key, [...key, []], false, true)
-    ));
+    ))).map((record) => canonicalRecord(record));
   } finally {
     database.close();
   }
@@ -1277,7 +1591,7 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
         const done = transactionDone(transaction);
         const store = transaction.objectStore(storeName);
         try {
-          for (const record of boundedRecords) store.put(record);
+          for (const record of boundedRecords) store.put(prepareCanonicalRecord(storeName, record));
           requestCount += boundedRecords.length;
           commitTransaction(transaction);
           await done;

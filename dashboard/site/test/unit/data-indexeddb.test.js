@@ -238,10 +238,13 @@ describe('canonical IndexedDB', () => {
     expect([...database.transaction('workflows').objectStore('workflows').indexNames]).toEqual(['byRepository']);
     expect([...database.transaction('runs').objectStore('runs').indexNames])
       .toEqual(['byConclusion', 'byEvent', 'byEventConclusion', 'byRepository', 'byWorkflow']);
-    expect([...database.transaction('domains').objectStore('domains').indexNames]).toEqual(['byRun']);
-    expect([...database.transaction('tools').objectStore('tools').indexNames]).toEqual(['byRun']);
-    expect([...database.transaction('audits').objectStore('audits').indexNames]).toEqual(['byRun']);
-    expect([...database.transaction('issues').objectStore('issues').indexNames]).toEqual(['byRun']);
+    expect([...database.transaction('domains').objectStore('domains').indexNames])
+      .toEqual(['byQueryDomain', 'byQuerySummary', 'byRun']);
+    expect([...database.transaction('tools').objectStore('tools').indexNames])
+      .toEqual(['byQueryMcpIdentity', 'byQuerySummary', 'byRun', 'byTypeStatusRun', 'byTypeStatusRunSummary']);
+    expect([...database.transaction('audits').objectStore('audits').indexNames])
+      .toEqual(['byQuerySummary', 'byRun', 'byTypeStatusRun', 'byTypeStatusRunSummary']);
+    expect([...database.transaction('issues').objectStore('issues').indexNames]).toEqual(['byQuerySummary', 'byRun']);
     expect([...database.transaction('operationalValues').objectStore('operationalValues').indexNames])
       .toEqual(['byRepository', 'byValue']);
     expect([...database.transaction('transactions').objectStore('transactions').indexNames]).toEqual(['byCreatedAt']);

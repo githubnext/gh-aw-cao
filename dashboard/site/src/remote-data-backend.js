@@ -192,6 +192,7 @@ function remoteQueryPayload(sourceNames, context, pagination, options = {}) {
     : null;
   const viewPayload = page && options.pageId
     ? compileDashboardViewPayloadQueries(page, options.pageId, {
+        backend: "hosted",
         routeParameters: options.routeParameters,
         queryContext: options.queryContext,
         evaluatedAt: options.queryContext?.timeWindow?.end ?? observedEvaluatedAt,

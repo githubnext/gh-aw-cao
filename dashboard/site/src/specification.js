@@ -81,7 +81,9 @@ export const PAGE_ROUTE_TITLE_FORMAT_VALUES = ['title-case'];
 export const PAGE_ROUTE_TAB_KEYS = ['id', 'label', 'icon', 'page'];
 export const MAX_PAGE_ROUTE_TABS = 8;
 
-export const VIEW_KEYS = ['id', 'title', 'show-title', 'description', 'subject', 'objective', 'acceptance', 'prompt', 'locked', 'data', 'mark', 'element', 'config', 'callout', 'chart', 'metric', 'list', 'card-drill', 'tree', 'layout', 'disclosure', 'disclosure-label', 'controls', 'lazy-list', 'column-summaries', 'empty-message', 'title-link', 'encoding'];
+export const VIEW_KEYS = ['id', 'title', 'show-title', 'description', 'subject', 'objective', 'acceptance', 'prompt', 'locked', 'requires', 'data', 'mark', 'element', 'config', 'callout', 'chart', 'metric', 'list', 'card-drill', 'tree', 'layout', 'disclosure', 'disclosure-label', 'controls', 'lazy-list', 'column-summaries', 'empty-message', 'title-link', 'encoding'];
+export const VIEW_REQUIREMENT_KEYS = ['backend', 'message'];
+export const VIEW_BACKEND_VALUES = ['static', 'hosted'];
 export const VIEW_DATA_KEYS = ['source', 'sources', 'scope', 'time', 'filters', 'arguments', 'route-field', 'limit', 'order-by', 'source-metadata', 'query-context'];
 export const VIEW_DATA_ARGUMENT_KEYS = ['name', 'field'];
 export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections', 'stations', 'labels', 'animate', 'sources', 'browser-first-load', 'view-all-page', 'view-all-label', 'label-field', 'label-badge-field', 'link-field', 'icon-field', 'fallback-icon', 'indicator-field', 'indicator-label-field', 'empty-message', 'measure-source', 'content-field', 'path-field', 'base-link-field'];

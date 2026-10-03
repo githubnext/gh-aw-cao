@@ -1622,6 +1622,10 @@ describe('presenter built-in and custom pages', () => {
 
 
   it('renders indexing trends, database table counts, and transaction cards', async () => {
+    const backend = document.createElement('meta');
+    backend.name = 'dashboard-data-backend';
+    backend.content = 'server-http';
+    document.head.append(backend);
     const metadata = {
       'source-id': 'transactions-fixture',
       'source-kind': 'fixture',
@@ -1744,6 +1748,7 @@ describe('presenter built-in and custom pages', () => {
       expect(transactions?.textContent).toContain('Payload hash');
       expect(transactions?.querySelector('input[type="search"]')).toBeNull();
     } finally {
+      backend.remove();
       rendered.remove();
       window.history.replaceState(null, '', '/');
     }

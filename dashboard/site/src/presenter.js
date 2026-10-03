@@ -41,6 +41,7 @@ import { enablePullRefresh } from './components/pull-refresh.js';
 import { resolveModeIndicator } from './components/mode-indicator.js';
 import { createDebug } from './debug.js';
 import { navigationIndicatorSourceNames } from './navigation-indicator.js';
+import { dashboardDataBackend, viewBackendAvailable, viewBackendUnavailableMessage } from './view-availability.js';
 
 export { enableDashboardKeyboardNavigation, updateWithViewTransition };
 
@@ -168,6 +169,7 @@ export function dashboardPagePaginatedSourceBindings(document, pageId) {
   const payload = getBuiltInPagePayload(page, document.dashboard.views);
   return Object.fromEntries((payload.views ?? []).flatMap((view, viewIndex) => {
     if (!isPlainObject(view)
+        || !viewBackendAvailable(view, dashboardDataBackend())
         || typeof view.id !== 'string'
         || (view['lazy-list'] !== true && !supportsIncrementalChartContinuation(view))) {
       return [];
@@ -280,6 +282,7 @@ export function renderDashboard(input) {
         options.queryContext = effectiveQueryContext;
         const rendersBeforePageSources = dashboardPageSourcesAreIndependentlyBound(resolvedPage(), reusableViews);
         const liveSources = state(sources);
+        const failures = state(/** @type {Record<string, string>} */ ({}));
         const loading = state((input.loading === true || Boolean(input.loadPageSources)) && !rendersBeforePageSources);
         /** @param {Record<string, LogicalSourceInput>} pageSources */
         const updateHorizon = (pageSources) => {
@@ -300,6 +303,7 @@ export function renderDashboard(input) {
           updateHorizon(pageSources);
           const rendered = renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, effectiveQueryContext, document.dashboard.queries ?? [], {
             sources: liveSources,
+            failures,
             loading,
             signal: options.signal
           });
@@ -332,7 +336,8 @@ export function renderDashboard(input) {
           if (input.loadPageSources.subscribeViewSources) {
             const payload = getBuiltInPagePayload(resolvedPage(), reusableViews);
             const bindings = (payload.views ?? []).flatMap((view, index) => {
-              if (!isPlainObject(view) || (typeof view.element === 'string' && elementLoadsSourcesAsync(view.element))) return [];
+              if (!isPlainObject(view) || !viewBackendAvailable(view, dashboardDataBackend())
+                || (typeof view.element === 'string' && elementLoadsSourcesAsync(view.element))) return [];
               const names = getViewSources(view);
               return names.length ? [{
                 id: typeof view.id === 'string' ? view.id : `view-${index + 1}`,
@@ -344,9 +349,28 @@ export function renderDashboard(input) {
               .filter((name) => !bindings.some((binding) => binding.names.includes(name)));
             if (remaining.length) bindings.push({ id: 'page-chrome', names: remaining, aliases: [] });
             const subscribeViewSources = input.loadPageSources.subscribeViewSources;
-            const subscriptions = bindings.map(({ id, names, aliases }) => subscribeViewSources(
-              pageId, id, names, { ...options, onUpdate: (next) => publish(next, false, aliases) }
-            ).then((next) => publish(next, false, aliases)));
+            const subscriptions = bindings.map(({ id, names, aliases }) => {
+              /** @param {Record<string, LogicalSourceInput>} next */
+              const update = (next) => {
+                if (options.signal.aborted) return;
+                batch(() => {
+                  failures.set((current) => {
+                    const remaining = { ...current };
+                    delete remaining[id];
+                    return remaining;
+                  });
+                  publish(next, false, aliases);
+                });
+              };
+              return subscribeViewSources(pageId, id, names, { ...options, onUpdate: update })
+                .then(update).catch((error) => {
+                  if (!options.signal.aborted) failures.set((current) => ({
+                    ...current,
+                    [id]: error instanceof Error ? error.message : String(error)
+                  }));
+                  throw error;
+                });
+            });
             void Promise.allSettled(subscriptions).then((results) => {
               if (options.signal.aborted) return;
               for (const result of results) {
@@ -736,7 +760,7 @@ function renderPageSkeleton() {
  * @param {Array<Record<string, unknown>>} reusableViews
  * @param {PageSourceLoadOptions['queryContext']} [queryContext]
  * @param {Array<Record<string, unknown>>} [queries]
- * @param {{ sources: import('./reactive.js').State<Record<string, LogicalSourceInput>>, loading: import('./reactive.js').State<boolean>, signal: AbortSignal }} [binding]
+ * @param {{ sources: import('./reactive.js').State<Record<string, LogicalSourceInput>>, failures: import('./reactive.js').State<Record<string, string>>, loading: import('./reactive.js').State<boolean>, signal: AbortSignal }} [binding]
  * @returns {HTMLElement}
  */
 function renderPage(page, sources, units, dashboardDefaults, cardTemplates, reusableViews, queryContext, queries = [], binding = undefined) {
@@ -755,7 +779,7 @@ function renderPage(page, sources, units, dashboardDefaults, cardTemplates, reus
  * @param {boolean} [withFilterBar]
  * @param {PageSourceLoadOptions['queryContext']} [queryContext]
  * @param {Array<Record<string, unknown>>} [queries]
- * @param {{ sources: import('./reactive.js').State<Record<string, LogicalSourceInput>>, loading: import('./reactive.js').State<boolean>, signal: AbortSignal }} [binding]
+ * @param {{ sources: import('./reactive.js').State<Record<string, LogicalSourceInput>>, failures: import('./reactive.js').State<Record<string, string>>, loading: import('./reactive.js').State<boolean>, signal: AbortSignal }} [binding]
  * @returns {HTMLElement}
  */
 function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTemplates, withFilterBar = true, queryContext, queries = [], binding = undefined) {
@@ -799,7 +823,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
     const isPageBound = isPlainObject(view) && typeof view.element === 'string' && elementBindsPageSources(view.element);
     const isSelfBound = isPageBound || (isPlainObject(view) && typeof view.element === 'string' && elementLoadsSourcesAsync(view.element));
     /** @param {Record<string, LogicalSourceInput>} current */
-    const viewIsPending = (current) => binding?.loading.get() === true
+    const viewIsPending = (current) => viewBackendAvailable(view, dashboardDataBackend()) && binding?.loading.get() === true
       && viewSourceNames.some((name, sourceIndex) => (
         !current[resolveViewSourceName(current, page.id, view, index, name, sourceIndex)]
         || current[resolveViewSourceName(current, page.id, view, index, name, sourceIndex)]?.metadata?.availability === 'unavailable'
@@ -822,14 +846,18 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       const readySources = isSelfBound && binding?.loading.get()
         ? Object.fromEntries(Object.entries(viewSources).filter(([, source]) => source.metadata?.availability !== 'unavailable'))
         : viewSources;
-      let rendered = pending && viewSourceNames.length > 0 && !isSelfBound && (!isPlainObject(view) || view.mark !== 'callout')
+      const failure = binding?.failures.get()[viewId];
+      let rendered = failure && viewBackendAvailable(view, dashboardDataBackend())
+        ? renderCustomViewState(page.id, getViewTitle(view, index), viewSourceNames.join(', ') || null,
+            'unavailable', [`Data query failure: ${failure}`], headingTag, 'This view cannot be shown because its data query failed.')
+        : pending && viewSourceNames.length > 0 && !isSelfBound && (!isPlainObject(view) || view.mark !== 'callout')
         ? renderPageSection(page.id, getViewTitle(view, index), [
             renderDashboardViewSkeleton(),
             h('span', { className: 'sr-only' }, `Loading ${getViewTitle(view, index)}`)
           ], headingTag)
         : renderCustomView(page.id, view, index, readySources, units, cardTemplates, headingTag, routeParameter, queryContext);
       if (pending && !isSelfBound) rendered.setAttribute('aria-busy', 'true');
-      if (isPlainObject(view)) {
+      if (isPlainObject(view) && viewBackendAvailable(view, dashboardDataBackend())) {
         const semantics = effectiveViewSemantics(view, queries);
         if (view.prompt === 'always' || (view.prompt !== 'none'
           && semantics.subject && semantics.objective && semantics.acceptance)) {
@@ -931,6 +959,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       return rendered;
     };
     let rendered = isRouteView
+      || !viewBackendAvailable(view, dashboardDataBackend())
       || (binding && viewIsPending(binding.sources.get()))
       || index === 0
       || (isPlainObject(view) && (view.mark === 'callout' || (
@@ -948,23 +977,27 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
           return next;
         }
       });
-    if (binding && viewSourceNames.length > 0 && (!isSelfBound || isPageBound)) {
+    if (binding && viewBackendAvailable(view, dashboardDataBackend())
+      && viewSourceNames.length > 0 && (!isSelfBound || isPageBound)) {
       let initial = true;
       let previousSources = binding.sources.get();
       let previousPending = viewIsPending(previousSources);
+      let previousFailure = binding.failures.get()[viewId];
       effect(() => {
         const current = binding.sources.get();
+        const failure = binding.failures.get()[viewId];
         const pending = viewIsPending(current);
         if (initial) {
           initial = false;
           return;
         }
-        const changed = previousPending !== pending || viewSourceNames.some((name, sourceIndex) => {
+        const changed = previousFailure !== failure || previousPending !== pending || viewSourceNames.some((name, sourceIndex) => {
           const resolved = resolveViewSourceName(current, page.id, view, index, name, sourceIndex);
           return current[resolved] !== previousSources[resolved];
         });
         previousSources = current;
         previousPending = pending;
+        previousFailure = failure;
         if (isPageBound) {
           if (!changed) return;
           batch(() => {
@@ -2221,6 +2254,14 @@ function renderCustomView(pageId, view, index, sources, units, cardTemplates, he
   }
 
   const title = getViewTitle(view, index);
+  const unavailableMessage = viewBackendUnavailableMessage(view, dashboardDataBackend());
+  if (unavailableMessage) {
+    const rendered = renderCustomViewState(pageId, title, getViewSources(view).join(', ') || null, 'unavailable', [
+      `Dashboard backend: ${dashboardDataBackend()}.`
+    ], headingTag, unavailableMessage);
+    rendered.setAttribute('data-view-backend-unavailable', '');
+    return rendered;
+  }
 
   /** @type {string[]} */
   const contextDetails = [];

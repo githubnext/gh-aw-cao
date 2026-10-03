@@ -12,7 +12,8 @@ import {
 import { normalize } from './data/normalize/index.js';
 import {
   queryDatabaseSources,
-  queryIndexedDatabaseSources
+  queryIndexedDatabaseSources,
+  loadDatabaseQuerySources
 } from './data/queries/database.js';
 import { relationshipErrors } from './data/model/schema.js';
 import {
@@ -424,15 +425,47 @@ async function queryLiveDashboard(
   dashboard ??= await loadActiveDashboard();
   if (signal?.aborted) throw new DashboardQueryCancelledError('dashboard queries were cancelled', 'aborted');
   const startedAt = monotonicNow();
-    const requestedWithDependencies = resolveDashboardQuerySources(context.queries, requested);
+    const page = pageId
+      ? context.pages.find((candidate) => candidate?.id === pageId)
+      : null;
+    let evaluatedAt = queryContext?.timeWindow?.end;
+    if (page && requested.size > 0 && !evaluatedAt) {
+      const metadataSources = Object.fromEntries(Object.entries(dashboard.logicalSources).map(([name, source]) => [
+        name, { ...source, rows: [] }
+      ]));
+      evaluatedAt = latestCanonicalInstant(metadataSources);
+      if (!evaluatedAt) {
+        evaluatedAt = latestCanonicalInstant(await queryDatabaseSources(indexedDB, dashboard.logicalSources, ['runs']));
+      }
+    }
+    const viewPayload = page && pageId
+      ? compileDashboardViewPayloadQueries(page, pageId, {
+          routeParameters,
+          queryContext,
+          evaluatedAt,
+          queries: context.queries,
+          views: context.views,
+          backend: 'static',
+          viewId,
+          sourceNames: requested
+        })
+      : { aliases: [], queries: [], replacedSources: [] };
+    const replacedSources = new Set(viewPayload.replacedSources);
+    const executionQueries = [...context.queries, ...viewPayload.queries];
+    const executionRequested = new Set([
+      ...[...requested].filter((name) => !replacedSources.has(name)),
+      ...viewPayload.aliases
+    ]);
+    const requestedWithDependencies = resolveDashboardQuerySources(executionQueries, executionRequested);
     const nativeSources = await queryIndexedDatabaseSources(
       indexedDB,
       dashboard.logicalSources,
-      context.queries,
-      requestedWithDependencies
+      executionQueries,
+      requestedWithDependencies,
+      { signal }
     );
     const nativeSourceNames = new Set(Object.keys(nativeSources));
-    const nonNativeRequested = [...requested].filter((name) => !nativeSourceNames.has(name));
+    const nonNativeRequested = [...executionRequested].filter((name) => !nativeSourceNames.has(name));
     // The daily-aggregate fast path only ever satisfies a query name when its
     // live definition still matches a known-safe additive shape (spec §72.6);
     // any query it does not recognize, or whose materialized projection is
@@ -440,12 +473,12 @@ async function queryLiveDashboard(
     // path below unchanged.
     const dailyAggregateSources = await queryDailyOverviewAggregateSources(
       indexedDB,
-      context.queries,
+      executionQueries,
       nonNativeRequested
     );
     const dailyAggregateSourceNames = new Set(Object.keys(dailyAggregateSources));
     const required = resolveDashboardQuerySources(
-      context.queries,
+      executionQueries,
       nonNativeRequested.filter((name) => !dailyAggregateSourceNames.has(name)),
       nativeSourceNames
     );
@@ -458,47 +491,32 @@ async function queryLiveDashboard(
       databaseRequired,
       { onMetrics: (metrics) => { databaseMetrics = metrics; } }
     );
-    const page = pageId
-      ? context.pages.find((candidate) => candidate?.id === pageId)
-      : null;
-    const viewPayload = page && pageId
-      ? compileDashboardViewPayloadQueries(page, pageId, {
-          routeParameters,
-          queryContext,
-          evaluatedAt: queryContext?.timeWindow?.end ?? latestCanonicalInstant(databasePayload),
-          queries: context.queries,
-          views: context.views,
-          viewId,
-          sourceNames: nonNativeRequested.filter((name) => !dailyAggregateSourceNames.has(name))
-        })
-      : { aliases: [], queries: [], replacedSources: [] };
-    const replacedSources = new Set(viewPayload.replacedSources);
-    const directRequests = new Set([...requested].filter((name) => (
-      !replacedSources.has(name) && !nativeSourceNames.has(name) && !dailyAggregateSourceNames.has(name)
+    const directRequests = new Set([...executionRequested].filter((name) => (
+      !nativeSourceNames.has(name) && !dailyAggregateSourceNames.has(name)
     )));
     const querySources = {
       ...databasePayload,
       ...nativeSources,
       ...dailyAggregateSources,
       ...executeDashboardQueries(
-        context.queries,
+        executionQueries,
         { ...databasePayload, ...nativeSources },
         directRequests,
         { signal }
       )
     };
-    const viewAliases = viewPayload.queries.length > 0
-      ? executeDashboardQueries(viewPayload.queries, querySources, viewPayload.aliases, { signal })
-      : {};
     const selected = pageScopedSources(
       querySources,
       new Set([...requested].filter((name) => !replacedSources.has(name)))
     );
-    const responseSources = { ...selected, ...viewAliases };
+    const responseSources = {
+      ...selected,
+      ...pageScopedSources(querySources, new Set(viewPayload.aliases))
+    };
     const response = paginateDashboardSources(
       responseSources,
       /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
-      continuationRevision(context.queries, dashboard.revision)
+      continuationRevision(executionQueries, dashboard.revision)
     );
     const totalMs = monotonicNow() - startedAt;
     const databaseMs = databaseMetrics?.databaseMs ?? 0;
@@ -1092,16 +1110,24 @@ export function processDataRequest(request, signal) {
     }
     return (async () => {
       const sources = /** @type {Record<string, unknown>} */ (request.sources);
-      if (request.ingest === true) await ingestDashboardSources(indexedDB, sources);
       const sourceNames = request.sourceNames === undefined
         ? Object.keys(sources)
         : [...requestedSourceNames(request.sourceNames)];
       const queries = Array.isArray(request.queries) ? request.queries : [];
-      const required = resolveDashboardQuerySources(queries, sourceNames);
-      const database = await queryDatabaseSources(indexedDB, sources, required);
+      const database = /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (
+        await loadDatabaseQuerySources(indexedDB, sources, {
+          ingest: request.ingest === true, sourceNames, queries, signal
+        })
+      );
       return {
         ...database,
-        ...executeDashboardQueries(queries, database, sourceNames, { signal })
+        ...paginateDashboardSources(
+          pageScopedSources(database, new Set(sourceNames)),
+          /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {}),
+          continuationRevision(queries, Object.fromEntries(
+            Object.entries(database).map(([name, source]) => [name, source.metadata])
+          ))
+        )
       };
     })();
   }

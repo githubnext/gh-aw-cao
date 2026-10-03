@@ -141,6 +141,8 @@ import {
   PLURAL_LABEL_ELEMENTS,
   PLURAL_TEXT_KEYS,
   VIEW_KEYS,
+  VIEW_REQUIREMENT_KEYS,
+  VIEW_BACKEND_VALUES,
   VIEW_LAYOUT_VALUES,
   VIEW_LIST_KEYS,
   VIEW_LIST_STYLE_VALUES,
@@ -2532,6 +2534,18 @@ function validateView(view, viewNode, path, viewIds, errors) {
   }
 
   validateObjectKeys(viewNode, view.mark === 'chart' ? VIEW_KEYS : [...VIEW_KEYS, 'views'], path, errors);
+  if (view.requires !== undefined) {
+    const requiresPath = `${path}.requires`;
+    if (!isPlainObject(view.requires)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'requires must be a mapping.', requiresPath));
+    } else {
+      validateObjectKeys(getValueNodeByKey(viewNode, 'requires'), VIEW_REQUIREMENT_KEYS, requiresPath, errors);
+      if (typeof view.requires.backend !== 'string' || !VIEW_BACKEND_VALUES.includes(view.requires.backend)) {
+        errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'requires backend must be static or hosted.', `${requiresPath}.backend`));
+      }
+      validateStringField(view.requires.message, `${requiresPath}.message`, true, errors);
+    }
+  }
   validateRequiredIdentifier(view.id, `${path}.id`, 'view id', errors);
   if (typeof view.id === 'string') {
     if (viewIds.has(view.id)) {

@@ -4,6 +4,7 @@
  */
 
 import { createDebug } from '../../debug.js';
+import { viewBackendAvailable } from '../../view-availability.js';
 import { resolveDashboardQuerySources } from './declarative.js';
 
 const debugViewPayloadCompiler = createDebug('view-payload-compiler');
@@ -41,7 +42,7 @@ export function dashboardViewAliasName(pageId, view, viewIndex, sourceName, sour
 /**
  * @param {unknown} page
  * @param {string} pageId
- * @param {{ routeParameters?: Record<string, string>, queryContext?: GlobalQueryContext, evaluatedAt?: string, queries?: unknown, views?: unknown, viewId?: string, sourceNames?: Iterable<string> }} [options]
+ * @param {{ routeParameters?: Record<string, string>, queryContext?: GlobalQueryContext, evaluatedAt?: string, queries?: unknown, views?: unknown, viewId?: string, sourceNames?: Iterable<string>, backend?: import('../../view-availability.js').DashboardDataBackend }} [options]
  * @returns {{ aliases: string[], queries: Array<Record<string, unknown>>, replacedSources: string[] }}
  */
 export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
@@ -52,6 +53,7 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
   };
   const views = Array.isArray(payload.views) ? payload.views : [];
   const activeViews = views.filter((view, index) => {
+    if (options.backend && !viewBackendAvailable(view, options.backend)) return false;
     if (options.viewId) return isPlainObject(view) && (view.id ?? `view-${index + 1}`) === options.viewId;
     return !options.queryContext?.viewMode || viewMatchesMode(view, options.queryContext.viewMode);
   });
@@ -80,6 +82,7 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
   const replacedSources = new Set();
 
   views.forEach((view, viewIndex) => {
+    if (options.backend && !viewBackendAvailable(view, options.backend)) return;
     if (options.viewId && (!isPlainObject(view)
       || (view.id ?? `view-${viewIndex + 1}`) !== options.viewId)) return;
     if (!options.viewId && options.queryContext?.viewMode && !viewMatchesMode(view, options.queryContext.viewMode)) return;
@@ -420,8 +423,9 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, eva
 }
 
 /**
- * Clones a derived query graph so request-scoped time bounds reach source rows
- * before dependent aggregates execute.
+ * Clones a derived graph, moving row predicates through projections and group
+ * keys. Computed predicates stay after compute, where native row-local plans can
+ * evaluate them without materializing an unscoped intermediate.
  * @param {string} sourceName
  * @param {string} alias
  * @param {Array<Record<string, unknown>>} predicates
@@ -436,35 +440,65 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
     .map((definition) => [/** @type {string} */ (definition.name), definition]));
   const structuralSources = new Set(['campaigns', 'repositories', 'workflows']);
   const rootComputedName = `${alias}:root`;
-  /** @param {string} name */
-  const scopedName = (name) => name === sourceName ? rootComputedName : `${alias}:dependency:${slug(name)}`;
   const temporalPredicates = predicates.filter((predicate) => predicate.field === '@time');
   /** @type {Array<Record<string, unknown>>} */
   const dependencies = [];
-  const compiled = new Set();
+  /** @type {Map<string, string>} */
+  const compiled = new Map();
+  const usedNames = new Set([rootComputedName]);
+
+  /** @param {string} name */
+  const allocateName = (name) => {
+    const base = name === sourceName ? rootComputedName : `${alias}:dependency:${slug(name)}`;
+    if (name === sourceName && !compiled.size) return base;
+    let candidate = base;
+    let suffix = 1;
+    while (usedNames.has(candidate)) candidate = `${base}:${++suffix}`;
+    usedNames.add(candidate);
+    return candidate;
+  };
 
   /**
    * @param {string} name
-   * @returns {Record<string, unknown> | undefined}
+   * @param {Array<Record<string, unknown>>} outputPredicates
+   * @returns {string}
    */
-  const compile = (name) => {
-    if (compiled.has(name)) return;
+  const compile = (name, outputPredicates) => {
+    const key = JSON.stringify([name, outputPredicates]);
+    const existing = compiled.get(key);
+    if (existing) return existing;
     const definition = byName.get(name);
-    if (!definition) return;
+    if (!definition) return name;
     if (typeof definition.from !== 'string') {
       throw new TypeError(`Declared dashboard query "${name}" requires a source.`);
     }
+    const scoped = allocateName(name);
+    compiled.set(key, scoped);
     const from = definition.from;
-    const dependencyNames = [
-      from,
-      ...(Array.isArray(definition.union) ? definition.union : []),
-      ...(Array.isArray(definition.joins)
-      ? definition.joins.flatMap((join) => (
-          isPlainObject(join) && typeof join.source === 'string' ? [join.source] : []
+    const inputPredicates = predicatesBeforeQuery(definition, outputPredicates);
+    /** @param {string} source @param {number} inputIndex */
+    const compileInput = (source, inputIndex) => {
+      if (byName.has(source)) return compile(source, inputPredicates);
+      if (inputPredicates.length === 0) return source;
+      const inputName = `${scoped}:input-${inputIndex + 1}`;
+      dependencies.push({
+        name: inputName,
+        from: source,
+        filter: { predicates: inputPredicates }
+      });
+      return inputName;
+    };
+    const compiledFrom = compileInput(from, 0);
+    const compiledUnion = Array.isArray(definition.union)
+      ? definition.union.map((source, index) => typeof source === 'string' ? compileInput(source, index + 1) : source)
+      : undefined;
+    const compiledJoins = Array.isArray(definition.joins)
+      ? definition.joins.map((join) => (
+          isPlainObject(join) && typeof join.source === 'string'
+            ? { ...join, source: compile(join.source, []) }
+            : join
         ))
-      : [])
-    ].filter((dependency) => byName.has(dependency));
-    for (const dependency of dependencyNames) compile(dependency);
+      : undefined;
 
     const declaredFilter = isPlainObject(definition.filter) ? definition.filter : null;
     const declaredPredicates = declaredFilter && Array.isArray(declaredFilter.predicates)
@@ -478,32 +512,31 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
       definition.time,
       evaluatedAt
     );
-    const filter = combinedPredicates.length > 0 ? { predicates: combinedPredicates } : {};
+    const filter = {
+      ...declaredFilter,
+      ...(combinedPredicates.length > 0 ? { predicates: combinedPredicates } : {})
+    };
     const query = resolveQueryContext({
       ...definition,
-      name: scopedName(name),
-      from: byName.has(from) ? scopedName(from) : from,
-      ...(Array.isArray(definition.union) ? {
-        union: definition.union.map((source) => (
-          typeof source === 'string' && byName.has(source) ? scopedName(source) : source
-        ))
-      } : {}),
-      ...(Array.isArray(definition.joins) ? {
-        joins: definition.joins.map((join) => {
-          if (!isPlainObject(join) || typeof join.source !== 'string' || !byName.has(join.source)) return join;
-          return { ...join, source: scopedName(join.source) };
-        })
-      } : {}),
+      name: outputPredicates.length > 0 ? `${scoped}:unscoped` : scoped,
+      from: compiledFrom,
+      ...(compiledUnion ? { union: compiledUnion } : {}),
+      ...(compiledJoins ? { joins: compiledJoins } : {}),
       ...(Object.keys(filter).length > 0 ? { filter } : { filter: undefined })
     }, queryTimeEnd(combinedPredicates) ?? evaluatedAt);
-    compiled.add(name);
     dependencies.push(query);
-    return query;
+    if (outputPredicates.length > 0) {
+      dependencies.push({
+        name: scoped,
+        from: query.name,
+        filter: { predicates: outputPredicates }
+      });
+    }
+    return scoped;
   };
 
-  compile(sourceName);
-
   const requestPredicates = predicates.filter((predicate) => predicate.field !== '@time');
+  const compiledRoot = compile(sourceName, requestPredicates);
   const runtimeSearch = search && search.query.trim() && search.fields.length > 0
     ? { fields: search.fields, query: search.query.trim() }
     : undefined;
@@ -513,11 +546,39 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
   };
   const query = {
     name: alias,
-    from: rootComputedName,
+    from: compiledRoot,
     ...(Object.keys(filter).length > 0 ? { filter } : {}),
     ...(Array.isArray(orderBy) && orderBy.length > 0 ? { 'order-by': orderBy } : {})
   };
   return { replacesSource: true, dependencies, query };
+}
+
+/**
+ * Only scalar fields unchanged by a clause commute with its output filter.
+ * A computed label is deliberately never inverted into its component fields:
+ * concat is not injective, and its null/structured-input semantics matter.
+ * @param {Record<string, unknown>} definition
+ * @param {Array<Record<string, unknown>>} predicates
+ */
+function predicatesBeforeQuery(definition, predicates) {
+  if (definition.limit !== undefined
+      || definition['temporal-series']
+      || (Array.isArray(definition.predict) && definition.predict.length > 0)
+      || (Array.isArray(definition.joins) && definition.joins.length > 0)) return [];
+  const computed = new Set(Array.isArray(definition.compute)
+    ? definition.compute.filter(isPlainObject).map((value) => value.as)
+    : []);
+  const groups = isPlainObject(definition.aggregate)
+    ? new Set(Array.isArray(definition.aggregate.by) ? definition.aggregate.by : [])
+    : null;
+  const selected = Array.isArray(definition.select)
+    ? new Map(definition.select.filter(isPlainObject).map((value) => [value.as ?? value.field, value.field]))
+    : null;
+  return predicates.flatMap((predicate) => {
+    const field = selected ? selected.get(predicate.field) : predicate.field;
+    if (typeof field !== 'string' || computed.has(field) || (groups && !groups.has(field))) return [];
+    return [{ ...predicate, field }];
+  });
 }
 
 /** @param {Array<Record<string, unknown>>} predicates @param {unknown} time @param {string | undefined} evaluatedAt */

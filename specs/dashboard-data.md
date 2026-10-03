@@ -95,6 +95,27 @@ Dashboard views SHALL consume only bounded results from the canonical query
 layer and SHALL NOT parse upstream source formats directly. Redis endpoints and
 credentials MUST NOT be exposed to browser code.
 
+Row-local canonical table-to-source mappings MAY execute in bounded batches
+when a retained table exceeds a Dashboard Language query's row limits. Each
+batch MUST retain the complete join inputs and share the mapping's execution
+budget; a failed batch MUST make the whole source unavailable rather than
+publish a partial success. Aggregation, prediction, temporal expansion, sorting,
+unions, and limited queries MUST NOT be partitioned this way. This adapter
+batching MUST NOT raise or bypass the input and output limits of dashboard
+queries or truncate canonical evidence.
+
+The MCP tool inventory SHALL aggregate calls by tool and workflow before
+materializing its shared intermediate. Its final tool totals MUST preserve
+observation counts, distinct calling workflows, request and response byte
+totals, and exclusion of the internal safe-output server. Detail views MAY
+retain separate observation-grain queries subject to the ordinary query limits.
+
+Views that require a hosted runtime provider SHALL declare their configured
+backend prerequisite. Static deployments SHALL explain that the telemetry is
+hosted-only and MUST NOT query, synthesize, or subscribe to those providers.
+Hosted deployments SHALL continue to enforce provider authorization and expose
+unavailable evidence honestly; selecting the hosted backend grants no authority.
+
 ---
 
 # 1. Status of This Document
@@ -336,8 +357,8 @@ The implementation profile defined by this specification is:
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
 | Canonical model | 26 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
-| Browser IndexedDB | 34 | Eighteen canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
-| Local SQLite projection | IndexedDB 34 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
+| Browser IndexedDB | 35 | Eighteen canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
+| Local SQLite projection | IndexedDB 35 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
 | Go server Postgres sources | Canonical model 15 | Eighteen fresh TypeSpec-defined entity tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
@@ -385,7 +406,11 @@ store uses `id` as its key path. The implemented secondary indexes are:
 | `repositories` | none |
 | `workflows` | `byRepository -> repositoryId` |
 | `runs` | `byRepository -> repositoryId`, `byWorkflow -> workflowId`, `byConclusion -> conclusion`, `byEvent -> event`, `byEventConclusion -> [event, conclusion]` |
-| `domains`, `tools`, `skills`, `friction`, `audits`, `issues` | `byRun -> runId` |
+| `domains` | `byRun -> runId`, `byQuerySummary -> _queryKeys.byQuerySummary`, `byQueryDomain -> _queryKeys.byQueryDomain` |
+| `tools` | `byRun -> runId`, `byQuerySummary -> _queryKeys.byQuerySummary`, `byQueryMcpIdentity -> _queryKeys.byQueryMcpIdentity`, `byTypeStatusRun -> [type, status, runId]`, `byTypeStatusRunSummary -> [type, status, runId, summary]` |
+| `audits` | `byRun -> runId`, `byQuerySummary -> _queryKeys.byQuerySummary`, `byTypeStatusRun -> [type, status, runId]`, `byTypeStatusRunSummary -> [type, status, runId, summary]` |
+| `issues` | `byRun -> runId`, `byQuerySummary -> _queryKeys.byQuerySummary` |
+| `skills`, `friction` | `byRun -> runId` |
 | `operationalValues` | `byRepository -> repositoryId`, `byValue -> valueId` |
 | `marketplacePackages` | `byRegistry -> registryId`, `byRepository -> repository` |
 | `experiments`, `graders`, `evals` | `byWorkflow -> workflowId` |
@@ -395,6 +420,18 @@ store uses `id` as its key path. The implemented secondary indexes are:
 | `transactions` | `byCreatedAt -> createdAt` |
 | `dailyOverviewAggregates` | `byGenerationDay -> [generation, day]` |
 | `overviewAggregateMetadata` | none |
+
+The `_queryKeys` fields are disposable physical index projections, not canonical
+evidence. They encode nullable raw `summary`, `domain`, or
+`[source, type, mcpServer, mcpTool]` components without parsing computed labels.
+Canonical write APIs SHALL prepare these keys after pruning redundant fields;
+canonical read APIs SHALL remove them. Equivalent native query plans MAY
+evaluate declared row-local expressions on distinct indexed keys, read only
+matching observations, and obtain grouped event counts from indexes before
+materializing bounded results. Such plans MUST preserve observation grain,
+run attempts, null and missing values, ordering, provenance, pagination, and
+unavailable inputs. Unsupported plans retain normal fail-closed execution, and
+an oversized selected scope MUST NOT be truncated or have its limits raised.
 
 Physical IndexedDB upgrades SHALL rebuild every store because all browser state
 is disposable. The SQLite-backed implementation SHALL preserve exactly the same
@@ -2048,7 +2085,7 @@ The canonical browser database SHALL use:
 
 ```js
 const DATABASE_NAME = "gh-aw-cao-dashboard-data";
-const DATABASE_VERSION = 34;
+const DATABASE_VERSION = 35;
 ```
 
 The name MAY be scoped by deployment path to prevent unrelated dashboard
@@ -2060,7 +2097,7 @@ rows.
 
 # 27. Object Stores
 
-IndexedDB version 34 SHALL define:
+IndexedDB version 35 SHALL define:
 
 ```text
 campaigns
