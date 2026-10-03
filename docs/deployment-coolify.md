@@ -54,7 +54,10 @@ In the following steps, replace `PUBLIC-HOST` with the public host name of your 
    1. Set its webhook URL to `https://PUBLIC-HOST/api/github/webhook`, enable the webhook, and use the value that you will store as `CAO_GITHUB_WEBHOOK_SECRET_ROTATED`.
    1. Grant read-only repository permissions for Actions, Contents, Issues, Pull requests, Dependabot alerts, and Code scanning alerts. Grant no write permissions.
    1. Subscribe to **Workflow run** and **Issues** events. Installation and repository-selection lifecycle deliveries maintain enrollment automatically.
-   1. Generate a private key. Store the PEM only as the Coolify secret `CAO_COLLECT_PRIVATE_KEY_ROTATED`.
+   1. Generate a private key. Base64-encode the PEM without line wrapping and
+      store only that single-line value as the Coolify secret
+      `CAO_COLLECT_PRIVATE_KEY_BASE64_ROTATED`. For example:
+      `base64 < collector.pem | tr -d '\n'`.
    1. Record the App's numeric **App ID**, not its client ID, as `CAO_COLLECT_APP_ID`.
    1. Install the App on only the repositories that the dashboard may collect. Set `CAO_COLLECT_INVENTORY_LIMIT` to that exact repository count so an unexpectedly broad installation fails projection instead of silently widening it.
 
@@ -205,7 +208,7 @@ The `server/coolify/compose.yml` file reads the following variables.
 | `CAO_GITHUB_WEBHOOK_SECRET_ROTATED` | Yes | Yes | Secret for verifying webhook signatures. At least 32 characters. Compose maps it to the server's `CAO_GITHUB_WEBHOOK_SECRET` runtime variable. |
 | `CAO_MCP_ACTIONS_REPOSITORY` | Yes | No | Exact `OWNER/REPO` GitHub repository selected as this Coolify resource's Git source; only its Actions OIDC provenance and read-scoped token can access `/mcp`. |
 | `CAO_COLLECT_APP_ID` | Yes | No | Positive numeric identifier of the read-only collection GitHub App. This is not the App client ID. |
-| `CAO_COLLECT_PRIVATE_KEY_ROTATED` | Yes | Yes | Collection App private key in PEM form. Compose injects it only into `collector` and `backfill`. |
+| `CAO_COLLECT_PRIVATE_KEY_BASE64_ROTATED` | Yes | Yes | Single-line standard-base64 encoding of the collection App private key PEM. Compose injects it only into `collector` and `backfill`, which decode it in memory. |
 | `CAO_COLLECT_CONTROL_REPOSITORY` | Yes | No | Control repository in `OWNER/REPO` form, used for inventory discovery. |
 | `CAO_COLLECT_INVENTORY_LIMIT` | Yes | No | Exact maximum number of repositories expected in the App installation scope. Exceeding it fails projection. |
 | `CAO_COLLECT_WINDOW_DAYS` | No. Defaults to `30`. | No | Historical workflow-run window admitted by collection. |
@@ -248,7 +251,7 @@ Set these required variables:
 - `CAO_GITHUB_WEBHOOK_SECRET_ROTATED`
 - `CAO_MCP_ACTIONS_REPOSITORY`
 - `CAO_COLLECT_APP_ID`
-- `CAO_COLLECT_PRIVATE_KEY_ROTATED`
+- `CAO_COLLECT_PRIVATE_KEY_BASE64_ROTATED`
 - `CAO_COLLECT_CONTROL_REPOSITORY`
 - `CAO_COLLECT_INVENTORY_LIMIT`
 

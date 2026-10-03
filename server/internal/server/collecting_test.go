@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/collect"
+	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
@@ -208,6 +209,7 @@ func TestCollectorConfigFromEnvFailsClosed(t *testing.T) {
 	t.Run("an incomplete configuration is rejected", func(t *testing.T) {
 		t.Setenv("CAO_COLLECT_APP_ID", "12345")
 		t.Setenv("CAO_COLLECT_PRIVATE_KEY", "")
+		t.Setenv("CAO_COLLECT_PRIVATE_KEY_BASE64", "")
 		t.Setenv("CAO_COLLECT_PRIVATE_KEY_FILE", "")
 		if _, err := CollectorConfigFromEnv(); err == nil {
 			t.Fatal("expected a missing private key to be rejected")
@@ -256,6 +258,7 @@ func TestCollectorPrivateKeyPrefersAFileReference(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("CAO_COLLECT_PRIVATE_KEY_FILE", path)
+	t.Setenv("CAO_COLLECT_PRIVATE_KEY_BASE64", "aWdub3JlZA==")
 	t.Setenv("CAO_COLLECT_PRIVATE_KEY", "inline-should-not-be-used")
 	key, err := collectorPrivateKey()
 	if err != nil {
@@ -263,6 +266,43 @@ func TestCollectorPrivateKeyPrefersAFileReference(t *testing.T) {
 	}
 	if string(key) != "-----BEGIN PRIVATE KEY-----" {
 		t.Fatalf("unexpected key material: %q", key)
+	}
+}
+
+func TestCollectorPrivateKeyDecodesBase64BeforeInline(t *testing.T) {
+	t.Setenv("CAO_COLLECT_PRIVATE_KEY_FILE", "")
+	t.Setenv("CAO_COLLECT_PRIVATE_KEY_BASE64", "LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCg==")
+	t.Setenv("CAO_COLLECT_PRIVATE_KEY", "inline-should-not-be-used")
+	key, err := collectorPrivateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(key) != "-----BEGIN PRIVATE KEY-----\n" {
+		t.Fatalf("unexpected key material: %q", key)
+	}
+}
+
+func TestCollectorPrivateKeyRejectsInvalidBase64(t *testing.T) {
+	t.Setenv("CAO_COLLECT_PRIVATE_KEY_FILE", "")
+	t.Setenv("CAO_COLLECT_PRIVATE_KEY_BASE64", "not-base64")
+	t.Setenv("CAO_COLLECT_PRIVATE_KEY", "inline-must-not-hide-invalid-base64")
+	if _, err := collectorPrivateKey(); err == nil {
+		t.Fatal("invalid base64 private key was accepted")
+	} else if strings.Contains(err.Error(), "not-base64") {
+		t.Fatal("invalid base64 private key leaked into the error")
+	}
+}
+
+func TestCollectorPrivateKeyDecodedContentStillRequiresAValidPEM(t *testing.T) {
+	t.Setenv("CAO_COLLECT_PRIVATE_KEY_FILE", "")
+	t.Setenv("CAO_COLLECT_PRIVATE_KEY_BASE64", "bm90LWEtcGVt")
+	t.Setenv("CAO_COLLECT_PRIVATE_KEY", "")
+	key, err := collectorPrivateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := githubapp.New(githubapp.Config{AppID: 1, PrivateKeyPEM: key}); err == nil {
+		t.Fatal("decoded non-PEM private key was accepted by the GitHub App client")
 	}
 }
 

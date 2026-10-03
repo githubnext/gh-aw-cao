@@ -70,6 +70,7 @@ test("Coolify Compose builds the checked-out source with admission-only public s
   );
   assert.equal(dashboard.environment.CAO_COLLECT_ADMIT_ONLY, "true");
   assert.equal(dashboard.environment.CAO_COLLECT_PRIVATE_KEY, undefined);
+  assert.equal(dashboard.environment.CAO_COLLECT_PRIVATE_KEY_BASE64, undefined);
   assert.equal(
     dashboard.environment.CAO_POSTGRES_URL,
     "${CAO_POSTGRES_URL:?Configure the PostgreSQL connection URL}",
@@ -142,9 +143,10 @@ test("Coolify collection workers isolate credentials and share durable evidence"
       },
     });
     assert.equal(
-      service.environment.CAO_COLLECT_PRIVATE_KEY,
-      "${CAO_COLLECT_PRIVATE_KEY_ROTATED:?Configure the GitHub App private key as a Coolify secret}",
+      service.environment.CAO_COLLECT_PRIVATE_KEY_BASE64,
+      "${CAO_COLLECT_PRIVATE_KEY_BASE64_ROTATED:?Configure the base64-encoded GitHub App private key as a Coolify secret}",
     );
+    assert.equal(service.environment.CAO_COLLECT_PRIVATE_KEY, undefined);
     assert.equal(service.environment.CAO_COLLECT_ADMIT_ONLY, undefined);
     assert.equal(service.environment.CAO_SOURCE_DIRECTORY, undefined);
     assert.equal(service.environment.CAO_COLLECT_LAKE_DIRECTORY, "/app/evidence");

@@ -14,7 +14,7 @@ x-collector-environment: &collector-environment
   REDIS_NAMESPACE: ${REDIS_NAMESPACE:-coolify-dashboard}
   CAO_POLICY_PATH: /app/.github/workflows/cao.coolify.json
   CAO_COLLECT_APP_ID: ${CAO_COLLECT_APP_ID:?Configure the numeric GitHub App ID}
-  CAO_COLLECT_PRIVATE_KEY: ${CAO_COLLECT_PRIVATE_KEY_ROTATED:?Configure the GitHub App private key as a Coolify secret}
+  CAO_COLLECT_PRIVATE_KEY_BASE64: ${CAO_COLLECT_PRIVATE_KEY_BASE64_ROTATED:?Configure the base64-encoded GitHub App private key as a Coolify secret}
   CAO_COLLECT_LAKE_DIRECTORY: /app/evidence
   CAO_COLLECT_CATALOG_ROOT: /app/catalog
   CAO_COLLECT_CONTROL_REPOSITORY: ${CAO_COLLECT_CONTROL_REPOSITORY:?Configure the control repository as OWNER/REPO}

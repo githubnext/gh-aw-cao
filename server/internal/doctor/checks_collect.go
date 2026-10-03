@@ -186,7 +186,12 @@ func classifyCollectionSettings(webhookSecretPresent, admitOnly bool, appID int6
 // privateKeySource reports where the App private key comes from without
 // reading it. The file is stat-ed, never opened.
 func (d Doctor) privateKeySource() (label string, present bool, err error) {
-	result := resolvePrivateKeySource(os.Stat, d.getenv("CAO_COLLECT_PRIVATE_KEY_FILE"), d.getenv("CAO_COLLECT_PRIVATE_KEY"))
+	result := resolvePrivateKeySource(
+		os.Stat,
+		d.getenv("CAO_COLLECT_PRIVATE_KEY_FILE"),
+		d.getenv("CAO_COLLECT_PRIVATE_KEY_BASE64"),
+		d.getenv("CAO_COLLECT_PRIVATE_KEY"),
+	)
 	doctorLog.Printf("private key source resolved reason=%s present=%t", result.reason, result.present)
 	return result.label, result.present, result.err
 }
@@ -200,6 +205,7 @@ const (
 	privateKeySourceReasonFileConfigured   privateKeySourceReason = "file-configured"
 	privateKeySourceReasonFileUnreadable   privateKeySourceReason = "file-unreadable"
 	privateKeySourceReasonFileNotAFile     privateKeySourceReason = "file-not-a-file"
+	privateKeySourceReasonBase64Configured privateKeySourceReason = "base64-configured"
 	privateKeySourceReasonInlineConfigured privateKeySourceReason = "inline-configured"
 	privateKeySourceReasonAbsent           privateKeySourceReason = "absent"
 )
@@ -214,13 +220,12 @@ type privateKeySourceResult struct {
 }
 
 // resolvePrivateKeySource applies the standard priority for the collection
-// App's private key: a configured file path, stat-ed but never opened, then
-// an inline environment variable, then absent. It is a pure function given
-// an injected stat, so every branch — an unreadable file, a directory passed
-// as the key file, an inline value, and no configuration at all — is
-// testable without depending on which files happen to exist on the test
-// runner.
-func resolvePrivateKeySource(stat func(string) (os.FileInfo, error), filePath, inlineValue string) privateKeySourceResult {
+// App's private key: a configured file path, stat-ed but never opened, then a
+// base64 environment variable, then an inline PEM, then absent.
+func resolvePrivateKeySource(
+	stat func(string) (os.FileInfo, error),
+	filePath, base64Value, inlineValue string,
+) privateKeySourceResult {
 	if filePath != "" {
 		info, statErr := stat(filePath)
 		if statErr != nil {
@@ -234,6 +239,11 @@ func resolvePrivateKeySource(stat func(string) (os.FileInfo, error), filePath, i
 			}
 		}
 		return privateKeySourceResult{label: "file (configured)", present: true, reason: privateKeySourceReasonFileConfigured}
+	}
+	if base64Value != "" {
+		return privateKeySourceResult{
+			label: "base64 environment variable (configured)", present: true, reason: privateKeySourceReasonBase64Configured,
+		}
 	}
 	if inlineValue != "" {
 		return privateKeySourceResult{

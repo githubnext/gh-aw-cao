@@ -882,7 +882,7 @@ readiness URL, OTLP endpoint, authorization header, trace ID, or span ID.
 | Setting | Meaning |
 |---|---|
 | `CAO_COLLECT_APP_ID` | GitHub App identifier; unset selects the default profile |
-| `CAO_COLLECT_PRIVATE_KEY` / `CAO_COLLECT_PRIVATE_KEY_FILE` | App private key in PEM form |
+| `CAO_COLLECT_PRIVATE_KEY` / `CAO_COLLECT_PRIVATE_KEY_BASE64` / `CAO_COLLECT_PRIVATE_KEY_FILE` | App private key as inline PEM, single-line standard base64, or a mounted PEM file |
 | `CAO_COLLECT_LAKE_DIRECTORY` | evidence lake directory, shared by workers |
 | `CAO_COLLECT_CATALOG_ROOT` | directory containing `activity/cao.mjs` |
 | `CAO_COLLECT_CONTROL_REPOSITORY` | control repository used for inventory discovery |
