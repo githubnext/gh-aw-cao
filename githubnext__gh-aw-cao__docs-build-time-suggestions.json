@@ -1,6 +1,6 @@
 {
   "source_sha": "10b422954e7e623749d6bb37133f260111a4076e",
-  "next_category": 3,
+  "next_category": 2,
   "evaluations": [
     {
       "evaluated_at": "2026-10-02T07:09:46Z",
@@ -119,6 +119,14 @@
       "category": "dependency installation and caching",
       "evidence_run_ids": [37116199456, 37115313934, 37114208661, 37112957390, 37112836591, 37111711720, 37111684202, 37111147573, 37110505030, 37109920077, 37109336463, 37115128466, 37112649493, 37111506788, 37110380271, 37101732387],
       "outcome": "no_actionable_improvement: trusted docs.yml evidence across 11 build-bearing successful runs from 2026-10-03T08:19Z to 10:23Z shows dependency installation is already fully amortized. Workflow wall-time median/p90 was 68s/87s, build-job median/p90 41s/50s, deploy-job median/p90 9s/19s, and schedule-freshness median/p90 6s/7s. Trusted step conclusions showed Restore node_modules succeeded in all 11 builds with 4s median and 7s p90, while Install dependencies and Save node_modules were skipped in all 11, confirming cache hits from execution rather than workflow syntax. Restore cached CAO Dashboard also succeeded in all 11 builds with 1s median and 3s p90, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were skipped in all 11. Cross-checking 5 recent successful cao-dashboard.yml producer runs (37101732387, 37110380271, 37111506788, 37112649493, 37115128466) showed Install dashboard build dependencies was only 7s median/p90 9s, while the producer build median/p90 was 168s/173.6s and Upgrade fallback activity data dominated at 124s median/p90 126.8s. Bounded trusted logs for run 37115128466 confirmed the producer still recopies a 482.3 MiB gh-aw-logs.sqlite plus 333 activity shards totaling 287.7 MiB before uploading a 42,956,439-byte dashboard artifact. Because dependency installation is already eliminated on the docs path and is minor upstream, no dependency-cache change can credibly save >=60s or >=15% of median docs execution time without duplicating earlier scheduling work or shifting to another category. Repository issue search could not verify open duplicate issues because GitHub Issues are disabled in githubnext/gh-aw-cao.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-03T10:40:04Z",
+      "worker_run_id": "37117066442",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [],
+      "outcome": "incomplete_evaluation: trusted GitHub Actions metadata for docs.yml could not be refreshed because gh API reads hit HTTP 403 rate limiting before collecting the required >=5 comparable successful runs for the current 14-day window. Existing memory already records prior complete evaluations for this category and a prior actionable scheduling suggestion, but no new evidence-backed Astro recommendation can be emitted from this run.",
       "suggestion_fingerprint": null
     }
   ]
