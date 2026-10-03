@@ -1122,7 +1122,8 @@ URLs, cookies, codes, or tokens when requesting support.
 
 All generic server HTTP spans use a redacted copy of each request: the server
 does not export peer/client IP addresses, user-agent strings, query strings,
-arbitrary URL paths, W3C baggage, or client-provided tracestate. The original
+arbitrary URL paths, W3C baggage, or client-provided tracestate, including
+metadata inherited from an external HTTP host. The original
 request still reaches the authentication and rate-limiting code unchanged.
 Raw user-agent strings may identify or fingerprint a browser, so they remain
 excluded from telemetry rather than assuming their collection is GDPR compliant.
@@ -1213,7 +1214,11 @@ by operation, bucket App and resource, and a fixed `cao_githubquota.outcome`.
 Per-bucket `cao_githubquota.bucket.remaining`, `.reserved`, `.available`, and
 `.parked` gauges are keyed by App, installation, and resource. Reservation IDs,
 tokens, and free-form parking reasons are never recorded. Its debug logs use the
-`cao:githubquota` and `cao:redis:githubquota` namespaces. MCP requests use the OpenTelemetry MCP semantic conventions, including
+`cao:githubquota` and `cao:redis:githubquota` namespaces. Quota failure spans use
+bounded `error.type` values (`invalid_request`, `canceled`, `timeout`, `_OTHER`)
+and fixed status descriptions, never raw exception events. Invalid bucket
+identities are excluded from spans and metrics until validation succeeds.
+MCP requests use the OpenTelemetry MCP semantic conventions, including
 `mcp.method.name`, `mcp.protocol.version`, `gen_ai.operation.name`, and
 `gen_ai.tool.name`; tool arguments, results, session identifiers, untrusted
 tracestate and baggage are never recorded. MCP methods are allowlisted and
@@ -1226,7 +1231,10 @@ values, Redis URLs, credentials, GitHub tokens, and row contents are never
 recorded. Identifiers follow the W3C Trace Context specification: the tracer
 provider installs `propagation.TraceContext` so a client-sent HTTP `traceparent`
 continues an existing transport trace. MCP spans use trace context from
-`params._meta.traceparent` as their remote parent and link the ambient HTTP span. Every API
+`params._meta.traceparent` as their remote parent and link the ambient HTTP span
+without retaining its tracestate. OAuth callback and revalidation spans use the
+same traceparent-only extraction; all request boundaries discard inherited
+baggage and tracestate while preserving cancellation and trace correlation. Every API
 response also echoes the active request's ids as `X-Trace-Id` / `X-Span-Id`
 headers for correlating a client-visible request with exported spans.
 JSON error responses repeat those identifiers as `traceId` and `spanId`, and

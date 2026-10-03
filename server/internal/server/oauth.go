@@ -24,7 +24,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
@@ -284,7 +283,7 @@ func (oauth *githubOAuth) loggedOut(response http.ResponseWriter, _ *http.Reques
 }
 
 func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.Request) {
-	ctx := propagation.TraceContext{}.Extract(request.Context(), propagation.HeaderCarrier(request.Header))
+	ctx := telemetry.ExtractTraceparent(request.Context(), request.Header.Get("Traceparent"))
 	ctx, span := telemetry.Tracer().Start(ctx, "GET /auth/callback",
 		trace.WithSpanKind(trace.SpanKindServer),
 		trace.WithAttributes(
@@ -511,7 +510,7 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 	}
 	if time.Now().UTC().Add(tokenRefreshSkew).Before(session.AccessExpires) {
 		if time.Since(session.AuthorizedAt) >= authorizationRecheckInterval {
-			ctx := propagation.TraceContext{}.Extract(request.Context(), propagation.HeaderCarrier(request.Header))
+			ctx := telemetry.ExtractTraceparent(request.Context(), request.Header.Get("Traceparent"))
 			ctx, span := telemetry.Tracer().Start(ctx, "cao_dashboard.auth.revalidate")
 			defer span.End()
 			account, err := oauth.authorizedAccount(ctx, session.AccessToken)

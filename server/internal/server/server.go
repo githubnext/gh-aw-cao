@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
 	"go.opentelemetry.io/otel/trace"
@@ -637,6 +638,8 @@ func (a *App) Handler() http.Handler {
 		restored.Body = request.Body
 		tracedHandler.ServeHTTP(response, restored)
 	}), telemetry.SpanHTTPServer,
+		// Sanitized parents are non-recording contexts, not SDK providers.
+		otelhttp.WithTracerProvider(otel.GetTracerProvider()),
 		otelhttp.WithFilter(func(request *http.Request) bool {
 			// OAuth callbacks use a dedicated, allowlisted server span instead
 			// of the generic HTTP instrumentation.
@@ -654,7 +657,8 @@ func (a *App) Handler() http.Handler {
 		}),
 	)
 	safeTelemetry := http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		safe := request.Clone(context.WithValue(request.Context(), originalHTTPRequestKey{}, request))
+		ctx := telemetry.ExtractTraceparent(request.Context(), request.Header.Get("Traceparent"))
+		safe := request.Clone(context.WithValue(ctx, originalHTTPRequestKey{}, request))
 		safe.RemoteAddr = ""
 		safe.Host = ""
 		safe.RequestURI = ""

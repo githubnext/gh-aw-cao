@@ -200,7 +200,16 @@ func TestMCPTraceContextDropsUntrustedBaggageAndTracestate(t *testing.T) {
 		t.Fatal(err)
 	}
 	ambient := baggage.ContextWithBaggage(t.Context(), bag)
-	parent, _ := mcpTraceContext(ambient, map[string]any{
+	state, err := trace.ParseTraceState("vendor=private-identifier")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ambientTraceID, _ := trace.TraceIDFromHex("11111111111111111111111111111111")
+	ambientSpanID, _ := trace.SpanIDFromHex("1111111111111111")
+	ambient = trace.ContextWithSpanContext(ambient, trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID: ambientTraceID, SpanID: ambientSpanID, TraceState: state,
+	}))
+	parent, links := mcpTraceContext(ambient, map[string]any{
 		"traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
 		"tracestate":  "vendor=private-identifier",
 		"baggage":     "account=private-identifier",
@@ -210,6 +219,10 @@ func TestMCPTraceContextDropsUntrustedBaggageAndTracestate(t *testing.T) {
 	}
 	if got := baggage.FromContext(parent); got.Len() != 0 {
 		t.Fatalf("MCP context must not propagate baggage: %v", got)
+	}
+	if len(links) != 1 || links[0].SpanContext.TraceState().Len() != 0 ||
+		links[0].SpanContext.TraceID() != ambientTraceID || links[0].SpanContext.SpanID() != ambientSpanID {
+		t.Fatal("MCP links must preserve correlation without inherited tracestate")
 	}
 }
 
