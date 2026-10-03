@@ -61,6 +61,7 @@ test("comment-writing workflow actions are explicitly inventoried", () => {
   assert.deepEqual(commentWriters, [
     "action-lint.yml",
     "actions.yml",
+    "backfill-stress.yml",
     "cao-activity.yml",
     "cao-dashboard.yml",
     "cgo.yml",
