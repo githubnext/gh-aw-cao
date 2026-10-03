@@ -30,6 +30,8 @@ on:
   permissions:
     contents: read
     actions: read
+    issues: read
+    pull-requests: read
 
 env:
   GH_AW_SAFE_OUTPUT_MODE: ${{ inputs.safe_output_mode || 'review' }}
@@ -55,11 +57,13 @@ imports:
       read_actions: read
       read_contents: read
       read_issues: read
+      read_pull_requests: read
 
 permissions:
   actions: read
   contents: read
   issues: read
+  pull-requests: read
   id-token: write
   copilot-requests: write
 
@@ -92,7 +96,7 @@ tools:
   cache-memory:
     retention-days: 90
     allowed-extensions: [".json"]
-  bash: [cat, curl]
+  bash: [cat, curl, cao, otel]
 
 mcp-servers:
   cao:
@@ -113,7 +117,6 @@ mcp-servers:
 safe-outputs:
   mentions: false
   allowed-github-references: []
-  max-bot-mentions: 0
   create-issue:
     target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
     title-prefix: "[self-care:hosted-health] "
