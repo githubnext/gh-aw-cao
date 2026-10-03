@@ -33,7 +33,7 @@ RUN CGO_ENABLED=0 go build \
     -o /out/cao-dashboard \
     ./cmd/cao-dashboard
 
-FROM alpine:3.22@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8
+FROM alpine:3.22@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8 AS dashboard-runtime
 
 ARG VERSION=dev
 ARG REVISION=unknown
@@ -72,3 +72,57 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
 
 ENTRYPOINT ["/app/cao-dashboard"]
 CMD ["serve-hosted", "--listen", "0.0.0.0:8080", "--site", "/app/site", "--dashboard-queries", "/app/agent/queries.json", "--database-queries", "/app/queries/database.json"]
+
+FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS collector-runtime
+
+SHELL ["/bin/ash", "-o", "pipefail", "-c"]
+
+ARG VERSION=dev
+ARG REVISION=unknown
+ARG CREATED=unknown
+ARG GH_AW_VERSION=v0.89.22
+ARG TARGETARCH
+LABEL org.opencontainers.image.title="Central Agentic Ops collector" \
+      org.opencontainers.image.description="Hosted CAO collection worker and backfill runtime" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${REVISION}" \
+      org.opencontainers.image.created="${CREATED}" \
+      org.opencontainers.image.source="https://github.com/githubnext/gh-aw-cao"
+
+# Keep CA roots and the GitHub CLI current on rebuilds instead of pinning package versions.
+# hadolint ignore=DL3018
+RUN apk add --no-cache ca-certificates github-cli \
+    && addgroup -S -g 65532 cao \
+    && adduser -S -D -H -u 65532 -G cao cao \
+    && mkdir -p /app/catalog /app/evidence /app/.local/share/gh/extensions/gh-aw \
+    && case "${TARGETARCH}" in \
+      amd64) checksum="a3b05101a4283a58891aa163960226bfdf2ebb4bea88cfff6dd6da007eeac8c8" ;; \
+      arm64) checksum="5323728611039d6d2a3c8a38323b26dd063d84c253f824e525890e8bccdf4ab6" ;; \
+      *) echo "Unsupported collector architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac \
+    && wget -q -O /usr/local/bin/gh-aw \
+      "https://github.com/github/gh-aw/releases/download/${GH_AW_VERSION}/linux-${TARGETARCH}" \
+    && echo "${checksum}  /usr/local/bin/gh-aw" | sha256sum -c - \
+    && chmod 0755 /usr/local/bin/gh-aw \
+    && ln -s /usr/local/bin/gh-aw /app/.local/share/gh/extensions/gh-aw/gh-aw \
+    && chown -R cao:cao /app
+
+COPY --from=dashboard-runtime --chown=cao:cao /app/ /app/
+COPY --from=dashboard-build --chown=cao:cao /workspace/activity/ /app/catalog/activity/
+COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/report/ /app/catalog/dashboard/report/
+COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/package.json /app/catalog/dashboard/site/package.json
+COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/src/ /app/catalog/dashboard/site/src/
+COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/node_modules/yaml/ /app/catalog/node_modules/yaml/
+COPY --from=dashboard-build --chown=cao:cao /workspace/dependabot/ /app/catalog/dependabot/
+COPY --from=dashboard-build --chown=cao:cao /workspace/optimization/ /app/catalog/optimization/
+
+ENV HOME=/app \
+    XDG_CACHE_HOME=/tmp/.cache \
+    XDG_CONFIG_HOME=/tmp/.config
+WORKDIR /app
+USER 65532:65532
+VOLUME ["/app/evidence"]
+ENTRYPOINT ["/app/cao-dashboard"]
+CMD ["collect", "--database-queries", "/app/queries/database.json"]
+
+FROM dashboard-runtime AS final

@@ -8,10 +8,13 @@ description: Run the Central Agentic Ops dashboard server as a hardened containe
 
 ## About the Coolify deployment
 
-The Coolify deployment runs the same Go dashboard server as [the Azure deployment](deployment-azure.md), packaged as a container image that runs as a non-root user. The container starts with the `serve-hosted` command.
+The Coolify deployment runs the same Go dashboard server as [the Azure deployment](deployment-azure.md). It builds two non-root image targets and runs three roles:
 
-- The Coolify proxy is the only way into the container. It terminates public TLS.
-- The container reads a verified dashboard artifact from a read-only volume, stores dashboard rows in PostgreSQL, and uses Redis for operational state.
+- `dashboard` starts `serve-hosted` in admission-only mode. The Coolify proxy is the only way into this container, and the container never receives the collection App private key.
+- `collector` continuously leases admitted work, collects GitHub evidence, and projects it into PostgreSQL.
+- `backfill` runs once per deployment to replay retained evidence, enumerate the App installations, and seed missing work.
+- The collector and backfill roles share a persistent evidence volume. Redis stores operational queues and PostgreSQL stores the current canonical projection.
+- The last verified dashboard artifact remains mounted read-only as a recovery source, but it is not an active ingestion source while collection is configured.
 - Users sign in with GitHub OAuth. Only active members of GitHub organizations or teams that you allow can access the dashboard.
 
 The Coolify deployment is an alternative to the Azure deployment. It doesn't replace, change, or weaken the Azure deployment.
@@ -22,15 +25,17 @@ The Coolify deployment is an alternative to the Azure deployment. It doesn't rep
 | --- | --- |
 | Coolify | A self-hosted Coolify instance that can run Docker Compose resources. Its proxy must terminate TLS for a public host name that you control. |
 | Container runtime | Docker on the Coolify server, with enough CPU, memory, and disk to build and run the image. |
-| Source access | A Coolify GitHub App with read access to this repository and webhook delivery enabled. |
+| Source access | A Coolify GitHub App with read access to this repository and webhook delivery enabled. This App triggers source deployments; it is separate from the collection App. |
 | PostgreSQL | A PostgreSQL service on the Coolify private network. CAO stores dashboard rows there. |
-| Redis | A Redis service on the Coolify private network, or an external Redis service that uses TLS, such as [Upstash Redis](deployment-upstash.md). No Redis modules are required. Set the eviction policy to `noeviction`, and size memory for operational caches, queues, sessions, and rate limits. |
-| Artifact volume | A named Docker volume, managed by Coolify, that contains a complete and verified dashboard payload. |
+| Redis | A Redis service on the Coolify private network. Set the eviction policy to `noeviction`, and size memory for operational caches, queues, sessions, rate limits, enrollment, and collection work. The serialized Upstash profile does not support server collection. |
+| Collection GitHub App | A read-only GitHub App installed only on the repositories this deployment may collect. Its webhook sends collection events to the dashboard. |
+| Evidence volume | A persistent named Docker volume. Compose creates it on first deployment and mounts it read-write only in the private collection roles. |
+| Recovery artifact volume | An external Docker volume containing one complete, verified dashboard payload. It remains mounted read-only for rollback to the snapshot profile. |
 | GitHub OAuth app | An OAuth app with the callback URL `https://PUBLIC-HOST/auth/callback`. |
-| Webhook secret | A secret of at least 32 characters. The server requires one even if you don't use webhooks. |
+| Webhook secret | A secret of at least 32 characters, shared only between the collection App and the dashboard admission endpoint. |
 | Deployment automation | A Git-backed Coolify resource configured for automatic deployments from the protected `main` branch. |
 
-The running container needs outbound access only to PostgreSQL, Redis, and the GitHub OAuth and API endpoints.
+The running services need outbound access only to PostgreSQL, Redis, and the GitHub OAuth and API endpoints.
 
 ## Deploying the dashboard
 
@@ -44,8 +49,20 @@ In the following steps, replace `PUBLIC-HOST` with the public host name of your 
    resources. Put all three resources on the same server and destination.
 
 1. Register a GitHub OAuth app. Set its **Authorization callback URL** to `https://PUBLIC-HOST/auth/callback`. For more information, see [Creating an OAuth app](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app) in the GitHub documentation.
+1. Register a separate GitHub App for collection.
+
+   1. Set its webhook URL to `https://PUBLIC-HOST/api/github/webhook`, enable the webhook, and use the value that you will store as `CAO_GITHUB_WEBHOOK_SECRET_ROTATED`.
+   1. Grant read-only repository permissions for Actions, Contents, Issues, Pull requests, Dependabot alerts, and Code scanning alerts. Grant no write permissions.
+   1. Subscribe to **Workflow run** and **Issues** events. Installation and repository-selection lifecycle deliveries maintain enrollment automatically.
+   1. Generate a private key. Base64-encode the PEM without line wrapping and
+      store only that single-line value as the Coolify secret
+      `CAO_COLLECT_PRIVATE_KEY_BASE64_ROTATED`. For example:
+      `base64 < collector.pem | tr -d '\n'`.
+   1. Record the App's numeric **App ID**, not its client ID, as `CAO_COLLECT_APP_ID`.
+   1. Install the App on only the repositories that the dashboard may collect. Set `CAO_COLLECT_INVENTORY_LIMIT` to that exact repository count so an unexpectedly broad installation fails projection instead of silently widening it.
+
 1. Create a PostgreSQL service in Coolify on the same destination as the dashboard. Copy its generated Internal URL and store it as the dashboard resource's secret `CAO_POSTGRES_URL`. The database resource name, such as `cao-postgres`, is only a display label and must not be substituted for the container hostname in the generated URL.
-1. Create a Redis service in Coolify on the same destination as the dashboard, copy its generated Internal URL into `REDIS_URL`, or use an external `rediss://` endpoint. The Redis display name, such as `cao-redis`, is not a stable cross-resource DNS contract. To use Upstash, follow [Deploying the dashboard with Upstash Redis](deployment-upstash.md), select the `upstash` Redis module with `target.replicas: 1`, and keep the Coolify resource at exactly one replica.
+1. Create a Redis service in Coolify on the same destination as the dashboard and copy its generated Internal URL into `REDIS_URL`. The Redis display name, such as `cao-redis`, is not a stable cross-resource DNS contract. Keep the `local` Redis provider selected in `cao.coolify.json`; server collection is incompatible with the `upstash` provider.
 1. Review `.github/workflows/cao.coolify.json`. This CAO deployment profile
    extends the authoritative `cao.json` rollout policy with only the
    `control-plane.web.host` settings required by Coolify. The Compose file
@@ -54,7 +71,7 @@ In the following steps, replace `PUBLIC-HOST` with the public host name of your 
    provider module as described in
    [Managed Redis in one minute](deployment-managed-redis.md); don't copy host
    settings into `cao.json`.
-1. Prepare the artifact volume.
+1. Prepare the recovery artifact volume.
 
    1. Create a new volume that isn't attached to any service.
    1. From one trusted `cao-dashboard.yml` artifact, copy
@@ -69,18 +86,20 @@ In the following steps, replace `PUBLIC-HOST` with the public host name of your 
       container's non-root UID `65532`.
 
    > [!CAUTION]
-   > Never copy files into a volume that a running service uses.
+   > Never copy files into a volume that a running service uses. This volume is inactive under the collection profile, but retaining one immutable, verified generation makes rollback to the snapshot profile deterministic.
 
 1. Attach your public domain to container port `8080` through the Coolify proxy. The Compose file doesn't publish a host port.
 1. Set the variables and secrets listed in [Configuration reference](#configuration-reference), following [Setting the variables in Coolify](#setting-the-variables-in-coolify). Store every credential as a Coolify secret.
 1. Set `CAO_TRUSTED_PROXY_CIDRS` to the exact private subnet that Coolify assigns to its proxy network. Don't use `0.0.0.0/0` or a whole private address range. The server doesn't start if the value is missing, malformed, or public.
-1. Deploy the resource. When the container starts, `serve-hosted` reads the data in `CAO_SOURCE_DIRECTORY` (`/app/source`) and transactionally replaces the current dashboard rows in PostgreSQL.
+1. Deploy the resource. Compose creates the named evidence volume when necessary. The admission-only dashboard starts without the App key, the collector starts continuously, and the idempotent backfill role replays retained evidence before enumerating installations and seeding work. The collection profile deliberately leaves `CAO_SOURCE_DIRECTORY` unset, so the recovery artifact cannot become a second writer.
 1. Verify the deployment.
 
    1. Confirm that `https://PUBLIC-HOST/api/readiness` returns `200`.
    1. Sign in with an authorized account and run a bounded query.
    1. Confirm that the dashboard refuses an unauthorized account.
-   1. If you use webhooks, send a signed test delivery.
+   1. Confirm that the `backfill` service exits successfully and the `collector` service remains running.
+   1. As an administrator, confirm that `GET /api/admin/collection/status` reports `configured: true`, the expected enrollment count, no dead letters, and a cold-start phase that advances to completion.
+   1. Send a GitHub App test delivery and confirm that it is admitted without exposing the App private key to the dashboard service.
 
 ### Deploying the githubnext production application
 
@@ -96,10 +115,16 @@ For the production deployment of the `githubnext/gh-aw-cao` dashboard:
 1. Enable automatic deployments for `main`. Keep preview deployments disabled
    for the production resource.
 1. Configure the runtime values from
-   `server/coolify/.env.example`. Do not add `CAO_IMAGE`, registry credentials,
+   `server/coolify/.env.example`. Set `CAO_COLLECT_CONTROL_REPOSITORY` to
+   `githubnext/gh-aw-cao` and set `CAO_COLLECT_INVENTORY_LIMIT` to the exact
+   number of selected repositories. Do not add `CAO_IMAGE`, registry credentials,
    Coolify API credentials, or GitHub deployment-environment secrets.
+1. Install the collection App on every repository named by the reviewed CAO
+   scope, including `githubnext/gh-aw-cao`; credential reach does not substitute
+   for installation scope.
 1. Deploy once from the Coolify UI, then verify readiness, authentication,
-   authorization, a bounded query, and webhook validation.
+   authorization, backfill completion, enrollment coverage, a bounded query,
+   and webhook admission.
 
 The Dockerfile bakes `cao.json` and `cao.coolify.json` into the image, so
 **Preserve Repository During Deployment** is not required. On later pushes, the
@@ -109,7 +134,25 @@ health evaluation, and rollback.
 
 ### Updating the data
 
-To update the data, prepare a new volume in the same way, set `CAO_ARTIFACT_VOLUME` to the new volume, and redeploy. An administrator listed in `CAO_GITHUB_ADMIN_USERS` can also start a rebuild with `POST /api/admin/rebuild`.
+Data updates do not require a source commit or deployment. A completed workflow
+run or supported issue lifecycle event produces a signed GitHub App webhook.
+The admission-only dashboard durably queues the repository, and the collector
+updates the retained evidence lake and PostgreSQL projection. GitHub retries
+unsuccessful webhook deliveries. The idempotent backfill job also runs on every
+source deployment to replay retained evidence, refresh installation enrollment,
+and seed historical work.
+
+An administrator listed in `CAO_GITHUB_ADMIN_USERS` can inspect
+`GET /api/admin/collection/status`. Administrative rebuild is intentionally
+unavailable in admission-only mode because the public service has neither the
+evidence lake nor collection credentials; run the `backfill --replay-only`
+role against the collector image when an operator needs a manual re-projection.
+
+Continue producing and verifying snapshot artifacts for recovery. To roll back
+the ingestion profile, roll Coolify back to a known-good snapshot-profile
+source revision and point `CAO_ARTIFACT_VOLUME` at one immutable artifact
+generation. Never configure `CAO_SOURCE_DIRECTORY` and `CAO_COLLECT_APP_ID` in
+the same process.
 
 ### Automating delivery
 
@@ -146,9 +189,10 @@ The `server/coolify/compose.yml` file reads the following variables.
 
 | Variable | Required | Secret | Description |
 | --- | --- | --- | --- |
-| `CAO_ARTIFACT_VOLUME` | Yes | No | Existing Coolify volume that contains the verified payload. It is mounted read-only at `/app/source`. |
+| `CAO_ARTIFACT_VOLUME` | Yes | No | Existing Coolify volume containing one verified recovery payload. It remains mounted read-only at `/app/source` but is inactive while collection is configured. |
+| `CAO_COLLECT_EVIDENCE_VOLUME` | No. Defaults to `cao-collector-evidence`. | No | Persistent volume name for the retained evidence lake. Compose creates it if absent. Back it up independently of PostgreSQL. |
 | `CAO_POSTGRES_URL` | Yes | Yes | Internal PostgreSQL connection URL copied from the Coolify database resource. |
-| `REDIS_URL` | Yes | Yes | Redis URL selected by `control-plane.web.host.redis.url-env`. Use `rediss://` when possible. |
+| `REDIS_URL` | Yes | Yes | Redis URL selected by `control-plane.web.host.redis.url-env`. Use the local Redis provider for collection and `rediss://` when supported by the private service. |
 | `REDIS_NAMESPACE` | No. Defaults to `coolify-dashboard`. | No | Prefix selected by `control-plane.web.host.redis.namespace-env`. |
 | `CAO_POLICY_PATH` | Set by Compose. | No | Points at the baked-in `cao.coolify.json` deployment profile, which extends `cao.json`. |
 | `CAO_ALLOWED_HOSTS` | Yes | No | Comma-separated list of public host names. |
@@ -163,8 +207,21 @@ The `server/coolify/compose.yml` file reads the following variables.
 | `CAO_GITHUB_ADMIN_USERS` | Yes | No | GitHub usernames that can start rebuilds. |
 | `CAO_GITHUB_WEBHOOK_SECRET_ROTATED` | Yes | Yes | Secret for verifying webhook signatures. At least 32 characters. Compose maps it to the server's `CAO_GITHUB_WEBHOOK_SECRET` runtime variable. |
 | `CAO_MCP_ACTIONS_REPOSITORY` | Yes | No | Exact `OWNER/REPO` GitHub repository selected as this Coolify resource's Git source; only its Actions OIDC provenance and read-scoped token can access `/mcp`. |
+| `CAO_COLLECT_APP_ID` | Yes | No | Positive numeric identifier of the read-only collection GitHub App. This is not the App client ID. |
+| `CAO_COLLECT_PRIVATE_KEY_BASE64_ROTATED` | Yes | Yes | Single-line standard-base64 encoding of the collection App private key PEM. Compose injects it only into `collector` and `backfill`, which decode it in memory. |
+| `CAO_COLLECT_CONTROL_REPOSITORY` | Yes | No | Control repository in `OWNER/REPO` form, used for inventory discovery. |
+| `CAO_COLLECT_INVENTORY_LIMIT` | Yes | No | Exact maximum number of repositories expected in the App installation scope. Exceeding it fails projection. |
+| `CAO_COLLECT_WINDOW_DAYS` | No. Defaults to `30`. | No | Historical workflow-run window admitted by collection. |
+| `CAO_COLLECT_RUN_LIMIT` | No. Defaults to `10000`. | No | Maximum workflow runs requested per repository collection. |
+| `CAO_COLLECT_MAX_STORAGE_MB` | No. Defaults to `1200`. | No | Maximum retained `gh aw logs` storage processed per repository collection. |
+| `CAO_COLLECT_REQUEST_TIMEOUT_MINUTES` | No. Defaults to `10`. | No | GitHub collection request timeout. |
+| `CAO_COLLECT_RATE_LIMIT_FLOOR` | No. Defaults to `2000`. | No | GitHub API requests reserved per installation. |
+| `CAO_COLLECT_QUEUE_MAX_LENGTH` | No. Defaults to `200000`. | No | Admission backpressure limit for outstanding collection work. Tasks are never trimmed to satisfy it. |
+| `CAO_COLLECT_PROJECTION_INTERVAL` | No. Defaults to `5m`. | No | Minimum interval between coalesced projections. |
+| `CAO_COLLECT_TIMEOUT` | No. Defaults to `30m`. | No | End-to-end timeout for one repository collection. |
+| `CAO_COLLECT_OTEL_SERVICE_NAME` | No. Defaults to `cao-collector`. | No | Stable OTEL service name for the collector and backfill roles. |
 | `SOURCE_COMMIT` | Set by Coolify. | No | Commit SHA embedded in the image and reported as the build version. Enable **Include Source Commit in Build**. |
-| `DEBUG` | No. Defaults to `cao:server*,cao:query,cao:ingest,cao:telemetry`. | No | Server log categories written to container output. |
+| `DEBUG` | No. Defaults to `cao:server*,cao:collect*,cao:query,cao:ingest,cao:telemetry`. | No | Server and collection log categories written to container output. |
 | `CAO_SERVER_LOGS_ENABLED` | No. Defaults to `true` in Coolify. | No | Mounts `GET /api/admin/logs`, a JSON download of up to 10,000 recent server debug records plus Redis ingestion counters and collection queue counts. Set to `false` to disable. |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | No | No | Shared base OTLP/HTTP endpoint. The exporter appends the signal path. |
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | No | No | Full OTLP/HTTP trace endpoint. Use this to reuse the control plane's `GH_AW_DEFAULT_OTLP_ENDPOINT`. |
@@ -193,6 +250,10 @@ Set these required variables:
 - `CAO_GITHUB_ADMIN_USERS`
 - `CAO_GITHUB_WEBHOOK_SECRET_ROTATED`
 - `CAO_MCP_ACTIONS_REPOSITORY`
+- `CAO_COLLECT_APP_ID`
+- `CAO_COLLECT_PRIVATE_KEY_BASE64_ROTATED`
+- `CAO_COLLECT_CONTROL_REPOSITORY`
+- `CAO_COLLECT_INVENTORY_LIMIT`
 
 Also set `REDIS_URL`, `CAO_GITHUB_CLIENT_SECRET_ROTATED`,
 `CAO_SESSION_SECRET_ROTATED`, `CAO_GITHUB_WEBHOOK_SECRET_ROTATED`, and at least
@@ -215,8 +276,8 @@ Follow these rules when you add the values.
   Use the same `CAO_GITHUB_WEBHOOK_SECRET_ROTATED` value in the GitHub webhook configuration. A webhook secret is required even when you don't send webhooks.
 - **Take the OAuth values from your OAuth app.** `CAO_GITHUB_CLIENT_ID` and `CAO_GITHUB_CLIENT_SECRET_ROTATED` come from the GitHub OAuth app that you registered, and `CAO_GITHUB_REDIRECT_URL` must exactly match that app's **Authorization callback URL**, `https://PUBLIC-HOST/auth/callback`.
 - **Enable Runtime.** The server reads every operator-provided variable at startup, so each one needs the **Runtime** scope. Coolify injects `SOURCE_COMMIT` into the build when **Include Source Commit in Build** is enabled.
-- **Leave managed variables alone.** Coolify shows `CAO_SOURCE_DIRECTORY` as **Managed**, because `compose.yml` pins it to `/app/source`, the read-only mount of the artifact volume. Don't override it. `CAO_POLICY_PATH` is set the same way.
-- **Duplicate the values for Preview if you use preview deployments.** Coolify keeps **Production** and **Preview** values separate, so a preview deployment fails on the same required variables until you set them again for **Preview**. Give each preview its own `REDIS_NAMESPACE`, artifact volume, host name, OAuth app, and secrets. Sharing a namespace or session secret with production lets a preview build read and write production sessions and data. If you don't use preview deployments, turn them off instead of copying production credentials.
+- **Leave managed variables alone.** Compose sets `CAO_POLICY_PATH`, `CAO_COLLECT_ADMIT_ONLY`, `CAO_COLLECT_LAKE_DIRECTORY`, and `CAO_COLLECT_CATALOG_ROOT`. It deliberately does not set `CAO_SOURCE_DIRECTORY`. Don't override any of them.
+- **Duplicate the values for Preview if you use preview deployments.** Coolify keeps **Production** and **Preview** values separate, so a preview deployment fails on the same required variables until you set them again for **Preview**. Give each preview its own `REDIS_NAMESPACE`, evidence and recovery volumes, host name, OAuth app, collection App, and secrets. Sharing a namespace, evidence volume, App installation, or session secret with production lets a preview build read or write production state. If you don't use preview deployments, turn them off instead of copying production credentials.
 
 After a value changes, redeploy the resource. The container reads its environment only at startup.
 
@@ -227,12 +288,20 @@ The Compose service also sets the following hardening options. Keep them in plac
 - All Linux capabilities dropped, and `no-new-privileges`.
 - An `init` process.
 - The non-root user `65532:65532`.
+- The App private key only in the unexposed `collector` and `backfill` services.
 
 ## Monitoring the deployment
 
 ### Container health
 
 The image's `HEALTHCHECK` calls `/api/readiness` every 30 seconds through the trusted host path. Coolify shows the health status and restarts the service according to the `restart: unless-stopped` policy.
+
+The unexposed `collector` service also uses `restart: unless-stopped`; an invalid
+App key, unavailable Redis or PostgreSQL, missing toolchain, or invalid catalog
+causes it to exit visibly and restart rather than report success. The `backfill`
+service uses `restart: "no"` and must exit successfully once per deployment.
+Treat a restarting collector or failed backfill as a freshness incident even
+when the dashboard remains ready with its last committed PostgreSQL projection.
 
 ### OpenTelemetry traces
 
@@ -296,7 +365,7 @@ operational state.
 
 Container output appears in the Coolify log view and is available through
 Coolify's log API, CLI, and MCP tooling. The default `DEBUG` value enables the
-server, query, ingestion, and telemetry categories. Every JSON HTTP failure
+server, collection, query, ingestion, and telemetry categories. Every JSON HTTP failure
 emits its status and matching trace and span IDs, allowing an agent to search
 recent Coolify logs and then open the full request trace in the OTLP backend.
 Logs never contain tokens, credentials, query payloads, source records, OTLP
@@ -311,6 +380,11 @@ To check Redis, dashboard data, and queries without changing anything, run the f
 ```
 
 Add `--deep` to read every active source, `--format json` for automation, or `--strict` to fail on warnings.
+
+For collection-specific state, use the authenticated
+`GET /api/admin/collection/status` endpoint. Alert on unexpected enrollment,
+growing queue depth, in-flight work that does not drain, partial or failed cold
+start, exhausted installation headroom, or any dead-letter count.
 
 To verify the complete CAO-to-OpenObserve path, run the smoke test inside the
 live CAO container after a deployment:
@@ -340,6 +414,10 @@ You configure traces for orchestrators and workers in the control repository. Fo
 - **Trusted proxies only.** The server trusts forwarded headers only from `CAO_TRUSTED_PROXY_CIDRS`. The forwarded protocol must be `https`, and the host must exactly match `CAO_ALLOWED_HOSTS`.
 - **Encrypted Redis by default.** The server refuses plaintext Redis unless you allow it for a private address or a single-label service name.
 - **Source-bound builds.** Coolify fetches the configured `main` commit and embeds `SOURCE_COMMIT` into the image metadata. Mutable registry tags don't select production code.
+- **Credential isolation.** The public dashboard admits signed events with only the webhook secret. Only unexposed collection roles receive the App private key.
+- **Automatic freshness.** Workflow-run and issue webhooks enqueue collection without requiring a data commit or deployment, while every deployment runs an idempotent backfill.
+- **Single-writer ingestion.** The collection profile leaves `CAO_SOURCE_DIRECTORY` unset. The recovery artifact remains read-only and inactive, so snapshot ingestion and server collection cannot write the same database.
+- **Retained evidence.** A named evidence volume survives ordinary source redeployments and can repopulate PostgreSQL without GitHub access.
 - **Native deployment history.** Coolify retains deployment records and supports rollback to a prior deployment or source revision.
 - **Safe ingestion.** Ingestion and rebuilds replace dashboard rows in a PostgreSQL transaction. If they fail, the previously committed rows remain available.
 

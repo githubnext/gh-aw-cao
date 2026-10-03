@@ -96,9 +96,13 @@ The preview composes `dashboard/site/dashboard.json` with every installed `<camp
 
 Dashboard documents may declare canvas-only CLI actions. They are hidden from
 the published site and ordinary local previews. In the dashboard canvas, each
-action appears in the **Actions** menu and always requires the user to review
-and approve the exact command for that invocation; approval is never remembered
-and there is no unattended mode.
+action appears in the **Actions** menu for a command preview. Native execution
+also requires independent confirmation in the trusted Copilot host, bound to
+the exact resolved command, working directory, and standard input. A page POST
+alone cannot authorize execution. Approval is never remembered and there is no
+unattended mode; hosts without interactive elicitation fail closed. Only one
+action per preview may await approval or run at a time. Closing a preview
+invalidates pending approvals.
 
 ```yaml
 dashboard:
@@ -139,6 +143,10 @@ and runs the installer version declared by `gh-aw-version` in
 repository, then verifies `gh aw` before continuing. Boolean action arguments
 render as checkboxes and may append only their declared
 canonical long option to the command preview and executed argv.
+
+The canvas accepts prompts up to 100,000 UTF-16 code units and bounds each JSON
+request to 1 MiB, including JSON escaping and UTF-8 overhead. Oversized requests
+are rejected before approval or execution.
 
 Catalog contributors can run `npm run dashboard:local`; the same server discovers top-level campaign `dashboard.json` files automatically. Pass a control repository explicitly with `npm run dashboard:local -- --repo OWNER/REPOSITORY`.
 

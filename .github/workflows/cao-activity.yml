@@ -444,6 +444,7 @@ jobs:
             --shard-dir "$REPORT_GH_AW_LOGS_SHARDS" \
             --runs-dir "$REPORT_GH_AW_LOGS_RUNS" \
             --records-dir "$REPORT_GH_AW_LOGS_RECORDS" \
+            --max-bytes 1048576 \
             --inventory "$RUNNER_TEMP/cao-activity/inventory-sources.json"
 
       - name: Ingest activity database
@@ -481,6 +482,7 @@ jobs:
             --shard-dir "$REPORT_GH_AW_LOGS_SHARDS" \
             --runs-dir "$REPORT_GH_AW_LOGS_RUNS" \
             --records-dir "$REPORT_GH_AW_LOGS_RECORDS" \
+            --max-bytes 1048576 \
             --inventory "$RUNNER_TEMP/cao-activity/inventory-sources.json" \
             --output "$RUNNER_TEMP/cao-activity/payload-hashes.json"
 

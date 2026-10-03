@@ -1,9 +1,32 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { DatabaseSync } from "node:sqlite";
 import { generateDashboardStressData } from "../helpers/dashboard-stress-data.mjs";
+
+function assertCanonicalCounts(inputDirectory, databasePath, expected) {
+  execFileSync(process.execPath, [
+    "activity/cao.mjs", "ingest-jsonl",
+    "--database", databasePath,
+    "--input-dir", inputDirectory,
+    "--retention-days", "all",
+    "--run-retention-days", "all",
+  ]);
+  const database = new DatabaseSync(databasePath, { readOnly: true });
+  try {
+    for (const [store, count] of Object.entries(expected)) {
+      const actual = database.prepare(
+        "SELECT COUNT(*) AS count FROM __idb_records WHERE store_name = ?",
+      ).get(store);
+      assert.equal(Number(actual.count), count, `canonical ${store} count`);
+    }
+  } finally {
+    database.close();
+  }
+}
 
 test("stress shards are deterministic and parametric", async () => {
   const root = await mkdtemp(join(tmpdir(), "cao-dashboard-stress-"));
@@ -23,8 +46,9 @@ test("stress shards are deterministic and parametric", async () => {
     assert.deepEqual(firstManifest.expected, {
       repositories: 4,
       runs: 8,
-      audits: 56,
+      audits: 24,
     });
+    assertCanonicalCounts(first, join(root, "canonical.sqlite"), firstManifest.expected);
     assert.equal(firstManifest.files.length, 3);
     for (const file of firstManifest.files) {
       assert.equal(
@@ -130,6 +154,8 @@ test("stress shards preserve observed operational shapes without copying identit
         assert.equal(JSON.stringify(generated).includes("observed-model"), false);
         assert.equal(JSON.stringify(generated).includes("observed-engine"), false);
         assert.equal(manifest.sample, "schema-v2-run-data");
+        assert.equal(manifest.expected.audits, 10);
+        assertCanonicalCounts(outputDirectory, join(root, "canonical.sqlite"), manifest.expected);
         await assert.rejects(
           generateDashboardStressData({
             outputDirectory: join(root, "too-many-events"),

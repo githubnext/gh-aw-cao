@@ -748,7 +748,7 @@
         {
           "id": "campaign-memory-browser",
           "title": "Campaign memory",
-          "subject": "Let operators browse published repository memory from every registered campaign without leaving this page.",
+          "subject": "Let operators browse published repository memory from every registered campaign in a compact file tree with expandable folders and file-type icons, without leaving this page.",
           "data": {
             "sources": [
               "campaign-memory-campaigns"

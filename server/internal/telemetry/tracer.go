@@ -1,9 +1,12 @@
 package telemetry
 
 import (
+	"context"
 	"net/http"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/baggage"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -30,6 +33,16 @@ const (
 // whichever provider Setup installed (or the no-op default).
 func Tracer() trace.Tracer {
 	return otel.Tracer(tracerName)
+}
+
+// ExtractTraceparent preserves trace correlation and cancellation but drops
+// inherited baggage and tracestate, including metadata from an external host.
+func ExtractTraceparent(ctx context.Context, value string) context.Context {
+	ctx = baggage.ContextWithBaggage(ctx, baggage.Baggage{})
+	if parent := trace.SpanContextFromContext(ctx); parent.IsValid() {
+		ctx = trace.ContextWithSpanContext(ctx, parent.WithTraceState(trace.TraceState{}))
+	}
+	return propagation.TraceContext{}.Extract(ctx, propagation.MapCarrier{"traceparent": value})
 }
 
 // TraceIDHeader and SpanIDHeader expose the active W3C Trace Context

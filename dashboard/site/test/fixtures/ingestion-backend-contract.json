@@ -1,0 +1,31 @@
+{
+  "page": "indexing",
+  "staticSources": [
+    "indexing-database-table-counts",
+    "indexing-daily-records",
+    "indexing-daily-workflow-runs",
+    "indexing-transactions"
+  ],
+  "hostedSources": ["ingestion-queue-sizes", "ingestion-health", "github-api-usage"],
+  "hostedViews": ["ingestion-queue-sizes", "ingestion-health-status", "github-api-usage"],
+  "runtimeInputs": {
+    "collection-health": [{
+      "configured": true,
+      "health": "healthy",
+      "queue-depth": 12,
+      "pending-tasks": 3,
+      "backfill-queued-run-tasks": 27,
+      "collection-succeeded": 34,
+      "collection-failed": 1
+    }],
+    "github-quota-usage": [{
+      "observed-at": "2026-09-24T00:00:00Z",
+      "scope": "aggregate",
+      "bucket": "all buckets",
+      "limit": 10000,
+      "used": 4000,
+      "reserved": 200,
+      "usage-percent": 40
+    }]
+  }
+}

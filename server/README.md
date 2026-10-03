@@ -882,7 +882,7 @@ readiness URL, OTLP endpoint, authorization header, trace ID, or span ID.
 | Setting | Meaning |
 |---|---|
 | `CAO_COLLECT_APP_ID` | GitHub App identifier; unset selects the default profile |
-| `CAO_COLLECT_PRIVATE_KEY` / `CAO_COLLECT_PRIVATE_KEY_FILE` | App private key in PEM form |
+| `CAO_COLLECT_PRIVATE_KEY` / `CAO_COLLECT_PRIVATE_KEY_BASE64` / `CAO_COLLECT_PRIVATE_KEY_FILE` | App private key as inline PEM, single-line standard base64, or a mounted PEM file |
 | `CAO_COLLECT_LAKE_DIRECTORY` | evidence lake directory, shared by workers |
 | `CAO_COLLECT_CATALOG_ROOT` | directory containing `activity/cao.mjs` |
 | `CAO_COLLECT_CONTROL_REPOSITORY` | control repository used for inventory discovery |
@@ -1137,7 +1137,8 @@ URLs, cookies, codes, or tokens when requesting support.
 
 All generic server HTTP spans use a redacted copy of each request: the server
 does not export peer/client IP addresses, user-agent strings, query strings,
-arbitrary URL paths, W3C baggage, or client-provided tracestate. The original
+arbitrary URL paths, W3C baggage, or client-provided tracestate, including
+metadata inherited from an external HTTP host. The original
 request still reaches the authentication and rate-limiting code unchanged.
 Raw user-agent strings may identify or fingerprint a browser, so they remain
 excluded from telemetry rather than assuming their collection is GDPR compliant.
@@ -1157,7 +1158,11 @@ The server is instrumented with standard, vendor-neutral
 wrapped with `otelhttp` using a redacted request, which supplies bounded
 OpenTelemetry HTTP semantic-convention attributes and the standard
 `http.server.request.duration`, `http.server.request.body.size`, and
-`http.server.response.body.size` metrics. OAuth callbacks instead emit a
+`http.server.response.body.size` metrics. Registered API/auth endpoints also
+attach their registered `http.route` template to HTTP spans and metrics after
+routing, including `HEAD` requests and parameterized paths such as
+`/api/repositories/{id}`. Parameter values are never exported; arbitrary or
+unmatched paths omit that attribute. OAuth callbacks instead emit a
 dedicated W3C-context-propagating server span named `GET /auth/callback` with
 only fixed `http.route` and `http.request.method` attributes, plus
 `cao_dashboard.auth.callback.count` (unit `{callback}`). Both the span and
@@ -1185,11 +1190,38 @@ spans. Every Postgres statement emits a child `cao_dashboard.postgres.query`
 client span and `cao_dashboard.postgres.query.count` (unit `{query}`) and
 `cao_dashboard.postgres.query.duration` (seconds) metrics. Duration measures
 statement execution after acquiring a connection, not pool wait or row
-decoding. Only fixed `db.operation.name` (`select`, `insert`, `update`,
+decoding. Existing CAO-specific metrics record fixed `db.operation.name`
+(`select`, `insert`, `update`,
 `delete`, `copy`, or `other`) and `cao_dashboard.postgres.outcome` (`success`
 or `error`) values are recorded; SQL, parameters, error messages, source
 names, and database connection details are excluded. Existing pgx tracers
-are preserved. The GitHub API quota service (`internal/githubquota/`) starts
+are preserved. PostgreSQL queries and ingestion `COPY` calls additionally emit
+the standard [`db.client.operation.duration`](https://opentelemetry.io/docs/specs/semconv/db/database-metrics/)
+histogram (unit `s`, recommended boundaries
+`0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10`). The standard metric and client
+spans use `db.system.name=postgresql` and uppercase `db.operation.name`
+(`SELECT`, `INSERT`, `UPDATE`, `DELETE`, `COPY`); unrecognized SQL operations
+omit the standard operation attribute. Existing CAO-specific metrics retain
+their lowercase operation and outcome attributes for compatibility.
+Failures add `error.type`, using a validated PostgreSQL SQLSTATE and
+`db.response.status_code` when available, otherwise `canceled`, `timeout`, or
+`_OTHER`. The histogram duration matches the client span duration.
+
+Redis calls emit the same standard duration histogram with `db.system.name=redis`
+and allowlisted uppercase commands, alongside client spans named for those
+commands. Unknown commands use `_OTHER`. Pipelines produce one observation per
+call, named `PIPELINE <COMMAND>` for homogeneous batches or `PIPELINE` for mixed
+or empty batches; a one-command pipeline is a single operation. Batch sizes are
+span-only `db.operation.batch.size` attributes, not metric dimensions. Redis
+duration includes connection acquisition, authentication, retries, and response
+reading; recovered retries count as one successful operation. Failures add
+`error.type` and, for allowlisted Redis error prefixes, `db.response.status_code`.
+Other failures use `canceled`, `timeout`, or `_OTHER`. SQL text, Redis keys,
+values, Lua scripts, raw error messages, database indexes, and connection
+details are excluded. These signals use the existing optional OTLP providers;
+no additional exporter or dependency is required.
+
+The GitHub API quota service (`internal/githubquota/`) starts
 `cao_githubquota.<operation>` spans (`observe`, `commit`, `reserve`, `release`,
 `park`, `unpark`, `state`, `select`, `usage`) and records
 `cao_githubquota.operation.count` and `cao_githubquota.operation.duration`
@@ -1197,7 +1229,11 @@ by operation, bucket App and resource, and a fixed `cao_githubquota.outcome`.
 Per-bucket `cao_githubquota.bucket.remaining`, `.reserved`, `.available`, and
 `.parked` gauges are keyed by App, installation, and resource. Reservation IDs,
 tokens, and free-form parking reasons are never recorded. Its debug logs use the
-`cao:githubquota` and `cao:redis:githubquota` namespaces. MCP requests use the OpenTelemetry MCP semantic conventions, including
+`cao:githubquota` and `cao:redis:githubquota` namespaces. Quota failure spans use
+bounded `error.type` values (`invalid_request`, `canceled`, `timeout`, `_OTHER`)
+and fixed status descriptions, never raw exception events. Invalid bucket
+identities are excluded from spans and metrics until validation succeeds.
+MCP requests use the OpenTelemetry MCP semantic conventions, including
 `mcp.method.name`, `mcp.protocol.version`, `gen_ai.operation.name`, and
 `gen_ai.tool.name`; tool arguments, results, session identifiers, untrusted
 tracestate and baggage are never recorded. MCP methods are allowlisted and
@@ -1210,7 +1246,10 @@ values, Redis URLs, credentials, GitHub tokens, and row contents are never
 recorded. Identifiers follow the W3C Trace Context specification: the tracer
 provider installs `propagation.TraceContext` so a client-sent HTTP `traceparent`
 continues an existing transport trace. MCP spans use trace context from
-`params._meta.traceparent` as their remote parent and link the ambient HTTP span. Every API
+`params._meta.traceparent` as their remote parent and link the ambient HTTP span
+without retaining its tracestate. OAuth callback and revalidation spans use the
+same traceparent-only extraction; all request boundaries discard inherited
+baggage and tracestate while preserving cancellation and trace correlation. Every API
 response also echoes the active request's ids as `X-Trace-Id` / `X-Span-Id`
 headers for correlating a client-visible request with exported spans.
 JSON error responses repeat those identifiers as `traceId` and `spanId`, and

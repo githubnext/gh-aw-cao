@@ -92,7 +92,7 @@ The activity shard manifest is the dashboard's published operational input. The 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
 The canonical model is version 26. The browser database is
-`gh-aw-cao-dashboard-data`, IndexedDB version 34. Its canonical stores are
+`gh-aw-cao-dashboard-data`, IndexedDB version 35. Its canonical stores are
 `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `skills`,
 `friction`, `audits`, `issues`, `operationalValues`, `marketplacePackages`,
 `experiments`, `experimentAssignments`, `graders`, `graderObservations`,
@@ -121,6 +121,13 @@ committed record counts. A failure writes a diagnostic receipt when possible.
 Bounded writes that committed before a later failure may remain in the
 disposable database, but no successful receipt is written and the shard remains
 retryable.
+
+Actions publishes normalized run and record shards with a 1 MiB budget,
+including metadata and UTF-8 bytes. A single larger record is kept intact in its
+own shard rather than truncated. Records are deduplicated before being ordered
+by collection and canonical ID within stable day buckets, so changes in source
+arrival order alone do not force clients to download and ingest unchanged data.
+The 4 MiB raw-source compaction budget is independent of this published budget.
 
 Worker errors abort the update instead of rerunning ingestion through an older path. There is no shadow, dual-read, alias, or fallback route. Views render only after the worker returns that page's query projection.
 

@@ -142,7 +142,7 @@ func TestClassifyQueueBacklogPassesWhenNoMaximumIsConfigured(t *testing.T) {
 }
 
 func TestResolvePrivateKeySourceReportsAbsentWhenNothingIsConfigured(t *testing.T) {
-	result := resolvePrivateKeySource(fakeStat(nil), "", "")
+	result := resolvePrivateKeySource(fakeStat(nil), "", "", "")
 	if result.label != "absent" || result.present || result.err != nil {
 		t.Fatalf("result = %+v, want label=absent present=false err=nil", result)
 	}
@@ -155,7 +155,7 @@ func TestResolvePrivateKeySourcePrefersFileOverInline(t *testing.T) {
 	stat := func(string) (os.FileInfo, error) {
 		return fakeRegularFileInfo{}, nil
 	}
-	result := resolvePrivateKeySource(stat, "/etc/cao/key.pem", "inline-value")
+	result := resolvePrivateKeySource(stat, "/etc/cao/key.pem", "base64-value", "inline-value")
 	if result.label != "file (configured)" || !result.present || result.err != nil {
 		t.Fatalf("result = %+v, want label=file (configured) present=true err=nil", result)
 	}
@@ -165,7 +165,7 @@ func TestResolvePrivateKeySourcePrefersFileOverInline(t *testing.T) {
 }
 
 func TestResolvePrivateKeySourceReportsUnreadableFile(t *testing.T) {
-	result := resolvePrivateKeySource(fakeStat(nil), "/etc/cao/missing.pem", "")
+	result := resolvePrivateKeySource(fakeStat(nil), "/etc/cao/missing.pem", "", "")
 	if result.label != "file (unreadable)" || result.present || result.err == nil {
 		t.Fatalf("result = %+v, want label=file (unreadable) present=false non-nil err", result)
 	}
@@ -178,7 +178,7 @@ func TestResolvePrivateKeySourceRejectsADirectory(t *testing.T) {
 	stat := func(string) (os.FileInfo, error) {
 		return fakeDirInfo{}, nil
 	}
-	result := resolvePrivateKeySource(stat, "/etc/cao/keys", "")
+	result := resolvePrivateKeySource(stat, "/etc/cao/keys", "", "")
 	if result.label != "file (not a file)" || result.present || result.err == nil {
 		t.Fatalf("result = %+v, want label=file (not a file) present=false non-nil err", result)
 	}
@@ -188,12 +188,22 @@ func TestResolvePrivateKeySourceRejectsADirectory(t *testing.T) {
 }
 
 func TestResolvePrivateKeySourceReportsInlineWhenNoFileIsConfigured(t *testing.T) {
-	result := resolvePrivateKeySource(fakeStat(nil), "", "inline-value")
+	result := resolvePrivateKeySource(fakeStat(nil), "", "", "inline-value")
 	if result.label != "inline environment variable (configured)" || !result.present || result.err != nil {
 		t.Fatalf("result = %+v, want label=inline environment variable (configured) present=true err=nil", result)
 	}
 	if result.reason != privateKeySourceReasonInlineConfigured {
 		t.Fatalf("reason = %v, want %v", result.reason, privateKeySourceReasonInlineConfigured)
+	}
+}
+
+func TestResolvePrivateKeySourceReportsBase64BeforeInline(t *testing.T) {
+	result := resolvePrivateKeySource(fakeStat(nil), "", "base64-value", "inline-value")
+	if result.label != "base64 environment variable (configured)" || !result.present || result.err != nil {
+		t.Fatalf("result = %+v, want label=base64 environment variable (configured) present=true err=nil", result)
+	}
+	if result.reason != privateKeySourceReasonBase64Configured {
+		t.Fatalf("reason = %v, want %v", result.reason, privateKeySourceReasonBase64Configured)
 	}
 }
 

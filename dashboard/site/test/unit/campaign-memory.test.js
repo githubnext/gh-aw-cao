@@ -108,8 +108,14 @@ describe('campaign repository memory', () => {
     expect(rendered.querySelector('.cao-memory-file-content')).not.toBeNull();
     expect(rendered.querySelector('.campaign-memory-directory > summary')?.textContent).toBe('notes');
     expect(rendered.querySelector('.campaign-memory-file')?.textContent).toContain('ambient.md');
-    expect(rendered.querySelector('.campaign-memory-directory .octicon-file-directory')).not.toBeNull();
-    expect(rendered.querySelector('.campaign-memory-file .octicon-file')).not.toBeNull();
+    expect(rendered.querySelector('.cao-memory-campaign > .octicon-chevron-right')).not.toBeNull();
+    expect(rendered.querySelector('.campaign-memory-directory > summary > .octicon-chevron-right')).not.toBeNull();
+    expect(rendered.querySelector('.campaign-memory-file .octicon-markdown')).not.toBeNull();
+    expect(rendered.querySelector('.campaign-memory-file')?.getAttribute('aria-label'))
+      .toBe('notes/ambient.md, 9 B');
+    expect(rendered.querySelector('.campaign-memory-file')?.getAttribute('title'))
+      .toBe('notes/ambient.md (9 B)');
+    expect(rendered.querySelector('.campaign-memory-file small')).toBeNull();
 
     const secondCampaign = /** @type {HTMLDetailsElement} */ (
       rendered.querySelectorAll('.cao-memory-campaign-branch')[1]
@@ -536,6 +542,39 @@ describe('campaign repository memory', () => {
       ['ambient-context', 'notes/first.json'],
       ['ambient-context', 'summary.md'],
     ]);
+  });
+
+  it('uses content icons without implying diff status and retains full file metadata', async () => {
+    const files = [
+      { path: 'notes/README.MD', icon: 'markdown', size: 9, sizeLabel: '9 B' },
+      { path: 'notes/data.json', icon: 'file-code', size: 1024, sizeLabel: '1.0 KiB' },
+      { path: 'notes/events.jsonl', icon: 'file-code', size: 1024 ** 2, sizeLabel: '1.0 MiB' },
+      { path: 'config/settings.yaml', icon: 'file-code', size: 0, sizeLabel: '0 B' },
+      { path: 'config/settings.YML', icon: 'file-code', size: 5, sizeLabel: '5 B' },
+      { path: 'notes/plain.txt', icon: 'file', size: 8, sizeLabel: '8 B' },
+      { path: 'notes/LICENSE', icon: 'file', size: 12, sizeLabel: '12 B' },
+    ];
+    memoryApi.list.mockResolvedValue({
+      branch: 'memory/ambient-context',
+      commit: 'a'.repeat(40),
+      files: files.map(({ path, size }) => ({ path, size, oid: 'b'.repeat(40) })),
+      omitted: {},
+    });
+    memoryApi.read.mockResolvedValue({ content: '# Memory' });
+    const rendered = renderCampaignMemory({ campaignId: 'ambient-context', campaignName: 'Ambient Context' });
+    document.body.append(rendered);
+
+    await vi.waitFor(() => expect(rendered.querySelectorAll('.campaign-memory-file')).toHaveLength(files.length));
+    [...rendered.querySelectorAll('.campaign-memory-file')].forEach((button, index) => {
+      const { path, icon, sizeLabel } = files[index];
+      expect(button.querySelector(`.octicon-${icon}`)?.getAttribute('aria-hidden')).toBe('true');
+      expect(button.querySelector('svg')?.childElementCount).toBeGreaterThan(0);
+      expect(button.querySelector('.memory-file-name')?.textContent).toBe(path);
+      expect(button.getAttribute('title')).toBe(`${path} (${sizeLabel})`);
+      expect(button.getAttribute('aria-label')).toBe(`${path}, ${sizeLabel}`);
+      expect(button.querySelector('small')).toBeNull();
+    });
+    expect(rendered.querySelector('[class*="octicon-diff-"]')).toBeNull();
   });
 
   it('uses browser history and the app chrome parent on mobile', async () => {

@@ -14,7 +14,10 @@ import (
 	"strings"
 	"time"
 
+	"go.opentelemetry.io/otel/metric"
+
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
 var redisLog = logger.New("cao:redis")
@@ -32,6 +35,7 @@ type Client struct {
 	singleSession bool
 	sessionPermit chan struct{}
 	sessionErr    error
+	duration      metric.Float64Histogram
 }
 
 type redisConnection struct {
@@ -134,6 +138,10 @@ func NewWithOptions(rawURL string, options Options) (*Client, error) {
 		sessionPermit = make(chan struct{}, 1)
 		sessionPermit <- struct{}{}
 	}
+	duration, err := telemetry.NewDatabaseOperationDuration()
+	if err != nil {
+		return nil, fmt.Errorf("configure Redis telemetry: %w", err)
+	}
 	return &Client{
 		address:       net.JoinHostPort(dialHostname, port),
 		username:      username,
@@ -144,6 +152,7 @@ func NewWithOptions(rawURL string, options Options) (*Client, error) {
 		pool:          make(chan *redisConnection, poolSize),
 		singleSession: options.SingleSession,
 		sessionPermit: sessionPermit,
+		duration:      duration,
 	}, nil
 }
 
@@ -170,7 +179,9 @@ func isLoopbackHost(hostname string) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
-func (c *Client) Do(ctx context.Context, args ...string) (any, error) {
+func (c *Client) Do(ctx context.Context, args ...string) (result any, err error) {
+	ctx, operation := c.startOperation(ctx, redisCommandName(args), -1)
+	defer func() { operation.finish(ctx, err) }()
 	if len(args) > 0 {
 		redisLog.Printf("executing command=%s arguments=%d", args[0], len(args)-1)
 	}
@@ -218,7 +229,10 @@ func (c *Client) Do(ctx context.Context, args ...string) (any, error) {
 	return nil, lastErr
 }
 
-func (c *Client) DoMany(ctx context.Context, commands [][]string) ([]any, error) {
+func (c *Client) DoMany(ctx context.Context, commands [][]string) (values []any, err error) {
+	command, batchSize := redisPipelineName(commands)
+	ctx, operation := c.startOperation(ctx, command, batchSize)
+	defer func() { operation.finish(ctx, err) }()
 	redisLog.Printf("executing command batch size=%d", len(commands))
 	connection, _, err := c.acquire(ctx)
 	if err != nil {

@@ -156,9 +156,16 @@ memory. Empty per-source phase payloads are omitted, so the run and record direc
 filename stems. A phase with no records at all publishes exactly one header-only shard, so a collection
 that observed no agentic runs is explicit rather than indistinguishable from missing output. The dashboard imports all run-information shards before record
 shards so clients can query runs while detailed ingestion continues.
-Each phase filename retains the source shard's sortable prefix before its
-content and normalization hashes, preserving observation precedence across
-repeated records.
+Published phase shards are deduplicated across source files, ordered by
+collection and canonical ID within stable day buckets, and capped at 1 MiB
+including their metadata header. This is separate from the 4 MiB raw-source
+compaction limit. A single canonical record larger than the budget is preserved
+intact in its own shard; evidence is never truncated to fit. Override the
+published size with `cao hash-payloads --max-bytes BYTES`.
+Observation precedence is resolved before sorting, so reordered source records
+with unchanged winning values retain their content hashes. Structural records
+sort before dated records, and each filename includes its day, part index, and
+content hash.
 Dashboard ingestion checks this sidecar first, then falls back to ETag validation
 and finally a downloaded-content hash when neither server-side identity is usable.
 

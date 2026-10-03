@@ -6,8 +6,14 @@ export async function runHashPayloads({
   hashActivityPayloads,
   option,
   rejectUnknownOptions,
+  UsageError,
 }) {
-  rejectUnknownOptions(options, ["database", "shard-dir", "normalized-dir", "runs-dir", "records-dir", "inventory", "output"]);
+  rejectUnknownOptions(options, ["database", "shard-dir", "normalized-dir", "runs-dir", "records-dir", "inventory", "output", "max-bytes"]);
+  const byteLimit = option(options, "max-bytes", false);
+  const maxBytes = byteLimit === undefined ? undefined : Number(byteLimit);
+  if (maxBytes !== undefined && (!Number.isSafeInteger(maxBytes) || maxBytes < 1)) {
+    throw new UsageError("--max-bytes must be a positive integer");
+  }
   const resolvedOption = (name) => option(options, name, false)
     ? path.resolve(option(options, name, false))
     : undefined;
@@ -18,6 +24,7 @@ export async function runHashPayloads({
     runsDirectory: resolvedOption("runs-dir"),
     recordsDirectory: resolvedOption("records-dir"),
     inventoryPath: resolvedOption("inventory"),
+    maxBytes,
   });
   const outputPath = option(options, "output", false);
   if (outputPath) await writeFile(path.resolve(outputPath), `${JSON.stringify(hashes, null, 2)}\n`);

@@ -23,6 +23,32 @@ test('every registered HTTP route has a TypeSpec operation (except static assets
   assert.deepEqual(documented, registered)
 })
 
+test('agent discovery describes public GET and body-free HEAD responses', () => {
+  const operations = openapi.paths['/llms.txt']
+  assert.ok(operations)
+  for (const method of ['get', 'head']) {
+    const operation = operations[method]
+    assert.ok(operation, `${method} /llms.txt is documented`)
+    assert.equal(operation.security, undefined, `${method} /llms.txt is public`)
+    assert.deepEqual(operation.responses['200'].headers['Cache-Control'].schema.enum, ['no-store'])
+    for (const status of ['429', '503']) {
+      assert.ok(operation.responses[status], `${method} /llms.txt describes ${status}`)
+    }
+  }
+  assert.equal(operations.get.responses['200'].content['text/plain; charset=utf-8'].schema.$ref, '#/components/schemas/AgentGuideText')
+  assert.equal(openapi.components.schemas.AgentGuideText.type, 'string')
+  assert.deepEqual(openapi.components.schemas.AgentGuideText.examples, [
+    '# Central Agentic Ops dashboard server\n\nServer commit SHA: unknown\n'
+  ])
+  assert.deepEqual(operations.head.responses['200'].headers['content-type'].schema.enum, ['text/plain; charset=utf-8'])
+  for (const status of ['429', '503']) {
+    assert.ok(operations.get.responses[status].content['application/json'])
+  }
+  for (const response of Object.values(operations.head.responses)) {
+    assert.equal(response.content, undefined, 'HEAD responses must not declare a body')
+  }
+})
+
 test('the generated contract describes the implemented security and wire formats', () => {
   assert.equal(openapi.openapi, '3.1.0')
   assert.equal(openapi.info.version, '1.0.0')

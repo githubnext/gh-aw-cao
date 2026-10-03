@@ -6,7 +6,11 @@ import (
 	"errors"
 	"strconv"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var queryCacheLog = logger.New("cao:redis:querycache")
 
 const (
 	QueryCacheTTL        = 5 * time.Minute
@@ -99,23 +103,12 @@ func validateQueryCacheKey(key string) error {
 	return nil
 }
 
-func (s *Store) queryCacheCommand(ctx context.Context, operation, key string, data []byte, maxResultBytes, maxBytes int64) (any, QueryCacheStats, error) {
-	if err := validateQueryCacheKey(key); err != nil {
-		return nil, QueryCacheStats{}, err
-	}
-	if maxResultBytes <= 0 || maxBytes <= 0 {
-		return nil, QueryCacheStats{}, errors.New("query cache size limits must be positive")
-	}
-	// The hash tag keeps all keys in one slot on clustered Redis providers.
-	prefix := s.Key("{query-cache:v1}:")
-	value, err := s.Client.Do(ctx, "EVAL", queryCacheScript, "2",
-		prefix+"entries", prefix+"expiry",
-		operation, strconv.FormatInt(QueryCacheTTL.Milliseconds(), 10),
-		strconv.FormatInt(maxBytes, 10), strconv.Itoa(QueryCacheMaxEntries), key, string(data),
-		strconv.FormatInt(maxResultBytes, 10))
-	if err != nil {
-		return nil, QueryCacheStats{}, err
-	}
+// decodeQueryCacheReply parses the raw EVAL reply shared by every query
+// cache operation into its payload value and bookkeeping statistics. It is a
+// pure function so each malformed-reply shape (wrong arity, non-integer
+// statistics, a negative count, or resource limits the script failed to
+// enforce) is unit-testable without a Redis server or client double.
+func decodeQueryCacheReply(value any, maxBytes int64) (any, QueryCacheStats, error) {
 	values, ok := value.([]any)
 	if !ok || len(values) != 5 {
 		return nil, QueryCacheStats{}, errors.New("invalid query cache operation response")
@@ -134,6 +127,34 @@ func (s *Store) queryCacheCommand(ctx context.Context, operation, key string, da
 	return values[0], QueryCacheStats{
 		MemoryBytes: numbers[0], Entries: numbers[1], Expired: numbers[2], Evicted: numbers[3],
 	}, nil
+}
+
+func (s *Store) queryCacheCommand(ctx context.Context, operation, key string, data []byte, maxResultBytes, maxBytes int64) (any, QueryCacheStats, error) {
+	if err := validateQueryCacheKey(key); err != nil {
+		return nil, QueryCacheStats{}, err
+	}
+	if maxResultBytes <= 0 || maxBytes <= 0 {
+		return nil, QueryCacheStats{}, errors.New("query cache size limits must be positive")
+	}
+	// The hash tag keeps all keys in one slot on clustered Redis providers.
+	prefix := s.Key("{query-cache:v1}:")
+	value, err := s.Client.Do(ctx, "EVAL", queryCacheScript, "2",
+		prefix+"entries", prefix+"expiry",
+		operation, strconv.FormatInt(QueryCacheTTL.Milliseconds(), 10),
+		strconv.FormatInt(maxBytes, 10), strconv.Itoa(QueryCacheMaxEntries), key, string(data),
+		strconv.FormatInt(maxResultBytes, 10))
+	if err != nil {
+		return nil, QueryCacheStats{}, err
+	}
+	result, stats, err := decodeQueryCacheReply(value, maxBytes)
+	if err != nil {
+		return nil, QueryCacheStats{}, err
+	}
+	if stats.Expired > 0 || stats.Evicted > 0 {
+		queryCacheLog.Printf("query cache maintenance operation=%s expired=%d evicted=%d entries=%d",
+			operation, stats.Expired, stats.Evicted, stats.Entries)
+	}
+	return result, stats, nil
 }
 
 func (s *Store) CachedQueryResult(ctx context.Context, key string, maxResultBytes, maxBytes int64) ([]byte, QueryCacheStats, error) {

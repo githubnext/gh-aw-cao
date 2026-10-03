@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
@@ -51,6 +52,8 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 	callbackCode := "private-oauth-code"
 	request := azureRequest(t, http.MethodGet, "/auth/callback?code="+callbackCode+"&state="+url.QueryEscape(state))
 	request.Header.Set("traceparent", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")
+	request.Header.Set("Tracestate", "vendor=private-tracestate")
+	request.Header.Set("Baggage", "account=private-baggage")
 	request.Header.Set("User-Agent", "private-user-agent")
 	request.Header.Set("X-Forwarded-For", "192.0.2.89")
 	request.AddCookie(stateCookie)
@@ -316,7 +319,7 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 	}
 	for _, private := range []string{callbackCode, firstState, firstCookieValue, state, stateCookie.Value,
 		"private-invalid-state", "private-provider-message",
-		"private-user-agent", "192.0.2.89", "access-old", "refresh-old", "test-user"} {
+		"private-user-agent", "private-tracestate", "private-baggage", "192.0.2.89", "access-old", "refresh-old", "test-user"} {
 		if strings.Contains(string(encoded), private) {
 			t.Fatalf("OAuth telemetry exposed private value %q", private)
 		}
@@ -356,6 +359,9 @@ func TestOAuthRevalidationTelemetryExcludesIdentity(t *testing.T) {
 			github.membershipState = "inactive"
 		}
 		request := azureRequest(t, http.MethodGet, "/api/auth/session")
+		request.Header.Set("Traceparent", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")
+		request.Header.Set("Tracestate", "vendor=private-tracestate")
+		request.Header.Set("Baggage", "account=private-baggage")
 		request.AddCookie(cookie)
 		response := httptest.NewRecorder()
 		app.Handler().ServeHTTP(response, request)
@@ -412,7 +418,7 @@ func TestOAuthRevalidationTelemetryExcludesIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, private := range []string{cookie.Value, "octocat", "access-old", "refresh-old", github.URL} {
+	for _, private := range []string{cookie.Value, "octocat", "access-old", "refresh-old", "private-tracestate", "private-baggage", github.URL} {
 		if strings.Contains(string(encoded), private) {
 			t.Fatalf("revalidation telemetry contains private value %q", private)
 		}
@@ -569,28 +575,63 @@ func TestHTTPServerTelemetryExcludesClientIdentifiers(t *testing.T) {
 		request.RemoteAddr = "192.0.2.50:1234"
 		request.Header.Set("X-Forwarded-For", "198.51.100.90")
 		request.Header.Set("User-Agent", "private-user-agent")
+		request.Header.Set("Traceparent", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")
+		request.Header.Set("Tracestate", "vendor=private-tracestate")
+		request.Header.Set("Baggage", "account=private-baggage")
 		response := httptest.NewRecorder()
 		app.Handler().ServeHTTP(response, request)
 		if response.Code != http.StatusFound && response.Code != http.StatusOK && response.Code != http.StatusMethodNotAllowed {
 			t.Fatalf("request %s returned %d", input.path, response.Code)
 		}
 	}
-	spans := exporter.GetSpans()
+	var spans tracetest.SpanStubs
+	allSpans := exporter.GetSpans()
+	for _, span := range allSpans {
+		if span.SpanKind == trace.SpanKindServer {
+			spans = append(spans, span)
+		}
+	}
 	if len(spans) != 3 || spans[0].Name != "GET /auth/login" || spans[1].Name != "GET /*" || spans[2].Name != " /*" {
 		t.Fatalf("unexpected HTTP spans: %#v", spans)
+	}
+	for i, span := range spans {
+		attrs := spanAttributes(span.Attributes)
+		_, routePresent := attrs["http.route"]
+		if (i == 0 && attrs["http.route"] != "/auth/login") || (i != 0 && routePresent) {
+			t.Fatalf("HTTP route must use a registered, fixed path only: %v", attrs)
+		}
 	}
 	var metrics metricdata.ResourceMetrics
 	if err := reader.Collect(t.Context(), &metrics); err != nil {
 		t.Fatal(err)
 	}
+	var routedRequests uint64
+	for _, scope := range metrics.ScopeMetrics {
+		for _, recorded := range scope.Metrics {
+			if recorded.Name != "http.server.request.duration" {
+				continue
+			}
+			for _, point := range recorded.Data.(metricdata.Histogram[float64]).DataPoints {
+				if route, present := point.Attributes.Value(attribute.Key("http.route")); present {
+					if route.AsString() != "/auth/login" {
+						t.Fatalf("unexpected metric route: %s", route.AsString())
+					}
+					routedRequests += point.Count
+				}
+			}
+		}
+	}
+	if routedRequests != 1 {
+		t.Fatalf("route-labeled HTTP duration samples = %d, want 1", routedRequests)
+	}
 	encoded, err := json.Marshal(struct {
 		Spans   tracetest.SpanStubs
 		Metrics metricdata.ResourceMetrics
-	}{spans, metrics})
+	}{allSpans, metrics})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, private := range []string{"192.0.2.50", "198.51.100.90", "private-user-agent", "private-user-path"} {
+	for _, private := range []string{"192.0.2.50", "198.51.100.90", "private-user-agent", "private-user-path", "private-tracestate", "private-baggage"} {
 		if strings.Contains(string(encoded), private) {
 			t.Fatalf("HTTP telemetry exposed client data %q", private)
 		}

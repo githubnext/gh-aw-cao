@@ -1,9 +1,9 @@
 ---
 name: cao-cli
 description: Use or extend the cao CLI for Central Agentic Ops configuration, activity queries, diagnostics, and dashboard-query maintenance.
-argument-hint: "[command, dashboard-data-url, owner/repo, or workflow]"
 allowed-tools: bash jq
 metadata:
+  argument-hint: "[command, dashboard-data-url, owner/repo, or workflow]"
   version: "1.1.0"
 ---
 

@@ -1,0 +1,56 @@
+{
+  "run": {
+    "organization": "githubnext",
+    "repository": "gh-aw-cao",
+    "workflow": ".github/workflows/optimization-skills-curator.md",
+    "run": "37050176308",
+    "run-attempt": "1"
+  },
+  "tools": [
+    "github/issue_read",
+    "safeoutputs/optimization_skills_curator",
+    "server/with/slash/tool",
+    "/missing-server",
+    "missing-tool/"
+  ],
+  "sources": {
+    "entity-events": [
+      "organization", "repository", "workflow", "run", "run-attempt",
+      "event", "event-source", "event-type", "event-summary", "event-status",
+      "github-entity-type", "safe-output-type", "event-url", "observed-at", "run-link"
+    ],
+    "mcp-tool-calls": [
+      "organization", "repository", "workflow", "run", "mcp-observation",
+      "mcp-server", "mcp-server-version", "mcp-protocol-version", "mcp-tool",
+      "mcp-status", "request-bytes", "response-bytes", "rollout-mode",
+      "engine-version", "gh-aw-version", "observed-at", "run-link",
+      "safe-output-server", "mcp-tool-label", "workflow-key"
+    ],
+    "tool-entity-insights": [
+      "mcp-tool-label", "mcp-server", "mcp-tool", "mcp-status", "observations"
+    ]
+  },
+  "views": [
+    {
+      "page": "run-events",
+      "id": "run-events",
+      "source": "entity-events",
+      "identity": "event",
+      "arguments": ["organization", "repository", "workflow", "run", "run-attempt"]
+    },
+    {
+      "page": "tool-insights",
+      "id": "tool-insights-chart",
+      "source": "tool-entity-insights",
+      "arguments": ["mcp-tool-label"]
+    },
+    {
+      "page": "tool-runs",
+      "id": "tool-runs-table",
+      "source": "mcp-tool-calls",
+      "identity": "mcp-observation",
+      "arguments": ["mcp-tool-label"],
+      "lazy-list": true
+    }
+  ]
+}

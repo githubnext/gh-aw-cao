@@ -11,6 +11,8 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
 // instrumentationName is the OpenTelemetry scope shared with the rest of the
@@ -70,7 +72,9 @@ type operation struct {
 func startOperation(ctx context.Context, name string, bucket BucketID) (context.Context, *operation) {
 	op := &operation{name: name, started: time.Now(), outcome: outcomeSuccess}
 	op.attrs = []attribute.KeyValue{attribute.String(attributeOperation, name)}
-	if bucket.App != "" {
+	bucket = bucket.Normalize()
+	_, invalidBucket := classifyBucketRejection(bucket)
+	if !invalidBucket {
 		op.attrs = append(op.attrs,
 			attribute.String(attributeApp, bucket.App),
 			attribute.String(attributeResource, bucket.Resource))
@@ -78,7 +82,7 @@ func startOperation(ctx context.Context, name string, bucket BucketID) (context.
 	ctx, op.span = otel.Tracer(instrumentationName).Start(ctx, spanPrefix+name,
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(op.attrs...))
-	if bucket.Installation > 0 {
+	if !invalidBucket {
 		op.span.SetAttributes(attribute.Int64(attributeInstallation, bucket.Installation))
 	}
 	return ctx, op
@@ -114,10 +118,11 @@ func (op *operation) finish(ctx context.Context, err error) {
 		outcome = outcomeNoBucket
 		op.span.SetStatus(codes.Ok, "")
 	case err != nil && outcome == outcomeInvalid:
+		op.span.SetAttributes(attribute.String("error.type", "invalid_request"))
 		op.span.SetStatus(codes.Error, "invalid github quota request")
 	case err != nil:
 		outcome = outcomeError
-		op.span.RecordError(err)
+		op.span.SetAttributes(attribute.String("error.type", telemetry.DatabaseErrorType(err)))
 		op.span.SetStatus(codes.Error, "github quota operation failed")
 	default:
 		op.span.SetStatus(codes.Ok, "")

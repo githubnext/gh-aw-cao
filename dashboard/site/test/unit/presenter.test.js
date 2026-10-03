@@ -177,7 +177,7 @@ describe('declarative view title visibility', () => {
       const view = rendered.querySelector('[data-view-id="quiet-chart"]');
       expect(view?.querySelector('.chart-prompt-heading > h3'), `${chart} ${layout}`).toBeNull();
       expect(view?.getAttribute('aria-label'), `${chart} ${layout}`).toBe('Quiet chart');
-      expect(view?.querySelector('.table-intent-button')?.getAttribute('aria-label')).toBe('Fix it: Quiet chart');
+      expect(view?.querySelector('.table-intent-button')?.getAttribute('aria-label')).toBe('Fix: Quiet chart');
       disposeDashboard(rendered);
     }
   });
@@ -224,6 +224,112 @@ describe('declarative view title visibility', () => {
 });
 
 describe('semantic view prompt action', () => {
+  it.each(['auto', 'always', 'none'])('suppresses %s prompts while each view is loading', async (prompt) => {
+    const metadata = /** @type {const} */ ({
+      'source-id': 'runs', 'source-kind': 'fixture', 'as-of': '', 'retrieved-at': '',
+      availability: 'available', completeness: 'complete', freshness: 'fresh'
+    });
+    const views = [
+      { id: 'chart', title: 'Chart', mark: 'chart', chart: 'bar',
+        data: { source: 'chart-data' },
+        encoding: { x: { field: 'workflow', type: 'nominal' }, y: { field: 'count', type: 'quantitative' } } },
+      { id: 'table', title: 'Table', mark: 'table', data: { source: 'table-data' },
+        encoding: { columns: [{ field: 'workflow' }] } },
+      { id: 'metric', title: 'Metric', mark: 'metric', data: { source: 'metric-data' },
+        encoding: { value: { field: 'count', aggregate: 'count' } } }
+    ].map((view) => ({
+      ...view, prompt, subject: 'Show runs', objective: 'Investigate failures', acceptance: 'Runs pass'
+    }));
+    const snapshots = new Map();
+    const loadPageSources = /** @type {import('../../src/presenter.js').PageSourceLoader} */ (vi.fn(() => {
+      throw new Error('Views must subscribe independently.');
+    }));
+    loadPageSources.subscribeViewSources = vi.fn((_pageId, viewId) => new Promise((resolve) => snapshots.set(viewId, resolve)));
+    const rendered = renderDashboardView({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'loading-prompts', title: 'Loading prompts',
+          pages: [{ id: 'overview', kind: 'custom', title: 'Overview', views }]
+        }
+      },
+      sources: {},
+      loadPageSources
+    });
+    document.body.append(rendered);
+    await vi.waitFor(() => expect(snapshots.size).toBe(views.length));
+    for (const view of views) {
+      const section = rendered.querySelector(`[data-view-id="${view.id}"]`);
+      expect(section?.getAttribute('aria-busy')).toBe('true');
+      expect(section?.querySelector('.dashboard-view-skeleton')).not.toBeNull();
+      expect(section?.querySelector('.table-intent-button')).toBeNull();
+    }
+    for (const [index, view] of views.entries()) {
+      const name = view.data.source;
+      snapshots.get(view.id)({ [name]: { source: name, rows: [{ workflow: 'daily', count: 3 }], metadata } });
+      await vi.waitFor(() => {
+        const section = rendered.querySelector(`[data-view-id="${view.id}"]`);
+        expect(section?.hasAttribute('aria-busy')).toBe(false);
+        expect(section?.querySelector('.dashboard-view-skeleton')).toBeNull();
+        expect(Boolean(section?.querySelector('.table-intent-button'))).toBe(prompt !== 'none');
+      });
+      for (const pendingView of views.slice(index + 1)) {
+        expect(rendered.querySelector(`[data-view-id="${pendingView.id}"] .table-intent-button`)).toBeNull();
+      }
+    }
+    disposeDashboard(rendered);
+    rendered.remove();
+  });
+
+  it('retains the prompt control when a page-bound element settles without replacing its DOM', async () => {
+    window.history.replaceState({}, '', '#page-overview?problem=runtime-failure');
+    /** @type {((sources: Record<string, import('../../src/presenter.js').LogicalSourceInput>) => void) | undefined} */
+    let resolveSources;
+    const loadPageSources = /** @type {import('../../src/presenter.js').PageSourceLoader} */ (
+      () => new Promise((resolve) => { resolveSources = resolve; })
+    );
+    const rendered = renderDashboardView({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'page-bound-prompts', title: 'Page-bound prompts',
+          pages: [{
+            id: 'overview', kind: 'custom', title: 'Overview',
+            route: { 'hash-query-parameter': 'problem' },
+            views: [{
+              id: 'problem', title: 'Runtime problem', prompt: 'always',
+              mark: 'element', element: 'problem-detail', data: { sources: ['problem-data'] }
+            }]
+          }]
+        }
+      },
+      sources: {},
+      loadPageSources
+    });
+    document.body.append(rendered);
+    await vi.waitFor(() => expect(resolveSources).toBeTypeOf('function'));
+    const view = rendered.querySelector('[data-view-id="problem"]');
+    const prompt = view?.querySelector('.semantic-prompt-action');
+    expect(prompt).not.toBeNull();
+    expect(view?.querySelector('.problem-detail')?.getAttribute('aria-busy')).toBe('true');
+    if (!resolveSources) throw new Error('Page source loader did not initialize.');
+    resolveSources({
+      'problem-data': {
+        source: 'problem-data', rows: [{ 'problem-title': 'Runtime failure', 'status-detail': 'Needs investigation' }],
+        metadata: {
+          'source-id': 'problem-data', 'source-kind': 'fixture', 'as-of': '', 'retrieved-at': '',
+          availability: 'available', completeness: 'complete', freshness: 'fresh'
+        }
+      }
+    });
+    await vi.waitFor(() => expect(view?.querySelector('.problem-detail')?.getAttribute('aria-busy')).toBe('false'));
+    expect(rendered.querySelector('[data-view-id="problem"]')).toBe(view);
+    expect(view?.querySelector('.semantic-prompt-action')).toBe(prompt);
+    disposeDashboard(rendered);
+    rendered.remove();
+    window.history.replaceState({}, '', '/');
+  });
+
   it('automatically exposes the shared preview on a chart with composed semantics', () => {
     const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ ({
       languageVersion: '0.1.0',
@@ -256,7 +362,7 @@ describe('semantic view prompt action', () => {
       }
     });
     const button = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('[data-view-id="health-chart"] .table-intent-button'));
-    expect(button?.getAttribute('aria-label')).toBe('Fix it: Health chart');
+    expect(button?.getAttribute('aria-label')).toBe('Fix: Health chart');
     const heading = rendered.querySelector('[data-view-id="health-chart"] .chart-prompt-heading');
     expect(heading?.querySelector('h3, h4')?.textContent).toBe('Health chart');
     expect(heading?.querySelector('.chart-prompt-action .table-intent-button')).toBe(button);
@@ -297,7 +403,7 @@ describe('semantic view prompt action', () => {
         const button = rendered.querySelector('[data-view-id="test-chart"] .table-intent-button');
         expect(Boolean(button), `${chart} ${prompt ?? 'default'} annotated=${annotated}`).toBe(expected);
         if (expected) {
-          expect(button?.getAttribute('aria-label')).toBe('Fix it: Test chart');
+          expect(button?.getAttribute('aria-label')).toBe('Fix: Test chart');
           expect(rendered.querySelector('[data-view-id="test-chart"] .chart-prompt-heading > .chart-prompt-action .table-intent-button')).toBe(button);
         }
         if (prompt === 'always') {
@@ -1410,7 +1516,7 @@ describe('presenter built-in and custom pages', () => {
     const page = await activatePage(rendered, 'firewall');
     expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] [data-chart-widget="pie"]')).not.toBeNull();
     const prompt = page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] .table-intent-button');
-    expect(prompt?.getAttribute('aria-label')).toBe('Fix it: Most blocked domains');
+    expect(prompt?.getAttribute('aria-label')).toBe('Fix: Most blocked domains');
     expect(page?.querySelector('.pie-chart-card > .chart-prompt-heading > .chart-prompt-action .table-intent-button')).toBe(prompt);
     prompt?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Prioritize investigation of the most blocked domains');
@@ -1622,6 +1728,10 @@ describe('presenter built-in and custom pages', () => {
 
 
   it('renders indexing trends, database table counts, and transaction cards', async () => {
+    const backend = document.createElement('meta');
+    backend.name = 'dashboard-data-backend';
+    backend.content = 'server-http';
+    document.head.append(backend);
     const metadata = {
       'source-id': 'transactions-fixture',
       'source-kind': 'fixture',
@@ -1744,6 +1854,7 @@ describe('presenter built-in and custom pages', () => {
       expect(transactions?.textContent).toContain('Payload hash');
       expect(transactions?.querySelector('input[type="search"]')).toBeNull();
     } finally {
+      backend.remove();
       rendered.remove();
       window.history.replaceState(null, '', '/');
     }

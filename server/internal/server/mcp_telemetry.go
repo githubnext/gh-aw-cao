@@ -11,9 +11,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
@@ -89,15 +87,11 @@ func mcpMetadata(params mcp.Params) map[string]any {
 }
 
 func mcpTraceContext(ambient context.Context, metadata map[string]any) (context.Context, []trace.Link) {
-	carrier := propagation.MapCarrier{}
-	if value, ok := metadata["traceparent"].(string); ok {
-		carrier["traceparent"] = value
-	}
+	traceparent, _ := metadata["traceparent"].(string)
 	parent := trace.ContextWithSpanContext(ambient, trace.SpanContext{})
-	parent = baggage.ContextWithBaggage(parent, baggage.Baggage{})
-	parent = propagation.TraceContext{}.Extract(parent, carrier)
+	parent = telemetry.ExtractTraceparent(parent, traceparent)
 	if spanContext := trace.SpanContextFromContext(ambient); spanContext.IsValid() {
-		return parent, []trace.Link{{SpanContext: spanContext}}
+		return parent, []trace.Link{{SpanContext: spanContext.WithTraceState(trace.TraceState{})}}
 	}
 	return parent, nil
 }

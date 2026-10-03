@@ -65,6 +65,33 @@ and specification changes belong in their source documents.
 
 In Copilot CLI, the plugin also provides a **Central Agentic Ops** Canvas. Open it to start the repository's local dashboard preview, optionally for a specified `OWNER/REPOSITORY`. The extension gives the agent tools to execute declarative queries with the canonical dashboard query engine and read bounded sections of the dashboard data architecture specification.
 
+The plugin must be enabled in the client; the `com.github.copilot/extensions/`
+bundle is not automatically discovered as a repository-local extension. The
+canvas requires GitHub CLI authentication with Actions read access and a current
+`central-agentic-ops-dashboard` artifact from a successful dashboard run. It
+uses only the installed plugin's server, query engine, specification, and site;
+it never imports executable modules from the active checkout. When necessary it
+stages the bundled site in a temporary workspace directory without relaxing the
+local server's path restrictions. Workspace campaign documents remain JSON
+data. Closing the canvas or stopping/reloading the extension removes its
+temporary preview files and prevents new previews from starting.
+
+Every native CLI action requires a fresh trusted host confirmation of its exact
+command, working directory, and standard input, independently of the dashboard's
+preview dialog. Hosts without interactive elicitation cannot execute canvas
+actions; run the reviewed command in a terminal instead. Installing the complete
+plugin bundle is required; the extension folder alone is not a standalone
+package.
+
+For extension changes, run `npm run typecheck:copilot` and the focused
+`tests/unit/dashboard-extension.test.mjs` and
+`tests/unit/dashboard-local-preview.test.mjs` tests. These exercise the SDK
+declarations, registered tools, workspace layouts, and preview cleanup.
+`npm run check:agent-plugin` validates portable skill metadata, package
+containment, relative documentation links, and required bundled resources. It
+runs during lint and pull-request checks, alongside the plugin installation
+smoke test.
+
 ## GitHub Pages setup
 
 The default Central Agentic Ops campaign installs the dashboard builder and manual Pages publisher. Before running **Central Agentic Ops Dashboard** for the first time:

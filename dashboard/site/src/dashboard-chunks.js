@@ -2,9 +2,12 @@ import { resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { elementLoadsSourcesAsync } from './components/ui-elements.js';
 import { navigationIndicatorSourceNames } from './navigation-indicator.js';
 import { createDebug } from './debug.js';
+import { dashboardDataBackend, viewBackendAvailable } from './view-availability.js';
 
 const debugDashboardChunks = createDebug('dashboard-chunks');
 
+/** @typedef {import('./view-availability.js').DashboardDataBackend | 'all'} BackendSelection */
+/** @typedef {{ sourceNames: string[], lazySourceNames: string[], tableSourceNames: string[] }} PageSourceIndex */
 /**
  * @typedef {{ id?: string, kind?: string, title?: string, description?: string, icon?: string, ['navigation-label']?: string, ['class-name']?: string, route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string }, views?: unknown[], sections?: unknown[], definition?: { views?: unknown[], sections?: unknown[] }, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], ['independent-source-bindings']?: boolean } & Record<string, unknown>} DashboardPage
  */
@@ -107,10 +110,11 @@ function isAsyncElementView(view) {
  * Section counts remain page-bound because their chrome is rendered once.
  * @param {DashboardPage | undefined} page
  * @param {unknown} reusableViews
+ * @param {BackendSelection} [backend]
  */
-export function dashboardPageSourcesAreIndependentlyBound(page, reusableViews = []) {
+export function dashboardPageSourcesAreIndependentlyBound(page, reusableViews = [], backend = dashboardDataBackend()) {
   if (!page) return false;
-  if (page['independent-source-bindings'] === true) return true;
+  if (!dashboardPageIsLoaded(page) && page['independent-source-bindings'] === true) return true;
   const payload = dashboardPagePayload(page, reusableViews);
   if ((payload.sections ?? []).some((section) => (
     isPlainObject(section) && (
@@ -118,7 +122,9 @@ export function dashboardPageSourcesAreIndependentlyBound(page, reusableViews = 
       || Array.isArray(section['count-sources']) && section['count-sources'].length > 0
     )
   ))) return false;
-  const sourceViews = (payload.views ?? []).filter((view) => getViewSources(view).length > 0);
+  const sourceViews = (payload.views ?? []).filter((view) => (
+    (backend === 'all' || viewBackendAvailable(view, backend)) && getViewSources(view).length > 0
+  ));
   return sourceViews.length > 0 && sourceViews.every(isAsyncElementView);
 }
 
@@ -138,16 +144,18 @@ function getViewSources(view) {
  * @param {DashboardDocument} document
  * @param {string} pageId
  * @param {'chart'|'table'|'card'} [viewMode]
+ * @param {BackendSelection} [backend]
  * @returns {string[]}
  */
-export function dashboardPageSourceNames(document, pageId, viewMode) {
+export function dashboardPageSourceNames(document, pageId, viewMode, backend = dashboardDataBackend()) {
   const page = dashboardPage(document, pageId);
   if (!page) return [];
-  const indexed = stringList(page['source-names']);
-  if (!viewMode && indexed.length > 0) return indexed;
+  const indexed = backendSourceIndex(page, backend)?.sourceNames ?? stringList(page['source-names']);
+  if (!dashboardPageIsLoaded(page) && !viewMode && (indexed.length > 0 || backendSourceIndex(page, backend))) return indexed;
   const payload = dashboardPagePayload(page, document.dashboard.views);
   const names = new Set();
   for (const view of payload.views ?? []) {
+    if (backend !== 'all' && !viewBackendAvailable(view, backend)) continue;
     if (isAsyncElementView(view)) continue;
     if (viewMode && !viewMatchesMode(view, viewMode)) continue;
     for (const sourceName of getViewSources(view)) names.add(sourceName);
@@ -173,14 +181,16 @@ export function dashboardPageSourceNames(document, pageId, viewMode) {
  * independently loading UI elements.
  * @param {DashboardDocument} document
  * @param {string} pageId
+ * @param {BackendSelection} [backend]
  * @returns {string[]}
  */
-export function dashboardPageAllSourceNames(document, pageId) {
+export function dashboardPageAllSourceNames(document, pageId, backend = dashboardDataBackend()) {
   const page = dashboardPage(document, pageId);
   if (!page) return [];
-  const names = new Set(dashboardPageSourceNames(document, pageId));
+  const names = new Set(dashboardPageSourceNames(document, pageId, undefined, backend));
   const payload = dashboardPagePayload(page, document.dashboard.views);
   for (const view of payload.views ?? []) {
+    if (backend !== 'all' && !viewBackendAvailable(view, backend)) continue;
     for (const sourceName of getViewSources(view)) names.add(sourceName);
   }
   return [...names];
@@ -198,36 +208,46 @@ function viewMatchesMode(view, mode) {
 /**
  * @param {DashboardDocument} document
  * @param {string} pageId
+ * @param {BackendSelection} [backend]
  * @returns {string[]}
  */
-export function dashboardPageLazySourceNames(document, pageId) {
+export function dashboardPageLazySourceNames(document, pageId, backend = dashboardDataBackend()) {
   const page = dashboardPage(document, pageId);
   if (!page) return [];
-  const indexed = stringList(page['lazy-source-names']);
-  if (indexed.length > 0) return indexed;
+  const indexed = backendSourceIndex(page, backend)?.lazySourceNames ?? stringList(page['lazy-source-names']);
+  if (!dashboardPageIsLoaded(page) && (indexed.length > 0 || backendSourceIndex(page, backend))) return indexed;
   const payload = dashboardPagePayload(page, document.dashboard.views);
   return [...new Set((payload.views ?? []).flatMap((view) =>
-    isPlainObject(view) && view['lazy-list'] === true ? getViewSources(view) : []
+    isPlainObject(view) && view['lazy-list'] === true
+      && (backend === 'all' || viewBackendAvailable(view, backend)) ? getViewSources(view) : []
   ))];
 }
 
 /**
  * @param {DashboardDocument} document
  * @param {string} [pageId]
+ * @param {BackendSelection} [backend]
  * @returns {string[]}
  */
-export function dashboardTableSourceNames(document, pageId) {
+export function dashboardTableSourceNames(document, pageId, backend = dashboardDataBackend()) {
   if (typeof pageId === 'string' && pageId.length > 0) {
     const page = dashboardPage(document, pageId);
     if (!page) return [];
-    const indexed = stringList(page['table-source-names']);
-    if (indexed.length > 0) return indexed;
+    const indexed = backendSourceIndex(page, backend)?.tableSourceNames ?? stringList(page['table-source-names']);
+    if (!dashboardPageIsLoaded(page) && (indexed.length > 0 || backendSourceIndex(page, backend))) return indexed;
     const payload = dashboardPagePayload(page, document.dashboard.views);
     return [...new Set((payload.views ?? []).flatMap((view) =>
-      isPlainObject(view) && view.mark === 'table' ? getViewSources(view) : []
+      isPlainObject(view) && view.mark === 'table'
+        && (backend === 'all' || viewBackendAvailable(view, backend)) ? getViewSources(view) : []
     ))];
   }
-  return [...new Set((document.dashboard.pages ?? []).flatMap((page) => dashboardTableSourceNames(document, page.id)))];
+  return [...new Set((document.dashboard.pages ?? []).flatMap((page) => dashboardTableSourceNames(document, page.id, backend)))];
+}
+
+/** @param {DashboardPage} page @param {BackendSelection} backend @returns {PageSourceIndex | undefined} */
+function backendSourceIndex(page, backend) {
+  if (backend === 'all' || !isPlainObject(page['backend-source-index'])) return undefined;
+  return /** @type {PageSourceIndex | undefined} */ (page['backend-source-index'][backend]);
 }
 
 /**
@@ -261,7 +281,7 @@ export function resolveBuiltInPages(document, templateDocument) {
 /**
  * @param {DashboardPage} page
  * @param {string} chunkPath
- * @param {{ sourceNames: string[], lazySourceNames: string[], tableSourceNames: string[], independentSourceBindings: boolean }} index
+ * @param {PageSourceIndex & { independentSourceBindings: boolean, backendSourceIndex?: Record<string, PageSourceIndex> }} index
  * @returns {DashboardPage}
  */
 function stubDashboardPage(page, chunkPath, index) {
@@ -272,6 +292,7 @@ function stubDashboardPage(page, chunkPath, index) {
     'lazy-source-names': index.lazySourceNames,
     'table-source-names': index.tableSourceNames,
     'independent-source-bindings': index.independentSourceBindings,
+    ...(index.backendSourceIndex ? { 'backend-source-index': index.backendSourceIndex } : {}),
   };
   if (page.kind === 'built-in') {
     delete base.definition;
@@ -297,6 +318,7 @@ export function mergeDashboardPage(stub, page) {
       'lazy-source-names': stub?.['lazy-source-names'],
       'table-source-names': stub?.['table-source-names'],
       'independent-source-bindings': stub?.['independent-source-bindings'],
+      ...(stub?.['backend-source-index'] ? { 'backend-source-index': stub['backend-source-index'] } : {}),
     } : {}),
   };
 }
@@ -350,11 +372,21 @@ export function splitDashboardDocument(source, options = {}) {
     // only some pages have been split so far); leave them exactly as-is
     // instead of re-splitting or discarding their existing chunk reference.
     if (typeof page.chunk === 'string' && page.chunk.length > 0) return page;
-    const sourceNames = dashboardPageSourceNames(document, page.id ?? '');
-    const lazySourceNames = dashboardPageLazySourceNames(document, page.id ?? '');
-    const tableSourceNames = dashboardTableSourceNames(document, page.id ?? '');
-    const independentSourceBindings = dashboardPageSourcesAreIndependentlyBound(page, document.dashboard.views);
+    const sourceNames = dashboardPageSourceNames(document, page.id ?? '', undefined, 'all');
+    const lazySourceNames = dashboardPageLazySourceNames(document, page.id ?? '', 'all');
+    const tableSourceNames = dashboardTableSourceNames(document, page.id ?? '', 'all');
+    const independentSourceBindings = dashboardPageSourcesAreIndependentlyBound(page, document.dashboard.views, 'all');
     const payload = dashboardPagePayload(page, document.dashboard.views);
+    const backendSourceIndexes = (payload.views ?? []).some((view) => isPlainObject(view) && view.requires !== undefined)
+      ? Object.fromEntries(['static', 'hosted'].map((backend) => [
+          backend,
+          {
+            sourceNames: dashboardPageSourceNames(document, page.id ?? '', undefined, /** @type {BackendSelection} */ (backend)),
+            lazySourceNames: dashboardPageLazySourceNames(document, page.id ?? '', /** @type {BackendSelection} */ (backend)),
+            tableSourceNames: dashboardTableSourceNames(document, page.id ?? '', /** @type {BackendSelection} */ (backend)),
+          }
+        ]))
+      : undefined;
     const querySourceNames = new Set([
       ...sourceNames,
       // Indicator queries are available from the first loaded chunk, but are
@@ -372,7 +404,8 @@ export function splitDashboardDocument(source, options = {}) {
       sourceNames,
       lazySourceNames,
       tableSourceNames,
-      independentSourceBindings
+      independentSourceBindings,
+      backendSourceIndex: backendSourceIndexes
     });
   });
   const dashboard = { ...document.dashboard, pages: corePages };

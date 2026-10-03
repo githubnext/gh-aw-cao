@@ -34,7 +34,11 @@ describe('dashboard query architecture', () => {
     const dashboard = authoritativeDashboard.dashboard;
 
     expect(worker).toContain('queryIndexedDatabaseSources(');
-    expect(worker).toMatch(/executeDashboardQueries\(\s*context\.queries,\s*\{ \.\.\.databasePayload, \.\.\.nativeSources \},\s*directRequests/);
+    expect(worker).toMatch(/executeDashboardQueries\(\s*executionQueries,\s*\{ \.\.\.databasePayload, \.\.\.nativeSources \},\s*directRequests/);
+    expect(worker.indexOf('compileDashboardViewPayloadQueries(page, pageId'))
+      .toBeLessThan(worker.indexOf('const nativeSources = await queryIndexedDatabaseSources'));
+    expect(worker.indexOf('const nativeSources = await queryIndexedDatabaseSources'))
+      .toBeLessThan(worker.indexOf('const databasePayload = await queryDatabaseSources'));
     expect(worker).toContain('const replacedSources = new Set(viewPayload.replacedSources)');
     expect(worker).not.toContain('data-health.js');
     expect(worker).not.toMatch(/deriveOverviewSources|deriveRepositorySources|deriveRuntimeSources|deriveWorkflowSources/);

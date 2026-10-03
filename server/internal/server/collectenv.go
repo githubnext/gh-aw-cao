@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -98,9 +99,9 @@ func CollectorConfigFromEnv() (*CollectorConfig, error) {
 	return config, nil
 }
 
-// collectorPrivateKey reads the App private key from a file reference when one
-// is given, so deployments can mount a Key Vault secret instead of exporting
-// key material in process environment listings.
+// collectorPrivateKey prefers a mounted secret file, then a single-line base64
+// value for hosts that cannot preserve multiline environment variables, then
+// the inline PEM used by deployments that do preserve it.
 func collectorPrivateKey() ([]byte, error) {
 	if path := strings.TrimSpace(os.Getenv("CAO_COLLECT_PRIVATE_KEY_FILE")); path != "" {
 		// #nosec G304,G703 -- the operator explicitly configures the private-key file path.
@@ -110,10 +111,20 @@ func collectorPrivateKey() ([]byte, error) {
 		}
 		return content, nil
 	}
+	if encoded := strings.TrimSpace(os.Getenv("CAO_COLLECT_PRIVATE_KEY_BASE64")); encoded != "" {
+		content, err := base64.StdEncoding.DecodeString(encoded)
+		if err != nil {
+			return nil, fmt.Errorf("decode CAO_COLLECT_PRIVATE_KEY_BASE64: %w", err)
+		}
+		if len(strings.TrimSpace(string(content))) == 0 {
+			return nil, errors.New("CAO_COLLECT_PRIVATE_KEY_BASE64 decodes to an empty private key")
+		}
+		return content, nil
+	}
 	inline := strings.TrimSpace(os.Getenv("CAO_COLLECT_PRIVATE_KEY"))
 	if inline == "" {
 		return nil, errors.New(
-			"collection requires CAO_COLLECT_PRIVATE_KEY or CAO_COLLECT_PRIVATE_KEY_FILE")
+			"collection requires CAO_COLLECT_PRIVATE_KEY_FILE, CAO_COLLECT_PRIVATE_KEY_BASE64, or CAO_COLLECT_PRIVATE_KEY")
 	}
 	return []byte(inline), nil
 }

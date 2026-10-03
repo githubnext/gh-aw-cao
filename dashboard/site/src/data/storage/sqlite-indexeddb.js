@@ -162,6 +162,12 @@ export function createSqliteRelationalTables(connection) {
 /** @param {string} filename */
 function createConnection(filename) {
   const connection = new DatabaseSync(filename);
+  connection.function('__idb_key_valid', { deterministic: true }, (key) => (
+    key === null ? 0 : Number(isValidJsonKey(JSON.parse(String(key))))
+  ));
+  connection.function('__idb_key_compare', { deterministic: true }, (left, right) => (
+    compareKeys(JSON.parse(String(left)), JSON.parse(String(right)))
+  ));
   connection.exec('PRAGMA busy_timeout = 5000;');
   connection.exec(SQLITE_INDEXEDDB_METADATA_SCHEMA);
   connection.exec('BEGIN IMMEDIATE;');
@@ -238,9 +244,11 @@ function compareKeys(left, right) {
   return leftText < rightText ? -1 : leftText > rightText ? 1 : 0;
 }
 
-/** @param {unknown} value */
-function hasUndefinedKeyPart(value) {
-  return value === undefined || (Array.isArray(value) && value.some(hasUndefinedKeyPart));
+/** @param {unknown} value @returns {boolean} */
+function isValidJsonKey(value) {
+  return (typeof value === 'number' && Number.isFinite(value))
+    || typeof value === 'string'
+    || (Array.isArray(value) && value.every(isValidJsonKey));
 }
 
 /**
@@ -341,20 +349,72 @@ class SqliteIDBIndex {
     if (!this.transaction) throw new Error('Index is not associated with a transaction');
     const transaction = this.transaction;
     return transaction.runRequest(() => {
-      const store = transaction.database.records(this.storeName);
-      return store
-        .map(({ key, value }) => ({
-          indexKey: valueAtKeyPath(value, this.keyPath),
-          primaryKey: key,
-          value
+      const selection = this.selection(query);
+      return transaction.database.connection.prepare(`${selection.text}
+        SELECT record_key, value, index_key FROM indexed_records WHERE ${selection.predicate}
+      `).all(...selection.values)
+        .map((row) => ({
+          indexKey: JSON.parse(String(row.index_key)),
+          primaryKey: JSON.parse(String(row.record_key)),
+          value: JSON.parse(String(row.value))
         }))
-        .filter(({ indexKey }) => !hasUndefinedKeyPart(indexKey) && matchesQuery(indexKey, query))
         .sort((left, right) => (
           compareKeys(left.indexKey, right.indexKey)
           || compareKeys(left.primaryKey, right.primaryKey)
         ))
-        .map(({ value }) => clone(value));
+        .map(({ value }) => value);
     });
+  }
+
+  /** @param {unknown} [query] */
+  count(query) {
+    if (!this.transaction) throw new Error('Index is not associated with a transaction');
+    const transaction = this.transaction;
+    return transaction.runRequest(() => {
+      const selection = this.selection(query);
+      const row = /** @type {{ count: number }} */ (transaction.database.connection.prepare(`${selection.text}
+        SELECT count(*) AS count FROM indexed_records WHERE ${selection.predicate}
+      `).get(...selection.values));
+      return Number(row.count);
+    });
+  }
+
+  /** @param {unknown} query */
+  selection(query) {
+    if (!this.transaction) throw new Error('Index is not associated with a transaction');
+    const paths = (Array.isArray(this.keyPath) ? this.keyPath : [this.keyPath])
+      .map((path) => `$${path.split('.').map((part) => `.${JSON.stringify(part)}`).join('')}`);
+    // The JSON -> operator retains types (including booleans and arrays), unlike
+    // json_extract. Only extracted keys, never event documents, reach callbacks.
+    const keyExpression = Array.isArray(this.keyPath)
+      ? `json_array(${paths.map(() => 'value -> ?').join(', ')})`
+      : 'value -> ?';
+    const values = [...paths, this.transaction.database.name, this.storeName];
+    const predicates = ['__idb_key_valid(index_key) = 1'];
+    /** @param {unknown} key @param {string} operator */
+    const bound = (key, operator) => {
+      if (!isValidJsonKey(key)) {
+        const error = new TypeError('Invalid IndexedDB key');
+        error.name = 'DataError';
+        throw error;
+      }
+      predicates.push(`__idb_key_compare(index_key, ?) ${operator} 0`);
+      values.push(encodeKey(key));
+    };
+    if (query instanceof SqliteIDBKeyRange) {
+      if (query.lower !== undefined) bound(query.lower, query.lowerOpen ? '>' : '>=');
+      if (query.upper !== undefined) bound(query.upper, query.upperOpen ? '<' : '<=');
+    } else if (query !== undefined && query !== null) {
+      bound(query, '=');
+    }
+    return {
+      text: `WITH indexed_records AS (
+        SELECT record_key, value, ${keyExpression} AS index_key
+        FROM __idb_records WHERE database_name = ? AND store_name = ?
+      )`,
+      values,
+      predicate: predicates.join(' AND ')
+    };
   }
 }
 

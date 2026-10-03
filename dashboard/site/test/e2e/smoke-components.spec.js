@@ -105,9 +105,9 @@ test('campaign problem detail renders a responsive full view without a table', a
   await expect(problemDetail.getByRole('heading', { name: 'Failure' })).toBeVisible();
   await expect(problemDetail.getByRole('heading', { name: 'Scope' })).toBeVisible();
   await expect(problemDetail.getByRole('heading', { name: 'Runtime environment' })).toBeVisible();
-  const fixItButton = problemDetail.getByRole('button', { name: 'Fix it' });
-  await expect(fixItButton).toBeVisible();
-  const buttonColors = await fixItButton.evaluate((button) => {
+  const fixButton = problemDetail.getByRole('button', { name: 'Fix', exact: true });
+  await expect(fixButton).toBeVisible();
+  const buttonColors = await fixButton.evaluate((button) => {
     const tokenProbe = document.createElement('span');
     tokenProbe.style.backgroundColor = 'var(--accent)';
     tokenProbe.style.color = 'var(--canvas)';
@@ -131,7 +131,7 @@ test('campaign problem detail renders a responsive full view without a table', a
   await expect(runLink.locator('svg')).toHaveCount(0);
   const rawLog = problemDetail.locator('.problem-view-log pre');
   await rawLog.evaluate((element) => { element.scrollTop = 100; });
-  await fixItButton.focus();
+  await fixButton.focus();
   await page.evaluate(async () => {
     const { publishSource, sourceState } = await import(new URL('/src/source-store.js', window.location.href).href);
     const source = sourceState('campaign-problem-items').get().source;
@@ -140,11 +140,11 @@ test('campaign problem detail renders a responsive full view without a table', a
       ...source, rows: [{ ...source.rows[0], 'occurrence-count': 66 }]
     });
   });
-  await expect(fixItButton).toBeFocused();
+  await expect(fixButton).toBeFocused();
   await expect(problemDetail.locator('.problem-view-highlights')).toContainText('Occurrences66');
   expect(await rawLog.evaluate((element) => element.scrollTop)).toBe(100);
   await page.keyboard.press('Enter');
-  const prompt = problemDetail.getByRole('dialog', { name: 'Fix it prompt preview' });
+  const prompt = problemDetail.getByRole('dialog', { name: 'Fix prompt preview' });
   await expect(prompt).toBeVisible();
   await expect(prompt.locator('.table-intent-preview')).toContainText('"occurrence-count": 66');
   await page.evaluate(async () => {
@@ -159,7 +159,7 @@ test('campaign problem detail renders a responsive full view without a table', a
   await expect(prompt.locator('.table-intent-preview')).toContainText('"occurrence-count": 67');
   await page.keyboard.press('Escape');
   await expect(prompt).not.toBeVisible();
-  await expect(fixItButton).toBeFocused();
+  await expect(fixButton).toBeFocused();
   await page.setViewportSize({ width: 500, height: 800 });
   await expect(problemDetail.locator('.problem-view-sections')).toHaveCSS('grid-template-columns', '500px');
 });

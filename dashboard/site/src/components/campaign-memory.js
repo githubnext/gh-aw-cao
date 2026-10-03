@@ -214,8 +214,11 @@ function renderCampaignTree(campaigns, signal) {
     const details = /** @type {HTMLDetailsElement} */ (h(
       'details',
       { className: 'cao-memory-campaign-branch' },
-      h('summary', { className: 'cao-memory-campaign', role: 'treeitem', 'aria-expanded': 'false', tabindex: '-1' },
-        octicon('file-directory-fill'),
+      h('summary', {
+        className: 'cao-memory-campaign', role: 'treeitem', 'aria-expanded': 'false',
+        tabindex: '-1', title: campaign.campaignName
+      },
+        octicon('chevron-right', 'memory-tree-chevron'),
         h('span', null, campaign.campaignName)
       ),
       files
@@ -370,16 +373,16 @@ function renderFileTree(entries, select) {
       h(
         'details',
         { className: 'campaign-memory-directory', open: true },
-        h('summary', { role: 'treeitem', 'aria-expanded': 'true', tabindex: '-1' },
-          octicon('file-directory'), h('span', null, name)),
+        h('summary', { role: 'treeitem', 'aria-expanded': 'true', tabindex: '-1', title: name },
+          octicon('chevron-right', 'memory-tree-chevron'), h('span', null, name)),
         renderNode(child)
       )
     )),
     ...node.files.map(({ name, entry }) => {
       /** @type {HTMLButtonElement} */
       let button;
-      button = renderMemoryFileButton(name, entry.size,
-        { title: entry.path, role: 'treeitem', tabindex: '-1' }, () => select(entry, button));
+      button = renderMemoryFileButton(entry, name,
+        { role: 'treeitem', tabindex: '-1' }, () => select(entry, button));
       return h('li', { role: 'none' }, button);
     })
   );
@@ -524,8 +527,8 @@ function memoryView({ campaignName, manifest, selectedPath, file, mobileView, se
           'li',
           null,
           renderMemoryFileButton(
+            entry,
             entry.path,
-            entry.size,
             { 'aria-current': entry.path === selectedPath ? 'true' : null },
             () => select(entry.path)
           )
@@ -691,23 +694,28 @@ function formatFileSize(bytes) {
 }
 
 /**
- * Renders the shared `campaign-memory-file` `<button>` markup (file icon,
- * name label, and formatted file size) used by both the multi-campaign file
- * tree and the single-campaign flat file list, which otherwise duplicated
- * the same button structure with only the label, extra attributes, and
- * click handler differing.
+ * @param {MemoryFile} entry
  * @param {string} label
- * @param {number} size
  * @param {Record<string, unknown>} attributes
  * @param {() => void} onclick
  * @returns {HTMLButtonElement}
  */
-function renderMemoryFileButton(label, size, attributes, onclick) {
+function renderMemoryFileButton(entry, label, attributes, onclick) {
+  const extension = entry.path.split('.').at(-1)?.toLowerCase();
+  const icon = extension === 'md' ? 'markdown'
+    : ['json', 'jsonl', 'yaml', 'yml'].includes(extension ?? '') ? 'file-code'
+      : 'file';
   return /** @type {HTMLButtonElement} */ (h(
     'button',
-    { type: 'button', className: 'campaign-memory-file', ...attributes, onclick },
-    octicon('file'),
-    h('span', { className: 'memory-file-name' }, label),
-    h('small', null, formatFileSize(size))
+    {
+      type: 'button',
+      className: 'campaign-memory-file',
+      title: `${entry.path} (${formatFileSize(entry.size)})`,
+      'aria-label': `${entry.path}, ${formatFileSize(entry.size)}`,
+      ...attributes,
+      onclick
+    },
+    octicon(icon),
+    h('span', { className: 'memory-file-name' }, label)
   ));
 }

@@ -32,6 +32,48 @@ func (queryCacheReplyClient) DoMany(context.Context, [][]string) ([]any, error) 
 	return nil, errors.New("unexpected cache pipeline")
 }
 
+func TestDecodeQueryCacheReply(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		reply      any
+		maxBytes   int64
+		wantErr    bool
+		wantStats  QueryCacheStats
+		wantResult any
+	}{
+		{
+			name: "valid reply reports statistics", reply: []any{"value", int64(128), int64(2), int64(1), int64(3)},
+			maxBytes: 4096, wantStats: QueryCacheStats{MemoryBytes: 128, Entries: 2, Expired: 1, Evicted: 3},
+			wantResult: "value",
+		},
+		{name: "nil reply is rejected", reply: nil, maxBytes: 4096, wantErr: true},
+		{name: "missing statistics is rejected", reply: []any{"value", int64(0)}, maxBytes: 4096, wantErr: true},
+		{name: "negative memory is rejected", reply: []any{"value", int64(-1), int64(1), int64(0), int64(0)}, maxBytes: 4096, wantErr: true},
+		{name: "string statistic is rejected", reply: []any{"value", "128", int64(1), int64(0), int64(0)}, maxBytes: 4096, wantErr: true},
+		{name: "memory budget exceeded is rejected", reply: []any{"value", int64(4097), int64(1), int64(0), int64(0)}, maxBytes: 4096, wantErr: true},
+		{
+			name:  "entry limit exceeded is rejected",
+			reply: []any{"value", int64(128), int64(QueryCacheMaxEntries + 1), int64(0), int64(0)}, maxBytes: 4096, wantErr: true,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			result, stats, err := decodeQueryCacheReply(test.reply, test.maxBytes)
+			if test.wantErr {
+				if err == nil {
+					t.Fatal("invalid Redis reply was accepted")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if result != test.wantResult || stats != test.wantStats {
+				t.Fatalf("result=%v stats=%+v, want result=%v stats=%+v", result, stats, test.wantResult, test.wantStats)
+			}
+		})
+	}
+}
+
 func TestQueryCacheRejectsMalformedRedisReplies(t *testing.T) {
 	key := queryDigest("query")
 	for _, test := range []struct {

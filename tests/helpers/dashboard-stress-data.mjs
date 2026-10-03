@@ -10,6 +10,8 @@ const DEFAULT_SAMPLE = resolve("dashboard/site/test/fixtures/gh-aw-logs/cached-v
 // Keep this aligned with the unconditional run event emitters in the gh-aw
 // logs adapter: started, agent session, completed, usage, and working set.
 const BASE_DERIVED_EVENTS = 5;
+// Canonical curation removes started, completed, usage, and working-set copies.
+const CURATED_DERIVED_EVENTS = 4;
 const MAX_DERIVED_EVENTS = 100;
 const MAX_TEMPLATES = 256;
 const MAX_RUNS = 1_000_000;
@@ -354,6 +356,7 @@ export async function generateDashboardStressData({
   }
   const shardSize = Math.ceil(options.runs / options.shards);
   const files = [];
+  let retainedAudits = 0;
   for (let shardIndex = 0; shardIndex < options.shards; shardIndex += 1) {
     const firstRun = shardIndex * shardSize;
     const lastRun = Math.min(options.runs, firstRun + shardSize);
@@ -364,6 +367,8 @@ export async function generateDashboardStressData({
     const hash = createHash("sha256");
     for (let index = firstRun; index < lastRun; index += 1) {
       const template = inspected.templates[index % inspected.templates.length];
+      retainedAudits += options.derivedEventsPerRun - CURATED_DERIVED_EVENTS
+        - (template.conclusion === "failure" ? 1 : 0);
       const line = `${JSON.stringify(syntheticRun(template, index, options))}\n`;
       hash.update(line);
       await writeLine(stream, line);
@@ -389,7 +394,7 @@ export async function generateDashboardStressData({
     expected: {
       repositories: options.repositories,
       runs: options.runs,
-      audits: options.runs * options.derivedEventsPerRun,
+      audits: retainedAudits,
     },
     files,
   };

@@ -351,6 +351,89 @@
   }
  },
  {
+  "name": "mcp-tool-workflow-totals",
+  "subject": "Summarize observed MCP calls by tool and workflow before the tool inventory is materialized.",
+  "objective": "Keep MCP inventory intermediates bounded without dropping calls or changing byte totals.",
+  "acceptance": "Count retained observation identities and sum request and response bytes per server, tool, and workflow; retain safe-output-server classification for downstream exclusion.",
+  "from": "mcp-calls",
+  "compute": [
+   {
+    "as": "safe-output-server",
+    "function": "equals-any",
+    "args": [
+     {
+      "field": "mcp-server"
+     },
+     {
+      "value": "safe_outputs"
+     }
+    ]
+   },
+   {
+    "as": "mcp-tool-label",
+    "function": "concat",
+    "args": [
+     {
+      "field": "mcp-server"
+     },
+     {
+      "value": "/"
+     },
+     {
+      "field": "mcp-tool"
+     }
+    ]
+   },
+   {
+    "as": "workflow-key",
+    "function": "concat",
+    "args": [
+     {
+      "field": "organization"
+     },
+     {
+      "value": "/"
+     },
+     {
+      "field": "repository"
+     },
+     {
+      "value": ":"
+     },
+     {
+      "field": "workflow"
+     }
+    ]
+   }
+  ],
+  "aggregate": {
+   "by": [
+    "safe-output-server",
+    "mcp-tool-label",
+    "mcp-server",
+    "mcp-tool",
+    "workflow-key"
+   ],
+   "values": [
+    {
+     "field": "mcp-observation",
+     "as": "calls",
+     "reducer": "count"
+    },
+    {
+     "field": "request-bytes",
+     "as": "request-bytes",
+     "reducer": "sum"
+    },
+    {
+     "field": "response-bytes",
+     "as": "response-bytes",
+     "reducer": "sum"
+    }
+   ]
+  }
+ },
+ {
   "name": "mcp-tool-calls",
   "subject": "Prepare MCP tool calls for aggregation with safe-output-server calls identified for downstream exclusion.",
   "objective": "Identify retained MCP call labels and safe-output-server classification for downstream tool-use investigation.",
@@ -3669,7 +3752,7 @@
   "objective": "Expose tool-level call, workflow, and byte totals to investigate observed MCP usage.",
   "acceptance": "Group only observed non-safe-output-server calls by server and tool, preserving counts and byte totals; lack of calls does not establish no access, and call volume does not establish value or permission.",
   "description": "Observed MCP tool-call totals grouped by MCP server and tool, with the number of distinct calling workflows.",
-  "from": "mcp-tool-calls",
+  "from": "mcp-tool-workflow-totals",
   "filter": {
    "predicates": [
     {
@@ -3686,9 +3769,9 @@
    ],
    "values": [
     {
-     "field": "mcp-observation",
+     "field": "calls",
      "as": "calls",
-     "reducer": "count"
+     "reducer": "sum"
     },
     {
      "field": "workflow-key",

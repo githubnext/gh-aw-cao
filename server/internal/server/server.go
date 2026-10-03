@@ -24,7 +24,9 @@ import (
 	"time"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
+	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
@@ -569,7 +571,18 @@ func (a *App) Handler() http.Handler {
 	mux := http.NewServeMux()
 	routePatterns := map[string]struct{}{}
 	register := func(pattern string, handler http.HandlerFunc) {
-		mux.HandleFunc(pattern, handler)
+		_, route, _ := strings.Cut(pattern, " ")
+		mux.HandleFunc(pattern, func(response http.ResponseWriter, request *http.Request) {
+			if pattern != "GET /auth/callback" {
+				span := trace.SpanFromContext(request.Context())
+				span.SetName(request.Method + " " + route)
+				routeAttribute := semconv.HTTPRoute(route)
+				span.SetAttributes(routeAttribute)
+				labeler, _ := otelhttp.LabelerFromContext(request.Context())
+				labeler.Add(routeAttribute)
+			}
+			handler(response, request)
+		})
 		routePatterns[pattern] = struct{}{}
 	}
 	if a.oauth != nil {
@@ -583,13 +596,11 @@ func (a *App) Handler() http.Handler {
 	register("GET /api/v1/health", a.health)
 	register("GET /api/health", a.health)
 	register("GET /api/readiness", a.readiness)
-	mux.HandleFunc("GET /llms.txt", a.llms)
-	routePatterns["GET /llms.txt"] = struct{}{}
+	register("GET /llms.txt", a.llms)
 	register("GET /api/v1/events", a.events)
 	register("POST /api/v1/query", a.query)
 	if a.mcp != nil {
-		mux.Handle("POST /mcp", a.mcp)
-		routePatterns["POST /mcp"] = struct{}{}
+		register("POST /mcp", a.mcp.ServeHTTP)
 	}
 	register("GET /api/v1/diagnostics", a.diagnostics)
 	register("GET /api/v1/memory/{campaign}", a.repositoryMemoryCampaign)
@@ -627,18 +638,17 @@ func (a *App) Handler() http.Handler {
 		restored.Body = request.Body
 		tracedHandler.ServeHTTP(response, restored)
 	}), telemetry.SpanHTTPServer,
+		// Sanitized parents are non-recording contexts, not SDK providers.
+		otelhttp.WithTracerProvider(otel.GetTracerProvider()),
 		otelhttp.WithFilter(func(request *http.Request) bool {
 			// OAuth callbacks use a dedicated, allowlisted server span instead
 			// of the generic HTTP instrumentation.
 			return request.Method != http.MethodGet || request.URL.Path != "/auth/callback"
 		}),
 		otelhttp.WithSpanNameFormatter(func(_ string, request *http.Request) string {
-			// Match against the fixed, small set of registered API/auth
-			// patterns directly instead of calling mux.Handler, which
-			// would re-run ServeMux's route resolution a second time per
-			// request just to name the span. Every other path (static
-			// dashboard assets) is bucketed under one low-cardinality
-			// span name.
+			// Exact routes are named up front; parameterized routes are
+			// named when the mux dispatches to their registered handler.
+			// Other paths share one bounded name without a second mux lookup.
 			pattern := request.Method + " " + request.URL.Path
 			if _, ok := routePatterns[pattern]; ok {
 				return pattern
@@ -647,7 +657,8 @@ func (a *App) Handler() http.Handler {
 		}),
 	)
 	safeTelemetry := http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		safe := request.Clone(context.WithValue(request.Context(), originalHTTPRequestKey{}, request))
+		ctx := telemetry.ExtractTraceparent(request.Context(), request.Header.Get("Traceparent"))
+		safe := request.Clone(context.WithValue(ctx, originalHTTPRequestKey{}, request))
 		safe.RemoteAddr = ""
 		safe.Host = ""
 		safe.RequestURI = ""

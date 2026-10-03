@@ -2,10 +2,10 @@
 
 `server/spec/` is the editable TypeSpec contract for the Go dashboard server.
 `main.tsp` imports independent domains: shared response/auth types, Dashboard
-Language queries and SSE, health, hosted sessions, canonical entities, repository
-memory, ingestion/administration, and the optional MCP HTTP transport. MCP
-protocol messages and tool schemas, and static dashboard assets, are intentionally
-out of scope.
+Language queries and SSE, health, agent discovery, hosted sessions, canonical
+entities, repository memory, ingestion/administration, and the optional MCP HTTP
+transport. MCP protocol messages and tool schemas, and static dashboard assets,
+are intentionally out of scope.
 
 `storage.tsp` is a separate, **fresh-only** physical Postgres contract.
 `storage.tspconfig.yaml` runs the repository-owned `postgres-emitter.mjs` to
@@ -114,9 +114,9 @@ add a new port only when a second implementation or parity test needs one.
 The Go server has **two authentication profiles**: the loopback local profile
 requires an `Authorization: Bearer` capability for protected `/api/` routes;
 hosted mode requires an authorized `cao_session` cookie and `X-CSRF-Token` on
-mutations. Health/readiness are public, while the webhook authenticates the raw
-body using `X-Hub-Signature-256`. Collection and quota endpoints require an
-admin-authorized session in hosted mode. Hosted-only `/auth/` routes do not exist
+mutations. Health/readiness and `GET`/`HEAD /llms.txt` are public, while the webhook
+authenticates the raw body using `X-Hub-Signature-256`. Collection and quota
+endpoints require an admin-authorized session in hosted mode. Hosted-only `/auth/` routes do not exist
 in the local profile. `302` OAuth callback failures return an HTML error page,
 not the JSON error body used by ordinary API endpoints. Limits and runtime
 authorization rules are enforced by the implementation, not by JSON Schema.

@@ -356,6 +356,7 @@ test("canvas dashboard executes only declared CLI actions through the provided e
       await writeFile(path.join(destination, "sources.json"), "{}");
     },
     canvas: true,
+    approveCliAction: async () => true,
     executeCliAction: async ({ onOutput, ...action }) => {
       calls.push(action);
       onOutput({ stream: "stdout", data: "comp" });
@@ -584,6 +585,7 @@ test("local dashboard server downloads dashboard-build data with GitHub CLI", {
   await writeFile(path.join(root, "index.html"), "<!doctype html><body>preview</body>");
   await writeFile(path.join(root, "dashboard.json"), dashboard("built-in"));
   await writeFile(ghExecutable, `#!/bin/sh
+[ "$(pwd -P)" = ${JSON.stringify(await realpath(root))} ] || exit 4
 if [ "$1" = "api" ]; then
   if [ "$2" = "repos/acme/control" ]; then
     printf 'main\\n'

@@ -2,9 +2,12 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { derived, effect, onCleanup, render, state } from '../reactive.js';
 import { browserFirstLoad } from '../browser-first-load.js';
+import { createDebug } from '../debug.js';
 import { createModalDialog, renderCloseButton } from './ui-primitives.js';
 import { restoreDashboardTheme } from './theme-settings.js';
 import { createFirstLoadMessagePicker, FIRST_LOAD_MESSAGE_INTERVAL_MS } from './first-load-messages.js';
+
+const debugFirstLoadOverlay = createDebug('first-load-overlay');
 
 /** @param {string} wide @param {string} compact */
 function responsiveCopy(wide, compact) {
@@ -20,6 +23,7 @@ function responsiveCopy(wide, compact) {
  */
 export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) {
   if (ownerSignal.aborted || browserFirstLoad.get().status === 'inactive') return;
+  debugFirstLoadOverlay({ event: 'mounted', status: browserFirstLoad.get().status });
   const lifetime = new AbortController();
   const signal = lifetime.signal;
   ownerSignal.addEventListener('abort', () => lifetime.abort(), { once: true, signal });
@@ -31,7 +35,10 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
     close();
     dialog.remove();
   }, { once: true });
-  const dismiss = () => browserFirstLoad.set((current) => ({ ...current, dismissed: true }));
+  const dismiss = () => {
+    debugFirstLoadOverlay({ event: 'dismissed' });
+    browserFirstLoad.set((current) => ({ ...current, dismissed: true }));
+  };
   const dismissButton = h('button', {
     type: 'button',
     className: 'first-load-browse',
@@ -40,7 +47,10 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
   const retryButton = h('button', {
     type: 'button',
     className: 'first-load-browse',
-    onClick: retry
+    onClick: () => {
+      debugFirstLoadOverlay({ event: 'retry-requested' });
+      retry();
+    }
   }, 'Retry import');
   const title = h('h2');
   const message = h('p', { className: 'first-load-message', 'aria-live': 'off' });

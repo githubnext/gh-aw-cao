@@ -1,7 +1,8 @@
 ---
 name: debug-cao
 description: Diagnose a Central Agentic Ops deployment failure and leave bounded, reproducible evidence for the next action.
-argument-hint: "Provide the control repository and a run URL, issue URL, failure code, or symptom"
+metadata:
+  argument-hint: "Provide the control repository and a run URL, issue URL, failure code, or symptom"
 ---
 
 # Debug Central Agentic Ops

@@ -1,13 +1,28 @@
-import { access } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { cp, mkdtemp, realpath, rm } from "node:fs/promises";
+import { dirname, isAbsolute, join, relative, sep } from "node:path";
+import { pathToFileURL } from "node:url";
+import { resolveBundledResource } from "./bundled-resources.mjs";
 
+/**
+ * @param {{
+ *   workingDirectory: string,
+ *   repository?: string,
+ *   ghExecutable?: string,
+ *   approveCliAction: (action: { id: string, command: string, input?: string }) => Promise<boolean>,
+ *   executeCliAction: (action: {
+ *     id: string, command: string, input?: string,
+ *     onOutput: (event: { stream: "stdout" | "stderr", data: string }) => void,
+ *   }) => Promise<unknown>,
+ * }} options
+ */
 export async function startLocalDashboardPreview({
   workingDirectory,
   repository,
   executeCliAction,
+  approveCliAction,
+  ghExecutable = "gh",
 }) {
-  const localServerPath = await findLocalServer(workingDirectory);
+  const localServerPath = await resolveBundledResource("localServer");
   const localServer = await import(pathToFileURL(localServerPath).href);
   if (typeof localServer.startDashboardServer !== "function") {
     throw new Error(
@@ -15,35 +30,55 @@ export async function startLocalDashboardPreview({
     );
   }
 
-  return localServer.startDashboardServer({
-    workingDirectory,
-    repository,
-    canvas: true,
-    executeCliAction,
-    port: 0,
-    output: () => {},
-    requestOutput: () => {},
-    traceOutput: () => {},
-  });
-}
-
-async function findLocalServer(workingDirectory) {
-  const extensionDirectory = dirname(fileURLToPath(import.meta.url));
-  const candidates = [
-    join(workingDirectory, "dashboard", "local-server.mjs"),
-    join(workingDirectory, ".github", "aw", "dashboard", "local-server.mjs"),
-    resolve(extensionDirectory, "../../../dashboard/local-server.mjs"),
-  ];
-
-  for (const candidate of new Set(candidates)) {
-    try {
-      await access(candidate);
-      return candidate;
-    } catch {
-      // Continue to the next supported installation layout.
+  const workspace = await realpath(workingDirectory);
+  const dashboardDirectory = dirname(await realpath(localServerPath));
+  const dashboardRelativePath = relative(workspace, dashboardDirectory);
+  const isWorkspaceDashboard = dashboardRelativePath === ""
+    || (!isAbsolute(dashboardRelativePath)
+      && dashboardRelativePath !== ".."
+      && !dashboardRelativePath.startsWith(`..${sep}`));
+  let stagedDirectory;
+  let siteRoot = await resolveBundledResource("site");
+  try {
+    if (!isWorkspaceDashboard) {
+      stagedDirectory = await mkdtemp(join(workspace, ".cao-dashboard-preview-"));
+      const stagedSite = join(stagedDirectory, "site");
+      const sourceSite = siteRoot;
+      await cp(sourceSite, stagedSite, {
+        recursive: true,
+        filter: (source) => !["node_modules", "dist", "test", "test-results", "scripts"]
+          .includes(relative(sourceSite, source).split(sep)[0]),
+      });
+      siteRoot = stagedSite;
     }
+    const preview = await localServer.startDashboardServer({
+      workingDirectory: workspace,
+      siteRoot,
+      catalogRoot: isWorkspaceDashboard ? dirname(dashboardDirectory) : workspace,
+      repository,
+      ghExecutable,
+      canvas: true,
+      executeCliAction,
+      approveCliAction,
+      host: "127.0.0.1",
+      port: 0,
+      output: (...values) => console.error(...values),
+      requestOutput: () => {},
+      traceOutput: () => {},
+    });
+    return {
+      url: preview.url,
+      async close() {
+        await preview.close();
+        if (stagedDirectory) {
+          await rm(stagedDirectory, { recursive: true, force: true });
+        }
+      },
+    };
+  } catch (error) {
+    if (stagedDirectory) {
+      await rm(stagedDirectory, { recursive: true, force: true });
+    }
+    throw error;
   }
-  throw new Error(
-    "Could not find dashboard/local-server.mjs in the workspace or installed plugin.",
-  );
 }
