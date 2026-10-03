@@ -51,7 +51,10 @@ test('agent discovery describes public GET and body-free HEAD responses', () => 
 
 test('the generated contract describes the implemented security and wire formats', () => {
   assert.equal(openapi.openapi, '3.1.0')
-  assert.equal(openapi.info.version, '1.0.0')
+  assert.equal(openapi.info.version, '2.0.0')
+  for (const path of ['/api/runs/{id}/jobs', '/api/runs/{id}/sessions', '/api/sessions/{id}/events']) {
+    assert.equal(openapi.paths[path], undefined)
+  }
   const query = openapi.paths['/api/v1/query'].post
   assert.ok(query.security.some(entry => 'BearerAuth' in entry))
   assert.ok(query.security.some(entry => 'ApiKeyAuth' in entry))

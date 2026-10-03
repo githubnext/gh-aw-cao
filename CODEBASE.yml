@@ -174,7 +174,7 @@ components:
     responsibility: run one hosted replica over one fail-closed serialized Upstash TCP session with a fresh process namespace and artifact-only ingestion
   dashboard_canonical_api:
     path: server/internal/server/
-    responsibility: expose canonical repositories, workflows, and runs without exposing Redis keys or representations; preserve legacy execution-list routes as empty results
+    responsibility: expose canonical repositories, workflows, and runs without exposing Redis keys or representations
   dashboard_github_auth:
     path: server/internal/server/oauth.go
     responsibility: authenticate hosted users through GitHub and enforce explicit organization or team authorization with server-side sessions

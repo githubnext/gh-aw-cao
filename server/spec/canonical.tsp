@@ -20,13 +20,4 @@ namespace Canonical {
 
   @route("/api/workflows/{id}/runs")
   @get op workflowRuns(@path id: string): CanonicalRow[] | Unauthorized | NotFound | Unavailable;
-
-  @route("/api/runs/{id}/jobs")
-  @get op runJobs(@path id: string): CanonicalRow[] | Unauthorized | Unavailable;
-
-  @route("/api/runs/{id}/sessions")
-  @get op runSessions(@path id: string): CanonicalRow[] | Unauthorized | Unavailable;
-
-  @route("/api/sessions/{id}/events")
-  @get op sessionEvents(@path id: string): CanonicalRow[] | Unauthorized | Unavailable;
 }

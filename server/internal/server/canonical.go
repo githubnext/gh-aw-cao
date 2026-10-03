@@ -196,18 +196,6 @@ func (a *App) workflowRuns(response http.ResponseWriter, request *http.Request) 
 	a.writeCanonicalRows(response, rows, err)
 }
 
-func (a *App) runJobs(response http.ResponseWriter, request *http.Request) {
-	writeJSON(response, http.StatusOK, []model.Row{})
-}
-
-func (a *App) runSessions(response http.ResponseWriter, request *http.Request) {
-	writeJSON(response, http.StatusOK, []model.Row{})
-}
-
-func (a *App) sessionEvents(response http.ResponseWriter, request *http.Request) {
-	writeJSON(response, http.StatusOK, []model.Row{})
-}
-
 func (a *App) writeCanonicalRows(response http.ResponseWriter, rows []model.Row, err error) {
 	if outcome, status, message := classifyCanonicalError(err); outcome != canonicalOutcomeOK {
 		canonicalLog.Printf("canonical rows query failed outcome=%s", outcome)

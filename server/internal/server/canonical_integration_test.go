@@ -120,7 +120,7 @@ func TestCanonicalAPIQueriesMatchPostgresIngestion(t *testing.T) {
 	}}, definitions...)}
 	app.databaseQueries = append(app.databaseQueries, rawSourceDefinitions(definitions)...)
 	response, status, err := app.executeQuery(ctx, queryRequest{
-		SourceNames: []string{"runs", "overview-runs", "outcomes", "mcp-calls", "domains", "issues", "jobs"},
+		SourceNames: []string{"runs", "overview-runs", "outcomes", "mcp-calls", "domains", "issues"},
 	}, false)
 	if err != nil || status != http.StatusOK {
 		t.Fatalf("Postgres dashboard query failed: status=%d error=%v", status, err)
@@ -129,9 +129,6 @@ func TestCanonicalAPIQueriesMatchPostgresIngestion(t *testing.T) {
 		if len(response.Sources[name].Rows) != 1 {
 			t.Errorf("Postgres dashboard source %q has %d rows, want 1", name, len(response.Sources[name].Rows))
 		}
-	}
-	if len(response.Sources["jobs"].Rows) != 0 || response.Sources["jobs"].Metadata["availability"] == "unavailable" {
-		t.Errorf("empty canonical jobs source must remain available: %#v", response.Sources["jobs"])
 	}
 	if rows := response.Sources["outcomes"].Rows; len(rows) == 1 {
 		outcome := rows[0]

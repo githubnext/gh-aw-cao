@@ -3,27 +3,8 @@ package server
 import (
 	"errors"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 )
-
-func TestLegacyExecutionListsRemainEmpty(t *testing.T) {
-	app := &App{}
-	for _, route := range []struct {
-		path    string
-		handler http.HandlerFunc
-	}{
-		{"/api/runs/run/jobs", app.runJobs},
-		{"/api/runs/run/sessions", app.runSessions},
-		{"/api/sessions/session/events", app.sessionEvents},
-	} {
-		response := httptest.NewRecorder()
-		route.handler(response, httptest.NewRequestWithContext(t.Context(), http.MethodGet, route.path, nil))
-		if response.Code != http.StatusOK || response.Body.String() != "[]\n" {
-			t.Errorf("%s: status=%d body=%q", route.path, response.Code, response.Body.String())
-		}
-	}
-}
 
 func TestClassifyCanonicalErrorSucceedsWithNilError(t *testing.T) {
 	outcome, status, message := classifyCanonicalError(nil)

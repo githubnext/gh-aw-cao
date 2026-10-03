@@ -1062,7 +1062,6 @@ IndexedDB ingestion:
 | `GET /api/v1/github-quota/usage` | Administrator-only GitHub API quota usage for the last 24 hours: the peak observed usage of each bucket (App, installation, resource) and the limit-weighted aggregate per 15-minute slot. The same data is the `github-quota-usage` runtime source behind the Ingestion page chart. No credentials are included. |
 | `GET /api/repositories` and `GET /api/repositories/:id` | Return canonical repository objects. |
 | `GET /api/repositories/:id/runs` and `GET /api/workflows/:id/runs` | Return related canonical runs. |
-| `GET /api/runs/:id/jobs`, `GET /api/runs/:id/sessions`, `GET /api/sessions/:id/events` | Legacy routes return empty lists; these execution collections are not persisted. |
 | `POST /api/github/webhook` | Verify, deduplicate, and reconcile a GitHub delivery. |
 | `POST /api/admin/rebuild` | Force a staged full rebuild and atomic activation. |
 | `GET /api/admin/rebuild/status` | Return shared rebuild state for all replicas. |
