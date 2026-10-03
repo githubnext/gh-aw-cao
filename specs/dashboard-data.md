@@ -363,9 +363,9 @@ The implementation profile defined by this specification is:
 
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
-| Canonical model | 26 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
-| Browser IndexedDB | 35 | Eighteen canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
-| Local SQLite projection | IndexedDB 35 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
+| Canonical model | 27 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
+| Browser IndexedDB | 36 | Eighteen canonical entity stores and `transactions` |
+| Local SQLite projection | IndexedDB 36 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
 | Go server Postgres sources | Canonical model 15 | Eighteen fresh TypeSpec-defined entity tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
@@ -425,8 +425,6 @@ store uses `id` as its key path. The implemented secondary indexes are:
 | `graderObservations` | `byRun -> runId`, `byGrader -> graderId` |
 | `evalObservations` | `byRun -> runId`, `byEval -> evalId` |
 | `transactions` | `byCreatedAt -> createdAt` |
-| `dailyOverviewAggregates` | `byGenerationDay -> [generation, day]` |
-| `overviewAggregateMetadata` | none |
 
 The `_queryKeys` fields are disposable physical index projections, not canonical
 evidence. They encode nullable raw `summary`, `domain`, or
@@ -2126,8 +2124,6 @@ graderObservations
 evals
 evalObservations
 transactions
-dailyOverviewAggregates
-overviewAggregateMetadata
 ```
 
 Future physical versions MAY include:
@@ -2135,8 +2131,6 @@ Future physical versions MAY include:
 ```text
 payloadCache
 searchIndex
-computationResults
-computationMetadata
 ```
 
 ---
@@ -2172,10 +2166,8 @@ workflowId
 conclusion
 ```
 
-The generation-ordered runtime-computation indexes described by Section 73 are
-reserved for the physical version that implements the computation projection.
-They are not part of IndexedDB version 33. That implementation MUST increment
-the physical version and update Section 5.1 before relying on those indexes.
+Runtime computations are evaluated by request-scoped queries (§73); no
+computation-result indexes are part of the canonical IndexedDB schema.
 
 ### run-linked tables
 
@@ -2246,28 +2238,12 @@ treated as durable evidence.
 
 ---
 
-# 31. Derived Projection Generations
+# 31. Query-only derived results
 
-Generation staging and atomic activation apply only to derived projections that
-declare a metadata pointer, including the daily Overview aggregates in Section
-72 and the future computation projection in Section 73. They do not describe
-canonical entity-store writes.
-
-For those projections:
-
-**GEN-001** — A rebuild MUST write under a new generation without mutating the
-published generation.
-
-**GEN-002** — Readers MUST resolve only the generation referenced by compatible
-metadata.
-
-**GEN-003** — Metadata publication MUST be atomic.
-
-**GEN-004** — Interrupted, stale, or incompatible generations MUST fail closed
-to the canonical query path or an explicit unavailable result.
-
-**GEN-005** — Superseded and unpublished generations MAY be garbage-collected
-without changing canonical records.
+Derived query results SHALL be computed from canonical records on demand.
+No derived-result generation, metadata pointer, or persistent projection
+store is required. Canonical ingestion transactions remain the authority
+for atomic source-data updates.
 
 ---
 
@@ -3643,173 +3619,23 @@ The implementation SHALL be guided by the following rules:
 
 ---
 
-# 72. Daily Overview Aggregate Projection
+# 72. Request-scoped Overview aggregates
 
-## 72.1 Purpose
+Overview counts and time series SHALL be computed on demand by the declarative
+query engine in the data worker from canonical records. Ingestion SHALL NOT
+persist daily aggregate records or metadata. Queries MUST preserve the
+requested time window, UTC day semantics, and source-quality metadata.
+Distinct counts MUST NOT be approximated by summing daily distinct counts.
 
-Overview time-window aggregates currently require scanning every canonical
-record in the requested window (`O(records in window)`). This section
-defines a derived, disposable daily projection that lets eligible
-Overview queries scan `O(days in window)` instead, without weakening any
-invariant in this document. IndexedDB remains reconstructable derived
-state (INV-004); this projection is additional derived state, not a new
-authoritative source.
+## 72.1 Indexed run aggregate pushdown
 
-## 72.2 Aggregate classification
-
-Every Overview source MUST be classified before it is eligible for the
-fast path:
-
-* **Additive** — safe to sum per-day scalar values across the requested
-  window. Initial eligible metrics: `runs`, `successful-runs`,
-  `failed-runs`, `dispatches`, `failed-dispatches`, and per-conclusion run
-  counts used by the Runs line graph (all derived from the
-  `runs` canonical collection, bucketed by the UTC day of
-  `startedAt`, falling back to `createdAt`).
-* **Snapshot/global** — not a time-window aggregate. Examples:
-  `database-campaign-count`, `overview-registered-repository-summary`,
-  `overview-worker-summary`. These MUST continue to use the existing
-  canonical/native-count query path unless measurement justifies
-  materializing them separately.
-* **Non-additive** — cannot be derived by summing daily scalars.
-  Examples: `overview-delivery-summary` (distinct delivered
-  repositories), and any other distinct-count or average whose
-  numerator/denominator is not itself stored. These MUST stay on the
-  canonical query path. A distinct count MUST NOT be approximated by
-  summing daily distinct counts. If a distinct-count query becomes a
-  proven bottleneck, the remedy is a separate per-day membership
-  projection (day → set of distinct keys), unioned and re-distincted at
-  read time over a much smaller derived set — never a sum of daily
-  distinct counts.
-* `database-issue-count` has no time predicate in its current
-  definition and remains a snapshot/global count; it becomes eligible
-  for the additive path only if a time-bounded issue query is
-  introduced.
-
-## 72.3 Daily aggregate projection
-
-The projection is a pure function of the canonical `runs` collection: no
-IndexedDB read-back is required or permitted at build time. Given the
-normalized batch already produced by ingestion, aggregation groups runs
-by UTC calendar day (`YYYY-MM-DD`, `new Date(Date.parse(...)).toISOString().slice(0, 10)`)
-and reduces the additive metrics from §72.2. Runs with duplicate `id`
-values are deduplicated with replace-by-id (last observation wins),
-consistent with canonical replace semantics. Runs without a parseable
-`startedAt`/`createdAt` are excluded from the projection rather than
-assigned to a fallback bucket. The function is deterministic and
-independent of input ordering.
-
-Only days with at least one contributing run are emitted; a day absent
-from the projection is equivalent to a zero-valued day and MUST be
-treated as such by readers reconstructing a requested date range.
-
-## 72.4 Storage schema
-
-A derived object store holds one record per generation and UTC day:
-
-```json
-{
-  "id": "generation-id:2026-09-21",
-  "generation": "generation-id",
-  "day": "2026-09-21",
-  "runs": 18234,
-  "successfulRuns": 17102,
-  "failedRuns": 1032,
-  "dispatches": 8412,
-  "failedDispatches": 203,
-  "runsByConclusion": {
-    "success": 17102,
-    "failure": 824,
-    "cancelled": 308
-  }
-}
-```
-
-A compound index `byGenerationDay: [generation, day]` supports
-range-reading a contiguous day interval for a single generation.
-
-A separate metadata record describes the currently usable projection:
-
-```json
-{
-  "id": "daily-overview-aggregates",
-  "version": 2,
-  "activeGeneration": "...",
-  "builtAt": "...",
-  "firstDay": "2026-01-01",
-  "lastDay": "2026-09-21"
-}
-```
-
-`version` identifies the semantics of the materialized aggregates (field
-meaning, eligibility rules, time bucketing, canonical derivation,
-normalization). Any change to these semantics MUST bump `version` and
-invalidate metadata written under a prior version; readers MUST treat a
-version mismatch as absent metadata and fail closed to the canonical
-query path.
-
-## 72.5 Generations and crash safety
-
-Publication follows the derived projection generation discipline defined in
-Section 31: a
-refresh constructs a new generation, persists it in bounded
-transactions, validates it, and only then atomically republishes the
-metadata record's `activeGeneration`. The previously active generation
-remains readable and untouched throughout. A crash at any point before
-the atomic metadata update leaves the previous generation active and
-usable; an interrupted generation MUST NOT become active and MAY be
-garbage-collected on a later successful ingestion. The currently
-published generation MUST NOT be mutated incrementally during a full
-rebuild.
-
-## 72.6 Query-layer integration
-
-The daily aggregate fast path is owned by the query/storage execution
-boundary defined in §43 (Query Layer), not by Overview view or component code. Before
-using materialized data for a query, the planner MUST prove
-compatibility: supported database table, supported aggregate,
-compatible time field and UTC day semantics, supported predicates, no
-unsupported joins, no unsupported compute operation, no distinct
-semantics, and a compatible aggregate metadata version. If any condition
-fails, the query MUST fall back to the existing canonical path.
-Consumers of the query API MUST NOT be able to observe which path was
-used except through diagnostic instrumentation (§72.7); results MUST be
-identical.
-
-## 72.7 Diagnostics
-
-Query/storage instrumentation MUST distinguish `executionPath: canonical`
-from `executionPath: daily-aggregate` and MUST include `query`,
-`durationMs`, `requestCount`, `recordsScanned`, `recordsReturned`,
-`aggregateVersion`, `generation`, and `fallbackReason` (when applicable).
-Instrumentation MUST NOT emit high-cardinality or sensitive canonical
-data.
-
-## 72.8 Failure behavior
-
-Absent, incompatible, or incomplete aggregate metadata (missing
-metadata record, unresolvable `activeGeneration`, version mismatch,
-schema-version mismatch, quota error, or transaction abort while
-reading) MUST cause the reader to fall back to the canonical query path
-rather than return partial or incorrect materialized results. Database
-or schema deletion MUST allow the projection and its metadata to be
-fully reconstructed from a subsequent canonical ingestion, consistent
-with INV-004 and §59 (Full Rebuild Requirement).
-
-## 72.9 Indexed run aggregate pushdown
-
-Independently of the materialized projection, the declarative query
-planner SHALL push additive run aggregations down to IndexedDB indexes
-whenever every grouping and filtering key of a query is a queryable run
-key path. The `runs` store therefore SHALL expose `byEvent` and
-`byEventConclusion` in addition to `byRepository`, `byWorkflow`, and
-`byConclusion`, and `event` SHALL be a queryable string key path.
-
-This path is generic: it is selected from the shape of the declarative
-query alone and MUST NOT be selected by query name. When both this path
-and the §72 projection can satisfy the same query, the materialized
-projection takes precedence, and both MUST produce results identical to
-the canonical path (§72.6).
+The declarative query planner SHALL push additive run aggregations down to
+IndexedDB indexes whenever every grouping and filtering key is a queryable
+run key path. The `runs` store exposes `byEvent` and `byEventConclusion` in
+addition to `byRepository`, `byWorkflow`, and `byConclusion`; `event` is a
+queryable string key path. This path is selected from the declarative query
+shape, not the query name. Unsupported shapes execute the canonical query
+without reading any derived aggregate store.
 
 ## 72.10 Data-worker heap budgets
 
@@ -3837,287 +3663,21 @@ and MUST NOT change canonical results.
 
 ---
 
-# 73. Materialized Computation Projection
+# 73. Request-scoped computations
 
-This section defines the next physical storage profile. IndexedDB version 30
-does not contain `computationResults`, `computationMetadata`, or the ordered
-runtime-computation indexes. Implementing this section SHALL increment the
-physical IndexedDB version, update Section 5.1, and add the conformance tests
-below in the same change. Until then, no query may assume these stores exist.
+The versioned measures defined by the
+[CAO Computations Specification](computations.md) SHALL run as bounded,
+request-scoped queries over canonical evidence inside the data worker. The
+query boundary owns partition selection, measure evaluation, and bounded
+result delivery; views and effects MUST NOT reconstruct measure logic.
 
-## 73.1 Purpose and authority
-
-The dashboard SHALL maintain a disposable, generation-scoped projection of the
-versioned measure results defined by the
-[CAO Computations Specification](computations.md). The projection exists to
-make Failed runs drill-down immediate and to avoid rescanning canonical Runs or
-Audits for compatible repeated requests.
-
-Materialized computation results are derived state. They MUST NOT become
-authoritative evidence, grant control-plane authority, replace canonical
-records, or be retained as the only information required to reconstruct a
-result.
-
-## 73.2 Object stores
-
-The IndexedDB schema SHALL add:
-
-1. `computationResults`, containing one bounded result per generation, measure
-   version, and partition; and
-2. `computationMetadata`, containing readiness and publication metadata per
-   generation and measure version.
-
-Adding these stores and indexes MUST increment the physical IndexedDB schema
-version. A missing prior store is not migrated from legacy view state; the
-projection SHALL be rebuilt from canonical evidence.
-
-A `computationResults` record SHALL have this shape:
-
-```json
-{
-  "id": "generation:measure-id:measure-version:partition-hash",
-  "generation": "immutable-generation-id",
-  "measureId": "runtime-health",
-  "measureVersion": "1.0.0",
-  "partitionKey": {
-    "campaignId": "campaign:dependabot",
-    "workflowId": "github:workflow:98765",
-    "targetRepositoryId": "github:repository:12345"
-  },
-  "partitionHash": "content-addressed-partition-key",
-  "inputFingerprint": "content-addressed-inputs",
-  "stage": "runtime-fact",
-  "status": "ready",
-  "attentionState": "needs-attention",
-  "campaignId": "campaign:dependabot",
-  "workflowId": "github:workflow:98765",
-  "targetRepositoryId": "github:repository:12345",
-  "diagnosticScope": null,
-  "quality": {
-    "availability": "available",
-    "completeness": "complete",
-    "freshness": "fresh"
-  },
-  "computedAt": "2026-09-22T08:01:00Z",
-  "observedThrough": "2026-09-22T08:00:00Z",
-  "result": {}
-}
-```
-
-`stage` SHALL be one of `runtime-fact`, `failure-scope`, `likely-cause`, or
-`user-action`. `status` SHALL be one of `pending`, `ready`, `partial`,
-`unavailable`, or `failed`. `attentionState` SHALL be
-`needs-attention` or `no-attention`; strings are required because booleans are
-not valid IndexedDB keys.
-
-The `result` payload MUST satisfy the bound declared by its measure. It MUST NOT
-contain raw prompts, credentials, arguments, response bodies, unbounded audit
-objects, or another copy of database table rows.
-
-A `computationMetadata` record SHALL have this shape:
-
-```json
-{
-  "id": "generation:measure-id:measure-version",
-  "generation": "immutable-generation-id",
-  "measureId": "runtime-health",
-  "measureVersion": "1.0.0",
-  "stage": "runtime-fact",
-  "status": "ready",
-  "resultCount": 42,
-  "readyCount": 42,
-  "failedCount": 0,
-  "builtAt": "2026-09-22T08:01:00Z",
-  "sourceQuality": {
-    "availability": "available",
-    "completeness": "complete",
-    "freshness": "fresh"
-  }
-}
-```
-
-Metadata counts are diagnostics and MUST NOT substitute for result records when
-a consumer needs partition identity or evidence references.
-
-For `runtime-health`, each bounded Campaign summary result SHALL contain
-`workerEvaluationState` with value `eligible`, `blocked-by-orchestrator`, or
-`indeterminate-orchestrator`. Measure metadata MAY be `ready` when one or more
-Campaigns intentionally gate worker evaluation; an intentionally skipped
-worker set is not missing or failed materialization.
-
-## 73.3 Indexes
-
-`computationResults` SHALL define:
-
-| Index | Key path | Purpose |
-| --- | --- | --- |
-| `byGenerationMeasure` | `[generation, measureId, measureVersion]` | Enumerate one exact measure version for the active generation. |
-| `byGenerationMeasurePartition` | `[generation, measureId, measureVersion, partitionHash]` | Retrieve one exact-version partition without scanning; this index MUST be unique. |
-| `byGenerationAttention` | `[generation, measureId, measureVersion, attentionState]` | Count or enumerate one measure's attention results with native `IDBIndex.count()` or a bounded range. |
-| `byGenerationCampaign` | `[generation, measureId, measureVersion, campaignId]` | Read bounded exact-version Campaign drill-down results. |
-| `byGenerationCampaignTarget` | `[generation, measureId, measureVersion, campaignId, targetRepositoryId]` | Read one Campaign's bounded worker-target results without scanning other target partitions. |
-| `byGenerationDiagnosticScope` | `[generation, measureId, measureVersion, diagnosticScope]` | Read bounded exact-version failure-scope groups. |
-| `byGenerationStageStatus` | `[generation, measureId, measureVersion, stage, status]` | Report phased readiness without reading result payloads. |
-
-Records without an optional indexed value, such as `diagnosticScope`, SHALL be
-absent from that index. Callers MUST NOT encode a semantic unknown as an empty
-string merely to force index membership.
-
-An Overview attention counter MUST execute
-`byGenerationAttention.count(IDBKeyRange.only([generation, "runtime-health",
-"1.0.0", "needs-attention"]))` for the exact supported measure version. It
-MUST NOT combine stages or measure versions, load result payloads, enumerate
-keys, or scan canonical Runs.
-
-## 73.4 Materialization phases
-
-Materialization SHALL follow this order:
-
-1. After canonical Campaign, Repository, Workflow, and Run information is
-   committed, compute orchestrator `runtime-health` results first. Only when the
-   Campaign's orchestrator gate is `eligible`, compute one result per
-   worker-target partition. Implementations MUST construct partitions before
-   evaluating their success boundaries; one target's success MUST NOT reset
-   another target's failures. A blocked or indeterminate gate MUST publish its
-   bounded Campaign result without enumerating worker Runs.
-2. After Campaign classification, expected target scope, and target evaluation
-   evidence are available, compute affected `where-does-it-fail` clusters
-   outside the Overview request path.
-3. After detailed Audit, Tool, and Domain evidence is available, leave
-   `what-is-the-likely-cause` absent until selected or prioritized, unless
-   background capacity explicitly admits that bounded partition.
-4. Compute `what-should-the-user-do` with its cause result, or directly from
-   `not-observed` and `unknown` runtime results.
-
-The complete orchestrator-gate and worker-partition flow is illustrated by the
-[computation decision tree](computations.md#532-decision-tree).
-
-Each phase SHALL publish honest `pending`, `partial`, `unavailable`, `failed`,
-or `ready` metadata. A later phase MUST NOT delay publication of an earlier
-valid phase.
-
-## 73.5 Publication and generation safety
-
-Bulk runtime-fact and failure-scope materialization for a replacement
-generation SHALL write staging records in bounded transactions, validate their
-measure versions, partition uniqueness, bounds, fingerprints, relationships,
-and quality, then atomically mark the corresponding metadata ready. Results
-MUST NOT become queryable as ready before their metadata publication succeeds.
-
-A query SHALL use a computation generation only when its metadata and
-`inputFingerprint` match the canonical inputs captured for that materialization.
-A later canonical ingestion MUST invalidate incompatible computation metadata,
-even when measure versions and partition keys match.
-
-Selected-partition cause and action computations MAY publish into the currently
-referenced computation generation after its bulk phase. The worker SHALL write
-the complete result and its metadata update in one transaction. A failed or
-aborted write MUST preserve any known-good compatible result.
-
-When an orchestrator gate transitions away from `eligible`, the data worker
-SHALL atomically publish the replacement Campaign summary and delete or
-invalidate that Campaign's worker-target computation records so they are
-absent from active attention indexes. This operation MUST NOT delete canonical
-worker Runs, which remain available for explicitly requested historical
-inspection.
-
-Retired computation generations MAY be garbage-collected after their metadata
-is no longer referenced. Deleting either computation store MUST leave canonical
-data intact and MUST permit complete projection reconstruction.
-
-## 73.6 Cache compatibility and invalidation
-
-A cached result is compatible only when all of these values match:
-
-- referenced computation generation;
-- measure ID;
-- measure version;
-- partition key and hash;
-- input fingerprint; and
-- required evidence-quality state.
-
-A mismatch MUST produce a cache miss. It MUST NOT be hidden by returning a
-result from another generation or measure version.
-
-For `runtime-health` version `1.0.0`, a worker result whose partition omits
-`targetRepositoryId` is invalid. The projection MUST rebuild it as
-target-aware partitions and MUST NOT read, migrate, or publish a legacy
-Workflow-wide worker result.
-
-Invalidation SHALL follow the measure fingerprints in the
-[CAO Computations Specification](computations.md#9-refresh-and-invalidation).
-Changing one Workflow SHOULD recompute its runtime partitions, affected failure
-clusters, and downstream cause or action partitions. A target-specific Run
-change SHOULD recompute only that worker-target partition. A late Run that sorts
-at or before the stored success boundary MUST invalidate the affected partition.
-A changed Workflow definition or expected-target set MAY invalidate every
-partition for that Workflow.
-
-## 73.7 Query and drill-down behavior
-
-The query/storage layer owns all reads and writes of computation stores. Views,
-effects, and components MUST NOT open the stores directly, join generations,
-cluster results, or reconstruct measure logic.
-
-Failed runs drill-down SHALL:
-
-1. read materialized runtime facts and failure scopes first;
-2. render those bounded results without a canonical Run-table scan;
-3. expose a pending state when a compatible cause result is absent;
-4. request only the selected cause partition from the data worker;
-5. retain an abort-scoped subscription; and
-6. update when the cause and action transaction publishes.
-
-When an orchestrator gate is not `eligible`, the drill-down SHALL render the
-orchestrator result and skipped-worker state before offering any explicit
-historical worker inspection. It MUST NOT automatically enumerate worker
-partitions or present skipped workers as healthy, failed, or `not-observed`.
-
-The query planner MUST report `executionPath:
-materialized-computation` for compatible reads and `executionPath: drill-down`
-for selected-partition computation. Diagnostics SHALL include measure ID and
-version, stage, duration, storage request count, records scanned and returned,
-generation, cache status, and invalidation or fallback reason.
-
-## 73.8 Failure behavior
-
-Missing stores, incompatible schema or measure versions, invalid metadata,
-quota errors, failed validation, transaction aborts, and unavailable evidence
-MUST produce an explicit unavailable, partial, or failed computation state.
-They MUST NOT produce a healthy zero or trigger a canonical Run-table scan on
-Overview.
-
-Failure of Audit ingestion or lazy cause computation MUST leave compatible
-runtime-fact and failure-scope records available. A consumer MAY offer retry of
-the selected bounded computation, but MUST NOT bypass the worker/query boundary
-or broaden the partition.
-
-## 73.9 Conformance tests
-
-- **T-DCP-001:** schema creation adds both stores and every declared index.
-- **T-DCP-002:** attention count uses native `IDBIndex.count()` without reading
-  result payloads or Runs.
-- **T-DCP-003:** runtime facts become queryable before detailed audit
-  computation.
-- **T-DCP-004:** failure scopes materialize outside the Overview request.
-- **T-DCP-005:** a selected cause partition publishes atomically and updates an
-  active subscription.
-- **T-DCP-006:** a failed lazy write preserves a known-good compatible result.
-- **T-DCP-007:** active queries reject prior-generation or incompatible-version
-  results.
-- **T-DCP-008:** one changed Workflow invalidates only affected partitions.
-- **T-DCP-009:** deleting computation stores leaves canonical data intact and
-  permits reconstruction.
-- **T-DCP-010:** missing or failed computation state never becomes a healthy
-  zero or an Overview Run-table scan.
-- **T-DCP-011:** a blocked or indeterminate orchestrator gate publishes a ready
-  Campaign result without enumerating worker-target partitions.
-- **T-DCP-012:** a gate transition to `eligible` materializes worker-target
-  partitions and updates the subscribed drill-down.
-- **T-DCP-013:** a gate transition away from `eligible` removes worker-target
-  results from active attention indexes without deleting canonical Runs.
-- **T-DCP-014:** newest-first indexed evaluation stops after the first success
-  in each partition and does not sort all Campaign Runs.
+Computation results MUST NOT be persisted as separate `computationResults`
+or `computationMetadata` stores, or used to grant authority. A missing or
+incomplete source MUST produce an explicit unavailable or partial result,
+never a healthy zero. Failed runs drill-down SHALL request only the selected
+partition and retain an abort-scoped subscription so canonical changes update
+its result. An ineligible orchestrator gate MUST NOT imply a healthy worker
+set or enumerate unrelated worker partitions.
 
 ---
 

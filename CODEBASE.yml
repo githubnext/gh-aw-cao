@@ -79,7 +79,7 @@ architecture:
     bounded_computation_results: partitioned, versioned measures and actionable insights with bounded evidence references
     computation_authority: authority inferred from a derived computation result
     outcome_inference_from_runtime: treating runtime success as verification, accepted outcome, an operational-grader result, or operational value
-    generation_scoped_computation_results: disposable bounded measure results keyed to one canonical generation, measure version, partition, and input fingerprint
+    request_scoped_computation_results: bounded measure results evaluated for a selected partition and version against canonical evidence
     dashboard_entity_storage: current hosted dashboard entity rows, quality metadata, diagnostics, and revision state
     dashboard_query_execution: Dashboard Language evaluation over current hosted dashboard data
     operational_state_storage: sessions, rate limits, queues, deduplication, coordination, quota state, revocation retries, and bounded caches
@@ -217,9 +217,6 @@ components:
   computation_research_notebooks:
     path: research/
     responsibility: validate computation contracts against local canonical evidence and present explainable drill-downs
-  computation_projection:
-    path: dashboard/site/src/data/
-    responsibility: materialize generation-scoped runtime and failure-scope results and cache selected audit-cause and action partitions
   dashboard_ui:
     path: dashboard/site/
     responsibility: render bounded Dashboard Language query payloads
@@ -266,8 +263,7 @@ dependencies:
   - indexeddb_projection -> computations
   - computations -> computation_reference_runtime
   - computation_reference_runtime -> computation_research_notebooks
-  - computations -> computation_projection
-  - computation_projection -> dashboard_language_queries
+  - computations -> dashboard_language_queries
   - dashboard_language_queries -> dashboard_ui
   - computations -> cao_cli
   - package_operational_value -> cao_cli
@@ -387,7 +383,7 @@ invariants:
   - "Computations MUST consume canonical evidence, preserve evidence quality and provenance, and emit bounded, versioned results."
   - "Computation results MUST NOT grant authority or turn runtime success into verification, accepted outcomes, or operational value."
   - "Successful-Run value computations MUST report produced outputs, native operational-grader measurements, and efficiency as separate axes; operational value is reserved for package-defined repository campaign metrics, output creation MUST NOT imply acceptance or value, and no composite score may be invented."
-  - "Overview counters MUST use IndexedDB-native counts or generation-safe precomputed daily values; Run-table scans, clustering, and audit diagnosis execute only in drill-down or compatible bounded materializations."
+  - "Overview counters MUST use IndexedDB-native counts or request-scoped declarative queries; no daily aggregate or computation-result projection is persisted. Clustering and audit diagnosis execute in bounded selected-partition queries."
   - "Materialized computation results MUST remain generation-scoped disposable state; runtime facts and failure scopes are precomputed, while detailed audit causes and actions are cached only for selected or prioritized partitions."
   - "Runtime computation partitions MUST be target-aware for workers: form Campaign, Workflow, and target Repository evaluation partitions before evaluating success boundaries so one target's success cannot mask another target's failures."
   - "Runtime computations MUST evaluate Campaign orchestrators before enumerating worker-target partitions; a failing, unknown, or unobserved orchestrator gates worker evaluation without converting skipped workers into healthy, failed, or not-observed results."
@@ -433,7 +429,6 @@ flows:
     - browser_data_worker
     - indexeddb_projection
     - computations
-    - computation_projection
     - dashboard_language_queries
     - dashboard_ui
   hosted_error_correlation:

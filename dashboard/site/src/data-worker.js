@@ -24,7 +24,6 @@ import {
   readTransactions,
   recordTransaction
 } from './data/storage/indexeddb.js';
-import { queryDailyOverviewAggregateSources } from './data/queries/daily-aggregate-fast-path.js';
 import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
@@ -466,20 +465,9 @@ async function queryLiveDashboard(
     );
     const nativeSourceNames = new Set(Object.keys(nativeSources));
     const nonNativeRequested = [...executionRequested].filter((name) => !nativeSourceNames.has(name));
-    // The daily-aggregate fast path only ever satisfies a query name when its
-    // live definition still matches a known-safe additive shape (spec §72.6);
-    // any query it does not recognize, or whose materialized projection is
-    // unavailable, is simply absent here and falls through to the canonical
-    // path below unchanged.
-    const dailyAggregateSources = await queryDailyOverviewAggregateSources(
-      indexedDB,
-      executionQueries,
-      nonNativeRequested
-    );
-    const dailyAggregateSourceNames = new Set(Object.keys(dailyAggregateSources));
     const required = resolveDashboardQuerySources(
       executionQueries,
-      nonNativeRequested.filter((name) => !dailyAggregateSourceNames.has(name)),
+      nonNativeRequested,
       nativeSourceNames
     );
     const databaseRequired = required.filter((name) => !nativeSourceNames.has(name));
@@ -492,12 +480,11 @@ async function queryLiveDashboard(
       { onMetrics: (metrics) => { databaseMetrics = metrics; } }
     );
     const directRequests = new Set([...executionRequested].filter((name) => (
-      !nativeSourceNames.has(name) && !dailyAggregateSourceNames.has(name)
+      !nativeSourceNames.has(name)
     )));
     const querySources = {
       ...databasePayload,
       ...nativeSources,
-      ...dailyAggregateSources,
       ...executeDashboardQueries(
         executionQueries,
         { ...databasePayload, ...nativeSources },

@@ -107,9 +107,8 @@ The canonical model is version 26. The browser database is
 `evals`, and `evalObservations`;
 all use `id` as the key.
 The `transactions` store records
-ingestion outcomes and is indexed by `createdAt`. Two additional disposable
-stores, `dailyOverviewAggregates` and `overviewAggregateMetadata`, implement the
-versioned Overview fast path. Schema upgrades rebuild all stores from
+ingestion outcomes and is indexed by `createdAt`. Overview aggregates are
+computed by request-scoped queries over canonical runs. Schema upgrades rebuild all stores from
 authoritative dashboard inputs.
 
 For each ingestion, the worker reads the existing canonical batch, merges the incoming records, expires time-bounded records outside the 30-day retention window, and prunes orphaned descendants and unreferenced structural parents. The effective retention horizon is the later of the browser clock and the newest incoming observation, so a browser with a slow clock cannot prune current producer data. The worker then reconciles each canonical collection: it deletes records absent from the retained batch and writes changed records. This makes expired records disappear while allowing fresh partial collections to retain compatible history.

@@ -6,16 +6,11 @@ import {
   cachedJsonlPayloadIdentity
 } from '../adapters/gh-aw-logs.js';
 import { adaptSqlExport } from '../adapters/sql-export.js';
-import { buildDailyOverviewAggregates } from '../analytics/daily-overview-aggregates.js';
 import { CANONICAL_SCHEMA_VERSION } from '../model/schema.js';
 import { normalize } from '../normalize/index.js';
 import {
-  publishDailyOverviewAggregates,
-  pruneStaleDailyOverviewAggregates,
-  ENTITY_STORES,
   maintainCanonicalDatabase,
   openCanonicalDatabase,
-  readCollection,
   readRecord,
   readRecordWithConnection,
   readTransaction,
@@ -66,50 +61,6 @@ const NORMALIZED_BATCH_COLLECTIONS = /** @type {const} */ ([
 ]);
 const NORMALIZED_JSONL_WRITE_BATCH_SIZE = 250;
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
-let dailyOverviewAggregateGenerationSequence = 0;
-
-/**
- * Generates a unique, monotonically-informative generation id for a daily
- * overview aggregate rebuild (spec §72.5). Uniqueness (not format) is the
- * only requirement: publication safety comes from writing the new
- * generation's records under this id before atomically republishing
- * metadata, not from any property of the id itself.
- */
-function nextDailyOverviewAggregateGeneration() {
-  dailyOverviewAggregateGenerationSequence += 1;
-  return `${Date.now().toString(36)}-${dailyOverviewAggregateGenerationSequence.toString(36)}`;
-}
-
-/**
- * Builds and publishes a fresh daily overview aggregate generation from the
- * canonical batch that was just committed, then garbage-collects any
- * superseded generation. This derives the projection from the normalized
- * batch already in memory (spec §72.5) rather than re-reading IndexedDB.
- *
- * Best effort: aggregate publication is a derived, reconstructable
- * projection (INV-004), so a failure here MUST NOT fail canonical
- * ingestion. Readers fail closed (see `readDailyOverviewAggregates`) and
- * fall back to the canonical query path whenever the projection is stale,
- * absent, or incompatible.
- *
- * @param {IDBFactory} indexedDB
- * @param {import('../model/schema.js').CanonicalBatch} batch
- */
-async function publishDailyOverviewAggregatesForBatch(indexedDB, batch) {
-  try {
-    const dailyAggregates = buildDailyOverviewAggregates(batch.runs);
-    await publishDailyOverviewAggregates(indexedDB, {
-      generation: nextDailyOverviewAggregateGeneration(),
-      dailyAggregates
-    });
-    await pruneStaleDailyOverviewAggregates(indexedDB);
-  } catch (error) {
-    debug('failed to publish daily overview aggregates; canonical query path remains authoritative', {
-      error: error instanceof Error ? error.message : String(error)
-    });
-  }
-}
-
 /**
  * Recognizes storage exhaustion across browsers that report it as a
  * `DOMException` and browsers that report it as a standalone error class.
@@ -417,12 +368,6 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
     }
   });
   writeMetrics.deletedRecords += maintenance.deletedRecords;
-  const runs = await readCollection(indexedDB, 'runs');
-  const runsOnlyBatch = /** @type {import('../model/schema.js').CanonicalBatch} */ ({
-    ...Object.fromEntries(ENTITY_STORES.map((storeName) => [storeName, []])),
-    runs
-  });
-  await publishDailyOverviewAggregatesForBatch(indexedDB, runsOnlyBatch);
   return {
     updated: true,
     committedBatches: 0,

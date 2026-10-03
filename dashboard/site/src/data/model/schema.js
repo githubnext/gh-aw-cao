@@ -2,7 +2,7 @@ import { createDebug } from '../../debug.js';
 
 const debugSchema = createDebug('schema');
 
-export const CANONICAL_SCHEMA_VERSION = 26;
+export const CANONICAL_SCHEMA_VERSION = 27;
 
 export const ENTITY_KINDS = /** @type {const} */ ([
   'campaign',

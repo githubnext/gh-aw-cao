@@ -100,8 +100,8 @@ The canonical model is version 26. The browser database is
 all use `id` as the key.
 The `transactions` store records
 ingestion outcomes and is indexed by `createdAt`. The disposable
-`dailyOverviewAggregates` and `overviewAggregateMetadata` stores implement the
-Overview fast path. Because the database is derived state, physical schema
+Overview aggregates are computed by request-scoped queries over canonical runs
+rather than stored separately. Because the database is derived state, physical schema
 upgrades rebuild every store from authoritative dashboard inputs.
 
 For each ingestion, the worker reads the existing canonical batch, merges incoming records, expires time-bounded records outside the 30-day retention window, and prunes orphaned descendants and unreferenced structural parents. The effective retention horizon is the later of the browser clock and the newest incoming observation, so a browser with a slow clock cannot prune current producer data. The worker then replaces each canonical collection, deleting records absent from the retained batch and writing every retained record.

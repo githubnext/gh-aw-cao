@@ -370,16 +370,13 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
 - Computations consume canonical evidence, preserve its quality and provenance,
   and emit bounded, versioned results; they do not create authority or convert
   runtime success into verified outcomes or operational value.
-- Overview counters use IndexedDB-native counts or generation-safe precomputed
-  daily values. Run-table scans, failure clustering, and audit diagnosis are
-  deferred to drill-down or compatible bounded materializations.
-- Materialized computation results are generation-scoped disposable state.
-  Runtime facts evaluate orchestrators first and enumerate worker targets only
-  when orchestration is healthy enough to make worker evaluation meaningful.
-  Worker facts use one evaluation partition per target so success on one target cannot mask
-  failure on another. Failure scopes are precomputed; detailed audit causes
-  and actions are selected-partition caches whose failure cannot invalidate
-  valid upstream results.
+- Overview counters use IndexedDB-native counts or request-scoped declarative
+  queries over canonical records. No daily aggregate or computation-result
+  projection is persisted. Failure clustering and audit diagnosis execute in
+  bounded, selected-partition queries. Runtime facts evaluate orchestrators first
+  and enumerate worker targets only when orchestration is eligible. Worker facts
+  use one evaluation partition per target so success on one target cannot mask
+  failure on another.
 - Dashboard selection, filtering, joins, grouping, aggregation, ordering, and
   pagination are declared in Dashboard Language. They execute in the data Web
   Worker for static deployment and as SQL over PostgreSQL for server deployment.

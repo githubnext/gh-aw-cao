@@ -15,7 +15,6 @@ import { CANONICAL_SCHEMA_VERSION } from '../../src/data/model/schema.js';
 import {
   DATABASE_NAME,
   readCanonicalBatch,
-  readDailyOverviewAggregates,
   readTransactions,
   recordTransaction,
   replaceCanonicalBatch
@@ -1092,18 +1091,14 @@ describe('database table ingestion and queries', () => {
     ]);
   });
 
-  it('publishes daily overview aggregates from the ingested canonical batch', async () => {
+  it('keeps ingested runs queryable without publishing aggregate stores', async () => {
     await ingestDashboardSources(indexedDB, sources);
-
-    const result = await readDailyOverviewAggregates(indexedDB, { startDay: '2026-09-01', endDay: '2026-09-30' });
-
-    expect(result.available).toBe(true);
-    expect(result.records).toEqual([
-      expect.objectContaining({ day: '2026-09-09', runs: 1, successfulRuns: 0, failedRuns: 1 })
+    expect(await createCanonicalQueries(indexedDB).runs.list()).toEqual([
+      expect.objectContaining({ conclusion: 'failure' })
     ]);
   });
 
-  it('republishes an updated daily overview aggregate generation on reingestion without leaving a stale one active', async () => {
+  it('queries updated canonical runs after reingestion', async () => {
     await ingestDashboardSources(indexedDB, sources);
     const refreshed = structuredClone(sources);
     refreshed.runs.rows.push({
@@ -1120,11 +1115,7 @@ describe('database table ingestion and queries', () => {
 
     await ingestDashboardSources(indexedDB, refreshed);
 
-    const result = await readDailyOverviewAggregates(indexedDB, { startDay: '2026-09-01', endDay: '2026-09-30' });
-    expect(result.available).toBe(true);
-    expect(result.records).toEqual([
-      expect.objectContaining({ day: '2026-09-09', runs: 1 }),
-      expect.objectContaining({ day: '2026-09-10', runs: 1, successfulRuns: 1 })
-    ]);
+    expect((await createCanonicalQueries(indexedDB).runs.list()).map(({ conclusion }) => conclusion).sort())
+      .toEqual(['failure', 'success']);
   });
 });
