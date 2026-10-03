@@ -329,6 +329,13 @@ preserving run-information-before-run-record ingestion order. Because the
 browser's skip receipt is keyed on payload content hash rather than shard name,
 a partition whose records are unchanged MUST retain its content hash so the
 browser reuses its cached ingestion instead of redownloading the shard.
+Within each time partition, publishers SHALL serialize collections in canonical
+collection order and records in canonical ID order after resolving observation
+precedence. Reordering non-conflicting source observations MUST NOT change the
+published partition's bytes. Published normalized shards SHOULD be bounded to
+1 MiB, including the metadata header and UTF-8 encoding. A record that exceeds
+the budget by itself MUST remain intact in a dedicated shard; publishers MUST
+NOT truncate or split canonical records to satisfy the byte budget.
 
 The local SQLite projection and browser IndexedDB projection SHALL use the same
 adapters, identities, normalization, object-store definitions, and relationship

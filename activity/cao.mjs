@@ -74,6 +74,7 @@ import {
 } from './cli-usage.mjs';
 import { NamedQueryError } from './agent-catalog.mjs';
 import { consolidationBucket, normalizedPhaseBatch, relationshipSafeEvidenceBatch, STRUCTURAL_CONSOLIDATION_BUCKET } from './normalized-phase.mjs';
+import { DEFAULT_NORMALIZED_JSONL_SHARD_BYTES, writeNormalizedShardBucket } from './normalized-shards.mjs';
 import { AUDIT_CURATION_VERSION, auditCurationRunFacts, discardAudit } from '../dashboard/site/src/data/model/audit-curation.js';
 import { mergeEvidenceDefinition } from '../dashboard/site/src/data/model/schema.js';
 import { commandHandlers } from './commands/index.mjs';
@@ -1827,8 +1828,8 @@ function workflowHintsFromInventory(input) {
 
 /**
  * Collapses every per-shard payload for one phase into deduplicated, day-bucketed
- * shards. Published shards repeat a canonical record once per source shard that
- * observed it; keying on (collection, id) keeps exactly one copy.
+ * shards. Source payloads may repeat canonical records; keying on (collection, id)
+ * keeps exactly one winning copy before ordering and byte-bounded publication.
  *
  * @param {string} phase
  * @param {string[]} cachePaths per-shard payloads in ingestion order
@@ -1894,7 +1895,8 @@ async function consolidatePhasePayloads(
   let uniqueRecords = 0;
   for (const collection of NORMALIZED_COLLECTIONS) {
     const records = deduped.get(collection);
-    for (const record of records.values()) {
+    for (const record of [...records.values()].sort((left, right) =>
+      String(left.id) < String(right.id) ? -1 : String(left.id) > String(right.id) ? 1 : 0)) {
       if (collection === 'audits' && !referencedAuditIds.has(String(record.id))
           && discardAudit(record, runFacts.get(String(record.runId)))) continue;
       const bucket = consolidationBucket(collection, record);
@@ -1914,58 +1916,19 @@ async function consolidatePhasePayloads(
   /** @type {string[]} */
   const written = [];
   for (const bucket of [...buckets.keys()].sort()) {
-    const lines = buckets.get(bucket);
-    /** @type {string[][]} */
-    const parts = [];
-    let current = [];
-    let currentBytes = 0;
-    for (const line of lines) {
-      const size = Buffer.byteLength(line);
-      if (current.length > 0 && currentBytes + size > maxBytes) {
-        parts.push(current);
-        current = [];
-        currentBytes = 0;
-      }
-      current.push(line);
-      currentBytes += size;
-    }
-    if (current.length > 0) parts.push(current);
-    for (const [index, part] of parts.entries()) {
-      written.push(await writeConsolidatedShard(phase, bucket, index, part, outputDirectory));
-    }
+    written.push(...await writeNormalizedShardBucket(
+      phase, bucket, buckets.get(bucket), outputDirectory, maxBytes
+    ));
     buckets.delete(bucket);
   }
   // A phase with no records still publishes one header-only shard, so an empty
   // collection is explicit rather than indistinguishable from missing output.
   if (written.length === 0) {
-    written.push(await writeConsolidatedShard(phase, STRUCTURAL_CONSOLIDATION_BUCKET, 0, [], outputDirectory));
+    written.push(...await writeNormalizedShardBucket(
+      phase, STRUCTURAL_CONSOLIDATION_BUCKET, [], outputDirectory, maxBytes
+    ));
   }
   return { names: written, runWorkflowIds: consolidatedRunWorkflowIds, runFacts, referencedAuditIds };
-}
-
-async function writeConsolidatedShard(phase, bucket, index, lines, outputDirectory) {
-  const header = `${JSON.stringify({
-    kind: 'metadata',
-    schemaVersion: CANONICAL_SCHEMA_VERSION,
-    ingestionVersion: NORMALIZED_JSONL_INGESTION_VERSION,
-    sourceRecords: lines.length,
-    phase,
-    records: lines.length
-  })}\n`;
-  const content = header + lines.join('');
-  const digest = createHash('sha256').update(content).digest('hex');
-  const name = `${bucket}-${String(index).padStart(4, '0')}-${digest.slice(0, 16)}.jsonl`;
-  const outputPath = path.join(outputDirectory, name);
-  try {
-    await stat(outputPath);
-    return name;
-  } catch (error) {
-    if (!(error && error.code === 'ENOENT')) throw error;
-  }
-  const temporaryPath = `${outputPath}.${process.pid}.tmp`;
-  await writeFile(temporaryPath, content, { flag: 'wx' });
-  await rename(temporaryPath, outputPath);
-  return name;
 }
 
 async function hashActivityPayloads({
@@ -1974,7 +1937,8 @@ async function hashActivityPayloads({
   normalizedDirectory,
   runsDirectory,
   recordsDirectory,
-  inventoryPath
+  inventoryPath,
+  maxBytes = DEFAULT_NORMALIZED_JSONL_SHARD_BYTES
 }) {
   const hashFile = async (filePath) => {
     const digest = await hashFileContents(filePath);
@@ -2107,7 +2071,7 @@ async function hashActivityPayloads({
         phase,
         cachePaths[phase],
         directory,
-        DEFAULT_COMPACTED_JSONL_SHARD_BYTES,
+        maxBytes,
         { runWorkflowIds, runFacts, referencedAuditIds }
       );
       if (phase === 'runs') {

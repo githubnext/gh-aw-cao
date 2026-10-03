@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdir, mkdtemp, cp, readFile, readdir, rename, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, cp, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -493,6 +493,123 @@ test('hash-payloads publishes consolidated shards in deterministic ingestion ord
   // The later source shard observed the run last, so its status wins.
   assert.deepEqual([...new Set(runs.batch.runs.map((run) => run.status))], ['completed']);
   assert.equal(runs.batch.runs.length, new Set(runs.batch.runs.map((run) => run.id)).size);
+});
+
+test('bounded publication keeps hashes and ingestion receipts stable when source records are reordered', async (t) => {
+  const { root, shardDirectory, databasePath } = await fixture();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const sourcePath = path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl');
+  const [raw, enriched] = (await readFile(sourcePath, 'utf8')).trim().split('\n').map(JSON.parse);
+  const rawRuns = Array.from({ length: 32 }, (_, index) => ({
+    ...raw.payload[0], databaseId: 1000 + index
+  }));
+  const enrichedRuns = rawRuns.map((run) => ({
+    ...enriched, run: { ...enriched.run, run_id: run.databaseId }
+  }));
+  const publishSource = async (reverse) => {
+    await writeFile(sourcePath, [
+      { ...raw, payload: reverse ? [...rawRuns].reverse() : rawRuns },
+      ...(reverse ? [...enrichedRuns].reverse() : enrichedRuns)
+    ].map((record) => JSON.stringify(record)).join('\n') + '\n');
+  };
+  const runsDirectory = path.join(root, 'gh-aw-logs-runs');
+  const recordsDirectory = path.join(root, 'gh-aw-logs-records');
+  const publish = async () => {
+    const { stdout } = await execFileAsync(process.execPath, [
+      path.resolve('activity/cao.mjs'), 'hash-payloads', '--shard-dir', shardDirectory,
+      '--runs-dir', runsDirectory, '--records-dir', recordsDirectory, '--max-bytes', '2048'
+    ]);
+    return Object.fromEntries(Object.entries(JSON.parse(stdout))
+      .filter(([name]) => /^gh-aw-logs-(runs|records)\//.test(name)));
+  };
+  const ingestPhases = async () => JSON.parse((await execFileAsync(process.execPath, [
+    path.resolve('activity/cao.mjs'), 'ingest-jsonl', '--database', databasePath,
+    '--runs-dir', runsDirectory, '--records-dir', recordsDirectory,
+    '--retention-days', 'all', '--run-retention-days', 'all'
+  ])).stdout);
+
+  await publishSource(false);
+  const before = await publish();
+  const first = await ingestPhases();
+  assert.equal(first.counts.runs, 32);
+  assert.ok(Object.keys(before).length > 2);
+  for (const name of Object.keys(before)) {
+    assert.ok((await stat(path.join(root, name))).size <= 2048, name);
+  }
+  await publishSource(true);
+  assert.deepEqual(await publish(), before);
+  const repeated = await ingestPhases();
+  assert.equal(repeated.result.updated, false);
+  assert.ok(repeated.result.shards.every((shard) => shard.skipped));
+  assert.deepEqual(repeated.counts, first.counts);
+
+  rawRuns[0].displayTitle = 'Updated dashboard';
+  enrichedRuns[0].run.display_title = rawRuns[0].displayTitle;
+  await publishSource(true);
+  const changed = await publish();
+  const unchanged = Object.keys(changed).filter((name) => changed[name] === before[name]);
+  assert.equal(unchanged.length, Object.keys(before).length - 1);
+  const refreshed = await ingestPhases();
+  assert.equal(refreshed.counts.runs, 32);
+  assert.equal(refreshed.result.shards.filter((shard) => !shard.skipped).length, 1);
+  const published = await readPhasePayload(runsDirectory);
+  assert.equal(published.batch.runs.find((run) => run.githubRunId === '1000').title, 'Updated dashboard');
+});
+
+test('hash-payloads rejects invalid shard byte limits explicitly', async () => {
+  for (const value of ['0', '-1', '1.5', 'NaN', 'Infinity', '9007199254740992']) {
+    await assert.rejects(
+      execFileAsync(process.execPath, [path.resolve('activity/cao.mjs'), 'hash-payloads', '--max-bytes', value]),
+      (error) => error.stderr.includes('--max-bytes must be a positive integer')
+    );
+  }
+});
+
+test('1 MiB shards reduce the canonical records rewritten for a single-run refresh', async (t) => {
+  const { root, shardDirectory } = await fixture();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const sourcePath = path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl');
+  const [raw, enriched] = (await readFile(sourcePath, 'utf8')).trim().split('\n').map(JSON.parse);
+  const rawRuns = Array.from({ length: 600 }, (_, index) => ({
+    ...raw.payload[0], databaseId: 1000 + index, displayTitle: 'x'.repeat(8192)
+  }));
+  const enrichedRuns = rawRuns.map((run) => ({
+    ...enriched, run: { ...enriched.run, run_id: run.databaseId, display_title: run.displayTitle }
+  }));
+  const writeSource = () => writeFile(sourcePath, [
+    { ...raw, payload: rawRuns }, ...enrichedRuns
+  ].map((record) => JSON.stringify(record)).join('\n') + '\n');
+  const variants = [1, 4].map((mebibytes) => ({
+    maxBytes: mebibytes * 1024 * 1024,
+    runsDirectory: path.join(root, `runs-${mebibytes}`),
+    recordsDirectory: path.join(root, `records-${mebibytes}`),
+    database: path.join(root, `activity-${mebibytes}.sqlite`)
+  }));
+  const publishAndIngest = async (variant) => {
+    await execFileAsync(process.execPath, [
+      path.resolve('activity/cao.mjs'), 'hash-payloads', '--shard-dir', shardDirectory,
+      '--runs-dir', variant.runsDirectory, '--records-dir', variant.recordsDirectory,
+      '--max-bytes', String(variant.maxBytes)
+    ]);
+    return JSON.parse((await execFileAsync(process.execPath, [
+      path.resolve('activity/cao.mjs'), 'ingest-jsonl', '--database', variant.database,
+      '--runs-dir', variant.runsDirectory, '--records-dir', variant.recordsDirectory,
+      '--retention-days', 'all', '--run-retention-days', 'all'
+    ])).stdout);
+  };
+
+  await writeSource();
+  for (const variant of variants) assert.equal((await publishAndIngest(variant)).counts.runs, 600);
+  rawRuns[0].displayTitle = 'y'.repeat(8192);
+  enrichedRuns[0].run.display_title = rawRuns[0].displayTitle;
+  await writeSource();
+  const [smaller, larger] = await Promise.all(variants.map(publishAndIngest));
+
+  assert.equal(smaller.result.shards.filter((shard) => !shard.skipped).length, 1);
+  assert.equal(larger.result.shards.filter((shard) => !shard.skipped).length, 1);
+  assert.ok(smaller.result.committedRecords <= larger.result.committedRecords / 3,
+    `${smaller.result.committedRecords} rewritten records versus ${larger.result.committedRecords}`);
+  assert.deepEqual(smaller.counts, larger.counts);
 });
 
 test('publication retains usage evidence when the winning Run has null AIC', async () => {

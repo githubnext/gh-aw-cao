@@ -122,6 +122,13 @@ Bounded writes that committed before a later failure may remain in the
 disposable database, but no successful receipt is written and the shard remains
 retryable.
 
+Actions publishes normalized run and record shards with a 1 MiB budget,
+including metadata and UTF-8 bytes. A single larger record is kept intact in its
+own shard rather than truncated. Records are deduplicated before being ordered
+by collection and canonical ID within stable day buckets, so changes in source
+arrival order alone do not force clients to download and ingest unchanged data.
+The 4 MiB raw-source compaction budget is independent of this published budget.
+
 Worker errors abort the update instead of rerunning ingestion through an older path. There is no shadow, dual-read, alias, or fallback route. Views render only after the worker returns that page's query projection.
 
 Before ingestion, the browser inspects its storage estimate and requests persistent storage when the API is available. Either request may be denied or fail without affecting correctness. Diagnostics use stable categories such as `NORMALIZATION_FAILED`, `TRANSACTION_ABORTED`, and `QUOTA_EXCEEDED`.
