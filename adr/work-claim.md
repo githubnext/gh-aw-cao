@@ -1,9 +1,17 @@
 # ADR: Ledger-Backed Work and Claim Orchestration in CAO
 
-- **Status:** Proposed
+- **Status:** Superseded by [the current work-queue specification](../specs/work-queue.md)
 - **Repository:** `githubnext/gh-aw-cao`
 - **Decision type:** Architecture
 - **Scope:** Campaign orchestration, worker dispatch, Work/Claim ledger integration
+
+This is historical design exploration, not an implemented dispatch contract.
+The control plane still dispatches directly through GitHub Actions; its
+collector's Redis task queue serves evidence acquisition, not Work/Claim
+orchestration. The authoritative current-behavior boundary is
+[`specs/work-queue.md`](../specs/work-queue.md). The separate
+[`specs/state-mediated-coordination.md`](../specs/state-mediated-coordination.md)
+is a future-architecture Working Draft, not an implemented replacement.
 
 ## Context
 

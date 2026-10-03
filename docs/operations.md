@@ -134,7 +134,7 @@ The container and image checks require a running Docker daemon. If a tool, image
 
 ### Queuing and Resource Exhaustion
 
-The control plane does not implement a durable work queue. GitHub Actions accepts workflow dispatches, while each orchestrator and each target-scoped worker uses `cancel-in-progress: true`: a newer same-scope run supersedes an older running or pending run instead of building an unbounded backlog.
+The control plane does not implement a durable campaign work queue. GitHub Actions accepts workflow dispatches, while each orchestrator and each target-scoped worker uses `cancel-in-progress: true`: a newer same-scope run supersedes an older running or pending run instead of building an unbounded backlog. The optional server collector has a separate [Redis collection task queue](../specs/work-queue.md); it does not dispatch campaign workers.
 
 API and budget failures are fail-closed:
 

@@ -34,6 +34,8 @@ format, or the `gh aw` audit mapping: those remain owned by
 `specs/activity.md` and `specs/dashboard-gh-aw-jsonl-mapping.md`.
 
 This specification **conforms to** `specs/activity.md`. It supersedes nothing.
+The implemented collection queue is specified in [Work Queue](work-queue.md);
+that queue does not dispatch campaign workers.
 Nothing in this document changes the obligations of the Actions profile.
 
 ## 1. Status and conformance

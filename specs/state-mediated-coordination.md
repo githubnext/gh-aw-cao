@@ -31,7 +31,7 @@ to repository count, campaign count, ledger length, or agent count.
 This document is a Working Draft and may be updated, replaced, or made
 obsolete. It proposes amendments to the Intelligence Specification, Control
 Architecture Specification, Dashboard Data Architecture Specification, and
-the Work/Claim ADR. It does not alter those documents until their proposed
+the historical Work/Claim ADR. It does not alter those documents until their proposed
 changes are separately adopted.
 
 Sections 2 through 13 are normative. Section 1, appendices, references, and
@@ -617,7 +617,10 @@ The [Intelligence Specification](intelligence.md) should be revised to:
 
 ### 13.3 Work/Claim ADR
 
-The [Work/Claim ADR](../adr/work-claim.md) should be superseded or revised to:
+The [Work/Claim ADR](../adr/work-claim.md) is superseded as a description of
+current behavior by [the work-queue specification](work-queue.md). This
+Working Draft proposes a further, unimplemented coordination architecture that
+would:
 
 - replace `repo-memory.ledger` as the live coordination authority with
   PostgreSQL;
