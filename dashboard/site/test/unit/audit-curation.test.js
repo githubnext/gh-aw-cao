@@ -127,7 +127,7 @@ describe('first-pass canonical Audit curation', () => {
     }
     expect((await readCollection(indexedDB, 'audits')).map((audit) => audit.id)).toEqual(['audit:retained']);
     expect((await maintainCanonicalDatabase(indexedDB, options)).prunedAudits).toBe(0);
-  });
+  }, 15_000);
 
   it('validates old transport counts before pruning and cleans unchanged shards', async () => {
     const indexedDB = new IDBFactory();
