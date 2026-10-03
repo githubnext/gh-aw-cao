@@ -857,7 +857,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
           ], headingTag)
         : renderCustomView(page.id, view, index, readySources, units, cardTemplates, headingTag, routeParameter, queryContext);
       if (pending && !isSelfBound) rendered.setAttribute('aria-busy', 'true');
-      if (isPlainObject(view) && viewBackendAvailable(view, dashboardDataBackend())) {
+      if ((!pending || isSelfBound) && isPlainObject(view) && viewBackendAvailable(view, dashboardDataBackend())) {
         const semantics = effectiveViewSemantics(view, queries);
         if (view.prompt === 'always' || (view.prompt !== 'none'
           && semantics.subject && semantics.objective && semantics.acceptance)) {
