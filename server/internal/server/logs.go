@@ -66,9 +66,17 @@ func (a *App) serverLogRedis(ctx context.Context) serverLogRedis {
 	return result
 }
 
+func (a *App) serverLogsAuthorized(ctx context.Context) bool {
+	actor, actions := ctx.Value(githubActionsActorContextKey{}).(string)
+	return (actions && actor != "") || a.adminAuthorizedContext(ctx)
+}
+
+func (a *App) serverLogsSnapshot(ctx context.Context) serverLogSnapshot {
+	return serverLogSnapshot{Logs: a.logs.Snapshot(), Redis: a.serverLogRedis(ctx)}
+}
+
 func (a *App) serverLogs(response http.ResponseWriter, request *http.Request) {
-	_, actions := request.Context().Value(githubActionsActorContextKey{}).(string)
-	if !actions && !a.adminAuthorized(request) {
+	if !a.serverLogsAuthorized(request.Context()) {
 		writeError(response, http.StatusForbidden, "administrator access is required")
 		return
 	}
@@ -76,7 +84,5 @@ func (a *App) serverLogs(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Disposition", `attachment; filename="cao-server-logs.json"`)
 	response.Header().Set("Cache-Control", "no-store")
 	response.Header().Set("X-Content-Type-Options", "nosniff")
-	_ = json.NewEncoder(response).Encode(serverLogSnapshot{
-		Logs: a.logs.Snapshot(), Redis: a.serverLogRedis(request.Context()),
-	})
+	_ = json.NewEncoder(response).Encode(a.serverLogsSnapshot(request.Context()))
 }

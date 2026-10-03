@@ -85,8 +85,20 @@ test('hosted MCP lists tools, inspects the catalog, and executes a named query',
   });
 
   const listed = await call('tools/list');
-  assert.deepEqual(listed.tools.map(({ name }) => name), ['cao_catalog', 'cao_query']);
+  const toolNames = listed.tools.map(({ name }) => name);
+  const logsEnabled = toolNames.includes('cao_logs');
+  assert.deepEqual(toolNames, logsEnabled
+    ? ['cao_catalog', 'cao_logs', 'cao_query']
+    : ['cao_catalog', 'cao_query']);
   assert.ok(listed.tools.every(({ annotations }) => annotations?.readOnlyHint === true));
+
+  await t.test('reads enabled server logs with the Actions identity', { skip: !logsEnabled }, async () => {
+    const logs = await call('tools/call', { name: 'cao_logs', arguments: {} });
+    assert.ok(Array.isArray(logs.structuredContent?.logs), 'Server logs must return a record array');
+    assert.ok(['ok', 'unavailable', 'not-configured'].includes(logs.structuredContent?.redis?.status),
+      'Server logs must report Redis availability');
+    assert.deepEqual(Object.keys(logs.structuredContent).sort(), ['logs', 'redis']);
+  });
 
   const catalog = await call('tools/call', { name: 'cao_catalog', arguments: { kind: 'queries' } });
   assert.notEqual(catalog.isError, true);

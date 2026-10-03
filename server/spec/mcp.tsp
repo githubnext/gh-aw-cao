@@ -5,10 +5,11 @@ namespace Cao;
 
 @tag("MCP transport")
 namespace Mcp {
-  /** Optional stateless streamable HTTP transport, present only when MCP is enabled. Local mode accepts the dashboard bearer capability or a configured GitHub Actions identity; hosted mode requires a repository-scoped GitHub Actions identity (bearer token, actor and signed OIDC token). MCP message formats and tool schemas are maintained by the MCP contract, not this HTTP contract. */
-  @useAuth(BearerAuth)
+  /** Optional stateless streamable HTTP transport, present only when MCP is enabled. Local mode accepts the dashboard bearer capability or a configured GitHub Actions identity; hosted mode accepts an administrator's GitHub OAuth session with X-CSRF-Token, or a repository-scoped GitHub Actions identity (bearer token, actor and signed OIDC token). MCP message formats and tool schemas are maintained by the MCP contract, not this HTTP contract. */
+  @useAuth(DashboardAuth)
   @route("/mcp")
   @post op exchange(
+    @header("X-CSRF-Token") csrfToken?: string,
     @header("X-GitHub-Actor") githubActor?: string,
     @header("X-GitHub-OIDC-Token") githubOIDCToken?: string,
     @header("MCP-Protocol-Version") protocolVersion?: string,

@@ -104,9 +104,16 @@ two tools.
    }
    ```
 
-The MCP server exposes exactly these two tools, in that order, so the tool
+The Node snapshot MCP server exposes exactly these two tools, in that order, so the tool
 catalog stays constant no matter how many dashboard queries exist. It does not
 expose raw SQL and does not accept arbitrary query definitions.
+
+The Go dashboard server additionally exposes `cao_logs` when
+`CAO_SERVER_LOGS_ENABLED=true`. This no-argument, read-only tool returns the
+protected `/api/admin/logs` snapshot for administrators and validated GitHub
+Actions callers, not canonical dashboard rows. Hosted administrators use their
+GitHub OAuth session and `X-CSRF-Token`; Actions callers retain the existing
+token and OIDC requirements. See [server MCP setup](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md#local-mcp-endpoint).
 
 ## Read the result honestly
 

@@ -1641,13 +1641,19 @@ permissions:
 Keep the token in the Actions environment rather than passing it on a command
 line.
 
-The endpoint exposes only `cao_catalog` and `cao_query`; it accepts no
-SQL, arbitrary query definitions, refresh, rebuild, webhook, administration, or
-repository mutation operations.
+The endpoint exposes `cao_catalog` and `cao_query`, plus `cao_logs` when
+`CAO_SERVER_LOGS_ENABLED=true`. The `cao_logs` tool takes no arguments and
+returns the same `logs` and `redis` snapshot as `GET /api/admin/logs`, using
+the same administrator-or-validated-Actions authorization. Its schema is in
+the shared MCP contract's `serverTools` section; browser WebMCP and the
+Node snapshot MCP server continue to expose only the catalog and query tools.
+The endpoint accepts no SQL, arbitrary query definitions, refresh, rebuild,
+webhook, administrative mutations, or repository mutation operations.
 
 Hosted deployments can opt in with `serve-hosted --mcp-enabled`. This does not
 expose the local bearer capability or grant access to other APIs. The hosted
-`/mcp` endpoint accepts GitHub Actions callers with a bearer `GITHUB_TOKEN`
+`/mcp` endpoint accepts administrator GitHub OAuth sessions with
+`X-CSRF-Token`, or GitHub Actions callers with a bearer `GITHUB_TOKEN`
 and a GitHub Actions OIDC token in `X-GitHub-OIDC-Token`. Mint the OIDC token
 with `id-token: write` and the audience `https://cao.githubnext.com`; grant
 the Actions token `actions: read`, `contents: read`, `issues: read`, and
@@ -1656,7 +1662,8 @@ verifies the signed OIDC source ref and subject against it, along with repositor
 identity and the Actions token's repository read permissions, before
 serving MCP requests. Keep both tokens in the Actions process environment,
 never in a URL, commit, or log. Browser access continues to use the hosted
-GitHub OAuth session.
+GitHub OAuth session. Non-administrator browser sessions cannot access `/mcp`.
+MCP responses use `Cache-Control: no-store`, including log snapshots.
 
 Set `CAO_SERVER_LOGS_ENABLED=true` to retain up to 10,000 recent `DEBUG`-selected
 server records in memory and mount `GET /api/admin/logs`. The response is an

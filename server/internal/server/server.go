@@ -832,7 +832,9 @@ func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 			next.ServeHTTP(response, request)
 			return
 		}
-		if (request.URL.Path == "/mcp" && a.mcp != nil) ||
+		_, sessionCookieErr := request.Cookie(sessionCookieName)
+		if (request.URL.Path == "/mcp" && a.mcp != nil &&
+			(request.Header.Get("Authorization") != "" || sessionCookieErr != nil)) ||
 			(request.URL.Path == "/api/admin/logs" && a.logs != nil && request.Header.Get("Authorization") != "") {
 			ctx, span := telemetry.Tracer().Start(request.Context(), "cao_dashboard.auth.mcp")
 			defer span.End()
@@ -872,7 +874,7 @@ func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 			session, ok = a.oauth.session(response, request)
 		}
 		if !ok {
-			if strings.HasPrefix(request.URL.Path, "/api/") || request.URL.Path == "/auth/logout" {
+			if strings.HasPrefix(request.URL.Path, "/api/") || request.URL.Path == "/auth/logout" || request.URL.Path == "/mcp" {
 				a.logAuthBranch("access.unauthorized")
 				writeError(response, http.StatusUnauthorized, "GitHub authentication is required")
 				return
@@ -901,6 +903,10 @@ func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 		}
 		a.logAuthBranch("access.authorized")
 		request = request.WithContext(context.WithValue(request.Context(), oauthSessionContextKey{}, session))
+		if request.URL.Path == "/mcp" && a.mcp != nil && !a.adminAuthorized(request) {
+			writeError(response, http.StatusForbidden, "administrator access is required")
+			return
+		}
 		next.ServeHTTP(response, request)
 	})
 }
@@ -922,11 +928,15 @@ func (a *App) proxyPolicy() ProxyPolicy {
 type oauthSessionContextKey struct{}
 
 func (a *App) adminAuthorized(request *http.Request) bool {
+	return a.adminAuthorizedContext(request.Context())
+}
+
+func (a *App) adminAuthorizedContext(ctx context.Context) bool {
 	if a.oauth == nil {
 		a.logAuthBranch("admin.local_mode_allowed")
 		return true
 	}
-	session, ok := request.Context().Value(oauthSessionContextKey{}).(oauthSession)
+	session, ok := ctx.Value(oauthSessionContextKey{}).(oauthSession)
 	if !ok {
 		a.logAuthBranch("admin.session_missing")
 		return false
@@ -1055,8 +1065,10 @@ Server commit SHA: %s
 
 The read-only MCP endpoint is POST /mcp, only when the server is started with --mcp-enabled.
 It exposes cao_catalog (discover pages and queries) and cao_query (run a reviewed named query).
+When CAO_SERVER_LOGS_ENABLED=true, cao_logs reads the same diagnostic snapshot as GET /api/admin/logs.
 Local clients use the dashboard bearer capability in the Authorization header.
-Hosted clients must run in GitHub Actions on the authorized repository's default branch,
+Hosted administrators can use their GitHub OAuth session cookie and X-CSRF-Token.
+Other hosted clients must run in GitHub Actions on the authorized repository's default branch,
 send a repository-scoped GITHUB_TOKEN as a bearer token and an Actions OIDC token
 in X-GitHub-OIDC-Token (audience https://cao.githubnext.com).
 See the agent analysis guide and server setup documentation:

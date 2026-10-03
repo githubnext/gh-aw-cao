@@ -37,7 +37,8 @@ type mcpContract struct {
 		MaxParameters      int   `json:"maxParameters"`
 		MaxParameterLength int   `json:"maxParameterLength"`
 	} `json:"limits"`
-	Tools []mcpContractTool `json:"tools"`
+	Tools       []mcpContractTool `json:"tools"`
+	ServerTools []mcpContractTool `json:"serverTools"`
 }
 
 type mcpContractTool struct {
@@ -124,12 +125,26 @@ func (a *App) newMCPHandler() (http.Handler, error) {
 		SupportedProtocolVersions: []string{contract.ProtocolVersion},
 	})
 	server.AddReceivingMiddleware(mcpServerTelemetry())
-	registered := map[string]bool{}
-	for _, declared := range contract.Tools {
-		tool := declared
+	tools := slices.Clone(contract.Tools)
+	for _, tool := range tools {
 		if tool.Name != "cao_catalog" && tool.Name != "cao_query" {
 			return nil, fmt.Errorf("contract declares unsupported tool %q", tool.Name)
 		}
+	}
+	for index, tool := range contract.ServerTools {
+		if tool.Name != "cao_logs" {
+			return nil, fmt.Errorf("contract declares unsupported server tool %q", tool.Name)
+		}
+		if index > 0 {
+			return nil, fmt.Errorf("contract declares tool %q more than once", tool.Name)
+		}
+		if a.logs != nil {
+			tools = append(tools, tool)
+		}
+	}
+	registered := map[string]bool{}
+	for _, declared := range tools {
+		tool := declared
 		if registered[tool.Name] {
 			return nil, fmt.Errorf("contract declares tool %q more than once", tool.Name)
 		}
@@ -142,16 +157,16 @@ func (a *App) newMCPHandler() (http.Handler, error) {
 			return runtime.call(ctx, tool.Name, request.Params.Arguments), nil
 		})
 	}
-	if !registered["cao_catalog"] || !registered["cao_query"] || len(registered) != 2 {
-		return nil, errors.New("contract must declare exactly cao_catalog and cao_query")
+	if !registered["cao_catalog"] || !registered["cao_query"] {
+		return nil, errors.New("contract must declare cao_catalog and cao_query")
 	}
 	handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return server }, &mcp.StreamableHTTPOptions{
 		Stateless: true, JSONResponse: true, MaxRequestBodyBytes: contract.Limits.MaxRequestBytes,
 		PropagateRequestCancellation: true,
 	})
 	mcpLog.Printf("mcp handler constructed tools=%d default_rows=%d max_rows=%d",
-		len(contract.Tools), contract.Limits.DefaultQueryRows, contract.Limits.MaxQueryRows)
-	return &mcpContractHandler{next: handler, tools: contract.Tools}, nil
+		len(tools), contract.Limits.DefaultQueryRows, contract.Limits.MaxQueryRows)
+	return &mcpContractHandler{next: handler, tools: tools}, nil
 }
 
 func readJSONFile[T any](path string) (T, error) {
@@ -186,6 +201,8 @@ func (runtime *mcpRuntime) call(ctx context.Context, name string, arguments json
 		payload, err = runtime.callCatalog(args)
 	case "cao_query":
 		payload, err = runtime.callQuery(ctx, args)
+	case "cao_logs":
+		payload, err = runtime.callLogs(ctx, args)
 	default:
 		err = fmt.Errorf("Unknown tool: %s", name) //nolint:staticcheck // Shared MCP error contract uses sentence capitalization.
 	}
@@ -197,6 +214,19 @@ func (runtime *mcpRuntime) call(ctx context.Context, name string, arguments json
 		Content:           []mcp.Content{&mcp.TextContent{Text: string(data)}},
 		StructuredContent: payload,
 	}
+}
+
+func (runtime *mcpRuntime) callLogs(ctx context.Context, args map[string]any) (any, error) {
+	if !runtime.app.serverLogsAuthorized(ctx) {
+		return nil, errors.New("administrator access is required")
+	}
+	if runtime.app.logs == nil {
+		return nil, errors.New("server logging is not enabled")
+	}
+	if err := onlyArguments(args); err != nil {
+		return nil, err
+	}
+	return runtime.app.serverLogsSnapshot(ctx), nil
 }
 
 func mcpErrorResult(message string) *mcp.CallToolResult {
@@ -438,6 +468,7 @@ func (handler *mcpContractHandler) ServeHTTP(response http.ResponseWriter, reque
 			body, _ = json.Marshal(message)
 		}
 	}
+	response.Header().Set("Cache-Control", "no-store")
 	recorder.flush(response, body)
 }
 

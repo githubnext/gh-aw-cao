@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CAO dashboard server",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "description": "The Go dashboard server HTTP contract. Local mode uses a loopback bearer capability; hosted mode uses an authorized GitHub OAuth session and X-CSRF-Token on protected mutations. The optional MCP HTTP transport is covered, but its protocol messages and tool schemas are owned by the MCP contract; dashboard static assets are outside this contract."
   },
   "tags": [
@@ -2542,8 +2542,16 @@
     "/mcp": {
       "post": {
         "operationId": "Mcp_exchange",
-        "description": "Optional stateless streamable HTTP transport, present only when MCP is enabled. Local mode accepts the dashboard bearer capability or a configured GitHub Actions identity; hosted mode requires a repository-scoped GitHub Actions identity (bearer token, actor and signed OIDC token). MCP message formats and tool schemas are maintained by the MCP contract, not this HTTP contract.",
+        "description": "Optional stateless streamable HTTP transport, present only when MCP is enabled. Local mode accepts the dashboard bearer capability or a configured GitHub Actions identity; hosted mode accepts an administrator's GitHub OAuth session with X-CSRF-Token, or a repository-scoped GitHub Actions identity (bearer token, actor and signed OIDC token). MCP message formats and tool schemas are maintained by the MCP contract, not this HTTP contract.",
         "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "name": "X-GitHub-Actor",
             "in": "header",
@@ -2716,6 +2724,9 @@
         "security": [
           {
             "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
           }
         ]
       }

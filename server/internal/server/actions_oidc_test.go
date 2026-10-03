@@ -28,8 +28,6 @@ func (transport oidcTestTransport) RoundTrip(request *http.Request) (*http.Respo
 }
 
 func TestHostedActionsMCPAuthentication(t *testing.T) {
-	database := integrationDatabase(t)
-	seedDatabase(t, database, nil)
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatal(err)
@@ -301,8 +299,8 @@ func TestHostedActionsMCPAuthentication(t *testing.T) {
 			invalidBearerBody, response.Header().Get("X-Trace-Id"))
 	}
 
+	t.Setenv("CAO_SERVER_LOGS_ENABLED", "true")
 	fullApp := newMCPTestApp(t, true)
-	fullApp.database = database
 	fullApp.oauth = &githubOAuth{}
 	fullApp.config.HostProfile = hostedHostProfile()
 	fullApp.config.ActionsHTTPClient = client
@@ -329,16 +327,34 @@ func TestHostedActionsMCPAuthentication(t *testing.T) {
 	}
 	defer func() { _ = session.Close() }()
 	listed, err := session.ListTools(t.Context(), nil)
-	if err != nil || listed == nil || len(listed.Tools) != 2 {
+	if err != nil || listed == nil || len(listed.Tools) != 3 {
 		t.Fatalf("hosted MCP tools/list: tools=%v err=%v", listed, err)
 	}
-	for _, call := range []mcp.CallToolParams{
-		{Name: "cao_catalog", Arguments: map[string]any{"kind": "pages"}},
-		{Name: "cao_query", Arguments: map[string]any{"id": "campaign-runs", "limit": 1}},
-	} {
-		result, callErr := session.CallTool(t.Context(), &call)
-		if callErr != nil || result == nil || result.IsError {
-			t.Fatalf("hosted MCP tools/call %s: result=%v err=%v", call.Name, result, callErr)
-		}
+	logs, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "cao_logs", Arguments: map[string]any{}})
+	if err != nil || logs == nil || logs.IsError {
+		t.Fatalf("hosted MCP logs: result=%v err=%v", logs, err)
 	}
+	logsPayload, err := json.Marshal(logs.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var snapshot serverLogSnapshot
+	if err := json.Unmarshal(logsPayload, &snapshot); err != nil || snapshot.Logs == nil || snapshot.Redis.Status == "" {
+		t.Fatalf("invalid hosted logs: %s (%v)", logsPayload, err)
+	}
+
+	t.Run("named queries use database", func(t *testing.T) {
+		database := integrationDatabase(t)
+		seedDatabase(t, database, nil)
+		fullApp.database = database
+		for _, call := range []mcp.CallToolParams{
+			{Name: "cao_catalog", Arguments: map[string]any{"kind": "pages"}},
+			{Name: "cao_query", Arguments: map[string]any{"id": "campaign-runs", "limit": 1}},
+		} {
+			result, callErr := session.CallTool(t.Context(), &call)
+			if callErr != nil || result == nil || result.IsError {
+				t.Fatalf("hosted MCP tools/call %s: result=%v err=%v", call.Name, result, callErr)
+			}
+		}
+	})
 }

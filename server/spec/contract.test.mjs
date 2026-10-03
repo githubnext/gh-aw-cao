@@ -51,7 +51,7 @@ test('agent discovery describes public GET and body-free HEAD responses', () => 
 
 test('the generated contract describes the implemented security and wire formats', () => {
   assert.equal(openapi.openapi, '3.1.0')
-  assert.equal(openapi.info.version, '2.0.0')
+  assert.equal(openapi.info.version, '2.1.0')
   for (const path of ['/api/runs/{id}/jobs', '/api/runs/{id}/sessions', '/api/sessions/{id}/events']) {
     assert.equal(openapi.paths[path], undefined)
   }
@@ -68,6 +68,8 @@ test('the generated contract describes the implemented security and wire formats
   assert.ok(openapi.paths['/api/github/webhook'].post.responses['202'])
   const mcp = openapi.paths['/mcp'].post
   assert.ok(mcp.security.some(entry => 'BearerAuth' in entry))
+  assert.ok(mcp.security.some(entry => 'ApiKeyAuth' in entry))
+  assert.ok(mcp.parameters.some(parameter => parameter.name === 'X-CSRF-Token'))
   assert.ok(mcp.parameters.some(parameter => parameter.name === 'X-GitHub-Actor'))
   assert.ok(mcp.parameters.some(parameter => parameter.name === 'X-GitHub-OIDC-Token'))
   assert.ok(mcp.requestBody.content['application/json'])
@@ -140,6 +142,30 @@ test('server log records preserve reserved wire names and date-time examples', (
   assert.equal(
     openapi.components.schemas.ServerLogSnapshot.properties.logs.items.$ref,
     '#/components/schemas/ServerLogRecord'
+  )
+})
+
+test('the server-only MCP logs tool matches the HTTP snapshot contract', () => {
+  const contract = JSON.parse(readFileSync(join(directory, '../../dashboard/site/src/agent/mcp-contract.json'), 'utf8'))
+  assert.deepEqual(contract.tools.map(tool => tool.name), ['cao_catalog', 'cao_query'])
+  assert.deepEqual(contract.serverTools.map(tool => tool.name), ['cao_logs'])
+  const logs = contract.serverTools[0]
+  assert.deepEqual(logs.inputSchema, { type: 'object', properties: {}, additionalProperties: false })
+  assert.equal(logs.annotations.readOnlyHint, true)
+  assert.equal(logs.annotations.untrustedContentHint, true)
+  const schemas = openapi.components.schemas
+  for (const [actual, expected] of [
+    [logs.outputSchema, schemas.ServerLogSnapshot],
+    [logs.outputSchema.properties.logs.items, schemas.ServerLogRecord],
+    [logs.outputSchema.properties.redis, schemas.ServerLogRedis]
+  ]) {
+    assert.deepEqual(actual.required, expected.required)
+    assert.deepEqual(Object.keys(actual.properties).sort(), Object.keys(expected.properties).sort())
+  }
+  assert.deepEqual(logs.outputSchema.properties.logs.items.properties, schemas.ServerLogRecord.properties)
+  assert.deepEqual(
+    logs.outputSchema.properties.redis.properties.status.enum.slice().sort(),
+    schemas.ServerLogRedis.properties.status.enum.slice().sort()
   )
 })
 
