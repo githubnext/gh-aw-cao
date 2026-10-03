@@ -8,5 +8,6 @@
 **/test-results
 **/.cache
 **/*.lock.yml
+!.github/workflows/*.lock.yml
 docs
 research

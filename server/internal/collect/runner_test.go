@@ -35,14 +35,48 @@ func TestValidateActivityCatalogRequiresTheCompactorScript(t *testing.T) {
 	}
 }
 
+func TestValidateWorkflowCatalogRequiresACompiledWorkflow(t *testing.T) {
+	directory := t.TempDir()
+	if err := validateWorkflowCatalog(directory); err == nil {
+		t.Fatal("expected an error when .github/workflows is missing")
+	}
+	workflows := filepath.Join(directory, ".github", "workflows")
+	if err := os.MkdirAll(workflows, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(workflows, "example.md"), []byte("# Example\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := validateWorkflowCatalog(directory); err == nil {
+		t.Fatal("expected an error when no compiled workflow is present")
+	}
+	if err := os.WriteFile(filepath.Join(workflows, "example.lock.yml"), []byte("name: Example\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := validateWorkflowCatalog(directory); err != nil {
+		t.Fatalf("expected a compiled workflow to validate, got: %v", err)
+	}
+}
+
+func writeValidCollectionCatalog(t *testing.T, directory string) {
+	t.Helper()
+	for path, content := range map[string]string{
+		filepath.Join("activity", "cao.mjs"):                      "//",
+		filepath.Join(".github", "workflows", "example.lock.yml"): "name: Example\n",
+	} {
+		target := filepath.Join(directory, path)
+		if err := os.MkdirAll(filepath.Dir(target), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(target, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func TestRunnerValidateFailsOnAMissingTokenProvider(t *testing.T) {
 	directory := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(directory, "activity"), 0o750); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(directory, "activity", "cao.mjs"), []byte("//"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	writeValidCollectionCatalog(t, directory)
 	runner := Runner{
 		Lake:        Lake{Directory: filepath.Join(directory, "lake")},
 		CatalogRoot: directory,
@@ -81,12 +115,7 @@ func TestRunnerReproducesTheActionsCollectionCommand(t *testing.T) {
 	workspace := t.TempDir()
 	recordPath := filepath.Join(workspace, "gh-args")
 	catalogRoot := filepath.Join(workspace, "catalog")
-	if err := os.MkdirAll(filepath.Join(catalogRoot, "activity"), 0o750); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(catalogRoot, "activity", "cao.mjs"), []byte("//"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	writeValidCollectionCatalog(t, catalogRoot)
 	gh := writeFakeBinary(t, workspace, "gh",
 		`printf '%s\n' "$@" > `+recordPath+`; printf 'token=%s\n' "$GH_TOKEN" >> `+recordPath)
 	node := writeFakeBinary(t, workspace, "node", `exit 0`)

@@ -109,6 +109,9 @@ RUN apk add --no-cache ca-certificates github-cli \
 
 COPY --from=dashboard-runtime --chown=cao:cao /app/ /app/
 COPY --from=dashboard-build --chown=cao:cao /workspace/activity/ /app/catalog/activity/
+# gh aw logs discovers agentic workflow names from local compiled workflows
+# before it queries runs, so the collection catalog must retain the lock files.
+COPY --from=dashboard-build --chown=cao:cao /workspace/.github/workflows/*.lock.yml /app/catalog/.github/workflows/
 COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/report/ /app/catalog/dashboard/report/
 COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/package.json /app/catalog/dashboard/site/package.json
 COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/src/ /app/catalog/dashboard/site/src/

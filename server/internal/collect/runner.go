@@ -64,10 +64,11 @@ type Runner struct {
 type runnerValidationStage string
 
 const (
-	runnerValidationStageLake        runnerValidationStage = "lake"
-	runnerValidationStageCatalogRoot runnerValidationStage = "catalog-root"
-	runnerValidationStageActivityCLI runnerValidationStage = "activity-cli"
-	runnerValidationStageTokens      runnerValidationStage = "tokens"
+	runnerValidationStageLake            runnerValidationStage = "lake"
+	runnerValidationStageCatalogRoot     runnerValidationStage = "catalog-root"
+	runnerValidationStageActivityCLI     runnerValidationStage = "activity-cli"
+	runnerValidationStageWorkflowCatalog runnerValidationStage = "workflow-catalog"
+	runnerValidationStageTokens          runnerValidationStage = "tokens"
 )
 
 // validateActivityCatalog reports whether catalogRoot names a non-blank
@@ -87,6 +88,20 @@ func validateActivityCatalog(catalogRoot string, stat func(string) (os.FileInfo,
 	return nil
 }
 
+func validateWorkflowCatalog(catalogRoot string) error {
+	directory := filepath.Join(catalogRoot, ".github", "workflows")
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		return fmt.Errorf("read gh-aw workflow catalog: %w", err)
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".lock.yml") {
+			return nil
+		}
+	}
+	return errors.New("gh-aw workflow catalog must contain at least one .lock.yml file")
+}
+
 // Validate reports whether the runner can collect at all. On failure it logs
 // only which prerequisite stage failed, so misconfiguration can be diagnosed
 // without exposing the catalog root or other configuration values.
@@ -101,6 +116,10 @@ func (r Runner) Validate() error {
 			stage = runnerValidationStageActivityCLI
 		}
 		runnerLog.Printf("runner validation failed stage=%s", stage)
+		return err
+	}
+	if err := validateWorkflowCatalog(r.CatalogRoot); err != nil {
+		runnerLog.Printf("runner validation failed stage=%s", runnerValidationStageWorkflowCatalog)
 		return err
 	}
 	if r.Tokens == nil {

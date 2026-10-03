@@ -11,6 +11,7 @@ async function text(path) {
 
 test("Coolify image is multi-stage, non-root, versioned, and health checked", async () => {
   const dockerfile = await text("server/Dockerfile");
+  const dockerignore = await text(".dockerignore");
   const policy = JSON.parse(await text(".github/workflows/cao.json"));
   const ghAwVersion = policy["gh-aw-version"];
 
@@ -37,6 +38,11 @@ test("Coolify image is multi-stage, non-root, versioned, and health checked", as
   assert.match(dockerfile, /sha256sum -c -/);
   assert.match(dockerfile, /\/app\/\.local\/share\/gh\/extensions\/gh-aw\/gh-aw/);
   assert.match(dockerfile, /\/workspace\/activity\/ \/app\/catalog\/activity\//);
+  assert.match(
+    dockerfile,
+    /\/workspace\/\.github\/workflows\/\*\.lock\.yml \/app\/catalog\/\.github\/workflows\//,
+  );
+  assert.match(dockerignore, /^!\.github\/workflows\/\*\.lock\.yml$/m);
   assert.match(dockerfile, /\/workspace\/dashboard\/site\/node_modules\/yaml\/ \/app\/catalog\/node_modules\/yaml\//);
   assert.match(dockerfile, /VOLUME \["\/app\/evidence"\]/);
   assert.match(dockerfile, /FROM dashboard-runtime AS final/);
