@@ -48,24 +48,20 @@ export const SQLITE_RELATIONAL_STORES = Object.freeze({
   },
   experiments: { workflowId: 'TEXT', name: 'TEXT', firstObservedAt: 'TEXT', lastObservedAt: 'TEXT' },
   experimentAssignments: { runId: 'TEXT', experimentId: 'TEXT', variant: 'TEXT',
-    included: 'INTEGER', exclusionReason: 'TEXT', auditId: 'TEXT',
-    firstObservedAt: 'TEXT', lastObservedAt: 'TEXT' },
+    included: 'INTEGER', exclusionReason: 'TEXT', auditId: 'TEXT' },
   graders: { workflowId: 'TEXT', name: 'TEXT', sourceGraderId: 'TEXT',
     direction: 'TEXT', unit: 'TEXT', threshold: 'REAL',
     firstObservedAt: 'TEXT', lastObservedAt: 'TEXT' },
   graderObservations: { runId: 'TEXT', graderId: 'TEXT', value: 'REAL', status: 'TEXT',
-    sourceGraderId: 'TEXT', experimentId: 'TEXT', variant: 'TEXT',
-    evaluatorDigest: 'TEXT', resultTimestamp: 'TEXT',
-    included: 'INTEGER', exclusionReason: 'TEXT', auditId: 'TEXT',
-    firstObservedAt: 'TEXT', lastObservedAt: 'TEXT' },
+    experimentId: 'TEXT', variant: 'TEXT',
+    evaluatorDigest: 'TEXT', timestamp: 'TEXT',
+    included: 'INTEGER', exclusionReason: 'TEXT', auditId: 'TEXT' },
   evals: { workflowId: 'TEXT', name: 'TEXT', sourceEvalId: 'TEXT',
     firstObservedAt: 'TEXT', lastObservedAt: 'TEXT' },
   evalObservations: { runId: 'TEXT', evalId: 'TEXT', experimentId: 'TEXT', variant: 'TEXT',
     evalResult: 'TEXT', status: 'TEXT',
-    sourceEvalId: 'TEXT', resultTimestamp: 'TEXT',
-    included: 'INTEGER', exclusionReason: 'TEXT', auditId: 'TEXT',
-    requestedModel: 'TEXT', resolvedModel: 'TEXT',
-    firstObservedAt: 'TEXT', lastObservedAt: 'TEXT' }
+    timestamp: 'TEXT',
+    included: 'INTEGER', exclusionReason: 'TEXT', auditId: 'TEXT' }
 });
 
 /** @param {DatabaseSync} connection @param {string} databaseName @param {string} [store] */

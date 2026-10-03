@@ -718,7 +718,7 @@ describe('gh-aw logs adapter', () => {
     })}\n`;
     const batch = normalize(adaptCachedGhAwJsonl(content).observations);
     expect(batch.evals?.map((record) => record.name)).toEqual(['correctness', 'uncertain']);
-    expect(batch.evalObservations?.map((record) => [record.answer, record.status])).toEqual([
+    expect(batch.evalObservations?.map((record) => [record.evalResult, record.status])).toEqual([
       ['YES', 'pass'], ['UNKNOWN', 'unavailable']
     ]);
     expect(batch.evalObservations?.every((record) => record.runId === batch.runs[0].id)).toBe(true);
@@ -788,9 +788,9 @@ describe('gh-aw logs adapter', () => {
     expect(batch.graders).toHaveLength(1);
     expect(batch.graderObservations).toEqual([
       expect.objectContaining({
-        graderId: batch.graders?.[0].id, sourceGraderId: 'operational-value',
+        graderId: batch.graders?.[0].id,
         experimentId: batch.experiments?.[0].id, variant: 'candidate',
-        evaluatorDigest: 'evaluator:v1', resultTimestamp: '2026-09-17T00:00:09.000Z',
+        evaluatorDigest: 'evaluator:v1', timestamp: '2026-09-17T00:00:09.000Z',
         metrics: [{ id: 'accepted-outcomes', value: 8 }],
         value: 0.8, runId: batch.runs[0].id
       })

@@ -133,7 +133,7 @@ describe('dashboard source ingestion queries', () => {
 
     expect(batch.repositories[0]).toMatchObject({
       id: 'repository:githubnext%2Fgh-aw-cao',
-      fullName: 'githubnext/gh-aw-cao',
+      owner: 'githubnext', name: 'gh-aw-cao',
       repositoryLink: { relation: 'repository', href: 'https://github.com/githubnext/gh-aw-cao' }
     });
     expect(batch.campaigns[0]).toMatchObject({
@@ -157,7 +157,6 @@ describe('dashboard source ingestion queries', () => {
       ghAwVersion: '0.88.8',
       ghAwUpdateState: 'update-available',
       campaignId: batch.campaigns[0].id,
-      campaign: 'dashboard',
       role: 'worker'
     });
     expect(batch.runs[0]).toMatchObject({
@@ -271,10 +270,7 @@ describe('dashboard source ingestion queries', () => {
       targets: [{ repository: 'github/gh-aw', mode: 'review' }]
     });
     expect(batch.workflows[0]).toMatchObject({
-      campaignId: batch.campaigns[0].id,
-      campaign: 'optimization',
-      campaignName: 'Optimization',
-      campaignIcon: 'zap'
+      campaignId: batch.campaigns[0].id
     });
     expect(relationshipErrors(batch)).toEqual([]);
   });
@@ -380,7 +376,6 @@ describe('dashboard source ingestion queries', () => {
       type: 'token_efficiency.intervention',
       mcpServer: 'github',
       mcpTool: 'search_issues',
-      targetRepo: 'octo/example',
       targetOrganization: 'octo',
       targetRepository: 'example',
       targetWorkflowPath: '.github/workflows/review.md',

@@ -510,7 +510,7 @@ func inventoryRow(name string, input model.Row) (string, model.Row, error) {
 			if slug == "" {
 				return "", nil, errors.New("inventory campaign requires a slug")
 			}
-			row["id"], row["slug"] = "campaign:dashboard-sources:"+encodeCoordinate(slug), slug
+			row["id"], row["slug"] = "campaign:dashboard-sources:"+model.EncodeCoordinate(slug), slug
 			if _, present := row["name"]; !present {
 				row["name"] = slug
 			}
@@ -519,7 +519,7 @@ func inventoryRow(name string, input model.Row) (string, model.Row, error) {
 			if owner == "" || repository == "" {
 				return "", nil, errors.New("inventory repository requires a coordinate")
 			}
-			row["id"], row["owner"], row["name"] = "repository:"+encodeCoordinate(strings.ToLower(owner+"/"+repository)), owner, repository
+			row["id"], row["owner"], row["name"] = "repository:"+model.EncodeCoordinate(strings.ToLower(owner+"/"+repository)), owner, repository
 		case "workflows":
 			owner, repository, path := text("organization"), text("repository"), strings.ToLower(text("workflow"))
 			path = strings.TrimSuffix(path, ".lock.yml") + ".md"
@@ -530,7 +530,14 @@ func inventoryRow(name string, input model.Row) (string, model.Row, error) {
 				return "", nil, errors.New("inventory workflow requires a coordinate")
 			}
 			coordinate := strings.ToLower(owner + "/" + repository)
-			row["id"], row["repositoryId"], row["path"] = "workflow:"+encodeCoordinate(coordinate+":"+path), "repository:"+encodeCoordinate(coordinate), path
+			row["id"], row["repositoryId"], row["path"] = "workflow:"+model.EncodeCoordinate(coordinate+":"+path), "repository:"+model.EncodeCoordinate(coordinate), path
+			campaign := text("campaign")
+			if campaign == "" {
+				campaign = text("package")
+			}
+			if campaign != "" {
+				row["campaignId"] = "campaign:dashboard-sources:" + model.EncodeCoordinate(campaign)
+			}
 			if _, present := row["name"]; !present {
 				row["name"] = text("workflow")
 			}
@@ -561,19 +568,4 @@ func inventoryRow(name string, input model.Row) (string, model.Row, error) {
 		}
 	}
 	return source, row, nil
-}
-
-func encodeCoordinate(value string) string {
-	const hexDigits = "0123456789ABCDEF"
-	var result strings.Builder
-	for _, value := range []byte(value) {
-		if value >= 'a' && value <= 'z' || value >= 'A' && value <= 'Z' || value >= '0' && value <= '9' || strings.ContainsRune("-_.!~*'()", rune(value)) {
-			result.WriteByte(value)
-		} else {
-			result.WriteByte('%')
-			result.WriteByte(hexDigits[value>>4])
-			result.WriteByte(hexDigits[value&15])
-		}
-	}
-	return result.String()
 }

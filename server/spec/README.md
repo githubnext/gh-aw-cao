@@ -39,6 +39,23 @@ Workflow declaration copies, Issue lifecycle aliases, and the unused
 `dashboard/site/src/data/model/fields.js`; provenance and unrecognized
 evidence remain intact.
 
+Query-reconstructible values are excluded from TypeSpec and canonical writes.
+Workflow stores only an optional `campaignId` foreign key to
+`campaigns(namespace, id)`. Campaign metadata and the slug are joined from
+Campaign; gh-aw version labels are
+computed from installed/current versions. Grader/eval source IDs are joined
+from definitions independently of their names, result timestamps are projected from one stored
+timestamp, and Audit target coordinates are concatenated from their components.
+Browser-only repository coordinate strings and Eval answer/model copies are
+also pruned; SQLite mirrors do not retain derived assignment/result observation
+ranges. Source copies may supply missing underlying facts during ingestion,
+but conflicting copies fail rather than silently overwrite them.
+Physical identity/integrity keys and independent historical observations are
+not display projections and remain stored. Retained row counts are calculated
+from entity tables in the same namespace-scoped read snapshot, not stored
+in quality metadata. A physical contract change requires
+a fresh PostgreSQL schema; browser IndexedDB rebuilds its disposable stores.
+
 ### Tool structure assessment
 
 The current logical `tools` collection is execution-event evidence: one

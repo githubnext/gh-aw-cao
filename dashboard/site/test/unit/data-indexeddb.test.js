@@ -230,7 +230,7 @@ describe('canonical IndexedDB', () => {
     ]);
     expect(database.transaction('repositories').objectStore('repositories').keyPath).toBe('id');
     expect([...database.transaction('repositories').objectStore('repositories').indexNames]).toEqual([]);
-    expect([...database.transaction('workflows').objectStore('workflows').indexNames]).toEqual(['byRepository']);
+    expect([...database.transaction('workflows').objectStore('workflows').indexNames]).toEqual(['byCampaign', 'byRepository']);
     expect([...database.transaction('runs').objectStore('runs').indexNames])
       .toEqual(['byConclusion', 'byEvent', 'byEventConclusion', 'byRepository', 'byWorkflow']);
     expect([...database.transaction('domains').objectStore('domains').indexNames])
@@ -408,10 +408,10 @@ describe('canonical IndexedDB', () => {
     await upsertCanonicalBatch(indexedDB, batch());
 
     expect(await readCollection(indexedDB, 'repositories')).toEqual([
-      expect.objectContaining({ id: 'repository:1', fullName: 'githubnext/gh-aw-cao' })
+      expect.objectContaining({ id: 'repository:1', owner: 'githubnext', name: 'gh-aw-cao' })
     ]);
     expect(await readRecord(indexedDB, 'repositories', 'repository:1')).toMatchObject({
-      fullName: 'githubnext/gh-aw-cao'
+      owner: 'githubnext', name: 'gh-aw-cao'
     });
   });
 
@@ -720,7 +720,7 @@ describe('canonical IndexedDB', () => {
     const stored = await readCollection(indexedDB, 'repositories');
     expect(stored).toHaveLength(2_500);
     expect(await readRecord(indexedDB, 'repositories', 'repository:1'))
-      .toEqual(expect.objectContaining({ fullName: 'githubnext/repo-1' }));
+      .toEqual(expect.objectContaining({ owner: 'githubnext', name: 'repo-1' }));
   });
 
   it('does not rewrite structurally unchanged retained records', async () => {
@@ -801,8 +801,8 @@ describe('canonical IndexedDB', () => {
   it('converges after a partial write failure is retried', async () => {
     const replacement = normalize([]);
     replacement.repositories = [
-      { id: 'repository:1', fullName: 'githubnext/one' },
-      { id: 'repository:2', fullName: 'githubnext/two' }
+      { id: 'repository:1', owner: 'githubnext', name: 'one' },
+      { id: 'repository:2', owner: 'githubnext', name: 'two' }
     ];
     const originalPut = IDBObjectStore.prototype.put;
     const metrics = vi.fn();

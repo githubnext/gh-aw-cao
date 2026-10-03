@@ -363,10 +363,10 @@ The implementation profile defined by this specification is:
 
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
-| Canonical model | 27 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
-| Browser IndexedDB | 36 | Eighteen canonical entity stores and `transactions` |
-| Local SQLite projection | IndexedDB 36 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
-| Go server Postgres sources | Canonical model 15 | Eighteen fresh TypeSpec-defined entity tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
+| Canonical model | 28 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
+| Browser IndexedDB | 37 | Eighteen canonical entity stores and `transactions` |
+| Local SQLite projection | IndexedDB 37 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
+| Go server Postgres sources | Canonical model 17 | Fresh TypeSpec-defined entity and input tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
 ## 5.2 Go server profile
@@ -411,7 +411,7 @@ store uses `id` as its key path. The implemented secondary indexes are:
 | --- | --- |
 | `campaigns` | `bySlug -> slug` |
 | `repositories` | none |
-| `workflows` | `byRepository -> repositoryId` |
+| `workflows` | `byRepository -> repositoryId`, `byCampaign -> campaignId` |
 | `runs` | `byRepository -> repositoryId`, `byWorkflow -> workflowId`, `byConclusion -> conclusion`, `byEvent -> event`, `byEventConclusion -> [event, conclusion]` |
 | `domains` | `byRun -> runId`, `byQuerySummary -> _queryKeys.byQuerySummary`, `byQueryDomain -> _queryKeys.byQueryDomain` |
 | `tools` | `byRun -> runId`, `byQuerySummary -> _queryKeys.byQuerySummary`, `byQueryMcpIdentity -> _queryKeys.byQueryMcpIdentity`, `byTypeStatusRun -> [type, status, runId]`, `byTypeStatusRunSummary -> [type, status, runId, summary]` |
@@ -491,7 +491,9 @@ expose `run_id`, `experiment_id`, and `variant`; grader observations expose
 `run_id`, `grader_id`, `value`, `status`, and optional `experiment_id`/`variant`,
 `audit_id`, and `evaluator_digest`; eval observations expose `run_id`,
 `eval_id`, `eval_result`, `status`, and optional `experiment_id`/`variant`,
-`audit_id`, and `requested_model`/`resolved_model`. Optional inclusion and exclusion fields,
+`audit_id`, and `timestamp`. Requested and resolved models SHALL be obtained from
+the owning Run in query projections, not copied into Eval observations.
+Optional inclusion and exclusion fields,
 `observed_at` and `provenance` preserve observation metadata without requiring
 queries to parse Audit JSON. The full record is available by joining
 `__idb_records` on `database_name`, the canonical `store_name`, and
@@ -1338,6 +1340,48 @@ Unknown evidence fields MUST NOT be removed by a speculative query-only
 allowlist. Source provenance, explicit nulls, immutable Run aggregates, and
 historical execution metadata SHALL be preserved.
 
+## 10.1 Query-reconstructible fields
+
+The editable TypeSpec storage contract SHALL retain facts rather than
+materialized display or relationship projections. Workflow campaign names,
+icons, README paths, AI-credit allowances, worker counts, and warning counts
+SHALL come from the owning Campaign through declarative joins. The gh-aw
+Workflow SHALL retain only an optional `campaignId` foreign key to Campaign;
+the campaign slug SHALL also be projected from that parent, not copied into
+Workflow. PostgreSQL SHALL enforce `(namespace, campaign_id)` against
+`campaigns(namespace, id)`, and canonical relationship validation SHALL reject
+an unresolved nonnull Campaign reference. The gh-aw
+version label SHALL be computed from the installed and current versions.
+These values MUST NOT be copied into Workflow storage.
+
+Grader and Eval observations SHALL obtain their original source IDs from
+the definition's `sourceGraderId` or `sourceEvalId`. Names and display names
+are independently observed facts and MAY differ from those IDs. Each result SHALL retain one event `timestamp`;
+`result-timestamp` and `observed-at` query outputs MAY project that same value.
+The redundant observation-level `sourceGraderId`, `sourceEvalId`, and
+`resultTimestamp` fields MUST NOT be stored. Eval `answer` duplicates `evalResult`; requested and
+resolved models belong to the Run and SHALL be joined at query time.
+SQLite mirrors MUST NOT materialize assignment/result first/last observation
+ranges from `observed_at`; range facts belong to definitions only.
+
+Repository `fullName`, Run `repositoryFullName`, and Audit `targetRepo`
+SHALL be reconstructed from their retained owner and repository components.
+Ingestion MAY accept source-shaped copies to preserve their underlying facts
+before pruning them, but conflicting copies MUST fail explicitly rather than
+erase independent evidence. Missing coordinate components SHALL yield a
+missing query value, not a fabricated `/` coordinate.
+
+This rule does not remove primary/foreign keys, namespace isolation, ordering,
+presence bits, partition keys, provenance, physical lookup indexes, or
+independently observed historical execution facts. Similar values at different
+grains are not necessarily reconstructible: Run status and conclusion,
+requested and resolved models, friction and total Run costs, token classes,
+call and outcome events, and execution and dispatched-target repositories
+retain their separate meanings. Browser schema upgrades SHALL rebuild the
+disposable stores; PostgreSQL requires a fresh schema matching TypeSpec.
+Retained row counts SHALL be calculated from namespace-scoped entity tables
+in the same read snapshot, not persisted in `cao_quality`.
+
 ---
 
 # 11. Run-Owned Record Classification
@@ -1368,8 +1412,9 @@ relationship keys and observed values (variant, grader value/status, eval
 result, requested/resolved model, first/last observation times, and optional
 inclusion, exclusion reason, and audit identity); absent evidence stays NULL
 rather than being inferred from a successful run.
-Explicit grader and eval IDs remain available as `sourceGraderId` and
-`sourceEvalId`; canonical definition keys also include the owning Workflow
+Explicit grader and eval IDs SHALL be stored once on their definitions as
+`sourceGraderId` and `sourceEvalId` and exposed through definition joins;
+canonical definition keys also include the owning Workflow
 to avoid collisions when two workflows reuse an ID. A grader result links
 to an experiment variant only when its explicit experiment identity matches
 an assignment for the same Run.
@@ -2090,7 +2135,7 @@ The canonical browser database SHALL use:
 
 ```js
 const DATABASE_NAME = "gh-aw-cao-dashboard-data";
-const DATABASE_VERSION = 36;
+const DATABASE_VERSION = 37;
 ```
 
 The name MAY be scoped by deployment path to prevent unrelated dashboard
@@ -2102,7 +2147,7 @@ rows.
 
 # 27. Object Stores
 
-IndexedDB version 36 SHALL define:
+IndexedDB version 37 SHALL define:
 
 ```text
 campaigns

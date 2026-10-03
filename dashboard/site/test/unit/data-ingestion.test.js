@@ -499,7 +499,7 @@ describe('database table ingestion and queries', () => {
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({
         kind: 'ingest-dashboard-sources',
-        ingestionVersion: 6,
+        ingestionVersion: 7,
         payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
       }),
       expect.objectContaining({ kind: 'audit-curation', version: 1 })
@@ -532,8 +532,7 @@ describe('database table ingestion and queries', () => {
     });
     await expect(createCanonicalQueries(indexedDB).workflows.list()).resolves.toEqual([
       expect.objectContaining({
-        campaignId: 'campaign:dashboard-sources:dashboard',
-        campaign: 'dashboard'
+        campaignId: 'campaign:dashboard-sources:dashboard'
       })
     ]);
   });
@@ -671,10 +670,7 @@ describe('database table ingestion and queries', () => {
     const activeRuns = await queries.runs.list();
     expect(await queries.workflows.list()).toEqual([
       expect.objectContaining({
-        campaignId: bundledWorkflow.campaignId,
-        campaign: 'dashboard',
-        campaignName: 'CAO Dashboard',
-        campaignIcon: 'dashboard'
+        campaignId: bundledWorkflow.campaignId
       })
     ]);
     expect(activeRuns.map((run) => run.id)).toEqual([
@@ -788,7 +784,7 @@ describe('database table ingestion and queries', () => {
     await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([
       expect.objectContaining({
         id: 'github:run:githubnext/gh-aw-cao:303',
-        repositoryFullName: 'githubnext/gh-aw-cao',
+        owner: 'githubnext', repository: 'gh-aw-cao',
         agentId: 'copilot',
         agentVersion: '1.2.3',
         modelId: 'gpt-5.4',
@@ -817,9 +813,9 @@ describe('database table ingestion and queries', () => {
     );
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({
-        id: expect.stringMatching(/^ingest-jsonl:sha256:[a-f0-9]{64}:v6$/),
+        id: expect.stringMatching(/^ingest-jsonl:sha256:[a-f0-9]{64}:v7$/),
         kind: 'ingest-jsonl',
-        ingestionVersion: 6,
+        ingestionVersion: 7,
         records: 3,
         payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
       }),
@@ -1002,8 +998,6 @@ describe('database table ingestion and queries', () => {
     await expect(createCanonicalQueries(indexedDB).workflows.list()).resolves.toEqual([
       expect.objectContaining({
         campaignId: 'campaign:dashboard-sources:dashboard',
-        campaign: 'dashboard',
-        campaignName: 'CAO Dashboard',
         githubId: '501',
         name: 'Current registry name',
         state: 'unknown',

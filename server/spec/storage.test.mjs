@@ -154,6 +154,7 @@ test('generated SQL contains no JSON or serialized document columns', () => {
   assert.doesNotMatch(sql, /\b(?:ALTER|DROP)\s+TABLE\b/i);
   assert.doesNotMatch(sql, /\b(?:cao_sources|cao_source_rows|cao_values|ChildValue)\b|CREATE TABLE[^\n]*(?:campaigns|runs|audits|friction)_values\b/i);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS cao_quality/);
+  assert.doesNotMatch(sql, /\brow_count\b/, 'retained collection counts must be computed, not persisted');
   assert.doesNotMatch(sql, /\bis_skill\b/);
   assert.doesNotMatch(sql, /CREATE TABLE IF NOT EXISTS (?:collection_health|github_quota_usage|simulation_days|marketplace_packages)\b/);
 });
@@ -170,4 +171,14 @@ test('generated Postgres contract persists Campaign as a namespace-scoped entity
   const bindings = readFileSync(new URL('../internal/postgresx/schema.gen.go', import.meta.url), 'utf8');
   assert.match(bindings, /"\$campaigns": \{name: "campaigns", runtime: false, canonical: true/);
   assert.match(bindings, /"campaigns": \{[\s\S]*?field: "version", inputs: \[\]string\{"campaign-version"(?:,|\})/);
+});
+
+test('Workflow stores only a Campaign foreign key, never copied campaign facts', () => {
+  const sql = readFileSync(new URL('../internal/postgresx/schema.sql', import.meta.url), 'utf8');
+  const workflow = sql.match(/CREATE TABLE IF NOT EXISTS workflows \(\n([\s\S]*?)\n\);/);
+  assert.ok(workflow);
+  assert.match(workflow[1], /campaign_id TEXT/);
+  assert.match(workflow[1], /FOREIGN KEY \(namespace, campaign_id\) REFERENCES campaigns\(namespace, id\) DEFERRABLE INITIALLY DEFERRED/);
+  assert.doesNotMatch(workflow[1], /\bcampaign(?:_name|_icon|_readme_path|_ai_credit_allowance|_worker_count|_inventory_warnings)?\s/);
+  assert.match(sql, /CREATE INDEX IF NOT EXISTS workflows_campaign_id/);
 });

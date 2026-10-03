@@ -31,9 +31,6 @@ func TestUnchangedArtifactRevisionCuratesExistingAudits(t *testing.T) {
 		FROM audits WHERE id='audit:424242:complete'`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := admin.ExecContext(ctx, "UPDATE cao_quality SET row_count=row_count+1 WHERE collection='$audits'"); err != nil {
-		t.Fatal(err)
-	}
 	second, err := Run(ctx, store, "../../testdata/deployed-subset", options)
 	if err != nil {
 		t.Fatal(err)

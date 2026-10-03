@@ -232,6 +232,10 @@ func (w *Writer) append(ctx context.Context, source string, row model.Row, inven
 	if !exists || table.runtime {
 		return fmt.Errorf("canonical collection %q is not registered by TypeSpec", source)
 	}
+	row, err := normalizeProjectedFacts(source, row)
+	if err != nil {
+		return fmt.Errorf("%s: %w", source, err)
+	}
 	id, valid := row["id"].(string)
 	if !valid || id == "" {
 		return errors.New("native row requires a nonempty string id")
@@ -385,8 +389,8 @@ func (w *Writer) Quality(ctx context.Context, source string, metadata model.Meta
 			instants[field] = instant
 		}
 	}
-	_, err := w.tx.Exec(ctx, `INSERT INTO cao_quality(namespace,collection,row_count,availability,completeness,freshness,as_of,retrieved_at)
-		VALUES($1,$2,0,$3,$4,$5,$6,$7) ON CONFLICT(namespace,collection) DO UPDATE SET
+	_, err := w.tx.Exec(ctx, `INSERT INTO cao_quality(namespace,collection,availability,completeness,freshness,as_of,retrieved_at)
+		VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(namespace,collection) DO UPDATE SET
 		availability=excluded.availability,completeness=excluded.completeness,freshness=excluded.freshness,as_of=excluded.as_of,retrieved_at=excluded.retrieved_at`,
 		w.store.namespace, source, availability, completeness, freshness, instants["as-of"], instants["retrieved-at"])
 	return err
@@ -542,10 +546,10 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 			return State{}, err
 		}
 		state.Counts[source] = count
-		if _, err := w.tx.Exec(ctx, `INSERT INTO cao_quality(namespace,collection,row_count,availability,completeness,freshness)
-			VALUES($1,$2,$3,$4,'complete','current') ON CONFLICT(namespace,collection) DO UPDATE SET
-			row_count=excluded.row_count,availability=CASE WHEN cao_quality.availability='unavailable' THEN 'unavailable' ELSE excluded.availability END`,
-			w.store.namespace, source, count, map[bool]string{true: "empty", false: "available"}[count == 0]); err != nil {
+		if _, err := w.tx.Exec(ctx, `INSERT INTO cao_quality(namespace,collection,availability,completeness,freshness)
+			VALUES($1,$2,$3,'complete','current') ON CONFLICT(namespace,collection) DO UPDATE SET
+			availability=CASE WHEN cao_quality.availability='unavailable' THEN 'unavailable' ELSE excluded.availability END`,
+			w.store.namespace, source, map[bool]string{true: "empty", false: "available"}[count == 0]); err != nil {
 			return State{}, err
 		}
 	}

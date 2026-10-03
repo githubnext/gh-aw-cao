@@ -2,7 +2,7 @@ import { createDebug } from '../../debug.js';
 
 const debugSchema = createDebug('schema');
 
-export const CANONICAL_SCHEMA_VERSION = 27;
+export const CANONICAL_SCHEMA_VERSION = 28;
 
 export const ENTITY_KINDS = /** @type {const} */ ([
   'campaign',
@@ -117,7 +117,6 @@ export function relationshipErrors(batch) {
     runCount: batch.runs.length
   });
   const campaignRecords = batch.campaigns ?? [];
-  const campaignsById = new Map(campaignRecords.map((record) => [record.id, record]));
   const workflowsById = new Map(batch.workflows.map((record) => [record.id, record]));
   const ids = {
     repositories: new Set(batch.repositories.map((record) => record.id)),
@@ -151,10 +150,6 @@ export function relationshipErrors(batch) {
     requireReference(workflow, 'repositoryId', 'repositories');
     if (workflow.campaignId !== undefined && workflow.campaignId !== null) {
       requireReference(workflow, 'campaignId', 'campaigns');
-      const campaignRecord = campaignsById.get(workflow.campaignId);
-      if (campaignRecord && workflow.campaign !== campaignRecord.slug) {
-        errors.push(`${String(workflow.id ?? '<unknown>')}.campaignId references a different campaign slug`);
-      }
     }
   }
   for (const run of batch.runs) {

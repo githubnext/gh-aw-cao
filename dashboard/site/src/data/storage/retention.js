@@ -55,9 +55,6 @@ const RUN_LINKED_STORES = /** @type {const} */ ([
 ]);
 const WORKFLOW_INVENTORY_FIELDS = /** @type {const} */ ([
   'campaignId',
-  'campaign',
-  'campaignName',
-  'campaignIcon',
   'githubId',
   'registryState',
   'createdAt',

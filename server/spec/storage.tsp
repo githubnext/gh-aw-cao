@@ -48,19 +48,13 @@ model repositories {
 model workflows {
   admissionReason?: string;
   admissionStatus?: string;
-  campaign?: string;
-  campaignAiCreditAllowance?: decimal;
-  campaignIcon?: string;
-  campaignInventoryWarnings?: int64;
-  campaignName?: string;
-  campaignReadmePath?: string;
-  campaignWorkerCount?: int64;
+  @parent("campaigns", false)
+  campaignId?: string;
   createdAt?: utcDateTime;
   externalLink?: Values.Link;
   ghAwCurrentVersion?: string;
   ghAwUpdateState?: string;
   ghAwVersion?: string;
-  ghAwVersionLabel?: string;
   githubId?: string;
   id: string;
   inventoryReady?: boolean;
@@ -335,7 +329,6 @@ model audits {
   supersededByInterventionId?: string;
   supersedesInterventionId?: string;
   targetOrganization?: string;
-  targetRepo?: string;
   targetRepository?: string;
   targetWorkflowPath?: string;
   timestamp?: utcDateTime;
@@ -483,11 +476,9 @@ model graderObservations {
   included?: boolean;
   maturityStatus?: string;
   provenance?: Values.Provenance;
-  resultTimestamp?: utcDateTime;
   role?: string;
   @parent("runs")
   runId: string;
-  sourceGraderId?: string;
   status?: string;
   timestamp?: utcDateTime;
   value?: decimal;
@@ -524,11 +515,9 @@ model evalObservations {
   id: string;
   included?: boolean;
   provenance?: Values.Provenance;
-  resultTimestamp?: utcDateTime;
   role?: string;
   @parent("runs")
   runId: string;
-  sourceEvalId?: string;
   status?: string;
   timestamp?: utcDateTime;
   variant?: string;
@@ -737,7 +726,6 @@ namespace Storage {
   model caoQuality {
     `namespace`: string;
     collection: string;
-    rowCount: int64;
     availability: string;
     completeness: string;
     freshness: string;

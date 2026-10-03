@@ -2,7 +2,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { IDBFactory } from 'fake-indexeddb';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { processDataRequest } from '../../src/data-worker.js';
 import { PRUNED_CANONICAL_FIELDS, pruneCanonicalRecord } from '../../src/data/model/fields.js';
 import { normalize } from '../../src/data/normalize/index.js';
 import { queryDatabaseSources } from '../../src/data/queries/database.js';
@@ -14,6 +15,7 @@ const directories = /** @type {string[]} */ ([]);
 const observedAt = '2026-10-02T00:00:00.000Z';
 
 afterEach(() => {
+  vi.unstubAllGlobals();
   for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
 });
 
@@ -98,9 +100,108 @@ describe('canonical field pruning', () => {
     expect(value.graderObservations).toEqual([expect.objectContaining({ value: 1, graderId: 'grader:quality' })]);
     expect(value.runs[0].provenance).toEqual({ source: 'gh-aw-logs', sourceId: 'run:1', observedAt });
   });
+
+  it('retains original facts before removing recomputable source copies', () => {
+    const audit = { id: 'audit:1', targetRepo: 'octo/api' };
+    expect(pruneCanonicalRecord('audits', audit)).toEqual({
+      id: 'audit:1', targetOrganization: 'octo', targetRepository: 'api'
+    });
+    expect(audit).toEqual({ id: 'audit:1', targetRepo: 'octo/api' });
+    expect(pruneCanonicalRecord('repositories', { fullName: 'octo/api' })).toEqual({ owner: 'octo', name: 'api' });
+    expect(pruneCanonicalRecord('runs', { repositoryFullName: 'octo/api' })).toEqual({ owner: 'octo', repository: 'api' });
+    expect(pruneCanonicalRecord('graders', { name: 'quality', sourceGraderId: 'quality-v1' }))
+      .toEqual({ name: 'quality', sourceGraderId: 'quality-v1' });
+    expect(pruneCanonicalRecord('evals', { name: 'correctness', sourceEvalId: 'correctness-v1' }))
+      .toEqual({ name: 'correctness', sourceEvalId: 'correctness-v1' });
+    expect(pruneCanonicalRecord('evalObservations', {
+      resultTimestamp: observedAt, answer: 'YES', requestedModel: 'model'
+    })).toEqual({ timestamp: observedAt, evalResult: 'YES' });
+    expect(pruneCanonicalRecord('graderObservations', {
+      timestamp: observedAt, resultTimestamp: '2026-10-02T00:00:00Z'
+    })).toEqual({ timestamp: observedAt });
+  });
+
+  it('rejects conflicting evidence rather than silently discarding it', () => {
+    expect(() => pruneCanonicalRecord('audits', { targetRepo: 'invalid' })).toThrow('owner/repository');
+    expect(() => pruneCanonicalRecord('audits', {
+      targetRepo: 'octo/api', targetOrganization: 'different'
+    })).toThrow('conflicts');
+    expect(() => pruneCanonicalRecord('graderObservations', {
+      timestamp: null, resultTimestamp: observedAt
+    })).toThrow('conflicts');
+    expect(() => pruneCanonicalRecord('evalObservations', { evalResult: 'YES', answer: 'NO' })).toThrow('conflicts');
+  });
 });
 
 describe.each(['IndexedDB', 'SQLite'])('pruning at the %s storage boundary', (backend) => {
+  it('reconstructs removed fields through the production worker query boundary', async () => {
+    const directory = backend === 'SQLite' ? mkdtempSync(join(tmpdir(), 'cao-query-projections-')) : null;
+    if (directory) directories.push(directory);
+    const indexedDB = directory ? createSqliteIndexedDB(join(directory, 'dashboard.sqlite')) : new IDBFactory();
+    vi.stubGlobal('indexedDB', indexedDB);
+    const input = batch();
+    const provenance = { source: 'test', sourceId: 'projection', observedAt };
+    input.campaigns.push({
+      id: 'campaign:1', slug: 'demo', name: 'Current campaign', icon: 'goal', readmePath: 'demo/README.md',
+      aiCreditAllowance: 1.5, workerCount: 0, inventoryWarnings: 2, observedAt
+    });
+    Object.assign(input.workflows[0], {
+      campaignId: 'campaign:1', campaign: 'demo', campaignName: 'Stale copy', campaignIcon: 'old',
+      campaignReadmePath: 'old.md', campaignAiCreditAllowance: 100, campaignWorkerCount: 100,
+      campaignInventoryWarnings: 100, ghAwVersion: 'v1', ghAwCurrentVersion: 'v1', ghAwVersionLabel: 'stale'
+    });
+    Object.assign(input.runs[0], { requestedModel: 'requested', resolvedModel: 'resolved' });
+    input.graders?.push({ id: 'grader:1', workflowId: 'workflow:1', name: 'quality', sourceGraderId: 'quality-v1', observedAt, provenance });
+    input.graderObservations?.push({
+      id: 'grade:1', graderId: 'grader:1', runId: input.runs[0].id,
+      timestamp: observedAt, resultTimestamp: observedAt, sourceGraderId: 'quality-v1', value: 0.8, observedAt, provenance
+    });
+    input.evals?.push({ id: 'eval:1', workflowId: 'workflow:1', name: 'correctness', sourceEvalId: 'correctness-v1', observedAt, provenance });
+    input.evalObservations?.push({
+      id: 'eval-result:1', evalId: 'eval:1', runId: input.runs[0].id,
+      timestamp: observedAt, resultTimestamp: observedAt, sourceEvalId: 'correctness-v1',
+      evalResult: 'YES', answer: 'YES', requestedModel: 'unused-copy', resolvedModel: 'unused-copy', observedAt, provenance
+    });
+    input.audits.push({
+      id: 'audit:target', runId: input.runs[0].id, source: 'token-intervention-lifecycle',
+      type: 'token_efficiency.intervention', targetRepo: 'octo/api', timestamp: observedAt, observedAt
+    }, {
+      id: 'audit:partial', runId: input.runs[0].id, source: 'token-intervention-lifecycle',
+      type: 'token_efficiency.intervention', targetOrganization: 'octo', timestamp: observedAt, observedAt
+    });
+    await upsertCanonicalBatch(indexedDB, input);
+    for (const store of /** @type {const} */ ([
+      'workflows', 'graders', 'graderObservations', 'evals', 'evalObservations', 'audits'
+    ])) {
+      for (const record of await readCollection(indexedDB, store)) {
+        for (const field of PRUNED_CANONICAL_FIELDS[store] ?? []) expect(record).not.toHaveProperty(field);
+      }
+    }
+    const sources = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (
+      await processDataRequest({
+        operation: 'load-dashboard-query-sources', sources: {},
+        sourceNames: ['workflows', 'overview-runs', 'graders', 'grader-observations', 'evals', 'eval-observations', 'audits']
+      })
+    );
+    expect(sources.workflows.rows[0]).toMatchObject({
+      'campaign-name': 'Current campaign', 'campaign-icon': 'goal',
+      'campaign-readme-path': 'demo/README.md', 'campaign-aic-allowance': 1.5,
+      'campaign-worker-count': 0, 'campaign-inventory-warnings': 2, 'gh-aw-version-label': 'v1 (current)'
+    });
+    expect(sources['overview-runs'].rows[0]).toMatchObject({ 'campaign-name': 'Current campaign' });
+    expect(sources.graders.rows[0]).toMatchObject({ grader: 'quality', 'source-grader-id': 'quality-v1' });
+    expect(sources['grader-observations'].rows[0]).toMatchObject({
+      'source-grader-id': 'quality-v1', 'result-timestamp': observedAt, 'observed-at': observedAt
+    });
+    expect(sources.evals.rows[0]).toMatchObject({ eval: 'correctness', 'source-eval-id': 'correctness-v1' });
+    expect(sources['eval-observations'].rows[0]).toMatchObject({
+      'source-eval-id': 'correctness-v1', 'result-timestamp': observedAt, 'eval-result': 'YES',
+      'requested-model': 'requested', 'resolved-model': 'resolved'
+    });
+    expect(sources.audits.rows.find((row) => row.id === 'audit:target')).toMatchObject({ 'target-repo': 'octo/api' });
+    expect(sources.audits.rows.find((row) => row.id === 'audit:partial')).toMatchObject({ 'target-repo': null });
+  });
+
   it('prunes published records on upsert and replacement while preserving query payloads', async () => {
     let indexedDB = new IDBFactory();
     if (backend === 'SQLite') {

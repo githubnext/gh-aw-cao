@@ -2,7 +2,7 @@
 
 -- Fresh database only. Opaque artifacts remain external.
 
--- Inventory normalization contract: f14c6e284504dd4b77d773b756dd862f321ca3f0ccc9e60a6646f55314cddd72
+-- Inventory normalization contract: 4bac781c5f40c973c3765bdc44498a95647e58a7b83dd597b7c7db8b5263daa7
 
 CREATE TABLE IF NOT EXISTS cao_contract (
   digest TEXT NOT NULL,
@@ -21,7 +21,6 @@ CREATE TABLE IF NOT EXISTS cao_state (
 CREATE TABLE IF NOT EXISTS cao_quality (
   namespace TEXT NOT NULL,
   collection TEXT NOT NULL,
-  row_count BIGINT NOT NULL,
   availability TEXT NOT NULL,
   completeness TEXT NOT NULL,
   freshness TEXT NOT NULL,
@@ -29,7 +28,7 @@ CREATE TABLE IF NOT EXISTS cao_quality (
   retrieved_at TIMESTAMPTZ,
   PRIMARY KEY (namespace, collection),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
-  CHECK (collection IN ('$repositories','$workflows','$runs','$audits','$campaigns','$domains','$evals','$experiments','$evalObservations','$experimentAssignments','$friction','$graders','$graderObservations','$issues','$operationalValues','$outcomes','$security-findings','$skills','$tools','$transactions','work-items')),
+  CHECK (collection IN ('$repositories','$campaigns','$workflows','$runs','$audits','$domains','$evals','$experiments','$evalObservations','$experimentAssignments','$friction','$graders','$graderObservations','$issues','$operationalValues','$outcomes','$security-findings','$skills','$tools','$transactions','work-items')),
   CHECK (availability IN ('available','empty','unavailable')),
   CHECK (completeness IN ('complete','partial','unknown')),
   CHECK (freshness IN ('current','stale','unknown'))
@@ -75,19 +74,49 @@ CREATE TABLE IF NOT EXISTS repositories (
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS campaigns (
+  namespace TEXT NOT NULL,
+  ordinal BIGINT NOT NULL CHECK (ordinal >= 0),
+  present_fields BIT VARYING NOT NULL,
+  ai_credit_allowance NUMERIC,
+  campaign_link_object BOOLEAN,
+  campaign_link_relation TEXT,
+  campaign_link_href TEXT,
+  campaign_link_label TEXT,
+  current_version TEXT,
+  description TEXT,
+  enabled BOOLEAN,
+  experimental BOOLEAN,
+  icon TEXT,
+  id TEXT NOT NULL CHECK (id <> ''),
+  inventory_warnings BIGINT,
+  max_repositories BIGINT,
+  min_version TEXT,
+  mode TEXT,
+  monthly_ai_credit_budget NUMERIC,
+  name TEXT,
+  observed_at TIMESTAMPTZ,
+  readme TEXT,
+  readme_path TEXT,
+  rollout_percent NUMERIC,
+  slug TEXT,
+  update_state TEXT,
+  version TEXT,
+  worker_count BIGINT,
+
+  PRIMARY KEY (namespace, id),
+  UNIQUE (namespace, ordinal),
+  CHECK (bit_length(present_fields) = 25),
+  FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS workflows (
   namespace TEXT NOT NULL,
   ordinal BIGINT NOT NULL CHECK (ordinal >= 0),
   present_fields BIT VARYING NOT NULL,
   admission_reason TEXT,
   admission_status TEXT,
-  campaign TEXT,
-  campaign_ai_credit_allowance NUMERIC,
-  campaign_icon TEXT,
-  campaign_inventory_warnings BIGINT,
-  campaign_name TEXT,
-  campaign_readme_path TEXT,
-  campaign_worker_count BIGINT,
+  campaign_id TEXT,
   created_at TIMESTAMPTZ,
   external_link_object BOOLEAN,
   external_link_relation TEXT,
@@ -96,7 +125,6 @@ CREATE TABLE IF NOT EXISTS workflows (
   gh_aw_current_version TEXT,
   gh_aw_update_state TEXT,
   gh_aw_version TEXT,
-  gh_aw_version_label TEXT,
   github_id TEXT,
   id TEXT NOT NULL CHECK (id <> ''),
   inventory_ready BOOLEAN,
@@ -125,11 +153,14 @@ CREATE TABLE IF NOT EXISTS workflows (
 
   PRIMARY KEY (namespace, id),
   UNIQUE (namespace, ordinal),
-  CHECK (bit_length(present_fields) = 43),
+  CHECK (bit_length(present_fields) = 36),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
+  FOREIGN KEY (namespace, campaign_id) REFERENCES campaigns(namespace, id) DEFERRABLE INITIALLY DEFERRED,
   CHECK (repository_id IS NOT NULL AND repository_id <> ''),
   FOREIGN KEY (namespace, repository_id) REFERENCES repositories(namespace, id) DEFERRABLE INITIALLY DEFERRED
 );
+
+CREATE INDEX IF NOT EXISTS workflows_campaign_id ON workflows (namespace, campaign_id, ordinal);
 
 CREATE INDEX IF NOT EXISTS workflows_repository_id ON workflows (namespace, repository_id, ordinal);
 
@@ -291,7 +322,6 @@ CREATE TABLE IF NOT EXISTS audits (
   superseded_by_intervention_id TEXT,
   supersedes_intervention_id TEXT,
   target_organization TEXT,
-  target_repo TEXT,
   target_repository TEXT,
   target_workflow_path TEXT,
   timestamp TIMESTAMPTZ,
@@ -304,7 +334,7 @@ CREATE TABLE IF NOT EXISTS audits (
 
   PRIMARY KEY (namespace, id, run_at),
   UNIQUE (namespace, ordinal, run_at),
-  CHECK (bit_length(present_fields) = 68),
+  CHECK (bit_length(present_fields) = 67),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
   CHECK (run_id IS NOT NULL AND run_id <> ''),
   FOREIGN KEY (namespace, run_id, run_at) REFERENCES runs(namespace, id, run_at) DEFERRABLE INITIALLY DEFERRED
@@ -313,42 +343,6 @@ CREATE TABLE IF NOT EXISTS audits (
 CREATE INDEX IF NOT EXISTS audits_run_id ON audits (namespace, run_id, ordinal);
 
 CREATE INDEX IF NOT EXISTS audits_identity ON audits (namespace, id);
-
-CREATE TABLE IF NOT EXISTS campaigns (
-  namespace TEXT NOT NULL,
-  ordinal BIGINT NOT NULL CHECK (ordinal >= 0),
-  present_fields BIT VARYING NOT NULL,
-  ai_credit_allowance NUMERIC,
-  campaign_link_object BOOLEAN,
-  campaign_link_relation TEXT,
-  campaign_link_href TEXT,
-  campaign_link_label TEXT,
-  current_version TEXT,
-  description TEXT,
-  enabled BOOLEAN,
-  experimental BOOLEAN,
-  icon TEXT,
-  id TEXT NOT NULL CHECK (id <> ''),
-  inventory_warnings BIGINT,
-  max_repositories BIGINT,
-  min_version TEXT,
-  mode TEXT,
-  monthly_ai_credit_budget NUMERIC,
-  name TEXT,
-  observed_at TIMESTAMPTZ,
-  readme TEXT,
-  readme_path TEXT,
-  rollout_percent NUMERIC,
-  slug TEXT,
-  update_state TEXT,
-  version TEXT,
-  worker_count BIGINT,
-
-  PRIMARY KEY (namespace, id),
-  UNIQUE (namespace, ordinal),
-  CHECK (bit_length(present_fields) = 25),
-  FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE
-);
 
 CREATE TABLE IF NOT EXISTS domains (
   namespace TEXT NOT NULL,
@@ -464,10 +458,8 @@ CREATE TABLE IF NOT EXISTS eval_observations (
   provenance_source TEXT,
   provenance_source_id TEXT,
   provenance_observed_at TIMESTAMPTZ,
-  result_timestamp TIMESTAMPTZ,
   role TEXT,
   run_id TEXT,
-  source_eval_id TEXT,
   status TEXT,
   timestamp TIMESTAMPTZ,
   variant TEXT,
@@ -475,7 +467,7 @@ CREATE TABLE IF NOT EXISTS eval_observations (
 
   PRIMARY KEY (namespace, id, run_at),
   UNIQUE (namespace, ordinal, run_at),
-  CHECK (bit_length(present_fields) = 19),
+  CHECK (bit_length(present_fields) = 17),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
   CHECK (eval_id IS NOT NULL AND eval_id <> ''),
   FOREIGN KEY (namespace, eval_id) REFERENCES evals(namespace, id) DEFERRABLE INITIALLY DEFERRED,
@@ -634,10 +626,8 @@ CREATE TABLE IF NOT EXISTS grader_observations (
   provenance_source TEXT,
   provenance_source_id TEXT,
   provenance_observed_at TIMESTAMPTZ,
-  result_timestamp TIMESTAMPTZ,
   role TEXT,
   run_id TEXT,
-  source_grader_id TEXT,
   status TEXT,
   timestamp TIMESTAMPTZ,
   value NUMERIC,
@@ -646,7 +636,7 @@ CREATE TABLE IF NOT EXISTS grader_observations (
 
   PRIMARY KEY (namespace, id, run_at),
   UNIQUE (namespace, ordinal, run_at),
-  CHECK (bit_length(present_fields) = 24),
+  CHECK (bit_length(present_fields) = 22),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
   FOREIGN KEY (namespace, experiment_id) REFERENCES experiments(namespace, id) DEFERRABLE INITIALLY DEFERRED,
   CHECK (grader_id IS NOT NULL AND grader_id <> ''),

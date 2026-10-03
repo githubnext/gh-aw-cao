@@ -56,11 +56,11 @@ test("discovered repositories flow from control scope into canonical storage", a
     const canonical = await readCanonicalBatch(indexedDB);
 
     assert.deepEqual(
-      canonical.repositories.map(({ fullName }) => fullName).sort(),
+      canonical.repositories.map(({ owner, name }) => `${owner}/${name}`).sort(),
       ["acme/control", "acme/payments", "acme/storefront"],
     );
     assert.equal(
-      canonical.repositories.find(({ fullName }) => fullName === "acme/control")?.visibility,
+      canonical.repositories.find(({ owner, name }) => owner === "acme" && name === "control")?.visibility,
       "private",
     );
     assert.equal(canonical.workflows.length, 1);
@@ -105,7 +105,7 @@ test("explicitly allowed repositories flow into canonical storage", async () => 
     const canonical = await readCanonicalBatch(indexedDB);
 
     assert.deepEqual(
-      canonical.repositories.map(({ fullName }) => fullName).sort(),
+      canonical.repositories.map(({ owner, name }) => `${owner}/${name}`).sort(),
       ["acme/control", "acme/payments", "acme/storefront"],
     );
   } finally {

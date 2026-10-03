@@ -77,8 +77,7 @@ describe('canonical normalization', () => {
       }),
       observation('repository', 'repo-new', '2026-09-09T00:00:00Z', {
         githubId: 123,
-        name: 'gh-aw-cao',
-        fullName: 'githubnext/gh-aw-cao'
+        name: 'gh-aw-cao'
       })
     ];
 
@@ -88,8 +87,7 @@ describe('canonical normalization', () => {
     expect(batch.repositories[0]).toMatchObject({
       id: 'github:repository:123',
       owner: 'githubnext',
-      name: 'gh-aw-cao',
-      fullName: 'githubnext/gh-aw-cao'
+      name: 'gh-aw-cao'
     });
   });
 

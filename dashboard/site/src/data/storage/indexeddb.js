@@ -14,7 +14,7 @@ import {
 const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 36;
+export const DATABASE_VERSION = 37;
 
 export const CANONICAL_QUERY_INDEX_FIELDS = /** @type {Record<string, string[]>} */ ({
   byQuerySummary: ['summary'],
@@ -57,7 +57,7 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
  },
  workflows: {
    keyPath: 'id',
-   indexes: { byRepository: 'repositoryId' }
+   indexes: { byRepository: 'repositoryId', byCampaign: 'campaignId' }
  },
  runs: {
    keyPath: 'id',
@@ -167,6 +167,7 @@ const RUN_LINKED_STORES = /** @type {const} */ ([
 const QUERYABLE_STRING_KEY_PATHS = new Set([
   'slug',
   'repositoryId',
+  'campaignId',
   'workflowId',
   'runId',
   'valueId',

@@ -20,6 +20,7 @@ import (
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
+	"github.com/githubnext/gh-aw-cao/server/internal/sqlbuilder"
 )
 
 type State struct {
@@ -227,7 +228,17 @@ func (r *readTransaction) State(ctx context.Context) (State, error) {
 	if state.Revision == 0 {
 		return state, nil
 	}
-	rows, err := r.tx.QueryContext(ctx, "SELECT collection,row_count FROM cao_quality WHERE namespace=$1 ORDER BY collection", r.store.namespace)
+	var counts []string
+	for _, source := range tableNames() {
+		counts = append(counts, fmt.Sprintf("WHEN '%s' THEN (SELECT count(*) FROM %s WHERE namespace=$1)",
+			source, query.SQLIdentifier(entityTables[source].name)))
+	}
+	statement, args, err := sqlbuilder.Build("SELECT collection,CASE collection {} END FROM cao_quality WHERE namespace={} ORDER BY collection",
+		sqlbuilder.Fragment(strings.Join(counts, " ")), r.store.namespace)
+	if err != nil {
+		return State{}, err
+	}
+	rows, err := r.tx.QueryContext(ctx, statement, args...)
 	if err != nil {
 		return State{}, fmt.Errorf("read native counts: %w", err)
 	}

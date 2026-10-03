@@ -75,7 +75,7 @@
     "from": "$graderObservations",
     "joins": [
       { "source": "$graders", "type": "left", "on": [{ "left": "graderId", "right": "id" }],
-        "fields": [{ "field": "name", "as": "grader" }, { "field": "direction", "as": "direction" },
+        "fields": [{ "field": "name", "as": "grader" }, { "field": "sourceGraderId", "as": "source-grader-id" }, { "field": "direction", "as": "direction" },
           { "field": "unit", "as": "unit" }, { "field": "threshold", "as": "threshold" }] },
       { "source": "$experiments", "type": "left", "on": [{ "left": "experimentId", "right": "id" }],
         "fields": [{ "field": "name", "as": "experiment" }] },
@@ -86,7 +86,7 @@
     ],
     "select": [
       { "field": "id" }, { "field": "runId", "as": "run-id" },
-      { "field": "graderId", "as": "grader-id" }, { "field": "sourceGraderId", "as": "source-grader-id" },
+      { "field": "graderId", "as": "grader-id" }, { "field": "source-grader-id" },
       { "field": "experimentId", "as": "experiment-id" }, { "field": "variant" },
       { "field": "grader" },
       { "field": "organization" }, { "field": "repository" }, { "field": "workflow" }, { "field": "run" },
@@ -101,7 +101,7 @@
       { "field": "direction" }, { "field": "unit" }, { "field": "threshold" },
       { "field": "value" }, { "field": "status" },
       { "field": "evaluatorDigest", "as": "evaluator-digest" },
-      { "field": "resultTimestamp", "as": "result-timestamp" },
+      { "field": "timestamp", "as": "result-timestamp" },
       { "field": "auditId", "as": "audit-id" },
       { "field": "timestamp", "as": "observed-at" }, { "field": "provenance" }
     ]
@@ -132,7 +132,7 @@
     "from": "$evalObservations",
     "joins": [
       { "source": "$evals", "type": "left", "on": [{ "left": "evalId", "right": "id" }],
-        "fields": [{ "field": "name", "as": "eval" }] },
+        "fields": [{ "field": "name", "as": "eval" }, { "field": "sourceEvalId", "as": "source-eval-id" }] },
       { "source": "$experiments", "type": "left", "on": [{ "left": "experimentId", "right": "id" }],
         "fields": [{ "field": "name", "as": "experiment" }] },
       { "source": "$runs", "type": "left", "on": [{ "left": "runId", "right": "id" }],
@@ -145,7 +145,7 @@
     ],
     "select": [
       { "field": "id" }, { "field": "runId", "as": "run-id" },
-      { "field": "evalId", "as": "eval-id" }, { "field": "sourceEvalId", "as": "source-eval-id" },
+      { "field": "evalId", "as": "eval-id" }, { "field": "source-eval-id" },
       { "field": "eval" }, { "field": "experiment" },
       { "field": "variant" }, { "field": "included" },
       { "field": "exclusionReason", "as": "exclusion-reason" },
@@ -155,7 +155,7 @@
       { "field": "organization" }, { "field": "repository" }, { "field": "workflow" }, { "field": "run" },
       { "field": "evidence-link" }, { "field": "requested-model" }, { "field": "resolved-model" },
       { "field": "evalResult", "as": "eval-result" },
-      { "field": "resultTimestamp", "as": "result-timestamp" },
+      { "field": "timestamp", "as": "result-timestamp" },
       { "field": "status" }, { "field": "timestamp", "as": "observed-at" }, { "field": "provenance" }
     ]
   },
@@ -260,7 +260,7 @@
   },
   {
     "name": "workflows",
-    "stores": ["repositories", "workflows"],
+    "stores": ["repositories", "workflows", "campaigns"],
     "from": "$workflows",
     "joins": [
       {
@@ -270,6 +270,20 @@
         "fields": [
           { "field": "owner", "as": "organization" },
           { "field": "name", "as": "repository" }
+        ]
+      },
+      {
+        "source": "$campaigns",
+        "type": "left",
+        "on": [{ "left": "campaignId", "right": "id" }],
+        "fields": [
+          { "field": "slug", "as": "campaign" },
+          { "field": "name", "as": "campaign-name" },
+          { "field": "icon", "as": "campaign-icon" },
+          { "field": "readmePath", "as": "campaign-readme-path" },
+          { "field": "aiCreditAllowance", "as": "campaign-aic-allowance" },
+          { "field": "workerCount", "as": "campaign-worker-count" },
+          { "field": "inventoryWarnings", "as": "campaign-inventory-warnings" }
         ]
       }
     ],
@@ -301,6 +315,31 @@
           { "value": "true" },
           { "field": "_workflow-inactive-label" }
         ]
+      },
+      {
+        "as": "_gh-aw-version-unknown",
+        "function": "equals-any",
+        "args": [{ "field": "ghAwVersion" }, { "value": "unknown" }, { "value": null }, { "value": "" }]
+      },
+      {
+        "as": "_gh-aw-version-current",
+        "function": "equals-any",
+        "args": [{ "field": "ghAwVersion" }, { "field": "ghAwCurrentVersion" }]
+      },
+      {
+        "as": "_gh-aw-version-current-label",
+        "function": "concat",
+        "args": [{ "field": "ghAwVersion" }, { "value": " (current)" }]
+      },
+      {
+        "as": "_gh-aw-version-label",
+        "function": "if",
+        "args": [{ "field": "_gh-aw-version-current" }, { "field": "_gh-aw-version-current-label" }, { "field": "ghAwVersion" }]
+      },
+      {
+        "as": "gh-aw-version-label",
+        "function": "if",
+        "args": [{ "field": "_gh-aw-version-unknown" }, { "value": "unknown" }, { "field": "_gh-aw-version-label" }]
       }
     ],
     "select": [
@@ -317,20 +356,20 @@
       { "field": "createdAt", "as": "created-at" },
       { "field": "updatedAt", "as": "updated-at" },
       { "field": "campaign" },
-      { "field": "campaignName", "as": "campaign-name" },
-      { "field": "campaignIcon", "as": "campaign-icon" },
-      { "field": "campaignReadmePath", "as": "campaign-readme-path" },
+      { "field": "campaign-name" },
+      { "field": "campaign-icon" },
+      { "field": "campaign-readme-path" },
       { "field": "role", "as": "workflow-role" },
       { "field": "rolloutMode", "as": "rollout-mode" },
       { "field": "maxAiCredits", "as": "max-ai-credits" },
       { "field": "observedAt", "as": "observed-at" },
       { "field": "ghAwVersion", "as": "gh-aw-version" },
       { "field": "ghAwCurrentVersion", "as": "gh-aw-current-version" },
-      { "field": "ghAwVersionLabel", "as": "gh-aw-version-label" },
+      { "field": "gh-aw-version-label" },
       { "field": "ghAwUpdateState", "as": "gh-aw-update-state" },
-      { "field": "campaignAiCreditAllowance", "as": "campaign-aic-allowance" },
-      { "field": "campaignWorkerCount", "as": "campaign-worker-count" },
-      { "field": "campaignInventoryWarnings", "as": "campaign-inventory-warnings" },
+      { "field": "campaign-aic-allowance" },
+      { "field": "campaign-worker-count" },
+      { "field": "campaign-inventory-warnings" },
       { "field": "inventoryReady", "as": "inventory-ready" },
       { "field": "organizationLink", "as": "organization-link" },
       { "field": "repositoryLink", "as": "repository-link" },
@@ -495,7 +534,7 @@
   },
   {
     "name": "overview-runs",
-    "stores": ["workflows", "runs"],
+    "stores": ["workflows", "runs", "campaigns"],
     "from": "$runs",
     "joins": [
       {
@@ -505,11 +544,16 @@
         "fields": [
           { "field": "path", "as": "_workflow-path" },
           { "field": "rolloutMode", "as": "_workflow-rollout-mode" },
-          { "field": "campaign", "as": "campaign" },
-          { "field": "campaignName", "as": "campaign-name" },
+          { "field": "campaignId", "as": "_campaign-id" },
           { "field": "name", "as": "workflow-name" },
           { "field": "role", "as": "workflow-role" }
         ]
+      },
+      {
+        "source": "$campaigns",
+        "type": "left",
+        "on": [{ "left": "_campaign-id", "right": "id" }],
+        "fields": [{ "field": "slug", "as": "campaign" }, { "field": "name", "as": "campaign-name" }]
       }
     ],
     "compute": [
@@ -701,6 +745,31 @@
           { "value": "firewall.request.blocked" },
           { "field": "_allowed-event-type" }
         ]
+      },
+      {
+        "as": "_target-coordinate",
+        "function": "concat",
+        "args": [{ "field": "targetOrganization" }, { "value": "/" }, { "field": "targetRepository" }]
+      },
+      {
+        "as": "_target-organization-missing",
+        "function": "equals-any",
+        "args": [{ "field": "targetOrganization" }, { "value": null }, { "value": "" }]
+      },
+      {
+        "as": "_target-repository-missing",
+        "function": "equals-any",
+        "args": [{ "field": "targetRepository" }, { "value": null }, { "value": "" }]
+      },
+      {
+        "as": "_target-repo",
+        "function": "if",
+        "args": [{ "field": "_target-organization-missing" }, { "value": null }, { "field": "_target-coordinate" }]
+      },
+      {
+        "as": "target-repo",
+        "function": "if",
+        "args": [{ "field": "_target-repository-missing" }, { "value": null }, { "field": "_target-repo" }]
       }
     ],
     "select": [
@@ -781,7 +850,7 @@
       { "field": "organization-link" },
       { "field": "repository-link" },
       { "field": "workflow-link" },
-      { "field": "targetRepo", "as": "target-repo" },
+      { "field": "target-repo" },
       { "field": "targetOrganization", "as": "target-organization" },
       { "field": "targetRepository", "as": "target-repository" },
       { "field": "targetWorkflowPath", "as": "target-workflow-path" },

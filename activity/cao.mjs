@@ -2605,7 +2605,9 @@ export async function queryGhData(indexedDB, resource, options) {
     records = runs.filter((run) => {
       const repository = sourceRepository(run);
       const workflow = sourceWorkflow(run);
-      const fullName = String(repository.fullName ?? run.repositoryFullName ?? '').toLowerCase();
+      const fullName = (repository.owner && repository.name
+        ? `${repository.owner}/${repository.name}`
+        : `${String(run.owner ?? '')}/${String(run.repository ?? '')}`).toLowerCase();
       const timestamp = recordTimestamp(run, ['startedAt', 'createdAt', 'updatedAt', 'observedAt']);
       return (!repositoryFilter || fullName === repositoryFilter)
         && matchesWorkflow(workflow, workflowFilter)

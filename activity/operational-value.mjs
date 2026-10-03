@@ -454,7 +454,7 @@ export async function runOperationalValue({
   const selectedRepositories = repositories.length > 0
     ? repositories
     : (await readCollection(indexedDB, 'repositories'))
-      .map((record) => String(record.fullName ?? ''))
+      .map((record) => `${String(record.owner ?? '')}/${String(record.name ?? '')}`)
       .filter((repository) => REPOSITORY_COORDINATE.test(repository));
   const uniqueRepositories = [...new Map(
     selectedRepositories.map((repository) => [repository.toLowerCase(), repository])

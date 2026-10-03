@@ -287,13 +287,12 @@ func TestAuditCurationExistingNamespaceAndIdempotence(t *testing.T) {
 	if after.Revision != before.Revision+1 || after.Counts["$audits"] != 0 || after.DataRevision != before.DataRevision || !after.EvaluatedAt.Equal(before.EvaluatedAt) {
 		t.Fatalf("cleanup publication=%+v, before=%+v", after, before)
 	}
-	var count int
 	var availability string
-	if err := store.db.QueryRowContext(t.Context(), "SELECT row_count,availability FROM cao_quality WHERE namespace=$1 AND collection='$audits'", store.namespace).Scan(&count, &availability); err != nil {
+	if err := store.db.QueryRowContext(t.Context(), "SELECT availability FROM cao_quality WHERE namespace=$1 AND collection='$audits'", store.namespace).Scan(&availability); err != nil {
 		t.Fatal(err)
 	}
-	if count != 0 || availability != "empty" {
-		t.Fatalf("quality does not reflect cleanup: %d %s", count, availability)
+	if availability != "empty" {
+		t.Fatalf("quality does not reflect cleanup: %s", availability)
 	}
 	otherAfter, err := other.State(t.Context())
 	if err != nil || !reflect.DeepEqual(otherAfter, otherBefore) {

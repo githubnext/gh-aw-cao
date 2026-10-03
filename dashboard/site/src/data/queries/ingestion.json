@@ -72,12 +72,12 @@
     {
       "name": "workflow-records",
       "from": "workflow-keys",
-      "joins": [{
-        "source": "campaign-records",
-        "type": "left",
-        "on": [{ "left": "_campaign", "right": "_slug" }],
-        "fields": [{ "field": "_id", "as": "_campaign-id" }]
-      }]
+      "compute": [
+        { "as": "_campaign-encoded", "function": "url-encode", "args": [{ "field": "_campaign" }] },
+        { "as": "_campaign-coordinate-id", "function": "concat", "args": [{ "value": "campaign:dashboard-sources:" }, { "field": "_campaign-encoded" }] },
+        { "as": "_campaign-missing", "function": "equals-any", "args": [{ "field": "_campaign" }, { "value": "" }] },
+        { "as": "_campaign-id", "function": "if", "args": [{ "field": "_campaign-missing" }, { "value": null }, { "field": "_campaign-coordinate-id" }] }
+      ]
     },
     {
       "name": "run-records",
@@ -272,15 +272,13 @@
         "registryState": { "field": "workflow-registry-state", "trim": true, "omitEmpty": true },
         "createdAt": { "field": "created-at", "trim": true, "omitEmpty": true }, "updatedAt": { "field": "updated-at", "trim": true, "omitEmpty": true },
         "ghAwVersion": { "field": "gh-aw-version", "default": "unknown" }, "ghAwCurrentVersion": { "field": "gh-aw-current-version", "default": "unknown" },
-        "ghAwVersionLabel": { "field": "gh-aw-version-label" }, "ghAwUpdateState": { "field": "gh-aw-update-state", "default": "unknown" },
+        "ghAwUpdateState": { "field": "gh-aw-update-state", "default": "unknown" },
         "workflowLink": { "field": "workflow-link", "default": null }, "organizationLink": { "field": "organization-link", "default": null },
         "repositoryLink": { "field": "repository-link", "default": null }, "externalLink": { "field": "external-link", "default": null },
-        "campaignId": { "field": "_campaign-id" }, "campaign": { "field": "_campaign", "omitEmpty": true },
-        "campaignName": { "fields": ["campaign-name", "package-name"] }, "campaignIcon": { "fields": ["campaign-icon", "package-icon"] },
+        "campaignId": { "field": "_campaign-id" },
         "role": { "field": "workflow-role" }, "rolloutMode": { "field": "rollout-mode" }, "maxAiCredits": { "field": "max-ai-credits" },
         "admissionStatus": { "field": "admission-status" }, "admissionReason": { "field": "admission-reason" },
-        "campaignAiCreditAllowance": { "field": "campaign-aic-allowance" }, "campaignWorkerCount": { "field": "campaign-worker-count" },
-        "campaignInventoryWarnings": { "field": "campaign-inventory-warnings" }, "inventoryReady": { "field": "inventory-ready" }
+        "inventoryReady": { "field": "inventory-ready" }
       }
     },
     {

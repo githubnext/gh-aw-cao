@@ -16,7 +16,7 @@ describe('SQL export adapter', () => {
 
     expect(relationshipErrors(batch)).toEqual([]);
     expect(batch).toMatchObject({
-      repositories: [{ id: 'github:repository:101', fullName: 'githubnext/gh-aw-cao' }],
+      repositories: [{ id: 'github:repository:101', owner: 'githubnext', name: 'gh-aw-cao' }],
       workflows: [{ id: 'github:workflow:202', repositoryId: 'github:repository:101' }],
       runs: [{
         id: 'github:run:githubnext/gh-aw-cao:303',
@@ -116,7 +116,7 @@ describe('SQL export adapter', () => {
     const event = normalize(adaptSqlExport(input).observations).audits
       .find((candidate) => candidate.type === 'token_efficiency.intervention');
     expect(event).toMatchObject({
-      targetRepo: 'octo/example',
+      targetOrganization: 'octo', targetRepository: 'example',
       targetWorkflowPath: '.github/workflows/review.md',
       opportunityId: 'token-opportunity:1',
       opportunityKind: 'unbounded-context-growth',

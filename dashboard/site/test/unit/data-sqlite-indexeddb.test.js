@@ -198,15 +198,22 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
         variant: 'candidate', included: 0, exclusion_reason: 'insufficient-evidence' });
     expect(connection.prepare(`
       SELECT grader_id, value, status, audit_id, experiment_id, variant,
-             evaluator_digest, result_timestamp FROM grader_observations
+             evaluator_digest, timestamp FROM grader_observations
     `).get()).toMatchObject({
       grader_id: 'grader:1', value: 0.8, status: 'pass', audit_id: 'audit:1',
       experiment_id: 'experiment:1', variant: 'candidate',
-      evaluator_digest: 'evaluator:v1', result_timestamp: timestamp
+      evaluator_digest: 'evaluator:v1', timestamp
     });
-    expect(connection.prepare('SELECT eval_result, requested_model, resolved_model, audit_id FROM eval_observations').get())
-      .toMatchObject({ eval_result: 'YES', requested_model: 'model-requested',
-        resolved_model: 'model-resolved', audit_id: 'audit:eval' });
+    expect(connection.prepare('SELECT eval_result, audit_id FROM eval_observations').get())
+      .toMatchObject({ eval_result: 'YES', audit_id: 'audit:eval' });
+    for (const table of ['grader_observations', 'eval_observations']) {
+      const columns = connection.prepare(`PRAGMA table_info(${table})`).all().map((row) => row.name);
+      expect(columns).not.toContain('source_grader_id');
+      expect(columns).not.toContain('source_eval_id');
+      expect(columns).not.toContain('result_timestamp');
+      expect(columns).not.toContain('requested_model');
+      expect(columns).not.toContain('resolved_model');
+    }
     expect(connection.prepare(`
       SELECT a.run_id, e.id AS experiment, a.variant, g.id AS grader,
              go.value, go.audit_id AS grader_audit, ev.id AS eval,

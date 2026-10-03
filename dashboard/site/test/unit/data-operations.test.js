@@ -344,8 +344,7 @@ describe('dashboard data operations', () => {
 
     expect(result.repositories).toMatchObject([{
       owner: 'acme',
-      name: 'app',
-      fullName: 'acme/app'
+      name: 'app'
     }]);
   });
 

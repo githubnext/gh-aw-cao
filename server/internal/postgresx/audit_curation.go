@@ -185,7 +185,6 @@ func (s *Store) CurateAudits(ctx context.Context) (State, error) {
 		}
 		if deleted > 0 {
 			result, err := tx.ExecContext(ctx, `UPDATE cao_quality SET
-				row_count=(SELECT count(*) FROM audits WHERE namespace=$1),
 				availability=CASE WHEN availability='unavailable' THEN availability
 					WHEN EXISTS(SELECT 1 FROM audits WHERE namespace=$1) THEN 'available' ELSE 'empty' END
 				WHERE namespace=$1 AND collection='$audits'`, s.namespace)
